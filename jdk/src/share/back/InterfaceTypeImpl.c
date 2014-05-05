@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2005, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,25 +23,17 @@
  * questions.
  */
 
-package java.util.prefs;
+#include "util.h"
+#include "InterfaceTypeImpl.h"
+#include "inStream.h"
+#include "outStream.h"
 
-/**
- * A listener for receiving preference change events.
- *
- * @author  Josh Bloch
- * @see Preferences
- * @see PreferenceChangeEvent
- * @see NodeChangeListener
- * @since   1.4
- */
-@FunctionalInterface
-public interface PreferenceChangeListener extends java.util.EventListener {
-    /**
-     * This method gets called when a preference is added, removed or when
-     * its value is changed.
-     *
-     * @param evt A PreferenceChangeEvent object describing the event source
-     *          and the preference that has changed.
-     */
-    void preferenceChange(PreferenceChangeEvent evt);
+static jboolean
+invokeStatic(PacketInputStream *in, PacketOutputStream *out)
+{
+    return sharedInvoke(in, out);
 }
+
+void *InterfaceType_Cmds[] = { (void *)0x1
+    , (void *)invokeStatic
+};
