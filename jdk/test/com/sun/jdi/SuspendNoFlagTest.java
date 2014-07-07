@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,15 +20,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.apple.jobjc;
 
+import jdk.testlibrary.OutputAnalyzer;
+import jdk.testlibrary.ProcessTools;
 
-public class TestUtils {
-    static MacOSXFramework getAppKit() {
-        return UnsafeRuntimeAccess.getFramework(new String[]{"/System/Library/Frameworks/AppKit.framework/AppKit"});
+/* @test
+ * @bug 4914611
+ * @summary Test for JDWP: -agentlib:jdwp=suspend=n hanging
+ * @library /lib/testlibrary
+ * @build jdk.testlibarary.*
+ * @compile -g HelloWorld.java
+ * @run driver SuspendNoFlagTest
+ */
+public class SuspendNoFlagTest {
+
+    private static final String TEST_CLASSES = System.getProperty(
+            "test.classes", ".");
+
+    public static void main(String[] args) throws Throwable {
+        OutputAnalyzer output = ProcessTools.executeTestJvm("-classpath",
+                TEST_CLASSES,
+                "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n",
+                "HelloWorld");
+        output.shouldHaveExitValue(0);
     }
 
-    static MacOSXFramework getFoundation() {
-        return UnsafeRuntimeAccess.getFramework(new String[]{"/System/Library/Frameworks/Foundation.framework/Foundation"});
-    }
 }

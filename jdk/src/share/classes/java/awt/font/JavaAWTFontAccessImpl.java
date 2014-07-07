@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,18 +23,35 @@
  * questions.
  */
 
-/*
- *  NativeBuffer.h
- *  Copyright 2007 Apple Inc. All rights reserved.
- *
- */
+package java.awt.font;
 
-#define BUFFER_AT(buffer, offset)                (((UInt8 *)buffer) + offset)
-#define GET_VALUE(type, buffer, offset)            (*((type *)BUFFER_AT(buffer, offset)))
-#define PUT_VALUE(type, buffer, offset, value)    (*((type *)BUFFER_AT(buffer, offset)) = value)
+import java.lang.reflect.Field;
+import sun.misc.JavaAWTFontAccess;
 
-#define GET_INT_AT(buffer, offset)                GET_VALUE(jint, buffer, offset)
-#define GET_LONG_AT(buffer, offset)                GET_VALUE(jlong, buffer, offset)
+class JavaAWTFontAccessImpl implements sun.misc.JavaAWTFontAccess {
 
-#define PUT_INT_AT(buffer, offset, value)        PUT_VALUE(jint, buffer, offset, value)
-#define PUT_LONG_AT(buffer, offset, value)        PUT_VALUE(jlong, buffer, offset, value)
+    // java.awt.font.TextAttribute constants
+    public Object getTextAttributeConstant(String name) {
+        switch (name) {
+        case "RUN_DIRECTION":
+        case "NUMERIC_SHAPING":
+        case "BIDI_EMBEDDING":
+        case "RUN_DIRECTION_LTR":
+            try {
+                Field f = TextAttribute.class.getField(name);
+                return f.get(null);
+            } catch (NoSuchFieldException | IllegalAccessException x) {
+                throw new AssertionError(x);
+            }
+        }
+
+        throw new AssertionError("Constant name is not recognized");
+    }
+
+    // java.awt.font.NumericShaper
+    public void shape(Object shaper, char[] text, int start, int count) {
+        assert shaper instanceof NumericShaper;
+        ((NumericShaper)shaper).shape(text, start,count);
+    }
+
+}
