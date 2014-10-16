@@ -109,9 +109,9 @@ Java_java_lang_System_identityHashCode(JNIEnv *env, jobject this, jobject x)
     } else ((void) 0)
 
 #ifndef VENDOR /* Third party may overwrite this. */
-#define VENDOR "Oracle Corporation"
-#define VENDOR_URL "http://java.oracle.com/"
-#define VENDOR_URL_BUG "http://bugreport.java.com/bugreport/"
+#define VENDOR "JetBrains s.r.o"
+#define VENDOR_URL "https://www.jetbrains.com/"
+#define VENDOR_URL_BUG "https://youtrack.jetbrains.com"
 #endif
 
 #define JAVA_MAX_SUPPORTED_VERSION 53
