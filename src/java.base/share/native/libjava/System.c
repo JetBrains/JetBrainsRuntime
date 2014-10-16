@@ -110,13 +110,13 @@ Java_java_lang_System_identityHashCode(JNIEnv *env, jobject this, jobject x)
 
 /* Third party may overwrite these values. */
 #ifndef VENDOR
-#define VENDOR "Oracle Corporation"
+#define VENDOR "JetBrains s.r.o"
 #endif
 #ifndef VENDOR_URL
-#define VENDOR_URL "http://java.oracle.com/"
+#define VENDOR_URL "https://www.jetbrains.com/"
 #endif
 #ifndef VENDOR_URL_BUG
-#define VENDOR_URL_BUG "http://bugreport.java.com/bugreport/"
+#define VENDOR_URL_BUG "https://youtrack.jetbrains.com"
 #endif
 
 #ifdef JAVA_SPECIFICATION_VENDOR /* Third party may NOT overwrite this. */
