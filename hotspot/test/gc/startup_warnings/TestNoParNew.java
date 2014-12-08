@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+* Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
 * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 *
 * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,25 @@
 */
 
 /*
-* @test TestCMSForegroundFlags
+* @test TestNoParNew
 * @key gc
-* @bug 8027132
-* @summary Test that the deprecated CMS foreground collector flags print warning messages
+* @bug 8065972
+* @summary Test that specifying -XX:-UseParNewGC on the command line logs a warning message
 * @library /testlibrary
-* @run main TestCMSForegroundFlags -XX:-UseCMSCompactAtFullCollection UseCMSCompactAtFullCollection
-* @run main TestCMSForegroundFlags -XX:CMSFullGCsBeforeCompaction=4 CMSFullGCsBeforeCompaction
-* @run main TestCMSForegroundFlags -XX:-UseCMSCollectionPassing UseCMSCollectionPassing
 */
 
 import com.oracle.java.testlibrary.OutputAnalyzer;
 import com.oracle.java.testlibrary.ProcessTools;
 
-public class TestCMSForegroundFlags {
-  public static void main(String[] args) throws Exception {
-    if (args.length != 2) {
-      throw new Exception("Expected two arguments,flagValue and flagName");
-    }
-    String flagValue = args[0];
-    String flagName = args[1];
 
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(flagValue, "-version");
+public class TestNoParNew {
+
+  public static void main(String args[]) throws Exception {
+    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:-UseParNewGC", "-version");
     OutputAnalyzer output = new OutputAnalyzer(pb.start());
-    output.shouldContain("warning: " + flagName + " is deprecated and will likely be removed in a future release.");
+    output.shouldContain("warning: The UseParNewGC flag is deprecated and will likely be removed in a future release");
     output.shouldNotContain("error");
     output.shouldHaveExitValue(0);
   }
+
 }
