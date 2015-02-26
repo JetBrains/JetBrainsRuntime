@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,21 @@
  *
  */
 
-#include "precompiled.hpp"
-#include "classfile/javaClasses.hpp"
-#include "code/codeBlob.hpp"
-#include "memory/allocation.hpp"
-#include "prims/jvm.h"
-#include "runtime/dtraceJSDT.hpp"
-#include "runtime/jniHandles.hpp"
-#include "runtime/os.hpp"
-#include "runtime/signature.hpp"
-#include "utilities/globalDefinitions.hpp"
+#ifndef SHARE_VM_MEMORY_CARDTABLEMODREFBS_INLINE_HPP
+#define SHARE_VM_MEMORY_CARDTABLEMODREFBS_INLINE_HPP
 
-int DTraceJSDT::pd_activate(
-    void* baseAddress, jstring module,
-    jint providers_count, JVM_DTraceProvider* providers) {
-  return -1;
+#include "memory/cardTableModRefBS.hpp"
+#include "oops/oopsHierarchy.hpp"
+#include "runtime/orderAccess.inline.hpp"
+
+template <class T> inline void CardTableModRefBS::inline_write_ref_field(T* field, oop newVal, bool release) {
+  jbyte* byte = byte_for((void*)field);
+  if (release) {
+    // Perform a releasing store if requested.
+    OrderAccess::release_store((volatile jbyte*) byte, dirty_card);
+  } else {
+    *byte = dirty_card;
+  }
 }
 
-void DTraceJSDT::pd_dispose(int handle) {
-}
-
-jboolean DTraceJSDT::pd_is_supported() {
-  return false;
-}
+#endif // SHARE_VM_MEMORY_CARDTABLEMODREFBS_INLINE_HPP

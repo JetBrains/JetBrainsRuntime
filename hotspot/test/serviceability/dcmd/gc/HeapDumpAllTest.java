@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,21 +19,23 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_VM_OOPS_OOP_INLINE2_HPP
-#define SHARE_VM_OOPS_OOP_INLINE2_HPP
+/*
+ * @test
+ * @summary Test of diagnostic command GC.heap_dump -all=true
+ * @library /testlibrary
+ * @build com.oracle.java.testlibrary.*
+ * @build com.oracle.java.testlibrary.dcmd.*
+ * @build HeapDumpTest
+ * @run testng HeapDumpAllTest
+ */
+public class HeapDumpAllTest extends HeapDumpTest {
+    public HeapDumpAllTest() {
+        super();
+        heapDumpArgs = "-all=true";
+    }
 
-#include "gc_interface/collectedHeap.hpp"
-#include "memory/generation.hpp"
-#include "memory/universe.hpp"
-#include "oops/oop.hpp"
-
-// Implementation of all inlined member functions defined in oop.hpp
-// We need a separate file to avoid circular references
-
-inline bool oopDesc::is_scavengable() const {
-  return Universe::heap()->is_scavengable(this);
+    /* See HeapDumpTest for test cases */
 }
-#endif // SHARE_VM_OOPS_OOP_INLINE2_HPP
+
