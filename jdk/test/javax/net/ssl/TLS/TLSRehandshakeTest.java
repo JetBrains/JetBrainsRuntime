@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 1998, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,20 +21,23 @@
  * questions.
  */
 
-package sun.tools.native2ascii.resources;
+/*
+ * @test
+ * @bug 8085979
+ * @summary Testing TLS engines re-handshaking using each of the supported
+ *          cipher suites.
+ * @library /sun/security/krb5/auto /javax/net/ssl/TLSCommon
+ * @run main/othervm -Dtest.security.protocol=TLS -Dtest.mode=norm TLSRehandshakeTest
+ * @run main/othervm -Dtest.security.protocol=TLS -Dtest.mode=norm_sni TLSRehandshakeTest
+ * @run main/othervm -Dtest.security.protocol=TLS -Dtest.mode=krb TLSRehandshakeTest
+ */
 
-import java.util.ListResourceBundle;
-
-public class MsgNative2ascii_zh_CN extends ListResourceBundle {
-
-    public Object[][] getContents() {
-        Object[][] temp = new Object[][] {
-        {"err.bad.arg", "-encoding \u9700\u8981\u53C2\u6570"},
-        {"err.cannot.read",  "\u65E0\u6CD5\u8BFB\u53D6{0}\u3002"},
-        {"err.cannot.write", "\u65E0\u6CD5\u5199\u5165{0}\u3002"},
-        {"usage", "\u7528\u6CD5: native2ascii [-reverse] [-encoding encoding] [inputfile [outputfile]]"},
-        };
-
-        return temp;
+/**
+ * Testing TLS engines re-handshaking using each of the supported cipher
+ * suites.
+ */
+public class TLSRehandshakeTest {
+    public static void main(String[] args) {
+        RehandshakeTest.main(args);
     }
 }

@@ -21,35 +21,22 @@
  * questions.
  */
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
+/*
+ * @test
+ * @bug 8085979
+ * @summary Testing TLS engines re-handshaking with cipher change. New cipher
+ *          is taken randomly from the supporetd ciphers list.
+ * @key randomness
+ * @library /sun/security/krb5/auto /lib/testlibrary /javax/net/ssl/TLSCommon
+ * @run main/othervm -Dtest.security.protocol=TLSv1.1 TLSRehandshakeWithCipherChangeTest
+ */
 
 /**
- * Testing that try to enable unsupported ciphers causes IllegalArgumentException.
+ * Testing TLS engines re-handshaking with cipher change. New cipher is taken
+ * randomly from the supported ciphers list.
  */
-public class UnSupportedCiphersTest extends SSLEngineTestCase {
-
-    public static void main(String[] s) {
-        UnSupportedCiphersTest test = new UnSupportedCiphersTest();
-        test.runTests(Ciphers.UNSUPPORTED_CIPHERS);
-    }
-
-    @Override
-    protected void testOneCipher(String cipher) {
-        unsupTest(cipher, true);
-        unsupTest(cipher, false);
-    }
-
-    private void unsupTest(String cipher, boolean clientTest) {
-        SSLContext context = getContext();
-        SSLEngine clientEngine = context.createSSLEngine();
-        clientEngine.setUseClientMode(true);
-        SSLEngine serverEngine = context.createSSLEngine();
-        serverEngine.setUseClientMode(false);
-        if (clientTest) {
-            clientEngine.setEnabledCipherSuites(new String[]{cipher});
-        } else {
-            serverEngine.setEnabledCipherSuites(new String[]{cipher});
-        }
+public class TLSRehandshakeWithCipherChangeTest {
+    public static void main(String[] args) {
+        RehandshakeWithCipherChangeTest.main(args);
     }
 }
