@@ -1222,9 +1222,9 @@ public class LWWindowPeer
             return false;
         }
 
-        if (platformWindow.rejectFocusRequest(cause)) {
-            return false;
-        }
+        //if (platformWindow.rejectFocusRequest(cause)) {
+        //    return false;
+        //}
 
         AppContext targetAppContext = AWTAccessor.getComponentAccessor().getAppContext(getTarget());
         KeyboardFocusManager kfm = AWTAccessor.getKeyboardFocusManagerAccessor()
