@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2012, 2015 SAP AG. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,20 +22,24 @@
  *
  */
 
-#ifndef CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
-#define CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
+/*
+ * @test
+ * @bug 8130183
+ * @summary For InnerClasses attribute, VM permits inner_class_info_index value of zero
+ * @compile badEnclMthd.jcod
+ * @run main/othervm -Xverify:all EnclosingMethod
+ */
 
- friend class AbstractInterpreterGenerator;
+// Test that an EnclosingMethod attribute with the value of 0 causes a ClassFormatError.
+public class EnclosingMethod {
+    public static void main(String args[]) throws Throwable {
 
- private:
-
-  address generate_abstract_entry(void);
-  address generate_jump_to_normal_entry(void);
-  address generate_accessor_entry(void) { return generate_jump_to_normal_entry(); }
-  address generate_empty_entry(void) { return generate_jump_to_normal_entry(); }
-  address generate_Reference_get_entry(void);
-
-  address generate_CRC32_update_entry();
-  address generate_CRC32_updateBytes_entry(AbstractInterpreter::MethodKind kind);
-
-#endif // CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
+        System.out.println("Regression test for bug 8130183");
+        try {
+            Class newClass = Class.forName("badEnclMthd");
+            throw new RuntimeException("Expected ClassFormatError exception not thrown");
+        } catch (java.lang.ClassFormatError e) {
+            System.out.println("Test EnclosingMethod passed");
+        }
+    }
+}

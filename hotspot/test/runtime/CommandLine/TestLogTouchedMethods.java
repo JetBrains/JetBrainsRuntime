@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002, 2015, Oracle and/or its affiliates. All rights reserved.
- * Copyright 2012, 2015 SAP AG. All rights reserved.
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,23 +19,14 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
-#define CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
+/* used by PrintTouchedMethods.java */
+public class TestLogTouchedMethods {
+  public static void main(String[] args) {
+    new TestLogTouchedMethods().methodA();
+  }
 
- friend class AbstractInterpreterGenerator;
-
- private:
-
-  address generate_abstract_entry(void);
-  address generate_jump_to_normal_entry(void);
-  address generate_accessor_entry(void) { return generate_jump_to_normal_entry(); }
-  address generate_empty_entry(void) { return generate_jump_to_normal_entry(); }
-  address generate_Reference_get_entry(void);
-
-  address generate_CRC32_update_entry();
-  address generate_CRC32_updateBytes_entry(AbstractInterpreter::MethodKind kind);
-
-#endif // CPU_PPC_VM_INTERPRETERGENERATOR_PPC_HPP
+  public void methodA() {} // called
+  public void methodB() {} // this should not be called
+}
