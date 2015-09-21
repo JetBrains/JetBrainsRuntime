@@ -351,6 +351,7 @@ else
 endif
 
 LIBFONTMANAGER_EXTRA_HEADER_DIRS := \
+    java.base:libjvm \
     common/awt \
     common/awt/utility \
     common/font \
