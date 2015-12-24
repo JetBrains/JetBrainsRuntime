@@ -374,6 +374,18 @@ extern GetRasInfoFunc  OGLSD_GetRasInfo;
 extern UnlockFunc      OGLSD_Unlock;
 extern DisposeFunc     OGLSD_Dispose;
 
+
+void
+CGLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops)
+{
+    OGLSDOps *oglsdo = (OGLSDOps *)ops;
+    jlong pConfigInfo = OGLSD_GetNativeConfigInfo(oglsdo);
+    JNU_CallStaticMethodByName(env, NULL, "sun/java2d/opengl/CGLSurfaceData",
+                               "dispose", "(JJ)V",
+                               ptr_to_jlong(ops), pConfigInfo);
+}
+
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_opengl_CGLSurfaceData_initOps
     (JNIEnv *env, jobject cglsd,
@@ -397,7 +409,7 @@ Java_sun_java2d_opengl_CGLSurfaceData_initOps
     oglsdo->sdOps.Lock               = OGLSD_Lock;
     oglsdo->sdOps.GetRasInfo         = OGLSD_GetRasInfo;
     oglsdo->sdOps.Unlock             = OGLSD_Unlock;
-    oglsdo->sdOps.Dispose            = OGLSD_Dispose;
+    oglsdo->sdOps.Dispose            = CGLSD_Dispose;
 
     oglsdo->drawableType = OGLSD_UNDEFINED;
     oglsdo->activeBuffer = GL_FRONT;
