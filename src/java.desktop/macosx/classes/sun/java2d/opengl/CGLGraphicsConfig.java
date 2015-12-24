@@ -41,6 +41,7 @@ import java.awt.image.DataBuffer;
 import java.awt.image.DirectColorModel;
 import java.awt.image.VolatileImage;
 import java.awt.image.WritableRaster;
+import java.util.HashMap;
 
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
@@ -90,6 +91,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
+    private static final HashMap<Long, Integer> pGCRefCounts = new HashMap<>();
+
     static {
         cglAvailable = initCGL();
     }
@@ -104,7 +107,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         this.oglCaps = oglCaps;
         this.maxTextureSize = maxTextureSize;
         context = new OGLContext(OGLRenderQueue.getInstance(), this);
-
+        refPConfigInfo(pConfigInfo);
         // add a record to the Disposer so that we destroy the native
         // CGLGraphicsConfigInfo data when this object goes away
         Disposer.addRecord(disposerReferent,
@@ -165,6 +168,33 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         int oglCaps = getOGLCapabilities(cfginfo);
         ContextCapabilities caps = new OGLContextCaps(oglCaps, ids[0]);
         return new CGLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
+    }
+
+    static void refPConfigInfo(long pConfigInfo) {
+        synchronized (pGCRefCounts) {
+            Integer count = pGCRefCounts.get(pConfigInfo);
+            if (count == null) {
+                count = 1;
+            }
+            else {
+                count++;
+            }
+            pGCRefCounts.put(pConfigInfo, count);
+        }
+    }
+
+    static void deRefPConfigInfo(long pConfigInfo) {
+        synchronized (pGCRefCounts) {
+            Integer count = pGCRefCounts.get(pConfigInfo);
+            if (count != null) {
+                count--;
+                pGCRefCounts.put(pConfigInfo, count);
+                if (count == 0) {
+                    OGLRenderQueue.disposeGraphicsConfig(pConfigInfo);
+                    pGCRefCounts.remove(pConfigInfo);
+                }
+            }
+        }
     }
 
     public static boolean isCGLAvailable() {
@@ -234,7 +264,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         }
         public void dispose() {
             if (pCfgInfo != 0) {
-                OGLRenderQueue.disposeGraphicsConfig(pCfgInfo);
+                deRefPConfigInfo(pCfgInfo);
                 pCfgInfo = 0;
             }
         }
