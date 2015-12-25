@@ -91,7 +91,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
-    private static HashMap<Long, Integer> pGCRefCounts = new HashMap<Long, Integer>();
+    private static final HashMap<Long, Integer> pGCRefCounts = new HashMap<>();
 
     static {
         cglAvailable = initCGL();
@@ -189,7 +189,10 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             if (count != null) {
                 count--;
                 pGCRefCounts.put(pConfigInfo, count);
-                if (count == 0) OGLRenderQueue.disposeGraphicsConfig(pConfigInfo);
+                if (count == 0) {
+                    OGLRenderQueue.disposeGraphicsConfig(pConfigInfo);
+                    pGCRefCounts.remove(pConfigInfo);
+                }
             }
         }
     }
