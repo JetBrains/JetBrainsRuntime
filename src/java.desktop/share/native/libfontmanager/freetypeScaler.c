@@ -516,6 +516,23 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
     return ptr_to_jlong(context);
 }
 
+static int setDefaultScalerSettings(FTScalerContext *context) {
+    if (context->aaType == TEXT_AA_OFF) {
+        context->loadFlags = FT_LOAD_TARGET_MONO;
+    } else if (context->aaType == TEXT_AA_ON) {
+        context->loadFlags = FT_LOAD_TARGET_LIGHT;
+    } else {
+        context->lcdFilter = FT_LCD_FILTER_LIGHT;
+        if (context->aaType == TEXT_AA_LCD_HRGB ||
+            context->aaType == TEXT_AA_LCD_HBGR) {
+            context->loadFlags = FT_LOAD_TARGET_LCD;
+        } else {
+            context->loadFlags = FT_LOAD_TARGET_LCD_V;
+        }
+    }
+    context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
+}
+
 static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo, FTScalerContext *context,
                           FT_Bool configureFont) {
     int errCode = 0;
@@ -537,20 +554,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             context->loadFlags = FT_LOAD_DEFAULT;
 
             if (libFontConfig == NULL) {
-                if (context->aaType == TEXT_AA_OFF) {
-                    context->loadFlags = FT_LOAD_TARGET_MONO;
-                } else if (context->aaType == TEXT_AA_ON) {
-                    context->loadFlags = FT_LOAD_TARGET_LIGHT;
-                } else {
-                    context->lcdFilter = FT_LCD_FILTER_LIGHT;
-                    if (context->aaType == TEXT_AA_LCD_HRGB ||
-                        context->aaType == TEXT_AA_LCD_HBGR) {
-                        context->loadFlags = FT_LOAD_TARGET_LCD;
-                    } else {
-                        context->loadFlags = FT_LOAD_TARGET_LCD_V;
-                    }
-                }
-                context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
+                setDefaultScalerSettings(context);
                 return 0;
             }
 #ifndef _WIN32
@@ -579,7 +583,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             if (matchResult != FcResultMatch) {
                 (*FcPatternDestroyPtr)(fcPattern);
                 if (logFC) fprintf(stderr, " - NOT FOUND\n");
-                return 1;
+                setDefaultScalerSettings(context);
+                return 0;
             }
             if (logFC) fprintf(stderr, "\nFC_LOG:   ");
             (*FcPatternDestroyPtr)(fcPattern);
