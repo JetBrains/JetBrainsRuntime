@@ -147,7 +147,7 @@ final class CAccessible extends CFRetainedResource implements Accessible {
 
     @Override
     public AccessibleContext getAccessibleContext() {
-        return accessible.getAccessibleContext();
+        return accessible != null ? accessible.getAccessibleContext() : null;
     }
 
     public void addNotificationListeners(Component c) {
