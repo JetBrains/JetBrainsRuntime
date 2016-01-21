@@ -325,15 +325,15 @@ static NSObject *sAttributeNamesLOCK = nil;
         }
 
         JavaComponentAccessibility *child = [self createWithParent:parent accessible:jchild role:childJavaRole index:childIndex withEnv:env withView:parent->fView];
-        
+
         (*env)->DeleteLocalRef(env, jchild);
         (*env)->DeleteLocalRef(env, jchildJavaRole);
-        
+
         [children addObject:child];
         childIndex++;
     }
     (*env)->DeleteLocalRef(env, jchildrenAndRoles);
-    
+
     return children;
 }
 
@@ -1060,7 +1060,7 @@ static NSObject *sAttributeNamesLOCK = nil;
                                     sjc_CAccessibility,
                                     "requestSelection",
                                     "(Ljavax/accessibility/Accessible;Ljava/awt/Component;)V" );
-    
+
     if ([(NSNumber*)value boolValue]) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
         JNFCallStaticVoidMethod(env, jm_requestSelection, fAccessible, fComponent); // AWT_THREADING Safe (AWTRunLoop)
@@ -1167,7 +1167,7 @@ static NSObject *sAttributeNamesLOCK = nil;
     // Need to handle popupmenus differently.
     //
     // At least for now don't handle combo box menus.
-    // This may change when later fixing issues which currently 
+    // This may change when later fixing issues which currently
     // exist for combo boxes, but for now the following is only
     // for JPopupMenus, not for combobox menus.
     id parent = [self parent];
