@@ -744,7 +744,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
         if( w != null && acc.getPeer(w) != null
                 && ((LWWindowPeer)acc.getPeer(w)).getPeerType() == LWWindowPeer.PeerType.EMBEDDED_FRAME
-                && !lwcToolkit.isApplicationActive()) {
+                /*&& !lwcToolkit.isApplicationActive()*/) {
             lwcToolkit.activateApplicationIgnoringOtherApps();
         }
         updateFocusabilityForAutoRequestFocus(false);
@@ -779,16 +779,15 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     @Override
-    public boolean rejectFocusRequest(CausedFocusEvent.Cause cause) {
-        return true;
+    public boolean rejectFocusRequest(FocusEvent.Cause cause) {
         // Cross-app activation requests are not allowed.
-        //if (cause != CausedFocusEvent.Cause.MOUSE_EVENT &&
-        //    !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive())
-        //{
-        //    focusLogger.fine("the app is inactive, so the request is rejected");
-        //    return true;
-        //}
-        //return false;
+        if (cause != FocusEvent.Cause.MOUSE_EVENT &&
+            !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive())
+        {
+            focusLogger.fine("the app is inactive, so the request is rejected");
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -1018,10 +1017,10 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
      *************************************************************/
     private void deliverWindowFocusEvent(boolean gained, CPlatformWindow opposite){
         // Fix for 7150349: ingore "gained" notifications when the app is inactive.
-        if (gained && !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive()) {
-            focusLogger.fine("the app is inactive, so the notification is ignored");
-            return;
-        }
+        //if (gained && !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive()) {
+        //     focusLogger.fine("the app is inactive, so the notification is ignored");
+        //     return;
+        //}
 
         LWWindowPeer oppositePeer = (opposite == null)? null : opposite.getPeer();
         responder.handleWindowFocusEvent(gained, oppositePeer);

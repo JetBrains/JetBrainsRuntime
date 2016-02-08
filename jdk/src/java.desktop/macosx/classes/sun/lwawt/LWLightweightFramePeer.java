@@ -64,9 +64,9 @@ public class LWLightweightFramePeer extends LWWindowPeer {
         if (!focusAllowedFor()) {
             return false;
         }
-        if (getPlatformWindow().rejectFocusRequest(cause)) {
+        /*if (getPlatformWindow().rejectFocusRequest(cause)) {
             return false;
-        }
+        }*/
 
         Window opposite = LWKeyboardFocusManagerPeer.getInstance().
             getCurrentFocusedWindow();

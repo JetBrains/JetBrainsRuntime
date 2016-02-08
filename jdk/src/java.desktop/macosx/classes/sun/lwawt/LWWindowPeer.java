@@ -1237,6 +1237,7 @@ public class LWWindowPeer
 
         // Make the owner active window.
         if (isSimpleWindow()) {
+	    focusLog.fine("This is a Simple Window.");
             LWWindowPeer owner = getOwnerFrameDialog(this);
 
             // If owner is not natively active, request native
@@ -1287,7 +1288,15 @@ public class LWWindowPeer
     protected boolean focusAllowedFor() {
         Window window = getTarget();
         // TODO: check if modal blocked
-        return window.isVisible() && window.isEnabled() && isFocusableWindow();
+
+        boolean allowed = (getBlocker() == null) && window.isVisible() && window.isEnabled() && isFocusableWindow() ;
+
+        focusLog.fine("Checking whether the focus is allowed [" + allowed + "] for " + window.getName() + "; blocker: "
+                + ((getBlocker() == null) ? "null" : getBlocker().getClass().getName()) + "; window.isVisible: " + window.isVisible() +
+                "; window.isEnabled: " + window.isEnabled() + "; isFocusableWindow: " + isFocusableWindow());
+
+
+        return allowed;
     }
 
     private boolean isFocusableWindow() {
