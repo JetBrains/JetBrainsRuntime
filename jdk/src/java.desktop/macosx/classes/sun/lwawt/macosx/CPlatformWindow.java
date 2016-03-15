@@ -777,14 +777,15 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     @Override
     public boolean rejectFocusRequest(FocusEvent.Cause cause) {
+        return true;
         // Cross-app activation requests are not allowed.
-        if (cause != FocusEvent.Cause.MOUSE_EVENT &&
-            !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive())
-        {
-            focusLogger.fine("the app is inactive, so the request is rejected");
-            return true;
-        }
-        return false;
+        //if (cause != CausedFocusEvent.Cause.MOUSE_EVENT &&
+        //    !((LWCToolkit)Toolkit.getDefaultToolkit()).isApplicationActive())
+        //{
+        //    focusLogger.fine("the app is inactive, so the request is rejected");
+        //    return true;
+        //}
+        //return false;
     }
 
     @Override
