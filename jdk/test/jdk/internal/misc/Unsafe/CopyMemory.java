@@ -26,11 +26,11 @@ import java.lang.reflect.Field;
 
 /*
  * @test
- * @summary Test Unsafe.copySwapMemory
+ * @summary Test Unsafe.copyMemory
  * @modules java.base/jdk.internal.misc
  */
-public class CopySwap extends CopyCommon {
-    private CopySwap() {
+public class CopyMemory extends CopyCommon {
+    private CopyMemory() {
     }
 
     /**
@@ -39,8 +39,8 @@ public class CopySwap extends CopyCommon {
      * @throws RuntimeException if an error is found
      */
     private void testPositive() {
-        testSmallCopy(true);
-        testLargeCopy(true);
+        testSmallCopy(false);
+        testLargeCopy(false);
     }
 
     /**
@@ -56,51 +56,38 @@ public class CopySwap extends CopyCommon {
             long buf = CopyCommon.alignUp(bufRaw, CopyCommon.BASE_ALIGNMENT);
             short[] arr = new short[16];
 
-            // Check various illegal element sizes
-            for (int elemSize = 2; elemSize <= 8; elemSize <<= 1) {
-                long[] illegalSizes = { -1, 1, elemSize - 1, elemSize + 1, elemSize * 2 - 1 };
-                for (long size : illegalSizes) {
-                    try {
-                        // Check that illegal elemSize throws an IAE
-                        UNSAFE.copySwapMemory(null, buf, null, buf, size, elemSize);
-                        throw new RuntimeException("copySwapMemory failed to throw IAE for size=" + size + " elemSize=" + elemSize);
-                    } catch (IllegalArgumentException e) {
-                        // good
-                    }
-                }
+            // Check illegal sizes
+            System.out.println("Testing negative size");
+            try {
+                UNSAFE.copyMemory(null, buf, null, buf, -1);
+                throw new RuntimeException("copyMemory failed to throw IAE for size=-1");
+            } catch (IllegalArgumentException e) {
+                // good
             }
 
+            System.out.println("Testing negative srcOffset");
             try {
                 // Check that negative srcOffset throws an IAE
-                UNSAFE.copySwapMemory(arr, -1, arr, UNSAFE.arrayBaseOffset(arr.getClass()), 16, 2);
-                throw new RuntimeException("copySwapMemory failed to throw IAE for srcOffset=-1");
+                UNSAFE.copyMemory(arr, -1, arr, UNSAFE.arrayBaseOffset(arr.getClass()), 16);
+                throw new RuntimeException("copyMemory failed to throw IAE for srcOffset=-1");
             } catch (IllegalArgumentException e) {
                 // good
             }
 
+            System.out.println("Testing negative destOffset");
             try {
                 // Check that negative dstOffset throws an IAE
-                UNSAFE.copySwapMemory(arr, UNSAFE.arrayBaseOffset(arr.getClass()), arr, -1, 16, 2);
-                throw new RuntimeException("copySwapMemory failed to throw IAE for destOffset=-1");
+                UNSAFE.copyMemory(arr, UNSAFE.arrayBaseOffset(arr.getClass()), arr, -1, 16);
+                throw new RuntimeException("copyMemory failed to throw IAE for destOffset=-1");
             } catch (IllegalArgumentException e) {
                 // good
             }
 
-            long illegalElemSizes[] = { 0, 1, 3, 5, 6, 7, 9, 10, -1 };
-            for (long elemSize : illegalElemSizes) {
-                try {
-                    // Check that elemSize 1 throws an IAE
-                    UNSAFE.copySwapMemory(null, buf, null, buf, 16, elemSize);
-                    throw new RuntimeException("copySwapMemory failed to throw NPE");
-                } catch (IllegalArgumentException e) {
-                    // good
-                }
-            }
-
+            System.out.println("Testing reference array");
             try {
                 // Check that a reference array destination throws IAE
-                UNSAFE.copySwapMemory(null, buf, new Object[16], UNSAFE.arrayBaseOffset(Object[].class), 16, 8);
-                throw new RuntimeException("copySwapMemory failed to throw NPE");
+                UNSAFE.copyMemory(null, buf, new Object[16], UNSAFE.arrayBaseOffset(Object[].class), 16);
+                throw new RuntimeException("copyMemory failed to throw IAE");
             } catch (IllegalArgumentException e) {
                 // good
             }
@@ -111,8 +98,8 @@ public class CopySwap extends CopyCommon {
 
                 try {
                     // Check that an invalid (not 32-bit clean) source pointer throws IAE
-                    UNSAFE.copySwapMemory(null, invalidPtr, null, buf, 16, 2);
-                    throw new RuntimeException("copySwapMemory failed to throw IAE for srcOffset 0x" +
+                    UNSAFE.copyMemory(null, invalidPtr, null, buf, 16);
+                    throw new RuntimeException("copyMemory failed to throw IAE for srcOffset 0x" +
                                                Long.toHexString(invalidPtr));
                 } catch (IllegalArgumentException e) {
                     // good
@@ -120,8 +107,8 @@ public class CopySwap extends CopyCommon {
 
                 try {
                     // Check that an invalid (not 32-bit clean) source pointer throws IAE
-                    UNSAFE.copySwapMemory(null, buf, null, invalidPtr, 16, 2);
-                    throw new RuntimeException("copySwapMemory failed to throw IAE for destOffset 0x" +
+                    UNSAFE.copyMemory(null, buf, null, invalidPtr, 16);
+                    throw new RuntimeException("copyMemory failed to throw IAE for destOffset 0x" +
                                                Long.toHexString(invalidPtr));
                 } catch (IllegalArgumentException e) {
                     // good
@@ -145,7 +132,7 @@ public class CopySwap extends CopyCommon {
     }
 
     public static void main(String[] args) {
-        CopySwap cs = new CopySwap();
+        CopyMemory cs = new CopyMemory();
         cs.test();
     }
 }
