@@ -163,6 +163,10 @@ class PangoFonts {
         int dpi = 96;
         Object value =
             Toolkit.getDefaultToolkit().getDesktopProperty("gnome.Xft/DPI");
+
+        if (!(value instanceof Integer)) {
+            value = GTKEngine.INSTANCE.getSetting(GTKEngine.Settings.GTK_XFT_DPI);
+        }
         if (value instanceof Integer) {
             dpi = ((Integer)value).intValue() / 1024;
             if (dpi == -1) {
