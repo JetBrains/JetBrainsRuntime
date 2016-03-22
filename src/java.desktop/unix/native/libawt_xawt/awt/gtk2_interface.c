@@ -2461,6 +2461,8 @@ static jobject gtk2_get_setting(JNIEnv *env, Setting property)
             return get_string_property(env, settings, "gtk-font-name");
         case GTK_ICON_SIZES:
             return get_string_property(env, settings, "gtk-icon-sizes");
+        case GTK_XFT_DPI:
+            return get_integer_property(env, settings, "gtk-xft-dpi");
         case GTK_CURSOR_BLINK:
             return get_boolean_property(env, settings, "gtk-cursor-blink");
         case GTK_CURSOR_BLINK_TIME:
