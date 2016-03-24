@@ -680,13 +680,15 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                             case FC_RGBA_RGB:
                             case FC_RGBA_BGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_RGB ? "FC_RGBA_RGB " : "FC_RGBA_BGR ");
-                                context->loadFlags = FT_LOAD_TARGET_LCD;
+                                context->loadFlags = fcHintStyle == FC_HINT_SLIGHT ? FT_LOAD_TARGET_LIGHT :
+                                                                                     FT_LOAD_TARGET_LCD;
                                 context->renderFlags = FT_RENDER_MODE_LCD;
                                 break;
                             case FC_RGBA_VRGB:
                             case FC_RGBA_VBGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_VRGB ? "FC_RGBA_VRGB " : "FC_RGBA_VBGR ");
-                                context->loadFlags = FT_LOAD_TARGET_LCD_V;
+                                context->loadFlags = fcHintStyle == FC_HINT_SLIGHT ? FT_LOAD_TARGET_LIGHT :
+                                                                                     FT_LOAD_TARGET_LCD_V;
                                 context->renderFlags = FT_RENDER_MODE_LCD_V;
                                 break;
                             default:
@@ -698,10 +700,12 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 if (fcRGBA == FC_RGBA_UNKNOWN) {
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
-                        context->loadFlags = FT_LOAD_TARGET_LCD;
+                        context->loadFlags = fcHintStyle == FC_HINT_SLIGHT ? FT_LOAD_TARGET_LIGHT :
+                                                                             FT_LOAD_TARGET_LCD;
                         context->renderFlags = FT_RENDER_MODE_LCD;
                     } else {
-                        context->loadFlags = FT_LOAD_TARGET_LCD_V;
+                        context->loadFlags = fcHintStyle == FC_HINT_SLIGHT ? FT_LOAD_TARGET_LIGHT :
+                                                                             FT_LOAD_TARGET_LCD_V;
                         context->renderFlags = FT_RENDER_MODE_LCD_V;
                     }
                 }
