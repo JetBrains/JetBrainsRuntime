@@ -160,6 +160,7 @@ typedef FcPattern* (*FcFontMatchPtrType) (FcConfig *config, FcPattern *p, FcResu
 typedef void (*FcPatternDestroyPtrType) (FcPattern *p);
 typedef FcResult (*FcPatternGetBoolPtrType) (const FcPattern *p, const char *object, int n, FcBool *b);
 typedef FcResult (*FcPatternGetIntegerPtrType) (const FcPattern *p, const char *object, int n, int *i);
+typedef FT_Error (*FtLibrarySetLcdFilterPtrType) (FT_Library library, FT_LcdFilter  filter);
 #endif
 
 static void *libFontConfig = NULL;
@@ -243,6 +244,28 @@ Java_sun_font_FreetypeFontScaler_initIDs(
         FcPatternGetBoolPtr = (FcPatternGetBoolPtrType)  dlsym(libFontConfig, "FcPatternGetBool");
         FcPatternGetIntegerPtr = (FcPatternGetIntegerPtrType)  dlsym(libFontConfig, "FcPatternGetInteger");
     }
+#endif
+}
+
+static FT_Error FT_Library_SetLcdFilter_Proxy(FT_Library library, FT_LcdFilter  filter) {
+#ifndef DISABLE_FONTCONFIG
+    static FtLibrarySetLcdFilterPtrType FtLibrarySetLcdFilterPtr = NULL;
+    static int ftLibrarySetLcdFilterNotChecked = 1;
+    if (ftLibrarySetLcdFilterNotChecked) {
+        if (logFC) fprintf(stderr, "FC_LOG: Lookup FT_Library_SetLcdFilter: ");
+        FtLibrarySetLcdFilterPtr = (FtLibrarySetLcdFilterPtrType) dlsym(RTLD_DEFAULT, "FT_Library_SetLcdFilter");
+        if (logFC) fprintf(stderr, (FtLibrarySetLcdFilterPtr)? "found\n" : "not found\n");
+        ftLibrarySetLcdFilterNotChecked = 0;
+    }
+    if (FtLibrarySetLcdFilterPtr) {
+        return (*FtLibrarySetLcdFilterPtr)(library, filter);
+    } else {
+        if (logFC) fprintf(stderr, "FC_LOG: Skipping FT_Library_SetLcdFilter\n");
+    }
+
+    return 0;
+#else
+    return FT_Library_SetLcdFilter(library, filter);
 #endif
 }
 
@@ -1416,7 +1439,7 @@ static jlong
 
     ftglyph = scalerInfo->face->glyph;
     library = ftglyph->library;
-    FT_Library_SetLcdFilter (library, context->lcdFilter);
+    FT_Library_SetLcdFilter_Proxy(library, context->lcdFilter);
 
     /* apply styles */
     if (context->doBold) { /* if bold style */
