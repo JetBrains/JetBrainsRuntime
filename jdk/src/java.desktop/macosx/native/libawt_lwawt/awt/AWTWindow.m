@@ -165,6 +165,18 @@ AWT_NS_WINDOW_IMPLEMENTATION
                     b:[event deltaY]];
 }
 
+- (void)pressureChangeWithEvent:(NSEvent *)event {
+
+    float pressure = event.pressure;
+
+    [self postGesture:event
+                       as:com_apple_eawt_event_GestureHandler_PRESSURE
+                        a:pressure
+                        b:(([event respondsToSelector:@selector(stage)]) ? ((NSInteger)[event stage]) : -1) 
+    ];
+    
+}
+
 @end
 @implementation AWTWindow_Panel
 AWT_NS_WINDOW_IMPLEMENTATION
