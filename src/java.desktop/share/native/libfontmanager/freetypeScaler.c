@@ -910,13 +910,17 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                             case FC_RGBA_NONE:
                                 if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
                                 break;
+                            case FC_RGBA_NONE:
+                                if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
+                                break;
                             default:
                                 if (logFC) fprintf(stderr, "FC_RGBA_UNKNOWN ");
                                 break;
                         }
                     }
                 }
-                if (fcRGBA == FC_RGBA_UNKNOWN) {
+                if (fcRGBA == FC_RGBA_UNKNOWN || fcRGBA == FC_RGBA_NONE) {
+
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
                         setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
