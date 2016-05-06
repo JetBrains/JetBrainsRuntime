@@ -962,7 +962,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                         }
                     }
                 }
-                if (fcRGBA == FC_RGBA_UNKNOWN) {
+                if (fcRGBA == FC_RGBA_UNKNOWN || fcRGBA == FC_RGBA_NONE) {
+
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
                         setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
