@@ -714,13 +714,17 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                                                                                      FT_LOAD_TARGET_LCD_V;
                                 context->renderFlags = FT_RENDER_MODE_LCD_V;
                                 break;
+                            case FC_RGBA_NONE:
+                                if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
+                                break;
                             default:
                                 if (logFC) fprintf(stderr, "FC_RGBA_UNKNOWN ");
                                 break;
                         }
                     }
                 }
-                if (fcRGBA == FC_RGBA_UNKNOWN) {
+                if (fcRGBA == FC_RGBA_UNKNOWN || fcRGBA == FC_RGBA_NONE) {
+
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
                         context->loadFlags = fcHintStyle == FC_HINT_SLIGHT ? FT_LOAD_TARGET_LIGHT :
