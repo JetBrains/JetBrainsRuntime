@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,27 +21,16 @@
  * questions.
  */
 
-/* @test
- * @bug 8022853
+/*
+ * @test ReservedStackTestCompiler
+ * @summary Run ReservedStackTest with dedicated compilers C1 and C2.
+ * @requires vm.flavor == "server"
  * @library /testlibrary
  * @modules java.base/jdk.internal.misc
- * @build jdk.test.lib.*
- * @run main GetKlassPointerGetJavaMirror
+ * @modules java.base/jdk.internal.vm.annotation
+ * @build jdk.test.lib.* ReservedStackTest
+ * @run main/othervm -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:-Inline -XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread ReservedStackTest
+ * @run main/othervm -XX:-TieredCompilation                         -XX:-Inline -XX:CompileCommand=exclude,java/util/concurrent/locks/AbstractOwnableSynchronizer.setExclusiveOwnerThread ReservedStackTest
  */
 
-import static jdk.test.lib.Asserts.*;
-
-import jdk.test.lib.*;
-import jdk.internal.misc.Unsafe;
-
-public class GetKlassPointerGetJavaMirror {
-
-    public static void main(String args[]) throws Exception {
-        Unsafe unsafe = Utils.getUnsafe();
-        Object o = new GetKlassPointerGetJavaMirror();
-        final long metaspaceKlass = unsafe.getKlassPointer(o);
-        Class<?> c = unsafe.getJavaMirror(metaspaceKlass);
-        assertEquals(o.getClass(), c);
-    }
-
-}
+// Intentionally left blank. Just runs ReservedStackTest with @requires annotation.
