@@ -463,6 +463,9 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.nsWindow == nil) return nil; // no hope either
     [self.nsWindow release]; // the property retains the object already
 
+    // Tell the system we have an sRGB backing store
+    [self.nsWindow setColorSpace: [NSColorSpace sRGBColorSpace]];
+
     self.isEnabled = YES;
     self.isMinimizing = NO;
     self.javaPlatformWindow = platformWindow;
