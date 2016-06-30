@@ -5,6 +5,9 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
     </content>
+    <content url="file://$MODULE_DIR$/../../../test/java/awt/Focus">
+      <sourceFolder url="file://$MODULE_DIR$/../../../test/java/awt/Focus" isTestSource="false" />
+    </content>
     <content url="file://$MODULE_DIR$/../../../test/java/awt/Graphics2D">
       <sourceFolder url="file://$MODULE_DIR$/../../../test/java/awt/Graphics2D" isTestSource="false" />
     </content>
