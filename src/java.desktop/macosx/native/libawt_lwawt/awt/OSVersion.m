@@ -59,3 +59,7 @@ int getOSXMajorVersion() {
 BOOL isSnowLeopardOrLower() {
     return (getOSXMajorVersion() < 107);
 }
+
+BOOL isElCapitanOrGreater() {
+    return (getOSXMajorVersion() >= 1011);
+}
