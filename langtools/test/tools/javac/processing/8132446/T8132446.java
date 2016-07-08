@@ -21,16 +21,19 @@
  * questions.
  */
 
-/*
+/**
  * @test
- * @bug 8047024
- * @summary AssertionError: exception_index already contains a bytecode offset
- * @compile T8047024_01.java
- * @compile -parameters T8047024.java
+ * @bug     8132446
+ * @summary AsssertionError in ClassSymbol.setAnnotationType
+ * @library /tools/javac/lib
+ * @modules java.compiler
+ *          jdk.compiler
+ * @build   Processor
+ * @compile -processor Processor T8132446.java
+ * @compile -processor Processor T8132446.java
  */
 
-public class T8047024 {
-    public static void main(String [] args) {
-        T8047024_01.run();
-    }
-}
+
+@Deprecated
+@AutoAnnotation_T8132446
+public class T8132446 {}

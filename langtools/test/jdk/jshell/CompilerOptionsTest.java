@@ -23,14 +23,34 @@
 
 /*
  * @test
- * @bug 8047024
- * @summary AssertionError: exception_index already contains a bytecode offset
- * @compile T8047024_01.java
- * @compile -parameters T8047024.java
+ * @bug 8159635
+ * @summary Test setting compiler options
+ * @build KullaTesting TestingInputStream
+ * @run testng CompilerOptionsTest
  */
 
-public class T8047024 {
-    public static void main(String [] args) {
-        T8047024_01.run();
+import javax.tools.Diagnostic;
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import static jdk.jshell.Snippet.Status.VALID;
+
+@Test
+public class CompilerOptionsTest extends KullaTesting {
+
+    @BeforeMethod
+    @Override
+    public void setUp() {
+        setUp(b -> b.compilerOptions("-source", "7", "-Xlint:cast"));
+    }
+
+    public void testLint() {
+        assertDeclareWarn1("String s = (String)\"hello\";",
+                new ExpectedDiagnostic("compiler.warn.redundant.cast", 11, 26, 11, -1, -1, Diagnostic.Kind.WARNING));
+    }
+
+    public void testSourceVersion() {
+        assertEval("import java.util.function.*;", added(VALID));
+        assertDeclareFail("Function<Integer,Integer> f = x -> x*2;",
+                new ExpectedDiagnostic("compiler.err.lambda.not.supported.in.source", 32, 32, 32, -1, -1, Diagnostic.Kind.ERROR));
     }
 }
