@@ -602,6 +602,10 @@ public:
         return mrDoDefault;
     }
 
+    virtual MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
+        return mrDoDefault;
+    }
+
     void UpdateColorModel();
 
     jintArray CreatePrintedPixels(SIZE &loc, SIZE &size, int alpha);

@@ -962,6 +962,14 @@ MsgRouting AwtWindow::WmTimer(UINT_PTR timerID)
     return mrConsume;
 }
 
+MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
+    ::SetWindowPos(GetHWnd(), NULL,
+                   bounds->left, bounds->top,
+                   bounds->right - bounds->left, bounds->bottom - bounds->top,
+                   SWP_NOZORDER | SWP_NOACTIVATE);
+    return mrConsume;
+}
+
 // The security warning is visible if:
 //    1. The window has the keyboard window focus, OR
 //    2. The mouse pointer is located within the window bounds,

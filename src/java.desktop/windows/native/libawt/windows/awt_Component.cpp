@@ -1946,6 +1946,10 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmContextMenu((HWND)wParam,
                              GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
           break;
+#define WM_DPICHANGED       0x02E0 // Since Win 8.1 in WinUser.h
+      case WM_DPICHANGED:
+          mr = WmDPIChanged(HIWORD(wParam), LOWORD(wParam), (RECT*)lParam);
+          break;
 
           /*
            * These messages are used to route Win32 calls to the
