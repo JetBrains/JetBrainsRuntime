@@ -44,10 +44,10 @@
  * The following constants define the inner and outer bounds of the
  * accelerated glyph cache.
  */
-#define OGLTR_CACHE_WIDTH       512
-#define OGLTR_CACHE_HEIGHT      512
-#define OGLTR_CACHE_CELL_WIDTH  32
-#define OGLTR_CACHE_CELL_HEIGHT 32
+#define OGLTR_CACHE_WIDTH       1024
+#define OGLTR_CACHE_HEIGHT      1024
+#define OGLTR_CACHE_CELL_WIDTH  64
+#define OGLTR_CACHE_CELL_HEIGHT 64
 
 /**
  * The current "glyph mode" state.  This variable is used to track the
@@ -107,7 +107,7 @@ static jboolean lastRGBOrder = JNI_TRUE;
  * OGLTR_DrawLCDGlyphNoCache() method.  See below for more on why we
  * restrict this value to a particular size.
  */
-#define OGLTR_NOCACHE_TILE_SIZE 32
+#define OGLTR_NOCACHE_TILE_SIZE 64
 
 /**
  * These constants define the size of the "cached destination" texture.
@@ -128,7 +128,7 @@ static jboolean lastRGBOrder = JNI_TRUE;
  *     (OGLTR_CACHED_DEST_HEIGHT >= OGLTR_CACHE_CELL_HEIGHT) &&
  *     (OGLTR_CACHED_DEST_HEIGHT >= OGLTR_NOCACHE_TILE_SIZE)
  */
-#define OGLTR_CACHED_DEST_WIDTH  512
+#define OGLTR_CACHED_DEST_WIDTH  1024
 #define OGLTR_CACHED_DEST_HEIGHT (OGLTR_CACHE_CELL_HEIGHT * 2)
 
 /**
