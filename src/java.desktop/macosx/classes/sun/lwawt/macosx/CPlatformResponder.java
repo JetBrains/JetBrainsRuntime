@@ -177,13 +177,6 @@ final class CPlatformResponder {
         char testChar = KeyEvent.CHAR_UNDEFINED;
         boolean isDeadChar = (chars!= null && chars.length() == 0);
 
-        if (chars != null && chars.length() > 0) {
-            testChar = chars.charAt(0);
-        }
-
-        char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
-                charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, jkeyType]
@@ -194,6 +187,12 @@ final class CPlatformResponder {
             jkeyLocation = out[1];
             jeventType = out[2];
         } else {
+            if (chars != null && chars.length() > 0) {
+                testChar = chars.charAt(0);
+            }
+
+            char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
+                    charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
 
             int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
@@ -241,7 +240,7 @@ final class CPlatformResponder {
             lastKeyPressCode = jkeyCode;
         }
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
-                jkeyCode, (javaChar == KeyEvent.CHAR_UNDEFINED ? testCharIgnoringModifiers : testChar), jkeyLocation);
+                jkeyCode, javaChar, jkeyLocation);
 
         // Current browser may be sending input events, so don't
         // post the KEY_TYPED here.
@@ -260,12 +259,12 @@ final class CPlatformResponder {
                 return;
             }
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    KeyEvent.VK_UNDEFINED, (javaChar == KeyEvent.CHAR_UNDEFINED ? testCharIgnoringModifiers : testChar),
+                    KeyEvent.VK_UNDEFINED, javaChar,
                     KeyEvent.KEY_LOCATION_UNKNOWN);
             //If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
-                        jkeyCode, (javaChar == KeyEvent.CHAR_UNDEFINED ? testCharIgnoringModifiers : testChar),
+                        jkeyCode, javaChar,
                         KeyEvent.KEY_LOCATION_UNKNOWN);
             }
         }
