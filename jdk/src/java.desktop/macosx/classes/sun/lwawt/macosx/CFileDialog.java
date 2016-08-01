@@ -37,6 +37,7 @@ import java.io.*;
 
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
+import sun.lwawt.LWWindowPeer;
 import sun.security.action.GetBooleanAction;
 
 class CFileDialog implements FileDialogPeer {
@@ -57,7 +58,13 @@ class CFileDialog implements FileDialogPeer {
                     title = " ";
                 }
 
-                String[] userFileNames = nativeRunFileDialog(title,
+                Window owner = target.getOwner();
+
+                long ownerPtr = owner == null ? 0L :((CPlatformWindow) (((LWWindowPeer)owner.getPeer())).getPlatformWindow()).getNSWindowPtr();
+
+                String[] userFileNames = nativeRunFileDialog(
+                        ownerPtr,
+                        title,
                         dialogMode,
                         target.isMultipleMode(),
                         navigateApps,
@@ -70,7 +77,7 @@ class CFileDialog implements FileDialogPeer {
                 String file = null;
                 File[] files = null;
 
-                if (userFileNames != null) {
+                if (userFileNames != null && userFileNames.length > 0) {
                     // the dialog wasn't cancelled
                     int filesNumber = userFileNames.length;
                     files = new File[filesNumber];
@@ -145,7 +152,7 @@ class CFileDialog implements FileDialogPeer {
         return ret;
     }
 
-    private native String[] nativeRunFileDialog(String title, int mode,
+    private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
             boolean multipleMode, boolean shouldNavigateApps,
             boolean canChooseDirectories, boolean hasFilenameFilter,
             String directory, String file);
