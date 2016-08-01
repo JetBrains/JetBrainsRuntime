@@ -35,7 +35,8 @@
 
 @implementation CFileDialog
 
-- (id)initWithFilter:(jboolean)inHasFilter
+- (id)initWithOwner:(NSWindow*)owner
+              filter:(jboolean)inHasFilter
           fileDialog:(jobject)inDialog
                title:(NSString *)inTitle
            directory:(NSString *)inPath
@@ -46,7 +47,9 @@
 canChooseDirectories:(BOOL)inChooseDirectories
              withEnv:(JNIEnv*)env;
 {
-  if (self = [super init]) {
+    if (self == [super init]) {
+        fOwner = owner;
+        [fOwner retain];
         fHasFileFilter = inHasFilter;
         fFileDialog = JNFNewGlobalRef(env, inDialog);
         fDirectory = inPath;
@@ -86,6 +89,9 @@ canChooseDirectories:(BOOL)inChooseDirectories
     [fURLs release];
     fURLs = nil;
 
+    [fOwner release];
+    fOwner = nil;
+
     [super dealloc];
 }
 
@@ -123,18 +129,50 @@ canChooseDirectories:(BOOL)inChooseDirectories
         }
 
         [thePanel setDelegate:self];
-        fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
-        [thePanel setDelegate:nil];
 
-        if ([self userClickedOK]) {
-            if (fMode == java_awt_FileDialog_LOAD) {
-                NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                fURLs = [openPanel URLs];
-            } else {
-                fURLs = [NSArray arrayWithObject:[thePanel URL]];
-            }
-            [fURLs retain];
+        if (fOwner != nil) {
+            if (fDirectory != nil) {
+                 [thePanel setDirectoryURL:[NSURL fileURLWithPath:[fDirectory stringByExpandingTildeInPath]]];
+             }
+
+             if (fFile != nil) {
+                 [thePanel setNameFieldStringValue:fFile];
+             }
+
+             [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+
+                          if (result == NSFileHandlingPanelOKButton) {
+                              NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                              fURLs = (fMode == java_awt_FileDialog_LOAD)
+                                  ? [openPanel URLs]
+                                  : [NSArray arrayWithObject:[openPanel URL]];
+                              fPanelResult = NSFileHandlingPanelOKButton;
+                          } else {
+                              fURLs = [NSArray array];
+                          }
+                          [fURLs retain];
+                          [NSApp stopModal];
+                      }
+             ];
+
+             [NSApp runModalForWindow:thePanel];
         }
+        else
+        {
+            fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
+
+            if ([self userClickedOK]) {
+                if (fMode == java_awt_FileDialog_LOAD) {
+                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                    fURLs = [openPanel URLs];
+                } else {
+                    fURLs = [NSArray arrayWithObject:[thePanel URL]];
+                }
+                [fURLs retain];
+            }
+        }
+
+        [thePanel setDelegate:nil];
     }
 
     [self disposer];
@@ -174,7 +212,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
 }
 
 - (BOOL) userClickedOK {
-    return fPanelResult == NSOKButton;
+    return fPanelResult == NSFileHandlingPanelOKButton;
 }
 
 - (NSArray *)URLs {
@@ -190,7 +228,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
  */
 JNIEXPORT jobjectArray JNICALL
 Java_sun_lwawt_macosx_CFileDialog_nativeRunFileDialog
-(JNIEnv *env, jobject peer, jstring title, jint mode, jboolean multipleMode,
+(JNIEnv *env, jobject peer, jlong ownerPtr, jstring title, jint mode, jboolean multipleMode,
  jboolean navigateApps, jboolean chooseDirectories, jboolean hasFilter,
  jstring directory, jstring file)
 {
@@ -202,7 +240,8 @@ JNF_COCOA_ENTER(env);
         dialogTitle = @" ";
     }
 
-    CFileDialog *dialogDelegate = [[CFileDialog alloc] initWithFilter:hasFilter
+    CFileDialog *dialogDelegate = [[CFileDialog alloc] initWithOwner:(NSWindow *)jlong_to_ptr(ownerPtr)
+                                                               filter:hasFilter
                                                            fileDialog:peer
                                                                 title:dialogTitle
                                                             directory:JNFJavaToNSString(env, directory)
