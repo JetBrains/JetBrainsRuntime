@@ -30,9 +30,12 @@ import java.awt.Component;
 import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.GraphicsEnvironment;
+import java.awt.Point;
 import java.awt.Window;
 
 import sun.awt.ModalExclude;
+import sun.awt.SunToolkit;
+import sun.swing.SwingUtilities2;
 
 /**
  * Popups are used to display a <code>Component</code> to the user, typically
@@ -161,8 +164,11 @@ public class Popup {
 
         if (c instanceof JWindow) {
             JWindow component = (JWindow)getComponent();
+
+            Point ownerPt = SwingUtilities2.scalePoint(owner, new Point(ownerX, ownerY), component);
+
             // Sets the proper location, and resets internal state of the window
-            component.setBounds(ownerX, ownerY, 1, 1);
+            component.setBounds(ownerPt.x, ownerPt.y, 1, 1);
             component.getContentPane().add(contents, BorderLayout.CENTER);
             component.invalidate();
             component.validate();
