@@ -571,7 +571,8 @@ public class Window extends Container implements Accessible {
      */
     public Window(Frame owner) {
         this(owner == null ? (GraphicsConfiguration)null :
-            owner.getGraphicsConfiguration());
+            // until peer is not created, the device should match default to correctly handle bounds settings
+            GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration());
         ownedInit(owner);
     }
 
@@ -601,7 +602,8 @@ public class Window extends Container implements Accessible {
      */
     public Window(Window owner) {
         this(owner == null ? (GraphicsConfiguration)null :
-            owner.getGraphicsConfiguration());
+             // until peer is not created, the device should match default to correctly handle bounds settings
+             GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration());
         ownedInit(owner);
     }
 
