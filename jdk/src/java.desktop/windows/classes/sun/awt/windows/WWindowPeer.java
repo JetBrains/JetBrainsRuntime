@@ -172,6 +172,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     WWindowPeer(Window target) {
         super(target);
+        // update GC based on the current bounds
+        updateGC();
     }
 
     @Override
