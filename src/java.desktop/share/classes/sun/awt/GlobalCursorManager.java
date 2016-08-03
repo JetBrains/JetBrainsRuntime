@@ -25,6 +25,8 @@
 
 package sun.awt;
 
+import sun.swing.SwingUtilities2;
+
 import java.awt.*;
 import java.awt.event.InputEvent;
 import java.awt.event.InvocationEvent;
@@ -188,7 +190,8 @@ public abstract class GlobalCursorManager {
             }
             if (p != null) {
                 queryPos = new Point();
-                getCursorPos(queryPos);
+                getCursorPos(queryPos); // gets the pos in 1x scale
+                queryPos.setLocation(SwingUtilities2.scalePoint(null, queryPos, comp));
                 Component c = AWTAccessor.getContainerAccessor().
                         findComponentAt((Container) comp,
                         queryPos.x - p.x, queryPos.y - p.y, false);
