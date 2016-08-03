@@ -177,6 +177,9 @@ final class CPlatformResponder {
         char testChar = KeyEvent.CHAR_UNDEFINED;
         boolean isDeadChar = (chars!= null && chars.length() == 0);
 
+        char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
+                charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
+
         if (isFlagsChangedEvent) {
             int[] in = new int[] {modifierFlags, keyCode};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, jkeyType]
@@ -191,16 +194,10 @@ final class CPlatformResponder {
                 testChar = chars.charAt(0);
             }
 
-            char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
-                    charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-
             int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
             int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
 
             postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
-            if (!postsTyped) {
-                testChar = KeyEvent.CHAR_UNDEFINED;
-            }
 
             if(isDeadChar){
                 testChar = (char) out[2];
@@ -219,6 +216,10 @@ final class CPlatformResponder {
                 testChar = testCharIgnoringModifiers;
             }
 
+            if (testChar == ' ' || testChar == KeyEvent.CHAR_UNDEFINED || testChar == 0 || testChar < 44) {
+                testChar = testCharIgnoringModifiers;
+            }
+
             jkeyCode = out[0];
             jkeyLocation = out[1];
             jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
@@ -226,12 +227,7 @@ final class CPlatformResponder {
         }
 
         char javaChar = NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
-        // Some keys may generate a KEY_TYPED, but we can't determine
-        // what that character is. That's likely a bug, but for now we
-        // just check for CHAR_UNDEFINED.
-        if (javaChar == KeyEvent.CHAR_UNDEFINED) {
-            postsTyped = false;
-        }
+
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
         long when = System.currentTimeMillis();
