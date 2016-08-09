@@ -28,7 +28,9 @@
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
 #import "CFileDialog.h"
+#import "AWTWindow.h"
 #import "ThreadUtilities.h"
+#import "ApplicationDelegate.h"
 
 #import "java_awt_FileDialog.h"
 #import "sun_lwawt_macosx_CFileDialog.h"
@@ -133,29 +135,54 @@ canChooseDirectories:(BOOL)inChooseDirectories
         if (fOwner != nil) {
             if (fDirectory != nil) {
                  [thePanel setDirectoryURL:[NSURL fileURLWithPath:[fDirectory stringByExpandingTildeInPath]]];
-             }
+            }
 
-             if (fFile != nil) {
+            if (fFile != nil) {
                  [thePanel setNameFieldStringValue:fFile];
-             }
+            }
 
-             [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+            if (fOwner != nil) {
 
-                          if (result == NSFileHandlingPanelOKButton) {
-                              NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                              fURLs = (fMode == java_awt_FileDialog_LOAD)
-                                  ? [openPanel URLs]
-                                  : [NSArray arrayWithObject:[openPanel URL]];
-                              fPanelResult = NSFileHandlingPanelOKButton;
-                          } else {
-                              fURLs = [NSArray array];
-                          }
-                          [fURLs retain];
-                          [NSApp stopModal];
-                      }
-             ];
+                // Finds appropriate menubar in our hierarchy,
+                AWTWindow *awtWindow = (AWTWindow *)fOwner.delegate;
+                while (awtWindow.ownerWindow != nil) {
+                    awtWindow = awtWindow.ownerWindow;
+                }
 
-             [NSApp runModalForWindow:thePanel];
+                CMenuBar *menuBar = nil;
+                BOOL isDisabled = NO;
+                if ([awtWindow.nsWindow isVisible]){
+                    menuBar = awtWindow.javaMenuBar;
+                    isDisabled = !awtWindow.isEnabled;
+                }
+
+                if (menuBar == nil) {
+                    menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
+                    isDisabled = NO;
+                }
+
+                [CMenuBar activate:menuBar modallyDisabled:isDisabled];
+            }
+
+            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+
+                if (result == NSFileHandlingPanelOKButton) {
+                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                    fURLs = (fMode == java_awt_FileDialog_LOAD)
+                         ? [openPanel URLs]
+                         : [NSArray arrayWithObject:[openPanel URL]];
+
+                    fPanelResult = NSFileHandlingPanelOKButton;
+
+                    } else {
+                        fURLs = [NSArray array];
+                    }
+                    [fURLs retain];
+                    [NSApp stopModal];
+                }
+            ];
+
+            [NSApp runModalForWindow:thePanel];
         }
         else
         {
