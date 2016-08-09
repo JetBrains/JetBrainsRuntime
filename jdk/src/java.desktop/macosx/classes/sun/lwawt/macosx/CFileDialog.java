@@ -171,6 +171,13 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public void blockWindows(List<Window> windows) {
+        for (Window w : windows) {
+            WindowPeer wp =
+                    (WindowPeer) AWTAccessor.getComponentAccessor().getPeer(w);
+            if (wp != null) {
+                wp.setModalBlocked(target, true);
+            }
+        }
     }
 
     @Override
@@ -343,7 +350,7 @@ class CFileDialog implements FileDialogPeer {
 
     @Override
     public boolean isFocusable() {
-        return false;
+        return true;
     }
 
     @Override
