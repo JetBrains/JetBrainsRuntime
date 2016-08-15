@@ -710,13 +710,17 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
                            GlyphInfo *ginfo, jint x, jint y,
                            jint glyphIndex, jint totalGlyphs,
                            jboolean rgbOrder, jint contrast,
-                            GLuint dstTextureID)
+                           GLuint dstTextureID, jboolean * opened)
 {
     CacheCellInfo *cell;
     jint dx1, dy1, dx2, dy2;
     jfloat dtx1, dty1, dtx2, dty2;
 
     if (glyphMode != MODE_USE_CACHE_LCD) {
+        if (*opened) {
+            *opened = JNI_FALSE;
+            j2d_glEnd();
+        }
         OGLTR_DisableGlyphModeState();
         CHECK_PREVIOUS_OP(GL_TEXTURE_2D);
         j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -748,6 +752,10 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     }
 
     if (ginfo->cellInfo == NULL) {
+        if (*opened) {
+            *opened = JNI_FALSE;
+            j2d_glEnd();
+        }
         // rowBytes will always be a multiple of 3, so the following is safe
         j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, ginfo->rowBytes / 3);
 
@@ -773,6 +781,10 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     dy2 = dy1 + ginfo->height;
 
     if (dstTextureID == 0) {
+        if (*opened) {
+            *opened = JNI_FALSE;
+            j2d_glEnd();
+        }
         // copy destination into second cached texture, if necessary
         OGLTR_UpdateCachedDestination(dstOps, ginfo,
                                       dx1, dy1, dx2, dy2,
@@ -797,12 +809,14 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
 
         dty1 = ((GLfloat)dyadj + gh) / dstOps->textureHeight;
         dty2 = ((GLfloat)dyadj) / dstOps->textureHeight;
-
-        j2d_glTextureBarrierNV();
     }
 
     // render composed texture to the destination surface
-    j2d_glBegin(GL_QUADS);
+    if (!*opened)  {
+        j2d_glBegin(GL_QUADS);
+        *opened = JNI_TRUE;
+    }
+
     j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx1, cell->ty1);
     j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty1);
     j2d_glVertex2i(dx1, dy1);
@@ -815,7 +829,6 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx1, cell->ty2);
     j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty2);
     j2d_glVertex2i(dx1, dy2);
-    j2d_glEnd();
 
     return JNI_TRUE;
 }
@@ -855,7 +868,6 @@ OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
 
     return JNI_TRUE;
 }
-
 static jboolean
 OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
                           GlyphInfo *ginfo, jint x, jint y,
@@ -900,40 +912,87 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
     j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, ginfo->rowBytes / 3);
 
     x0 = x;
-    tx1 = 0.0f;
-    ty1 = 0.0f;
-    dtx1 = 0.0f;
-    dty2 = 0.0f;
     tw = OGLTR_NOCACHE_TILE_SIZE;
     th = OGLTR_NOCACHE_TILE_SIZE;
 
-    for (sy = 0; sy < h; sy += th, y += th) {
-        x = x0;
-        sh = ((sy + th) > h) ? (h - sy) : th;
+    if (dstTextureID) {
+        // use the destination texture directly
 
-        for (sx = 0; sx < w; sx += tw, x += tw) {
-            sw = ((sx + tw) > w) ? (w - sx) : tw;
+        // update the source pointer offsets
+        j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 
-            // update the source pointer offsets
-            j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, sx);
-            j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, sy);
+        // copy LCD mask into glyph texture tile
+        j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
+        j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
+                            0, 0, w, h,
+                            pixelFormat, GL_UNSIGNED_BYTE,
+                            ginfo->image + rowBytesOffset);
 
-            // copy LCD mask into glyph texture tile
-            j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
-            j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
-                                0, 0, sw, sh,
-                                pixelFormat, GL_UNSIGNED_BYTE,
-                                ginfo->image + rowBytesOffset);
+        tx2 = ((GLfloat)w) / OGLC_BLIT_TILE_SIZE;
+        ty2 = ((GLfloat)h) / OGLC_BLIT_TILE_SIZE;;
+        dxadj = dstOps->xOffset + x;
+        dyadj = dstOps->yOffset + dstOps->height - y;
+        dtx1 = ((GLfloat)dxadj) / dstOps->textureWidth;
+        dty1 = ((GLfloat)dyadj) / dstOps->textureHeight;
+        dtx2 = ((GLfloat)dxadj + w) / dstOps->textureWidth;
+        dty2 = ((GLfloat)dyadj - h) / dstOps->textureHeight;
 
-            // update the lower-right glyph texture coordinates
-            tx2 = ((GLfloat)sw) / OGLC_BLIT_TILE_SIZE;
+        // render composed texture to the destination surface
+        j2d_glBegin(GL_QUADS);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0, 0);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty1);
+        j2d_glVertex2i(x, y);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, 0);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty1);
+        j2d_glVertex2i(x + w, y);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, ty2);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty2);
+        j2d_glVertex2i(x + w, y + h);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, 0, ty2);
+        j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty2);
+        j2d_glVertex2i(x, y + h);
+        j2d_glEnd();
+
+    } else {
+        tx1 = 0.0f;
+        ty1 = 0.0f;
+        dtx1 = 0.0f;
+        dty2 = 0.0f;
+
+        for (sy = 0; sy < h; sy += th, y += th) {
+            x = x0;
+            sh = ((sy + th) > h) ? (h - sy) : th;
+
+            // update lower glyph texture coordinate
             ty2 = ((GLfloat)sh) / OGLC_BLIT_TILE_SIZE;
 
-            // this accounts for lower-left origin of the destination region
-            dxadj = dstOps->xOffset + x;
+            // update the destination texture coordinate
+            dty1 = ((GLfloat)sh) / OGLTR_CACHED_DEST_HEIGHT;
+
+            // this accounts for lower origin of the destination region
             dyadj = dstOps->yOffset + dstOps->height - (y + sh);
 
-            if (dstTextureID == 0) {
+            for (sx = 0; sx < w; sx += tw, x += tw) {
+                sw = ((sx + tw) > w) ? (w - sx) : tw;
+
+                // update the source pointer offsets
+                j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, sx);
+                j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, sy);
+
+                // copy LCD mask into glyph texture tile
+                j2d_glActiveTextureARB(GL_TEXTURE0_ARB);
+                j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
+                                    0, 0, sw, sh,
+                                    pixelFormat, GL_UNSIGNED_BYTE,
+                                    ginfo->image + rowBytesOffset);
+
+                // update right glyph texture coordinate
+                tx2 = ((GLfloat)sw) / OGLC_BLIT_TILE_SIZE;
+
+                // this accounts for left origin of the destination region
+                dxadj = dstOps->xOffset + x;
+
                 // copy destination into cached texture tile (the lower-left
                 // corner of the destination region will be positioned at the
                 // lower-left corner (0,0) of the texture)
@@ -942,39 +1001,28 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
                                         0, 0,
                                         dxadj, dyadj,
                                         sw, sh);
-                // update the remaining destination texture coordinates
-                dtx2 = ((GLfloat)sw) / OGLTR_CACHED_DEST_WIDTH;
-                dty1 = ((GLfloat)sh) / OGLTR_CACHED_DEST_HEIGHT;
-            } else {
-                // use the destination texture directly
-                // update the remaining destination texture coordinates
-                dtx1 =((GLfloat)dxadj) / dstOps->textureWidth;
-                dtx2 = ((GLfloat)dxadj + sw) / dstOps->textureWidth;
 
-                dty1 = ((GLfloat)dyadj + sh) / dstOps->textureHeight;
-                dty2 = ((GLfloat)dyadj) / dstOps->textureHeight;
+                // update the destination texture coordinate
+                dtx2 = ((GLfloat) sw) / OGLTR_CACHED_DEST_WIDTH;
 
-                j2d_glTextureBarrierNV();
+                // render composed texture to the destination surface
+                j2d_glBegin(GL_QUADS);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx1, ty1);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty1);
+                j2d_glVertex2i(x, y);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, ty1);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty1);
+                j2d_glVertex2i(x + sw, y);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, ty2);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty2);
+                j2d_glVertex2i(x + sw, y + sh);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx1, ty2);
+                j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty2);
+                j2d_glVertex2i(x, y + sh);
+                j2d_glEnd();
             }
-
-            // render composed texture to the destination surface
-            j2d_glBegin(GL_QUADS);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx1, ty1);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty1);
-            j2d_glVertex2i(x, y);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, ty1);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty1);
-            j2d_glVertex2i(x + sw, y);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx2, ty2);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty2);
-            j2d_glVertex2i(x + sw, y + sh);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, tx1, ty2);
-            j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty2);
-            j2d_glVertex2i(x, y + sh);
-            j2d_glEnd();
         }
     }
-
     return JNI_TRUE;
 }
 
@@ -991,6 +1039,8 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
 {
     int glyphCounter;
     GLuint dstTextureID = 0;
+    jboolean hasLCDGlyphs = JNI_FALSE;
+    jboolean lcdOpened = JNI_FALSE;
 
     J2dTraceLn(J2D_TRACE_INFO, "OGLTR_DrawGlyphList");
 
@@ -1019,12 +1069,13 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     //  * Means to prevent read-after-write problem.
     //    At the moment, a GL_NV_texture_barrier extension is used
     //    to achieve this.
+#ifdef MACOSX
     if (OGLC_IS_CAP_PRESENT(oglc, CAPS_EXT_TEXBARRIER) &&
         dstOps->textureTarget == GL_TEXTURE_2D)
     {
         dstTextureID = dstOps->textureID;
     }
-
+#endif
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         jint x, y;
         jfloat glyphx, glyphy;
@@ -1061,6 +1112,10 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         }
 
         if (grayscale) {
+            if (lcdOpened) {
+                lcdOpened = JNI_FALSE;
+                j2d_glEnd();
+            }
             // grayscale or monochrome glyph data
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
@@ -1072,6 +1127,13 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         } else {
             // LCD-optimized glyph data
             jint rowBytesOffset = 0;
+            if (!hasLCDGlyphs) {
+                // Flush GPU buffers before processing first LCD glyph
+                hasLCDGlyphs = JNI_TRUE;
+                if (dstTextureID != 0) {
+                    j2d_glTextureBarrierNV();
+                }
+            }
 
             if (subPixPos) {
                 jint frac = (jint)((glyphx - x) * 3);
@@ -1089,8 +1151,12 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                                                 ginfo, x, y,
                                                 glyphCounter, totalGlyphs,
                                                 rgbOrder, lcdContrast,
-                                                dstTextureID);
+                                                dstTextureID, &lcdOpened);
             } else {
+                if (lcdOpened) {
+                    lcdOpened = JNI_FALSE;
+                    j2d_glEnd();
+                }
                 ok = OGLTR_DrawLCDGlyphNoCache(oglc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
@@ -1103,7 +1169,9 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
             break;
         }
     }
-
+    if (lcdOpened) {
+        j2d_glEnd();
+    }
     OGLTR_DisableGlyphModeState();
 }
 
