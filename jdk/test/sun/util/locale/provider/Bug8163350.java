@@ -21,15 +21,25 @@
  * questions.
  */
 
-/**
+ /*
  * @test
- * @bug 8152115
- * @summary functional and concurrency test for ClassLoaderValue
- * @build java.base/java.lang.reflect.ClassLoaderValueTest
- * @run main Driver
+ * @bug 8163350
+ * @modules java.base/sun.util.locale.provider
+ * @summary Test FALLBACK provider is not in adapter preference list when
+ * COMPAT is specified with System Property java.locale.providers.
+ * @run main/othervm  -Djava.locale.providers=COMPAT Bug8163350
  */
-public class Driver {
-    public static void main(String[] args) throws Exception {
-        java.lang.reflect.ClassLoaderValueTest.main(args);
+import java.util.List;
+import sun.util.locale.provider.LocaleProviderAdapter;
+import sun.util.locale.provider.LocaleProviderAdapter.Type;
+
+public class Bug8163350 {
+
+    public static void main(String[] args) {
+        List<Type> preferenceList = LocaleProviderAdapter.getAdapterPreference();
+        if (preferenceList.contains(Type.FALLBACK)) {
+            throw new RuntimeException("FALLBACK Provider should not be returned in "
+                    + "adapter list " + preferenceList);
+        }
     }
 }
