@@ -821,7 +821,7 @@ static void setDefaultScalerSettings(FTScalerContext *context) {
     if (context->aaType == TEXT_AA_OFF) {
         context->loadFlags = FT_LOAD_TARGET_MONO;
     } else if (context->aaType == TEXT_AA_ON) {
-        context->loadFlags = FT_LOAD_TARGET_LIGHT;
+        context->loadFlags = FT_LOAD_TARGET_NORMAL;
     } else {
         context->lcdFilter = FT_LCD_FILTER_LIGHT;
         if (context->aaType == TEXT_AA_LCD_HRGB ||
