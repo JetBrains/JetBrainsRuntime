@@ -22,7 +22,7 @@
  */
 
 /*
- * @test
+ * @test 
  * @bug 8139176
  * @summary Test layout uses correct styled font.
  * @run main StyledFontLayoutTest
@@ -79,7 +79,7 @@ public class StyledFontLayoutTest extends JPanel {
         g2d.fillRect(0, 0, W, H);
         g2d.setColor(Color.black);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         char[] chs = "Sample Text.".toCharArray();
         int len = chs.length;
 
@@ -106,7 +106,7 @@ public class StyledFontLayoutTest extends JPanel {
         System.out.println("Plain GlyphVector Bounds = " + plainGVBounds);
         System.out.println("Bold GlyphVector Bounds = " + boldGVBounds);
         if (!plainStrBounds.equals(boldStrBounds) &&
-             plainGVBounds.equals(boldGVBounds))
+                plainGVBounds.equals(boldGVBounds))
         {
             System.out.println("Test failed: Plain GV bounds same as Bold");
             if (!interactive) {
