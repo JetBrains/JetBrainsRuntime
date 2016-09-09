@@ -27,6 +27,7 @@
 #include "mmsystem.h"
 #include "jlong.h"
 #include "awt_DesktopProperties.h"
+#include "awt_Win32GraphicsDevice.h"
 #include "awt_Toolkit.h"
 #include "sun_awt_windows_WDesktopProperties.h"
 #include "java_awt_Font.h"
@@ -88,6 +89,11 @@ void AwtDesktopProperties::GetWindowsParameters() {
 }
 
 void getInvScale(float &invScaleX, float &invScaleY) {
+    if (!AwtWin32GraphicsDevice::IsUiScaleEnabled()) {
+        invScaleX = 1.0f;
+        invScaleY = 1.0f;
+        return;
+    }
     static int dpiX = -1;
     static int dpiY = -1;
     if (dpiX == -1 || dpiY == -1) {
