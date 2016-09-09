@@ -87,7 +87,7 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
 
     static {
         uiScaleEnabled = "true".equals(AccessController.doPrivileged(
-                new GetPropertyAction("sun.java2d.uiScale.enabled", "true")));
+                new GetPropertyAction("sun.java2d.uiScale.enabled", "false")));
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
