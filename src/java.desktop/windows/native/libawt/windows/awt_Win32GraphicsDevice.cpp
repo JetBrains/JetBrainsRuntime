@@ -914,6 +914,14 @@ int AwtWin32GraphicsDevice::GetScreenFromHMONITOR(HMONITOR mon) {
  * End of static deviceIndex-based methods
  */
 
+BOOL AwtWin32GraphicsDevice::IsUiScaleEnabled()
+{
+    return JNU_CallStaticMethodByName(AwtToolkit::GetEnv(),
+                                      NULL,
+                                      "sun/java2d/SunGraphicsEnvironment",
+                                      "isUIScaleEnabled",
+                                      "()Z").z;
+}
 
     const DWORD REQUIRED_FLAGS = (   //Flags which must be set in
      PFD_SUPPORT_GDI |               //in the PixelFormatDescriptor.
