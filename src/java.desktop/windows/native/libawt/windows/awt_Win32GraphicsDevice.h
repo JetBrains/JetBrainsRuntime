@@ -99,6 +99,7 @@ public:
     static void             DisableOffscreenAccelerationForDevice(HMONITOR hMonitor);
     static HDC              GetDCFromScreen(int screen);
     static int              GetScreenFromHMONITOR(HMONITOR mon);
+    static BOOL             IsUiScaleEnabled(); // if not, be dpi-unaware (backward compatible behaviour)
 
     static int              primaryIndex;
     static BOOL             primaryPalettized;
