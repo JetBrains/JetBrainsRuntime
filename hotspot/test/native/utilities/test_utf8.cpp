@@ -21,36 +21,30 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 8164692
- * @summary Redefine previous_versions count goes negative
- * @library /test/lib
- * @modules java.base/jdk.internal.misc
- * @modules java.compiler
- *          java.instrument
- *          jdk.jartool/sun.tools.jar
- * @run main RedefineClassHelper
- * @run main/othervm -javaagent:redefineagent.jar -Xlog:redefine+class+iklass+add=trace,redefine+class+iklass+purge=trace RedefineCount
- */
-public class RedefineCount {
+#include "precompiled.hpp"
+#include "utilities/utf8.hpp"
+#include "unittest.hpp"
 
-    public static String newB =
-                "class RedefineCount$B {" +
-                "}";
+TEST(utf8, length) {
+  char res[60];
+  jchar str[20];
 
-    static class B { }
+  for (int i = 0; i < 20; i++) {
+    str[i] = 0x0800; // char that is 2B in UTF-16 but 3B in UTF-8
+  }
+  str[19] = (jchar) '\0';
 
-    public static void main(String[] args) throws Exception {
+  // The resulting string in UTF-8 is 3*19 bytes long, but should be truncated
+  UNICODE::as_utf8(str, 19, res, 10);
+  ASSERT_EQ(strlen(res), (size_t) 9) << "string should be truncated here";
 
-        // Redefine a class and create some garbage
-        // Since there are no methods running, the previous version is never added to the
-        // previous_version_list and the count should stay zero and not go negative
-        RedefineClassHelper.redefineClass(B.class, newB);
+  UNICODE::as_utf8(str, 19, res, 18);
+  ASSERT_EQ(strlen(res), (size_t) 15) << "string should be truncated here";
 
-        for (int i = 0; i < 20 ; i++) {
-            String s = new String("some garbage");
-            System.gc();
-        }
-    }
+  UNICODE::as_utf8(str, 19, res, 20);
+  ASSERT_EQ(strlen(res), (size_t) 18) << "string should be truncated here";
+
+  // Test with an "unbounded" buffer
+  UNICODE::as_utf8(str, 19, res, INT_MAX);
+  ASSERT_EQ(strlen(res), (size_t) 3 * 19) << "string should end here";
 }
