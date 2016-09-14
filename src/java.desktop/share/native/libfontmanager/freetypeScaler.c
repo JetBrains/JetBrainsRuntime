@@ -30,9 +30,13 @@
 #include "sun_font_FreetypeFontScaler.h"
 
 #include <stdlib.h>
+#if defined(_WIN32) || defined(MACOSX)
+#define DISABLE_FONTCONFIG
+#endif
+
 #include <math.h>
 
-#if !defined(_WIN32) && !defined(__APPLE_)
+#ifndef DISABLE_FONTCONFIG
 #include <dlfcn.h>
 #else
 #define DISABLE_FONTCONFIG
@@ -51,7 +55,7 @@
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
 
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
 /* Use bundled fontconfig.h for now */
 #include "fontconfig.h"
 #endif
@@ -69,7 +73,7 @@
 #define  MAX_DPI 1024
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
 
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
 #define FONTCONFIG_DLL JNI_LIB_NAME("fontconfig")
 #define FONTCONFIG_DLL_VERSIONED VERSIONED_JNI_LIB_NAME("fontconfig", "1")
 #endif
@@ -137,7 +141,7 @@ static jclass tkClass;
 static jmethodID getScreenResolutionMID;
 static jfieldID platNameFID;
 
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
 typedef FcBool (*FcPatternAddPtrType) (FcPattern *p, const char *object, FcValue value, FcBool append);
 typedef FcBool (*FcPatternAddBoolPtrType) (FcPattern *p, const char *object, FcBool b);
 typedef FcBool (*FcPatternAddDoublePtrType) (FcPattern *p, const char *object, double d);
@@ -154,7 +158,7 @@ static void *libFontConfig = NULL;
 static jboolean logFC = JNI_FALSE;
 static jboolean logFFS = JNI_FALSE;
 
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
 static FcPatternAddPtrType FcPatternAddPtr;
 static FcPatternAddBoolPtrType FcPatternAddBoolPtr;
 static FcPatternAddDoublePtrType FcPatternAddDoublePtr;
@@ -169,7 +173,7 @@ static FcPatternGetIntegerPtrType FcPatternGetIntegerPtr;
 
 static void* openFontConfig() {
     void* libfontconfig = NULL;
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
     char *fcLogEnabled = getenv("OPENJDK_FFS_LOG_FC");
 
     if (fcLogEnabled != NULL && !strcmp(fcLogEnabled, "yes")) {
@@ -213,7 +217,7 @@ Java_sun_font_FreetypeFontScaler_initIDs(
     tkClass = (*env)->NewGlobalRef(env, TKClass);
     platNameFID = (*env)->GetFieldID(env, PFClass, "platName", "Ljava/lang/String;");
     libFontConfig = openFontConfig();
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
     if (libFontConfig) {
         FcPatternAddPtr = (FcPatternAddPtrType) dlsym(libFontConfig, "FcPatternAdd");
         FcPatternAddBoolPtr = (FcPatternAddBoolPtrType) dlsym(libFontConfig, "FcPatternAddBool");
@@ -783,7 +787,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                 context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
                 return 0;
             }
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
             FcPattern *fcPattern = 0;
             fcPattern = (*FcPatternCreatePtr)();
             FcValue fcValue;
@@ -1274,7 +1278,6 @@ static jlong
     GlyphInfo *glyphInfo;
     int renderFlags = FT_LOAD_DEFAULT, target;
     FT_GlyphSlot ftglyph;
-    FT_LcdFilter lcdFilter = FT_LCD_FILTER_NONE;
     FT_Library library;
 
     FTScalerContext* context =
@@ -2050,7 +2053,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphPointNative(
 JNIEXPORT void JNICALL
 JNI_OnUnload(JavaVM *vm, void *reserved) {
     if (libFontConfig != NULL) {
-#ifndef _WIN32
+#ifndef DISABLE_FONTCONFIG
         dlclose(libFontConfig);
 #endif
     }
