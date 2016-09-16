@@ -29,7 +29,6 @@ import java.awt.*;
 
 import sun.awt.ModalExclude;
 import sun.awt.SunToolkit;
-import sun.swing.SwingUtilities2;
 
 /**
  * Popups are used to display a <code>Component</code> to the user, typically
@@ -159,9 +158,7 @@ public class Popup {
         if (c instanceof JWindow) {
             JWindow component = (JWindow)getComponent();
 
-            Point ownerPt = SwingUtilities2.scalePoint(owner, new Point(ownerX, ownerY), component);
-
-            component.setLocation(ownerPt.x, ownerPt.y);
+            component.setLocation(ownerX, ownerY);
             component.getContentPane().add(contents, BorderLayout.CENTER);
             component.invalidate();
             component.validate();

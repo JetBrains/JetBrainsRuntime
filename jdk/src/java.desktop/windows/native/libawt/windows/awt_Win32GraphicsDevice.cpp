@@ -41,6 +41,7 @@
 #include <sun_awt_Win32GraphicsDevice.h>
 #include "awt_Canvas.h"
 #include "awt_Win32GraphicsDevice.h"
+#include "awt_Win32GraphicsConfig.h"
 #include "awt_Window.h"
 #include "java_awt_Transparency.h"
 #include "java_awt_color_ColorSpace.h"
@@ -889,6 +890,20 @@ BOOL AwtWin32GraphicsDevice::IsUiScaleEnabled()
     CHECK_NULL_RETURN(isUIScaleEnabledID, FALSE);
 
     return (BOOL)env->CallStaticBooleanMethod(cls, isUIScaleEnabledID);
+}
+
+AwtWin32GraphicsDevice* AwtWin32GraphicsDevice::getDeviceByPoint(int x, int y) // xy in user space
+{
+    Devices::InstanceAccess devices;
+    for (int i = 0; i < devices->GetNumDevices(); i++) {
+        RECT rect = AwtWin32GraphicsConfig::getMonitorBounds(i); // rect in user space
+        POINT pt = {x, y};
+
+        if (::PtInRect(&rect, pt)) {
+            return devices->GetDevice(i);
+        }
+    }
+    return NULL;
 }
 
     const DWORD REQUIRED_FLAGS = (   //Flags which must be set in

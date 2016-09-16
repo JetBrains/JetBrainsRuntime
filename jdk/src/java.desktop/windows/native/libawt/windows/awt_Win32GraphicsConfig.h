@@ -32,6 +32,7 @@ class AwtWin32GraphicsConfig {
 public:
         /* sun.awt.Win32GraphicsConfig fields and method IDs */
         static jfieldID win32GCVisualID;
+        static RECT getMonitorBounds(int screen);
 };
 
 #endif /* AWT_WIN32GRAPHICSCONFIG_H */
