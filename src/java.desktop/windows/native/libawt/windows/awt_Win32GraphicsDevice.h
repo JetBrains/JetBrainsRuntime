@@ -94,6 +94,7 @@ public:
     static HDC              GetDCFromScreen(int screen);
     static int              GetScreenFromHMONITOR(HMONITOR mon);
     static BOOL             IsUiScaleEnabled(); // if not, be dpi-unaware (backward compatible behaviour)
+    static AwtWin32GraphicsDevice* getDeviceByPoint(int x, int y); // xy in user space
 
     static int              primaryIndex;
     static BOOL             primaryPalettized;

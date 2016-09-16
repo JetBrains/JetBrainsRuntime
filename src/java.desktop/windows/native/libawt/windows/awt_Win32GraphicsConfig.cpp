@@ -77,6 +77,34 @@ inline int shiftToMask(int numBits, int shift) {
     return mask;
 }
 
+RECT AwtWin32GraphicsConfig::getMonitorBounds(int screen)
+{
+    RECT rRW = {0, 0, 0, 0};
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+
+    if (TRUE == MonitorBounds(AwtWin32GraphicsDevice::GetMonitor(screen), &rRW)) {
+        int x = (device == NULL) ? rRW.left : device->ScaleDownX(rRW.left);
+        int y = (device == NULL) ? rRW.top  : device->ScaleDownY(rRW.top);
+        int w = (device == NULL) ? rRW.right - rRW.left
+                                 : device->ScaleDownX(rRW.right - rRW.left);
+        int h = (device == NULL) ? rRW.bottom - rRW.top
+                                 : device->ScaleDownY(rRW.bottom - rRW.top);
+
+        ::SetRect(&rRW, x, y, x + w, y + h);
+    }
+    else {
+        // 4910760 - don't return a null bounds, return the bounds of the
+        // primary screen
+        int w = ::GetSystemMetrics(SM_CXSCREEN);
+        int h = ::GetSystemMetrics(SM_CYSCREEN);
+
+        ::SetRect(&rRW, 0, 0, device == NULL ? w : device->ScaleDownX(w),
+                              device == NULL ? h : device->ScaleDownY(h));
+    }
+    return rRW;
+}
+
 /*
  * Class:     sun_awt_Win32GraphicsConfig
  * Method:    getBounds
@@ -94,33 +122,8 @@ JNIEXPORT jobject JNICALL
     CHECK_NULL_RETURN(clazz, NULL);
     mid = env->GetMethodID(clazz, "<init>", "(IIII)V");
     if (mid != 0) {
-        RECT rRW = {0, 0, 0, 0};
-        Devices::InstanceAccess devices;
-        AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
-
-        if (TRUE == MonitorBounds(AwtWin32GraphicsDevice::GetMonitor(screen), &rRW)) {
-
-            int x = (device == NULL) ? rRW.left : device->ScaleDownX(rRW.left);
-            int y = (device == NULL) ? rRW.top  : device->ScaleDownY(rRW.top);
-            int w = (device == NULL) ? rRW.right - rRW.left
-                                     : device->ScaleDownX(rRW.right - rRW.left);
-            int h = (device == NULL) ? rRW.bottom - rRW.top
-                                     : device->ScaleDownY(rRW.bottom - rRW.top);
-
-            bounds = env->NewObject(clazz, mid, x, y, w, h);
-
-        }
-        else {
-            // 4910760 - don't return a null bounds, return the bounds of the
-            // primary screen
-            int w = ::GetSystemMetrics(SM_CXSCREEN);
-            int h = ::GetSystemMetrics(SM_CYSCREEN);
-
-            bounds = env->NewObject(clazz, mid,
-                                    0, 0,
-                                    device == NULL ? w : device->ScaleDownX(w),
-                                    device == NULL ? h : device->ScaleDownY(h));
-        }
+        RECT r = AwtWin32GraphicsConfig::getMonitorBounds((int)screen);
+        bounds = env->NewObject(clazz, mid, r.left, r.top, r.right - r.left, r.bottom - r.top);
         if (safe_ExceptionOccurred(env)) {
            return 0;
         }
