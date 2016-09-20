@@ -153,6 +153,7 @@ typedef FT_Error (*FtLibrarySetLcdFilterPtrType) (FT_Library library, FT_LcdFilt
 
 static void *libFontConfig = NULL;
 static jboolean logFC = JNI_FALSE;
+static jboolean logFFS = JNI_FALSE;
 
 #ifndef DISABLE_FONTCONFIG
 static FcPatternAddPtrType FcPatternAddPtr;
@@ -197,6 +198,12 @@ static void* openFontConfig() {
 JNIEXPORT void JNICALL
 Java_sun_font_FreetypeFontScaler_initIDs(
         JNIEnv *env, jobject scaler, jclass FFSClass, jclass TKClass, jclass PFClass) {
+    char *fssLogEnabled = getenv("OPENJDK_LOG_FFS");
+
+    if (fssLogEnabled != NULL && !strcmp(fssLogEnabled, "yes")) {
+        logFFS = JNI_TRUE;
+    }
+
     invalidateScalerMID =
         (*env)->GetMethodID(env, FFSClass, "invalidateScaler", "()V");
     getDefaultToolkitMID =
@@ -268,7 +275,13 @@ static int getScreenResolution(JNIEnv *env) {
 
     /* Some configurations report invalid dpi settings */
     if (dpi > MAX_DPI) {
+        if (logFFS) {
+            fprintf(stderr, "FFS_LOG: Invalid dpi reported (%d) replaced with default (%d)\n", dpi, DEFAULT_DPI);
+        }
         return DEFAULT_DPI;
+    }
+    if (logFFS) {
+        fprintf(stderr, "FFS_LOG: Screen Resolution (%d) dpi\n", dpi);
     }
     return dpi;
 }
@@ -551,7 +564,7 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
     return ptr_to_jlong(context);
 }
 
-static int setDefaultScalerSettings(FTScalerContext *context) {
+static void setDefaultScalerSettings(FTScalerContext *context) {
     if (context->aaType == TEXT_AA_OFF) {
         context->loadFlags = FT_LOAD_TARGET_MONO;
     } else if (context->aaType == TEXT_AA_ON) {
@@ -1092,12 +1105,45 @@ Java_sun_font_FreetypeFontScaler_getGlyphImageNative(
     FTScalerInfo *scalerInfo =
              (FTScalerInfo*) jlong_to_ptr(pScaler);
 
+    if (logFFS) {
+        fprintf(stderr, "FFS_LOG: getGlyphImageNative '%c'(%d) ",
+                (glyphCode >= 0x20 && glyphCode <=0x7E)? glyphCode : ' ',
+                glyphCode);
+    }
+
     if (isNullScalerContext(context) || scalerInfo == NULL) {
+        if (logFFS) fprintf(stderr, "FFS_LOG: NULL context or info\n");
         return ptr_to_jlong(getNullGlyphImage());
+    }
+    else if (logFFS){
+        char* aaTypeStr;
+        switch (context->aaType) {
+            case TEXT_AA_ON:
+                aaTypeStr = "AA_ON";
+                break;
+            case TEXT_AA_OFF:
+                aaTypeStr = "AA_OFF";
+                break;
+            case TEXT_AA_LCD_HBGR:
+                aaTypeStr = "AA_LCD_HBGR";
+                break;
+            case TEXT_AA_LCD_VBGR:
+                aaTypeStr = "AA_LCD_VBGR";
+                break;
+            case TEXT_AA_LCD_HRGB:
+                aaTypeStr = "AA_LCD_HRGB";
+                break;
+            default:
+                aaTypeStr = "AA_UNKNOWN";
+                break;
+        }
+        fprintf(stderr, "%s size=%.2f\n", aaTypeStr,
+                ((double)context->ptsz)/64.0);
     }
 
     error = setupFTContext(env, font2D, scalerInfo, context, TRUE);
     if (error) {
+        if (logFFS) fprintf(stderr, "FFS_LOG: Cannot setup FT context\n");
         invalidateJavaScaler(env, scaler, scalerInfo);
         return ptr_to_jlong(getNullGlyphImage());
     }
