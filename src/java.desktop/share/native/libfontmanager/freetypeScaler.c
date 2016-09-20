@@ -68,6 +68,7 @@
 #define  FT26Dot6ToDouble(x)  ((x) / ((double) (1<<6)))
 #define  FT26Dot6ToInt(x) (((int)(x)) >> 6)
 #define  DEFAULT_DPI 72
+#define  MAX_DPI 1024
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
 
 #ifndef _WIN32
@@ -247,6 +248,11 @@ static int getScreenResolution(JNIEnv *env) {
     exc = (*env)->ExceptionOccurred(env);
     if (exc) {
         (*env)->ExceptionClear(env);
+        return DEFAULT_DPI;
+    }
+
+    /* Some configurations report invalid dpi settings */
+    if (dpi > MAX_DPI) {
         return DEFAULT_DPI;
     }
     return dpi;
