@@ -189,11 +189,12 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
     HashMap<String,String> jreFontMap;
-    HashSet<String> jreLucidaFontFiles;
+    HashSet<String> jreBundledFontFiles;
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
     public static final String lucidaFontName = "Lucida Sans Regular";
+    public static final String droidFontName = "Droid Sans";
     public static String jreLibDirName;
     public static String jreFontDirName;
     private static HashSet<String> missingFontFiles = null;
@@ -279,55 +280,72 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
          * no evidence they are useful in practice.
          */
         jreFontMap = new HashMap<String,String>();
-        jreLucidaFontFiles = new HashSet<String>();
+        jreBundledFontFiles = new HashSet<String>();
         if (isOpenJDK()) {
-            return;
+            jreFontMap.put("droid sans0",   "DroidSans.ttf");
+            jreFontMap.put("droid sans1",   "DroidSans-Bold.ttf");
+        /* Droid Sans full names (map Bold and DemiBold to same file) */
+            jreFontMap.put("droid sans regular0", "DroidSans.ttf");
+            jreFontMap.put("droid sans regular1", "DroidSans-Bold.ttf");
+            jreFontMap.put("droid sans bold1", "DroidSans-Bold.ttf");
+            jreFontMap.put("droid sans demibold1", "DroidSans-Bold.ttf");
+
+        /* Droid Sans Mono Family */
+            jreFontMap.put("droid sans mono0", "DroidSansMono.ttf");
+            jreFontMap.put("droid sans mono1", "DroidSansMono.ttf");
+        /* Mono full names (map Bold and DemiBold to same file) */
+            jreFontMap.put("droid sans mono regular0", "DroidSansMono.ttf");
+            jreFontMap.put("droid sans mono regular1", "DroidSansMono.ttf");
+            jreFontMap.put("droid sans mono bold1", "DroidSansMono.ttf");
+            jreFontMap.put("droid sans mono demibold1", "DroidSansMono.ttf");
         }
+        else {
         /* Lucida Sans Family */
-        jreFontMap.put("lucida sans0",   "LucidaSansRegular.ttf");
-        jreFontMap.put("lucida sans1",   "LucidaSansDemiBold.ttf");
+            jreFontMap.put("lucida sans0", "LucidaSansRegular.ttf");
+            jreFontMap.put("lucida sans1", "LucidaSansDemiBold.ttf");
         /* Lucida Sans full names (map Bold and DemiBold to same file) */
-        jreFontMap.put("lucida sans regular0", "LucidaSansRegular.ttf");
-        jreFontMap.put("lucida sans regular1", "LucidaSansDemiBold.ttf");
-        jreFontMap.put("lucida sans bold1", "LucidaSansDemiBold.ttf");
-        jreFontMap.put("lucida sans demibold1", "LucidaSansDemiBold.ttf");
+            jreFontMap.put("lucida sans regular0", "LucidaSansRegular.ttf");
+            jreFontMap.put("lucida sans regular1", "LucidaSansDemiBold.ttf");
+            jreFontMap.put("lucida sans bold1", "LucidaSansDemiBold.ttf");
+            jreFontMap.put("lucida sans demibold1", "LucidaSansDemiBold.ttf");
 
         /* Lucida Sans Typewriter Family */
-        jreFontMap.put("lucida sans typewriter0",
-                       "LucidaTypewriterRegular.ttf");
-        jreFontMap.put("lucida sans typewriter1", "LucidaTypewriterBold.ttf");
+            jreFontMap.put("lucida sans typewriter0",
+                    "LucidaTypewriterRegular.ttf");
+            jreFontMap.put("lucida sans typewriter1", "LucidaTypewriterBold.ttf");
         /* Typewriter full names (map Bold and DemiBold to same file) */
-        jreFontMap.put("lucida sans typewriter regular0",
-                       "LucidaTypewriter.ttf");
-        jreFontMap.put("lucida sans typewriter regular1",
-                       "LucidaTypewriterBold.ttf");
-        jreFontMap.put("lucida sans typewriter bold1",
-                       "LucidaTypewriterBold.ttf");
-        jreFontMap.put("lucida sans typewriter demibold1",
-                       "LucidaTypewriterBold.ttf");
+            jreFontMap.put("lucida sans typewriter regular0",
+                    "LucidaTypewriter.ttf");
+            jreFontMap.put("lucida sans typewriter regular1",
+                    "LucidaTypewriterBold.ttf");
+            jreFontMap.put("lucida sans typewriter bold1",
+                    "LucidaTypewriterBold.ttf");
+            jreFontMap.put("lucida sans typewriter demibold1",
+                    "LucidaTypewriterBold.ttf");
 
         /* Lucida Bright Family */
-        jreFontMap.put("lucida bright0", "LucidaBrightRegular.ttf");
-        jreFontMap.put("lucida bright1", "LucidaBrightDemiBold.ttf");
-        jreFontMap.put("lucida bright2", "LucidaBrightItalic.ttf");
-        jreFontMap.put("lucida bright3", "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright0", "LucidaBrightRegular.ttf");
+            jreFontMap.put("lucida bright1", "LucidaBrightDemiBold.ttf");
+            jreFontMap.put("lucida bright2", "LucidaBrightItalic.ttf");
+            jreFontMap.put("lucida bright3", "LucidaBrightDemiItalic.ttf");
         /* Lucida Bright full names (map Bold and DemiBold to same file) */
-        jreFontMap.put("lucida bright regular0", "LucidaBrightRegular.ttf");
-        jreFontMap.put("lucida bright regular1", "LucidaBrightDemiBold.ttf");
-        jreFontMap.put("lucida bright regular2", "LucidaBrightItalic.ttf");
-        jreFontMap.put("lucida bright regular3", "LucidaBrightDemiItalic.ttf");
-        jreFontMap.put("lucida bright bold1", "LucidaBrightDemiBold.ttf");
-        jreFontMap.put("lucida bright bold3", "LucidaBrightDemiItalic.ttf");
-        jreFontMap.put("lucida bright demibold1", "LucidaBrightDemiBold.ttf");
-        jreFontMap.put("lucida bright demibold3","LucidaBrightDemiItalic.ttf");
-        jreFontMap.put("lucida bright italic2", "LucidaBrightItalic.ttf");
-        jreFontMap.put("lucida bright italic3", "LucidaBrightDemiItalic.ttf");
-        jreFontMap.put("lucida bright bold italic3",
-                       "LucidaBrightDemiItalic.ttf");
-        jreFontMap.put("lucida bright demibold italic3",
-                       "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright regular0", "LucidaBrightRegular.ttf");
+            jreFontMap.put("lucida bright regular1", "LucidaBrightDemiBold.ttf");
+            jreFontMap.put("lucida bright regular2", "LucidaBrightItalic.ttf");
+            jreFontMap.put("lucida bright regular3", "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright bold1", "LucidaBrightDemiBold.ttf");
+            jreFontMap.put("lucida bright bold3", "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright demibold1", "LucidaBrightDemiBold.ttf");
+            jreFontMap.put("lucida bright demibold3", "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright italic2", "LucidaBrightItalic.ttf");
+            jreFontMap.put("lucida bright italic3", "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright bold italic3",
+                    "LucidaBrightDemiItalic.ttf");
+            jreFontMap.put("lucida bright demibold italic3",
+                    "LucidaBrightDemiItalic.ttf");
+        }
         for (String ffile : jreFontMap.values()) {
-            jreLucidaFontFiles.add(ffile);
+            jreBundledFontFiles.add(ffile);
         }
     }
 
@@ -354,8 +372,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                jreLibDirName =
                    System.getProperty("java.home","") + File.separator + "lib";
                jreFontDirName = jreLibDirName + File.separator + "fonts";
-               File lucidaFile =
-                   new File(jreFontDirName + File.separator + FontUtilities.LUCIDA_FILE_NAME);
 
                return null;
            }
@@ -438,11 +454,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                          * that might be specified.
                          */
                         fontConfig = createFontConfiguration();
-                        if (isOpenJDK()) {
-                            String[] fontInfo = getDefaultPlatformFont();
-                            defaultFontName = fontInfo[0];
-                            defaultFontFileName = fontInfo[1];
-                        }
 
                         String extraFontPath = fontConfig.getExtraFontPath();
 
@@ -959,7 +970,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         if (noOtherJREFontFiles) {
             return null;
         }
-        synchronized (jreLucidaFontFiles) {
+        synchronized (jreBundledFontFiles) {
             if (jreOtherFontFiles == null) {
                 HashSet<String> otherFontFiles = new HashSet<String>();
                 for (String deferredFile : deferredFontFiles.keySet()) {
@@ -971,7 +982,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                      */
                     if (dir == null ||
                         !dir.equals(jreFontDirName) ||
-                        jreLucidaFontFiles.contains(fname)) {
+                        jreBundledFontFiles.contains(fname)) {
                         continue;
                     }
                     otherFontFiles.add(deferredFile);
@@ -1009,7 +1020,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             String fname = file.getName();
             if (dir != null &&
                 dir.equals(jreFontDirName) &&
-                jreLucidaFontFiles.contains(fname)) {
+                jreBundledFontFiles.contains(fname)) {
                 continue;
             }
             PhysicalFont physicalFont = initialiseDeferredFont(fileName);
@@ -3393,6 +3404,15 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     jreFontDirName + File.separator + FontUtilities.LUCIDA_FILE_NAME;
             } else {
                 defaultFontFileName = FontUtilities.LUCIDA_FILE_NAME;
+            }
+        }
+        else {
+            defaultFontName = droidFontName;
+            if (useAbsoluteFontFileNames()) {
+                defaultFontFileName =
+                        jreFontDirName + File.separator + FontUtilities.DROID_FILE_NAME;
+            } else {
+                defaultFontFileName = FontUtilities.DROID_FILE_NAME;
             }
         }
     }
