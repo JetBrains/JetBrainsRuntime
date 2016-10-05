@@ -61,7 +61,7 @@ sourceSets.main.java.srcDirs = jdk_class_dirs
 sourceSets {
     test {
         java {
-            srcDir "../../../jdk/idea/java/tests/src"
+            srcDir "../../../jb/tests/src"
         }
     }
 }
@@ -72,7 +72,7 @@ test.dependsOn tasks.compileTestJava
 
 test {
     systemProperty "jb.java2d.metal", "true"
-    systemProperty "testdata", file('../../../jdk/idea/java/tests/testdata').absolutePath
+    systemProperty "testdata", file('../../../jb/tests/testdata').absolutePath
 
 //  Generate golden images for DroidFontTest and MixedTextTest
 //    systemProperty "gentestdata", ""

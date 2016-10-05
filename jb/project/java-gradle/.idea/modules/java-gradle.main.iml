@@ -26,7 +26,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.sql/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.xml.crypto/share/classes" isTestSource="false" />
     </content>
-    <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

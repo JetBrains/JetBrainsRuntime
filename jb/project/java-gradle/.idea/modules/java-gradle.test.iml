@@ -4,11 +4,11 @@
     <output-test url="file://$MODULE_DIR$/../../out/test/classes" />
     <exclude-output />
     <content url="file://$MODULE_DIR$/../../src/test" />
-    <content url="file://$MODULE_DIR$/../../../../../jdk">
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/idea/java/tests/src" isTestSource="true" />
+    <content url="file://$MODULE_DIR$/../../../../tests">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../tests/src" isTestSource="true" />
     </content>
-    <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="java-gradle.main" />
     <orderEntry type="library" name="Gradle: junit:junit:4.12" level="project" />
     <orderEntry type="library" name="Gradle: org.hamcrest:hamcrest-library:1.3" level="project" />

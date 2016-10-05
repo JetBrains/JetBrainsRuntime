@@ -187,9 +187,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private boolean loaded1dot0Fonts = false;
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
+    HashMap<String,String> jreFontMap;
+    HashSet<String> jreBundledFontFiles;
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
+    public static final String lucidaFontName = "Lucida Sans Regular";
+    public static final String droidFontName = "Droid Sans";
     public static String jreLibDirName;
     public static String jreFontDirName;
     private static HashSet<String> missingFontFiles = null;
@@ -261,6 +265,46 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return _usingPerAppContextComposites;
     }
 
+    private void initJREFontMap() {
+
+        /* Key is familyname+style value as an int.
+         * Value is filename containing the font.
+         * If no mapping exists, it means there is no font file for the style
+         * If the mapping exists but the file doesn't exist in the deferred
+         * list then it means its not installed.
+         * This looks like a lot of code and strings but if it saves even
+         * a single file being opened at JRE start-up there's a big payoff.
+         * Lucida Sans is probably the only important case as the others
+         * are rarely used. Consider removing the other mappings if there's
+         * no evidence they are useful in practice.
+         */
+        jreFontMap = new HashMap<String, String>();
+        jreBundledFontFiles = new HashSet<String>();
+
+        /* Droid Sans Mono Family */
+        jreFontMap.put("droid sans0", "DroidSans.ttf");
+        jreFontMap.put("droid sans1", "DroidSans-Bold.ttf");
+        jreFontMap.put("droid sans bold1", "DroidSans-Bold.ttf");
+
+        /* Droid Sans Mono Family */
+        jreFontMap.put("droid sans mono0", "DroidSansMono.ttf");
+        jreFontMap.put("droid sans mono slashed0",
+                "DroidSansMonoSlashed.ttf");
+        jreFontMap.put("droid sans mono dotted0",
+                "DroidSansMonoDotted.ttf");
+
+        /* Droid Serif Family */
+        jreFontMap.put("droid serif0", "DroidSerif-Regular.ttf");
+        jreFontMap.put("droid serif1", "DroidSerif-Bold.ttf");
+        jreFontMap.put("droid serif2", "DroidSerif-Italic.ttf");
+        jreFontMap.put("droid serif3", "DroidSerif-BoldItalic.ttf");
+        jreFontMap.put("droid serif bold1", "DroidSerif-Bold.ttf");
+        jreFontMap.put("droid serif bold italic3", "DroidSerif-BoldItalic.ttf");
+        for (String ffile : jreFontMap.values()) {
+            jreBundledFontFiles.add(ffile);
+        }
+    }
+
     static {
 
         java.security.AccessController.doPrivileged(
@@ -309,6 +353,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     @SuppressWarnings("unchecked")
     protected SunFontManager() {
 
+        initJREFontMap();
         java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedAction<Object>() {
                     public Object run() {
@@ -365,10 +410,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                          * that might be specified.
                          */
                         fontConfig = createFontConfiguration();
-
-                        String[] fontInfo = getDefaultPlatformFont();
-                        defaultFontName = fontInfo[0];
-                        defaultFontFileName = fontInfo[1];
 
                         String extraFontPath = fontConfig.getExtraFontPath();
 
@@ -858,7 +899,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         if (noOtherJREFontFiles) {
             return null;
         }
-        synchronized (jreFontDirName) {
+        synchronized (jreBundledFontFiles) {
             if (jreOtherFontFiles == null) {
                 HashSet<String> otherFontFiles = new HashSet<String>();
                 for (String deferredFile : deferredFontFiles.keySet()) {
@@ -868,7 +909,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     /* skip names which aren't absolute, aren't in the JRE
                      * directory, or are known Lucida fonts.
                      */
-                    if (dir == null || !dir.equals(jreFontDirName)) {
+                    if (dir == null ||
+                        !dir.equals(jreFontDirName) ||
+                        jreBundledFontFiles.contains(fname)) {
                         continue;
                     }
                     otherFontFiles.add(deferredFile);
@@ -900,6 +943,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     private PhysicalFont findOtherDeferredFont(String name, int style) {
         for (String fileName : deferredFontFiles.keySet()) {
+            File file = new File(fileName);
+            String dir = file.getParent();
+            String fname = file.getName();
+            if (dir != null &&
+                dir.equals(jreFontDirName) &&
+                jreBundledFontFiles.contains(fname)) {
+                continue;
+            }
             PhysicalFont physicalFont = initialiseDeferredFont(fileName);
             if (physicalFont != null &&
                 (physicalFont.getFontName(null).equalsIgnoreCase(name) ||
@@ -3259,6 +3310,16 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
      */
     public synchronized String getDefaultFontFile() {
         return defaultFontFileName;
+    }
+
+    private void initDefaultFonts() {
+        defaultFontName = droidFontName;
+        if (useAbsoluteFontFileNames()) {
+            defaultFontFileName =
+                    jreFontDirName + File.separator + FontUtilities.DROID_FILE_NAME;
+        } else {
+            defaultFontFileName = FontUtilities.DROID_FILE_NAME;
+        }
     }
 
     /**
