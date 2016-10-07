@@ -282,22 +282,26 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap = new HashMap<String,String>();
         jreBundledFontFiles = new HashSet<String>();
         if (isOpenJDK()) {
+
+            /* Droid Sans Mono Family */
             jreFontMap.put("droid sans0",   "DroidSans.ttf");
             jreFontMap.put("droid sans1",   "DroidSans-Bold.ttf");
-        /* Droid Sans full names (map Bold and DemiBold to same file) */
-            jreFontMap.put("droid sans regular0", "DroidSans.ttf");
-            jreFontMap.put("droid sans regular1", "DroidSans-Bold.ttf");
             jreFontMap.put("droid sans bold1", "DroidSans-Bold.ttf");
-            jreFontMap.put("droid sans demibold1", "DroidSans-Bold.ttf");
 
-        /* Droid Sans Mono Family */
+            /* Droid Sans Mono Family */
             jreFontMap.put("droid sans mono0", "DroidSansMono.ttf");
-            jreFontMap.put("droid sans mono1", "DroidSansMono.ttf");
-        /* Mono full names (map Bold and DemiBold to same file) */
-            jreFontMap.put("droid sans mono regular0", "DroidSansMono.ttf");
-            jreFontMap.put("droid sans mono regular1", "DroidSansMono.ttf");
-            jreFontMap.put("droid sans mono bold1", "DroidSansMono.ttf");
-            jreFontMap.put("droid sans mono demibold1", "DroidSansMono.ttf");
+            jreFontMap.put("droid sans mono slashed0",
+                           "DroidSansMonoSlashed.ttf");
+            jreFontMap.put("droid sans mono dotted0",
+                           "DroidSansMonoDotted.ttf");
+
+            /* Droid Serif Family */
+            jreFontMap.put("droid serif0", "DroidSerif-Regular.ttf");
+            jreFontMap.put("droid serif1", "DroidSerif-Bold.ttf");
+            jreFontMap.put("droid serif2", "DroidSerif-Italic.ttf");
+            jreFontMap.put("droid serif3", "DroidSerif-BoldItalic.ttf");
+            jreFontMap.put("droid serif bold1", "DroidSerif-Bold.ttf");
+            jreFontMap.put("droid serif bold italic3", "DroidSerif-BoldItalic.ttf");
         }
         else {
         /* Lucida Sans Family */

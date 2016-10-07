@@ -1,6 +1,5 @@
 package quality.text;
 
-import org.junit.Assert;
 import org.junit.Test;
 
 import javax.imageio.ImageIO;
@@ -9,78 +8,136 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.File;
-import java.io.IOException;
+
+import static org.junit.Assert.*;
 
 public class DroidFontTest {
+    /* Tests for the following font names and styles:
 
-    private void doTestFont(String name) throws IOException, FontFormatException {
+            "droid sans" : PLAIN, BOLD
+            "droid sans bold" : alias for "droid sans"
+
+            "droid sans mono" : PLAIN
+            "droid sans mono slashed" : PLAIN
+            "droid sans mono dotted" : PLAIN
+
+            "droid serif" : PLAIN, BOLD, ITALIC, BOLD | ITALIC
+
+            "droid serif bold" : alias for "droid serif" BOLD, BOLD | ITALIC
+    */
+
+    private static final String abc =
+            "the quick brown fox jumps over the lazy dog";
+
+    private static final String digits = "0123456789";
+
+    @SuppressWarnings("SameParameterValue")
+    private void doTestFont(String aliasName, String name, int style, int size)
+            throws Exception {
+
         String testDataStr = System.getProperty("testdata");
-        Assert.assertNotNull("testdata property is not set", testDataStr);
+        assertNotNull("testdata property is not set", testDataStr);
 
         File testData = new File(testDataStr, "quality" + File.separator + "text");
+        assertTrue("Test data dir does not exist", testData.exists());
 
-        BufferedImage bimg = new BufferedImage(200, 100, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = bimg.createGraphics();
+        String testStr = abc.toUpperCase() + abc + digits;
 
-        Font f = new Font(name, Font.PLAIN, 20);
+        BufferedImage image = new BufferedImage((size + 3)*testStr.length(),
+                size*3, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = image.createGraphics();
+
+        Font f = new Font(aliasName, style, size);
 
         g2d.setFont(f);
         g2d.setColor(Color.WHITE);
-        Rectangle2D bnd = f.getStringBounds(name, g2d.getFontRenderContext());
+        Rectangle2D bnd = f.getStringBounds(testStr, g2d.getFontRenderContext());
 
-        g2d.drawString(name, 0, 25);
+        g2d.drawString(testStr, 0, size + 3);
 
 
-        BufferedImage resultImage = bimg.getSubimage((int) bnd.getX(), (int) (25 + bnd.getY()),
+        BufferedImage resultImage = image.getSubimage((int) bnd.getX(),
+                (int) (size + 3 + bnd.getY()),
                 (int) bnd.getWidth(), (int) bnd.getHeight());
 
-        String gfName = name.toLowerCase().replace(" ", "").concat(".png");
+        String gfName = name.toLowerCase().replace(" ", "") +
+                Integer.toString(style) + "_" + Integer.toString(size) + ".png";
 
-        BufferedImage goldenImage = ImageIO.read(new File(testData, gfName));
-        Assert.assertTrue("Golden image and result have different sizes",
-                resultImage.getWidth() == goldenImage.getWidth() && resultImage.getHeight() == resultImage.getHeight());
+        File goldenFile = new File(testData, gfName);
+        if (System.getProperty("gentestdata") == null) {
+            BufferedImage goldenImage = ImageIO.read(goldenFile);
+            assertTrue("Golden image and result have different sizes",
+                    resultImage.getWidth() == goldenImage.getWidth() &&
+                            resultImage.getHeight() == resultImage.getHeight());
 
-        Raster gRaster = goldenImage.getData();
-        Raster rRaster = resultImage.getData();
-        int [] gArr = new int[3];
-        int [] rArr = new int[3];
-        for (int i = 0; i < gRaster.getWidth(); i++) {
-            for (int j = 0; j < gRaster.getHeight(); j++) {
-                gRaster.getPixel(i, j, gArr);
-                rRaster.getPixel(i, j, rArr);
-                Assert.assertArrayEquals("Different pixels found at (" + i + "," + j + ")", gArr, rArr);
+            Raster gRaster = goldenImage.getData();
+            Raster rRaster = resultImage.getData();
+            int[] gArr = new int[3];
+            int[] rArr = new int[3];
+            for (int i = 0; i < gRaster.getWidth(); i++) {
+                for (int j = 0; j < gRaster.getHeight(); j++) {
+                    gRaster.getPixel(i, j, gArr);
+                    rRaster.getPixel(i, j, rArr);
+                    assertArrayEquals(
+                            "Different pixels found at (" + i + "," + j + ")",
+                            gArr, rArr);
+                }
             }
+        }
+        else {
+            ImageIO.write(resultImage, "png", goldenFile);
         }
     }
 
+    private void doTestFont(String name, int style)
+            throws Exception {
+        doTestFont(name, name, style, 20);
+    }
 
-    @Test
+        @Test
     public void testDroidSans() throws Exception {
-        doTestFont("Droid Sans");
+        doTestFont("Droid Sans", Font.PLAIN);
     }
 
     @Test
     public void testDroidSansBold() throws Exception {
-        doTestFont("Droid Sans Bold");
+        doTestFont("Droid Sans", Font.BOLD);
+        doTestFont("Droid Sans Bold", "Droid Sans", Font.BOLD, 20);
     }
 
     @Test
     public void testDroidSansMono() throws Exception {
-        doTestFont("Droid Sans Mono");
+        doTestFont("Droid Sans Mono", Font.PLAIN);
     }
 
     @Test
-    public void testDroidSerifRegular() throws Exception {
-        doTestFont("Droid Serif Regular");
+    public void testDroidSansMonoSlashed() throws Exception {
+        doTestFont("Droid Sans Mono Slashed", Font.PLAIN);
+    }
+
+    @Test
+    public void testDroidSansMonoDotted() throws Exception {
+        doTestFont("Droid Sans Mono Dotted", Font.PLAIN);
+    }
+
+    @Test
+    public void testDroidSerif() throws Exception {
+        doTestFont("Droid Serif", Font.PLAIN);
     }
 
     @Test
     public void testDroidSerifBold() throws Exception {
-        doTestFont("Droid Serif Bold");
+        doTestFont("Droid Serif", Font.BOLD);
+        doTestFont("Droid Serif Bold", "Droid Serif",
+                Font.BOLD, 20);
+        doTestFont("Droid Serif Bold", "Droid Serif",
+                Font.BOLD | Font.ITALIC, 20);
     }
 
     @Test
     public void testDroidSerifItalic() throws Exception {
-        doTestFont("Droid Serif Italic");
+        doTestFont("Droid Serif", Font.ITALIC);
+        doTestFont("Droid Serif Italic", "Droid Serif",
+                Font.ITALIC, 20);
     }
 }
