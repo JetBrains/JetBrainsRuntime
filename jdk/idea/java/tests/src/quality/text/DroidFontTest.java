@@ -35,10 +35,14 @@ public class DroidFontTest {
     private void doTestFont(String aliasName, String name, int style, int size)
             throws Exception {
 
+        String[] testDataVariant = {
+                "osx_hardware_rendering", "osx_software_rendering"};
+
         String testDataStr = System.getProperty("testdata");
         assertNotNull("testdata property is not set", testDataStr);
 
-        File testData = new File(testDataStr, "quality" + File.separator + "text");
+        File testData = new File(testDataStr, "quality" + File.separator +
+                "text");
         assertTrue("Test data dir does not exist", testData.exists());
 
         String testStr = abc.toUpperCase() + abc + digits;
@@ -51,7 +55,8 @@ public class DroidFontTest {
 
         g2d.setFont(f);
         g2d.setColor(Color.WHITE);
-        Rectangle2D bnd = f.getStringBounds(testStr, g2d.getFontRenderContext());
+        Rectangle2D bnd = f.getStringBounds(testStr,
+                g2d.getFontRenderContext());
 
         g2d.drawString(testStr, 0, size + 3);
 
@@ -63,29 +68,53 @@ public class DroidFontTest {
         String gfName = name.toLowerCase().replace(" ", "") +
                 Integer.toString(style) + "_" + Integer.toString(size) + ".png";
 
-        File goldenFile = new File(testData, gfName);
         if (System.getProperty("gentestdata") == null) {
-            BufferedImage goldenImage = ImageIO.read(goldenFile);
-            assertTrue("Golden image and result have different sizes",
-                    resultImage.getWidth() == goldenImage.getWidth() &&
-                            resultImage.getHeight() == resultImage.getHeight());
+            boolean failed = true;
+            String failureReason = "";
+            for (String variant : testDataVariant) {
+                File goldenFile = new File(testData, variant + File.separator +
+                        gfName);
 
-            Raster gRaster = goldenImage.getData();
-            Raster rRaster = resultImage.getData();
-            int[] gArr = new int[3];
-            int[] rArr = new int[3];
-            for (int i = 0; i < gRaster.getWidth(); i++) {
-                for (int j = 0; j < gRaster.getHeight(); j++) {
-                    gRaster.getPixel(i, j, gArr);
-                    rRaster.getPixel(i, j, rArr);
-                    assertArrayEquals(
-                            "Different pixels found at (" + i + "," + j + ")",
-                            gArr, rArr);
+                BufferedImage goldenImage = ImageIO.read(goldenFile);
+                failed = true;
+                if (resultImage.getWidth() != goldenImage.getWidth() ||
+                    resultImage.getHeight() != resultImage.getHeight())
+                {
+                    failureReason += variant +
+                            " : Golden image and result have different sizes\n";
+                    continue;
                 }
+
+                Raster gRaster = goldenImage.getData();
+                Raster rRaster = resultImage.getData();
+                int[] gArr = new int[3];
+                int[] rArr = new int[3];
+                failed = false;
+                scan:
+                for (int i = 0; i < gRaster.getWidth(); i++) {
+                    for (int j = 0; j < gRaster.getHeight(); j++) {
+                        gRaster.getPixel(i, j, gArr);
+                        rRaster.getPixel(i, j, rArr);
+                        assertTrue(gArr.length == rArr.length);
+                        for (int k = 0; k < gArr.length; k++) {
+                            if (gArr[k] != rArr[k]) {
+                                failureReason += variant +
+                                        " : Different pixels found " +
+                                        "at (" + i + "," + j + ")";
+                                failed = true;
+                                break scan;
+                            }
+                        }
+                    }
+                }
+
+                if (!failed) break;
             }
+
+            if (failed) throw new RuntimeException(failureReason);
         }
         else {
-            ImageIO.write(resultImage, "png", goldenFile);
+            ImageIO.write(resultImage, "png", new File(testData, gfName));
         }
     }
 
