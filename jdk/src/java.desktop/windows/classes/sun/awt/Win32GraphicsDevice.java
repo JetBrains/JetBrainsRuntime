@@ -106,7 +106,7 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
     private static native void initIDs();
 
     native void initDevice(int screen);
-    native void initNativeScale(int screen);
+    native void initNativeScale(int screen, boolean fractionalScaleEnabled);
     native void setNativeScale(int screen, float scaleX, float scaleY);
     native float getNativeScaleX(int screen);
     native float getNativeScaleY(int screen);
@@ -157,7 +157,9 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
                 scaleY = debugScaleY;
                 setNativeScale(screen, scaleX, scaleY);
             } else {
-                initNativeScale(screen);
+                boolean fScaleEnabled = "true".equals(AccessController.doPrivileged(
+                        new GetPropertyAction("sun.java2d.uiFractScale.enabled", "false")));
+                initNativeScale(screen, fScaleEnabled);
                 scaleX = getNativeScaleX(screen);
                 scaleY = getNativeScaleY(screen);
             }
