@@ -36,7 +36,7 @@ public class DroidFontTest {
             throws Exception {
 
         String[] testDataVariant = {
-                "osx_hardware_rendering", "osx_software_rendering"};
+                "osx_hardware_rendering", "osx_software_rendering", "linux_rendering"};
 
         String testDataStr = System.getProperty("testdata");
         assertNotNull("testdata property is not set", testDataStr);
