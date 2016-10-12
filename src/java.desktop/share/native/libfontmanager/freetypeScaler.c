@@ -30,11 +30,14 @@
 #include "sun_font_FreetypeFontScaler.h"
 
 #include <stdlib.h>
+#include <math.h>
+
 #if !defined(_WIN32) && !defined(__APPLE_)
 #include <dlfcn.h>
+#else
+#define DISABLE_FONTCONFIG
 #endif
-#include <stdlib.h>
-#include <math.h>
+
 #include "ft2build.h"
 #include FT_LCD_FILTER_H
 #include FT_FREETYPE_H
@@ -43,6 +46,7 @@
 #include FT_SIZES_H
 #include FT_OUTLINE_H
 #include FT_SYNTHESIS_H
+#include FT_MODULE_H
 #include FT_LCD_FILTER_H
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
@@ -437,7 +441,7 @@ static void setInterpreterVersion(FT_Library library) {
     const char* property = "interpreter-version";
 
     /* If some one is setting this, don't override it */
-    if (props != NULL && strstr(props, property)) {
+    if (props != NULL && strstr(property, props)) {
         return;
     }
     /*
@@ -710,23 +714,32 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
     return ptr_to_jlong(context);
 }
 
-static void setDefaultScalerSettings(FTScalerContext *context) {
-    if (context->aaType == TEXT_AA_OFF) {
-        context->loadFlags = FT_LOAD_TARGET_MONO;
-    } else if (context->aaType == TEXT_AA_ON) {
-        context->loadFlags = FT_LOAD_TARGET_NORMAL;
-    } else {
-        context->lcdFilter = FT_LCD_FILTER_LIGHT;
-        if (context->aaType == TEXT_AA_LCD_HRGB ||
-            context->aaType == TEXT_AA_LCD_HBGR) {
-            context->loadFlags = FT_LOAD_TARGET_LCD;
-        } else {
-            context->loadFlags = FT_LOAD_TARGET_LCD_V;
+#ifndef DISABLE_FONTCONFIG
+static void setupLoadRenderFlags(FTScalerContext *context, int fcHintStyle, FcBool fcAutohint, FcBool fcAutohintSet,
+                                 FT_Int32 fcLoadFlags, FT_Render_Mode fcRenderFlags)
+{
+    if (!fcAutohintSet || fcAutohint) {
+        switch (fcHintStyle) {
+            case FC_HINT_NONE:
+                context->loadFlags = FT_LOAD_NO_HINTING;
+                break;
+            case FC_HINT_SLIGHT:
+                context->loadFlags = (fcRenderFlags != FT_RENDER_MODE_MONO) ? FT_LOAD_TARGET_LIGHT : FT_LOAD_NO_HINTING;
+                break;
+            default:
+                context->loadFlags = fcLoadFlags;
         }
+    } else {
+        context->loadFlags = fcLoadFlags;
     }
-    context->renderFlags = FT_LOAD_TARGET_MODE(context->loadFlags);
-}
 
+    context->renderFlags = fcRenderFlags;
+
+    if (fcAutohintSet && fcAutohint) {
+        context->loadFlags |= FT_LOAD_FORCE_AUTOHINT;
+    }
+}
+#endif
 
 // values used by FreeType (as of version 2.10.1) for italics transformation matrix in FT_GlyphSlot_Oblique
 #define FT_MATRIX_ONE 0x10000
@@ -750,10 +763,7 @@ static void setupTransform(FT_Matrix* target, FTScalerContext *context) {
     }
 }
 
-static int setupFTContext(JNIEnv *env,
-                          jobject font2D,
-                          FTScalerInfo *scalerInfo,
-                          FTScalerContext *context,
+static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo, FTScalerContext *context,
                           FT_Bool configureFont) {
     FT_Matrix matrix;
     int errCode = 0;
@@ -857,7 +867,6 @@ static int setupFTContext(JNIEnv *env,
             }
 
             if (fcHintStyleSet && fcHintStyle == FC_HINT_NONE) {
-                fcHintingSet = FcTrue;
                 fcHinting = FcFalse;
             }
 
@@ -885,26 +894,16 @@ static int setupFTContext(JNIEnv *env,
                 if (fcAntialiasSet) fprintf(stderr, "FC_ANTIALIAS(%d) ", fcAntialias);
             }
 
+            FcBool fcAutohint = FcFalse;
+            FcBool fcAutohintSet = (*FcPatternGetBoolPtr)(pattern, FC_AUTOHINT, 0, &fcAutohint) == FcResultMatch;
+
+            if (logFC && fcAutohintSet) fprintf(stderr, "FC_AUTOHINT(%d) ", fcAutohint);
+
             if (context->aaType == TEXT_AA_ON) { // Greyscale AA
-                context->renderFlags = FT_RENDER_MODE_NORMAL;
-                if (fcHintingSet) {
-                    switch (fcHintStyle) {
-                        case FC_HINT_NONE:
-                            context->loadFlags = FT_LOAD_NO_HINTING;
-                            break;
-                        case FC_HINT_SLIGHT:
-                            context->loadFlags = FT_LOAD_TARGET_LIGHT;
-                            break;
-                        case FC_HINT_MEDIUM:
-                        case FC_HINT_FULL:
-                        default:
-                            break;
-                    }
-                }
+                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_DEFAULT, FT_RENDER_MODE_NORMAL);
             }
             else if (context->aaType == TEXT_AA_OFF) { // No AA
-                context->renderFlags = FT_RENDER_MODE_MONO;
-                context->loadFlags = (!fcHintingSet || fcHinting) ? FT_LOAD_TARGET_MONO : FT_LOAD_NO_HINTING;
+                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_MONO, FT_RENDER_MODE_MONO);
             } else {
                 int fcRGBA = FC_RGBA_UNKNOWN;
                 if (fcAntialiasSet && fcAntialias) {
@@ -913,14 +912,17 @@ static int setupFTContext(JNIEnv *env,
                             case FC_RGBA_RGB:
                             case FC_RGBA_BGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_RGB ? "FC_RGBA_RGB " : "FC_RGBA_BGR ");
-                                context->loadFlags = FT_LOAD_TARGET_LCD;
-                                context->renderFlags = FT_RENDER_MODE_LCD;
+                                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                                     FT_LOAD_TARGET_LCD, FT_RENDER_MODE_LCD);
                                 break;
                             case FC_RGBA_VRGB:
                             case FC_RGBA_VBGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_VRGB ? "FC_RGBA_VRGB " : "FC_RGBA_VBGR ");
-                                context->loadFlags = FT_LOAD_TARGET_LCD_V;
-                                context->renderFlags = FT_RENDER_MODE_LCD_V;
+                                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                                     FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V);
+                                break;
+                            case FC_RGBA_NONE:
+                                if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
                                 break;
                             default:
                                 if (logFC) fprintf(stderr, "FC_RGBA_UNKNOWN ");
@@ -931,22 +933,13 @@ static int setupFTContext(JNIEnv *env,
                 if (fcRGBA == FC_RGBA_UNKNOWN) {
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
-                        context->loadFlags = FT_LOAD_TARGET_LCD;
-                        context->renderFlags = FT_RENDER_MODE_LCD;
+                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                             FT_LOAD_TARGET_LCD, FT_RENDER_MODE_LCD);
                     } else {
-                        context->loadFlags = FT_LOAD_TARGET_LCD_V;
-                        context->renderFlags = FT_RENDER_MODE_LCD_V;
+                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                             FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V);
                     }
                 }
-            }
-
-            FcBool fcAutohint = FcFalse;
-            FcBool fcAutohintSet = (*FcPatternGetBoolPtr)(pattern, FC_AUTOHINT, 0, &fcAutohint) == FcResultMatch;
-
-            if (logFC && fcAutohintSet) fprintf(stderr, "FC_AUTOHINT(%d) ", fcAutohint);
-
-            if (fcAutohintSet && fcAutohint) {
-                context->loadFlags |= FT_LOAD_FORCE_AUTOHINT;
             }
 
             FT_LcdFilter fcLCDFilter;
