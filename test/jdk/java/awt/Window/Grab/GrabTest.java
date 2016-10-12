@@ -121,6 +121,10 @@ public class GrabTest {
         Util.waitForIdle(robot);
 
         test();
+
+        frame.dispose();
+        f1.dispose();
+        f.dispose();
     }
 
     public static void test() {
