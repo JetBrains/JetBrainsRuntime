@@ -22,14 +22,17 @@
 
     <target name="set_test_jvm_mac" if="isMac">
         <property name="test_jvm" location="../../../jbsdk/jdk/Contents/Home/bin/java"/>
+        <property name="test_javac" location="../../../jbsdk/jdk/Contents/Home/bin/javac"/>
     </target>
 
     <target name="set_test_jvm_linux" if="isLinux">
         <property name="test_jvm" location="../../../jbsdk/bin/java"/>
+        <property name="test_javac" location="../../../jbsdk/bin/javac"/>
     </target>
 
     <target name="set_test_jvm_windows" if="isWindows">
         <property name="test_jvm" location="../../../jbsdk/bin/java.exe"/>
+        <property name="test_javac" location="../../../jbsdk/bin/javac.exe"/>
     </target>
 
     <target name="init">
@@ -37,16 +40,16 @@
         <mkdir dir="${build}"/>
     </target>
 
-    <target name="compile" depends="init"
+    <target name="compile" depends="init,set_test_jvm_mac, set_test_jvm_windows, set_test_jvm_linux"
             description="compile the source">
-        <javac srcdir="${src}" destdir="${build}">
+        <javac srcdir="${src}" destdir="${build}" executable="${test_javac}" fork="yes">
             <classpath>
                 <pathelement location="${lib}/junit-4.12.jar" />
             </classpath>
         </javac>
     </target>
 
-    <target name="run"  depends="compile,set_test_jvm_mac, set_test_jvm_windows, set_test_jvm_linux">
+    <target name="run"  depends="compile">
         <junit printsummary="on" haltonfailure="no" showoutput="on" fork="yes" jvm="${test_jvm}">
             <classpath>
                 <pathelement location="${lib}/junit-4.12.jar" />
