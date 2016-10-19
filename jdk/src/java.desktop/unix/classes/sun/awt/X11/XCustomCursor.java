@@ -60,9 +60,18 @@ public class XCustomCursor extends X11CustomCursor {
             long display = XToolkit.getDisplay();
             long root_window = XlibWrapper.RootWindow(display,
                     XlibWrapper.DefaultScreen(display));
+            preferredWidth = Math.abs(preferredWidth);
+            preferredHeight = Math.abs(preferredHeight);
 
-            XlibWrapper.XQueryBestCursor(display,root_window, Math.abs(preferredWidth),Math.abs(preferredHeight),XlibWrapper.larg1,XlibWrapper.larg2);
-            d = new Dimension(XlibWrapper.unsafe.getInt(XlibWrapper.larg1),XlibWrapper.unsafe.getInt(XlibWrapper.larg2));
+            XlibWrapper.XQueryBestCursor(display, root_window,
+                    preferredWidth, preferredHeight,
+                    XlibWrapper.larg1, XlibWrapper.larg2);
+
+            int cWidth = XlibWrapper.unsafe.getInt(XlibWrapper.larg1);
+            int cHeight = XlibWrapper.unsafe.getInt(XlibWrapper.larg2);
+            if (cWidth == 0) cWidth = preferredWidth;
+            if (cHeight == 0) cHeight = preferredHeight;
+            d = new Dimension(cWidth, cHeight);
         }
         finally {
             XToolkit.awtUnlock();
