@@ -89,6 +89,7 @@
 #define  DEFAULT_DPI 72
 #define  MAX_DPI 1024
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
+#define  MAX_FCSIZE_LTL_DISABLED 12.0
 
 #ifndef DISABLE_FONTCONFIG
 #define FONTCONFIG_DLL JNI_LIB_NAME("fontconfig")
@@ -798,17 +799,21 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
 
 #ifndef DISABLE_FONTCONFIG
 static void setupLoadRenderFlags(FTScalerContext *context, int fcHintStyle, FcBool fcAutohint, FcBool fcAutohintSet,
-                                 FT_Int32 fcLoadFlags, FT_Render_Mode fcRenderFlags)
+                                 FT_Int32 fcLoadFlags, FT_Render_Mode fcRenderFlags, double fcSize)
 {
-    switch (fcHintStyle) {
-        case FC_HINT_NONE:
-            context->loadFlags = FT_LOAD_NO_HINTING;
-            break;
-        case FC_HINT_SLIGHT:
-            context->loadFlags = (fcRenderFlags != FT_RENDER_MODE_MONO) ? FT_LOAD_TARGET_LIGHT : fcLoadFlags;
-            break;
-        default:
-            context->loadFlags = fcLoadFlags;
+    if (fcSize > MAX_FCSIZE_LTL_DISABLED  ||  !fcAutohintSet || fcAutohint) {
+        switch (fcHintStyle) {
+            case FC_HINT_NONE:
+                context->loadFlags = FT_LOAD_NO_HINTING;
+                break;
+            case FC_HINT_SLIGHT:
+                context->loadFlags = (fcRenderFlags != FT_RENDER_MODE_MONO) ? FT_LOAD_TARGET_LIGHT : FT_LOAD_NO_HINTING;
+                break;
+            default:
+                context->loadFlags = fcLoadFlags;
+        }
+    } else {
+        context->loadFlags = fcLoadFlags;
     }
 
     context->renderFlags = fcRenderFlags;
@@ -989,12 +994,10 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             if (logFC && fcAutohintSet) fprintf(stderr, "FC_AUTOHINT(%d) ", fcAutohint);
 
             if (context->aaType == TEXT_AA_ON) { // Greyscale AA
-                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_DEFAULT,
-                                     FT_RENDER_MODE_NORMAL);
+                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_DEFAULT, FT_RENDER_MODE_NORMAL, fcSize);
             }
             else if (context->aaType == TEXT_AA_OFF) { // No AA
-                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_MONO,
-                                     FT_RENDER_MODE_MONO);
+                setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_MONO, FT_RENDER_MODE_MONO, fcSize);
             } else {
                 int fcRGBA = FC_RGBA_UNKNOWN;
                 if (fcAntialiasSet && fcAntialias) {
@@ -1004,13 +1007,13 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
                             case FC_RGBA_BGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_RGB ? "FC_RGBA_RGB " : "FC_RGBA_BGR ");
                                 setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
-                                                     FT_LOAD_TARGET_LCD, FT_RENDER_MODE_LCD);
+                                                     FT_LOAD_TARGET_LCD, FT_RENDER_MODE_LCD, fcSize);
                                 break;
                             case FC_RGBA_VRGB:
                             case FC_RGBA_VBGR:
                                 if (logFC) fprintf(stderr, fcRGBA == FC_RGBA_VRGB ? "FC_RGBA_VRGB " : "FC_RGBA_VBGR ");
                                 setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
-                                                     FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V);
+                                                     FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V, fcSize);
                                 break;
                             case FC_RGBA_NONE:
                                 if (logFC) fprintf(stderr, "FC_RGBA_NONE ");
@@ -1025,11 +1028,11 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
                     if (context->aaType == TEXT_AA_LCD_HRGB ||
                         context->aaType == TEXT_AA_LCD_HBGR) {
-                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_LCD,
-                                             FT_RENDER_MODE_LCD);
+                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                             FT_LOAD_TARGET_LCD, FT_RENDER_MODE_LCD, fcSize);
                     } else {
-                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet, FT_LOAD_TARGET_LCD_V,
-                                             FT_RENDER_MODE_LCD_V);
+                        setupLoadRenderFlags(context, fcHintStyle, fcAutohint, fcAutohintSet,
+                                             FT_LOAD_TARGET_LCD_V, FT_RENDER_MODE_LCD_V, fcSize);
                     }
                 }
             }
