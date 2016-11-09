@@ -12,8 +12,6 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../test/sun/java2d" isTestSource="false" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="solaris" scope="PROVIDED" />
-    <orderEntry type="module" module-name="share" scope="PROVIDED" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="module-library">
       <library>
