@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2009, 2013, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -22,36 +22,9 @@
 #
 
 # @test
-# @bug 6890872
-# @summary keytool -printcert to recognize signed jar files
-#
-
-if [ "${TESTJAVA}" = "" ] ; then
-  JAVAC_CMD=`which javac`
-  TESTJAVA=`dirname $JAVAC_CMD`/..
-  COMPILEJAVA=${TESTJAVA}
-fi
-
-# set platform-dependent variables
-OS=`uname -s`
-case "$OS" in
-  Windows_* )
-    FS="\\"
-    ;;
-  * )
-    FS="/"
-    ;;
-esac
-
-KS=readjar.jks
-rm $KS
-$TESTJAVA${FS}bin${FS}keytool ${TESTTOOLVMOPTS}  -storepass changeit -keypass changeit -keystore $KS \
-        -keyalg rsa -alias x -dname CN=X -genkeypair
-$COMPILEJAVA${FS}bin${FS}jar ${TESTTOOLVMOPTS} cvf readjar.jar $KS
-$COMPILEJAVA${FS}bin${FS}jarsigner ${TESTTOOLVMOPTS} -storepass changeit -keystore $KS readjar.jar x
-
-$TESTJAVA${FS}bin${FS}keytool ${TESTTOOLVMOPTS} -printcert -jarfile readjar.jar || exit 1
-$TESTJAVA${FS}bin${FS}keytool ${TESTTOOLVMOPTS} -printcert -jarfile readjar.jar -rfc || exit 1
-
-exit 0
-
+# @bug 8168518
+# @library ../../../../java/security/testlibrary/ /test/lib
+# @run main/othervm/timeout=300 -Djdk.krb5.rcache.useMD5=true ReplayCacheTestProc
+# @summary  testing jdk.krb5.rcache.useMD5. This action is put in a separate
+#           test so that ReplayCacheTestProc.java can be launched with special
+#           test.* system properties easily.
