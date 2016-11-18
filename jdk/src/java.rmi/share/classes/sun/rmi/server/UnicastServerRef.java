@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,10 +30,8 @@ import java.io.ObjectInput;
 import java.io.ObjectInputFilter;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutput;
-import java.io.ObjectStreamClass;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.rmi.AccessException;
 import java.rmi.MarshalException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
@@ -58,7 +56,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import sun.rmi.runtime.Log;
 import sun.rmi.transport.LiveRef;
-import sun.rmi.transport.StreamRemoteCall;
 import sun.rmi.transport.Target;
 import sun.rmi.transport.tcp.TCPTransport;
 
@@ -289,25 +286,20 @@ public class UnicastServerRef extends UnicastRef
             try {
                 in = call.getInputStream();
                 num = in.readInt();
-            } catch (Exception readEx) {
-                throw new UnmarshalException("error unmarshalling call header",
-                                             readEx);
-            }
-            if (num >= 0) {
-                if (skel != null) {
-                    oldDispatch(obj, call, num);
-                    return;
-                } else {
-                    throw new UnmarshalException(
-                        "skeleton class not found but required " +
-                        "for client version");
+                if (num >= 0) {
+                    if (skel != null) {
+                        oldDispatch(obj, call, num);
+                        return;
+                    } else {
+                        throw new UnmarshalException(
+                            "skeleton class not found but required " +
+                            "for client version");
+                    }
                 }
-            }
-            try {
                 op = in.readLong();
             } catch (Exception readEx) {
                 throw new UnmarshalException("error unmarshalling call header",
-                        readEx);
+                                             readEx);
             }
 
             /*
@@ -330,19 +322,20 @@ public class UnicastServerRef extends UnicastRef
             logCall(obj, method);
 
             // unmarshal parameters
-            Object[] params = null;
+            Class<?>[] types = method.getParameterTypes();
+            Object[] params = new Object[types.length];
 
             try {
                 unmarshalCustomCallData(in);
-                params = unmarshalParameters(obj, method, marshalStream);
-            } catch (AccessException aex) {
-                // For compatibility, AccessException is not wrapped in UnmarshalException
-                // disable saving any refs in the inputStream for GC
-                ((StreamRemoteCall) call).discardPendingRefs();
-                throw aex;
-            } catch (java.io.IOException | ClassNotFoundException e) {
-                // disable saving any refs in the inputStream for GC
-                ((StreamRemoteCall) call).discardPendingRefs();
+                // Unmarshal the parameters
+                for (int i = 0; i < types.length; i++) {
+                    params[i] = unmarshalValue(types[i], in);
+                }
+
+            } catch (java.io.IOException e) {
+                throw new UnmarshalException(
+                    "error unmarshalling arguments", e);
+            } catch (ClassNotFoundException e) {
                 throw new UnmarshalException(
                     "error unmarshalling arguments", e);
             } finally {
@@ -376,7 +369,6 @@ public class UnicastServerRef extends UnicastRef
                  */
             }
         } catch (Throwable e) {
-            Throwable origEx = e;
             logCallException(e);
 
             ObjectOutput out = call.getResultStream(false);
@@ -392,12 +384,6 @@ public class UnicastServerRef extends UnicastRef
                 clearStackTraces(e);
             }
             out.writeObject(e);
-
-            // AccessExceptions should cause Transport.serviceCall
-            // to flag the connection as unusable.
-            if (origEx instanceof AccessException) {
-                throw new IOException("Connection is not reusable", origEx);
-            }
         } finally {
             call.releaseInputStream(); // in case skeleton doesn't
             call.releaseOutputStream();
@@ -426,41 +412,62 @@ public class UnicastServerRef extends UnicastRef
      * Handle server-side dispatch using the RMI 1.1 stub/skeleton
      * protocol, given a non-negative operation number that has
      * already been read from the call stream.
-     * Exceptions are handled by the caller to be sent to the remote client.
      *
      * @param obj the target remote object for the call
      * @param call the "remote call" from which operation and
      * method arguments can be obtained.
      * @param op the operation number
-     * @throws Exception if unable to marshal return result or
+     * @exception IOException if unable to marshal return result or
      * release input or output streams
      */
-    private void oldDispatch(Remote obj, RemoteCall call, int op)
-        throws Exception
+    public void oldDispatch(Remote obj, RemoteCall call, int op)
+        throws IOException
     {
         long hash;              // hash for matching stub with skeleton
 
-        // read remote call header
-        ObjectInput in;
-        in = call.getInputStream();
         try {
-            Class<?> clazz = Class.forName("sun.rmi.transport.DGCImpl_Skel");
-            if (clazz.isAssignableFrom(skel.getClass())) {
-                ((MarshalInputStream)in).useCodebaseOnly();
+            // read remote call header
+            ObjectInput in;
+            try {
+                in = call.getInputStream();
+                try {
+                    Class<?> clazz = Class.forName("sun.rmi.transport.DGCImpl_Skel");
+                    if (clazz.isAssignableFrom(skel.getClass())) {
+                        ((MarshalInputStream)in).useCodebaseOnly();
+                    }
+                } catch (ClassNotFoundException ignore) { }
+                hash = in.readLong();
+            } catch (Exception readEx) {
+                throw new UnmarshalException("error unmarshalling call header",
+                                             readEx);
             }
-        } catch (ClassNotFoundException ignore) { }
 
-        try {
-            hash = in.readLong();
-        } catch (Exception ioe) {
-            throw new UnmarshalException("error unmarshalling call header", ioe);
+            // if calls are being logged, write out object id and operation
+            logCall(obj, skel.getOperations()[op]);
+            unmarshalCustomCallData(in);
+            // dispatch to skeleton for remote object
+            skel.dispatch(obj, call, op, hash);
+
+        } catch (Throwable e) {
+            logCallException(e);
+
+            ObjectOutput out = call.getResultStream(false);
+            if (e instanceof Error) {
+                e = new ServerError(
+                    "Error occurred in server thread", (Error) e);
+            } else if (e instanceof RemoteException) {
+                e = new ServerException(
+                    "RemoteException occurred in server thread",
+                    (Exception) e);
+            }
+            if (suppressStackTraces) {
+                clearStackTraces(e);
+            }
+            out.writeObject(e);
+        } finally {
+            call.releaseInputStream(); // in case skeleton doesn't
+            call.releaseOutputStream();
         }
-
-        // if calls are being logged, write out object id and operation
-        logCall(obj, skel.getOperations()[op]);
-        unmarshalCustomCallData(in);
-        // dispatch to skeleton for remote object
-        skel.dispatch(obj, call, op, hash);
     }
 
     /**
@@ -600,84 +607,4 @@ public class UnicastServerRef extends UnicastRef
         }
     }
 
-    /**
-     * Unmarshal parameters for the given method of the given instance over
-     * the given marshalinputstream. Perform any necessary checks.
-     */
-    private Object[] unmarshalParameters(Object obj, Method method, MarshalInputStream in)
-    throws IOException, ClassNotFoundException {
-        return (obj instanceof DeserializationChecker) ?
-            unmarshalParametersChecked((DeserializationChecker)obj, method, in) :
-            unmarshalParametersUnchecked(method, in);
-    }
-
-    /**
-     * Unmarshal parameters for the given method of the given instance over
-     * the given marshalinputstream. Do not perform any additional checks.
-     */
-    private Object[] unmarshalParametersUnchecked(Method method, ObjectInput in)
-    throws IOException, ClassNotFoundException {
-        Class<?>[] types = method.getParameterTypes();
-        Object[] params = new Object[types.length];
-        for (int i = 0; i < types.length; i++) {
-            params[i] = unmarshalValue(types[i], in);
-        }
-        return params;
-    }
-
-    /**
-     * Unmarshal parameters for the given method of the given instance over
-     * the given marshalinputstream. Do perform all additional checks.
-     */
-    private Object[] unmarshalParametersChecked(
-        DeserializationChecker checker,
-        Method method, MarshalInputStream in)
-    throws IOException, ClassNotFoundException {
-        int callID = methodCallIDCount.getAndIncrement();
-        MyChecker myChecker = new MyChecker(checker, method, callID);
-        in.setStreamChecker(myChecker);
-        try {
-            Class<?>[] types = method.getParameterTypes();
-            Object[] values = new Object[types.length];
-            for (int i = 0; i < types.length; i++) {
-                myChecker.setIndex(i);
-                values[i] = unmarshalValue(types[i], in);
-            }
-            myChecker.end(callID);
-            return values;
-        } finally {
-            in.setStreamChecker(null);
-        }
-    }
-
-    private static class MyChecker implements MarshalInputStream.StreamChecker {
-        private final DeserializationChecker descriptorCheck;
-        private final Method method;
-        private final int callID;
-        private int parameterIndex;
-
-        MyChecker(DeserializationChecker descriptorCheck, Method method, int callID) {
-            this.descriptorCheck = descriptorCheck;
-            this.method = method;
-            this.callID = callID;
-        }
-
-        @Override
-        public void validateDescriptor(ObjectStreamClass descriptor) {
-            descriptorCheck.check(method, descriptor, parameterIndex, callID);
-        }
-
-        @Override
-        public void checkProxyInterfaceNames(String[] ifaces) {
-            descriptorCheck.checkProxyClass(method, ifaces, parameterIndex, callID);
-        }
-
-        void setIndex(int parameterIndex) {
-            this.parameterIndex = parameterIndex;
-        }
-
-        void end(int callId) {
-            descriptorCheck.end(callId);
-        }
-    }
 }

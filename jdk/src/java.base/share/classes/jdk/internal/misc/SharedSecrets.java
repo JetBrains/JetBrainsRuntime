@@ -69,8 +69,6 @@ public class SharedSecrets {
     private static JavaAWTAccess javaAWTAccess;
     private static JavaAWTFontAccess javaAWTFontAccess;
     private static JavaBeansAccess javaBeansAccess;
-    private static JavaObjectInputStreamAccess javaObjectInputStreamAccess;
-    private static JavaOISAccess javaOISAccess;
     private static JavaIORandomAccessFileAccess javaIORandomAccessFileAccess;
 
     public static JavaUtilJarAccess javaUtilJarAccess() {
@@ -303,28 +301,6 @@ public class SharedSecrets {
 
     public static void setJavaUtilResourceBundleAccess(JavaUtilResourceBundleAccess access) {
         javaUtilResourceBundleAccess = access;
-    }
-
-    public static JavaOISAccess getJavaOISAccess() {
-        if (javaObjectInputStreamAccess == null) {
-            unsafe.ensureClassInitialized(ObjectInputStream.class);
-        }
-        return javaOISAccess;
-    }
-
-    public static void setJavaOISAccess(JavaOISAccess access) {
-        javaOISAccess = access;
-    }
-
-    public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
-        if (javaObjectInputStreamAccess == null) {
-            unsafe.ensureClassInitialized(ObjectInputStream.class);
-        }
-        return javaObjectInputStreamAccess;
-    }
-
-    public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
-        javaObjectInputStreamAccess = access;
     }
 
     public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
