@@ -228,7 +228,14 @@ final class CPlatformResponder {
                                            NSEvent.nsToJavaEventType(eventType);
         }
 
-        char javaChar = NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
+        char javaChar = 0;
+        if (charsIgnoringModifiers != null) {
+            javaChar = charsIgnoringModifiers.charAt(0);
+        } else {
+            String stringWithChar = NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
+            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
+
+        }
         // Some keys may generate a KEY_TYPED, but we can't determine
         // what that character is. That's likely a bug, but for now we
         // just check for CHAR_UNDEFINED.
