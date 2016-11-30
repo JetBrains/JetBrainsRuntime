@@ -54,6 +54,12 @@
 #pragma comment(lib, "d2d1")
 #include "systemScale.h"
 
+#if defined(_MSC_VER) && _MSC_VER >= 1800
+#  define ROUND_TO_INT(num)    ((int) round(num))
+#else
+#  define ROUND_TO_INT(num)    ((int) floor((num) + 0.5))
+#endif
+
 uns_ordered_dither_array img_oda_alpha;
 
 jclass      AwtWin32GraphicsDevice::indexCMClass;
@@ -633,22 +639,22 @@ void AwtWin32GraphicsDevice::SetScale(float sx, float sy)
 
 int AwtWin32GraphicsDevice::ScaleUpX(int x)
 {
-    return (int)ceil(x * scaleX);
+    return ROUND_TO_INT(x * scaleX);
 }
 
 int AwtWin32GraphicsDevice::ScaleUpY(int y)
 {
-    return (int)ceil(y * scaleY);
+    return ROUND_TO_INT(y * scaleY);
 }
 
 int AwtWin32GraphicsDevice::ScaleDownX(int x)
 {
-    return (int)ceil(x / scaleX);
+    return ROUND_TO_INT(x / scaleX);
 }
 
 int AwtWin32GraphicsDevice::ScaleDownY(int y)
 {
-    return (int)ceil(y / scaleY);
+    return ROUND_TO_INT(y / scaleY);
 }
 
 void AwtWin32GraphicsDevice::InitDesktopScales(bool fractionalScaleEnabled)

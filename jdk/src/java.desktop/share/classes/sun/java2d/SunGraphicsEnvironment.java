@@ -361,13 +361,15 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
      * [tav] todo: Temp, until fractional scale is supported well enough.
      *             Called via reflection from the client code.
      */
-    private boolean isUIScaleOn() {
-        boolean scaleOn = false;
+    protected boolean isUIScaleOn() {
+        // [tav] check if native JDK scaled up any of the displays
         for (GraphicsDevice d : getScreenDevices()) {
-            scaleOn = d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
-                      d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1;
+            if (d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
+                d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1) {
+                return true;
+            }
         }
-        return scaleOn;
+        return false;
     }
 
     public static double getDebugScale() {

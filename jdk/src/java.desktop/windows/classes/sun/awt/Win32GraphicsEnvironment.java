@@ -51,6 +51,11 @@ import sun.java2d.windows.WindowsFlags;
 
 public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
 
+    // [tav] the values match the native ones
+    private final static int PROCESS_DPI_UNAWARE            = 0;
+    private final static int PROCESS_SYSTEM_DPI_AWARE       = 1;
+    private final static int PROCESS_PER_MONITOR_DPI_AWARE  = 2;
+
     static final float debugScaleX;
     static final float debugScaleY;
 
@@ -92,13 +97,25 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
     public static void initDisplayWrapper() {
         if (!displayInitialized) {
             displayInitialized = true;
+            setProcessDPIAwareness(isUIScaleEnabled() ? PROCESS_PER_MONITOR_DPI_AWARE : PROCESS_SYSTEM_DPI_AWARE);
             initDisplay();
         }
     }
 
     public Win32GraphicsEnvironment() {
+        // check if UI scale was rejected natively
+        if (isUIScaleEnabled() && !isUIScaleOn()) {
+            // [tav]
+            // Fallback to the previous level for backward compatibility.
+            // This will work since Windows 10 only, as per MSDN:
+            // https://msdn.microsoft.com/en-us/library/windows/desktop/dn302122(v=vs.85).aspx
+            // For Windows 8.1, the following VM option should be used to fallback:
+            // -Dsun.java2d.uiScale.enabled=false
+            setProcessDPIAwareness(PROCESS_SYSTEM_DPI_AWARE);
+        }
     }
 
+    private native static void setProcessDPIAwareness(int level);
     protected native int getNumScreens();
     private native int getDefaultScreen();
 
