@@ -49,6 +49,11 @@ import sun.java2d.windows.WindowsFlags;
 
 public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
 
+    // [tav] the values match the native ones
+    private final static int PROCESS_DPI_UNAWARE            = 0;
+    private final static int PROCESS_SYSTEM_DPI_AWARE       = 1;
+    private final static int PROCESS_PER_MONITOR_DPI_AWARE  = 2;
+
     static final float debugScaleX;
     static final float debugScaleY;
 
@@ -87,6 +92,7 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
     public Win32GraphicsEnvironment() {
     }
 
+    private native static void setProcessDPIAwareness(int level);
     @Override
     protected native int getNumScreens();
     private native int getDefaultScreen();
