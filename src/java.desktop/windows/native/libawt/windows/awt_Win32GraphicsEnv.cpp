@@ -77,6 +77,28 @@ SetProcessDPIAwareProperty()
     }
 }
 
+static void
+SetProcessDPIAwareness(PROCESS_DPI_AWARENESS level)
+{
+    typedef HRESULT(WINAPI SetProcessDpiAwarenessFunc)(int);
+    static HMODULE hLibSHCoreDll = NULL;
+    static SetProcessDpiAwarenessFunc *lpSetProcessDpiAwareness = NULL;
+
+    if (hLibSHCoreDll == NULL) {
+        hLibSHCoreDll = JDK_LoadSystemLibrary("shcore.dll");
+        if (hLibSHCoreDll != NULL) {
+            lpSetProcessDpiAwareness = (SetProcessDpiAwarenessFunc*)GetProcAddress(
+                hLibSHCoreDll, "SetProcessDpiAwareness");
+        }
+        ::FreeLibrary(hLibSHCoreDll);
+        hLibSHCoreDll = NULL;
+    }
+
+    if (lpSetProcessDpiAwareness != NULL) {
+        lpSetProcessDpiAwareness(level);
+    }
+}
+
 #define DWM_COMP_UNDEFINED (~(TRUE|FALSE))
 static int dwmIsCompositionEnabled = DWM_COMP_UNDEFINED;
 
@@ -330,3 +352,14 @@ Java_sun_awt_Win32GraphicsEnvironment_getYResolution(JNIEnv *env, jobject wge)
     CATCH_BAD_ALLOC_RET(0);
 }
 
+
+/*
+ * Class:     sun_awt_Win32GraphicsEnvironment
+ * Method:    setProcessDPIAwareness
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_awt_Win32GraphicsEnvironment_setProcessDPIAwareness
+        (JNIEnv *env, jclass wgeclass, jint level)
+{
+    SetProcessDPIAwareness(static_cast<PROCESS_DPI_AWARENESS>(level));
+}
