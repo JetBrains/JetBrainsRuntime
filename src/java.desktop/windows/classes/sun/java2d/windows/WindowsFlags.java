@@ -184,8 +184,8 @@ public final class WindowsFlags {
             } else {
                 if (oglVerbose) {
                     System.out.println(
-                        "Could not enable OpenGL pipeline " +
-                        "(WGL not available)");
+                            "Could not enable OpenGL pipeline " +
+                                    "(WGL not available)");
                 }
                 oglEnabled = false;
             }
@@ -195,15 +195,25 @@ public final class WindowsFlags {
         if (d3dSet) {
             d3dVerbose = isBooleanPropTrueVerbose("sun.java2d.d3d");
         }
-        String dpiOverride = System.getProperty("sun.java2d.dpiaware");
+        String dpiOverride = System.getProperty("sun.java2d.dpiaware", "true");
         if (dpiOverride != null) {
             setHighDPIAware = dpiOverride.equalsIgnoreCase("true");
         } else {
             String sunLauncherProperty =
-                System.getProperty("sun.java.launcher", "unknown");
+                    System.getProperty("sun.java.launcher", "unknown");
             setHighDPIAware =
-                sunLauncherProperty.equalsIgnoreCase("SUN_STANDARD");
+                    sunLauncherProperty.equalsIgnoreCase("SUN_STANDARD");
         }
+                /*
+                // Output info based on some non-default flags:
+                if (offscreenSharingEnabled) {
+                    System.out.println(
+                        "Warning: offscreenSharing has been enabled. " +
+                        "The use of this capability will change in future " +
+                        "releases and applications that depend on it " +
+                        "may not work correctly");
+                }
+                */
         /*
         System.out.println("WindowsFlags (Java):");
         System.out.println("  ddEnabled: " + ddEnabled + "\n" +
