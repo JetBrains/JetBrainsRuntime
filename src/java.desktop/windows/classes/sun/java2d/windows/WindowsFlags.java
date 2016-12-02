@@ -213,7 +213,7 @@ public class WindowsFlags {
                 }
                 offscreenSharingEnabled =
                     getBooleanProp("sun.java2d.offscreenSharing", false);
-                String dpiOverride = System.getProperty("sun.java2d.dpiaware");
+                String dpiOverride = System.getProperty("sun.java2d.dpiaware", "true");
                 if (dpiOverride != null) {
                     setHighDPIAware = dpiOverride.equalsIgnoreCase("true");
                 } else {
