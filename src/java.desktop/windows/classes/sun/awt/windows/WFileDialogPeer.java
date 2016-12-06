@@ -69,6 +69,11 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
     }
 
     @Override
+    public void updateGC() {
+        // nop
+    }
+
+    @Override
     void create(WComponentPeer parent) {
         this.parent = parent;
     }
