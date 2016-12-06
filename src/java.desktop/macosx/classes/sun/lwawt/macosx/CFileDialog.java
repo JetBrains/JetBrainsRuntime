@@ -31,17 +31,28 @@ import java.awt.peer.*;
 import java.awt.BufferCapabilities.FlipContents;
 import java.awt.event.*;
 import java.awt.image.*;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.util.List;
 import java.io.*;
 import sun.lwawt.LWWindowPeer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import sun.awt.AWTAutoShutdown;
+import sun.awt.CausedFocusEvent.Cause;
 import sun.awt.AWTAccessor;
+import sun.awt.EventQueueItem;
+import sun.awt.SunToolkit;
 import sun.java2d.pipe.Region;
 import sun.lwawt.LWWindowPeer;
 import sun.security.action.GetBooleanAction;
+import sun.util.logging.PlatformLogger;
+
+import javax.swing.*;
 
 class CFileDialog implements FileDialogPeer {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("sun.lwawt.macosx.CFileDialog");
 
     private class Task implements Runnable {
 
@@ -143,7 +154,7 @@ class CFileDialog implements FileDialogPeer {
      * If the dialog doesn't have a file filter return true.
      */
     private boolean queryFilenameFilter(final String inFilename) {
-        boolean ret = false;
+        AtomicBoolean ret = new AtomicBoolean(false);
 
         final FilenameFilter ff = target.getFilenameFilter();
         File fileObj = new File(inFilename);
@@ -152,9 +163,19 @@ class CFileDialog implements FileDialogPeer {
         if (!fileObj.isDirectory()) {
             File directoryObj = new File(fileObj.getParent());
             String nameOnly = fileObj.getName();
-            ret = ff.accept(directoryObj, nameOnly);
+
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    ret.set(ff.accept(directoryObj, nameOnly));
+                });
+            } catch (InterruptedException | InvocationTargetException e) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("Concurrency issues during files filtering: ",e);
+                }
+            }
+
         }
-        return ret;
+        return ret.get();
     }
 
     private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
