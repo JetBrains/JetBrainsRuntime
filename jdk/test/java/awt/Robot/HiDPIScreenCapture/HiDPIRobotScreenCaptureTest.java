@@ -37,7 +37,7 @@ import javax.swing.UIManager;
  * @summary  Windows HiDPI support
  * @author Alexander Scherbatiy
  * @requires (os.family == "windows")
- * @run main/othervm -Dsun.java2d.win.uiScaleX=3 -Dsun.java2d.win.uiScaleY=2
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true -Dsun.java2d.win.uiScaleX=3 -Dsun.java2d.win.uiScaleY=2
  *                    HiDPIRobotScreenCaptureTest
  */
 public class HiDPIRobotScreenCaptureTest {

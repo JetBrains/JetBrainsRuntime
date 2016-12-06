@@ -53,32 +53,44 @@ import javax.swing.UIManager;
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true
  *                   -Dsun.java2d.win.uiScaleX=3 -Dsun.java2d.win.uiScaleY=2
  *                    HiDPIPropertiesWindowsTest UISCALE_3X2
- * @run main/othervm -Dsun.java2d.uiScale=4
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=4
  *                    HiDPIPropertiesWindowsTest UISCALE_4
- * @run main/othervm -Dsun.java2d.uiScale=4
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=4
  *                   -Dsun.java2d.win.uiScaleX=2 -Dsun.java2d.win.uiScaleY=3
  *                    HiDPIPropertiesWindowsTest UISCALE_2X3
- * @run main/othervm -Dsun.java2d.win.uiScaleX=4 -Dsun.java2d.win.uiScaleY=5
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.win.uiScaleX=4 -Dsun.java2d.win.uiScaleY=5
  *                    HiDPIPropertiesWindowsTest UISCALE_4X5
- * @run main/othervm -Dsun.java2d.uiScale=3
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=3
  *                   -Dsun.java2d.win.uiScaleX=0 -Dsun.java2d.win.uiScaleY=0
  *                    HiDPIPropertiesWindowsTest UISCALE_3
- * @run main/othervm -Dsun.java2d.uiScale=4
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=4
  *                   -Dsun.java2d.win.uiScaleX=-7 -Dsun.java2d.win.uiScaleY=-8
  *                    HiDPIPropertiesWindowsTest UISCALE_4
- * @run main/othervm -Dsun.java2d.uiScale=4x
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=4x
  *                    HiDPIPropertiesWindowsTest UISCALE_4
- * @run main/othervm -Dsun.java2d.win.uiScaleX=4x -Dsun.java2d.win.uiScaleY=5x
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.win.uiScaleX=4x -Dsun.java2d.win.uiScaleY=5x
  *                    HiDPIPropertiesWindowsTest UISCALE_4X5
- * @run main/othervm -Dsun.java2d.uiScale=384dpi
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=384dpi
  *                    HiDPIPropertiesWindowsTest UISCALE_4
- * @run main/othervm -Dsun.java2d.uiScale=300%
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.uiScale=300%
  *                    HiDPIPropertiesWindowsTest UISCALE_3
- * @run main/othervm -Dsun.java2d.win.uiScaleX=400% -Dsun.java2d.win.uiScaleY=500%
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.win.uiScaleX=400% -Dsun.java2d.win.uiScaleY=500%
  *                    HiDPIPropertiesWindowsTest UISCALE_4X5
- * @run main/othervm -Dsun.java2d.win.uiScaleX=288dpi -Dsun.java2d.win.uiScaleY=192dpi
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.win.uiScaleX=288dpi -Dsun.java2d.win.uiScaleY=192dpi
  *                    HiDPIPropertiesWindowsTest UISCALE_3X2
- * @run main/othervm -Dsun.java2d.win.uiScaleX=200% -Dsun.java2d.win.uiScaleY=288dpi
+ * @run main/othervm -Dsun.java2d.uiScale.enabled=true
+ *                   -Dsun.java2d.win.uiScaleX=200% -Dsun.java2d.win.uiScaleY=288dpi
  *                    HiDPIPropertiesWindowsTest UISCALE_2X3
  */
 public class HiDPIPropertiesWindowsTest {

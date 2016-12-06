@@ -24,9 +24,11 @@
 import java.awt.Frame;
 import java.awt.Rectangle;
 import java.awt.Robot;
+import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import sun.awt.SunToolkit;
 import javax.swing.UIManager;
 
 /* @test
@@ -34,7 +36,7 @@ import javax.swing.UIManager;
  * @summary  Windows HiDPI support
  * @author Alexander Scherbatiy
  * @requires (os.family == "windows")
- * @run main/othervm -Dsun.java2d.win.uiScale=2 HiDPIRobotMouseClick
+ * @run main/othervm -Dsun.java2d.win.uiScale.enabled=true -Dsun.java2d.win.uiScale=2 HiDPIRobotMouseClick
  */
 public class HiDPIRobotMouseClick {
 
@@ -78,7 +80,7 @@ public class HiDPIRobotMouseClick {
         robot.mouseMove(x, y);
         robot.mousePress(InputEvent.BUTTON1_MASK);
         robot.mouseRelease(InputEvent.BUTTON1_MASK);
-        robot.waitForIdle();
+        ((SunToolkit)Toolkit.getDefaultToolkit()).realSync();
 
         if (x != mouseX || y != mouseY) {
             throw new RuntimeException("Wrong mouse click point!");
