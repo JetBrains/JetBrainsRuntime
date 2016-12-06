@@ -48,6 +48,11 @@ class WPrintDialogPeer extends WWindowPeer implements DialogPeer {
     }
 
     @Override
+    public void updateGC() {
+        // nop
+    }
+
+    @Override
     void create(WComponentPeer parent) {
         this.parent = parent;
     }
