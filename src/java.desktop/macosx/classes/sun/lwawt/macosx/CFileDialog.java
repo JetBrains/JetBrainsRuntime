@@ -158,7 +158,7 @@ class CFileDialog implements FileDialogPeer {
         if (!fileObj.isDirectory()) {
             File directoryObj = new File(fileObj.getParent());
             String nameOnly = fileObj.getName();
-            final Semaphore filesFilterSemaphore = new Semaphore(1);
+            final Semaphore filesFilterSemaphore = new Semaphore(0);
 
             new Thread("File filtering thread") {
                 @Override
