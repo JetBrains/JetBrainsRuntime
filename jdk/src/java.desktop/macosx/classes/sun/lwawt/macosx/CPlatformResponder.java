@@ -186,8 +186,8 @@ final class CPlatformResponder {
                         short keyCode, boolean needsKeyTyped, boolean needsKeyReleased)
     {
         boolean isFlagsChangedEvent =
-            isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
-                              (eventType == CocoaConstants.NSFlagsChanged);
+                isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
+                        (eventType == CocoaConstants.NSFlagsChanged);
 
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
@@ -210,7 +210,8 @@ final class CPlatformResponder {
                 ? chars.charAt(0)
                 : KeyEvent.CHAR_UNDEFINED;
 
-        int nonShiftModifiers = InputEvent.META_DOWN_MASK | InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.ALT_GRAPH_DOWN_MASK ;
+        int nonShiftModifiers = InputEvent.META_DOWN_MASK
+                | InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.ALT_GRAPH_DOWN_MASK ;
 
         boolean doNothonorShift = ((jmodifiers & nonShiftModifiers) == nonShiftModifiers);
 
@@ -230,38 +231,43 @@ final class CPlatformResponder {
 
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
-            int[] in = new int[] {(jmodifiers == 0) ? charCandidate : charIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
-            int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
+        int[] in = new int[] {
+                (jmodifiers == 0) ? charCandidate : charIgnoringModifiers, isDeadChar ? 1 : 0,
+                modifierFlags,
+                keyCode
+        };
 
-            postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
+        int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
+
+        postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
 
 
-            if(isDeadChar){
-                charCandidate = (char) out[2];
-                if(charCandidate == 0){
-                    return;
-                }
+        if(isDeadChar){
+            charCandidate = (char) out[2];
+            if(charCandidate == 0){
+                return;
             }
+        }
 
-            // If Pinyin Simplified input method is selected, CAPS_LOCK key is supposed to switch
-            // input to la tin letters.
-            // It is necessary to use charIgnoringModifiers instead of charCandidate for event
-            // generation in such case to avoid uppercase letters in text components.
-            LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
-            if (lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
-                    Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
-                charCandidate = charIgnoringModifiers;
-            }
+        // If Pinyin Simplified input method is selected, CAPS_LOCK key is supposed to switch
+        // input to la tin letters.
+        // It is necessary to use charIgnoringModifiers instead of charCandidate for event
+        // generation in such case to avoid uppercase letters in text components.
+        LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
+        if (lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
+                Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
+            charCandidate = charIgnoringModifiers;
+        }
 
-            jkeyCode = out[0];
-            jkeyLocation = out[1];
-            jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
-                                           NSEvent.nsToJavaEventType(eventType);
+        jkeyCode = out[0];
+        jkeyLocation = out[1];
+        jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
+                NSEvent.nsToJavaEventType(eventType);
 
         char javaChar = 0;
         if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
-                String stringWithChar = NSEvent.nsToJavaChar(charsIgnoringModifiers.charAt(0), modifierFlags);
-                javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
+            String stringWithChar = NSEvent.nsToJavaChar(charsIgnoringModifiers.charAt(0), modifierFlags);
+            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
         } else {
             String stringWithChar = NSEvent.nsToJavaChar(charCandidate, modifierFlags);
             javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
