@@ -33,6 +33,35 @@
 #import <sys/time.h>
 #import <Carbon/Carbon.h>
 
+@implementation NSEvent (NSEventExtension)
+- (NSString *)charactersIgnoringModifiersAndShift {
+
+        TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+        CFDataRef layoutData = TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
+        const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+
+        UInt32 deadKeyState;
+
+        UInt32 lengthOfBuffer = 4;
+        UniChar stringWithChars[lengthOfBuffer];
+        UniCharCount actualLength;
+
+        UCKeyTranslate(keyboardLayout,
+                       [self keyCode],
+                       kUCKeyActionDown,
+                       0,
+                       LMGetKbdType(),
+                       0,
+                       // ignore for now
+                       &deadKeyState,
+                       lengthOfBuffer,
+                       &actualLength,
+                       stringWithChars);
+        CFRelease(currentKeyboard);
+        return [NSString stringWithCharacters:stringWithChars length:actualLength];
+}
+@end
+
 /*
  * Table to map typed characters to their Java virtual key equivalent and back.
  * We use the incoming unichar (ignoring all modifiers) and try to figure out
@@ -440,38 +469,39 @@ static NSDictionary* getDiacriticUnicharToVkCodeDictionary() {
     dispatch_once(&onceToken, ^{
          diacriticUnicharToVkCodeDictionary =
              [NSDictionary dictionaryWithObjectsAndKeys:
-                  @"à", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_GRAVE],
-                  @"á", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_ACUTE],
-                  @"â", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_CIRCUMFLEX],
-                  @"ã", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_TILDE],
-                  @"ä", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_DIAERESIS],
-                  @"å", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_RING_ABOVE],
-                  @"æ", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_AE],
-                  @"ç", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_C_WITH_CEDILLA],
-                  @"è", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_GRAVE],
-                  @"é", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_ACUTE],
-                  @"ê", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_CIRCUMFLEX],
-                  @"ë", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_DIAERESIS],
-                  @"ì", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_GRAVE],
-                  @"í", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_ACUTE],
-                  @"î", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_CIRCUMFLEX],
-                  @"ï", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_DIAERESIS],
-                  @"ð", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ETH],
-                  @"ñ", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_N_WITH_TILDE],
-                  @"ò", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_GRAVE],
-                  @"ó", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_ACUTE],
-                  @"ô", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_CIRCUMFLEX],
-                  @"õ", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_TILDE],
-                  @"ö", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_DIAERESIS],
-                  @"÷", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DIVISION_SIGN],
-                  @"ø", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_SLASH],
-                  @"ù", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_GRAVE],
-                  @"ú", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_ACUTE],
-                  @"û", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_CIRCUMFLEX],
-                  @"ü", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_DIAERESIS],
-                  @"ý", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_ACUTE],
-                  @"þ", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_THORN],
-                  @"ÿ", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_DIAERESIS]
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_GRAVE], @"à",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_ACUTE], @"á",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_CIRCUMFLEX], @"â",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_TILDE], @"ã",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_DIAERESIS], @"ä",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A_WITH_RING_ABOVE], @"å",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_AE], @"æ",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_C_WITH_CEDILLA], @"ç",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_GRAVE], @"è",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_ACUTE], @"é",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_CIRCUMFLEX], @"ê",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E_WITH_DIAERESIS], @"ë",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_GRAVE], @"ì",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_ACUTE], @"í",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_CIRCUMFLEX], @"î",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I_WITH_DIAERESIS], @"ï",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ETH], @"ð",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_N_WITH_TILDE], @"ñ",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_GRAVE], @"ò",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_ACUTE], @"ó",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_CIRCUMFLEX], @"ô",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_TILDE], @"õ",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_DIAERESIS], @"ö",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DIVISION_SIGN], @"÷",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O_WITH_SLASH], @"ø",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_GRAVE], @"ù",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_ACUTE], @"ú",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_CIRCUMFLEX], @"û",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U_WITH_DIAERESIS], @"ü",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_ACUTE], @"ý",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_THORN], @"þ",
+                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y_WITH_DIAERESIS], @"ÿ",
+                  nil
              ];
              // This is ok to retain a singleton object
              [diacriticUnicharToVkCodeDictionary retain];
@@ -487,35 +517,33 @@ static NSDictionary* getUnicharToVkCodeDictionary() {
     dispatch_once(&onceToken, ^{
          unicharToVkCodeDictionary =
              [NSDictionary dictionaryWithObjectsAndKeys:
-                 @"`" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_QUOTE],
-                 @"1" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_1],
-                 @"2" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_2],
-                 @"3" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_3],
-                 @"4" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_4],
-                 @"5" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_5],
-                 @"6" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_6],
-                 @"7" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_7],
-                 @"8" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_8],
-                 @"9" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_9],
-                 @"0" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_0],
-                 @"=" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS],
-                 @"-" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MINUS],
-                 @"]" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLOSE_BRACKET],
-                 @"[" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET],
-                 @"\'", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE],
-                 @";" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON],
-                 @"\\", [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH],
-                 @"," , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA],
-                 @"/" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH],
-                 @"." , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PERIOD],
-                 @"." , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DECIMAL],
-                 @"*" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MULTIPLY],
-                 @"+" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ADD],
-                 @"/" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DIVIDE],
-                 @"-" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SUBTRACT],
-                 @"=" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS],
-                 @"," , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA],
-                 @"#" , [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMBER_SIGN]
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_QUOTE], @"`",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_1], @"1",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_2], @"2",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_3], @"3",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_4], @"4",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_5], @"5",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_6], @"6",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_7], @"7",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_8], @"8",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_9], @"9",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_0], @"0",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS], @"=",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MINUS], @"-",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLOSE_BRACKET], @"]",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET], @"[",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE], @"\'",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON], @";",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH], @"\\",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH], @"/",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PERIOD], @".",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MULTIPLY], @"*",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ADD], @"+",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS], @"=",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMBER_SIGN], @"#",
+                 nil
              ];
              // This is ok to retain a singleton object
              [unicharToVkCodeDictionary retain];
@@ -524,7 +552,7 @@ static NSDictionary* getUnicharToVkCodeDictionary() {
     return unicharToVkCodeDictionary;
 }
 
-/*
+/*§
  * This is the function that uses the table above to take incoming
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
@@ -538,6 +566,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
     NSInteger offset;
 
     if (isDeadChar) {
+        //NSLog(@"This is a dead char");
         unichar testDeadChar = NsGetDeadKeyChar(key);
         const struct CharToVKEntry *map;
         for (map = charToDeadVKTable; map->c != 0; ++map) {
@@ -553,26 +582,33 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         // If we got here, we keep looking for a normal key.
     }
 
+
+
     if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+        //NSLog(@"This is an alphabetic character");
         // key is an alphabetic character
         unichar lower;
         lower = tolower(ch);
         offset = lower - 'a';
+        //NSLog(@"letter offset: %d", offset);
         if (offset >= 0 && offset <= 25) {
             // some chars in letter set are NOT actually A-Z characters?!
             // skip them...
             *postsTyped = YES;
             // do quick conversion
             *keyCode = java_awt_event_KeyEvent_VK_A + offset;
+            //NSLog(@"A code is  %d", java_awt_event_KeyEvent_VK_A);
+            //NSLog(@"so key code is: %d", *keyCode);
             *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
             return;
         }
     }
 
-    if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
+  if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
         // key is a digit
         offset = ch - '0';
         // make sure in range for decimal digits
+        //NSLog(@"This is a decimal digit");
         if (offset >= 0 && offset <= 9)    {
             jboolean numpad = ((flags & NSNumericPadKeyMask) &&
                                (key > 81 && key < 93));
@@ -588,13 +624,13 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-    if (key < size) {
-
         NSDictionary* unicharToVkCodeDictionary = getUnicharToVkCodeDictionary();
         if ([[NSCharacterSet punctuationCharacterSet] characterIsMember:ch] ||
              [[NSCharacterSet symbolCharacterSet] characterIsMember:ch])
         {
+             //NSLog(@"This is a punctuation char");
              *keyCode = [[unicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]] intValue];
+             //NSLog(@"key code %d for char %@", *keyCode,[NSString stringWithFormat:@"%C",ch]);
              // we cannot find key location from a char, so let's use key code
              *postsTyped = YES;
              *keyLocation = keyTable[key].javaKeyLocation;
@@ -604,6 +640,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         NSDictionary* diacriticUnicharToVkCodeDictionary = getDiacriticUnicharToVkCodeDictionary();
         NSNumber * jkc = [diacriticUnicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]];
         if (jkc != nil) {
+            //NSLog(@"This is a Diacritic Unichar");
             *keyCode = [jkc intValue];
             // we cannot find key location from a char, so let's use key code
             *postsTyped = YES;
@@ -611,17 +648,11 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
             return;
         }
 
+
         *postsTyped = keyTable[key].postsTyped;
         *keyCode = keyTable[key].javaKeyCode;
         *keyLocation = keyTable[key].javaKeyLocation;
 
-    } else {
-        // Should we report this? This means we've got a keyboard
-        // we don't know about...
-        *postsTyped = NO;
-        *keyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
-        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
-    }
 }
 
 /*
@@ -895,10 +926,9 @@ Java_sun_lwawt_macosx_NSEvent_nsToJavaChar
 
 JNF_COCOA_ENTER(env);
 
-    if ([[NSCharacterSet alphanumericCharacterSet]  characterIsMember:nsChar]) {
-        NSString * nsStr = [NSString stringWithFormat: @"%C", nsChar];
-        charAsString = JNFNSToJavaString(env,  nsStr);
-    }
+    NSString * nsStr = [NSString stringWithFormat: @"%C", nsChar];
+    charAsString = JNFNSToJavaString(env,  nsStr);
+
 
 JNF_COCOA_EXIT(env);
 

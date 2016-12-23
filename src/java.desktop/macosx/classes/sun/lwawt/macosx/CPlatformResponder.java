@@ -162,14 +162,35 @@ final class CPlatformResponder {
                                             -roundDelta, -delta, null);
     }
 
+    private void handleFlagChangedEvent(int modifierFlags, short keyCode) {
+        int[] in = new int[] {modifierFlags, keyCode};
+        int[] out = new int[3]; // [jkeyCode, jkeyLocation, jkeyType]
+
+        NSEvent.nsKeyModifiersToJavaKeyInfo(in, out);
+
+        int jkeyCode = out[0];
+        int jkeyLocation = out[1];
+        int jeventType = out[2];
+
+        int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
+        long when = System.currentTimeMillis();
+
+        if (jeventType == KeyEvent.KEY_PRESSED) {
+            lastKeyPressCode = jkeyCode;
+        }
+        eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
+                jkeyCode, KeyEvent.CHAR_UNDEFINED, jkeyLocation);
+    }
+
     /**
      * Handles key events.
      */
-    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers,
-                        short keyCode, boolean needsKeyTyped, boolean needsKeyReleased) {
+    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers, String charsIgnoringModifiersAndShift,
+                        short keyCode, boolean needsKeyTyped, boolean needsKeyReleased)
+    {
         boolean isFlagsChangedEvent =
-            isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
-                              (eventType == CocoaConstants.NSFlagsChanged);
+                isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
+                        (eventType == CocoaConstants.NSFlagsChanged);
 
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
@@ -177,74 +198,84 @@ final class CPlatformResponder {
         boolean postsTyped = false;
         boolean spaceKeyTyped = false;
 
-        char testChar = KeyEvent.CHAR_UNDEFINED;
-        boolean isDeadChar = (chars!= null && chars.length() == 0);
 
         if (isFlagsChangedEvent) {
-            int[] in = new int[] {modifierFlags, keyCode};
-            int[] out = new int[3]; // [jkeyCode, jkeyLocation, jkeyType]
-
-            NSEvent.nsKeyModifiersToJavaKeyInfo(in, out);
-
-            jkeyCode = out[0];
-            jkeyLocation = out[1];
-            jeventType = out[2];
-        } else {
-            if (chars != null && chars.length() > 0) {
-                testChar = chars.charAt(0);
-            }
-
-            char testCharIgnoringModifiers = charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0 ?
-                    charsIgnoringModifiers.charAt(0) : KeyEvent.CHAR_UNDEFINED;
-
-            int[] in = new int[] {testCharIgnoringModifiers, isDeadChar ? 1 : 0, modifierFlags, keyCode};
-            int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
-
-            postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
-            if (!postsTyped) {
-                testChar = KeyEvent.CHAR_UNDEFINED;
-            }
-
-            if(isDeadChar){
-                testChar = (char) out[2];
-                if(testChar == 0){
-                    return;
-                }
-            }
-
-            // If Pinyin Simplified input method is selected, CAPS_LOCK key is supposed to switch
-            // input to latin letters.
-            // It is necessary to use testCharIgnoringModifiers instead of testChar for event
-            // generation in such case to avoid uppercase letters in text components.
-            LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
-            if (lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
-                    Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
-                testChar = testCharIgnoringModifiers;
-            }
-
-            jkeyCode = out[0];
-            jkeyLocation = out[1];
-            jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
-                                           NSEvent.nsToJavaEventType(eventType);
+            handleFlagChangedEvent(modifierFlags, keyCode);
+            return;
         }
-
-        char javaChar = 0;
-        if (charsIgnoringModifiers != null) {
-            javaChar = charsIgnoringModifiers.charAt(0);
-        } else {
-            String stringWithChar = NSEvent.nsToJavaChar(testChar, modifierFlags, spaceKeyTyped);
-            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
-
-        }
-        // Some keys may generate a KEY_TYPED, but we can't determine
-        // what that character is. That's likely a bug, but for now we
-        // just check for CHAR_UNDEFINED.
-        if (javaChar == KeyEvent.CHAR_UNDEFINED) {
-            postsTyped = false;
-        }
-
 
         int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
+
+        boolean isDeadChar = (chars!= null && chars.length() == 0);
+
+        // We use this char to find java keyCode
+        char charCandidate = (chars != null && chars.length() > 0)
+                ? chars.charAt(0)
+                : KeyEvent.CHAR_UNDEFINED;
+
+        int nonShiftModifiers = InputEvent.META_DOWN_MASK
+                | InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.ALT_GRAPH_DOWN_MASK ;
+
+        boolean doNothonorShift = ((jmodifiers & nonShiftModifiers) == nonShiftModifiers);
+
+        char charIgnoringModifiers = KeyEvent.CHAR_UNDEFINED;
+
+        if (doNothonorShift) {
+            // We use this char to find a character that is printed depending on pressing modifiers
+            charIgnoringModifiers = (charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0)
+                    ? charsIgnoringModifiers.charAt(0)
+                    : KeyEvent.CHAR_UNDEFINED;
+        } else {
+            // We use this char to find a character that is printed depending on pressing modifiers
+            charIgnoringModifiers = (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0)
+                    ? charsIgnoringModifiersAndShift.charAt(0)
+                    : KeyEvent.CHAR_UNDEFINED;
+        }
+
+        // We use char candidate if modifiers are not used
+        // otherwise, we use char ignoring modifiers
+        int[] in = new int[] {
+                (jmodifiers == 0) ? charCandidate : charIgnoringModifiers, isDeadChar ? 1 : 0,
+                modifierFlags,
+                keyCode
+        };
+
+        int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
+
+        postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
+
+
+        if(isDeadChar){
+            charCandidate = (char) out[2];
+            if(charCandidate == 0){
+                return;
+            }
+        }
+
+        // If Pinyin Simplified input method is selected, CAPS_LOCK key is supposed to switch
+        // input to la tin letters.
+        // It is necessary to use charIgnoringModifiers instead of charCandidate for event
+        // generation in such case to avoid uppercase letters in text components.
+        LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
+        if (lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
+                Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
+            charCandidate = charIgnoringModifiers;
+        }
+
+        jkeyCode = out[0];
+        jkeyLocation = out[1];
+        jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
+                NSEvent.nsToJavaEventType(eventType);
+
+        char javaChar = 0;
+        if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
+            String stringWithChar = NSEvent.nsToJavaChar(charsIgnoringModifiers.charAt(0), modifierFlags, spaceKeyTyped);
+            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
+        } else {
+            String stringWithChar = NSEvent.nsToJavaChar(charCandidate, modifierFlags, spaceKeyTyped);
+            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
+        }
+
         long when = System.currentTimeMillis();
 
         if (jeventType == KeyEvent.KEY_PRESSED) {
@@ -269,8 +300,16 @@ final class CPlatformResponder {
             if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
+
+            if (chars != null ) {
+                String stringWithChar = NSEvent.nsToJavaChar(chars.charAt(0), modifierFlags, spaceKeyTyped);
+                javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
+            } else {
+                javaChar = KeyEvent.CHAR_UNDEFINED;
+            }
+
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    KeyEvent.VK_UNDEFINED, javaChar,
+                    jkeyCode, javaChar,
                     KeyEvent.KEY_LOCATION_UNKNOWN);
             //If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {

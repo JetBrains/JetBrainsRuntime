@@ -1245,17 +1245,7 @@ public class KeyEvent extends InputEvent {
     public KeyEvent(Component source, int id, long when, int modifiers,
                     int keyCode, char keyChar, int keyLocation) {
         super(source, id, when, modifiers);
-        if (id == KEY_TYPED) {
-            if (keyChar == CHAR_UNDEFINED) {
-                throw new IllegalArgumentException("invalid keyChar");
-            }
-            if (keyCode != VK_UNDEFINED) {
-                throw new IllegalArgumentException("invalid keyCode");
-            }
-            if (keyLocation != KEY_LOCATION_UNKNOWN) {
-                throw new IllegalArgumentException("invalid keyLocation");
-            }
-        }
+
 
         this.keyCode = keyCode;
         this.keyChar = keyChar;
