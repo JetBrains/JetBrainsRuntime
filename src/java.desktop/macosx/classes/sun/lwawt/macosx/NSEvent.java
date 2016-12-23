@@ -38,6 +38,8 @@ final class NSEvent {
     static final int SCROLL_PHASE_CONTINUED = 3;
     static final int SCROLL_PHASE_MOMENTUM_BEGAN = 4;
     static final int SCROLL_PHASE_ENDED = 5;
+    private boolean hasDeadKey;
+    private int deadKeyCode;
 
     private int type;
     private int modifierFlags;
@@ -57,14 +59,32 @@ final class NSEvent {
     private short keyCode;
     private String characters;
     private String charactersIgnoringModifiers;
+    private String oldCharacters;
+    private String oldCharactersIgnoringModifiers;
+    private String charactersIgnoringModifiersAndShift;
+
+    public boolean isHasDeadKey() {
+        return hasDeadKey;
+    }
+
+    public int getDeadKeyCode() {
+        return deadKeyCode;
+    }
 
     // Called from native
-    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers) {
+    NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers,
+            String charactersIgnoringModifiersAndShift, boolean hasDeadKey, int deadKeyCode,
+            String oldCharacters, String oldCharactersIgnoringModifiers) {
         this.type = type;
         this.modifierFlags = modifierFlags;
         this.keyCode = keyCode;
         this.characters = characters;
         this.charactersIgnoringModifiers = charactersIgnoringModifiers;
+        this.charactersIgnoringModifiersAndShift = charactersIgnoringModifiersAndShift;
+        this.hasDeadKey = hasDeadKey;
+        this.deadKeyCode = deadKeyCode;
+        this.oldCharacters = oldCharacters;
+        this.oldCharactersIgnoringModifiers = oldCharactersIgnoringModifiers;
     }
 
     // Called from native
@@ -136,8 +156,18 @@ final class NSEvent {
         return charactersIgnoringModifiers;
     }
 
+    String getCharactersIgnoringModifiersAndShift() {return charactersIgnoringModifiersAndShift;}
+
     String getCharacters() {
         return characters;
+    }
+
+    String getOldCharactersIgnoringModifiers() {
+        return oldCharactersIgnoringModifiers;
+    }
+
+    String getOldCharacters() {
+        return oldCharacters;
     }
 
     @Override
@@ -145,7 +175,7 @@ final class NSEvent {
         return "NSEvent[" + getType() + " ," + getModifierFlags() + " ,"
                 + getClickCount() + " ," + getButtonNumber() + " ," + getX() + " ,"
                 + getY() + " ," + getAbsX() + " ," + getAbsY()+ " ," + getKeyCode() + " ,"
-                + getCharacters() + " ," + getCharactersIgnoringModifiers() + "]";
+                + getCharacters() + " ," + getCharactersIgnoringModifiers() + " ," + getCharactersIgnoringModifiersAndShift() + "]";
     }
 
     /*
