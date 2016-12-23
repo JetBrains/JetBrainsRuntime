@@ -30,6 +30,7 @@ import com.apple.concurrent.Dispatch;
 import java.awt.Rectangle;
 import java.awt.geom.*;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class CStrike extends PhysicalStrike {
 
@@ -357,7 +358,7 @@ public final class CStrike extends PhysicalStrike {
         private static final int SECOND_LAYER_SIZE = 16384; // 16384 = 128x128
 
         // rdar://problem/5204197
-        private volatile    boolean disposed = false;
+        private final AtomicBoolean disposed = new AtomicBoolean(false);
 
         private final long[] firstLayerCache;
         private SparseBitShiftingTwoLayerArray secondLayerCache;
@@ -425,37 +426,32 @@ public final class CStrike extends PhysicalStrike {
                 // Note that sun.font.Font2D.getStrike() actively disposes
                 // cleared strikeRef.  We need to check the disposed flag to
                 // prevent double frees of native resources.
-                if (disposed) {
-                    return;
-                }
+                if (disposed.compareAndSet(false, true)) {
 
-                super.dispose();
+                    super.dispose();
 
-                // clean out the first array
-                disposeLongArray(firstLayerCache);
+                    // clean out the first array
+                    disposeLongArray(firstLayerCache);
 
-                // clean out the two layer arrays
-                if (secondLayerCache != null) {
-                    final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
-                    for (final long[] longArray : secondLayerLongArrayArray) {
-                        if (longArray != null) disposeLongArray(longArray);
+                    // clean out the two layer arrays
+                    if (secondLayerCache != null) {
+                        final long[][] secondLayerLongArrayArray = secondLayerCache.cache;
+                        for (final long[] longArray : secondLayerLongArrayArray) {
+                            if (longArray != null) disposeLongArray(longArray);
+                        }
                     }
-                }
 
-                // clean up everyone else
-                if (generalCache != null) {
-                    for (Long aLong : generalCache.values()) {
-                        final long longValue = aLong;
-                        if (longValue != -1 && longValue != 0) {
-                            removeGlyphInfoFromCache(longValue);
-                            StrikeCache.freeLongPointer(longValue);
+                    // clean up everyone else
+                    if (generalCache != null) {
+                        for (Long aLong : generalCache.values()) {
+                            final long longValue = aLong;
+                            if (longValue != -1 && longValue != 0) {
+                                removeGlyphInfoFromCache(longValue);
+                                StrikeCache.freeLongPointer(longValue);
+                            }
                         }
                     }
                 }
-
-                // rdar://problem/5204197
-                // Finally, set the flag.
-                disposed = true;
             };
 
             // Move disposal code to AppKit thread in order to avoid the
