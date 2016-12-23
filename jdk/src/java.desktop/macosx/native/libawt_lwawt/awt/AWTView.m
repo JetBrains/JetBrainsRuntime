@@ -461,33 +461,35 @@ static BOOL shouldUsePressAndHold() {
 
     jstring characters = NULL;
     jstring charactersIgnoringModifiers = NULL;
+    jstring charactersIgnoringModifiersAndShift = NULL;
     if ([event type] != NSFlagsChanged) {
         characters = JNFNSToJavaString(env, [event characters]);
         charactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
+        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, [event charactersIgnoringModifiersAndShift]);
     }
 
     static JNF_CLASS_CACHE(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;)V");
-    jobject jEvent = JNFNewObject(env, jctor_NSEvent,
+    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    jobject jevent = JNFNewObject(env, jctor_NSEvent,
                                   [event type],
                                   [event modifierFlags],
                                   [event keyCode],
                                   characters,
-                                  charactersIgnoringModifiers);
-    CHECK_NULL(jEvent);
+                                  charactersIgnoringModifiers,
+                                  charactersIgnoringModifiersAndShift);
 
     static JNF_CLASS_CACHE(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
     static JNF_MEMBER_CACHE(jm_deliverKeyEvent, jc_PlatformView,
                             "deliverKeyEvent", "(Lsun/lwawt/macosx/NSEvent;)V");
     jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
     if (!(*env)->IsSameObject(env, jlocal, NULL)) {
-        JNFCallVoidMethod(env, jlocal, jm_deliverKeyEvent, jEvent);
+        JNFCallVoidMethod(env, jlocal, jm_deliverKeyEvent, jevent);
         (*env)->DeleteLocalRef(env, jlocal);
     }
     if (characters != NULL) {
         (*env)->DeleteLocalRef(env, characters);
     }
-    (*env)->DeleteLocalRef(env, jEvent);
+    (*env)->DeleteLocalRef(env, jevent);
 }
 
 -(void) deliverResize: (NSRect) rect {
