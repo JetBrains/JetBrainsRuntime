@@ -213,6 +213,7 @@ struct CharToVKEntry {
 static const struct CharToVKEntry charToDeadVKTable[] = {
     {0x0060, java_awt_event_KeyEvent_VK_DEAD_GRAVE},
     {0x00B4, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
+    {0xFFFF, java_awt_event_KeyEvent_VK_DEAD_ACUTE},
     {0x0384, java_awt_event_KeyEvent_VK_DEAD_ACUTE}, // Unicode "GREEK TONOS" -- Greek keyboard, semicolon key
     {0x005E, java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX},
     {0x007E, java_awt_event_KeyEvent_VK_DEAD_TILDE},
@@ -430,13 +431,74 @@ static unichar NsGetDeadKeyChar(unsigned short keyCode)
     return 0;
 }
 
+static const int UNICODE_OFFSET = 0x01000000;
+
+static BOOL isLatinUnicode(unichar ch) {
+    // Latin-1 Supplement 0x0080 - 0x00FF
+    // Latin Extended-A   0x0100 - 0x017F
+    // Latin Extended-B   0x0180 - 0x024F
+    return 0x0080 <= ch && ch <= 0x024F;
+}
+
+static NSDictionary* getUnicharToVkCodeDictionary() {
+
+    static NSDictionary* unicharToVkCodeDictionary = nil;
+    static dispatch_once_t onceToken;
+
+    dispatch_once(&onceToken, ^{
+         unicharToVkCodeDictionary =
+             [NSDictionary dictionaryWithObjectsAndKeys:
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_QUOTE], @"`",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_1], @"1",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_2], @"2",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_3], @"3",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_4], @"4",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_5], @"5",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_6], @"6",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_7], @"7",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_8], @"8",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_9], @"9",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_0], @"0",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS], @"=",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MINUS], @"-",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLOSE_BRACKET], @"]",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET], @"[",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE], @"\'",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON], @";",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COLON], @":",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH], @"\\",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH], @"/",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PERIOD], @".",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ASTERISK], @"*",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PLUS], @"+",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMBER_SIGN], @"#",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DOLLAR], @"$",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CIRCUMFLEX], @"^",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LEFT_PARENTHESIS], @"(",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_RIGHT_PARENTHESIS], @")",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_UNDERSCORE], @"_",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_AMPERSAND], @"&",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTEDBL], @"\"",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EXCLAMATION_MARK], @"!",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LESS], @"<",
+                 nil
+             ];
+             // This is ok to retain a singleton object
+             [unicharToVkCodeDictionary retain];
+    });
+
+    return unicharToVkCodeDictionary;
+}
+
 /*
  * This is the function that uses the table above to take incoming
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
 static void
 NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
-                           NSUInteger flags, unsigned short key,
+                           NSUInteger flags, unsigned short key, BOOL useNationalLayouts,
                            jint *keyCode, jint *keyLocation, BOOL *postsTyped,
                            unichar *deadChar)
 {
@@ -502,6 +564,41 @@ return;
             return;
         }
     }
+
+    if (useNationalLayouts) {
+        if (keyTable[key].javaKeyLocation == java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD) {
+            *postsTyped = keyTable[key].postsTyped;
+            *keyCode = keyTable[key].javaKeyCode;
+            *keyLocation = keyTable[key].javaKeyLocation;
+            return;
+        }
+
+        NSDictionary* unicharToVkCodeDictionary = getUnicharToVkCodeDictionary();
+        if ([[NSCharacterSet punctuationCharacterSet] characterIsMember:ch] ||
+             [[NSCharacterSet symbolCharacterSet] characterIsMember:ch])
+        {
+            // punctuationCharacterSet and symbolCharacterSet are too big
+            // to store them all in UnicharToVkCodeDictionary
+            int tmpKeyCode = [[unicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]] intValue];
+            if (tmpKeyCode != 0) {
+                *keyCode = tmpKeyCode;
+                // we cannot find key location from a char, so let's use key code
+                *postsTyped = YES;
+                *keyLocation = keyTable[key].javaKeyLocation;
+                return;
+            }
+        }
+
+        // Latin-1 suplement & Latin Extended A & B
+        if (isLatinUnicode(ch)) {
+            *keyCode = ((int) ch) + UNICODE_OFFSET;
+            // we cannot find key location from a char, so let's use key code
+            *postsTyped = YES;
+            *keyLocation = keyTable[key].javaKeyLocation;
+            return;
+        }
+    }
+
 
     if (key < size) {
         *postsTyped = keyTable[key].postsTyped;
@@ -702,11 +799,12 @@ JNI_COCOA_ENTER(env);
     jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
     CHECK_NULL_RETURN(data, postsTyped);
 
-    // in  = [testChar, testDeadChar, modifierFlags, keyCode]
+    // in  = [testChar, testDeadChar, modifierFlags, keyCode, useNationalLayouts]
     jchar testChar = (jchar)data[0];
     BOOL isDeadChar = (data[1] != 0);
     jint modifierFlags = data[2];
     jshort keyCode = (jshort)data[3];
+    BOOL useNationalLayouts = (data[4] == 1);
 
     jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
     jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
@@ -714,7 +812,7 @@ JNI_COCOA_ENTER(env);
 
     NsCharToJavaVirtualKeyCode((unichar)testChar, isDeadChar,
                                (NSUInteger)modifierFlags, (unsigned short)keyCode,
-                               &jkeyCode, &jkeyLocation, &postsTyped,
+                               useNationalLayouts, &jkeyCode, &jkeyLocation, &postsTyped,
                                (unichar *) &testDeadChar);
 
     // out = [jkeyCode, jkeyLocation, deadChar];
