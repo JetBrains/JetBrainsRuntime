@@ -130,6 +130,10 @@ public final class LWCToolkit extends LWToolkit {
 
     private static native void initIDs();
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
+    private static native void switchKeyboardLayoutNative(String layoutName);
+
+    static native String getKeyboardLayoutNativeId();
+
     private static CInputMethodDescriptor sInputMethodDescriptor;
 
     static {
@@ -1032,6 +1036,17 @@ public final class LWCToolkit extends LWToolkit {
                 !path.isEmpty() &&
                 !path.endsWith("/") &&
                 !path.endsWith(".");
+    }
+
+    public static void switchKeyboardLayout (String layoutName) {
+        if (layoutName == null || layoutName.isEmpty()) {
+            throw new RuntimeException("A valid layout ID is expected. Found:  " + layoutName);
+        }
+        switchKeyboardLayoutNative(layoutName);
+    }
+
+    public static String getKeyboardLayoutId () {
+        return getKeyboardLayoutNativeId();
     }
 
     @Override
