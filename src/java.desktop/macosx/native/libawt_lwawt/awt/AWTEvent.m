@@ -585,7 +585,6 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
 
 
     if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
-        //NSLog(@"This is an alphabetic character");
         // key is an alphabetic character
         unichar lower;
         lower = tolower(ch);
@@ -604,7 +603,7 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-  if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
+    if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
         // key is a digit
         offset = ch - '0';
         // make sure in range for decimal digits
@@ -624,34 +623,33 @@ NsCharToJavaVirtualKeyCode(unichar ch, BOOL isDeadChar,
         }
     }
 
-        NSDictionary* unicharToVkCodeDictionary = getUnicharToVkCodeDictionary();
-        if ([[NSCharacterSet punctuationCharacterSet] characterIsMember:ch] ||
-             [[NSCharacterSet symbolCharacterSet] characterIsMember:ch])
-        {
-             //NSLog(@"This is a punctuation char");
-             *keyCode = [[unicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]] intValue];
-             //NSLog(@"key code %d for char %@", *keyCode,[NSString stringWithFormat:@"%C",ch]);
-             // we cannot find key location from a char, so let's use key code
-             *postsTyped = YES;
-             *keyLocation = keyTable[key].javaKeyLocation;
-             return;
-        }
+    NSDictionary* unicharToVkCodeDictionary = getUnicharToVkCodeDictionary();
+    if ([[NSCharacterSet punctuationCharacterSet] characterIsMember:ch] ||
+         [[NSCharacterSet symbolCharacterSet] characterIsMember:ch])
+    {
+         //NSLog(@"This is a punctuation char");
+         *keyCode = [[unicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]] intValue];
+         //NSLog(@"key code %d for char %@", *keyCode,[NSString stringWithFormat:@"%C",ch]);
+         // we cannot find key location from a char, so let's use key code
+         *postsTyped = YES;
+         *keyLocation = keyTable[key].javaKeyLocation;
+         return;
+    }
 
-        NSDictionary* diacriticUnicharToVkCodeDictionary = getDiacriticUnicharToVkCodeDictionary();
-        NSNumber * jkc = [diacriticUnicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]];
-        if (jkc != nil) {
-            //NSLog(@"This is a Diacritic Unichar");
-            *keyCode = [jkc intValue];
-            // we cannot find key location from a char, so let's use key code
-            *postsTyped = YES;
-            *keyLocation = keyTable[key].javaKeyLocation;
-            return;
-        }
-
-
-        *postsTyped = keyTable[key].postsTyped;
-        *keyCode = keyTable[key].javaKeyCode;
+    NSDictionary* diacriticUnicharToVkCodeDictionary = getDiacriticUnicharToVkCodeDictionary();
+    NSNumber * jkc = [diacriticUnicharToVkCodeDictionary objectForKey:[NSString stringWithFormat:@"%C",ch]];
+    if (jkc != nil) {
+        //NSLog(@"This is a Diacritic Unichar");
+        *keyCode = [jkc intValue];
+        // we cannot find key location from a char, so let's use key code
+        *postsTyped = YES;
         *keyLocation = keyTable[key].javaKeyLocation;
+        return;
+    }
+
+    *postsTyped = keyTable[key].postsTyped;
+    *keyCode = keyTable[key].javaKeyCode;
+    *keyLocation = keyTable[key].javaKeyLocation;
 
 }
 
