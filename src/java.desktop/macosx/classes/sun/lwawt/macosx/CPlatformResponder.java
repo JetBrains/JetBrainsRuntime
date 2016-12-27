@@ -213,14 +213,16 @@ final class CPlatformResponder {
                 ? chars.charAt(0)
                 : KeyEvent.CHAR_UNDEFINED;
 
-        int nonShiftModifiers = InputEvent.META_DOWN_MASK
+        /*int nonShiftModifiers = InputEvent.META_DOWN_MASK
                 | InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.ALT_GRAPH_DOWN_MASK ;
 
-        boolean doNothonorShift = ((jmodifiers & nonShiftModifiers) == nonShiftModifiers);
+        boolean doNotHonorShift = ((jmodifiers & nonShiftModifiers) != 0);*/
+
+        boolean doNotHonorShift = true;
 
         char charIgnoringModifiers = KeyEvent.CHAR_UNDEFINED;
 
-        if (doNothonorShift) {
+        if (doNotHonorShift) {
             // We use this char to find a character that is printed depending on pressing modifiers
             charIgnoringModifiers = (charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0)
                     ? charsIgnoringModifiers.charAt(0)
