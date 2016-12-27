@@ -724,6 +724,15 @@ public:
         return m_bPauseDestroy;
     }
 
+    int ScaleUpX(int x);
+    int ScaleUpY(int y);
+    int ScaleDownX(int x);
+    int ScaleDownY(int y);
+    int ScaleUpDX(int x);
+    int ScaleUpDY(int y);
+    int ScaleDownDX(int x);
+    int ScaleDownDY(int y);
+
 protected:
     static AwtComponent* GetComponentImpl(HWND hWnd);
 
@@ -753,11 +762,6 @@ protected:
 
     virtual void FillBackground(HDC hMemoryDC, SIZE &size);
     virtual void FillAlpha(void *bitmapBits, SIZE &size, BYTE alpha);
-
-    int ScaleUpX(int x);
-    int ScaleUpY(int y);
-    int ScaleDownX(int x);
-    int ScaleDownY(int y);
 
 private:
     /* A bitmask keeps the button's numbers as MK_LBUTTON, MK_MBUTTON, MK_RBUTTON

@@ -473,14 +473,9 @@ Java_sun_awt_windows_WGlobalCursorManager_getCursorPos(JNIEnv *env,
 
     POINT p;
     ::GetCursorPos(&p);
-    HMONITOR monitor = MonitorFromPoint(p, MONITOR_DEFAULTTOPRIMARY);
-    int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(monitor);
-    Devices::InstanceAccess devices;
-    AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
-    int x = (device == NULL) ? p.x : device->ScaleDownX(p.x);
-    int y = (device == NULL) ? p.y : device->ScaleDownY(p.y);
-    env->SetIntField(point, AwtCursor::pointXID, x);
-    env->SetIntField(point, AwtCursor::pointYID, y);
+    AwtWin32GraphicsDevice::ScaleDownDPoint(&p);
+    env->SetIntField(point, AwtCursor::pointXID, (jint)p.x);
+    env->SetIntField(point, AwtCursor::pointYID, (jint)p.y);
 
     CATCH_BAD_ALLOC;
 }

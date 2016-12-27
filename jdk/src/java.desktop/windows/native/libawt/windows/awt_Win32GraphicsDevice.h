@@ -34,6 +34,14 @@ extern "C" {
 #include "awt_Palette.h"
 #include "Devices.h"
 
+struct RECT_BOUNDS {
+    int x;
+    int y;
+    int width;
+    int height;
+    RECT_BOUNDS(int _x, int _y, int _w, int _h) : x(_x), y(_y), width(_w), height(_h) {}
+};
+
 class AwtPalette;
 class Devices;
 
@@ -74,7 +82,12 @@ public:
     int                     ScaleUpY(int y);
     int                     ScaleDownX(int x);
     int                     ScaleDownY(int y);
+    int                     ScaleUpDX(int x);
+    int                     ScaleUpDY(int y);
+    int                     ScaleDownDX(int x);
+    int                     ScaleDownDY(int y);
 
+    static void             ScaleDownDPoint(POINT *pt);
     static int              DeviceIndexForWindow(HWND hWnd);
     static jobject          GetColorModel(JNIEnv *env, jboolean dynamic,
                                           int deviceIndex);
@@ -94,7 +107,14 @@ public:
     static HDC              GetDCFromScreen(int screen);
     static int              GetScreenFromHMONITOR(HMONITOR mon);
     static BOOL             IsUiScaleEnabled(); // if not, be dpi-unaware (backward compatible behaviour)
-    static AwtWin32GraphicsDevice* getDeviceByPoint(int x, int y); // xy in user space
+    static AwtWin32GraphicsDevice* GetDeviceByBounds(RECT_BOUNDS bounds , HWND hwnd = NULL); // bounds in user space
+
+    inline static RECT_BOUNDS GetWindowRect(HWND hwnd)
+    {
+        RECT r;
+        ::GetWindowRect(hwnd, &r);
+        return RECT_BOUNDS(r.left, r.top, r.right - r.left, r.bottom - r.top);
+    }
 
     static int              primaryIndex;
     static BOOL             primaryPalettized;
