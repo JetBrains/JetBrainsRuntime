@@ -2339,29 +2339,4 @@ public class SwingUtilities2 {
         var oldTx = oldGC != null ? oldGC.getDefaultTransform() : null;
         return !Objects.equals(newTx, oldTx);
     }
-
-    /**
-     * Scales a point, given in a scale of the source source component's graphics device,
-     * into the destination component's graphics device scale.
-     *
-     * @param source the source component
-     * @param p the point to scale
-     * @param dest the destination component
-     * @return the scaled point
-     */
-    public static Point scalePoint(Component source, Point p, Component dest) {
-        double fromScaleX = 1.0f;
-        double fromScaleY = 1.0f;
-        double toScaleX = 1.0f;
-        double toScaleY = 1.0f;
-        if (source != null) {
-            fromScaleX = source.getGraphicsConfiguration().getDefaultTransform().getScaleX();
-            fromScaleY = source.getGraphicsConfiguration().getDefaultTransform().getScaleY();
-        }
-        if (dest != null) {
-            toScaleX = dest.getGraphicsConfiguration().getDefaultTransform().getScaleX();
-            toScaleY = dest.getGraphicsConfiguration().getDefaultTransform().getScaleY();
-        }
-        return new Point((int)(p.x * fromScaleX / toScaleX), (int)(p.y * fromScaleY / toScaleY));
-    }
 }

@@ -636,14 +636,35 @@ int AwtWin32GraphicsDevice::ScaleUpX(int x)
     return ClipRound(x * scaleX);
 }
 
+// scale up the delta [x - device.x]
+int AwtWin32GraphicsDevice::ScaleUpDX(int x)
+{
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    return devBounds.left + ClipRound((x - devBounds.left) * scaleX);
+}
+
 int AwtWin32GraphicsDevice::ScaleUpY(int y)
 {
     return ClipRound(y * scaleY);
 }
 
+// scale up the delta [y - device.y]
+int AwtWin32GraphicsDevice::ScaleUpDY(int y)
+{
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    return devBounds.top + ClipRound((y - devBounds.top) * scaleY);
+}
+
 int AwtWin32GraphicsDevice::ScaleDownX(int x)
 {
     return ClipRound(x / scaleX);
+}
+
+// scale down the delta [x - device.x]
+int AwtWin32GraphicsDevice::ScaleDownDX(int x)
+{
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    return devBounds.left + ClipRound((x - devBounds.left) / scaleX);
 }
 
 int AwtWin32GraphicsDevice::ScaleDownY(int y)
@@ -665,6 +686,27 @@ int AwtWin32GraphicsDevice::ClipRound(double value)
     }
 
     return (int)ceil(value);
+}
+
+// scale down the delta [y - device.y]
+int AwtWin32GraphicsDevice::ScaleDownDY(int y)
+{
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    return devBounds.top + ClipRound((y - devBounds.top) / scaleY);
+}
+
+// scale down the delta [pt.xy - device.xy]
+void AwtWin32GraphicsDevice::ScaleDownDPoint(POINT *pt)
+{
+    HMONITOR hmon = ::MonitorFromPoint(*pt, MONITOR_DEFAULTTONEAREST);
+    DASSERT(hmon != NULL);
+    int screen = AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon);
+    DASSERT(screen > -1);
+
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    pt->x = device == NULL ? pt->x : device->ScaleDownDX(pt->x);
+    pt->y = device == NULL ? pt->y : device->ScaleDownDY(pt->y);
 }
 
 void AwtWin32GraphicsDevice::InitDesktopScales()
@@ -905,18 +947,18 @@ BOOL AwtWin32GraphicsDevice::IsUiScaleEnabled()
                                       "()Z").z;
 }
 
-AwtWin32GraphicsDevice* AwtWin32GraphicsDevice::getDeviceByPoint(int x, int y) // xy in user space
+AwtWin32GraphicsDevice* AwtWin32GraphicsDevice::GetDeviceByBounds(RECT_BOUNDS bounds, HWND hwnd) // bounds in user space
 {
     Devices::InstanceAccess devices;
+    POINT center = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
     for (int i = 0; i < devices->GetNumDevices(); i++) {
         RECT rect = AwtWin32GraphicsConfig::getMonitorBounds(i); // rect in user space
-        POINT pt = {x, y};
-
-        if (::PtInRect(&rect, pt)) {
+        if (::PtInRect(&rect, center)) {
             return devices->GetDevice(i);
         }
     }
-    return NULL;
+    // default to the hwnd's device
+    return hwnd != NULL ? devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(hwnd)) : NULL;
 }
 
     const DWORD REQUIRED_FLAGS = (   //Flags which must be set in

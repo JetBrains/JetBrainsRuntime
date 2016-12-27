@@ -263,6 +263,8 @@ void AwtDragSource::_DoDragDrop(void* param) {
     AwtDropTarget::SetCurrentDnDDataObject(dragSource);
 
     ::GetCursorPos(&dragSource->m_dragPoint);
+    POINT dragPoint = {dragSource->m_dragPoint.x, dragSource->m_dragPoint.y};
+    AwtWin32GraphicsDevice::ScaleDownDPoint(&dragPoint);
 
     dragSource->Signal();
 
@@ -282,7 +284,7 @@ void AwtDragSource::_DoDragDrop(void* param) {
 
     call_dSCddfinished(env, peer, res == DRAGDROP_S_DROP && effects != DROPEFFECT_NONE,
                        convertDROPEFFECTToActions(effects),
-                       dragSource->m_dragPoint.x, dragSource->m_dragPoint.y);
+                       dragPoint.x, dragPoint.y);
 
     env->DeleteLocalRef(peer);
 
@@ -642,11 +644,13 @@ HRESULT __stdcall  AwtDragSource::QueryContinueDrag(BOOL fEscapeKeyPressed, DWOR
     POINT dragPoint;
 
     ::GetCursorPos(&dragPoint);
+    POINT _dragPoint = {dragPoint.x, dragPoint.y};
+    AwtWin32GraphicsDevice::ScaleDownDPoint(&_dragPoint);
 
     if ( (dragPoint.x != m_dragPoint.x || dragPoint.y != m_dragPoint.y) &&
          m_lastmods == modifiers) {//cannot move before cursor change
         call_dSCmouseMoved(env, m_peer,
-                           m_actions, modifiers, dragPoint.x, dragPoint.y);
+                           m_actions, modifiers, _dragPoint.x, _dragPoint.y);
         JNU_CHECK_EXCEPTION_RETURN(env, E_UNEXPECTED);
         m_dragPoint = dragPoint;
     }
@@ -659,7 +663,7 @@ HRESULT __stdcall  AwtDragSource::QueryContinueDrag(BOOL fEscapeKeyPressed, DWOR
         return DRAGDROP_S_CANCEL;
     } else if (m_lastmods != modifiers) {
         call_dSCchanged(env, m_peer,
-                        m_actions, modifiers, dragPoint.x, dragPoint.y);
+                        m_actions, modifiers, _dragPoint.x, _dragPoint.y);
         m_bRestoreNodropCustomCursor = TRUE;
     }
 
@@ -714,6 +718,8 @@ HRESULT __stdcall  AwtDragSource::GiveFeedback(DWORD dwEffect) {
     POINT curs;
 
     ::GetCursorPos(&curs);
+    POINT _curs = {curs.x, curs.y};
+    AwtWin32GraphicsDevice::ScaleDownDPoint(&_curs);
 
     m_droptarget = ::WindowFromPoint(curs);
 
@@ -722,13 +728,13 @@ HRESULT __stdcall  AwtDragSource::GiveFeedback(DWORD dwEffect) {
     if (invalid) {
         // Don't call dragExit if dragEnter and dragOver haven't been called.
         if (!m_enterpending) {
-            call_dSCexit(env, m_peer, curs.x, curs.y);
+            call_dSCexit(env, m_peer, _curs.x, _curs.y);
         }
         m_droptarget = (HWND)NULL;
         m_enterpending = TRUE;
     } else if (m_droptarget != NULL) {
         (*(m_enterpending ? call_dSCenter : call_dSCmotion))
-            (env, m_peer, m_actions, modifiers, curs.x, curs.y);
+            (env, m_peer, m_actions, modifiers, _curs.x, _curs.y);
 
         m_enterpending = FALSE;
     }

@@ -963,6 +963,10 @@ MsgRouting AwtWindow::WmTimer(UINT_PTR timerID)
 }
 
 MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
+    if (!::IsWindowVisible(GetHWnd())) {
+        // may diverge with Component::Reshape in this state
+        return mrDoDefault;
+    }
     ::SetWindowPos(GetHWnd(), NULL,
                    bounds->left, bounds->top,
                    bounds->right - bounds->left, bounds->bottom - bounds->top,
@@ -1772,13 +1776,13 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     jobject peer = GetPeer(env);
     jobject target = env->GetObjectField(peer, AwtObject::targetID);
 
-    RECT rect;
-    ::GetWindowRect(GetHWnd(), &rect);
+    RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
+    AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
 
-    (env)->SetIntField(target, AwtComponent::xID, ScaleDownX(rect.left));
-    (env)->SetIntField(target, AwtComponent::yID, ScaleDownY(rect.top));
-    (env)->SetIntField(peer, AwtWindow::sysXID, ScaleDownX(rect.left));
-    (env)->SetIntField(peer, AwtWindow::sysYID, ScaleDownY(rect.top));
+    (env)->SetIntField(target, AwtComponent::xID, device->ScaleDownDX(rect.x));
+    (env)->SetIntField(target, AwtComponent::yID, device->ScaleDownDY(rect.y));
+    (env)->SetIntField(peer, AwtWindow::sysXID, rect.x);
+    (env)->SetIntField(peer, AwtWindow::sysYID, rect.y);
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);
 
     env->DeleteLocalRef(target);
@@ -1855,13 +1859,14 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
     BOOL insetsChanged = UpdateInsets(NULL);
     int newWidth = w + m_insets.left + m_insets.right;
     int newHeight = h + m_insets.top + m_insets.bottom;
-
-    (env)->SetIntField(target, AwtComponent::widthID, ScaleDownX(newWidth));
-    (env)->SetIntField(target, AwtComponent::heightID, ScaleDownY(newHeight));
+    RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
+    AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
+    (env)->SetIntField(target, AwtComponent::widthID, device->ScaleDownX(newWidth));
+    (env)->SetIntField(target, AwtComponent::heightID, device->ScaleDownY(newHeight));
 
     jobject peer = GetPeer(env);
-    (env)->SetIntField(peer, AwtWindow::sysWID, ScaleDownX(newWidth));
-    (env)->SetIntField(peer, AwtWindow::sysHID, ScaleDownY(newHeight));
+    (env)->SetIntField(peer, AwtWindow::sysWID, newWidth);
+    (env)->SetIntField(peer, AwtWindow::sysHID, newHeight);
 
     if (!AwtWindow::IsResizing()) {
         WindowResized();
