@@ -320,22 +320,6 @@ static BOOL shouldUsePressAndHold() {
         [self deliverJavaKeyEventHelper: event];
     }
 
-    // Workaround for 8020209: special case for "Cmd =" and "Cmd ."
-    // because Cocoa calls performKeyEquivalent twice for these keystrokes
-    NSUInteger modFlags = [event modifierFlags] &
-    (NSCommandKeyMask | NSAlternateKeyMask | NSShiftKeyMask | NSControlKeyMask);
-    if (modFlags == NSCommandKeyMask) {
-        NSString *eventChars = [event charactersIgnoringModifiers];
-        if ([eventChars length] == 1) {
-            unichar ch = [eventChars characterAtIndex:0];
-            if (ch == '=' || ch == '.') {
-                [[NSApp mainMenu] performKeyEquivalent: event];
-                return YES;
-            }
-        }
-
-    }
-
     return NO;
 }
 
@@ -930,6 +914,8 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
 
 - (void) insertText:(id)aString replacementRange:(NSRange)replacementRange
 {
+
+    NSLog(@"insertText: %@", aString);
 #ifdef IM_DEBUG
     fprintf(stderr, "AWTView InputMethod Selector Called : [insertText]: %s\n", [aString UTF8String]);
 #endif // IM_DEBUG
