@@ -914,8 +914,6 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
 
 - (void) insertText:(id)aString replacementRange:(NSRange)replacementRange
 {
-
-    NSLog(@"insertText: %@", aString);
 #ifdef IM_DEBUG
     fprintf(stderr, "AWTView InputMethod Selector Called : [insertText]: %s\n", [aString UTF8String]);
 #endif // IM_DEBUG
