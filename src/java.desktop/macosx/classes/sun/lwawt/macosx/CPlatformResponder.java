@@ -287,7 +287,7 @@ final class CPlatformResponder {
         boolean modifersAreNotPressed = (jmodifiers & (InputEvent.META_DOWN_MASK
                 | InputEvent.ALT_DOWN_MASK
                 | InputEvent.ALT_GRAPH_DOWN_MASK
-                | InputEvent.SHIFT_MASK
+                | InputEvent.SHIFT_DOWN_MASK
         )) == 0;
 
         boolean ctrlIsPressed = (jmodifiers & InputEvent.CTRL_DOWN_MASK) != 0;
