@@ -283,6 +283,19 @@ final class CPlatformResponder {
         if (jeventType == KeyEvent.KEY_PRESSED) {
             lastKeyPressCode = jkeyCode;
         }
+
+        boolean modifersAreNotPressed = (jmodifiers & (InputEvent.META_DOWN_MASK
+                | InputEvent.ALT_DOWN_MASK
+                | InputEvent.ALT_GRAPH_DOWN_MASK
+                | InputEvent.SHIFT_MASK
+        )) == 0;
+
+        boolean ctrlIsPressed = (jmodifiers & InputEvent.CTRL_DOWN_MASK) != 0;
+
+        if (chars != null && !chars.isEmpty() && modifersAreNotPressed && ctrlIsPressed) {
+            javaChar = chars.charAt(0);
+        }
+
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
                 jkeyCode, javaChar, jkeyLocation);
 
