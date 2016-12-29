@@ -208,36 +208,51 @@ final class CPlatformResponder {
 
         boolean isDeadChar = (chars!= null && chars.length() == 0);
 
-        // We use this char to find java keyCode
-        char charCandidate = (chars != null && chars.length() > 0)
-                ? chars.charAt(0)
-                : KeyEvent.CHAR_UNDEFINED;
+        boolean metaAltCtrlAreNotPressed = (jmodifiers &
+                (InputEvent.META_DOWN_MASK
+                | InputEvent.ALT_DOWN_MASK
+                | InputEvent.CTRL_DOWN_MASK)
+        ) == 0;
 
-        /*int nonShiftModifiers = InputEvent.META_DOWN_MASK
-                | InputEvent.CTRL_DOWN_MASK | InputEvent.ALT_DOWN_MASK | InputEvent.ALT_GRAPH_DOWN_MASK ;
+        boolean shiftIsPressed = (jmodifiers & InputEvent.SHIFT_DOWN_MASK) != 0;
 
-        boolean doNotHonorShift = ((jmodifiers & nonShiftModifiers) != 0);*/
+        boolean useShiftedCharacters = metaAltCtrlAreNotPressed && shiftIsPressed;
 
-        boolean doNotHonorShift = true;
+        boolean shiftAltDownAreNotPressed = (jmodifiers &
+                (InputEvent.META_DOWN_MASK
+                | InputEvent.ALT_DOWN_MASK
+                | InputEvent.SHIFT_DOWN_MASK)
+        ) == 0;
 
-        char charIgnoringModifiers = KeyEvent.CHAR_UNDEFINED;
+        boolean ctrlIsPressed = (jmodifiers & InputEvent.CTRL_DOWN_MASK) != 0;
 
-        if (doNotHonorShift) {
+        boolean isISOControl = false;
+
+        if (chars != null && !chars.isEmpty() && shiftAltDownAreNotPressed && ctrlIsPressed) {
+            char c = chars.charAt(0);
+            if (Character.isISOControl(c)) {
+                isISOControl = true;
+            }
+        }
+
+        char characterToGetKeyCode = KeyEvent.CHAR_UNDEFINED;
+
+      //  if (useShiftedCharacters) {
             // We use this char to find a character that is printed depending on pressing modifiers
-            charIgnoringModifiers = (charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0)
-                    ? charsIgnoringModifiers.charAt(0)
-                    : KeyEvent.CHAR_UNDEFINED;
-        } else {
-            // We use this char to find a character that is printed depending on pressing modifiers
-            charIgnoringModifiers = (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0)
+       /*     characterToGetKeyCode = (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0)
                     ? charsIgnoringModifiersAndShift.charAt(0)
                     : KeyEvent.CHAR_UNDEFINED;
-        }
+        } else { */
+            // We use this char to find a character that is printed depending on pressing modifiers
+            characterToGetKeyCode = (charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0)
+                    ? charsIgnoringModifiers.charAt(0)
+                    : KeyEvent.CHAR_UNDEFINED;
+        // }
 
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
-                (jmodifiers == 0) ? charCandidate : charIgnoringModifiers, isDeadChar ? 1 : 0,
+                characterToGetKeyCode, isDeadChar ? 1 : 0,
                 modifierFlags,
                 keyCode
         };
@@ -246,10 +261,11 @@ final class CPlatformResponder {
 
         postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
 
+        char characterToSendWithTheEvent = KeyEvent.CHAR_UNDEFINED;
 
         if(isDeadChar){
-            charCandidate = (char) out[2];
-            if(charCandidate == 0){
+            characterToSendWithTheEvent = (char) out[2];
+            if(characterToSendWithTheEvent == 0){
                 return;
             }
         }
@@ -261,7 +277,7 @@ final class CPlatformResponder {
         LWCToolkit lwcToolkit = (LWCToolkit)Toolkit.getDefaultToolkit();
         if (lwcToolkit.getLockingKeyState(KeyEvent.VK_CAPS_LOCK) &&
                 Locale.SIMPLIFIED_CHINESE.equals(lwcToolkit.getDefaultKeyboardLocale())) {
-            charCandidate = charIgnoringModifiers;
+            characterToSendWithTheEvent = characterToGetKeyCode;
         }
 
         jkeyCode = out[0];
@@ -269,13 +285,21 @@ final class CPlatformResponder {
         jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
                 NSEvent.nsToJavaEventType(eventType);
 
-        char javaChar = 0;
-        if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
-            String stringWithChar = NSEvent.nsToJavaChar(charsIgnoringModifiers.charAt(0), modifierFlags, spaceKeyTyped);
-            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
+
+        if (isISOControl) {
+            characterToSendWithTheEvent = chars.charAt(0);
+        } else if (metaAltCtrlAreNotPressed && shiftIsPressed) {
+            characterToSendWithTheEvent = chars.charAt(0);
         } else {
-            String stringWithChar = NSEvent.nsToJavaChar(charCandidate, modifierFlags, spaceKeyTyped);
-            javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
+            characterToSendWithTheEvent = charsIgnoringModifiers.charAt(0);
+        }
+
+        if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
+            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
+            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
+        } else {
+            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
+            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
         }
 
         long when = System.currentTimeMillis();
@@ -284,20 +308,8 @@ final class CPlatformResponder {
             lastKeyPressCode = jkeyCode;
         }
 
-        boolean modifersAreNotPressed = (jmodifiers & (InputEvent.META_DOWN_MASK
-                | InputEvent.ALT_DOWN_MASK
-                | InputEvent.ALT_GRAPH_DOWN_MASK
-                | InputEvent.SHIFT_DOWN_MASK
-        )) == 0;
-
-        boolean ctrlIsPressed = (jmodifiers & InputEvent.CTRL_DOWN_MASK) != 0;
-
-        if (chars != null && !chars.isEmpty() && modifersAreNotPressed && ctrlIsPressed) {
-            javaChar = chars.charAt(0);
-        }
-
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
-                jkeyCode, javaChar, jkeyLocation);
+                jkeyCode, characterToSendWithTheEvent, jkeyLocation);
 
         // Current browser may be sending input events, so don't
         // post the KEY_TYPED here.
@@ -316,20 +328,20 @@ final class CPlatformResponder {
                 return;
             }
 
+            char characterToSendWithTypedEvent = KeyEvent.CHAR_UNDEFINED;
+
             if (chars != null ) {
                 String stringWithChar = NSEvent.nsToJavaChar(chars.charAt(0), modifierFlags, spaceKeyTyped);
-                javaChar = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
-            } else {
-                javaChar = KeyEvent.CHAR_UNDEFINED;
+                characterToSendWithTypedEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
             }
 
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    jkeyCode, javaChar,
+                    jkeyCode, characterToSendWithTypedEvent,
                     KeyEvent.KEY_LOCATION_UNKNOWN);
             //If events come from Firefox, released events should also be generated.
             if (needsKeyReleased) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
-                        jkeyCode, javaChar,
+                        jkeyCode, characterToSendWithTheEvent,
                         KeyEvent.KEY_LOCATION_UNKNOWN);
             }
         }
