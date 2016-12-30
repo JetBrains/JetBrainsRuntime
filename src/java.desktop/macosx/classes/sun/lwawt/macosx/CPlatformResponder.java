@@ -182,6 +182,21 @@ final class CPlatformResponder {
                 jkeyCode, KeyEvent.CHAR_UNDEFINED, jkeyLocation);
     }
 
+    private static char mapNsCharsToCompatibleWithJava (char ch) {
+        switch (ch) {
+            case 0x0003:          // NSEnterCharacter
+            case 0x000d:          // NSCarriageReturnCharacter
+                return 0x000a;    // NSNewlineCharacter
+//            case  0x007f:         // NSDeleteCharacter
+//                return 0x0008;    // NSBackspaceCharacter
+            case  0xF728:         // NSDeleteFunctionKey
+                return 0x0008;    // NSDeleteCharacter
+            case  0x0019:         // NSBackTabCharacter
+                return 0x0009;    // NSTabCharacter
+        }
+        return ch;
+    }
+
     /**
      * Handles key events.
      */
@@ -228,9 +243,10 @@ final class CPlatformResponder {
 
         boolean isISOControl = false;
 
-        if (chars != null && !chars.isEmpty() && shiftAltDownAreNotPressed && ctrlIsPressed) {
-            char c = chars.charAt(0);
-            if (Character.isISOControl(c)) {
+        char checkedChar = (chars == null || chars.isEmpty()) ? KeyEvent.CHAR_UNDEFINED : chars.charAt(0);
+
+        if (shiftAltDownAreNotPressed && ctrlIsPressed) {
+            if (Character.isISOControl(checkedChar)) {
                 isISOControl = true;
             }
         }
@@ -280,27 +296,48 @@ final class CPlatformResponder {
             characterToSendWithTheEvent = characterToGetKeyCode;
         }
 
-        jkeyCode = out[0];
+        switch (mapNsCharsToCompatibleWithJava(checkedChar)) {
+            case 0x000a:
+                jkeyCode = KeyEvent.VK_ENTER;
+                break;
+            case 0x0008:
+                jkeyCode = KeyEvent.VK_DELETE;
+                break;
+            case 0x007f:
+                jkeyCode = KeyEvent.VK_BACK_SPACE;
+                break;
+            case 0x0009:
+                jkeyCode = KeyEvent.VK_TAB;
+                break;
+            default:
+                jkeyCode = out[0];
+                break;
+        }
+
+
         jkeyLocation = out[1];
         jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
                 NSEvent.nsToJavaEventType(eventType);
 
 
         if (isISOControl) {
-            characterToSendWithTheEvent = chars.charAt(0);
-        } else if (metaAltCtrlAreNotPressed && shiftIsPressed) {
-            characterToSendWithTheEvent = chars.charAt(0);
-        } else {
+            characterToSendWithTheEvent = checkedChar;
+        } else if (chars != null && !chars.isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
+            characterToSendWithTheEvent = checkedChar;
+        } else  if (charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
             characterToSendWithTheEvent = charsIgnoringModifiers.charAt(0);
         }
+
+        characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
 
         if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
             String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
             characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
         } else {
             String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
-            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
+            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
         }
+
 
         long when = System.currentTimeMillis();
 
@@ -331,7 +368,8 @@ final class CPlatformResponder {
             char characterToSendWithTypedEvent = KeyEvent.CHAR_UNDEFINED;
 
             if (chars != null ) {
-                String stringWithChar = NSEvent.nsToJavaChar(chars.charAt(0), modifierFlags, spaceKeyTyped);
+                characterToSendWithTypedEvent = mapNsCharsToCompatibleWithJava(checkedChar);
+                String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTypedEvent, modifierFlags, spaceKeyTyped);
                 characterToSendWithTypedEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
             }
 
