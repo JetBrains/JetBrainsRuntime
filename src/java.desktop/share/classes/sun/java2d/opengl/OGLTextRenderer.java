@@ -27,6 +27,7 @@ package sun.java2d.opengl;
 
 import java.awt.Composite;
 import sun.font.GlyphList;
+import sun.java2d.InvalidPipeException;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.loops.GraphicsPrimitive;
 import sun.java2d.pipe.BufferedTextPipe;
@@ -48,7 +49,13 @@ class OGLTextRenderer extends BufferedTextPipe {
     @Override
     protected void validateContext(SunGraphics2D sg2d, Composite comp) {
         // assert rq.lock.isHeldByCurrentThread();
-        OGLSurfaceData oglDst = (OGLSurfaceData)sg2d.surfaceData;
+        OGLSurfaceData oglDst;
+        try {
+            oglDst = (OGLSurfaceData) sg2d.surfaceData;
+        } catch (ClassCastException e) {
+            throw new InvalidPipeException("wrong surface data type: " +
+                                           sg2d.surfaceData);
+        }
         OGLContext.validateContext(oglDst, oglDst,
                                    sg2d.getCompClip(), comp,
                                    null, sg2d.paint, sg2d,
