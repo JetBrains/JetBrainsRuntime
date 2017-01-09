@@ -31,7 +31,15 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <sys/time.h>
-#import <Carbon/Carbon.h>
+#include <Carbon/Carbon.h>
+
+#import "jni_util.h" 
+#import "LWCToolkit.h"
+#import "ThreadUtilities.h"
+
+#import "java_awt_event_InputEvent.h"
+#import "java_awt_event_KeyEvent.h"
+#import "java_awt_event_MouseEvent.h"
 
 @implementation NSEvent (NSEventExtension)
 - (NSString *)charactersIgnoringModifiersAndShift {

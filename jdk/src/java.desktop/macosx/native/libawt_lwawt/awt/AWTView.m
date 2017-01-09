@@ -25,6 +25,12 @@
 
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
+
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#include <Carbon/Carbon.h>
+
+#import "ThreadUtilities.h"
 #import "AWTView.h"
 #import "AWTWindow.h"
 #import "JavaComponentAccessibility.h"
@@ -32,9 +38,8 @@
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
 #import "OSVersion.h"
-#import "ThreadUtilities.h"
-
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import "CGLLayer.h"
+#import "java_awt_event_KeyEvent.h"
 
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
@@ -458,6 +463,30 @@ static BOOL shouldUsePressAndHold() {
 
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
+
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+    CFDataRef layoutData = TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
+    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+    UInt32 isDeadKeyPressed;
+    UInt32 lengthOfBuffer = 4;
+    UniChar stringWithChars[lengthOfBuffer];
+    UniCharCount actualLength;
+
+    OSStatus status =  UCKeyTranslate(
+                   keyboardLayout,
+                   [event keyCode],
+                   kUCKeyActionDown,
+                   0,
+                   LMGetKbdType(),
+                   0,
+                   // ignore for now
+                   &isDeadKeyPressed,
+                   lengthOfBuffer,
+                   &actualLength,
+                   stringWithChars);
+
+    CFRelease(currentKeyboard);
+    NSString*  charactersIgnoringModifiersAndShiftAsNsString = [NSString stringWithCharacters:stringWithChars length:actualLength];
 
     jstring characters = NULL;
     jstring charactersIgnoringModifiers = NULL;

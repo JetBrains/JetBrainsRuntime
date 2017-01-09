@@ -124,9 +124,11 @@ public class deadKeyMacOSX {
             char keyChar = e.getKeyChar();
 
             if (state == 3) {
-                if (keyCode != 0) {
-                    throw new RuntimeException("Key code should be undefined.");
-                }
+                // Now we send key codes
+//                if (keyCode != 0) {
+//                    throw new RuntimeException("Key code should be undefined.");
+//                }
+                // This works for US keyboard only
                 if (keyChar != 0xE1) {
                     throw new RuntimeException("A char does not have ACCUTE accent");
                 }
