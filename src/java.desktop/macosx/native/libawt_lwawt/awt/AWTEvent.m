@@ -33,35 +33,6 @@
 #import <sys/time.h>
 #import <Carbon/Carbon.h>
 
-@implementation NSEvent (NSEventExtension)
-- (NSString *)charactersIgnoringModifiersAndShift {
-
-        TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-        CFDataRef layoutData = TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
-        const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
-
-        UInt32 deadKeyState;
-
-        UInt32 lengthOfBuffer = 4;
-        UniChar stringWithChars[lengthOfBuffer];
-        UniCharCount actualLength;
-
-        UCKeyTranslate(keyboardLayout,
-                       [self keyCode],
-                       kUCKeyActionDown,
-                       0,
-                       LMGetKbdType(),
-                       0,
-                       // ignore for now
-                       &deadKeyState,
-                       lengthOfBuffer,
-                       &actualLength,
-                       stringWithChars);
-        CFRelease(currentKeyboard);
-        return [NSString stringWithCharacters:stringWithChars length:actualLength];
-}
-@end
-
 /*
  * Table to map typed characters to their Java virtual key equivalent and back.
  * We use the incoming unichar (ignoring all modifiers) and try to figure out

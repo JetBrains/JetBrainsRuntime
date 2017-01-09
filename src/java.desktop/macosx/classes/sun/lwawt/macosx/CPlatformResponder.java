@@ -200,12 +200,11 @@ final class CPlatformResponder {
     /**
      * Handles key events.
      */
-    void handleKeyEvent(int eventType, int modifierFlags, String chars, String charsIgnoringModifiers, String charsIgnoringModifiersAndShift,
-                        short keyCode, boolean needsKeyTyped, boolean needsKeyReleased)
+    void handleKeyEvent(NSEvent nsEvent)
     {
         boolean isFlagsChangedEvent =
-                isNpapiCallback ? (eventType == CocoaConstants.NPCocoaEventFlagsChanged) :
-                        (eventType == CocoaConstants.NSFlagsChanged);
+                isNpapiCallback ? (nsEvent.getType() == CocoaConstants.NPCocoaEventFlagsChanged) :
+                        (nsEvent.getType() == CocoaConstants.NSFlagsChanged);
 
         int jeventType = KeyEvent.KEY_PRESSED;
         int jkeyCode = KeyEvent.VK_UNDEFINED;
@@ -215,13 +214,11 @@ final class CPlatformResponder {
 
 
         if (isFlagsChangedEvent) {
-            handleFlagChangedEvent(modifierFlags, keyCode);
+            handleFlagChangedEvent(nsEvent.getModifierFlags(), nsEvent.getKeyCode());
             return;
         }
 
-        int jmodifiers = NSEvent.nsToJavaModifiers(modifierFlags);
-
-        boolean isDeadChar = (chars!= null && chars.length() == 0);
+        int jmodifiers = NSEvent.nsToJavaModifiers(nsEvent.getModifierFlags());
 
         boolean metaAltCtrlAreNotPressed = (jmodifiers &
                 (InputEvent.META_DOWN_MASK
@@ -243,7 +240,8 @@ final class CPlatformResponder {
 
         boolean isISOControl = false;
 
-        char checkedChar = (chars == null || chars.isEmpty()) ? KeyEvent.CHAR_UNDEFINED : chars.charAt(0);
+        char checkedChar = (nsEvent.getCharacters() == null
+                || nsEvent.getCharacters().isEmpty()) ? KeyEvent.CHAR_UNDEFINED : nsEvent.getCharacters().charAt(0);
 
         if (shiftAltDownAreNotPressed && ctrlIsPressed) {
             if (Character.isISOControl(checkedChar)) {
@@ -253,24 +251,18 @@ final class CPlatformResponder {
 
         char characterToGetKeyCode = KeyEvent.CHAR_UNDEFINED;
 
-      //  if (useShiftedCharacters) {
-            // We use this char to find a character that is printed depending on pressing modifiers
-       /*     characterToGetKeyCode = (charsIgnoringModifiersAndShift != null && charsIgnoringModifiersAndShift.length() > 0)
-                    ? charsIgnoringModifiersAndShift.charAt(0)
-                    : KeyEvent.CHAR_UNDEFINED;
-        } else { */
-            // We use this char to find a character that is printed depending on pressing modifiers
-            characterToGetKeyCode = (charsIgnoringModifiers != null && charsIgnoringModifiers.length() > 0)
-                    ? charsIgnoringModifiers.charAt(0)
-                    : KeyEvent.CHAR_UNDEFINED;
-        // }
+        // We use this char to find a character that is printed depending on pressing modifiers
+        characterToGetKeyCode = (nsEvent.getCharactersIgnoringModifiers() != null && nsEvent.getCharactersIgnoringModifiers().length() > 0)
+            ? nsEvent.getCharactersIgnoringModifiers().charAt(0)
+            : KeyEvent.CHAR_UNDEFINED;
 
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
-                characterToGetKeyCode, isDeadChar ? 1 : 0,
-                modifierFlags,
-                keyCode
+                characterToGetKeyCode,
+                nsEvent.getModifierFlags(),
+                nsEvent.isHasDeadKey() ? 1 : 0,
+                nsEvent.getKeyCode()
         };
 
         int[] out = new int[3]; // [jkeyCode, jkeyLocation, deadChar]
@@ -279,8 +271,9 @@ final class CPlatformResponder {
 
         char characterToSendWithTheEvent = KeyEvent.CHAR_UNDEFINED;
 
-        if(isDeadChar){
+        if(nsEvent.isHasDeadKey()){
             characterToSendWithTheEvent = (char) out[2];
+            jkeyCode = nsEvent.getDeadKeyCode();
             if(characterToSendWithTheEvent == 0){
                 return;
             }
@@ -316,25 +309,25 @@ final class CPlatformResponder {
 
 
         jkeyLocation = out[1];
-        jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
-                NSEvent.nsToJavaEventType(eventType);
+        jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(nsEvent.getType()) :
+                NSEvent.nsToJavaEventType(nsEvent.getType());
 
 
         if (isISOControl) {
             characterToSendWithTheEvent = checkedChar;
-        } else if (chars != null && !chars.isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
+        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
             characterToSendWithTheEvent = checkedChar;
-        } else  if (charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
-            characterToSendWithTheEvent = charsIgnoringModifiers.charAt(0);
+        } else  if (nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
+            characterToSendWithTheEvent = nsEvent.getCharactersIgnoringModifiers().charAt(0);
         }
 
         characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
 
-        if (jmodifiers != 0 && charsIgnoringModifiers != null && !charsIgnoringModifiers.isEmpty()) {
-            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
+        if (jmodifiers != 0 && nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
+            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
             characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
         } else {
-            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, modifierFlags, spaceKeyTyped);
+            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
             characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
         }
 
@@ -350,7 +343,7 @@ final class CPlatformResponder {
 
         // Current browser may be sending input events, so don't
         // post the KEY_TYPED here.
-        postsTyped &= needsKeyTyped;
+        postsTyped &= true;
 
         // That's the reaction on the PRESSED (not RELEASED) event as it comes to
         // appear in MacOSX.
@@ -361,15 +354,15 @@ final class CPlatformResponder {
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
             // Enter and Space keys finish the input method processing,
             // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
-            if (needsKeyReleased && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
+            if (true && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
 
             char characterToSendWithTypedEvent = KeyEvent.CHAR_UNDEFINED;
 
-            if (chars != null ) {
+            if (nsEvent.getCharacters()!= null ) {
                 characterToSendWithTypedEvent = mapNsCharsToCompatibleWithJava(checkedChar);
-                String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTypedEvent, modifierFlags, spaceKeyTyped);
+                String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTypedEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
                 characterToSendWithTypedEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
             }
 
@@ -377,7 +370,7 @@ final class CPlatformResponder {
                     jkeyCode, characterToSendWithTypedEvent,
                     KeyEvent.KEY_LOCATION_UNKNOWN);
             //If events come from Firefox, released events should also be generated.
-            if (needsKeyReleased) {
+            if (true) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
                         jkeyCode, characterToSendWithTheEvent,
                         KeyEvent.KEY_LOCATION_UNKNOWN);

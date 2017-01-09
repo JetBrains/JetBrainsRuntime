@@ -38,6 +38,8 @@ final class NSEvent {
     static final int SCROLL_PHASE_CONTINUED = 3;
     static final int SCROLL_PHASE_MOMENTUM_BEGAN = 4;
     static final int SCROLL_PHASE_ENDED = 5;
+    private boolean hasDeadKey;
+    private int deadKeyCode;
 
     private int type;
     private int modifierFlags;
@@ -59,15 +61,26 @@ final class NSEvent {
     private String charactersIgnoringModifiers;
     private String charactersIgnoringModifiersAndShift;
 
+    public boolean isHasDeadKey() {
+        return hasDeadKey;
+    }
+
+    public int getDeadKeyCode() {
+        return deadKeyCode;
+    }
+
     // Called from native
     NSEvent(int type, int modifierFlags, short keyCode, String characters, String charactersIgnoringModifiers,
-            String charactersIgnoringModifiersAndShift) {
+            String charactersIgnoringModifiersAndShift, boolean hasDeadKey, int deadKeyCode) {
         this.type = type;
         this.modifierFlags = modifierFlags;
+
         this.keyCode = keyCode;
         this.characters = characters;
         this.charactersIgnoringModifiers = charactersIgnoringModifiers;
         this.charactersIgnoringModifiersAndShift = charactersIgnoringModifiersAndShift;
+        this.hasDeadKey = hasDeadKey;
+        this.deadKeyCode = deadKeyCode;
     }
 
     // Called from native

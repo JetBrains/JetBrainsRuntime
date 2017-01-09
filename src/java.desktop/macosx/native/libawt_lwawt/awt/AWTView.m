@@ -25,6 +25,12 @@
 
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
+
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#include <Carbon/Carbon.h>
+
+#import "ThreadUtilities.h"
 #import "AWTView.h"
 #import "AWTWindow.h"
 #import "JavaComponentAccessibility.h"
@@ -32,9 +38,8 @@
 #import "JavaAccessibilityUtilities.h"
 #import "GeomUtilities.h"
 #import "OSVersion.h"
-#import "ThreadUtilities.h"
-
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import "CGLLayer.h"
+#import "java_awt_event_KeyEvent.h"
 
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
@@ -442,24 +447,133 @@ static BOOL shouldUsePressAndHold() {
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
+    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
+    CFDataRef layoutData = TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
+    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+    UInt32 isDeadKeyPressed;
+    UInt32 lengthOfBuffer = 4;
+    UniChar stringWithChars[lengthOfBuffer];
+    UniCharCount actualLength;
+
+    OSStatus status =  UCKeyTranslate(
+                   keyboardLayout,
+                   [event keyCode],
+                   kUCKeyActionDown,
+                   0,
+                   LMGetKbdType(),
+                   0,
+                   // ignore for now
+                   &isDeadKeyPressed,
+                   lengthOfBuffer,
+                   &actualLength,
+                   stringWithChars);
+
+    CFRelease(currentKeyboard);
+    NSString*  charactersIgnoringModifiersAndShiftAsNsString = [NSString stringWithCharacters:stringWithChars length:actualLength];
+
     jstring characters = NULL;
     jstring charactersIgnoringModifiers = NULL;
     jstring charactersIgnoringModifiersAndShift = NULL;
+
     if ([event type] != NSFlagsChanged) {
         characters = JNFNSToJavaString(env, [event characters]);
         charactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
-        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, [event charactersIgnoringModifiersAndShift]);
+        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, charactersIgnoringModifiersAndShiftAsNsString);
+    }
+
+    jint javaDeadKeyCode = 0;
+
+    if (status == noErr && isDeadKeyPressed != 0) {
+
+        if (event.type != NSEventTypeKeyUp) {
+            // We send only key release for dead keys
+            return;
+        }
+
+        status = UCKeyTranslate(
+                    keyboardLayout,
+                    kVK_Space,
+                    kUCKeyActionDown,
+                    0,
+                    LMGetKbdType(),
+                    0,
+                    &isDeadKeyPressed,
+                    lengthOfBuffer,
+                    &actualLength,
+                    stringWithChars);
+
+        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, [NSString stringWithCharacters:stringWithChars length:actualLength]);
+
+        switch ([event keyCode]) {
+            case 0x0060:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_GRAVE;
+               break;
+            case 0x00B4:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_ACUTE;
+               break;
+            case 0x0384:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_ACUTE;
+               break;
+            case 0x005E:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_CIRCUMFLEX;
+               break;
+            case 0x007E:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_TILDE;
+               break;
+            case 0x02DC:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_TILDE;
+               break;
+            case 0x00AF:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_MACRON;
+               break;
+            case 0x02D8:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_BREVE;
+               break;
+            case 0x02D9:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_ABOVEDOT;
+               break;
+            case 0x00A8:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_DIAERESIS;
+               break;
+            case 0x02DA:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_ABOVERING;
+               break;
+            case 0x02DD:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_DOUBLEACUTE;
+               break;
+            case 0x02C7:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_CARON;
+               break;
+            case 0x00B8:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_CEDILLA;
+               break;
+            case 0x02DB:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_OGONEK;
+               break;
+            case 0x037A:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_IOTA;
+               break;
+            case 0x309B:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_VOICED_SOUND;
+               break;
+            case 0x309C:
+               javaDeadKeyCode = java_awt_event_KeyEvent_VK_DEAD_SEMIVOICED_SOUND;
+                break;
+        }
     }
 
     static JNF_CLASS_CACHE(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZI)V");
     jobject jEvent = JNFNewObject(env, jctor_NSEvent,
                                   [event type],
                                   [event modifierFlags],
                                   [event keyCode],
                                   characters,
                                   charactersIgnoringModifiers,
-                                  charactersIgnoringModifiersAndShift);
+                                  charactersIgnoringModifiersAndShift,
+                                  isDeadKeyPressed,
+                                  javaDeadKeyCode
+                                  );
     CHECK_NULL(jEvent);
 
     static JNF_CLASS_CACHE(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
