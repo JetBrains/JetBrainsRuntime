@@ -513,6 +513,7 @@ static NSDictionary* getUnicharToVkCodeDictionary() {
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET], @"[",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE], @"\'",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON], @";",
+                 [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COLON], @":",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH], @"\\",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], @",",
                  [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH], @"/",
