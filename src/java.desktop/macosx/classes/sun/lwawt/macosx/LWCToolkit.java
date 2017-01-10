@@ -727,6 +727,30 @@ public final class LWCToolkit extends LWToolkit {
         }
     }
 
+    private static final AtomicInteger blockingRunLoopCounter = new AtomicInteger(0);
+    private static final AtomicBoolean priorityInvocationPending = new AtomicBoolean(false);
+
+    @Override
+    public void unsafeNonblockingExecute(Runnable runnable) {
+        if (!EventQueue.isDispatchThread()) {
+            throw new Error("the method must be called on the Event Dispatching thread");
+        }
+        if (runnable == null) return;
+
+        synchronized (priorityInvocationPending) {
+            priorityInvocationPending.set(true);
+        }
+        AWTAccessor.getEventQueueAccessor().createSecondaryLoop(
+            getSystemEventQueue(),
+            () -> blockingRunLoopCounter.get() > 0).enter();
+
+        try {
+            runnable.run();
+        } finally {
+            priorityInvocationPending.set(false);
+        }
+    }
+
     /**
      * Kicks an event over to the appropriate eventqueue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
