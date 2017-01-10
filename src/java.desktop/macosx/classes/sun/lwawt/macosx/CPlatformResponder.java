@@ -340,11 +340,6 @@ final class CPlatformResponder {
         // for clipboard related shortcuts like Meta + [CVX]
         if (jeventType == KeyEvent.KEY_PRESSED && postsTyped &&
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
-            // Enter and Space keys finish the input method processing,
-            // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
-            if ((jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
-                return;
-            }
 
             char characterToSendWithTypedEvent = KeyEvent.CHAR_UNDEFINED;
 
@@ -361,12 +356,6 @@ final class CPlatformResponder {
             if (nonInputMethodsModifiersAreNotPressed) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
                         jkeyCode, characterToSendWithTypedEvent,
-                        KeyEvent.KEY_LOCATION_UNKNOWN);
-            }
-
-            if (nsEvent.getType() == CocoaConstants.NSKeyUp) {
-                eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
-                        jkeyCode, characterToSendWithTheEvent,
                         KeyEvent.KEY_LOCATION_UNKNOWN);
             }
         }
