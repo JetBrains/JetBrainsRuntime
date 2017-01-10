@@ -33,7 +33,7 @@
 #import <sys/time.h>
 #include <Carbon/Carbon.h>
 
-#import "jni_util.h" 
+#import "jni_util.h"
 #import "LWCToolkit.h"
 #import "ThreadUtilities.h"
 
