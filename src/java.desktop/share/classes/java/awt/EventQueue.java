@@ -42,6 +42,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import java.util.function.BooleanSupplier;
+
 /**
  * {@code EventQueue} is a platform-independent class
  * that queues events, both from the underlying peer classes
@@ -208,6 +210,11 @@ public class EventQueue {
                 @Override
                 public long getMostRecentEventTime(EventQueue eventQueue) {
                     return eventQueue.getMostRecentEventTimeImpl();
+                }
+
+                @Override
+                public SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond) {
+                    return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
                 }
             });
     }
