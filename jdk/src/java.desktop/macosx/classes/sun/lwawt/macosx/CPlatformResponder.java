@@ -334,7 +334,7 @@ final class CPlatformResponder {
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
             // Enter and Space keys finish the input method processing,
             // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
-            if (true && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
+            if ((jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
 
@@ -347,14 +347,12 @@ final class CPlatformResponder {
             }
 
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    jkeyCode, characterToSendWithTypedEvent,
-                    KeyEvent.KEY_LOCATION_UNKNOWN);
-            //If events come from Firefox, released events should also be generated.
-            if (true) {
-                eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
-                        jkeyCode, characterToSendWithTheEvent,
-                        KeyEvent.KEY_LOCATION_UNKNOWN);
-            }
+                 jkeyCode, characterToSendWithTypedEvent,
+                 KeyEvent.KEY_LOCATION_UNKNOWN);
+
+            eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
+                jkeyCode, characterToSendWithTheEvent,
+                KeyEvent.KEY_LOCATION_UNKNOWN);
         }
     }
 
