@@ -286,24 +286,7 @@ final class CPlatformResponder {
             characterToSendWithTheEvent = characterToGetKeyCode;
         }
 
-        switch (mapNsCharsToCompatibleWithJava(checkedChar)) {
-            case 0x000a:
-                jkeyCode = KeyEvent.VK_ENTER;
-                break;
-            case 0x0008:
-                jkeyCode = KeyEvent.VK_DELETE;
-                break;
-            case 0x007f:
-                jkeyCode = KeyEvent.VK_BACK_SPACE;
-                break;
-            case 0x0009:
-                jkeyCode = KeyEvent.VK_TAB;
-                break;
-            default:
-                jkeyCode = out[0];
-                break;
-        }
-
+        jkeyCode = out[0];
 
         jkeyLocation = out[1];
         jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(nsEvent.getType()) :
@@ -312,10 +295,10 @@ final class CPlatformResponder {
 
         if (isISOControl) {
             characterToSendWithTheEvent = checkedChar;
-        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
-            characterToSendWithTheEvent = checkedChar;
         } else  if (nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
             characterToSendWithTheEvent = nsEvent.getCharactersIgnoringModifiers().charAt(0);
+        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
+            characterToSendWithTheEvent = checkedChar;
         }
 
         characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
