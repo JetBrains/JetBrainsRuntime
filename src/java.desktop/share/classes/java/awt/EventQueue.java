@@ -46,6 +46,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import java.security.AccessControlContext;
+import java.util.function.BooleanSupplier;
 
 import jdk.internal.misc.SharedSecrets;
 import jdk.internal.misc.JavaSecurityAccess;
@@ -227,6 +228,11 @@ public class EventQueue {
                 @Override
                 public long getMostRecentEventTime(EventQueue eventQueue) {
                     return eventQueue.getMostRecentEventTimeImpl();
+                }
+
+                @Override
+                public SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond) {
+                    return eventQueue.createSecondaryLoop(cond::getAsBoolean, null, 0);
                 }
             });
         AccessController.doPrivileged(new PrivilegedAction<Object>() {
