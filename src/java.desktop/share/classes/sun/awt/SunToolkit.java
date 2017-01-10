@@ -592,6 +592,25 @@ public abstract class SunToolkit extends Toolkit
         }
     }
 
+    /**
+     * Must be called on the Event Dispatching thread.
+     * <p>
+     * Executes the runnable so that it can perform a non-blocking invocation on the toolkit thread.
+     * By default executes the runnable in place. Toolkits which can not rely on the default behavior
+     * provide platform-specific implementation to ensure the non-blocking invocation.
+     * <p>
+     * The method may be unsafe and is only used (externally) in critical deadlock-prone cases.
+     *
+     * @param runnable the runnable to execute
+     * @throws Error when called on not Event Dispatching thread
+     */
+    public void unsafeNonblockingExecute(Runnable runnable) {
+        if (!EventQueue.isDispatchThread()) {
+            throw new Error("the method must be called on the Event Dispatching thread");
+        }
+        if (runnable != null) runnable.run();
+    }
+
     /*
      * Returns true if the calling thread is the event dispatch thread
      * contained within AppContext which associated with the given target.
