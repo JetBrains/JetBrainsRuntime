@@ -23,6 +23,14 @@
  * questions.
  */
 
+#import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import <sys/time.h>
+
+#import "jni_util.h" 
+#import "LWCToolkit.h"
+#import "ThreadUtilities.h"
+
 #import "java_awt_event_InputEvent.h"
 #import "java_awt_event_KeyEvent.h"
 #import "LWCToolkit.h"

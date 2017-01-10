@@ -28,7 +28,7 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
-#include <Carbon/Carbon.h>
+
 
 #import "ThreadUtilities.h"
 #import "AWTView.h"

@@ -289,24 +289,7 @@ final class CPlatformResponder {
             characterToSendWithTheEvent = characterToGetKeyCode;
         }
 
-        switch (mapNsCharsToCompatibleWithJava(checkedChar)) {
-            case 0x000a:
-                jkeyCode = KeyEvent.VK_ENTER;
-                break;
-            case 0x0008:
-                jkeyCode = KeyEvent.VK_DELETE;
-                break;
-            case 0x007f:
-                jkeyCode = KeyEvent.VK_BACK_SPACE;
-                break;
-            case 0x0009:
-                jkeyCode = KeyEvent.VK_TAB;
-                break;
-            default:
-                jkeyCode = out[0];
-                break;
-        }
-
+        jkeyCode = out[0];
 
         jkeyLocation = out[1];
         jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(nsEvent.getType()) :
@@ -315,10 +298,10 @@ final class CPlatformResponder {
 
         if (isISOControl) {
             characterToSendWithTheEvent = checkedChar;
-        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
-            characterToSendWithTheEvent = checkedChar;
         } else  if (nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
             characterToSendWithTheEvent = nsEvent.getCharactersIgnoringModifiers().charAt(0);
+        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
+            characterToSendWithTheEvent = checkedChar;
         }
 
         characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
@@ -354,7 +337,7 @@ final class CPlatformResponder {
                 (jmodifiers & KeyEvent.META_DOWN_MASK) == 0) {
             // Enter and Space keys finish the input method processing,
             // KEY_TYPED and KEY_RELEASED events for them are synthesized in handleInputEvent.
-            if (true && (jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
+            if ((jkeyCode == KeyEvent.VK_ENTER || jkeyCode == KeyEvent.VK_SPACE)) {
                 return;
             }
 
@@ -367,14 +350,12 @@ final class CPlatformResponder {
             }
 
             eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
-                    jkeyCode, characterToSendWithTypedEvent,
-                    KeyEvent.KEY_LOCATION_UNKNOWN);
-            //If events come from Firefox, released events should also be generated.
-            if (true) {
-                eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
-                        jkeyCode, characterToSendWithTheEvent,
-                        KeyEvent.KEY_LOCATION_UNKNOWN);
-            }
+                 jkeyCode, characterToSendWithTypedEvent,
+                 KeyEvent.KEY_LOCATION_UNKNOWN);
+
+            eventNotifier.notifyKeyEvent(KeyEvent.KEY_RELEASED, when, jmodifiers,
+                jkeyCode, characterToSendWithTheEvent,
+                KeyEvent.KEY_LOCATION_UNKNOWN);
         }
     }
 
