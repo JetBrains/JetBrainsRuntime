@@ -49,6 +49,7 @@ import java.security.AccessControlContext;
 import java.io.File;
 import java.util.ResourceBundle;
 import java.util.Vector;
+import java.util.function.BooleanSupplier;
 import javax.accessibility.AccessibleBundle;
 
 import sun.java2d.cmm.Profile;
@@ -552,12 +553,17 @@ public final class AWTAccessor {
         /**
          * Sets the delegate for the EventQueue used by FX/AWT single threaded mode
          */
-        void setFwDispatcher(EventQueue eventQueue, FwDispatcher dispatcher);
+        public void setFwDispatcher(EventQueue eventQueue, FwDispatcher dispatcher);
 
         /**
          * Gets most recent event time in the EventQueue
          */
         long getMostRecentEventTime(EventQueue eventQueue);
+
+        /**
+         * Creates a secondary loop with the provided condition.
+         */
+        SecondaryLoop createSecondaryLoop(EventQueue eventQueue, BooleanSupplier cond);
     }
 
     /*
