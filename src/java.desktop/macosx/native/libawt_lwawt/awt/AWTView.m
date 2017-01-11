@@ -447,9 +447,13 @@ static BOOL shouldUsePressAndHold() {
     [AWTToolkit eventCountPlusPlus];
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
-    TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-    CFDataRef layoutData = TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData);
-    const UCKeyboardLayout *keyboardLayout = (const UCKeyboardLayout *)CFDataGetBytePtr(layoutData);
+    TISInputSourceRef sourceRef = TISCopyCurrentKeyboardLayoutInputSource();
+    CFDataRef keyLayoutPtr = (CFDataRef)TISGetInputSourceProperty(
+    sourceRef, kTISPropertyUnicodeKeyLayoutData);
+    CFRelease( sourceRef);
+
+    const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
+
     UInt32 isDeadKeyPressed;
     UInt32 lengthOfBuffer = 4;
     UniChar stringWithChars[lengthOfBuffer];
@@ -468,7 +472,6 @@ static BOOL shouldUsePressAndHold() {
                    &actualLength,
                    stringWithChars);
 
-    CFRelease(currentKeyboard);
     NSString*  charactersIgnoringModifiersAndShiftAsNsString = [NSString stringWithCharacters:stringWithChars length:actualLength];
 
     jstring characters = NULL;
