@@ -84,8 +84,7 @@
     NSEvent *currEvent = [[NSApplication sharedApplication] currentEvent];
 
     NSEvent* latestPerformKeyEquivalentEvent = [AWTToolkit latestPerformKeyEquivalentEvent];
-    if (latestPerformKeyEquivalentEvent != NULL && [latestPerformKeyEquivalentEvent isEqual:currEvent]) {
-        [latestPerformKeyEquivalentEvent release];
+    if (latestPerformKeyEquivalentEvent != NULL && [currEvent isEqual:latestPerformKeyEquivalentEvent]) {
         [AWTToolkit setLatestPerformKeyEquivalentEvent:NULL];
         return;
     }
