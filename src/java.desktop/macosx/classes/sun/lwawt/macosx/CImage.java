@@ -280,8 +280,8 @@ public class CImage extends CFRetainedResource {
         if (size == null) {
             return null;
         }
-        final int w = (int)size.getWidth();
-        final int h = (int)size.getHeight();
+        final int baseWidth = (int)size.getWidth();
+        final int baseHeight = (int)size.getHeight();
         AtomicReference<Dimension2D[]> repRef = new AtomicReference<>();
         execute(ptr -> {
             repRef.set(nativeGetNSImageRepresentationSizes(ptr, size.getWidth(),
@@ -289,11 +289,17 @@ public class CImage extends CFRetainedResource {
         });
         Dimension2D[] sizes = repRef.get();
 
+        // The image may be represented in the only size which differs from the base one.
+        // For instance, the app's dock icon is represented in a Retina-scaled size on Retina.
+        // So, in case of a single represenation its size should be used as the dest size.
+        final int dstWidth  = (sizes != null && sizes.length == 1) ? (int) sizes[0].getWidth() : baseWidth;
+        final int dstHeight = (sizes != null && sizes.length == 1) ? (int) sizes[0].getHeight() : baseHeight;
+
         return sizes == null || sizes.length < 2 ?
-                new MultiResolutionCachedImage(w, h, (width, height)
-                        -> toImage(w, h, width, height))
-                : new MultiResolutionCachedImage(w, h, sizes, (width, height)
-                        -> toImage(w, h, width, height));
+                new MultiResolutionCachedImage(baseWidth, baseHeight, (width, height)
+                        -> toImage(baseWidth, baseHeight, dstWidth, dstHeight))
+                : new MultiResolutionCachedImage(baseWidth, baseHeight, sizes, (width, height)
+                        -> toImage(baseWidth, baseHeight, width, height));
     }
 
     private BufferedImage toImage(int srcWidth, int srcHeight, int dstWidth, int dstHeight) {
