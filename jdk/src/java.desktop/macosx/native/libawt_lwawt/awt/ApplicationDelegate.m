@@ -201,11 +201,11 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.fPreferencesMenu = (NSMenuItem*)[appMenu itemWithTag:PREFERENCES_TAG];
     self.fAboutMenu = (NSMenuItem*)[appMenu itemAtIndex:0];
-    
+
     NSDockTile *dockTile = [NSApp dockTile];
     self.fProgressIndicator = [[NSProgressIndicator alloc]
                                 initWithFrame:NSMakeRect(3.f, 0.f, dockTile.size.width - 6.f, 20.f)];
-    
+
     [fProgressIndicator setStyle:NSProgressIndicatorBarStyle];
     [fProgressIndicator setIndeterminate:NO];
     [[dockTile contentView] addSubview:fProgressIndicator];
@@ -476,20 +476,8 @@ AWT_ASSERT_APPKIT_THREAD;
         return;
     }
 
-    // setup an image view for the dock tile
-    NSRect frame = NSMakeRect(0, 0, dockTile.size.width, dockTile.size.height);
-    NSImageView *dockImageView = [[NSImageView alloc] initWithFrame: frame];
-    [dockImageView setImageScaling:NSImageScaleProportionallyUpOrDown];
-    [dockImageView setImage:image];
-
-    [[ApplicationDelegate sharedDelegate].fProgressIndicator removeFromSuperview];
-    [dockImageView addSubview:[ApplicationDelegate sharedDelegate].fProgressIndicator];
-
-    // add it to the NSDockTile
-    [dockTile setContentView: dockImageView];
-    [dockTile display];
-
-    [dockImageView release];
+    // Set the app's icon instead to meet Retina.
+    [NSApp setApplicationIconImage:image];
 }
 
 + (void)_setDockIconProgress:(NSNumber *)value {
@@ -510,25 +498,8 @@ AWT_ASSERT_APPKIT_THREAD;
 + (NSImage *)_dockIconImage {
 AWT_ASSERT_APPKIT_THREAD;
 
-    NSDockTile *dockTile = [NSApp dockTile];
-    NSView *view = [dockTile contentView];
-
-    if ([view isKindOfClass:[NSImageView class]]) {
-        NSImage *img = [((NSImageView *)view) image];
-        if (img) return img;
-    }
-
-    if (view == nil) {
-        return [NSImage imageNamed:@"NSApplicationIcon"];
-    }
-
-    NSRect frame = [view frame];
-    NSImage *image = [[NSImage alloc] initWithSize:frame.size];
-    [image lockFocus];
-    [view drawRect:frame];
-    [image unlockFocus];
-    [image autorelease];
-    return image;
+    // The app's dock icon defaults to the app's icon (see the spec) which is Retina-aware unlike the dock icon.
+    return [NSApp applicationIconImage];
 }
 
 @end
