@@ -287,6 +287,10 @@ static char* getPhysFontName(JNIEnv *env, jobject font2d) {
 }
 
 static int getScreenResolution(JNIEnv *env) {
+/*
+ * Actual screen dpi is necessary only for fontconfig requests
+ */
+#ifndef DISABLE_FONTCONFIG
     jthrowable exc;
     jclass tk = (*env)->CallStaticObjectMethod(
         env, tkClass, getDefaultToolkitMID);
@@ -312,6 +316,9 @@ static int getScreenResolution(JNIEnv *env) {
         fprintf(stderr, "FFS_LOG: Screen Resolution (%d) dpi\n", dpi);
     }
     return dpi;
+#else
+    return DEFAULT_DPI;
+#endif
 }
 
 static void freeNativeResources(JNIEnv *env, FTScalerInfo* scalerInfo) {
