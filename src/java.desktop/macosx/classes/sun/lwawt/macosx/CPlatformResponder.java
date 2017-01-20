@@ -259,6 +259,14 @@ final class CPlatformResponder {
             ? nsEvent.getCharactersIgnoringModifiers().charAt(0)
             : charactersIsValid ? nsEvent.getCharacters().charAt(0) : KeyEvent.CHAR_UNDEFINED;
 
+        if (useShiftedCharacters && nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
+            characterToGetKeyCode = nsEvent.getCharactersIgnoringModifiers().charAt(0);
+        } else  if (nsEvent.getCharactersIgnoringModifiersAndShift() != null && !nsEvent.getCharactersIgnoringModifiersAndShift().isEmpty()) {
+            characterToGetKeyCode = nsEvent.getCharactersIgnoringModifiersAndShift().charAt(0);
+        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
+            characterToGetKeyCode = checkedChar;
+        }
+
         // We use char candidate if modifiers are not used
         // otherwise, we use char ignoring modifiers
         int[] in = new int[] {
@@ -272,7 +280,7 @@ final class CPlatformResponder {
 
         postsTyped = NSEvent.nsToJavaKeyInfo(in, out);
 
-        char characterToSendWithTheEvent = KeyEvent.CHAR_UNDEFINED;
+        char characterToSendWithTheEvent = characterToGetKeyCode;
 
         if(nsEvent.isHasDeadKey()){
             characterToSendWithTheEvent = (char) out[2];
@@ -301,24 +309,12 @@ final class CPlatformResponder {
 
         if (isISOControl) {
             characterToSendWithTheEvent = checkedChar;
-        } else  if (useShiftedCharacters && nsEvent.getCharactersIgnoringModifiers() != null && !nsEvent.getCharactersIgnoringModifiers().isEmpty()) {
-            characterToSendWithTheEvent = nsEvent.getCharactersIgnoringModifiers().charAt(0);
-        } else  if (nsEvent.getCharactersIgnoringModifiersAndShift() != null && !nsEvent.getCharactersIgnoringModifiersAndShift().isEmpty()) {
-            characterToSendWithTheEvent = nsEvent.getCharactersIgnoringModifiersAndShift().charAt(0);
-        } else if (nsEvent.getCharacters() != null && !nsEvent.getCharacters().isEmpty() && metaAltCtrlAreNotPressed && shiftIsPressed) {
-            characterToSendWithTheEvent = checkedChar;
-        }
+       }
 
-        characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
+       characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
 
-        if (jmodifiers != 0 && nsEvent.getCharactersIgnoringModifiersAndShift() != null && !nsEvent.getCharactersIgnoringModifiersAndShift().isEmpty()) {
-            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
-            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
-        } else {
-            String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
-            characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
-        }
-
+       String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
+       characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
 
         long when = System.currentTimeMillis();
 
@@ -345,7 +341,7 @@ final class CPlatformResponder {
 
             if (nsEvent.getCharacters()!= null ) {
                 characterToSendWithTypedEvent = mapNsCharsToCompatibleWithJava(checkedChar);
-                String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTypedEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
+                stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTypedEvent, nsEvent.getModifierFlags(), spaceKeyTyped);
                 characterToSendWithTypedEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
             }
 
