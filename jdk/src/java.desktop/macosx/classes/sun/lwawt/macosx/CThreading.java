@@ -28,6 +28,8 @@ import com.apple.concurrent.Dispatch;
 
 import java.awt.EventQueue;
 import java.awt.AWTError;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -35,13 +37,15 @@ import java.util.concurrent.FutureTask;
 
 public class CThreading {
     static String APPKIT_THREAD_NAME = "AWT-AppKit";
+    static String FX_APPKIT_THREAD_NAME = "JavaFX Application Thread";
 
     static boolean isEventQueue() {
         return EventQueue.isDispatchThread();
     }
 
-    private static boolean isAppKit() {
-        return APPKIT_THREAD_NAME.equals(Thread.currentThread().getName());
+    public static boolean isAppKit() {
+        return APPKIT_THREAD_NAME.equals(Thread.currentThread().getName()) ||
+               FX_APPKIT_THREAD_NAME.equals(Thread.currentThread().getName());
     }
 
     static boolean assertEventQueue() {
@@ -89,6 +93,28 @@ public class CThreading {
             }
         } else
             return command.call();
+    }
+
+    public static <V> V privilegedExecuteOnAppKit(Callable<V> command)
+            throws Exception {
+        try {
+            return java.security.AccessController.doPrivileged(
+                    (PrivilegedExceptionAction<V>) () -> {
+                        //noinspection TryWithIdenticalCatches
+                        try {
+                            return executeOnAppKit(command);
+                        } catch (RuntimeException e) {
+                            throw e;
+                        } catch (Error e) {
+                            throw e;
+                        } catch (Throwable throwable) {
+                            throw new Exception(throwable);
+                        }
+                    }
+            );
+        } catch (PrivilegedActionException e) {
+            throw e.getException();
+        }
     }
 
     public static void executeOnAppKit(Runnable command) {
