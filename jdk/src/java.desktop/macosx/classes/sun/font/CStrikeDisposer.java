@@ -25,6 +25,7 @@
 
 package sun.font;
 
+import com.apple.concurrent.Dispatch;
 import sun.lwawt.macosx.CThreading;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -96,8 +97,16 @@ class CStrikeDisposer extends FontStrikeDisposer {
         // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
         //    blocked on RenderQueue.lock
         // 1) invokes native block on AppKit and wait
+        //
+        // If dispatch instance is not available, run the code on
+        // disposal thread as before
 
-        CThreading.executeOnAppKit(command);
+        final Dispatch dispatch = Dispatch.getInstance();
+
+        if (!CThreading.isAppKit() && dispatch != null)
+            dispatch.getNonBlockingMainQueueExecutor().execute(command);
+        else
+            command.run();
     }
 
     private native void freeNativeScalerContext(long pContext);
