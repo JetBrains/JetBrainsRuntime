@@ -500,11 +500,6 @@ static BOOL shouldUsePressAndHold() {
 
     if (status == noErr && isDeadKeyPressed != 0) {
 
-        if (event.type != NSEventTypeKeyUp) {
-            // We send only key release for dead keys
-            return;
-        }
-
         status = UCKeyTranslate(
                     keyboardLayout,
                     kVK_Space,
