@@ -31,6 +31,7 @@ import java.awt.Rectangle;
 import java.awt.geom.*;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import sun.lwawt.macosx.CThreading;
 
 public final class CStrike extends PhysicalStrike {
 
@@ -467,7 +468,7 @@ public final class CStrike extends PhysicalStrike {
 
             final Dispatch dispatch = Dispatch.getInstance();
 
-            if (dispatch != null)
+            if (!CThreading.isAppKit() && dispatch != null)
                 dispatch.getNonBlockingMainQueueExecutor().execute(command);
             else
                 command.run();
