@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,13 +21,26 @@
  * questions.
  */
 
-package sun.security.util;
+/**
+ * @test
+ * @bug 8172971
+ * @modules java.management
+ * @summary Smoke test to check that logging in java.management is performed
+ *          through System.Logger. This test installs a LoggerFinder service
+ *          provider and verifies that it gets the traces.
+ * @build test.loggerfinder/test.loggerfinder.TestLoggerFinder LoggingTest LoggingWithLoggerFinderTest
+ * @run main/othervm --add-modules test.loggerfinder LoggingWithLoggerFinderTest
+ * @author danielfuchs
+ */
+public class LoggingWithLoggerFinderTest {
 
-import java.util.spi.AbstractResourceBundleProvider;
+    public static void main(String[] args) {
+        // Replace System.err
+        LoggingTest.TestStream ts = new LoggingTest.TestStream(System.err);
+        System.setErr(ts);
 
-public final class AuthResourcesProviderImpl extends AbstractResourceBundleProvider
-       implements AuthResourcesProvider {
-    public AuthResourcesProviderImpl() {
-        super("java.class");
+        // run the test
+        new LoggingTest().run(ts);
     }
+
 }
