@@ -764,7 +764,7 @@ public final class LWCToolkit extends LWToolkit {
     }
 
     /**
-     * Kicks an event over to the appropriate eventqueue and waits for it to
+     * Kicks an event over to the appropriate event queue and waits for it to
      * finish To avoid deadlocking, we manually run the NSRunLoop while waiting
      * Any selector invoked using ThreadUtilities performOnMainThread will be
      * processed in doAWTRunLoop The InvocationEvent will call
@@ -774,13 +774,28 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
+        invokeAndWait(runnable, component, false);
+    }
+
+    /**
+     * Submit event to the event queue as the method above
+     * @param processEvents if <code>true<code/>  always process system events
+     */
+    public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents)
+            throws InvocationTargetException
+    {
         Objects.requireNonNull(component, "Null component provided to invokeAndWait");
 
         boolean nonBlockingRunLoop;
 
-        synchronized (priorityInvocationPending) {
-            nonBlockingRunLoop = priorityInvocationPending.get();
-            if (!nonBlockingRunLoop) blockingRunLoopCounter.incrementAndGet();
+        if (!processEvents) {
+            synchronized (priorityInvocationPending) {
+                nonBlockingRunLoop = priorityInvocationPending.get();
+                if (!nonBlockingRunLoop) blockingRunLoopCounter.incrementAndGet();
+            }
+        }
+        else {
+            nonBlockingRunLoop = true;
         }
 
         final long mediator = createAWTRunLoopMediator();
