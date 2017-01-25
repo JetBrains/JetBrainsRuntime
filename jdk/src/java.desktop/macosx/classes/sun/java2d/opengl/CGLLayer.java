@@ -25,17 +25,15 @@
 
 package sun.java2d.opengl;
 
-import sun.lwawt.macosx.CFRetainedResource;
-import sun.lwawt.LWWindowPeer;
-
-import sun.java2d.SurfaceData;
-import sun.java2d.NullSurfaceData;
-
 import sun.awt.CGraphicsConfig;
+import sun.java2d.NullSurfaceData;
+import sun.java2d.SurfaceData;
+import sun.lwawt.LWWindowPeer;
+import sun.lwawt.macosx.CFRetainedResource;
+import sun.lwawt.macosx.LWCToolkit;
 
-import java.awt.Rectangle;
-import java.awt.GraphicsConfiguration;
-import java.awt.Transparency;
+import java.awt.*;
+import java.lang.reflect.InvocationTargetException;
 
 public class CGLLayer extends CFRetainedResource {
 
