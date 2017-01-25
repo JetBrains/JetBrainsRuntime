@@ -483,12 +483,7 @@ public final class CStrike extends PhysicalStrike {
             // If dispatch instance is not available, run the code on
             // disposal thread as before
 
-            final Dispatch dispatch = Dispatch.getInstance();
-
-            if (!CThreading.isAppKit() && dispatch != null)
-                dispatch.getNonBlockingMainQueueExecutor().execute(command);
-            else
-                command.run();
+            CThreading.executeOnAppKit(command);
         }
 
         private static void disposeLongArray(final long[] longArray) {
