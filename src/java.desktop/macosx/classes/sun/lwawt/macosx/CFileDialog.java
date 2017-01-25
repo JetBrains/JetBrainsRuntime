@@ -31,6 +31,7 @@ import java.awt.peer.*;
 import java.awt.BufferCapabilities.FlipContents;
 import java.awt.event.*;
 import java.awt.image.*;
+import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.util.List;
 import java.io.*;
@@ -44,6 +45,8 @@ import sun.java2d.pipe.Region;
 import sun.lwawt.LWWindowPeer;
 import sun.security.action.GetBooleanAction;
 import sun.util.logging.PlatformLogger;
+
+import javax.swing.*;
 
 class CFileDialog implements FileDialogPeer {
 
@@ -160,17 +163,16 @@ class CFileDialog implements FileDialogPeer {
             String nameOnly = fileObj.getName();
             final Semaphore filesFilterSemaphore = new Semaphore(0);
 
-            new Thread("File filtering thread") {
-                @Override
-                public void run() {
+            try {
+
+                SwingUtilities.invokeAndWait(() -> {
                     ret.set(ff.accept(directoryObj, nameOnly));
                     filesFilterSemaphore.release();
-                }
-            }.start();
+                });
 
-            try {
                 filesFilterSemaphore.acquire();
-            } catch (InterruptedException e) {
+
+            } catch (InvocationTargetException | InterruptedException e) {
                 if (log.isLoggable(PlatformLogger.Level.FINE)) {
                     log.fine("Concurrency issues during files filtering: ", e);
                 }
