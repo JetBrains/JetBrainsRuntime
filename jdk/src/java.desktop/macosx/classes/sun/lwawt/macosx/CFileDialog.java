@@ -147,7 +147,34 @@ class CFileDialog implements FileDialogPeer {
      * If the dialog doesn't have a file filter return true.
      */
     private boolean queryFilenameFilter(final String inFilename) {
-        return true;
+        AtomicBoolean ret = new AtomicBoolean(false);
+
+        final FilenameFilter ff = target.getFilenameFilter();
+        File fileObj = new File(inFilename);
+
+        // Directories are never filtered by the FileDialog.
+        if (!fileObj.isDirectory()) {
+            File directoryObj = new File(fileObj.getParent());
+            String nameOnly = fileObj.getName();
+            final Semaphore filesFilterSemaphore = new Semaphore(0);
+
+            try {
+
+                SwingUtilities.invokeAndWait(() -> {
+                    ret.set(ff.accept(directoryObj, nameOnly));
+                    filesFilterSemaphore.release();
+                });
+
+                filesFilterSemaphore.acquire();
+
+            } catch (InvocationTargetException | InterruptedException e) {
+                if (log.isLoggable(PlatformLogger.Level.FINE)) {
+                    log.fine("Concurrency issues during files filtering: ", e);
+                }
+            }
+
+        }
+        return ret.get();
     }
 
     private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
