@@ -25,15 +25,17 @@
 
 package sun.java2d.opengl;
 
-import sun.awt.CGraphicsConfig;
-import sun.java2d.NullSurfaceData;
-import sun.java2d.SurfaceData;
-import sun.lwawt.LWWindowPeer;
 import sun.lwawt.macosx.CFRetainedResource;
-import sun.lwawt.macosx.LWCToolkit;
+import sun.lwawt.LWWindowPeer;
 
-import java.awt.*;
-import java.lang.reflect.InvocationTargetException;
+import sun.java2d.SurfaceData;
+import sun.java2d.NullSurfaceData;
+
+import sun.awt.CGraphicsConfig;
+
+import java.awt.Rectangle;
+import java.awt.GraphicsConfiguration;
+import java.awt.Transparency;
 
 public class CGLLayer extends CFRetainedResource {
 
@@ -136,7 +138,7 @@ public class CGLLayer extends CFRetainedResource {
         OGLRenderQueue rq = OGLRenderQueue.getInstance();
         rq.lock();
         try {
-            execute(ptr -> blitTexture(ptr));
+            blitTexture(getPointer());
         } finally {
             rq.unlock();
         }

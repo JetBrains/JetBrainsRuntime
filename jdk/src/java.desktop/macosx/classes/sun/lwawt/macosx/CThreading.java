@@ -26,7 +26,8 @@ package sun.lwawt.macosx;
 
 import com.apple.concurrent.Dispatch;
 
-import java.awt.*;
+import java.awt.EventQueue;
+import java.awt.AWTError;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -39,7 +40,7 @@ public class CThreading {
         return EventQueue.isDispatchThread();
     }
 
-    public static boolean isAppKit() {
+    private static boolean isAppKit() {
         return APPKIT_THREAD_NAME.equals(Thread.currentThread().getName());
     }
 

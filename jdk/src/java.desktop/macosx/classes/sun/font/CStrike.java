@@ -463,12 +463,7 @@ public final class CStrike extends PhysicalStrike {
             //    blocked on RenderQueue.lock
             // 1) invokes native block on AppKit and wait
 
-            final Dispatch dispatch = Dispatch.getInstance();
-
-            if (!CThreading.isAppKit() && dispatch != null)
-                dispatch.getNonBlockingMainQueueExecutor().execute(command);
-            else
-                command.run();
+            CThreading.executeOnAppKit(command);
         }
 
         private static void disposeLongArray(final long[] longArray) {
