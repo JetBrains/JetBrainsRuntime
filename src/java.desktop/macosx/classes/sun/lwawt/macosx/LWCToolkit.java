@@ -738,8 +738,6 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component)
             throws InvocationTargetException
     {
-        Objects.requireNonNull(component, "Null component provided to invokeAndWait");
-
         boolean nonBlockingRunLoop;
 
         synchronized (priorityInvocationPending) {
