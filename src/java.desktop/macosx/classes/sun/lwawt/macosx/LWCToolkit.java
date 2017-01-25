@@ -784,8 +784,6 @@ public final class LWCToolkit extends LWToolkit {
     public static void invokeAndWait(Runnable runnable, Component component, boolean processEvents)
             throws InvocationTargetException
     {
-        Objects.requireNonNull(component, "Null component provided to invokeAndWait");
-
         boolean nonBlockingRunLoop;
 
         if (!processEvents) {
