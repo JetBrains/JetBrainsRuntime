@@ -111,7 +111,7 @@ public class CGLLayer extends CFLayer {
         OGLRenderQueue rq = OGLRenderQueue.getInstance();
         rq.lock();
         try {
-            execute(ptr -> blitTexture(ptr));
+            blitTexture(getPointer());
         } finally {
             rq.unlock();
         }
