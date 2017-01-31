@@ -175,6 +175,13 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
      * @param rowIndex the row the view will be placed into
      */
     protected View createView(FlowView fv, int startOffset, int spanLeft, int rowIndex) {
+        Component comp = fv.getContainer();
+        if (comp != null &&
+            comp.getGraphicsConfiguration() != null &&
+            (frcTx == null || !frcTx.equals(comp.getGraphicsConfiguration().getDefaultTransform())))
+        {
+            sync(fv);
+        }
         // Get the child view that contains the given starting position
         View lv = getLogicalView(fv);
         View row = fv.getView(rowIndex);
@@ -293,6 +300,8 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
         Container container = fv.getContainer();
         FontRenderContext frc = sun.swing.SwingUtilities2.
                                     getFontRenderContext(container);
+        frcTx = frc.getTransform();
+
         BreakIterator iter;
         Container c = fv.getContainer();
         if (c != null) {
@@ -335,6 +344,7 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
 
     private LineBreakMeasurer measurer;
     private AttributedSegment text;
+    private AffineTransform frcTx;
 
     /**
      * Implementation of AttributedCharacterIterator that supports
