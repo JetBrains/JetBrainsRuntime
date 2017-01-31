@@ -1235,6 +1235,13 @@ public class SwingUtilities2 {
 
             GraphicsConfiguration gc = c.getGraphicsConfiguration();
             AffineTransform tx = (gc == null) ? null : gc.getDefaultTransform();
+            if (tx == null && !GraphicsEnvironment.isHeadless()) {
+                tx =  GraphicsEnvironment
+                        .getLocalGraphicsEnvironment()
+                        .getDefaultScreenDevice()
+                        .getDefaultConfiguration()
+                        .getDefaultTransform();
+            }
             Object aaHint = c.getClientProperty(KEY_TEXT_ANTIALIASING);
             return getFRCFromCache(tx, aaHint);
         }
