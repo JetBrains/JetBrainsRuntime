@@ -25,6 +25,7 @@
 
 package java.awt;
 
+import java.awt.geom.AffineTransform;
 import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
@@ -1162,7 +1163,15 @@ public abstract class Component implements ImageObserver, MenuContainer,
         if (graphicsConfig == gc) {
             return false;
         }
+
+        AffineTransform tx = graphicsConfig != null ? graphicsConfig.getDefaultTransform() : new AffineTransform();
+        AffineTransform newTx = gc != null ? gc.getDefaultTransform() : new AffineTransform();
         graphicsConfig = gc;
+        if (tx.getScaleX() != newTx.getScaleX() ||
+            tx.getScaleY() != newTx.getScaleY())
+        {
+            firePropertyChange("graphicsContextScaleTransform", tx, newTx);
+        }
 
         ComponentPeer peer = this.peer;
         if (peer != null) {
