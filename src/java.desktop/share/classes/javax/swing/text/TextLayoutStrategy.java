@@ -31,6 +31,7 @@ import java.awt.font.FontRenderContext;
 import java.awt.font.LineBreakMeasurer;
 import java.awt.font.TextAttribute;
 import java.awt.font.TextLayout;
+import java.awt.geom.AffineTransform;
 import java.text.AttributedCharacterIterator;
 import java.text.BreakIterator;
 import java.util.HashSet;
@@ -42,6 +43,7 @@ import javax.swing.JComponent;
 import javax.swing.event.DocumentEvent;
 
 import sun.font.BidiUtils;
+import sun.swing.SwingUtilities2;
 
 /**
  * A flow strategy that uses java.awt.font.LineBreakMeasurer to
@@ -290,6 +292,18 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
     }
 
     /**
+     * Synchronize the strategy if the container's FRC scale changes.
+     */
+    void syncFRC(FlowView fv) {
+        AffineTransform newFrcTx = SwingUtilities2.getFontRenderContext(fv.getContainer()).getTransform();
+        if (frcTx.getScaleX() != newFrcTx.getScaleX() ||
+            frcTx.getScaleY() != newFrcTx.getScaleY())
+        {
+            sync(fv);
+        }
+    }
+
+    /**
      * Synchronize the strategy with its FlowView.  Allows the strategy
      * to update its state to account for changes in that portion of the
      * model represented by the FlowView.  Also allows the strategy
@@ -302,6 +316,8 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
         Container container = fv.getContainer();
         FontRenderContext frc = sun.swing.SwingUtilities2.
                                     getFontRenderContext(container);
+        frcTx = frc.getTransform();
+
         BreakIterator iter;
         Container c = fv.getContainer();
         if (c != null) {
@@ -344,6 +360,7 @@ class TextLayoutStrategy extends FlowView.FlowStrategy {
 
     private LineBreakMeasurer measurer;
     private AttributedSegment text;
+    private AffineTransform frcTx = new AffineTransform();
 
     /**
      * Implementation of AttributedCharacterIterator that supports
