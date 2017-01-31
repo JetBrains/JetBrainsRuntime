@@ -319,6 +319,9 @@ final class CPlatformResponder {
             lastKeyPressCode = jkeyCode;
         }
 
+        if (0xF700 <= characterToSendWithTheEvent &&  characterToSendWithTheEvent <= 0xF8FF ) {
+            characterToSendWithTheEvent = KeyEvent.CHAR_UNDEFINED;
+        }
         eventNotifier.notifyKeyEvent(jeventType, when, jmodifiers,
                 jkeyCode, characterToSendWithTheEvent, jkeyLocation);
 
