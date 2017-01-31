@@ -293,6 +293,15 @@ public abstract class FlowView extends BoxView {
     }
 
     /** {@inheritDoc} */
+    @Override
+    public void preferenceChanged(View child, boolean width, boolean height) {
+        super.preferenceChanged(child, width, height);
+        if (strategy instanceof TextLayoutStrategy) {
+            ((TextLayoutStrategy) strategy).syncFRC(this);
+        }
+    }
+
+    /** {@inheritDoc} */
     public void setParent(View parent) {
         super.setParent(parent);
         if (parent == null
