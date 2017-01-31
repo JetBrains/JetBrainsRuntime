@@ -24,7 +24,10 @@
  */
 package javax.swing.text;
 
+import sun.swing.SwingUtilities2;
+
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 
 /**
  * A class to perform rendering of the glyphs.
@@ -221,6 +224,15 @@ class GlyphPainter1 extends GlyphView.GlyphPainter {
 
     @SuppressWarnings("deprecation")
     void sync(GlyphView v) {
+        if (metrics != null) {
+            AffineTransform frcTx = metrics.getFontRenderContext().getTransform();
+            AffineTransform newFrcTx = SwingUtilities2.getFontRenderContext(v.getContainer()).getTransform();
+            if (frcTx.getScaleX() != newFrcTx.getScaleX() ||
+                frcTx.getScaleY() != newFrcTx.getScaleY())
+            {
+                metrics = null;
+            }
+        }
         Font f = v.getFont();
         FontMetrics fm = null;
         Container c = v.getContainer();
