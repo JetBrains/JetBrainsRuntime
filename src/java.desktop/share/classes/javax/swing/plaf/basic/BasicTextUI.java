@@ -1939,7 +1939,22 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
                 updateCursor();
                 modelChanged();
             }
+            if (propertyName.equals("graphicsContextScaleTransform")) {
+                // force re-layout of the document view
+                forwardPreferenceChangeToView(rootView);
+            }
             BasicTextUI.this.propertyChange(evt);
+        }
+
+        private void forwardPreferenceChangeToView(View view) {
+            if (view.getViewCount() == 0) {
+                // propagate the change up the hierarchy of this leaf view
+                view.preferenceChanged(null, true, true);
+                return;
+            }
+            for (int i=0; i<view.getViewCount(); i++) {
+                forwardPreferenceChangeToView(view.getView(i));
+            }
         }
 
         private void dropIndexChanged() {
