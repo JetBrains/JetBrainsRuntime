@@ -26,53 +26,94 @@ import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
- * bug     JRE-210
- * @summary JEditorPane's font metrics to honour switching to different GC scale
- * @author  anton.tarasov
- * @run     main JEditorPaneGCSwitchTest
+ * bug       JRE-210
+ * @summary  JEditorPane's font metrics to honour switching to different GC scale
+ * @author   anton.tarasov
+ * @requires (os.family == "windows")
+ * @run      main JEditorPaneGCSwitchTest
  */
-public class JEditorPaneGCSwitchTest extends JPanel {
+public class JEditorPaneGCSwitchTest {
+    static JEditorPane editorPane;
+    static JFrame frame;
     volatile static CountDownLatch latch;
     final static Map<Float, Dimension> scale2size = new HashMap<>(2);
 
-    static void test(final float scale) {
-        JEditorPane editorPane = new JEditorPane();
+    static void initGUI() {
+        editorPane = new JEditorPane() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+            }
+        };
         try {
             // This HTML text has different bounds when put into GC's with different scales
             editorPane.setPage(JEditorPaneGCSwitchTest.class.getResource("JEditorPaneGCSwitchTest.html"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        editorPane.addPropertyChangeListener("page", (e) -> getSize(editorPane, scale));
+        editorPane.addPropertyChangeListener("page", (e) -> {
+            if (frame != null) frame.dispose();
+            frame = new JFrame("frame");
+            frame.add(editorPane);
+            frame.pack();
+            frame.setVisible(true);
+            latch.countDown();
+        });
     }
 
-    static void getSize(JEditorPane editorPane, float scale) {
+    static void testSize(final float scale) {
         // Emulate showing on a device with the provided scale
         AWTAccessor.getComponentAccessor().setGraphicsConfiguration(editorPane, new MyGraphicsConfiguration(scale));
-        // The size should take into account the font metrics
-        Dimension d = editorPane.getPreferredSize();
-        System.out.println(scale + " : " + d);
-        scale2size.put(scale, d);
-        latch.countDown();
+
+        EventQueue.invokeLater(() -> {
+            Dimension d = editorPane.getPreferredSize();
+            System.out.println(scale + " : " + d);
+            scale2size.put(scale, d);
+            latch.countDown();
+        });
     }
 
-    public static void main(String[] args) throws InterruptedException {
-        /*
-         * SCALE 1.0
-         */
-        latch = new CountDownLatch(1);
-        SwingUtilities.invokeLater(() -> test(1f));
-        latch.await();
+    static void runSync(Runnable r) {
+        try {
+            latch = new CountDownLatch(1);
+            SwingUtilities.invokeLater(() -> r.run());
+            latch.await();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
+    public static void main(String[] args) {
         /*
-         * SCALE 2.0
+         * 1. Recreate the editor b/w device switch
          */
-        latch = new CountDownLatch(1);
-        SwingUtilities.invokeLater(() -> test(2f));
-        latch.await();
+        runSync(() -> initGUI());
+
+        runSync(() -> testSize(1f));
+
+        runSync(() -> initGUI());
+
+        runSync(() -> testSize(2f));
 
         if (scale2size.get(1f).equals(scale2size.get(2f))) {
-            throw new RuntimeException("Test FAILED: the editor size should differ!");
+            throw new RuntimeException("Test FAILED: [1] expected different editor size per scale!");
+        }
+
+        /*
+         * 2. Keep the editor shown b/w device switch
+         */
+        scale2size.clear();
+
+        runSync(() -> initGUI());
+
+        runSync(() -> testSize(1f));
+
+        runSync(() -> testSize(2f));
+
+        frame.dispose();
+
+        if (scale2size.get(1f).equals(scale2size.get(2f))) {
+            throw new RuntimeException("Test FAILED: [2] expected different editor size per scale!");
         }
         System.out.println("Test PASSED");
     }

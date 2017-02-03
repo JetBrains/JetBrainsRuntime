@@ -26,11 +26,13 @@ import java.util.concurrent.CountDownLatch;
 
 /*
  * @test
- * bug      JRE-210
- * @summary JEditorPane's font metrics to honour switching to different GC scale
- * @author  anton.tarasov
- * @run     main/othervm -Di18n=true JEditorPaneGCSwitchTest_i18n
+ * bug       JRE-210
+ * @summary  JEditorPane's font metrics to honour switching to different GC scale
+ * @author   anton.tarasov
+ * @requires (os.family == "windows")
+ * @run      main/othervm -Dsun.font.layoutengine=icu -Di18n=true JEditorPaneGCSwitchTest_i18n
  */
+// -Dsun.font.layoutengine=icu is used while Harfbuzz crashes with i18n
 public class JEditorPaneGCSwitchTest_i18n extends JPanel {
     public static void main(String[] args) throws InterruptedException {
         JEditorPaneGCSwitchTest.main(null);
