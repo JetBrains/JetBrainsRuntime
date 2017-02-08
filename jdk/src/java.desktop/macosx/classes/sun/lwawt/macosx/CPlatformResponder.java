@@ -306,9 +306,9 @@ final class CPlatformResponder {
 
         if (isISOControl) {
             characterToSendWithTheEvent = checkedChar;
-       }
-
-       characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
+       } else {
+            characterToSendWithTheEvent = mapNsCharsToCompatibleWithJava(characterToSendWithTheEvent);
+        }
 
        String stringWithChar = NSEvent.nsToJavaChar(characterToSendWithTheEvent, nsEvent.getModifierFlags());
        characterToSendWithTheEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED : stringWithChar.charAt(0);
