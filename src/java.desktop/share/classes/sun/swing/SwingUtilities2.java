@@ -1244,7 +1244,8 @@ public class SwingUtilities2 {
 
             GraphicsConfiguration gc = c.getGraphicsConfiguration();
             AffineTransform tx = (gc == null) ? null : gc.getDefaultTransform();
-            if (tx == null && !GraphicsEnvironment.isHeadless()) {
+            // [tav] workaround deadlock on MacOSX until fixed, JRE-226
+            if (!FontUtilities.isMacOSX && tx == null && !GraphicsEnvironment.isHeadless()) {
                 tx =  GraphicsEnvironment
                         .getLocalGraphicsEnvironment()
                         .getDefaultScreenDevice()
