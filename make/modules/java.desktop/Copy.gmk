@@ -84,7 +84,7 @@ TARGETS += $(COPY_LEGAL)
 ################################################################################
 
 FONTFILE_SRC_DIR := $(TOPDIR)/src/java.desktop/share
-FONTFILE_SRCS := $(wildcard $(FONTFILE_SRC_DIR)/fonts/*.ttf) $(FONTFILE_SRC_DIR)/fonts/fonts.dir
+FONTFILE_SRCS := $(wildcard $(FONTFILE_SRC_DIR)/fonts/*.ttf) $(FONTFILE_SRC_DIR)/fonts/fonts.dir $(FONTFILE_SRC_DIR)/fonts/font.conf
 FONTFILE_TARGET_FILES := $(subst $(FONTFILE_SRC_DIR),$(LIB_DST_DIR),$(FONTFILE_SRCS))
 
 $(LIB_DST_DIR)/fonts/%: $(FONTFILE_SRC_DIR)/fonts/%
