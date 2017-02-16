@@ -26,6 +26,7 @@
 package sun.font;
 
 import com.apple.concurrent.Dispatch;
+import sun.lwawt.macosx.CThreading;
 
 import java.awt.Rectangle;
 import java.awt.geom.*;
@@ -465,16 +466,8 @@ public final class CStrike extends PhysicalStrike {
             // 2) CGLLayer.drawInCGLContext is invoked on AppKit thread and
             //    blocked on RenderQueue.lock
             // 1) invokes native block on AppKit and wait
-            //
-            // If dispatch instance is not available, run the code on
-            // disposal thread as before
 
-            final Dispatch dispatch = Dispatch.getInstance();
-
-            if (dispatch != null)
-                dispatch.getNonBlockingMainQueueExecutor().execute(command);
-            else
-                command.run();
+            CThreading.executeOnAppKit(command);
         }
 
         private static void disposeLongArray(final long[] longArray) {
