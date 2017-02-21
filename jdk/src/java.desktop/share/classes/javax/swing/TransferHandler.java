@@ -29,6 +29,7 @@ import java.awt.event.*;
 import java.awt.datatransfer.*;
 import java.awt.dnd.*;
 import java.beans.*;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.*;
 import java.io.*;
 import java.util.TooManyListenersException;
@@ -212,7 +213,7 @@ public class TransferHandler implements Serializable {
      */
     public static final class TransferSupport {
         private boolean isDrop;
-        private Component component;
+        private WeakReference<Component> component;
 
         private boolean showDropLocationIsSet;
         private boolean showDropLocation;
@@ -262,7 +263,7 @@ public class TransferHandler implements Serializable {
             }
 
             isDrop = false;
-            this.component = component;
+            this.component = new WeakReference<>(component);
             this.source = transferable;
         }
 
@@ -277,7 +278,7 @@ public class TransferHandler implements Serializable {
 
             assert isDrop;
 
-            this.component = component;
+            this.component = new WeakReference<>(component);
             this.source = event;
             dropLocation = null;
             dropAction = -1;
@@ -325,7 +326,7 @@ public class TransferHandler implements Serializable {
          * @return the target component
          */
         public Component getComponent() {
-            return component;
+            return component.get();
         }
 
         /**
