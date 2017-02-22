@@ -63,6 +63,7 @@ import static sun.java2d.opengl.OGLContext.OGLContextCaps.*;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CPlatformView;
 import sun.lwawt.macosx.CThreading;
+import java.security.PrivilegedAction;
 
 public final class CGLGraphicsConfig extends CGraphicsConfig
     implements OGLGraphicsConfig
@@ -144,52 +145,50 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         //    blocked on RenderQueue.lock
         // 1) invokes native block on AppKit and wait
 
-        Callable<CGLGraphicsConfig> command = new Callable<CGLGraphicsConfig>() {
-            @Override
-            public CGLGraphicsConfig call() throws Exception {
-                long cfginfo = 0;
-                int textureSize = 0;
-                final String ids[] = new String[1];
-                OGLRenderQueue rq = OGLRenderQueue.getInstance();
-                rq.lock();
-                try {
-                    // getCGLConfigInfo() creates and destroys temporary
-                    // surfaces/contexts, so we should first invalidate the current
-                    // Java-level context and flush the queue...
-                    OGLContext.invalidateCurrentContext();
+        Callable<CGLGraphicsConfig> command = () -> {
+            long cfginfo;
+            int textureSize = 0;
+            final String ids[] = new String[1];
+            OGLRenderQueue rq = OGLRenderQueue.getInstance();
+            rq.lock();
+            try {
+                // getCGLConfigInfo() creates and destroys temporary
+                // surfaces/contexts, so we should first invalidate the current
+                // Java-level context and flush the queue...
+                OGLContext.invalidateCurrentContext();
 
-                    cfginfo = getCGLConfigInfo(device.getCGDisplayID(), pixfmt,
-                            kOpenGLSwapInterval);
-                    if (cfginfo != 0L) {
-                        textureSize = nativeGetMaxTextureSize();
-                        // 7160609: GL still fails to create a square texture of this
-                        // size. Half should be safe enough.
-                        // Explicitly not support a texture more than 2^14, see 8010999.
-                        textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
-                        OGLContext.setScratchSurface(cfginfo);
-                        rq.flushAndInvokeNow(() -> {
-                            ids[0] = OGLContext.getOGLIdString();
-                        });
-                    }
-                } finally {
-                    rq.unlock();
+                cfginfo = getCGLConfigInfo(device.getCGDisplayID(), pixfmt,
+                        kOpenGLSwapInterval);
+                if (cfginfo != 0L) {
+                    textureSize = nativeGetMaxTextureSize();
+                    // 7160609: GL still fails to create a square texture of this
+                    // size. Half should be safe enough.
+                    // Explicitly not support a texture more than 2^14, see 8010999.
+                    textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
+                    OGLContext.setScratchSurface(cfginfo);
+                    rq.flushAndInvokeNow(() -> ids[0] = OGLContext.getOGLIdString());
                 }
-                if (cfginfo == 0) {
-                    return null;
-                }
-
-                int oglCaps = getOGLCapabilities(cfginfo);
-                ContextCapabilities caps = new OGLContextCaps(oglCaps, ids[0]);
-                return new CGLGraphicsConfig(
-                        device, pixfmt, cfginfo, textureSize, caps);
+            } finally {
+                rq.unlock();
             }
+            if (cfginfo == 0) {
+                return null;
+            }
+
+            int oglCaps = getOGLCapabilities(cfginfo);
+            ContextCapabilities caps = new OGLContextCaps(oglCaps, ids[0]);
+            return new CGLGraphicsConfig(
+                    device, pixfmt, cfginfo, textureSize, caps);
         };
 
-        try {
-            return CThreading.executeOnAppKit(command);
-        } catch (Throwable throwable) {
-            throw new AWTError(throwable.getMessage());
-        }
+        return java.security.AccessController.doPrivileged(
+                (PrivilegedAction<CGLGraphicsConfig>) () -> {
+                    try {
+                        return CThreading.executeOnAppKit(command);
+                    } catch (Throwable throwable) {
+                        throw new AWTError(throwable.getMessage());
+                    }
+                });
     }
 
     static void refPConfigInfo(long pConfigInfo) {
