@@ -257,24 +257,24 @@ JNF_COCOA_EXIT(env);
 /*
  * Class:     sun_lwawt_macosx_CImage
  * Method:    nativeCopyNSImageIntoArray
- * Signature: (J[IIIII)V
+ * Signature: (J[III)V
  */
 JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CImage_nativeCopyNSImageIntoArray
-(JNIEnv *env, jclass klass, jlong nsImgPtr, jintArray buffer, jint sw, jint sh,
-                 jint dw, jint dh)
+        (JNIEnv *env, jclass klass, jlong nsImgPtr, jintArray buffer, jint dw, jint dh)
 {
-JNF_COCOA_ENTER(env);
+    JNF_COCOA_ENTER(env);
 
     NSImage *img = (NSImage *)jlong_to_ptr(nsImgPtr);
     jint *dst = (*env)->GetPrimitiveArrayCritical(env, buffer, NULL);
     if (dst) {
-        NSRect fromRect = NSMakeRect(0, 0, sw, sh);
+        NSSize size = [(NSImage *)jlong_to_ptr(nsImgPtr) size];
+        NSRect fromRect = NSMakeRect(0, 0, size.width, size.height);
         NSRect toRect = NSMakeRect(0, 0, dw, dh);
         CImage_CopyNSImageIntoArray(img, dst, fromRect, toRect);
         (*env)->ReleasePrimitiveArrayCritical(env, buffer, dst, JNI_ABORT);
     }
 
-JNF_COCOA_EXIT(env);
+    JNF_COCOA_EXIT(env);
 }
 
 /*
