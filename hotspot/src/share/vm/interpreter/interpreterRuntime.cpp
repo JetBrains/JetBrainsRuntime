@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -795,7 +795,7 @@ void InterpreterRuntime::resolve_invoke(JavaThread* thread, Bytecodes::Code byte
   // it is not an interface.  The receiver for invokespecial calls within interface
   // methods must be checked for every call.
   InstanceKlass* sender = pool->pool_holder();
-  sender = sender->is_anonymous() ? sender->host_klass() : sender;
+  sender = sender->has_host_klass() ? sender->host_klass() : sender;
 
   switch (info.call_kind()) {
   case CallInfo::direct_call:
