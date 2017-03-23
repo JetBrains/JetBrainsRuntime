@@ -46,6 +46,10 @@ import sun.swing.SwingUtilities2;
  * @since 1.3
  */
 public class BasicHTML {
+    // Rebase CSS size map to let relative font sizes scale properly.
+    private final static boolean REBASE_CSS_SIZE_MAP = Boolean.getBoolean("javax.swing.rebaseCssSizeMap");
+
+    private final static String JLABEL_USER_CSS_KEY = "javax.swing.JLabel.userStyleSheet";
 
     /**
      * Constructs a {@code BasicHTML}.
@@ -64,6 +68,12 @@ public class BasicHTML {
         BasicEditorKit kit = getFactory();
         Document doc = kit.createDefaultDocument(c.getFont(),
                                                  c.getForeground());
+        if (c instanceof JLabel) {
+            Object userCss = UIManager.getDefaults().get(JLABEL_USER_CSS_KEY);
+            if (userCss instanceof StyleSheet) {
+                ((HTMLDocument)doc).getStyleSheet().addStyleSheet((StyleSheet)userCss);
+            }
+        }
         Object base = c.getClientProperty(documentBaseKey);
         if (base instanceof URL) {
             ((HTMLDocument)doc).setBase((URL)base);
@@ -430,6 +440,10 @@ public class BasicHTML {
         private void setFontAndColor(Font font, Color fg) {
             getStyleSheet().addRule(sun.swing.SwingUtilities2.
                                     displayPropertiesToCSS(font,fg));
+            if (REBASE_CSS_SIZE_MAP && font != null) {
+                // See: javax.swing.plaf.basic.BasicEditorPaneUI.updateCSS()
+                if (font != null) getStyleSheet().addRule("BASE_SIZE " + font.getSize());
+            }
         }
     }
 
