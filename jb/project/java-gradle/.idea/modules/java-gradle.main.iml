@@ -6,10 +6,8 @@
     <content url="file://$MODULE_DIR$/../../src/main" />
     <content url="file://$MODULE_DIR$/../../../../../src">
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.base/share/classes" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.base/solaris/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.datatransfer/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.desktop/share/classes" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.desktop/solaris/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.instrument/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.logging/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.management.rmi/share/classes" isTestSource="false" />
@@ -25,6 +23,10 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.sql.rowset/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.sql/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.xml.crypto/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.base/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.datatransfer/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.desktop/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.prefs/macosx/classes" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

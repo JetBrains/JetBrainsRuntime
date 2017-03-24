@@ -616,8 +616,15 @@ static BOOL shouldUsePressAndHold() {
         }
     }
 
+    jstring oldCharacters = NULL;
+    jstring oldCharactersIgnoringModifiers = NULL;
+    if ([event type] != NSFlagsChanged) {
+        oldCharacters = JNFNSToJavaString(env, [event characters]);
+        oldCharactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
+    }
     static JNF_CLASS_CACHE(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZI)V");
+    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent,
+    "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/String;Ljava/lang/String;)V");
     jobject jEvent = JNFNewObject(env, jctor_NSEvent,
                                   [event type],
                                   [event modifierFlags],
@@ -626,7 +633,9 @@ static BOOL shouldUsePressAndHold() {
                                   charactersIgnoringModifiers,
                                   charactersIgnoringModifiersAndShift,
                                   isDeadKeyPressed,
-                                  javaDeadKeyCode
+                                  javaDeadKeyCode,
+                                  oldCharacters,
+                                  oldCharactersIgnoringModifiers
                                   );
     CHECK_NULL(jEvent);
 
