@@ -488,6 +488,17 @@ static BOOL shouldUsePressAndHold() {
     CFRelease(currentKeyboard);
     NSString*  charactersIgnoringModifiersAndShiftAsNsString = [NSString stringWithCharacters:stringWithChars length:actualLength];
 
+
+    jstring characters = NULL;
+    jstring charactersIgnoringModifiers = NULL;
+    jstring charactersIgnoringModifiersAndShift = NULL;
+
+    if ([event type] != NSFlagsChanged) {
+        characters = JNFNSToJavaString(env, [event characters]);
+        charactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
+        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, charactersIgnoringModifiersAndShiftAsNsString);
+    }
+
     jint javaDeadKeyCode = 0;
 
     if (status == noErr && isDeadKeyPressed != 0) {
@@ -562,17 +573,15 @@ static BOOL shouldUsePressAndHold() {
         }
     }
 
-    jstring characters = NULL;
-    jstring charactersIgnoringModifiers = NULL;
-    jstring charactersIgnoringModifiersAndShift = NULL;
+    jstring oldCharacters = NULL;
+    jstring oldCharactersIgnoringModifiers = NULL;
     if ([event type] != NSFlagsChanged) {
-        characters = JNFNSToJavaString(env, [event characters]);
-        charactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
-        charactersIgnoringModifiersAndShift = JNFNSToJavaString(env, [event charactersIgnoringModifiersAndShift]);
+        oldCharacters = JNFNSToJavaString(env, [event characters]);
+        oldCharactersIgnoringModifiers = JNFNSToJavaString(env, [event charactersIgnoringModifiers]);
     }
-
     static JNF_CLASS_CACHE(jc_NSEvent, "sun/lwawt/macosx/NSEvent");
-    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent, "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZI)V");
+    static JNF_CTOR_CACHE(jctor_NSEvent, jc_NSEvent,
+    "(IISLjava/lang/String;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/String;Ljava/lang/String;)V");
     jobject jevent = JNFNewObject(env, jctor_NSEvent,
                                   [event type],
                                   [event modifierFlags],
@@ -581,9 +590,10 @@ static BOOL shouldUsePressAndHold() {
                                   charactersIgnoringModifiers,
                                   charactersIgnoringModifiersAndShift,
                                   isDeadKeyPressed,
-                                  javaDeadKeyCode);
-
-    CHECK_NULL(jevent);
+                                  javaDeadKeyCode,
+                                  oldCharacters,
+                                  oldCharactersIgnoringModifiers
+                                  );
 
     static JNF_CLASS_CACHE(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
     static JNF_MEMBER_CACHE(jm_deliverKeyEvent, jc_PlatformView,
