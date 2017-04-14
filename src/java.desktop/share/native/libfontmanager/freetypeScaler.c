@@ -811,7 +811,7 @@ static void setupLoadRenderFlags(FTScalerContext *context, int fcHintStyle, FcBo
             context->loadFlags = FT_LOAD_NO_HINTING;
             break;
         case FC_HINT_SLIGHT:
-            context->loadFlags = (fcRenderFlags != FT_RENDER_MODE_MONO) ? FT_LOAD_TARGET_LIGHT : FT_LOAD_NO_HINTING;
+            context->loadFlags = (fcRenderFlags != FT_RENDER_MODE_MONO) ? FT_LOAD_TARGET_LIGHT : fcLoadFlags;
             break;
         default:
             context->loadFlags = fcLoadFlags;
