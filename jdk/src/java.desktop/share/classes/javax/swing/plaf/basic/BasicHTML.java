@@ -50,7 +50,7 @@ public class BasicHTML {
                         () -> Boolean.getBoolean(
                                 "javax.swing.rebaseCssSizeMap"));
 
-    private final static String userCssKey = "javax.swing.BasicHTML.userCSS";
+    private final static String JLABEL_USER_CSS_KEY = "javax.swing.JLabel.userStyleSheet";
 
     /**
      * Create an html renderer for the given component and
@@ -64,9 +64,11 @@ public class BasicHTML {
         BasicEditorKit kit = getFactory();
         Document doc = kit.createDefaultDocument(c.getFont(),
                                                  c.getForeground());
-        Object userCss = c.getClientProperty(userCssKey);
-        if (userCss instanceof StyleSheet) {
-            ((HTMLDocument)doc).getStyleSheet().addStyleSheet((StyleSheet)userCss);
+        if (c instanceof JLabel) {
+            Object userCss = UIManager.getDefaults().get(JLABEL_USER_CSS_KEY);
+            if (userCss instanceof StyleSheet) {
+                ((HTMLDocument)doc).getStyleSheet().addStyleSheet((StyleSheet)userCss);
+            }
         }
         Object base = c.getClientProperty(documentBaseKey);
         if (base instanceof URL) {
