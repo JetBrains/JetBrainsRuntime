@@ -551,6 +551,12 @@ GtkApi* gtk2_load(JNIEnv *env, const char* lib_name)
         fp_g_param_spec_int = dl_symbol("g_param_spec_int");
         fp_g_object_get = dl_symbol("g_object_get");
         fp_g_object_set = dl_symbol("g_object_set");
+        fp_g_unlink = dl_symbol("g_unlink");
+        fp_g_file_open_tmp = dl_symbol("g_file_open_tmp");
+        fp_g_variant_new = dl_symbol("g_variant_new");
+        fp_g_variant_get = dl_symbol("g_variant_get");
+        fp_g_dbus_connection_call_sync = dl_symbol("g_dbus_connection_call_sync");
+        fp_g_bus_get_sync = dl_symbol("g_bus_get_sync");
 
         /* GDK */
         fp_gdk_get_default_root_window =

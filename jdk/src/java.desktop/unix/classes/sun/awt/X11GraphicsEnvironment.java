@@ -111,12 +111,18 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
                         }
                     }
 
+                    wayland = System.getenv("WAYLAND_DISPLAY") != null;
+
                     // only attempt to initialize Xrender if it was requested
                     if (xRenderRequested) {
-                        xRenderAvailable = initXRender(xRenderVerbose, xRenderIgnoreLinuxVersion);
-                        if (xRenderVerbose && !xRenderAvailable) {
-                            System.out.println(
-                                         "Could not enable XRender pipeline");
+                        String waylandDisplay = System.getenv("WAYLAND_DISPLAY");
+                        // Do not use Xrender on Wayland
+                        if (!wayland) {
+                            xRenderAvailable = initXRender(xRenderVerbose, xRenderIgnoreLinuxVersion);
+                            if (xRenderVerbose && !xRenderAvailable) {
+                                System.out.println(
+                                        "Could not enable XRender pipeline");
+                            }
                         }
                     }
 
@@ -160,6 +166,9 @@ public final class X11GraphicsEnvironment extends SunGraphicsEnvironment {
         return xRenderVerbose;
     }
 
+    private static boolean wayland;
+
+    public static boolean isWayland() { return wayland; }
     /**
      * Checks if Shared Memory extension can be used.
      * Returns:

@@ -277,7 +277,8 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
                              jint jwidth,
                              jint jheight,
                              jintArray pixelArray,
-                             jboolean useGtk) {
+                             jboolean isGtkSupported,
+                             jboolean isWayland) {
     XImage *image;
     jint *ary;               /* Array of jints for sending pixel values back
                               * to parent process.
@@ -299,9 +300,9 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
 
     rootWindow = XRootWindow(awt_display, adata->awt_visInfo.screen);
 
-    if (!useGtk) {
+    if (!isGtkSupported) {
         if (hasXCompositeOverlayExtension(awt_display) &&
-            isXCompositeDisplay(awt_display, adata->awt_visInfo.screen))
+                isXCompositeDisplay(awt_display, adata->awt_visInfo.screen))
         {
             rootWindow = compositeGetOverlayWindow(awt_display, rootWindow);
         }
@@ -325,16 +326,116 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
     jint width = MIN(jx + jwidth, attr.x + attr.width) - x;
     jint height = MIN(jy + jheight, attr.y + attr.height) - y;
 
+
     int dx = attr.x > jx ? attr.x - jx : 0;
     int dy = attr.y > jy ? attr.y - jy : 0;
 
     int index;
 
-    if (useGtk) {
-        gtk->gdk_threads_enter();
-        gtk_failed = gtk->get_drawable_data(env, pixelArray, x, y, width,
-                                            height, jwidth, dx, dy, 1);
-        gtk->gdk_threads_leave();
+    if (isGtkSupported) {
+        GdkPixbuf *pixbuf = NULL;
+        (*fp_gdk_threads_enter)();
+
+        if (isWayland) {
+            GError *error = NULL;
+            const gchar *method_name;
+            gchar *filename;
+            GVariant *method_params;
+            GVariant *res;
+            GDBusConnection *connection;
+            int status;
+            FILE* f;
+
+            f = (FILE *) fp_g_file_open_tmp (NULL, &filename, &error);
+            close((int) f);
+            if (error == NULL) {
+
+                method_name = "ScreenshotArea";
+                method_params = fp_g_variant_new("(iiiibs)",
+                                                    x, y, width, height,
+                                                    FALSE, filename);
+
+                connection = fp_g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+
+                res = fp_g_dbus_connection_call_sync(connection,
+                                                  "org.gnome.Shell.Screenshot",
+                                                  "/org/gnome/Shell/Screenshot",
+                                                  "org.gnome.Shell.Screenshot",
+                                                  method_name,
+                                                  method_params,
+                                                  NULL,
+                                                  G_DBUS_CALL_FLAGS_NONE,
+                                                  -1,
+                                                  NULL,
+                                                  &error);
+
+
+                if (error == NULL) {
+                    gboolean success;
+                    gchar* filename_used;
+
+                    fp_g_variant_get(res, "(bs)", &success, &filename_used);
+
+                    if (success) {
+                        pixbuf = (*fp_gdk_pixbuf_new_from_file)(filename_used, &error);
+                    }
+                    fp_g_free(filename_used);
+                }
+                /* remove the temporary file created by the shell */
+                fp_g_unlink(filename);
+                fp_g_free(filename);
+            }
+            gtk_failed = FALSE; // We cannot rely on X fallback on Wayland
+        } else {
+            GdkWindow *root = (*fp_gdk_get_default_root_window)();
+
+            pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(NULL, root, NULL,                                                   x, y, 0, 0, width, height);
+        }
+
+        if (pixbuf) {
+            int nchan = (*fp_gdk_pixbuf_get_n_channels)(pixbuf);
+            int stride = (*fp_gdk_pixbuf_get_rowstride)(pixbuf);
+
+            if ((*fp_gdk_pixbuf_get_width)(pixbuf) == width
+                    && (*fp_gdk_pixbuf_get_height)(pixbuf) == height
+                    && (*fp_gdk_pixbuf_get_bits_per_sample)(pixbuf) == 8
+                    && (*fp_gdk_pixbuf_get_colorspace)(pixbuf) == GDK_COLORSPACE_RGB
+                    && nchan >= 3
+                    ) {
+                guchar *p, *pix = (*fp_gdk_pixbuf_get_pixels)(pixbuf);
+
+                ary = (*env)->GetPrimitiveArrayCritical(env, pixelArray, NULL);
+                if (!ary) {
+                    (*fp_g_object_unref)(pixbuf);
+                    (*fp_gdk_threads_leave)();
+                    AWT_UNLOCK();
+                    return;
+                }
+
+                for (_y = 0; _y < height; _y++) {
+                    for (_x = 0; _x < width; _x++) {
+                        p = pix + _y * stride + _x * nchan;
+
+                        index = (_y + dy) * jwidth + (_x + dx);
+                        ary[index] = 0xff000000
+                                        | (p[0] << 16)
+                                        | (p[1] << 8)
+                                        | (p[2]);
+
+                    }
+                }
+                (*env)->ReleasePrimitiveArrayCritical(env, pixelArray, ary, 0);
+                if ((*env)->ExceptionCheck(env)) {
+                    (*fp_g_object_unref)(pixbuf);
+                    (*fp_gdk_threads_leave)();
+                    AWT_UNLOCK();
+                    return;
+                }
+                gtk_failed = FALSE;
+            }
+            (*fp_g_object_unref)(pixbuf);
+        }
+        (*fp_gdk_threads_leave)();
     }
 
     if (gtk_failed) {

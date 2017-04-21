@@ -33,6 +33,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
 import sun.awt.X11GraphicsConfig;
+import sun.awt.X11GraphicsEnvironment;
 
 class XRobotPeer implements RobotPeer {
 
@@ -107,7 +108,8 @@ class XRobotPeer implements RobotPeer {
     @Override
     public int getRGBPixel(int x, int y) {
         int pixelArray[] = new int[1];
-        getRGBPixelsImpl(xgc, x, y, 1, 1, pixelArray, useGtk);
+        getRGBPixelsImpl(xgc, x, y, 1, 1, pixelArray, useGtk,
+                X11GraphicsEnvironment.isWayland());
         return pixelArray[0];
     }
 
@@ -115,7 +117,7 @@ class XRobotPeer implements RobotPeer {
     public int [] getRGBPixels(Rectangle bounds) {
         int pixelArray[] = new int[bounds.width*bounds.height];
         getRGBPixelsImpl(xgc, bounds.x, bounds.y, bounds.width, bounds.height,
-                            pixelArray, useGtk);
+                            pixelArray, useGtk, X11GraphicsEnvironment.isWayland());
         return pixelArray;
     }
 
@@ -130,6 +132,7 @@ class XRobotPeer implements RobotPeer {
     private static synchronized native void keyPressImpl(int keycode);
     private static synchronized native void keyReleaseImpl(int keycode);
 
-    private static synchronized native void getRGBPixelsImpl(X11GraphicsConfig xgc,
-            int x, int y, int width, int height, int pixelArray[], boolean isGtkSupported);
+    private static native synchronized void getRGBPixelsImpl(X11GraphicsConfig xgc,
+                                                             int x, int y, int width, int height, int[] pixelArray, boolean isGtkSupported,
+                                                             boolean isWayland);
 }
