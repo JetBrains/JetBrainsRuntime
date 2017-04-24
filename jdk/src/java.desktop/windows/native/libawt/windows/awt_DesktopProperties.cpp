@@ -89,7 +89,7 @@ void AwtDesktopProperties::GetWindowsParameters() {
 }
 
 void getInvScale(float &invScaleX, float &invScaleY) {
-    if (!AwtWin32GraphicsDevice::IsUiScaleEnabled()) {
+    if (!AwtWin32GraphicsDevice::IsUIScaleOn()) {
         invScaleX = 1.0f;
         invScaleY = 1.0f;
         return;

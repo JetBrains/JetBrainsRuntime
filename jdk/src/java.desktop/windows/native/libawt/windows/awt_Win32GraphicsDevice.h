@@ -106,7 +106,7 @@ public:
     static void             DisableOffscreenAccelerationForDevice(HMONITOR hMonitor);
     static HDC              GetDCFromScreen(int screen);
     static int              GetScreenFromHMONITOR(HMONITOR mon);
-    static BOOL             IsUiScaleEnabled(); // if not, be dpi-unaware (backward compatible behaviour)
+    static BOOL             IsUIScaleOn(); // if not, be dpi-unaware (backward compatible behaviour)
     static AwtWin32GraphicsDevice* GetDeviceByBounds(RECT_BOUNDS bounds , HWND hwnd = NULL); // bounds in user space
 
     inline static RECT_BOUNDS GetWindowRect(HWND hwnd)

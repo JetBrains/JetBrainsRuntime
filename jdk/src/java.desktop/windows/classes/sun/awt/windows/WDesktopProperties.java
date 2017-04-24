@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import sun.java2d.SunGraphicsEnvironment;
 import sun.util.logging.PlatformLogger;
 
 import sun.awt.SunToolkit;
@@ -80,6 +81,7 @@ final class WDesktopProperties {
 
     WDesktopProperties(WToolkit wToolkit) {
         this.wToolkit = wToolkit;
+        SunGraphicsEnvironment.isUIScaleOn(); // ensure initialized
         init();
     }
 

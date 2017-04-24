@@ -25,48 +25,26 @@
 
 package sun.java2d;
 
-import java.awt.AWTError;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.Insets;
-import java.awt.Rectangle;
-import java.awt.Toolkit;
-import java.awt.font.TextAttribute;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FilenameFilter;
 import java.io.InputStreamReader;
-import java.io.IOException;
-import java.text.AttributedCharacterIterator;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Locale;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-import java.util.StringTokenizer;
 import java.util.TreeMap;
-import java.util.Vector;
-import java.util.concurrent.ConcurrentHashMap;
-import sun.awt.AppContext;
+
 import sun.awt.DisplayChangedListener;
-import sun.awt.FontConfiguration;
 import sun.awt.SunDisplayChanger;
-import sun.font.CompositeFontDescriptor;
-import sun.font.Font2D;
 import sun.font.FontManager;
 import sun.font.FontManagerFactory;
 import sun.font.FontManagerForSGE;
-import sun.font.NativeFont;
+
 import java.security.AccessController;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -83,11 +61,13 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static Font defaultFont;
 
     private static final boolean uiScaleEnabled;
+    private static volatile AtomicBoolean uiScaleOn;
     private static final double debugScale;
 
     static {
         uiScaleEnabled = "true".equals(AccessController.doPrivileged(
                 new GetPropertyAction("sun.java2d.uiScale.enabled", "false")));
+        if (!uiScaleEnabled) uiScaleOn = new AtomicBoolean(false);
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
@@ -358,18 +338,28 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     }
 
     /**
+     * Whether the ui-scale functionality is natively enabled.
+     *
      * [tav] todo: Temp, until fractional scale is supported well enough.
      *             Called via reflection from the client code.
+     *             Called via JNI from Toolkit.
      */
-    protected boolean isUIScaleOn() {
-        // [tav] check if native JDK scaled up any of the displays
-        for (GraphicsDevice d : getScreenDevices()) {
+    public static boolean isUIScaleOn() {
+        if (uiScaleOn != null) return uiScaleOn.get();
+
+        assert EventQueue.isDispatchThread(); // must be initialized on EDT
+
+        uiScaleOn = new AtomicBoolean(false);
+        if (GraphicsEnvironment.isHeadless()) return false;
+
+        for (GraphicsDevice d : getLocalGraphicsEnvironment().getScreenDevices()) {
             if (d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
                 d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1) {
-                return true;
+                uiScaleOn.set(true);
+                break;
             }
         }
-        return false;
+        return uiScaleOn.get();
     }
 
     public static double getDebugScale() {
