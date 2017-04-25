@@ -372,18 +372,16 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
 
         assert EventQueue.isDispatchThread(); // must be initialized on EDT
 
-        uiScaleOn = false;
         if (!GraphicsEnvironment.isHeadless()) {
             for (GraphicsDevice d : getLocalGraphicsEnvironment().getScreenDevices()) {
                 if (d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
                     d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1)
                 {
-                    uiScaleOn = true;
-                    break;
+                    return uiScaleOn = true;
                 }
             }
         }
-        return uiScaleOn;
+        return uiScaleOn = false;
     }
 
     public static double getDebugScale() {
