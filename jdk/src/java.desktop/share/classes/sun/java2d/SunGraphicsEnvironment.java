@@ -368,12 +368,18 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
      *             Called via JNI from Toolkit.
      */
     public static boolean isUIScaleOn() {
+        return isUIScaleOn(null);
+    }
+
+    protected static boolean isUIScaleOn(GraphicsEnvironment ge) {
         if (uiScaleOn != null) return uiScaleOn;
 
         assert EventQueue.isDispatchThread(); // must be initialized on EDT
 
+        GraphicsEnvironment env = (ge == null ? getLocalGraphicsEnvironment() : ge);
+
         if (!GraphicsEnvironment.isHeadless()) {
-            for (GraphicsDevice d : getLocalGraphicsEnvironment().getScreenDevices()) {
+            for (GraphicsDevice d : env.getScreenDevices()) {
                 if (d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
                     d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1)
                 {

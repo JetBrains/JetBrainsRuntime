@@ -104,7 +104,7 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
 
     public Win32GraphicsEnvironment() {
         // check if UI scale was rejected natively
-        if (isUIScaleEnabled() && !isUIScaleOn()) {
+        if (isUIScaleEnabled() && !isUIScaleOn(this)) {
             // [tav]
             // Fallback to the previous level for backward compatibility.
             // This will work since Windows 10 only, as per MSDN:
