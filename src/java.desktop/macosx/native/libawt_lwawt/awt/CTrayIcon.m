@@ -27,6 +27,7 @@
 
 #import <AppKit/AppKit.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
+#import "jni_util.h"
 
 #import "CTrayIcon.h"
 #import "ThreadUtilities.h"

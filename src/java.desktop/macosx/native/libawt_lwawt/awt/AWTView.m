@@ -28,6 +28,7 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
+#import "jni_util.h"
 
 
 #import "ThreadUtilities.h"
@@ -409,6 +410,28 @@ static BOOL shouldUsePressAndHold() {
                                   deltaX,
                                   [AWTToolkit scrollStateWithEvent: event]);
     CHECK_NULL(jEvent);
+
+    AWTWindow *awtWindow = (AWTWindow*)[event window];
+
+    if (![AWTWindow isAWTWindow: awtWindow]) {
+        NSLog(@"awt Window is not an AWTWindow instance");
+        return;
+    }
+
+    AWTWindow* aDelegate = (AWTWindow*)[awtWindow delegate];
+
+    jobject platformWindow = [aDelegate.javaPlatformWindow jObjectWithEnv:env];
+
+    if (platformWindow == nil) {
+        NSLog(@"Platform window is nil");
+        return;
+    }
+
+    static JNF_CLASS_CACHE(jc_PlatformWindow, "sun/lwawt/macosx/CPlatformWindow");
+
+    if (!JNFIsInstanceOf(env, platformWindow, &jc_PlatformWindow)) {
+        NSLog(@"Platform window is not an instance of CPlatformWindow");
+    }
 
     static JNF_CLASS_CACHE(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
     static JNF_MEMBER_CACHE(jm_deliverMouseEvent, jc_PlatformView, "deliverMouseEvent", "(Lsun/lwawt/macosx/NSEvent;)V");
