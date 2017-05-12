@@ -108,7 +108,9 @@ final class XWM
         LG3D_WM = 13,
         CWM_WM = 14,
         MUTTER_WM = 15,
-        UNITY_COMPIZ_WM = 16;
+        UNITY_COMPIZ_WM = 16,
+        XMONAD_WM = 17;
+
     @Override
     public String toString() {
         switch  (WMID) {
@@ -142,6 +144,8 @@ final class XWM
               return "CWM";
           case MUTTER_WM:
               return "Mutter";
+          case XMONAD_WM:
+              return "Xmonad";
           case UNDETERMINED_WM:
           default:
               return "Undetermined WM";
@@ -607,13 +611,19 @@ final class XWM
         return isNetWMName("Mutter") || isNetWMName("GNOME Shell");
     }
 
+    static boolean isXmonad() {
+        return isNetWMName("xmonad");
+    }
+
     static int awtWMNonReparenting = -1;
     static boolean isNonReparentingWM() {
         if (awtWMNonReparenting == -1) {
             awtWMNonReparenting = (XToolkit.getEnv("_JAVA_AWT_WM_NONREPARENTING") != null) ? 1 : 0;
         }
         return (awtWMNonReparenting == 1 || XWM.getWMID() == XWM.COMPIZ_WM
-                || XWM.getWMID() == XWM.LG3D_WM || XWM.getWMID() == XWM.CWM_WM);
+                || XWM.getWMID() == XWM.LG3D_WM || XWM.getWMID() == XWM.CWM_WM  ||
+                XWM.getWMID() == XWM.XMONAD_WM
+               );
     }
 
     /*
@@ -804,6 +814,8 @@ final class XWM
                 awt_wmgr = XWM.ICE_WM;
             } else if (isUnityCompiz()) {
                 awt_wmgr = XWM.UNITY_COMPIZ_WM;
+            } else if (isXmonad()) {
+                awt_wmgr = XWM.XMONAD_WM;
             }
             /*
              * We don't check for legacy WM when we already know that WM
@@ -1369,6 +1381,7 @@ final class XWM
                   break;
               case NO_WM:
               case LG3D_WM:
+              case XMONAD_WM:
                   res = zeroInsets;
                   break;
               case UNITY_COMPIZ_WM:
