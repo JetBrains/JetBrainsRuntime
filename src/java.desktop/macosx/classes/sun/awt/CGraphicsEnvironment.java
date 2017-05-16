@@ -27,8 +27,10 @@ package sun.awt;
 
 import java.awt.*;
 import java.util.*;
+import java.util.concurrent.Callable;
 
 import sun.java2d.*;
+import sun.lwawt.macosx.CThreading;
 
 /**
  * This is an implementation of a GraphicsEnvironment object for the default
@@ -112,15 +114,18 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
      * @param displayId CoreGraphics displayId
      * @param removed   true if displayId was removed, false otherwise.
      */
+    @SuppressWarnings("unused")
     void _displayReconfiguration(final int displayId, final boolean removed) {
         synchronized (this) {
+            // We don't need to switch to AppKit, we're already there
+            mainDisplayID = getMainDisplayID();
             if (removed && devices.containsKey(displayId)) {
                 final CGraphicsDevice gd = devices.remove(displayId);
-                gd.invalidate(getMainDisplayID());
+                gd.invalidate(mainDisplayID);
                 gd.displayChanged();
             }
         }
-        initDevices();
+        initDevices(mainDisplayID);
     }
 
     @Override
@@ -136,28 +141,61 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     /**
      * (Re)create all CGraphicsDevices, reuses a devices if it is possible.
      */
+    private void initDevices(int mainDisplID) {
+        synchronized (this) {
+            mainDisplayID = mainDisplID;
+            createDevices();
+        }
+        displayChanged();
+    }
+
     private void initDevices() {
         synchronized (this) {
-            final Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
-            devices.clear();
-
-            mainDisplayID = getMainDisplayID();
 
             // initialization of the graphics device may change
             // list of displays on hybrid systems via an activation
             // of discrete video.
             // So, we initialize the main display first, and then
             // retrieve actual list of displays.
-            if (!old.containsKey(mainDisplayID)) {
-                old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
+
+            try {
+                mainDisplayID = CThreading.privilegedExecuteOnAppKit(
+                        CGraphicsEnvironment::getMainDisplayID);
+            } catch (RuntimeException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new RuntimeException("Could not get main display ID: " +
+                        e.getMessage() );
             }
 
-            for (final int id : getDisplayIDs()) {
-                devices.put(id, old.containsKey(id) ? old.get(id)
-                                                    : new CGraphicsDevice(id));
-            }
+            createDevices();
+
         }
         displayChanged();
+    }
+
+    private void createDevices() {
+        final Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
+        devices.clear();
+
+        if (!old.containsKey(mainDisplayID)) {
+            old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
+        }
+        int[] displayIDs;
+        try {
+            displayIDs = CThreading.privilegedExecuteOnAppKit(
+                    CGraphicsEnvironment::getDisplayIDs);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Could not get display IDs: " +
+                    e.getMessage());
+        }
+
+        for (final int id : displayIDs) {
+            devices.put(id, old.containsKey(id) ? old.get(id)
+                                                : new CGraphicsDevice(id));
+        }
     }
 
     @Override
