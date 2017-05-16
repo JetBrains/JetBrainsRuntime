@@ -40,6 +40,7 @@ import java.util.Map;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.lwawt.macosx.CThreading;
 
 /**
  * This is an implementation of a GraphicsEnvironment object for the default
@@ -161,7 +162,15 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
     private synchronized void initDevices() {
         Map<Integer, CGraphicsDevice> old = new HashMap<>(devices);
         devices.clear();
-        mainDisplayID = getMainDisplayID();
+        try {
+            mainDisplayID = CThreading.privilegedExecuteOnAppKit(
+                    CGraphicsEnvironment::getMainDisplayID);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Could not get main display ID: " +
+                    e.getMessage() );
+        }
 
         // initialization of the graphics device may change list of displays on
         // hybrid systems via an activation of discrete video.
@@ -171,7 +180,17 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             old.put(mainDisplayID, new CGraphicsDevice(mainDisplayID));
         }
 
-        int[] displayIDs = getDisplayIDs();
+        int[] displayIDs;
+        try {
+            displayIDs = CThreading.privilegedExecuteOnAppKit(
+                    CGraphicsEnvironment::getDisplayIDs);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Could not get display IDs: " +
+                    e.getMessage());
+        }
+
         if (displayIDs.length == 0) {
             // we could throw AWTError in this case.
             displayIDs = new int[]{mainDisplayID};
