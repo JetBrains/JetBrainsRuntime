@@ -776,6 +776,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
                 case XWM.MUTTER_WM:
                 case XWM.SAWFISH_WM:
                 case XWM.UNITY_COMPIZ_WM:
+                case XWM.AWESOME_WM:
                 {
                     Point xlocation = queryXLocation();
                     if (log.isLoggable(PlatformLogger.Level.FINE)) {
