@@ -42,7 +42,7 @@ import java.lang.reflect.*;
 import java.net.URL;
 import java.security.*;
 import java.util.*;
-import java.util.concurrent.Callable;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -632,6 +632,51 @@ public final class LWCToolkit extends LWToolkit {
             priorityInvocationPending.set(false);
         }
     }
+
+    private static ExecutorService onMainThreadExecutor;
+
+    /**
+     * Performs the callable on the main thread running a secondary loop on EDT while waiting for the result.
+     * <p>
+     * The callable should delegate to the native method which is expected to execute
+     * [JNFRunLoop performOnMainThreadWaiting:YES ...]. Note that the native doAWTRunLoop runs in
+     * [JNFRunLoop javaRunLoopMode] which accepts selectors of the kind. The callable should not execute
+     * any Java code which would normally be executed on EDT.
+     * <p>
+     * The method must be called on EDT. It's reentrant.
+     */
+    public static <T> T performOnMainThreadWaiting(Callable<T> callable) {
+        if (!EventQueue.isDispatchThread()) {
+            throw new RuntimeException("the method must be called on the Event Dispatching thread");
+        }
+        if (callable == null) return null;
+
+        if (onMainThreadExecutor == null) {
+            // init on EDT
+            onMainThreadExecutor = new ThreadPoolExecutor(1, Integer.MAX_VALUE,
+                    60L, TimeUnit.SECONDS,
+                    new SynchronousQueue<>(),
+                    Executors.privilegedThreadFactory());
+
+        }
+        Future<T> task = onMainThreadExecutor.submit(() -> {
+            T res =  callable.call();
+            EventQueue.invokeLater(() -> {/* wake up EDT */});
+            return res;
+        });
+
+        AWTAccessor.getEventQueueAccessor().createSecondaryLoop(
+            Toolkit.getDefaultToolkit().getSystemEventQueue(),
+            () -> !task.isDone()).enter();
+
+        try {
+            return task.get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
 
     /**
      * Kicks an event over to the appropriate event queue and waits for it to

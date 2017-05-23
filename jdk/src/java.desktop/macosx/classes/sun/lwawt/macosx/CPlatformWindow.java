@@ -38,6 +38,7 @@ import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Callable;
 
 import javax.swing.*;
 
@@ -272,26 +273,29 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             bounds = _peer.constrainBounds(_target.getBounds());
         }
-        AtomicLong ref = new AtomicLong();
-        contentView.execute(viewPtr -> {
-            boolean hasOwnerPtr = false;
+        long nativeWindowPtr = LWCToolkit.performOnMainThreadWaiting(() -> {
+            AtomicLong ref = new AtomicLong();
+            contentView.execute(viewPtr -> {
+                boolean hasOwnerPtr = false;
 
-            if (owner != null) {
-                hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
-                    ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
-                                                    bounds.x, bounds.y,
-                                                    bounds.width, bounds.height));
-                    return 1;
-                });
-            }
+                if (owner != null) {
+                    hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
+                        ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
+                                bounds.x, bounds.y,
+                                bounds.width, bounds.height));
+                        return 1;
+                    });
+                }
 
-            if (!hasOwnerPtr) {
-                ref.set(nativeCreateNSWindow(viewPtr, 0,
-                                             styleBits, bounds.x, bounds.y,
-                                             bounds.width, bounds.height));
-            }
+                if (!hasOwnerPtr) {
+                    ref.set(nativeCreateNSWindow(viewPtr, 0,
+                            styleBits, bounds.x, bounds.y,
+                            bounds.width, bounds.height));
+                }
+            });
+            return ref.get();
         });
-        setPtr(ref.get());
+        setPtr(nativeWindowPtr);
 
         if (target instanceof javax.swing.RootPaneContainer) {
             final javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
