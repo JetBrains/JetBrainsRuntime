@@ -230,7 +230,7 @@ typedef CompactHashtable<Symbol*, char>       SymbolCompactHashTable;
   nonstatic_field(ArrayKlass,                  _dimension,                                    int)                                   \
   volatile_nonstatic_field(ArrayKlass,         _higher_dimension,                             Klass*)                                \
   volatile_nonstatic_field(ArrayKlass,         _lower_dimension,                              Klass*)                                \
-  nonstatic_field(CompiledICHolder,            _holder_method,                                Method*)                               \
+  nonstatic_field(CompiledICHolder,            _holder_metadata,                              Metadata*)                               \
   nonstatic_field(CompiledICHolder,            _holder_klass,                                 Klass*)                                \
   nonstatic_field(ConstantPool,                _tags,                                         Array<u1>*)                            \
   nonstatic_field(ConstantPool,                _cache,                                        ConstantPoolCache*)                    \
