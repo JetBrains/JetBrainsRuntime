@@ -644,6 +644,8 @@ public final class LWCToolkit extends LWToolkit {
         // invocations should be dispatched on proper EDT (per AppContext)
         private static final Map<Thread, SelectorPerformer> edt2performer = new ConcurrentHashMap<>();
 
+        private static final int WAIT_LIMIT_SECONDS = 5;
+
         private SelectorPerformer() {}
 
         /**
@@ -704,9 +706,14 @@ public final class LWCToolkit extends LWToolkit {
 
             try {
                 while (!task.isDone() || !currentQueue.isEmpty()) {
-                    currentQueue.take().dispatch(); // waiting when empty
+                    InvocationEvent event = currentQueue.poll(WAIT_LIMIT_SECONDS, TimeUnit.SECONDS);
+                    if (event == null) {
+                        new RuntimeException("Waiting for the invocation event timed out").printStackTrace();
+                        break;
+                    }
+                    event.dispatch();
                 }
-                return task.get();
+                return task.isDone() ? task.get() : null;
 
             } catch (InterruptedException | ExecutionException e) {
                 e.printStackTrace();
