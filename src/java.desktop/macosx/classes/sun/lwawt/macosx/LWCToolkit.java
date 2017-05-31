@@ -757,7 +757,16 @@ public final class LWCToolkit extends LWToolkit {
                 executor = new ThreadPoolExecutor(1, Integer.MAX_VALUE,
                         60L, TimeUnit.SECONDS,
                         new SynchronousQueue<>(),
-                        Executors.privilegedThreadFactory());
+                        new ThreadFactory() {
+                            private ThreadFactory factory = Executors.privilegedThreadFactory();
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = factory.newThread(r);
+                                t.setDaemon(true);
+                                t.setName("AWT-SelectorPerformer " + t.getName());
+                                return t;
+                            }
+                        });
             }
             LinkedBlockingQueue<InvocationEvent> currentQueue;
             synchronized (invocations) {
