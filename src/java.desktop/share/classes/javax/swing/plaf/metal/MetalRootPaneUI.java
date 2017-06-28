@@ -233,6 +233,7 @@ public class MetalRootPaneUI extends BasicRootPaneUI
      * @param parent The parent of the JRootPane
      */
     private void installWindowListeners(JRootPane root, Component parent) {
+        if (parent == null) return;
         if (parent instanceof Window) {
             window = (Window)parent;
         }
