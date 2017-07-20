@@ -111,6 +111,9 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
             // https://msdn.microsoft.com/en-us/library/windows/desktop/dn302122(v=vs.85).aspx
             // For Windows 8.1, the following VM option should be used to fallback:
             // -Dsun.java2d.uiScale.enabled=false
+            for (GraphicsDevice d : getScreenDevices()) {
+                ((Win32GraphicsDevice)d).resetScaleFactors();
+            }
             setProcessDPIAwareness(PROCESS_SYSTEM_DPI_AWARE);
         }
     }

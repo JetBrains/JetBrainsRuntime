@@ -382,23 +382,14 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
         if (!GraphicsEnvironment.isHeadless()) {
             boolean fractionalScaleEnabled = "true".equals(AccessController.doPrivileged(
                     new GetPropertyAction("sun.java2d.uiFractScale.enabled", "false")));
-            boolean fractionalScaleOn = false;
             for (GraphicsDevice d : env.getScreenDevices()) {
                 double scaleX = d.getDefaultConfiguration().getDefaultTransform().getScaleX();
                 double scaleY = d.getDefaultConfiguration().getDefaultTransform().getScaleY();
-                if (scaleX != Math.floor(scaleX) || scaleY != Math.floor(scaleY)) {
-                    fractionalScaleOn = true;
-                    if (!fractionalScaleEnabled) break;
+                if (!fractionalScaleEnabled && (scaleX != Math.floor(scaleX) || scaleY != Math.floor(scaleY))) {
+                    return uiScaleOn = false; // Fallback to un-scaled behavior
                 }
                 if (scaleX > 1 || scaleY > 1) {
                     uiScaleOn = true;
-                }
-            }
-            if (!fractionalScaleEnabled && fractionalScaleOn) {
-                // Fallback to un-scaled behavior
-                uiScaleOn = false;
-                for (GraphicsDevice d : env.getScreenDevices()) {
-                    ((Win32GraphicsDevice)d).resetScaleFactors();
                 }
             }
         }
