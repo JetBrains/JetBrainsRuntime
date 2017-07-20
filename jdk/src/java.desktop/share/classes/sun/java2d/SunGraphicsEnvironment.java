@@ -61,6 +61,7 @@ import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
 import sun.awt.FontConfiguration;
 import sun.awt.SunDisplayChanger;
+import sun.awt.Win32GraphicsDevice;
 import sun.font.CompositeFontDescriptor;
 import sun.font.Font2D;
 import sun.font.FontManager;
@@ -379,15 +380,29 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
         GraphicsEnvironment env = (ge == null ? getLocalGraphicsEnvironment() : ge);
 
         if (!GraphicsEnvironment.isHeadless()) {
+            boolean fractionalScaleEnabled = "true".equals(AccessController.doPrivileged(
+                    new GetPropertyAction("sun.java2d.uiFractScale.enabled", "false")));
+            boolean fractionalScaleOn = false;
             for (GraphicsDevice d : env.getScreenDevices()) {
-                if (d.getDefaultConfiguration().getDefaultTransform().getScaleX() > 1 ||
-                    d.getDefaultConfiguration().getDefaultTransform().getScaleY() > 1)
-                {
-                    return uiScaleOn = true;
+                double scaleX = d.getDefaultConfiguration().getDefaultTransform().getScaleX();
+                double scaleY = d.getDefaultConfiguration().getDefaultTransform().getScaleY();
+                if (scaleX != Math.floor(scaleX) || scaleY != Math.floor(scaleY)) {
+                    fractionalScaleOn = true;
+                    if (!fractionalScaleEnabled) break;
+                }
+                if (scaleX > 1 || scaleY > 1) {
+                    uiScaleOn = true;
+                }
+            }
+            if (!fractionalScaleEnabled && fractionalScaleOn) {
+                // Fallback to un-scaled behavior
+                uiScaleOn = false;
+                for (GraphicsDevice d : env.getScreenDevices()) {
+                    ((Win32GraphicsDevice)d).resetScaleFactors();
                 }
             }
         }
-        return uiScaleOn = false;
+        return uiScaleOn;
     }
 
     public static double getDebugScale() {

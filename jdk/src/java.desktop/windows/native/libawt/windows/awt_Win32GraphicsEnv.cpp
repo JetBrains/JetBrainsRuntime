@@ -94,7 +94,19 @@ SetProcessDPIAwareness(PROCESS_DPI_AWARENESS level)
     }
 
     if (lpSetProcessDpiAwareness != NULL) {
+        // [tav] has no effect when called repeatedly, therefore the thread DPI_AWARENESS_CONTEXT is set
         lpSetProcessDpiAwareness(level);
+        switch (level) {
+            case PROCESS_DPI_UNAWARE:
+                AwtToolkit::UpdateToolkitDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
+                break;
+            case PROCESS_SYSTEM_DPI_AWARE:
+                AwtToolkit::UpdateToolkitDpiAwarenessContext(DPI_AWARENESS_CONTEXT_SYSTEM_AWARE);
+                break;
+            case PROCESS_PER_MONITOR_DPI_AWARE:
+                AwtToolkit::UpdateToolkitDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+                break;
+        }
     }
 }
 

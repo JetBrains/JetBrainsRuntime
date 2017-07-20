@@ -509,6 +509,12 @@ void AwtWindow::CreateHWnd(JNIEnv *env, LPCWSTR title,
 
     TweakStyle(windowStyle, windowExStyle);
 
+    // [tav] It has been noticed experimentally that the thread DPI_AWARENESS_CONTEXT is not passed
+    // to a new toplevel unless is set at processing of the same message which creates HWND.
+    // That is, the thread DPI_AWARENESS_CONTEXT may vary depending on the foreground toplevel.
+    // To make every toplevel inherit the same context, it's updated right before HWND creation.
+    AwtToolkit::UpdateToolkitDpiAwarenessContext();
+
     AwtCanvas::CreateHWnd(env, title,
             windowStyle,
             windowExStyle,

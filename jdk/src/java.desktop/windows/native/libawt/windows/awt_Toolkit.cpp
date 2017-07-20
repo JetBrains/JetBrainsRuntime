@@ -137,6 +137,10 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 
 #define IDT_AWT_MOUSECHECK 0x101
 
+GetThreadDpiAwarenessContextFunc* AwtToolkit::lpGetThreadDpiAwarenessContext = NULL;
+SetThreadDpiAwarenessContextFunc* AwtToolkit::lpSetThreadDpiAwarenessContext = NULL;
+AreDpiAwarenessContextsEqualFunc* AwtToolkit::lpAreDpiAwarenessContextsEqual = NULL;
+
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
 static const int MOUSE_BUTTONS_WINDOWS_SUPPORTED = 5; //three standard buttons + XBUTTON1 + XBUTTON2.
@@ -517,7 +521,31 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
 
     awt_dnd_initialize();
 
+    HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
+    if (hLibUser32Dll != NULL) {
+        lpGetThreadDpiAwarenessContext =
+                (GetThreadDpiAwarenessContextFunc*)GetProcAddress(hLibUser32Dll, "GetThreadDpiAwarenessContext");
+        lpSetThreadDpiAwarenessContext =
+                (SetThreadDpiAwarenessContextFunc*)GetProcAddress(hLibUser32Dll, "SetThreadDpiAwarenessContext");
+        lpAreDpiAwarenessContextsEqual =
+                (AreDpiAwarenessContextsEqualFunc*)GetProcAddress(hLibUser32Dll, "AreDpiAwarenessContextsEqual");
+        ::FreeLibrary(hLibUser32Dll);
+    }
+
     return TRUE;
+}
+
+void AwtToolkit::_UpdateToolkitDpiAwarenessContext(void* p = NULL)
+{
+    static DPI_AWARENESS_CONTEXT context = NULL;
+    if (p != NULL) context = static_cast<DPI_AWARENESS_CONTEXT>(p); // cache the last context
+
+    if (context != NULL &&
+        lpAreDpiAwarenessContextsEqual != NULL &&
+        !lpAreDpiAwarenessContextsEqual(GetToolkitDpiAwarenessContext(), context))
+    {
+        SetToolkitDpiAwarenessContext(context);
+    }
 }
 
 BOOL AwtToolkit::Dispose() {

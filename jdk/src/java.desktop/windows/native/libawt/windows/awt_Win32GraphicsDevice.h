@@ -74,7 +74,7 @@ public:
     void                    Release();
     void                    DisableOffscreenAcceleration();
     void                    Invalidate(JNIEnv *env);
-    void                    InitDesktopScales(bool fractionalScaleEnabled);
+    void                    InitDesktopScales();
     void                    SetScale(float scaleX, float scaleY);
     float                   GetScaleX();
     float                   GetScaleY();
