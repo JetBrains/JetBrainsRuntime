@@ -373,26 +373,28 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
 
     protected static boolean isUIScaleOn(GraphicsEnvironment ge) {
         if (uiScaleOn != null) return uiScaleOn;
-
-        assert EventQueue.isDispatchThread(); // must be initialized on EDT
-
-        GraphicsEnvironment env = (ge == null ? getLocalGraphicsEnvironment() : ge);
+        boolean _uiScaleOn = false;
 
         if (!GraphicsEnvironment.isHeadless()) {
             boolean fractionalScaleEnabled = "true".equals(AccessController.doPrivileged(
                     new GetPropertyAction("sun.java2d.uiFractScale.enabled", "false")));
+            GraphicsEnvironment env = (ge == null ? getLocalGraphicsEnvironment() : ge);
+
             for (GraphicsDevice d : env.getScreenDevices()) {
                 double scaleX = d.getDefaultConfiguration().getDefaultTransform().getScaleX();
                 double scaleY = d.getDefaultConfiguration().getDefaultTransform().getScaleY();
                 if (!fractionalScaleEnabled && (scaleX != Math.floor(scaleX) || scaleY != Math.floor(scaleY))) {
-                    return uiScaleOn = false; // Fallback to un-scaled behavior
+                    _uiScaleOn = false; // Fallback to un-scaled behavior
+                    break;
                 }
                 if (scaleX > 1 || scaleY > 1) {
-                    uiScaleOn = true;
+                    _uiScaleOn = true;
                 }
             }
         }
-        return uiScaleOn;
+        synchronized (SunGraphicsEnvironment.class) {
+            return uiScaleOn != null ? uiScaleOn : (uiScaleOn = _uiScaleOn);
+        }
     }
 
     public static double getDebugScale() {
