@@ -61,7 +61,6 @@ import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
 import sun.awt.FontConfiguration;
 import sun.awt.SunDisplayChanger;
-import sun.awt.Win32GraphicsDevice;
 import sun.font.CompositeFontDescriptor;
 import sun.font.Font2D;
 import sun.font.FontManager;
