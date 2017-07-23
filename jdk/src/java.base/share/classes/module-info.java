@@ -214,7 +214,8 @@ module java.base {
         jdk.jdeps,
         jdk.jlink;
     exports sun.net to
-        jdk.incubator.httpclient;
+        jdk.incubator.httpclient,
+        jdk.naming.dns;
     exports sun.net.ext to
         jdk.net;
     exports sun.net.dns to
