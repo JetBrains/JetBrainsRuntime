@@ -52,6 +52,10 @@ typedef enum _PROCESS_DPI_AWARENESS {
 } PROCESS_DPI_AWARENESS;
 #endif
 
+#ifndef _WIN32_WINNT_WIN10
+typedef BOOL(EnableNonClientDpiScalingFunc)(HWND);
+#endif
+
 class AwtObject;
 typedef AwtObject* PDATA;
 

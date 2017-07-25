@@ -442,6 +442,11 @@ public:
     static BOOL CALLBACK CommonPeekMessageFunc(MSG& msg);
     static BOOL activateKeyboardLayout(HKL hkl);
 
+    static INLINE BOOL EnableNcDpiScaling(HWND hwnd)
+    {
+        return lpEnableNonClientDpiScaling != NULL ? lpEnableNonClientDpiScaling(hwnd) : FALSE;
+    }
+
     HANDLE m_waitEvent;
     volatile DWORD eventNumber;
     volatile BOOL isInDoDragDropLoop;
@@ -503,6 +508,8 @@ private:
     HMODULE m_dllHandle;  /* The module handle. */
 
     CriticalSection m_Sync;
+
+    static EnableNonClientDpiScalingFunc *lpEnableNonClientDpiScaling;
 
 /* track display changes - used by palette-updating code.
    This is a workaround for a windows bug that prevents

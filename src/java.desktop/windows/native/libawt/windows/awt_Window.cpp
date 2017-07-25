@@ -428,6 +428,7 @@ void AwtWindow::FillClassInfo(WNDCLASSEX *lpwc)
      * lpwc->style     |= CS_SAVEBITS; // improve pull-down menu performance
      */
     lpwc->cbWndExtra = DLGWINDOWEXTRA;
+    lpwc->lpfnWndProc = (WNDPROC)InitialWindowProc;
 }
 
 bool AwtWindow::IsWarningWindow(HWND hWnd)
@@ -747,6 +748,19 @@ void AwtWindow::CalculateWarningWindowBounds(JNIEnv *env, LPRECT rect)
     rect->top = y;
     rect->right = rect->left + warningWindowWidth;
     rect->bottom = rect->top + warningWindowHeight;
+}
+
+LRESULT CALLBACK AwtWindow::InitialWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    // [tav] This class-level WindowProc is used to process WM_NCCREATE in order to call
+    // AwtToolkit::EnableNcDpiScaling (as per MSDN). WM_NCCREATE is sent before ::CreateWindowEx()
+    // returns, so it's not possible to process it in hwnd-level WindowProc.
+    switch (uMsg) {
+        case WM_NCCREATE:
+            AwtToolkit::EnableNcDpiScaling(hwnd);
+            break;
+    }
+    return ::DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 LRESULT CALLBACK AwtWindow::WarningWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
