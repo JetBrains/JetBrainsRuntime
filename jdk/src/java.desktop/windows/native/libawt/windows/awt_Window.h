@@ -326,6 +326,8 @@ private:
     void UnregisterWarningWindowClass();
     static LRESULT CALLBACK WarningWindowProc(
             HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    static LRESULT CALLBACK InitialWindowProc(
+            HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     static void PaintWarningWindow(HWND warningWindow);
     static void PaintWarningWindow(HWND warningWindow, HDC hdc);

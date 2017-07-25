@@ -70,6 +70,7 @@ DECLARE_HANDLE(DPI_AWARENESS_CONTEXT);
 typedef DPI_AWARENESS_CONTEXT(WINAPI GetThreadDpiAwarenessContextFunc)(void);
 typedef DPI_AWARENESS_CONTEXT(WINAPI SetThreadDpiAwarenessContextFunc)(DPI_AWARENESS_CONTEXT);
 typedef BOOL(AreDpiAwarenessContextsEqualFunc)(DPI_AWARENESS_CONTEXT, DPI_AWARENESS_CONTEXT);
+typedef BOOL(EnableNonClientDpiScalingFunc)(HWND);
 #endif
 
 class AwtObject;

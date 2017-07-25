@@ -408,6 +408,11 @@ public:
         }
     }
 
+    static INLINE BOOL EnableNcDpiScaling(HWND hwnd)
+    {
+        return lpEnableNonClientDpiScaling != NULL ? lpEnableNonClientDpiScaling(hwnd) : FALSE;
+    }
+
     HANDLE m_waitEvent;
     volatile DWORD eventNumber;
     volatile BOOL isInDoDragDropLoop;
@@ -458,6 +463,7 @@ private:
     static GetThreadDpiAwarenessContextFunc *lpGetThreadDpiAwarenessContext;
     static SetThreadDpiAwarenessContextFunc *lpSetThreadDpiAwarenessContext;
     static AreDpiAwarenessContextsEqualFunc *lpAreDpiAwarenessContextsEqual;
+    static EnableNonClientDpiScalingFunc *lpEnableNonClientDpiScaling;
     static void _UpdateToolkitDpiAwarenessContext(void*);
 
 /* track display changes - used by palette-updating code.
