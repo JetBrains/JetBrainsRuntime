@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -227,11 +227,10 @@ class LinkResolver: AllStatic {
   static methodHandle linktime_resolve_interface_method (const LinkInfo& link_info, TRAPS);
 
   static void runtime_resolve_special_method    (CallInfo& result,
+                                                 const LinkInfo& link_info,
                                                  const methodHandle& resolved_method,
-                                                 KlassHandle resolved_klass,
-                                                 KlassHandle current_klass,
-                                                 Handle recv,
-                                                 bool check_access, TRAPS);
+                                                 Handle recv, TRAPS);
+
   static void runtime_resolve_virtual_method    (CallInfo& result,
                                                  const methodHandle& resolved_method,
                                                  KlassHandle resolved_klass,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1061,11 +1061,7 @@ void LinkResolver::resolve_special_call(CallInfo& result,
                                         const LinkInfo& link_info,
                                         TRAPS) {
   methodHandle resolved_method = linktime_resolve_special_method(link_info, CHECK);
-  runtime_resolve_special_method(result, resolved_method,
-                                 link_info.resolved_klass(),
-                                 link_info.current_klass(),
-                                 recv,
-                                 link_info.check_access(), CHECK);
+  runtime_resolve_special_method(result, link_info, resolved_method, recv, CHECK);
 }
 
 // throws linktime exceptions
@@ -1148,11 +1144,11 @@ methodHandle LinkResolver::linktime_resolve_special_method(const LinkInfo& link_
 
 // throws runtime exceptions
 void LinkResolver::runtime_resolve_special_method(CallInfo& result,
+                                                  const LinkInfo& link_info,
                                                   const methodHandle& resolved_method,
-                                                  KlassHandle resolved_klass,
-                                                  KlassHandle current_klass,
-                                                  Handle recv,
-                                                  bool check_access, TRAPS) {
+                                                  Handle recv, TRAPS) {
+
+  KlassHandle resolved_klass = link_info.resolved_klass();
 
   // resolved method is selected method unless we have an old-style lookup
   // for a superclass method
@@ -1160,12 +1156,13 @@ void LinkResolver::runtime_resolve_special_method(CallInfo& result,
   // no checks for shadowing
   methodHandle sel_method(THREAD, resolved_method());
 
-  if (check_access &&
+  if (link_info.check_access() &&
       // check if the method is not <init>
       resolved_method->name() != vmSymbols::object_initializer_name()) {
 
-  // check if this is an old-style super call and do a new lookup if so
+     // check if this is an old-style super call and do a new lookup if so
         // a) check if ACC_SUPER flag is set for the current class
+    KlassHandle current_klass = link_info.current_klass();
     if ((current_klass->is_super() || !AllowNonVirtualCalls) &&
         // b) check if the class of the resolved_klass is a superclass
         // (not supertype in order to exclude interface classes) of the current class.
@@ -1185,6 +1182,9 @@ void LinkResolver::runtime_resolve_special_method(CallInfo& result,
                   Method::name_and_sig_as_C_string(resolved_klass(),
                                             resolved_method->name(),
                                             resolved_method->signature()));
+      // check loader constraints if found a different method
+      } else if (sel_method() != resolved_method()) {
+        check_method_loader_constraints(link_info, sel_method, "method", CHECK);
       }
     }
 
