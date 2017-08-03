@@ -391,9 +391,9 @@ public class Resources_zh_TW extends java.util.ListResourceBundle {
                 "\u6C92\u6709\u4F86\u81EA SSL \u4F3A\u670D\u5668\u7684\u6191\u8B49"},
 
         {".The.integrity.of.the.information.stored.in.your.keystore.",
-            "* \u5C1A\u672A\u9A57\u8B49\u5132\u5B58\u65BC\u91D1\u9470\u5132\u5B58\u5EAB\u4E2D\u8CC7\u8A0A  *\n* \u7684\u5B8C\u6574\u6027\uFF01\u82E5\u8981\u9A57\u8B49\u5176\u5B8C\u6574\u6027\uFF0C    *\n* \u60A8\u5FC5\u9808\u63D0\u4F9B\u60A8\u7684\u91D1\u9470\u5132\u5B58\u5EAB\u5BC6\u78BC\u3002  *"},
+            "* \u5C1A\u672A\u9A57\u8B49\u5132\u5B58\u65BC\u91D1\u9470\u5132\u5B58\u5EAB\u4E2D\u8CC7\u8A0A  *\n* \u7684\u5B8C\u6574\u6027\uFF01\u82E5\u8981\u9A57\u8B49\u5176\u5B8C\u6574\u6027\uFF0C\u60A8  *\n* \u5FC5\u9808\u63D0\u4F9B\u60A8\u7684\u91D1\u9470\u5132\u5B58\u5EAB\u5BC6\u78BC\u3002    *"},
         {".The.integrity.of.the.information.stored.in.the.srckeystore.",
-            "* \u5C1A\u672A\u9A57\u8B49\u5132\u5B58\u65BC srckeystore \u4E2D\u8CC7\u8A0A *\n* \u7684\u5B8C\u6574\u6027\uFF01\u82E5\u8981\u9A57\u8B49\u5176\u5B8C\u6574\u6027\uFF0C\u60A8    *\n* \u5FC5\u9808\u63D0\u4F9B srckeystore \u5BC6\u78BC\u3002       *"},
+            "* \u5C1A\u672A\u9A57\u8B49\u5132\u5B58\u65BC srckeystore \u4E2D\u8CC7\u8A0A *\n* \u7684\u5B8C\u6574\u6027\uFF01\u82E5\u8981\u9A57\u8B49\u5176\u5B8C\u6574\u6027\uFF0C\u60A8\u5FC5  *\n* \u9808\u63D0\u4F9B srckeystore \u5BC6\u78BC\u3002         *"},
 
         {"Certificate.reply.does.not.contain.public.key.for.alias.",
                 "\u6191\u8B49\u56DE\u8986\u4E26\u672A\u5305\u542B <{0}> \u7684\u516C\u958B\u91D1\u9470"},
@@ -460,6 +460,10 @@ public class Resources_zh_TW extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "\u7531 %2$s \u4E2D\u7684 %1$s \u4EE5 %3$s \u9A57\u8B49"},
         {"whose.sigalg.risk", "%s \u4F7F\u7528\u7684 %s \u7C3D\u7AE0\u6F14\u7B97\u6CD5\u5B58\u5728\u5B89\u5168\u98A8\u96AA\u3002"},
         {"whose.key.risk", "%s \u4F7F\u7528\u7684 %s \u5B58\u5728\u5B89\u5168\u98A8\u96AA\u3002"},
+        {"jks.storetype.warning", "%1$s \u91D1\u9470\u5132\u5B58\u5EAB\u4F7F\u7528\u5C08\u6709\u683C\u5F0F\u3002\u5EFA\u8B70\u60A8\u4F7F\u7528 \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\" \u79FB\u8F49\u6210\u70BA\u4F7F\u7528 PKCS12 (\u696D\u754C\u6A19\u6E96\u683C\u5F0F)\u3002"},
+        {"migrate.keystore.warning", "\u5DF2\u5C07 \"%1$s\" \u79FB\u8F49\u6210\u70BA %4$s\u3002%2$s \u91D1\u9470\u5132\u5B58\u5EAB\u5DF2\u5099\u4EFD\u70BA \"%3$s\"\u3002"},
+        {"backup.keystore.warning", "\u539F\u59CB\u7684\u91D1\u9470\u5132\u5B58\u5EAB \"%1$s\" \u5DF2\u5099\u4EFD\u70BA \"%3$s\"..."},
+        {"importing.keystore.status", "\u6B63\u5728\u5C07\u91D1\u9470\u5132\u5B58\u5EAB %1$s \u532F\u5165 %2$s..."},
     };
 
 

@@ -382,7 +382,7 @@ public class Resources_ko extends java.util.ListResourceBundle {
         {".WARNING.WARNING.WARNING.",
             "*****************  WARNING WARNING WARNING  *****************"},
         {"Signer.d.", "\uC11C\uBA85\uC790 #%d:"},
-        {"Timestamp.", "\uC2DC\uAC04 \uAE30\uB85D:"},
+        {"Timestamp.", "\uC2DC\uAC04\uAE30\uB85D:"},
         {"Signature.", "\uC11C\uBA85:"},
         {"CRLs.", "CRL:"},
         {"Certificate.owner.", "\uC778\uC99D\uC11C \uC18C\uC720\uC790: "},
@@ -460,6 +460,10 @@ public class Resources_ko extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "%s\uC774(\uAC00) %s\uC5D0\uC11C %s\uC744(\uB97C) \uC0AC\uC6A9\uD558\uC5EC \uD655\uC778"},
         {"whose.sigalg.risk", "%s\uC774(\uAC00) \uBCF4\uC548 \uC704\uD5D8\uC73C\uB85C \uAC04\uC8FC\uB418\uB294 %s \uC11C\uBA85 \uC54C\uACE0\uB9AC\uC998\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4."},
         {"whose.key.risk", "%s\uC774(\uAC00) \uBCF4\uC548 \uC704\uD5D8\uC73C\uB85C \uAC04\uC8FC\uB418\uB294 %s\uC744(\uB97C) \uC0AC\uC6A9\uD569\uB2C8\uB2E4."},
+        {"jks.storetype.warning", "%1$s \uD0A4 \uC800\uC7A5\uC18C\uB294 \uACE0\uC720 \uD615\uC2DD\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\"\uB97C \uC0AC\uC6A9\uD558\uB294 \uC0B0\uC5C5 \uD45C\uC900 \uD615\uC2DD\uC778 PKCS12\uB85C \uC774\uC804\uD558\uB294 \uAC83\uC774 \uC88B\uC2B5\uB2C8\uB2E4."},
+        {"migrate.keystore.warning", "\"%1$s\"\uC744(\uB97C) %4$s(\uC73C)\uB85C \uC774\uC804\uD588\uC2B5\uB2C8\uB2E4. %2$s \uD0A4 \uC800\uC7A5\uC18C\uAC00 \"%3$s\"(\uC73C)\uB85C \uBC31\uC5C5\uB418\uC5C8\uC2B5\uB2C8\uB2E4."},
+        {"backup.keystore.warning", "\uC6D0\uBCF8 \uD0A4 \uC800\uC7A5\uC18C \"%1$s\"\uC774(\uAC00) \"%3$s\"(\uC73C)\uB85C \uBC31\uC5C5\uB418\uC5C8\uC2B5\uB2C8\uB2E4."},
+        {"importing.keystore.status", "\uD0A4 \uC800\uC7A5\uC18C %1$s\uC744(\uB97C) %2$s(\uC73C)\uB85C \uC784\uD3EC\uD2B8\uD558\uB294 \uC911..."},
     };
 
 

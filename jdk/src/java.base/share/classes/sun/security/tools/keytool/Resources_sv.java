@@ -460,6 +460,10 @@ public class Resources_sv extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "Verifierades av %s i %s med en %s"},
         {"whose.sigalg.risk", "%s anv\u00E4nder signaturalgoritmen %s, vilket anses utg\u00F6ra en s\u00E4kerhetsrisk."},
         {"whose.key.risk", "%s anv\u00E4nder en %s, vilket anses utg\u00F6ra en s\u00E4kerhetsrisk."},
+        {"jks.storetype.warning", "Nyckellagret %1$s anv\u00E4nder ett propriet\u00E4rt format. Du b\u00F6r migrera till PKCS12, som \u00E4r ett branschstandardformat, med \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\"."},
+        {"migrate.keystore.warning", "Migrerade \"%1$s\" till %4$s. Nyckellagret %2$s s\u00E4kerhetskopierades som \"%3$s\"."},
+        {"backup.keystore.warning", "Det ursprungliga nyckellagret, \"%1$s\", s\u00E4kerhetskopieras som \"%3$s\"..."},
+        {"importing.keystore.status", "Importerar nyckellagret %1$s till %2$s..."},
     };
 
 

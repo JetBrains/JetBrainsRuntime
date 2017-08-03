@@ -460,6 +460,10 @@ public class Resources_pt_BR extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "Verificado por %s em %s com um %s"},
         {"whose.sigalg.risk", "%s usa o algoritmo de assinatura %s que \u00E9 considerado um risco \u00E0 seguran\u00E7a."},
         {"whose.key.risk", "%s usa um %s que \u00E9 considerado um risco \u00E0 seguran\u00E7a."},
+        {"jks.storetype.warning", "O armazenamento de chaves %1$s usa um formato propriet\u00E1rio. \u00C9 recomendada a migra\u00E7\u00E3o para PKCS12, que \u00E9 um formato de padr\u00E3o industrial que usa \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\"."},
+        {"migrate.keystore.warning", "\"%1$s\" foi migrado para %4$s. O backup do armazenamento de chaves %2$s \u00E9 feito como \"%3$s\"."},
+        {"backup.keystore.warning", "O backup do armazenamento de chaves original \"%1$s\" \u00E9 feito como \"%3$s\"..."},
+        {"importing.keystore.status", "Importando armazenamento de chaves %1$s to %2$s..."},
     };
 
 

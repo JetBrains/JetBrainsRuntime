@@ -460,6 +460,10 @@ public class Resources_zh_CN extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "\u7531 %2$s \u4E2D\u7684 %1$s \u4EE5 %3$s \u9A8C\u8BC1"},
         {"whose.sigalg.risk", "%s \u4F7F\u7528\u7684 %s \u7B7E\u540D\u7B97\u6CD5\u5B58\u5728\u5B89\u5168\u98CE\u9669\u3002"},
         {"whose.key.risk", "%s \u4F7F\u7528\u7684 %s \u5B58\u5728\u5B89\u5168\u98CE\u9669\u3002"},
+        {"jks.storetype.warning", "%1$s \u5BC6\u94A5\u5E93\u4F7F\u7528\u4E13\u7528\u683C\u5F0F\u3002\u5EFA\u8BAE\u4F7F\u7528 \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\" \u8FC1\u79FB\u5230\u884C\u4E1A\u6807\u51C6\u683C\u5F0F PKCS12\u3002"},
+        {"migrate.keystore.warning", "\u5DF2\u5C06 \"%1$s\" \u8FC1\u79FB\u5230 %4$s\u3002\u5C06 %2$s \u5BC6\u94A5\u5E93\u4F5C\u4E3A \"%3$s\" \u8FDB\u884C\u4E86\u5907\u4EFD\u3002"},
+        {"backup.keystore.warning", "\u5DF2\u5C06\u539F\u59CB\u5BC6\u94A5\u5E93 \"%1$s\" \u5907\u4EFD\u4E3A \"%3$s\"..."},
+        {"importing.keystore.status", "\u6B63\u5728\u5C06\u5BC6\u94A5\u5E93 %1$s \u5BFC\u5165\u5230 %2$s..."},
     };
 
 

@@ -460,6 +460,10 @@ public class Resources_es extends java.util.ListResourceBundle {
         {"verified.by.s.in.s.weak", "Verificado por %s en %s con %s"},
         {"whose.sigalg.risk", "%s usa el algoritmo de firma %s, lo que se considera un riesgo de seguridad."},
         {"whose.key.risk", "%s usa %s, lo que se considera un riesgo de seguridad."},
+        {"jks.storetype.warning", "El almac\u00E9n de claves %1$s utiliza un formato propietario. Se recomienda migrar a PKCS12, que es un formato est\u00E1ndar del sector que utiliza \"keytool -importkeystore -srckeystore %2$s -destkeystore %2$s -deststoretype pkcs12\"."},
+        {"migrate.keystore.warning", "Se ha migrado \"%1$s\" a %4$s. Se ha realizado la copia de seguridad del almac\u00E9n de claves %2$s como \"%3$s\"."},
+        {"backup.keystore.warning", "La copia de seguridad del almac\u00E9n de claves \"%1$s\" se ha realizado como \"%3$s\"..."},
+        {"importing.keystore.status", "Importando el almac\u00E9n de claves de %1$s a %2$s..."},
     };
 
 
