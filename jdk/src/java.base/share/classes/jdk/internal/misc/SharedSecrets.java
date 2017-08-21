@@ -315,6 +315,17 @@ public class SharedSecrets {
         javaObjectInputStreamAccess = access;
     }
 
+    public static JavaObjectInputStreamAccess getJavaObjectInputStreamAccess() {
+        if (javaObjectInputStreamAccess == null) {
+            unsafe.ensureClassInitialized(ObjectInputStream.class);
+        }
+        return javaObjectInputStreamAccess;
+    }
+
+    public static void setJavaObjectInputStreamAccess(JavaObjectInputStreamAccess access) {
+        javaObjectInputStreamAccess = access;
+    }
+
     public static void setJavaIORandomAccessFileAccess(JavaIORandomAccessFileAccess jirafa) {
         javaIORandomAccessFileAccess = jirafa;
     }
