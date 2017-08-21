@@ -93,6 +93,10 @@ Java_sun_java2d_opengl_OGLRenderQueue_flushBuffer
                     "OGLRenderQueue_flushBuffer: opcode=%d, rem=%d",
                     opcode, (end-b));
 
+        if (opcode != sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST) {
+            OGLTR_DisableGlyphModeState(JNI_FALSE);
+        }
+
         switch (opcode) {
 
         // draw ops
@@ -700,6 +704,8 @@ Java_sun_java2d_opengl_OGLRenderQueue_flushBuffer
             return;
         }
     }
+
+    OGLTR_DisableGlyphModeState(JNI_FALSE);
 
     if (oglc != NULL) {
         RESET_PREVIOUS_OP();

@@ -164,6 +164,7 @@ static jboolean isCachedDestValid = JNI_FALSE;
  */
 static SurfaceDataBounds previousGlyphBounds;
 
+static jboolean performDisableGlyphModeState = JNI_FALSE;
 /**
  * Initializes the one glyph cache (texture and data structure).
  * If lcdCache is JNI_TRUE, the texture will contain RGB data,
@@ -507,9 +508,10 @@ OGLTR_DisableGlyphVertexCache(OGLContext *oglc)
 /**
  * Disables any pending state associated with the current "glyph mode".
  */
-static void
-OGLTR_DisableGlyphModeState()
+void
+OGLTR_DisableGlyphModeState(jboolean force)
 {
+    if (!performDisableGlyphModeState && !force) return;
     switch (glyphMode) {
     case MODE_NO_CACHE_LCD:
         j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -532,6 +534,7 @@ OGLTR_DisableGlyphModeState()
     default:
         break;
     }
+    performDisableGlyphModeState = JNI_FALSE;
 }
 
 static jboolean
@@ -542,7 +545,7 @@ OGLTR_DrawGrayscaleGlyphViaCache(OGLContext *oglc,
     jfloat x1, y1, x2, y2;
 
     if (glyphMode != MODE_USE_CACHE_GRAY) {
-        OGLTR_DisableGlyphModeState();
+        OGLTR_DisableGlyphModeState(JNI_TRUE);
         CHECK_PREVIOUS_OP(OGL_STATE_GLYPH_OP);
         glyphMode = MODE_USE_CACHE_GRAY;
     }
@@ -721,7 +724,7 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
             *opened = JNI_FALSE;
             j2d_glEnd();
         }
-        OGLTR_DisableGlyphModeState();
+        OGLTR_DisableGlyphModeState(JNI_TRUE);
         CHECK_PREVIOUS_OP(GL_TEXTURE_2D);
         j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -844,7 +847,7 @@ OGLTR_DrawGrayscaleGlyphNoCache(OGLContext *oglc,
     jint h = ginfo->height;
 
     if (glyphMode != MODE_NO_CACHE_GRAY) {
-        OGLTR_DisableGlyphModeState();
+        OGLTR_DisableGlyphModeState(JNI_TRUE);
         CHECK_PREVIOUS_OP(OGL_STATE_MASK_OP);
         glyphMode = MODE_NO_CACHE_GRAY;
     }
@@ -885,7 +888,7 @@ OGLTR_DrawLCDGlyphNoCache(OGLContext *oglc, OGLSDOps *dstOps,
     GLenum pixelFormat = rgbOrder ? GL_RGB : GL_BGR;
 
     if (glyphMode != MODE_NO_CACHE_LCD) {
-        OGLTR_DisableGlyphModeState();
+        OGLTR_DisableGlyphModeState(JNI_TRUE);
         CHECK_PREVIOUS_OP(GL_TEXTURE_2D);
         j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -1030,7 +1033,7 @@ static jboolean
 OGLTR_DrawColorGlyphNoCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jint y)
 {
     if (glyphMode != MODE_NO_CACHE_COLOR) {
-        OGLTR_DisableGlyphModeState();
+        OGLTR_DisableGlyphModeState(JNI_TRUE);
         CHECK_PREVIOUS_OP(OGL_STATE_RESET);
         glyphMode = MODE_NO_CACHE_COLOR;
     }
@@ -1206,7 +1209,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     if (lcdOpened) {
         j2d_glEnd();
     }
-    OGLTR_DisableGlyphModeState();
+    performDisableGlyphModeState = JNI_TRUE;
 }
 
 JNIEXPORT void JNICALL
