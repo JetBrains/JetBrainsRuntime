@@ -506,9 +506,12 @@ OGLTR_DisableGlyphVertexCache(OGLContext *oglc)
 /**
  * Disables any pending state associated with the current "glyph mode".
  */
-static void
+void
 OGLTR_DisableGlyphModeState()
 {
+    J2dTraceLn1(J2D_TRACE_VERBOSE,
+                "OGLTR_DisableGlyphModeState: mode=%d", glyphMode);
+
     switch (glyphMode) {
     case MODE_NO_CACHE_LCD:
         j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -531,6 +534,7 @@ OGLTR_DisableGlyphModeState()
     default:
         break;
     }
+    glyphMode = MODE_NOT_INITED;
 }
 
 static jboolean
@@ -1051,7 +1055,6 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         RETURN_IF_NULL(positions);
     }
 
-    glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
 
     // We have to obtain an information about destination content
@@ -1183,7 +1186,6 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     if (lcdOpened) {
         j2d_glEnd();
     }
-    OGLTR_DisableGlyphModeState();
 }
 
 JNIEXPORT void JNICALL
@@ -1213,6 +1215,7 @@ Java_sun_java2d_opengl_OGLTextRenderer_drawGlyphList
                                     subPixPos, rgbOrder, lcdContrast,
                                     glyphListOrigX, glyphListOrigY,
                                     images, positions);
+                OGLTR_DisableGlyphModeState();
                 (*env)->ReleasePrimitiveArrayCritical(env, posArray,
                                                       positions, JNI_ABORT);
             }
@@ -1222,6 +1225,7 @@ Java_sun_java2d_opengl_OGLTextRenderer_drawGlyphList
                                 subPixPos, rgbOrder, lcdContrast,
                                 glyphListOrigX, glyphListOrigY,
                                 images, NULL);
+            OGLTR_DisableGlyphModeState();
         }
 
         // 6358147: reset current state, and ensure rendering is

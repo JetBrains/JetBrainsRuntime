@@ -1,10 +1,13 @@
 package quality.text;
 
 import org.junit.Test;
+import quality.util.RenderUtil;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.File;

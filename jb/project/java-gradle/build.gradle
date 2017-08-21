@@ -61,7 +61,7 @@ sourceSets.main.java.srcDirs = jdk_class_dirs
 sourceSets {
     test {
         java {
-            srcDir "../../../test/jdk/jbu/src"
+            srcDir "../../../test/jdk/jbu"
         }
     }
 }
