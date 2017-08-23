@@ -22,20 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package jdk.internal.misc;
 
-import java.io.ObjectInputStream;
+import java.io.ObjectStreamClass;
 
 /**
- * The interface to specify methods for accessing {@code ObjectInputStream}
+ * A callback used by {@code ObjectInputStream} to do descriptor validation.
+ *
  * @author sjiang
  */
-public interface JavaObjectInputStreamAccess {
+public interface ObjectStreamClassValidator {
     /**
-     * Sets a descriptor validating.
-     * @param ois stream to have the descriptors validated
-     * @param validator validator used to validate a descriptor.
+     * This method will be called by ObjectInputStream to
+     * check a descriptor just before creating an object described by this descriptor.
+     * The object will not be created if this method throws a {@code RuntimeException}.
+     * @param descriptor descriptor to be checked.
      */
-    public void setValidator(ObjectInputStream ois, ObjectStreamClassValidator validator);
+    public void validateDescriptor(ObjectStreamClass descriptor);
 }
