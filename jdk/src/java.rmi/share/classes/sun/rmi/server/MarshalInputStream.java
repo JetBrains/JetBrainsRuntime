@@ -333,7 +333,7 @@ public class MarshalInputStream extends ObjectInputStream {
 
     synchronized void setStreamChecker(StreamChecker checker) {
         streamChecker = checker;
-        SharedSecrets.getJavaObjectInputStreamAccess().setValidator(this, checker);
+        SharedSecrets.getJavaOISAccess().setValidator(this, checker);
     }
     @Override
     protected ObjectStreamClass readClassDescriptor() throws IOException,
