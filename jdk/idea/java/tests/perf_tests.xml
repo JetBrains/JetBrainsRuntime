@@ -22,18 +22,17 @@
     </target>
 
     <target name="run"  depends="compile">
+        <echo> "${test_jvm} </echo>
         <junit printsummary="on" haltonfailure="no" showoutput="on" fork="yes" jvm="${test_jvm}">
             <classpath>
                 <pathelement location="${lib}/junit-4.12.jar" />
                 <pathelement location="${lib}/hamcrest-core-1.3.jar" />
                 <pathelement location="${build}"/>
             </classpath>
-            <formatter type="plain" />
+            <formatter type="plain" usefile="no"/>
 
             <test name="performance.text.LCDTextAreaScrollingTest"/>
-            <test name="performance.text.HugeLCDTextAreaScrollingTest"/>
             <test name="performance.text.GreyscaleTextAreaScrollingTest"/>
-            <test name="performance.text.HugeGreyscaleTextAreaScrollingTest"/>
         </junit>
     </target>
 
