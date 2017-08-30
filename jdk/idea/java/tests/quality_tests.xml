@@ -15,9 +15,9 @@
         <os family="mac" />
     </condition>
 
-    <property name="src" location="src"/>
+    <property name="src" location="../../../test/jbu"/>
     <property name="lib" location="lib"/>
-    <property name="testdata" location="testdata"/>
+    <property name="testdata" location="../../../test/jbu/testdata"/>
     <property name="build" location="build"/>
 
     <target name="set_test_jvm_mac" if="isMac">
@@ -42,7 +42,7 @@
 
     <target name="compile" depends="init,set_test_jvm_mac, set_test_jvm_windows, set_test_jvm_linux"
             description="compile the source">
-        <javac srcdir="${src}" destdir="${build}" executable="${test_javac}" fork="yes">
+        <javac srcdir="${src}" destdir="${build}" executable="${test_javac}" fork="yes" includeantruntime="false">
             <classpath>
                 <pathelement location="${lib}/junit-4.12.jar" />
             </classpath>
