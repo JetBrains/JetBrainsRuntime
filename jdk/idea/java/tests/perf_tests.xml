@@ -2,17 +2,44 @@
     <description>
         JBRE Performance tests
     </description>
+
+    <condition property="isWindows">
+        <os family="windows" />
+    </condition>
+
+    <condition property="isLinux">
+        <os family="unix" />
+    </condition>
+
+    <condition property="isMac">
+        <os family="mac" />
+    </condition>
+
     <property name="src" location="../../../test/jbu"/>
     <property name="lib" location="lib"/>
     <property name="build" location="build"/>
-    <property name="test_jvm" location="../../../jbsdk/jdk/Contents/Home/bin/java"/>
+
+    <target name="set_test_jvm_mac" if="isMac">
+        <property name="test_jvm" location="../../../jbsdk/jdk/Contents/Home/bin/java"/>
+        <property name="test_javac" location="../../../jbsdk/jdk/Contents/Home/bin/javac"/>
+    </target>
+
+    <target name="set_test_jvm_linux" if="isLinux">
+        <property name="test_jvm" location="../../../jbsdk/bin/java"/>
+        <property name="test_javac" location="../../../jbsdk/bin/javac"/>
+    </target>
+
+    <target name="set_test_jvm_windows" if="isWindows">
+        <property name="test_jvm" location="../../../jbsdk/bin/java.exe"/>
+        <property name="test_javac" location="../../../jbsdk/bin/javac.exe"/>
+    </target>
 
     <target name="init">
         <tstamp/>
         <mkdir dir="${build}"/>
     </target>
 
-    <target name="compile" depends="init"
+    <target name="compile" depends="init, set_test_jvm_mac, set_test_jvm_windows, set_test_jvm_linux"
             description="compile the source">
         <javac srcdir="${src}" destdir="${build}">
             <classpath>
