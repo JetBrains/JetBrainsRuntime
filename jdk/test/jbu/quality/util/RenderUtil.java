@@ -49,17 +49,11 @@ public class RenderUtil {
             int windowListOptions = cgWindowId != null
                     ? FoundationLibrary.kCGWindowListOptionIncludingWindow
                     : FoundationLibrary.kCGWindowListOptionAll;
-            int windowImageOptions = FoundationLibrary.kCGWindowImageBestResolution |
-                    FoundationLibrary.kCGWindowImageShouldBeOpaque;
-            ID cgImageRef = Foundation.cgWindowListCreateImage(
-                    nsRect, windowListOptions, cgWindowId, windowImageOptions);
+            int windowImageOptions = FoundationLibrary.kCGWindowImageBestResolution | FoundationLibrary.kCGWindowImageShouldBeOpaque;
+            ID cgImageRef = Foundation.cgWindowListCreateImage(nsRect, windowListOptions, cgWindowId, windowImageOptions);
 
-            ID bitmapRep = Foundation.invoke(
-                    Foundation.invoke("NSBitmapImageRep", "alloc"),
-                    "initWithCGImage:", cgImageRef);
-            ID nsImage = Foundation.invoke(
-                    Foundation.invoke("NSImage", "alloc"),
-                    "init");
+            ID bitmapRep = Foundation.invoke(Foundation.invoke("NSBitmapImageRep", "alloc"), "initWithCGImage:", cgImageRef);
+            ID nsImage = Foundation.invoke(Foundation.invoke("NSImage", "alloc"), "init");
             Foundation.invoke(nsImage, "addRepresentation:", bitmapRep);
             ID data = Foundation.invoke(nsImage, "TIFFRepresentation");
             ID bytes = Foundation.invoke(data, "bytes");
@@ -86,9 +80,7 @@ public class RenderUtil {
         }
     }
 
-    public static BufferedImage capture(int width, int height, Consumer<Graphics2D> painter)
-            throws Exception
-    {
+    public static BufferedImage capture(int width, int height, Consumer<Graphics2D> painter) throws Exception {
         JFrame[] f = new JFrame[1];
         Point[] p = new Point[1];
         SwingUtilities.invokeAndWait(() -> {
@@ -98,25 +90,31 @@ public class RenderUtil {
 
             f[0].add(c);
             c.setSize(width + 10, height + 10);
-            f[0].setSize(width + 100, height + 100); // giving some space
-                                                                 // for frame border effects,
-                                                                 // e.g. rounded frame
+            f[0].setSize(width + 100, height + 100); // giving some space for frame border effects, e.g. rounded frame
             c.setLocation(50, 50);
             f[0].setVisible(true);
             p[0]= c.getLocationOnScreen();
         });
 
         Rectangle screenRect;
-        Robot r = new Robot();
-        while (!Color.black.equals(r.getPixelColor(p[0].x, p[0].y))) {
-            Thread.sleep(100);
-        }
-        screenRect = new Rectangle(p[0].x + 5, p[0].y + 5, width, height);
 
-        BufferedImage result = SystemUtils.IS_OS_MAC ?
-                captureScreen(f[0], screenRect) : r.createScreenCapture(screenRect);
-        SwingUtilities.invokeAndWait(f[0]::dispose);
-        return result;
+        if (SystemUtils.IS_OS_MAC) {
+            Robot r = new Robot();
+            while (f[0] == null || !Color.black.equals(r.getPixelColor(p[0].x, p[0].y))) {
+                Thread.sleep(100);
+            }
+            screenRect = new Rectangle(p[0].x + 5, p[0].y + 5, width, height);
+
+            return captureScreen(f[0], screenRect);
+        } else {
+            Robot r = new Robot();
+            while (!Color.black.equals(r.getPixelColor(p[0].x, p[0].y))) {
+                Thread.sleep(100);
+            }
+            screenRect = new Rectangle(p[0].x + 5, p[0].y + 5, width, height);
+
+            return r.createScreenCapture(screenRect);
+        }
     }
 
     private static class MyComponent extends JComponent {
