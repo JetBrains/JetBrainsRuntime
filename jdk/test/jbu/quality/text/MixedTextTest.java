@@ -19,10 +19,8 @@ package quality.text;
 import org.junit.Test;
 import quality.util.RenderUtil;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
 
 public class MixedTextTest {
 
@@ -76,4 +74,50 @@ public class MixedTextTest {
 
         RenderUtil.checkImage(bi, "text", "lcdgray.png");
     }
+
+    @Test
+    public void testCacheNoCacheLCD() throws Exception {
+        final Font smallFont = new Font("Menlo", Font.PLAIN, 20);
+        final Font bigFont = new Font("Menlo", Font.PLAIN, 50);
+        BufferedImage bi = RenderUtil.capture(120, 120,
+                graphics2D -> {
+                    graphics2D.setFont(smallFont);
+
+                    graphics2D.setRenderingHint(
+                            RenderingHints.KEY_TEXT_ANTIALIASING,
+                            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+
+                    graphics2D.drawString("A", 0, 50);
+
+                    graphics2D.setFont(bigFont);
+
+                    graphics2D.setRenderingHint(
+                            RenderingHints.KEY_TEXT_ANTIALIASING,
+                            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+                    graphics2D.drawString("A", 10, 50);
+
+                    graphics2D.setFont(smallFont);
+
+                    graphics2D.setRenderingHint(
+                            RenderingHints.KEY_TEXT_ANTIALIASING,
+                            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+
+                    graphics2D.drawString("A", 38, 50);
+
+                    graphics2D.setFont(bigFont);
+
+                    graphics2D.setRenderingHint(
+                            RenderingHints.KEY_TEXT_ANTIALIASING,
+                            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
+
+
+                    graphics2D.drawString("A", 48, 50);
+                });
+
+        RenderUtil.checkImage(bi, "text", "cnclcd.png");
+    }
+
 }

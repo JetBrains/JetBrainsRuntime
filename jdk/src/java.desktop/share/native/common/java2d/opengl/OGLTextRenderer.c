@@ -511,7 +511,12 @@ OGLTR_DisableGlyphVertexCache(OGLContext *oglc)
 void
 OGLTR_DisableGlyphModeState(jboolean force)
 {
-    if (!performDisableGlyphModeState && !force) return;
+    int skip = !performDisableGlyphModeState && !force;
+    J2dTraceLn2(J2D_TRACE_VERBOSE,
+                "OGLTR_DisableGlyphModeState: mode=%d skip=%d",
+                glyphMode, skip);
+
+    if (skip) return;
     switch (glyphMode) {
     case MODE_NO_CACHE_LCD:
         j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
@@ -535,6 +540,7 @@ OGLTR_DisableGlyphModeState(jboolean force)
         break;
     }
     performDisableGlyphModeState = JNI_FALSE;
+    glyphMode = MODE_NOT_INITED;
 }
 
 static jboolean
@@ -1076,7 +1082,6 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         RETURN_IF_NULL(positions);
     }
 
-    glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
 
     // We have to obtain an information about destination content
