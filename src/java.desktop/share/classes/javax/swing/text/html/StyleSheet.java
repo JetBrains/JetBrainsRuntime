@@ -2326,6 +2326,9 @@ public class StyleSheet extends StyleContext {
             if (font != null) {
                 g.setFont(font);
             }
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
             if (childtype == CSS.Value.SQUARE || childtype == CSS.Value.CIRCLE
                 || childtype == CSS.Value.DISC) {
                 drawShape(g, childtype, (int) x, (int) y,
@@ -2391,7 +2394,7 @@ public class StyleSheet extends StyleContext {
             // Position shape to the middle of the html text.
             int gap = isLeftToRight ? - (bulletgap + size/3) : (aw + bulletgap);
             int x = ax + gap;
-            int y = Math.max(ay, ay + ah/2);
+            int y = Math.max(ay, ay + ((ah - size/3)/2));
 
             if (type == CSS.Value.SQUARE) {
                 g.drawRect(x, y, size/3, size/3);
