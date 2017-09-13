@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import static java.io.ObjectStreamClass.processQueue;
 
+import jdk.internal.misc.ObjectStreamClassValidator;
 import jdk.internal.misc.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import sun.reflect.misc.ReflectUtil;
@@ -1764,6 +1765,9 @@ public class ObjectInputStream
             default:
                 throw new StreamCorruptedException(
                     String.format("invalid type code: %02X", tc));
+        }
+        if (descriptor != null) {
+            validateDescriptor(descriptor);
         }
         return descriptor;
     }
@@ -4004,7 +4008,21 @@ public class ObjectInputStream
         }
     }
 
+    private void validateDescriptor(ObjectStreamClass descriptor) {
+        ObjectStreamClassValidator validating = validator;
+        if (validating != null) {
+            validating.validateDescriptor(descriptor);
+        }
+    }
+
+    // controlled access to ObjectStreamClassValidator
+    private volatile ObjectStreamClassValidator validator;
+
+    private static void setValidator(ObjectInputStream ois, ObjectStreamClassValidator validator) {
+        ois.validator = validator;
+    }
     static {
         SharedSecrets.setJavaObjectInputStreamAccess(ObjectInputStream::checkArray);
+        SharedSecrets.setJavaObjectInputStreamAccess(ObjectInputStream::setValidator);
     }
 }
