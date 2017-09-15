@@ -96,7 +96,7 @@ Java_sun_java2d_opengl_OGLRenderQueue_flushBuffer
         if (opcode != sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST &&
             opcode != sun_java2d_pipe_BufferedOpCodes_NOOP)
         {
-            OGLTR_DisableGlyphModeState(JNI_FALSE);
+            OGLTR_DisableGlyphModeState();
         }
 
         switch (opcode) {
@@ -707,7 +707,7 @@ Java_sun_java2d_opengl_OGLRenderQueue_flushBuffer
         }
     }
 
-    OGLTR_DisableGlyphModeState(JNI_FALSE);
+    OGLTR_DisableGlyphModeState();
 
     if (oglc != NULL) {
         RESET_PREVIOUS_OP();
