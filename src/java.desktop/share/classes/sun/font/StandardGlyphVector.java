@@ -1782,9 +1782,19 @@ public class StandardGlyphVector extends GlyphVector {
                 result = new Rectangle2D.Float();
                 result.setRect(strike.getGlyphOutlineBounds(glyphID)); // don't mutate cached rect
             } else {
-                GeneralPath gp = strike.getGlyphOutline(glyphID, 0, 0);
-                gp.transform(sgv.invdtx);
-                result = gp.getBounds2D();
+                if (sgv.invdtx.getShearX() == 0 && sgv.invdtx.getShearY() == 0 &&
+                        sgv.invdtx.getScaleX() > 0 && sgv.invdtx.getScaleY() > 0) {
+                    final Rectangle2D.Float rect = strike.getGlyphOutlineBounds(glyphID);
+                    result = new Rectangle2D.Float(
+                        (float)(rect.x*sgv.invdtx.getScaleX() + sgv.invdtx.getTranslateX()),
+                        (float)(rect.y*sgv.invdtx.getScaleY() + sgv.invdtx.getTranslateY()),
+                        (float)(rect.width*sgv.invdtx.getScaleX()),
+                        (float)(rect.height*sgv.invdtx.getScaleY()));
+                } else {
+                    GeneralPath gp = strike.getGlyphOutline(glyphID, 0, 0);
+                    gp.transform(sgv.invdtx);
+                    result = gp.getBounds2D();
+                }
             }
             /* Since x is the logical advance of the glyph to this point.
              * Because of the way that Rectangle.union is specified, this
