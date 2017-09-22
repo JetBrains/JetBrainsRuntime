@@ -299,6 +299,61 @@ JNI_COCOA_EXIT(env);
 
 /*
  * Class:     sun_font_CStrike
+ * Method:    getNativeGlyphOutlineBounds
+ * Signature: (JILjava/awt/geom/Rectangle2D/Float;DD)V
+ */
+JNIEXPORT void JNICALL Java_sun_font_CStrike_getNativeGlyphOutlineBounds
+        (JNIEnv *env, jclass clazz, jlong awtStrikePtr, jint glyphCode,
+         jobject result, jdouble xPos, jdouble yPos)
+{
+    JNI_COCOA_ENTER(env);
+    AWTStrike *awtStrike = (AWTStrike *)jlong_to_ptr(awtStrikePtr);
+    AWTFont *awtfont = awtStrike->fAWTFont;
+
+    AWT_FONT_CLEANUP_SETUP;
+    AWT_FONT_CLEANUP_CHECK(awtfont);
+
+    // get the right font and glyph for this "Java GlyphCode"
+    CGGlyph glyph;
+    const CTFontRef font = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(
+            awtfont, glyphCode, &glyph);
+
+    CGAffineTransform tx = CGAffineTransformConcat(awtStrike->fTx,
+                                                   sInverseTX);
+
+    CGPathRef cgPath = CTFontCreatePathForGlyph((CTFontRef) font, glyph,
+                                                &tx);
+
+    CGRect bbox = CGPathGetPathBoundingBox(cgPath);
+    CFRelease(font);
+    CGPathRelease(cgPath);
+
+    if (CGRectIsNull(bbox)) {
+        bbox.origin.x = 0;
+        bbox.origin.y = 0;
+        bbox.size.width = 0;
+        bbox.size.height = 0;
+    }
+
+    DECLARE_CLASS(sjc_Rectangle2D_Float,
+                           "java/awt/geom/Rectangle2D$Float");
+    DECLARE_METHOD(sjr_Rectangle2DFloat_setRect,
+                            sjc_Rectangle2D_Float, "setRect", "(FFFF)V");
+
+    (*env)->CallVoidMethod(env, result, sjr_Rectangle2DFloat_setRect,
+                           (jfloat) (bbox.origin.x + xPos),
+                           (jfloat) (yPos - bbox.origin.y - bbox.size.height),
+                           (jfloat) bbox.size.width,
+                           (jfloat) bbox.size.height);
+
+    // Cleanup
+    cleanup:
+        AWT_FONT_CLEANUP_FINISH;
+
+    JNI_COCOA_EXIT(env);
+}
+/*
+ * Class:     sun_font_CStrike
  * Method:    getGlyphImagePtrsNative
  * Signature: (JJ[J[II)V
  */
