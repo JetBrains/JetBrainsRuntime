@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ */
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -36,10 +39,10 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.SAXParserFactory;
 import javax.xml.parsers.SAXParser;
 
-import com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl;
 import com.sun.org.apache.xml.internal.resolver.Catalog;
 import com.sun.org.apache.xml.internal.resolver.CatalogManager;
 import com.sun.org.apache.xml.internal.resolver.helpers.FileURL;
+import jdk.xml.internal.JdkXmlUtils;
 
 /**
  * A SAX Parser that performs catalog-based entity resolution.
@@ -109,9 +112,7 @@ public class ResolvingParser
   /** Initialize the parser. */
   private void initParser() {
     catalogResolver = new CatalogResolver(catalogManager);
-    SAXParserFactory spf = catalogManager.useServicesMechanism() ?
-                    SAXParserFactory.newInstance() : new SAXParserFactoryImpl();
-    spf.setNamespaceAware(true);
+    SAXParserFactory spf = JdkXmlUtils.getSAXFactory(catalogManager.overrideDefaultParser());
     spf.setValidating(false);
 
     try {

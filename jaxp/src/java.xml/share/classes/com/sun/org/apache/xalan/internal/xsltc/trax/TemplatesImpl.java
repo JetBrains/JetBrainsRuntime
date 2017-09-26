@@ -140,9 +140,9 @@ public final class TemplatesImpl implements Templates, Serializable {
     private transient TransformerFactoryImpl _tfactory = null;
 
     /**
-     * A flag to determine whether the Service Mechanism is used
+     * A flag to determine whether the system-default parser may be overridden
      */
-    private transient boolean _useServicesMechanism;
+    private transient boolean _overrideDefaultParser;
 
     /**
      * protocols allowed for external references set by the stylesheet processing instruction, Import and Include element.
@@ -239,7 +239,7 @@ public final class TemplatesImpl implements Templates, Serializable {
         _outputProperties = outputProperties;
         _indentNumber = indentNumber;
         _tfactory = tfactory;
-        _useServicesMechanism = tfactory.useServicesMechnism();
+        _overrideDefaultParser = tfactory.overrideDefaultParser();
         _accessExternalStylesheet = (String) tfactory.getAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET);
     }
     /**
@@ -322,8 +322,8 @@ public final class TemplatesImpl implements Templates, Serializable {
     /**
      * Return the state of the services mechanism feature.
      */
-    public boolean useServicesMechnism() {
-        return _useServicesMechanism;
+    public boolean overrideDefaultParser() {
+        return _overrideDefaultParser;
     }
 
      /**
@@ -552,7 +552,7 @@ public final class TemplatesImpl implements Templates, Serializable {
             AbstractTranslet translet = (AbstractTranslet) _class[_transletIndex].newInstance();
             translet.postInitialization();
             translet.setTemplates(this);
-            translet.setServicesMechnism(_useServicesMechanism);
+            translet.setOverrideDefaultParser(_overrideDefaultParser);
             translet.setAllowedProtocols(_accessExternalStylesheet);
             if (_auxClasses != null) {
                 translet.setAuxiliaryClasses(_auxClasses);

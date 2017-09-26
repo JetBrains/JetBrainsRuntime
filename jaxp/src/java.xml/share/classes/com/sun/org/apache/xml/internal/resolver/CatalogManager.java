@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ */
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -203,7 +206,7 @@ public class CatalogManager {
      *   service loader (or similar).
      * Note the default value (false) is the safe option..
      */
-    private boolean useServicesMechanism;
+    private boolean overrideDefaultParser;
 
     /** The manager's debug object. Used for printing debugging messages.
      *
@@ -231,7 +234,7 @@ public class CatalogManager {
     // no attempt to read from the file before the caller has had a chance
     // to avoid it.
     if (System.getSecurityManager() == null) {
-        useServicesMechanism = true;
+        overrideDefaultParser = true;
     }
         // Make sure verbosity is set by xml.catalog.verbosity sysprop
         // setting, if defined.
@@ -802,8 +805,8 @@ public class CatalogManager {
         return oasisXMLCatalogPI.booleanValue();
     }
 
-    public boolean useServicesMechanism() {
-        return useServicesMechanism;
+    public boolean overrideDefaultParser() {
+        return overrideDefaultParser;
     }
     /**
      * Set the XML Catalog PI setting

@@ -25,9 +25,8 @@
 
 package javax.xml.xpath;
 
+import com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl;
 import java.io.File;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -161,7 +160,7 @@ class XPathFactoryFinder  {
             String r = ss.getSystemProperty(propertyName);
             if(r!=null) {
                 debugPrintln(()->"The value is '"+r+"'");
-                xpathFactory = createInstance(r, true);
+                xpathFactory = createInstance(r);
                 if (xpathFactory != null) {
                     return xpathFactory;
                 }
@@ -196,7 +195,7 @@ class XPathFactoryFinder  {
             debugPrintln(()->"found " + factoryClassName + " in $java.home/conf/jaxp.properties");
 
             if (factoryClassName != null) {
-                xpathFactory = createInstance(factoryClassName, true);
+                xpathFactory = createInstance(factoryClassName);
                 if(xpathFactory != null){
                     return xpathFactory;
                 }
@@ -222,7 +221,7 @@ class XPathFactoryFinder  {
         // platform default
         if(uri.equals(XPathFactory.DEFAULT_OBJECT_MODEL_URI)) {
             debugPrintln(()->"attempting to use the platform default W3C DOM XPath lib");
-            return createInstance("com.sun.org.apache.xpath.internal.jaxp.XPathFactoryImpl", true);
+            return new XPathFactoryImpl();
         }
 
         debugPrintln(()->"all things were tried, but none was found. bailing out.");
@@ -270,13 +269,7 @@ class XPathFactoryFinder  {
      * @return null
      *      if it fails. Error messages will be printed by this method.
      */
-    XPathFactory createInstance( String className )
-            throws XPathFactoryConfigurationException
-    {
-        return createInstance( className, false );
-    }
-
-    XPathFactory createInstance( String className, boolean useServicesMechanism  )
+    XPathFactory createInstance(String className)
             throws XPathFactoryConfigurationException
     {
         XPathFactory xPathFactory = null;
@@ -293,12 +286,7 @@ class XPathFactoryFinder  {
 
         // instantiate Class as a XPathFactory
         try {
-            if (!useServicesMechanism) {
-                xPathFactory = newInstanceNoServiceLoader(clazz);
-            }
-            if (xPathFactory == null) {
                 xPathFactory = (XPathFactory) clazz.newInstance();
-            }
         } catch (ClassCastException classCastException) {
                 debugPrintln(()->"could not instantiate " + clazz.getName());
                 if (debug) {
@@ -320,50 +308,6 @@ class XPathFactoryFinder  {
         }
 
         return xPathFactory;
-    }
-    /**
-     * Try to construct using newXPathFactoryNoServiceLoader
-     *   method if available.
-     */
-    private static XPathFactory newInstanceNoServiceLoader(
-         Class<?> providerClass
-    ) throws XPathFactoryConfigurationException {
-        // Retain maximum compatibility if no security manager.
-        if (System.getSecurityManager() == null) {
-            return null;
-        }
-        try {
-            Method creationMethod =
-                    providerClass.getDeclaredMethod(
-                        "newXPathFactoryNoServiceLoader"
-                    );
-            final int modifiers = creationMethod.getModifiers();
-
-            // Do not call "newXPathFactoryNoServiceLoader" if it's
-            // not public static.
-            if (!Modifier.isStatic(modifiers) || !Modifier.isPublic(modifiers)) {
-                return null;
-            }
-
-            // Only calls "newXPathFactoryNoServiceLoader" if it's
-            // declared to return an instance of XPathFactory.
-            final Class<?> returnType = creationMethod.getReturnType();
-            if (SERVICE_CLASS.isAssignableFrom(returnType)) {
-                return SERVICE_CLASS.cast(creationMethod.invoke(null, (Object[])null));
-            } else {
-                // Should not happen since
-                // XPathFactoryImpl.newXPathFactoryNoServiceLoader is
-                // declared to return XPathFactory.
-                throw new ClassCastException(returnType
-                            + " cannot be cast to " + SERVICE_CLASS);
-            }
-        } catch (ClassCastException e) {
-            throw new XPathFactoryConfigurationException(e);
-        } catch (NoSuchMethodException exc) {
-            return null;
-        } catch (Exception exc) {
-            return null;
-        }
     }
 
     // Call isObjectModelSupportedBy with initial context.

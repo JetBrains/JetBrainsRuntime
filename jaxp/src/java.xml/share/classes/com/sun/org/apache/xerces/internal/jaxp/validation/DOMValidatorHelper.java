@@ -48,6 +48,7 @@ import com.sun.org.apache.xerces.internal.xni.QName;
 import com.sun.org.apache.xerces.internal.xni.XMLString;
 import com.sun.org.apache.xerces.internal.xni.XNIException;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
+import jdk.xml.internal.JdkXmlUtils;
 import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
@@ -382,9 +383,8 @@ final class DOMValidatorHelper implements ValidatorHelper, EntityState {
         }
         if (result.getNode() == null) {
             try {
-                DocumentBuilderFactory factory = fComponentManager.getFeature(Constants.ORACLE_FEATURE_SERVICE_MECHANISM) ?
-                                    DocumentBuilderFactory.newInstance() : new DocumentBuilderFactoryImpl();
-                factory.setNamespaceAware(true);
+                DocumentBuilderFactory factory = JdkXmlUtils.getDOMFactory(
+                        fComponentManager.getFeature(JdkXmlUtils.OVERRIDE_PARSER));
                 DocumentBuilder builder = factory.newDocumentBuilder();
                 result.setNode(builder.newDocument());
             }

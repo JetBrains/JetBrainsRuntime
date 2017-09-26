@@ -25,8 +25,6 @@
 
 package com.sun.org.apache.xalan.internal;
 
-import com.sun.org.apache.xalan.internal.utils.SecuritySupport;
-
 /**
  * Commonly used constants.
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -264,7 +264,7 @@ public class XMLSchemaValidator
     private static final String XML_SECURITY_PROPERTY_MANAGER =
             Constants.XML_SECURITY_PROPERTY_MANAGER;
 
-    protected static final String USE_SERVICE_MECHANISM = Constants.ORACLE_FEATURE_SERVICE_MECHANISM;
+    protected static final String OVERRIDE_PARSER = JdkXmlUtils.OVERRIDE_PARSER;
 
     protected static final String USE_CATALOG = XMLConstants.USE_CATALOG;
 
@@ -290,8 +290,8 @@ public class XMLSchemaValidator
             UNPARSED_ENTITY_CHECKING,
             NAMESPACE_GROWTH,
             TOLERATE_DUPLICATES,
-            USE_SERVICE_MECHANISM,
-            USE_CATALOG
+            OVERRIDE_PARSER,
+            USE_CATALOG,
         };
 
     /** Feature defaults. */
@@ -322,7 +322,7 @@ public class XMLSchemaValidator
         null,
         null,
         null,
-        Boolean.TRUE,
+        JdkXmlUtils.OVERRIDE_PARSER_DEFAULT,
         JdkXmlUtils.USE_CATALOG_DEFAULT
     };
 

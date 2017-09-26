@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2006, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2006, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,7 +21,6 @@
 package com.sun.org.apache.xalan.internal.xsltc.runtime;
 
 import com.sun.org.apache.xalan.internal.XalanConstants;
-import com.sun.org.apache.xalan.internal.utils.FactoryImpl;
 import com.sun.org.apache.xalan.internal.xsltc.DOM;
 import com.sun.org.apache.xalan.internal.xsltc.DOMCache;
 import com.sun.org.apache.xalan.internal.xsltc.DOMEnhancedForDTM;
@@ -33,19 +32,18 @@ import com.sun.org.apache.xalan.internal.xsltc.runtime.output.TransletOutputHand
 import com.sun.org.apache.xml.internal.dtm.DTM;
 import com.sun.org.apache.xml.internal.dtm.DTMAxisIterator;
 import com.sun.org.apache.xml.internal.serializer.SerializationHandler;
-import com.sun.org.apache.xml.internal.serializer.ToStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.Templates;
+import jdk.xml.internal.JdkXmlUtils;
 import org.w3c.dom.DOMImplementation;
 import org.w3c.dom.Document;
 
@@ -106,7 +104,7 @@ public abstract class AbstractTranslet implements Translet {
     // This is the name of the index used for ID attributes
     private final static String ID_INDEX_NAME = "##id";
 
-    private boolean _useServicesMechanism;
+    private boolean _overrideDefaultParser;
 
     // The OutputStream for redirect function
     private FileOutputStream output = null;
@@ -559,7 +557,7 @@ public abstract class AbstractTranslet implements Translet {
     {
         try {
             final TransletOutputHandlerFactory factory
-                = TransletOutputHandlerFactory.newInstance();
+                = TransletOutputHandlerFactory.newInstance(_overrideDefaultParser);
 
             String dirStr = new File(filename).getParent();
             if ((null != dirStr) && (dirStr.length() > 0)) {
@@ -761,15 +759,15 @@ public abstract class AbstractTranslet implements Translet {
     /**
      * Return the state of the services mechanism feature.
      */
-    public boolean useServicesMechnism() {
-        return _useServicesMechanism;
+    public boolean overrideDefaultParser() {
+        return _overrideDefaultParser;
     }
 
     /**
      * Set the state of the services mechanism feature.
      */
-    public void setServicesMechnism(boolean flag) {
-        _useServicesMechanism = flag;
+    public void setOverrideDefaultParser(boolean flag) {
+        _overrideDefaultParser = flag;
     }
 
     /**
@@ -795,7 +793,7 @@ public abstract class AbstractTranslet implements Translet {
         throws ParserConfigurationException
     {
         if (_domImplementation == null) {
-            DocumentBuilderFactory dbf = FactoryImpl.getDOMFactory(_useServicesMechanism);
+            DocumentBuilderFactory dbf = JdkXmlUtils.getDOMFactory(_overrideDefaultParser);
             _domImplementation = dbf.newDocumentBuilder().getDOMImplementation();
         }
         return _domImplementation.createDocument(uri, qname, null);

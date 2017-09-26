@@ -1,6 +1,5 @@
 /*
- * reserved comment block
- * DO NOT REMOVE OR ALTER!
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -49,7 +48,7 @@ public interface Translet {
     public String[] getUrisArray();
     public int[]    getTypesArray();
     public String[] getNamespaceArray();
-    public boolean useServicesMechnism();
-    public void setServicesMechnism(boolean flag);
+    public boolean overrideDefaultParser();
+    public void setOverrideDefaultParser(boolean flag);
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,7 +21,6 @@
 package com.sun.org.apache.xalan.internal.xsltc.trax;
 
 import com.sun.org.apache.xalan.internal.XalanConstants;
-import com.sun.org.apache.xalan.internal.utils.FactoryImpl;
 import com.sun.org.apache.xalan.internal.utils.FeaturePropertyBase;
 import com.sun.org.apache.xalan.internal.utils.ObjectFactory;
 import com.sun.org.apache.xalan.internal.utils.SecuritySupport;
@@ -56,15 +55,12 @@ import javax.xml.catalog.CatalogFeatures;
 import javax.xml.catalog.CatalogFeatures.Feature;
 import javax.xml.catalog.CatalogManager;
 import javax.xml.catalog.CatalogResolver;
-import javax.xml.parsers.SAXParser;
-import javax.xml.parsers.SAXParserFactory;
 import javax.xml.transform.ErrorListener;
 import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.URIResolver;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
@@ -79,17 +75,16 @@ import javax.xml.transform.stream.StreamSource;
 import jdk.xml.internal.JdkXmlFeatures;
 import jdk.xml.internal.JdkXmlUtils;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 import org.xml.sax.XMLFilter;
 import org.xml.sax.XMLReader;
-import org.xml.sax.helpers.XMLReaderFactory;
 
 /**
- * Implementation of a JAXP1.1 TransformerFactory for Translets.
+ * Implementation of a JAXP TransformerFactory for Translets.
  * @author G. Todd Miller
  * @author Morten Jorgensen
  * @author Santiago Pericas-Geertsen
  */
-@SuppressWarnings("deprecation") //org.xml.sax.helpers.XMLReaderFactory
 public class TransformerFactoryImpl
     extends SAXTransformerFactory implements SourceLoader, ErrorListener
 {
@@ -215,11 +210,11 @@ public class TransformerFactoryImpl
     private boolean _isSecureMode = false;
 
     /**
-     * Indicates whether implementation parts should use
-     *   service loader (or similar).
-     * Note the default value (false) is the safe option..
+     * Indicates whether 3rd party parser may be used to override the system-default
+     * Note the default value (false) is the safe option.
+     * Note same as the old property useServicesMechanism
      */
-    private boolean _useServicesMechanism;
+    private boolean _overrideDefaultParser;
 
     /**
      * protocols allowed for external references set by the stylesheet
@@ -258,15 +253,6 @@ public class TransformerFactoryImpl
      * javax.xml.transform.sax.TransformerFactory implementation.
      */
     public TransformerFactoryImpl() {
-        this(true);
-    }
-
-    public static TransformerFactory newTransformerFactoryNoServiceLoader() {
-        return new TransformerFactoryImpl(false);
-    }
-
-    private TransformerFactoryImpl(boolean useServicesMechanism) {
-        this._useServicesMechanism = useServicesMechanism;
 
         if (System.getSecurityManager() != null) {
             _isSecureMode = true;
@@ -274,6 +260,8 @@ public class TransformerFactoryImpl
         }
 
         _xmlFeatures = new JdkXmlFeatures(!_isNotSecureProcessing);
+        _overrideDefaultParser = _xmlFeatures.getFeature(
+                JdkXmlFeatures.XmlFeature.JDK_OVERRIDE_PARSER);
         _xmlSecurityPropertyMgr = new XMLSecurityPropertyManager();
         _accessExternalDTD = _xmlSecurityPropertyMgr.getValue(
                 Property.ACCESS_EXTERNAL_DTD);
@@ -593,14 +581,20 @@ public class TransformerFactoryImpl
                         JdkXmlFeatures.State.FSP, false);
             }
         }
-        else if (name.equals(XalanConstants.ORACLE_FEATURE_SERVICE_MECHANISM)) {
-            //in secure mode, let _useServicesMechanism be determined by the constructor
-            if (!_isSecureMode)
-                _useServicesMechanism = value;
-        }
         else {
+            if (name.equals(XalanConstants.ORACLE_FEATURE_SERVICE_MECHANISM)) {
+                // for compatibility, in secure mode, useServicesMechanism is determined by the constructor
+                if (_isSecureMode) {
+                    return;
+                }
+            }
             if (_xmlFeatures != null &&
                     _xmlFeatures.setFeature(name, JdkXmlFeatures.State.APIPROPERTY, value)) {
+                if (name.equals(JdkXmlUtils.OVERRIDE_PARSER) ||
+                        name.equals(JdkXmlFeatures.ORACLE_FEATURE_SERVICE_MECHANISM)) {
+                    _overrideDefaultParser = _xmlFeatures.getFeature(
+                            JdkXmlFeatures.XmlFeature.JDK_OVERRIDE_PARSER);
+                }
                 return;
             }
 
@@ -665,8 +659,8 @@ public class TransformerFactoryImpl
     /**
      * Return the state of the services mechanism feature.
      */
-    public boolean useServicesMechnism() {
-        return _useServicesMechanism;
+    public boolean overrideDefaultParser() {
+        return _overrideDefaultParser;
     }
 
      /**
@@ -725,9 +719,8 @@ public class TransformerFactoryImpl
         throws TransformerConfigurationException {
 
         String baseId;
-        XMLReader reader;
+        XMLReader reader = null;
         InputSource isource;
-
 
         /**
          * Fix for bugzilla bug 24187
@@ -747,24 +740,15 @@ public class TransformerFactoryImpl
                 dom2sax.setContentHandler( _stylesheetPIHandler);
                 dom2sax.parse();
             } else {
+                if (source instanceof SAXSource) {
+                    reader = ((SAXSource)source).getXMLReader();
+                }
                 isource = SAXSource.sourceToInputSource(source);
                 baseId = isource.getSystemId();
 
-                SAXParserFactory factory = FactoryImpl.getSAXFactory(_useServicesMechanism);
-                factory.setNamespaceAware(true);
-
-                if (!_isNotSecureProcessing) {
-                    try {
-                        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-                    }
-                    catch (org.xml.sax.SAXException e) {}
-                }
-
-                SAXParser jaxpParser = factory.newSAXParser();
-
-                reader = jaxpParser.getXMLReader();
                 if (reader == null) {
-                    reader = XMLReaderFactory.createXMLReader();
+                    reader = JdkXmlUtils.getXMLReader(_overrideDefaultParser,
+                            !_isNotSecureProcessing);
                 }
 
                 _stylesheetPIHandler.setBaseId(baseId);
@@ -780,7 +764,7 @@ public class TransformerFactoryImpl
         } catch (StopParseException e ) {
           // startElement encountered so do not parse further
 
-        } catch (javax.xml.parsers.ParserConfigurationException | org.xml.sax.SAXException | IOException e) {
+        } catch (SAXException | IOException e) {
              throw new TransformerConfigurationException(
              "getAssociatedStylesheets failed", e);
         }
@@ -961,7 +945,7 @@ public class TransformerFactoryImpl
         }
 
         // Create and initialize a stylesheet compiler
-        final XSLTC xsltc = new XSLTC(_useServicesMechanism, _xmlFeatures);
+        final XSLTC xsltc = new XSLTC(_xmlFeatures);
         if (_debug) xsltc.setDebug(true);
         if (_enableInlining)
                 xsltc.setTemplateInlining(true);

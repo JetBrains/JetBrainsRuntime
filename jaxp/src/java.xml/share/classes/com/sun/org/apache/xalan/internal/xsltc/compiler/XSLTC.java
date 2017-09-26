@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -137,7 +137,7 @@ public final class XSLTC {
      */
     private boolean _isSecureProcessing = false;
 
-    private boolean _useServicesMechanism = true;
+    private boolean _overrideDefaultParser;
 
     /**
      * protocols allowed for external references set by the stylesheet processing instruction, Import and Include element.
@@ -177,8 +177,10 @@ public final class XSLTC {
     /**
      * XSLTC compiler constructor
      */
-    public XSLTC(boolean useServicesMechanism, JdkXmlFeatures featureManager) {
-        _parser = new Parser(this, useServicesMechanism);
+    public XSLTC(JdkXmlFeatures featureManager) {
+        _overrideDefaultParser = featureManager.getFeature(
+                JdkXmlFeatures.XmlFeature.JDK_OVERRIDE_PARSER);
+        _parser = new Parser(this, _overrideDefaultParser);
         _xmlFeatures = featureManager;
         _extensionClassLoader = null;
         _externalExtensionFunctions = new HashMap<>();
@@ -196,19 +198,6 @@ public final class XSLTC {
      */
     public boolean isSecureProcessing() {
         return _isSecureProcessing;
-    }
-    /**
-     * Return the state of the services mechanism feature.
-     */
-    public boolean useServicesMechnism() {
-        return _useServicesMechanism;
-    }
-
-    /**
-     * Set the state of the services mechanism feature.
-     */
-    public void setServicesMechnism(boolean flag) {
-        _useServicesMechanism = flag;
     }
 
      /**

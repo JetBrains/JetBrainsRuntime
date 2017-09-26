@@ -1,4 +1,7 @@
 /*
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ */
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -38,6 +41,7 @@ import javax.xml.parsers.SAXParserFactory;
 import com.sun.org.apache.xml.internal.resolver.Catalog;
 import com.sun.org.apache.xml.internal.resolver.CatalogManager;
 import com.sun.org.apache.xml.internal.resolver.helpers.FileURL;
+import jdk.xml.internal.JdkXmlUtils;
 
 /**
  * A SAX EntityResolver/JAXP URIResolver that uses catalogs.
@@ -310,11 +314,9 @@ public class CatalogResolver implements EntityResolver, URIResolver {
   private void setEntityResolver(SAXSource source) throws TransformerException {
     XMLReader reader = source.getXMLReader();
     if (reader == null) {
-      SAXParserFactory spFactory = catalogManager.useServicesMechanism() ?
-                    SAXParserFactory.newInstance() : new SAXParserFactoryImpl();
-      spFactory.setNamespaceAware(true);
+      SAXParserFactory spf = JdkXmlUtils.getSAXFactory(catalogManager.overrideDefaultParser());
       try {
-        reader = spFactory.newSAXParser().getXMLReader();
+        reader = spf.newSAXParser().getXMLReader();
       }
       catch (ParserConfigurationException ex) {
         throw new TransformerException(ex);
