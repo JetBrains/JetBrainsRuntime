@@ -97,22 +97,18 @@ public class RMIJRMPServerImpl extends RMIServerImpl {
         this.ssf = ssf;
         this.env = (env == null) ? Collections.<String, Object>emptyMap() : env;
 
-        // This attribute was represented by RMIConnectorServer.CREDENTIALS_TYPES.
-        // This attribute is superceded by
-        // RMIConnectorServer.CREDENTIALS_FILTER_PATTERN.
-        // Retaining this for backward compatibility.
         String[] credentialsTypes
-                = (String[]) this.env.get("jmx.remote.rmi.server.credential.types");
+                = (String[]) this.env.get(RMIConnectorServer.CREDENTIAL_TYPES);
 
         String credentialsFilter
-                = (String) this.env.get(RMIConnectorServer.CREDENTIALS_FILTER_PATTERN);
+                = (String) this.env.get(EnvHelp.CREDENTIALS_FILTER_PATTERN);
 
         // It is impossible for both attributes to be specified
-        if(credentialsTypes != null && credentialsFilter != null)
+        if(credentialsTypes != null && credentialsFilter != null) {
             throw new IllegalArgumentException("Cannot specify both \""
-                    + "jmx.remote.rmi.server.credential.types" + "\" and \""
-           + RMIConnectorServer.CREDENTIALS_FILTER_PATTERN + "\"");
-        else if(credentialsFilter != null){
+                    + RMIConnectorServer.CREDENTIAL_TYPES + "\" and \""
+                    + EnvHelp.CREDENTIALS_FILTER_PATTERN + "\"");
+        } else if(credentialsFilter != null){
             cFilter = ObjectInputFilter.Config.createFilter(credentialsFilter);
             allowedTypes = null;
         }
@@ -127,7 +123,7 @@ public class RMIJRMPServerImpl extends RMIServerImpl {
         }
 
         String userJmxFilter =
-                (String) this.env.get(RMIConnectorServer.SERIAL_FILTER_PATTERN);
+                (String) this.env.get(EnvHelp.SERIAL_FILTER_PATTERN);
         if(userJmxFilter != null && !userJmxFilter.isEmpty())
             jmxRmiFilter = ObjectInputFilter.Config.createFilter(userJmxFilter);
         else

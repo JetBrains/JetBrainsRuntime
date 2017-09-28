@@ -514,7 +514,8 @@ public final class ConnectorBootstrap {
         // This RMI server should not keep the VM alive
         Map<String, Object> env = new HashMap<>();
         env.put(RMIExporter.EXPORTER_ATTRIBUTE, new PermanentExporter());
-        env.put(RMIConnectorServer.CREDENTIALS_FILTER_PATTERN, String.class.getName() + ";!*");
+        env.put("jmx.remote.rmi.server.credentials.filter.pattern",
+                String.class.getName() + ";!*");
 
         // The local connector server need only be available via the
         // loopback connection.
@@ -539,6 +540,10 @@ public final class ConnectorBootstrap {
             Properties props = Agent.getManagementProperties();
             if (props ==  null) {
                 props = new Properties();
+            }
+            String jmxRmiFilter = props.getProperty(PropertyNames.SERIAL_FILTER_PATTERN);
+            if (jmxRmiFilter != null && !jmxRmiFilter.isEmpty()) {
+                env.put("jmx.remote.rmi.server.serial.filter.pattern", jmxRmiFilter);
             }
             String useLocalOnlyStr = props.getProperty(
                     PropertyNames.USE_LOCAL_ONLY, DefaultValues.USE_LOCAL_ONLY);
@@ -746,10 +751,11 @@ public final class ConnectorBootstrap {
         PermanentExporter exporter = new PermanentExporter();
 
         env.put(RMIExporter.EXPORTER_ATTRIBUTE, exporter);
-        env.put(RMIConnectorServer.CREDENTIALS_FILTER_PATTERN, String.class.getName() + ";!*");
+        env.put("jmx.remote.rmi.server.credentials.filter.pattern",
+                String.class.getName() + ";!*");
 
         if(jmxRmiFilter != null && !jmxRmiFilter.isEmpty()) {
-            env.put(RMIConnectorServer.SERIAL_FILTER_PATTERN, jmxRmiFilter);
+            env.put("jmx.remote.rmi.server.serial.filter.pattern", jmxRmiFilter);
         }
 
         boolean useSocketFactory = bindAddress != null && !useSsl;

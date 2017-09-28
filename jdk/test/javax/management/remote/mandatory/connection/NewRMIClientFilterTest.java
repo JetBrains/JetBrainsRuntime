@@ -45,6 +45,15 @@ import javax.management.remote.rmi.RMIConnectorServer;
 
 public class NewRMIClientFilterTest {
 
+   /**
+    * Name of the attribute that specifies an
+    * {@link ObjectInputFilter} pattern string to filter classes acceptable
+    * for {@link RMIServer#newClient(java.lang.Object) RMIServer.newClient()}
+    * remote method call.
+    */
+    static final String CREDENTIALS_FILTER_PATTERN =
+        "jmx.remote.rmi.server.credentials.filter.pattern";
+
     public static void main(String[] args) throws Exception {
         System.out.println("---NewRMIClientFilterTest-main: starting ...");
         String filter1 = java.lang.String.class.getName() + ";!*";
@@ -64,8 +73,7 @@ public class NewRMIClientFilterTest {
         server.stop();
 
         System.out.println("\n---NewRMIClientFilterTest-main: testing types = String[]");
-        env.put(RMIConnectorServer.CREDENTIALS_FILTER_PATTERN,
-                filter1);
+        env.put(CREDENTIALS_FILTER_PATTERN, filter1);
         server = newServer(url, env);
         serverUrl = server.getAddress();
         doTest(serverUrl, null);
@@ -80,8 +88,7 @@ public class NewRMIClientFilterTest {
         }
 
         System.out.println("\n---NewRMIClientFilterTest-main: testing user specific types = String, MyCredentials");
-        env.put(RMIConnectorServer.CREDENTIALS_FILTER_PATTERN,
-                filter2);
+        env.put(CREDENTIALS_FILTER_PATTERN, filter2);
         server = newServer(url, env);
         serverUrl = server.getAddress();
         doTest(serverUrl, null);
