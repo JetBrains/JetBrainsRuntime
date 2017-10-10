@@ -930,12 +930,12 @@ int AwtWin32GraphicsDevice::GetScreenFromHMONITOR(HMONITOR mon) {
  * End of static deviceIndex-based methods
  */
 
-BOOL AwtWin32GraphicsDevice::IsUIScaleOn()
+BOOL AwtWin32GraphicsDevice::IsUIScaleEnabled()
 {
     return JNU_CallStaticMethodByName(AwtToolkit::GetEnv(),
                                       NULL,
                                       "sun/java2d/SunGraphicsEnvironment",
-                                      "isUIScaleOn",
+                                      "isUIScaleEnabled",
                                       "()Z").z;
 }
 

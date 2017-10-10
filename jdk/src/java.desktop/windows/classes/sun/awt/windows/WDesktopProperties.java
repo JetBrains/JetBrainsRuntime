@@ -81,7 +81,6 @@ final class WDesktopProperties {
 
     WDesktopProperties(WToolkit wToolkit) {
         this.wToolkit = wToolkit;
-        SunGraphicsEnvironment.isUIScaleOn(); // ensure initialized
         init();
     }
 

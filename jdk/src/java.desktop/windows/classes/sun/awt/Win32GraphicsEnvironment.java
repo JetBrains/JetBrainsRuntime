@@ -102,22 +102,6 @@ public final class Win32GraphicsEnvironment extends SunGraphicsEnvironment {
         }
     }
 
-    public Win32GraphicsEnvironment() {
-        // check if UI scale was rejected natively
-        if (isUIScaleEnabled() && !isUIScaleOn(this)) {
-            // [tav]
-            // Fallback to the previous level for backward compatibility.
-            // This will work since Windows 10 only, as per MSDN:
-            // https://msdn.microsoft.com/en-us/library/windows/desktop/dn302122(v=vs.85).aspx
-            // For Windows 8.1, the following VM option should be used to fallback:
-            // -Dsun.java2d.uiScale.enabled=false
-            for (GraphicsDevice d : getScreenDevices()) {
-                ((Win32GraphicsDevice)d).resetScaleFactors();
-            }
-            setProcessDPIAwareness(PROCESS_SYSTEM_DPI_AWARE);
-        }
-    }
-
     private native static void setProcessDPIAwareness(int level);
     protected native int getNumScreens();
     private native int getDefaultScreen();

@@ -150,13 +150,6 @@ public class Win32GraphicsDevice extends GraphicsDevice implements
         return scaleY;
     }
 
-    /**
-     * Temp, until fractional scale is supported.
-     */
-    void resetScaleFactors() {
-        setNativeScale(screen, scaleX = 1f, scaleY = 1f);
-    }
-
     private void initScaleFactors() {
         if (SunGraphicsEnvironment.isUIScaleEnabled()) {
             if (debugScaleX > 0 && debugScaleY > 0) {

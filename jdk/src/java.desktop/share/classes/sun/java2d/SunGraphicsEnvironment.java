@@ -45,6 +45,7 @@ import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.security.PrivilegedAction;
 import java.text.AttributedCharacterIterator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -61,13 +62,11 @@ import sun.awt.AppContext;
 import sun.awt.DisplayChangedListener;
 import sun.awt.FontConfiguration;
 import sun.awt.SunDisplayChanger;
-import sun.font.CompositeFontDescriptor;
-import sun.font.Font2D;
-import sun.font.FontManager;
-import sun.font.FontManagerFactory;
-import sun.font.FontManagerForSGE;
-import sun.font.NativeFont;
+import sun.font.*;
+
 import java.security.AccessController;
+
+import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
 
 /**
@@ -84,13 +83,12 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static Font defaultFont;
 
     private static final boolean uiScaleEnabled;
-    private static volatile Boolean uiScaleOn;
     private static final double debugScale;
 
     static {
-        uiScaleEnabled = "true".equals(AccessController.doPrivileged(
-                new GetPropertyAction("sun.java2d.uiScale.enabled", "false")));
-        if (!uiScaleEnabled) uiScaleOn = false;
+        uiScaleEnabled = FontUtilities.isMacOSX ||
+                (AccessController.doPrivileged(new GetBooleanAction("sun.java2d.uiScale.enabled")) &&
+                isWindows_8_1_orUpper());
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
@@ -143,6 +141,29 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     }
 
     protected GraphicsDevice[] screens;
+
+    private static boolean isWindows_8_1_orUpper() {
+        if (!FontUtilities.isWindows) return false;
+
+        String osVersion = AccessController.doPrivileged(new GetPropertyAction("os.version"));
+        if (osVersion == null) return false;
+
+        String[] parts = osVersion.split("\\.");
+        if (parts.length < 1) return false;
+
+        try {
+            int majorVer = Integer.parseInt(parts[0]);
+            if (majorVer > 6) return true;
+            if (majorVer < 6) return false;
+
+            if (parts.length < 2) return false;
+
+            int minorVer = Integer.parseInt(parts[1]);
+            if (minorVer >= 3) return true;
+        } catch (NumberFormatException e) {
+        }
+        return false;
+    }
 
     /**
      * Returns an array of all of the screen devices.
@@ -361,40 +382,10 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     }
 
     /**
-     * Whether the ui-scale functionality is natively enabled.
-     *
-     * [tav] todo: Temp, until fractional scale is supported well enough.
-     *             Called via reflection from the client code.
-     *             Called via JNI from Toolkit.
+     * [tav] todo: For compatibility with earlier IDEA versions. To be removed.
      */
     public static boolean isUIScaleOn() {
-        return isUIScaleOn(null);
-    }
-
-    protected static boolean isUIScaleOn(GraphicsEnvironment ge) {
-        if (uiScaleOn != null) return uiScaleOn;
-        boolean _uiScaleOn = false;
-
-        if (!GraphicsEnvironment.isHeadless()) {
-            boolean fractionalScaleEnabled = "true".equals(AccessController.doPrivileged(
-                    new GetPropertyAction("sun.java2d.uiFractScale.enabled", "false")));
-            GraphicsEnvironment env = (ge == null ? getLocalGraphicsEnvironment() : ge);
-
-            for (GraphicsDevice d : env.getScreenDevices()) {
-                double scaleX = d.getDefaultConfiguration().getDefaultTransform().getScaleX();
-                double scaleY = d.getDefaultConfiguration().getDefaultTransform().getScaleY();
-                if (!fractionalScaleEnabled && (scaleX != Math.floor(scaleX) || scaleY != Math.floor(scaleY))) {
-                    _uiScaleOn = false; // Fallback to un-scaled behavior
-                    break;
-                }
-                if (scaleX > 1 || scaleY > 1) {
-                    _uiScaleOn = true;
-                }
-            }
-        }
-        synchronized (SunGraphicsEnvironment.class) {
-            return uiScaleOn != null ? uiScaleOn : (uiScaleOn = _uiScaleOn);
-        }
+        return isUIScaleEnabled();
     }
 
     public static double getDebugScale() {
