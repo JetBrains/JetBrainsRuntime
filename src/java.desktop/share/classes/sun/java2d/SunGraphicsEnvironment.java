@@ -40,15 +40,18 @@ import java.awt.Toolkit;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.awt.peer.ComponentPeer;
+import java.security.PrivilegedAction;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.security.AccessController;
 import java.util.Locale;
 import java.util.TreeMap;
 
 import sun.awt.DisplayChangedListener;
 import sun.awt.SunDisplayChanger;
-import sun.font.FontManager;
-import sun.font.FontManagerFactory;
-import sun.font.FontManagerForSGE;
+import sun.font.*;
 import sun.java2d.pipe.Region;
 import sun.security.action.GetPropertyAction;
 
@@ -69,12 +72,37 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     private static final double debugScale;
 
     static {
-        uiScaleEnabled = "true".equals(AccessController.doPrivileged(
-                new GetPropertyAction("sun.java2d.uiScale.enabled", "true")));
+        uiScaleEnabled = FontUtilities.isMacOSX ||
+                ("true".equals(AccessController.doPrivileged(
+                        new GetPropertyAction("sun.java2d.uiScale.enabled", "true"))) &&
+                isWindows_8_1_orUpper());
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
     protected GraphicsDevice[] screens;
+
+    private static boolean isWindows_8_1_orUpper() {
+        if (!FontUtilities.isWindows) return false;
+
+        String osVersion = AccessController.doPrivileged(new GetPropertyAction("os.version"));
+        if (osVersion == null) return false;
+
+        String[] parts = osVersion.split("\\.");
+        if (parts.length < 1) return false;
+
+        try {
+            int majorVer = Integer.parseInt(parts[0]);
+            if (majorVer > 6) return true;
+            if (majorVer < 6) return false;
+
+            if (parts.length < 2) return false;
+
+            int minorVer = Integer.parseInt(parts[1]);
+            if (minorVer >= 3) return true;
+        } catch (NumberFormatException e) {
+        }
+        return false;
+    }
 
     /**
      * Returns an array of all of the screen devices.
