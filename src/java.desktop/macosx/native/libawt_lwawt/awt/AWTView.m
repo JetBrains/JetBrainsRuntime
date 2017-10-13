@@ -787,9 +787,11 @@ static BOOL shouldUsePressAndHold() {
     CDragSource *dragSource = self._dragSource;
     NSDragOperation dragOp = NSDragOperationNone;
 
-    if (dragSource != nil) {
+    if (dragSource != nil)
         dragOp = [dragSource draggingSourceOperationMaskForLocal:flag];
-    }
+    else if ([super respondsToSelector:@selector(draggingSourceOperationMaskForLocal:)])
+        dragOp = [super draggingSourceOperationMaskForLocal:flag];
+
     return dragOp;
 }
 
@@ -799,9 +801,11 @@ static BOOL shouldUsePressAndHold() {
     CDragSource *dragSource = self._dragSource;
     NSArray* array = nil;
 
-    if (dragSource != nil) {
+    if (dragSource != nil)
         array = [dragSource namesOfPromisedFilesDroppedAtDestination:dropDestination];
-    }
+    else if ([super respondsToSelector:@selector(namesOfPromisedFilesDroppedAtDestination:)])
+        array = [super namesOfPromisedFilesDroppedAtDestination:dropDestination];
+
     return array;
 }
 
@@ -841,9 +845,11 @@ static BOOL shouldUsePressAndHold() {
     CDragSource *dragSource = self._dragSource;
     BOOL result = FALSE;
 
-    if (dragSource != nil) {
+    if (dragSource != nil)
         result = [dragSource ignoreModifierKeysWhileDragging];
-    }
+    else if ([super respondsToSelector:@selector(ignoreModifierKeysWhileDragging)])
+        result = [super ignoreModifierKeysWhileDragging];
+
     return result;
 }
 
@@ -857,9 +863,11 @@ static BOOL shouldUsePressAndHold() {
     CDropTarget *dropTarget = self._dropTarget;
     NSDragOperation dragOp = NSDragOperationNone;
 
-    if (dropTarget != nil) {
+    if (dropTarget != nil)
         dragOp = [dropTarget draggingEntered:sender];
-    }
+    else if ([super respondsToSelector:@selector(draggingEntered:)])
+        dragOp = [super draggingEntered:sender];
+
     return dragOp;
 }
 
@@ -869,9 +877,11 @@ static BOOL shouldUsePressAndHold() {
     CDropTarget *dropTarget = self._dropTarget;
     NSDragOperation dragOp = NSDragOperationNone;
 
-    if (dropTarget != nil) {
+    if (dropTarget != nil)
         dragOp = [dropTarget draggingUpdated:sender];
-    }
+    else if ([super respondsToSelector:@selector(draggingUpdated:)])
+        dragOp = [super draggingUpdated:sender];
+
     return dragOp;
 }
 
@@ -891,9 +901,11 @@ static BOOL shouldUsePressAndHold() {
     CDropTarget *dropTarget = self._dropTarget;
     BOOL result = FALSE;
 
-    if (dropTarget != nil) {
+    if (dropTarget != nil)
         result = [dropTarget prepareForDragOperation:sender];
-    }
+    else if ([super respondsToSelector:@selector(prepareForDragOperation:)])
+        result = [super prepareForDragOperation:sender];
+
     return result;
 }
 
@@ -903,9 +915,11 @@ static BOOL shouldUsePressAndHold() {
     CDropTarget *dropTarget = self._dropTarget;
     BOOL result = FALSE;
 
-    if (dropTarget != nil) {
+    if (dropTarget != nil)
         result = [dropTarget performDragOperation:sender];
-    }
+    else if ([super respondsToSelector:@selector(performDragOperation:)])
+        result = [super performDragOperation:sender];
+
     return result;
 }
 
