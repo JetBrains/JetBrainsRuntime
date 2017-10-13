@@ -53,11 +53,15 @@ NSString* findScaledImageName(NSString *fileName,
 
 static NSScreen* SplashNSScreen()
 {
-    return [[NSScreen screens] objectAtIndex: 0];
+    return [[NSScreen screens] firstObject];
 }
 
 static void SplashCenter(Splash * splash)
 {
+    NSScreen *primaryScreen = SplashNSScreen();
+
+    if (primaryScreen == nil) return;
+
     NSRect screenFrame = [SplashNSScreen() frame];
 
     splash->x = (screenFrame.size.width - splash->width) / 2;
