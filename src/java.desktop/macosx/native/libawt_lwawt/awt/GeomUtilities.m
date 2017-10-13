@@ -97,7 +97,7 @@ NSSize JavaToNSSize(JNIEnv *env, jobject dimension) {
 }
 
 static NSScreen *primaryScreen(JNIEnv *env) {
-    NSScreen *primaryScreen = [[NSScreen screens] objectAtIndex:0];
+    NSScreen *primaryScreen = [[NSScreen screens] firstObject];
     if (primaryScreen != nil) return primaryScreen;
     if ((env != NULL) && ([NSThread isMainThread] == NO)) {
         JNU_ThrowByName(env, "java/lang/RuntimeException", "Failed to convert, no screen.");
