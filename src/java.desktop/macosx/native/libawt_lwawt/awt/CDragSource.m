@@ -744,8 +744,14 @@ JNI_COCOA_EXIT(env);
 // Also see +[CWindow convertAWTToCocoaScreenRect]
 // NSScreen-to-JavaScreen mapping:
 - (NSPoint) mapNSScreenPointToJavaWithOffset:(NSPoint)screenPoint {
-    NSRect mainR = [[[NSScreen screens] objectAtIndex:0] frame];
-    NSPoint point = NSMakePoint(screenPoint.x, mainR.size.height - (screenPoint.y));
+    NSScreen *primaryScreen = [[NSScreen screens] firstObject];
+    NSPoint point = NSMakePoint(0, 0);
+    if (primaryScreen == nil) {
+        return point;
+    }
+
+    NSRect mainR = [primaryScreen frame];
+    point = NSMakePoint(screenPoint.x, mainR.size.height - (screenPoint.y));
 
     // Adjust the point with the drag image offset to get the real mouse hotspot:
     // The point should remain in screen coordinates (as per DragSourceEvent.getLocation() documentation)
