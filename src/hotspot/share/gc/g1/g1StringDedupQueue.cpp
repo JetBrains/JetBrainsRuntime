@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,17 @@ G1StringDedupQueue* G1StringDedupQueue::_queue = NULL;
 const size_t        G1StringDedupQueue::_max_size = 1000000; // Max number of elements per queue
 const size_t        G1StringDedupQueue::_max_cache_size = 0; // Max cache size per queue
 
-G1StringDedupQueue::G1StringDedupQueue() :
+G1StringDedupQueue::G1StringDedupQueue(size_t num_queues) :
   _cursor(0),
   _cancel(false),
   _empty(true),
-  _dropped(0) {
-  _nqueues = ParallelGCThreads;
-  _queues = NEW_C_HEAP_ARRAY(G1StringDedupWorkerQueue, _nqueues, mtGC);
-  for (size_t i = 0; i < _nqueues; i++) {
-    new (_queues + i) G1StringDedupWorkerQueue(G1StringDedupWorkerQueue::default_segment_size(), _max_cache_size, _max_size);
+  _dropped(0),
+  _nqueues(num_queues) {
+  if (_nqueues > 0) {
+    _queues = NEW_C_HEAP_ARRAY(G1StringDedupWorkerQueue, _nqueues, mtGC);
+    for (size_t i = 0; i < _nqueues; i++) {
+      new (_queues + i) G1StringDedupWorkerQueue(G1StringDedupWorkerQueue::default_segment_size(), _max_cache_size, _max_size);
+    }
   }
 }
 
@@ -55,8 +57,12 @@ G1StringDedupQueue::~G1StringDedupQueue() {
 }
 
 void G1StringDedupQueue::create() {
+  create(ParallelGCThreads);
+}
+
+void G1StringDedupQueue::create(size_t num_queues) {
   assert(_queue == NULL, "One string deduplication queue allowed");
-  _queue = new G1StringDedupQueue();
+  _queue = new G1StringDedupQueue(num_queues);
 }
 
 void G1StringDedupQueue::wait() {

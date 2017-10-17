@@ -170,6 +170,12 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   // Compute address and memory type.
   int offset = field->offset_in_bytes();
   const TypePtr* adr_type = C->alias_type(field)->adr_type();
+
+  // Insert read barrier for Shenandoah.
+  if (! ShenandoahOptimizeFinals || (! field->is_final() && ! field->is_stable())) {
+    obj = shenandoah_read_barrier(obj);
+  }
+
   Node *adr = basic_plus_adr(obj, obj, offset);
 
   // Build the resultant type of the load
@@ -207,6 +213,16 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   bool needs_atomic_access = is_vol || AlwaysAtomicAccesses;
   Node* ld = make_load(NULL, adr, type, bt, adr_type, mo, LoadNode::DependsOnlyOnTest, needs_atomic_access);
 
+  // Only enabled for Shenandoah. Can this be useful in general?
+  if (UseShenandoahGC && ShenandoahOptimizeFinals && UseImplicitStableValues) {
+    if (field->holder()->name() == ciSymbol::java_lang_String() &&
+        field->offset() == java_lang_String::value_offset_in_bytes()) {
+      const TypeAryPtr* value_type = TypeAryPtr::make(TypePtr::NotNull,
+                                                      TypeAry::make(TypeInt::BYTE, TypeInt::POS),
+                                                      ciTypeArrayKlass::make(T_BYTE), true, 0);
+        ld = cast_array_to_stable(ld, value_type);
+    }
+  }
   // Adjust Java stack
   if (type2size[bt] == 1)
     push(ld);
@@ -253,6 +269,9 @@ void Parse::do_put_xxx(Node* obj, ciField* field, bool is_field) {
   // another volatile read.
   if (is_vol)  insert_mem_bar(Op_MemBarRelease);
 
+  // Insert write barrier for Shenandoah.
+  obj = shenandoah_write_barrier(obj);
+
   // Compute address and memory type.
   int offset = field->offset_in_bytes();
   const TypePtr* adr_type = C->alias_type(field)->adr_type();
@@ -282,6 +301,7 @@ void Parse::do_put_xxx(Node* obj, ciField* field, bool is_field) {
     } else {
       field_type = TypeOopPtr::make_from_klass(field->type()->as_klass());
     }
+
     store = store_oop_to_object(control(), obj, adr, adr_type, val, field_type, bt, mo);
   } else {
     bool needs_atomic_access = is_vol || AlwaysAtomicAccesses;

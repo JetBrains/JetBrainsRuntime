@@ -36,9 +36,10 @@ oop objArrayOopDesc::atomic_compare_exchange_oop(int index, oop exchange_value,
   } else {
     dest = (HeapWord*)obj_at_addr<oop>(index);
   }
+  assert(compare_value == NULL || ! UseShenandoahGC, "only works with e=NULL");
   oop res = oopDesc::atomic_compare_exchange_oop(exchange_value, dest, compare_value, true);
   // update card mark if success
-  if (res == compare_value) {
+  if (oopDesc::unsafe_equals(res, compare_value)) {
     update_barrier_set((void*)dest, exchange_value);
   }
   return res;

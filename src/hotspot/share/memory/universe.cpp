@@ -83,6 +83,8 @@
 #include "utilities/ostream.hpp"
 #include "utilities/preserveException.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/cms/cmsCollectorPolicy.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/g1CollectorPolicy.hpp"
@@ -606,12 +608,12 @@ bool Universe::should_fill_in_stack_trace(Handle throwable) {
   // preallocated errors with backtrace have been consumed. Also need to avoid
   // a potential loop which could happen if an out of memory occurs when attempting
   // to allocate the backtrace.
-  return ((throwable() != Universe::_out_of_memory_error_java_heap) &&
-          (throwable() != Universe::_out_of_memory_error_metaspace)  &&
-          (throwable() != Universe::_out_of_memory_error_class_metaspace)  &&
-          (throwable() != Universe::_out_of_memory_error_array_size) &&
-          (throwable() != Universe::_out_of_memory_error_gc_overhead_limit) &&
-          (throwable() != Universe::_out_of_memory_error_realloc_objects));
+  return ((!oopDesc::equals(throwable(), Universe::_out_of_memory_error_java_heap)) &&
+          (!oopDesc::equals(throwable(), Universe::_out_of_memory_error_metaspace))  &&
+          (!oopDesc::equals(throwable(), Universe::_out_of_memory_error_class_metaspace))  &&
+          (!oopDesc::equals(throwable(), Universe::_out_of_memory_error_array_size)) &&
+          (!oopDesc::equals(throwable(), Universe::_out_of_memory_error_gc_overhead_limit)) &&
+          (!oopDesc::equals(throwable(), Universe::_out_of_memory_error_realloc_objects)));
 }
 
 
@@ -752,6 +754,9 @@ CollectedHeap* Universe::create_heap() {
     fatal("UseG1GC not supported in this VM.");
   } else if (UseConcMarkSweepGC) {
     fatal("UseConcMarkSweepGC not supported in this VM.");
+  } else if (UseShenandoahGC) {
+    fatal("UseShenandoahGC not supported in this VM.");
+  }
 #else
   if (UseParallelGC) {
     return Universe::create_heap_with_policy<ParallelScavengeHeap, GenerationSizer>();
@@ -759,6 +764,8 @@ CollectedHeap* Universe::create_heap() {
     return Universe::create_heap_with_policy<G1CollectedHeap, G1CollectorPolicy>();
   } else if (UseConcMarkSweepGC) {
     return Universe::create_heap_with_policy<GenCollectedHeap, ConcurrentMarkSweepPolicy>();
+  } else if (UseShenandoahGC) {
+    return Universe::create_heap_with_policy<ShenandoahHeap, ShenandoahCollectorPolicy>();
 #endif
   } else if (UseSerialGC) {
     return Universe::create_heap_with_policy<GenCollectedHeap, MarkSweepPolicy>();

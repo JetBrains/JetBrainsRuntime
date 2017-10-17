@@ -1133,6 +1133,7 @@ void DumperSupport::dump_prim_array(DumpWriter* writer, typeArrayOop array) {
 
   // If the byte ordering is big endian then we can copy most types directly
 
+  array = typeArrayOop(oopDesc::bs()->read_barrier(array));
   switch (type) {
     case T_INT : {
       if (Endian::is_Java_byte_ordering_different()) {
@@ -1271,7 +1272,7 @@ class JNILocalsDumper : public OopClosure {
 void JNILocalsDumper::do_oop(oop* obj_p) {
   // ignore null or deleted handles
   oop o = *obj_p;
-  if (o != NULL && o != JNIHandles::deleted_handle()) {
+  if (o != NULL && !oopDesc::equals(o, JNIHandles::deleted_handle())) {
     writer()->write_u1(HPROF_GC_ROOT_JNI_LOCAL);
     writer()->write_objectID(o);
     writer()->write_u4(_thread_serial_num);
@@ -1299,7 +1300,7 @@ void JNIGlobalsDumper::do_oop(oop* obj_p) {
   oop o = *obj_p;
 
   // ignore these
-  if (o == NULL || o == JNIHandles::deleted_handle()) return;
+  if (o == NULL || oopDesc::equals(o, JNIHandles::deleted_handle())) return;
 
   // we ignore global ref to symbols and other internal objects
   if (o->is_instance() || o->is_objArray() || o->is_typeArray()) {
@@ -1375,7 +1376,7 @@ class HeapObjectDumper : public ObjectClosure {
 
 void HeapObjectDumper::do_object(oop o) {
   // hide the sentinel for deleted handles
-  if (o == JNIHandles::deleted_handle()) return;
+  if (oopDesc::equals(o, JNIHandles::deleted_handle())) return;
 
   // skip classes as these emitted as HPROF_GC_CLASS_DUMP records
   if (o->klass() == SystemDictionary::Class_klass()) {

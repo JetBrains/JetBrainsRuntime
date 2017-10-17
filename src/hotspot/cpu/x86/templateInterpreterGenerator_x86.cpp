@@ -629,12 +629,14 @@ void TemplateInterpreterGenerator::lock_method() {
 #endif // ASSERT
 
     __ bind(done);
+    oopDesc::bs()->interpreter_write_barrier(_masm, rax);
   }
 
   // add space for monitor & lock
   __ subptr(rsp, entry_size); // add space for a monitor entry
   __ movptr(monitor_block_top, rsp);  // set new monitor block top
   // store object
+  __ shenandoah_store_addr_check(rax);
   __ movptr(Address(rsp, BasicObjectLock::obj_offset_in_bytes()), rax);
   const Register lockreg = NOT_LP64(rdx) LP64_ONLY(c_rarg1);
   __ movptr(lockreg, rsp); // object address
@@ -725,7 +727,7 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
   const int referent_offset = java_lang_ref_Reference::referent_offset;
   guarantee(referent_offset > 0, "referent offset not initialized");
 
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     Label slow_path;
     // rbx: method
 
@@ -735,6 +737,8 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
 
     __ testptr(rax, rax);
     __ jcc(Assembler::zero, slow_path);
+
+    oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rax);
 
     // rax: local 0
     // rbx: method (but can be used as scratch now)
@@ -758,12 +762,9 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
 
     // Generate the G1 pre-barrier code to log the value of
     // the referent field in an SATB buffer.
-    __ g1_write_barrier_pre(noreg /* obj */,
-                            rax /* pre_val */,
-                            thread /* thread */,
-                            rbx /* tmp */,
-                            true /* tosca_live */,
-                            true /* expand_call */);
+    __ keep_alive_barrier(rax /* pre_val */,
+                          thread /* thread */,
+                          rbx /* tmp */);
 
     // _areturn
     NOT_LP64(__ pop(rsi));      // get sender sp
@@ -1283,6 +1284,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
       __ lea(regmon, monitor); // address of first monitor
 
       __ movptr(t, Address(regmon, BasicObjectLock::obj_offset_in_bytes()));
+      __ shenandoah_store_addr_check(t); // Invariant
       __ testptr(t, t);
       __ jcc(Assembler::notZero, unlock);
 

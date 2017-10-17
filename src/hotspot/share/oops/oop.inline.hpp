@@ -90,11 +90,13 @@ inline void oop_store_raw(HeapWord* addr, oop value) {
 // We need a separate file to avoid circular references
 
 void oopDesc::release_set_mark(markOop m) {
-  OrderAccess::release_store_ptr(&_mark, m);
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store_ptr(&p->_mark, m);
 }
 
 markOop oopDesc::cas_set_mark(markOop new_mark, markOop old_mark) {
-  return Atomic::cmpxchg(new_mark, &_mark, old_mark);
+  oop p = bs()->write_barrier(this);
+  return (markOop) Atomic::cmpxchg_ptr(new_mark, &p->_mark, old_mark);
 }
 
 void oopDesc::init_mark() {
@@ -331,7 +333,7 @@ narrowOop oopDesc::encode_heap_oop_not_null(oop v) {
   assert(OopEncodingHeapMax > pd, "change encoding max if new encoding");
   uint64_t result = pd >> shift;
   assert((result & CONST64(0xffffffff00000000)) == 0, "narrow oop overflow");
-  assert(decode_heap_oop(result) == v, "reversibility");
+  assert(oopDesc::unsafe_equals(decode_heap_oop(result), v), "reversibility");
   return (narrowOop)result;
 }
 
@@ -422,20 +424,25 @@ oop oopDesc::atomic_compare_exchange_oop(oop exchange_value,
 // In order to put or get a field out of an instance, must first check
 // if the field has been compressed and uncompress it.
 oop oopDesc::obj_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
   return UseCompressedOops ?
-    load_decode_heap_oop(obj_field_addr<narrowOop>(offset)) :
-    load_decode_heap_oop(obj_field_addr<oop>(offset));
+    load_decode_heap_oop(p->obj_field_addr<narrowOop>(offset)) :
+    load_decode_heap_oop(p->obj_field_addr<oop>(offset));
 }
 
 void oopDesc::obj_field_put(int offset, oop value) {
-  UseCompressedOops ? oop_store(obj_field_addr<narrowOop>(offset), value) :
-                      oop_store(obj_field_addr<oop>(offset),       value);
+  oop p = bs()->write_barrier(this);
+  value = bs()->storeval_barrier(value);
+  UseCompressedOops ? oop_store(p->obj_field_addr<narrowOop>(offset), value) :
+                      oop_store(p->obj_field_addr<oop>(offset),       value);
 }
 
 void oopDesc::obj_field_put_raw(int offset, oop value) {
+  oop p = bs()->write_barrier(this);
+  value = bs()->storeval_barrier(value);
   UseCompressedOops ?
-    encode_store_heap_oop(obj_field_addr<narrowOop>(offset), value) :
-    encode_store_heap_oop(obj_field_addr<oop>(offset),       value);
+    encode_store_heap_oop(p->obj_field_addr<narrowOop>(offset), value) :
+    encode_store_heap_oop(p->obj_field_addr<oop>(offset),       value);
 }
 void oopDesc::obj_field_put_volatile(int offset, oop value) {
   OrderAccess::release();
@@ -443,83 +450,222 @@ void oopDesc::obj_field_put_volatile(int offset, oop value) {
   OrderAccess::fence();
 }
 
-Metadata* oopDesc::metadata_field(int offset) const           { return *metadata_field_addr(offset);   }
-void oopDesc::metadata_field_put(int offset, Metadata* value) { *metadata_field_addr(offset) = value;  }
+Metadata* oopDesc::metadata_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->metadata_field_addr(offset);
+}
+
+void oopDesc::metadata_field_put(int offset, Metadata* value) {
+  oop p = bs()->write_barrier(this);
+  *p->metadata_field_addr(offset) = value;
+}
 
 Metadata* oopDesc::metadata_field_acquire(int offset) const   {
-  return (Metadata*)OrderAccess::load_ptr_acquire(metadata_field_addr(offset));
+  oop p = bs()->read_barrier((oop) this);
+  return (Metadata*)OrderAccess::load_ptr_acquire(*p->metadata_field_addr(offset));
 }
 
 void oopDesc::release_metadata_field_put(int offset, Metadata* value) {
-  OrderAccess::release_store_ptr(metadata_field_addr(offset), value);
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store_ptr(p->metadata_field_addr(offset), value);
 }
 
-jbyte oopDesc::byte_field(int offset) const                   { return (jbyte) *byte_field_addr(offset);    }
-void oopDesc::byte_field_put(int offset, jbyte contents)      { *byte_field_addr(offset) = (jint) contents; }
+jbyte oopDesc::byte_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (jbyte) *p->byte_field_addr(offset);
+}
 
-jchar oopDesc::char_field(int offset) const                   { return (jchar) *char_field_addr(offset);    }
-void oopDesc::char_field_put(int offset, jchar contents)      { *char_field_addr(offset) = (jint) contents; }
+void oopDesc::byte_field_put(int offset, jbyte contents) {
+  oop p = bs()->write_barrier(this);
+  *p->byte_field_addr(offset) = (jint) contents;
+}
 
-jboolean oopDesc::bool_field(int offset) const                { return (jboolean) *bool_field_addr(offset); }
-void oopDesc::bool_field_put(int offset, jboolean contents)   { *bool_field_addr(offset) = (((jint) contents) & 1); }
+jchar oopDesc::char_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (jchar) *p->char_field_addr(offset);
+}
 
-jint oopDesc::int_field(int offset) const                     { return *int_field_addr(offset);        }
-void oopDesc::int_field_put(int offset, jint contents)        { *int_field_addr(offset) = contents;    }
+void oopDesc::char_field_put(int offset, jchar contents) {
+  oop p = bs()->write_barrier(this);
+  *p->char_field_addr(offset) = (jint) contents;
+}
 
-jshort oopDesc::short_field(int offset) const                 { return (jshort) *short_field_addr(offset);  }
-void oopDesc::short_field_put(int offset, jshort contents)    { *short_field_addr(offset) = (jint) contents;}
+jboolean oopDesc::bool_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (jboolean) *p->bool_field_addr(offset);
+}
 
-jlong oopDesc::long_field(int offset) const                   { return *long_field_addr(offset);       }
-void oopDesc::long_field_put(int offset, jlong contents)      { *long_field_addr(offset) = contents;   }
+void oopDesc::bool_field_put(int offset, jboolean contents) {
+  oop p = bs()->write_barrier(this);
+  *p->bool_field_addr(offset) = (((jint) contents) & 1);
+}
 
-jfloat oopDesc::float_field(int offset) const                 { return *float_field_addr(offset);      }
-void oopDesc::float_field_put(int offset, jfloat contents)    { *float_field_addr(offset) = contents;  }
+jint oopDesc::int_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->int_field_addr(offset);
+}
 
-jdouble oopDesc::double_field(int offset) const               { return *double_field_addr(offset);     }
-void oopDesc::double_field_put(int offset, jdouble contents)  { *double_field_addr(offset) = contents; }
+void oopDesc::int_field_put(int offset, jint contents) {
+  oop p = bs()->write_barrier(this);
+  *p->int_field_addr(offset) = contents;
+}
 
-address oopDesc::address_field(int offset) const              { return *address_field_addr(offset);     }
-void oopDesc::address_field_put(int offset, address contents) { *address_field_addr(offset) = contents; }
+jshort oopDesc::short_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (jshort) *p->short_field_addr(offset);
+}
+
+void oopDesc::short_field_put(int offset, jshort contents) {
+  oop p = bs()->write_barrier(this);
+  *p->short_field_addr(offset) = (jint) contents;
+}
+
+jlong oopDesc::long_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->long_field_addr(offset);
+}
+
+void oopDesc::long_field_put(int offset, jlong contents) {
+  oop p = bs()->write_barrier(this);
+  *p->long_field_addr(offset) = contents;
+}
+
+jfloat oopDesc::float_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->float_field_addr(offset);
+}
+
+void oopDesc::float_field_put(int offset, jfloat contents) {
+  oop p = bs()->write_barrier(this);
+  *p->float_field_addr(offset) = contents;
+}
+
+jdouble oopDesc::double_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->double_field_addr(offset);
+}
+
+void oopDesc::double_field_put(int offset, jdouble contents) {
+  oop p = bs()->write_barrier(this);
+  *p->double_field_addr(offset) = contents;
+}
+
+address oopDesc::address_field(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return *p->address_field_addr(offset);
+}
+
+void oopDesc::address_field_put(int offset, address contents) {
+  oop p = bs()->write_barrier(this);
+  *p->address_field_addr(offset) = contents;
+}
 
 oop oopDesc::obj_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
   return UseCompressedOops ?
              decode_heap_oop((narrowOop)
-               OrderAccess::load_acquire(obj_field_addr<narrowOop>(offset)))
+               OrderAccess::load_acquire(p->obj_field_addr<narrowOop>(offset)))
            : decode_heap_oop((oop)
-               OrderAccess::load_ptr_acquire(obj_field_addr<oop>(offset)));
+               OrderAccess::load_ptr_acquire(p->obj_field_addr<oop>(offset)));
 }
+
 void oopDesc::release_obj_field_put(int offset, oop value) {
+  oop p = bs()->write_barrier(this);
+  value = bs()->storeval_barrier(value);
   UseCompressedOops ?
-    oop_store((volatile narrowOop*)obj_field_addr<narrowOop>(offset), value) :
-    oop_store((volatile oop*)      obj_field_addr<oop>(offset),       value);
+    oop_store((volatile narrowOop*)p->obj_field_addr<narrowOop>(offset), value) :
+    oop_store((volatile oop*)      p->obj_field_addr<oop>(offset),       value);
 }
 
-jbyte oopDesc::byte_field_acquire(int offset) const                   { return OrderAccess::load_acquire(byte_field_addr(offset));     }
-void oopDesc::release_byte_field_put(int offset, jbyte contents)      { OrderAccess::release_store(byte_field_addr(offset), contents); }
+jbyte oopDesc::byte_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->byte_field_addr(offset));
+}
 
-jchar oopDesc::char_field_acquire(int offset) const                   { return OrderAccess::load_acquire(char_field_addr(offset));     }
-void oopDesc::release_char_field_put(int offset, jchar contents)      { OrderAccess::release_store(char_field_addr(offset), contents); }
+void oopDesc::release_byte_field_put(int offset, jbyte contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->byte_field_addr(offset), contents);
+}
 
-jboolean oopDesc::bool_field_acquire(int offset) const                { return OrderAccess::load_acquire(bool_field_addr(offset));     }
-void oopDesc::release_bool_field_put(int offset, jboolean contents)   { OrderAccess::release_store(bool_field_addr(offset), (contents & 1)); }
+jchar oopDesc::char_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->char_field_addr(offset));
+}
 
-jint oopDesc::int_field_acquire(int offset) const                     { return OrderAccess::load_acquire(int_field_addr(offset));      }
-void oopDesc::release_int_field_put(int offset, jint contents)        { OrderAccess::release_store(int_field_addr(offset), contents);  }
+void oopDesc::release_char_field_put(int offset, jchar contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->char_field_addr(offset), contents);
+}
 
-jshort oopDesc::short_field_acquire(int offset) const                 { return (jshort)OrderAccess::load_acquire(short_field_addr(offset)); }
-void oopDesc::release_short_field_put(int offset, jshort contents)    { OrderAccess::release_store(short_field_addr(offset), contents);     }
+jboolean oopDesc::bool_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->bool_field_addr(offset));
+}
 
-jlong oopDesc::long_field_acquire(int offset) const                   { return OrderAccess::load_acquire(long_field_addr(offset));       }
-void oopDesc::release_long_field_put(int offset, jlong contents)      { OrderAccess::release_store(long_field_addr(offset), contents);   }
+void oopDesc::release_bool_field_put(int offset, jboolean contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->bool_field_addr(offset), (contents & 1));
+}
 
-jfloat oopDesc::float_field_acquire(int offset) const                 { return OrderAccess::load_acquire(float_field_addr(offset));      }
-void oopDesc::release_float_field_put(int offset, jfloat contents)    { OrderAccess::release_store(float_field_addr(offset), contents);  }
+jint oopDesc::int_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->int_field_addr(offset));
+}
 
-jdouble oopDesc::double_field_acquire(int offset) const               { return OrderAccess::load_acquire(double_field_addr(offset));     }
-void oopDesc::release_double_field_put(int offset, jdouble contents)  { OrderAccess::release_store(double_field_addr(offset), contents); }
+void oopDesc::release_int_field_put(int offset, jint contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->int_field_addr(offset), contents);
+}
 
-address oopDesc::address_field_acquire(int offset) const              { return (address) OrderAccess::load_ptr_acquire(address_field_addr(offset)); }
-void oopDesc::release_address_field_put(int offset, address contents) { OrderAccess::release_store_ptr(address_field_addr(offset), contents); }
+jshort oopDesc::short_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (jshort)OrderAccess::load_acquire(p->short_field_addr(offset));
+}
+
+void oopDesc::release_short_field_put(int offset, jshort contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->short_field_addr(offset), contents);
+}
+
+jlong oopDesc::long_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->long_field_addr(offset));
+}
+
+void oopDesc::release_long_field_put(int offset, jlong contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->long_field_addr(offset), contents);
+}
+
+jfloat oopDesc::float_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->float_field_addr(offset));
+}
+
+void oopDesc::release_float_field_put(int offset, jfloat contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->float_field_addr(offset), contents);
+}
+
+jdouble oopDesc::double_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return OrderAccess::load_acquire(p->double_field_addr(offset));
+}
+
+void oopDesc::release_double_field_put(int offset, jdouble contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store(p->double_field_addr(offset), contents);
+}
+
+address oopDesc::address_field_acquire(int offset) const {
+  oop p = bs()->read_barrier((oop) this);
+  return (address) OrderAccess::load_ptr_acquire(p->address_field_addr(offset));
+}
+
+void oopDesc::release_address_field_put(int offset, address contents) {
+  oop p = bs()->write_barrier(this);
+  OrderAccess::release_store_ptr(p->address_field_addr(offset), contents);
+}
 
 bool oopDesc::is_locked() const {
   return mark()->is_locked();

@@ -33,9 +33,6 @@
 #include "runtime/mutexLocker.hpp"
 #include "utilities/hashtable.inline.hpp"
 #include "utilities/macros.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif
 
 
 ResolvedMethodTable::ResolvedMethodTable()
@@ -76,8 +73,8 @@ static void ensure_oop_alive(oop mname) {
   // considered dead. The SATB part of G1 needs to get notified about this
   // potential resurrection, otherwise the marking might not find the object.
 #if INCLUDE_ALL_GCS
-  if (UseG1GC && mname != NULL) {
-    G1SATBCardTableModRefBS::enqueue(mname);
+  if (mname != NULL) {
+    oopDesc::bs()->keep_alive_barrier(mname);
   }
 #endif
 }

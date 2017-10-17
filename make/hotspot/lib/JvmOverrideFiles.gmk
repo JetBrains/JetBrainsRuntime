@@ -32,6 +32,8 @@ $(eval $(call IncludeCustomExtension, hotspot/lib/JvmOverrideFiles.gmk))
 ifeq ($(TOOLCHAIN_TYPE), gcc)
   BUILD_LIBJVM_vmStructs.cpp_CXXFLAGS := -fno-var-tracking-assignments -O0
   BUILD_LIBJVM_jvmciCompilerToVM.cpp_CXXFLAGS := -fno-var-tracking-assignments
+  # Need extra inlining to collapse all the templated closures into the hot loop
+  BUILD_LIBJVM_shenandoahConcurrentMark.cpp_CXXFLAGS := --param inline-unit-growth=1000
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), linux)

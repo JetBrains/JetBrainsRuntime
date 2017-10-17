@@ -160,6 +160,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/regalloc.hpp"
 #include "opto/rootnode.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
 #endif // COMPILER2
@@ -2035,6 +2036,10 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   declare_c2_type(OverflowAddLNode, OverflowLNode)                        \
   declare_c2_type(OverflowSubLNode, OverflowLNode)                        \
   declare_c2_type(OverflowMulLNode, OverflowLNode)                        \
+  declare_c2_type(ShenandoahBarrierNode, TypeNode)                        \
+  declare_c2_type(ShenandoahReadBarrierNode, ShenandoahBarrierNode)       \
+  declare_c2_type(ShenandoahWriteBarrierNode, ShenandoahBarrierNode)      \
+  declare_c2_type(ShenandoahWBMemProjNode, ProjNode)                      \
   declare_c2_type(FmaDNode, Node)                                         \
   declare_c2_type(FmaFNode, Node)                                         \
                                                                           \
@@ -2228,6 +2233,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   declare_constant(BarrierSet::CardTableExtension)                        \
   declare_constant(BarrierSet::G1SATBCT)                                  \
   declare_constant(BarrierSet::G1SATBCTLogging)                           \
+  declare_constant(BarrierSet::ShenandoahBarrierSet)                      \
                                                                           \
   declare_constant(BOTConstants::LogN)                                    \
   declare_constant(BOTConstants::LogN_words)                              \

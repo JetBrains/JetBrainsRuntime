@@ -1838,11 +1838,14 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ ldr(obj_reg, Address(oop_handle_reg, 0));
 
+    oopDesc::bs()->interpreter_write_barrier(masm, obj_reg);
+
     if (UseBiasedLocking) {
       __ biased_locking_enter(lock_reg, obj_reg, swap_reg, tmp, false, lock_done, &slow_path_lock);
     }
 
     // Load (object->mark() | 1) into swap_reg %r0
+    __ shenandoah_store_addr_check(obj_reg); // Access mark word
     __ ldr(rscratch1, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
     __ orr(swap_reg, rscratch1, 1);
 
@@ -2005,8 +2008,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
     // Get locked oop from the handle we passed to jni
     __ ldr(obj_reg, Address(oop_handle_reg, 0));
+    oopDesc::bs()->interpreter_write_barrier(masm, obj_reg);
 
     Label done;
+
+    __ shenandoah_store_addr_check(obj_reg);
 
     if (UseBiasedLocking) {
       __ biased_locking_exit(obj_reg, old_hdr, done);
@@ -2063,7 +2069,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     __ ldr(r0, Address(r0, -JNIHandles::weak_tag_value));
     __ verify_oop(r0);
 #if INCLUDE_ALL_GCS
-    if (UseG1GC) {
+    if (UseG1GC || UseShenandoahGC) {
       __ g1_write_barrier_pre(noreg /* obj */,
                               r0 /* pre_val */,
                               rthread /* thread */,

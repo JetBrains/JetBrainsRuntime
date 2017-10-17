@@ -263,3 +263,7 @@ void G1SATBCardTableModRefBS::write_ref_nmethod_pre(oop* dst, nmethod* nm) {
     }
   }
 }
+
+void G1SATBCardTableModRefBS::keep_alive_barrier(oop obj) {
+  G1SATBCardTableModRefBS::enqueue(obj);
+}

@@ -634,6 +634,8 @@ class GraphKit : public Phase {
   void post_barrier(Node* ctl, Node* store, Node* obj, Node* adr, uint adr_idx,
                     Node* val, BasicType bt, bool use_precise);
 
+  void keep_alive_barrier(Node* ctl, Node* pre_val);
+
   // Return addressing for an array element.
   Node* array_element_address(Node* ary, Node* idx, BasicType elembt,
                               // Optional constraint on the array size:
@@ -788,6 +790,15 @@ class GraphKit : public Phase {
                              Node* val,
                              BasicType bt,
                              bool use_precise);
+
+  void shenandoah_write_barrier_pre(bool do_load,
+                            Node* obj,
+                            Node* adr,
+                            uint alias_idx,
+                            Node* val,
+                            const TypeOopPtr* val_type,
+                            Node* pre_val,
+                            BasicType bt);
   // Helper function for g1
   private:
   void g1_mark_card(IdealKit& ideal, Node* card_adr, Node* store, uint oop_alias_idx,
@@ -919,6 +930,15 @@ class GraphKit : public Phase {
 
   // Produce new array node of stable type
   Node* cast_array_to_stable(Node* ary, const TypeAryPtr* ary_type);
+
+  void shenandoah_update_matrix(Node* adr, Node* val);
+  Node* shenandoah_read_barrier(Node* obj);
+  Node* shenandoah_storeval_barrier(Node* obj);
+  Node* shenandoah_read_barrier_acmp(Node* obj);
+  Node* shenandoah_write_barrier(Node* obj);
+private:
+  Node* shenandoah_read_barrier_impl(Node* obj, bool use_ctrl, bool use_mem, bool allow_fromspace);
+  Node* shenandoah_write_barrier_impl(Node* obj);
 };
 
 // Helper class to support building of control flow branches. Upon

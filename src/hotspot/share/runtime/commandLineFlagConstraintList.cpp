@@ -348,6 +348,19 @@ void CommandLineFlagConstraintList::init(void) {
                                    IGNORE_RANGE,
                                    EMIT_CONSTRAINT_CHECK,
                                    IGNORE_WRITEABLE));
+
+  emit_constraint_no(NULL SHENANDOAH_FLAGS(EMIT_CONSTRAINT_DEVELOPER_FLAG,
+                                   EMIT_CONSTRAINT_PD_DEVELOPER_FLAG,
+                                   EMIT_CONSTRAINT_PRODUCT_FLAG,
+                                   EMIT_CONSTRAINT_PD_PRODUCT_FLAG,
+                                   EMIT_CONSTRAINT_DIAGNOSTIC_FLAG,
+                                   EMIT_CONSTRAINT_EXPERIMENTAL_FLAG,
+                                   EMIT_CONSTRAINT_NOTPRODUCT_FLAG,
+                                   EMIT_CONSTRAINT_MANAGEABLE_FLAG,
+                                   EMIT_CONSTRAINT_PRODUCT_RW_FLAG,
+                                   IGNORE_RANGE,
+                                   EMIT_CONSTRAINT_CHECK,
+                                   IGNORE_WRITEABLE));
 #endif // INCLUDE_ALL_GCS
 }
 

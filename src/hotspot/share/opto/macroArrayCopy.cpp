@@ -551,7 +551,7 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     // At this point we know we do not need type checks on oop stores.
 
     // Let's see if we need card marks:
-    if (alloc != NULL && GraphKit::use_ReduceInitialCardMarks()) {
+    if (alloc != NULL && GraphKit::use_ReduceInitialCardMarks() && ! UseShenandoahGC) {
       // If we do not need card marks, copy using the jint or jlong stub.
       copy_type = LP64_ONLY(UseCompressedOops ? T_INT : T_LONG) NOT_LP64(T_INT);
       assert(type2aelembytes(basic_elem_type) == type2aelembytes(copy_type),
@@ -1082,6 +1082,18 @@ void PhaseMacroExpand::generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** 
   finish_arraycopy_call(call, ctrl, mem, adr_type);
 }
 
+Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
+  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+  Node* c = new ProjNode(call,TypeFunc::Control);
+  transform_later(c);
+  Node* m = new ProjNode(call, TypeFunc::Memory);
+  transform_later(m);
+  assert(dest->is_AddP(), "bad input");
+  call = make_leaf_call(c, m, OptoRuntime::shenandoah_clone_barrier_Type(), CAST_FROM_FN_PTR(address, SharedRuntime::shenandoah_clone_barrier), "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
+  transform_later(call);
+  return call;
+}
+
 void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   Node* ctrl = ac->in(TypeFunc::Control);
   Node* io = ac->in(TypeFunc::I_O);
@@ -1105,6 +1117,31 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
 
     Node* call = make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
     transform_later(call);
+
+    if (UseShenandoahGC && ShenandoahCloneBarrier) {
+      const TypeOopPtr* src_type = _igvn.type(src)->is_oopptr();
+      if (src_type->isa_instptr() != NULL) {
+        ciInstanceKlass* ik = src_type->klass()->as_instance_klass();
+        if ((src_type->klass_is_exact() || (!ik->is_interface() && !ik->has_subklass())) && !ik->has_injected_fields()) {
+          if (ik->has_object_fields()) {
+            call = shenandoah_call_clone_barrier(call, dest);
+          } else {
+            if (!src_type->klass_is_exact()) {
+              C->dependencies()->assert_leaf_type(ik);
+            }
+          }
+        } else {
+          call = shenandoah_call_clone_barrier(call, dest);
+        }
+      } else if (src_type->isa_aryptr()) {
+        BasicType src_elem  = src_type->klass()->as_array_klass()->element_type()->basic_type();
+        if (src_elem == T_OBJECT || src_elem == T_ARRAY) {
+          call = shenandoah_call_clone_barrier(call, dest);
+        }
+      } else {
+        call = shenandoah_call_clone_barrier(call, dest);
+      }
+    }
 
     _igvn.replace_node(ac, call);
     return;

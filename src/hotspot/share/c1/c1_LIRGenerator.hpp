@@ -228,6 +228,8 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   LIR_Opr round_item(LIR_Opr opr);
   LIR_Opr force_to_spill(LIR_Opr value, BasicType t);
 
+  LIR_Opr force_opr_to(LIR_Opr op, LIR_Opr reg);
+
   PhiResolverState& resolver_state() { return _resolver_state; }
 
   void  move_to_phi(PhiResolver* resolver, Value cur_val, Value sux_val);
@@ -272,6 +274,17 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   void pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val, bool do_load, bool patch, CodeEmitInfo* info);
   void post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val);
 
+  void keep_alive_barrier(LIR_Opr val);
+
+  LIR_Opr shenandoah_read_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
+  LIR_Opr shenandoah_write_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
+  LIR_Opr shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
+
+private:
+  LIR_Opr shenandoah_read_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
+  LIR_Opr shenandoah_write_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
+
+public:
   // specific implementations
   // pre barriers
 
@@ -281,6 +294,10 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   // post barriers
 
   void G1SATBCardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val);
+
+  void Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
+                              bool do_load, bool patch, CodeEmitInfo* info);
+  void Shenandoah_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val);
   void CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val);
 #ifdef CARDTABLEMODREF_POST_BARRIER_HELPER
   void CardTableModRef_post_barrier_helper(LIR_OprDesc* addr, LIR_Const* card_table_base);

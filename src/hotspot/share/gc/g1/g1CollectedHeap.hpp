@@ -1388,6 +1388,8 @@ public:
 
   inline bool is_obj_ill(const oop obj) const;
 
+  inline bool requires_marking(const void* entry) const;
+
   G1ConcurrentMark* concurrent_mark() const { return _cm; }
 
   // Refinement

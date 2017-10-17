@@ -34,6 +34,7 @@
 #include "ci/ciInstance.hpp"
 #include "ci/ciObjArray.hpp"
 #include "gc/shared/cardTableModRefBS.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -42,6 +43,9 @@
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
 #include "gc/g1/heapRegion.hpp"
+#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #endif // INCLUDE_ALL_GCS
 #ifdef TRACE_HAVE_INTRINSICS
 #include "trace/traceMacros.hpp"
@@ -250,14 +254,22 @@ void LIRItem::load_for_store(BasicType type) {
 void LIRItem::load_item_force(LIR_Opr reg) {
   LIR_Opr r = result();
   if (r != reg) {
+    _result = _gen->force_opr_to(r, reg);
+  }
+}
+
+LIR_Opr LIRGenerator::force_opr_to(LIR_Opr op, LIR_Opr reg) {
+  if (op != reg) {
 #if !defined(ARM) && !defined(E500V2)
-    if (r->type() != reg->type()) {
+    if (op->type() != reg->type()) {
       // moves between different types need an intervening spill slot
-      r = _gen->force_to_spill(r, reg->type());
+      op = force_to_spill(op, reg->type());
     }
 #endif
-    __ move(r, reg);
-    _result = reg;
+    __ move(op, reg);
+    return reg;
+  } else {
+    return op;
   }
 }
 
@@ -1249,11 +1261,7 @@ void LIRGenerator::do_Reference_get(Intrinsic* x) {
   __ load(referent_field_adr, result, info);
 
   // Register the value in the referent field with the pre-barrier
-  pre_barrier(LIR_OprFact::illegalOpr /* addr_opr */,
-              result /* pre_val */,
-              false  /* do_load */,
-              false  /* patch */,
-              NULL   /* info */);
+  keep_alive_barrier(result);
 }
 
 // Example: clazz.isInstance(object)
@@ -1458,6 +1466,9 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
     case BarrierSet::G1SATBCTLogging:
       G1SATBCardTableModRef_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
+    case BarrierSet::ShenandoahBarrierSet:
+      Shenandoah_pre_barrier(addr_opr, pre_val, do_load, patch, info);
+      break;
 #endif // INCLUDE_ALL_GCS
     case BarrierSet::CardTableForRS:
     case BarrierSet::CardTableExtension:
@@ -1472,11 +1483,44 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
   }
 }
 
+void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
+  switch (_bs->kind()) {
+#if INCLUDE_ALL_GCS
+    case BarrierSet::G1SATBCTLogging:
+      pre_barrier(LIR_OprFact::illegalOpr /* addr_opr */,
+                  val /* pre_val */,
+                  false  /* do_load */,
+                  false  /* patch */,
+                  NULL   /* info */);
+      break;
+    case BarrierSet::ShenandoahBarrierSet:
+      if (ShenandoahKeepAliveBarrier) {
+        pre_barrier(LIR_OprFact::illegalOpr /* addr_opr */,
+                    val /* pre_val */,
+                    false  /* do_load */,
+                    false  /* patch */,
+                    NULL   /* info */);
+      }
+      break;
+#endif // INCLUDE_ALL_GCS
+    case BarrierSet::CardTableForRS:
+    case BarrierSet::CardTableExtension:
+      break;
+    case BarrierSet::ModRef:
+      break;
+    default      :
+      ShouldNotReachHere();
+  }
+}
+
 void LIRGenerator::post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
   switch (_bs->kind()) {
 #if INCLUDE_ALL_GCS
     case BarrierSet::G1SATBCTLogging:
       G1SATBCardTableModRef_post_barrier(addr,  new_val);
+      break;
+    case BarrierSet::ShenandoahBarrierSet:
+      Shenandoah_post_barrier(addr,  new_val);
       break;
 #endif // INCLUDE_ALL_GCS
     case BarrierSet::CardTableForRS:
@@ -1608,6 +1652,126 @@ void LIRGenerator::G1SATBCardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_Opr
   CodeStub* slow = new G1PostBarrierStub(addr, new_val);
   __ branch(lir_cond_notEqual, LP64_ONLY(T_LONG) NOT_LP64(T_INT), slow);
   __ branch_destination(slow->continuation());
+}
+
+void LIRGenerator::Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
+                                          bool do_load, bool patch, CodeEmitInfo* info) {
+  if (ShenandoahConditionalSATBBarrier) {
+    LabelObj* L_done = new LabelObj();
+    LIR_Opr mark_in_prog_addr = new_pointer_register();
+    __ move(LIR_OprFact::intptrConst((intptr_t) ShenandoahHeap::concurrent_mark_in_progress_addr()), mark_in_prog_addr);
+    LIR_Opr mark_in_prog = new_register(T_INT);
+    __ move(new LIR_Address(mark_in_prog_addr, T_CHAR), mark_in_prog);
+    __ cmp(lir_cond_equal, mark_in_prog, LIR_OprFact::intConst(0));
+
+    LIR_PatchCode pre_val_patch_code = lir_patch_none;
+
+    CodeStub* slow;
+
+    if (do_load) {
+      assert(pre_val == LIR_OprFact::illegalOpr, "sanity");
+      assert(addr_opr != LIR_OprFact::illegalOpr, "sanity");
+
+      if (patch)
+        pre_val_patch_code = lir_patch_normal;
+
+      pre_val = new_register(T_OBJECT);
+
+      if (!addr_opr->is_address()) {
+        assert(addr_opr->is_register(), "must be");
+        addr_opr = LIR_OprFact::address(new LIR_Address(addr_opr, T_OBJECT));
+      }
+      slow = new G1PreBarrierStub(addr_opr, pre_val, pre_val_patch_code, info);
+    } else {
+      assert(addr_opr == LIR_OprFact::illegalOpr, "sanity");
+      assert(pre_val->is_register(), "must be");
+      assert(pre_val->type() == T_OBJECT, "must be an object");
+      assert(info == NULL, "sanity");
+
+      slow = new G1PreBarrierStub(pre_val);
+    }
+
+    __ branch(lir_cond_notEqual, T_CHAR, slow);
+    __ branch_destination(slow->continuation());
+  }
+  if (ShenandoahSATBBarrier) {
+    G1SATBCardTableModRef_pre_barrier(addr_opr, pre_val, do_load, patch, info);
+  }
+}
+
+void LIRGenerator::Shenandoah_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
+  if (! UseShenandoahMatrix) {
+    // No need for that barrier if not using matrix.
+    return;
+  }
+
+  // If the "new_val" is a constant NULL, no barrier is necessary.
+  if (new_val->is_constant() &&
+      new_val->as_constant_ptr()->as_jobject() == NULL) return;
+
+  if (!new_val->is_register()) {
+    LIR_Opr new_val_reg = new_register(T_OBJECT);
+    if (new_val->is_constant()) {
+      __ move(new_val, new_val_reg);
+    } else {
+      __ leal(new_val, new_val_reg);
+    }
+    new_val = new_val_reg;
+  }
+  assert(new_val->is_register(), "must be a register at this point");
+
+  if (addr->is_address()) {
+    LIR_Address* address = addr->as_address_ptr();
+    LIR_Opr ptr = new_pointer_register();
+    if (!address->index()->is_valid() && address->disp() == 0) {
+      __ move(address->base(), ptr);
+    } else {
+      assert(address->disp() != max_jint, "lea doesn't support patched addresses!");
+      __ leal(addr, ptr);
+    }
+    addr = ptr;
+  }
+  assert(addr->is_register(), "must be a register at this point");
+
+  LabelObj* L_done = new LabelObj();
+  __ cmp(lir_cond_equal, new_val, LIR_OprFact::oopConst(NULL_WORD));
+  __ branch(lir_cond_equal, T_OBJECT, L_done->label());
+
+  ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
+
+  LIR_Opr heap_base = new_pointer_register();
+  __ move(LIR_OprFact::intptrConst(ShenandoahHeap::heap()->base()), heap_base);
+
+  LIR_Opr tmp1 = new_pointer_register();
+  __ move(new_val, tmp1);
+  __ sub(tmp1, heap_base, tmp1);
+  __ unsigned_shift_right(tmp1, LIR_OprFact::intConst(ShenandoahHeapRegion::region_size_bytes_shift_jint()), tmp1, LIR_OprDesc::illegalOpr());
+
+  LIR_Opr tmp2 = new_pointer_register();
+  __ move(addr, tmp2);
+  __ sub(tmp2, heap_base, tmp2);
+  __ unsigned_shift_right(tmp2, LIR_OprFact::intConst(ShenandoahHeapRegion::region_size_bytes_shift_jint()), tmp2, LIR_OprDesc::illegalOpr());
+
+  LIR_Opr tmp3 = new_pointer_register();
+  __ move(LIR_OprFact::longConst(matrix->stride_jint()), tmp3);
+  __ mul(tmp1, tmp3, tmp1);
+  __ add(tmp1, tmp2, tmp1);
+
+  LIR_Opr tmp4 = new_pointer_register();
+  __ move(LIR_OprFact::intptrConst((intptr_t) matrix->matrix_addr()), tmp4);
+  LIR_Address* matrix_elem_addr = new LIR_Address(tmp4, tmp1, T_BYTE);
+
+  LIR_Opr tmp5 = new_register(T_INT);
+  __ move(matrix_elem_addr, tmp5);
+  __ cmp(lir_cond_notEqual, tmp5, LIR_OprFact::intConst(0));
+  __ branch(lir_cond_notEqual, T_BYTE, L_done->label());
+
+  // Aarch64 cannot move constant 1. Load it into a register.
+  LIR_Opr one = new_register(T_INT);
+  __ move(LIR_OprFact::intConst(1), one);
+  __ move(one, matrix_elem_addr);
+
+  __ branch_destination(L_done->label());
 }
 
 #endif // INCLUDE_ALL_GCS
@@ -1751,13 +1915,21 @@ void LIRGenerator::do_StoreField(StoreField* x) {
   }
 #endif
 
+  LIR_Opr obj = object.result();
+
   if (x->needs_null_check() &&
       (needs_patching ||
        MacroAssembler::needs_explicit_null_check(x->offset()))) {
     // Emit an explicit null check because the offset is too large.
     // If the class is not loaded and the object is NULL, we need to deoptimize to throw a
     // NoClassDefFoundError in the interpreter instead of an implicit NPE from compiled code.
-    __ null_check(object.result(), new CodeEmitInfo(info), /* deoptimize */ needs_patching);
+    __ null_check(obj, new CodeEmitInfo(info), /* deoptimize */ needs_patching);
+  }
+
+  obj = shenandoah_write_barrier(obj, info, x->needs_null_check());
+  LIR_Opr val = value.result();
+  if (is_oop && UseShenandoahGC) {
+    val = shenandoah_storeval_barrier(val, NULL, true);
   }
 
   LIR_Address* address;
@@ -1766,9 +1938,9 @@ void LIRGenerator::do_StoreField(StoreField* x) {
     // generate_address to try to be smart about emitting the -1.
     // Otherwise the patching code won't know how to find the
     // instruction to patch.
-    address = new LIR_Address(object.result(), PATCHED_ADDR, field_type);
+    address = new LIR_Address(obj, PATCHED_ADDR, field_type);
   } else {
-    address = generate_address(object.result(), x->offset(), field_type);
+    address = generate_address(obj, x->offset(), field_type);
   }
 
   if (is_volatile && os::is_MP()) {
@@ -1786,15 +1958,15 @@ void LIRGenerator::do_StoreField(StoreField* x) {
 
   bool needs_atomic_access = is_volatile || AlwaysAtomicAccesses;
   if (needs_atomic_access && !needs_patching) {
-    volatile_field_store(value.result(), address, info);
+    volatile_field_store(val, address, info);
   } else {
     LIR_PatchCode patch_code = needs_patching ? lir_patch_normal : lir_patch_none;
-    __ store(value.result(), address, info, patch_code);
+    __ store(val, address, info, patch_code);
   }
 
   if (is_oop) {
     // Store to object so mark the card of the header
-    post_barrier(object.result(), value.result());
+    post_barrier(obj, val);
   }
 
   if (!support_IRIW_for_not_multiple_copy_atomic_cpu && is_volatile && os::is_MP()) {
@@ -1832,12 +2004,12 @@ void LIRGenerator::do_LoadField(LoadField* x) {
   }
 #endif
 
+  LIR_Opr obj = object.result();
   bool stress_deopt = StressLoopInvariantCodeMotion && info && info->deoptimize_on_exception();
   if (x->needs_null_check() &&
       (needs_patching ||
        MacroAssembler::needs_explicit_null_check(x->offset()) ||
        stress_deopt)) {
-    LIR_Opr obj = object.result();
     if (stress_deopt) {
       obj = new_register(T_OBJECT);
       __ move(LIR_OprFact::oopConst(NULL), obj);
@@ -1848,6 +2020,7 @@ void LIRGenerator::do_LoadField(LoadField* x) {
     __ null_check(obj, new CodeEmitInfo(info), /* deoptimize */ needs_patching);
   }
 
+  obj = shenandoah_read_barrier(obj, info, x->needs_null_check() && x->explicit_null_check() != NULL);
   LIR_Opr reg = rlock_result(x, field_type);
   LIR_Address* address;
   if (needs_patching) {
@@ -1855,9 +2028,9 @@ void LIRGenerator::do_LoadField(LoadField* x) {
     // generate_address to try to be smart about emitting the -1.
     // Otherwise the patching code won't know how to find the
     // instruction to patch.
-    address = new LIR_Address(object.result(), PATCHED_ADDR, field_type);
+    address = new LIR_Address(obj, PATCHED_ADDR, field_type);
   } else {
-    address = generate_address(object.result(), x->offset(), field_type);
+    address = generate_address(obj, x->offset(), field_type);
   }
 
   if (support_IRIW_for_not_multiple_copy_atomic_cpu && is_volatile && os::is_MP()) {
@@ -1877,7 +2050,61 @@ void LIRGenerator::do_LoadField(LoadField* x) {
   }
 }
 
+LIR_Opr LIRGenerator::shenandoah_read_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+  if (UseShenandoahGC && ShenandoahReadBarrier) {
+    return shenandoah_read_barrier_impl(obj, info, need_null_check);
+  } else {
+    return obj;
+  }
+}
 
+LIR_Opr LIRGenerator::shenandoah_read_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+  LabelObj* done = new LabelObj();
+  LIR_Opr result = new_register(T_OBJECT);
+  __ move(obj, result);
+  if (need_null_check) {
+    __ cmp(lir_cond_equal, result, LIR_OprFact::oopConst(NULL));
+    __ branch(lir_cond_equal, T_LONG, done->label());
+  }
+  LIR_Address* brooks_ptr_address = generate_address(result, BrooksPointer::byte_offset(), T_ADDRESS);
+  __ load(brooks_ptr_address, result, info ? new CodeEmitInfo(info) : NULL, lir_patch_none);
+
+  __ branch_destination(done->label());
+  return result;
+}
+
+LIR_Opr LIRGenerator::shenandoah_write_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+  if (UseShenandoahGC && ShenandoahWriteBarrier) {
+    return shenandoah_write_barrier_impl(obj, info, need_null_check);
+  } else {
+    return obj;
+  }
+}
+
+LIR_Opr LIRGenerator::shenandoah_write_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+
+  LIR_Opr result = new_register(T_OBJECT);
+  __ shenandoah_wb(obj, result, info ? new CodeEmitInfo(info) : NULL, need_null_check);
+  return result;
+}
+
+LIR_Opr LIRGenerator::shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+  if (UseShenandoahGC) {
+    if (ShenandoahStoreValWriteBarrier) {
+      // TODO: Maybe we can simply avoid this stuff on constants?
+      if (! obj->is_register()) {
+        LIR_Opr result = new_register(T_OBJECT);
+        __ move(obj, result);
+        obj = result;
+      }
+      return shenandoah_write_barrier_impl(obj, info, need_null_check);
+    }
+    if (ShenandoahStoreValReadBarrier) {
+      return shenandoah_read_barrier_impl(obj, info, need_null_check);
+    }
+  }
+  return obj;
+}
 //------------------------java.nio.Buffer.checkIndex------------------------
 
 // int java.nio.Buffer.checkIndex(int)
@@ -1973,8 +2200,11 @@ void LIRGenerator::do_LoadIndexed(LoadIndexed* x) {
     }
   }
 
+  LIR_Opr ary = array.result();
+  ary = shenandoah_read_barrier(ary, null_check_info, null_check_info != NULL);
+
   // emit array address setup early so it schedules better
-  LIR_Address* array_addr = emit_array_address(array.result(), index.result(), x->elt_type(), false);
+  LIR_Address* array_addr = emit_array_address(ary, index.result(), x->elt_type(), false);
 
   if (GenerateRangeChecks && needs_range_check) {
     if (StressLoopInvariantCodeMotion && range_check_info->deoptimize_on_exception()) {
@@ -1985,7 +2215,7 @@ void LIRGenerator::do_LoadIndexed(LoadIndexed* x) {
       __ cmp(lir_cond_belowEqual, length.result(), index.result());
       __ branch(lir_cond_belowEqual, T_INT, new RangeCheckStub(range_check_info, index.result()));
     } else {
-      array_range_check(array.result(), index.result(), null_check_info, range_check_info);
+      array_range_check(ary, index.result(), null_check_info, range_check_info);
       // The range check performs the null check, so clear it out for the load
       null_check_info = NULL;
     }
@@ -2301,7 +2531,7 @@ void LIRGenerator::do_UnsafeGetObject(UnsafeGetObject* x) {
   //   }
   // }
 
-  if (UseG1GC && type == T_OBJECT) {
+  if ((UseShenandoahGC || UseG1GC) && type == T_OBJECT) {
     bool gen_pre_barrier = true;     // Assume we need to generate pre_barrier.
     bool gen_offset_check = true;    // Assume we need to generate the offset guard.
     bool gen_source_check = true;    // Assume we need to check the src object for null.
@@ -2854,6 +3084,7 @@ void LIRGenerator::do_Base(Base* x) {
       __ load_stack_address_monitor(0, lock);
 
       CodeEmitInfo* info = new CodeEmitInfo(scope()->start()->state()->copy(ValueStack::StateBefore, SynchronizationEntryBCI), NULL, x->check_flag(Instruction::DeoptimizeOnException));
+      obj = shenandoah_write_barrier(obj, info, false);
       CodeStub* slow_path = new MonitorEnterStub(obj, lock, info);
 
       // receiver is guaranteed non-NULL so don't need CodeEmitInfo

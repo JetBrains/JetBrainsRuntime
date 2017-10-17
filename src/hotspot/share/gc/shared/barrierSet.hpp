@@ -27,10 +27,13 @@
 
 #include "memory/memRegion.hpp"
 #include "oops/oopsHierarchy.hpp"
+#include "asm/register.hpp"
 #include "utilities/fakeRttiSupport.hpp"
 
 // This class provides the interface between a barrier implementation and
 // the rest of the system.
+
+class MacroAssembler;
 
 class BarrierSet: public CHeapObj<mtGC> {
   friend class VMStructs;
@@ -52,7 +55,8 @@ public:
     CardTableForRS,             // CardTableModRefBSForCTRS
     CardTableExtension,         // CardTableExtension
     G1SATBCT,                   // G1SATBCardTableModRefBS
-    G1SATBCTLogging             // G1SATBCardTableLoggingModRefBS
+    G1SATBCTLogging,            // G1SATBCardTableLoggingModRefBS
+    ShenandoahBarrierSet        // ShenandoahBarrierSet
   };
 
 protected:
@@ -180,7 +184,7 @@ public:
                                    bool dest_uninitialized = false) {}
   // Below count is the # array elements being written, starting
   // at the address "start", which may not necessarily be HeapWord-aligned
-  inline void write_ref_array(HeapWord* start, size_t count);
+  virtual void write_ref_array(HeapWord* start, size_t count);
 
   // Static versions, suitable for calling from generated code;
   // count is # array elements being written, starting with "start",
@@ -216,6 +220,50 @@ public:
 
   // Print a description of the memory for the barrier set
   virtual void print_on(outputStream* st) const = 0;
+
+  virtual oop read_barrier(oop src) {
+    return src;
+  }
+  virtual oop write_barrier(oop src) {
+    return src;
+  }
+  virtual oop storeval_barrier(oop src) {
+    return src;
+  }
+
+  virtual void keep_alive_barrier(oop obj) {
+    // Default impl does nothing.
+  }
+
+  virtual bool obj_equals(oop obj1, oop obj2);
+
+  virtual bool obj_equals(narrowOop obj1, narrowOop obj2);
+
+#ifdef ASSERT
+  virtual bool is_safe(oop o);
+  virtual bool is_safe(narrowOop o);
+  virtual void verify_safe_oop(oop p);
+#endif
+
+#ifndef CC_INTERP
+  virtual void interpreter_read_barrier(MacroAssembler* masm, Register dst) {
+    // Default implementation does nothing.
+  }
+
+  virtual void interpreter_read_barrier_not_null(MacroAssembler* masm, Register dst) {
+    // Default implementation does nothing.
+  }
+
+  virtual void interpreter_write_barrier(MacroAssembler* masm, Register dst) {
+    // Default implementation does nothing.
+  }
+  virtual void interpreter_storeval_barrier(MacroAssembler* masm, Register dst) {
+    // Default implementation does nothing.
+  }
+  virtual void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2) {
+    // Default implementation does nothing.
+  }
+#endif
 };
 
 template<typename T>

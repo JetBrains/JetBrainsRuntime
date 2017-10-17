@@ -84,6 +84,7 @@ address JNI_FastGetField::generate_fast_get_int_field0(BasicType type) {
   __ clear_jweak_tag(robj);
 
   __ movptr(robj, Address(robj, 0));             // *obj
+  oopDesc::bs()->interpreter_read_barrier(masm, robj);
   __ mov   (roffset, c_rarg2);
   __ shrptr(roffset, 2);                         // offset
 
@@ -186,6 +187,7 @@ address JNI_FastGetField::generate_fast_get_float_field0(BasicType type) {
   __ clear_jweak_tag(robj);
 
   __ movptr(robj, Address(robj, 0));             // *obj
+  oopDesc::bs()->interpreter_read_barrier(masm, robj);
   __ mov   (roffset, c_rarg2);
   __ shrptr(roffset, 2);                         // offset
 

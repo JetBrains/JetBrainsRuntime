@@ -32,6 +32,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/replacednodes.hpp"
 #include "opto/type.hpp"
+#include "runtime/sharedRuntime.hpp"
 
 // Portions of code courtesy of Clifford Click
 
@@ -795,6 +796,11 @@ public:
   }
   virtual int   Opcode() const;
   virtual bool        guaranteed_safepoint()  { return false; }
+  virtual bool is_g1_wb_pre_call() const { return entry_point() == CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre); }
+  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+
+  static bool has_only_g1_wb_pre_uses(Node* n);
+
 #ifndef PRODUCT
   virtual void  dump_spec(outputStream *st) const;
 #endif

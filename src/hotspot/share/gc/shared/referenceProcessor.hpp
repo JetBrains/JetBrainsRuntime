@@ -155,20 +155,20 @@ public:
   )
 
   inline void move_to_next() {
-    if (_ref == _next) {
+    if (oopDesc::safe_equals(_ref, _next)) {
       // End of the list.
       _ref = NULL;
     } else {
       _ref = _next;
     }
-    assert(_ref != _first_seen, "cyclic ref_list found");
+    assert(! oopDesc::safe_equals(_ref, _first_seen), "cyclic ref_list found");
     NOT_PRODUCT(_processed++);
   }
 };
 
 class ReferenceProcessor : public CHeapObj<mtGC> {
 
- private:
+ public:
   size_t total_count(DiscoveredList lists[]) const;
 
  protected:
@@ -527,6 +527,33 @@ class ReferenceProcessorIsAliveMutator: StackObj {
 };
 
 // A utility class to temporarily change the disposition
+// of the "is_alive_non_header" closure field of the
+// given ReferenceProcessor in the scope that contains it.
+class ReferenceProcessorMaybeNullIsAliveMutator {
+ private:
+  ReferenceProcessor* _rp;
+  BoolObjectClosure*  _saved_cl;
+
+ public:
+  ReferenceProcessorMaybeNullIsAliveMutator(ReferenceProcessor* rp,
+                                   BoolObjectClosure*  cl):
+    _rp(rp) {
+    if (_rp != NULL) {
+      _saved_cl = _rp->is_alive_non_header();
+      _rp->set_is_alive_non_header(cl);
+    } else {
+      _saved_cl = NULL;
+    }
+  }
+
+  ~ReferenceProcessorMaybeNullIsAliveMutator() {
+    if (_rp != NULL) {
+      _rp->set_is_alive_non_header(_saved_cl);
+    }
+  }
+};
+
+// A utility class to temporarily change the disposition
 // of the "discovery_is_atomic" field of the
 // given ReferenceProcessor in the scope that contains it.
 class ReferenceProcessorAtomicMutator: StackObj {
@@ -608,6 +635,10 @@ public:
   // Returns true if a task marks some oops as alive.
   bool marks_oops_alive() const
   { return _marks_oops_alive; }
+
+  bool is_empty() const {
+    return _ref_processor.total_count(_refs_lists) == 0;
+  }
 
 protected:
   ReferenceProcessor&           _ref_processor;

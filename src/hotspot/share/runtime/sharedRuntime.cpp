@@ -219,6 +219,12 @@ JRT_LEAF(void, SharedRuntime::g1_wb_post(void* card_addr, JavaThread* thread))
   thread->dirty_card_queue().enqueue(card_addr);
 JRT_END
 
+// Shenandoah clone barrier: makes sure that references point to to-space
+// in cloned objects.
+JRT_LEAF(void, SharedRuntime::shenandoah_clone_barrier(oopDesc* obj))
+  oopDesc::bs()->write_region(MemRegion((HeapWord*) obj, obj->size()));
+JRT_END
+
 #endif // INCLUDE_ALL_GCS
 
 

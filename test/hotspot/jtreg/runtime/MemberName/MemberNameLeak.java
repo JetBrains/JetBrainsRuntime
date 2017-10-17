@@ -57,6 +57,7 @@ public class MemberNameLeak {
        // Run this Leak class with logging
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                       "-Xlog:membername+table=trace",
+                                      "-XX:-ExplicitGCInvokesConcurrent",
                                       gc, Leak.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldContain("ResolvedMethod entry added for MemberNameLeak$Leak.callMe()V");
@@ -70,5 +71,6 @@ public class MemberNameLeak {
         test("-XX:+UseParallelGC");
         test("-XX:+UseSerialGC");
         test("-XX:+UseConcMarkSweepGC");
+        test("-XX:+UseShenandoahGC");
     }
 }

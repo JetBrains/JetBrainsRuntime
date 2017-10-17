@@ -51,7 +51,6 @@
 #include "services/serviceUtil.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
 #include "gc/parallel/parallelScavengeHeap.hpp"
 #endif // INCLUDE_ALL_GCS
 
@@ -1536,12 +1535,10 @@ class TagObjectCollector : public JvmtiTagHashmapEntryClosure {
         oop o = entry->object();
         assert(o != NULL && Universe::heap()->is_in_reserved(o), "sanity check");
 #if INCLUDE_ALL_GCS
-        if (UseG1GC) {
-          // The reference in this tag map could be the only (implicitly weak)
-          // reference to that object. If we hand it out, we need to keep it live wrt
-          // SATB marking similar to other j.l.ref.Reference referents.
-          G1SATBCardTableModRefBS::enqueue(o);
-        }
+        // The reference in this tag map could be the only (implicitly weak)
+        // reference to that object. If we hand it out, we need to keep it live wrt
+        // SATB marking similar to other j.l.ref.Reference referents.
+        oopDesc::bs()->keep_alive_barrier(o);
 #endif
         jobject ref = JNIHandles::make_local(JavaThread::current(), o);
         _object_results->append(ref);
@@ -2580,7 +2577,7 @@ class SimpleRootsClosure : public OopClosure {
 
     // ignore null or deleted handles
     oop o = *obj_p;
-    if (o == NULL || o == JNIHandles::deleted_handle()) {
+    if (o == NULL || oopDesc::equals(o, JNIHandles::deleted_handle())) {
       return;
     }
 
@@ -2639,7 +2636,7 @@ class JNILocalRootsClosure : public OopClosure {
 
     // ignore null or deleted handles
     oop o = *obj_p;
-    if (o == NULL || o == JNIHandles::deleted_handle()) {
+    if (o == NULL || oopDesc::equals(o, JNIHandles::deleted_handle())) {
       return;
     }
 

@@ -34,6 +34,7 @@
 address StubRoutines::x86::_get_previous_fp_entry = NULL;
 address StubRoutines::x86::_get_previous_sp_entry = NULL;
 
+address StubRoutines::x86::_shenandoah_wb = NULL;
 address StubRoutines::x86::_f2i_fixup = NULL;
 address StubRoutines::x86::_f2l_fixup = NULL;
 address StubRoutines::x86::_d2i_fixup = NULL;

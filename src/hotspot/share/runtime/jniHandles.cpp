@@ -32,9 +32,6 @@
 #include "runtime/mutexLocker.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/align.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif
 
 JNIHandleBlock* JNIHandles::_global_handles       = NULL;
 JNIHandleBlock* JNIHandles::_weak_global_handles  = NULL;
@@ -117,10 +114,10 @@ oop JNIHandles::resolve_jweak(jweak handle) {
   oop result = jweak_ref(handle);
   result = guard_value<external_guard>(result);
 #if INCLUDE_ALL_GCS
-  if (result != NULL && UseG1GC) {
-    G1SATBCardTableModRefBS::enqueue(result);
+  if (! oopDesc::is_null(result)) {
+    oopDesc::bs()->keep_alive_barrier(result);
   }
-#endif // INCLUDE_ALL_GCS
+#endif
   return result;
 }
 
@@ -222,7 +219,7 @@ private:
 public:
   CountHandleClosure(): _count(0) {}
   virtual void do_oop(oop* ooph) {
-    if (*ooph != JNIHandles::deleted_handle()) {
+    if (! oopDesc::equals(*ooph, JNIHandles::deleted_handle())) {
       _count++;
     }
   }
@@ -516,7 +513,7 @@ void JNIHandleBlock::rebuild_free_list() {
   for (JNIHandleBlock* current = this; current != NULL; current = current->_next) {
     for (int index = 0; index < current->_top; index++) {
       oop* handle = &(current->_handles)[index];
-      if (*handle ==  JNIHandles::deleted_handle()) {
+      if (oopDesc::equals(*handle, JNIHandles::deleted_handle())) {
         // this handle was cleared out by a delete call, reuse it
         *handle = (oop) _free_list;
         _free_list = handle;

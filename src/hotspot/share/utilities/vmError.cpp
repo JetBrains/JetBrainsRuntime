@@ -305,6 +305,7 @@ static void print_oom_reasons(outputStream* st) {
 }
 
 static const char* gc_mode() {
+  if (UseShenandoahGC)    return "Shenandoah gc";
   if (UseG1GC)            return "g1 gc";
   if (UseParallelGC)      return "parallel gc";
   if (UseConcMarkSweepGC) return "concurrent mark sweep gc";

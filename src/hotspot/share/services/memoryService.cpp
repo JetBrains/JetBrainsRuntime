@@ -47,6 +47,7 @@
 #include "utilities/growableArray.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/cms/concurrentMarkSweepGeneration.hpp"
 #include "gc/cms/parNewGeneration.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
@@ -55,6 +56,7 @@
 #include "gc/parallel/psYoungGen.hpp"
 #include "services/g1MemoryPool.hpp"
 #include "services/psMemoryPool.hpp"
+#include "services/shenandoahMemoryPool.hpp"
 #endif // INCLUDE_ALL_GCS
 
 GrowableArray<MemoryPool*>* MemoryService::_pools_list =
@@ -99,6 +101,10 @@ void MemoryService::set_universe_heap(CollectedHeap* heap) {
       add_g1_heap_info(G1CollectedHeap::heap());
       break;
     }
+  case CollectedHeap::ShenandoahHeap : {
+    add_shenandoah_heap_info(ShenandoahHeap::heap());
+    break;
+  }
 #endif // INCLUDE_ALL_GCS
     default: {
       guarantee(false, "Unrecognized kind of heap");
@@ -188,6 +194,27 @@ void MemoryService::add_g1_heap_info(G1CollectedHeap* g1h) {
   add_g1YoungGen_memory_pool(g1h, _major_gc_manager, _minor_gc_manager);
   add_g1OldGen_memory_pool(g1h, _major_gc_manager);
 }
+
+void MemoryService::add_shenandoah_heap_info(ShenandoahHeap* heap) {
+  assert(UseShenandoahGC, "sanity");
+
+  // Need to have different names for these managers, because having the same name
+  // would confuse notification mechanics: it will enable notifications only for
+  // the first manager with the matching name.
+  _major_gc_manager = MemoryManager::get_shenandoah_major_memory_manager();
+  _minor_gc_manager = MemoryManager::get_shenandoah_minor_memory_manager();
+  _managers_list->append(_major_gc_manager);
+  _managers_list->append(_minor_gc_manager);
+
+  ShenandoahMemoryPool* pool = new ShenandoahMemoryPool(heap);
+  _major_gc_manager->add_pool(pool);
+  _pools_list->append(pool);
+
+  ShenandoahDummyMemoryPool* dummy = new ShenandoahDummyMemoryPool();
+  _minor_gc_manager->add_pool(dummy);
+  _pools_list->append(dummy);
+}
+
 #endif // INCLUDE_ALL_GCS
 
 MemoryPool* MemoryService::add_gen(Generation* gen,
@@ -386,6 +413,8 @@ void MemoryService::add_g1OldGen_memory_pool(G1CollectedHeap* g1h,
   mgr->add_pool(old_gen);
   _pools_list->append(old_gen);
 }
+
+
 #endif // INCLUDE_ALL_GCS
 
 void MemoryService::add_code_heap_memory_pool(CodeHeap* heap, const char* name) {

@@ -30,20 +30,26 @@
 #include "runtime/globals.hpp"
 
 inline oop objArrayOopDesc::obj_at(int index) const {
+  objArrayOop p = (objArrayOop) oopDesc::bs()->read_barrier((oop) this);
   // With UseCompressedOops decode the narrow oop in the objArray to an
   // uncompressed oop.  Otherwise this is simply a "*" operator.
   if (UseCompressedOops) {
-    return load_decode_heap_oop(obj_at_addr<narrowOop>(index));
+    return load_decode_heap_oop(p->obj_at_addr<narrowOop>(index));
   } else {
-    return load_decode_heap_oop(obj_at_addr<oop>(index));
+    return load_decode_heap_oop(p->obj_at_addr<oop>(index));
   }
 }
 
 void objArrayOopDesc::obj_at_put(int index, oop value) {
+  objArrayOop p = (objArrayOop) oopDesc::bs()->write_barrier(this);
+#ifdef ASSERT
+  oopDesc::bs()->verify_safe_oop((oop) p);
+#endif
+  value = oopDesc::bs()->storeval_barrier(value);
   if (UseCompressedOops) {
-    oop_store(obj_at_addr<narrowOop>(index), value);
+    oop_store(p->obj_at_addr<narrowOop>(index), value);
   } else {
-    oop_store(obj_at_addr<oop>(index), value);
+    oop_store(p->obj_at_addr<oop>(index), value);
   }
 }
 

@@ -292,4 +292,21 @@ inline void G1CollectedHeap::set_humongous_is_live(oop obj) {
   }
 }
 
+inline bool G1CollectedHeap::requires_marking(const void* entry) const {
+  // Includes rejection of NULL pointers.
+  assert(is_in_reserved(entry),
+         "Non-heap pointer in SATB buffer: " PTR_FORMAT, p2i(entry));
+
+  HeapRegion* region = heap_region_containing(entry);
+  assert(region != NULL, "No region for " PTR_FORMAT, p2i(entry));
+  if (entry >= region->next_top_at_mark_start()) {
+    return false;
+  }
+
+  assert(oopDesc::is_oop(oop(entry), true /* ignore mark word */),
+         "Invalid oop in SATB buffer: " PTR_FORMAT, p2i(entry));
+
+  return ! isMarkedNext((oop) entry);
+}
+
 #endif // SHARE_VM_GC_G1_G1COLLECTEDHEAP_INLINE_HPP

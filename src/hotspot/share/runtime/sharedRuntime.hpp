@@ -186,6 +186,7 @@ class SharedRuntime: AllStatic {
   // G1 write barriers
   static void g1_wb_pre(oopDesc* orig, JavaThread *thread);
   static void g1_wb_post(void* card_addr, JavaThread* thread);
+  static void shenandoah_clone_barrier(oopDesc* obj);
 #endif // INCLUDE_ALL_GCS
 
   // exception handling and implicit exceptions

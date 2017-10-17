@@ -38,6 +38,7 @@
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
 
@@ -820,6 +821,7 @@ CallGenerator* CallGenerator::for_method_handle_inline(JVMState* jvms, ciMethod*
     {
       // Get MethodHandle receiver:
       Node* receiver = kit.argument(0);
+      assert(!(ShenandoahBarrierNode::skip_through_barrier(receiver)->is_Con() && !receiver->is_Con()), "barrier prevents optimization");
       if (receiver->Opcode() == Op_ConP) {
         input_not_const = false;
         const TypeOopPtr* oop_ptr = receiver->bottom_type()->is_oopptr();
@@ -852,6 +854,7 @@ CallGenerator* CallGenerator::for_method_handle_inline(JVMState* jvms, ciMethod*
     {
       // Get MemberName argument:
       Node* member_name = kit.argument(callee->arg_size() - 1);
+      assert(!(ShenandoahBarrierNode::skip_through_barrier(member_name)->is_Con() && !member_name->is_Con()), "barrier prevents optimization");
       if (member_name->Opcode() == Op_ConP) {
         input_not_const = false;
         const TypeOopPtr* oop_ptr = member_name->bottom_type()->is_oopptr();

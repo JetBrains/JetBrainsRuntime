@@ -74,6 +74,7 @@ BUILD_HOTSPOT_JTREG_NATIVE_SRC += \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/ModuleAwareAgents/ClassLoadPrepare \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/ModuleAwareAgents/ThreadStart \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/StartPhase/AllowedFunctions \
+    $(TOPDIR)/test/hotspot/jtreg/gc/shenandoah \
     #
 
 # Add conditional directories here when needed.

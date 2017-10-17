@@ -301,15 +301,22 @@ void LIRGenerator::do_StoreIndexed(StoreIndexed* x) {
     null_check_info = new CodeEmitInfo(range_check_info);
   }
 
+  LIR_Opr ary = array.result();
+  ary = shenandoah_write_barrier(ary, null_check_info, x->needs_null_check());
+  LIR_Opr val = value.result();
+  if (obj_store && UseShenandoahGC) {
+    val = shenandoah_storeval_barrier(val, NULL, true);
+  }
+
   // emit array address setup early so it schedules better
-  LIR_Address* array_addr = emit_array_address(array.result(), index.result(), x->elt_type(), obj_store);
+  LIR_Address* array_addr = emit_array_address(ary, index.result(), x->elt_type(), obj_store);
 
   if (GenerateRangeChecks && needs_range_check) {
     if (use_length) {
       __ cmp(lir_cond_belowEqual, length.result(), index.result());
       __ branch(lir_cond_belowEqual, T_INT, new RangeCheckStub(range_check_info, index.result()));
     } else {
-      array_range_check(array.result(), index.result(), null_check_info, range_check_info);
+      array_range_check(ary, index.result(), null_check_info, range_check_info);
       // range_check also does the null check
       null_check_info = NULL;
     }
@@ -321,18 +328,18 @@ void LIRGenerator::do_StoreIndexed(StoreIndexed* x) {
     LIR_Opr tmp3 = new_register(objectType);
 
     CodeEmitInfo* store_check_info = new CodeEmitInfo(range_check_info);
-    __ store_check(value.result(), array.result(), tmp1, tmp2, tmp3, store_check_info, x->profiled_method(), x->profiled_bci());
+    __ store_check(val, ary, tmp1, tmp2, tmp3, store_check_info, x->profiled_method(), x->profiled_bci());
   }
 
   if (obj_store) {
     // Needs GC write barriers.
     pre_barrier(LIR_OprFact::address(array_addr), LIR_OprFact::illegalOpr /* pre_val */,
                 true /* do_load */, false /* patch */, NULL);
-    __ move(value.result(), array_addr, null_check_info);
+    __ move(val, array_addr, null_check_info);
     // Seems to be a precise
-    post_barrier(LIR_OprFact::address(array_addr), value.result());
+    post_barrier(LIR_OprFact::address(array_addr), val);
   } else {
-    LIR_Opr result = maybe_mask_boolean(x, array.result(), value.result(), null_check_info);
+    LIR_Opr result = maybe_mask_boolean(x, ary, val, null_check_info);
     __ move(result, array_addr, null_check_info);
   }
 }
@@ -360,7 +367,9 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   // this CodeEmitInfo must not have the xhandlers because here the
   // object is already locked (xhandlers expect object to be unlocked)
   CodeEmitInfo* info = state_for(x, x->state(), true);
-  monitor_enter(obj.result(), lock, syncTempOpr(), scratch,
+  LIR_Opr obj_opr = obj.result();
+  obj_opr = shenandoah_write_barrier(obj_opr, state_for(x), x->needs_null_check());
+  monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
                         x->monitor_no(), info_for_exception, info);
 }
 
@@ -739,27 +748,31 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
 
   LIR_Opr addr = new_pointer_register();
   LIR_Address* a;
+
+  LIR_Opr obj_op = obj.result();
+  obj_op = shenandoah_write_barrier(obj_op, NULL, true);
+
   if(offset.result()->is_constant()) {
 #ifdef _LP64
     jlong c = offset.result()->as_jlong();
     if ((jlong)((jint)c) == c) {
-      a = new LIR_Address(obj.result(),
+      a = new LIR_Address(obj_op,
                           (jint)c,
                           as_BasicType(type));
     } else {
       LIR_Opr tmp = new_register(T_LONG);
       __ move(offset.result(), tmp);
-      a = new LIR_Address(obj.result(),
+      a = new LIR_Address(obj_op,
                           tmp,
                           as_BasicType(type));
     }
 #else
-    a = new LIR_Address(obj.result(),
+    a = new LIR_Address(obj_op,
                         offset.result()->as_jint(),
                         as_BasicType(type));
 #endif
   } else {
-    a = new LIR_Address(obj.result(),
+    a = new LIR_Address(obj_op,
                         offset.result(),
                         0,
                         as_BasicType(type));
@@ -786,12 +799,17 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
   }
 
   LIR_Opr ill = LIR_OprFact::illegalOpr;  // for convenience
-  if (type == objectType)
-    __ cas_obj(addr, cmp.result(), val.result(), ill, ill);
+
+  LIR_Opr val_op = val.result();
+
+  if (type == objectType) {
+    val_op = shenandoah_storeval_barrier(val_op, NULL, true);
+    __ cas_obj(addr, cmp.result(), val_op, new_register(T_OBJECT), new_register(T_OBJECT));
+  }
   else if (type == intType)
-    __ cas_int(addr, cmp.result(), val.result(), ill, ill);
+    __ cas_int(addr, cmp.result(), val_op, ill, ill);
   else if (type == longType)
-    __ cas_long(addr, cmp.result(), val.result(), ill, ill);
+    __ cas_long(addr, cmp.result(), val_op, ill, ill);
   else {
     ShouldNotReachHere();
   }
@@ -802,7 +820,7 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
            result, as_BasicType(type));
   if (type == objectType) {   // Write-barrier needed for Object fields.
     // Seems to be precise
-    post_barrier(addr, val.result());
+    post_barrier(addr, val_op);
   }
 }
 
@@ -1017,14 +1035,21 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIRItem dst_pos(x->argument_at(3), this);
   LIRItem length(x->argument_at(4), this);
 
+  dst.load_item();
+  LIR_Opr dst_op = dst.result();
+  dst_op = shenandoah_write_barrier(dst_op, info, x->arg_needs_null_check(2));
+  src.load_item();
+  LIR_Opr src_op = src.result();
+  src_op = shenandoah_read_barrier(src_op, info, x->arg_needs_null_check(0));
+
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
   // call)
 
 #ifndef _LP64
-  src.load_item_force     (FrameMap::rcx_oop_opr);
+  src_op = force_opr_to(src_op, FrameMap::rcx_oop_opr);
   src_pos.load_item_force (FrameMap::rdx_opr);
-  dst.load_item_force     (FrameMap::rax_oop_opr);
+  dst_op = force_opr_to(dst_op, FrameMap::rax_oop_opr);
   dst_pos.load_item_force (FrameMap::rbx_opr);
   length.load_item_force  (FrameMap::rdi_opr);
   LIR_Opr tmp =           (FrameMap::rsi_opr);
@@ -1038,9 +1063,9 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   // of the C convention we can process the java args trivially into C
   // args without worry of overwriting during the xfer
 
-  src.load_item_force     (FrameMap::as_oop_opr(j_rarg0));
+  src_op = force_opr_to(src_op, FrameMap::as_oop_opr(j_rarg0));
   src_pos.load_item_force (FrameMap::as_opr(j_rarg1));
-  dst.load_item_force     (FrameMap::as_oop_opr(j_rarg2));
+  dst_op = force_opr_to(dst_op, FrameMap::as_oop_opr(j_rarg2));
   dst_pos.load_item_force (FrameMap::as_opr(j_rarg3));
   length.load_item_force  (FrameMap::as_opr(j_rarg4));
 
@@ -1053,7 +1078,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   ciArrayKlass* expected_type;
   arraycopy_helper(x, &flags, &expected_type);
 
-  __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
+  __ arraycopy(src_op, src_pos.result(), dst_op, dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
 }
 
 void LIRGenerator::do_update_CRC32(Intrinsic* x) {
@@ -1103,6 +1128,10 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         index = tmp;
       }
 #endif
+
+      if (is_updateBytes) {
+        base_op = shenandoah_read_barrier(base_op, NULL, false);
+      }
 
       LIR_Address* a = new LIR_Address(base_op,
                                        index,
@@ -1162,6 +1191,7 @@ void LIRGenerator::do_vectorizedMismatch(Intrinsic* x) {
     result_aOffset = LIR_OprFact::illegalOpr;
   }
   LIR_Opr result_a = a.result();
+  result_a = shenandoah_read_barrier(result_a, NULL, true);
 
   long constant_bOffset = 0;
   LIR_Opr result_bOffset = bOffset.result();
@@ -1170,6 +1200,7 @@ void LIRGenerator::do_vectorizedMismatch(Intrinsic* x) {
     result_bOffset = LIR_OprFact::illegalOpr;
   }
   LIR_Opr result_b = b.result();
+  result_b = shenandoah_read_barrier(result_b, NULL, true);
 
 #ifndef _LP64
   result_a = new_register(T_INT);
@@ -1598,6 +1629,7 @@ void LIRGenerator::volatile_field_load(LIR_Address* address, LIR_Opr result,
 
 void LIRGenerator::get_Object_unsafe(LIR_Opr dst, LIR_Opr src, LIR_Opr offset,
                                      BasicType type, bool is_volatile) {
+  src = shenandoah_read_barrier(src, NULL, true);
   if (is_volatile && type == T_LONG) {
     LIR_Address* addr = new LIR_Address(src, offset, T_DOUBLE);
     LIR_Opr tmp = new_register(T_DOUBLE);
@@ -1615,6 +1647,7 @@ void LIRGenerator::get_Object_unsafe(LIR_Opr dst, LIR_Opr src, LIR_Opr offset,
 
 void LIRGenerator::put_Object_unsafe(LIR_Opr src, LIR_Opr offset, LIR_Opr data,
                                      BasicType type, bool is_volatile) {
+  src = shenandoah_write_barrier(src, NULL, true);
   if (is_volatile && type == T_LONG) {
     LIR_Address* addr = new LIR_Address(src, offset, T_DOUBLE);
     LIR_Opr tmp = new_register(T_DOUBLE);
@@ -1630,6 +1663,7 @@ void LIRGenerator::put_Object_unsafe(LIR_Opr src, LIR_Opr offset, LIR_Opr data,
       // Do the pre-write barrier, if any.
       pre_barrier(LIR_OprFact::address(addr), LIR_OprFact::illegalOpr /* pre_val */,
                   true /* do_load */, false /* patch */, NULL);
+      data = shenandoah_storeval_barrier(data, NULL, true);
       __ move(data, addr);
       assert(src->is_register(), "must be register");
       // Seems to be a precise address
@@ -1656,22 +1690,29 @@ void LIRGenerator::do_UnsafeGetAndSetObject(UnsafeGetAndSetObject* x) {
   LIR_Opr offset = off.result();
 
   assert (type == T_INT || (!x->is_add() && is_obj) LP64_ONLY( || type == T_LONG ), "unexpected type");
+
+  LIR_Opr src_op = src.result();
+  src_op = shenandoah_write_barrier(src_op, NULL, true);
+  if (is_obj) {
+    data = shenandoah_storeval_barrier(data, NULL, true);
+  }
+
   LIR_Address* addr;
   if (offset->is_constant()) {
 #ifdef _LP64
     jlong c = offset->as_jlong();
     if ((jlong)((jint)c) == c) {
-      addr = new LIR_Address(src.result(), (jint)c, type);
+      addr = new LIR_Address(src_op, (jint)c, type);
     } else {
       LIR_Opr tmp = new_register(T_LONG);
       __ move(offset, tmp);
-      addr = new LIR_Address(src.result(), tmp, type);
+      addr = new LIR_Address(src_op, tmp, type);
     }
 #else
-    addr = new LIR_Address(src.result(), offset->as_jint(), type);
+    addr = new LIR_Address(src_op, offset->as_jint(), type);
 #endif
   } else {
-    addr = new LIR_Address(src.result(), offset, type);
+    addr = new LIR_Address(src_op, offset, type);
   }
 
   // Because we want a 2-arg form of xchg and xadd

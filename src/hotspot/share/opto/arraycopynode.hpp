@@ -96,12 +96,12 @@ private:
   void array_copy_test_overlap(PhaseGVN *phase, bool can_reshape,
                                bool disjoint_bases, int count,
                                Node*& forward_ctl, Node*& backward_ctl);
-  Node* array_copy_forward(PhaseGVN *phase, bool can_reshape, Node* ctl,
+  Node* array_copy_forward(PhaseGVN *phase, bool can_reshape, Node*& ctl,
                            Node* start_mem_src, Node* start_mem_dest,
                            const TypePtr* atp_src, const TypePtr* atp_dest,
                            Node* adr_src, Node* base_src, Node* adr_dest, Node* base_dest,
                            BasicType copy_type, const Type* value_type, int count);
-  Node* array_copy_backward(PhaseGVN *phase, bool can_reshape, Node* ctl,
+  Node* array_copy_backward(PhaseGVN *phase, bool can_reshape, Node*& ctl,
                             Node *start_mem_src, Node* start_mem_dest,
                             const TypePtr* atp_src, const TypePtr* atp_dest,
                             Node* adr_src, Node* base_src, Node* adr_dest, Node* base_dest,
@@ -109,6 +109,8 @@ private:
   bool finish_transform(PhaseGVN *phase, bool can_reshape,
                         Node* ctl, Node *mem);
   static bool may_modify_helper(const TypeOopPtr *t_oop, Node* n, PhaseTransform *phase, CallNode*& call);
+
+  static Node* shenandoah_add_storeval_barrier(PhaseGVN *phase, bool can_reshape, Node* v, Node*& ctl);
 
 public:
 

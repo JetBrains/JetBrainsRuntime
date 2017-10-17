@@ -32,6 +32,7 @@
 #include "oops/instanceKlass.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "runtime/mutexLocker.hpp"
+#include "runtime/safepoint.hpp"
 
 // The CodeCache implements the code cache for various pieces of generated
 // code, e.g., compiled java methods, runtime stubs, transition frames, etc.
@@ -73,6 +74,29 @@
 
 class OopClosure;
 class KlassDepChange;
+class CodeCache;
+
+class ParallelCodeHeapIterator VALUE_OBJ_CLASS_SPEC {
+  friend class CodeCache;
+private:
+  CodeHeap*     _heap;
+  volatile int  _claimed_idx;
+  volatile bool _finished;
+public:
+  ParallelCodeHeapIterator(CodeHeap* heap);
+  void parallel_blobs_do(CodeBlobClosure* f);
+};
+
+class ParallelCodeCacheIterator VALUE_OBJ_CLASS_SPEC {
+  friend class CodeCache;
+private:
+  ParallelCodeHeapIterator* _iters;
+  int                       _length;
+public:
+  ParallelCodeCacheIterator(GrowableArray<CodeHeap*>* heaps);
+  ~ParallelCodeCacheIterator();
+  void parallel_blobs_do(CodeBlobClosure* f);
+};
 
 class CodeCache : AllStatic {
   friend class VMStructs;
@@ -80,6 +104,7 @@ class CodeCache : AllStatic {
   template <class T, class Filter> friend class CodeBlobIterator;
   friend class WhiteBox;
   friend class CodeCacheLoader;
+  friend class ParallelCodeHeapIterator;
  private:
   // CodeHeaps of the cache
   static GrowableArray<CodeHeap*>* _heaps;
@@ -167,6 +192,13 @@ class CodeCache : AllStatic {
   static void gc_epilogue();
   static void gc_prologue();
   static void verify_oops();
+
+  // Parallel GC support
+  static ParallelCodeCacheIterator parallel_iterator() {
+    assert(SafepointSynchronize::is_at_safepoint(), "Must be at safepoint");
+    return ParallelCodeCacheIterator(_heaps);
+  }
+
   // If "unloading_occurred" is true, then unloads (i.e., breaks root links
   // to) any unmarked codeBlobs in the cache.  Sets "marked_for_unloading"
   // to "true" iff some code got unloaded.

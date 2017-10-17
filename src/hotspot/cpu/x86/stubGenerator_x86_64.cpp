@@ -25,6 +25,11 @@
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
 #include "asm/macroAssembler.inline.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "interpreter/interpreter.hpp"
 #include "nativeInst_x86.hpp"
 #include "oops/instanceOop.hpp"
@@ -795,6 +800,199 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
+  address generate_shenandoah_wb(bool c_abi, bool do_cset_test) {
+    StubCodeMark mark(this, "StubRoutines", "shenandoah_wb");
+    address start = __ pc();
+
+    Label not_done, done, slow_case, not_an_instance, is_array;
+
+    // We use RDI, which also serves as argument register for slow call.
+    // RAX always holds the src object ptr, except after the slow call and
+    // the cmpxchg, then it holds the result.
+    // R8 and RCX are used as temporary registers.
+    if (!c_abi) {
+      __ push(rdi);
+      __ push(r8);
+    }
+
+    // Check for object beeing in the collection set.
+    // TODO: Can we use only 1 register here?
+    // The source object arrives here in rax.
+    // live: rax
+    // live: rdi
+    if (!c_abi) {
+      __ mov(rdi, rax);
+    } else {
+      if (rax != c_rarg0) {
+        __ mov(rax, c_rarg0);
+      }
+    }
+    if (do_cset_test) {
+      __ shrptr(rdi, ShenandoahHeapRegion::region_size_bytes_shift_jint());
+      // live: r8
+      __ movptr(r8, (intptr_t) ShenandoahHeap::in_cset_fast_test_addr());
+      __ movbool(r8, Address(r8, rdi, Address::times_1));
+      // unlive: rdi
+      __ testbool(r8);
+      // unlive: r8
+      __ jccb(Assembler::notZero, not_done);
+
+      if (!c_abi) {
+        __ pop(r8);
+        __ pop(rdi);
+      }
+      __ ret(0);
+
+      __ bind(not_done);
+    }
+
+    if (!c_abi) {
+      __ push(rcx);
+    }
+
+    if (UseTLAB && ShenandoahAsmWB) {
+
+      Register new_obj = r8;
+      __ movptr(new_obj, Address(r15_thread, JavaThread::gclab_top_offset()));
+      __ testptr(new_obj, new_obj);
+      __ jcc(Assembler::zero, slow_case); // No TLAB.
+
+      __ load_klass(rcx, rax);
+
+      if (ShenandoahStringDedup::is_enabled()) {
+        assert(SystemDictionary::String_klass() != NULL, "Must be initialized");
+        __ movptr(rdi, (intptr_t)SystemDictionary::String_klass());
+        __ cmpptr(rcx, rdi);
+        __ jcc(Assembler::equal, slow_case);
+      }
+
+      // Figure out object size.
+      __ movl(rcx, Address(rcx, Klass::layout_helper_offset()));
+      __ testl(rcx, Klass::_lh_instance_slow_path_bit);
+      // test to see if it has a finalizer or is malformed in some way
+      __ jcc(Assembler::notZero, slow_case);
+      __ cmpl(rcx, Klass::_lh_neutral_value); // Make sure it's an instance (LH > 0)
+      __ jcc(Assembler::lessEqual, not_an_instance); // Thrashes rcx, returns size in rcx. Uses rax.
+      __ bind(is_array);
+
+      // Size in rdi, new_obj in r8, src obj in rax
+
+      Register new_obj_end = rdi;
+      int oop_extra_words = Universe::heap()->oop_extra_words();
+      __ addq(rcx, oop_extra_words * HeapWordSize);
+      __ lea(new_obj_end, Address(new_obj, rcx, Address::times_1));
+      __ cmpptr(new_obj_end, Address(r15_thread, JavaThread::gclab_end_offset()));
+      __ jcc(Assembler::above, slow_case);
+      __ subq(rcx, oop_extra_words * HeapWordSize);
+
+      // Store Brooks pointer and adjust start of newobj.
+      Universe::heap()->compile_prepare_oop(_masm, new_obj);
+
+      // Size in rcx, new_obj in r8, src obj in rax
+
+      // Copy object.
+      Label loop;
+      if (!c_abi) {
+        __ push(rdi); // Save new_obj_end
+        __ push(rsi);
+      } else {
+        __ mov(r9, rdi); // Save new_obj_end
+      }
+      __ shrl(rcx, 3);   // Make it num-64-bit-words
+      __ mov(rdi, r8); // Mov dst into rdi
+      __ mov(rsi, rax); // Src into rsi.
+      __ rep_mov();
+      if (!c_abi) {
+        __ pop(rsi); // Restore rsi.
+        __ pop(rdi); // Restore new_obj_end
+      } else {
+        __ mov(rdi, r9); // Restore new_obj_end
+      }
+
+      // Src obj still in rax.
+      if (os::is_MP()) {
+        __ lock();
+      }
+      __ cmpxchgptr(new_obj, Address(rax, BrooksPointer::byte_offset(), Address::times_1));
+      __ jccb(Assembler::notEqual, done); // Failed. Updated object in rax.
+      // Otherwise, we succeeded.
+      __ mov(rax, new_obj);
+      __ movptr(Address(r15_thread, JavaThread::gclab_top_offset()), new_obj_end);
+      __ bind(done);
+
+      if (!c_abi) {
+        __ pop(rcx);
+        __ pop(r8);
+        __ pop(rdi);
+      }
+
+      __ ret(0);
+
+      __ bind(not_an_instance);
+      if (!c_abi) {
+        __ push(rdx);
+      }
+      // Layout_helper bits are in rcx
+      __ movl(rdx, rcx); // Move layout_helper bits to rdx
+      __ movl(rdi, Address(rax, arrayOopDesc::length_offset_in_bytes()));
+      __ shrl(rcx, Klass::_lh_log2_element_size_shift);
+      __ andl(rcx, Klass::_lh_log2_element_size_mask);
+      __ shll(rdi); // Shifts left by number of bits in rcx (CL)
+      __ shrl(rdx, Klass::_lh_header_size_shift);
+      __ andl(rdx, Klass::_lh_header_size_mask);
+      __ addl(rdi, rdx);
+      // Round up.
+      __ addl(rdi, HeapWordSize-1);
+      __ andl(rdi, -HeapWordSize);
+      if (!c_abi) {
+        __ pop(rdx);
+      }
+      // Move size (rdi) into rcx
+      __ movl(rcx, rdi);
+      __ jmp(is_array);
+
+      __ bind(slow_case);
+    }
+
+    if (!c_abi) {
+      __ push(rdx);
+      __ push(rdi);
+      __ push(rsi);
+      __ push(r8);
+      __ push(r9);
+      __ push(r10);
+      __ push(r11);
+      __ push(r12);
+      __ push(r13);
+      __ push(r14);
+      __ push(r15);
+    }
+    __ save_vector_registers();
+    __ movptr(rdi, rax);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_barrier_JRT), rdi);
+    __ restore_vector_registers();
+    if (!c_abi) {
+      __ pop(r15);
+      __ pop(r14);
+      __ pop(r13);
+      __ pop(r12);
+      __ pop(r11);
+      __ pop(r10);
+      __ pop(r9);
+      __ pop(r8);
+      __ pop(rsi);
+      __ pop(rdi);
+      __ pop(rdx);
+
+      __ pop(rcx);
+      __ pop(r8);
+      __ pop(rdi);
+    }
+    __ ret(0);
+
+    return start;
+  }
+
   address generate_f2i_fixup() {
     StubCodeMark mark(this, "StubRoutines", "f2i_fixup");
     Address inout(rsp, 5 * wordSize); // return address + 4 saves
@@ -1199,6 +1397,7 @@ class StubGenerator: public StubCodeGenerator {
     BarrierSet* bs = Universe::heap()->barrier_set();
     switch (bs->kind()) {
       case BarrierSet::G1SATBCTLogging:
+      case BarrierSet::ShenandoahBarrierSet:
         // With G1, don't generate the call if we statically know that the target in uninitialized
         if (!dest_uninitialized) {
            __ pusha();                      // push registers
@@ -1243,6 +1442,7 @@ class StubGenerator: public StubCodeGenerator {
     BarrierSet* bs = Universe::heap()->barrier_set();
     switch (bs->kind()) {
       case BarrierSet::G1SATBCTLogging:
+      case BarrierSet::ShenandoahBarrierSet:
         {
           __ pusha();             // push registers (overkill)
           if (c_rarg0 == count) { // On win64 c_rarg0 == rcx
@@ -5103,6 +5303,10 @@ class StubGenerator: public StubCodeGenerator {
                                                 throw_NullPointerException_at_call));
 
     // entry points that are platform specific
+    if (UseShenandoahGC && ShenandoahWriteBarrier) {
+         StubRoutines::x86::_shenandoah_wb = generate_shenandoah_wb(false, true);
+         StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
+    }
     StubRoutines::x86::_f2i_fixup = generate_f2i_fixup();
     StubRoutines::x86::_f2l_fixup = generate_f2l_fixup();
     StubRoutines::x86::_d2i_fixup = generate_d2i_fixup();

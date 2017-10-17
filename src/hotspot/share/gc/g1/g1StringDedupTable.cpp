@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@
 #include "gc/shared/gcLocker.hpp"
 #include "logging/log.hpp"
 #include "memory/padded.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -265,7 +266,7 @@ void G1StringDedupTable::transfer(G1StringDedupEntry** pentry, G1StringDedupTabl
 }
 
 bool G1StringDedupTable::equals(typeArrayOop value1, typeArrayOop value2) {
-  return (value1 == value2 ||
+  return (oopDesc::equals(value1, value2) ||
           (value1->length() == value2->length() &&
            (!memcmp(value1->base(T_BYTE),
                     value2->base(T_BYTE),
@@ -369,7 +370,7 @@ void G1StringDedupTable::deduplicate(oop java_string, G1StringDedupStat& stat) {
   }
 
   typeArrayOop existing_value = lookup_or_add(value, latin1, hash);
-  if (existing_value == value) {
+  if (oopDesc::equals(existing_value, value)) {
     // Same value, already known
     stat.inc_known();
     return;
@@ -380,17 +381,24 @@ void G1StringDedupTable::deduplicate(oop java_string, G1StringDedupStat& stat) {
   stat.inc_new(size_in_bytes);
 
   if (existing_value != NULL) {
-    // Enqueue the reference to make sure it is kept alive. Concurrent mark might
-    // otherwise declare it dead if there are no other strong references to this object.
-    G1SATBCardTableModRefBS::enqueue(existing_value);
+    if (UseShenandoahGC) {
+      oopDesc::bs()->keep_alive_barrier(existing_value);
+    } else {
+      // Enqueue the reference to make sure it is kept alive. Concurrent mark might
+      // otherwise declare it dead if there are no other strong references to this object.
+      G1SATBCardTableModRefBS::enqueue(existing_value);
+    }
 
     // Existing value found, deduplicate string
-    java_lang_String::set_value(java_string, existing_value);
-
-    if (G1CollectedHeap::heap()->is_in_young(value)) {
-      stat.inc_deduped_young(size_in_bytes);
+    java_lang_String::set_value(java_string, typeArrayOop(existing_value));
+    if (UseG1GC) {
+      if (G1CollectedHeap::heap()->is_in_young(value)) {
+        stat.inc_deduped_young(size_in_bytes);
+      } else {
+        stat.inc_deduped_old(size_in_bytes);
+      }
     } else {
-      stat.inc_deduped_old(size_in_bytes);
+        stat.inc_deduped_young(size_in_bytes);
     }
   }
 }
@@ -575,7 +583,7 @@ void G1StringDedupTable::verify() {
     while (*entry != NULL) {
       typeArrayOop value = (*entry)->obj();
       guarantee(value != NULL, "Object must not be NULL");
-      guarantee(G1CollectedHeap::heap()->is_in_reserved(value), "Object must be on the heap");
+      guarantee(Universe::heap()->is_in_reserved(value), "Object must be on the heap");
       guarantee(!value->is_forwarded(), "Object must not be forwarded");
       guarantee(value->is_typeArray(), "Object must be a typeArrayOop");
       bool latin1 = (*entry)->latin1();

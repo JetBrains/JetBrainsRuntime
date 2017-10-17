@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "compiler/compileLog.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "libadt/vectset.hpp"
 #include "opto/addnode.hpp"
 #include "opto/arraycopynode.hpp"
@@ -43,6 +44,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "opto/type.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -226,7 +228,7 @@ void PhaseMacroExpand::extract_call_projections(CallNode *call) {
 // Eliminate a card mark sequence.  p2x is a ConvP2XNode
 void PhaseMacroExpand::eliminate_card_mark(Node* p2x) {
   assert(p2x->Opcode() == Op_CastP2X, "ConvP2XNode required");
-  if (!UseG1GC) {
+  if (!UseG1GC && !UseShenandoahGC) {
     // vanilla/CMS post barrier
     Node *shift = p2x->unique_out();
     Node *addp = shift->unique_out();
@@ -242,7 +244,7 @@ void PhaseMacroExpand::eliminate_card_mark(Node* p2x) {
       assert(mem->is_Store(), "store required");
       _igvn.replace_node(mem, mem->in(MemNode::Memory));
     }
-  } else {
+  } else if (!UseShenandoahGC) {
     // G1 pre/post barriers
     assert(p2x->outcnt() <= 2, "expects 1 or 2 users: Xor and URShift nodes");
     // It could be only one user, URShift node, in Object.clone() intrinsic
@@ -282,22 +284,10 @@ void PhaseMacroExpand::eliminate_card_mark(Node* p2x) {
         if (!this_region->in(ind)->is_IfFalse()) {
           ind = 2;
         }
-        if (this_region->in(ind)->is_IfFalse()) {
-          Node* bol = this_region->in(ind)->in(0)->in(1);
-          assert(bol->is_Bool(), "");
-          cmpx = bol->in(1);
-          if (bol->as_Bool()->_test._test == BoolTest::ne &&
-              cmpx->is_Cmp() && cmpx->in(2) == intcon(0) &&
-              cmpx->in(1)->is_Load()) {
-            Node* adr = cmpx->in(1)->as_Load()->in(MemNode::Address);
-            const int marking_offset = in_bytes(JavaThread::satb_mark_queue_offset() +
-                                                SATBMarkQueue::byte_offset_of_active());
-            if (adr->is_AddP() && adr->in(AddPNode::Base) == top() &&
-                adr->in(AddPNode::Address)->Opcode() == Op_ThreadLocal &&
-                adr->in(AddPNode::Offset) == MakeConX(marking_offset)) {
-              _igvn.replace_node(cmpx, makecon(TypeInt::CC_EQ));
-            }
-          }
+        if (this_region->in(ind)->is_IfFalse() &&
+            this_region->in(ind)->in(0)->is_g1_marking_if(&_igvn)) {
+          Node* cmpx = this_region->in(ind)->in(0)->in(1)->in(1);
+          _igvn.replace_node(cmpx, makecon(TypeInt::CC_EQ));
         }
       }
     } else {
@@ -321,6 +311,9 @@ void PhaseMacroExpand::eliminate_card_mark(Node* p2x) {
     // which currently still alive until igvn optimize it.
     assert(p2x->outcnt() == 0 || p2x->unique_out()->Opcode() == Op_URShiftX, "");
     _igvn.replace_node(p2x, top());
+  } else {
+    assert(UseShenandoahGC, "only get here with Shenandoah GC");
+    C->shenandoah_eliminate_matrix_update(p2x, &_igvn);
   }
 }
 
@@ -526,7 +519,7 @@ Node *PhaseMacroExpand::value_from_mem_phi(Node *mem, BasicType ft, const Type *
       if (val == mem) {
         values.at_put(j, mem);
       } else if (val->is_Store()) {
-        values.at_put(j, val->in(MemNode::ValueIn));
+        values.at_put(j, ShenandoahBarrierNode::skip_through_barrier(val->in(MemNode::ValueIn)));
       } else if(val->is_Proj() && val->in(0) == alloc) {
         values.at_put(j, _igvn.zerocon(ft));
       } else if (val->is_Phi()) {
@@ -638,7 +631,7 @@ Node *PhaseMacroExpand::value_from_mem(Node *sfpt_mem, Node *sfpt_ctl, BasicType
       // hit a sentinel, return appropriate 0 value
       return _igvn.zerocon(ft);
     } else if (mem->is_Store()) {
-      return mem->in(MemNode::ValueIn);
+      return ShenandoahBarrierNode::skip_through_barrier(mem->in(MemNode::ValueIn));
     } else if (mem->is_Phi()) {
       // attempt to produce a Phi reflecting the values on the input paths of the Phi
       Node_Stack value_phis(a, 8);
@@ -715,6 +708,7 @@ bool PhaseMacroExpand::can_eliminate_allocation(AllocateNode *alloc, GrowableArr
                                    k < kmax && can_eliminate; k++) {
           Node* n = use->fast_out(k);
           if (!n->is_Store() && n->Opcode() != Op_CastP2X &&
+              !n->is_g1_wb_pre_call() &&
               !(n->is_ArrayCopy() &&
                 n->as_ArrayCopy()->is_clonebasic() &&
                 n->in(ArrayCopyNode::Dest) == use)) {
@@ -1021,11 +1015,14 @@ void PhaseMacroExpand::process_users_of_allocation(CallNode *alloc) {
             if (membar_after->is_MemBar()) {
               disconnect_projections(membar_after->as_MemBar(), _igvn);
             }
+          } else if (n->is_g1_wb_pre_call()) {
+            C->shenandoah_eliminate_g1_wb_pre(n, &_igvn);
           } else {
             eliminate_card_mark(n);
           }
           k -= (oc2 - use->outcnt());
         }
+        _igvn.remove_dead_node(use);
       } else if (use->is_ArrayCopy()) {
         // Disconnect ArrayCopy node
         ArrayCopyNode* ac = use->as_ArrayCopy();
@@ -1448,6 +1445,14 @@ void PhaseMacroExpand::expand_allocate_common(
 
     transform_later(old_eden_top);
     // Add to heap top to get a new heap top
+
+    Node* init_size_in_bytes = size_in_bytes;
+    if (UseShenandoahGC) {
+      // Allocate several words more for the Shenandoah brooks pointer.
+      size_in_bytes = new AddLNode(size_in_bytes, _igvn.MakeConX(BrooksPointer::byte_size()));
+      transform_later(size_in_bytes);
+    }
+
     Node *new_eden_top = new AddPNode(top(), old_eden_top, size_in_bytes);
     transform_later(new_eden_top);
     // Check for needing a GC; compare against heap end
@@ -1538,10 +1543,16 @@ void PhaseMacroExpand::expand_allocate_common(
                                    0, new_alloc_bytes, T_LONG);
     }
 
+    if (UseShenandoahGC) {
+      // Bump up object for Shenandoah brooks pointer.
+      fast_oop = new AddPNode(top(), fast_oop, _igvn.MakeConX(BrooksPointer::byte_size()));
+      transform_later(fast_oop);
+    }
+
     InitializeNode* init = alloc->initialization();
     fast_oop_rawmem = initialize_object(alloc,
                                         fast_oop_ctrl, fast_oop_rawmem, fast_oop,
-                                        klass_node, length, size_in_bytes);
+                                        klass_node, length, init_size_in_bytes);
 
     // If initialization is performed by an array copy, any required
     // MemBarStoreStore was already added. If the object does not
@@ -1827,6 +1838,11 @@ PhaseMacroExpand::initialize_object(AllocateNode* alloc,
     ciKlass* k = _igvn.type(klass_node)->is_klassptr()->klass();
     if (k->is_array_klass())    // we know the exact header size in most cases:
       header_size = Klass::layout_helper_header_size(k->layout_helper());
+  }
+
+  if (UseShenandoahGC) {
+    // Initialize Shenandoah brooks pointer to point to the object itself.
+    rawmem = make_store(control, rawmem, object, BrooksPointer::byte_offset(), object, T_OBJECT);
   }
 
   // Clear the object body, if necessary.
@@ -2665,7 +2681,8 @@ void PhaseMacroExpand::eliminate_macro_nodes() {
                n->Opcode() == Op_Opaque1   ||
                n->Opcode() == Op_Opaque2   ||
                n->Opcode() == Op_Opaque3   ||
-               n->Opcode() == Op_Opaque4, "unknown node type in macro list");
+               n->Opcode() == Op_Opaque4   ||
+               n->Opcode() == Op_Opaque5, "unknown node type in macro list");
       }
       assert(success == (C->macro_count() < old_macro_count), "elimination reduces macro count");
       progress = progress || success;
@@ -2732,6 +2749,11 @@ bool PhaseMacroExpand::expand_macro_nodes() {
 #endif
       } else if (n->Opcode() == Op_Opaque4) {
         _igvn.replace_node(n, n->in(2));
+        success = true;
+      } else if (n->Opcode() == Op_Opaque5) {
+        Node* res = ((Opaque5Node*)n)->adjust_strip_mined_loop(&_igvn);
+        guarantee(res != NULL, "strip mined adjustment failed");
+        _igvn.replace_node(n, res);
         success = true;
       }
       assert(success == (C->macro_count() < old_macro_count), "elimination reduces macro count");

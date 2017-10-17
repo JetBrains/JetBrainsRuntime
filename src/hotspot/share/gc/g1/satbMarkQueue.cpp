@@ -26,6 +26,7 @@
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/g1/satbMarkQueue.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "memory/allocation.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/jvm.h"
@@ -84,25 +85,19 @@ void SATBMarkQueue::flush() {
 // processing must be somewhat circumspect and not assume entries
 // in an unfiltered buffer refer to valid objects.
 
-inline bool requires_marking(const void* entry, G1CollectedHeap* heap) {
-  // Includes rejection of NULL pointers.
-  assert(heap->is_in_reserved(entry),
-         "Non-heap pointer in SATB buffer: " PTR_FORMAT, p2i(entry));
-
-  HeapRegion* region = heap->heap_region_containing(entry);
-  assert(region != NULL, "No region for " PTR_FORMAT, p2i(entry));
-  if (entry >= region->next_top_at_mark_start()) {
-    return false;
-  }
-
-  assert(oopDesc::is_oop(oop(entry), true /* ignore mark word */),
-         "Invalid oop in SATB buffer: " PTR_FORMAT, p2i(entry));
-
-  return true;
+template <class HeapType>
+inline bool retain_entry(const void* entry, HeapType* heap) {
+  return heap->requires_marking(entry);
 }
 
-inline bool retain_entry(const void* entry, G1CollectedHeap* heap) {
-  return requires_marking(entry, heap) && !heap->isMarkedNext((oop)entry);
+void SATBMarkQueue::filter() {
+  if (UseG1GC) {
+    filter_impl<G1CollectedHeap>();
+  } else if (UseShenandoahGC) {
+    filter_impl<ShenandoahHeap>();
+  } else {
+    ShouldNotReachHere();
+  }
 }
 
 // This method removes entries from a SATB buffer that will not be
@@ -110,8 +105,9 @@ inline bool retain_entry(const void* entry, G1CollectedHeap* heap) {
 // they require marking and are not already marked. Retained entries
 // are compacted toward the top of the buffer.
 
-void SATBMarkQueue::filter() {
-  G1CollectedHeap* g1h = G1CollectedHeap::heap();
+template <class HeapType>
+void SATBMarkQueue::filter_impl() {
+  HeapType* heap = (HeapType*) Universe::heap();
   void** buf = _buf;
 
   if (buf == NULL) {
@@ -126,10 +122,10 @@ void SATBMarkQueue::filter() {
   for ( ; src < dst; ++src) {
     // Search low to high for an entry to keep.
     void* entry = *src;
-    if (retain_entry(entry, g1h)) {
+    if (retain_entry(entry, heap)) {
       // Found keeper.  Search high to low for an entry to discard.
       while (src < --dst) {
-        if (!retain_entry(*dst, g1h)) {
+        if (!retain_entry(*dst, heap)) {
           *dst = entry;         // Replace discard with keeper.
           break;
         }

@@ -35,7 +35,8 @@ public enum GC {
     Serial(1),
     Parallel(2),
     ConcMarkSweep(4),
-    G1(8);
+    G1(8),
+    Shenandoah(16);
 
     private static final GC CURRENT_GC;
     private static final int ALL_GC_CODES;

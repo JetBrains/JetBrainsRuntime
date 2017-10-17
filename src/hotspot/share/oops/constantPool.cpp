@@ -48,9 +48,6 @@
 #include "runtime/signature.hpp"
 #include "runtime/vframe.hpp"
 #include "utilities/copy.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif // INCLUDE_ALL_GCS
 
 ConstantPool* ConstantPool::allocate(ClassLoaderData* loader_data, int length, TRAPS) {
   Array<u1>* tags = MetadataFactory::new_array<u1>(loader_data, length, 0, CHECK_NULL);
@@ -309,7 +306,7 @@ void ConstantPool::restore_unshareable_info(TRAPS) {
       // initial GC marking and during concurrent marking as strong roots are only
       // scanned during initial marking (at the start of the GC marking).
       assert(UseG1GC, "Requires G1 GC");
-      G1SATBCardTableModRefBS::enqueue(archived);
+      oopDesc::bs()->keep_alive_barrier(archived);
       // Create handle for the archived resolved reference array object
       Handle refs_handle(THREAD, (oop)archived);
       set_resolved_references(loader_data->add_handle(refs_handle));
@@ -953,7 +950,10 @@ oop ConstantPool::resolve_constant_at_impl(const constantPoolHandle& this_cp, in
     // The important thing here is that all threads pick up the same result.
     // It doesn't matter which racing thread wins, as long as only one
     // result is used by all threads, and all future queries.
-    oop old_result = this_cp->resolved_references()->atomic_compare_exchange_oop(cache_index, result_oop, NULL);
+    objArrayOop resolved_refs = this_cp->resolved_references();
+    resolved_refs = objArrayOop(oopDesc::bs()->write_barrier(resolved_refs));
+    result_oop = oopDesc::bs()->storeval_barrier(result_oop);
+    oop old_result = resolved_refs->atomic_compare_exchange_oop(cache_index, result_oop, NULL);
     if (old_result == NULL) {
       return result_oop;  // was installed
     } else {

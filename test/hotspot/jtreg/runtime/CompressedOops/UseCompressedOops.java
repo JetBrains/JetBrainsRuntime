@@ -55,6 +55,7 @@ public class UseCompressedOops {
         testCompressedOopsModes(args, "-XX:+UseSerialGC");
         testCompressedOopsModes(args, "-XX:+UseParallelGC");
         testCompressedOopsModes(args, "-XX:+UseParallelOldGC");
+        testCompressedOopsModes(args, "-XX:+UseShenandoahGC");
     }
 
     public static void testCompressedOopsModes(ArrayList<String> flags1, String... flags2) throws Exception {

@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "ci/bcEscapeAnalyzer.hpp"
 #include "compiler/compileLog.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "libadt/vectset.hpp"
 #include "memory/allocation.hpp"
 #include "memory/resourceArea.hpp"
@@ -37,6 +38,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/movenode.hpp"
 #include "opto/rootnode.hpp"
+#include "opto/shenandoahSupport.hpp"
 
 ConnectionGraph::ConnectionGraph(Compile * C, PhaseIterGVN *igvn) :
   _nodes(C->comp_arena(), C->unique(), C->unique(), NULL),
@@ -512,11 +514,11 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       if (adr_type == NULL) {
         break; // skip dead nodes
       }
-      if (   adr_type->isa_oopptr()
-          || (   (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
-              && adr_type == TypeRawPtr::NOTNULL
-              && adr->in(AddPNode::Address)->is_Proj()
-              && adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
+      if (adr_type->isa_oopptr() ||
+          (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass) &&
+                        (adr_type == TypeRawPtr::NOTNULL &&
+                         adr->in(AddPNode::Address)->is_Proj() &&
+                         adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
         delayed_worklist->push(n); // Process it later.
 #ifdef ASSERT
         assert(adr->is_AddP(), "expecting an AddP");
@@ -535,7 +537,7 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
           // Pointer stores in G1 barriers looks like unsafe access.
           // Ignore such stores to be able scalar replace non-escaping
           // allocations.
-          if (UseG1GC && adr->is_AddP()) {
+          if ((UseG1GC || UseShenandoahGC) && adr->is_AddP()) {
             Node* base = get_addp_base(adr);
             if (base->Opcode() == Op_LoadP &&
                 base->in(MemNode::Address)->is_AddP()) {
@@ -581,6 +583,12 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       add_java_object(n, PointsToNode::ArgEscape);
       break;
     }
+    case Op_ShenandoahReadBarrier:
+    case Op_ShenandoahWriteBarrier:
+      // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
+      // It doesn't escape.
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), delayed_worklist);
+      break;
     default:
       ; // Do nothing for nodes not related to EA.
   }
@@ -725,11 +733,11 @@ void ConnectionGraph::add_final_edges(Node *n) {
           opcode == Op_CompareAndExchangeN || opcode == Op_CompareAndExchangeP) {
         add_local_var_and_edge(n, PointsToNode::NoEscape, adr, NULL);
       }
-      if (   adr_type->isa_oopptr()
-          || (   (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
-              && adr_type == TypeRawPtr::NOTNULL
-              && adr->in(AddPNode::Address)->is_Proj()
-              && adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
+      if (adr_type->isa_oopptr() ||
+          (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass) &&
+                        (adr_type == TypeRawPtr::NOTNULL &&
+                         adr->in(AddPNode::Address)->is_Proj() &&
+                         adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
         // Point Address to Value
         PointsToNode* adr_ptn = ptnode_adr(adr->_idx);
         assert(adr_ptn != NULL &&
@@ -784,6 +792,12 @@ void ConnectionGraph::add_final_edges(Node *n) {
       }
       break;
     }
+    case Op_ShenandoahReadBarrier:
+    case Op_ShenandoahWriteBarrier:
+      // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
+      // It doesn't escape.
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), NULL);
+      break;
     default: {
       // This method should be called only for EA specific nodes which may
       // miss some edges when they were created.
@@ -980,6 +994,8 @@ void ConnectionGraph::process_call_arguments(CallNode *call) {
                 (call->as_CallLeaf()->_name != NULL &&
                  (strcmp(call->as_CallLeaf()->_name, "g1_wb_pre")  == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "g1_wb_post") == 0 ||
+                  strcmp(call->as_CallLeaf()->_name, "shenandoah_clone_barrier")  == 0 ||
+                  strcmp(call->as_CallLeaf()->_name, "shenandoah_cas_obj")  == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "updateBytesCRC32") == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "updateBytesCRC32C") == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "updateBytesAdler32") == 0 ||
@@ -2077,6 +2093,9 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
     } else if (adr_type->isa_aryptr()) {
       if (offset == arrayOopDesc::length_offset_in_bytes()) {
         // Ignore array length load.
+      } else if (UseShenandoahGC && offset == BrooksPointer::byte_offset()) {
+        // Shenandoah read barrier.
+        bt = T_ARRAY;
       } else if (find_second_addp(n, n->in(AddPNode::Base)) != NULL) {
         // Ignore first AddP.
       } else {
@@ -2328,7 +2347,8 @@ Node* ConnectionGraph::get_addp_base(Node *addp) {
       assert(opcode == Op_ConP || opcode == Op_ThreadLocal ||
              opcode == Op_CastX2P || uncast_base->is_DecodeNarrowPtr() ||
              (uncast_base->is_Mem() && (uncast_base->bottom_type()->isa_rawptr() != NULL)) ||
-             (uncast_base->is_Proj() && uncast_base->in(0)->is_Allocate()), "sanity");
+             (uncast_base->is_Proj() && uncast_base->in(0)->is_Allocate()) ||
+             uncast_base->is_ShenandoahBarrier(), "sanity");
     }
   }
   return base;
@@ -3061,6 +3081,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
                n->is_CheckCastPP() ||
                n->is_EncodeP() ||
                n->is_DecodeN() ||
+               n->is_ShenandoahBarrier() ||
                (n->is_ConstraintCast() && n->Opcode() == Op_CastPP)) {
       if (visited.test_set(n->_idx)) {
         assert(n->is_Phi(), "loops only through Phi's");
@@ -3131,6 +3152,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
                  use->is_CheckCastPP() ||
                  use->is_EncodeNarrowPtr() ||
                  use->is_DecodeNarrowPtr() ||
+                 use->is_ShenandoahBarrier() ||
                  (use->is_ConstraintCast() && use->Opcode() == Op_CastPP)) {
         alloc_worklist.append_if_missing(use);
 #ifdef ASSERT
@@ -3160,7 +3182,8 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
               op == Op_CastP2X || op == Op_StoreCM ||
               op == Op_FastLock || op == Op_AryEq || op == Op_StrComp || op == Op_HasNegatives ||
               op == Op_StrCompressedCopy || op == Op_StrInflatedCopy ||
-              op == Op_StrEquals || op == Op_StrIndexOf || op == Op_StrIndexOfChar)) {
+              op == Op_StrEquals || op == Op_StrIndexOf || op == Op_StrIndexOfChar ||
+              op == Op_ShenandoahWBMemProj)) {
           n->dump();
           use->dump();
           assert(false, "EA: missing allocation reference path");

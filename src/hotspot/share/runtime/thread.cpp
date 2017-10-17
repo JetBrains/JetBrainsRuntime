@@ -104,6 +104,7 @@
 #include "utilities/preserveException.hpp"
 #include "utilities/vmError.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/g1/concurrentMarkThread.inline.hpp"
 #include "gc/parallel/pcTasks.hpp"
@@ -784,7 +785,13 @@ void Thread::oops_do(OopClosure* f, CodeBlobClosure* cf) {
   if (MonitorInUseLists) {
     // When using thread local monitor lists, we scan them here,
     // and the remaining global monitors in ObjectSynchronizer::oops_do().
-    ObjectSynchronizer::thread_local_used_oops_do(this, f);
+    VM_Operation* op = VMThread::vm_operation();
+    if (op != NULL && op->deflates_idle_monitors()) {
+      DeflateMonitorCounters counters; // Dummy for now.
+      ObjectSynchronizer::deflate_thread_local_monitors(this, &counters, f);
+    } else {
+      ObjectSynchronizer::thread_local_used_oops_do(this, f);
+    }
   }
 }
 
@@ -1500,13 +1507,15 @@ void JavaThread::initialize() {
 #if INCLUDE_ALL_GCS
 SATBMarkQueueSet JavaThread::_satb_mark_queue_set;
 DirtyCardQueueSet JavaThread::_dirty_card_queue_set;
+bool JavaThread::_evacuation_in_progress_global = false;
 #endif // INCLUDE_ALL_GCS
 
 JavaThread::JavaThread(bool is_attaching_via_jni) :
                        Thread()
 #if INCLUDE_ALL_GCS
                        , _satb_mark_queue(&_satb_mark_queue_set),
-                       _dirty_card_queue(&_dirty_card_queue_set)
+                       _dirty_card_queue(&_dirty_card_queue_set),
+                       _evacuation_in_progress(_evacuation_in_progress_global)
 #endif // INCLUDE_ALL_GCS
 {
   initialize();
@@ -1573,7 +1582,8 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) :
                        Thread()
 #if INCLUDE_ALL_GCS
                        , _satb_mark_queue(&_satb_mark_queue_set),
-                       _dirty_card_queue(&_dirty_card_queue_set)
+                       _dirty_card_queue(&_dirty_card_queue_set),
+                       _evacuation_in_progress(_evacuation_in_progress_global)
 #endif // INCLUDE_ALL_GCS
 {
   initialize();
@@ -1899,8 +1909,11 @@ void JavaThread::exit(bool destroy_vm, ExitType exit_type) {
   // from the list of active threads. We must do this after any deferred
   // card marks have been flushed (above) so that any entries that are
   // added to the thread's dirty card queue as a result are not lost.
-  if (UseG1GC) {
+  if (UseG1GC || (UseShenandoahGC && ShenandoahWriteBarrier)) {
     flush_barrier_queues();
+  }
+  if (UseShenandoahGC && UseTLAB && gclab().is_initialized()) {
+    gclab().make_parsable(true);
   }
 #endif // INCLUDE_ALL_GCS
 
@@ -1939,6 +1952,24 @@ void JavaThread::initialize_queues() {
   // The dirty card queue should have been constructed with its
   // active field set to true.
   assert(dirty_queue.is_active(), "dirty card queue should be active");
+
+  _evacuation_in_progress = _evacuation_in_progress_global;
+}
+
+bool JavaThread::evacuation_in_progress() const {
+  return _evacuation_in_progress;
+}
+
+void JavaThread::set_evacuation_in_progress(bool in_prog) {
+  _evacuation_in_progress = in_prog;
+}
+
+void JavaThread::set_evacuation_in_progress_all_threads(bool in_prog) {
+  assert_locked_or_safepoint(Threads_lock);
+  _evacuation_in_progress_global = in_prog;
+  for (JavaThread* t = Threads::first(); t != NULL; t = t->next()) {
+    t->set_evacuation_in_progress(in_prog);
+  }
 }
 #endif // INCLUDE_ALL_GCS
 
@@ -1963,8 +1994,11 @@ void JavaThread::cleanup_failed_attach_current_thread() {
   }
 
 #if INCLUDE_ALL_GCS
-  if (UseG1GC) {
+  if (UseG1GC || (UseShenandoahGC && ShenandoahWriteBarrier)) {
     flush_barrier_queues();
+  }
+  if (UseShenandoahGC && UseTLAB && gclab().is_initialized()) {
+    gclab().make_parsable(true);
   }
 #endif // INCLUDE_ALL_GCS
 
@@ -3320,6 +3354,13 @@ bool        Threads::_vm_complete = false;
 // All JavaThreads
 #define ALL_JAVA_THREADS(X) for (JavaThread* X = _thread_list; X; X = X->next())
 
+void Threads::java_threads_do(ThreadClosure* tc) {
+  assert_locked_or_safepoint(Threads_lock);
+  ALL_JAVA_THREADS(p) {
+    tc->do_thread(p);
+  }
+}
+
 // All JavaThreads + all non-JavaThreads (i.e., every thread in the system)
 void Threads::threads_do(ThreadClosure* tc) {
   assert_locked_or_safepoint(Threads_lock);
@@ -4320,11 +4361,14 @@ void Threads::assert_all_threads_claimed() {
 }
 #endif // ASSERT
 
-void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf) {
+void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) {
   int cp = Threads::thread_claim_parity();
   ALL_JAVA_THREADS(p) {
     if (p->claim_oops_do(is_par, cp)) {
       p->oops_do(f, cf);
+      if (nmethods_cl != NULL && ! p->is_Code_cache_sweeper_thread()) {
+        p->nmethods_do(nmethods_cl);
+      }
     }
   }
   VMThread* vmt = VMThread::vm_thread();

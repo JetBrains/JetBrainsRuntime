@@ -97,10 +97,11 @@ class G1GCPhaseTimes;
 // Main interface for interacting with string deduplication.
 //
 class G1StringDedup : public AllStatic {
-private:
+protected:
   // Single state for checking if both G1 and string deduplication is enabled.
   static bool _enabled;
 
+private:
   // Candidate selection policies, returns true if the given object is
   // candidate for string deduplication.
   static bool is_candidate_from_mark(oop obj);

@@ -63,7 +63,7 @@ public:
 
   void add_pool(MemoryPool* pool);
 
-  bool is_manager(instanceHandle mh)     { return mh() == _memory_mgr_obj; }
+  bool is_manager(instanceHandle mh)     { return oopDesc::equals(mh(), _memory_mgr_obj); }
 
   virtual instanceOop get_memory_manager_instance(TRAPS);
   virtual bool is_gc_memory_manager()    { return false; }
@@ -83,6 +83,8 @@ public:
   static GCMemoryManager* get_psMarkSweep_memory_manager();
   static GCMemoryManager* get_g1YoungGen_memory_manager();
   static GCMemoryManager* get_g1OldGen_memory_manager();
+  static GCMemoryManager* get_shenandoah_minor_memory_manager();
+  static GCMemoryManager* get_shenandoah_major_memory_manager();
 };
 
 class CodeCacheMemoryManager : public MemoryManager {
@@ -251,6 +253,20 @@ public:
   G1OldGenMemoryManager() : GCMemoryManager() {}
 
   const char* name() { return "G1 Old Generation"; }
+};
+
+class ShenandoahMinorMemoryManager : public GCMemoryManager {
+public:
+  ShenandoahMinorMemoryManager() : GCMemoryManager() {}
+
+  const char* name()         { return "Shenandoah Minor"; }
+};
+
+class ShenandoahMajorMemoryManager : public GCMemoryManager {
+public:
+  ShenandoahMajorMemoryManager() : GCMemoryManager() {}
+
+  const char* name()         { return "Shenandoah Major"; }
 };
 
 #endif // SHARE_VM_SERVICES_MEMORYMANAGER_HPP

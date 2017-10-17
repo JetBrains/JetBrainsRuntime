@@ -42,6 +42,8 @@ public class TestDynamicNumberOfGCThreads {
     testDynamicNumberOfGCThreads("UseG1GC");
 
     testDynamicNumberOfGCThreads("UseParallelGC");
+
+    testDynamicNumberOfGCThreads("UseShenandoahGC");
   }
 
   private static void verifyDynamicNumberOfGCThreads(OutputAnalyzer output) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,9 +35,9 @@
 
 G1StringDedupThread* G1StringDedupThread::_thread = NULL;
 
-G1StringDedupThread::G1StringDedupThread() :
+G1StringDedupThread::G1StringDedupThread(const char* name) :
   ConcurrentGCThread() {
-  set_name("G1 StrDedup");
+  set_name("%s", name);
   create_and_start();
 }
 
@@ -45,10 +45,14 @@ G1StringDedupThread::~G1StringDedupThread() {
   ShouldNotReachHere();
 }
 
-void G1StringDedupThread::create() {
+void G1StringDedupThread::create(const char* name) {
   assert(G1StringDedup::is_enabled(), "String deduplication not enabled");
   assert(_thread == NULL, "One string deduplication thread allowed");
-  _thread = new G1StringDedupThread();
+  _thread = new G1StringDedupThread(name);
+}
+
+void G1StringDedupThread::create() {
+  create("G1 StrDedup");
 }
 
 G1StringDedupThread* G1StringDedupThread::thread() {

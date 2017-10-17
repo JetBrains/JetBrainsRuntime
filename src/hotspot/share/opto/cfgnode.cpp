@@ -40,6 +40,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
 #include "opto/runtime.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "utilities/vmError.hpp"
 
@@ -571,6 +572,31 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       return NULL;
     } else if (can_reshape) {   // Optimization phase - remove the node
       PhaseIterGVN *igvn = phase->is_IterGVN();
+      // Strip mined (inner) loop is going away, remove outer loop.
+      if (is_CountedLoop() && as_Loop()->is_strip_mined() &&
+          in(LoopNode::EntryControl) != NULL &&
+          in(LoopNode::EntryControl)->is_Loop()) {
+        LoopNode* outer = in(LoopNode::EntryControl)->as_Loop();
+        assert(outer->is_strip_mined(), "where's the outer loop?");
+        Node* outer_tail = outer->in(LoopNode::LoopBackControl);
+        if (outer_tail != NULL && !outer_tail->is_top()) {
+          assert(outer_tail->Opcode() == Op_IfTrue, "broken outer loop");
+          Node* outer_le = outer_tail->in(0);
+          if (outer_le != NULL && !outer_le->is_top() && outer_le->outcnt() == 2) {
+            assert(outer_le->Opcode() == Op_If, "broken outer loop");
+            Node* outer_sfpt = outer_le->in(0);
+            if (outer_sfpt != NULL && !outer_sfpt->is_top()) {
+              assert(outer_sfpt->Opcode() == Op_SafePoint, "broken outer loop");
+              Node* in = outer_sfpt->in(0);
+              Node* outer_out = outer_le->as_If()->proj_out(false);
+              if (outer_out != NULL) {
+                igvn->replace_node(outer_out, in);
+              }
+            }
+          }
+          igvn->replace_input_of(outer, LoopNode::LoopBackControl, igvn->C->top());
+        }
+      }
       Node *parent_ctrl;
       if( cnt == 0 ) {
         assert( req() == 1, "no inputs expected" );
@@ -601,6 +627,9 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
             in = n->in(1);               // replaced by unique input
             if( n->as_Phi()->is_unsafe_data_reference(in) )
               in = phase->C->top();      // replaced by top
+          }
+          if (n->outcnt() == 0) {
+            in = phase->C->top();
           }
           igvn->replace_node(n, in);
         }
@@ -1287,7 +1316,7 @@ static Node *is_x2logic( PhaseGVN *phase, PhiNode *phi, int true_path ) {
   } else return NULL;
 
   // Build int->bool conversion
-  Node *n = new Conv2BNode( cmp->in(1) );
+  Node *n = new Conv2BNode(ShenandoahBarrierNode::skip_through_barrier(cmp->in(1)));
   if( flipped )
     n = new XorINode( phase->transform(n), phase->intcon(1) );
 
@@ -1653,7 +1682,12 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
         if (can_reshape && igvn != NULL) {
           igvn->_worklist.push(r);
         }
-        set_req(j, top);        // Nuke it down
+        // Nuke it down
+        if (can_reshape) {
+          set_req_X(j, top, igvn);
+        } else {
+          set_req(j, top);
+        }
         progress = this;        // Record progress
       }
     }

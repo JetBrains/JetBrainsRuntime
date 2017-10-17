@@ -32,6 +32,21 @@
 
 class ObjectMonitor;
 
+
+class ParallelObjectSynchronizerIterator VALUE_OBJ_CLASS_SPEC {
+  friend class ObjectSynchronizer;
+
+  private:
+    ObjectMonitor*  volatile _cur;
+
+  private:
+    ParallelObjectSynchronizerIterator(ObjectMonitor* head);
+    ObjectMonitor* claim();
+
+  public:
+    bool parallel_oops_do(OopClosure* f);
+};
+
 struct DeflateMonitorCounters {
   int nInuse;          // currently associated with objects
   int nInCirculation;  // extant
@@ -40,6 +55,7 @@ struct DeflateMonitorCounters {
 
 class ObjectSynchronizer : AllStatic {
   friend class VMStructs;
+  friend class ParallelObjectSynchronizerIterator;
  public:
   typedef enum {
     owner_self,
@@ -134,14 +150,15 @@ class ObjectSynchronizer : AllStatic {
   // Basically we deflate all monitors that are not busy.
   // An adaptive profile-based deflation policy could be used if needed
   static void deflate_idle_monitors(DeflateMonitorCounters* counters);
-  static void deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters);
+  static void deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters, OopClosure* cl);
   static void prepare_deflate_idle_monitors(DeflateMonitorCounters* counters);
   static void finish_deflate_idle_monitors(DeflateMonitorCounters* counters);
 
   // For a given monitor list: global or per-thread, deflate idle monitors
   static int deflate_monitor_list(ObjectMonitor** listheadp,
                                   ObjectMonitor** freeHeadp,
-                                  ObjectMonitor** freeTailp);
+                                  ObjectMonitor** freeTailp,
+                                  OopClosure* cl = NULL);
   static bool deflate_monitor(ObjectMonitor* mid, oop obj,
                               ObjectMonitor** freeHeadp,
                               ObjectMonitor** freeTailp);
@@ -149,6 +166,9 @@ class ObjectSynchronizer : AllStatic {
   static void oops_do(OopClosure* f);
   // Process oops in thread local used monitors
   static void thread_local_used_oops_do(Thread* thread, OopClosure* f);
+
+  // Parallel GC support
+  static ParallelObjectSynchronizerIterator parallel_iterator();
 
   // debugging
   static void sanity_checks(const bool verbose,

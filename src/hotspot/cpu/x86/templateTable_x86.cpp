@@ -155,6 +155,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
   switch (barrier) {
 #if INCLUDE_ALL_GCS
     case BarrierSet::G1SATBCTLogging:
+    case BarrierSet::ShenandoahBarrierSet:
       {
         // flatten object address if needed
         // We do it regardless of precise because we need the registers
@@ -172,27 +173,51 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
         NOT_LP64(__ get_thread(rcx));
         NOT_LP64(__ save_bcp());
 
-        __ g1_write_barrier_pre(rdx /* obj */,
-                                rbx /* pre_val */,
-                                rthread /* thread */,
-                                rtmp  /* tmp */,
-                                val != noreg /* tosca_live */,
-                                false /* expand_call */);
+        if (UseG1GC) {
+          __ g1_write_barrier_pre(rdx /* obj */,
+                                  rbx /* pre_val */,
+                                  rthread /* thread */,
+                                  rtmp  /* tmp */,
+                                  val != noreg /* tosca_live */,
+                                  false /* expand_call */);
+        } else {
+          assert(UseShenandoahGC, "what else here?");
+          __ shenandoah_write_barrier_pre(rdx /* obj */,
+                                          rbx /* pre_val */,
+                                          rthread /* thread */,
+                                          rtmp  /* tmp */,
+                                          val != noreg /* tosca_live */,
+                                          false /* expand_call */);
+        }
+
         if (val == noreg) {
           __ store_heap_oop_null(Address(rdx, 0));
         } else {
+          // For Shenandoah, make sure we only store refs into to-space.
+          oopDesc::bs()->interpreter_storeval_barrier(_masm, val);
+
           // G1 barrier needs uncompressed oop for region cross check.
           Register new_val = val;
           if (UseCompressedOops) {
             new_val = rbx;
             __ movptr(new_val, val);
           }
+
           __ store_heap_oop(Address(rdx, 0), val);
-          __ g1_write_barrier_post(rdx /* store_adr */,
-                                   new_val /* new_val */,
-                                   rthread /* thread */,
-                                   rtmp /* tmp */,
-                                   rbx /* tmp2 */);
+          if (UseG1GC) {
+            __ g1_write_barrier_post(rdx /* store_adr */,
+                                     new_val /* new_val */,
+                                     rthread /* thread */,
+                                     rtmp /* tmp */,
+                                     rbx /* tmp2 */);
+          } else {
+            assert(UseShenandoahGC, "sanity");
+            __ shenandoah_write_barrier_post(rdx /* store_adr */,
+                                             new_val /* new_val */,
+                                             rthread /* thread */,
+                                             rtmp /* tmp */,
+                                             rbx /* tmp2 */);
+          }
         }
         NOT_LP64( __ restore_bcp());
       }
@@ -703,6 +728,7 @@ void TemplateTable::iaload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ movl(rax, Address(rdx, rax,
                        Address::times_4,
                        arrayOopDesc::base_offset_in_bytes(T_INT)));
@@ -715,6 +741,7 @@ void TemplateTable::laload() {
   index_check(rdx, rax); // kills rbx
   NOT_LP64(__ mov(rbx, rax));
   // rbx,: index
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ movptr(rax, Address(rdx, rbx, Address::times_8, arrayOopDesc::base_offset_in_bytes(T_LONG) + 0 * wordSize));
   NOT_LP64(__ movl(rdx, Address(rdx, rbx, Address::times_8, arrayOopDesc::base_offset_in_bytes(T_LONG) + 1 * wordSize)));
 }
@@ -726,6 +753,7 @@ void TemplateTable::faload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_float(Address(rdx, rax,
                         Address::times_4,
                         arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
@@ -736,6 +764,7 @@ void TemplateTable::daload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_double(Address(rdx, rax,
                          Address::times_8,
                          arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
@@ -746,6 +775,7 @@ void TemplateTable::aaload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_heap_oop(rax, Address(rdx, rax,
                                 UseCompressedOops ? Address::times_4 : Address::times_ptr,
                                 arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
@@ -756,6 +786,7 @@ void TemplateTable::baload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_signed_byte(rax, Address(rdx, rax, Address::times_1, arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
 
@@ -764,6 +795,7 @@ void TemplateTable::caload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_unsigned_short(rax, Address(rdx, rax, Address::times_2, arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
 
@@ -777,6 +809,7 @@ void TemplateTable::fast_icaload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_unsigned_short(rax,
                          Address(rdx, rax,
                                  Address::times_2,
@@ -789,6 +822,7 @@ void TemplateTable::saload() {
   // rax: index
   // rdx: array
   index_check(rdx, rax); // kills rbx
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rdx);
   __ load_signed_short(rax, Address(rdx, rax, Address::times_2, arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
 
@@ -981,6 +1015,7 @@ void TemplateTable::iastore() {
   // rbx: index
   // rdx: array
   index_check(rdx, rbx); // prefer index in rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   __ movl(Address(rdx, rbx,
                   Address::times_4,
                   arrayOopDesc::base_offset_in_bytes(T_INT)),
@@ -995,6 +1030,7 @@ void TemplateTable::lastore() {
   // rdx: high(value)
   index_check(rcx, rbx);  // prefer index in rbx,
   // rbx,: index
+  oopDesc::bs()->interpreter_write_barrier(_masm, rcx);
   __ movptr(Address(rcx, rbx, Address::times_8, arrayOopDesc::base_offset_in_bytes(T_LONG) + 0 * wordSize), rax);
   NOT_LP64(__ movl(Address(rcx, rbx, Address::times_8, arrayOopDesc::base_offset_in_bytes(T_LONG) + 1 * wordSize), rdx));
 }
@@ -1007,6 +1043,7 @@ void TemplateTable::fastore() {
   // rbx:  index
   // rdx:  array
   index_check(rdx, rbx); // prefer index in rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   __ store_float(Address(rdx, rbx, Address::times_4, arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
 
@@ -1017,6 +1054,7 @@ void TemplateTable::dastore() {
   // rbx:  index
   // rdx:  array
   index_check(rdx, rbx); // prefer index in rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   __ store_double(Address(rdx, rbx, Address::times_8, arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 }
 
@@ -1033,6 +1071,7 @@ void TemplateTable::aastore() {
                           arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
   index_check_without_pop(rdx, rcx);     // kills rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   __ testptr(rax, rax);
   __ jcc(Assembler::zero, is_null);
 
@@ -1081,6 +1120,7 @@ void TemplateTable::bastore() {
   // rbx: index
   // rdx: array
   index_check(rdx, rbx); // prefer index in rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   // Need to check whether array is boolean or byte
   // since both types share the bastore bytecode.
   __ load_klass(rcx, rdx);
@@ -1104,6 +1144,7 @@ void TemplateTable::castore() {
   // rbx: index
   // rdx: array
   index_check(rdx, rbx);  // prefer index in rbx
+  oopDesc::bs()->interpreter_write_barrier(_masm, rdx);
   __ movw(Address(rdx, rbx,
                   Address::times_2,
                   arrayOopDesc::base_offset_in_bytes(T_CHAR)),
@@ -2315,7 +2356,7 @@ void TemplateTable::if_acmp(Condition cc) {
   // assume branch is more often taken than not (loops use backward branches)
   Label not_taken;
   __ pop_ptr(rdx);
-  __ cmpptr(rdx, rax);
+  __ cmpoops(rdx, rax);
   __ jcc(j_not(cc), not_taken);
   branch(false, false);
   __ bind(not_taken);
@@ -2762,6 +2803,7 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
   load_field_cp_cache_entry(obj, cache, index, off, flags, is_static);
 
   if (!is_static) pop_and_check_object(obj);
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, obj);
 
   const Address field(obj, off, Address::times_1, 0*wordSize);
   NOT_LP64(const Address hi(obj, off, Address::times_1, 1*wordSize));
@@ -3045,6 +3087,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(btos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ movb(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_bputfield, bc, rbx, true, byte_no);
@@ -3060,6 +3103,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ztos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ andl(rax, 0x1);
     __ movb(field, rax);
     if (!is_static && rc == may_rewrite) {
@@ -3076,6 +3120,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     // Store into the field
     do_oop_store(_masm, field, rax, _bs->kind(), false);
     if (!is_static && rc == may_rewrite) {
@@ -3092,6 +3137,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(itos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ movl(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_iputfield, bc, rbx, true, byte_no);
@@ -3107,6 +3153,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ctos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ movw(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_cputfield, bc, rbx, true, byte_no);
@@ -3122,6 +3169,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(stos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ movw(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_sputfield, bc, rbx, true, byte_no);
@@ -3138,6 +3186,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ltos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ movq(field, rax);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_lputfield, bc, rbx, true, byte_no);
@@ -3184,6 +3233,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ftos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ store_float(field);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_fputfield, bc, rbx, true, byte_no);
@@ -3201,6 +3251,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(dtos);
     if (!is_static) pop_and_check_object(obj);
+    oopDesc::bs()->interpreter_write_barrier(_masm, obj);
     __ store_double(field);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_dputfield, bc, rbx, true, byte_no);
@@ -3323,6 +3374,7 @@ void TemplateTable::fast_storefield(TosState state) {
 
   // Get object from stack
   pop_and_check_object(rcx);
+  oopDesc::bs()->interpreter_write_barrier(_masm, rcx);
 
   // field address
   const Address field(rcx, rbx, Address::times_1);
@@ -3414,6 +3466,7 @@ void TemplateTable::fast_accessfield(TosState state) {
   // rax: object
   __ verify_oop(rax);
   __ null_check(rax);
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rax);
   Address field(rax, rbx, Address::times_1);
 
   // access field
@@ -3475,6 +3528,7 @@ void TemplateTable::fast_xaccess(TosState state) {
   // next instruction)
   __ increment(rbcp);
   __ null_check(rax);
+  oopDesc::bs()->interpreter_read_barrier_not_null(_masm, rax);
   const Address field = Address(rax, rbx, Address::times_1, 0*wordSize);
   switch (state) {
   case itos:
@@ -3880,11 +3934,17 @@ void TemplateTable::_new() {
 #endif // _LP64
 
   if (UseTLAB) {
+    uint oop_extra_words = Universe::heap()->oop_extra_words();
+    if (oop_extra_words > 0) {
+      __ addptr(rdx, oop_extra_words * HeapWordSize);
+    }
+
     __ movptr(rax, Address(thread, in_bytes(JavaThread::tlab_top_offset())));
     __ lea(rbx, Address(rax, rdx, Address::times_1));
     __ cmpptr(rbx, Address(thread, in_bytes(JavaThread::tlab_end_offset())));
     __ jcc(Assembler::above, allow_shared_alloc ? allocate_shared : slow_case);
     __ movptr(Address(thread, in_bytes(JavaThread::tlab_top_offset())), rbx);
+    Universe::heap()->compile_prepare_oop(_masm, rax);
     if (ZeroTLAB) {
       // the fields have been already cleared
       __ jmp(initialize_header);
@@ -4219,6 +4279,8 @@ void TemplateTable::monitorenter() {
   // check for NULL object
   __ null_check(rax);
 
+  oopDesc::bs()->interpreter_write_barrier(_masm, rax);
+
   const Address monitor_block_top(
         rbp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
   const Address monitor_block_bot(
@@ -4241,7 +4303,7 @@ void TemplateTable::monitorenter() {
                                         // starting with top-most entry
     __ lea(rbot, monitor_block_bot);    // points to word before bottom
                                         // of monitor block
-    __ jmpb(entry);
+    __ jmpb_if_possible(entry);
 
     __ bind(loop);
     // check if current entry is used
@@ -4249,6 +4311,7 @@ void TemplateTable::monitorenter() {
     // if not used then remember entry in rmon
     __ cmovptr(Assembler::equal, rmon, rtop);   // cmov => cmovptr
     // check if current entry is for same object
+    __ shenandoah_lock_check(rtop); // Invariant
     __ cmpptr(rax, Address(rtop, BasicObjectLock::obj_offset_in_bytes()));
     // if same object then stop searching
     __ jccb(Assembler::equal, exit);
@@ -4298,6 +4361,7 @@ void TemplateTable::monitorenter() {
   __ increment(rbcp);
 
   // store object
+  __ shenandoah_store_addr_check(rax); // Invariant
   __ movptr(Address(rmon, BasicObjectLock::obj_offset_in_bytes()), rax);
   __ lock_object(rmon);
 
@@ -4315,6 +4379,8 @@ void TemplateTable::monitorexit() {
 
   // check for NULL object
   __ null_check(rax);
+
+  oopDesc::bs()->interpreter_write_barrier(_masm, rax);
 
   const Address monitor_block_top(
         rbp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
@@ -4334,10 +4400,11 @@ void TemplateTable::monitorexit() {
                                         // starting with top-most entry
     __ lea(rbot, monitor_block_bot);    // points to word before bottom
                                         // of monitor block
-    __ jmpb(entry);
+    __ jmpb_if_possible(entry);
 
     __ bind(loop);
     // check if current entry is for same object
+    __ shenandoah_lock_check(rtop); // Invariant
     __ cmpptr(rax, Address(rtop, BasicObjectLock::obj_offset_in_bytes()));
     // if same object then stop searching
     __ jcc(Assembler::equal, found);

@@ -25,6 +25,7 @@
 #ifndef SHARE_VM_OOPS_TYPEARRAYOOP_HPP
 #define SHARE_VM_OOPS_TYPEARRAYOOP_HPP
 
+#include "gc/shared/barrierSet.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/typeArrayKlass.hpp"
 #include "runtime/orderAccess.inline.hpp"
@@ -92,50 +93,116 @@ class typeArrayOopDesc : public arrayOopDesc {
     return &double_base()[which];
   }
 
-  jbyte byte_at(int which) const                  { return *byte_at_addr(which); }
-  void byte_at_put(int which, jbyte contents)     { *byte_at_addr(which) = contents; }
+  jbyte byte_at(int which) const                  {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->byte_at_addr(which);
+  }
+  void byte_at_put(int which, jbyte contents)     {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->byte_at_addr(which) = contents;
+  }
 
-  jboolean bool_at(int which) const               { return *bool_at_addr(which); }
-  void bool_at_put(int which, jboolean contents)  { *bool_at_addr(which) = (((jint)contents) & 1); }
+  jboolean bool_at(int which) const               {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->bool_at_addr(which);
+  }
+  void bool_at_put(int which, jboolean contents)  {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->bool_at_addr(which) = (((jint)contents) & 1);
+  }
 
-  jchar char_at(int which) const                  { return *char_at_addr(which); }
-  void char_at_put(int which, jchar contents)     { *char_at_addr(which) = contents; }
+  jchar char_at(int which) const                  {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->char_at_addr(which);
+  }
+  void char_at_put(int which, jchar contents)     {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->char_at_addr(which) = contents;
+  }
 
-  jint int_at(int which) const                    { return *int_at_addr(which); }
-  void int_at_put(int which, jint contents)       { *int_at_addr(which) = contents; }
+  jint int_at(int which) const                    {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->int_at_addr(which);
+  }
+  void int_at_put(int which, jint contents)       {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->int_at_addr(which) = contents;
+  }
 
-  jshort short_at(int which) const                { return *short_at_addr(which); }
-  void short_at_put(int which, jshort contents)   { *short_at_addr(which) = contents; }
+  jshort short_at(int which) const                {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->short_at_addr(which);
+  }
+  void short_at_put(int which, jshort contents)   {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->short_at_addr(which) = contents;
+  }
 
-  jushort ushort_at(int which) const              { return *ushort_at_addr(which); }
-  void ushort_at_put(int which, jushort contents) { *ushort_at_addr(which) = contents; }
+  jushort ushort_at(int which) const              {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->ushort_at_addr(which);
+  }
+  void ushort_at_put(int which, jushort contents) {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->ushort_at_addr(which) = contents;
+  }
 
-  jlong long_at(int which) const                  { return *long_at_addr(which); }
-  void long_at_put(int which, jlong contents)     { *long_at_addr(which) = contents; }
+  jlong long_at(int which) const                  {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->long_at_addr(which);
+  }
+  void long_at_put(int which, jlong contents)     {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->long_at_addr(which) = contents;
+  }
 
-  jfloat float_at(int which) const                { return *float_at_addr(which); }
-  void float_at_put(int which, jfloat contents)   { *float_at_addr(which) = contents; }
+  jfloat float_at(int which) const                {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->float_at_addr(which);
+  }
+  void float_at_put(int which, jfloat contents)   {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->float_at_addr(which) = contents;
+  }
 
-  jdouble double_at(int which) const              { return *double_at_addr(which); }
-  void double_at_put(int which, jdouble contents) { *double_at_addr(which) = contents; }
+  jdouble double_at(int which) const              {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return *p->double_at_addr(which);
+  }
+  void double_at_put(int which, jdouble contents) {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->double_at_addr(which) = contents;
+  }
 
-  jbyte byte_at_acquire(int which) const              { return OrderAccess::load_acquire(byte_at_addr(which)); }
-  void release_byte_at_put(int which, jbyte contents) { OrderAccess::release_store(byte_at_addr(which), contents); }
+  jbyte byte_at_acquire(int which) const              {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return OrderAccess::load_acquire(p->byte_at_addr(which));
+  }
+  void release_byte_at_put(int which, jbyte contents) {
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    OrderAccess::release_store(p->byte_at_addr(which), contents);
+  }
 
-  // Java thinks Symbol arrays are just arrays of either long or int, since
+  // Java thinks metadata arrays are just arrays of either long or int, since
   // there doesn't seem to be T_ADDRESS, so this is a bit of unfortunate
   // casting
 #ifdef _LP64
   Symbol* symbol_at(int which) const {
-    return (Symbol*)*long_at_addr(which); }
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return (Symbol*)*p->long_at_addr(which);
+  }
   void symbol_at_put(int which, Symbol* contents) {
-    *long_at_addr(which) = (jlong)contents;
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->long_at_addr(which) = (jlong)contents;
   }
 #else
   Symbol* symbol_at(int which) const {
-    return (Symbol*)*int_at_addr(which); }
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    return (Symbol*)*p->int_at_addr(which);
+  }
   void symbol_at_put(int which, Symbol* contents) {
-    *int_at_addr(which) = (int)contents;
+    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    *p->int_at_addr(which) = (int)contents;
   }
 #endif // _LP64
 

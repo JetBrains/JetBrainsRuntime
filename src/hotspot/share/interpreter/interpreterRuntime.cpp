@@ -127,7 +127,7 @@ IRT_ENTRY(void, InterpreterRuntime::resolve_ldc(JavaThread* thread, Bytecodes::C
     // The bytecode wrappers aren't GC-safe so construct a new one
     Bytecode_loadconstant ldc2(m, bci(thread));
     oop coop = m->constants()->resolved_references()->obj_at(ldc2.cache_index());
-    assert(result == coop, "expected result for assembly code");
+    assert(oopDesc::equals(result, coop), "expected result for assembly code");
   }
 #endif
   thread->set_vm_result(result);

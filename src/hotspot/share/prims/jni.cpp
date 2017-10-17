@@ -84,9 +84,6 @@
 #include "utilities/internalVMTests.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/vmError.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif // INCLUDE_ALL_GCS
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciCompiler.hpp"
 #include "jvmci/jvmciRuntime.hpp"
@@ -585,7 +582,7 @@ JNI_QUICK_ENTRY(jboolean, jni_IsAssignableFrom(JNIEnv *env, jclass sub, jclass s
   oop super_mirror = JNIHandles::resolve_non_null(super);
   if (java_lang_Class::is_primitive(sub_mirror) ||
       java_lang_Class::is_primitive(super_mirror)) {
-    jboolean ret = (sub_mirror == super_mirror);
+    jboolean ret = oopDesc::equals(sub_mirror, super_mirror);
 
     HOTSPOT_JNI_ISASSIGNABLEFROM_RETURN(ret);
     return ret;
@@ -825,7 +822,7 @@ JNI_QUICK_ENTRY(jboolean, jni_IsSameObject(JNIEnv *env, jobject r1, jobject r2))
 
   oop a = JNIHandles::resolve(r1);
   oop b = JNIHandles::resolve(r2);
-  jboolean ret = (a == b) ? JNI_TRUE : JNI_FALSE;
+  jboolean ret = oopDesc::equals(a, b) ? JNI_TRUE : JNI_FALSE;
 
   HOTSPOT_JNI_ISSAMEOBJECT_RETURN(ret);
   return ret;
@@ -2076,20 +2073,18 @@ JNI_ENTRY(jobject, jni_GetObjectField(JNIEnv *env, jobject obj, jfieldID fieldID
   // If G1 is enabled and we are accessing the value of the referent
   // field in a reference object then we need to register a non-null
   // referent with the SATB barrier.
-  if (UseG1GC) {
-    bool needs_barrier = false;
+  bool needs_barrier = false;
 
-    if (ret != NULL &&
-        offset == java_lang_ref_Reference::referent_offset &&
-        InstanceKlass::cast(k)->reference_type() != REF_NONE) {
-      assert(InstanceKlass::cast(k)->is_subclass_of(SystemDictionary::Reference_klass()), "sanity");
-      needs_barrier = true;
-    }
+  if (ret != NULL &&
+      offset == java_lang_ref_Reference::referent_offset &&
+      InstanceKlass::cast(k)->reference_type() != REF_NONE) {
+    assert(InstanceKlass::cast(k)->is_subclass_of(SystemDictionary::Reference_klass()), "sanity");
+    needs_barrier = true;
+  }
 
-    if (needs_barrier) {
-      oop referent = JNIHandles::resolve(ret);
-      G1SATBCardTableModRefBS::enqueue(referent);
-    }
+  if (needs_barrier) {
+    oop referent = JNIHandles::resolve(ret);
+    oopDesc::bs()->keep_alive_barrier(referent);
   }
 #endif // INCLUDE_ALL_GCS
 HOTSPOT_JNI_GETOBJECTFIELD_RETURN(ret);
@@ -2735,6 +2730,7 @@ JNI_QUICK_ENTRY(ElementType*, \
   EntryProbe; \
   /* allocate an chunk of memory in c land */ \
   typeArrayOop a = typeArrayOop(JNIHandles::resolve_non_null(array)); \
+  a = typeArrayOop(oopDesc::bs()->read_barrier(a)); \
   ElementType* result; \
   int len = a->length(); \
   if (len == 0) { \
@@ -2793,6 +2789,7 @@ JNI_QUICK_ENTRY(void, \
   JNIWrapper("Release" XSTR(Result) "ArrayElements"); \
   EntryProbe; \
   typeArrayOop a = typeArrayOop(JNIHandles::resolve_non_null(array)); \
+  a = typeArrayOop(oopDesc::bs()->write_barrier(a)); \
   int len = a->length(); \
   if (len != 0) {   /* Empty array:  nothing to free or copy. */  \
     if ((mode == 0) || (mode == JNI_COMMIT)) { \
@@ -2843,6 +2840,7 @@ jni_Get##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
   EntryProbe; \
   DT_VOID_RETURN_MARK(Get##Result##ArrayRegion); \
   typeArrayOop src = typeArrayOop(JNIHandles::resolve_non_null(array)); \
+  src = typeArrayOop(oopDesc::bs()->read_barrier(src)); \
   if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)src->length())) { \
     THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
@@ -2893,6 +2891,7 @@ jni_Set##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
   EntryProbe; \
   DT_VOID_RETURN_MARK(Set##Result##ArrayRegion); \
   typeArrayOop dst = typeArrayOop(JNIHandles::resolve_non_null(array)); \
+  dst = typeArrayOop(oopDesc::bs()->write_barrier(dst)); \
   if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)dst->length())) { \
     THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
@@ -3181,6 +3180,8 @@ JNI_ENTRY(void*, jni_GetPrimitiveArrayCritical(JNIEnv *env, jarray array, jboole
     *isCopy = JNI_FALSE;
   }
   oop a = JNIHandles::resolve_non_null(array);
+  a = oopDesc::bs()->write_barrier(a);
+  Universe::heap()->pin_object(a);
   assert(a->is_array(), "just checking");
   BasicType type;
   if (a->is_objArray()) {
@@ -3198,6 +3199,21 @@ JNI_ENTRY(void, jni_ReleasePrimitiveArrayCritical(JNIEnv *env, jarray array, voi
   JNIWrapper("ReleasePrimitiveArrayCritical");
   HOTSPOT_JNI_RELEASEPRIMITIVEARRAYCRITICAL_ENTRY(env, array, carray, mode);
   // The array, carray and mode arguments are ignored
+  oop a = JNIHandles::resolve_non_null(array);
+  a = oopDesc::bs()->read_barrier(a);
+#ifdef ASSERT
+  assert(a->is_array(), "just checking");
+  BasicType type;
+  if (a->is_objArray()) {
+    type = T_OBJECT;
+  } else {
+    type = TypeArrayKlass::cast(a->klass())->element_type();
+  }
+  void* ret = arrayOop(a)->base(type);
+  assert(ret == carray, "check array not moved");
+#endif
+
+  Universe::heap()->unpin_object(a);
   GCLocker::unlock_critical(thread);
 HOTSPOT_JNI_RELEASEPRIMITIVEARRAYCRITICAL_RETURN();
 JNI_END
@@ -3208,6 +3224,8 @@ JNI_ENTRY(const jchar*, jni_GetStringCritical(JNIEnv *env, jstring string, jbool
   HOTSPOT_JNI_GETSTRINGCRITICAL_ENTRY(env, string, (uintptr_t *) isCopy);
   GCLocker::lock_critical(thread);
   oop s = JNIHandles::resolve_non_null(string);
+  s = oopDesc::bs()->write_barrier(s);
+  Universe::heap()->pin_object(s);
   typeArrayOop s_value = java_lang_String::value(s);
   bool is_latin1 = java_lang_String::is_latin1(s);
   if (isCopy != NULL) {
@@ -3238,6 +3256,8 @@ JNI_ENTRY(void, jni_ReleaseStringCritical(JNIEnv *env, jstring str, const jchar 
   HOTSPOT_JNI_RELEASESTRINGCRITICAL_ENTRY(env, str, (uint16_t *) chars);
   // The str and chars arguments are ignored for UTF16 strings
   oop s = JNIHandles::resolve_non_null(str);
+  s = oopDesc::bs()->read_barrier(s);
+  Universe::heap()->unpin_object(s);
   bool is_latin1 = java_lang_String::is_latin1(s);
   if (is_latin1) {
     // For latin1 string, free jchar array allocated by earlier call to GetStringCritical.

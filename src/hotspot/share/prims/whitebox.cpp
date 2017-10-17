@@ -288,6 +288,7 @@ static const jint serial_code   = 1;
 static const jint parallel_code = 2;
 static const jint cms_code      = 4;
 static const jint g1_code       = 8;
+static const jint shenandoah_code = 16;
 
 WB_ENTRY(jint, WB_CurrentGC(JNIEnv* env, jobject o, jobject obj))
   if (UseSerialGC) {
@@ -298,6 +299,8 @@ WB_ENTRY(jint, WB_CurrentGC(JNIEnv* env, jobject o, jobject obj))
     return cms_code;
   } else if (UseG1GC) {
     return g1_code;
+  } else if (UseShenandoahGC) {
+    return shenandoah_code;
   }
   ShouldNotReachHere();
   return 0;
@@ -322,6 +325,8 @@ WB_ENTRY(jboolean, WB_GCSelectedByErgo(JNIEnv* env, jobject o, jobject obj))
     return FLAG_IS_ERGO(UseConcMarkSweepGC);
   } else if (UseG1GC) {
     return FLAG_IS_ERGO(UseG1GC);
+  } else if (UseShenandoahGC) {
+    return FLAG_IS_ERGO(UseShenandoahGC);
   }
   ShouldNotReachHere();
   return false;

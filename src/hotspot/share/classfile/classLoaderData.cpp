@@ -356,7 +356,7 @@ void ClassLoaderData::record_dependency(const Klass* k, TRAPS) {
 
       oop curr = from;
       while (curr != NULL) {
-        if (curr == to) {
+        if (oopDesc::equals(curr, to)) {
           return; // this class loader is in the parent list, no need to add it.
         }
         curr = java_lang_ClassLoader::parent(curr);
@@ -378,7 +378,7 @@ void ClassLoaderData::Dependencies::add(Handle dependency, TRAPS) {
   objArrayOop last = NULL;
   while (ok != NULL) {
     last = ok;
-    if (ok->obj_at(0) == dependency()) {
+    if (oopDesc::equals(ok->obj_at(0), dependency())) {
       // Don't need to add it
       return;
     }
@@ -417,7 +417,7 @@ void ClassLoaderData::Dependencies::locked_add(objArrayHandle last_handle,
   while (end != NULL) {
     last = end;
     // check again if another thread added it to the end.
-    if (end->obj_at(0) == loader_or_mirror) {
+    if (oopDesc::equals(end->obj_at(0), loader_or_mirror)) {
       // Don't need to add it
       return;
     }
@@ -472,8 +472,7 @@ class ClassLoaderDataGraphKlassIteratorStatic {
   InstanceKlass* try_get_next_class() {
     assert(SafepointSynchronize::is_at_safepoint(), "only called at safepoint");
     int max_classes = InstanceKlass::number_of_instance_classes();
-    assert(max_classes > 0, "should not be called with no instance classes");
-    for (int i = 0; i < max_classes; ) {
+    for (int i = 0; i < max_classes; i++) {
 
       if (_current_class_entry != NULL) {
         Klass* k = _current_class_entry;
@@ -481,9 +480,7 @@ class ClassLoaderDataGraphKlassIteratorStatic {
 
         if (k->is_instance_klass()) {
           InstanceKlass* ik = InstanceKlass::cast(k);
-          i++;  // count all instance classes found
-          // Not yet loaded classes are counted in max_classes
-          // but only return loaded classes.
+          // Only return loaded classes
           if (ik->is_loaded()) {
             return ik;
           }
@@ -501,9 +498,9 @@ class ClassLoaderDataGraphKlassIteratorStatic {
         _current_class_entry = _current_loader_data->klasses();
       }
     }
-    // Should never be reached unless all instance classes have failed or are not fully loaded.
-    // Caller handles NULL.
-    return NULL;
+    // should never be reached: an InstanceKlass should be returned above
+    ShouldNotReachHere();
+    return NULL;   // Object_klass not even loaded?
   }
 
   // If the current class for the static iterator is a class being unloaded or
@@ -775,11 +772,9 @@ void ClassLoaderData::remove_handle(OopHandle h) {
     // This barrier is used by G1 to remember the old oop values, so
     // that we don't forget any objects that were live at the snapshot at
     // the beginning.
-    if (UseG1GC) {
-      oop obj = *ptr;
-      if (obj != NULL) {
-        G1SATBCardTableModRefBS::enqueue(obj);
-      }
+    oop obj = *ptr;
+    if (obj != NULL) {
+      oopDesc::bs()->keep_alive_barrier(obj);
     }
 #endif
     *ptr = NULL;
@@ -942,7 +937,7 @@ ClassLoaderData* ClassLoaderDataGraph::add(Handle loader, bool is_anonymous, TRA
 
 
   if (!is_anonymous) {
-    ClassLoaderData** cld_addr = java_lang_ClassLoader::loader_data_addr(loader());
+    ClassLoaderData** cld_addr = java_lang_ClassLoader::loader_data_addr(oopDesc::bs()->write_barrier(loader()));
     // First, Atomically set it
     ClassLoaderData* old = (ClassLoaderData*) Atomic::cmpxchg_ptr(cld, cld_addr, NULL);
     if (old != NULL) {

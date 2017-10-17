@@ -264,12 +264,14 @@ Handle java_lang_String::create_from_str(const char* utf8_str, TRAPS) {
 
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
+    typeArrayOop buffer = value(h_obj());
+    buffer = typeArrayOop(oopDesc::bs()->write_barrier(buffer));
     if (!has_multibyte) {
-      strncpy((char*)value(h_obj())->byte_at_addr(0), utf8_str, length);
+      strncpy((char*)buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
-      UTF8::convert_to_unicode(utf8_str, value(h_obj())->byte_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
     } else {
-      UTF8::convert_to_unicode(utf8_str, value(h_obj())->char_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, buffer->char_at_addr(0), length);
     }
   }
 
@@ -310,12 +312,14 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
 
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
+    typeArrayOop buffer = value(h_obj());
+    buffer = typeArrayOop(oopDesc::bs()->write_barrier(buffer));
     if (!has_multibyte) {
-      strncpy((char*)value(h_obj())->byte_at_addr(0), utf8_str, length);
+      strncpy((char*) buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
-      UTF8::convert_to_unicode(utf8_str, value(h_obj())->byte_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
     } else {
-      UTF8::convert_to_unicode(utf8_str, value(h_obj())->char_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, buffer->char_at_addr(0), length);
     }
   }
 
@@ -807,7 +811,7 @@ void java_lang_Class::set_mirror_module_field(Klass* k, Handle mirror, Handle mo
   } else {
     assert(Universe::is_module_initialized() ||
            (ModuleEntryTable::javabase_defined() &&
-            (module() == ModuleEntryTable::javabase_moduleEntry()->module())),
+            (oopDesc::equals(module(), ModuleEntryTable::javabase_moduleEntry()->module()))),
            "Incorrect java.lang.Module specification while creating mirror");
     set_module(mirror(), module());
   }
@@ -884,7 +888,7 @@ void java_lang_Class::create_mirror(Klass* k, Handle class_loader,
     }
 
     // set the classLoader field in the java_lang_Class instance
-    assert(class_loader() == k->class_loader(), "should be same");
+    assert(oopDesc::equals(class_loader(), k->class_loader()), "should be same");
     set_class_loader(mirror(), class_loader());
 
     // Setup indirection from klass->mirror
@@ -1127,9 +1131,9 @@ BasicType java_lang_Class::primitive_type(oop java_class) {
     // Note: create_basic_type_mirror above initializes ak to a non-null value.
     type = ArrayKlass::cast(ak)->element_type();
   } else {
-    assert(java_class == Universe::void_mirror(), "only valid non-array primitive");
+    assert(oopDesc::equals(java_class, Universe::void_mirror()), "only valid non-array primitive");
   }
-  assert(Universe::java_mirror(type) == java_class, "must be consistent");
+  assert(oopDesc::equals(Universe::java_mirror(type), java_class), "must be consistent");
   return type;
 }
 
@@ -3319,14 +3323,14 @@ Symbol* java_lang_invoke_MethodType::as_signature(oop mt, bool intern_if_not_fou
 }
 
 bool java_lang_invoke_MethodType::equals(oop mt1, oop mt2) {
-  if (mt1 == mt2)
+  if (oopDesc::equals(mt1, mt2))
     return true;
-  if (rtype(mt1) != rtype(mt2))
+  if (! oopDesc::equals(rtype(mt1), rtype(mt2)))
     return false;
   if (ptype_count(mt1) != ptype_count(mt2))
     return false;
   for (int i = ptype_count(mt1) - 1; i >= 0; i--) {
-    if (ptype(mt1, i) != ptype(mt2, i))
+    if (! oopDesc::equals(ptype(mt1, i), ptype(mt2, i)))
       return false;
   }
   return true;
@@ -3401,6 +3405,8 @@ void java_lang_invoke_MethodHandleNatives_CallSiteContext::compute_offsets() {
 
 DependencyContext java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(oop call_site) {
   assert(java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(call_site), "");
+  // DependencyContext can write to the field address -> need write barrier.
+  call_site = oopDesc::bs()->write_barrier(call_site);
   intptr_t* vmdeps_addr = (intptr_t*)call_site->address_field_addr(_vmdependencies_offset);
   DependencyContext dep_ctx(vmdeps_addr);
   return dep_ctx;
@@ -3478,6 +3484,7 @@ ClassLoaderData** java_lang_ClassLoader::loader_data_addr(oop loader) {
 }
 
 ClassLoaderData* java_lang_ClassLoader::loader_data(oop loader) {
+  loader = oopDesc::bs()->read_barrier(loader);
   return *java_lang_ClassLoader::loader_data_addr(loader);
 }
 
@@ -3517,7 +3524,7 @@ bool java_lang_ClassLoader::isAncestor(oop loader, oop cl) {
   // This loop taken verbatim from ClassLoader.java:
   do {
     acl = parent(acl);
-    if (cl == acl) {
+    if (oopDesc::equals(cl, acl)) {
       return true;
     }
     assert(++loop_count > 0, "loop_count overflow");
@@ -3547,7 +3554,7 @@ bool java_lang_ClassLoader::is_trusted_loader(oop loader) {
 
   oop cl = SystemDictionary::java_system_loader();
   while(cl != NULL) {
-    if (cl == loader) return true;
+    if (oopDesc::equals(cl, loader)) return true;
     cl = parent(cl);
   }
   return false;

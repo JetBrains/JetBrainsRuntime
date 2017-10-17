@@ -110,6 +110,35 @@ hotspot_tier1_compiler_3 = \
 hotspot_tier1_compiler_closed = \
   sanity/ExecuteInternalVMTests.java
 
+hotspot_gc_shenandoah = \
+  runtime/MemberName/MemberNameLeak.java \
+  runtime/CompressedOops/UseCompressedOops.java \
+  gc/TestHumongousReferenceObject.java \
+  gc/TestSystemGC.java \
+  gc/arguments/TestDisableDefaultGC.java \
+  gc/arguments/TestUseCompressedOopsErgo.java \
+  gc/arguments/TestAlignmentToUseLargePages.java \
+  gc/class_unloading/TestClassUnloadingDisabled.java \
+  gc/ergonomics/TestInitialGCThreadLogging.java \
+  gc/ergonomics/TestDynamicNumberOfGCThreads.java \
+  gc/logging/TestGCId.java \
+  gc/metaspace/TestMetaspacePerfCounters.java \
+  gc/metaspace/TestMetaspacePerfCounters.java \
+  gc/startup_warnings/TestShenandoah.java \
+  gc/stress/gcold/TestGCOldWithShenandoah.java \
+  gc/stress/gcbasher/TestGCBasherWithShenandoah.java \
+  gc/stress/gclocker/TestGCLockerWithShenandoah.java \
+  gc/stress/systemgc/TestSystemGCWithShenandoah.java \
+  gc/shenandoah/
+
+hotspot_fast_gc_shenandoah = \
+  gc/shenandoah/options/ \
+  gc/shenandoah/compiler/ \
+  gc/shenandoah/TestSmallHeap.java \
+  gc/shenandoah/TestAllocLargeObjOOM.java \
+  gc/shenandoah/TestAllocSmallObjOOM.java \
+  gc/shenandoah/MXNotificationsFullGC.java
+
 hotspot_not_fast_compiler = \
   :hotspot_compiler \
   -:hotspot_tier1_compiler_1 \

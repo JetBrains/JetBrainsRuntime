@@ -25,6 +25,7 @@
 #ifndef SHARE_VM_RUNTIME_HANDLES_HPP
 #define SHARE_VM_RUNTIME_HANDLES_HPP
 
+#include "gc/shared/barrierSet.hpp"
 #include "memory/arena.hpp"
 #include "oops/oop.hpp"
 #include "oops/oopsHierarchy.hpp"
@@ -77,8 +78,8 @@ class Handle VALUE_OBJ_CLASS_SPEC {
   // General access
   oop     operator () () const                   { return obj(); }
   oop     operator -> () const                   { return non_null_obj(); }
-  bool    operator == (oop o) const              { return obj() == o; }
-  bool    operator == (const Handle& h) const          { return obj() == h.obj(); }
+  inline bool operator == (oop o) const          { return oopDesc::equals(obj(), o); }
+  inline bool operator == (const Handle& h) const{ return oopDesc::equals(obj(), h.obj()); }
 
   // Null checks
   bool    is_null() const                        { return _handle == NULL; }

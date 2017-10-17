@@ -43,9 +43,6 @@
 #include "trace/traceMacros.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/stack.inline.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif // INCLUDE_ALL_GCS
 
 bool Klass::is_cloneable() const {
   return _access_flags.is_cloneable_fast() ||
@@ -450,11 +447,9 @@ void Klass::klass_update_barrier_set(oop v) {
 // the beginning. This function is only used when we write oops into Klasses.
 void Klass::klass_update_barrier_set_pre(oop* p, oop v) {
 #if INCLUDE_ALL_GCS
-  if (UseG1GC) {
-    oop obj = *p;
-    if (obj != NULL) {
-      G1SATBCardTableModRefBS::enqueue(obj);
-    }
+  oop obj = oopDesc::load_heap_oop(p);
+  if (! oopDesc::is_null(obj)) {
+    oopDesc::bs()->keep_alive_barrier(obj);
   }
 #endif
 }

@@ -67,6 +67,25 @@ void IdealLoopTree::record_for_igvn() {
     Node *n = _body.at(i);
     _phase->_igvn._worklist.push(n);
   }
+  // put body of outer strip mined loop on igvn work list as well
+  if (_head->is_Loop() && _head->as_Loop()->is_strip_mined()) {
+    Node* l = _head->in(LoopNode::EntryControl);
+    Node* tail = l->in(LoopNode::LoopBackControl);
+    IfNode* le = tail->in(0)->as_If();
+    Node* sfpt = le->in(0);
+    Node* bol = le->in(1);
+    Node* cmp = bol->in(1);
+    Node* opaq = cmp->in(2);
+    Node* cle_out = _head->as_CountedLoop()->loopexit()->proj_out(false);
+    _phase->_igvn._worklist.push(l);
+    _phase->_igvn._worklist.push(tail);
+    _phase->_igvn._worklist.push(le);
+    _phase->_igvn._worklist.push(sfpt);
+    _phase->_igvn._worklist.push(bol);
+    _phase->_igvn._worklist.push(cmp);
+    _phase->_igvn._worklist.push(opaq);
+    _phase->_igvn._worklist.push(cle_out);
+  }
 }
 
 //------------------------------compute_exact_trip_count-----------------------
@@ -116,11 +135,30 @@ void IdealLoopTree::compute_trip_count(PhaseIdealLoop* phase) {
 //------------------------------compute_profile_trip_cnt----------------------------
 // Compute loop trip count from profile data as
 //    (backedge_count + loop_exit_count) / loop_exit_count
-void IdealLoopTree::compute_profile_trip_cnt( PhaseIdealLoop *phase ) {
-  if (!_head->is_CountedLoop()) {
+
+float IdealLoopTree::compute_profile_trip_cnt_helper(Node* n) {
+  if (n->is_If()) {
+    IfNode *iff = n->as_If();
+    if (iff->_fcnt != COUNT_UNKNOWN && iff->_prob != PROB_UNKNOWN) {
+      Node *exit = is_loop_exit(iff);
+      if (exit) {
+        float exit_prob = iff->_prob;
+        if (exit->Opcode() == Op_IfFalse) exit_prob = 1.0 - exit_prob;
+        if (exit_prob > PROB_MIN) {
+          float exit_cnt = iff->_fcnt * exit_prob;
+          return exit_cnt;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+void IdealLoopTree::compute_profile_trip_cnt(PhaseIdealLoop *phase) {
+  if (!_head->is_Loop()) {
     return;
   }
-  CountedLoopNode* head = _head->as_CountedLoop();
+  LoopNode* head = _head->as_Loop();
   if (head->profile_trip_cnt() != COUNT_UNKNOWN) {
     return; // Already computed
   }
@@ -132,7 +170,8 @@ void IdealLoopTree::compute_profile_trip_cnt( PhaseIdealLoop *phase ) {
         back->in(0) &&
         back->in(0)->is_If() &&
         back->in(0)->as_If()->_fcnt != COUNT_UNKNOWN &&
-        back->in(0)->as_If()->_prob != PROB_UNKNOWN) {
+        back->in(0)->as_If()->_prob != PROB_UNKNOWN &&
+        (back->Opcode() == Op_IfTrue ? 1-back->in(0)->as_If()->_prob : back->in(0)->as_If()->_prob) > PROB_MIN) {
       break;
     }
     back = phase->idom(back);
@@ -141,26 +180,34 @@ void IdealLoopTree::compute_profile_trip_cnt( PhaseIdealLoop *phase ) {
     assert((back->Opcode() == Op_IfTrue || back->Opcode() == Op_IfFalse) &&
            back->in(0), "if-projection exists");
     IfNode* back_if = back->in(0)->as_If();
-    float loop_back_cnt = back_if->_fcnt * back_if->_prob;
+    float loop_back_cnt = back_if->_fcnt * (back->Opcode() == Op_IfTrue ? back_if->_prob : (1 - back_if->_prob));
 
     // Now compute a loop exit count
     float loop_exit_cnt = 0.0f;
-    for( uint i = 0; i < _body.size(); i++ ) {
-      Node *n = _body[i];
-      if( n->is_If() ) {
-        IfNode *iff = n->as_If();
-        if( iff->_fcnt != COUNT_UNKNOWN && iff->_prob != PROB_UNKNOWN ) {
-          Node *exit = is_loop_exit(iff);
-          if( exit ) {
-            float exit_prob = iff->_prob;
-            if (exit->Opcode() == Op_IfFalse) exit_prob = 1.0 - exit_prob;
-            if (exit_prob > PROB_MIN) {
-              float exit_cnt = iff->_fcnt * exit_prob;
-              loop_exit_cnt += exit_cnt;
+    if (_child == NULL) {
+      for( uint i = 0; i < _body.size(); i++ ) {
+        Node *n = _body[i];
+        loop_exit_cnt += compute_profile_trip_cnt_helper(n);
+      }
+    } else {
+      ResourceMark rm;
+      Unique_Node_List wq;
+      wq.push(back);
+      for (uint i = 0; i < wq.size(); i++) {
+        Node *n = wq.at(i);
+        assert(n->is_CFG(), "only control nodes");
+        if (n != head) {
+          if (n->is_Region()) {
+            for (uint j = 1; j < n->req(); j++) {
+              wq.push(n->in(j));
             }
           }
+        } else {
+          loop_exit_cnt += compute_profile_trip_cnt_helper(n);
+          wq.push(n->in(0));
         }
       }
+
     }
     if (loop_exit_cnt > 0.0f) {
       trip_cnt = (loop_back_cnt + loop_exit_cnt) / loop_exit_cnt;
@@ -168,6 +215,8 @@ void IdealLoopTree::compute_profile_trip_cnt( PhaseIdealLoop *phase ) {
       // No exit count so use
       trip_cnt = loop_back_cnt;
     }
+  } else {
+    head->mark_profile_trip_failed();
   }
 #ifndef PRODUCT
   if (TraceProfileTripCount) {
@@ -494,7 +543,7 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
     loop->dump_head();
   }
 #endif
-  Node* head = loop->_head;
+  LoopNode* head = loop->_head->as_Loop();
   bool counted_loop = head->is_CountedLoop();
   if (counted_loop) {
     CountedLoopNode *cl = head->as_CountedLoop();
@@ -514,7 +563,7 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
 
   // Step 1: Clone the loop body.  The clone becomes the peeled iteration.
   //         The pre-loop illegally has 2 control users (old & new loops).
-  clone_loop( loop, old_new, dom_depth(head) );
+  clone_loop(loop, old_new, dom_depth(head->skip_strip_mined()), ControlAroundStripMined);
 
   // Step 2: Make the old-loop fall-in edges point to the peeled iteration.
   //         Do this by making the old-loop fall-in edges act as if they came
@@ -523,8 +572,8 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
   //         the pre-loop with only 1 user (the new peeled iteration), but the
   //         peeled-loop backedge has 2 users.
   Node* new_entry = old_new[head->in(LoopNode::LoopBackControl)->_idx];
-  _igvn.hash_delete(head);
-  head->set_req(LoopNode::EntryControl, new_entry);
+  _igvn.hash_delete(head->skip_strip_mined());
+  head->skip_strip_mined()->set_req(LoopNode::EntryControl, new_entry);
   for (DUIterator_Fast jmax, j = head->fast_outs(jmax); j < jmax; j++) {
     Node* old = head->fast_out(j);
     if (old->in(0) == loop->_head && old->req() == 3 && old->is_Phi()) {
@@ -550,7 +599,6 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
       use->set_req(LoopNode::LoopBackControl, C->top());
     }
   }
-
 
   // Step 4: Correct dom-depth info.  Set to loop-head depth.
   int dd = dom_depth(head);
@@ -952,7 +1000,11 @@ Node *PhaseIdealLoop::clone_up_backedge_goo( Node *back_ctrl, Node *preheader_ct
   // Recursive fixup any other input edges into x.
   // If there are no changes we can just return 'n', otherwise
   // we need to clone a private copy and change it.
-  for( uint i = 1; i < n->req(); i++ ) {
+  uint start = 1;
+  if (n->Opcode() == Op_ShenandoahWBMemProj) {
+    start = 0;
+  }
+  for( uint i = start; i < n->req(); i++ ) {
     Node *g = clone_up_backedge_goo( back_ctrl, preheader_ctrl, n->in(i), visited, clones );
     if( g != n->in(i) ) {
       if( !x ) {
@@ -1009,8 +1061,6 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
   CountedLoopEndNode *main_end = main_head->loopexit();
   guarantee(main_end != NULL, "no loop exit node");
   assert( main_end->outcnt() == 2, "1 true, 1 false path only" );
-  uint dd_main_head = dom_depth(main_head);
-  uint max = main_head->outcnt();
 
   Node *pre_header= main_head->in(LoopNode::EntryControl);
   Node *init      = main_head->init_trip();
@@ -1043,7 +1093,16 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
 
   // Step B1: Clone the loop body.  The clone becomes the pre-loop.  The main
   // loop pre-header illegally has 2 control users (old & new loops).
-  clone_loop( loop, old_new, dd_main_head );
+  LoopNode* outer_main_head = main_head;
+  IdealLoopTree* outer_loop = loop;
+  if (main_head->is_strip_mined()) {
+    main_head->verify_strip_mined(1);
+    outer_main_head = main_head->in(LoopNode::EntryControl)->as_Loop();
+    outer_loop = loop->_parent;
+    assert(outer_loop->_head == outer_main_head, "broken loop tree");
+  }
+  uint dd_main_head = dom_depth(outer_main_head);
+  clone_loop(loop, old_new, dd_main_head, ControlAroundStripMined);
   CountedLoopNode*    pre_head = old_new[main_head->_idx]->as_CountedLoop();
   CountedLoopEndNode* pre_end  = old_new[main_end ->_idx]->as_CountedLoopEnd();
   pre_head->set_pre_loop(main_head);
@@ -1058,7 +1117,7 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
   IfFalseNode *new_pre_exit = new IfFalseNode(pre_end);
   _igvn.register_new_node_with_optimizer( new_pre_exit );
   set_idom(new_pre_exit, pre_end, dd_main_head);
-  set_loop(new_pre_exit, loop->_parent);
+  set_loop(new_pre_exit, outer_loop->_parent);
 
   // Step B2: Build a zero-trip guard for the main-loop.  After leaving the
   // pre-loop, the main-loop may not execute at all.  Later in life this
@@ -1075,22 +1134,22 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
   IfNode *min_iff = new IfNode( new_pre_exit, min_bol, PROB_ALWAYS, COUNT_UNKNOWN );
   _igvn.register_new_node_with_optimizer( min_iff );
   set_idom(min_iff, new_pre_exit, dd_main_head);
-  set_loop(min_iff, loop->_parent);
+  set_loop(min_iff, outer_loop->_parent);
 
   // Plug in the false-path, taken if we need to skip main-loop
   _igvn.hash_delete( pre_exit );
   pre_exit->set_req(0, min_iff);
   set_idom(pre_exit, min_iff, dd_main_head);
-  set_idom(pre_exit->unique_out(), min_iff, dd_main_head);
+  set_idom(pre_exit->unique_ctrl_out(), min_iff, dd_main_head);
   // Make the true-path, must enter the main loop
   Node *min_taken = new IfTrueNode( min_iff );
   _igvn.register_new_node_with_optimizer( min_taken );
   set_idom(min_taken, min_iff, dd_main_head);
-  set_loop(min_taken, loop->_parent);
+  set_loop(min_taken, outer_loop->_parent);
   // Plug in the true path
-  _igvn.hash_delete( main_head );
-  main_head->set_req(LoopNode::EntryControl, min_taken);
-  set_idom(main_head, min_taken, dd_main_head);
+  _igvn.hash_delete(outer_main_head);
+  outer_main_head->set_req(LoopNode::EntryControl, min_taken);
+  set_idom(outer_main_head, min_taken, dd_main_head);
 
   Arena *a = Thread::current()->resource_area();
   VectorSet visited(a);
@@ -1102,7 +1161,7 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
     if( main_phi->is_Phi() && main_phi->in(0) == main_head && main_phi->outcnt() > 0 ) {
       Node *pre_phi = old_new[main_phi->_idx];
       Node *fallpre  = clone_up_backedge_goo(pre_head->back_control(),
-                                             main_head->init_control(),
+                                             main_head->skip_strip_mined()->in(LoopNode::EntryControl),
                                              pre_phi->in(LoopNode::LoopBackControl),
                                              visited, clones);
       _igvn.hash_delete(main_phi);
@@ -1171,6 +1230,15 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
     BoolNode* new_bol2 = new BoolNode(main_bol->in(1), new_test);
     register_new_node( new_bol2, main_end->in(CountedLoopEndNode::TestControl) );
     _igvn.replace_input_of(main_end, CountedLoopEndNode::TestValue, new_bol2);
+    if (main_head->is_strip_mined()) {
+      Node* tail = outer_main_head->in(LoopNode::LoopBackControl);
+      Node* le = tail->in(0);
+      Node* bol = le->in(1);
+      Node* new_bol3 = new_bol2->clone();
+      new_bol3->set_req(1, bol->in(1));
+      register_new_node(new_bol3, le->in(0));
+      _igvn.replace_input_of(le, 1, new_bol3);
+    }
   }
 
   // Flag main loop
@@ -1305,16 +1373,24 @@ void PhaseIdealLoop::insert_scalar_rced_post_loop(IdealLoopTree *loop, Node_List
 Node *PhaseIdealLoop::insert_post_loop(IdealLoopTree *loop, Node_List &old_new,
                                        CountedLoopNode *main_head, CountedLoopEndNode *main_end,
                                        Node *incr, Node *limit, CountedLoopNode *&post_head) {
+  IfNode* outer_main_end = main_end;
+  IdealLoopTree* outer_loop = loop;
+  if (main_head->is_strip_mined()) {
+    main_head->verify_strip_mined(1);
+    outer_main_end = main_head->in(LoopNode::EntryControl)->in(LoopNode::LoopBackControl)->in(0)->as_If();
+    outer_loop = loop->_parent;
+    assert(outer_loop->_head == main_head->in(LoopNode::EntryControl), "broken loop tree");
+  }
 
   //------------------------------
   // Step A: Create a new post-Loop.
-  Node* main_exit = main_end->proj_out(false);
+  Node* main_exit = outer_main_end->proj_out(false);
   assert(main_exit->Opcode() == Op_IfFalse, "");
   int dd_main_exit = dom_depth(main_exit);
 
   // Step A1: Clone the loop body of main. The clone becomes the post-loop.
   // The main loop pre-header illegally has 2 control users (old & new loops).
-  clone_loop(loop, old_new, dd_main_exit);
+  clone_loop(loop, old_new, dd_main_exit, ControlAroundStripMined);
   assert(old_new[main_end->_idx]->Opcode() == Op_CountedLoopEnd, "");
   post_head = old_new[main_head->_idx]->as_CountedLoop();
   post_head->set_normal_loop();
@@ -1325,10 +1401,10 @@ Node *PhaseIdealLoop::insert_post_loop(IdealLoopTree *loop, Node_List &old_new,
   post_end->_prob = PROB_FAIR;
 
   // Build the main-loop normal exit.
-  IfFalseNode *new_main_exit = new IfFalseNode(main_end);
+  IfFalseNode *new_main_exit = new IfFalseNode(outer_main_end);
   _igvn.register_new_node_with_optimizer(new_main_exit);
-  set_idom(new_main_exit, main_end, dd_main_exit);
-  set_loop(new_main_exit, loop->_parent);
+  set_idom(new_main_exit, outer_main_end, dd_main_exit);
+  set_loop(new_main_exit, outer_loop->_parent);
 
   // Step A2: Build a zero-trip guard for the post-loop.  After leaving the
   // main-loop, the post-loop may not execute at all.  We 'opaque' the incr
@@ -1346,7 +1422,7 @@ Node *PhaseIdealLoop::insert_post_loop(IdealLoopTree *loop, Node_List &old_new,
   IfNode *zer_iff = new IfNode(new_main_exit, zer_bol, PROB_FAIR, COUNT_UNKNOWN);
   _igvn.register_new_node_with_optimizer(zer_iff);
   set_idom(zer_iff, new_main_exit, dd_main_exit);
-  set_loop(zer_iff, loop->_parent);
+  set_loop(zer_iff, outer_loop->_parent);
 
   // Plug in the false-path, taken if we need to skip this post-loop
   _igvn.replace_input_of(main_exit, 0, zer_iff);
@@ -1356,7 +1432,7 @@ Node *PhaseIdealLoop::insert_post_loop(IdealLoopTree *loop, Node_List &old_new,
   Node *zer_taken = new IfTrueNode(zer_iff);
   _igvn.register_new_node_with_optimizer(zer_taken);
   set_idom(zer_taken, zer_iff, dd_main_exit);
-  set_loop(zer_taken, loop->_parent);
+  set_loop(zer_taken, outer_loop->_parent);
   // Plug in the true path
   _igvn.hash_delete(post_head);
   post_head->set_req(LoopNode::EntryControl, zer_taken);
@@ -1431,7 +1507,7 @@ void PhaseIdealLoop::do_unroll( IdealLoopTree *loop, Node_List &old_new, bool ad
   // if rounds of unroll,optimize are making progress
   loop_head->set_node_count_before_unroll(loop->_body.size());
 
-  Node *ctrl  = loop_head->in(LoopNode::EntryControl);
+  Node *ctrl  = loop_head->skip_strip_mined()->in(LoopNode::EntryControl);
   Node *limit = loop_head->limit();
   Node *init  = loop_head->init_trip();
   Node *stride = loop_head->stride();
@@ -1610,7 +1686,7 @@ void PhaseIdealLoop::do_unroll( IdealLoopTree *loop, Node_List &old_new, bool ad
   // represents the odd iterations; since the loop trips an even number of
   // times its backedge is never taken.  Kill the backedge.
   uint dd = dom_depth(loop_head);
-  clone_loop( loop, old_new, dd );
+  clone_loop(loop, old_new, dd, IgnoreStripMined);
 
   // Make backedges of the clone equal to backedges of the original.
   // Make the fall-in from the original come from the fall-out of the clone.
@@ -1653,6 +1729,7 @@ void PhaseIdealLoop::do_unroll( IdealLoopTree *loop, Node_List &old_new, bool ad
   }
 
   loop->record_for_igvn();
+  loop_head->clear_strip_mined();
 
 #ifndef PRODUCT
   if (C->do_vector_loop() && (PrintOpto && (VerifyLoopOptimizations || TraceLoopOpts))) {
@@ -2047,7 +2124,7 @@ int PhaseIdealLoop::do_range_check( IdealLoopTree *loop, Node_List &old_new ) {
   }
 
   // Need to find the main-loop zero-trip guard
-  Node *ctrl  = cl->in(LoopNode::EntryControl);
+  Node *ctrl  = cl->skip_strip_mined()->in(LoopNode::EntryControl);
   Node *iffm = ctrl->in(0);
   Node *opqzm = iffm->in(1)->in(1)->in(2);
   assert(opqzm->in(1) == main_limit, "do not understand situation");
@@ -2413,7 +2490,6 @@ bool PhaseIdealLoop::multi_version_post_loops(IdealLoopTree *rce_loop, IdealLoop
     _igvn.register_new_node_with_optimizer(cur_min);
     Node *cmp_node = rce_loop_end->cmp_node();
     _igvn.replace_input_of(cmp_node, 2, cur_min);
-    set_idom(cmp_node, cur_min, dom_depth(ctrl));
     set_ctrl(cur_min, ctrl);
     set_loop(cur_min, rce_loop->_parent);
 
@@ -2519,7 +2595,7 @@ void IdealLoopTree::adjust_loop_exit_prob( PhaseIdealLoop *phase ) {
 
 #ifdef ASSERT
 static CountedLoopNode* locate_pre_from_main(CountedLoopNode *cl) {
-  Node *ctrl  = cl->in(LoopNode::EntryControl);
+  Node *ctrl  = cl->skip_strip_mined()->in(LoopNode::EntryControl);
   assert(ctrl->Opcode() == Op_IfTrue || ctrl->Opcode() == Op_IfFalse, "");
   Node *iffm = ctrl->in(0);
   assert(iffm->Opcode() == Op_If, "");
@@ -2558,7 +2634,7 @@ void IdealLoopTree::remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *
   }
 
   assert(locate_pre_from_main(main_head) == cl, "bad main loop");
-  Node* main_iff = main_head->in(LoopNode::EntryControl)->in(0);
+  Node* main_iff = main_head->skip_strip_mined()->in(LoopNode::EntryControl)->in(0);
 
   // Remove the Opaque1Node of the pre loop and make it execute all iterations
   phase->_igvn.replace_input_of(pre_cmp, 2, pre_cmp->in(2)->in(2));
@@ -2619,7 +2695,7 @@ bool IdealLoopTree::policy_do_remove_empty_loop( PhaseIdealLoop *phase ) {
   }
   if (needs_guard) {
     // Check for an obvious zero trip guard.
-    Node* inctrl = PhaseIdealLoop::skip_loop_predicates(cl->in(LoopNode::EntryControl));
+    Node* inctrl = PhaseIdealLoop::skip_loop_predicates(cl->skip_strip_mined()->in(LoopNode::EntryControl));
     if (inctrl->Opcode() == Op_IfTrue || inctrl->Opcode() == Op_IfFalse) {
       bool maybe_swapped = (inctrl->Opcode() == Op_IfFalse);
       // The test should look like just the backedge of a CountedLoop
@@ -2713,6 +2789,42 @@ bool IdealLoopTree::policy_do_one_iteration_loop( PhaseIdealLoop *phase ) {
   return true;
 }
 
+bool IdealLoopTree::copy_strip_mined_short(PhaseIdealLoop *phase, Node_List &old_new) {
+  CountedLoopNode *cl = _head->as_CountedLoop();
+  if (LoopStripMiningCopyShort &&
+      cl->is_strip_mined() &&
+      !cl->is_strip_mined_short_cloned() &&
+      !cl->has_exact_trip_count() &&
+      cl->profile_trip_cnt() < LoopStripMiningIterShortLoop) {
+    int nodes_left = phase->C->max_node_limit() - phase->C->live_nodes();
+    if ((int)(2 * _body.size()) <= nodes_left) {
+      int stride = cl->stride_con();
+      jlong scaled_iters_long = ((jlong)LoopStripMiningIter/10) * ABS(stride);
+      int scaled_iters = (int)scaled_iters_long;
+      if ((jlong)scaled_iters == scaled_iters_long) {
+        cl->mark_strip_mined_short_cloned();
+        ProjNode* proj_true = phase->create_slow_version_of_loop(this, old_new, Op_If, PhaseIdealLoop::ControlAroundStripMined);
+        IfNode* iff = proj_true->in(0)->as_If();
+        Node* proj_false = iff->proj_out(1-proj_true->_con);
+        Node* sub = NULL;
+        if (stride > 0) {
+          sub = phase->_igvn.transform(new SubINode(cl->limit(), cl->init_trip()));
+        } else {
+          sub = phase->_igvn.transform(new SubINode(cl->init_trip(), cl->limit()));
+        }
+        Node* cmp = phase->_igvn.transform(new CmpINode(sub, phase->_igvn.intcon(scaled_iters)));
+        Node* bol = phase->_igvn.transform(new BoolNode(cmp, BoolTest::ge));
+        iff = phase->_igvn.transform(new IfNode(iff->in(0), bol, PROB_MIN, COUNT_UNKNOWN))->as_If();
+        proj_true->set_req(0, iff);
+        proj_false->set_req(0, iff);
+        phase->C->set_major_progress();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 //=============================================================================
 //------------------------------iteration_split_impl---------------------------
 bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_new ) {
@@ -2768,6 +2880,9 @@ bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_
       // Here we did some unrolling and peeling.  Eventually we will
       // completely unroll this loop and it will no longer be a loop.
       phase->do_maximally_unroll(this,old_new);
+      return true;
+    }
+    if (copy_strip_mined_short(phase, old_new)) {
       return true;
     }
   }
@@ -3167,6 +3282,8 @@ bool PhaseIdealLoop::intrinsify_fill(IdealLoopTree* lpt) {
     return false;
   }
 
+  head->verify_strip_mined(1);
+
   // Check that the body only contains a store of a loop invariant
   // value that is indexed by the loop phi.
   Node* store = NULL;
@@ -3287,6 +3404,23 @@ bool PhaseIdealLoop::intrinsify_fill(IdealLoopTree* lpt) {
     }
   }
 */
+
+  if (head->is_strip_mined()) {
+    // Inner strip mined loop goes away so get rid of outer strip
+    // mined loop
+    Node* outer = head->in(LoopNode::EntryControl);
+    assert(outer->is_Loop() && outer->as_Loop()->is_strip_mined(), "where's the outer loop?");
+    Node* outer_tail = outer->in(LoopNode::LoopBackControl);
+    assert(outer_tail->Opcode() == Op_IfTrue, "broken outer loop");
+    Node* outer_le = outer_tail->in(0);
+    assert(outer_le->Opcode() == Op_If, "broken outer loop");
+    Node* outer_sfpt = outer_le->in(0);
+    assert(outer_sfpt->Opcode() == Op_SafePoint, "broken outer loop");
+    Node* in = outer_sfpt->in(0);
+    Node* outer_out = outer_le->as_If()->proj_out(false);
+    lazy_replace(outer_out, in);
+    _igvn.replace_input_of(outer_sfpt, 0, C->top());
+  }
 
   // Redirect the old control and memory edges that are outside the loop.
   // Sometimes the memory phi of the head is used as the outgoing

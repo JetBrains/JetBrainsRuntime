@@ -43,6 +43,7 @@ public class TestDisableDefaultGC {
                                                                   "-XX:-UseParallelGC",
                                                                   "-XX:-UseG1GC",
                                                                   "-XX:-UseConcMarkSweepGC",
+                                                                  "-XX:-UseShenandoahGC",
                                                                   "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldMatch("Garbage collector not selected");

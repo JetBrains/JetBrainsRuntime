@@ -196,8 +196,10 @@ HeapWord* CollectedHeap::common_mem_allocate_init(Klass* klass, size_t size, TRA
 HeapWord* CollectedHeap::allocate_from_tlab(Klass* klass, Thread* thread, size_t size) {
   assert(UseTLAB, "should use UseTLAB");
 
+  size += Universe::heap()->oop_extra_words();
   HeapWord* obj = thread->tlab().allocate(size);
   if (obj != NULL) {
+    obj = Universe::heap()->tlab_post_allocation_setup(obj);
     return obj;
   }
   // Otherwise...

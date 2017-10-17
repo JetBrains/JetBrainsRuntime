@@ -61,6 +61,7 @@
 #include "jvmci/jvmciRuntime.hpp"
 #endif
 #if INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/cms/compactibleFreeListSpace.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
 #include "gc/parallel/parallelScavengeHeap.hpp"
@@ -1757,6 +1758,8 @@ void Arguments::set_conservative_max_heap_alignment() {
     heap_alignment = ParallelScavengeHeap::conservative_max_heap_alignment();
   } else if (UseG1GC) {
     heap_alignment = G1CollectedHeap::conservative_max_heap_alignment();
+  } else if (UseShenandoahGC) {
+    heap_alignment = ShenandoahHeap::conservative_max_heap_alignment();
   }
 #endif // INCLUDE_ALL_GCS
   _conservative_max_heap_alignment = MAX4(heap_alignment,
@@ -1767,7 +1770,7 @@ void Arguments::set_conservative_max_heap_alignment() {
 
 bool Arguments::gc_selected() {
 #if INCLUDE_ALL_GCS
-  return UseSerialGC || UseParallelGC || UseParallelOldGC || UseConcMarkSweepGC || UseG1GC;
+  return UseSerialGC || UseParallelGC || UseParallelOldGC || UseConcMarkSweepGC || UseG1GC || UseShenandoahGC;
 #else
   return UseSerialGC;
 #endif // INCLUDE_ALL_GCS
@@ -1996,6 +1999,92 @@ void Arguments::set_g1_gc_flags() {
   log_trace(gc)("MarkStackSize: %uk  MarkStackSizeMax: %uk", (unsigned int) (MarkStackSize / K), (uint) (MarkStackSizeMax / K));
 }
 
+void Arguments::set_shenandoah_gc_flags() {
+
+#if !(defined AARCH64 || defined AMD64)
+  vm_exit_during_initialization("Shenandoah GC is not supported on this platform.");
+#endif
+
+#ifdef _LP64
+  // The optimized ObjArrayChunkedTask takes some bits away from the full 64 addressable
+  // bits, fail if we ever attempt to address more than we can. Only valid on 64bit.
+  if (MaxHeapSize >= ObjArrayChunkedTask::max_addressable()) {
+    jio_fprintf(defaultStream::error_stream(),
+                "Shenandoah GC cannot address more than " SIZE_FORMAT " bytes, and " SIZE_FORMAT " bytes heap requested.",
+                ObjArrayChunkedTask::max_addressable(), MaxHeapSize);
+    vm_exit(1);
+  }
+#endif
+
+  FLAG_SET_DEFAULT(ParallelGCThreads,
+                   Abstract_VM_Version::parallel_worker_threads());
+
+  if (FLAG_IS_DEFAULT(ConcGCThreads)) {
+    uint conc_threads = MAX2((uint) 1, ParallelGCThreads);
+    FLAG_SET_DEFAULT(ConcGCThreads, conc_threads);
+  }
+
+  if (FLAG_IS_DEFAULT(ParallelRefProcEnabled)) {
+    FLAG_SET_DEFAULT(ParallelRefProcEnabled, true);
+  }
+
+  if (FLAG_IS_DEFAULT(PerfDataMemorySize)) {
+    FLAG_SET_DEFAULT(PerfDataMemorySize, 512*K);
+  }
+
+#ifdef COMPILER2
+  // Shenandoah cares more about pause times, rather than raw throughput.
+  if (FLAG_IS_DEFAULT(UseCountedLoopSafepoints)) {
+    FLAG_SET_DEFAULT(UseCountedLoopSafepoints, true);
+  }
+  if (UseCountedLoopSafepoints && FLAG_IS_DEFAULT(LoopStripMiningIter)) {
+    FLAG_SET_DEFAULT(LoopStripMiningIter, 1000);
+  }
+#endif
+
+  if (AlwaysPreTouch) {
+    // Shenandoah handles pre-touch on its own. It does not let the
+    // generic storage code to do the pre-touch before Shenandoah has
+    // a chance to do it on its own.
+    FLAG_SET_DEFAULT(AlwaysPreTouch, false);
+    FLAG_SET_DEFAULT(ShenandoahAlwaysPreTouch, true);
+  }
+
+  if (ShenandoahConcurrentEvacCodeRoots) {
+    if (!ShenandoahBarriersForConst) {
+      if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {
+        warning("Concurrent code cache evacuation is enabled, enabling barriers for constants.");
+        FLAG_SET_DEFAULT(ShenandoahBarriersForConst, true);
+      } else {
+        warning("Concurrent code cache evacuation is enabled, but barriers for constants are disabled. "
+                "This may lead to surprising crashes.");
+      }
+    }
+  } else {
+    if (ShenandoahBarriersForConst) {
+      if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {
+        warning("Concurrent code cache evacuation is disabled, disabling barriers for constants.");
+        FLAG_SET_DEFAULT(ShenandoahBarriersForConst, false);
+      }
+    }
+  }
+
+  if (ShenandoahAlwaysPreTouch) {
+    if (!FLAG_IS_DEFAULT(ShenandoahUncommitDelay)) {
+      warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommitDelay");
+    }
+    FLAG_SET_DEFAULT(ShenandoahUncommitDelay, max_uintx);
+  }
+
+  // Current Hotspot machinery for biased locking may introduce lots of latency hiccups
+  // that negate the benefits of low-latency GC. The throughput improvements granted by
+  // biased locking on modern hardware are not covering the latency problems induced by
+  // it. Therefore, unless user really wants it, disable biased locking.
+  if (FLAG_IS_DEFAULT(UseBiasedLocking)) {
+    FLAG_SET_DEFAULT(UseBiasedLocking, false);
+  }
+}
+
 void Arguments::set_gc_specific_flags() {
 #if INCLUDE_ALL_GCS
   // Set per-collector flags
@@ -2005,6 +2094,8 @@ void Arguments::set_gc_specific_flags() {
     set_cms_and_parnew_gc_flags();
   } else if (UseG1GC) {
     set_g1_gc_flags();
+  } else if (UseShenandoahGC) {
+    set_shenandoah_gc_flags();
   }
   if (AssumeMP && !UseSerialGC) {
     if (FLAG_IS_DEFAULT(ParallelGCThreads) && ParallelGCThreads == 1) {
@@ -2022,6 +2113,7 @@ void Arguments::set_gc_specific_flags() {
   if (!ClassUnloading) {
     FLAG_SET_CMDLINE(bool, CMSClassUnloadingEnabled, false);
     FLAG_SET_CMDLINE(bool, ClassUnloadingWithConcurrentMark, false);
+    FLAG_SET_CMDLINE(uintx, ShenandoahUnloadClassesFrequency, 0);
   }
 #endif // INCLUDE_ALL_GCS
 }
@@ -2379,6 +2471,7 @@ bool Arguments::check_gc_consistency() {
   if (UseConcMarkSweepGC)                i++;
   if (UseParallelGC || UseParallelOldGC) i++;
   if (UseG1GC)                           i++;
+  if (UseShenandoahGC)                   i++;
   if (i > 1) {
     jio_fprintf(defaultStream::error_stream(),
                 "Conflicting collector combinations in option list; "
@@ -2530,6 +2623,21 @@ bool Arguments::check_vm_args_consistency() {
       warning("PostLoopMultiversioning disabled because RangeCheckElimination is disabled.");
     }
     FLAG_SET_CMDLINE(bool, PostLoopMultiversioning, false);
+  }
+  if (UseCountedLoopSafepoints && LoopStripMiningIter == 0) {
+    if (!FLAG_IS_DEFAULT(UseCountedLoopSafepoints) || !FLAG_IS_DEFAULT(LoopStripMiningIter)) {
+      warning("When counted loop safepoints are enabled, LoopStripMiningIter must be at least 1 (a safepoint every 1 iteration): setting it to 1");
+    }
+    LoopStripMiningIter = 1;
+  } else if (!UseCountedLoopSafepoints && LoopStripMiningIter > 0) {
+    if (!FLAG_IS_DEFAULT(UseCountedLoopSafepoints) || !FLAG_IS_DEFAULT(LoopStripMiningIter)) {
+      warning("Disabling counted safepoints implies no loop strip mining: setting LoopStripMiningIter to 0");
+    }
+    LoopStripMiningIter = 0;
+  }
+  if (FLAG_IS_DEFAULT(LoopStripMiningIterShortLoop)) {
+    // blind guess
+    LoopStripMiningIterShortLoop = LoopStripMiningIter / 10;
   }
 #endif
   return status;

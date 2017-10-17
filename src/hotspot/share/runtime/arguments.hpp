@@ -468,6 +468,8 @@ class Arguments : AllStatic {
   static void set_parallel_gc_flags();
   // Garbage-First (UseG1GC)
   static void set_g1_gc_flags();
+  // Shenandoah GC (UseShenandoahGC)
+  static void set_shenandoah_gc_flags();
   // GC ergonomics
   static void set_conservative_max_heap_alignment();
   static void set_use_compressed_oops();

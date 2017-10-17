@@ -695,7 +695,7 @@ void CodeCache::blobs_do(CodeBlobClosure* f) {
 void CodeCache::scavenge_root_nmethods_do(CodeBlobToOopClosure* f) {
   assert_locked_or_safepoint(CodeCache_lock);
 
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -738,7 +738,7 @@ void CodeCache::scavenge_root_nmethods_do(CodeBlobToOopClosure* f) {
 void CodeCache::add_scavenge_root_nmethod(nmethod* nm) {
   assert_locked_or_safepoint(CodeCache_lock);
 
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -769,7 +769,7 @@ void CodeCache::unlink_scavenge_root_nmethod(nmethod* nm, nmethod* prev) {
 void CodeCache::drop_scavenge_root_nmethod(nmethod* nm) {
   assert_locked_or_safepoint(CodeCache_lock);
 
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -788,7 +788,7 @@ void CodeCache::drop_scavenge_root_nmethod(nmethod* nm) {
 void CodeCache::prune_scavenge_root_nmethods() {
   assert_locked_or_safepoint(CodeCache_lock);
 
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -820,7 +820,7 @@ void CodeCache::prune_scavenge_root_nmethods() {
 
 #ifndef PRODUCT
 void CodeCache::asserted_non_scavengable_nmethods_do(CodeBlobClosure* f) {
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -1641,3 +1641,70 @@ void CodeCache::log_state(outputStream* st) {
             unallocated_capacity());
 }
 
+ParallelCodeCacheIterator::ParallelCodeCacheIterator(GrowableArray<CodeHeap*>* heaps) {
+  _length = heaps->length();
+  _iters = NEW_C_HEAP_ARRAY(ParallelCodeHeapIterator, _length, mtGC);
+  for (int h = 0; h < _length; h++) {
+    _iters[h] = ParallelCodeHeapIterator(heaps->at(h));
+  }
+}
+
+ParallelCodeCacheIterator::~ParallelCodeCacheIterator() {
+  FREE_C_HEAP_ARRAY(ParallelCodeHeapIterator, _iters);
+}
+
+void ParallelCodeCacheIterator::parallel_blobs_do(CodeBlobClosure* f) {
+  for (int c = 0; c < _length; c++) {
+    _iters[c].parallel_blobs_do(f);
+  }
+}
+
+ParallelCodeHeapIterator::ParallelCodeHeapIterator(CodeHeap* heap) :
+  _heap(heap), _claimed_idx(0), _finished(false) {
+};
+
+
+void ParallelCodeHeapIterator::parallel_blobs_do(CodeBlobClosure* f) {
+  assert(SafepointSynchronize::is_at_safepoint(), "Must be at safepoint");
+
+  /*
+   * Parallel code heap walk.
+   *
+   * This code makes all threads scan all code heaps, but only one thread would execute the
+   * closure on given blob. This is achieved by recording the "claimed" blocks: if a thread
+   * had claimed the block, it can process all blobs in it. Others have to fast-forward to
+   * next attempt without processing.
+   *
+   * Late threads would return immediately if iterator is finished.
+   */
+
+  if (_finished) {
+    return;
+  }
+
+  int stride = 256; // educated guess
+  int stride_mask = stride - 1;
+  assert (is_power_of_2(stride), "sanity");
+
+  int count = 0;
+  bool process_block = true;
+
+  for (CodeBlob *cb = CodeCache::first_blob(_heap); cb != NULL; cb = CodeCache::next_blob(_heap, cb)) {
+    int current = count++;
+    if ((current & stride_mask) == 0) {
+      process_block = (current >= _claimed_idx) &&
+                      (Atomic::cmpxchg(current + stride, &_claimed_idx, current) == current);
+    }
+    if (process_block) {
+      if (cb->is_alive()) {
+        f->do_code_blob(cb);
+#ifdef ASSERT
+        if (cb->is_nmethod())
+          ((nmethod*)cb)->verify_scavenge_root_oops();
+#endif
+      }
+    }
+  }
+
+  _finished = true;
+}

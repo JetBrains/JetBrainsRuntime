@@ -43,7 +43,6 @@
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
 #include "gc/g1/g1CollectedHeap.hpp"
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
 #include "gc/g1/g1StringDedup.hpp"
 #endif
 
@@ -198,8 +197,8 @@ static void ensure_string_alive(oop string) {
   // considered dead. The SATB part of G1 needs to get notified about this
   // potential resurrection, otherwise the marking might not find the object.
 #if INCLUDE_ALL_GCS
-  if (UseG1GC && string != NULL) {
-    G1SATBCardTableModRefBS::enqueue(string);
+  if (string != NULL) {
+    oopDesc::bs()->keep_alive_barrier(string);
   }
 #endif
 }
@@ -238,7 +237,7 @@ oop StringTable::intern(Handle string_or_null, jchar* name,
 
   // Found
   if (found_string != NULL) {
-    if (found_string != string_or_null()) {
+    if (! oopDesc::equals(found_string, string_or_null())) {
       ensure_string_alive(found_string);
     }
     return found_string;
@@ -276,7 +275,7 @@ oop StringTable::intern(Handle string_or_null, jchar* name,
                                   hashValue, CHECK_NULL);
   }
 
-  if (added_or_found != string()) {
+  if (! oopDesc::equals(added_or_found, string())) {
     ensure_string_alive(added_or_found);
   }
 

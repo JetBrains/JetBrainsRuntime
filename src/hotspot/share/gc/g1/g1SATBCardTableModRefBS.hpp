@@ -103,6 +103,9 @@ public:
   virtual void write_ref_nmethod_pre(oop* dst, nmethod* nm);
   virtual void write_ref_nmethod_post(oop* dst, nmethod* nm);
 
+  virtual void keep_alive_barrier(oop obj);
+
+
 };
 
 template<>

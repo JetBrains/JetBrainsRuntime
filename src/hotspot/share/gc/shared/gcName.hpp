@@ -37,6 +37,7 @@ enum GCName {
   G1New,
   ConcurrentMarkSweep,
   G1Old,
+  Shenandoah,
   GCNameEndSentinel
 };
 

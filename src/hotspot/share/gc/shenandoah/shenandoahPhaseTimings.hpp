@@ -1,0 +1,317 @@
+
+/*
+ * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ *
+ */
+
+#ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHPHASETIMEINGS_HPP
+#define SHARE_VM_GC_SHENANDOAH_SHENANDOAHPHASETIMEINGS_HPP
+
+#include "memory/allocation.hpp"
+#include "utilities/numberSeq.hpp"
+
+class ShenandoahCollectorPolicy;
+class ShenandoahWorkerTimings;
+class outputStream;
+
+class ShenandoahPhaseTimings : public CHeapObj<mtGC> {
+public:
+  enum Phase {
+    total_pause_gross,
+    total_pause,
+
+    init_mark_gross,
+    init_mark,
+    accumulate_stats,
+    make_parsable,
+    clear_liveness,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    scan_roots,
+    scan_thread_roots,
+    scan_code_roots,
+    scan_string_table_roots,
+    scan_universe_roots,
+    scan_jni_roots,
+    scan_jni_weak_roots,
+    scan_synchronizer_roots,
+    scan_flat_profiler_roots,
+    scan_management_roots,
+    scan_system_dictionary_roots,
+    scan_cldg_roots,
+    scan_jvmti_roots,
+
+    update_refs_dedup_table,
+    resize_tlabs,
+
+    final_mark_gross,
+    final_mark,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    update_roots,
+    update_thread_roots,
+    update_code_roots,
+    update_string_table_roots,
+    update_universe_roots,
+    update_jni_roots,
+    update_jni_weak_roots,
+    update_synchronizer_roots,
+    update_flat_profiler_roots,
+    update_management_roots,
+    update_system_dictionary_roots,
+    update_cldg_roots,
+    update_jvmti_roots,
+
+    finish_queues,
+    weakrefs,
+    weakrefs_process,
+    weakrefs_enqueue,
+    purge,
+    purge_class_unload,
+    purge_par,
+    purge_par_codecache,
+    purge_par_symbstring,
+    purge_par_rmt,
+    purge_par_classes,
+    purge_par_sync,
+    purge_cldg,
+    clean_str_dedup_table,
+    prepare_evac,
+    recycle_regions,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    init_evac,
+    evac_thread_roots,
+    evac_code_roots,
+    evac_string_table_roots,
+    evac_universe_roots,
+    evac_jni_roots,
+    evac_jni_weak_roots,
+    evac_synchronizer_roots,
+    evac_flat_profiler_roots,
+    evac_management_roots,
+    evac_system_dictionary_roots,
+    evac_cldg_roots,
+    evac_jvmti_roots,
+
+    init_update_refs_gross,
+    init_update_refs,
+
+    final_update_refs_gross,
+    final_update_refs,
+    final_update_refs_finish_work,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    final_update_refs_roots,
+    final_update_refs_thread_roots,
+    final_update_refs_code_roots,
+    final_update_refs_string_table_roots,
+    final_update_refs_universe_roots,
+    final_update_refs_jni_roots,
+    final_update_refs_jni_weak_roots,
+    final_update_refs_synchronizer_roots,
+    final_update_refs_flat_profiler_roots,
+    final_update_refs_management_roots,
+    final_update_refs_system_dict_roots,
+    final_update_refs_cldg_roots,
+    final_update_refs_jvmti_roots,
+    final_update_refs_dedup_table,
+
+    final_update_refs_recycle,
+
+    init_partial_gc_gross,
+    init_partial_gc,
+    partial_gc_prepare,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    init_partial_gc_work,
+    init_partial_gc_thread_roots,
+    init_partial_gc_code_roots,
+    init_partial_gc_string_table_roots,
+    init_partial_gc_universe_roots,
+    init_partial_gc_jni_roots,
+    init_partial_gc_jni_weak_roots,
+    init_partial_gc_synchronizer_roots,
+    init_partial_gc_flat_profiler_roots,
+    init_partial_gc_management_roots,
+    init_partial_gc_system_dict_roots,
+    init_partial_gc_cldg_roots,
+    init_partial_gc_jvmti_roots,
+
+    final_partial_gc_gross,
+    final_partial_gc,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    final_partial_gc_work,
+    final_partial_gc_thread_roots,
+    final_partial_gc_code_roots,
+    final_partial_gc_string_table_roots,
+    final_partial_gc_universe_roots,
+    final_partial_gc_jni_roots,
+    final_partial_gc_jni_weak_roots,
+    final_partial_gc_synchronizer_roots,
+    final_partial_gc_flat_profiler_roots,
+    final_partial_gc_management_roots,
+    final_partial_gc_system_dict_roots,
+    final_partial_gc_cldg_roots,
+    final_partial_gc_jvmti_roots,
+
+    partial_gc_update_str_dedup_table,
+    partial_gc_cleanup,
+
+    full_gc,
+    full_gc_heapdumps,
+    full_gc_prepare,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    full_gc_roots,
+    full_gc_thread_roots,
+    full_gc_code_roots,
+    full_gc_string_table_roots,
+    full_gc_universe_roots,
+    full_gc_jni_roots,
+    full_gc_jni_weak_roots,
+    full_gc_synchronizer_roots,
+    full_gc_flat_profiler_roots,
+    full_gc_management_roots,
+    full_gc_system_dictionary_roots,
+    full_gc_cldg_roots,
+    full_gc_jvmti_roots,
+
+    full_gc_mark,
+    full_gc_mark_finish_queues,
+    full_gc_weakrefs,
+    full_gc_weakrefs_process,
+    full_gc_weakrefs_enqueue,
+    full_gc_purge,
+    full_gc_purge_class_unload,
+    full_gc_purge_par,
+    full_gc_purge_par_codecache,
+    full_gc_purge_par_symbstring,
+    full_gc_purge_par_rmt,
+    full_gc_purge_par_classes,
+    full_gc_purge_par_sync,
+    full_gc_purge_cldg,
+    full_gc_calculate_addresses,
+    full_gc_adjust_pointers,
+    full_gc_copy_objects,
+    full_gc_update_str_dedup_table,
+    full_gc_resize_tlabs,
+
+    // Longer concurrent phases at the end
+    conc_mark,
+    conc_preclean,
+    conc_evac,
+    conc_update_refs,
+    conc_cleanup,
+    conc_cleanup_recycle,
+    conc_cleanup_reset_bitmaps,
+    conc_partial,
+
+    // Unclassified
+    pause_other,
+    conc_other,
+
+    _num_phases
+  };
+
+
+  // These are the subphases of GC phases (scan_roots, update_roots,
+  // init_evac, final_update_refs_roots, partial_gc_work and full_gc_roots).
+  // Make sure they are following this order.
+  enum GCParPhases {
+    ThreadRoots,
+    CodeCacheRoots,
+    StringTableRoots,
+    UniverseRoots,
+    JNIRoots,
+    JNIWeakRoots,
+    ObjectSynchronizerRoots,
+    FlatProfilerRoots,
+    ManagementRoots,
+    SystemDictionaryRoots,
+    CLDGRoots,
+    JVMTIRoots,
+    GCParPhasesSentinel
+  };
+
+private:
+  struct TimingData {
+    HdrSeq _secs;
+    double _start;
+  };
+
+private:
+  TimingData _timing_data[_num_phases];
+  const char* _phase_names[_num_phases];
+
+  ShenandoahWorkerTimings* _worker_times;
+  ShenandoahCollectorPolicy* _policy;
+
+public:
+  ShenandoahPhaseTimings();
+
+  ShenandoahWorkerTimings* worker_times() const { return _worker_times; }
+
+  // record phase start
+  void record_phase_start(Phase phase);
+  // record phase end and return elapsed time in seconds for the phase
+  void record_phase_end(Phase phase);
+  // record an elapsed time in seconds for the phase
+  void record_phase_time(Phase phase, jint time_us);
+
+  void record_workers_start(Phase phase);
+  void record_workers_end(Phase phase);
+
+  void print_on(outputStream* out) const;
+
+private:
+  void init_phase_names();
+  void print_summary_sd(outputStream* out, const char* str, const HdrSeq* seq) const;
+};
+
+class ShenandoahWorkerTimings : public CHeapObj<mtGC> {
+private:
+  uint _max_gc_threads;
+  WorkerDataArray<double>* _gc_par_phases[ShenandoahPhaseTimings::GCParPhasesSentinel];
+
+public:
+  ShenandoahWorkerTimings(uint max_gc_threads);
+
+  // record the time a phase took in seconds
+  void record_time_secs(ShenandoahPhaseTimings::GCParPhases phase, uint worker_i, double secs);
+
+  double average(uint i);
+  void reset(uint i);
+  void print();
+};
+
+class ShenandoahWorkerTimingsTracker : public StackObj {
+  double _start_time;
+  ShenandoahPhaseTimings::GCParPhases _phase;
+  ShenandoahWorkerTimings* _worker_times;
+  uint _worker_id;
+public:
+  ShenandoahWorkerTimingsTracker(ShenandoahWorkerTimings* worker_times, ShenandoahPhaseTimings::GCParPhases phase, uint worker_id);
+  ~ShenandoahWorkerTimingsTracker();
+};
+
+#endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHGCPHASETIMEINGS_HPP

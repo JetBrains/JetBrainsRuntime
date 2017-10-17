@@ -263,6 +263,8 @@ private:
   static const TypeFunc* multianewarrayN_Type(); // multianewarray
   static const TypeFunc* g1_wb_pre_Type();
   static const TypeFunc* g1_wb_post_Type();
+  static const TypeFunc* shenandoah_clone_barrier_Type();
+  static const TypeFunc* shenandoah_write_barrier_Type();
   static const TypeFunc* complete_monitor_enter_Type();
   static const TypeFunc* complete_monitor_exit_Type();
   static const TypeFunc* monitor_notify_Type();

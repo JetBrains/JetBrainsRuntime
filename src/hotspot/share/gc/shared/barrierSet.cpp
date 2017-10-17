@@ -26,6 +26,7 @@
 #include "gc/shared/barrierSet.inline.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "memory/universe.hpp"
+#include "utilities/align.hpp"
 
 // count is number of array elements being written
 void BarrierSet::static_write_ref_array_pre(HeapWord* start, size_t count) {
@@ -38,7 +39,50 @@ void BarrierSet::static_write_ref_array_pre(HeapWord* start, size_t count) {
 }
 
 // count is number of array elements being written
+void BarrierSet::write_ref_array(HeapWord* start, size_t count) {
+  assert(count <= (size_t)max_intx, "count too large");
+  HeapWord* end = (HeapWord*)((char*)start + (count*heapOopSize));
+  // In the case of compressed oops, start and end may potentially be misaligned;
+  // so we need to conservatively align the first downward (this is not
+  // strictly necessary for current uses, but a case of good hygiene and,
+  // if you will, aesthetics) and the second upward (this is essential for
+  // current uses) to a HeapWord boundary, so we mark all cards overlapping
+  // this write. If this evolves in the future to calling a
+  // logging barrier of narrow oop granularity, like the pre-barrier for G1
+  // (mentioned here merely by way of example), we will need to change this
+  // interface, so it is "exactly precise" (if i may be allowed the adverbial
+  // redundancy for emphasis) and does not include narrow oop slots not
+  // included in the original write interval.
+  HeapWord* aligned_start = (HeapWord*)align_down((uintptr_t)start, HeapWordSize);
+  HeapWord* aligned_end   = (HeapWord*)align_up  ((uintptr_t)end,   HeapWordSize);
+  // If compressed oops were not being used, these should already be aligned
+  assert(UseCompressedOops || (aligned_start == start && aligned_end == end),
+         "Expected heap word alignment of start and end");
+  write_ref_array_work(MemRegion(aligned_start, aligned_end));
+}
+
+// count is number of array elements being written
 void BarrierSet::static_write_ref_array_post(HeapWord* start, size_t count) {
   // simply delegate to instance method
   Universe::heap()->barrier_set()->write_ref_array(start, count);
 }
+
+bool BarrierSet::obj_equals(oop obj1, oop obj2) {
+  return oopDesc::unsafe_equals(obj1, obj2);
+}
+
+bool BarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
+  return oopDesc::unsafe_equals(obj1, obj2);
+}
+
+#ifdef ASSERT
+bool BarrierSet::is_safe(oop o) {
+  return true;
+}
+
+bool BarrierSet::is_safe(narrowOop o) {
+  return true;
+}
+void BarrierSet::verify_safe_oop(oop p) {
+}
+#endif

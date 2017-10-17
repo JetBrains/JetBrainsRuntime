@@ -3287,7 +3287,7 @@ CountedLoopEndNode* SuperWord::get_pre_loop_end(CountedLoopNode* cl) {
     return NULL;
   }
 
-  Node* p_f = cl->in(LoopNode::EntryControl)->in(0)->in(0);
+  Node* p_f = cl->skip_strip_mined()->in(LoopNode::EntryControl)->in(0)->in(0);
   if (!p_f->is_IfFalse()) return NULL;
   if (!p_f->in(0)->is_CountedLoopEnd()) return NULL;
   CountedLoopEndNode* pre_end = p_f->in(0)->as_CountedLoopEnd();
@@ -3416,6 +3416,26 @@ SWPointer::SWPointer(MemNode* mem, SuperWord* slp, Node_Stack *nstack, bool anal
   if (base == NULL || base->bottom_type() == Type::TOP) {
     assert(!valid(), "unsafe access");
     return;
+  }
+
+  // Detect a Shenandoah write barrier between the pre and main loop
+  // (which could break loop alignment code)
+  CountedLoopNode *main_head = slp->lp()->as_CountedLoop();
+  if (main_head->is_main_loop()) {
+    Node* c = main_head->skip_strip_mined()->in(LoopNode::EntryControl)->in(0)->in(0)->in(0);
+    if (!c->is_CountedLoopEnd()) {
+      // in case of a reserve copy
+      c = c->in(0)->in(0);
+      assert(c->is_CountedLoopEnd(), "where's the pre loop?");
+    }
+    CountedLoopEndNode* pre_end = c->as_CountedLoopEnd();
+    CountedLoopNode* pre_loop = pre_end->loopnode();
+    assert(pre_loop->is_pre_loop(), "where's the pre loop?");
+
+    Node* base_c = phase()->get_ctrl(base);
+    if (!phase()->is_dominator(base_c, pre_loop)) {
+      return;
+    }
   }
 
   NOT_PRODUCT(if(_slp->is_trace_alignment()) _tracer.store_depth();)
@@ -4493,4 +4513,3 @@ bool SuperWord::hoist_loads_in_graph() {
 
   return true;
 }
-

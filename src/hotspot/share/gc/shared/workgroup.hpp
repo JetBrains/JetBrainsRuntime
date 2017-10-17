@@ -206,13 +206,18 @@ class WorkGang: public AbstractWorkGang {
   // To get access to the GangTaskDispatcher instance.
   friend class GangWorker;
 
-  // Never deleted.
-  ~WorkGang();
 
   GangTaskDispatcher* const _dispatcher;
   GangTaskDispatcher* dispatcher() const {
     return _dispatcher;
   }
+
+protected:
+  // Never deleted.
+  ~WorkGang() {
+    ShouldNotReachHere();
+  }
+
 
 public:
   WorkGang(const char* name,

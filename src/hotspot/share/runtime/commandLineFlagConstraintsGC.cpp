@@ -40,6 +40,7 @@
 #include "gc/cms/concurrentMarkSweepGeneration.inline.hpp"
 #include "gc/g1/g1_globals.hpp"
 #include "gc/g1/heapRegionBounds.inline.hpp"
+#include "gc/shenandoah/shenandoah_globals.hpp"
 #include "gc/shared/plab.hpp"
 #endif // INCLUDE_ALL_GCS
 #ifdef COMPILER1

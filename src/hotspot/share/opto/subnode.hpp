@@ -172,6 +172,9 @@ public:
 //------------------------------CmpPNode---------------------------------------
 // Compare 2 pointer values, returning condition codes (-1, 0 or 1).
 class CmpPNode : public CmpNode {
+private:
+  bool shenandoah_optimize_java_mirror_cmp(PhaseGVN *phase, bool can_reshape);
+
 public:
   CmpPNode( Node *in1, Node *in2 ) : CmpNode(in1,in2) {}
   virtual int Opcode() const;

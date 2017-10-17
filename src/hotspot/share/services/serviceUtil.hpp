@@ -40,7 +40,7 @@ class ServiceUtil : public AllStatic {
   // to the java world.
   static inline bool visible_oop(oop o) {
     // the sentinel for deleted handles isn't visible
-    if (o == JNIHandles::deleted_handle()) {
+    if (oopDesc::equals(o, JNIHandles::deleted_handle())) {
       return false;
     }
 

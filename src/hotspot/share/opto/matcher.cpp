@@ -36,6 +36,7 @@
 #include "opto/regmask.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/type.hpp"
 #include "opto/vectornode.hpp"
 #include "runtime/os.hpp"
@@ -999,6 +1000,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
             m = n->is_SafePoint() ? match_sfpt(n->as_SafePoint()):match_tree(n);
             if (C->failing())  return NULL;
             if (m == NULL) { Matcher::soft_match_failure(); return NULL; }
+            if (n->is_MemBar()) {
+              m->as_MachMemBar()->set_adr_type(n->adr_type());
+            }
           } else {                  // Nothing the matcher cares about
             if (n->is_Proj() && n->in(0) != NULL && n->in(0)->is_Multi()) {       // Projections?
               // Convert to machine-dependent projection
@@ -2149,6 +2153,14 @@ void Matcher::find_shared( Node *n ) {
       case Op_ClearArray:
       case Op_SafePoint:
         mem_op = true;
+        break;
+      case Op_ShenandoahReadBarrier:
+        if (n->in(ShenandoahBarrierNode::ValueIn)->is_DecodeNarrowPtr()) {
+          set_shared(n->in(ShenandoahBarrierNode::ValueIn)->in(1));
+        }
+      case Op_ShenandoahWriteBarrier:
+        mem_op = true;
+        set_shared(n);
         break;
       default:
         if( n->is_Store() ) {

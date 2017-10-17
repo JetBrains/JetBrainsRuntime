@@ -1411,7 +1411,10 @@ public:
   product(bool, UseG1GC, false,                                             \
           "Use the Garbage-First garbage collector")                        \
                                                                             \
-  product(bool, UseParallelGC, false,                                       \
+  experimental(bool, TraceStringSymbolTableScrubbing, false,                \
+          "Trace information string and symbol table scrubbing.")           \
+                                                                            \
+  product(bool, UseParallelGC, false,                                   \
           "Use the Parallel Scavenge garbage collector")                    \
                                                                             \
   product(bool, UseParallelOldGC, false,                                    \

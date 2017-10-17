@@ -66,6 +66,7 @@ private:
   ciConstantPoolCache*   _field_cache;  // cached map index->field
   GrowableArray<ciField*>* _nonstatic_fields;
   int                    _has_injected_fields; // any non static injected fields? lazily initialized.
+  int                    _has_object_fields; // any object fields? lazily initialized.
 
   // The possible values of the _implementor fall into following three cases:
   //   NULL: no implementor.
@@ -75,6 +76,7 @@ private:
 
   void compute_injected_fields();
   bool compute_injected_fields_helper();
+  void compute_object_fields();
 
 protected:
   ciInstanceKlass(Klass* k);
@@ -202,6 +204,13 @@ public:
     return _has_injected_fields > 0 ? true : false;
   }
 
+  bool has_object_fields() {
+    if (_has_object_fields == -1) {
+      compute_object_fields();
+    }
+    return _has_object_fields > 0 ? true : false;
+  }
+
   // nth nonstatic field (presented by ascending address)
   ciField* nonstatic_field_at(int i) {
     assert(_nonstatic_fields != NULL, "");
@@ -269,6 +278,10 @@ public:
 
   // Dump the current state of this klass for compilation replay.
   virtual void dump_replay_data(outputStream* out);
+
+#ifdef ASSERT
+  bool debug_final_or_stable_field_at(int offset);
+#endif
 };
 
 #endif // SHARE_VM_CI_CIINSTANCEKLASS_HPP

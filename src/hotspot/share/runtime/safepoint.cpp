@@ -64,6 +64,7 @@
 #include "utilities/events.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/g1/suspendibleThreadSet.hpp"
 #endif // INCLUDE_ALL_GCS
@@ -99,7 +100,7 @@ void SafepointSynchronize::begin() {
     // In the future we should investigate whether CMS can use the
     // more-general mechanism below.  DLD (01/05).
     ConcurrentMarkSweepThread::synchronize(false);
-  } else if (UseG1GC) {
+  } else if (UseG1GC || (UseShenandoahGC && (ShenandoahSuspendibleWorkers || UseStringDeduplication))) {
     SuspendibleThreadSet::synchronize();
   }
 #endif // INCLUDE_ALL_GCS
@@ -515,7 +516,7 @@ void SafepointSynchronize::end() {
   // If there are any concurrent GC threads resume them.
   if (UseConcMarkSweepGC) {
     ConcurrentMarkSweepThread::desynchronize(false);
-  } else if (UseG1GC) {
+  } else if (UseG1GC || (UseShenandoahGC && (ShenandoahSuspendibleWorkers || UseStringDeduplication))) {
     SuspendibleThreadSet::desynchronize();
   }
 #endif // INCLUDE_ALL_GCS
@@ -547,16 +548,26 @@ static void event_safepoint_cleanup_task_commit(EventSafepointCleanupTask& event
 
 class ParallelSPCleanupThreadClosure : public ThreadClosure {
 private:
+  bool _do_deflate_idle_monitors;
   CodeBlobClosure* _nmethod_cl;
   DeflateMonitorCounters* _counters;
 
 public:
   ParallelSPCleanupThreadClosure(DeflateMonitorCounters* counters) :
-    _counters(counters),
-    _nmethod_cl(NMethodSweeper::prepare_mark_active_nmethods()) {}
+    _counters(counters) {
+    VM_Operation* op = VMThread::vm_operation();
+    _do_deflate_idle_monitors = op == NULL || ! op->deflates_idle_monitors();
+    if (op == NULL || ! op->marks_nmethods()) {
+      _nmethod_cl = NMethodSweeper::prepare_mark_active_nmethods();
+    } else {
+      _nmethod_cl = NULL;
+    }
+  }
 
   void do_thread(Thread* thread) {
-    ObjectSynchronizer::deflate_thread_local_monitors(thread, _counters);
+    if (_do_deflate_idle_monitors) {
+      ObjectSynchronizer::deflate_thread_local_monitors(thread, _counters, NULL);
+    }
     if (_nmethod_cl != NULL && thread->is_Java_thread() &&
         ! thread->is_Code_cache_sweeper_thread()) {
       JavaThread* jt = (JavaThread*) thread;

@@ -24,8 +24,10 @@
 
 #include "precompiled.hpp"
 #include "opto/arraycopynode.hpp"
+#include "opto/castnode.hpp"
 #include "opto/graphKit.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "opto/shenandoahSupport.hpp"
 
 ArrayCopyNode::ArrayCopyNode(Compile* C, bool alloc_tightly_coupled, bool has_negative_length_guard)
   : CallNode(arraycopy_type(), NULL, TypeRawPtr::BOTTOM),
@@ -144,6 +146,35 @@ int ArrayCopyNode::get_count(PhaseGVN *phase) const {
   return get_length_if_constant(phase);
 }
 
+Node* ArrayCopyNode::shenandoah_add_storeval_barrier(PhaseGVN *phase, bool can_reshape, Node* v, Node*& ctl) {
+  RegionNode* region = new RegionNode(3);
+  const Type* v_t = phase->type(v);
+  Node* phi = new PhiNode(region, v_t->isa_oopptr() ? v_t->is_oopptr()->cast_to_nonconst() : v_t);
+  Node* cmp = phase->transform(new CmpPNode(v, phase->zerocon(T_OBJECT)));
+  Node* bol = phase->transform(new BoolNode(cmp, BoolTest::ne));
+  IfNode* iff = new IfNode(ctl, bol, PROB_LIKELY_MAG(3), COUNT_UNKNOWN);
+
+  phase->transform(iff);
+  if (can_reshape) {
+    phase->is_IterGVN()->_worklist.push(iff);
+  } else {
+    phase->record_for_igvn(iff);
+  }
+
+  Node* null_true = phase->transform(new IfFalseNode(iff));
+  Node* null_false = phase->transform(new IfTrueNode(iff));
+  region->init_req(1, null_true);
+  region->init_req(2, null_false);
+  phi->init_req(1, phase->zerocon(T_OBJECT));
+  Node* cast = new CastPPNode(v, phase->type(v)->join_speculative(TypePtr::NOTNULL));
+  cast->set_req(0, null_false);
+  cast = phase->transform(cast);
+  Node* rb = phase->transform(new ShenandoahReadBarrierNode(null_false, phase->C->immutable_memory(), cast, false));
+  phi->init_req(2, rb);
+  ctl = phase->transform(region);
+  return phase->transform(phi);
+}
+
 Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int count) {
   if (!is_clonebasic()) {
     return NULL;
@@ -178,6 +209,10 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
   ciInstanceKlass* ik = inst_src->klass()->as_instance_klass();
   assert(ik->nof_nonstatic_fields() <= ArrayCopyLoadStoreMaxElem, "too many fields");
 
+  if (UseShenandoahGC && UseShenandoahMatrix && ik->has_object_fields()) {
+    return NodeSentinel;
+  }
+
   for (int i = 0; i < count; i++) {
     ciField* field = ik->nonstatic_field_at(i);
     int fieldidx = phase->C->alias_type(field)->index();
@@ -201,6 +236,9 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
 
     Node* v = LoadNode::make(*phase, ctl, mem->memory_at(fieldidx), next_src, adr_type, type, bt, MemNode::unordered);
     v = phase->transform(v);
+    if (UseShenandoahGC && ShenandoahWriteBarrier && bt == T_OBJECT) {
+      v = shenandoah_add_storeval_barrier(phase, can_reshape, v, ctl);
+    }
     Node* s = StoreNode::make(*phase, ctl, mem->memory_at(fieldidx), next_dest, adr_type, v, bt, MemNode::unordered);
     s = phase->transform(s);
     mem->set_memory_at(fieldidx, s);
@@ -252,7 +290,8 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
       return false;
     }
 
-    if (dest_elem == T_OBJECT && (!is_alloc_tightly_coupled() || !GraphKit::use_ReduceInitialCardMarks())) {
+    if (dest_elem == T_OBJECT && (!is_alloc_tightly_coupled() || !GraphKit::use_ReduceInitialCardMarks() ||
+                                  (UseShenandoahGC && UseShenandoahMatrix))) {
       // It's an object array copy but we can't emit the card marking
       // that is needed
       return false;
@@ -301,6 +340,10 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
     BasicType elem = ary_src->klass()->as_array_klass()->element_type()->basic_type();
     if (elem == T_ARRAY)  elem = T_OBJECT;
 
+    if (elem == T_OBJECT && (UseShenandoahGC && UseShenandoahMatrix)) {
+      return false;
+    }
+
     int diff = arrayOopDesc::base_offset_in_bytes(elem) - phase->type(src->in(AddPNode::Offset))->is_intptr_t()->get_con();
     assert(diff >= 0, "clone should not start after 1st array element");
     if (diff > 0) {
@@ -344,7 +387,7 @@ void ArrayCopyNode::array_copy_test_overlap(PhaseGVN *phase, bool can_reshape, b
 
 Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
                                         bool can_reshape,
-                                        Node* forward_ctl,
+                                        Node*& forward_ctl,
                                         Node* start_mem_src,
                                         Node* start_mem_dest,
                                         const TypePtr* atp_src,
@@ -364,6 +407,9 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
     if (count > 0) {
       Node* v = LoadNode::make(*phase, forward_ctl, start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
+      if (UseShenandoahGC && ShenandoahWriteBarrier && copy_type == T_OBJECT) {
+        v = shenandoah_add_storeval_barrier(phase, can_reshape, v, forward_ctl);
+      }
       mem = StoreNode::make(*phase, forward_ctl, mem, adr_dest, atp_dest, v, copy_type, MemNode::unordered);
       mem = phase->transform(mem);
       for (int i = 1; i < count; i++) {
@@ -372,6 +418,9 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
         v = LoadNode::make(*phase, forward_ctl, mem, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
+        if (UseShenandoahGC && ShenandoahWriteBarrier && copy_type == T_OBJECT) {
+          v = shenandoah_add_storeval_barrier(phase, can_reshape, v, forward_ctl);
+        }
         mem = StoreNode::make(*phase, forward_ctl,mem,next_dest,atp_dest,v, copy_type, MemNode::unordered);
         mem = phase->transform(mem);
       }
@@ -386,7 +435,7 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
 
 Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
                                          bool can_reshape,
-                                         Node* backward_ctl,
+                                         Node*& backward_ctl,
                                          Node* start_mem_src,
                                          Node* start_mem_dest,
                                          const TypePtr* atp_src,
@@ -402,6 +451,8 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
   if (!backward_ctl->is_top()) {
     // copy backward
     mem = start_mem_dest;
+
+    assert(copy_type != T_OBJECT, "only tightly coupled allocations for object arrays");
 
     if (count > 0) {
       for (int i = count-1; i >= 1; i--) {
@@ -472,7 +523,8 @@ bool ArrayCopyNode::finish_transform(PhaseGVN *phase, bool can_reshape,
   } else {
     if (in(TypeFunc::Control) != ctl) {
       // we can't return new memory and control from Ideal at parse time
-      assert(!is_clonebasic(), "added control for clone?");
+      assert(!is_clonebasic() || UseShenandoahGC, "added control for clone?");
+      phase->record_for_igvn(this);
       return false;
     }
   }

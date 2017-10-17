@@ -41,6 +41,7 @@ typeArrayOop oopFactory::new_charArray(const char* utf8_str, TRAPS) {
   int length = utf8_str == NULL ? 0 : UTF8::unicode_length(utf8_str);
   typeArrayOop result = new_charArray(length, CHECK_NULL);
   if (length > 0) {
+    result = typeArrayOop(oopDesc::bs()->write_barrier(result));
     UTF8::convert_to_unicode(utf8_str, result->char_at_addr(0), length);
   }
   return result;

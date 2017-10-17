@@ -33,6 +33,7 @@
 #include "compiler/compileLog.hpp"
 #include "compiler/disassembler.hpp"
 #include "compiler/oopMap.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
 #include "opto/block.hpp"
@@ -63,6 +64,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/stringopts.hpp"
 #include "opto/type.hpp"
 #include "opto/vectornode.hpp"
@@ -382,6 +384,11 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
     if (n->outcnt() == 1 && n->has_special_unique_user()) {
       record_for_igvn(n->unique_out());
     }
+    if (n->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(n)) {
+      for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+        record_for_igvn(n->fast_out(i));
+      }
+    }
   }
   // Remove useless macro and predicate opaq nodes
   for (int i = C->macro_count()-1; i >= 0; i--) {
@@ -402,6 +409,12 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
     Node* n = C->expensive_node(i);
     if (!useful.member(n)) {
       remove_expensive_node(n);
+    }
+  }
+  for (int i = C->shenandoah_barriers_count()-1; i >= 0; i--) {
+    ShenandoahWriteBarrierNode* n = C->shenandoah_barrier(i);
+    if (!useful.member(n)) {
+      remove_shenandoah_barrier(n);
     }
   }
   // clean up the late inline lists
@@ -762,7 +775,7 @@ Compile::Compile( ciEnv* ci_env, C2Compiler* compiler, ciMethod* target, int osr
       StartNode* s = new StartNode(root(), tf()->domain());
       initial_gvn()->set_type_bottom(s);
       init_start(s);
-      if (method()->intrinsic_id() == vmIntrinsics::_Reference_get && UseG1GC) {
+      if (method()->intrinsic_id() == vmIntrinsics::_Reference_get && (UseG1GC || UseShenandoahGC)) {
         // With java.lang.ref.reference.get() we must go through the
         // intrinsic when G1 is enabled - even when get() is the root
         // method of the compile - so that, if necessary, the value in
@@ -1178,6 +1191,7 @@ void Compile::Init(int aliaslevel) {
   _predicate_opaqs = new(comp_arena()) GrowableArray<Node*>(comp_arena(), 8,  0, NULL);
   _expensive_nodes = new(comp_arena()) GrowableArray<Node*>(comp_arena(), 8,  0, NULL);
   _range_check_casts = new(comp_arena()) GrowableArray<Node*>(comp_arena(), 8,  0, NULL);
+  _shenandoah_barriers = new(comp_arena()) GrowableArray<ShenandoahWriteBarrierNode*>(comp_arena(), 8,  0, NULL);
   register_library_intrinsics();
 }
 
@@ -1440,6 +1454,9 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
         tj = TypeInstPtr::MARK;
         ta = TypeAryPtr::RANGE; // generic ignored junk
         ptr = TypePtr::BotPTR;
+      } else if (offset == BrooksPointer::byte_offset() && UseShenandoahGC) {
+        // Need to distinguish brooks ptr as is.
+        tj = ta = TypeAryPtr::make(ptr,ta->ary(),ta->klass(),false,offset);
       } else {                  // Random constant offset into array body
         offset = Type::OffsetBot;   // Flatten constant access into array body
         tj = ta = TypeAryPtr::make(ptr,ta->ary(),ta->klass(),false,offset);
@@ -1504,7 +1521,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
       if (!is_known_inst) { // Do it only for non-instance types
         tj = to = TypeInstPtr::make(TypePtr::BotPTR, env()->Object_klass(), false, NULL, offset);
       }
-    } else if (offset < 0 || offset >= k->size_helper() * wordSize) {
+    } else if ((offset != BrooksPointer::byte_offset() || !UseShenandoahGC) && (offset < 0 || offset >= k->size_helper() * wordSize)) {
       // Static fields are in the space above the normal instance
       // fields in the java.lang.Class instance.
       if (to->klass() != ciEnv::current()->Class_klass()) {
@@ -1602,7 +1619,8 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
           (offset == Type::OffsetBot && tj == TypePtr::BOTTOM) ||
           (offset == oopDesc::mark_offset_in_bytes() && tj->base() == Type::AryPtr) ||
           (offset == oopDesc::klass_offset_in_bytes() && tj->base() == Type::AryPtr) ||
-          (offset == arrayOopDesc::length_offset_in_bytes() && tj->base() == Type::AryPtr)  ,
+          (offset == arrayOopDesc::length_offset_in_bytes() && tj->base() == Type::AryPtr) ||
+          (offset == BrooksPointer::byte_offset() && tj->base() == Type::AryPtr && UseShenandoahGC),
           "For oops, klasses, raw offset must be constant; for arrays the offset is never known" );
   assert( tj->ptr() != TypePtr::TopPTR &&
           tj->ptr() != TypePtr::AnyNull &&
@@ -2072,7 +2090,7 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
         // PhaseIdealLoop is expensive so we only try it once we are
         // out of live nodes and we only try it again if the previous
         // helped got the number of nodes down significantly
-        PhaseIdealLoop ideal_loop( igvn, false, true );
+        PhaseIdealLoop ideal_loop(igvn, LoopOptsNone);
         if (failing())  return;
         low_live_nodes = live_nodes();
         _major_progress = true;
@@ -2122,6 +2140,21 @@ void Compile::inline_incrementally(PhaseIterGVN& igvn) {
   set_inlining_incrementally(false);
 }
 
+
+bool Compile::optimize_loops(int& loop_opts_cnt, PhaseIterGVN& igvn, LoopOptsMode mode) {
+  if(loop_opts_cnt > 0) {
+    debug_only( int cnt = 0; );
+    while(major_progress() && (loop_opts_cnt > 0)) {
+      TracePhase tp("idealLoop", &timers[_t_idealLoop]);
+      assert( cnt++ < 40, "infinite cycle in loop optimization" );
+      PhaseIdealLoop ideal_loop(igvn, mode);
+      loop_opts_cnt--;
+      if (failing())  return false;
+      if (major_progress()) print_method(PHASE_PHASEIDEALLOOP_ITERATIONS, 2);
+    }
+  }
+  return true;
+}
 
 //------------------------------Optimize---------------------------------------
 // Given a graph, optimize it.
@@ -2208,7 +2241,7 @@ void Compile::Optimize() {
     if (has_loops()) {
       // Cleanup graph (remove dead nodes).
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false, true );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsNone);
       if (major_progress()) print_method(PHASE_PHASEIDEAL_BEFORE_EA, 2);
       if (failing())  return;
     }
@@ -2243,7 +2276,7 @@ void Compile::Optimize() {
   if((loop_opts_cnt > 0) && (has_loops() || has_split_ifs())) {
     {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, true );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsDefault);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP1, 2);
       if (failing())  return;
@@ -2251,7 +2284,7 @@ void Compile::Optimize() {
     // Loop opts pass if partial peeling occurred in previous pass
     if(PartialPeelLoop && major_progress() && (loop_opts_cnt > 0)) {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsSkipSplitIf);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP2, 2);
       if (failing())  return;
@@ -2259,7 +2292,7 @@ void Compile::Optimize() {
     // Loop opts pass for loop-unrolling before CCP
     if(major_progress() && (loop_opts_cnt > 0)) {
       TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      PhaseIdealLoop ideal_loop( igvn, false );
+      PhaseIdealLoop ideal_loop(igvn, LoopOptsSkipSplitIf);
       loop_opts_cnt--;
       if (major_progress()) print_method(PHASE_PHASEIDEALLOOP3, 2);
     }
@@ -2295,16 +2328,8 @@ void Compile::Optimize() {
 
   // Loop transforms on the ideal graph.  Range Check Elimination,
   // peeling, unrolling, etc.
-  if(loop_opts_cnt > 0) {
-    debug_only( int cnt = 0; );
-    while(major_progress() && (loop_opts_cnt > 0)) {
-      TracePhase tp("idealLoop", &timers[_t_idealLoop]);
-      assert( cnt++ < 40, "infinite cycle in loop optimization" );
-      PhaseIdealLoop ideal_loop( igvn, true);
-      loop_opts_cnt--;
-      if (major_progress()) print_method(PHASE_PHASEIDEALLOOP_ITERATIONS, 2);
-      if (failing())  return;
-    }
+  if (!optimize_loops(loop_opts_cnt, igvn, LoopOptsDefault)) {
+    return;
   }
   // Ensure that major progress is now clear
   C->clear_major_progress();
@@ -2322,6 +2347,10 @@ void Compile::Optimize() {
     igvn.optimize();
   }
 
+  if (UseShenandoahGC && ShenandoahVerifyOptoBarriers) {
+    ShenandoahBarrierNode::verify(C->root());
+  }
+
   {
     TracePhase tp("macroExpand", &timers[_t_macroExpand]);
     PhaseMacroExpand  mex(igvn);
@@ -2329,6 +2358,11 @@ void Compile::Optimize() {
       assert(failing(), "must bail out w/ explicit message");
       return;
     }
+  }
+
+  if (!ShenandoahWriteBarrierNode::expand(this, igvn, loop_opts_cnt)) {
+    assert(failing(), "must bail out w/ explicit message");
+    return;
   }
 
   DEBUG_ONLY( _modified_nodes = NULL; )
@@ -2753,6 +2787,15 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_CallLeafNoFP: {
     assert( n->is_Call(), "" );
     CallNode *call = n->as_Call();
+    if (UseShenandoahGC && call->is_g1_wb_pre_call()) {
+      uint cnt = OptoRuntime::g1_wb_pre_Type()->domain()->cnt();
+      if (call->req() > cnt) {
+        assert(call->req() == cnt+1, "only one extra input");
+        Node* addp = call->in(cnt);
+        assert(!CallLeafNode::has_only_g1_wb_pre_uses(addp), "useless address computation?");
+        call->del_req(cnt);
+      }
+    }
     // Count call sites where the FP mode bit would have to be flipped.
     // Do not count uncommon runtime calls:
     // uncommon_trap, _complete_monitor_locking, _complete_monitor_unlocking,
@@ -2950,7 +2993,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
         Node *m = wq.at(next);
         for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
           Node* use = m->fast_out(i);
-          if (use->is_Mem() || use->is_EncodeNarrowPtr()) {
+          if (use->is_Mem() || use->is_EncodeNarrowPtr() || use->is_ShenandoahBarrier()) {
             use->ensure_control_or_add_prec(n->in(0));
           } else {
             switch(use->Opcode()) {
@@ -3247,6 +3290,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     if (n->as_Loop()->is_inner_loop()) {
       frc.inc_inner_loop_count();
     }
+    n->as_Loop()->verify_strip_mined(0);
     break;
   case Op_LShiftI:
   case Op_RShiftI:
@@ -3283,6 +3327,11 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     if (n->req() > MemBarNode::Precedent) {
       n->set_req(MemBarNode::Precedent, top());
     }
+    break;
+  case Op_ShenandoahReadBarrier:
+    break;
+  case Op_ShenandoahWriteBarrier:
+    assert(!ShenandoahWriteBarrierToIR, "should have been expanded already");
     break;
   case Op_RangeCheck: {
     RangeCheckNode* rc = n->as_RangeCheck();
@@ -3326,6 +3375,27 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
         }
       }
     }
+    break;
+  }
+  case Op_If: {
+#ifdef ASSERT
+    if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n->as_If())) {
+      Node* c = n->in(0);
+      int count = 0;
+      for (;;) {
+        assert(c->is_Proj(), "proj expected");
+        MemBarNode* mb = c->in(0)->as_MemBar();
+        c = c->in(0)->in(0);
+        count++;
+        assert(mb->outcnt() == 2, "lost a projection?");
+
+        if (mb->adr_type() == TypeRawPtr::BOTTOM) {
+          break;
+        }
+      }
+      assert(count >= 2, "at least 2 membars");
+    }
+#endif
     break;
   }
   default:
@@ -3695,7 +3765,7 @@ void Compile::verify_graph_edges(bool no_dead_code) {
 // Currently supported:
 // - G1 pre-barriers (see GraphKit::g1_write_barrier_pre())
 void Compile::verify_barriers() {
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     // Verify G1 pre-barriers
     const int marking_offset = in_bytes(JavaThread::satb_mark_queue_offset() + SATBMarkQueue::byte_offset_of_active());
 
@@ -3732,9 +3802,7 @@ void Compile::verify_barriers() {
             if (cmp->Opcode() == Op_CmpI && cmp->in(2)->is_Con() && cmp->in(2)->bottom_type()->is_int()->get_con() == 0
                 && cmp->in(1)->is_Load()) {
               LoadNode* load = cmp->in(1)->as_Load();
-              if (load->Opcode() == Op_LoadB && load->in(2)->is_AddP() && load->in(2)->in(2)->Opcode() == Op_ThreadLocal
-                  && load->in(2)->in(3)->is_Con()
-                  && load->in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == marking_offset) {
+              if (load->is_g1_marking_load()) {
 
                 Node* if_ctrl = iff->in(0);
                 Node* load_ctrl = load->in(0);
@@ -4452,7 +4520,7 @@ void Compile::remove_speculative_types(PhaseIterGVN &igvn) {
         const Type* t_no_spec = t->remove_speculative();
         if (t_no_spec != t) {
           bool in_hash = igvn.hash_delete(n);
-          assert(in_hash, "node should be in igvn hash table");
+          assert(in_hash || n->hash() == Node::NO_HASH, "node should be in igvn hash table");
           tn->set_type(t_no_spec);
           igvn.hash_insert(n);
           igvn._worklist.push(n); // give it a chance to go away
@@ -4587,4 +4655,47 @@ void CloneMap::dump(node_idx_t key) const {
     NodeCloneInfo ni(val);
     ni.dump();
   }
+}
+
+void Compile::shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn) {
+  assert(UseShenandoahGC && p2x->Opcode() == Op_CastP2X, "");
+  ResourceMark rm;
+  Unique_Node_List wq;
+
+  wq.push(p2x);
+  for (uint next = 0; next < wq.size(); next++) {
+    Node *n = wq.at(next);
+    if (n->is_Store()) {
+      // do nothing
+    } else if (n->is_Load()) {
+      igvn->replace_node(n, igvn->intcon(1));
+    } else {
+      for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+        Node* u = n->fast_out(i);
+        wq.push(u);
+      }
+    }
+  }
+  igvn->replace_node(p2x, C->top());
+}
+
+void Compile::shenandoah_eliminate_g1_wb_pre(Node* call, PhaseIterGVN* igvn) {
+  assert(UseShenandoahGC && call->is_g1_wb_pre_call(), "");
+  Node* c = call->as_Call()->proj_out(TypeFunc::Control);
+  c = c->unique_ctrl_out();
+  assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
+  c = c->unique_ctrl_out();
+  assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
+  Node* iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
+  assert(iff->is_If(), "expect test");
+  if (!iff->is_g1_marking_if(igvn)) {
+    c = c->unique_ctrl_out();
+    assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
+    iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
+    assert(iff->is_g1_marking_if(igvn), "expect marking test");
+  }
+  Node* cmpx = iff->in(1)->in(1);
+  igvn->replace_node(cmpx, igvn->makecon(TypeInt::CC_EQ));
+  igvn->rehash_node_delayed(call);
+  call->del_req(call->req()-1);
 }

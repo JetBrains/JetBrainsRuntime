@@ -315,6 +315,25 @@ class MacroAssembler: public Assembler {
                              Register tmp,
                              Register tmp2);
 
+  void keep_alive_barrier(Register val,
+                          Register thread,
+                          Register tmp);
+
+  void shenandoah_write_barrier_pre(Register obj,
+                                    Register pre_val,
+                                    Register thread,
+                                    Register tmp,
+                                    bool tosca_live,
+                                    bool expand_call);
+
+  void shenandoah_write_barrier_post(Register store_addr,
+                                     Register new_val,
+                                     Register thread,
+                                     Register tmp,
+                                     Register tmp2);
+
+  void shenandoah_write_barrier(Register dst);
+
 #endif // INCLUDE_ALL_GCS
 
   // C 'boolean' to Java boolean: x == 0 ? 0 : 1
@@ -598,6 +617,17 @@ class MacroAssembler: public Assembler {
   void verify_oop(Register reg, const char* s = "broken oop");
   void verify_oop_addr(Address addr, const char * s = "broken oop addr");
 
+  void shenandoah_in_heap_check(Register dst, Register tmp, Label& done);
+  void shenandoah_cset_check(Register dst, Register tmp, Label& done);
+
+  void shenandoah_store_addr_check(Register dst);
+  void shenandoah_store_addr_check(Address dst);
+
+  void shenandoah_store_val_check(Register dst, Register value);
+  void shenandoah_store_val_check(Address dst, Register value);
+
+  void shenandoah_lock_check(Register dst);
+
   // TODO: verify method and klass metadata (compare against vptr?)
   void _verify_method_ptr(Register reg, const char * msg, const char * file, int line) {}
   void _verify_klass_ptr(Register reg, const char * msg, const char * file, int line){}
@@ -768,7 +798,17 @@ class MacroAssembler: public Assembler {
   // cmp64 to avoild hiding cmpq
   void cmp64(Register src1, AddressLiteral src);
 
+  // Special cmp for heap objects, possibly inserting required barriers.
+  void cmpoops(Register src1, Register src2);
+  void cmpoops(Register src1, Address src2);
+
   void cmpxchgptr(Register reg, Address adr);
+
+  // Special Shenandoah CAS implementation that handles false negatives
+  // due to concurrent evacuation.
+  void cmpxchg_oop_shenandoah(Register res, Address addr, Register oldval, Register newval,
+                              bool exchange,
+                              Register tmp1, Register tmp2);
 
   void locked_cmpxchgptr(Register reg, AddressLiteral adr);
 
@@ -1726,6 +1766,9 @@ public:
   void byte_array_inflate(Register src, Register dst, Register len,
                           XMMRegister tmp1, Register tmp2);
 
+
+  void save_vector_registers();
+  void restore_vector_registers();
 };
 
 /**

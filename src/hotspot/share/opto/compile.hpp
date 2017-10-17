@@ -72,6 +72,7 @@ class PhaseCCP;
 class PhaseCCP_DCE;
 class RootNode;
 class relocInfo;
+class ShenandoahWriteBarrierNode;
 class Scope;
 class StartNode;
 class SafePointNode;
@@ -87,6 +88,15 @@ class nmethod;
 class WarmCallInfo;
 class Node_Stack;
 struct Final_Reshape_Counts;
+
+enum LoopOptsMode {
+  LoopOptsDefault = 0,
+  LoopOptsNone = 1,
+  LoopOptsSkipSplitIf = 2,
+  LoopOptsShenandoahExpand = 3,
+  LoopOptsShenandoahPostExpand = 4,
+  LoopOptsVerify = 5,
+};
 
 typedef unsigned int node_idx_t;
 class NodeCloneInfo {
@@ -414,6 +424,7 @@ class Compile : public Phase {
   GrowableArray<Node*>* _predicate_opaqs;       // List of Opaque1 nodes for the loop predicates.
   GrowableArray<Node*>* _expensive_nodes;       // List of nodes that are expensive to compute and that we'd better not let the GVN freely common
   GrowableArray<Node*>* _range_check_casts;     // List of CastII nodes with a range check dependency
+  GrowableArray<ShenandoahWriteBarrierNode*>* _shenandoah_barriers;
   ConnectionGraph*      _congraph;
 #ifndef PRODUCT
   IdealGraphPrinter*    _printer;
@@ -762,9 +773,11 @@ class Compile : public Phase {
   int           macro_count()             const { return _macro_nodes->length(); }
   int           predicate_count()         const { return _predicate_opaqs->length();}
   int           expensive_count()         const { return _expensive_nodes->length(); }
+  int           shenandoah_barriers_count()         const { return _shenandoah_barriers->length(); }
   Node*         macro_node(int idx)       const { return _macro_nodes->at(idx); }
   Node*         predicate_opaque1_node(int idx) const { return _predicate_opaqs->at(idx);}
   Node*         expensive_node(int idx)   const { return _expensive_nodes->at(idx); }
+  ShenandoahWriteBarrierNode* shenandoah_barrier(int idx)   const { return _shenandoah_barriers->at(idx); }
   ConnectionGraph* congraph()                   { return _congraph;}
   void set_congraph(ConnectionGraph* congraph)  { _congraph = congraph;}
   void add_macro_node(Node * n) {
@@ -786,6 +799,15 @@ class Compile : public Phase {
   void remove_expensive_node(Node * n) {
     if (_expensive_nodes->contains(n)) {
       _expensive_nodes->remove(n);
+    }
+  }
+  void add_shenandoah_barrier(ShenandoahWriteBarrierNode * n) {
+    assert(!_shenandoah_barriers->contains(n), "duplicate entry in barrier list");
+    _shenandoah_barriers->append(n);
+  }
+  void remove_shenandoah_barrier(ShenandoahWriteBarrierNode * n) {
+    if (_shenandoah_barriers->contains(n)) {
+      _shenandoah_barriers->remove(n);
     }
   }
   void add_predicate_opaq(Node * n) {
@@ -819,6 +841,8 @@ class Compile : public Phase {
   static int cmp_expensive_nodes(Node* n1, Node* n2);
   // Sort expensive nodes to locate similar expensive nodes
   void sort_expensive_nodes();
+
+  GrowableArray<ShenandoahWriteBarrierNode*>* shenandoah_barriers() { return _shenandoah_barriers; }
 
   // Compilation environment.
   Arena*      comp_arena()           { return &_comp_arena; }
@@ -1060,6 +1084,7 @@ class Compile : public Phase {
   void inline_incrementally(PhaseIterGVN& igvn);
   void inline_string_calls(bool parse_time);
   void inline_boxing_calls(PhaseIterGVN& igvn);
+  bool optimize_loops(int& loop_opts_cnt, PhaseIterGVN& igvn, LoopOptsMode mode);
 
   // Matching, CFG layout, allocation, code generation
   PhaseCFG*         cfg()                       { return _cfg; }
@@ -1334,6 +1359,9 @@ class Compile : public Phase {
   // supporting clone_map
   CloneMap&     clone_map();
   void          set_clone_map(Dict* d);
+
+  void shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn);
+  void shenandoah_eliminate_g1_wb_pre(Node* call, PhaseIterGVN* igvn);
 
 };
 

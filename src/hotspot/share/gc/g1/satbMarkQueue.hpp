@@ -49,6 +49,9 @@ private:
   // Filter out unwanted entries from the buffer.
   void filter();
 
+  template <class HeapType>
+  void filter_impl();
+
 public:
   SATBMarkQueue(SATBMarkQueueSet* qset, bool permanent = false);
 

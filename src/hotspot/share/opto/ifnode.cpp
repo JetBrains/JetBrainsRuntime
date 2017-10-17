@@ -34,6 +34,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 
 // Portions of code courtesy of Clifford Click
@@ -1429,6 +1430,8 @@ Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     } else {
       dist = 4;               // Do not bother for random pointer tests
     }
+  } else if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this)) {
+    dist = 16;
   } else {
     dist = 4;                 // Limit for random junky scans
   }
@@ -1516,10 +1519,10 @@ Node* IfNode::search_identical(int dist) {
   Node* dom = in(0);
   Node* prev_dom = this;
   int op = Opcode();
+  bool evac_in_progress = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this);
   // Search up the dominator tree for an If with an identical test
   while (dom->Opcode() != op    ||  // Not same opcode?
-         dom->in(1)    != in(1) ||  // Not same input 1?
-         (req() == 3 && dom->in(2) != in(2)) || // Not same input 2?
+         (dom->in(1) != in(1) && (!evac_in_progress || !ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom->as_If()))) ||  // Not same input 1?
          prev_dom->in(0) != dom) {  // One path of test does not dominate?
     if (dist < 0) return NULL;
 
@@ -1618,6 +1621,16 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   // whether they are testing a 'gt' or 'lt' condition.  The 'gt' condition
   // happens in count-down loops
   if (iff->is_CountedLoopEnd())  return NULL;
+  Node* proj_true = iff->proj_out(true);
+  if (proj_true->outcnt() == 1) {
+    Node* c = proj_true->unique_out();
+    // Leave test of outer strip mined loop alone
+    if (c != NULL && c->is_Loop() &&
+        c->in(LoopNode::LoopBackControl) == proj_true &&
+        c->as_Loop()->is_strip_mined()) {
+      return NULL;
+    }
+  }
   if (!iff->in(1)->is_Bool())  return NULL; // Happens for partially optimized IF tests
   BoolNode *b = iff->in(1)->as_Bool();
   BoolTest bt = b->_test;
@@ -1662,6 +1675,24 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   // Progress
   return iff;
 }
+
+bool IfNode::is_g1_marking_if(PhaseTransform *phase) const {
+  if (Opcode() != Op_If) {
+    return false;
+  }
+
+  Node* bol = in(1);
+  assert(bol->is_Bool(), "");
+  Node* cmpx = bol->in(1);
+  if (bol->as_Bool()->_test._test == BoolTest::ne &&
+      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
+      cmpx->in(1)->is_g1_marking_load()) {
+    return true;
+  }
+  return false;
+}
+
+
 
 Node* RangeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* res = Ideal_common(phase, can_reshape);

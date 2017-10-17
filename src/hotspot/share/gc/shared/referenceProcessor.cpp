@@ -319,7 +319,7 @@ void ReferenceProcessor::enqueue_discovered_reflist(DiscoveredList& refs_list) {
   oop next_d = refs_list.head();
   // Walk down the list, self-looping the next field
   // so that the References are not considered active.
-  while (obj != next_d) {
+  while (! oopDesc::safe_equals(obj, next_d)) {
     obj = next_d;
     assert(obj->is_instance(), "should be an instance object");
     assert(InstanceKlass::cast(obj->klass())->is_reference_instance_klass(), "should be reference object");
@@ -328,8 +328,12 @@ void ReferenceProcessor::enqueue_discovered_reflist(DiscoveredList& refs_list) {
     assert(java_lang_ref_Reference::next(obj) == NULL,
            "Reference not active; should not be discovered");
     // Self-loop next, so as to make Ref not active.
-    java_lang_ref_Reference::set_next_raw(obj, obj);
-    if (next_d != obj) {
+    if (UseShenandoahGC && UseShenandoahMatrix) {
+      java_lang_ref_Reference::set_next(obj, obj);
+    } else {
+      java_lang_ref_Reference::set_next_raw(obj, obj);
+    }
+    if (! oopDesc::safe_equals(next_d, obj)) {
       oopDesc::bs()->write_ref_field(java_lang_ref_Reference::discovered_addr(obj), next_d);
     } else {
       // This is the last object.
@@ -337,6 +341,9 @@ void ReferenceProcessor::enqueue_discovered_reflist(DiscoveredList& refs_list) {
       // discovered to what we read from the pending list.
       oop old = Universe::swap_reference_pending_list(refs_list.head());
       java_lang_ref_Reference::set_discovered_raw(obj, old); // old may be NULL
+#ifdef ASSERT
+      old = oopDesc::bs()->read_barrier(old);
+#endif
       oopDesc::bs()->write_ref_field(java_lang_ref_Reference::discovered_addr(obj), old);
     }
   }
@@ -422,7 +429,7 @@ void DiscoveredListIterator::remove() {
 
   // First _prev_next ref actually points into DiscoveredList (gross).
   oop new_next;
-  if (_next == _ref) {
+  if (oopDesc::safe_equals(_next, _ref)) {
     // At the end of the list, we should make _prev point to itself.
     // If _ref is the first ref, then _prev_next will be in the DiscoveredList,
     // and _prev will be NULL.
@@ -593,7 +600,7 @@ void
 ReferenceProcessor::clear_discovered_references(DiscoveredList& refs_list) {
   oop obj = NULL;
   oop next = refs_list.head();
-  while (next != obj) {
+  while (! oopDesc::safe_equals(next, obj)) {
     obj = next;
     next = java_lang_ref_Reference::discovered(obj);
     java_lang_ref_Reference::set_discovered_raw(obj, NULL);
@@ -784,7 +791,7 @@ void ReferenceProcessor::balance_queues(DiscoveredList ref_lists[])
         ref_lists[to_idx].inc_length(refs_to_move);
 
         // Remove the chain from the from list.
-        if (move_tail == new_head) {
+        if (oopDesc::safe_equals(move_tail, new_head)) {
           // We found the end of the from list.
           ref_lists[from_idx].set_head(NULL);
         } else {
@@ -954,7 +961,7 @@ ReferenceProcessor::add_to_discovered_list_mt(DiscoveredList& refs_list,
   oop next_discovered = (current_head != NULL) ? current_head : obj;
 
   oop retest = oopDesc::atomic_compare_exchange_oop(next_discovered, discovered_addr,
-                                                    NULL);
+                                                    NULL, UseShenandoahGC && UseShenandoahMatrix);
   if (retest == NULL) {
     // This thread just won the right to enqueue the object.
     // We have separate lists for enqueueing, so no synchronization
@@ -1017,6 +1024,7 @@ bool ReferenceProcessor::discover_reference(oop obj, ReferenceType rt) {
   if (!_discovering_refs || !RegisterReferences) {
     return false;
   }
+  assert(oopDesc::bs()->is_safe(obj), "sanity");
   // We only discover active references.
   oop next = java_lang_ref_Reference::next(obj);
   if (next != NULL) {   // Ref is no longer active
@@ -1073,7 +1081,7 @@ bool ReferenceProcessor::discover_reference(oop obj, ReferenceType rt) {
       // Check assumption that an object is not potentially
       // discovered twice except by concurrent collectors that potentially
       // trace the same Reference object twice.
-      assert(UseConcMarkSweepGC || UseG1GC,
+      assert(UseConcMarkSweepGC || UseG1GC || UseShenandoahGC,
              "Only possible with a concurrent marking collector");
       return true;
     }

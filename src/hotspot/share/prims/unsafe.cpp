@@ -45,9 +45,6 @@
 #include "utilities/copy.hpp"
 #include "utilities/dtrace.hpp"
 #include "utilities/macros.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#endif // INCLUDE_ALL_GCS
 
 /**
  * Implementation of the jdk.internal.misc.Unsafe class
@@ -147,8 +144,12 @@ class MemoryAccess : StackObj {
   jlong _offset;
 
   // Resolves and returns the address of the memory access
-  void* addr() {
-    return index_oop_from_field_offset_long(JNIHandles::resolve(_obj), _offset);
+  void* get_addr() {
+    return index_oop_from_field_offset_long(oopDesc::bs()->read_barrier(JNIHandles::resolve(_obj)), _offset);
+  }
+
+  void* put_addr() {
+    return index_oop_from_field_offset_long(oopDesc::bs()->write_barrier(JNIHandles::resolve(_obj)), _offset);
   }
 
   template <typename T>
@@ -205,7 +206,7 @@ public:
   T get() {
     GuardUnsafeAccess guard(_thread, _obj);
 
-    T* p = (T*)addr();
+    T* p = (T*)get_addr();
 
     T x = normalize_for_read(*p);
 
@@ -216,7 +217,7 @@ public:
   void put(T x) {
     GuardUnsafeAccess guard(_thread, _obj);
 
-    T* p = (T*)addr();
+    T* p = (T*)put_addr();
 
     *p = normalize_for_write(x);
   }
@@ -226,7 +227,7 @@ public:
   T get_volatile() {
     GuardUnsafeAccess guard(_thread, _obj);
 
-    T* p = (T*)addr();
+    T* p = (T*)get_addr();
 
     if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
       OrderAccess::fence();
@@ -241,7 +242,7 @@ public:
   void put_volatile(T x) {
     GuardUnsafeAccess guard(_thread, _obj);
 
-    T* p = (T*)addr();
+    T* p = (T*)put_addr();
 
     OrderAccess::release_store_fence((volatile T*)p, normalize_for_write(x));
   }
@@ -253,7 +254,7 @@ public:
 
     MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
 
-    jlong* p = (jlong*)addr();
+    jlong* p = (jlong*)get_addr();
 
     jlong x = Atomic::load(p);
 
@@ -265,7 +266,7 @@ public:
 
     MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
 
-    jlong* p = (jlong*)addr();
+    jlong* p = (jlong*)put_addr();
 
     Atomic::store(normalize_for_write(x),  p);
   }
@@ -293,8 +294,8 @@ static bool is_java_lang_ref_Reference_access(oop o, jlong offset) {
 
 static void ensure_satb_referent_alive(oop o, jlong offset, oop v) {
 #if INCLUDE_ALL_GCS
-  if (UseG1GC && v != NULL && is_java_lang_ref_Reference_access(o, offset)) {
-    G1SATBCardTableModRefBS::enqueue(v);
+  if (v != NULL && is_java_lang_ref_Reference_access(o, offset)) {
+    oopDesc::bs()->keep_alive_barrier(v);
   }
 #endif
 }
@@ -304,6 +305,7 @@ static void ensure_satb_referent_alive(oop o, jlong offset, oop v) {
 // That is, it should be in the range [0, MAX_OBJECT_SIZE].
 UNSAFE_ENTRY(jobject, Unsafe_GetObject(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) {
   oop p = JNIHandles::resolve(obj);
+  p = oopDesc::bs()->read_barrier(p);
   oop v;
 
   if (UseCompressedOops) {
@@ -322,6 +324,9 @@ UNSAFE_ENTRY(void, Unsafe_PutObject(JNIEnv *env, jobject unsafe, jobject obj, jl
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
 
+  x = oopDesc::bs()->storeval_barrier(x);
+  p = oopDesc::bs()->write_barrier(p);
+
   if (UseCompressedOops) {
     oop_store((narrowOop*)index_oop_from_field_offset_long(p, offset), x);
   } else {
@@ -331,6 +336,7 @@ UNSAFE_ENTRY(void, Unsafe_PutObject(JNIEnv *env, jobject unsafe, jobject obj, jl
 
 UNSAFE_ENTRY(jobject, Unsafe_GetObjectVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) {
   oop p = JNIHandles::resolve(obj);
+  p = oopDesc::bs()->read_barrier(p);
   void* addr = index_oop_from_field_offset_long(p, offset);
 
   volatile oop v;
@@ -355,6 +361,8 @@ UNSAFE_ENTRY(jobject, Unsafe_GetObjectVolatile(JNIEnv *env, jobject unsafe, jobj
 UNSAFE_ENTRY(void, Unsafe_PutObjectVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jobject x_h)) {
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
+  x = oopDesc::bs()->storeval_barrier(x);
+  p = oopDesc::bs()->write_barrier(p);
   void* addr = index_oop_from_field_offset_long(p, offset);
   OrderAccess::release();
 
@@ -529,6 +537,7 @@ UNSAFE_ENTRY(void, Unsafe_SetMemory0(JNIEnv *env, jobject unsafe, jobject obj, j
   size_t sz = (size_t)size;
 
   oop base = JNIHandles::resolve(obj);
+  base = oopDesc::bs()->write_barrier(base);
   void* p = index_oop_from_field_offset_long(base, offset);
 
   Copy::fill_to_memory_atomic(p, sz, value);
@@ -539,6 +548,9 @@ UNSAFE_ENTRY(void, Unsafe_CopyMemory0(JNIEnv *env, jobject unsafe, jobject srcOb
 
   oop srcp = JNIHandles::resolve(srcObj);
   oop dstp = JNIHandles::resolve(dstObj);
+
+  srcp = oopDesc::bs()->read_barrier(srcp);
+  dstp = oopDesc::bs()->write_barrier(dstp);
 
   void* src = index_oop_from_field_offset_long(srcp, srcOffset);
   void* dst = index_oop_from_field_offset_long(dstp, dstOffset);
@@ -895,7 +907,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
   // caller responsible to free it:
   *temp_alloc = class_bytes;
 
-  jbyte* array_base = typeArrayOop(JNIHandles::resolve_non_null(data))->byte_at_addr(0);
+  jbyte* array_base = typeArrayOop(oopDesc::bs()->read_barrier(JNIHandles::resolve_non_null(data)))->byte_at_addr(0);
   Copy::conjoint_jbytes(array_base, class_bytes, length);
 
   objArrayHandle cp_patches_h;
@@ -1001,9 +1013,24 @@ UNSAFE_ENTRY(jobject, Unsafe_CompareAndExchangeObject(JNIEnv *env, jobject unsaf
   oop x = JNIHandles::resolve(x_h);
   oop e = JNIHandles::resolve(e_h);
   oop p = JNIHandles::resolve(obj);
+
+  p = oopDesc::bs()->write_barrier(p);
+  x = oopDesc::bs()->storeval_barrier(x);
+
   HeapWord* addr = (HeapWord *)index_oop_from_field_offset_long(p, offset);
-  oop res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
-  if (res == e) {
+
+  oop res;
+  if (UseShenandoahGC && ShenandoahCASBarrier) {
+    oop expected = e;
+    do {
+      e = expected;
+      res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
+      expected = res;
+    } while ((! oopDesc::unsafe_equals(e, expected)) && oopDesc::unsafe_equals(oopDesc::bs()->read_barrier(e), oopDesc::bs()->read_barrier(expected)));
+  } else {
+    res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
+  }
+  if (oopDesc::unsafe_equals(res, e)) {
     update_barrier_set((void*)addr, x);
   }
   return JNIHandles::make_local(env, res);
@@ -1011,13 +1038,14 @@ UNSAFE_ENTRY(jobject, Unsafe_CompareAndExchangeObject(JNIEnv *env, jobject unsaf
 
 UNSAFE_ENTRY(jint, Unsafe_CompareAndExchangeInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x)) {
   oop p = JNIHandles::resolve(obj);
+  p = oopDesc::bs()->write_barrier(p);
   jint* addr = (jint *) index_oop_from_field_offset_long(p, offset);
 
   return (jint)(Atomic::cmpxchg(x, addr, e));
 } UNSAFE_END
 
 UNSAFE_ENTRY(jlong, Unsafe_CompareAndExchangeLong(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x)) {
-  Handle p(THREAD, JNIHandles::resolve(obj));
+  Handle p (THREAD, oopDesc::bs()->write_barrier(JNIHandles::resolve(obj)));
   jlong* addr = (jlong*)index_oop_from_field_offset_long(p(), offset);
 
 #ifdef SUPPORTS_NATIVE_CX8
@@ -1041,9 +1069,23 @@ UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetObject(JNIEnv *env, jobject unsafe, j
   oop x = JNIHandles::resolve(x_h);
   oop e = JNIHandles::resolve(e_h);
   oop p = JNIHandles::resolve(obj);
+
+  p = oopDesc::bs()->write_barrier(p);
+  x = oopDesc::bs()->storeval_barrier(x);
+
   HeapWord* addr = (HeapWord *)index_oop_from_field_offset_long(p, offset);
-  oop res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
-  if (res != e) {
+  jboolean success;
+  if (UseShenandoahGC && ShenandoahCASBarrier) {
+    oop expected;
+    do {
+      expected = e;
+      e = oopDesc::atomic_compare_exchange_oop(x, addr, expected, true);
+      success  = oopDesc::unsafe_equals(e, expected);
+    } while ((! success) && oopDesc::unsafe_equals(oopDesc::bs()->read_barrier(e), oopDesc::bs()->read_barrier(expected)));
+  } else {
+    success = oopDesc::unsafe_equals(e, oopDesc::atomic_compare_exchange_oop(x, addr, e, true));
+  }
+  if (! success) {
     return false;
   }
 
@@ -1054,13 +1096,14 @@ UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetObject(JNIEnv *env, jobject unsafe, j
 
 UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x)) {
   oop p = JNIHandles::resolve(obj);
+  p = oopDesc::bs()->write_barrier(p);
   jint* addr = (jint *)index_oop_from_field_offset_long(p, offset);
 
   return (jint)(Atomic::cmpxchg(x, addr, e)) == e;
 } UNSAFE_END
 
 UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetLong(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x)) {
-  Handle p(THREAD, JNIHandles::resolve(obj));
+  Handle p (THREAD, oopDesc::bs()->write_barrier(JNIHandles::resolve(obj)));
   jlong* addr = (jlong*)index_oop_from_field_offset_long(p(), offset);
 
 #ifdef SUPPORTS_NATIVE_CX8

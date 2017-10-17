@@ -113,7 +113,7 @@ ProtectionDomainCacheEntry* ProtectionDomainCacheTable::get(Handle protection_do
 
 ProtectionDomainCacheEntry* ProtectionDomainCacheTable::find_entry(int index, Handle protection_domain) {
   for (ProtectionDomainCacheEntry* e = bucket(index); e != NULL; e = e->next()) {
-    if (e->protection_domain() == protection_domain()) {
+    if (oopDesc::equals(e->protection_domain(), protection_domain())) {
       return e;
     }
   }

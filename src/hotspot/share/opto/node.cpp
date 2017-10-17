@@ -499,6 +499,10 @@ Node *Node::clone() const {
     C->add_macro_node(n);
   if (is_expensive())
     C->add_expensive_node(n);
+
+  if (Opcode() == Op_ShenandoahWriteBarrier) {
+    C->add_shenandoah_barrier((ShenandoahWriteBarrierNode*)n);
+  }
   // If the cloned node is a range check dependent CastII, add it to the list.
   CastIINode* cast = n->isa_CastII();
   if (cast != NULL && cast->has_range_check()) {
@@ -607,6 +611,9 @@ void Node::destruct() {
   }
   if (is_expensive()) {
     compile->remove_expensive_node(this);
+  }
+  if (Opcode() == Op_ShenandoahWriteBarrier) {
+    compile->remove_shenandoah_barrier((ShenandoahWriteBarrierNode*)this);
   }
   CastIINode* cast = isa_CastII();
   if (cast != NULL && cast->has_range_check()) {
@@ -1129,6 +1136,8 @@ bool Node::has_special_unique_user() const {
   } else if (is_If() && (n->is_IfFalse() || n->is_IfTrue())) {
     // See IfProjNode::Identity()
     return true;
+  } else if (op == Op_ShenandoahWriteBarrier) {
+    return n->Opcode() == Op_ShenandoahWBMemProj;
   }
   return false;
 };
@@ -1348,6 +1357,9 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
       if (dead->is_expensive()) {
         igvn->C->remove_expensive_node(dead);
       }
+      if (dead->Opcode() == Op_ShenandoahWriteBarrier) {
+        igvn->C->remove_shenandoah_barrier((ShenandoahWriteBarrierNode*)dead);
+      }
       CastIINode* cast = dead->isa_CastII();
       if (cast != NULL && cast->has_range_check()) {
         igvn->C->remove_range_check_cast(cast);
@@ -1370,6 +1382,8 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
             // The restriction (outcnt() <= 2) is the same as in set_req_X()
             // and remove_globally_dead_node().
             igvn->add_users_to_worklist( n );
+          } else if (n->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(n)) {
+            igvn->add_users_to_worklist(n);
           }
         }
       }

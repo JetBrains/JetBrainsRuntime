@@ -171,7 +171,7 @@ bool ObjectSynchronizer::quick_notify(oopDesc * obj, Thread * self, bool all) {
 
   if (mark->has_monitor()) {
     ObjectMonitor * const mon = mark->monitor();
-    assert(mon->object() == obj, "invariant");
+    assert(oopDesc::equals((oop) mon->object(), obj), "invariant");
     if (mon->owner() != self) return false;  // slow-path for IMS exception
 
     if (mon->first_waiter() != NULL) {
@@ -215,7 +215,7 @@ bool ObjectSynchronizer::quick_enter(oop obj, Thread * Self,
 
   if (mark->has_monitor()) {
     ObjectMonitor * const m = mark->monitor();
-    assert(m->object() == obj, "invariant");
+    assert(oopDesc::equals((oop) m->object(), obj), "invariant");
     Thread * const owner = (Thread *) m->_owner;
 
     // Lock contention and Transactional Lock Elision (TLE) diagnostics
@@ -1405,7 +1405,7 @@ ObjectMonitor* ObjectSynchronizer::inflate(Thread * Self,
     if (mark->has_monitor()) {
       ObjectMonitor * inf = mark->monitor();
       assert(inf->header()->is_neutral(), "invariant");
-      assert(inf->object() == object, "invariant");
+      assert(oopDesc::equals((oop) inf->object(), object), "invariant");
       assert(ObjectSynchronizer::verify_objmon_isinpool(inf), "monitor is invalid");
       return inf;
     }
@@ -1673,7 +1673,8 @@ bool ObjectSynchronizer::deflate_monitor(ObjectMonitor* mid, oop obj,
 // Threads::parallel_java_threads_do() in thread.cpp.
 int ObjectSynchronizer::deflate_monitor_list(ObjectMonitor** listHeadp,
                                              ObjectMonitor** freeHeadp,
-                                             ObjectMonitor** freeTailp) {
+                                             ObjectMonitor** freeTailp,
+                                             OopClosure* cl) {
   ObjectMonitor* mid;
   ObjectMonitor* next;
   ObjectMonitor* cur_mid_in_use = NULL;
@@ -1694,6 +1695,9 @@ int ObjectSynchronizer::deflate_monitor_list(ObjectMonitor** listHeadp,
       mid = next;
       deflated_count++;
     } else {
+      if (obj != NULL && cl != NULL) {
+        cl->do_oop((oop*) mid->object_addr());
+      }
       cur_mid_in_use = mid;
       mid = mid->FreeNext;
     }
@@ -1800,14 +1804,14 @@ void ObjectSynchronizer::finish_deflate_idle_monitors(DeflateMonitorCounters* co
   GVars.stwCycle++;
 }
 
-void ObjectSynchronizer::deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters) {
+void ObjectSynchronizer::deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters, OopClosure* cl) {
   assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
   if (!MonitorInUseLists) return;
 
   ObjectMonitor * freeHeadp = NULL;  // Local SLL of scavenged monitors
   ObjectMonitor * freeTailp = NULL;
 
-  int deflated_count = deflate_monitor_list(thread->omInUseList_addr(), &freeHeadp, &freeTailp);
+  int deflated_count = deflate_monitor_list(thread->omInUseList_addr(), &freeHeadp, &freeTailp, cl);
 
   Thread::muxAcquire(&gListLock, "scavenge - return");
 
@@ -1987,3 +1991,45 @@ int ObjectSynchronizer::verify_objmon_isinpool(ObjectMonitor *monitor) {
 }
 
 #endif
+
+
+ParallelObjectSynchronizerIterator ObjectSynchronizer::parallel_iterator() {
+  return ParallelObjectSynchronizerIterator(gBlockList);
+}
+
+// ParallelObjectSynchronizerIterator implementation
+ParallelObjectSynchronizerIterator::ParallelObjectSynchronizerIterator(ObjectMonitor * head)
+  : _cur(head) {
+  assert(SafepointSynchronize::is_at_safepoint(), "Must at safepoint");
+}
+
+ObjectMonitor* ParallelObjectSynchronizerIterator::claim() {
+  ObjectMonitor* my_cur = _cur;
+
+  while (true) {
+    if (my_cur == NULL) return NULL;
+    ObjectMonitor* next_block = next(my_cur);
+    ObjectMonitor* cas_result = (ObjectMonitor*) Atomic::cmpxchg_ptr(next_block, &_cur, my_cur);
+    if (my_cur == cas_result) {
+      // We succeeded.
+      return my_cur;
+    } else {
+      // We failed. Retry with offending CAS result.
+      my_cur = cas_result;
+    }
+  }
+}
+
+bool ParallelObjectSynchronizerIterator::parallel_oops_do(OopClosure* f) {
+  PaddedEnd<ObjectMonitor>* block = (PaddedEnd<ObjectMonitor>*)claim();
+  if (block != NULL) {
+    for (int i = 1; i < ObjectSynchronizer::_BLOCKSIZE; i++) {
+      ObjectMonitor* mid = (ObjectMonitor *)&block[i];
+      if (mid->object() != NULL) {
+        f->do_oop((oop*)mid->object_addr());
+      }
+    }
+    return true;
+  }
+  return false;
+}

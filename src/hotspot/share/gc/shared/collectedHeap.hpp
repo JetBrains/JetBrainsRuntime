@@ -82,6 +82,7 @@ class GCHeapLog : public EventLogBase<GCMessage> {
 // CollectedHeap
 //   GenCollectedHeap
 //   G1CollectedHeap
+//   ShenandoahHeap
 //   ParallelScavengeHeap
 //
 class CollectedHeap : public CHeapObj<mtInternal> {
@@ -194,7 +195,8 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   enum Name {
     GenCollectedHeap,
     ParallelScavengeHeap,
-    G1CollectedHeap
+    G1CollectedHeap,
+    ShenandoahHeap
   };
 
   static inline size_t filler_array_max_size() {
@@ -202,6 +204,8 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   }
 
   virtual Name kind() const = 0;
+
+  virtual HeapWord* tlab_post_allocation_setup(HeapWord* obj);
 
   virtual const char* name() const = 0;
 
@@ -306,6 +310,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   inline static oop array_allocate(Klass* klass, int size, int length, TRAPS);
   inline static oop array_allocate_nozero(Klass* klass, int size, int length, TRAPS);
   inline static oop class_allocate(Klass* klass, int size, TRAPS);
+
+  virtual uint oop_extra_words();
+
+#ifndef CC_INTERP
+  virtual void compile_prepare_oop(MacroAssembler* masm, Register obj);
+#endif
 
   // Raw memory allocation facilities
   // The obj and array allocate methods are covers for these methods.
@@ -573,6 +583,14 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual void register_nmethod(nmethod* nm);
   virtual void unregister_nmethod(nmethod* nm);
 
+  // The following two methods are there to support object pinning for JNI critical
+  // regions. They are called whenever a thread enters or leaves a JNI critical
+  // region and requires an object not to move. Notice that there's another
+  // mechanism for GCs to implement critical region (see gcLocker.hpp). The default
+  // implementation does nothing.
+  virtual void pin_object(oop o);
+  virtual void unpin_object(oop o);
+
   void trace_heap_before_gc(const GCTracer* gc_tracer);
   void trace_heap_after_gc(const GCTracer* gc_tracer);
 
@@ -613,6 +631,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // If this method returns NULL, SafepointSynchronize will
   // perform cleanup tasks serially in the VMThread.
   virtual WorkGang* get_safepoint_workers() { return NULL; }
+
+  // Accumulate additional statistics from GCLABs.
+  virtual void accumulate_statistics_all_gclabs();
 
   // Non product verification and debugging.
 #ifndef PRODUCT

@@ -53,6 +53,8 @@ void ThreadLocalAllocBuffer::accumulate_statistics_before_gc() {
     thread->tlab().initialize_statistics();
   }
 
+  Universe::heap()->accumulate_statistics_all_gclabs();
+
   // Publish new stats if some allocation occurred.
   if (global_stats()->allocation() != 0) {
     global_stats()->publish();
@@ -66,7 +68,7 @@ void ThreadLocalAllocBuffer::accumulate_statistics() {
   size_t used     = Universe::heap()->tlab_used(thread);
 
   _gc_waste += (unsigned)remaining();
-  size_t total_allocated = thread->allocated_bytes();
+  size_t total_allocated = _gclab ? thread->allocated_bytes_gclab() : thread->allocated_bytes();
   size_t allocated_since_last_gc = total_allocated - _allocated_before_last_gc;
   _allocated_before_last_gc = total_allocated;
 
@@ -111,10 +113,15 @@ void ThreadLocalAllocBuffer::make_parsable(bool retire, bool zap) {
     invariants();
 
     if (retire) {
-      myThread()->incr_allocated_bytes(used_bytes());
+      if (_gclab) {
+        myThread()->incr_allocated_bytes_gclab(used_bytes());
+      } else {
+        myThread()->incr_allocated_bytes(used_bytes());
+      }
     }
 
-    CollectedHeap::fill_with_object(top(), hard_end(), retire && zap);
+    HeapWord* obj = Universe::heap()->tlab_post_allocation_setup(top());
+    CollectedHeap::fill_with_object(obj, hard_end(), retire && zap);
 
     if (retire || ZeroTLAB) {  // "Reset" the TLAB
       set_start(NULL);
@@ -186,7 +193,9 @@ void ThreadLocalAllocBuffer::initialize(HeapWord* start,
   invariants();
 }
 
-void ThreadLocalAllocBuffer::initialize() {
+void ThreadLocalAllocBuffer::initialize(bool gclab) {
+  _initialized = true;
+  _gclab = gclab;
   initialize(NULL,                    // start
              NULL,                    // top
              NULL);                   // end
@@ -243,7 +252,8 @@ void ThreadLocalAllocBuffer::startup_initialization() {
   // During jvm startup, the main (primordial) thread is initialized
   // before the heap is initialized.  So reinitialize it now.
   guarantee(Thread::current()->is_Java_thread(), "tlab initialization thread not Java thread");
-  Thread::current()->tlab().initialize();
+  Thread::current()->tlab().initialize(false);
+  Thread::current()->gclab().initialize(true);
 
   log_develop_trace(gc, tlab)("TLAB min: " SIZE_FORMAT " initial: " SIZE_FORMAT " max: " SIZE_FORMAT,
                                min_size(), Thread::current()->tlab().initial_desired_size(), max_size());
@@ -307,9 +317,27 @@ void ThreadLocalAllocBuffer::verify() {
 }
 
 Thread* ThreadLocalAllocBuffer::myThread() {
-  return (Thread*)(((char *)this) +
-                   in_bytes(start_offset()) -
-                   in_bytes(Thread::tlab_start_offset()));
+  ByteSize gclab_offset = Thread::gclab_start_offset();
+  ByteSize tlab_offset = Thread::tlab_start_offset();
+  ByteSize offs = _gclab ? gclab_offset : tlab_offset;
+  Thread* thread = (Thread*)(((char *)this) +
+                   in_bytes(start_offset()) - in_bytes(offs));
+#ifdef ASSERT
+  assert(this == (_gclab ? &thread->gclab() : &thread->tlab()), "must be");
+#endif
+  return thread;
+}
+
+size_t ThreadLocalAllocBuffer::end_reserve() {
+  int reserve_size = typeArrayOopDesc::header_size(T_INT);
+  return MAX2(reserve_size, _reserve_for_allocation_prefetch);
+}
+
+void ThreadLocalAllocBuffer::rollback(size_t size) {
+  HeapWord* old_top = top();
+  if (old_top != NULL) { // Pathological case: we accept that we can't rollback.
+    set_top(old_top - size);
+  }
 }
 
 

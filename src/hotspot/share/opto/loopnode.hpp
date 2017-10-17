@@ -56,7 +56,7 @@ class LoopNode : public RegionNode {
   // the semantics so it does not appear in the hash & cmp functions.
   virtual uint size_of() const { return sizeof(*this); }
 protected:
-  short _loop_flags;
+  uint _loop_flags;
   // Names for flag bitfields
   enum { Normal=0, Pre=1, Main=2, Post=3, PreMainPostFlagsMask=3,
          MainHasNoPreLoop=4,
@@ -71,25 +71,34 @@ protected:
          VectorizedLoop=2048,
          HasAtomicPostLoop=4096,
          HasRangeChecks=8192,
-         IsMultiversioned=16384};
+         IsMultiversioned=16384,
+         StripMined=32768,
+         StripMinedShortCloned=65536,
+         ProfileTripFailed = 131072};
   char _unswitch_count;
   enum { _unswitch_max=3 };
   char _postloop_flags;
   enum { LoopNotRCEChecked = 0, LoopRCEChecked = 1, RCEPostLoop = 2 };
 
+  // Expected trip count from profile data
+  float _profile_trip_cnt;
+
 public:
   // Names for edge indices
   enum { Self=0, EntryControl, LoopBackControl };
 
-  int is_inner_loop() const { return _loop_flags & InnerLoop; }
+  uint is_inner_loop() const { return _loop_flags & InnerLoop; }
   void set_inner_loop() { _loop_flags |= InnerLoop; }
 
-  int range_checks_present() const { return _loop_flags & HasRangeChecks; }
-  int is_multiversioned() const { return _loop_flags & IsMultiversioned; }
-  int is_vectorized_loop() const { return _loop_flags & VectorizedLoop; }
-  int is_partial_peel_loop() const { return _loop_flags & PartialPeelLoop; }
+  uint range_checks_present() const { return _loop_flags & HasRangeChecks; }
+  uint is_multiversioned() const { return _loop_flags & IsMultiversioned; }
+  uint is_vectorized_loop() const { return _loop_flags & VectorizedLoop; }
+  uint is_partial_peel_loop() const { return _loop_flags & PartialPeelLoop; }
   void set_partial_peel_loop() { _loop_flags |= PartialPeelLoop; }
-  int partial_peel_has_failed() const { return _loop_flags & PartialPeelFailed; }
+  uint partial_peel_has_failed() const { return _loop_flags & PartialPeelFailed; }
+  uint is_strip_mined() const { return _loop_flags & StripMined; }
+  uint is_strip_mined_short_cloned() const { return _loop_flags & StripMinedShortCloned; }
+  uint is_profile_trip_failed() const { return _loop_flags & ProfileTripFailed; }
 
   void mark_partial_peel_failed() { _loop_flags |= PartialPeelFailed; }
   void mark_has_reductions() { _loop_flags |= HasReductions; }
@@ -100,6 +109,10 @@ public:
   void mark_has_atomic_post_loop() { _loop_flags |= HasAtomicPostLoop; }
   void mark_has_range_checks() { _loop_flags |=  HasRangeChecks; }
   void mark_is_multiversioned() { _loop_flags |= IsMultiversioned; }
+  void mark_strip_mined() { _loop_flags |= StripMined; }
+  void clear_strip_mined() { _loop_flags &= ~StripMined; }
+  void mark_strip_mined_short_cloned() { _loop_flags |= StripMinedShortCloned; }
+  void mark_profile_trip_failed() { _loop_flags |= ProfileTripFailed; }
 
   int unswitch_max() { return _unswitch_max; }
   int unswitch_count() { return _unswitch_count; }
@@ -114,7 +127,12 @@ public:
     _unswitch_count = val;
   }
 
-  LoopNode(Node *entry, Node *backedge) : RegionNode(3), _loop_flags(0), _unswitch_count(0), _postloop_flags(0) {
+  void set_profile_trip_cnt(float ptc) { _profile_trip_cnt = ptc; }
+  float profile_trip_cnt()             { return _profile_trip_cnt; }
+
+  LoopNode(Node *entry, Node *backedge)
+    : RegionNode(3), _loop_flags(0), _unswitch_count(0),
+      _postloop_flags(0), _profile_trip_cnt(COUNT_UNKNOWN)  {
     init_class_id(Class_Loop);
     init_req(EntryControl, entry);
     init_req(LoopBackControl, backedge);
@@ -131,6 +149,9 @@ public:
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const;
 #endif
+
+  void verify_strip_mined(int expect_opaq) const;
+  virtual LoopNode* skip_strip_mined(int expect_opaq = 1) { return this; }
 };
 
 //------------------------------Counted Loops----------------------------------
@@ -174,9 +195,6 @@ class CountedLoopNode : public LoopNode {
   // Known trip count calculated by compute_exact_trip_count()
   uint  _trip_count;
 
-  // Expected trip count from profile data
-  float _profile_trip_cnt;
-
   // Log2 of original loop bodies in unrolled loop
   int _unrolled_count_log2;
 
@@ -191,8 +209,8 @@ class CountedLoopNode : public LoopNode {
 public:
   CountedLoopNode( Node *entry, Node *backedge )
     : LoopNode(entry, backedge), _main_idx(0), _trip_count(max_juint),
-      _profile_trip_cnt(COUNT_UNKNOWN), _unrolled_count_log2(0),
-      _node_count_before_unroll(0), _slp_maximum_unroll_factor(0) {
+      _unrolled_count_log2(0), _node_count_before_unroll(0),
+      _slp_maximum_unroll_factor(0) {
     init_class_id(Class_CountedLoop);
     // Initialize _trip_count to the largest possible value.
     // Will be reset (lower) if the loop's trip count is known.
@@ -232,16 +250,16 @@ public:
 
   // A 'main' loop that is ONLY unrolled or peeled, never RCE'd or
   // Aligned, may be missing it's pre-loop.
-  int is_normal_loop   () const { return (_loop_flags&PreMainPostFlagsMask) == Normal; }
-  int is_pre_loop      () const { return (_loop_flags&PreMainPostFlagsMask) == Pre;    }
-  int is_main_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Main;   }
-  int is_post_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Post;   }
-  int is_reduction_loop() const { return (_loop_flags&HasReductions) == HasReductions; }
-  int was_slp_analyzed () const { return (_loop_flags&WasSlpAnalyzed) == WasSlpAnalyzed; }
-  int has_passed_slp   () const { return (_loop_flags&PassedSlpAnalysis) == PassedSlpAnalysis; }
-  int do_unroll_only      () const { return (_loop_flags&DoUnrollOnly) == DoUnrollOnly; }
-  int is_main_no_pre_loop() const { return _loop_flags & MainHasNoPreLoop; }
-  int has_atomic_post_loop  () const { return (_loop_flags & HasAtomicPostLoop) == HasAtomicPostLoop; }
+  uint is_normal_loop   () const { return (_loop_flags&PreMainPostFlagsMask) == Normal; }
+  uint is_pre_loop      () const { return (_loop_flags&PreMainPostFlagsMask) == Pre;    }
+  uint is_main_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Main;   }
+  uint is_post_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Post;   }
+  uint is_reduction_loop() const { return (_loop_flags&HasReductions) == HasReductions; }
+  uint was_slp_analyzed () const { return (_loop_flags&WasSlpAnalyzed) == WasSlpAnalyzed; }
+  uint has_passed_slp   () const { return (_loop_flags&PassedSlpAnalysis) == PassedSlpAnalysis; }
+  uint do_unroll_only      () const { return (_loop_flags&DoUnrollOnly) == DoUnrollOnly; }
+  uint is_main_no_pre_loop() const { return _loop_flags & MainHasNoPreLoop; }
+  uint has_atomic_post_loop  () const { return (_loop_flags & HasAtomicPostLoop) == HasAtomicPostLoop; }
   void set_main_no_pre_loop() { _loop_flags |= MainHasNoPreLoop; }
 
   int main_idx() const { return _main_idx; }
@@ -267,9 +285,6 @@ public:
     _loop_flags &= ~PassedSlpAnalysis;
   }
 
-  void set_profile_trip_cnt(float ptc) { _profile_trip_cnt = ptc; }
-  float profile_trip_cnt()             { return _profile_trip_cnt; }
-
   void double_unrolled_count() { _unrolled_count_log2++; }
   int  unrolled_count()        { return 1 << MIN2(_unrolled_count_log2, BitsPerInt-3); }
 
@@ -277,6 +292,8 @@ public:
   int  node_count_before_unroll()            { return _node_count_before_unroll; }
   void set_slp_max_unroll(int unroll_factor) { _slp_maximum_unroll_factor = unroll_factor; }
   int  slp_max_unroll() const                { return _slp_maximum_unroll_factor; }
+
+  virtual LoopNode* skip_strip_mined(int expect_opaq = 1);
 
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const;
@@ -450,6 +467,11 @@ public:
   // if the current round of loop opts should stop.
   bool iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_new );
 
+  // If profiling shows an inner strip mined loop runs for few
+  // iterations, make a copy without the outer strip mined loop and
+  // the safepoint
+  bool copy_strip_mined_short(PhaseIdealLoop *phase, Node_List &old_new);
+
   // Given dominators, try to find loops with calls that must always be
   // executed (call dominates loop tail).  These loops do not need non-call
   // safepoints (ncsfpt).
@@ -524,7 +546,8 @@ public:
   void compute_trip_count(PhaseIdealLoop* phase);
 
   // Compute loop trip count from profile data
-  void compute_profile_trip_cnt( PhaseIdealLoop *phase );
+  float compute_profile_trip_cnt_helper(Node* n);
+  void compute_profile_trip_cnt(PhaseIdealLoop *phase);
 
   // Reassociate invariant expressions.
   void reassociate_invariants(PhaseIdealLoop *phase);
@@ -620,10 +643,12 @@ class PhaseIdealLoop : public PhaseTransform {
   // Mark as post visited
   void set_postvisited( Node *n ) { assert( !is_postvisited( n ), "" ); _preorders[n->_idx] |= 1; }
 
+public:
   // Set/get control node out.  Set lower bit to distinguish from IdealLoopTree
   // Returns true if "n" is a data node, false if it's a control node.
   bool has_ctrl( Node *n ) const { return ((intptr_t)_nodes[n->_idx]) & 1; }
 
+private:
   // clear out dead code after build_loop_late
   Node_List _deadlist;
 
@@ -799,6 +824,7 @@ private:
     }
     return n;
   }
+public:
   Node *idom(Node* d) const {
     uint didx = d->_idx;
     Node *n = idom_no_update(d);
@@ -811,6 +837,8 @@ private:
     return _dom_depth[d->_idx];
   }
   void set_idom(Node* d, Node* n, uint dom_depth);
+
+private:
   // Locally compute IDOM using dom_lca call
   Node *compute_idom( Node *region ) const;
   // Recompute dom_depth
@@ -829,11 +857,11 @@ private:
     _dom_lca_tags(arena()), // Thread::resource_area
     _verify_me(NULL),
     _verify_only(true) {
-    build_and_optimize(false, false);
+    build_and_optimize(LoopOptsVerify);
   }
 
   // build the loop tree and perform any requested optimizations
-  void build_and_optimize(bool do_split_if, bool skip_loop_opts);
+  void build_and_optimize(LoopOptsMode mode);
 
 public:
   // Dominators for the sea of nodes
@@ -844,13 +872,13 @@ public:
   Node *dom_lca_internal( Node *n1, Node *n2 ) const;
 
   // Compute the Ideal Node to Loop mapping
-  PhaseIdealLoop( PhaseIterGVN &igvn, bool do_split_ifs, bool skip_loop_opts = false) :
+  PhaseIdealLoop( PhaseIterGVN &igvn, LoopOptsMode mode) :
     PhaseTransform(Ideal_Loop),
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
     _verify_me(NULL),
     _verify_only(false) {
-    build_and_optimize(do_split_ifs, skip_loop_opts);
+    build_and_optimize(mode);
   }
 
   // Verify that verify_me made the same decisions as a fresh run.
@@ -860,7 +888,7 @@ public:
     _dom_lca_tags(arena()), // Thread::resource_area
     _verify_me(verify_me),
     _verify_only(false) {
-    build_and_optimize(false, false);
+    build_and_optimize(LoopOptsVerify);
   }
 
   // Build and verify the loop tree without modifying the graph.  This
@@ -877,7 +905,10 @@ public:
   // Per-Node transform
   virtual Node *transform( Node *a_node ) { return 0; }
 
-  bool is_counted_loop( Node *x, IdealLoopTree *loop );
+  bool is_counted_loop(Node* x, IdealLoopTree*& loop);
+  IdealLoopTree* create_outer_strip_mined_loop(BoolNode *test, Node *cmp, Node *init_control,
+                                               IdealLoopTree* loop, float cl_prob, float le_fcnt,
+                                               Node*& entry_control, Node*& iffalse);
 
   Node* exact_limit( IdealLoopTree *loop );
 
@@ -908,8 +939,24 @@ public:
   //   When nonnull, the clone and original are side-by-side, both are
   //      dominated by the passed in side_by_side_idom node.  Used in
   //      construction of unswitched loops.
-  void clone_loop( IdealLoopTree *loop, Node_List &old_new, int dom_depth,
-                   Node* side_by_side_idom = NULL);
+  enum CloneLoopMode {
+    IgnoreStripMined = 0,        // Only clone inner strip mined loop
+    CloneIncludesStripMined = 1, // clone both inner and outer strip mined loops
+    ControlAroundStripMined = 2  // Only clone inner strip mined loop,
+                                 // result control flow branches
+                                 // either to inner clone or outer
+                                 // strip mined loop.
+  };
+  void clone_loop(IdealLoopTree *loop, Node_List &old_new, int dom_depth,
+                  CloneLoopMode mode, Node* side_by_side_idom = NULL);
+  void clone_loop_handle_data_uses(Node* old, Node_List &old_new,
+                                   IdealLoopTree* loop, IdealLoopTree* companion_loop,
+                                   Node_List*& split_if_set, Node_List*& split_bool_set,
+                                   Node_List*& split_cex_set, Node_List& worklist,
+                                   uint new_counter, CloneLoopMode mode);
+  void clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealLoopTree *loop,
+                        IdealLoopTree* outer_loop, int dd, Node_List &old_new,
+                        Node_List& extra_data_nodes);
 
   // If we got the effect of peeling, either by actually peeling or by
   // making a pre-loop which must execute at least once, we can remove
@@ -988,6 +1035,12 @@ public:
 
   // Implementation of the loop predication to promote checks outside the loop
   bool loop_predication_impl(IdealLoopTree *loop);
+  bool loop_predication_impl_helper(IdealLoopTree *loop, ProjNode* proj, ProjNode *predicate_proj,
+                                    CountedLoopNode *cl, ConNode* zero, Invariance& invar);
+  bool loop_predication_should_follow_branches(IdealLoopTree *loop, float& loop_trip_cnt);
+  bool loop_predication_follow_branches(Node *current_proj, IdealLoopTree *loop, float loop_trip_cnt,
+                                        Node_Stack& stack, GrowableArray<float>& freqs_stack,
+                                        GrowableArray<float>& freqs, Node_List& if_proj_list);
 
   // Helper function to collect predicate for eliminating the useless ones
   void collect_potentially_useful_predicates(IdealLoopTree *loop, Unique_Node_List &predicate_opaque1);
@@ -1020,7 +1073,8 @@ public:
   // and inserting an if to select fast-slow versions.
   ProjNode* create_slow_version_of_loop(IdealLoopTree *loop,
                                         Node_List &old_new,
-                                        int opcode);
+                                        int opcode,
+                                        CloneLoopMode mode);
 
   // Clone a loop and return the clone head (clone_loop_head).
   // Added nodes include int(1), int(0) - disconnected, If, IfTrue, IfFalse,
@@ -1130,6 +1184,8 @@ public:
   Node *split_thru_region( Node *n, Node *region );
   // Split Node 'n' through merge point if there is enough win.
   Node *split_thru_phi( Node *n, Node *region, int policy );
+  void split_mem_thru_phi(Node*, Node* r, Node* phi);
+
   // Found an If getting its condition-code input from a Phi in the
   // same block.  Split thru the Region.
   void do_split_if( Node *iff );
@@ -1156,8 +1212,12 @@ private:
   Node *place_near_use( Node *useblock ) const;
   Node* try_move_store_before_loop(Node* n, Node *n_ctrl);
   void try_move_store_after_loop(Node* n);
+public:
   bool identical_backtoback_ifs(Node *n);
   bool can_split_if(Node *n_ctrl);
+private:
+
+  Unique_Node_List _shenandoah_evacuation_tests;
 
   bool _created_loop_node;
 public:
@@ -1172,7 +1232,6 @@ public:
 #ifndef PRODUCT
   void dump( ) const;
   void dump( IdealLoopTree *loop, uint rpo_idx, Node_List &rpo_list ) const;
-  void rpo( Node *start, Node_Stack &stk, VectorSet &visited, Node_List &rpo_list ) const;
   void verify() const;          // Major slow  :-)
   void verify_compare( Node *n, const PhaseIdealLoop *loop_verify, VectorSet &visited ) const;
   IdealLoopTree *get_loop_idx(Node* n) const {
@@ -1184,6 +1243,10 @@ public:
   static int _loop_invokes;     // Count of PhaseIdealLoop invokes
   static int _loop_work;        // Sum of PhaseIdealLoop x _unique
 #endif
+  void rpo( Node *start, Node_Stack &stk, VectorSet &visited, Node_List &rpo_list ) const;
+
+  PhaseIterGVN& igvn() { return _igvn; }
+  IdealLoopTree* ltree_root() const { return _ltree_root; }
 };
 
 // This kit may be used for making of a reserved copy of a loop before this loop

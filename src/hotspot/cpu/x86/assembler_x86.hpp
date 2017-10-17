@@ -1266,6 +1266,7 @@ private:
   // not bound within an 8-bit offset of this instruction, a run-time error
   // will occur.
   void jccb(Condition cc, Label& L);
+  void jccb_if_possible(Condition cc, Label& L);
 
   void jmp(Address entry);    // pc <- entry
 
@@ -1279,6 +1280,7 @@ private:
   // not bound within an 8-bit offset of this instruction, a run-time error
   // will occur.
   void jmpb(Label& L);
+  void jmpb_if_possible(Label& L);
 
   void ldmxcsr( Address src );
 

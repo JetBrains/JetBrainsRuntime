@@ -1060,7 +1060,7 @@ C2V_VMENTRY(jint, installCode, (JNIEnv *jniEnv, jobject, jobject target, jobject
       nmethod* nm = cb->as_nmethod_or_null();
       if (nm != NULL && installed_code_handle->is_scavengable()) {
         assert(nm->detect_scavenge_root_oops(), "nm should be scavengable if installed_code is scavengable");
-        if (!UseG1GC) {
+        if (!UseG1GC && !UseShenandoahGC) {
           assert(nm->on_scavenge_root_list(), "nm should be on scavengable list");
         }
       }

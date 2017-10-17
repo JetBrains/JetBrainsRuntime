@@ -411,7 +411,7 @@ void nmethod::init_defaults() {
   _oops_do_mark_link       = NULL;
   _jmethod_id              = NULL;
   _osr_link                = NULL;
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     _unloading_next        = NULL;
   } else {
     _scavenge_root_link    = NULL;
@@ -1498,7 +1498,7 @@ bool nmethod::unload_if_dead_at(RelocIterator* iter_at_oop, BoolObjectClosure *i
 bool nmethod::do_unloading_scopes(BoolObjectClosure* is_alive, bool unloading_occurred) {
   // Scopes
   for (oop* p = oops_begin(); p < oops_end(); p++) {
-    if (*p == Universe::non_oop_word())  continue;  // skip non-oops
+    if (oopDesc::unsafe_equals(*p, (oop) Universe::non_oop_word()))  continue;  // skip non-oops
     if (can_unload(is_alive, p, unloading_occurred)) {
       return true;
     }
@@ -1646,7 +1646,7 @@ void nmethod::oops_do(OopClosure* f, bool allow_zombie) {
   // Scopes
   // This includes oop constants not inlined in the code stream.
   for (oop* p = oops_begin(); p < oops_end(); p++) {
-    if (*p == Universe::non_oop_word())  continue;  // skip non-oops
+    if (oopDesc::unsafe_equals(*p, (oop) Universe::non_oop_word()))  continue;  // skip non-oops
     f->do_oop(p);
   }
 }
@@ -2230,7 +2230,7 @@ public:
 };
 
 void nmethod::verify_scavenge_root_oops() {
-  if (UseG1GC) {
+  if (UseG1GC || UseShenandoahGC) {
     return;
   }
 
@@ -2381,7 +2381,7 @@ void nmethod::print_recorded_oops() {
   for (int i = 0; i < oops_count(); i++) {
     oop o = oop_at(i);
     tty->print("#%3d: " INTPTR_FORMAT " ", i, p2i(o));
-    if (o == (oop)Universe::non_oop_word()) {
+    if (oopDesc::unsafe_equals(o, (oop)Universe::non_oop_word())) {
       tty->print("non-oop word");
     } else {
       o->print_value();

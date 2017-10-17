@@ -217,6 +217,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   friend class ClassLoaderDataGraphMetaspaceIterator;
   friend class MetaDataFactory;
   friend class Method;
+  friend class ParallelCLDRootIterator;
 
   static ClassLoaderData * _the_null_class_loader_data;
 

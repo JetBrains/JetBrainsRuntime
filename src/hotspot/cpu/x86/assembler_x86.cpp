@@ -2029,6 +2029,16 @@ void Assembler::jccb(Condition cc, Label& L) {
   }
 }
 
+void Assembler::jccb_if_possible(Condition cc, Label& L) {
+
+#ifdef ASSERT
+  if (UseShenandoahGC) {
+    jcc(cc, L);
+  } else
+#endif
+    jccb(cc, L);
+}
+
 void Assembler::jmp(Address adr) {
   InstructionMark im(this);
   prefix(adr);
@@ -2100,6 +2110,16 @@ void Assembler::jmpb(Label& L) {
     emit_int8((unsigned char)0xEB);
     emit_int8(0);
   }
+}
+
+void Assembler::jmpb_if_possible(Label& L) {
+
+#ifdef ASSERT
+  if (UseShenandoahGC) {
+    jmp(L);
+  } else
+#endif
+    jmpb(L);
 }
 
 void Assembler::ldmxcsr( Address src) {

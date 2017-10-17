@@ -201,6 +201,14 @@ void mutex_init() {
     def(MarkStackFreeList_lock     , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);
     def(MarkStackChunkList_lock    , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_never);
   }
+  if (UseShenandoahGC) {
+    def(SATB_Q_FL_lock             , PaddedMutex  , access,      true,  Monitor::_safepoint_check_never);
+    def(SATB_Q_CBL_mon             , PaddedMonitor, access,      true,  Monitor::_safepoint_check_never);
+    def(Shared_SATB_Q_lock         , PaddedMutex  , access + 1,  true,  Monitor::_safepoint_check_never);
+    // Shenandoah needs (special-1) rank of the lock, because write barrier can evacuate objects while
+    // thread holding other locks, such as CodeCache_lock, etc.
+    def(StringDedupTable_lock      , PaddedMutex  , special-1,   true,  Monitor::_safepoint_check_never);
+  }
   def(ParGCRareEvent_lock          , PaddedMutex  , leaf     ,   true,  Monitor::_safepoint_check_sometimes);
   def(DerivedPointerTableGC_lock   , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_never);
 #ifdef INCLUDE_ALL_GCS

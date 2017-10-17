@@ -36,7 +36,9 @@
 #include "opto/idealGraphPrinter.hpp"
 #include "opto/loopnode.hpp"
 #include "opto/mulnode.hpp"
+#include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
+#include "opto/shenandoahSupport.hpp"
 #include "opto/superword.hpp"
 
 //=============================================================================
@@ -261,8 +263,75 @@ void PhaseIdealLoop::set_subtree_ctrl( Node *n ) {
   set_early_ctrl( n );
 }
 
+// Create a skeleton strip mined outer loop: a Loop head before the
+// inner strip mined loop, a safepoint and an exit condition guarded
+// by an opaque node after the inner strip mined loop with a backedge
+// to the loop head. The inner strip mined loop is left as it is. Only
+// once loop optimizations are over, do we adjust the inner loop exit
+// condition to limit its number of iterations, set the outer loop
+// exit condition and add Phis to the outer loop head. Some loop
+// optimizations that operate on the inner strip mined loop need to be
+// aware of the outer strip mined loop: loop unswitching needs to
+// clone the outer loop as well as the inner, unrolling needs to only
+// clone the inner loop etc. No optimizations need to change the outer
+// strip mined loop as it is only a skeleton.
+IdealLoopTree* PhaseIdealLoop::create_outer_strip_mined_loop(BoolNode *test, Node *cmp, Node *init_control,
+                                                             IdealLoopTree* loop, float cl_prob, float le_fcnt,
+                                                             Node*& entry_control, Node*& iffalse) {
+  Node* outer_test = test->clone();
+  Node* outer_cmp = cmp->clone();
+  Node* outer_limit = new Opaque5Node(C, outer_cmp->in(2));
+  outer_cmp->set_req(2, outer_limit);
+  outer_test->set_req(1, outer_cmp);
+  Node *orig = iffalse;
+  iffalse = iffalse->clone();
+  _igvn.register_new_node_with_optimizer(iffalse);
+  set_idom(iffalse, idom(orig), dom_depth(orig));
+
+  IfNode *outer_le = new IfNode(iffalse, outer_test, cl_prob, le_fcnt);
+  Node *outer_ift = new IfTrueNode (outer_le);
+  Node* outer_iff = orig;
+  _igvn.replace_input_of(outer_iff, 0, outer_le);
+
+  LoopNode *outer_l = new LoopNode(init_control, outer_ift);
+  entry_control = outer_l;
+
+  IdealLoopTree* outer_ilt = new IdealLoopTree(this, outer_l, outer_ift);
+  IdealLoopTree* parent = loop->_parent;
+  IdealLoopTree* sibling = parent->_child;
+  if (sibling == loop) {
+    parent->_child = outer_ilt;
+  } else {
+    while (sibling->_next != loop) {
+      sibling = sibling->_next;
+    }
+    sibling->_next = outer_ilt;
+  }
+  outer_ilt->_next = loop->_next;
+  outer_ilt->_parent = parent;
+  outer_ilt->_child = loop;
+  outer_ilt->_nest = loop->_nest;
+  loop->_parent = outer_ilt;
+  loop->_next = NULL;
+  loop->_nest++;
+
+  set_loop(iffalse, outer_ilt);
+  register_new_node(outer_test, iffalse);
+  register_new_node(outer_cmp, iffalse);
+  register_new_node(outer_limit, iffalse);
+  register_control(outer_le, outer_ilt, iffalse);
+  register_control(outer_ift, outer_ilt, outer_le);
+  set_idom(outer_iff, outer_le, dom_depth(outer_le));
+  _igvn.register_new_node_with_optimizer(outer_l);
+  set_loop(outer_l, outer_ilt);
+  set_idom(outer_l, init_control, dom_depth(init_control)+1);
+  outer_l->mark_strip_mined();
+
+  return outer_ilt;
+}
+
 //------------------------------is_counted_loop--------------------------------
-bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
+bool PhaseIdealLoop::is_counted_loop(Node* x, IdealLoopTree*& loop) {
   PhaseGVN *gvn = &_igvn;
 
   // Counted loop head must be a good RegionNode with only 3 not NULL
@@ -280,7 +349,7 @@ bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
 
   // Allow funny placement of Safepoint
   if (back_control->Opcode() == Op_SafePoint) {
-    if (UseCountedLoopSafepoints) {
+    if (LoopStripMiningIter != 0) {
       // Leaving the safepoint on the backedge and creating a
       // CountedLoop will confuse optimizations. We can't move the
       // safepoint around because its jvm state wouldn't match a new
@@ -600,7 +669,7 @@ bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
   }
   set_subtree_ctrl( limit );
 
-  if (!UseCountedLoopSafepoints) {
+  if (LoopStripMiningIter == 0) {
     // Check for SafePoint on backedge and remove
     Node *sfpt = x->in(LoopNode::LoopBackControl);
     if (sfpt->Opcode() == Op_SafePoint && is_deleteable_safept(sfpt)) {
@@ -683,8 +752,20 @@ bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
   assert(iff->outcnt() == 0, "should be dead now");
   lazy_replace( iff, le ); // fix 'get_ctrl'
 
+  Node *sfpt2 = le->in(0);
+
+  Node* entry_control = init_control;
+  bool strip_mine_loop = LoopStripMiningIter > 1 && loop->_child == NULL &&
+    sfpt2->Opcode() == Op_SafePoint && !loop->_has_call;
+  IdealLoopTree* outer_ilt = NULL;
+  if (strip_mine_loop) {
+    outer_ilt = create_outer_strip_mined_loop(test, cmp, init_control, loop,
+                                              cl_prob, le->_fcnt, entry_control,
+                                              iffalse);
+  }
+
   // Now setup a new CountedLoopNode to replace the existing LoopNode
-  CountedLoopNode *l = new CountedLoopNode(init_control, back_control);
+  CountedLoopNode *l = new CountedLoopNode(entry_control, back_control);
   l->set_unswitch_count(x->as_Loop()->unswitch_count()); // Preserve
   // The following assert is approximately true, and defines the intention
   // of can_be_counted_loop.  It fails, however, because phase->type
@@ -696,12 +777,22 @@ bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
   // Fix all data nodes placed at the old loop head.
   // Uses the lazy-update mechanism of 'get_ctrl'.
   lazy_replace( x, l );
-  set_idom(l, init_control, dom_depth(x));
+  set_idom(l, entry_control, dom_depth(entry_control) + 1);
 
-  if (!UseCountedLoopSafepoints) {
+  if (LoopStripMiningIter == 0 || strip_mine_loop) {
     // Check for immediately preceding SafePoint and remove
-    Node *sfpt2 = le->in(0);
-    if (sfpt2->Opcode() == Op_SafePoint && is_deleteable_safept(sfpt2)) {
+    if (sfpt2->Opcode() == Op_SafePoint && (LoopStripMiningIter != 0 || is_deleteable_safept(sfpt2))) {
+      if (strip_mine_loop) {
+        Node* outer_le = outer_ilt->_tail->in(0);
+        Node* outer_limit = outer_le->in(1)->in(1)->in(2);
+        assert(outer_limit->Opcode() == Op_Opaque5, "where's the opaque node?");
+        Node* sfpt = sfpt2->clone();
+        sfpt->set_req(0, iffalse);
+        outer_le->set_req(0, sfpt);
+        outer_limit->set_req(0, sfpt);
+        register_control(sfpt, outer_ilt, iffalse);
+        set_idom(outer_le, sfpt, dom_depth(sfpt));
+      }
       lazy_replace( sfpt2, sfpt2->in(TypeFunc::Control));
       if (loop->_safepts != NULL) {
         loop->_safepts->yank(sfpt2);
@@ -729,6 +820,13 @@ bool PhaseIdealLoop::is_counted_loop( Node *x, IdealLoopTree *loop ) {
   // subsequent transformation (iteration splitting) obscures the
   // bounds
   l->phi()->as_Phi()->set_type(l->phi()->Value(&_igvn));
+
+  if (strip_mine_loop) {
+    l->mark_strip_mined();
+    l->verify_strip_mined(1);
+    outer_ilt->_head->as_Loop()->verify_strip_mined(1);
+    loop = outer_ilt;
+  }
 
   return true;
 }
@@ -776,12 +874,94 @@ Node* PhaseIdealLoop::exact_limit( IdealLoopTree *loop ) {
 // Return a node which is more "ideal" than the current node.
 // Attempt to convert into a counted-loop.
 Node *LoopNode::Ideal(PhaseGVN *phase, bool can_reshape) {
-  if (!can_be_counted_loop(phase)) {
+  if (!can_be_counted_loop(phase) && !is_strip_mined()) {
     phase->C->set_major_progress();
   }
   return RegionNode::Ideal(phase, can_reshape);
 }
 
+void LoopNode::verify_strip_mined(int expect_opaq) const {
+#ifdef ASSERT
+  if (is_strip_mined()) {
+    const LoopNode* outer = NULL;
+    const CountedLoopNode* inner = NULL;
+    if (is_CountedLoop()) {
+      inner = as_CountedLoop();
+      outer = inner->in(LoopNode::EntryControl)->as_Loop();
+    } else {
+      outer = this;
+      inner = outer->unique_ctrl_out()->as_CountedLoop();
+    }
+    assert(outer->Opcode() == Op_Loop, "no counted loop here");
+    assert(outer->is_strip_mined(), "incorrect outer loop");
+    Node* outer_tail = outer->in(LoopNode::LoopBackControl);
+    Node* outer_le = outer_tail->in(0);
+    assert(outer_le->Opcode() == Op_If, "tail of outer loop should be an If");
+    Node* sfpt = outer_le->in(0);
+    assert(sfpt->Opcode() == Op_SafePoint, "where's the safepoint?");
+    Node* inner_out = sfpt->in(0);
+    if (inner_out->outcnt() != 1) {
+      ResourceMark rm;
+      Unique_Node_List wq;
+
+      for (DUIterator_Fast imax, i = inner_out->fast_outs(imax); i < imax; i++) {
+        Node* u = inner_out->fast_out(i);
+        if (u == sfpt) {
+          continue;
+        }
+        wq.clear();
+        wq.push(u);
+        bool found_sfpt = false;
+        for (uint next = 0; next < wq.size() && !found_sfpt; next++) {
+          Node *n = wq.at(next);
+          for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax && !found_sfpt; i++) {
+            Node* u = n->fast_out(i);
+            if (u == sfpt) {
+              found_sfpt = true;
+            }
+            if (!u->is_CFG()) {
+              wq.push(u);
+            }
+          }
+        }
+        assert(found_sfpt, "no node in loop that's not input to safepoint");
+      }
+    }
+    CountedLoopEndNode* cle = inner_out->in(0)->as_CountedLoopEnd();
+    assert(cle == inner->loopexit(), "mismatch");
+    Node* cmp = outer_le->in(1)->in(1);
+    bool has_opaque = cmp->in(2)->Opcode() == Op_Opaque5;
+    assert(cmp->in(1) == inner->incr(), "strange exit condition");
+    if (has_opaque) {
+      assert(expect_opaq == 1 || expect_opaq == -1, "unexpected opaque node");
+      assert(outer->outcnt() == 2, "only phis");
+    } else {
+      assert(expect_opaq == 0 || expect_opaq == -1, "no opaque node?");
+      uint phis = 0;
+      for (DUIterator_Fast imax, i = inner->fast_outs(imax); i < imax; i++) {
+        Node* u = inner->fast_out(i);
+        if (u->is_Phi()) {
+          phis++;
+        }
+      }
+      for (DUIterator_Fast imax, i = outer->fast_outs(imax); i < imax; i++) {
+        Node* u = outer->fast_out(i);
+        assert(u == outer || u == inner || u->is_Phi(), "nothing between inner and outer loop");
+      }
+      uint stores = 0;
+      for (DUIterator_Fast imax, i = inner_out->fast_outs(imax); i < imax; i++) {
+        Node* u = inner_out->fast_out(i);
+        if (u->is_Store()) {
+          stores++;
+        }
+      }
+      assert(outer->outcnt() >= phis + 2 && outer->outcnt() <= phis + 2 + stores + 1, "only phis");
+    }
+    assert(sfpt->outcnt() == 1 + (has_opaque ? 1 : 0), "no data node");
+    assert(outer_tail->outcnt() == 1 || !has_opaque, "no data node");
+  }
+#endif
+}
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
@@ -988,6 +1168,14 @@ Node* CountedLoopNode::match_incr_with_optional_truncation(
 
   // failed
   return NULL;
+}
+
+LoopNode* CountedLoopNode::skip_strip_mined(int expect_opaq) {
+  if (is_strip_mined()) {
+    verify_strip_mined(expect_opaq);
+    return in(EntryControl)->as_Loop();
+  }
+  return this;
 }
 
 
@@ -1778,10 +1966,11 @@ void IdealLoopTree::counted_loop( PhaseIdealLoop *phase ) {
     if (_head->is_Loop()) _head->as_Loop()->set_inner_loop();
   }
 
+  IdealLoopTree* loop = this;
   if (_head->is_CountedLoop() ||
-      phase->is_counted_loop(_head, this)) {
+      phase->is_counted_loop(_head, loop)) {
 
-    if (!UseCountedLoopSafepoints) {
+    if (LoopStripMiningIter == 0 || (LoopStripMiningIter > 1 && _child == NULL)) {
       // Indicate we do not need a safepoint here
       _has_sfpt = 1;
     }
@@ -1800,8 +1989,10 @@ void IdealLoopTree::counted_loop( PhaseIdealLoop *phase ) {
   }
 
   // Recursively
-  if (_child) _child->counted_loop( phase );
-  if (_next)  _next ->counted_loop( phase );
+  assert(loop->_child != this || (loop->_head->as_Loop()->is_strip_mined() && _head->as_CountedLoop()->is_strip_mined()), "what kind of loop was added?");
+  assert(loop->_child != this || (loop->_child->_child == NULL && loop->_child->_next == NULL), "would miss some loops");
+  if (loop->_child && loop->_child != this) loop->_child->counted_loop(phase);
+  if (loop->_next)  loop->_next ->counted_loop(phase);
 }
 
 #ifndef PRODUCT
@@ -1812,7 +2003,7 @@ void IdealLoopTree::dump_head( ) const {
     tty->print("  ");
   tty->print("Loop: N%d/N%d ",_head->_idx,_tail->_idx);
   if (_irreducible) tty->print(" IRREDUCIBLE");
-  Node* entry = _head->in(LoopNode::EntryControl);
+  Node* entry = _head->as_Loop()->skip_strip_mined(-1)->in(LoopNode::EntryControl);
   Node* predicate = PhaseIdealLoop::find_predicate_insertion_point(entry, Deoptimization::Reason_loop_limit_check);
   if (predicate != NULL ) {
     tty->print(" limit_check");
@@ -1862,6 +2053,9 @@ void IdealLoopTree::dump_head( ) const {
   }
   if (Verbose) {
     tty->print(" body={"); _body.dump_simple(); tty->print(" }");
+  }
+  if (_head->as_Loop()->is_strip_mined()) {
+    tty->print(" strip mined");
   }
   tty->cr();
 }
@@ -2057,7 +2251,12 @@ bool PhaseIdealLoop::process_expensive_nodes() {
 //----------------------------build_and_optimize-------------------------------
 // Create a PhaseLoop.  Build the ideal Loop tree.  Map each Ideal Node to
 // its corresponding LoopNode.  If 'optimize' is true, do some loop cleanups.
-void PhaseIdealLoop::build_and_optimize(bool do_split_ifs, bool skip_loop_opts) {
+void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
+  bool do_split_ifs = (mode == LoopOptsDefault);
+  bool skip_loop_opts = (mode == LoopOptsNone) ;
+  bool shenandoah_opts = (mode == LoopOptsShenandoahExpand ||
+                          mode == LoopOptsShenandoahPostExpand);
+
   ResourceMark rm;
 
   int old_progress = C->major_progress();
@@ -2121,7 +2320,7 @@ void PhaseIdealLoop::build_and_optimize(bool do_split_ifs, bool skip_loop_opts) 
   }
 
   // Nothing to do, so get out
-  bool stop_early = !C->has_loops() && !skip_loop_opts && !do_split_ifs && !_verify_me && !_verify_only;
+  bool stop_early = !C->has_loops() && !skip_loop_opts && !do_split_ifs && !_verify_me && !_verify_only && !shenandoah_opts;
   bool do_expensive_nodes = C->should_optimize_expensive_nodes(_igvn);
   if (stop_early && !do_expensive_nodes) {
     _igvn.optimize();           // Cleanup NeverBranches
@@ -2200,8 +2399,9 @@ void PhaseIdealLoop::build_and_optimize(bool do_split_ifs, bool skip_loop_opts) 
 
   // Given early legal placement, try finding counted loops.  This placement
   // is good enough to discover most loop invariants.
-  if( !_verify_me && !_verify_only )
-    _ltree_root->counted_loop( this );
+  if (!_verify_me && !_verify_only && !shenandoah_opts) {
+    _ltree_root->counted_loop(this);
+  }
 
   // Find latest loop placement.  Find ideal loop placement.
   visited.Clear();
@@ -2256,6 +2456,22 @@ void PhaseIdealLoop::build_and_optimize(bool do_split_ifs, bool skip_loop_opts) 
     _ltree_root->dump();
   }
 #endif
+
+  if (mode == LoopOptsShenandoahExpand) {
+    assert(UseShenandoahGC, "only for shenandoah");
+    ShenandoahWriteBarrierNode::pin_and_expand(this);
+  } else if (mode == LoopOptsShenandoahPostExpand) {
+    assert(UseShenandoahGC, "only for shenandoah");
+    ShenandoahWriteBarrierNode::optimize_after_expansion(_shenandoah_evacuation_tests, worklist, this);
+  }
+
+  if (shenandoah_opts) {
+    _igvn.optimize();
+    if (C->log() != NULL) {
+      log_loop_tree(_ltree_root, _ltree_root, C->log());
+    }
+    return;
+  }
 
   if (skip_loop_opts) {
     // restore major progress flag
@@ -2683,7 +2899,11 @@ void PhaseIdealLoop::recompute_dom_depth() {
     // Run up the dom tree to find a node with a depth
     while (_dom_depth[j] == no_depth_marker) {
       _dom_stk->push(j);
-      j = _idom[j]->_idx;
+      Node* d = _idom[j];
+      while (d->in(0) == NULL) {  // Skip dead CFG nodes
+        d = (Node*)(((intptr_t)_nodes[d->_idx]) & ~1);
+      }
+      j = d->_idx;
     }
     // Compute the depth on the way back down this tree branch
     uint dd = _dom_depth[j] + 1;
@@ -3232,7 +3452,7 @@ bool PhaseIdealLoop::is_canonical_loop_entry(CountedLoopNode* cl) {
   if (!cl->is_main_loop() && !cl->is_post_loop()) {
     return false;
   }
-  Node* ctrl = cl->in(LoopNode::EntryControl);
+  Node* ctrl = cl->skip_strip_mined()->in(LoopNode::EntryControl);
   if (ctrl == NULL || (!ctrl->is_IfTrue() && !ctrl->is_IfFalse())) {
     return false;
   }
@@ -3292,7 +3512,8 @@ Node *PhaseIdealLoop::get_late_ctrl( Node *n, Node *early ) {
     }
     while(worklist.size() != 0 && LCA != early) {
       Node* s = worklist.pop();
-      if (s->is_Load()) {
+      if (s->is_Load() || s->is_ShenandoahBarrier() || s->Opcode() == Op_SafePoint ||
+          (s->is_CallStaticJava() && s->as_CallStaticJava()->uncommon_trap_request() != 0)) {
         continue;
       } else if (s->is_MergeMem()) {
         for (DUIterator_Fast imax, i = s->fast_outs(imax); i < imax; i++) {
@@ -3301,7 +3522,7 @@ Node *PhaseIdealLoop::get_late_ctrl( Node *n, Node *early ) {
         }
       } else {
         Node *sctrl = has_ctrl(s) ? get_ctrl(s) : s->in(0);
-        assert(sctrl != NULL || s->outcnt() == 0, "must have control");
+        assert(sctrl != NULL || s->outcnt() == 0 || s->is_ShenandoahBarrier(), "must have control");
         if (sctrl != NULL && !sctrl->is_top() && is_dominator(early, sctrl)) {
           LCA = dom_lca_for_get_late_ctrl(LCA, sctrl, n);
         }
@@ -3523,9 +3744,17 @@ void PhaseIdealLoop::build_loop_late_post( Node *n ) {
     case Op_StrIndexOf:
     case Op_StrIndexOfChar:
     case Op_AryEq:
+    case Op_ShenandoahReadBarrier:
+    case Op_ShenandoahWriteBarrier:
+    case Op_ShenandoahWBMemProj:
     case Op_HasNegatives:
       pinned = false;
     }
+
+    if (n->is_If() && ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n)) {
+      _shenandoah_evacuation_tests.push(n);
+    }
+
     if( pinned ) {
       IdealLoopTree *chosen_loop = get_loop(n->is_CFG() ? n : get_ctrl(n));
       if( !chosen_loop->_child )       // Inner loop?
@@ -3580,11 +3809,25 @@ void PhaseIdealLoop::build_loop_late_post( Node *n ) {
   // which can inhibit range check elimination.
   if (least != early) {
     Node* ctrl_out = least->unique_ctrl_out();
-    if (ctrl_out && ctrl_out->is_CountedLoop() &&
+    if (ctrl_out && ctrl_out->is_Loop() &&
         least == ctrl_out->in(LoopNode::EntryControl)) {
-      Node* least_dom = idom(least);
-      if (get_loop(least_dom)->is_member(get_loop(least))) {
-        least = least_dom;
+      Node* new_ctrl = least;
+      if (find_predicate_insertion_point(new_ctrl, Deoptimization::Reason_loop_limit_check) != NULL) {
+        new_ctrl = new_ctrl->in(0)->in(0);
+        assert(is_dominator(early, new_ctrl), "least != early so we can move up the dominator tree");
+      }
+      if (find_predicate_insertion_point(new_ctrl, Deoptimization::Reason_predicate) != NULL) {
+        Node* c = new_ctrl->in(0)->in(0);
+        assert(is_dominator(early, c), "least != early so we can move up the dominator tree");
+        new_ctrl = c;
+      }
+      if (new_ctrl != ctrl_out) {
+        least = new_ctrl;
+      } else if (ctrl_out->is_CountedLoop() || ctrl_out->as_Loop()->is_strip_mined()) {
+        Node* least_dom = idom(least);
+        if (get_loop(least_dom)->is_member(get_loop(least))) {
+          least = least_dom;
+        }
       }
     }
   }
@@ -3606,12 +3849,25 @@ void PhaseIdealLoop::build_loop_late_post( Node *n ) {
 
   // Assign discovered "here or above" point
   least = find_non_split_ctrl(least);
+  assert(least->Opcode() != Op_Loop || !least->as_Loop()->is_strip_mined() ||
+         get_loop(least)->_nest == 0 || // corner, this loop is disconnected from the loop tree
+         least->in(LoopNode::LoopBackControl)->in(0)->in(1)->in(1)->in(2)->Opcode() != Op_Opaque5, "no data node in outer loop");
   set_ctrl(n, least);
 
   // Collect inner loop bodies
   IdealLoopTree *chosen_loop = get_loop(least);
   if( !chosen_loop->_child )   // Inner loop?
     chosen_loop->_body.push(n);// Collect inner loops
+
+  if (n->Opcode() == Op_ShenandoahWriteBarrier) {
+    // The write barrier and its memory proj must have the same
+    // control otherwise some loop opts could put nodes (Phis) between
+    // them
+    Node* proj = n->find_out_with(Op_ShenandoahWBMemProj);
+    if (proj != NULL) {
+      set_ctrl_and_loop(proj, least);
+    }
+  }
 }
 
 #ifdef ASSERT
@@ -3767,6 +4023,7 @@ void PhaseIdealLoop::dump( IdealLoopTree *loop, uint idx, Node_List &rpo_list ) 
     }
   }
 }
+#endif
 
 // Collect a R-P-O for the whole CFG.
 // Result list is in post-order (scan backwards for RPO)
@@ -3789,7 +4046,6 @@ void PhaseIdealLoop::rpo( Node *start, Node_Stack &stk, VectorSet &visited, Node
     }
   }
 }
-#endif
 
 
 //=============================================================================

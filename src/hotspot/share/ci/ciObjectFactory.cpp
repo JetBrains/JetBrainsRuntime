@@ -251,7 +251,7 @@ ciObject* ciObjectFactory::get(oop key) {
   // into the cache.
   Handle keyHandle(Thread::current(), key);
   ciObject* new_object = create_new_object(keyHandle());
-  assert(keyHandle() == new_object->get_oop(), "must be properly recorded");
+  assert(oopDesc::equals(keyHandle(), new_object->get_oop()), "must be properly recorded");
   init_ident_of(new_object);
   assert(Universe::heap()->is_in_reserved(new_object->get_oop()), "must be");
 
@@ -412,7 +412,7 @@ void ciObjectFactory::ensure_metadata_alive(ciMetadata* m) {
   ASSERT_IN_VM; // We're handling raw oops here.
 
 #if INCLUDE_ALL_GCS
-  if (!UseG1GC) {
+  if (!(UseG1GC || UseShenandoahGC)) {
     return;
   }
   Klass* metadata_owner_klass;
@@ -427,7 +427,7 @@ void ciObjectFactory::ensure_metadata_alive(ciMetadata* m) {
 
   oop metadata_holder = metadata_owner_klass->klass_holder();
   if (metadata_holder != NULL) {
-    G1SATBCardTableModRefBS::enqueue(metadata_holder);
+    oopDesc::bs()->keep_alive_barrier(metadata_holder);
   }
 
 #endif
@@ -497,8 +497,8 @@ ciKlass* ciObjectFactory::get_unloaded_klass(ciKlass* accessing_klass,
   for (int i=0; i<_unloaded_klasses->length(); i++) {
     ciKlass* entry = _unloaded_klasses->at(i);
     if (entry->name()->equals(name) &&
-        entry->loader() == loader &&
-        entry->protection_domain() == domain) {
+        oopDesc::equals(entry->loader(), loader) &&
+        oopDesc::equals(entry->protection_domain(), domain)) {
       // We've found a match.
       return entry;
     }
