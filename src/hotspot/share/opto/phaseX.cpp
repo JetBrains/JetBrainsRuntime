@@ -1783,6 +1783,15 @@ void PhaseCCP::analyze() {
               if(p->bottom_type() != type(p)) {
                 worklist.push(p);
               }
+            } else if (p->Opcode() == Op_AddP) {
+              for (DUIterator_Fast i3max, i3 = p->fast_outs(i3max); i3 < i3max; i3++) {
+                Node* q = p->fast_out(i3);
+                if (q->is_Load()) {
+                  if(q->bottom_type() != type(q)) {
+                    worklist.push(q);
+                  }
+                }
+              }
             }
           }
         }
