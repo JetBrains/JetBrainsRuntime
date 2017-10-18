@@ -268,6 +268,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private volatile boolean isIconifyAnimationActive;
     private volatile boolean isZoomed;
 
+    private final long FLUSH_THRESHOLD = 200;
+    private volatile long flushTimeStamp = 0;
+
     private Window target;
     private LWWindowPeer peer;
     protected CPlatformView contentView;
@@ -1030,7 +1033,11 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     void flushBuffers() {
-        if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode) {
+        long timeStamp = System.currentTimeMillis();
+
+        if (isVisible() && !nativeBounds.isEmpty() && !isFullScreenMode  &&
+                flushTimeStamp + FLUSH_THRESHOLD < timeStamp)
+        {
             try {
                 LWCToolkit.invokeAndWait(new Runnable() {
                     @Override
@@ -1041,6 +1048,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             } catch (InvocationTargetException e) {
                 e.printStackTrace();
             }
+            flushTimeStamp = timeStamp;
         }
     }
 
