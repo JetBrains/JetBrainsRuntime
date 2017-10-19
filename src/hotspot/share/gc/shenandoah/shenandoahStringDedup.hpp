@@ -37,8 +37,8 @@ public:
 
   static void parallel_full_gc_update_or_unlink();
 
-  static void parallel_update_refs();
-  static void parallel_cleanup();
+  static void parallel_update_or_unlink();
+
   static void parallel_partial_update_or_unlink();
 
   static inline bool is_candidate(oop java_string) {

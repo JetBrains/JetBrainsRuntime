@@ -2081,7 +2081,7 @@ void ShenandoahHeap::finish_update_refs() {
 
   if (ShenandoahStringDedup::is_enabled()) {
     ShenandoahGCPhase final_str_dedup_table(ShenandoahPhaseTimings::final_update_refs_dedup_table);
-    ShenandoahStringDedup::parallel_update_refs();
+    ShenandoahStringDedup::parallel_update_or_unlink();
   }
 
   // Allocations might have happened before we STWed here, record peak:

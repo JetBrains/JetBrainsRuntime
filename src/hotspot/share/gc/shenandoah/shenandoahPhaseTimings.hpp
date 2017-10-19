@@ -93,7 +93,6 @@ public:
     purge_par_classes,
     purge_par_sync,
     purge_cldg,
-    clean_str_dedup_table,
     prepare_evac,
     recycle_regions,
 

@@ -280,7 +280,7 @@ void ShenandoahConcurrentMark::mark_roots(ShenandoahPhaseTimings::Phase root_pha
     if (ShenandoahStringDedup::is_enabled() && root_phase != ShenandoahPhaseTimings::full_gc_roots) {
       // Don't need update refs here if it is full GC, which will fixup table at the end of full GC.
       ShenandoahGCPhase update_str_dedup_table(ShenandoahPhaseTimings::update_refs_dedup_table);
-      ShenandoahStringDedup::parallel_update_refs();
+      ShenandoahStringDedup::parallel_update_or_unlink();
     }
 
     ShenandoahInitMarkRootsTask<RESOLVE> mark_roots(&root_proc, process_references());
@@ -419,12 +419,6 @@ void ShenandoahConcurrentMark::finish_mark_from_roots() {
   TASKQUEUE_STATS_ONLY(reset_taskqueue_stats());
 
   shared_finish_mark_from_roots(/* full_gc = */ false);
-
-  if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahGCPhase clean_str_dedup_table(ShenandoahPhaseTimings::clean_str_dedup_table);
-    ShenandoahStringDedup::parallel_cleanup();
-  }
-
 
   if (sh->need_update_refs()) {
     update_roots(ShenandoahPhaseTimings::update_roots);

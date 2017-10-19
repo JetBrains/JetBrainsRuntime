@@ -141,21 +141,12 @@ void ShenandoahStringDedup::parallel_full_gc_update_or_unlink() {
 }
 
 
-void ShenandoahStringDedup::parallel_update_refs() {
+void ShenandoahStringDedup::parallel_update_or_unlink() {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
   log_debug(gc, stringdedup)("Update string dedup table references");
-  ShenandoahUpdateRefsClosure update_refs_closure;
-  ShenandoahAlwaysTrueClosure is_alive_closure;
+  ShenandoahUpdateLiveRefsClosure update_refs_closure;
+  ShenandoahIsAliveCompleteClosure is_alive_closure;
   ShenandoahStringDedupTableUpdateOrUnlinkTask task(&is_alive_closure, &update_refs_closure);
-  ShenandoahHeap::heap()->workers()->run_task(&task);
-}
-
-
-void ShenandoahStringDedup::parallel_cleanup() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
-  log_debug(gc, stringdedup)("Cleanup string dedup table");
-  ShenandoahForwardedIsAliveClosure is_alive_closure;
-  ShenandoahStringDedupTableUpdateOrUnlinkTask task(&is_alive_closure, NULL);
   ShenandoahHeap::heap()->workers()->run_task(&task);
 }
 
