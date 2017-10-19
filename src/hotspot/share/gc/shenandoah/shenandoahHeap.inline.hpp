@@ -503,18 +503,22 @@ inline void ShenandoahHeap::marked_object_safe_iterate(ShenandoahHeapRegion* reg
 template<class T>
 inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit) {
   assert(BrooksPointer::word_offset() < 0, "skip_delta calculation below assumes the forwarding ptr is before obj");
-
   assert(! region->is_humongous_continuation(), "no humongous continuation regions here");
 
   MarkBitMap* mark_bit_map = _complete_mark_bit_map;
-  HeapWord* top_at_mark_start = complete_top_at_mark_start(region->bottom());
+  HeapWord* tams = complete_top_at_mark_start(region->bottom());
 
   size_t skip_bitmap_delta = BrooksPointer::word_size() + 1;
   size_t skip_objsize_delta = BrooksPointer::word_size() /* + actual obj.size() below */;
   HeapWord* start = region->bottom() + BrooksPointer::word_size();
+  HeapWord* end = MIN2(tams + BrooksPointer::word_size(), region->end());
 
-  HeapWord* end = MIN2(top_at_mark_start + BrooksPointer::word_size(), region->end());
-  HeapWord* addr = mark_bit_map->getNextMarkedWordAddress(start, end);
+  // Step 1. Scan below the TAMS based on bitmap data.
+  HeapWord* limit_bitmap = MIN2(limit, tams);
+
+  // Try to scan the initial candidate. If the candidate is above the TAMS, it would
+  // fail the subsequent "< limit_bitmap" checks, and fall through to Step 2.
+  HeapWord* cb = mark_bit_map->getNextMarkedWordAddress(start, end);
 
   intx dist = ShenandoahMarkScanPrefetch;
   if (dist > 0) {
@@ -531,49 +535,51 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
     // the prefetch distance.
     static const int SLOT_COUNT = 256;
     guarantee(dist <= SLOT_COUNT, "adjust slot count");
-    oop slots[SLOT_COUNT];
+    HeapWord* slots[SLOT_COUNT];
 
-    bool aborting = false;
     int avail;
     do {
       avail = 0;
-      for (int c = 0; (c < dist) && (addr < limit); c++) {
-        Prefetch::read(addr, BrooksPointer::byte_offset());
-        oop obj = oop(addr);
-        slots[avail++] = obj;
-        if (addr < top_at_mark_start) {
-          addr += skip_bitmap_delta;
-          addr = mark_bit_map->getNextMarkedWordAddress(addr, end);
-        } else {
-          // cannot trust mark bitmap anymore, finish the current stride,
-          // and switch to accurate traversal
-          addr += obj->size() + skip_objsize_delta;
-          aborting = true;
+      for (int c = 0; (c < dist) && (cb < limit_bitmap); c++) {
+        Prefetch::read(cb, BrooksPointer::byte_offset());
+        slots[avail++] = cb;
+        cb += skip_bitmap_delta;
+        if (cb < limit_bitmap) {
+          cb = mark_bit_map->getNextMarkedWordAddress(cb, limit_bitmap);
         }
       }
 
       for (int c = 0; c < avail; c++) {
-        do_marked_object(mark_bit_map, cl, slots[c]);
+        assert (slots[c] < tams,  "only objects below TAMS here: "  PTR_FORMAT " (" PTR_FORMAT ")", p2i(slots[c]), p2i(tams));
+        assert (slots[c] < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(slots[c]), p2i(limit));
+        oop obj = oop(slots[c]);
+        do_marked_object(mark_bit_map, cl, obj);
       }
-    } while (avail > 0 && !aborting);
-
-    // accurate traversal
-    while (addr < limit) {
-      oop obj = oop(addr);
-      int size = obj->size();
-      do_marked_object(mark_bit_map, cl, obj);
-      addr += size + skip_objsize_delta;
-    }
+    } while (avail > 0);
   } else {
-    while (addr < limit) {
-      oop obj = oop(addr);
-      int size = obj->size();
+    while (cb < limit_bitmap) {
+      assert (cb < tams,  "only objects below TAMS here: "  PTR_FORMAT " (" PTR_FORMAT ")", p2i(cb), p2i(tams));
+      assert (cb < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(cb), p2i(limit));
+      oop obj = oop(cb);
       do_marked_object(mark_bit_map, cl, obj);
-      addr += size + skip_objsize_delta;
-      if (addr < top_at_mark_start) {
-        addr = mark_bit_map->getNextMarkedWordAddress(addr, end);
+      cb += skip_bitmap_delta;
+      if (cb < limit_bitmap) {
+        cb = mark_bit_map->getNextMarkedWordAddress(cb, limit_bitmap);
       }
     }
+  }
+
+  // Step 2. Accurate size-based traversal, happens past the TAMS.
+  // This restarts the scan at TAMS, which makes sure we traverse all objects,
+  // regardless of what happened at Step 1.
+  HeapWord* cs = tams + BrooksPointer::word_size();
+  while (cs < limit) {
+    assert (cs > tams,  "only objects past TAMS here: "   PTR_FORMAT " (" PTR_FORMAT ")", p2i(cs), p2i(tams));
+    assert (cs < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(cs), p2i(limit));
+    oop obj = oop(cs);
+    int size = obj->size();
+    do_marked_object(mark_bit_map, cl, obj);
+    cs += size + skip_objsize_delta;
   }
 }
 
