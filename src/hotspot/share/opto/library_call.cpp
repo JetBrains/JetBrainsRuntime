@@ -6267,7 +6267,11 @@ Node * LibraryCallKit::load_field_from_object(Node * fromObj, const char * field
     fromObj = makecon(tip);
   }
 
-  if (! ShenandoahOptimizeFinals || (! field->is_final() && ! field->is_stable())) {
+  if ((ShenandoahOptimizeStaticFinals   && field->is_static()  && field->is_final()) ||
+      (ShenandoahOptimizeInstanceFinals && !field->is_static() && field->is_final()) ||
+      (ShenandoahOptimizeStableFinals   && field->is_stable())) {
+    // Skip the barrier for special fields
+  } else {
     fromObj = shenandoah_read_barrier(fromObj);
   }
 

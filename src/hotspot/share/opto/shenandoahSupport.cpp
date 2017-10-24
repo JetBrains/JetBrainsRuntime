@@ -107,7 +107,7 @@ bool ShenandoahBarrierNode::needs_barrier_impl(PhaseGVN* phase, ShenandoahBarrie
     return ShenandoahBarriersForConst;
   }
 
-  if (ShenandoahOptimizeFinals) {
+  if (ShenandoahOptimizeStableFinals) {
     const TypeAryPtr* ary = type->isa_aryptr();
     if (ary && ary->is_stable() && allow_fromspace) {
       return false;
@@ -833,7 +833,7 @@ bool ShenandoahBarrierNode::verify_helper(Node* in, Node_Stack& phis, VectorSet&
   while (true) {
     if (!in->bottom_type()->make_ptr()->make_oopptr()) {
       if (trace) {tty->print_cr("Non oop");}
-    } else if (t == ShenandoahLoad && ShenandoahOptimizeFinals &&
+    } else if (t == ShenandoahLoad && ShenandoahOptimizeStableFinals &&
                in->bottom_type()->make_ptr()->isa_aryptr() &&
                in->bottom_type()->make_ptr()->is_aryptr()->is_stable()) {
       if (trace) {tty->print_cr("Stable array load");}
@@ -931,14 +931,15 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
           if (trace) {tty->print_cr("Reference.get()");}
         } else {
           bool verify = true;
-          if (adr_type->isa_instptr() && ShenandoahOptimizeFinals) {
+          if (adr_type->isa_instptr()) {
             const TypeInstPtr* tinst = adr_type->is_instptr();
             ciKlass* k = tinst->klass();
             assert(k->is_instance_klass(), "");
             ciInstanceKlass* ik = (ciInstanceKlass*)k;
             int offset = adr_type->offset();
 
-            if (ik->debug_final_or_stable_field_at(offset)) {
+            if ((ik->debug_final_field_at(offset) && ShenandoahOptimizeInstanceFinals) ||
+                (ik->debug_stable_field_at(offset) && ShenandoahOptimizeStableFinals)) {
               if (trace) {tty->print_cr("Final/stable");}
               verify = false;
             } else if (k == ciEnv::current()->Class_klass() &&
@@ -946,7 +947,8 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
                        tinst->offset() >= (ik->size_helper() * wordSize)) {
               ciInstanceKlass* k = tinst->const_oop()->as_instance()->java_lang_Class_klass()->as_instance_klass();
               ciField* field = k->get_field_by_offset(tinst->offset(), true);
-              if (field->is_final() || field->is_stable()) {
+              if ((ShenandoahOptimizeStaticFinals && field->is_final()) ||
+                  (ShenandoahOptimizeStableFinals && field->is_stable())) {
                 verify = false;
               }
             }

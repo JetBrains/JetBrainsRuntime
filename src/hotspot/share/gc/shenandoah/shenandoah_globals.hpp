@@ -42,11 +42,20 @@
   product(bool, UseShenandoahGC, false,                                     \
           "Use the Shenandoah garbage collector")                           \
                                                                             \
-  product(bool, ShenandoahOptimizeFinals, true,                             \
-          "Optimize barriers on final and stable fields/arrays. "           \
+  product(bool, ShenandoahOptimizeStaticFinals, true,                       \
+          "Optimize barriers on static final fields. "                      \
           "Turn it off for maximum compatibility with reflection or JNI "   \
-          "code that manipulates final fields."                             \
-          "Defaults to true. ")                                             \
+          "code that manipulates final fields.")                            \
+                                                                            \
+  product(bool, ShenandoahOptimizeInstanceFinals, false,                    \
+          "Optimize barriers on final instance fields."                     \
+          "Turn it off for maximum compatibility with reflection or JNI "   \
+          "code that manipulates final fields.")                            \
+                                                                            \
+  product(bool, ShenandoahOptimizeStableFinals, false,                      \
+          "Optimize barriers on stable fields."                             \
+          "Turn it off for maximum compatibility with reflection or JNI "   \
+          "code that manipulates final fields.")                            \
                                                                             \
   product(size_t, ShenandoahHeapRegionSize, 0,                              \
           "Size of the Shenandoah regions. "                                \

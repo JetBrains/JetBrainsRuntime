@@ -735,12 +735,23 @@ void ciInstanceKlass::dump_replay_data(outputStream* out) {
 }
 
 #ifdef ASSERT
-bool ciInstanceKlass::debug_final_or_stable_field_at(int offset) {
+bool ciInstanceKlass::debug_final_field_at(int offset) {
   GUARDED_VM_ENTRY(
     InstanceKlass* ik = get_instanceKlass();
     fieldDescriptor fd;
     if (ik->find_field_from_offset(offset, false, &fd)) {
-      return fd.is_final() || fd.is_stable();
+      return fd.is_final();
+    }
+  );
+  return false;
+}
+
+bool ciInstanceKlass::debug_stable_field_at(int offset) {
+  GUARDED_VM_ENTRY(
+    InstanceKlass* ik = get_instanceKlass();
+    fieldDescriptor fd;
+    if (ik->find_field_from_offset(offset, false, &fd)) {
+      return fd.is_stable();
     }
   );
   return false;

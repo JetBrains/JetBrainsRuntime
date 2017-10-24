@@ -4587,7 +4587,7 @@ Node* GraphKit::load_String_value(Node* ctrl, Node* str) {
                                                   ciTypeArrayKlass::make(T_BYTE), true, 0);
   int value_field_idx = C->get_alias_index(value_field_type);
 
-  if (! ShenandoahOptimizeFinals) {
+  if (!ShenandoahOptimizeInstanceFinals) {
     str = shenandoah_read_barrier(str);
   }
 
@@ -4610,7 +4610,7 @@ Node* GraphKit::load_String_coder(Node* ctrl, Node* str) {
   const TypePtr* coder_field_type = string_type->add_offset(coder_offset);
   int coder_field_idx = C->get_alias_index(coder_field_type);
 
-  if (! ShenandoahOptimizeFinals) {
+  if (!ShenandoahOptimizeInstanceFinals) {
     str = shenandoah_read_barrier(str);
   }
 

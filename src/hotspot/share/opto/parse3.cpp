@@ -172,7 +172,11 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   const TypePtr* adr_type = C->alias_type(field)->adr_type();
 
   // Insert read barrier for Shenandoah.
-  if (! ShenandoahOptimizeFinals || (! field->is_final() && ! field->is_stable())) {
+  if ((ShenandoahOptimizeStaticFinals   && field->is_static()  && field->is_final()) ||
+      (ShenandoahOptimizeInstanceFinals && !field->is_static() && field->is_final()) ||
+      (ShenandoahOptimizeStableFinals   && field->is_stable())) {
+    // Skip the barrier for special fields
+  } else {
     obj = shenandoah_read_barrier(obj);
   }
 
@@ -214,13 +218,13 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   Node* ld = make_load(NULL, adr, type, bt, adr_type, mo, LoadNode::DependsOnlyOnTest, needs_atomic_access);
 
   // Only enabled for Shenandoah. Can this be useful in general?
-  if (UseShenandoahGC && ShenandoahOptimizeFinals && UseImplicitStableValues) {
+  if (UseShenandoahGC && ShenandoahOptimizeStableFinals && UseImplicitStableValues) {
     if (field->holder()->name() == ciSymbol::java_lang_String() &&
         field->offset() == java_lang_String::value_offset_in_bytes()) {
       const TypeAryPtr* value_type = TypeAryPtr::make(TypePtr::NotNull,
                                                       TypeAry::make(TypeInt::BYTE, TypeInt::POS),
                                                       ciTypeArrayKlass::make(T_BYTE), true, 0);
-        ld = cast_array_to_stable(ld, value_type);
+      ld = cast_array_to_stable(ld, value_type);
     }
   }
   // Adjust Java stack
