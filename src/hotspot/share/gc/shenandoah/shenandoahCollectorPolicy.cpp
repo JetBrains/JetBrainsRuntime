@@ -555,37 +555,31 @@ public:
   virtual ~ShenandoahStaticHeuristics() {}
 
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
-
-    bool shouldStartConcurrentMark = false;
-
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+
     size_t available = heap->free_regions()->available();
-
-    if (! update_refs()) {
-      // Count in the memory available after cset reclamation.
-      size_t cset = MIN2(_bytes_in_cset, (ShenandoahCSetThreshold * capacity) / 100);
-      available += cset;
-    }
-
-    uintx threshold = ShenandoahFreeThreshold + ShenandoahCSetThreshold;
-    size_t targetStartMarking = (capacity * threshold) / 100;
+    size_t threshold_available = (capacity * ShenandoahFreeThreshold) / 100;
+    size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
+    size_t bytes_allocated = heap->bytes_allocated_since_cm();
 
     double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
     bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
 
-    size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
-    if (available < targetStartMarking &&
-        heap->bytes_allocated_since_cm() > threshold_bytes_allocated) {
+    if (available < threshold_available &&
+            bytes_allocated > threshold_bytes_allocated) {
       // Need to check that an appropriate number of regions have
       // been allocated since last concurrent mark too.
-      shouldStartConcurrentMark = true;
+      log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Free Threshold: " SIZE_FORMAT
+                                "M; Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
+                        available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
+      return true;
     } else if (periodic_gc) {
       log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
                         last_time_ms, ShenandoahGuaranteedGCInterval);
-      shouldStartConcurrentMark = true;
+      return true;
     }
 
-    return shouldStartConcurrentMark;
+    return false;
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
@@ -593,12 +587,10 @@ public:
                                                      size_t trash, size_t free) {
     size_t threshold = ShenandoahHeapRegion::region_size_bytes() * ShenandoahGarbageThreshold / 100;
 
-    _bytes_in_cset = 0;
     for (size_t idx = 0; idx < size; idx++) {
       ShenandoahHeapRegion* r = data[idx]._region;
       if (r->garbage() > threshold) {
         cset->add_region(r);
-        _bytes_in_cset += r->used();
       }
     }
   }
@@ -858,7 +850,7 @@ public:
             bytes_allocated > threshold_bytes_allocated) {
       log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Free Threshold: " SIZE_FORMAT
                                 "M; Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
-                        available / M, threshold_available / M, available / M, threshold_bytes_allocated / M);
+                        available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
       // Need to check that an appropriate number of regions have
       // been allocated since last concurrent mark too.
       shouldStartConcurrentMark = true;
