@@ -30,7 +30,7 @@
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                          -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive       -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive      -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
- * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=dynamic       -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
+ * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static        -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=connected     -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=generational  -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=LRU           -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
@@ -38,7 +38,7 @@
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                          TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive       TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive      TestGCOld 50 1 20 10 10000
- * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=dynamic       TestGCOld 50 1 20 10 10000
+ * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static        TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=continuous    TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive    TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=connected     TestGCOld 50 1 20 10 10000

@@ -57,7 +57,7 @@ public class TestShenandoahArgumentRanges {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
                                                                       "-XX:+UnlockDiagnosticVMOptions",
                                                                       "-XX:+UnlockExperimentalVMOptions",
-                                                                      "-XX:ShenandoahGCHeuristics=dynamic",
+                                                                      "-XX:ShenandoahGCHeuristics=static",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             output.shouldHaveExitValue(0);

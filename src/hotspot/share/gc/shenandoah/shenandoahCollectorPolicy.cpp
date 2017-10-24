@@ -534,9 +534,9 @@ public:
   }
 };
 
-class ShenandoahDynamicHeuristics : public ShenandoahHeuristics {
+class ShenandoahStaticHeuristics : public ShenandoahHeuristics {
 public:
-  ShenandoahDynamicHeuristics() : ShenandoahHeuristics() {
+  ShenandoahStaticHeuristics() : ShenandoahHeuristics() {
   }
 
   void print_thresholds() {
@@ -546,7 +546,7 @@ public:
                        ShenandoahGarbageThreshold);
   }
 
-  virtual ~ShenandoahDynamicHeuristics() {}
+  virtual ~ShenandoahStaticHeuristics() {}
 
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
 
@@ -1315,8 +1315,8 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
     _minor_heuristics = NULL;
     if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
       _heuristics = new ShenandoahAggressiveHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "dynamic") == 0) {
-      _heuristics = new ShenandoahDynamicHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
+      _heuristics = new ShenandoahStaticHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "adaptive") == 0) {
       _heuristics = new ShenandoahAdaptiveHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "passive") == 0) {

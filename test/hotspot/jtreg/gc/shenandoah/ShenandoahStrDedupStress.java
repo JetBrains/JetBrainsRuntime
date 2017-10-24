@@ -32,7 +32,7 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:+ShenandoahOOMDuringEvacALot ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=dynamic      -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=continuous   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=generational -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats ShenandoahStrDedupStress
@@ -41,7 +41,7 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=continuous   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=dynamic      -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx2G -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off -XX:+ShenandoahOOMDuringEvacALot ShenandoahStrDedupStress
  */
 

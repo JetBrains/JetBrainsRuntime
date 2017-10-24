@@ -87,8 +87,9 @@
   product(ccstr, ShenandoahGCHeuristics, "adaptive",                        \
           "The heuristics to use in Shenandoah GC. Possible values:"        \
           " *) adaptive - adapt to maintain the given amount of free heap;" \
-          " *) dynamic -  start concurrent GC based on amount of free heap,"\
-          "               allocation threshold, etc;"                       \
+          " *) static  -  start concurrent GC when static free heap "       \
+          "               threshold and static allocation threshold are "   \
+          "               tripped;"                                         \
           " *) passive -  do not start concurrent GC, wait for Full GC; "   \
           " *) aggressive - run concurrent GC continuously, evacuate "      \
           "               everything;"                                      \
