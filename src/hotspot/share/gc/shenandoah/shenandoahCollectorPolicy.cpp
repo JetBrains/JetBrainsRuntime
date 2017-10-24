@@ -537,6 +537,12 @@ public:
 class ShenandoahStaticHeuristics : public ShenandoahHeuristics {
 public:
   ShenandoahStaticHeuristics() : ShenandoahHeuristics() {
+    // Static heuristics may degrade to continuous if live data is larger
+    // than free threshold. ShenandoahAllocationThreshold is supposed to break this,
+    // but it only works if it is non-zero.
+    if (FLAG_IS_DEFAULT(ShenandoahAllocationThreshold) && (ShenandoahAllocationThreshold == 0)) {
+      FLAG_SET_DEFAULT(ShenandoahAllocationThreshold, 1);
+    }
   }
 
   void print_thresholds() {
