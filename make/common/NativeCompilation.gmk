@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -508,7 +508,7 @@ define SetupNativeCompilationBody
       $$(error SRC specified to SetupNativeCompilation $1 contains missing directory $$d)))
 
   # Find all files in the source trees. Preserve order.
-  $1_SRCS := $$(foreach s, $$($1_SRC), $$(call CacheFind, $$(s)))
+  $1_SRCS := $$(foreach s, $$($1_SRC), $$(call FindFiles, $$(s)))
   $1_SRCS := $$(filter $$(NATIVE_SOURCE_EXTENSIONS), $$($1_SRCS))
   # Extract the C/C++ files.
   ifneq ($$($1_EXCLUDE_PATTERNS), )
