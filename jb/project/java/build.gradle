@@ -1,0 +1,150 @@
+apply plugin: 'java'
+apply plugin: 'c'
+import org.gradle.internal.os.OperatingSystem
+
+repositories {
+    mavenCentral()
+}
+
+def test_jvm = {
+    if (project.hasProperty('jbsdkhome')) {
+        file(jbsdkhome + (OperatingSystem.current().isWindows()?"/bin/java.exe" : "/bin/java")).absolutePath
+    } else {
+        if (OperatingSystem.current().isMacOsX()) {
+            file('../../../build/macosx-x86_64-normal-server-release/images/j2sdk-bundle/jdk1.8.0.jdk/Contents/Home/bin/java').absolutePath
+        } else if (OperatingSystem.current().isLinux()) {
+            file('../../../build/linux-x86_64-normal-server-release/images/j2sdk-image/bin/java').absolutePath
+        } else {
+            file('../../../build/windows-x86_64-normal-server-release/images/j2sdk-image/bin/java.exe').absolutePath
+        }
+    }
+}
+
+dependencies {
+    testCompile('junit:junit:4.12'){
+        exclude group: 'org.hamcrest'
+    }
+    testCompile 'org.hamcrest:hamcrest-library:1.3'
+    testCompile 'net.java.dev.jna:jna:4.4.0'
+    testCompile 'com.twelvemonkeys.imageio:imageio-tiff:3.3.2'
+    testCompile 'org.apache.commons:commons-lang3:3.0'
+}
+
+
+if (OperatingSystem.current().isMacOsX())
+    sourceSets.main.java.srcDirs =
+        ["../../../jdk/src/share/classes",
+         "../../../jdk/src/macosx/classes",
+        ]
+else if (OperatingSystem.current().isLinux())
+    sourceSets.main.java.srcDirs =
+        ["../../../jdk/src/share/classes",
+         "../../../jdk/src/solaris/classes"
+        ]
+else
+    sourceSets.main.java.srcDirs =
+        ["../../../jdk/src/share/classes",
+         "../../../jdk/src/windows/classes",
+        ]
+
+sourceSets {
+    test {
+        java {
+            srcDir "../../../jdk/test/jbu"
+            exclude "../../../jdk/test/jbu/native"
+        }
+    }
+}
+
+test.dependsOn.clear()
+test.dependsOn tasks.compileTestJava
+
+test {
+    systemProperty "testdata", file('../../../jdk/test/jbu/testdata').absolutePath
+
+//  Generate golden images for DroidFontTest and MixedTextTest
+//    systemProperty "gentestdata", ""
+
+    outputs.upToDateWhen { false }
+    executable = test_jvm()
+
+//  Enable J2D logging (only in debug build)
+//  Can be turned on for J2D by adding "#define DEBUG 1" into jdk/src/share/native/sun/java2d/Trace.h
+
+//    environment 'J2D_TRACE_LEVEL', '4'
+
+    systemProperty "java.library.path", file("${buildDir}/libs/env/shared").absolutePath
+}
+
+def buildDir = project.buildscript.sourceFile.parentFile.parentFile.parentFile.parentFile
+
+def make_cmd = "make"
+if (OperatingSystem.current().isWindows()) {
+    def cyg_make_cmd = new File("c:/cygwin64/bin/make.exe")
+    if (cyg_make_cmd.exists()) make_cmd = cyg_make_cmd.absolutePath
+}
+
+task make_images << {
+    def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath,
+            " COMPILER_WARNINGS_FATAL=false", "images")
+    def proc = pb.redirectErrorStream(true).start()
+    proc.inputStream.eachLine {println it}
+    assert proc.waitFor() == 0
+}
+
+task make_clean << {
+    def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath,
+            " COMPILER_WARNINGS_FATAL=false", "clean")
+    def proc = pb.redirectErrorStream(true).start()
+    proc.inputStream.eachLine {println it}
+    assert proc.waitFor() == 0
+}
+
+model {
+    platforms {
+        x64 {
+            architecture "x64"
+        }
+    }
+
+    components {
+        env(NativeLibrarySpec) {
+            sources.c {
+                source {
+                    srcDirs "../../../jdk/test/jbu/native"
+                }
+            }
+
+            binaries.all {
+                if (targetPlatform.operatingSystem.macOsX) {
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include/darwin"
+                    cCompiler.args '-mmacosx-version-min=10.8'
+                    linker.args '-mmacosx-version-min=10.8'
+
+                } else if (targetPlatform.operatingSystem.linux) {
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include/linux"
+                    cCompiler.args '-D_FILE_OFFSET_BITS=64'
+                } else if (targetPlatform.operatingSystem.windows) {
+                    cCompiler.args "-I${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
+                    cCompiler.args "-I${org.gradle.internal.jvm.Jvm.current().javaHome}/include/win32"
+                    linker.args "Shlwapi.lib", "Advapi32.lib"
+                } else if (targetPlatform.operatingSystem.freeBSD) {
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include"
+                    cCompiler.args '-I', "${org.gradle.internal.jvm.Jvm.current().javaHome}/include/freebsd"
+                }
+            }
+        }
+    }
+}
+
+if (project.hasProperty('jnitests')) {
+    test.dependsOn 'envSharedLibrary'
+}
+
+tasks.compileJava.enabled = false
+tasks.compileTestJava.dependsOn.clear()
+classes.dependsOn.clear()
+classes.dependsOn tasks.make_images, tasks.compileTestJava
+tasks.cleanClasses.dependsOn tasks.make_clean

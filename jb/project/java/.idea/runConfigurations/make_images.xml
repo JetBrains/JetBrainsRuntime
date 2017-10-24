@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="make images" type="GroovyScriptRunConfiguration" factoryName="Groovy">
+    <module name="java" />
+    <setting name="path" value="file://$PROJECT_DIR$/build.gradle" />
+    <setting name="vmparams" value="" />
+    <setting name="params" value="-q make_images" />
+    <setting name="workDir" value="file://$PROJECT_DIR$" />
+    <setting name="debug" value="false" />
+    <method>
+      <option name="Make" enabled="false" />
+    </method>
+  </configuration>
+</component>
