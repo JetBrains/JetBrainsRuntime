@@ -369,6 +369,10 @@
           "How many times to try to do Full GC on allocation failure."      \
           "Set to 0 to never try, and fail instead.")                       \
           range(0, 16)                                                      \
+                                                                            \
+  diagnostic(bool, ShenandoahOOMDuringEvacALot, false,                      \
+          "Simulate OOM during evacuation frequently.")                     \
+
 
 
 SHENANDOAH_FLAGS(DECLARE_DEVELOPER_FLAG, \

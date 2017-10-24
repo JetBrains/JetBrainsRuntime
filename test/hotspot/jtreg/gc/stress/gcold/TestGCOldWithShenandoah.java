@@ -44,6 +44,7 @@
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=connected     TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=generational  TestGCOld 50 1 20 10 10000
  * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=LRU           TestGCOld 50 1 20 10 10000
+ * @run main/othervm -Xmx384M -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive    -XX:+ShenandoahOOMDuringEvacALot TestGCOld 50 1 20 10 10000
  */
 
 public class TestGCOldWithShenandoah {

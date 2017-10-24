@@ -320,18 +320,28 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
   assert(!heap_region_containing(p)->is_humongous(), "never evacuate humongous objects");
 
   bool alloc_from_gclab = true;
-  HeapWord* filler = allocate_from_gclab(thread, size_with_fwdptr);
-  if (filler == NULL) {
-    filler = allocate_memory(size_with_fwdptr, _alloc_shared_gc);
-    alloc_from_gclab = false;
-  }
-
+  HeapWord* filler;
 #ifdef ASSERT
   // Checking that current Java thread does not hold Threads_lock when we get here.
   // If that ever be the case, we'd deadlock in oom_during_evacuation.
   if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
     assert(! Threads_lock->owned_by_self()
            || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
+  }
+
+  if (ShenandoahOOMDuringEvacALot &&
+      (! Thread::current()->is_GC_task_thread()) &&
+      (! Thread::current()->is_ConcurrentGC_thread()) &&
+      (os::random() & 1) == 0) { // Simulate OOM every ~2nd slow-path call
+        filler = NULL;
+  } else {
+#endif
+    filler = allocate_from_gclab(thread, size_with_fwdptr);
+    if (filler == NULL) {
+      filler = allocate_memory(size_with_fwdptr, _alloc_shared_gc);
+      alloc_from_gclab = false;
+    }
+#ifdef ASSERT
   }
 #endif
 
