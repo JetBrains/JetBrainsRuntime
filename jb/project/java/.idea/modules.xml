@@ -4,8 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/java.iml" filepath="$PROJECT_DIR$/.idea/modules/java.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/java_main.iml" filepath="$PROJECT_DIR$/.idea/modules/java_main.iml" group="java" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java_main.iml" filepath="$PROJECT_DIR$/.idea/modules/java_main.iml" group="java" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java_test.iml" filepath="$PROJECT_DIR$/.idea/modules/java_test.iml" group="java" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/java_test.iml" filepath="$PROJECT_DIR$/.idea/modules/java_test.iml" group="java" />
     </modules>
   </component>

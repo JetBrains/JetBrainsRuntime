@@ -30,22 +30,34 @@ dependencies {
     testCompile 'org.apache.commons:commons-lang3:3.0'
 }
 
+def jdk_modules = ["java.base", "java.logging", "java.prefs",
+               "java.se.ee", "java.sql", "java.datatransfer",
+               "java.management", "java.rmi", "java.security.jgss",
+               "java.sql.rowset", "java.desktop", "java.management.rmi",
+               "java.scripting", "java.security.sasl", "java.transaction",
+               "java.instrument", "java.naming", "java.se",
+               "java.smartcardio", "java.xml.crypto"]
+
+def jdk_class_dirs = []
+
+jdk_modules.collect(jdk_class_dirs) {
+    new File("../../../jdk/src/" + it + "/share/classes")
+}
 
 if (OperatingSystem.current().isMacOsX())
-    sourceSets.main.java.srcDirs =
-        ["../../../jdk/src/share/classes",
-         "../../../jdk/src/macosx/classes",
-        ]
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../jdk/src/" + it + "/macosx/classes"
+    }
 else if (OperatingSystem.current().isLinux())
-    sourceSets.main.java.srcDirs =
-        ["../../../jdk/src/share/classes",
-         "../../../jdk/src/solaris/classes"
-        ]
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../jdk/src/" + it + "/solaris/classes"
+    }
 else
-    sourceSets.main.java.srcDirs =
-        ["../../../jdk/src/share/classes",
-         "../../../jdk/src/windows/classes",
-        ]
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../jdk/src/" + it + "/windows/classes"
+    }
+
+sourceSets.main.java.srcDirs = jdk_class_dirs
 
 sourceSets {
     test {

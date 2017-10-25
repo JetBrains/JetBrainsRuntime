@@ -7,8 +7,46 @@
       <sourceFolder url="file://$MODULE_DIR$/../../src/main/resources" type="java-resource" />
     </content>
     <content url="file://$MODULE_DIR$/../../../../../jdk/src">
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/macosx/classes" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.base/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.base/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.datatransfer/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.datatransfer/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.instrument/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.instrument/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.logging/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.logging/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management.rmi/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management.rmi/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.naming/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.naming/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.prefs/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.prefs/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.rmi/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.rmi/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.scripting/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.scripting/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.se.ee/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.se.ee/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.se/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.se/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.security.jgss/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.security.jgss/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.security.sasl/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.security.sasl/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.smartcardio/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.smartcardio/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.sql.rowset/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.sql.rowset/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.sql/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.sql/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.transaction/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.transaction/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.xml.crypto/macosx/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.xml.crypto/share/classes" isTestSource="false" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
