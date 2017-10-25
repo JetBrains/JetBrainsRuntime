@@ -1090,6 +1090,9 @@ bool LibraryCallKit::inline_string_compareTo(StrIntrinsicNode::ArgEnc ae) {
   Node* arg1 = argument(0);
   Node* arg2 = argument(1);
 
+  arg1 = must_be_not_null(arg1, true);
+  arg2 = must_be_not_null(arg2, true);
+
   arg1 = shenandoah_read_barrier(arg1);
   arg2 = shenandoah_read_barrier(arg2);
 
@@ -1116,6 +1119,9 @@ bool LibraryCallKit::inline_string_equals(StrIntrinsicNode::ArgEnc ae) {
   Node* phi = new PhiNode(region, TypeInt::BOOL);
 
   if (!stopped()) {
+
+    arg1 = must_be_not_null(arg1, true);
+    arg2 = must_be_not_null(arg2, true);
 
     arg1 = shenandoah_read_barrier(arg1);
     arg2 = shenandoah_read_barrier(arg2);
@@ -1159,6 +1165,9 @@ bool LibraryCallKit::inline_array_equals(StrIntrinsicNode::ArgEnc ae) {
   assert(ae == StrIntrinsicNode::UU || ae == StrIntrinsicNode::LL, "unsupported array types");
   Node* arg1 = argument(0);
   Node* arg2 = argument(1);
+
+  arg1 = must_be_not_null(arg1, true);
+  arg2 = must_be_not_null(arg2, true);
 
   arg1 = shenandoah_read_barrier(arg1);
   arg2 = shenandoah_read_barrier(arg2);
