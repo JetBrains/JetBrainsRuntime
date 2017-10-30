@@ -286,6 +286,12 @@
   experimental(bool, ShenandoahSuspendibleWorkers, false,                   \
               "Suspend concurrent GC worker threads at safepoints")         \
                                                                             \
+  experimental(uintx, ShenandoahControlLoopInterval, 10,                    \
+              "The sleep interval for control loop that drives the cycles. "\
+              "Lower values would increase GC responsiveness to changing "  \
+              "heap conditions, at the expense of higher perf overhead. "   \
+              "Time is in milliseconds.")                                   \
+                                                                            \
   diagnostic(bool, ShenandoahSATBBarrier, true,                             \
           "Turn on/off SATB barriers in Shenandoah")                        \
                                                                             \
