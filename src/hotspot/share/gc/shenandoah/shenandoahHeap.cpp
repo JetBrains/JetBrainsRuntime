@@ -1722,6 +1722,11 @@ void ShenandoahHeap::stop() {
 
   // Step 3. Wait until GC worker exits normally.
   _concurrent_gc_thread->stop();
+
+  // Step 4. Stop String Dedup thread if it is active
+  if (ShenandoahStringDedup::is_enabled()) {
+    G1StringDedup::stop();
+  }
 }
 
 void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
