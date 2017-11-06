@@ -360,7 +360,7 @@ public:
   // succeeded, otherwise rolls back the evacuation and returns the
   // evacuated object by the competing thread. 'succeeded' is an out
   // param and set to true if this thread succeeded, otherwise to false.
-  inline oop  evacuate_object(oop src, Thread* thread, bool& evacuated);
+  inline oop  evacuate_object(oop src, Thread* thread, bool& evacuated, bool from_write_barrier = false);
   inline bool cancelled_concgc() const;
   inline bool check_cancelled_concgc_and_yield(bool sts_active = true);
   inline bool try_cancel_concgc();

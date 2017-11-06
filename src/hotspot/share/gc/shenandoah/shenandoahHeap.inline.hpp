@@ -311,7 +311,7 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
   }
 }
 
-inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated) {
+inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated, bool from_write_barrier) {
   evacuated = false;
 
   size_t size_no_fwdptr = (size_t) p->size();
@@ -367,6 +367,9 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
   // String dedup support
   bool need_str_dedup = false;
   if (ShenandoahStringDedup::is_enabled()
+    // Can not deduplication string inside a write barrier, as it takes lock,
+    // that violates write barrier's leaf call constraint.
+    && !from_write_barrier
     && java_lang_String::is_instance_inlined(copy_val)) {
     // We need to increase age before CAS to avoid race condition.
     // Once new copy is published, other threads may set hash code,

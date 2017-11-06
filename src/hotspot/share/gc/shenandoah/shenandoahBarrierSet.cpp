@@ -396,7 +396,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
         _heap->in_collection_set(obj) &&
         oopDesc::unsafe_equals(obj, fwd)) {
       bool evac;
-      oop copy = _heap->evacuate_object(obj, Thread::current(), evac);
+      oop copy = _heap->evacuate_object(obj, Thread::current(), evac, true /* from write barrier */);
       if (evac && _heap->is_concurrent_partial_in_progress()) {
         G1SATBCardTableModRefBS::enqueue(copy);
       }
