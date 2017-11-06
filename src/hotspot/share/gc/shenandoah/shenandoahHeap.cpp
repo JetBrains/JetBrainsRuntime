@@ -641,6 +641,7 @@ void ShenandoahHeap::handle_heap_shrinkage() {
   if (count > 0) {
     log_info(gc)("Uncommitted " SIZE_FORMAT "M. Heap: " SIZE_FORMAT "M reserved, " SIZE_FORMAT "M committed, " SIZE_FORMAT "M used",
                  count * ShenandoahHeapRegion::region_size_bytes() / M, capacity() / M, committed() / M, used() / M);
+    _concurrent_gc_thread->trigger_counters_update();
   }
 }
 

@@ -61,6 +61,7 @@ private:
   volatile jbyte _do_full_gc;
   volatile jbyte _graceful_shutdown;
   volatile jbyte _do_counters_update;
+  volatile jbyte _force_counters_update;
   GCCause::Cause _full_gc_cause;
 
   bool check_cancellation();
@@ -87,8 +88,10 @@ public:
   bool is_conc_gc_requested();
   void reset_conc_gc_requested();
 
-  void do_counters_update();
+  void handle_counters_update();
   void trigger_counters_update();
+  void handle_force_counters_update();
+  void set_forced_counters_update(bool value);
 
   char* name() const { return (char*)"ShenandoahConcurrentThread";}
   void start();
