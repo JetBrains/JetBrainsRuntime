@@ -51,17 +51,17 @@ private:
       .      /-----------------^------\                  .    |
       .      |                        |                  .    |
       .      v                        v    "Humongous":  .    |
-      .   Regular --\-----\      .....O................  .    |
-      .     |  ^    |     |      .    |               .  .    |
-      .     |  |    |     |      .    *---------\     .  .    |
-      .     v  |    |     v      .    v         v     .  .    |
-      .    Pinned   |    CSet    .  H/Start   H/Cont  .  .    |
-      .             |     |      .    v         |     .  .    |
-      .             |     |      .    *<--------/     .  .    |
-      .             |     |      .    |               .  .    |
-      .             |     |      .....O................  .    |
-      .             |     |           |                  .    |
-      .             \-----\---v-------/                  .    |
+      .   Regular ---\-----\     .....O................  .    |
+      .     |  ^     |     |     .    |               .  .    |
+      .     |  |     |     |     .    *---------\     .  .    |
+      .     v  |     |     |     .    v         v     .  .    |
+      .    Pinned  Cset    |     .  H/Start   H/Cont  .  .    |
+      .       ^    / |     |     .    v         |     .  .    |
+      .       |   /  |     |     .    *<--------/     .  .    |
+      .       |  v   |     |     .    |               .  .    |
+      .  CsetPinned  |     |     .....O................  .    |
+      .              |     |          |                  .    |
+      .              \-----\---v------/                  .    |
       .                       |                          .    |
       ........................|...........................    |
                               |                               |
@@ -105,6 +105,7 @@ private:
     _humongous_cont,    // region is the humongous continuation
     _cset,              // region is in collection set
     _pinned,            // region is pinned
+    _pinned_cset,       // region is pinned and in cset (evac failure path)
     _trash,             // region contains only trash
   };
 
@@ -117,6 +118,7 @@ private:
       case _humongous_cont:    return "Humongous Continuation";
       case _cset:              return "Collection Set";
       case _pinned:            return "Pinned";
+      case _pinned_cset:       return "Collection Set, Pinned";
       case _trash:             return "Trash";
       default:
         ShouldNotReachHere();
@@ -135,6 +137,7 @@ private:
       case _cset:              return 5;
       case _pinned:            return 6;
       case _trash:             return 7;
+      case _pinned_cset:       return 8;
       default:
         ShouldNotReachHere();
         return -1;
@@ -160,8 +163,8 @@ public:
   bool is_regular()                const { return _state == _regular; }
   bool is_humongous_start()        const { return _state == _humongous_start; }
   bool is_humongous_continuation() const { return _state == _humongous_cont; }
-  bool is_cset()                   const { return _state == _cset; }
-  bool is_pinned()                 const { return _state == _pinned; }
+  bool is_cset()                   const { return _state == _cset   || _state == _pinned_cset; }
+  bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset; }
 
   // Participation in logical groups:
   bool is_empty()                  const { return is_empty_committed() || is_empty_uncommitted(); }

@@ -109,6 +109,10 @@ void ShenandoahHeapRegion::make_regular_bypass() {
       _first_alloc_seq_num = _last_alloc_seq_num;
     case _cset:
       _state = _regular;
+      return;
+    case _pinned_cset:
+      _state = _pinned;
+      return;
     case _regular:
     case _pinned:
       return;
@@ -162,6 +166,7 @@ void ShenandoahHeapRegion::make_pinned() {
     case _regular:
       assert (_critical_pins == 0, "sanity");
       _state = _pinned;
+    case _pinned_cset:
     case _pinned:
       _critical_pins++;
       return;
@@ -169,6 +174,12 @@ void ShenandoahHeapRegion::make_pinned() {
     case _humongous_cont:
       // Humongous objects do not move, and thus pinning is no-op.
       assert (_critical_pins == 0, "sanity");
+      return;
+    case _cset:
+      guarantee(_heap->cancelled_concgc(), "only valid when evac has been cancelled");
+      assert (_critical_pins == 0, "sanity");
+      _state = _pinned_cset;
+      _critical_pins++;
       return;
     default:
       fatal("Disallowed transition from %s to %s",
@@ -189,6 +200,14 @@ void ShenandoahHeapRegion::make_unpinned() {
       return;
     case _regular:
       assert (_critical_pins == 0, "sanity");
+      return;
+    case _pinned_cset:
+      guarantee(_heap->cancelled_concgc(), "only valid when evac has been cancelled");
+      assert (_critical_pins > 0, "sanity");
+      _critical_pins--;
+      if (_critical_pins == 0) {
+        _state = _cset;
+      }
       return;
     case _humongous_start:
     case _humongous_cont:
@@ -345,28 +364,31 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
 
   switch (_state) {
     case _empty_uncommitted:
-      st->print("|EU");
+      st->print("|EU ");
       break;
     case _empty_committed:
-      st->print("|EC");
+      st->print("|EC ");
       break;
     case _regular:
-      st->print("|R ");
+      st->print("|R  ");
       break;
     case _humongous_start:
-      st->print("|H ");
+      st->print("|H  ");
       break;
     case _humongous_cont:
-      st->print("|HC");
+      st->print("|HC ");
       break;
     case _cset:
-      st->print("|CS");
+      st->print("|CS ");
       break;
     case _trash:
-      st->print("|T ");
+      st->print("|T  ");
       break;
     case _pinned:
-      st->print("|P ");
+      st->print("|P  ");
+      break;
+    case _pinned_cset:
+      st->print("|CSP");
       break;
     default:
       ShouldNotReachHere();
