@@ -104,6 +104,10 @@ public:
         VERIFY(::CopyRect(rect, &m_insets));
     }
 
+    virtual void GetAlignedInsets(RECT* rect) {
+        VERIFY(::CopyRect(rect, &m_aligned_insets));
+    }
+
     /* to make embedded frames easier */
     virtual BOOL IsEmbeddedFrame() { return FALSE;}
 
@@ -169,6 +173,7 @@ public:
     virtual MsgRouting WmClose();
     virtual MsgRouting WmDestroy();
     virtual MsgRouting WmShowWindow(BOOL show, UINT status);
+    virtual MsgRouting WmEraseBkgnd(HDC hDC, BOOL& didErase);
     virtual MsgRouting WmGetMinMaxInfo(LPMINMAXINFO lpmmi);
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
@@ -274,6 +279,7 @@ private:
 
     RECT m_insets;          /* a cache of the insets being used */
     RECT m_old_insets;      /* help determine if insets change */
+    RECT m_aligned_insets;  /* transformed to user space and back to device scape */
     POINT m_sizePt;         /* the last value of WM_SIZE */
     RECT m_warningRect;     /* The window's warning banner area, if any. */
     AwtFrame *m_owningFrameDialog; /* The nearest Frame/Dialog which owns us */

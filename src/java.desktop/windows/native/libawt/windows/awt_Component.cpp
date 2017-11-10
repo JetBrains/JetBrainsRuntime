@@ -137,8 +137,8 @@ struct SetRectangularShapeStruct {
     jint x1, x2, y1, y2;
     jobject region;
 };
-// Struct for _GetInsets function
-struct GetInsetsStruct {
+// Struct for _GetAlignedInsets function
+struct GetAlignedInsetsStruct {
     jobject window;
     RECT *insets;
 };
@@ -1033,7 +1033,9 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
 
     ::GetWindowRect(GetHWnd(), &r);
     // if the component size is changing , don't copy window bits
-    if (r.right - r.left != w || r.bottom - r.top != h) {
+    if (r.right - r.left != w || r.bottom - r.top != h &&
+        !IsTopLevel()) // [tav] copy bits for a toplevel to avoid unnecessary bg erase and blink
+    {
         flags |= SWP_NOCOPYBITS;
     }
 
@@ -6554,11 +6556,11 @@ AwtComponent_GetHWnd(JNIEnv *env, jlong pData)
     return p->GetHWnd();
 }
 
-static void _GetInsets(void* param)
+static void _GetAlignedInsets(void* param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
-    GetInsetsStruct *gis = (GetInsetsStruct *)param;
+    GetAlignedInsetsStruct *gis = (GetAlignedInsetsStruct *)param;
     jobject self = gis->window;
 
     gis->insets->left = gis->insets->top =
@@ -6568,7 +6570,7 @@ static void _GetInsets(void* param)
     JNI_CHECK_PEER_GOTO(self, ret);
     AwtComponent *component = (AwtComponent *)pData;
 
-    component->GetInsets(gis->insets);
+    component->GetAlignedInsets(gis->insets);
 
   ret:
     env->DeleteGlobalRef(self);
@@ -6579,15 +6581,15 @@ static void _GetInsets(void* param)
  * This method is called from the WGL pipeline when it needs to retrieve
  * the insets associated with a ComponentPeer's C++ level object.
  */
-void AwtComponent_GetInsets(JNIEnv *env, jobject peer, RECT *insets)
+void AwtComponent_GetAlignedInsets(JNIEnv *env, jobject peer, RECT *insets)
 {
     TRY;
 
-    GetInsetsStruct *gis = new GetInsetsStruct;
+    GetAlignedInsetsStruct *gis = new GetAlignedInsetsStruct;
     gis->window = env->NewGlobalRef(peer);
     gis->insets = insets;
 
-    AwtToolkit::GetInstance().InvokeFunction(_GetInsets, gis);
+    AwtToolkit::GetInstance().InvokeFunction(_GetAlignedInsets, gis);
     // global refs and mds are deleted in _UpdateWindow
 
     CATCH_BAD_ALLOC;

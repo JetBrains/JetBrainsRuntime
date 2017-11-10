@@ -531,7 +531,7 @@ GDIWindowSurfaceData_GetWindow(JNIEnv *env, GDIWinSDOps *wsdo)
                    "GDIWindowSurfaceData_GetWindow: null component");
             return (HWND) NULL;
         }
-        comp->GetInsets(&wsdo->insets);
+        comp->GetAlignedInsets(&wsdo->insets);
         window = comp->GetHWnd();
         if (::IsWindow(window) == FALSE) {
             J2dRlsTraceLn(J2D_TRACE_ERROR,

@@ -191,6 +191,10 @@ public:
         VERIFY(::SetRectEmpty(rect));
     }
 
+    virtual void GetAlignedInsets(RECT* rect) {
+        VERIFY(::SetRectEmpty(rect));
+    }
+
     BOOL IsVisible() { return m_visible;};
 
     HDC GetDCFromComponent();
