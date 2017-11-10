@@ -168,6 +168,7 @@ public:
     virtual MsgRouting WmClose();
     virtual MsgRouting WmDestroy();
     virtual MsgRouting WmShowWindow(BOOL show, UINT status);
+    virtual MsgRouting WmEraseBkgnd(HDC hDC, BOOL& didErase);
     virtual MsgRouting WmGetMinMaxInfo(LPMINMAXINFO lpmmi);
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
