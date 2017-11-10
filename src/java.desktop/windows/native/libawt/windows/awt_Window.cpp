@@ -1835,6 +1835,20 @@ void AwtWindow::WmDPIChanged(const LPARAM &lParam) {
     CheckIfOnNewScreen(true);
 }
 
+MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
+{
+    if (!IsUndecorated()) {
+        // [tav] When an undecorated window is shown nothing is actually displayed
+        // until something is drawn in it. In order to prevent blinking, the background
+        // is not erased for such windows.
+        RECT     rc;
+        ::GetClipBox(hDC, &rc);
+        ::FillRect(hDC, &rc, this->GetBackgroundBrush());
+    }
+    didErase = TRUE;
+    return mrConsume;
+}
+
 /*
  * Override AwtComponent's move handling to first update the
  * java AWT target's position fields directly, since Windows
