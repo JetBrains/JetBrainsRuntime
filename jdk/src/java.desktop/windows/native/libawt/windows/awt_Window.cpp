@@ -39,6 +39,7 @@
 #include "awt_BitmapUtil.h"
 #include "awt_IconCursor.h"
 #include "ComCtl32Util.h"
+#include "math.h"
 
 #include "java_awt_Insets.h"
 #include <java_awt_Container.h>
@@ -1466,18 +1467,35 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     jobject peerInsets = (env)->GetObjectField(peer, AwtPanel::insets_ID);
     DASSERT(!safe_ExceptionOccurred(env));
 
+    int user_left = ScaleDownX(m_insets.left);
+    int user_top = ScaleDownY(m_insets.top);
+    int user_right = ScaleDownX(m_insets.right);
+    int user_bottom = ScaleDownY(m_insets.bottom);
+
+    // [int] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
+    // This will align the origin of the non-client area with its physical origin after transforming back to the
+    // device space. This will avoid gaps b/w the window's rendered content and the window's upper/left borders.
+    // However, even so the size of the non-client area, transformed back from the user space, may not exactly match
+    // the device size of the client area when the the window is resized natively (with mouse). In that case the
+    // right/bottom gaps will be filled with the window background color, which is configured in java and is
+    // expected to not contrast with the overall UI.
+    m_aligned_insets.left = ScaleUpX(user_left);
+    m_aligned_insets.top = ScaleUpY(user_top);
+    m_aligned_insets.right = ScaleUpX(user_right);
+    m_aligned_insets.bottom = ScaleUpY(user_bottom);
+
     if (peerInsets != NULL) { // may have been called during creation
-        (env)->SetIntField(peerInsets, AwtInsets::topID, ScaleDownY(m_insets.top));
-        (env)->SetIntField(peerInsets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
-        (env)->SetIntField(peerInsets, AwtInsets::leftID, ScaleDownX(m_insets.left));
-        (env)->SetIntField(peerInsets, AwtInsets::rightID, ScaleDownX(m_insets.right));
+        (env)->SetIntField(peerInsets, AwtInsets::topID, user_top);
+        (env)->SetIntField(peerInsets, AwtInsets::bottomID, user_bottom);
+        (env)->SetIntField(peerInsets, AwtInsets::leftID, user_left);
+        (env)->SetIntField(peerInsets, AwtInsets::rightID, user_right);
     }
     /* Get insets into the Inset object (if any) that was passed */
     if (insets != NULL) {
-        (env)->SetIntField(insets, AwtInsets::topID, ScaleDownY(m_insets.top));
-        (env)->SetIntField(insets, AwtInsets::bottomID, ScaleDownY(m_insets.bottom));
-        (env)->SetIntField(insets, AwtInsets::leftID, ScaleDownX(m_insets.left));
-        (env)->SetIntField(insets, AwtInsets::rightID, ScaleDownX(m_insets.right));
+        (env)->SetIntField(insets, AwtInsets::topID, user_top);
+        (env)->SetIntField(insets, AwtInsets::bottomID, user_bottom);
+        (env)->SetIntField(insets, AwtInsets::leftID, user_left);
+        (env)->SetIntField(insets, AwtInsets::rightID, user_right);
     }
     env->DeleteLocalRef(peerInsets);
 
@@ -1756,6 +1774,20 @@ MsgRouting AwtWindow::WmShowWindow(BOOL show, UINT status)
         }
     }
     return AwtCanvas::WmShowWindow(show, status);
+}
+
+MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
+{
+    if (!IsUndecorated()) {
+        // [tav] When an undecorated window is shown nothing is actually displayed
+        // until something is drawn in it. In order to prevent blinking, the background
+        // is not erased for such windows.
+        RECT     rc;
+        ::GetClipBox(hDC, &rc);
+        ::FillRect(hDC, &rc, this->GetBackgroundBrush());
+    }
+    didErase = TRUE;
+    return mrConsume;
 }
 
 /*

@@ -682,7 +682,7 @@ int AwtWin32GraphicsDevice::ScaleDownY(int y)
 int AwtWin32GraphicsDevice::ScaleDownDY(int y)
 {
     RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
-    return devBounds.top + (int)ceil((y - devBounds.top) / scaleY);
+    return devBounds.top + ROUND_TO_INT((y - devBounds.top) / scaleY);
 }
 
 // scale down the delta [pt.xy - device.xy]
