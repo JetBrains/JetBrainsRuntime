@@ -174,7 +174,9 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
   {
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::ObjectSynchronizerRoots, worker_id);
     if (ShenandoahFastSyncRoots && MonitorInUseLists) {
-      ObjectSynchronizer::oops_do(strong_roots);
+      if (!_process_strong_tasks->is_task_claimed(SHENANDOAH_RP_PS_ObjectSynchronizer_oops_do)) {
+        ObjectSynchronizer::oops_do(strong_roots);
+      }
     } else {
       while(_om_iterator.parallel_oops_do(strong_roots));
     }
