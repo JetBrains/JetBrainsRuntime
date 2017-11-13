@@ -411,14 +411,12 @@ private:
   ShenandoahHeapRegion* next_from_region(ShenandoahHeapRegionSet* copy_queue) {
     ShenandoahHeapRegion* from_region = _from_regions->claim_next();
 
-    // Note: During Full GC after cancelled conc GC, we might have incoming regions
-    // in the collection set. Otherwise we would have just taken care of regular regions.
-    while (from_region != NULL && !(from_region->is_regular() || from_region->is_cset())) {
+    while (from_region != NULL && !from_region->is_move_allowed()) {
       from_region = _from_regions->claim_next();
     }
     if (from_region != NULL) {
       assert(copy_queue != NULL, "sanity");
-      assert(from_region->is_regular() || from_region->is_cset(), "only regular/cset regions in mark-compact");
+      assert(from_region->is_move_allowed(), "only regions that can be moved in mark-compact");
       copy_queue->add_region(from_region);
     }
     return from_region;

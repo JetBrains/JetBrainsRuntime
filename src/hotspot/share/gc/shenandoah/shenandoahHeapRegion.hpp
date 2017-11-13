@@ -163,8 +163,6 @@ public:
   bool is_regular()                const { return _state == _regular; }
   bool is_humongous_start()        const { return _state == _humongous_start; }
   bool is_humongous_continuation() const { return _state == _humongous_cont; }
-  bool is_cset()                   const { return _state == _cset   || _state == _pinned_cset; }
-  bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset; }
 
   // Participation in logical groups:
   bool is_empty()                  const { return is_empty_committed() || is_empty_uncommitted(); }
@@ -174,7 +172,10 @@ public:
   // Macro-properties:
   bool is_humongous()              const { return is_humongous_start() || is_humongous_continuation(); }
   bool is_committed()              const { return !is_empty_uncommitted(); }
-  bool is_alloc_allowed()          const { return is_empty() || is_regular() || is_pinned(); }
+  bool is_cset()                   const { return _state == _cset   || _state == _pinned_cset; }
+  bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset; }
+  bool is_alloc_allowed()          const { return is_empty() || is_regular() || _state == _pinned; }
+  bool is_move_allowed()           const { return is_regular() || _state == _cset; }
 
   RegionState state()              const { return _state; }
   int  state_ordinal()             const { return region_state_to_ordinal(_state); }
