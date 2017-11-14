@@ -982,6 +982,12 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
           p2i(obj), p2i(fwd), obj_region.as_string());
   }
 
+  // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
+  // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
+  // that still points to the object itself.
+  guarantee(oopDesc::unsafe_equals(obj, fwd) || !heap->is_full_gc_move_in_progress(),
+            "Non-trivial forwarding pointer during Full GC moves, probable bug.");
+
   // Step 2. Check that forwardee points to correct region.
   if (!oopDesc::unsafe_equals(fwd, obj) &&
       (heap->heap_region_containing(fwd) ==

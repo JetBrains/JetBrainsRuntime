@@ -339,6 +339,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _concurrent_mark_in_progress(0),
   _evacuation_in_progress(0),
   _full_gc_in_progress(false),
+  _full_gc_move_in_progress(false),
   _update_refs_in_progress(false),
   _concurrent_partial_in_progress(false),
   _free_regions(NULL),
@@ -500,6 +501,7 @@ void ShenandoahHeap::print_on(outputStream* st) const {
   if (is_update_refs_in_progress())        st->print("updating refs, ");
   if (is_concurrent_partial_in_progress()) st->print("partial, ");
   if (is_full_gc_in_progress())            st->print("full gc, ");
+  if (is_full_gc_move_in_progress())       st->print("full gc move, ");
 
   if (cancelled_concgc()) {
     st->print("conc gc cancelled");
@@ -1899,6 +1901,15 @@ void ShenandoahHeap::set_full_gc_in_progress(bool in_progress) {
 
 bool ShenandoahHeap::is_full_gc_in_progress() const {
   return _full_gc_in_progress;
+}
+
+void ShenandoahHeap::set_full_gc_move_in_progress(bool in_progress) {
+  assert (is_full_gc_in_progress(), "should be");
+  _full_gc_move_in_progress = in_progress;
+}
+
+bool ShenandoahHeap::is_full_gc_move_in_progress() const {
+  return _full_gc_move_in_progress;
 }
 
 void ShenandoahHeap::set_update_refs_in_progress(bool in_progress) {
