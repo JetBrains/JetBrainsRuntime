@@ -495,17 +495,16 @@ void ShenandoahHeap::print_on(outputStream* st) const {
                num_regions(), ShenandoahHeapRegion::region_size_bytes() / K);
 
   st->print("Status: ");
-  if (concurrent_mark_in_progress()) {
-    st->print("marking ");
-  } else if (is_evacuation_in_progress()) {
-    st->print("evacuating ");
-  } else if (is_update_refs_in_progress()) {
-    st->print("updating refs ");
-  } else {
-    st->print("idle ");
-  }
+  if (concurrent_mark_in_progress())       st->print("marking, ");
+  if (is_evacuation_in_progress())         st->print("evacuating, ");
+  if (is_update_refs_in_progress())        st->print("updating refs, ");
+  if (is_concurrent_partial_in_progress()) st->print("partial, ");
+  if (is_full_gc_in_progress())            st->print("full gc, ");
+
   if (cancelled_concgc()) {
-    st->print("cancelled ");
+    st->print("conc gc cancelled");
+  } else {
+    st->print("not cancelled");
   }
   st->cr();
 
