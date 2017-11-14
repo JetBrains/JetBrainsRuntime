@@ -209,6 +209,18 @@ void ConstantDoubleValue::print_on(outputStream* st) const {
 // ConstantOopWriteValue
 
 void ConstantOopWriteValue::write_on(DebugInfoWriteStream* stream) {
+  if (UseShenandoahGC) {
+    // Work around the compiler bug: we cannot touch JNIHandles when Shenandoah Full GC
+    // is running. Doing so would invoke obj_equals, which would dereference via broken
+    // fwdptr, and crash the VM. Solve that by forcing compiler thread to enter VM here.
+    VM_ENTRY_MARK;
+    write_on_impl(stream);
+  } else {
+    write_on_impl(stream);
+  }
+}
+
+void ConstantOopWriteValue::write_on_impl(DebugInfoWriteStream* stream) {
   assert(JNIHandles::resolve(value()) == NULL ||
          Universe::heap()->is_in_reserved(JNIHandles::resolve(value())),
          "Should be in heap");

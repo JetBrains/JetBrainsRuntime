@@ -209,6 +209,7 @@ class ConstantOopWriteValue: public ScopeValue {
 
   // Serialization of debugging information
   void write_on(DebugInfoWriteStream* stream);
+  void write_on_impl(DebugInfoWriteStream* stream);
 
   // Printing
   void print_on(outputStream* st) const;
