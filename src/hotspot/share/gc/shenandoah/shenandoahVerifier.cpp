@@ -965,23 +965,29 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   guarantee(obj != NULL, "oop is not NULL");
+  guarantee(fwd != NULL, "forwardee is not NULL");
+
+  // Step 1. Check that both obj and its fwdptr are in heap.
+  // After this step, it is safe to call heap_region_containing().
   guarantee(heap->is_in(obj), "oop must point to a heap address: " PTR_FORMAT, p2i(obj));
 
-  guarantee(fwd != NULL, "forwardee is not NULL");
   if (!heap->is_in(fwd)) {
     ResourceMark rm;
     ShenandoahHeapRegion* r = heap->heap_region_containing(obj);
     stringStream obj_region;
     r->print_on(&obj_region);
 
-    fatal("forwardee must point to a heap address: " PTR_FORMAT " -> " PTR_FORMAT "\n %s",
+    fatal("forwardee must point to a heap address: " PTR_FORMAT " -> " PTR_FORMAT "\n"
+          "region(obj): %s",
           p2i(obj), p2i(fwd), obj_region.as_string());
   }
 
+  // Step 2. Check that forwardee points to correct region.
   if (!oopDesc::unsafe_equals(fwd, obj) &&
       (heap->heap_region_containing(fwd) ==
        heap->heap_region_containing(obj))) {
     ResourceMark rm;
+
     ShenandoahHeapRegion* ro = heap->heap_region_containing(obj);
     stringStream obj_region;
     ro->print_on(&obj_region);
@@ -990,15 +996,17 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
     stringStream fwd_region;
     rf->print_on(&fwd_region);
 
-    fatal("forwardee should be self, or another region: " PTR_FORMAT " -> " PTR_FORMAT "\n %s %s",
+    fatal("forwardee should be self, or another region: " PTR_FORMAT " -> " PTR_FORMAT "\n"
+          "region(obj):    %s"
+          "region(fwdptr): %s",
           p2i(obj), p2i(fwd),
           obj_region.as_string(), fwd_region.as_string());
   }
 
+  // Step 3. Check for multiple forwardings
   if (!oopDesc::unsafe_equals(obj, fwd)) {
     oop fwd2 = oop(BrooksPointer::get_raw(fwd));
     if (!oopDesc::unsafe_equals(fwd, fwd2)) {
-      // We should never be forwarded more than once.
       ResourceMark rm;
 
       ShenandoahHeapRegion* ro = heap->heap_region_containing(obj);
@@ -1009,11 +1017,20 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
       stringStream fwd_region;
       rf->print_on(&fwd_region);
 
-      ShenandoahHeapRegion* rf2 = heap->heap_region_containing(fwd2);
+      // Second fwdptr had not been checked yet, cannot ask for its heap region
+      // without a check. Do it now.
       stringStream fwd2_region;
-      rf2->print_on(&fwd2_region);
+      if (heap->is_in(fwd2)) {
+        ShenandoahHeapRegion* rf2 = heap->heap_region_containing(fwd2);
+        rf2->print_on(&fwd2_region);
+      } else {
+        fwd2_region.print_cr("Ptr is out of heap");
+      }
 
-      fatal("Multiple forwardings: " PTR_FORMAT " -> " PTR_FORMAT " -> " PTR_FORMAT "\n %s %s %s",
+      fatal("Multiple forwardings: " PTR_FORMAT " -> " PTR_FORMAT " -> " PTR_FORMAT "\n"
+            "region(obj):     %s"
+            "region(fwdptr):  %s"
+            "region(fwdptr2): %s",
             p2i(obj), p2i(fwd), p2i(fwd2),
             obj_region.as_string(), fwd_region.as_string(), fwd2_region.as_string());
     }
