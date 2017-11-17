@@ -2083,6 +2083,11 @@ void Arguments::set_shenandoah_gc_flags() {
   if (FLAG_IS_DEFAULT(UseBiasedLocking)) {
     FLAG_SET_DEFAULT(UseBiasedLocking, false);
   }
+
+  if (UseStringDeduplication) {
+    warning("String Deduplication is unstable with Shenandoah, forcefully disabled.");
+    FLAG_SET_DEFAULT(UseStringDeduplication, false);
+  }
 }
 
 void Arguments::set_gc_specific_flags() {

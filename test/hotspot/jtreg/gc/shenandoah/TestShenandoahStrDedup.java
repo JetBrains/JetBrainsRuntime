@@ -22,6 +22,7 @@
  */
 
  /*
+ * @ignore // disabled until dedup is fixed
  * @test TestShenandoahStringDedup.java
  * @summary Test Shenandoah string deduplication implementation
  * @key gc
