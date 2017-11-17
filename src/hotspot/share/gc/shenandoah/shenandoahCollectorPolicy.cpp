@@ -437,11 +437,32 @@ void ShenandoahHeuristics::record_bytes_end_CM(size_t bytes) {
                                                                    : bytes;
 }
 
+#define SHENANDOAH_PASSIVE_OVERRIDE_FLAG(name)                              \
+  do {                                                                      \
+    if (FLAG_IS_DEFAULT(name) && (name)) {                                  \
+      log_info(gc)("Passive heuristics implies -XX:-" #name " by default"); \
+      FLAG_SET_DEFAULT(name, false);                                        \
+    }                                                                       \
+  } while (0)
+
 class ShenandoahPassiveHeuristics : public ShenandoahHeuristics {
 public:
   ShenandoahPassiveHeuristics() : ShenandoahHeuristics() {
     // Do not allow concurrent cycles.
     FLAG_SET_DEFAULT(ExplicitGCInvokesConcurrent, false);
+
+    // Disable known barriers by default.
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahSATBBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahConditionalSATBBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahKeepAliveBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahWriteBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahReadBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahStoreValWriteBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahStoreValReadBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahCASBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahAcmpBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahCloneBarrier);
+    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(UseShenandoahMatrix);
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
