@@ -2076,14 +2076,6 @@ void Arguments::set_shenandoah_gc_flags() {
     FLAG_SET_DEFAULT(ShenandoahUncommitDelay, max_uintx);
   }
 
-  // Current Hotspot machinery for biased locking may introduce lots of latency hiccups
-  // that negate the benefits of low-latency GC. The throughput improvements granted by
-  // biased locking on modern hardware are not covering the latency problems induced by
-  // it. Therefore, unless user really wants it, disable biased locking.
-  if (FLAG_IS_DEFAULT(UseBiasedLocking)) {
-    FLAG_SET_DEFAULT(UseBiasedLocking, false);
-  }
-
   if (UseStringDeduplication) {
     warning("String Deduplication is unstable with Shenandoah, forcefully disabled.");
     FLAG_SET_DEFAULT(UseStringDeduplication, false);
