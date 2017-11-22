@@ -47,7 +47,9 @@
 #include "gc/parallel/immutableSpace.hpp"
 #include "gc/parallel/mutableSpace.hpp"
 #include "gc/serial/defNewGeneration.hpp"
+#include "gc/serial/serialHeap.hpp"
 #include "gc/serial/tenuredGeneration.hpp"
+#include "gc/cms/cmsHeap.hpp"
 #include "gc/shared/cardTableRS.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/genCollectedHeap.hpp"
@@ -61,6 +63,7 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/heap.hpp"
 #include "memory/metachunk.hpp"
+#include "memory/padded.hpp"
 #include "memory/referenceType.hpp"
 #include "memory/universe.hpp"
 #include "memory/virtualspace.hpp"
@@ -199,6 +202,8 @@ typedef HashtableEntry<InstanceKlass*, mtClass>  KlassHashtableEntry;
 typedef CompactHashtable<Symbol*, char>       SymbolCompactHashTable;
 typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
 
+typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
+
 //--------------------------------------------------------------------------------
 // VM_STRUCTS
 //
@@ -278,7 +283,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   nonstatic_field(Klass,                       _secondary_super_cache,                        Klass*)                                \
   nonstatic_field(Klass,                       _secondary_supers,                             Array<Klass*>*)                        \
   nonstatic_field(Klass,                       _primary_supers[0],                            Klass*)                                \
-  nonstatic_field(Klass,                       _java_mirror,                                  oop)                                   \
+  nonstatic_field(Klass,                       _java_mirror,                                  OopHandle)                             \
   nonstatic_field(Klass,                       _modifier_flags,                               jint)                                  \
   nonstatic_field(Klass,                       _super,                                        Klass*)                                \
   nonstatic_field(Klass,                       _subklass,                                     Klass*)                                \
@@ -353,14 +358,14 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   nonstatic_field(Symbol,                      _length,                                       unsigned short)                        \
   unchecked_nonstatic_field(Symbol,            _body,                                         sizeof(jbyte)) /* NOTE: no type */     \
   nonstatic_field(Symbol,                      _body[0],                                      jbyte)                                 \
-  nonstatic_field(TypeArrayKlass,              _max_length,                                   int)                                   \
+  nonstatic_field(TypeArrayKlass,              _max_length,                                   jint)                                  \
                                                                                                                                      \
   /***********************/                                                                                                          \
   /* Constant Pool Cache */                                                                                                          \
   /***********************/                                                                                                          \
                                                                                                                                      \
   volatile_nonstatic_field(ConstantPoolCacheEntry,      _indices,                             intx)                                  \
-  nonstatic_field(ConstantPoolCacheEntry,               _f1,                                  volatile Metadata*)                    \
+  volatile_nonstatic_field(ConstantPoolCacheEntry,      _f1,                                  Metadata*)                             \
   volatile_nonstatic_field(ConstantPoolCacheEntry,      _f2,                                  intx)                                  \
   volatile_nonstatic_field(ConstantPoolCacheEntry,      _flags,                               intx)                                  \
                                                                                                                                      \
@@ -576,7 +581,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
      static_field(PerfMemory,                  _top,                                          char*)                                 \
      static_field(PerfMemory,                  _capacity,                                     size_t)                                \
      static_field(PerfMemory,                  _prologue,                                     PerfDataPrologue*)                     \
-     static_field(PerfMemory,                  _initialized,                                  jint)                                  \
+     static_field(PerfMemory,                  _initialized,                                  int)                                   \
                                                                                                                                      \
   /***************/                                                                                                                  \
   /* SymbolTable */                                                                                                                  \
@@ -1053,7 +1058,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   volatile_nonstatic_field(BasicLock,          _displaced_header,                             markOop)                               \
   nonstatic_field(BasicObjectLock,             _lock,                                         BasicLock)                             \
   nonstatic_field(BasicObjectLock,             _obj,                                          oop)                                   \
-  static_ptr_volatile_field(ObjectSynchronizer, gBlockList,                                   ObjectMonitor*)                        \
+  static_ptr_volatile_field(ObjectSynchronizer, gBlockList,                                   PaddedObjectMonitor*)                  \
                                                                                                                                      \
   /*********************/                                                                                                            \
   /* Matcher (C2 only) */                                                                                                            \
@@ -1461,6 +1466,8 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
                                                                           \
   declare_toplevel_type(CollectedHeap)                                    \
            declare_type(GenCollectedHeap,             CollectedHeap)      \
+           declare_type(CMSHeap,                      GenCollectedHeap)   \
+           declare_type(SerialHeap,                   GenCollectedHeap)   \
   declare_toplevel_type(Generation)                                       \
            declare_type(DefNewGeneration,             Generation)         \
            declare_type(CardGeneration,               Generation)         \
@@ -1681,6 +1688,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   /************/                                                          \
                                                                           \
   declare_toplevel_type(ObjectMonitor)                                    \
+  declare_toplevel_type(PaddedObjectMonitor)                              \
   declare_toplevel_type(ObjectSynchronizer)                               \
   declare_toplevel_type(BasicLock)                                        \
   declare_toplevel_type(BasicObjectLock)                                  \
@@ -2159,6 +2167,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   declare_toplevel_type(nmethod*)                                         \
   COMPILER2_PRESENT(declare_unsigned_integer_type(node_idx_t))            \
   declare_toplevel_type(ObjectMonitor*)                                   \
+  declare_toplevel_type(PaddedObjectMonitor*)                             \
   declare_toplevel_type(oop*)                                             \
   declare_toplevel_type(OopMap**)                                         \
   declare_toplevel_type(OopMapCache*)                                     \
@@ -2173,6 +2182,7 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   declare_toplevel_type(vframeArray)                                      \
   declare_toplevel_type(vframeArrayElement)                               \
   declare_toplevel_type(Annotations*)                                     \
+  declare_type(OopMapValue, StackObj)                                     \
                                                                           \
   /***************/                                                       \
   /* Miscellaneous types */                                               \
@@ -2256,7 +2266,8 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
                                                                           \
   declare_constant(G1SATBCardTableModRefBS::g1_young_gen)                 \
                                                                           \
-  declare_constant(CollectedHeap::GenCollectedHeap)                       \
+  declare_constant(CollectedHeap::SerialHeap)                             \
+  declare_constant(CollectedHeap::CMSHeap)                                \
   declare_constant(CollectedHeap::ParallelScavengeHeap)                   \
   declare_constant(CollectedHeap::G1CollectedHeap)                        \
                                                                           \
@@ -2732,8 +2743,12 @@ typedef RehashableHashtable<Symbol*, mtSymbol>   RehashableSymbolHashtable;
   /* JVMCI */                                                             \
   /****************/                                                      \
                                                                           \
-  declare_preprocessor_constant("INCLUDE_JVMCI", INCLUDE_JVMCI)
-
+  declare_preprocessor_constant("INCLUDE_JVMCI", INCLUDE_JVMCI)           \
+                                                                          \
+  /****************/                                                      \
+  /*  VMRegImpl   */                                                      \
+  /****************/                                                      \
+  declare_constant(VMRegImpl::stack_slot_size)
 
 //--------------------------------------------------------------------------------
 // VM_LONG_CONSTANTS
@@ -3015,7 +3030,8 @@ VMTypeEntry VMStructs::localHotSpotVMTypes[] = {
   VM_TYPES_PARNEW(GENERATE_VM_TYPE_ENTRY)
 
   VM_TYPES_G1(GENERATE_VM_TYPE_ENTRY,
-              GENERATE_TOPLEVEL_VM_TYPE_ENTRY)
+              GENERATE_TOPLEVEL_VM_TYPE_ENTRY,
+              GENERATE_INTEGER_VM_TYPE_ENTRY)
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE
@@ -3213,6 +3229,7 @@ VMStructs::init() {
   VM_TYPES_PARNEW(CHECK_VM_TYPE_ENTRY)
 
   VM_TYPES_G1(CHECK_VM_TYPE_ENTRY,
+              CHECK_SINGLE_ARG_VM_TYPE_NO_OP,
               CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
 
 #endif // INCLUDE_ALL_GCS

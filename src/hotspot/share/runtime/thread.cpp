@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "jvm.h"
 #include "classfile/classLoader.hpp"
 #include "classfile/javaClasses.hpp"
 #include "classfile/moduleEntry.hpp"
@@ -51,7 +52,6 @@
 #include "oops/oop.inline.hpp"
 #include "oops/symbol.hpp"
 #include "oops/verifyOopClosure.hpp"
-#include "prims/jvm.h"
 #include "prims/jvm_misc.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "prims/jvmtiThreadState.hpp"
@@ -763,7 +763,7 @@ bool Thread::is_interrupted(Thread* thread, bool clear_interrupted) {
 
 // GC Support
 bool Thread::claim_oops_do_par_case(int strong_roots_parity) {
-  jint thread_parity = _oops_do_parity;
+  int thread_parity = _oops_do_parity;
   if (thread_parity != strong_roots_parity) {
     jint res = Atomic::cmpxchg(strong_roots_parity, &_oops_do_parity, thread_parity);
     if (res == thread_parity) {
@@ -3297,6 +3297,9 @@ CompilerThread::CompilerThread(CompileQueue* queue,
   _buffer_blob = NULL;
   _compiler = NULL;
 
+  // Compiler uses resource area for compilation, let's bias it to mtCompiler
+  resource_area()->bias_to(mtCompiler);
+
 #ifndef PRODUCT
   _ideal_graph_printer = NULL;
 #endif
@@ -3387,20 +3390,17 @@ void Threads::threads_do(ThreadClosure* tc) {
   // If CompilerThreads ever become non-JavaThreads, add them here
 }
 
-void Threads::parallel_java_threads_do(ThreadClosure* tc) {
+void Threads::possibly_parallel_threads_do(bool is_par, ThreadClosure* tc) {
   int cp = Threads::thread_claim_parity();
   ALL_JAVA_THREADS(p) {
-    if (p->claim_oops_do(true, cp)) {
+    if (p->claim_oops_do(is_par, cp)) {
       tc->do_thread(p);
     }
   }
-  // Thread claiming protocol requires us to claim the same interesting
-  // threads on all paths. Notably, Threads::possibly_parallel_threads_do
-  // claims all Java threads *and* the VMThread. To avoid breaking the
-  // claiming protocol, we have to claim VMThread on this path too, even
-  // if we do not apply the closure to the VMThread.
   VMThread* vmt = VMThread::vm_thread();
-  (void)vmt->claim_oops_do(true, cp);
+  if (vmt->claim_oops_do(is_par, cp)) {
+    tc->do_thread(vmt);
+  }
 }
 
 // The system initialization in the library has three phases.
@@ -3765,7 +3765,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   }
 
   // initialize compiler(s)
-#if defined(COMPILER1) || defined(COMPILER2) || defined(SHARK) || INCLUDE_JVMCI
+#if defined(COMPILER1) || COMPILER2_OR_JVMCI
   CompileBroker::compilation_init(CHECK_JNI_ERR);
 #endif
 
@@ -3789,8 +3789,8 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Final system initialization including security manager and system class loader
   call_initPhase3(CHECK_JNI_ERR);
 
-  // cache the system class loader
-  SystemDictionary::compute_java_system_loader(CHECK_(JNI_ERR));
+  // cache the system and platform class loaders
+  SystemDictionary::compute_java_loaders(CHECK_JNI_ERR);
 
 #if INCLUDE_JVMCI
   if (EnableJVMCI) {
@@ -4233,6 +4233,7 @@ jboolean Threads::is_supported_jni_version(jint version) {
   if (version == JNI_VERSION_1_6) return JNI_TRUE;
   if (version == JNI_VERSION_1_8) return JNI_TRUE;
   if (version == JNI_VERSION_9) return JNI_TRUE;
+  if (version == JNI_VERSION_10) return JNI_TRUE;
   return JNI_FALSE;
 }
 
@@ -4361,20 +4362,24 @@ void Threads::assert_all_threads_claimed() {
 }
 #endif // ASSERT
 
-void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) {
-  int cp = Threads::thread_claim_parity();
-  ALL_JAVA_THREADS(p) {
-    if (p->claim_oops_do(is_par, cp)) {
-      p->oops_do(f, cf);
-      if (nmethods_cl != NULL && ! p->is_Code_cache_sweeper_thread()) {
-        p->nmethods_do(nmethods_cl);
-      }
+class ParallelOopsDoThreadClosure : public ThreadClosure {
+private:
+  OopClosure* _f;
+  CodeBlobClosure* _cf;
+  CodeBlobClosure* _nmethods_cl;
+public:
+  ParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) : _f(f), _cf(cf), _nmethods_cl(nmethods_cl) {}
+  void do_thread(Thread* t) {
+    t->oops_do(_f, _cf);
+    if (_nmethods_cl != NULL && t->is_Java_thread() && !t->is_Code_cache_sweeper_thread()) {
+      ((JavaThread*)t)->nmethods_do(_nmethods_cl);
     }
   }
-  VMThread* vmt = VMThread::vm_thread();
-  if (vmt->claim_oops_do(is_par, cp)) {
-    vmt->oops_do(f, cf);
-  }
+};
+
+void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) {
+  ParallelOopsDoThreadClosure tc(f, cf, nmethods_cl);
+  possibly_parallel_threads_do(is_par, &tc);
 }
 
 #if INCLUDE_ALL_GCS
@@ -4741,13 +4746,12 @@ void Thread::SpinRelease(volatile int * adr) {
 //
 
 
-typedef volatile intptr_t MutexT;      // Mux Lock-word
-enum MuxBits { LOCKBIT = 1 };
+const intptr_t LOCKBIT = 1;
 
 void Thread::muxAcquire(volatile intptr_t * Lock, const char * LockName) {
-  intptr_t w = Atomic::cmpxchg_ptr(LOCKBIT, Lock, 0);
+  intptr_t w = Atomic::cmpxchg(LOCKBIT, Lock, (intptr_t)0);
   if (w == 0) return;
-  if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+  if ((w & LOCKBIT) == 0 && Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
     return;
   }
 
@@ -4760,7 +4764,7 @@ void Thread::muxAcquire(volatile intptr_t * Lock, const char * LockName) {
     // Optional spin phase: spin-then-park strategy
     while (--its >= 0) {
       w = *Lock;
-      if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+      if ((w & LOCKBIT) == 0 && Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
         return;
       }
     }
@@ -4773,7 +4777,7 @@ void Thread::muxAcquire(volatile intptr_t * Lock, const char * LockName) {
     for (;;) {
       w = *Lock;
       if ((w & LOCKBIT) == 0) {
-        if (Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+        if (Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
           Self->OnList = 0;   // hygiene - allows stronger asserts
           return;
         }
@@ -4781,7 +4785,7 @@ void Thread::muxAcquire(volatile intptr_t * Lock, const char * LockName) {
       }
       assert(w & LOCKBIT, "invariant");
       Self->ListNext = (ParkEvent *) (w & ~LOCKBIT);
-      if (Atomic::cmpxchg_ptr(intptr_t(Self)|LOCKBIT, Lock, w) == w) break;
+      if (Atomic::cmpxchg(intptr_t(Self)|LOCKBIT, Lock, w) == w) break;
     }
 
     while (Self->OnList != 0) {
@@ -4791,9 +4795,9 @@ void Thread::muxAcquire(volatile intptr_t * Lock, const char * LockName) {
 }
 
 void Thread::muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev) {
-  intptr_t w = Atomic::cmpxchg_ptr(LOCKBIT, Lock, 0);
+  intptr_t w = Atomic::cmpxchg(LOCKBIT, Lock, (intptr_t)0);
   if (w == 0) return;
-  if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+  if ((w & LOCKBIT) == 0 && Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
     return;
   }
 
@@ -4810,7 +4814,7 @@ void Thread::muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev) {
     // Optional spin phase: spin-then-park strategy
     while (--its >= 0) {
       w = *Lock;
-      if ((w & LOCKBIT) == 0 && Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+      if ((w & LOCKBIT) == 0 && Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
         if (ReleaseAfter != NULL) {
           ParkEvent::Release(ReleaseAfter);
         }
@@ -4826,7 +4830,7 @@ void Thread::muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev) {
     for (;;) {
       w = *Lock;
       if ((w & LOCKBIT) == 0) {
-        if (Atomic::cmpxchg_ptr (w|LOCKBIT, Lock, w) == w) {
+        if (Atomic::cmpxchg(w|LOCKBIT, Lock, w) == w) {
           ev->OnList = 0;
           // We call ::Release while holding the outer lock, thus
           // artificially lengthening the critical section.
@@ -4841,7 +4845,7 @@ void Thread::muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev) {
       }
       assert(w & LOCKBIT, "invariant");
       ev->ListNext = (ParkEvent *) (w & ~LOCKBIT);
-      if (Atomic::cmpxchg_ptr(intptr_t(ev)|LOCKBIT, Lock, w) == w) break;
+      if (Atomic::cmpxchg(intptr_t(ev)|LOCKBIT, Lock, w) == w) break;
     }
 
     while (ev->OnList != 0) {
@@ -4877,7 +4881,7 @@ void Thread::muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev) {
 // store (CAS) to the lock-word that releases the lock becomes globally visible.
 void Thread::muxRelease(volatile intptr_t * Lock)  {
   for (;;) {
-    const intptr_t w = Atomic::cmpxchg_ptr(0, Lock, LOCKBIT);
+    const intptr_t w = Atomic::cmpxchg((intptr_t)0, Lock, LOCKBIT);
     assert(w & LOCKBIT, "invariant");
     if (w == LOCKBIT) return;
     ParkEvent * const List = (ParkEvent *) (w & ~LOCKBIT);
@@ -4888,7 +4892,7 @@ void Thread::muxRelease(volatile intptr_t * Lock)  {
 
     // The following CAS() releases the lock and pops the head element.
     // The CAS() also ratifies the previously fetched lock-word value.
-    if (Atomic::cmpxchg_ptr (intptr_t(nxt), Lock, w) != w) {
+    if (Atomic::cmpxchg(intptr_t(nxt), Lock, w) != w) {
       continue;
     }
     List->OnList = 0;

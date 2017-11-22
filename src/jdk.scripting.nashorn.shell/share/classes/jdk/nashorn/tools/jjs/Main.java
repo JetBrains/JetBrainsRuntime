@@ -27,8 +27,6 @@ package jdk.nashorn.tools.jjs;
 
 import static jdk.nashorn.internal.runtime.ScriptRuntime.UNDEFINED;
 
-import java.awt.Desktop;
-import java.awt.GraphicsEnvironment;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
@@ -38,6 +36,8 @@ import java.io.UncheckedIOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -54,6 +54,7 @@ import jdk.nashorn.internal.runtime.ScriptFunction;
 import jdk.nashorn.internal.runtime.ScriptingFunctions;
 import jdk.nashorn.internal.runtime.ScriptObject;
 import jdk.nashorn.internal.runtime.ScriptRuntime;
+import jdk.nashorn.internal.runtime.Source;
 import jdk.nashorn.tools.Shell;
 
 /**
@@ -65,7 +66,6 @@ public final class Main extends Shell {
     private static final String DOC_PROPERTY_NAME = "__doc__";
 
     static final boolean DEBUG = Boolean.getBoolean("nashorn.jjs.debug");
-    static final boolean HEADLESS = GraphicsEnvironment.isHeadless();
 
     // file where history is persisted.
     private static final File HIST_FILE = new File(new File(System.getProperty("user.home")), ".jjs.history");
@@ -120,7 +120,23 @@ public final class Main extends Shell {
         final Global oldGlobal = Context.getGlobal();
         final boolean globalChanged = (oldGlobal != global);
         final PropertiesHelper propsHelper = new PropertiesHelper(context);
-        final NashornCompleter completer = new NashornCompleter(context, global, this, propsHelper);
+
+        if (globalChanged) {
+            Context.setGlobal(global);
+        }
+
+        // jjs.js is read and evaluated. The result of the evaluation is an "exports" object. This is done
+        // to avoid polluting javascript global scope. These are internal funtions are retrieved from the
+        // 'exports' object and used from here.
+        final ScriptObject jjsObj = (ScriptObject)context.eval(global, readJJSScript(), global, "<jjs.js>");
+
+        final boolean isHeadless = (boolean) ScriptRuntime.apply((ScriptFunction) jjsObj.get("isHeadless"), null);
+        final ScriptFunction fileChooserFunc = isHeadless? null : (ScriptFunction) jjsObj.get("chooseFile");
+
+        final NashornCompleter completer = new NashornCompleter(context, global, this, propsHelper, fileChooserFunc);
+        final ScriptFunction browseFunc = isHeadless? null : (ScriptFunction) jjsObj.get("browse");
+
+        final ScriptFunction javadoc = (ScriptFunction) jjsObj.get("javadoc");
 
         try (final Console in = new Console(System.in, System.out, HIST_FILE, completer,
                 str -> {
@@ -128,14 +144,17 @@ public final class Main extends Shell {
                         final Object res = context.eval(global, str, global, "<shell>");
                         if (res != null && res != UNDEFINED) {
                             // Special case Java types: show the javadoc for the class.
-                            if (NativeJava.isType(UNDEFINED, res)) {
+                            if (!isHeadless && NativeJava.isType(UNDEFINED, res)) {
                                 final String typeName = NativeJava.typeName(UNDEFINED, res).toString();
                                 final String url = typeName.replace('.', '/').replace('$', '.') + ".html";
-                                openBrowserForJavadoc(url);
-                            } else if (res instanceof NativeJavaPackage) {
+                                openBrowserForJavadoc(browseFunc, url);
+                            } else if (!isHeadless && res instanceof NativeJavaPackage) {
                                 final String pkgName = ((NativeJavaPackage)res).getName();
                                 final String url = pkgName.replace('.', '/') + "/package-summary.html";
-                                openBrowserForJavadoc(url);
+                                openBrowserForJavadoc(browseFunc, url);
+                            } else if (NativeJava.isJavaMethod(UNDEFINED, res)) {
+                                ScriptRuntime.apply(javadoc, UNDEFINED, res);
+                                return ""; // javadoc function already prints javadoc
                             } else if (res instanceof ScriptObject) {
                                 final ScriptObject sobj = (ScriptObject)res;
                                 if (sobj.has(DOC_PROPERTY_NAME)) {
@@ -152,10 +171,6 @@ public final class Main extends Shell {
                      }
                      return null;
                 })) {
-
-            if (globalChanged) {
-                Context.setGlobal(global);
-            }
 
             global.addShellBuiltins();
 
@@ -282,12 +297,29 @@ public final class Main extends Shell {
     }
 
     private static String JAVADOC_BASE = "https://docs.oracle.com/javase/9/docs/api/";
-
-    private static void openBrowserForJavadoc(String relativeUrl) {
+    private static void openBrowserForJavadoc(ScriptFunction browse, String relativeUrl) {
         try {
             final URI uri = new URI(JAVADOC_BASE + relativeUrl);
-            Desktop.getDesktop().browse(uri);
+            ScriptRuntime.apply(browse, null, uri);
         } catch (Exception ignored) {
         }
+    }
+
+    private static String readJJSScript() {
+        return AccessController.doPrivileged(
+            new PrivilegedAction<String>() {
+                @Override
+                public String run() {
+                    try {
+                        final InputStream resStream = Main.class.getResourceAsStream("resources/jjs.js");
+                        if (resStream == null) {
+                            throw new RuntimeException("resources/jjs.js is missing!");
+                        }
+                        return new String(Source.readFully(resStream));
+                    } catch (final IOException exp) {
+                        throw new RuntimeException(exp);
+                    }
+                }
+            });
     }
 }

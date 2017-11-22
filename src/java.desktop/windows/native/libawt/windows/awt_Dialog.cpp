@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,13 +111,15 @@ AwtDialog* AwtDialog::Create(jobject peer, jobject parent)
         PDATA pData;
         AwtWindow* awtParent = NULL;
         HWND hwndParent = NULL;
+
         target = env->GetObjectField(peer, AwtObject::targetID);
         JNI_CHECK_NULL_GOTO(target, "null target", done);
 
         if (parent != NULL) {
             JNI_CHECK_PEER_GOTO(parent, done);
-            awtParent = (AwtWindow *)(JNI_GET_PDATA(parent));
-            hwndParent = awtParent->GetHWnd();
+            awtParent = (AwtWindow *)pData;
+            HWND oHWnd = awtParent->GetOverriddenHWnd();
+            hwndParent = oHWnd ? oHWnd : awtParent->GetHWnd();
         } else {
             // There is no way to prevent a parentless dialog from showing on
             //  the taskbar other than to specify an invisible parent and set
@@ -775,11 +777,9 @@ Java_sun_awt_windows_WDialogPeer_createAwtDialog(JNIEnv *env, jobject self,
 {
     TRY;
 
-    PDATA pData;
     AwtToolkit::CreateComponent(self, parent,
                                 (AwtToolkit::ComponentFactory)
                                 AwtDialog::Create);
-    JNI_CHECK_PEER_CREATION_RETURN(self);
 
     CATCH_BAD_ALLOC;
 }

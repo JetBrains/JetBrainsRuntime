@@ -235,7 +235,7 @@ public:
   size_t max_capacity() const /* override */;
   size_t initial_capacity() const /* override */;
   bool is_in(const void* p) const /* override */;
-  bool is_scavengable(const void* addr) /* override */;
+  bool is_scavengable(oop obj) /* override */;
   HeapWord* mem_allocate(size_t size, bool* what) /* override */;
   bool can_elide_tlab_store_barriers() const /* override */;
   oop new_store_pre_barrier(JavaThread* thread, oop new_obj) /* override */;
@@ -267,6 +267,8 @@ public:
   uint oop_extra_words() /* override */;
   size_t tlab_used(Thread* ignored) const /* override */;
   void stop() /* override */;
+  virtual void safepoint_synchronize_begin();
+  virtual void safepoint_synchronize_end();
 
   WorkGang* get_safepoint_workers() { return _safepoint_workers; }
 

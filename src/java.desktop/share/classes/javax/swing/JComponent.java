@@ -121,7 +121,7 @@ import sun.swing.SwingUtilities2;
  *     both of which are sections in <em>The Java Tutorial</em>.
  * </ul>
  * For more information on these subjects, see the
- * <a href="package-summary.html#package_description">Swing package description</a>
+ * {@link javax.swing Swing package description}
  * and <em>The Java Tutorial</em> section
  * <a href="http://docs.oracle.com/javase/tutorial/uiswing/components/jcomponent.html">The JComponent Class</a>.
  * <p>
@@ -778,7 +778,7 @@ public abstract class JComponent extends Container implements Serializable,
      * invoker super's implementation you must honor the opaque property,
      * that is
      * if this component is opaque, you must completely fill in the background
-     * in a non-opaque color. If you do not honor the opaque property you
+     * in an opaque color. If you do not honor the opaque property you
      * will likely see visual artifacts.
      * <p>
      * The passed in <code>Graphics</code> object might

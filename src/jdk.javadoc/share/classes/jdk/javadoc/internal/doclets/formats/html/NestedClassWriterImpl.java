@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -34,6 +37,7 @@ import javax.lang.model.element.TypeElement;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
@@ -77,6 +81,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addMemberTree(Content memberSummaryTree, Content memberTree) {
         writer.addMemberTree(memberSummaryTree, memberTree);
     }
@@ -95,33 +100,29 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      * {@inheritDoc}
      */
     @Override
-    public String getTableSummary() {
-        return resources.getText("doclet.Member_Table_Summary",
+    public TableHeader getSummaryTableHeader(Element member) {
+        Content label = utils.isInterface(member) ?
+                contents.interfaceLabel : contents.classLabel;
+
+        return new TableHeader(contents.modifierAndTypeLabel, label, contents.descriptionLabel);
+    }
+
+    @Override
+    protected Table createSummaryTable() {
+        String summary =  resources.getText("doclet.Member_Table_Summary",
                 resources.getText("doclet.Nested_Class_Summary"),
                 resources.getText("doclet.nested_classes"));
-    }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Content getCaption() {
-        return configuration.getContent("doclet.Nested_Classes");
-    }
+        List<HtmlStyle> bodyRowStyles = Arrays.asList(HtmlStyle.colFirst, HtmlStyle.colSecond,
+                HtmlStyle.colLast);
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<String> getSummaryTableHeader(Element member) {
-        if (utils.isInterface(member)) {
-            return Arrays.asList(writer.getModifierTypeHeader(),
-                    resources.getText("doclet.Interface"), resources.getText("doclet.Description"));
-
-        } else {
-            return Arrays.asList(writer.getModifierTypeHeader(),
-                    resources.getText("doclet.Class"), resources.getText("doclet.Description"));
-        }
+        return new Table(configuration.htmlVersion, HtmlStyle.memberSummary)
+                .setSummary(summary)
+                .setCaption(contents.getContent("doclet.Nested_Classes"))
+                .setHeader(getSummaryTableHeader(typeElement))
+                .setRowScopeColumn(1)
+                .setColumnStyles(bodyRowStyles)
+                .setUseTBody(false);  // temporary? compatibility mode for TBody
     }
 
     /**
@@ -129,7 +130,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(writer.getMarkerAnchor(
+        memberTree.addContent(links.createAnchor(
                 SectionName.NESTED_CLASS_SUMMARY));
     }
 
@@ -138,7 +139,7 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
      */
     @Override
     public void addInheritedSummaryAnchor(TypeElement typeElement, Content inheritedTree) {
-        inheritedTree.addContent(writer.getMarkerAnchor(
+        inheritedTree.addContent(links.createAnchor(
                 SectionName.NESTED_CLASSES_INHERITANCE,
                 utils.getFullyQualifiedName(typeElement)));
     }
@@ -150,9 +151,16 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
     public void addInheritedSummaryLabel(TypeElement typeElement, Content inheritedTree) {
         Content classLink = writer.getPreQualifiedClassLink(
                 LinkInfoImpl.Kind.MEMBER, typeElement, false);
-        Content label = new StringContent(utils.isInterface(typeElement)
-                ? configuration.getText("doclet.Nested_Classes_Interface_Inherited_From_Interface")
-                : configuration.getText("doclet.Nested_Classes_Interfaces_Inherited_From_Class"));
+        Content label;
+        if (configuration.summarizeOverriddenMethods) {
+            label = new StringContent(utils.isInterface(typeElement)
+                    ? configuration.getText("doclet.Nested_Classes_Interfaces_Declared_In_Interface")
+                    : configuration.getText("doclet.Nested_Classes_Interfaces_Declared_In_Class"));
+        } else {
+            label = new StringContent(utils.isInterface(typeElement)
+                    ? configuration.getText("doclet.Nested_Classes_Interfaces_Inherited_From_Interface")
+                    : configuration.getText("doclet.Nested_Classes_Interfaces_Inherited_From_Class"));
+        }
         Content labelHeading = HtmlTree.HEADING(HtmlConstants.INHERITED_SUMMARY_HEADING,
                 label);
         labelHeading.addContent(Contents.SPACE);
@@ -205,11 +213,11 @@ public class NestedClassWriterImpl extends AbstractMemberWriter
     protected Content getNavSummaryLink(TypeElement typeElement, boolean link) {
         if (link) {
             if (typeElement == null) {
-                return writer.getHyperLink(
+                return Links.createLink(
                         SectionName.NESTED_CLASS_SUMMARY,
                         contents.navNested);
             } else {
-                return writer.getHyperLink(
+                return links.createLink(
                         SectionName.NESTED_CLASSES_INHERITANCE,
                         utils.getFullyQualifiedName(typeElement), contents.navNested);
             }

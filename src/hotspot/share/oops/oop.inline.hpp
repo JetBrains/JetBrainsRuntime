@@ -66,7 +66,7 @@ template <class T> void oop_store(T* p, oop v) {
 
 template <class T> void oop_store(volatile T* p, oop v) {
   update_barrier_set_pre((T*)p, v);   // cast away volatile
-  // Used by release_obj_field_put, so use release_store_ptr.
+  // Used by release_obj_field_put, so use release_store.
   oopDesc::release_encode_store_heap_oop(p, v);
   // When using CMS we must mark the card corresponding to p as dirty
   // with release sematics to prevent that CMS sees the dirty card but
@@ -91,12 +91,12 @@ inline void oop_store_raw(HeapWord* addr, oop value) {
 
 void oopDesc::release_set_mark(markOop m) {
   oop p = bs()->write_barrier(this);
-  OrderAccess::release_store_ptr(&p->_mark, m);
+  OrderAccess::release_store(&p->_mark, m);
 }
 
 markOop oopDesc::cas_set_mark(markOop new_mark, markOop old_mark) {
   oop p = bs()->write_barrier(this);
-  return (markOop) Atomic::cmpxchg_ptr(new_mark, &p->_mark, old_mark);
+  return Atomic::cmpxchg(new_mark, &p->_mark, old_mark);
 }
 
 void oopDesc::init_mark() {
@@ -126,7 +126,7 @@ Klass* oopDesc::klass_or_null_acquire() const volatile {
     volatile narrowKlass* xaddr = const_cast<volatile narrowKlass*>(addr);
     return Klass::decode_klass(OrderAccess::load_acquire(xaddr));
   } else {
-    return (Klass*)OrderAccess::load_ptr_acquire(&_metadata._klass);
+    return OrderAccess::load_acquire(&_metadata._klass);
   }
 }
 
@@ -163,7 +163,7 @@ void oopDesc::release_set_klass(Klass* k) {
     OrderAccess::release_store(compressed_klass_addr(),
                                Klass::encode_klass_not_null(k));
   } else {
-    OrderAccess::release_store_ptr(klass_addr(), k);
+    OrderAccess::release_store(klass_addr(), k);
   }
 }
 
@@ -363,7 +363,7 @@ void oopDesc::encode_store_heap_oop(narrowOop* p, oop v) {
 
 // Store heap oop as is for volatile fields.
 void oopDesc::release_store_heap_oop(volatile oop* p, oop v) {
-  OrderAccess::release_store_ptr(p, v);
+  OrderAccess::release_store(p, v);
 }
 void oopDesc::release_store_heap_oop(volatile narrowOop* p, narrowOop v) {
   OrderAccess::release_store(p, v);
@@ -374,11 +374,11 @@ void oopDesc::release_encode_store_heap_oop_not_null(volatile narrowOop* p, oop 
   OrderAccess::release_store(p, encode_heap_oop_not_null(v));
 }
 void oopDesc::release_encode_store_heap_oop_not_null(volatile oop* p, oop v) {
-  OrderAccess::release_store_ptr(p, v);
+  OrderAccess::release_store(p, v);
 }
 
 void oopDesc::release_encode_store_heap_oop(volatile oop* p, oop v) {
-  OrderAccess::release_store_ptr(p, v);
+  OrderAccess::release_store(p, v);
 }
 void oopDesc::release_encode_store_heap_oop(volatile narrowOop* p, oop v) {
   OrderAccess::release_store(p, encode_heap_oop(v));
@@ -394,7 +394,7 @@ oop oopDesc::atomic_exchange_oop(oop exchange_value, volatile HeapWord *dest) {
     // decode old from T to oop
     return decode_heap_oop(old);
   } else {
-    return (oop)Atomic::xchg_ptr(exchange_value, (oop*)dest);
+    return (oop)Atomic::xchg(exchange_value, (oop*)dest);
   }
 }
 
@@ -462,12 +462,12 @@ void oopDesc::metadata_field_put(int offset, Metadata* value) {
 
 Metadata* oopDesc::metadata_field_acquire(int offset) const   {
   oop p = bs()->read_barrier((oop) this);
-  return (Metadata*)OrderAccess::load_ptr_acquire(*p->metadata_field_addr(offset));
+  return OrderAccess::load_acquire(p->metadata_field_addr(offset));
 }
 
 void oopDesc::release_metadata_field_put(int offset, Metadata* value) {
   oop p = bs()->write_barrier(this);
-  OrderAccess::release_store_ptr(p->metadata_field_addr(offset), value);
+  OrderAccess::release_store(p->metadata_field_addr(offset), value);
 }
 
 jbyte oopDesc::byte_field(int offset) const {
@@ -566,7 +566,7 @@ oop oopDesc::obj_field_acquire(int offset) const {
              decode_heap_oop((narrowOop)
                OrderAccess::load_acquire(p->obj_field_addr<narrowOop>(offset)))
            : decode_heap_oop((oop)
-               OrderAccess::load_ptr_acquire(p->obj_field_addr<oop>(offset)));
+               OrderAccess::load_acquire(p->obj_field_addr<oop>(offset)));
 }
 
 void oopDesc::release_obj_field_put(int offset, oop value) {
@@ -604,7 +604,7 @@ jboolean oopDesc::bool_field_acquire(int offset) const {
 
 void oopDesc::release_bool_field_put(int offset, jboolean contents) {
   oop p = bs()->write_barrier(this);
-  OrderAccess::release_store(p->bool_field_addr(offset), (contents & 1));
+  OrderAccess::release_store(p->bool_field_addr(offset), jboolean(contents & 1));
 }
 
 jint oopDesc::int_field_acquire(int offset) const {
@@ -659,12 +659,12 @@ void oopDesc::release_double_field_put(int offset, jdouble contents) {
 
 address oopDesc::address_field_acquire(int offset) const {
   oop p = bs()->read_barrier((oop) this);
-  return (address) OrderAccess::load_ptr_acquire(p->address_field_addr(offset));
+  return (address) OrderAccess::load_acquire(p->address_field_addr(offset));
 }
 
 void oopDesc::release_address_field_put(int offset, address contents) {
   oop p = bs()->write_barrier(this);
-  OrderAccess::release_store_ptr(p->address_field_addr(offset), contents);
+  OrderAccess::release_store(p->address_field_addr(offset), contents);
 }
 
 bool oopDesc::is_locked() const {
@@ -685,7 +685,7 @@ bool oopDesc::is_gc_marked() const {
 }
 
 bool oopDesc::is_scavengable() const {
-  return Universe::heap()->is_scavengable(this);
+  return Universe::heap()->is_scavengable(oop(const_cast<oopDesc*>(this)));
 }
 
 // Used by scavengers

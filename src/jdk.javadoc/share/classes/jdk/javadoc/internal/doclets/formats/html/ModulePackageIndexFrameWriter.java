@@ -26,7 +26,6 @@
 package jdk.javadoc.internal.doclets.formats.html;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +37,7 @@ import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.RawHtml;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -143,12 +143,12 @@ public class ModulePackageIndexFrameWriter extends AbstractModuleIndexWriter {
         Content pkgLabel;
         if (!pkg.isUnnamed()) {
             pkgLabel = getPackageLabel(utils.getPackageName(pkg));
-            packageLinkContent = getHyperLink(pathString(pkg,
+            packageLinkContent = Links.createLink(pathString(pkg,
                      DocPaths.PACKAGE_FRAME), pkgLabel, "",
                     "packageFrame");
         } else {
             pkgLabel = new StringContent("<unnamed package>");
-            packageLinkContent = getHyperLink(DocPaths.PACKAGE_FRAME,
+            packageLinkContent = Links.createLink(DocPaths.PACKAGE_FRAME,
                     pkgLabel, "", "packageFrame");
         }
         Content li = HtmlTree.LI(packageLinkContent);
@@ -176,8 +176,10 @@ public class ModulePackageIndexFrameWriter extends AbstractModuleIndexWriter {
     protected void addOverviewHeader(Content body) {
     }
 
-    protected void addModulesList(Collection<ModuleElement> modules, String text,
-            String tableSummary, Content body) {
+    /**
+     * Do nothing as there is no modules list on this page.
+     */
+    protected void addModulesList(Content body) {
     }
 
     /**
@@ -187,7 +189,7 @@ public class ModulePackageIndexFrameWriter extends AbstractModuleIndexWriter {
      * @param ul the Content object to which the all classes link should be added
      */
     protected void addAllClassesLink(Content ul) {
-        Content linkContent = getHyperLink(DocPaths.ALLCLASSES_FRAME,
+        Content linkContent = Links.createLink(DocPaths.ALLCLASSES_FRAME,
                 contents.allClassesLabel, "", "packageFrame");
         Content li = HtmlTree.LI(linkContent);
         ul.addContent(li);
@@ -200,7 +202,7 @@ public class ModulePackageIndexFrameWriter extends AbstractModuleIndexWriter {
      * @param ul the Content object to which the all packages link should be added
      */
     protected void addAllPackagesLink(Content ul) {
-        Content linkContent = getHyperLink(DocPaths.OVERVIEW_FRAME,
+        Content linkContent = Links.createLink(DocPaths.OVERVIEW_FRAME,
                 contents.allPackagesLabel, "", "packageListFrame");
         Content li = HtmlTree.LI(linkContent);
         ul.addContent(li);
@@ -213,7 +215,7 @@ public class ModulePackageIndexFrameWriter extends AbstractModuleIndexWriter {
      * @param ul the Content object to which the all modules link should be added
      */
     protected void addAllModulesLink(Content ul) {
-        Content linkContent = getHyperLink(DocPaths.MODULE_OVERVIEW_FRAME,
+        Content linkContent = Links.createLink(DocPaths.MODULE_OVERVIEW_FRAME,
                 contents.allModulesLabel, "", "packageListFrame");
         Content li = HtmlTree.LI(linkContent);
         ul.addContent(li);

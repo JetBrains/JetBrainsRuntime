@@ -1,6 +1,6 @@
 /*
- * reserved comment block
- * DO NOT REMOVE OR ALTER!
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -480,7 +480,7 @@ public class XMLDTDValidator
      * are recognized by this component.
      */
     public String[] getRecognizedFeatures() {
-        return (String[])(RECOGNIZED_FEATURES.clone());
+        return RECOGNIZED_FEATURES.clone();
     } // getRecognizedFeatures():String[]
 
     /**
@@ -508,7 +508,7 @@ public class XMLDTDValidator
      * are recognized by this component.
      */
     public String[] getRecognizedProperties() {
-        return (String[])(RECOGNIZED_PROPERTIES.clone());
+        return RECOGNIZED_PROPERTIES.clone();
     } // getRecognizedProperties():String[]
 
     /**
@@ -2022,7 +2022,7 @@ public class XMLDTDValidator
             //   IDREF and IDREFS attr (V_IDREF0)
             //
             if (fPerformValidation) {
-                Iterator invIdRefs = fValidationState.checkIDRefID();
+                Iterator<String> invIdRefs = fValidationState.checkIDRefID();
                 if (invIdRefs != null) {
                     while (invIdRefs.hasNext()) {
                         fErrorReporter.reportError( XMLMessageFormatter.XML_DOMAIN,

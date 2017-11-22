@@ -96,7 +96,7 @@ void G1StringDedupQueue::push(uint worker_id, oop java_string) {
     }
   } else {
     // Queue is full, drop the string and update the statistics
-    Atomic::inc_ptr(&_queue->_dropped);
+    Atomic::inc(&_queue->_dropped);
   }
 }
 

@@ -282,6 +282,13 @@ public abstract class BaseConfiguration {
      */
     public boolean quiet = false;
 
+    /**
+     * Specifies whether those methods that override a super-type's method
+     * with no changes to the API contract should be summarized in the
+     * footnote section.
+     */
+    public boolean summarizeOverriddenMethods = false;
+
     // A list containing urls
     private final List<String> linkList = new ArrayList<>();
 
@@ -300,11 +307,11 @@ public abstract class BaseConfiguration {
     public abstract Resources getResources();
 
     /**
-     * Return the build date for the doclet.
+     * Returns a string identifying the version of the doclet.
      *
-     * @return the build date
+     * @return a version string
      */
-    public abstract String getDocletSpecificBuildDate();
+    public abstract String getDocletVersion();
 
     /**
      * This method should be defined in all those doclets (configurations),
@@ -557,7 +564,7 @@ public abstract class BaseConfiguration {
                 new Option(resources, "-linkoffline", 2) {
                     @Override
                     public boolean process(String opt, List<String> args) {
-                        linkOfflineList.add(new Pair<String, String>(args.get(0), args.get(1)));
+                        linkOfflineList.add(new Pair<>(args.get(0), args.get(1)));
                         return true;
                     }
                 },
@@ -593,6 +600,25 @@ public abstract class BaseConfiguration {
                     @Override
                     public boolean process(String opt, List<String> args) {
                         addToSet(excludedQualifiers, args.get(0));
+                        return true;
+                    }
+                },
+                new Option(resources, "--override-methods", 1) {
+                    @Override
+                    public boolean process(String opt,  List<String> args) {
+                        String o = args.get(0);
+                        switch (o) {
+                            case "summary":
+                                summarizeOverriddenMethods = true;
+                                break;
+                            case "detail":
+                                summarizeOverriddenMethods = false;
+                                break;
+                            default:
+                                reporter.print(ERROR, getText("doclet.Option_invalid",
+                                        o, "--override-methods"));
+                                return false;
+                        }
                         return true;
                     }
                 },
@@ -878,7 +904,6 @@ public abstract class BaseConfiguration {
      * platform.
      *
      * @param docencoding output file encoding.
-     * @param reporter    used to report errors.
      */
     private boolean checkOutputFileEncoding(String docencoding) {
         OutputStream ost = new ByteArrayOutputStream();

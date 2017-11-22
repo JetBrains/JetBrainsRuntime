@@ -251,9 +251,18 @@ public class JlinkTask {
                 return EXIT_OK;
             }
 
+
             if (options.modulePath.isEmpty()) {
-                throw taskHelper.newBadArgs("err.modulepath.must.be.specified")
-                                .showUsage(true);
+                // no --module-path specified - try to set $JAVA_HOME/jmods if that exists
+                Path jmods = getDefaultModulePath();
+                if (jmods != null) {
+                    options.modulePath.add(jmods);
+                }
+
+                if (options.modulePath.isEmpty()) {
+                     throw taskHelper.newBadArgs("err.modulepath.must.be.specified")
+                                 .showUsage(true);
+                }
             }
 
             JlinkConfiguration config = initJlinkConfig();
@@ -347,14 +356,7 @@ public class JlinkTask {
         Set<String> roots = new HashSet<>();
         for (String mod : options.addMods) {
             if (mod.equals(ALL_MODULE_PATH)) {
-                Path[] entries = options.modulePath.toArray(new Path[0]);
-                ModuleFinder finder = ModulePath.of(Runtime.version(), true, entries);
-                if (!options.limitMods.isEmpty()) {
-                    // finder for the observable modules specified in
-                    // the --module-path and --limit-modules options
-                    finder = limitFinder(finder, options.limitMods, Collections.emptySet());
-                }
-
+                ModuleFinder finder = newModuleFinder(options.modulePath, options.limitMods, Set.of());
                 // all observable modules are roots
                 finder.findAll()
                       .stream()
@@ -366,11 +368,19 @@ public class JlinkTask {
             }
         }
 
+        ModuleFinder finder = newModuleFinder(options.modulePath, options.limitMods, roots);
+        if (!finder.find("java.base").isPresent()) {
+            Path defModPath = getDefaultModulePath();
+            if (defModPath != null) {
+                options.modulePath.add(defModPath);
+            }
+            finder = newModuleFinder(options.modulePath, options.limitMods, roots);
+        }
+
         return new JlinkConfiguration(options.output,
-                                      options.modulePath,
                                       roots,
-                                      options.limitMods,
-                                      options.endian);
+                                      options.endian,
+                                      finder);
     }
 
     private void createImage(JlinkConfiguration config) throws Exception {
@@ -398,22 +408,53 @@ public class JlinkTask {
         stack.operate(imageProvider);
     }
 
+    /**
+     * @return the system module path or null
+     */
+    public static Path getDefaultModulePath() {
+        Path jmods = Paths.get(System.getProperty("java.home"), "jmods");
+        return Files.isDirectory(jmods)? jmods : null;
+    }
+
     /*
      * Returns a module finder of the given module path that limits
      * the observable modules to those in the transitive closure of
      * the modules specified in {@code limitMods} plus other modules
      * specified in the {@code roots} set.
+     *
+     * @throws IllegalArgumentException if java.base module is present
+     * but its descriptor has no version
      */
     public static ModuleFinder newModuleFinder(List<Path> paths,
                                                Set<String> limitMods,
                                                Set<String> roots)
     {
+        if (Objects.requireNonNull(paths).isEmpty()) {
+             throw new IllegalArgumentException("Empty module path");
+        }
+
         Path[] entries = paths.toArray(new Path[0]);
-        ModuleFinder finder = ModulePath.of(Runtime.version(), true, entries);
+        Runtime.Version version = Runtime.version();
+        ModuleFinder finder = ModulePath.of(version, true, entries);
+
+        if (finder.find("java.base").isPresent()) {
+            // use the version of java.base module, if present, as
+            // the release version for multi-release JAR files
+            ModuleDescriptor.Version v = finder.find("java.base").get()
+                .descriptor().version().orElseThrow(() ->
+                    new IllegalArgumentException("No version in java.base descriptor")
+                );
+
+            // java.base version is different than the current runtime version
+            version = Runtime.Version.parse(v.toString());
+            if (Runtime.version().major() != version.major()) {
+                finder = ModulePath.of(version, true, entries);
+            }
+        }
 
         // if limitmods is specified then limit the universe
-        if (!limitMods.isEmpty()) {
-            finder = limitFinder(finder, limitMods, roots);
+        if (limitMods != null && !limitMods.isEmpty()) {
+            finder = limitFinder(finder, limitMods, Objects.requireNonNull(roots));
         }
         return finder;
     }
@@ -437,6 +478,16 @@ public class JlinkTask {
     {
         Configuration cf = bindService ? config.resolveAndBind()
                                        : config.resolve();
+
+        cf.modules().stream()
+            .map(ResolvedModule::reference)
+            .filter(mref -> mref.descriptor().isAutomatic())
+            .findAny()
+            .ifPresent(mref -> {
+                String loc = mref.location().map(URI::toString).orElse("<unknown>");
+                throw new IllegalArgumentException(
+                    taskHelper.getMessage("err.automatic.module", mref.descriptor().name(), loc));
+            });
 
         if (verbose && log != null) {
             // print modules to be linked in
@@ -713,6 +764,7 @@ public class JlinkTask {
         final ByteOrder order;
         final Path packagedModulesPath;
         final boolean ignoreSigning;
+        final Runtime.Version version;
         final Set<Archive> archives;
 
         ImageHelper(Configuration cf,
@@ -723,6 +775,17 @@ public class JlinkTask {
             this.order = order;
             this.packagedModulesPath = packagedModulesPath;
             this.ignoreSigning = ignoreSigning;
+
+            // use the version of java.base module, if present, as
+            // the release version for multi-release JAR files
+            this.version = cf.findModule("java.base")
+                .map(ResolvedModule::reference)
+                .map(ModuleReference::descriptor)
+                .flatMap(ModuleDescriptor::version)
+                .map(ModuleDescriptor.Version::toString)
+                .map(Runtime.Version::parse)
+                .orElse(Runtime.version());
+
             this.archives = modsPaths.entrySet().stream()
                                 .map(e -> newArchive(e.getKey(), e.getValue()))
                                 .collect(Collectors.toSet());
@@ -732,7 +795,7 @@ public class JlinkTask {
             if (path.toString().endsWith(".jmod")) {
                 return new JmodArchive(module, path);
             } else if (path.toString().endsWith(".jar")) {
-                ModularJarArchive modularJarArchive = new ModularJarArchive(module, path);
+                ModularJarArchive modularJarArchive = new ModularJarArchive(module, path, version);
 
                 Stream<Archive.Entry> signatures = modularJarArchive.entries().filter((entry) -> {
                     String name = entry.name().toUpperCase(Locale.ENGLISH);

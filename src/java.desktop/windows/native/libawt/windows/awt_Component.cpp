@@ -151,6 +151,11 @@ struct SetFocusStruct {
     jobject component;
     jboolean doSetFocus;
 };
+// Struct for _SetParent function
+struct SetParentStruct {
+    jobject component;
+    jobject parentComp;
+};
 /************************************************************************/
 
 //////////////////////////////////////////////////////////////////////////
@@ -217,6 +222,10 @@ BOOL windowMoveLockHeld = FALSE;
 AwtComponent::AwtComponent()
 {
     m_mouseButtonClickAllowed = 0;
+    m_touchDownOccurred = FALSE;
+    m_touchUpOccurred = FALSE;
+    m_touchDownPoint.x = m_touchDownPoint.y = 0;
+    m_touchUpPoint.x = m_touchUpPoint.y = 0;
     m_callbacksEnabled = FALSE;
     m_hwnd = NULL;
 
@@ -265,9 +274,6 @@ AwtComponent::~AwtComponent()
 {
     DASSERT(AwtToolkit::IsMainThread());
 
-    /* Disconnect all links. */
-    UnlinkObjects();
-
     /*
      * All the messages for this component are processed, native
      * resources are freed, and Java object is not connected to
@@ -279,6 +285,8 @@ AwtComponent::~AwtComponent()
 
 void AwtComponent::Dispose()
 {
+    DASSERT(AwtToolkit::IsMainThread());
+
     // NOTE: in case the component/toplevel was focused, Java should
     // have already taken care of proper transferring it or clearing.
 
@@ -297,8 +305,10 @@ void AwtComponent::Dispose()
     /* Release global ref to input method */
     SetInputMethod(NULL, TRUE);
 
-    if (m_childList != NULL)
+    if (m_childList != NULL) {
         delete m_childList;
+        m_childList = NULL;
+    }
 
     DestroyDropTarget();
     ReleaseDragCapture(0);
@@ -320,6 +330,9 @@ void AwtComponent::Dispose()
         m_brushBackground->Release();
         m_brushBackground = NULL;
     }
+
+    /* Disconnect all links. */
+    UnlinkObjects();
 
     if (m_bPauseDestroy) {
         // AwtComponent::WmNcDestroy could be released now
@@ -581,6 +594,11 @@ AwtComponent::CreateHWnd(JNIEnv *env, LPCWSTR title,
 
     /* Subclass the window now so that we can snoop on its messages */
     SubclassHWND();
+
+    AwtToolkit& tk = AwtToolkit::GetInstance();
+    if (tk.IsWin8OrLater() && tk.IsTouchKeyboardAutoShowEnabled()) {
+        tk.TIRegisterTouchWindow(GetHWnd(), TWF_WANTPALM);
+    }
 
     /*
       * Fix for 4046446.
@@ -1713,6 +1731,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
               break;
           }
           break;
+      case WM_TOUCH:
+          WmTouch(wParam, lParam);
+          break;
       case WM_SETCURSOR:
           mr = mrDoDefault;
           if (LOWORD(lParam) == HTCLIENT) {
@@ -2295,6 +2316,38 @@ MsgRouting AwtComponent::WmWindowPosChanged(LPARAM windowPos) {
     return mrDoDefault;
 }
 
+void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
+    AwtToolkit& tk = AwtToolkit::GetInstance();
+    if (!tk.IsWin8OrLater() || !tk.IsTouchKeyboardAutoShowEnabled()) {
+        return;
+    }
+
+    UINT inputsCount = LOWORD(wParam);
+    TOUCHINPUT* pInputs = new TOUCHINPUT[inputsCount];
+    if (pInputs != NULL) {
+        if (tk.TIGetTouchInputInfo((HTOUCHINPUT)lParam, inputsCount, pInputs,
+                sizeof(TOUCHINPUT)) != 0) {
+            for (UINT i = 0; i < inputsCount; i++) {
+                TOUCHINPUT ti = pInputs[i];
+                if (ti.dwFlags & TOUCHEVENTF_PRIMARY) {
+                    if (ti.dwFlags & TOUCHEVENTF_DOWN) {
+                        m_touchDownPoint.x = ti.x / 100;
+                        m_touchDownPoint.y = ti.y / 100;
+                        ::ScreenToClient(GetHWnd(), &m_touchDownPoint);
+                        m_touchDownOccurred = TRUE;
+                    } else if (ti.dwFlags & TOUCHEVENTF_UP) {
+                        m_touchUpPoint.x = ti.x / 100;
+                        m_touchUpPoint.y = ti.y / 100;
+                        ::ScreenToClient(GetHWnd(), &m_touchUpPoint);
+                        m_touchUpOccurred = TRUE;
+                    }
+                }
+            }
+        }
+        delete[] pInputs;
+    }
+}
+
 /* Double-click variables. */
 static jlong multiClickTime = ::GetDoubleClickTime();
 static int multiClickMaxX = ::GetSystemMetrics(SM_CXDOUBLECLK);
@@ -2337,6 +2390,14 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
     m_mouseButtonClickAllowed |= GetButtonMK(button);
     lastTime = now;
 
+    BOOL causedByTouchEvent = FALSE;
+    if (m_touchDownOccurred &&
+        (abs(m_touchDownPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
+        (abs(m_touchDownPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
+        causedByTouchEvent = TRUE;
+        m_touchDownOccurred = FALSE;
+    }
+
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
@@ -2355,7 +2416,7 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_PRESSED, now, x, y,
                    GetJavaModifiers(), clickCount, JNI_FALSE,
-                   GetButton(button), &msg);
+                   GetButton(button), &msg, causedByTouchEvent);
     /*
      * NOTE: this call is intentionally placed after all other code,
      * since AwtComponent::WmMouseDown() assumes that the cached id of the
@@ -2377,13 +2438,21 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
 MsgRouting AwtComponent::WmMouseUp(UINT flags, int x, int y, int button)
 {
+    BOOL causedByTouchEvent = FALSE;
+    if (m_touchUpOccurred &&
+        (abs(m_touchUpPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
+        (abs(m_touchUpPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
+        causedByTouchEvent = TRUE;
+        m_touchUpOccurred = FALSE;
+    }
+
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_RELEASED, ::JVM_CurrentTimeMillis(NULL, 0),
                    x, y, GetJavaModifiers(), clickCount,
                    (GetButton(button) == java_awt_event_MouseEvent_BUTTON3 ?
-                    TRUE : FALSE), GetButton(button), &msg);
+                    TRUE : FALSE), GetButton(button), &msg, causedByTouchEvent);
     /*
      * If no movement, then report a click following the button release.
      * When WM_MOUSEUP comes to a window without previous WM_MOUSEDOWN,
@@ -3824,25 +3893,34 @@ void AwtComponent::OpenCandidateWindow(int x, int y)
         if ( m_bitsCandType & bits )
             SetCandidateWindow(iCandType, x - p.x, y - p.y);
     }
-    if (m_bitsCandType != 0) {
-        // REMIND: is there any chance GetProxyFocusOwner() returns NULL here?
-        ::DefWindowProc(ImmGetHWnd(),
-                        WM_IME_NOTIFY, IMN_OPENCANDIDATE, m_bitsCandType);
-    }
 }
 
 void AwtComponent::SetCandidateWindow(int iCandType, int x, int y)
 {
     HWND hwnd = ImmGetHWnd();
     HIMC hIMC = ImmGetContext(hwnd);
-    CANDIDATEFORM cf;
-    cf.dwIndex = iCandType;
-    cf.dwStyle = CFS_POINT;
-    cf.ptCurrentPos.x = x;
-    cf.ptCurrentPos.y = y;
-
-    ImmSetCandidateWindow(hIMC, &cf);
-    ImmReleaseContext(hwnd, hIMC);
+    if (hIMC) {
+        CANDIDATEFORM cf;
+        cf.dwStyle = CFS_POINT;
+        ImmGetCandidateWindow(hIMC, 0, &cf);
+        if (x != cf.ptCurrentPos.x || y != cf.ptCurrentPos.y) {
+            cf.dwIndex = iCandType;
+            cf.dwStyle = CFS_POINT;
+            cf.ptCurrentPos = {x, y};
+            cf.rcArea = {0, 0, 0, 0};
+            ImmSetCandidateWindow(hIMC, &cf);
+        }
+        COMPOSITIONFORM cfr;
+        cfr.dwStyle = CFS_POINT;
+        ImmGetCompositionWindow(hIMC, &cfr);
+        if (x != cfr.ptCurrentPos.x || y != cfr.ptCurrentPos.y) {
+            cfr.dwStyle = CFS_POINT;
+            cfr.ptCurrentPos = {x, y};
+            cfr.rcArea = {0, 0, 0, 0};
+            ImmSetCompositionWindow(hIMC, &cfr);
+        }
+        ImmReleaseContext(hwnd, hIMC);
+    }
 }
 
 MsgRouting AwtComponent::WmImeSetContext(BOOL fSet, LPARAM *lplParam)
@@ -3870,17 +3948,14 @@ MsgRouting AwtComponent::WmImeSetContext(BOOL fSet, LPARAM *lplParam)
 MsgRouting AwtComponent::WmImeNotify(WPARAM subMsg, LPARAM bitsCandType)
 {
     if (!m_useNativeCompWindow) {
-        if (subMsg == IMN_OPENCANDIDATE) {
+        if (subMsg == IMN_OPENCANDIDATE || subMsg == IMN_CHANGECANDIDATE) {
             m_bitsCandType = bitsCandType;
             InquireCandidatePosition();
         } else if (subMsg == IMN_OPENSTATUSWINDOW ||
-                   subMsg == WM_IME_STARTCOMPOSITION) {
-            m_bitsCandType = 0;
-            InquireCandidatePosition();
-        } else if (subMsg == IMN_SETCANDIDATEPOS) {
+                   subMsg == WM_IME_STARTCOMPOSITION ||
+                   subMsg == IMN_SETCANDIDATEPOS) {
             InquireCandidatePosition();
         }
-        return mrConsume;
     }
     return mrDoDefault;
 }
@@ -4970,7 +5045,7 @@ void AwtComponent::ReleaseDragCapture(UINT flags)
 void AwtComponent::SendMouseEvent(jint id, jlong when, jint x, jint y,
                                   jint modifiers, jint clickCount,
                                   jboolean popupTrigger, jint button,
-                                  MSG *pMsg)
+                                  MSG *pMsg, BOOL causedByTouchEvent)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
     CriticalSection::Lock l(GetLock());
@@ -5020,6 +5095,10 @@ void AwtComponent::SendMouseEvent(jint id, jlong when, jint x, jint y,
 
     DASSERT(mouseEvent != NULL);
     CHECK_NULL(mouseEvent);
+    if (causedByTouchEvent) {
+        env->SetBooleanField(mouseEvent, AwtMouseEvent::causedByTouchEventID,
+            JNI_TRUE);
+    }
     if (pMsg != 0) {
         AwtAWTEvent::saveMSG(env, pMsg, mouseEvent);
     }
@@ -6224,21 +6303,36 @@ ret:
     return result;
 }
 
-void AwtComponent::SetParent(void * param) {
+void AwtComponent::_SetParent(void * param)
+{
     if (AwtToolkit::IsMainThread()) {
-        AwtComponent** comps = (AwtComponent**)param;
-        if ((comps[0] != NULL) && (comps[1] != NULL)) {
-            HWND selfWnd = comps[0]->GetHWnd();
-            HWND parentWnd = comps[1]->GetHWnd();
-            if (::IsWindow(selfWnd) && ::IsWindow(parentWnd)) {
-                // Shouldn't trigger native focus change
-                // (only the proxy may be the native focus owner).
-                ::SetParent(selfWnd, parentWnd);
-            }
+        JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        SetParentStruct *data = (SetParentStruct*) param;
+        jobject self = data->component;
+        jobject parent = data->parentComp;
+
+        AwtComponent *awtComponent = NULL;
+        AwtComponent *awtParent = NULL;
+
+        PDATA pData;
+        JNI_CHECK_PEER_GOTO(self, ret);
+        awtComponent = (AwtComponent *)pData;
+        JNI_CHECK_PEER_GOTO(parent, ret);
+        awtParent = (AwtComponent *)pData;
+
+        HWND selfWnd = awtComponent->GetHWnd();
+        HWND parentWnd = awtParent->GetHWnd();
+        if (::IsWindow(selfWnd) && ::IsWindow(parentWnd)) {
+            // Shouldn't trigger native focus change
+            // (only the proxy may be the native focus owner).
+            ::SetParent(selfWnd, parentWnd);
         }
-        delete[] comps;
+ret:
+        env->DeleteGlobalRef(self);
+        env->DeleteGlobalRef(parent);
+        delete data;
     } else {
-        AwtToolkit::GetInstance().InvokeFunction(AwtComponent::SetParent, param);
+        AwtToolkit::GetInstance().InvokeFunction(AwtComponent::_SetParent, param);
     }
 }
 
@@ -7065,15 +7159,12 @@ JNIEXPORT void JNICALL
 Java_sun_awt_windows_WComponentPeer_pSetParent(JNIEnv* env, jobject self, jobject parent) {
     TRY;
 
-    typedef AwtComponent* PComponent;
-    AwtComponent** comps = new PComponent[2];
-    AwtComponent* comp = (AwtComponent*)JNI_GET_PDATA(self);
-    AwtComponent* parentComp = (AwtComponent*)JNI_GET_PDATA(parent);
-    comps[0] = comp;
-    comps[1] = parentComp;
+    SetParentStruct * data = new SetParentStruct;
+    data->component = env->NewGlobalRef(self);
+    data->parentComp = env->NewGlobalRef(parent);
 
-    AwtToolkit::GetInstance().SyncCall(AwtComponent::SetParent, comps);
-    // comps is deleted in SetParent
+    AwtToolkit::GetInstance().SyncCall(AwtComponent::_SetParent, data);
+    // global refs and data are deleted in SetParent
 
     CATCH_BAD_ALLOC;
 }

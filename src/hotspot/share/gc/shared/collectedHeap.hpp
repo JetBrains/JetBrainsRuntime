@@ -81,6 +81,8 @@ class GCHeapLog : public EventLogBase<GCMessage> {
 //
 // CollectedHeap
 //   GenCollectedHeap
+//     SerialHeap
+//     CMSHeap
 //   G1CollectedHeap
 //   ShenandoahHeap
 //   ParallelScavengeHeap
@@ -193,10 +195,11 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
  public:
   enum Name {
-    GenCollectedHeap,
+    SerialHeap,
     ParallelScavengeHeap,
     G1CollectedHeap,
-    ShenandoahHeap
+    ShenandoahHeap,
+    CMSHeap
   };
 
   static inline size_t filler_array_max_size() {
@@ -222,6 +225,10 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
   // Stop any onging concurrent work and prepare for exit.
   virtual void stop() {}
+
+  // Stop and resume concurrent GC threads interfering with safepoint operations
+  virtual void safepoint_synchronize_begin() {}
+  virtual void safepoint_synchronize_end() {}
 
   void initialize_reserved_region(HeapWord *start, HeapWord *end);
   MemRegion reserved_region() const { return _reserved; }
@@ -290,10 +297,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   bool is_in_closed_subset_or_null(const void* p) const {
     return p == NULL || is_in_closed_subset(p);
   }
-
-  // An object is scavengable if its location may move during a scavenge.
-  // (A scavenge is a GC which is not a full GC.)
-  virtual bool is_scavengable(const void *p) = 0;
 
   void set_gc_cause(GCCause::Cause v) {
      if (UsePerfData) {
@@ -578,10 +581,14 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   void print_heap_before_gc();
   void print_heap_after_gc();
 
+  // An object is scavengable if its location may move during a scavenge.
+  // (A scavenge is a GC which is not a full GC.)
+  virtual bool is_scavengable(oop obj) = 0;
   // Registering and unregistering an nmethod (compiled code) with the heap.
   // Override with specific mechanism for each specialized heap type.
-  virtual void register_nmethod(nmethod* nm);
-  virtual void unregister_nmethod(nmethod* nm);
+  virtual void register_nmethod(nmethod* nm) {}
+  virtual void unregister_nmethod(nmethod* nm) {}
+  virtual void verify_nmethod(nmethod* nmethod) {}
 
   // The following two methods are there to support object pinning for JNI critical
   // regions. They are called whenever a thread enters or leaves a JNI critical

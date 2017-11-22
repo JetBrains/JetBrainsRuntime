@@ -98,10 +98,9 @@ import static javax.tools.StandardLocation.*;
  */
 public class JavacFileManager extends BaseFileManager implements StandardJavaFileManager {
 
-    @SuppressWarnings("cast")
     public static char[] toArray(CharBuffer buffer) {
         if (buffer.hasArray())
-            return ((CharBuffer)buffer.compact().flip()).array();
+            return buffer.compact().flip().array();
         else
             return buffer.toString().toCharArray();
     }
@@ -750,6 +749,11 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
     public boolean hasLocation(Location location) {
         nullCheck(location);
         return locations.hasLocation(location);
+    }
+
+    protected boolean hasExplicitLocation(Location location) {
+        nullCheck(location);
+        return locations.hasExplicitLocation(location);
     }
 
     @Override @DefinedBy(Api.COMPILER)

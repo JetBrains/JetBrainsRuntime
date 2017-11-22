@@ -25,9 +25,9 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAP_INLINE_HPP
 
 #include "classfile/javaClasses.inline.hpp"
-#include "gc/g1/suspendibleThreadSet.hpp"
 #include "gc/shared/markBitMap.inline.hpp"
 #include "gc/shared/threadLocalAllocBuffer.inline.hpp"
+#include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shenandoah/brooksPointer.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
@@ -183,7 +183,7 @@ inline oop ShenandoahHeap::evac_update_oop_ref(T* p, bool& evac) {
 }
 
 inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, oop* addr, oop c) {
-  return (oop) Atomic::cmpxchg_ptr(n, addr, c);
+  return (oop) Atomic::cmpxchg(n, addr, c);
 }
 
 inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, narrowOop* addr, oop c) {
@@ -264,7 +264,7 @@ inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
     // Back to CANCELLABLE. The thread that poked NOT_CANCELLED first gets
     // to restore to CANCELLABLE.
     if (prev == CANCELLABLE) {
-      OrderAccess::release_store_fence(&_cancelled_concgc, CANCELLABLE);
+      OrderAccess::release_store_fence(&_cancelled_concgc, (jbyte)CANCELLABLE);
     }
     return false;
   } else {
@@ -289,7 +289,7 @@ inline bool ShenandoahHeap::try_cancel_concgc() {
 }
 
 inline void ShenandoahHeap::clear_cancelled_concgc() {
-  OrderAccess::release_store_fence(&_cancelled_concgc, CANCELLABLE);
+  OrderAccess::release_store_fence(&_cancelled_concgc, (jbyte)CANCELLABLE);
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {

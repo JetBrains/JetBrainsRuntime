@@ -48,6 +48,8 @@ import java.io.ObjectOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 
+import sun.awt.AWTAccessor;
+import sun.awt.AWTAccessor.MouseEventAccessor;
 import sun.swing.SwingUtilities2;
 import sun.swing.SwingUtilities2.Section;
 import static sun.swing.SwingUtilities2.Section.*;
@@ -966,25 +968,30 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
      * <caption>Describes layouts VERTICAL,HORIZONTAL_WRAP, and VERTICAL_WRAP
      * </caption>
      * <thead>
-     *   <tr><th>Value</th><th>Description</th></tr>
+     *   <tr>
+     *     <th scope="col">Value
+     *     <th scope="col">Description
      * </thead>
      * <tbody>
-     *   <tr><td><code>VERTICAL</code>
-     *       <td>Cells are layed out vertically in a single column.
-     *   <tr><td><code>HORIZONTAL_WRAP</code>
-     *       <td>Cells are layed out horizontally, wrapping to a new row as
-     *           necessary. If the {@code visibleRowCount} property is less than
-     *           or equal to zero, wrapping is determined by the width of the
-     *           list; otherwise wrapping is done in such a way as to ensure
-     *           {@code visibleRowCount} rows in the list.
-     *   <tr><td><code>VERTICAL_WRAP</code>
-     *       <td>Cells are layed out vertically, wrapping to a new column as
-     *           necessary. If the {@code visibleRowCount} property is less than
-     *           or equal to zero, wrapping is determined by the height of the
-     *           list; otherwise wrapping is done at {@code visibleRowCount} rows.
+     *   <tr>
+     *     <th scope="row">{@code VERTICAL}
+     *     <td>Cells are layed out vertically in a single column.
+     *   <tr>
+     *     <th scope="row">{@code HORIZONTAL_WRAP}
+     *     <td>Cells are layed out horizontally, wrapping to a new row as
+     *     necessary. If the {@code visibleRowCount} property is less than or
+     *     equal to zero, wrapping is determined by the width of the list;
+     *     otherwise wrapping is done in such a way as to ensure
+     *     {@code visibleRowCount} rows in the list.
+     *   <tr>
+     *     <th scope="row">{@code VERTICAL_WRAP}
+     *     <td>Cells are layed out vertically, wrapping to a new column as
+     *     necessary. If the {@code visibleRowCount} property is less than or
+     *     equal to zero, wrapping is determined by the height of the list;
+     *     otherwise wrapping is done at {@code visibleRowCount} rows.
      * </tbody>
      * </table>
-     * <p>
+     *
      * The default value of this property is <code>VERTICAL</code>.
      *
      * @param layoutOrientation the new layout orientation, one of:
@@ -1552,6 +1559,10 @@ public class JList<E> extends JComponent implements Scrollable, Accessible
                                               event.getClickCount(),
                                               event.isPopupTrigger(),
                                               MouseEvent.NOBUTTON);
+                    MouseEventAccessor meAccessor =
+                        AWTAccessor.getMouseEventAccessor();
+                    meAccessor.setCausedByTouchEvent(newEvent,
+                        meAccessor.isCausedByTouchEvent(event));
 
                     String tip = ((JComponent)rComponent).getToolTipText(
                                               newEvent);

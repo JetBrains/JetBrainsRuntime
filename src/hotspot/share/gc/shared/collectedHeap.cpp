@@ -135,14 +135,6 @@ void CollectedHeap::print_on_error(outputStream* st) const {
   _barrier_set->print_on(st);
 }
 
-void CollectedHeap::register_nmethod(nmethod* nm) {
-  assert_locked_or_safepoint(CodeCache_lock);
-}
-
-void CollectedHeap::unregister_nmethod(nmethod* nm) {
-  assert_locked_or_safepoint(CodeCache_lock);
-}
-
 void CollectedHeap::pin_object(oop o) {
   // Defaults to no-op
 }
@@ -257,7 +249,7 @@ void CollectedHeap::set_barrier_set(BarrierSet* barrier_set) {
 void CollectedHeap::pre_initialize() {
   // Used for ReduceInitialCardMarks (when COMPILER2 is used);
   // otherwise remains unused.
-#if defined(COMPILER2) || INCLUDE_JVMCI
+#if COMPILER2_OR_JVMCI
   _defer_initial_card_mark = is_server_compilation_mode_vm() &&  ReduceInitialCardMarks && can_elide_tlab_store_barriers()
                              && (DeferInitialCardMark || card_mark_must_follow_store());
 #else
@@ -329,7 +321,7 @@ HeapWord* CollectedHeap::allocate_from_tlab_slow(Klass* klass, Thread* thread, s
     return NULL;
   }
 
-  AllocTracer::send_allocation_in_new_tlab_event(klass, new_tlab_size * HeapWordSize, size * HeapWordSize);
+  AllocTracer::send_allocation_in_new_tlab(klass, obj, new_tlab_size * HeapWordSize, size * HeapWordSize, thread);
 
   if (ZeroTLAB) {
     // ..and clear it.
@@ -363,7 +355,6 @@ void CollectedHeap::flush_deferred_store_barrier(JavaThread* thread) {
              "Mismatch: multiple objects?");
     }
     BarrierSet* bs = barrier_set();
-    assert(bs->has_write_region_opt(), "No write_region() on BarrierSet");
     bs->write_region(deferred);
     // "Clear" the deferred_card_mark field
     thread->set_deferred_card_mark(MemRegion());
@@ -446,7 +437,6 @@ oop CollectedHeap::new_store_pre_barrier(JavaThread* thread, oop new_obj) {
     } else {
       // Do the card mark
       BarrierSet* bs = barrier_set();
-      assert(bs->has_write_region_opt(), "No write_region() on BarrierSet");
       bs->write_region(mr);
     }
   }
@@ -563,7 +553,7 @@ void CollectedHeap::ensure_parsability(bool retire_tlabs) {
          " to threads list is doomed to failure!");
   for (JavaThread *thread = Threads::first(); thread; thread = thread->next()) {
      if (use_tlab) thread->tlab().make_parsable(retire_tlabs);
-#if defined(COMPILER2) || INCLUDE_JVMCI
+#if COMPILER2_OR_JVMCI
      // The deferred store barriers must all have been flushed to the
      // card-table (or other remembered set structure) before GC starts
      // processing the card-table (or other remembered set).
@@ -627,6 +617,7 @@ void CollectedHeap::initialize_reserved_region(HeapWord *start, HeapWord *end) {
   _reserved.set_start(start);
   _reserved.set_end(end);
 }
+
 HeapWord* CollectedHeap::tlab_post_allocation_setup(HeapWord* obj) {
   return obj;
 }

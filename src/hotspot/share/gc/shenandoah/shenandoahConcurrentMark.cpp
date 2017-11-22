@@ -23,11 +23,11 @@
 
 #include "precompiled.hpp"
 #include "classfile/stringTable.hpp"
-#include "gc/g1/suspendibleThreadSet.hpp"
 #include "gc/shared/gcTimer.hpp"
 #include "gc/shared/parallelCleaning.hpp"
 #include "gc/shared/referenceProcessor.hpp"
 #include "gc/shared/strongRootsScope.hpp"
+#include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"

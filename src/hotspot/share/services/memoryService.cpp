@@ -88,7 +88,8 @@ void GcThreadCountClosure::do_thread(Thread* thread) {
 void MemoryService::set_universe_heap(CollectedHeap* heap) {
   CollectedHeap::Name kind = heap->kind();
   switch (kind) {
-    case CollectedHeap::GenCollectedHeap : {
+    case CollectedHeap::SerialHeap :
+    case CollectedHeap::CMSHeap : {
       add_gen_collected_heap_info(GenCollectedHeap::heap());
       break;
     }

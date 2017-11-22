@@ -94,7 +94,7 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
      * @deprecated Release 6 is obsolete; update to a visitor for a newer
      * release level.
      */
-    @Deprecated
+    @Deprecated(since="9")
     protected SimpleTypeVisitor6(){
         DEFAULT_VALUE = null;
     }
@@ -107,15 +107,16 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
      * @deprecated Release 6 is obsolete; update to a visitor for a newer
      * release level.
      */
-    @Deprecated
+    @Deprecated(since="9")
     protected SimpleTypeVisitor6(R defaultValue){
         DEFAULT_VALUE = defaultValue;
     }
 
     /**
-     * The default action for visit methods.  The implementation in
-     * this class just returns {@link #DEFAULT_VALUE}; subclasses will
-     * commonly override this method.
+     * The default action for visit methods.
+     *
+     * @implSpec The implementation in this class just returns {@link
+     * #DEFAULT_VALUE}; subclasses will commonly override this method.
      *
      * @param e the type to process
      * @param p a visitor-specified parameter
@@ -126,7 +127,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -139,6 +142,8 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     /**
      * {@inheritDoc} This implementation calls {@code defaultAction}.
      *
+     * @implSpec This implementation calls {@code defaultAction}.
+     *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
      * @return  the result of {@code defaultAction}
@@ -148,7 +153,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -159,7 +166,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -170,7 +179,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -181,7 +192,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -192,7 +205,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -203,7 +218,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}
@@ -214,7 +231,9 @@ public class SimpleTypeVisitor6<R, P> extends AbstractTypeVisitor6<R, P> {
     }
 
     /**
-     * {@inheritDoc} This implementation calls {@code defaultAction}.
+     * {@inheritDoc}
+     *
+     * @implSpec This implementation calls {@code defaultAction}.
      *
      * @param t {@inheritDoc}
      * @param p {@inheritDoc}

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,21 +78,40 @@ private:
   // In support of ExplicitGCInvokesConcurrent functionality
   unsigned int _full_collections_completed;
 
-  // Data structure for claiming the (potentially) parallel tasks in
-  // (gen-specific) roots processing.
-  SubTasksDone* _process_strong_tasks;
-
   // Collects the given generation.
   void collect_generation(Generation* gen, bool full, size_t size, bool is_tlab,
                           bool run_verification, bool clear_soft_refs,
                           bool restore_marks_for_biased_locking);
 
-  // In block contents verification, the number of header words to skip
-  NOT_PRODUCT(static size_t _skip_header_HeapWords;)
+  // Reserve aligned space for the heap as needed by the contained generations.
+  char* allocate(size_t alignment, ReservedSpace* heap_rs);
 
-  WorkGang* _workers;
+  // Initialize ("weak") refs processing support
+  void ref_processing_init();
 
 protected:
+
+  // The set of potentially parallel tasks in root scanning.
+  enum GCH_strong_roots_tasks {
+    GCH_PS_Universe_oops_do,
+    GCH_PS_JNIHandles_oops_do,
+    GCH_PS_ObjectSynchronizer_oops_do,
+    GCH_PS_FlatProfiler_oops_do,
+    GCH_PS_Management_oops_do,
+    GCH_PS_SystemDictionary_oops_do,
+    GCH_PS_ClassLoaderDataGraph_oops_do,
+    GCH_PS_jvmti_oops_do,
+    GCH_PS_CodeCache_oops_do,
+    GCH_PS_aot_oops_do,
+    GCH_PS_younger_gens,
+    // Leave this one last.
+    GCH_PS_NumElements
+  };
+
+  // Data structure for claiming the (potentially) parallel tasks in
+  // (gen-specific) roots processing.
+  SubTasksDone* _process_strong_tasks;
+
   // Helper functions for allocation
   HeapWord* attempt_allocation(size_t size,
                                bool   is_tlab,
@@ -121,34 +140,17 @@ protected:
   // we absolutely __must__ clear soft refs?
   bool must_clear_all_soft_refs();
 
-public:
   GenCollectedHeap(GenCollectorPolicy *policy);
 
-  WorkGang* workers() const { return _workers; }
+  virtual void check_gen_kinds() = 0;
+
+public:
 
   // Returns JNI_OK on success
   virtual jint initialize();
 
-  // Reserve aligned space for the heap as needed by the contained generations.
-  char* allocate(size_t alignment, ReservedSpace* heap_rs);
-
   // Does operations required after initialization has been done.
   void post_initialize();
-
-  // Initialize ("weak") refs processing support
-  virtual void ref_processing_init();
-
-  virtual Name kind() const {
-    return CollectedHeap::GenCollectedHeap;
-  }
-
-  virtual const char* name() const {
-    if (UseConcMarkSweepGC) {
-      return "Concurrent Mark Sweep";
-    } else {
-      return "Serial";
-    }
-  }
 
   Generation* young_gen() const { return _young_gen; }
   Generation* old_gen()   const { return _old_gen; }
@@ -190,7 +192,7 @@ public:
   // Perform a full collection of the heap; intended for use in implementing
   // "System.gc". This implies as full a collection as the CollectedHeap
   // supports. Caller does not hold the Heap_lock on entry.
-  void collect(GCCause::Cause cause);
+  virtual void collect(GCCause::Cause cause);
 
   // The same as above but assume that the caller holds the Heap_lock.
   void collect_locked(GCCause::Cause cause);
@@ -206,15 +208,6 @@ public:
   // assertion checking or verification only.
   bool is_in(const void* p) const;
 
-  // override
-  bool is_in_closed_subset(const void* p) const {
-    if (UseConcMarkSweepGC) {
-      return is_in_reserved(p);
-    } else {
-      return is_in(p);
-    }
-  }
-
   // Returns true if the reference is to an object in the reserved space
   // for the young generation.
   // Assumes the the young gen address range is less than that of the old gen.
@@ -224,9 +217,13 @@ public:
   bool is_in_partial_collection(const void* p);
 #endif
 
-  virtual bool is_scavengable(const void* addr) {
-    return is_in_young((oop)addr);
+  virtual bool is_scavengable(oop obj) {
+    return is_in_young(obj);
   }
+
+  // Optimized nmethod scanning support routines
+  virtual void register_nmethod(nmethod* nm);
+  virtual void verify_nmethod(nmethod* nmethod);
 
   // Iteration functions.
   void oop_iterate_no_header(OopClosure* cl);
@@ -275,10 +272,6 @@ public:
   // via a TLAB up to the first subsequent safepoint.
   virtual bool can_elide_tlab_store_barriers() const {
     return true;
-  }
-
-  virtual bool card_mark_must_follow_store() const {
-    return UseConcMarkSweepGC;
   }
 
   // We don't need barriers for stores to objects in the
@@ -344,7 +337,6 @@ public:
   virtual void print_gc_threads_on(outputStream* st) const;
   virtual void gc_threads_do(ThreadClosure* tc) const;
   virtual void print_tracing_info() const;
-  virtual void print_on_error(outputStream* st) const;
 
   void print_heap_change(size_t young_prev_used, size_t old_prev_used) const;
 
@@ -383,7 +375,7 @@ public:
     SO_ScavengeCodeCache   = 0x10
   };
 
- private:
+ protected:
   void process_roots(StrongRootsScope* scope,
                      ScanningOption so,
                      OopClosure* strong_roots,
@@ -395,23 +387,19 @@ public:
   void process_string_table_roots(StrongRootsScope* scope,
                                   OopClosure* root_closure);
 
+  // Accessor for memory state verification support
+  NOT_PRODUCT(
+    virtual size_t skip_header_HeapWords() { return 0; }
+  )
+
+  virtual void gc_prologue(bool full);
+  virtual void gc_epilogue(bool full);
+
  public:
   void young_process_roots(StrongRootsScope* scope,
                            OopsInGenClosure* root_closure,
                            OopsInGenClosure* old_gen_closure,
                            CLDClosure* cld_closure);
-
-  // If "young_gen_as_roots" is false, younger generations are
-  // not scanned as roots; in this case, the caller must be arranging to
-  // scan the younger generations itself.  (For example, a generation might
-  // explicitly mark reachable objects in younger generations, to avoid
-  // excess storage retention.)
-  void cms_process_roots(StrongRootsScope* scope,
-                         bool young_gen_as_roots,
-                         ScanningOption so,
-                         bool only_strong_roots,
-                         OopsInGenClosure* root_closure,
-                         CLDClosure* cld_closure);
 
   void full_process_roots(StrongRootsScope* scope,
                           bool is_adjust_phase,
@@ -479,12 +467,8 @@ public:
                               oop obj,
                               size_t obj_size);
 
-private:
-  // Accessor for memory state verification support
-  NOT_PRODUCT(
-    static size_t skip_header_HeapWords() { return _skip_header_HeapWords; }
-  )
 
+private:
   // Override
   void check_for_non_bad_heap_word_value(HeapWord* addr,
     size_t size) PRODUCT_RETURN;
@@ -499,22 +483,8 @@ private:
   // collect() and collect_locked(). Caller holds the Heap_lock on entry.
   void collect_locked(GCCause::Cause cause, GenerationType max_generation);
 
-  // Returns success or failure.
-  bool create_cms_collector();
-
-  // In support of ExplicitGCInvokesConcurrent functionality
-  bool should_do_concurrent_full_gc(GCCause::Cause cause);
-  void collect_mostly_concurrent(GCCause::Cause cause);
-
   // Save the tops of the spaces in all generations
   void record_gen_tops_before_GC() PRODUCT_RETURN;
-
-protected:
-  void gc_prologue(bool full);
-  void gc_epilogue(bool full);
-
-public:
-  void stop();
 };
 
 #endif // SHARE_VM_GC_SHARED_GENCOLLECTEDHEAP_HPP

@@ -3584,7 +3584,7 @@ public class Check {
         private boolean isCanonical(JCTree tree) {
             while (tree.hasTag(SELECT)) {
                 JCFieldAccess s = (JCFieldAccess) tree;
-                if (s.sym.owner.name != TreeInfo.symbol(s.selected).name)
+                if (s.sym.owner.getQualifiedName() != TreeInfo.symbol(s.selected).getQualifiedName())
                     return false;
                 tree = s.selected;
             }
@@ -3918,6 +3918,8 @@ public class Check {
                     todo = todo.tail;
                     if (current == whatPackage.modle)
                         return ; //OK
+                    if ((current.flags() & Flags.AUTOMATIC_MODULE) != 0)
+                        continue; //for automatic modules, don't look into their dependencies
                     for (RequiresDirective req : current.requires) {
                         if (req.isTransitive()) {
                             todo = todo.prepend(req.module);

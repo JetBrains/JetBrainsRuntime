@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,18 +25,21 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+
 import java.util.Arrays;
-import java.util.List;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeFieldWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -106,7 +109,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
     public void addAnnotationDetailsTreeHeader(TypeElement typeElement,
             Content memberDetailsTree) {
         if (!writer.printedAnnotationFieldHeading) {
-            memberDetailsTree.addContent(writer.getMarkerAnchor(
+            memberDetailsTree.addContent(links.createAnchor(
                     SectionName.ANNOTATION_TYPE_FIELD_DETAIL));
             Content heading = HtmlTree.HEADING(HtmlConstants.DETAILS_HEADING,
                     contents.fieldDetailsLabel);
@@ -120,8 +123,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     public Content getAnnotationDocTreeHeader(Element member,
             Content annotationDetailsTree) {
-        annotationDetailsTree.addContent(
-                writer.getMarkerAnchor(name(member)));
+        annotationDetailsTree.addContent(links.createAnchor(name(member)));
         Content annotationDocTree = writer.getMemberTreeHeader();
         Content heading = new HtmlTree(HtmlConstants.MEMBER_HEADING);
         heading.addContent(name(member));
@@ -202,51 +204,58 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
     /**
      * {@inheritDoc}
      */
-    public String getTableSummary() {
-        return configuration.getText("doclet.Member_Table_Summary",
-                configuration.getText("doclet.Field_Summary"),
-                configuration.getText("doclet.fields"));
+    @Override
+    public TableHeader getSummaryTableHeader(Element member) {
+        return new TableHeader(contents.modifierAndTypeLabel, contents.fields,
+                contents.descriptionLabel);
+    }
+
+    @Override
+    protected Table createSummaryTable() {
+        String summary = resources.getText("doclet.Member_Table_Summary",
+            resources.getText("doclet.Field_Summary"),
+            resources.getText("doclet.fields"));
+        Content caption = contents.getContent("doclet.Fields");
+
+        TableHeader header = new TableHeader(contents.modifierAndTypeLabel, contents.fields,
+            contents.descriptionLabel);
+
+        return new Table(configuration.htmlVersion, HtmlStyle.memberSummary)
+                .setSummary(summary)
+                .setCaption(caption)
+                .setHeader(header)
+                .setRowScopeColumn(1)
+                .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colSecond, HtmlStyle.colLast)
+                .setUseTBody(false);  // temporary? compatibility mode for TBody
     }
 
     /**
      * {@inheritDoc}
      */
-    public Content getCaption() {
-        return configuration.getContent("doclet.Fields");
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public List<String> getSummaryTableHeader(Element member) {
-        List<String> header = Arrays.asList(writer.getModifierTypeHeader(),
-                resources.getText("doclet.Fields"), resources.getText("doclet.Description"));
-        return header;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(writer.getMarkerAnchor(
+        memberTree.addContent(links.createAnchor(
                 SectionName.ANNOTATION_TYPE_FIELD_SUMMARY));
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addInheritedSummaryAnchor(TypeElement typeElement, Content inheritedTree) {
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addInheritedSummaryLabel(TypeElement typeElement, Content inheritedTree) {
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     protected void addSummaryLink(LinkInfoImpl.Kind context, TypeElement typeElement, Element member,
             Content tdSummary) {
         Content memberLink = HtmlTree.SPAN(HtmlStyle.memberNameLink,
@@ -283,7 +292,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     protected Content getNavSummaryLink(TypeElement typeElement, boolean link) {
         if (link) {
-            return writer.getHyperLink(
+            return Links.createLink(
                     SectionName.ANNOTATION_TYPE_FIELD_SUMMARY,
                     contents.navField);
         } else {
@@ -296,7 +305,7 @@ public class AnnotationTypeFieldWriterImpl extends AbstractMemberWriter
      */
     protected void addNavDetailLink(boolean link, Content liNav) {
         if (link) {
-            liNav.addContent(writer.getHyperLink(
+            liNav.addContent(Links.createLink(
                     SectionName.ANNOTATION_TYPE_FIELD_DETAIL,
                     contents.navField));
         } else {

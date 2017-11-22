@@ -23,13 +23,13 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/cms/cmsHeap.hpp"
 #include "gc/cms/cmsLockVerifier.hpp"
 #include "gc/cms/compactibleFreeListSpace.hpp"
 #include "gc/cms/concurrentMarkSweepGeneration.inline.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/shared/blockOffsetTable.inline.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
-#include "gc/shared/genCollectedHeap.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "gc/shared/spaceDecorator.hpp"
 #include "logging/log.hpp"
@@ -57,6 +57,7 @@ int CompactibleFreeListSpace::_lockRank = Mutex::leaf + 3;
 // Defaults are 0 so things will break badly if incorrectly initialized.
 size_t CompactibleFreeListSpace::IndexSetStart  = 0;
 size_t CompactibleFreeListSpace::IndexSetStride = 0;
+size_t CompactibleFreeListSpace::_min_chunk_size_in_bytes = 0;
 
 size_t MinChunkSize = 0;
 
@@ -66,8 +67,8 @@ void CompactibleFreeListSpace::set_cms_values() {
 
   // MinChunkSize should be a multiple of MinObjAlignment and be large enough
   // for chunks to contain a FreeChunk.
-  size_t min_chunk_size_in_bytes = align_up(sizeof(FreeChunk), MinObjAlignmentInBytes);
-  MinChunkSize = min_chunk_size_in_bytes / BytesPerWord;
+  _min_chunk_size_in_bytes = align_up(sizeof(FreeChunk), MinObjAlignmentInBytes);
+  MinChunkSize = _min_chunk_size_in_bytes / BytesPerWord;
 
   assert(IndexSetStart == 0 && IndexSetStride == 0, "already set");
   IndexSetStart  = MinChunkSize;
@@ -154,7 +155,7 @@ HeapWord* CompactibleFreeListSpace::forward(oop q, size_t size,
       cp->space->set_compaction_top(compact_top);
       cp->space = cp->space->next_compaction_space();
       if (cp->space == NULL) {
-        cp->gen = GenCollectedHeap::heap()->young_gen();
+        cp->gen = CMSHeap::heap()->young_gen();
         assert(cp->gen != NULL, "compaction must succeed");
         cp->space = cp->gen->first_compaction_space();
         assert(cp->space != NULL, "generation must have a first compaction space");
@@ -2298,7 +2299,7 @@ void CompactibleFreeListSpace::verify() const {
 
     // Iterate over all oops in the heap. Uses the _no_header version
     // since we are not interested in following the klass pointers.
-    GenCollectedHeap::heap()->oop_iterate_no_header(&cl);
+    CMSHeap::heap()->oop_iterate_no_header(&cl);
   }
 
   if (VerifyObjectStartArray) {

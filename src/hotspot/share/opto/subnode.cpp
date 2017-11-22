@@ -36,7 +36,6 @@
 #include "opto/phaseX.hpp"
 #include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
-#include "opto/shenandoahSupport.hpp"
 #include "runtime/sharedRuntime.hpp"
 
 // Portions of code courtesy of Clifford Click
@@ -891,14 +890,19 @@ const Type *CmpPNode::sub( const Type *t1, const Type *t2 ) const {
 }
 
 static inline Node* isa_java_mirror_load_helper(PhaseGVN* phase, Node* n) {
-  // Return the klass node for
-  //   LoadP(AddP(foo:Klass, #java_mirror))
+  // Return the klass node for (indirect load from OopHandle)
+  //   LoadP(LoadP(AddP(foo:Klass, #java_mirror)))
   //   or NULL if not matching.
-  assert(n->Opcode() == Op_LoadP, "expects a load");
+  if (n->Opcode() != Op_LoadP) return NULL;
+
   const TypeInstPtr* tp = phase->type(n)->isa_instptr();
   if (!tp || tp->klass() != phase->C->env()->Class_klass()) return NULL;
 
   Node* adr = n->in(MemNode::Address);
+  // First load from OopHandle
+  if (adr->Opcode() != Op_LoadP || !phase->type(adr)->isa_rawptr()) return NULL;
+  adr = adr->in(MemNode::Address);
+
   intptr_t off = 0;
   Node* k = AddPNode::Ideal_base_and_offset(adr, phase, off);
   if (k == NULL)  return NULL;

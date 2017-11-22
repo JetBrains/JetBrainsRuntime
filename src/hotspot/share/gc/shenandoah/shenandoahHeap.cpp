@@ -619,7 +619,7 @@ bool ShenandoahHeap::is_in(const void* p) const {
   return p >= heap_base && p < last_region_end;
 }
 
-bool ShenandoahHeap::is_scavengable(const void* p) {
+bool ShenandoahHeap::is_scavengable(oop p) {
   return true;
 }
 
@@ -2258,3 +2258,16 @@ bool ShenandoahHeap::uncommit_bitmap_slice(ShenandoahHeapRegion *r) {
   }
   return true;
 }
+
+void ShenandoahHeap::safepoint_synchronize_begin() {
+  if (ShenandoahSuspendibleWorkers) {
+    SuspendibleThreadSet::synchronize();
+  }
+}
+
+void ShenandoahHeap::safepoint_synchronize_end() {
+  if (ShenandoahSuspendibleWorkers) {
+    SuspendibleThreadSet::desynchronize();
+  }
+}
+

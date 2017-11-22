@@ -63,6 +63,7 @@ class MetaspaceTracer;
 class MetaWord;
 class Mutex;
 class outputStream;
+class PrintCLDMetaspaceInfoClosure;
 class SpaceManager;
 class VirtualSpaceList;
 
@@ -87,6 +88,7 @@ class Metaspace : public CHeapObj<mtClass> {
   friend class MetaspaceAux;
   friend class MetaspaceShared;
   friend class CollectorPolicy;
+  friend class PrintCLDMetaspaceInfoClosure;
 
  public:
   enum MetadataType {
@@ -179,6 +181,10 @@ class Metaspace : public CHeapObj<mtClass> {
     assert(DumpSharedSpaces, "sanity");
     DEBUG_ONLY(_frozen = true;)
   }
+#ifdef _LP64
+  static void allocate_metaspace_compressed_klass_ptrs(char* requested_addr, address cds_base);
+#endif
+
  private:
 
 #ifdef _LP64
@@ -186,8 +192,6 @@ class Metaspace : public CHeapObj<mtClass> {
 
   // Returns true if can use CDS with metaspace allocated as specified address.
   static bool can_use_cds_with_metaspace_addr(char* metaspace_base, address cds_base);
-
-  static void allocate_metaspace_compressed_klass_ptrs(char* requested_addr, address cds_base);
 
   static void initialize_class_space(ReservedSpace rs);
 #endif
@@ -273,7 +277,7 @@ class MetaspaceAux : AllStatic {
   // Running sum of space in all Metachunks that
   // are being used for metadata. One for each
   // type of Metadata.
-  static size_t _used_words[Metaspace:: MetadataTypeCount];
+  static volatile size_t _used_words[Metaspace:: MetadataTypeCount];
 
  public:
   // Decrement and increment _allocated_capacity_words
@@ -345,6 +349,8 @@ class MetaspaceAux : AllStatic {
     return min_chunk_size_words() * BytesPerWord;
   }
 
+  static void print_metadata_for_nmt(outputStream* out, size_t scale = K);
+
   static bool has_chunk_free_list(Metaspace::MetadataType mdtype);
   static MetaspaceChunkFreeListSummary chunk_free_list_summary(Metaspace::MetadataType mdtype);
 
@@ -355,6 +361,10 @@ class MetaspaceAux : AllStatic {
 
   static void print_class_waste(outputStream* out);
   static void print_waste(outputStream* out);
+
+  // Prints an ASCII representation of the given space.
+  static void print_metaspace_map(outputStream* out, Metaspace::MetadataType mdtype);
+
   static void dump(outputStream* out);
   static void verify_free_chunks();
   // Checks that the values returned by allocated_capacity_bytes() and

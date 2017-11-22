@@ -25,7 +25,9 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
-import java.util.ArrayList;
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
+
 import java.util.EnumMap;
 import java.util.List;
 import java.util.SortedSet;
@@ -35,6 +37,7 @@ import javax.lang.model.element.ModuleElement;
 import javax.lang.model.element.PackageElement;
 
 import com.sun.source.doctree.DocTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
@@ -282,17 +285,15 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
         htmlTree.addContent(getContentsList(deprapi));
         String memberTableSummary;
         HtmlTree div = new HtmlTree(HtmlTag.DIV);
-        div.addStyle(HtmlStyle.contentContainer);
+        div.setStyle(HtmlStyle.contentContainer);
         for (DeprElementKind kind : DeprElementKind.values()) {
             if (deprapi.hasDocumentation(kind)) {
                 addAnchor(deprapi, kind, div);
-                memberTableSummary
-                        = resources.getText("doclet.Member_Table_Summary",
-                                resources.getText(getHeadingKey(kind)),
-                                resources.getText(getSummaryKey(kind)));
-                List<String> memberTableHeader = new ArrayList<>();
-                memberTableHeader.add(resources.getText(getHeaderKey(kind)));
-                memberTableHeader.add(resources.getText("doclet.Description"));
+                memberTableSummary = resources.getText("doclet.Member_Table_Summary",
+                        resources.getText(getHeadingKey(kind)),
+                        resources.getText(getSummaryKey(kind)));
+                TableHeader memberTableHeader = new TableHeader(
+                        contents.getContent(getHeaderKey(kind)), contents.descriptionLabel);
                 addDeprecatedAPI(deprapi.getSet(kind),
                             getHeadingKey(kind), memberTableSummary, memberTableHeader, div);
             }
@@ -324,7 +325,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
     private void addIndexLink(DeprecatedAPIListBuilder builder,
             DeprElementKind kind, Content contentTree) {
         if (builder.hasDocumentation(kind)) {
-            Content li = HtmlTree.LI(getHyperLink(getAnchorName(kind),
+            Content li = HtmlTree.LI(links.createLink(getAnchorName(kind),
                     contents.getContent(getHeadingKey(kind))));
             contentTree.addContent(li);
         }
@@ -361,7 +362,7 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
      */
     private void addAnchor(DeprecatedAPIListBuilder builder, DeprElementKind kind, Content htmlTree) {
         if (builder.hasDocumentation(kind)) {
-            htmlTree.addContent(getMarkerAnchor(getAnchorName(kind)));
+            htmlTree.addContent(links.createAnchor(getAnchorName(kind)));
         }
     }
 
@@ -405,51 +406,44 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
      * @param contentTree the content tree to which the deprecated table will be added
      */
     protected void addDeprecatedAPI(SortedSet<Element> deprList, String headingKey,
-            String tableSummary, List<String> tableHeader, Content contentTree) {
+            String tableSummary, TableHeader tableHeader, Content contentTree) {
         if (deprList.size() > 0) {
-            Content caption = getTableCaption(configuration.getContent(headingKey));
-            Content table = (configuration.isOutputHtml5())
-                    ? HtmlTree.TABLE(HtmlStyle.deprecatedSummary, caption)
-                    : HtmlTree.TABLE(HtmlStyle.deprecatedSummary, tableSummary, caption);
-            table.addContent(getSummaryTableHeader(tableHeader, "col"));
-            Content tbody = new HtmlTree(HtmlTag.TBODY);
-            boolean altColor = true;
+            Content caption = contents.getContent(headingKey);
+            Table table = new Table(configuration.htmlVersion, HtmlStyle.deprecatedSummary)
+                    .setSummary(tableSummary)
+                    .setCaption(caption)
+                    .setHeader(tableHeader)
+                    .setColumnStyles(HtmlStyle.colDeprecatedItemName, HtmlStyle.colLast);
             for (Element e : deprList) {
-                HtmlTree thRow;
+                Content link;
                 switch (e.getKind()) {
                     case MODULE:
-                        ModuleElement m = (ModuleElement)e;
-                        thRow = HtmlTree.TH_ROW_SCOPE(HtmlStyle.colFirst,
-                        getModuleLink(m, new StringContent(m.getQualifiedName())));
+                        ModuleElement m = (ModuleElement) e;
+                        link = getModuleLink(m, new StringContent(m.getQualifiedName()));
                         break;
                     case PACKAGE:
-                        PackageElement pkg = (PackageElement)e;
-                        thRow = HtmlTree.TH_ROW_SCOPE(HtmlStyle.colFirst,
-                        getPackageLink(pkg, getPackageName(pkg)));
+                        PackageElement pkg = (PackageElement) e;
+                        link = getPackageLink(pkg, getPackageName(pkg));
                         break;
                     default:
-                        thRow = getDeprecatedLink(e);
+                        link = getDeprecatedLink(e);
                 }
-                HtmlTree tr = HtmlTree.TR(thRow);
-                HtmlTree tdDesc = new HtmlTree(HtmlTag.TD);
-                tdDesc.addStyle(HtmlStyle.colLast);
+                Content desc = new ContentBuilder();
                 List<? extends DocTree> tags = utils.getDeprecatedTrees(e);
                 if (!tags.isEmpty()) {
-                    addInlineDeprecatedComment(e, tags.get(0), tdDesc);
+                    addInlineDeprecatedComment(e, tags.get(0), desc);
+                } else {
+                    desc.addContent(HtmlTree.EMPTY);
                 }
-                tr.addContent(tdDesc);
-                tr.addStyle(altColor ? HtmlStyle.altColor : HtmlStyle.rowColor);
-                altColor = !altColor;
-                tbody.addContent(tr);
+                table.addRow(link, desc);
             }
-            table.addContent(tbody);
-            Content li = HtmlTree.LI(HtmlStyle.blockList, table);
+            Content li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
             Content ul = HtmlTree.UL(HtmlStyle.blockList, li);
             contentTree.addContent(ul);
         }
     }
 
-    protected HtmlTree getDeprecatedLink(Element e) {
+    protected Content getDeprecatedLink(Element e) {
         AbstractMemberWriter writer;
         switch (e.getKind()) {
             case INTERFACE:
@@ -473,6 +467,6 @@ public class DeprecatedListWriter extends SubWriterHolderWriter {
             default:
                 writer = new AnnotationTypeOptionalMemberWriterImpl(this, null);
         }
-        return HtmlTree.TH_ROW_SCOPE(HtmlStyle.colDeprecatedItemName, writer.getDeprecatedLink(e));
+        return writer.getDeprecatedLink(e);
     }
 }

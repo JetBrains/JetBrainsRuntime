@@ -680,33 +680,28 @@ public class EventQueue {
      * <table class="striped">
      * <caption>Event types, source types, and dispatch methods</caption>
      * <thead>
-     * <tr>
-     *     <th>Event Type</th>
-     *     <th>Source Type</th>
-     *     <th>Dispatched To</th>
-     * </tr>
+     *   <tr>
+     *     <th scope="col">Event Type
+     *     <th scope="col">Source Type
+     *     <th scope="col">Dispatched To
      * </thead>
      * <tbody>
-     * <tr>
-     *     <td>ActiveEvent</td>
-     *     <td>Any</td>
-     *     <td>event.dispatch()</td>
-     * </tr>
-     * <tr>
-     *     <td>Other</td>
-     *     <td>Component</td>
-     *     <td>source.dispatchEvent(AWTEvent)</td>
-     * </tr>
-     * <tr>
-     *     <td>Other</td>
-     *     <td>MenuComponent</td>
-     *     <td>source.dispatchEvent(AWTEvent)</td>
-     * </tr>
-     * <tr>
-     *     <td>Other</td>
-     *     <td>Other</td>
-     *     <td>No action (ignored)</td>
-     * </tr>
+     *   <tr>
+     *     <th scope="row">ActiveEvent
+     *     <td>Any
+     *     <td>event.dispatch()
+     *   <tr>
+     *     <th scope="row">Other
+     *     <td>Component
+     *     <td>source.dispatchEvent(AWTEvent)
+     *   <tr>
+     *     <th scope="row">Other
+     *     <td>MenuComponent
+     *     <td>source.dispatchEvent(AWTEvent)
+     *   <tr>
+     *     <th scope="row">Other
+     *     <td>Other
+     *     <td>No action (ignored)
      * </tbody>
      * </table>
      *
@@ -863,15 +858,13 @@ public class EventQueue {
     private AWTEvent getCurrentEventImpl() {
         pushPopLock.lock();
         try {
-            if (fxAppThreadIsDispatchThread) {
+            if (Thread.currentThread() == dispatchThread
+                    || fxAppThreadIsDispatchThread) {
                 return (currentEvent != null)
                         ? currentEvent.get()
                         : null;
-            } else {
-                return (Thread.currentThread() == dispatchThread)
-                        ? currentEvent.get()
-                        : null;
             }
+            return null;
         } finally {
             pushPopLock.unlock();
         }

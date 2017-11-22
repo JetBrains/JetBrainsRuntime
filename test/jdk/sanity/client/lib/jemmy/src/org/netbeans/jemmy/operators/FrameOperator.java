@@ -30,6 +30,7 @@ import java.util.Hashtable;
 
 import org.netbeans.jemmy.ComponentChooser;
 import org.netbeans.jemmy.FrameWaiter;
+import org.netbeans.jemmy.JemmyException;
 import org.netbeans.jemmy.JemmyProperties;
 import org.netbeans.jemmy.Outputable;
 import org.netbeans.jemmy.TestOut;
@@ -508,8 +509,8 @@ public class FrameOperator extends WindowOperator implements Outputable {
             waiter.setOutput(output);
             return waiter.waitFrame(new FrameFinder(chooser), index);
         } catch (InterruptedException e) {
-            output.printStackTrace(e);
-            return null;
+            throw new JemmyException("Interrupted while waiting for a frame with " +
+                chooser + " and index = " + index, e);
         }
     }
 

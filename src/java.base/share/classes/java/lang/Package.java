@@ -109,7 +109,7 @@ import jdk.internal.reflect.Reflection;
  * and have no specification and implementation versioning information.
  *
  * @jvms 5.3 Run-time package
- * @see <a href="{@docRoot}/../specs/jar/jar.html#sealing">
+ * @see <a href="{@docRoot}/../specs/jar/jar.html#package-sealing">
  * The JAR File Specification: Package Sealing</a>
  * @see ClassLoader#definePackage(String, String, String, String, String, String, String, URL)
  *
@@ -550,7 +550,8 @@ public class Package extends NamedPackage implements java.lang.reflect.Annotated
                                        URL sealbase) {
             if (spectitle == null && specversion == null &&
                     specvendor == null && impltitle == null &&
-                    implvendor == null && sealbase == null) {
+                    implversion == null && implvendor == null &&
+                    sealbase == null) {
                 return NULL_VERSION_INFO;
             }
             return new VersionInfo(spectitle, specversion, specvendor,

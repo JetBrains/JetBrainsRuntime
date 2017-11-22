@@ -548,7 +548,7 @@ void ShenandoahPartialGC::reset() {
 }
 
 void ShenandoahPartialGC::set_has_work(bool value) {
-  OrderAccess::release_store_fence(&_has_work, (value ? 1 : 0));
+  OrderAccess::release_store_fence(&_has_work, (jbyte)(value ? 1 : 0));
 }
 
 bool ShenandoahPartialGC::has_work() {

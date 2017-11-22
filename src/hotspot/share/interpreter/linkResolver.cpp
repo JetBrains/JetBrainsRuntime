@@ -23,8 +23,10 @@
  */
 
 #include "precompiled.hpp"
+#include "jvm.h"
 #include "classfile/defaultMethods.hpp"
 #include "classfile/javaClasses.hpp"
+#include "classfile/resolutionErrors.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
@@ -41,7 +43,6 @@
 #include "oops/method.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
-#include "prims/jvm.h"
 #include "prims/methodHandles.hpp"
 #include "prims/nativeLookup.hpp"
 #include "runtime/compilationPolicy.hpp"
@@ -1074,11 +1075,7 @@ void LinkResolver::resolve_special_call(CallInfo& result,
                                         const LinkInfo& link_info,
                                         TRAPS) {
   methodHandle resolved_method = linktime_resolve_special_method(link_info, CHECK);
-  runtime_resolve_special_method(result, resolved_method,
-                                 link_info.resolved_klass(),
-                                 link_info.current_klass(),
-                                 recv,
-                                 link_info.check_access(), CHECK);
+  runtime_resolve_special_method(result, link_info, resolved_method, recv, CHECK);
 }
 
 // throws linktime exceptions
@@ -1162,11 +1159,11 @@ methodHandle LinkResolver::linktime_resolve_special_method(const LinkInfo& link_
 
 // throws runtime exceptions
 void LinkResolver::runtime_resolve_special_method(CallInfo& result,
+                                                  const LinkInfo& link_info,
                                                   const methodHandle& resolved_method,
-                                                  Klass* resolved_klass,
-                                                  Klass* current_klass,
-                                                  Handle recv,
-                                                  bool check_access, TRAPS) {
+                                                  Handle recv, TRAPS) {
+
+  Klass* resolved_klass = link_info.resolved_klass();
 
   // resolved method is selected method unless we have an old-style lookup
   // for a superclass method
@@ -1174,12 +1171,13 @@ void LinkResolver::runtime_resolve_special_method(CallInfo& result,
   // no checks for shadowing
   methodHandle sel_method(THREAD, resolved_method());
 
-  if (check_access &&
+  if (link_info.check_access() &&
       // check if the method is not <init>
       resolved_method->name() != vmSymbols::object_initializer_name()) {
 
-  // check if this is an old-style super call and do a new lookup if so
+     // check if this is an old-style super call and do a new lookup if so
         // a) check if ACC_SUPER flag is set for the current class
+    Klass* current_klass = link_info.current_klass();
     if ((current_klass->is_super() || !AllowNonVirtualCalls) &&
         // b) check if the class of the resolved_klass is a superclass
         // (not supertype in order to exclude interface classes) of the current class.
@@ -1199,6 +1197,9 @@ void LinkResolver::runtime_resolve_special_method(CallInfo& result,
                   Method::name_and_sig_as_C_string(resolved_klass,
                                             resolved_method->name(),
                                             resolved_method->signature()));
+      // check loader constraints if found a different method
+      } else if (sel_method() != resolved_method()) {
+        check_method_loader_constraints(link_info, sel_method, "method", CHECK);
       }
     }
 
@@ -1696,8 +1697,22 @@ void LinkResolver::resolve_invokedynamic(CallInfo& result, const constantPoolHan
   Handle bootstrap_specifier;
   // Check if CallSite has been bound already:
   ConstantPoolCacheEntry* cpce = pool->invokedynamic_cp_cache_entry_at(index);
+  int pool_index = cpce->constant_pool_index();
+
   if (cpce->is_f1_null()) {
-    int pool_index = cpce->constant_pool_index();
+    if (cpce->indy_resolution_failed()) {
+      ConstantPool::throw_resolution_error(pool,
+                                           ResolutionErrorTable::encode_cpcache_index(index),
+                                           CHECK);
+    }
+
+    // The initial step in Call Site Specifier Resolution is to resolve the symbolic
+    // reference to a method handle which will be the bootstrap method for a dynamic
+    // call site.  If resolution for the java.lang.invoke.MethodHandle for the bootstrap
+    // method fails, then a MethodHandleInError is stored at the corresponding bootstrap
+    // method's CP index for the CONSTANT_MethodHandle_info.  So, there is no need to
+    // set the indy_rf flag since any subsequent invokedynamic instruction which shares
+    // this bootstrap method will encounter the resolution of MethodHandleInError.
     oop bsm_info = pool->resolve_bootstrap_specifier_at(pool_index, THREAD);
     wrap_invokedynamic_exception(CHECK);
     assert(bsm_info != NULL, "");
@@ -1722,7 +1737,31 @@ void LinkResolver::resolve_invokedynamic(CallInfo& result, const constantPoolHan
     tty->print("  BSM info: "); bootstrap_specifier->print();
   }
 
-  resolve_dynamic_call(result, bootstrap_specifier, method_name, method_signature, current_klass, CHECK);
+  resolve_dynamic_call(result, bootstrap_specifier, method_name,
+                       method_signature, current_klass, THREAD);
+  if (HAS_PENDING_EXCEPTION && PENDING_EXCEPTION->is_a(SystemDictionary::LinkageError_klass())) {
+    int encoded_index = ResolutionErrorTable::encode_cpcache_index(index);
+    bool recorded_res_status = cpce->save_and_throw_indy_exc(pool, pool_index,
+                                                             encoded_index,
+                                                             pool()->tag_at(pool_index),
+                                                             CHECK);
+    if (!recorded_res_status) {
+      // Another thread got here just before we did.  So, either use the method
+      // that it resolved or throw the LinkageError exception that it threw.
+      if (!cpce->is_f1_null()) {
+        methodHandle method(     THREAD, cpce->f1_as_method());
+        Handle       appendix(   THREAD, cpce->appendix_if_resolved(pool));
+        Handle       method_type(THREAD, cpce->method_type_if_resolved(pool));
+        result.set_handle(method, appendix, method_type, THREAD);
+        wrap_invokedynamic_exception(CHECK);
+      } else {
+        assert(cpce->indy_resolution_failed(), "Resolution failure flag not set");
+        ConstantPool::throw_resolution_error(pool, encoded_index, CHECK);
+      }
+      return;
+    }
+    assert(cpce->indy_resolution_failed(), "Resolution failure flag wasn't set");
+  }
 }
 
 void LinkResolver::resolve_dynamic_call(CallInfo& result,

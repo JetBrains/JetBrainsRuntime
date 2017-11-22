@@ -1,6 +1,6 @@
 /*
- * reserved comment block
- * DO NOT REMOVE OR ALTER!
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -54,6 +54,7 @@ final class Message extends Instruction {
         return Type.Void;
     }
 
+    @SuppressWarnings("fallthrough") // at default
     public void translate(ClassGenerator classGen, MethodGenerator methodGen) {
         final ConstantPoolGen cpg = classGen.getConstantPool();
         final InstructionList il = methodGen.getInstructionList();
@@ -66,7 +67,7 @@ final class Message extends Instruction {
                 il.append(new PUSH(cpg, ""));
             break;
             case 1:
-                SyntaxTreeNode child = (SyntaxTreeNode) elementAt(0);
+                SyntaxTreeNode child = elementAt(0);
                 if (child instanceof Text) {
                     il.append(new PUSH(cpg, ((Text) child).getText()));
                     break;

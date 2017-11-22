@@ -227,6 +227,9 @@
     </copy>
     <copy file="${dynalink.module.src.dir}/jdk/dynalink/support/messages.properties" todir="${dynalink.module.classes.dir}/jdk/dynalink/support"/>
     <copy file="${nashorn.module.src.dir}/jdk/nashorn/internal/codegen/anchor.properties" todir="${nashorn.module.classes.dir}/jdk/nashorn/internal/codegen"/>
+    <copy todir="${nashorn.shell.module.classes.dir}/jdk/nashorn/tools/jjs/resources">
+       <fileset dir="${nashorn.shell.module.src.dir}/jdk/nashorn/tools/jjs/resources/"/>
+    </copy>
 
     <echo message="version_string=${nashorn.fullversion}" file="${nashorn.module.classes.dir}/jdk/nashorn/internal/runtime/resources/version.properties"/>
     <echo file="${nashorn.module.classes.dir}/jdk/nashorn/internal/runtime/resources/version.properties" append="true">${line.separator}</echo>
@@ -827,8 +830,8 @@ grant codeBase "file:/${basedir}/${test.script.dir}/basic/JDK-8158467.js" {
 
     <!-- underscorejs -->
     <mkdir dir="${test.external.dir}/underscore"/>
-    <get src="http://underscorejs.org/underscore.js" dest="${test.external.dir}/underscore" skipexisting="true" ignoreerrors="true"/>
-    <get src="http://underscorejs.org/underscore-min.js" dest="${test.external.dir}/underscore" skipexisting="true" ignoreerrors="true"/>
+    <get src="http://underscorejs.org/underscore.js" dest="${test.external.dir}/underscore" skipexisting="true" ignoreerrors="true" tryGzipEncoding="true"/>
+    <get src="http://underscorejs.org/underscore-min.js" dest="${test.external.dir}/underscore" skipexisting="true" ignoreerrors="true" tryGzipEncoding="true"/>
 
     <!-- yui -->
     <mkdir dir="${test.external.dir}/yui"/>

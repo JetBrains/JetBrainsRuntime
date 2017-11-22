@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -34,10 +35,8 @@ import com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type;
 import com.sun.org.apache.xalan.internal.xsltc.compiler.util.TypeCheckError;
 import com.sun.org.apache.xalan.internal.xsltc.compiler.util.Util;
 import com.sun.org.apache.xml.internal.utils.XML11Char;
-import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Vector;
 
 
 /**
@@ -116,7 +115,7 @@ final class AttributeSet extends TopLevelElement {
         final List<SyntaxTreeNode> contents = getContents();
         final int count = contents.size();
         for (int i=0; i<count; i++) {
-            SyntaxTreeNode child = (SyntaxTreeNode)contents.get(i);
+            SyntaxTreeNode child = contents.get(i);
             if (child instanceof XslAttribute) {
                 parser.getSymbolTable().setCurrentNode(child);
                 child.parseContents(parser);
@@ -185,7 +184,7 @@ final class AttributeSet extends TopLevelElement {
         // Translate all local attributes
         final Iterator<SyntaxTreeNode> attributes = elements();
         while (attributes.hasNext()) {
-            SyntaxTreeNode element = (SyntaxTreeNode)attributes.next();
+            SyntaxTreeNode element = attributes.next();
             if (element instanceof XslAttribute) {
                 final XslAttribute attribute = (XslAttribute)element;
                 attribute.translate(classGen, methodGen);

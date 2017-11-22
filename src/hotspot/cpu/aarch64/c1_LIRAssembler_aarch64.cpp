@@ -1956,7 +1956,7 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
       // cpu register - cpu register
       Register reg2 = opr2->as_register();
       if (opr1->type() == T_OBJECT || opr1->type() == T_ARRAY) {
-        __ cmpoops(reg1, reg2);
+        __ cmpoop(reg1, reg2);
       } else {
         assert(opr2->type() != T_OBJECT && opr2->type() != T_ARRAY, "cmp int, oop?");
         __ cmpw(reg1, reg2);
@@ -1999,7 +1999,7 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
 
       if (opr2->type() == T_OBJECT || opr2->type() == T_ARRAY) {
         jobject2reg(opr2->as_constant_ptr()->as_jobject(), rscratch1);
-        __ cmpoops(reg1, rscratch1);
+        __ cmpoop(reg1, rscratch1);
         return;
       }
 
@@ -2632,13 +2632,9 @@ void LIR_Assembler::emit_profile_call(LIR_OpProfileCall* op) {
   Register mdo  = op->mdo()->as_register();
   __ mov_metadata(mdo, md->constant_encoding());
   Address counter_addr(mdo, md->byte_offset_of_slot(data, CounterData::count_offset()));
-  Bytecodes::Code bc = method->java_code_at_bci(bci);
-  const bool callee_is_static = callee->is_loaded() && callee->is_static();
   // Perform additional virtual call profiling for invokevirtual and
   // invokeinterface bytecodes
-  if ((bc == Bytecodes::_invokevirtual || bc == Bytecodes::_invokeinterface) &&
-      !callee_is_static &&  // required for optimized MH invokes
-      C1ProfileVirtualCalls) {
+  if (op->should_profile_receiver_type()) {
     assert(op->recv()->is_single_cpu(), "recv must be allocated");
     Register recv = op->recv()->as_register();
     assert_different_registers(mdo, recv);
@@ -2718,9 +2714,9 @@ void LIR_Assembler::emit_updatecrc32(LIR_OpUpdateCRC32* op) {
   __ adrp(res, ExternalAddress(StubRoutines::crc_table_addr()), offset);
   if (offset) __ add(res, res, offset);
 
-  __ ornw(crc, zr, crc); // ~crc
+  __ mvnw(crc, crc); // ~crc
   __ update_byte_crc32(crc, val, res);
-  __ ornw(res, zr, crc); // ~crc
+  __ mvnw(res, crc); // ~crc
 }
 
 void LIR_Assembler::emit_profile_type(LIR_OpProfileType* op) {

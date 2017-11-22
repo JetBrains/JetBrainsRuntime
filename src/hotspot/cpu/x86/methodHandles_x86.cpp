@@ -23,13 +23,13 @@
  */
 
 #include "precompiled.hpp"
+#include "jvm.h"
 #include "asm/macroAssembler.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
-#include "prims/jvm.h"
 #include "prims/methodHandles.hpp"
 
 #define __ _masm->
@@ -187,7 +187,7 @@ void MethodHandles::jump_to_lambda_form(MacroAssembler* _masm,
     // assert(sizeof(u2) == sizeof(Method::_size_of_parameters), "");
     __ movptr(temp2, __ argument_address(temp2, -1));
     Label L;
-    __ cmpoops(recv, temp2);
+    __ cmpoop(recv, temp2);
     __ jcc(Assembler::equal, L);
     __ movptr(rax, temp2);
     __ STOP("receiver not on stack");

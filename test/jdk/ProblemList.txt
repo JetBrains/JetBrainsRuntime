@@ -174,6 +174,8 @@ java/net/MulticastSocket/Test.java                              7145658 macosx-a
 
 java/net/DatagramSocket/SendDatagramToBadAddress.java           7143960 macosx-all
 
+java/net/httpclient/websocket/ConnectionHandover.java           8188895 windows-all
+
 ############################################################################
 
 # jdk_nio
@@ -200,6 +202,8 @@ java/rmi/activation/Activatable/extLoadedImpl/ext.sh            8062724 generic-
 
 java/rmi/activation/ActivationGroup/downloadActivationGroup/DownloadActivationGroup.java 8169569 windows-all
 
+java/rmi/activation/rmidViaInheritedChannel/InheritedChannelNotServerSocket.java 8170562 generic-all
+
 java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-all
 
 ############################################################################
@@ -207,6 +211,7 @@ java/rmi/registry/readTest/CodebaseTest.java                    8173324 windows-
 # jdk_security
 
 sun/security/pkcs11/ec/TestKeyFactory.java                      8026976 generic-all
+sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8186098 linux-all
 
 sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
 
@@ -239,8 +244,6 @@ javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
 ############################################################################
 
 # jdk_swing
-
-sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java        8157338 generic-all
 
 ############################################################################
 
@@ -301,22 +304,18 @@ sun/jvmstat/monitor/MonitoredVm/MonitorVmStartTerminate.java    8057732 generic-
 
 com/sun/tools/attach/StartManagementAgent.java                  8179700 generic-all
 
-sun/tools/jhsdb/AlternateHashingTest.java                       8184042 macosx-all
-
-sun/tools/jhsdb/BasicLauncherTest.java                          8184042 macosx-all
-
-sun/tools/jhsdb/HeapDumpTest.java                               8184042 macosx-all
-
-sun/tools/jhsdb/heapconfig/JMapHeapConfigTest.java              8184042 macosx-all
-
 ############################################################################
 
 # jdk_other
 
 com/sun/jndi/ldap/DeadSSLLdapTimeoutTest.java                   8169942 linux-i586,macosx-all,windows-x64
 
-javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java 8169737 linux-all
-
+javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java 8169737 generic-all
+ 
 org/omg/CORBA/OrbPropertiesTest.java			        8175177 generic-all
+
+javax/rmi/PortableRemoteObject/ConcurrentHashMapTest.java       8080643 generic-all
+
+javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-all
 
 ############################################################################

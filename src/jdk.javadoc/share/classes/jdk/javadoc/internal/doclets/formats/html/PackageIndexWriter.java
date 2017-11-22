@@ -25,16 +25,16 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+
 import java.util.*;
 
 import javax.lang.model.element.PackageElement;
 
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
-import jdk.javadoc.internal.doclets.formats.html.markup.RawHtml;
-import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFileIOException;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
@@ -56,19 +56,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.Group;
  */
 public class PackageIndexWriter extends AbstractPackageIndexWriter {
 
-
-    /**
-     * Map representing the group of packages as specified on the command line.
-     *
-     * @see Group
-     */
-    private final Map<String, SortedSet<PackageElement>> groupPackageMap;
-
-    /**
-     * List to store the order groups as specified on the command line.
-     */
-    private final List<String> groupList;
-
     /**
      * HTML tree for main tag.
      */
@@ -85,8 +72,6 @@ public class PackageIndexWriter extends AbstractPackageIndexWriter {
      */
     public PackageIndexWriter(HtmlConfiguration configuration, DocPath filename) {
         super(configuration, filename);
-        groupPackageMap = configuration.group.groupPackages(packages);
-        groupList = configuration.group.getGroupList();
     }
 
     /**
@@ -109,62 +94,58 @@ public class PackageIndexWriter extends AbstractPackageIndexWriter {
      */
     @Override
     protected void addIndex(Content body) {
-        for (String groupname : groupList) {
-            SortedSet<PackageElement> list = groupPackageMap.get(groupname);
-            if (list != null && !list.isEmpty()) {
-                addIndexContents(list,
-                        groupname, configuration.getText("doclet.Member_Table_Summary",
-                                groupname, configuration.getText("doclet.packages")), body);
-            }
-        }
+        addIndexContents(body);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    protected void addPackagesList(Collection<PackageElement> packages, String text,
-            String tableSummary, Content body) {
-        Content table = (configuration.isOutputHtml5())
-                ? HtmlTree.TABLE(HtmlStyle.overviewSummary, getTableCaption(new RawHtml(text)))
-                : HtmlTree.TABLE(HtmlStyle.overviewSummary, tableSummary, getTableCaption(new RawHtml(text)));
-        table.addContent(getSummaryTableHeader(packageTableHeader, "col"));
-        Content tbody = new HtmlTree(HtmlTag.TBODY);
-        addPackagesList(packages, tbody);
-        table.addContent(tbody);
-        Content anchor = getMarkerAnchor(text);
-        Content div = HtmlTree.DIV(HtmlStyle.contentContainer, anchor);
-        div.addContent(table);
-        if (configuration.allowTag(HtmlTag.MAIN)) {
-            htmlTree.addContent(div);
-        } else {
-            body.addContent(div);
-        }
-    }
+    protected void addPackagesList(Content body) {
+        Map<String, SortedSet<PackageElement>> groupPackageMap
+                = configuration.group.groupPackages(packages);
 
-    /**
-     * Adds list of packages in the index table. Generate link to each package.
-     *
-     * @param packages Packages to which link is to be generated
-     * @param tbody the documentation tree to which the list will be added
-     */
-    protected void addPackagesList(Collection<PackageElement> packages, Content tbody) {
-        boolean altColor = true;
-        for (PackageElement pkg : packages) {
-            if (!pkg.isUnnamed()) {
-                if (!(configuration.nodeprecated && utils.isDeprecated(pkg))) {
-                    Content packageLinkContent = getPackageLink(pkg, getPackageName(pkg));
-                    Content thPackage = HtmlTree.TH_ROW_SCOPE(HtmlStyle.colFirst, packageLinkContent);
-                    HtmlTree tdSummary = new HtmlTree(HtmlTag.TD);
-                    tdSummary.addStyle(HtmlStyle.colLast);
-                    addSummaryComment(pkg, tdSummary);
-                    HtmlTree tr = HtmlTree.TR(thPackage);
-                    tr.addContent(tdSummary);
-                    tr.addStyle(altColor ? HtmlStyle.altColor : HtmlStyle.rowColor);
-                    tbody.addContent(tr);
+        if (!groupPackageMap.keySet().isEmpty()) {
+            String tableSummary = configuration.getText("doclet.Member_Table_Summary",
+                    configuration.getText("doclet.Package_Summary"), configuration.getText("doclet.packages"));
+            Table table =  new Table(configuration.htmlVersion, HtmlStyle.overviewSummary)
+                    .setSummary(tableSummary)
+                    .setHeader(getPackageTableHeader())
+                    .setColumnStyles(HtmlStyle.colFirst, HtmlStyle.colLast)
+                    .setDefaultTab(resources.getText("doclet.All_Packages"))
+                    .setTabScriptVariable("groups")
+                    .setTabScript(i -> "showGroups(" + i + ");")
+                    .setTabId(i -> (i == 0) ? "t0" : ("t" + (1 << (i - 1))));
+
+            // add the tabs in command-line order
+            for (String groupName : configuration.group.getGroupList()) {
+                Set<PackageElement> groupPackages = groupPackageMap.get(groupName);
+                if (groupPackages != null) {
+                    table.addTab(groupName, groupPackages::contains);
                 }
             }
-            altColor = !altColor;
+
+            for (PackageElement pkg : configuration.packages) {
+                if (!pkg.isUnnamed()) {
+                    if (!(configuration.nodeprecated && utils.isDeprecated(pkg))) {
+                        Content packageLinkContent = getPackageLink(pkg, getPackageName(pkg));
+                        Content summaryContent = new ContentBuilder();
+                        addSummaryComment(pkg, summaryContent);
+                        table.addRow(pkg, packageLinkContent, summaryContent);
+                    }
+                }
+            }
+
+            Content div = HtmlTree.DIV(HtmlStyle.contentContainer, table.toContent());
+            if (configuration.allowTag(HtmlTag.MAIN)) {
+                htmlTree.addContent(div);
+            } else {
+                body.addContent(div);
+            }
+
+            if (table.needsScript()) {
+                getMainBodyScript().append(table.getScript());
+            }
         }
     }
 
@@ -180,7 +161,7 @@ public class PackageIndexWriter extends AbstractPackageIndexWriter {
         addConfigurationTitle(body);
         if (!utils.getFullBody(configuration.overviewElement).isEmpty()) {
             HtmlTree div = new HtmlTree(HtmlTag.DIV);
-            div.addStyle(HtmlStyle.contentContainer);
+            div.setStyle(HtmlStyle.contentContainer);
             addOverviewComment(div);
             if (configuration.allowTag(HtmlTag.MAIN)) {
                 htmlTree.addContent(div);
@@ -224,13 +205,13 @@ public class PackageIndexWriter extends AbstractPackageIndexWriter {
      */
     @Override
     protected void addNavigationBarHeader(Content body) {
-        Content htmlTree = (configuration.allowTag(HtmlTag.HEADER))
+        Content tree = (configuration.allowTag(HtmlTag.HEADER))
                 ? HtmlTree.HEADER()
                 : body;
-        addTop(htmlTree);
-        addNavLinks(true, htmlTree);
+        addTop(tree);
+        addNavLinks(true, tree);
         if (configuration.allowTag(HtmlTag.HEADER)) {
-            body.addContent(htmlTree);
+            body.addContent(tree);
         }
     }
 
@@ -242,13 +223,13 @@ public class PackageIndexWriter extends AbstractPackageIndexWriter {
      */
     @Override
     protected void addNavigationBarFooter(Content body) {
-        Content htmlTree = (configuration.allowTag(HtmlTag.FOOTER))
+        Content tree = (configuration.allowTag(HtmlTag.FOOTER))
                 ? HtmlTree.FOOTER()
                 : body;
-        addNavLinks(false, htmlTree);
-        addBottom(htmlTree);
+        addNavLinks(false, tree);
+        addBottom(tree);
         if (configuration.allowTag(HtmlTag.FOOTER)) {
-            body.addContent(htmlTree);
+            body.addContent(tree);
         }
     }
 }

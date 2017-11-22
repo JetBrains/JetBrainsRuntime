@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -571,7 +571,7 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
-  // Support for intptr_t atomic::xchg_ptr(intptr_t exchange_value, volatile intptr_t* dest)
+  // Support for intptr_t atomic::xchg_long(jlong exchange_value, volatile jlong* dest)
   //
   // Arguments :
   //    c_rarg0: exchange_value
@@ -579,8 +579,8 @@ class StubGenerator: public StubCodeGenerator {
   //
   // Result:
   //    *dest <- ex, return (orig *dest)
-  address generate_atomic_xchg_ptr() {
-    StubCodeMark mark(this, "StubRoutines", "atomic_xchg_ptr");
+  address generate_atomic_xchg_long() {
+    StubCodeMark mark(this, "StubRoutines", "atomic_xchg_long");
     address start = __ pc();
 
     __ movptr(rax, c_rarg0); // Copy to eax we need a return value anyhow
@@ -4819,6 +4819,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmExp() {
+    StubCodeMark mark(this, "StubRoutines", "libmExp");
+
     address start = __ pc();
 
     const XMMRegister x0  = xmm0;
@@ -4846,6 +4848,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmLog() {
+    StubCodeMark mark(this, "StubRoutines", "libmLog");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -4874,6 +4878,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmLog10() {
+    StubCodeMark mark(this, "StubRoutines", "libmLog10");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -4901,6 +4907,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmPow() {
+    StubCodeMark mark(this, "StubRoutines", "libmPow");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -4931,6 +4939,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmSin() {
+    StubCodeMark mark(this, "StubRoutines", "libmSin");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -4970,6 +4980,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmCos() {
+    StubCodeMark mark(this, "StubRoutines", "libmCos");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -5009,6 +5021,8 @@ class StubGenerator: public StubCodeGenerator {
   }
 
   address generate_libmTan() {
+    StubCodeMark mark(this, "StubRoutines", "libmTan");
+
     address start = __ pc();
 
     const XMMRegister x0 = xmm0;
@@ -5198,7 +5212,7 @@ class StubGenerator: public StubCodeGenerator {
 
     // atomic calls
     StubRoutines::_atomic_xchg_entry         = generate_atomic_xchg();
-    StubRoutines::_atomic_xchg_ptr_entry     = generate_atomic_xchg_ptr();
+    StubRoutines::_atomic_xchg_long_entry    = generate_atomic_xchg_long();
     StubRoutines::_atomic_cmpxchg_entry      = generate_atomic_cmpxchg();
     StubRoutines::_atomic_cmpxchg_byte_entry = generate_atomic_cmpxchg_byte();
     StubRoutines::_atomic_cmpxchg_long_entry = generate_atomic_cmpxchg_long();

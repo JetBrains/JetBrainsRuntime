@@ -460,7 +460,7 @@ void ShenandoahConcurrentThread::do_full_gc(GCCause::Cause cause) {
 }
 
 void ShenandoahConcurrentThread::reset_full_gc() {
-  OrderAccess::release_store_fence(&_do_full_gc, 0);
+  OrderAccess::release_store_fence(&_do_full_gc, (jbyte)0);
   MonitorLockerEx ml(&_full_gc_lock);
   ml.notify_all();
 }
@@ -479,39 +479,39 @@ bool ShenandoahConcurrentThread::is_conc_gc_requested() {
 }
 
 void ShenandoahConcurrentThread::do_conc_gc() {
-  OrderAccess::release_store_fence(&_do_concurrent_gc, 1);
+  OrderAccess::release_store_fence(&_do_concurrent_gc, (jbyte)1);
   MonitorLockerEx ml(&_conc_gc_lock);
   ml.wait();
 }
 
 void ShenandoahConcurrentThread::reset_conc_gc_requested() {
-  OrderAccess::release_store_fence(&_do_concurrent_gc, 0);
+  OrderAccess::release_store_fence(&_do_concurrent_gc, (jbyte)0);
   MonitorLockerEx ml(&_conc_gc_lock);
   ml.notify_all();
 }
 
 void ShenandoahConcurrentThread::handle_counters_update() {
   if (OrderAccess::load_acquire(&_do_counters_update) == 1) {
-    OrderAccess::release_store(&_do_counters_update, 0);
+    OrderAccess::release_store(&_do_counters_update, (jbyte)0);
     ShenandoahHeap::heap()->monitoring_support()->update_counters();
   }
 }
 
 void ShenandoahConcurrentThread::handle_force_counters_update() {
   if (OrderAccess::load_acquire(&_force_counters_update) == 1) {
-    OrderAccess::release_store(&_do_counters_update, 0); // reset these too, we do update now!
+    OrderAccess::release_store(&_do_counters_update, (jbyte)0); // reset these too, we do update now!
     ShenandoahHeap::heap()->monitoring_support()->update_counters();
   }
 }
 
 void ShenandoahConcurrentThread::trigger_counters_update() {
   if (OrderAccess::load_acquire(&_do_counters_update) == 0) {
-    OrderAccess::release_store(&_do_counters_update, 1);
+    OrderAccess::release_store(&_do_counters_update, (jbyte)1);
   }
 }
 
 void ShenandoahConcurrentThread::set_forced_counters_update(bool value) {
-  OrderAccess::release_store(&_force_counters_update, value ? 1 : 0);
+  OrderAccess::release_store(&_force_counters_update, (jbyte)(value ? 1 : 0));
 }
 
 void ShenandoahConcurrentThread::print() const {
@@ -529,7 +529,7 @@ void ShenandoahConcurrentThread::start() {
 }
 
 void ShenandoahConcurrentThread::prepare_for_graceful_shutdown() {
-  OrderAccess::release_store_fence(&_graceful_shutdown, 1);
+  OrderAccess::release_store_fence(&_graceful_shutdown, (jbyte)1);
 }
 
 bool ShenandoahConcurrentThread::in_graceful_shutdown() {

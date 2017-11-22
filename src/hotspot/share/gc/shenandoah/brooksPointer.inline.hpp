@@ -63,7 +63,7 @@ inline oop BrooksPointer::try_update_forwardee(oop holder, oop update) {
   ShenandoahVerifier::verify_oop_fwdptr(holder, update);
 #endif
 
-  oop result = (oop) Atomic::cmpxchg_ptr(update, brooks_ptr_addr(holder), holder);
+  oop result = (oop) Atomic::cmpxchg(update, (oop*)brooks_ptr_addr(holder), holder);
 
 #ifdef ASSERT
   assert(result != NULL, "CAS result is not NULL");

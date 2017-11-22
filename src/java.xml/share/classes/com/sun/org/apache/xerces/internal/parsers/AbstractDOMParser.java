@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -19,9 +20,6 @@
  */
 
 package com.sun.org.apache.xerces.internal.parsers;
-
-import java.util.Locale;
-import java.util.Stack;
 
 import com.sun.org.apache.xerces.internal.dom.AttrImpl;
 import com.sun.org.apache.xerces.internal.dom.CoreDocumentImpl;
@@ -44,6 +42,7 @@ import com.sun.org.apache.xerces.internal.dom.TextImpl;
 import com.sun.org.apache.xerces.internal.impl.Constants;
 import com.sun.org.apache.xerces.internal.impl.dv.XSSimpleType;
 import com.sun.org.apache.xerces.internal.util.DOMErrorHandlerWrapper;
+import com.sun.org.apache.xerces.internal.utils.ObjectFactory;
 import com.sun.org.apache.xerces.internal.xni.Augmentations;
 import com.sun.org.apache.xerces.internal.xni.NamespaceContext;
 import com.sun.org.apache.xerces.internal.xni.QName;
@@ -56,7 +55,8 @@ import com.sun.org.apache.xerces.internal.xni.parser.XMLParserConfiguration;
 import com.sun.org.apache.xerces.internal.xs.AttributePSVI;
 import com.sun.org.apache.xerces.internal.xs.ElementPSVI;
 import com.sun.org.apache.xerces.internal.xs.XSTypeDefinition;
-import com.sun.org.apache.xerces.internal.utils.ObjectFactory;
+import java.util.Locale;
+import java.util.Stack;
 import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
@@ -263,13 +263,13 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
     // data
 
     /** Base uri stack*/
-    protected final Stack fBaseURIStack = new Stack ();
+    protected final Stack<String> fBaseURIStack = new Stack<>();
 
     /** LSParserFilter: tracks the element depth within a rejected subtree. */
     protected int fRejectedElementDepth = 0;
 
     /** LSParserFilter: store depth of skipped elements */
-    protected Stack fSkippedElemStack = null;
+    protected Stack<Boolean> fSkippedElemStack = null;
 
     /** LSParserFilter: true if inside entity reference */
     protected boolean fInEntityRef = false;
@@ -345,7 +345,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
             !documentClassName.equals(PSVI_DOCUMENT_CLASS_NAME)) {
             // verify that this class exists and is of the right type
             try {
-                Class _class = ObjectFactory.findProviderClass (documentClassName, true);
+                Class<?> _class = ObjectFactory.findProviderClass (documentClassName, true);
                 //if (!_class.isAssignableFrom(Document.class)) {
                 if (!Document.class.isAssignableFrom (_class)) {
                     throw new IllegalArgumentException (
@@ -600,6 +600,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
      *
      * @throws XNIException Thrown by application to signal an error.
      */
+    @SuppressWarnings("fallthrough") // by design at case LSParserFilter.FILTER_SKIP
     public void comment (XMLString text, Augmentations augs) throws XNIException {
         if (fInDTD) {
             if (fInternalSubset != null && !fInDTDExternalSubset) {
@@ -673,6 +674,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
      *
      * @throws XNIException Thrown by handler to signal an error.
      */
+    @SuppressWarnings("fallthrough") // by design at case LSParserFilter.FILTER_REJECT
     public void processingInstruction (String target, XMLString data, Augmentations augs)
     throws XNIException {
 
@@ -788,16 +790,16 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
             else {
                 // use specified document class
                 try {
-                    Class documentClass = ObjectFactory.findProviderClass (fDocumentClassName, true);
+                    Class<?> documentClass = ObjectFactory.findProviderClass (fDocumentClassName, true);
                     fDocument = (Document)documentClass.getConstructor().newInstance();
 
                     // if subclass of our own class that's cool too
-                    Class defaultDocClass =
+                    Class<?> defaultDocClass =
                     ObjectFactory.findProviderClass (CORE_DOCUMENT_CLASS_NAME, true);
                     if (defaultDocClass.isAssignableFrom (documentClass)) {
                         fDocumentImpl = (CoreDocumentImpl)fDocument;
 
-                        Class psviDocClass = ObjectFactory.findProviderClass (PSVI_DOCUMENT_CLASS_NAME, true);
+                        Class<?> psviDocClass = ObjectFactory.findProviderClass (PSVI_DOCUMENT_CLASS_NAME, true);
                         if (psviDocClass.isAssignableFrom (documentClass)) {
                             fStorePSVI = true;
                         }
@@ -1416,6 +1418,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
      *
      * @throws XNIException Thrown by handler to signal an error.
      */
+    @SuppressWarnings("fallthrough") // by design at case LSParserFilter.FILTER_REJECT
     public void endCDATA (Augmentations augs) throws XNIException {
 
         fInCDATASection = false;
@@ -1928,7 +1931,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
         if (DEBUG_EVENTS) {
             System.out.println ("==>internalEntityDecl: "+name);
             if (DEBUG_BASEURI) {
-                System.out.println ("   baseURI:"+ (String)fBaseURIStack.peek ());
+                System.out.println ("   baseURI:"+ fBaseURIStack.peek ());
             }
         }
         // internal subset string
@@ -1963,7 +1966,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
             EntityImpl entity = (EntityImpl)entities.getNamedItem (name);
             if (entity == null) {
                 entity = (EntityImpl)fDocumentImpl.createEntity (name);
-                entity.setBaseURI ((String)fBaseURIStack.peek ());
+                entity.setBaseURI (fBaseURIStack.peek ());
                 entities.setNamedItem (entity);
             }
         }
@@ -1985,7 +1988,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
             }
             if (!found) {
                 int entityIndex =
-                fDeferredDocumentImpl.createDeferredEntity (name, null, null, null, (String)fBaseURIStack.peek ());
+                fDeferredDocumentImpl.createDeferredEntity (name, null, null, null, fBaseURIStack.peek ());
                 fDeferredDocumentImpl.appendChild (fDocumentTypeIndex, entityIndex);
             }
         }
@@ -2596,6 +2599,7 @@ public class AbstractDOMParser extends AbstractXMLDocumentParser {
      * or removed fFistChunk must be set to true, otherwise some data can be lost.
      *
      */
+    @SuppressWarnings("fallthrough") // by design at case LSParserFilter.FILTER_REJECT
     protected void  setCharacterData (boolean sawChars){
 
         // handle character data

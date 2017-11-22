@@ -1568,7 +1568,7 @@ void ShenandoahCollectorPolicy::record_cycle_end() {
 }
 
 void ShenandoahCollectorPolicy::record_shutdown() {
-  OrderAccess::release_store_fence(&_in_shutdown, 1);
+  OrderAccess::release_store_fence(&_in_shutdown, (jbyte)1);
 }
 
 bool ShenandoahCollectorPolicy::is_at_shutdown() {

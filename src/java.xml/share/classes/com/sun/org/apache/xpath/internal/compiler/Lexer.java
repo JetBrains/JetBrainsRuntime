@@ -1,6 +1,6 @@
 /*
- * reserved comment block
- * DO NOT REMOVE OR ALTER!
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -21,10 +21,9 @@
 
 package com.sun.org.apache.xpath.internal.compiler;
 
-import java.util.Vector;
-
 import com.sun.org.apache.xml.internal.utils.PrefixResolver;
 import com.sun.org.apache.xpath.internal.res.XPATHErrorResources;
+import java.util.List;
 
 /**
  * This class is in charge of lexical processing of the XPath
@@ -103,11 +102,12 @@ class Lexer
    * Walk through the expression and build a token queue, and a map of the top-level
    * elements.
    * @param pat XSLT Expression.
-   * @param targetStrings Vector to hold Strings, may be null.
+   * @param targetStrings a list to hold Strings, may be null.
    *
    * @throws javax.xml.transform.TransformerException
    */
-  void tokenize(String pat, Vector targetStrings)
+  @SuppressWarnings("fallthrough") // on purpose at case '-', '(' and default
+  void tokenize(String pat, List<String> targetStrings)
           throws javax.xml.transform.TransformerException
   {
 
@@ -470,7 +470,7 @@ class Lexer
 
     try
     {
-      Integer itok = (Integer) Keywords.getKeyWord(key);
+      Integer itok = Keywords.getKeyWord(key);
 
       tok = (null != itok) ? itok.intValue() : 0;
     }
@@ -489,9 +489,9 @@ class Lexer
   /**
    * Record the current token in the passed vector.
    *
-   * @param targetStrings Vector of string.
+   * @param targetStrings a list of strings.
    */
-  private void recordTokenString(Vector targetStrings)
+  private void recordTokenString(List<String> targetStrings)
   {
 
     int tokPos = getTokenQueuePosFromMap(m_patternMapSize - 1);
@@ -505,25 +505,25 @@ class Lexer
       switch (tok)
       {
       case OpCodes.NODETYPE_COMMENT :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_COMMENT);
+        targetStrings.add(PsuedoNames.PSEUDONAME_COMMENT);
         break;
       case OpCodes.NODETYPE_TEXT :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_TEXT);
+        targetStrings.add(PsuedoNames.PSEUDONAME_TEXT);
         break;
       case OpCodes.NODETYPE_NODE :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_ANY);
+        targetStrings.add(PsuedoNames.PSEUDONAME_ANY);
         break;
       case OpCodes.NODETYPE_ROOT :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_ROOT);
+        targetStrings.add(PsuedoNames.PSEUDONAME_ROOT);
         break;
       case OpCodes.NODETYPE_ANYELEMENT :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_ANY);
+        targetStrings.add(PsuedoNames.PSEUDONAME_ANY);
         break;
       case OpCodes.NODETYPE_PI :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_ANY);
+        targetStrings.add(PsuedoNames.PSEUDONAME_ANY);
         break;
       default :
-        targetStrings.addElement(PsuedoNames.PSEUDONAME_ANY);
+        targetStrings.add(PsuedoNames.PSEUDONAME_ANY);
       }
     }
     else
@@ -540,7 +540,7 @@ class Lexer
         tokPos += 2;
       }
 
-      targetStrings.addElement(m_compiler.getTokenQueue().elementAt(tokPos));
+      targetStrings.add((String)m_compiler.getTokenQueue().elementAt(tokPos));
     }
   }
 
@@ -587,8 +587,7 @@ class Lexer
       try
       {
         if (prefix.length() > 0)
-          uName = ((PrefixResolver) m_namespaceContext).getNamespaceForPrefix(
-            prefix);
+          uName = m_namespaceContext.getNamespaceForPrefix(prefix);
         else
         {
 
@@ -608,9 +607,7 @@ class Lexer
           }
           else
           {
-            uName =
-              ((PrefixResolver) m_namespaceContext).getNamespaceForPrefix(
-                prefix);
+            uName = m_namespaceContext.getNamespaceForPrefix(prefix);
           }
         }
       }

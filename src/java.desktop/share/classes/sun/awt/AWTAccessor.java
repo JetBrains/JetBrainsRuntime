@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2008, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.InputEvent;
 import java.awt.event.InvocationEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferStrategy;
 import java.awt.peer.ComponentPeer;
@@ -290,26 +291,6 @@ public final class AWTAccessor {
      */
     public interface WindowAccessor {
         /*
-         * Get opacity level of the given window.
-         */
-        float getOpacity(Window window);
-        /*
-         * Set opacity level to the given window.
-         */
-        void setOpacity(Window window, float opacity);
-        /*
-         * Get a shape assigned to the given window.
-         */
-        Shape getShape(Window window);
-        /*
-         * Set a shape to the given window.
-         */
-        void setShape(Window window, Shape shape);
-        /*
-         * Set the opaque preoperty to the given window.
-         */
-        void setOpaque(Window window, boolean isOpaque);
-        /*
          * Update the image of a non-opaque (translucent) window.
          */
         void updateWindow(Window window);
@@ -410,6 +391,21 @@ public final class AWTAccessor {
         boolean canAccessSystemClipboard(InputEvent event);
         void setCanAccessSystemClipboard(InputEvent event,
                 boolean canAccessSystemClipboard);
+    }
+
+    /**
+     * An accessor for the MouseEvent class.
+     */
+    public interface MouseEventAccessor {
+        /**
+         * Indicates whether the event is a result of a touch event.
+         */
+        boolean isCausedByTouchEvent(MouseEvent ev);
+
+        /**
+         * Sets whether the event is a result of a touch event.
+         */
+        void setCausedByTouchEvent(MouseEvent ev, boolean causedByTouchEvent);
     }
 
     /*
@@ -851,6 +847,7 @@ public final class AWTAccessor {
     private static WindowAccessor windowAccessor;
     private static AWTEventAccessor awtEventAccessor;
     private static InputEventAccessor inputEventAccessor;
+    private static MouseEventAccessor mouseEventAccessor;
     private static FrameAccessor frameAccessor;
     private static KeyboardFocusManagerAccessor kfmAccessor;
     private static MenuComponentAccessor menuComponentAccessor;
@@ -962,6 +959,23 @@ public final class AWTAccessor {
             unsafe.ensureClassInitialized(InputEvent.class);
         }
         return inputEventAccessor;
+    }
+
+    /*
+     * Set an accessor object for the java.awt.event.MouseEvent class.
+     */
+    public static void setMouseEventAccessor(MouseEventAccessor mea) {
+        mouseEventAccessor = mea;
+    }
+
+    /*
+     * Retrieve the accessor object for the java.awt.event.MouseEvent class.
+     */
+    public static MouseEventAccessor getMouseEventAccessor() {
+        if (mouseEventAccessor == null) {
+            unsafe.ensureClassInitialized(MouseEvent.class);
+        }
+        return mouseEventAccessor;
     }
 
     /*

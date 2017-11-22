@@ -123,7 +123,7 @@ void CodeCacheUnloadingTask::add_to_postponed_list(CompiledMethod* nm) {
   do {
     old = (CompiledMethod*)_postponed_list;
     nm->set_unloading_next(old);
-  } while ((CompiledMethod*)Atomic::cmpxchg_ptr(nm, &_postponed_list, old) != old);
+  } while ((CompiledMethod*)Atomic::cmpxchg(nm, &_postponed_list, old) != old);
 }
 
 void CodeCacheUnloadingTask::clean_nmethod(CompiledMethod* nm) {
@@ -164,7 +164,7 @@ void CodeCacheUnloadingTask::claim_nmethods(CompiledMethod** claimed_nmethods, i
       }
     }
 
-  } while ((CompiledMethod*)Atomic::cmpxchg_ptr(last.method(), &_claimed_nmethod, first) != first);
+  } while ((CompiledMethod*)Atomic::cmpxchg(last.method(), &_claimed_nmethod, first) != first);
 }
 
 CompiledMethod* CodeCacheUnloadingTask::claim_postponed_nmethod() {
@@ -179,7 +179,7 @@ CompiledMethod* CodeCacheUnloadingTask::claim_postponed_nmethod() {
 
     next = claim->unloading_next();
 
-  } while ((CompiledMethod*)Atomic::cmpxchg_ptr(next, &_postponed_list, claim) != claim);
+  } while ((CompiledMethod*)Atomic::cmpxchg(next, &_postponed_list, claim) != claim);
 
   return claim;
 }

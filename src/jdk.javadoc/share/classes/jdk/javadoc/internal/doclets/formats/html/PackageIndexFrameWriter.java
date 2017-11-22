@@ -33,6 +33,7 @@ import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.RawHtml;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -78,8 +79,7 @@ public class PackageIndexFrameWriter extends AbstractPackageIndexWriter {
      * {@inheritDoc}
      */
     @Override
-    protected void addPackagesList(Collection<PackageElement> packages, String text,
-            String tableSummary, Content body) {
+    protected void addPackagesList(Content body) {
         Content heading = HtmlTree.HEADING(HtmlConstants.PACKAGE_HEADING, true,
                 contents.packagesLabel);
         HtmlTree htmlTree = (configuration.allowTag(HtmlTag.MAIN))
@@ -110,11 +110,11 @@ public class PackageIndexFrameWriter extends AbstractPackageIndexWriter {
         Content packageLabel;
         if (pe.isUnnamed()) {
             packageLabel = new StringContent("<unnamed package>");
-            packageLinkContent = getHyperLink(DocPaths.PACKAGE_FRAME,
+            packageLinkContent = Links.createLink(DocPaths.PACKAGE_FRAME,
                     packageLabel, "", "packageFrame");
         } else {
             packageLabel = getPackageLabel(pe.getQualifiedName());
-            packageLinkContent = getHyperLink(pathString(pe,
+            packageLinkContent = Links.createLink(pathString(pe,
                      DocPaths.PACKAGE_FRAME), packageLabel, "",
                     "packageFrame");
         }
@@ -153,7 +153,7 @@ public class PackageIndexFrameWriter extends AbstractPackageIndexWriter {
      */
     @Override
     protected void addAllClassesLink(Content ul) {
-        Content linkContent = getHyperLink(DocPaths.ALLCLASSES_FRAME,
+        Content linkContent = Links.createLink(DocPaths.ALLCLASSES_FRAME,
                 contents.allClassesLabel, "", "packageFrame");
         Content li = HtmlTree.LI(linkContent);
         ul.addContent(li);
@@ -167,7 +167,7 @@ public class PackageIndexFrameWriter extends AbstractPackageIndexWriter {
      */
     @Override
     protected void addAllModulesLink(Content ul) {
-        Content linkContent = getHyperLink(DocPaths.MODULE_OVERVIEW_FRAME,
+        Content linkContent = Links.createLink(DocPaths.MODULE_OVERVIEW_FRAME,
                 contents.allModulesLabel, "", "packageListFrame");
         Content li = HtmlTree.LI(linkContent);
         ul.addContent(li);

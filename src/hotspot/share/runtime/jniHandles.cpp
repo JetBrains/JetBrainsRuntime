@@ -27,10 +27,10 @@
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
 #include "oops/oop.inline.hpp"
-#include "prims/jvmtiExport.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/thread.inline.hpp"
+#include "trace/traceMacros.hpp"
 #include "utilities/align.hpp"
 
 JNIHandleBlock* JNIHandles::_global_handles       = NULL;
@@ -123,6 +123,11 @@ oop JNIHandles::resolve_jweak(jweak handle) {
 
 template oop JNIHandles::resolve_jweak<true>(jweak);
 template oop JNIHandles::resolve_jweak<false>(jweak);
+
+bool JNIHandles::is_global_weak_cleared(jweak handle) {
+  assert(is_jweak(handle), "not a weak handle");
+  return guard_value<false>(jweak_ref(handle)) == NULL;
+}
 
 void JNIHandles::destroy_global(jobject handle) {
   if (handle != NULL) {
@@ -421,12 +426,6 @@ void JNIHandleBlock::weak_oops_do(BoolObjectClosure* is_alive,
       break;
     }
   }
-
-  /*
-   * JVMTI data structures may also contain weak oops.  The iteration of them
-   * is placed here so that we don't need to add it to each of the collectors.
-   */
-  JvmtiExport::weak_oops_do(is_alive, f);
 }
 
 

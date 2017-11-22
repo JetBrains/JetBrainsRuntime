@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,8 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
-import java.util.Arrays;
-import java.util.List;
+
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
 
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
@@ -35,6 +35,7 @@ import javax.lang.model.element.TypeElement;
 
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
+import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
 import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeOptionalMemberWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
@@ -70,6 +71,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
+    @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
         memberSummaryTree.addContent(
@@ -82,6 +84,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addMemberTree(Content memberSummaryTree, Content memberTree) {
         writer.addMemberTree(memberSummaryTree, memberTree);
     }
@@ -89,6 +92,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addDefaultValueInfo(Element member, Content annotationDocTree) {
         if (utils.isAnnotationType(member)) {
             ExecutableElement ee = (ExecutableElement)member;
@@ -106,6 +110,7 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(HtmlConstants.SUMMARY_HEADING,
                 contents.annotateTypeOptionalMemberSummaryLabel);
@@ -115,7 +120,8 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
-    public String getTableSummary() {
+    @Override
+    protected String getTableSummary() {
         return resources.getText("doclet.Member_Table_Summary",
                 resources.getText("doclet.Annotation_Type_Optional_Member_Summary"),
                 resources.getText("doclet.annotation_type_optional_members"));
@@ -124,34 +130,36 @@ public class AnnotationTypeOptionalMemberWriterImpl extends
     /**
      * {@inheritDoc}
      */
-    public Content getCaption() {
-        return configuration.getContent("doclet.Annotation_Type_Optional_Members");
+    @Override
+    protected Content getCaption() {
+        return contents.getContent("doclet.Annotation_Type_Optional_Members");
     }
 
     /**
      * {@inheritDoc}
      */
-    public List<String> getSummaryTableHeader(Element member) {
-        List<String> header = Arrays.asList(writer.getModifierTypeHeader(),
-                resources.getText("doclet.Annotation_Type_Optional_Member"),
-                resources.getText("doclet.Description"));
-        return header;
+    @Override
+    public TableHeader getSummaryTableHeader(Element member) {
+        return new TableHeader(contents.modifierAndTypeLabel,
+                contents.annotationTypeOptionalMemberLabel, contents.descriptionLabel);
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(writer.getMarkerAnchor(
+        memberTree.addContent(links.createAnchor(
                 SectionName.ANNOTATION_TYPE_OPTIONAL_ELEMENT_SUMMARY));
     }
 
     /**
      * {@inheritDoc}
      */
+    @Override
     protected Content getNavSummaryLink(TypeElement typeElement, boolean link) {
         if (link) {
-            return writer.getHyperLink(
+            return Links.createLink(
                     SectionName.ANNOTATION_TYPE_OPTIONAL_ELEMENT_SUMMARY,
                     contents.navAnnotationTypeOptionalMember);
         } else {

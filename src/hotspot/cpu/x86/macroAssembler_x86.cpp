@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "jvm.h"
 #include "asm/assembler.hpp"
 #include "asm/assembler.inline.hpp"
 #include "compiler/disassembler.hpp"
@@ -34,7 +35,6 @@
 #include "memory/universe.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/oop.hpp"
-#include "prims/jvm.h"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/interfaceSupport.hpp"
@@ -2796,6 +2796,32 @@ void MacroAssembler::cmpptr(Address src1, AddressLiteral src2) {
   cmp_literal32(src1, (int32_t) src2.target(), src2.rspec());
 #endif // _LP64
 }
+
+void MacroAssembler::cmpoop(Register src1, Register src2) {
+  cmpptr(src1, src2);
+  oopDesc::bs()->asm_acmp_barrier(this, src1, src2);
+}
+
+void MacroAssembler::cmpoop(Register src1, Address src2) {
+  cmpptr(src1, src2);
+  if (UseShenandoahGC && ShenandoahAcmpBarrier) {
+    Label done;
+    jccb(Assembler::equal, done);
+    movptr(rscratch2, src2);
+    oopDesc::bs()->interpreter_read_barrier(this, src1);
+    oopDesc::bs()->interpreter_read_barrier(this, rscratch2);
+    cmpptr(src1, rscratch2);
+    bind(done);
+  }
+}
+
+#ifdef _LP64
+void MacroAssembler::cmpoop(Register src1, jobject src2) {
+  movoop(rscratch1, src2);
+  cmpptr(src1, rscratch1);
+  oopDesc::bs()->asm_acmp_barrier(this, src1, rscratch1);
+}
+#endif
 
 void MacroAssembler::locked_cmpxchgptr(Register reg, AddressLiteral adr) {
   if (reachable(adr)) {
@@ -7048,6 +7074,7 @@ void MacroAssembler::load_mirror(Register mirror, Register method) {
   movptr(mirror, Address(mirror, ConstMethod::constants_offset()));
   movptr(mirror, Address(mirror, ConstantPool::pool_holder_offset_in_bytes()));
   movptr(mirror, Address(mirror, mirror_offset));
+  resolve_oop_handle(mirror);
 }
 
 void MacroAssembler::load_klass(Register dst, Register src) {
@@ -8829,7 +8856,7 @@ void MacroAssembler::arrays_equals(bool is_array_equ, Register ary1, Register ar
 
   if (is_array_equ) {
     // Check the input args
-    cmpoops(ary1, ary2);
+    cmpoop(ary1, ary2);
     jcc(Assembler::equal, TRUE_LABEL);
 
     // Need additional checks for arrays_equals.
@@ -11845,23 +11872,5 @@ void MacroAssembler::restore_vector_registers() {
       }
     }
 #endif
-  }
-}
-
-void MacroAssembler::cmpoops(Register src1, Register src2) {
-  cmpptr(src1, src2);
-  oopDesc::bs()->asm_acmp_barrier(this, src1, src2);
-}
-
-void MacroAssembler::cmpoops(Register src1, Address src2) {
-  cmpptr(src1, src2);
-  if (UseShenandoahGC && ShenandoahAcmpBarrier) {
-    Label done;
-    jccb(Assembler::equal, done);
-    movptr(rscratch2, src2);
-    oopDesc::bs()->interpreter_read_barrier(this, src1);
-    oopDesc::bs()->interpreter_read_barrier(this, rscratch2);
-    cmpptr(src1, rscratch2);
-    bind(done);
   }
 }

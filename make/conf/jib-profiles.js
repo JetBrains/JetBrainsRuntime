@@ -300,6 +300,14 @@ var getJibProfilesCommon = function (input, data) {
                     ],
                     exploded: "images/test"
                 },
+                test_demos: {
+                    local: "bundles/\\(jdk.*bin-tests-demos.tar.gz\\)",
+                    remote: [
+                        "bundles/" + pf + "/jdk-" + data.version + "_" + pf + "_bin-tests-demos.tar.gz",
+                        "bundles/" + pf + "/\\1"
+                    ],
+                    exploded: "images/test"
+                },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
@@ -381,24 +389,10 @@ var getJibProfilesCommon = function (input, data) {
         };
     };
 
-    var boot_jdk_revision = "8";
-    var boot_jdk_subdirpart = "1.8.0";
-    // JDK 8 does not work on sparc M7 cpus, need a newer update when building
-    // on such hardware.
-    if (input.build_cpu == "sparcv9") {
-       var cpu_brand = $EXEC("bash -c \"kstat -m cpu_info | grep brand | head -n1 | awk '{ print \$2 }'\"");
-       if (cpu_brand.trim().match('SPARC-.[78]')) {
-           boot_jdk_revision = "8u20";
-           boot_jdk_subdirpart = "1.8.0_20";
-       }
-    }
-    common.boot_jdk_revision = boot_jdk_revision;
-    common.boot_jdk_subdirpart = boot_jdk_subdirpart;
-    common.boot_jdk_home = input.get("boot_jdk", "home_path") + "/jdk"
-        + common.boot_jdk_subdirpart
+    common.boot_jdk_version = "9";
+    common.boot_jdk_home = input.get("boot_jdk", "home_path") + "/jdk-"
+        + common.boot_jdk_version
         + (input.build_os == "macosx" ? ".jdk/Contents/Home" : "");
-    common.boot_jdk_platform = input.build_os + "-"
-        + (input.build_cpu == "x86" ? "i586" : input.build_cpu);
 
     return common;
 };
@@ -524,32 +518,6 @@ var getJibProfilesProfiles = function (input, common, data) {
                                             common.slowdebug_profile_base);
     });
 
-    // Generate open only profiles for all the main profiles for JPRT and reference
-    // implementation builds.
-    common.main_profile_names.forEach(function (name) {
-        var openName = name + common.open_suffix;
-        profiles[openName] = concatObjects(profiles[name],
-                                           common.open_profile_base);
-    });
-    // The open only profiles on linux are used for reference builds and should
-    // produce the compact profile images by default. This adds "profiles" as an
-    // extra default target.
-    var openOnlyProfilesExtra = {
-        "linux-x86-open": {
-            default_make_targets: "profiles-bundles",
-            configure_args: "--with-jvm-variants=client,server"
-        }
-    };
-    profiles = concatObjects(profiles, openOnlyProfilesExtra);
-
-    // Generate debug profiles for the open only profiles
-    common.main_profile_names.forEach(function (name) {
-        var openName = name + common.open_suffix;
-        var openDebugName = openName + common.debug_suffix;
-        profiles[openDebugName] = concatObjects(profiles[openName],
-                                                common.debug_profile_base);
-    });
-
     // Profiles for building the zero jvm variant. These are used for verification
     // in JPRT.
     var zeroProfiles = {
@@ -584,82 +552,6 @@ var getJibProfilesProfiles = function (input, common, data) {
         profiles[name] = concatObjects(common.main_profile_base, profiles[name]);
         profiles[debugName] = concatObjects(profiles[name], common.debug_profile_base);
     });
-
-    // Profiles used to run tests. Used in JPRT and Mach 5.
-    var testOnlyProfiles = {
-        "run-test-jprt": {
-            target_os: input.build_os,
-            target_cpu: input.build_cpu,
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "devkit", "jib" ],
-            labels: "test",
-            environment: {
-                "JT_JAVA": common.boot_jdk_home
-            }
-        },
-
-        "run-test": {
-            target_os: input.build_os,
-            target_cpu: input.build_cpu,
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "devkit", "jib" ],
-            labels: "test",
-            environment: {
-                "JT_JAVA": common.boot_jdk_home
-            }
-        }
-    };
-    profiles = concatObjects(profiles, testOnlyProfiles);
-
-    // Profiles used to run tests using Jib for internal dependencies.
-    var testedProfile = input.testedProfile;
-    if (testedProfile == null) {
-        testedProfile = input.build_os + "-" + input.build_cpu;
-    }
-    var testOnlyProfilesPrebuilt = {
-        "run-test-prebuilt": {
-            target_os: input.build_os,
-            target_cpu: input.build_cpu,
-            src: "src.conf",
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "jib", testedProfile + ".jdk",
-                testedProfile + ".test", "src.full"
-            ],
-            work_dir: input.get("src.full", "install_path") + "/test",
-            environment: {
-                "JT_JAVA": common.boot_jdk_home,
-                "PRODUCT_HOME": input.get(testedProfile + ".jdk", "home_path"),
-                "TEST_IMAGE_DIR": input.get(testedProfile + ".test", "home_path"),
-                "TEST_OUTPUT_DIR": input.src_top_dir
-            },
-            labels: "test"
-        }
-    };
-    // If actually running the run-test-prebuilt profile, verify that the input
-    // variable is valid and if so, add the appropriate target_* values from
-    // the tested profile.
-    if (input.profile == "run-test-prebuilt") {
-        if (profiles[testedProfile] == null) {
-            error("testedProfile is not defined: " + testedProfile);
-        }
-    }
-    if (profiles[testedProfile] != null) {
-        testOnlyProfilesPrebuilt["run-test-prebuilt"]["target_os"]
-            = profiles[testedProfile]["target_os"];
-        testOnlyProfilesPrebuilt["run-test-prebuilt"]["target_cpu"]
-            = profiles[testedProfile]["target_cpu"];
-    }
-    profiles = concatObjects(profiles, testOnlyProfilesPrebuilt);
-
-    // On macosx add the devkit bin dir to the path in all the run-test profiles.
-    // This gives us a guaranteed working version of lldb for the jtreg failure handler.
-    if (input.build_os == "macosx") {
-        macosxRunTestExtra = {
-            dependencies: [ "devkit" ],
-            environment_path: input.get("devkit", "install_path")
-                + "/Xcode.app/Contents/Developer/usr/bin"
-        }
-        profiles["run-test"] = concatObjects(profiles["run-test"], macosxRunTestExtra);
-        profiles["run-test-jprt"] = concatObjects(profiles["run-test-jprt"], macosxRunTestExtra);
-        profiles["run-test-prebuilt"] = concatObjects(profiles["run-test-prebuilt"], macosxRunTestExtra);
-    }
 
     //
     // Define artifacts for profiles
@@ -713,7 +605,6 @@ var getJibProfilesProfiles = function (input, common, data) {
             common.debug_profile_artifacts(artifactData[name]));
     });
 
-    // Extra profile specific artifacts
     profilesArtifacts = {
         "linux-x64": {
             artifacts: {
@@ -725,261 +616,51 @@ var getJibProfilesProfiles = function (input, common, data) {
                     ],
                 },
             }
-        },
-
-        "linux-x64-open": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
-                            + "_linux-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre: {
-                    local: "bundles/\\(jre.*bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/linux-x64/\\1",
-                },
-                test: {
-                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
-                            + "_linux-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
-                    ]
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
-                            + "_linux-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre_symbols: {
-                    local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/linux-x64/\\1",
-                },
-                doc_api_spec: {
-                    local: "bundles/\\(jdk.*doc-api-spec.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/linux-x64/\\1",
-                },
-            }
-        },
-
-        "linux-x86-open": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
-                            + "_linux-x86_bin.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
-                            + "_linux-x86_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                test: {
-                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
-                            + "_linux-x86_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
-                    ]
-                },
-                jre: {
-                    // This regexp needs to not match the compact* files below
-                    local: "bundles/\\(jre.*[+][0-9]\\{1,\\}_linux-x86_bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-                jre_compact1: {
-                    local: "bundles/\\(jre.*-compact1_linux-x86_bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-                jre_compact2: {
-                    local: "bundles/\\(jre.*-compact2_linux-x86_bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-                jre_compact3: {
-                    local: "bundles/\\(jre.*-compact3_linux-x86_bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-            }
-        },
-
-        "macosx-x64-open": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
-                            + "_osx-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre: {
-                    local: "bundles/\\(jre.*bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
-                },
-                test: {
-                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
-                            + "_osx-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
-                    ]
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
-                            + "_osx-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre_symbols: {
-                    local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
-                },
-                doc_api_spec: {
-                    local: "bundles/\\(jdk.*doc-api-spec.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/osx-x64/\\1",
-                },
-            }
-        },
-
-        "windows-x86-open": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre: {
-                    local: "bundles/\\(jre.*bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x86/\\1"
-                },
-                test: {
-                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
-                    ]
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x86/jdk-" + data.version
-                            + "_windows-x86_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/windows-x86/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre_symbols: {
-                    local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x86/\\1",
-                }
-            }
-        },
-
-        "windows-x64-open": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
-                            + "_windows-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre: {
-                    local: "bundles/\\(jre.*bin.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x64/\\1"
-                },
-                test: {
-                    local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
-                            + "_windows-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
-                    ]
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
-                    remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
-                            + "_windows-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
-                    ],
-                    subdir: "jdk-" + data.version
-                },
-                jre_symbols: {
-                    local: "bundles/\\(jre.*bin-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/windows-x64/\\1",
-                }
-            }
-        },
-
-        "linux-x86-open-debug": {
-            artifacts: {
-                jdk: {
-                    local: "bundles/\\(jdk.*bin-debug.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-                jre: {
-                    local: "bundles/\\(jre.*bin-debug.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-                jdk_symbols: {
-                    local: "bundles/\\(jdk.*bin-debug-symbols.tar.gz\\)",
-                    remote: "bundles/openjdk/GPL/profile/linux-x86/\\1",
-                },
-            }
-        },
-
+        }
     };
     profiles = concatObjects(profiles, profilesArtifacts);
 
+    // Generate open only profiles for all the main and debug profiles.
+    // Rewrite artifact remote paths by adding "openjdk/GPL".
+    common.main_profile_names.forEach(function (name) {
+        var openName = name + common.open_suffix;
+        profiles[openName] = concatObjects(profiles[name],
+            common.open_profile_base);
+        for (artifactName in profiles[openName].artifacts) {
+            var artifact = profiles[openName].artifacts[artifactName];
+            artifact.remote = replaceAll(
+                "bundles\/", "bundles/openjdk/GPL/",
+                (artifact.remote != null ? artifact.remote : artifact.local));
+        }
+        var debugName = name + common.debug_suffix;
+        var openDebugName = name + common.open_suffix + common.debug_suffix;
+        profiles[openDebugName] = concatObjects(profiles[debugName],
+            common.open_profile_base);
+        for (artifactName in profiles[openDebugName].artifacts) {
+            var artifact = profiles[openDebugName].artifacts[artifactName];
+            artifact.remote = replaceAll(
+                "bundles\/", "bundles/openjdk/GPL/",
+                (artifact.remote != null ? artifact.remote : artifact.local));
+        }
+    });
 
     // Define the reference implementation profiles. These are basically the same
-    // as the open profiles, but upload artifacts to a different location and
-    // are only defined for specific platforms.
-    profiles["linux-x64-ri"] = clone(profiles["linux-x64-open"]);
-    profiles["linux-x86-ri"] = clone(profiles["linux-x86-open"]);
-    profiles["linux-x86-ri-debug"] = clone(profiles["linux-x86-open-debug"]);
-    profiles["macosx-x64-ri"] = clone(profiles["macosx-x64-open"]);
-    profiles["windows-x86-ri"] = clone(profiles["windows-x86-open"]);
-    profiles["windows-x64-ri"] = clone(profiles["windows-x64-open"]);
-
-    // Generate artifacts for ri profiles
-    [ "linux-x64-ri", "linux-x86-ri", "linux-x86-ri-debug", "macosx-x64-ri", "windows-x86-ri", "windows-x64-ri" ]
-        .forEach(function (name) {
-            // Rewrite all remote dirs to "bundles/openjdk/BCL/..."
-            for (artifactName in profiles[name].artifacts) {
-                var artifact = profiles[name].artifacts[artifactName];
-                artifact.remote = replaceAll("\/GPL\/", "/BCL/",
-                    (artifact.remote != null ? artifact.remote : artifact.local));
-            }
-        });
+    // as the open profiles, but upload artifacts to a different location.
+    common.main_profile_names.forEach(function (name) {
+        var riName = name + "-ri";
+        var riDebugName = riName + common.debug_suffix;
+        var openName = name + common.open_suffix;
+        var openDebugName = openName + common.debug_suffix;
+        profiles[riName] = clone(profiles[openName]);
+        profiles[riDebugName] = clone(profiles[openDebugName]);
+        // Rewrite all remote dirs to "bundles/openjdk/BCL/..."
+        for (artifactName in profiles[riName].artifacts) {
+            var artifact = profiles[riName].artifacts[artifactName];
+            artifact.remote = replaceAll(
+                "\/GPL\/", "/BCL/",
+                (artifact.remote != null ? artifact.remote : artifact.local));
+        }
+    });
 
     // The windows ri profile needs to add the freetype license file
     profilesRiFreetype = {
@@ -995,6 +676,83 @@ var getJibProfilesProfiles = function (input, common, data) {
         }
     };
     profiles = concatObjects(profiles, profilesRiFreetype);
+
+    // Profiles used to run tests. Used in JPRT and Mach 5.
+    var testOnlyProfiles = {
+        "run-test-jprt": {
+            target_os: input.build_os,
+            target_cpu: input.build_cpu,
+            dependencies: [ "jtreg", "gnumake", "boot_jdk", "devkit", "jib" ],
+            labels: "test",
+            environment: {
+                "JT_JAVA": common.boot_jdk_home
+            }
+        },
+
+        "run-test": {
+            target_os: input.build_os,
+            target_cpu: input.build_cpu,
+            dependencies: [ "jtreg", "gnumake", "boot_jdk", "devkit", "jib" ],
+            labels: "test",
+            environment: {
+                "JT_JAVA": common.boot_jdk_home
+            }
+        }
+    };
+    profiles = concatObjects(profiles, testOnlyProfiles);
+
+    // Profiles used to run tests using Jib for internal dependencies.
+    var testedProfile = input.testedProfile;
+    if (testedProfile == null) {
+        testedProfile = input.build_os + "-" + input.build_cpu;
+    }
+    var testOnlyProfilesPrebuilt = {
+        "run-test-prebuilt": {
+            target_os: input.build_os,
+            target_cpu: input.build_cpu,
+            src: "src.conf",
+            dependencies: [ "jtreg", "gnumake", "boot_jdk", "jib", testedProfile + ".jdk",
+                testedProfile + ".test", "src.full"
+            ],
+            work_dir: input.get("src.full", "install_path") + "/test",
+            environment: {
+                "JT_JAVA": common.boot_jdk_home,
+                "PRODUCT_HOME": input.get(testedProfile + ".jdk", "home_path"),
+                "TEST_IMAGE_DIR": input.get(testedProfile + ".test", "home_path"),
+                "TEST_OUTPUT_DIR": input.src_top_dir
+            },
+            labels: "test"
+        }
+    };
+
+    // If actually running the run-test-prebuilt profile, verify that the input
+    // variable is valid and if so, add the appropriate target_* values from
+    // the tested profile.
+    if (input.profile == "run-test-prebuilt") {
+        if (profiles[testedProfile] == null) {
+            error("testedProfile is not defined: " + testedProfile);
+        }
+    }
+    if (profiles[testedProfile] != null) {
+        testOnlyProfilesPrebuilt["run-test-prebuilt"]["target_os"]
+            = profiles[testedProfile]["target_os"];
+        testOnlyProfilesPrebuilt["run-test-prebuilt"]["target_cpu"]
+            = profiles[testedProfile]["target_cpu"];
+    }
+    profiles = concatObjects(profiles, testOnlyProfilesPrebuilt);
+
+    // On macosx add the devkit bin dir to the path in all the run-test profiles.
+    // This gives us a guaranteed working version of lldb for the jtreg failure handler.
+    if (input.build_os == "macosx") {
+        macosxRunTestExtra = {
+            dependencies: [ "devkit" ],
+            environment_path: input.get("devkit", "install_path")
+                + "/Xcode.app/Contents/Developer/usr/bin"
+        }
+        profiles["run-test"] = concatObjects(profiles["run-test"], macosxRunTestExtra);
+        profiles["run-test-jprt"] = concatObjects(profiles["run-test-jprt"], macosxRunTestExtra);
+        profiles["run-test-prebuilt"] = concatObjects(profiles["run-test-prebuilt"], macosxRunTestExtra);
+    }
 
     // Generate the missing platform attributes
     profiles = generatePlatformAttributes(profiles);
@@ -1012,7 +770,7 @@ var getJibProfilesProfiles = function (input, common, data) {
 var getJibProfilesDependencies = function (input, common) {
 
     var devkit_platform_revisions = {
-        linux_x64: "gcc4.9.2-OEL6.4+1.1",
+        linux_x64: "gcc4.9.2-OEL6.4+1.2",
         macosx_x64: "Xcode6.3-MacOSX10.9+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.0",
@@ -1027,15 +785,18 @@ var getJibProfilesDependencies = function (input, common) {
         ? input.target_os + "_x64"
         : input.target_platform);
 
+    var boot_jdk_platform = (input.build_os == "macosx" ? "osx" : input.build_os)
+        + "-" + input.build_cpu;
+
     var dependencies = {
 
         boot_jdk: {
-            server: "javare",
-            module: "jdk",
-            revision: common.boot_jdk_revision,
-            checksum_file: common.boot_jdk_platform + "/MD5_VALUES",
-            file: common.boot_jdk_platform + "/jdk-" + common.boot_jdk_revision
-                + "-" + common.boot_jdk_platform + ".tar.gz",
+            server: "jpg",
+            product: "jdk",
+            version: common.boot_jdk_version,
+            build_number: "181",
+            file: "bundles/" + boot_jdk_platform + "/jdk-" + common.boot_jdk_version + "_"
+                + boot_jdk_platform + "_bin.tar.gz",
             configure_args: "--with-boot-jdk=" + common.boot_jdk_home,
             environment_path: common.boot_jdk_home + "/bin"
         },
@@ -1063,7 +824,7 @@ var getJibProfilesDependencies = function (input, common) {
         jtreg: {
             server: "javare",
             revision: "4.2",
-            build_number: "b08",
+            build_number: "b10",
             checksum_file: "MD5_VALUES",
             file: "jtreg_bin-4.2.zip",
             environment_name: "JT_HOME",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1248,7 +1248,7 @@ public abstract class ScriptObject implements PropertyAccess, Cloneable {
             proto = newProto;
 
             // Let current listeners know that the prototype has changed
-            getMap().protoChanged(true);
+            getMap().protoChanged();
             // Replace our current allocator map with one that is associated with the new prototype.
             setMap(getMap().changeProto(newProto));
         }
@@ -2050,7 +2050,7 @@ public abstract class ScriptObject implements PropertyAccess, Cloneable {
 
         final PropertyMap newMap = oldMap.replaceProperty(property, property.removeFlags(Property.NEEDS_DECLARATION));
         setMap(newMap);
-        set(key, value, 0);
+        set(key, value, NashornCallSiteDescriptor.CALLSITE_DECLARE);
     }
 
     /**
@@ -2107,46 +2107,58 @@ public abstract class ScriptObject implements PropertyAccess, Cloneable {
     }
 
     /**
-     * Get a switch point for a property with the given {@code name} that will be invalidated when
-     * the property definition is changed in this object's prototype chain. Returns {@code null} if
-     * the property is defined in this object itself.
+     * Get an array of switch points for a property with the given {@code name} that will be
+     * invalidated when the property definition is changed in this object's prototype chain.
+     * Returns {@code null} if the property is defined in this object itself.
      *
      * @param name the property name
      * @param owner the property owner, null if property is not defined
-     * @return a SwitchPoint or null
+     * @return an array of SwitchPoints or null
      */
     public final SwitchPoint[] getProtoSwitchPoints(final String name, final ScriptObject owner) {
         if (owner == this || getProto() == null) {
             return null;
         }
 
-        final List<SwitchPoint> switchPoints = new ArrayList<>();
-        for (ScriptObject obj = this; obj != owner && obj.getProto() != null; obj = obj.getProto()) {
-            final ScriptObject parent = obj.getProto();
-            parent.getMap().addListener(name, obj.getMap());
-            final SwitchPoint sp = parent.getMap().getSharedProtoSwitchPoint();
-            if (sp != null && !sp.hasBeenInvalidated()) {
-                switchPoints.add(sp);
+        final Set<SwitchPoint> switchPoints = new HashSet<>();
+        SwitchPoint switchPoint = getProto().getMap().getSwitchPoint(name);
+
+        if (switchPoint == null) {
+            switchPoint = new SwitchPoint();
+            for (ScriptObject obj = this; obj != owner && obj.getProto() != null; obj = obj.getProto()) {
+                obj.getProto().getMap().addSwitchPoint(name, switchPoint);
             }
         }
 
-        switchPoints.add(getMap().getSwitchPoint(name));
+        switchPoints.add(switchPoint);
+
+        for (ScriptObject obj = this; obj != owner && obj.getProto() != null; obj = obj.getProto()) {
+            final SwitchPoint sharedProtoSwitchPoint = obj.getProto().getMap().getSharedProtoSwitchPoint();
+            if (sharedProtoSwitchPoint != null && !sharedProtoSwitchPoint.hasBeenInvalidated()) {
+                switchPoints.add(sharedProtoSwitchPoint);
+            }
+        }
+
         return switchPoints.toArray(new SwitchPoint[0]);
     }
 
     // Similar to getProtoSwitchPoints method above, but used for additional prototype switchpoints of
     // properties that are known not to exist, e.g. the original property name in a __noSuchProperty__ invocation.
-    private SwitchPoint getProtoSwitchPoint(final String name) {
+    final SwitchPoint getProtoSwitchPoint(final String name) {
         if (getProto() == null) {
             return null;
         }
 
-        for (ScriptObject obj = this; obj.getProto() != null; obj = obj.getProto()) {
-            final ScriptObject parent = obj.getProto();
-            parent.getMap().addListener(name, obj.getMap());
+        SwitchPoint switchPoint = getProto().getMap().getSwitchPoint(name);
+
+        if (switchPoint == null) {
+            switchPoint = new SwitchPoint();
+            for (ScriptObject obj = this; obj.getProto() != null; obj = obj.getProto()) {
+                obj.getProto().getMap().addSwitchPoint(name, switchPoint);
+            }
         }
 
-        return getMap().getSwitchPoint(name);
+        return switchPoint;
     }
 
     private void checkSharedProtoMap() {
@@ -3059,7 +3071,7 @@ public abstract class ScriptObject implements PropertyAccess, Cloneable {
         }
 
         if (f != null) {
-            if (!f.getProperty().isWritable() || !f.getProperty().hasNativeSetter()) {
+            if ((!f.getProperty().isWritable() && !NashornCallSiteDescriptor.isDeclaration(callSiteFlags)) || !f.getProperty().hasNativeSetter()) {
                 if (isScopeFlag(callSiteFlags) && f.getProperty().isLexicalBinding()) {
                     throw typeError("assign.constant", key.toString()); // Overwriting ES6 const should throw also in non-strict mode.
                 }
