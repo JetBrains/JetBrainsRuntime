@@ -2061,6 +2061,7 @@ LIR_Opr LIRGenerator::shenandoah_read_barrier(LIR_Opr obj, CodeEmitInfo* info, b
 }
 
 LIR_Opr LIRGenerator::shenandoah_read_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
+  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier), "Should be enabled");
   LabelObj* done = new LabelObj();
   LIR_Opr result = new_register(T_OBJECT);
   __ move(obj, result);
@@ -2084,7 +2085,7 @@ LIR_Opr LIRGenerator::shenandoah_write_barrier(LIR_Opr obj, CodeEmitInfo* info, 
 }
 
 LIR_Opr LIRGenerator::shenandoah_write_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
-
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "Should be enabled");
   LIR_Opr result = new_register(T_OBJECT);
   __ shenandoah_wb(obj, result, info ? new CodeEmitInfo(info) : NULL, need_null_check);
   return result;

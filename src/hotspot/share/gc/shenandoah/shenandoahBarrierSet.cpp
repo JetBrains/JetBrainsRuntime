@@ -50,7 +50,9 @@ private:
     }
   }
 public:
-  ShenandoahUpdateRefsForOopClosure() : _heap(ShenandoahHeap::heap()) {}
+  ShenandoahUpdateRefsForOopClosure() : _heap(ShenandoahHeap::heap()) {
+    assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
+  }
   void do_oop(oop* p)       { do_oop_work(p); }
   void do_oop(narrowOop* p) { do_oop_work(p); }
 };
@@ -181,6 +183,7 @@ void ShenandoahBarrierSet::write_ref_array_work(MemRegion r) {
 
 template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
 void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
+  assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
   ShenandoahUpdateRefsForOopClosure<UPDATE_MATRIX, STOREVAL_WRITE_BARRIER> cl;
   T* dst = (T*) start;
   for (size_t i = 0; i < count; i++) {
@@ -189,7 +192,10 @@ void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
 }
 
 void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
-  if (! need_update_refs_barrier()) return;
+  assert(UseShenandoahGC, "should be enabled");
+  if (!ShenandoahCloneBarrier) return;
+  if (!need_update_refs_barrier()) return;
+
   if (UseCompressedOops) {
     if (UseShenandoahMatrix) {
       if (_heap->is_concurrent_partial_in_progress()) {
@@ -312,7 +318,8 @@ void ShenandoahBarrierSet::write_ref_field_work(void* v, oop o, bool release) {
 }
 
 void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
-
+  assert(UseShenandoahGC, "should be enabled");
+  if (!ShenandoahCloneBarrier) return;
   if (! need_update_refs_barrier()) return;
 
   // This is called for cloning an object (see jvm.cpp) after the clone
@@ -388,6 +395,7 @@ IRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_IRT(oopDesc* src))
 IRT_END
 
 oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
   if (!oopDesc::is_null(obj)) {
     bool evac_in_progress = _heap->is_evacuation_in_progress();
     OrderAccess::loadload();

@@ -5186,7 +5186,7 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_montgomerySquare = g.generate_multiply();
     }
 
-    if (UseShenandoahGC && ShenandoahWriteBarrier) {
+    if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier)) {
       StubRoutines::aarch64::_shenandoah_wb = generate_shenandoah_wb(false, true);
       StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
     }

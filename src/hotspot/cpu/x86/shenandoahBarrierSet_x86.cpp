@@ -39,6 +39,7 @@ void ShenandoahBarrierSet::interpreter_read_barrier(MacroAssembler* masm, Regist
 }
 
 void ShenandoahBarrierSet::interpreter_read_barrier_impl(MacroAssembler* masm, Register dst) {
+  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier), "should be enabled");
   Label is_null;
   __ testptr(dst, dst);
   __ jcc(Assembler::zero, is_null);
@@ -53,6 +54,7 @@ void ShenandoahBarrierSet::interpreter_read_barrier_not_null(MacroAssembler* mas
 }
 
 void ShenandoahBarrierSet::interpreter_read_barrier_not_null_impl(MacroAssembler* masm, Register dst) {
+  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier), "should be enabled");
   __ movptr(dst, Address(dst, BrooksPointer::byte_offset()));
 }
 
@@ -63,7 +65,7 @@ void ShenandoahBarrierSet::interpreter_write_barrier(MacroAssembler* masm, Regis
 }
 
 void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, Register dst) {
-
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
 #ifdef _LP64
   assert(dst != rscratch1, "different regs");
 

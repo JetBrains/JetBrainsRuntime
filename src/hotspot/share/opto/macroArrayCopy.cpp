@@ -1083,6 +1083,7 @@ void PhaseMacroExpand::generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** 
 }
 
 Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
+  assert (UseShenandoahGC && ShenandoahCloneBarrier, "Should be enabled");
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
   Node* c = new ProjNode(call,TypeFunc::Control);
   transform_later(c);
