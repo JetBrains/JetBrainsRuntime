@@ -154,6 +154,6 @@ public class D3DRenderQueue extends RenderQueue {
         // reset the buffer position
         buf.clear();
         // clear the set of references, since we no longer need them
-        refSet.clear();
+        refList.clear();
     }
 }
