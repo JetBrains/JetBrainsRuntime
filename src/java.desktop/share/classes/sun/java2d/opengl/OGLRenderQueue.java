@@ -150,7 +150,7 @@ public class OGLRenderQueue extends RenderQueue {
         // reset the buffer position
         buf.clear();
         // clear the set of references, since we no longer need them
-        refSet.clear();
+        refList.clear();
     }
 
     private class QueueFlusher implements Runnable {
