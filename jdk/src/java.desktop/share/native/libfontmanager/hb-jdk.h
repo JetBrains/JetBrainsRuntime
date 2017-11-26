@@ -63,7 +63,8 @@ hb_face_t *
 hb_jdk_face_create(JDKFontInfo*   jdkFontInfo,
                    hb_destroy_func_t destroy);
 hb_font_t *
-hb_jdk_font_create(JDKFontInfo*   jdkFontInfo,
+hb_jdk_font_create(hb_face_t* hbface,
+                   JDKFontInfo*   jdkFontInfo,
                    hb_destroy_func_t destroy);
 
 

@@ -33,6 +33,8 @@ SUNWprivate_1.1 {
                 newLayoutTableCache;
                 freeLayoutTableCache;
                 isNullScalerContext;
+                Java_sun_font_Font2D_createHarfbuzzFace;
+                Java_sun_font_Font2D_disposeHarfbuzzFace;
                 Java_sun_font_NullFontScaler_getNullScalerContext;
                 Java_sun_font_NullFontScaler_getGlyphImage;
                 Java_sun_font_SunFontManager_initIDs;

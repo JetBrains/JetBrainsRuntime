@@ -997,6 +997,12 @@ public class TrueTypeFont extends FileFont {
        return (fontWeight > 0) ? fontWeight : super.getWeight();
     }
 
+    @Override
+    protected boolean isAAT() {
+        return getDirectoryEntry(TrueTypeFont.morxTag) != null ||
+               getDirectoryEntry(TrueTypeFont.mortTag) != null;
+    }
+
     /* TrueTypeFont can use the fsSelection fields of OS/2 table
      * to determine the style. In the unlikely case that doesn't exist,
      * can use macStyle in the 'head' table but simpler to
