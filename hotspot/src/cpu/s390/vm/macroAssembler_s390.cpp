@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016 SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2731,8 +2731,8 @@ void MacroAssembler::lookup_interface_method(Register           recv_klass,
                                              RegisterOrConstant itable_index,
                                              Register           method_result,
                                              Register           temp1_reg,
-                                             Register           temp2_reg,
-                                             Label&             no_such_interface) {
+                                             Label&             no_such_interface,
+                                             bool               return_method) {
 
   const Register vtable_len = temp1_reg;    // Used to compute itable_entry_addr.
   const Register itable_entry_addr = Z_R1_scratch;
@@ -2741,11 +2741,11 @@ void MacroAssembler::lookup_interface_method(Register           recv_klass,
   BLOCK_COMMENT("lookup_interface_method {");
 
   // Load start of itable entries into itable_entry_addr.
-  z_llgf(vtable_len, Address(recv_klass, InstanceKlass::vtable_length_offset()));
+  z_llgf(vtable_len, Address(recv_klass, Klass::vtable_length_offset()));
   z_sllg(vtable_len, vtable_len, exact_log2(vtableEntry::size_in_bytes()));
 
   // Loop over all itable entries until desired interfaceOop(Rinterface) found.
-  const int vtable_base_offset = in_bytes(InstanceKlass::vtable_start_offset());
+  const int vtable_base_offset = in_bytes(Klass::vtable_start_offset());
 
   add2reg_with_index(itable_entry_addr,
                      vtable_base_offset + itableOffsetEntry::interface_offset_in_bytes(),
@@ -2767,38 +2767,36 @@ void MacroAssembler::lookup_interface_method(Register           recv_klass,
   z_brne(search);
 
   // Entry found and itable_entry_addr points to it, get offset of vtable for interface.
+  if (return_method) {
+    const int vtable_offset_offset = (itableOffsetEntry::offset_offset_in_bytes() -
+                                      itableOffsetEntry::interface_offset_in_bytes()) -
+                                     itable_offset_search_inc;
 
-  const int vtable_offset_offset = (itableOffsetEntry::offset_offset_in_bytes() -
-                                    itableOffsetEntry::interface_offset_in_bytes()) -
-                                   itable_offset_search_inc;
+    // Compute itableMethodEntry and get method and entry point
+    // we use addressing with index and displacement, since the formula
+    // for computing the entry's offset has a fixed and a dynamic part,
+    // the latter depending on the matched interface entry and on the case,
+    // that the itable index has been passed as a register, not a constant value.
+    int method_offset = itableMethodEntry::method_offset_in_bytes();
+                             // Fixed part (displacement), common operand.
+    Register itable_offset = method_result;  // Dynamic part (index register).
 
-  // Compute itableMethodEntry and get method and entry point
-  // we use addressing with index and displacement, since the formula
-  // for computing the entry's offset has a fixed and a dynamic part,
-  // the latter depending on the matched interface entry and on the case,
-  // that the itable index has been passed as a register, not a constant value.
-  int method_offset = itableMethodEntry::method_offset_in_bytes();
-                           // Fixed part (displacement), common operand.
-  Register itable_offset;  // Dynamic part (index register).
+    if (itable_index.is_register()) {
+       // Compute the method's offset in that register, for the formula, see the
+       // else-clause below.
+       z_sllg(itable_offset, itable_index.as_register(), exact_log2(itableMethodEntry::size() * wordSize));
+       z_agf(itable_offset, vtable_offset_offset, itable_entry_addr);
+    } else {
+      // Displacement increases.
+      method_offset += itableMethodEntry::size() * wordSize * itable_index.as_constant();
 
-  if (itable_index.is_register()) {
-     // Compute the method's offset in that register, for the formula, see the
-     // else-clause below.
-     itable_offset = itable_index.as_register();
+      // Load index from itable.
+      z_llgf(itable_offset, vtable_offset_offset, itable_entry_addr);
+    }
 
-     z_sllg(itable_offset, itable_offset, exact_log2(itableMethodEntry::size() * wordSize));
-     z_agf(itable_offset, vtable_offset_offset, itable_entry_addr);
-  } else {
-    itable_offset = Z_R1_scratch;
-    // Displacement increases.
-    method_offset += itableMethodEntry::size() * wordSize * itable_index.as_constant();
-
-    // Load index from itable.
-    z_llgf(itable_offset, vtable_offset_offset, itable_entry_addr);
+    // Finally load the method's oop.
+    z_lg(method_result, method_offset, itable_offset, recv_klass);
   }
-
-  // Finally load the method's oop.
-  z_lg(method_result, method_offset, itable_offset, recv_klass);
   BLOCK_COMMENT("} lookup_interface_method");
 }
 

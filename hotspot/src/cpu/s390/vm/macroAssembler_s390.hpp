@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016 SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -650,8 +650,8 @@ class MacroAssembler: public Assembler {
                                RegisterOrConstant itable_index,
                                Register           method_result,
                                Register           temp1_reg,
-                               Register           temp2_reg,
-                               Label&             no_such_interface);
+                               Label&             no_such_interface,
+                               bool               return_method = true);
 
   // virtual method calling
   void lookup_virtual_method(Register             recv_klass,

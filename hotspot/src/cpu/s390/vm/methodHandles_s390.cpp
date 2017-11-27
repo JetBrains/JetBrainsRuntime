@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2016 SAP SE. All rights reserved.
+ * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2017 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -491,7 +491,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
       Label L_no_such_interface;
       __ lookup_interface_method(temp1_recv_klass, temp3_intf,
                                  // Note: next two args must be the same:
-                                 Z_index, Z_method, temp2, noreg,
+                                 Z_index, Z_method, temp2,
                                  L_no_such_interface);
       jump_from_method_handle(_masm, Z_method, temp2, Z_R0, for_compiler_entry);
 
