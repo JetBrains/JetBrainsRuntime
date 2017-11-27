@@ -127,7 +127,7 @@ void ShenandoahMarkCompact::do_mark_compact(GCCause::Cause gc_cause) {
 
     heap->set_full_gc_in_progress(true);
 
-    assert(SafepointSynchronize::is_at_safepoint(), "must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at a safepoint");
     assert(Thread::current()->is_VM_thread(), "Do full GC only while world is stopped");
 
     {

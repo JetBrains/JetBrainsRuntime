@@ -250,7 +250,7 @@ void ShenandoahCsetCodeRootsIterator::possibly_parallel_blobs_do(CodeBlobClosure
 
 template <bool CSET_FILTER>
 void ShenandoahCodeRootsIterator::fast_parallel_blobs_do(CodeBlobClosure *f) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at safepoint");
 
   size_t stride = 256; // educated guess
 

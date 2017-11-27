@@ -317,7 +317,7 @@ bool ShenandoahPartialGC::prepare() {
 }
 
 void ShenandoahPartialGC::init_partial_collection() {
-  assert(SafepointSynchronize::is_at_safepoint(), "STW partial GC");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "STW partial GC");
   ShenandoahWorkerScope partial_gc_scope(_heap->workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
   _heap->set_alloc_seq_gc_start();

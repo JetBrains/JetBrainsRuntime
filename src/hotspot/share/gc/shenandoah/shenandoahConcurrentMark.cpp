@@ -87,7 +87,7 @@ public:
   }
 
   void work(uint worker_id) {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahObjToScanQueueSet* queues = heap->concurrentMark()->task_queues();
@@ -146,7 +146,7 @@ public:
   }
 
   void work(uint worker_id) {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahUpdateRefsClosure cl;
@@ -261,7 +261,7 @@ public:
 
 void ShenandoahConcurrentMark::mark_roots(ShenandoahPhaseTimings::Phase root_phase) {
   assert(Thread::current()->is_VM_thread(), "can only do this in VMThread");
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
@@ -299,7 +299,7 @@ void ShenandoahConcurrentMark::mark_roots(ShenandoahPhaseTimings::Phase root_pha
 
 void ShenandoahConcurrentMark::init_mark_roots() {
   assert(Thread::current()->is_VM_thread(), "can only do this in VMThread");
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
@@ -312,7 +312,7 @@ void ShenandoahConcurrentMark::init_mark_roots() {
 }
 
 void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_phase) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   bool update_code_cache = true; // initialize to safer value
   switch (root_phase) {
@@ -412,7 +412,7 @@ void ShenandoahConcurrentMark::mark_from_roots() {
 }
 
 void ShenandoahConcurrentMark::finish_mark_from_roots() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
 
@@ -428,7 +428,7 @@ void ShenandoahConcurrentMark::finish_mark_from_roots() {
 }
 
 void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
 
@@ -564,7 +564,7 @@ public:
   }
 
   void do_void() {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahConcurrentMark* scm = sh->concurrentMark();
@@ -638,7 +638,7 @@ public:
   }
 
   void work(uint worker_id) {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahCMDrainMarkingStackClosure complete_gc(worker_id, _terminator);
     if (heap->need_update_refs()) {
@@ -683,7 +683,7 @@ public:
 
   // Executes a task using worker threads.
   void execute(ProcessTask& task) {
-    assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     // Shortcut execution if task is empty.
     // This should be replaced with the generic ReferenceProcessor shortcut,

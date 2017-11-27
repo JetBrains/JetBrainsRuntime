@@ -1109,7 +1109,7 @@ void ShenandoahHeap::evacuate_and_update_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::clear();
 #endif
-  assert(SafepointSynchronize::is_at_safepoint(), "Only iterate roots while world is stopped");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only iterate roots while world is stopped");
 
   {
     ShenandoahRootEvacuator rp(this, workers()->active_workers(), ShenandoahPhaseTimings::init_evac);
@@ -1193,7 +1193,7 @@ void ShenandoahHeap::do_evacuation() {
 }
 
 void ShenandoahHeap::roots_iterate(OopClosure* cl) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Only iterate roots while world is stopped");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only iterate roots while world is stopped");
 
   CodeBlobToOopClosure blobsCl(cl, false);
   CLDToOopClosure cldCl(cl);
@@ -1579,7 +1579,7 @@ void ShenandoahHeap::set_evacuation_in_progress_concurrently(bool in_progress) {
 }
 
 void ShenandoahHeap::set_evacuation_in_progress_at_safepoint(bool in_progress) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Only call this at safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only call this at safepoint");
   set_evacuation_in_progress(in_progress);
   JavaThread::set_evacuation_in_progress_all_threads(in_progress);
 }
@@ -1946,7 +1946,7 @@ GCTimer* ShenandoahHeap::gc_timer() const {
 void ShenandoahHeap::assert_gc_workers(uint nworkers) {
   assert(nworkers > 0 && nworkers <= max_workers(), "Sanity");
 
-  if (SafepointSynchronize::is_at_safepoint()) {
+  if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
     if (UseDynamicNumberOfGCThreads ||
         (FLAG_IS_DEFAULT(ParallelGCThreads) && ForceDynamicNumberOfGCThreads)) {
       assert(nworkers <= ParallelGCThreads, "Cannot use more than it has");
@@ -2062,7 +2062,7 @@ void ShenandoahHeap::concurrent_update_heap_references() {
 }
 
 void ShenandoahHeap::prepare_update_refs() {
-  assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
   if (ShenandoahVerify) {
     verifier()->verify_before_updaterefs();
@@ -2081,7 +2081,7 @@ void ShenandoahHeap::prepare_update_refs() {
 }
 
 void ShenandoahHeap::finish_update_refs() {
-  assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
   if (cancelled_concgc()) {
     ShenandoahGCPhase final_work(ShenandoahPhaseTimings::final_update_refs_finish_work);

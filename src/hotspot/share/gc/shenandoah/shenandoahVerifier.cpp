@@ -702,7 +702,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
                                              VerifyForwarded forwarded, VerifyMarked marked,
                                              VerifyMatrix matrix, VerifyCollectionSet cset,
                                              VerifyLiveness liveness, VerifyRegions regions) {
-  guarantee(SafepointSynchronize::is_at_safepoint(), "only when nothing else happens");
+  guarantee(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "only when nothing else happens");
   guarantee(ShenandoahVerify, "only when enabled, and bitmap is initialized in ShenandoahHeap::initialize");
 
   // Avoid side-effect of changing workers' active thread count, but bypass concurrent/parallel protocol check

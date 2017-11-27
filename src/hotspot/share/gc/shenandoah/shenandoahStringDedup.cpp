@@ -130,7 +130,7 @@ void ShenandoahStringDedup::enqueue_from_safepoint(oop java_string, uint worker_
 
 
 void ShenandoahStringDedup::parallel_full_gc_update_or_unlink() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   assert(ShenandoahHeap::heap()->is_full_gc_in_progress(), "Must be during full gc");
   log_debug(gc, stringdedup)("Clean/update string dedup table after full GC");
 
@@ -142,7 +142,7 @@ void ShenandoahStringDedup::parallel_full_gc_update_or_unlink() {
 
 
 void ShenandoahStringDedup::parallel_update_or_unlink() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   log_debug(gc, stringdedup)("Update string dedup table references");
   ShenandoahUpdateLiveRefsClosure update_refs_closure;
   ShenandoahIsAliveCompleteClosure is_alive_closure;
@@ -176,7 +176,7 @@ bool ShenandoahPartialIsAliveClosure::do_object_b(oop obj) {
 
 
 void ShenandoahStringDedup::parallel_partial_update_or_unlink() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   log_debug(gc, stringdedup)("Clean/update string dedup table after partial GC");
   ShenandoahUpdateLiveRefsClosure update_refs_closure;
   ShenandoahPartialIsAliveClosure is_alive_closure;

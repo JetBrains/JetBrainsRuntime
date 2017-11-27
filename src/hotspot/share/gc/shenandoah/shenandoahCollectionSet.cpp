@@ -47,7 +47,7 @@ ShenandoahCollectionSet::ShenandoahCollectionSet(ShenandoahHeap* heap, HeapWord*
 
 
 void ShenandoahCollectionSet::add_region(ShenandoahHeapRegion* r) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   assert(Thread::current()->is_VM_thread(), "Must be VMThread");
   assert(!is_in(r), "Already in collection set");
   _cset_map[r->region_number()] = 1;
@@ -66,7 +66,7 @@ bool ShenandoahCollectionSet::add_region_check_for_duplicates(ShenandoahHeapRegi
 }
 
 void ShenandoahCollectionSet::remove_region(ShenandoahHeapRegion* r) {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   assert(Thread::current()->is_VM_thread(), "Must be VMThread");
   assert(is_in(r), "Not in collection set");
   _cset_map[r->region_number()] = 0;
@@ -85,7 +85,7 @@ void ShenandoahCollectionSet::update_region_status() {
 }
 
 void ShenandoahCollectionSet::clear() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   Copy::zero_to_bytes(_cset_map, _map_size);
 
 #ifdef ASSERT
@@ -130,7 +130,7 @@ ShenandoahHeapRegion* ShenandoahCollectionSet::claim_next() {
 
 
 ShenandoahHeapRegion* ShenandoahCollectionSet::next() {
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
   assert(Thread::current()->is_VM_thread(), "Must be VMThread");
   size_t num_regions = _heap->num_regions();
   for (size_t index = (size_t)_current_index; index < num_regions; index ++) {
