@@ -368,6 +368,10 @@ static final class ClientHello extends HandshakeMessage {
         extensions.add(signatureAlgorithm);
     }
 
+    void addExtendedMasterSecretExtension() {
+        extensions.add(new ExtendedMasterSecretExtension());
+    }
+
     void addMFLExtension(int maximumPacketSize) {
         HelloExtension maxFragmentLength =
                 new MaxFragmentLengthExtension(maximumPacketSize);
@@ -1420,7 +1424,7 @@ class ECDH_ServerKeyExchange extends ServerKeyExchange {
         } else {
             sig = getSignature(privateKey.getAlgorithm());
         }
-        sig.initSign(privateKey);  // where is the SecureRandom?
+        sig.initSign(privateKey, sr);
 
         updateSignature(sig, clntNonce, svrNonce);
         signatureBytes = sig.sign();
