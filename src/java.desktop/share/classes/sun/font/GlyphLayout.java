@@ -412,7 +412,7 @@ public final class GlyphLayout {
         int lang = -1; // default for now
 
         Font2D font2D = FontUtilities.getFont2D(font);
-        if (font2D instanceof FontSubstitution) {
+        if (Font2D.fontSubstitutionEnabled && font2D instanceof FontSubstitution) {
             font2D = ((FontSubstitution)font2D).getCompositeFont2D();
         }
 
