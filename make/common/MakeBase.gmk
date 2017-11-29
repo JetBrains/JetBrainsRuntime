@@ -342,11 +342,25 @@ endif # HAS_FILE_FUNCTION
 # the build was created from
 SOURCE_REVISION_TRACKER := $(SUPPORT_OUTPUTDIR)/src-rev/source-revision-tracker
 
-# Locate all hg repositories included in the forest, as absolute paths
+# A cache of the mercurial information which can be dropped in the top of the
+# source tree for inclusion in a source bundle.
+STORED_SOURCE_REVISION := $(TOPDIR)/.src-rev
+
+# Locate all hg repositories included in the forest, as absolute paths. Use .hg
+# dirs if present, otherwise parse the .src-rev file and match dirs.
 FindAllReposAbs = \
-    $(strip $(sort $(dir $(filter-out $(SRC_ROOT)/build/%, $(wildcard \
-        $(addprefix $(SRC_ROOT)/, .hg */.hg */*/.hg */*/*/.hg) \
-    )))))
+    $(if $(and $(HG), $(wildcard $(TOPDIR)/.hg)), \
+      $(strip $(sort $(dir $(filter-out $(SRC_ROOT)/build/%, $(wildcard \
+      $(addprefix $(SRC_ROOT)/, .hg */.hg */*/.hg */*/*/.hg)))))) \
+      , \
+      $(if $(wildcard $(STORED_SOURCE_REVISION)), \
+        $(strip $(foreach r, $(call ReadFile, $(STORED_SOURCE_REVISION)), \
+          $(wildcard $(TOPDIR)/$(firstword $(subst :,$(SPACE),$r))/) \
+        )) \
+      , \
+        $(error No mercurial or .src-rev available, cannot list repositories) \
+      ) \
+    )
 
 # Locate all hg repositories included in the forest, as relative paths
 FindAllReposRel = \

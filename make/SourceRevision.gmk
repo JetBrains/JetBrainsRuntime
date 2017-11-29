@@ -39,8 +39,6 @@ include MakeBase.gmk
 # revisions of all repos will be stored in a file in the top dir, which is then
 # used when creating the tracker file.
 
-STORED_SOURCE_REVISION := $(TOPDIR)/.src-rev
-
 # Are we using mercurial?
 ifneq ($(and $(HG), $(wildcard $(TOPDIR)/.hg)), )
 
@@ -108,7 +106,15 @@ else
 	$(call LogInfo, No mercurial configuration present$(COMMA) not updating .src-rev)
 
     $(SOURCE_REVISION_TRACKER): $(STORED_SOURCE_REVISION)
-	$(install-file)
+	$(call MakeDir, $(@D))
+	$(RM) $@
+        # Only include revisions for repos that are included in the current
+        # source set.
+	for r in `cat $<`; do \
+	  if [ -d "$(TOPDIR)/`$(ECHO) $$r | $(CUT) -d':' -f1`" ]; then \
+	    $(PRINTF) "$$r " >> $@; \
+	  fi; \
+	done
 
     create-source-revision-tracker: $(SOURCE_REVISION_TRACKER)
   else
