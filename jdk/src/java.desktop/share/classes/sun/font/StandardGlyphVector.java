@@ -26,7 +26,6 @@
 package sun.font;
 
 import java.awt.Font;
-import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import static java.awt.RenderingHints.*;
@@ -36,7 +35,6 @@ import java.awt.font.GlyphMetrics;
 import java.awt.font.GlyphJustificationInfo;
 import java.awt.font.GlyphVector;
 import java.awt.font.LineMetrics;
-import java.awt.font.TextAttribute;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.GeneralPath;
 import java.awt.geom.NoninvertibleTransformException;
@@ -1130,7 +1128,7 @@ public class StandardGlyphVector extends GlyphVector {
 
     private void initFontData() {
         font2D = FontUtilities.getFont2D(font);
-        if (font2D instanceof FontSubstitution) {
+        if (Font2D.fontSubstitutionEnabled && font2D instanceof FontSubstitution) {
            font2D = ((FontSubstitution)font2D).getCompositeFont2D();
         }
         float s = font.getSize2D();
