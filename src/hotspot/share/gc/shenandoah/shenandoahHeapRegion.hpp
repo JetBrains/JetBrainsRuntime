@@ -144,6 +144,8 @@ private:
     }
   }
 
+  void report_illegal_transition(const char* method);
+
 public:
   // Allowed transitions from the outside code:
   void make_regular_allocation();
@@ -154,8 +156,8 @@ public:
   void make_unpinned();
   void make_cset();
   void make_trash();
-  void make_empty_committed();
-  bool make_empty_uncommitted();
+  void make_empty();
+  void make_uncommitted();
 
   // Individual states:
   bool is_empty_uncommitted()      const { return _state == _empty_uncommitted; }

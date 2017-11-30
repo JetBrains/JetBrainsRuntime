@@ -633,8 +633,8 @@ void ShenandoahHeap::handle_heap_shrinkage() {
   for (size_t i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* r = set->get(i);
     if (r->is_empty_committed() &&
-            (current - r->empty_time()) * 1000 > ShenandoahUncommitDelay &&
-            r->make_empty_uncommitted()) {
+            (current - r->empty_time()) * 1000 > ShenandoahUncommitDelay) {
+      r->make_uncommitted();
       count++;
     }
   }
