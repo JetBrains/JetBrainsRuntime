@@ -377,6 +377,12 @@
           "Set to 0 to never try, and fail instead.")                       \
           range(0, 16)                                                      \
                                                                             \
+  experimental(bool, ShenandoahHumongousMoves, false,                       \
+          "Allow moving humongous regions. This makes GC more resistant "   \
+          "to external fragmentation that may otherwise fail other "        \
+          "humongous allocations, at the expense of higher GC copying "     \
+          "costs.")                                                         \
+                                                                            \
   diagnostic(bool, ShenandoahOOMDuringEvacALot, false,                      \
           "Simulate OOM during evacuation frequently.")                     \
 

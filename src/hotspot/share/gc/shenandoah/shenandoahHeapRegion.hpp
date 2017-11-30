@@ -36,43 +36,43 @@ private:
     Region states can be logically aggregated in groups.
 
       "Empty":
-      ....................................................
-      .                                                  .
-      .                                                  .
-      .         Uncommitted  <-------  Committed <------------\
-      .              |                     |             .    |
-      .              \---------v-----------/             .    |
-      .                        |                         .    |
-      .........................|..........................    |
-                               |                              |
-      "Active":                |                              |
-      .........................|..........................    |
-      .                        |                         .    |
-      .      /-----------------^------\                  .    |
-      .      |                        |                  .    |
-      .      v                        v    "Humongous":  .    |
-      .   Regular ---\-----\     .....O................  .    |
-      .     |  ^     |     |     .    |               .  .    |
-      .     |  |     |     |     .    *---------\     .  .    |
-      .     v  |     |     |     .    v         v     .  .    |
-      .    Pinned  Cset    |     .  H/Start   H/Cont  .  .    |
-      .       ^    / |     |     .    v         |     .  .    |
-      .       |   /  |     |     .    *<--------/     .  .    |
-      .       |  v   |     |     .    |               .  .    |
-      .  CsetPinned  |     |     .....O................  .    |
-      .              |     |          |                  .    |
-      .              \-----\---v------/                  .    |
-      .                       |                          .    |
-      ........................|...........................    |
-                              |                               |
-      "Trash":                |                               |
-      ........................|...........................    |
-      .                       |                          .    |
-      .                       v                          .    |
-      .                     Trash ----------------------------/
-      .                                                  .
-      .                                                  .
-      ....................................................
+      .................................................................
+      .                                                               .
+      .                                                               .
+      .         Uncommitted  <-------  Committed <------------------------\
+      .              |                     |                          .   |
+      .              \---------v-----------/                          .   |
+      .                        |                                      .   |
+      .........................|.......................................   |
+                               |                                          |
+      "Active":                |                                          |
+      .........................|.......................................   |
+      .                        |                                      .   |
+      .      /-----------------^-------------------\                  .   |
+      .      |                                     |                  .   |
+      .      v                                     v    "Humongous":  .   |
+      .   Regular ---\-----\     ..................O................  .   |
+      .     |  ^     |     |     .                 |               .  .   |
+      .     |  |     |     |     .                 *---------\     .  .   |
+      .     v  |     |     |     .                 v         v     .  .   |
+      .    Pinned  Cset    |     .  HStart <--> H/Start   H/Cont   .  .   |
+      .       ^    / |     |     .  Pinned         v         |     .  .   |
+      .       |   /  |     |     .                 *<--------/     .  .   |
+      .       |  v   |     |     .                 |               .  .   |
+      .  CsetPinned  |     |     ..................O................  .   |
+      .              |     |                       |                  .   |
+      .              \-----\---v-------------------/                  .   |
+      .                        |                                      .   |
+      .........................|.......................................   |
+                               |                                          |
+      "Trash":                 |                                          |
+      .........................|.......................................   |
+      .                        |                                      .   |
+      .                        v                                      .   |
+      .                      Trash ---------------------------------------/
+      .                                                               .
+      .                                                               .
+      .................................................................
 
     Transition from "Empty" to "Active" is first allocation. It can go from {Uncommitted, Committed}
     to {Regular, "Humongous"}. The allocation may happen in Regular regions too, but not in Humongous.
@@ -92,34 +92,37 @@ private:
       e) Pinned cannot go CSet, thus it never moves;
       f) Humongous cannot be used for regular allocations;
       g) Humongous cannot go CSet, thus it never moves;
-      h) Humongous cannot go pinned, avoiding useless work;
+      h) Humongous start can go pinned, and thus can be protected from moves (humongous continuations should
+         follow associated humongous starts, not pinnable/movable by themselves);
       i) Empty cannot go Trash, avoiding useless work;
       j) ...
    */
 
   enum RegionState {
-    _empty_uncommitted, // region is empty and has memory uncommitted
-    _empty_committed,   // region is empty and has memory committed
-    _regular,           // region is for regular allocations
-    _humongous_start,   // region is the humongous start
-    _humongous_cont,    // region is the humongous continuation
-    _cset,              // region is in collection set
-    _pinned,            // region is pinned
-    _pinned_cset,       // region is pinned and in cset (evac failure path)
-    _trash,             // region contains only trash
+    _empty_uncommitted,       // region is empty and has memory uncommitted
+    _empty_committed,         // region is empty and has memory committed
+    _regular,                 // region is for regular allocations
+    _humongous_start,         // region is the humongous start
+    _humongous_cont,          // region is the humongous continuation
+    _pinned_humongous_start,  // region is both humongous start and pinned
+    _cset,                    // region is in collection set
+    _pinned,                  // region is pinned
+    _pinned_cset,             // region is pinned and in cset (evac failure path)
+    _trash,                   // region contains only trash
   };
 
   const char* region_state_to_string(RegionState s) const {
     switch (s) {
-      case _empty_uncommitted: return "Empty Uncommitted";
-      case _empty_committed:   return "Empty Committed";
-      case _regular:           return "Regular";
-      case _humongous_start:   return "Humongous Start";
-      case _humongous_cont:    return "Humongous Continuation";
-      case _cset:              return "Collection Set";
-      case _pinned:            return "Pinned";
-      case _pinned_cset:       return "Collection Set, Pinned";
-      case _trash:             return "Trash";
+      case _empty_uncommitted:       return "Empty Uncommitted";
+      case _empty_committed:         return "Empty Committed";
+      case _regular:                 return "Regular";
+      case _humongous_start:         return "Humongous Start";
+      case _humongous_cont:          return "Humongous Continuation";
+      case _pinned_humongous_start:  return "Humongous Start, Pinned";
+      case _cset:                    return "Collection Set";
+      case _pinned:                  return "Pinned";
+      case _pinned_cset:             return "Collection Set, Pinned";
+      case _trash:                   return "Trash";
       default:
         ShouldNotReachHere();
         return "";
@@ -129,15 +132,16 @@ private:
   // This method protects from accidental changes in enum order:
   int region_state_to_ordinal(RegionState s) const {
     switch (s) {
-      case _empty_uncommitted: return 0;
-      case _empty_committed:   return 1;
-      case _regular:           return 2;
-      case _humongous_start:   return 3;
-      case _humongous_cont:    return 4;
-      case _cset:              return 5;
-      case _pinned:            return 6;
-      case _trash:             return 7;
-      case _pinned_cset:       return 8;
+      case _empty_uncommitted:      return 0;
+      case _empty_committed:        return 1;
+      case _regular:                return 2;
+      case _humongous_start:        return 3;
+      case _humongous_cont:         return 4;
+      case _cset:                   return 5;
+      case _pinned:                 return 6;
+      case _trash:                  return 7;
+      case _pinned_cset:            return 8;
+      case _pinned_humongous_start: return 9;
       default:
         ShouldNotReachHere();
         return -1;
@@ -163,21 +167,21 @@ public:
   bool is_empty_uncommitted()      const { return _state == _empty_uncommitted; }
   bool is_empty_committed()        const { return _state == _empty_committed; }
   bool is_regular()                const { return _state == _regular; }
-  bool is_humongous_start()        const { return _state == _humongous_start; }
   bool is_humongous_continuation() const { return _state == _humongous_cont; }
 
   // Participation in logical groups:
   bool is_empty()                  const { return is_empty_committed() || is_empty_uncommitted(); }
   bool is_active()                 const { return !is_empty() && !is_trash(); }
   bool is_trash()                  const { return _state == _trash; }
-
-  // Macro-properties:
+  bool is_humongous_start()        const { return _state == _humongous_start || _state == _pinned_humongous_start; }
   bool is_humongous()              const { return is_humongous_start() || is_humongous_continuation(); }
   bool is_committed()              const { return !is_empty_uncommitted(); }
   bool is_cset()                   const { return _state == _cset   || _state == _pinned_cset; }
-  bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset; }
+  bool is_pinned()                 const { return _state == _pinned || _state == _pinned_cset || _state == _pinned_humongous_start; }
+
+  // Macro-properties:
   bool is_alloc_allowed()          const { return is_empty() || is_regular() || _state == _pinned; }
-  bool is_move_allowed()           const { return is_regular() || _state == _cset; }
+  bool is_move_allowed()           const { return is_regular() || _state == _cset || (ShenandoahHumongousMoves && _state == _humongous_start); }
 
   RegionState state()              const { return _state; }
   int  state_ordinal()             const { return region_state_to_ordinal(_state); }

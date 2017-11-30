@@ -170,9 +170,10 @@ void ShenandoahHeapRegion::make_pinned() {
       _critical_pins++;
       return;
     case _humongous_start:
-    case _humongous_cont:
-      // Humongous objects do not move, and thus pinning is no-op.
       assert (_critical_pins == 0, "sanity");
+      _state = _pinned_humongous_start;
+    case _pinned_humongous_start:
+      _critical_pins++;
       return;
     case _cset:
       guarantee(_heap->cancelled_concgc(), "only valid when evac has been cancelled");
@@ -196,6 +197,7 @@ void ShenandoahHeapRegion::make_unpinned() {
       }
       return;
     case _regular:
+    case _humongous_start:
       assert (_critical_pins == 0, "sanity");
       return;
     case _pinned_cset:
@@ -206,10 +208,12 @@ void ShenandoahHeapRegion::make_unpinned() {
         _state = _cset;
       }
       return;
-    case _humongous_start:
-    case _humongous_cont:
-      // Humongous objects do not move, and thus pinning is no-op.
-      assert (_critical_pins == 0, "sanity");
+    case _pinned_humongous_start:
+      assert (_critical_pins > 0, "sanity");
+      _critical_pins--;
+      if (_critical_pins == 0) {
+        _state = _humongous_start;
+      }
       return;
     default:
       report_illegal_transition("unpinning");
@@ -357,6 +361,9 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
       break;
     case _humongous_start:
       st->print("|H  ");
+      break;
+    case _pinned_humongous_start:
+      st->print("|HP ");
       break;
     case _humongous_cont:
       st->print("|HC ");

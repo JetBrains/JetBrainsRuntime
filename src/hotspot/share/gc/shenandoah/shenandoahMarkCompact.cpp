@@ -399,12 +399,13 @@ private:
   ShenandoahHeapRegion* next_from_region(ShenandoahHeapRegionSet* slice) {
     ShenandoahHeapRegion* from_region = _heap_regions->claim_next();
 
-    while (from_region != NULL && !from_region->is_move_allowed()) {
+    while (from_region != NULL && (!from_region->is_move_allowed() || from_region->is_humongous())) {
       from_region = _heap_regions->claim_next();
     }
 
     if (from_region != NULL) {
       assert(slice != NULL, "sanity");
+      assert(!from_region->is_humongous(), "this path cannot handle humongous regions");
       assert(from_region->is_move_allowed(), "only regions that can be moved in mark-compact");
       slice->add_region(from_region);
     }
