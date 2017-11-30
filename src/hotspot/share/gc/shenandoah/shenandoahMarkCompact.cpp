@@ -95,7 +95,7 @@ public:
     if (r->is_trash()) {
       r->recycle();
     }
-    if (r->is_empty()) {
+    if (r->is_empty() || r->is_cset()) {
       r->make_regular_bypass();
     }
     assert (r->is_active(), "only active regions in heap now");
@@ -672,6 +672,8 @@ public:
   }
 
   bool heap_region_do(ShenandoahHeapRegion* r) {
+    assert (!r->is_cset(), "cset regions should have been demoted already");
+
     // Need to reset the complete-top-at-mark-start pointer here because
     // the complete marking bitmap is no longer valid. This ensures
     // size-based iteration in marked_object_iterate().
@@ -679,14 +681,8 @@ public:
 
     size_t live = r->used();
 
-    // Turn any lingering non-empty cset regions into regular regions.
-    // This must be the leftover from the cancelled concurrent GC.
-    if (r->is_cset() && live != 0) {
-      r->make_regular_bypass();
-    }
-
-    // Reclaim regular/cset regions that became empty
-    if ((r->is_regular() || r->is_cset()) && live == 0) {
+    // Reclaim regular regions that became empty
+    if (r->is_regular() && live == 0) {
       r->make_trash();
     }
 
