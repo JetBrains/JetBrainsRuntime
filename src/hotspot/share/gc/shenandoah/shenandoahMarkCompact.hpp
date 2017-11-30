@@ -24,45 +24,53 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHMARKCOMPACT_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHMARKCOMPACT_HPP
 
-#include "gc/serial/genMarkSweep.hpp"
+#include "gc/shared/gcTimer.hpp"
 #include "gc/shared/taskqueue.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 
 class HeapWord;
 
 /**
- * This implements full-GC (e.g. when invoking System.gc() ) using a
- * mark-compact algorithm. It's implemented in four phases:
+ * This implements Full GC (e.g. when invoking System.gc()) using a mark-compact algorithm.
+ *
+ * Current implementation is parallel sliding Lisp-2-style algorithm, based on
+ * "Parallel Garbage Collection for Shared Memory Multiprocessors", by Christine Flood et al.
+ * http://people.csail.mit.edu/shanir/publications/dfsz2001.pdf
+ *
+ * It is implemented in four phases:
  *
  * 1. Mark all live objects of the heap by traversing objects starting at GC roots.
  * 2. Calculate the new location of each live object. This is done by sequentially scanning
  *    the heap, keeping track of a next-location-pointer, which is then written to each
- *    object's brooks ptr field.
+ *    object's fwdptr field.
  * 3. Update all references. This is implemented by another scan of the heap, and updates
- *    all references in live objects by what's stored in the target object's brooks ptr.
- * 3. Compact the heap by copying all live objects to their new location.
+ *    all references in live objects by what's stored in the target object's fwdptr.
+ * 4. Compact the heap by copying all live objects to their new location.
+ *
+ * Parallelization is handled by assigning each GC worker the slice of the heap (the set of regions)
+ * where it does sliding compaction, without interfering with other threads.
  */
 
-class ShenandoahMarkCompact: AllStatic {
+class ShenandoahMarkCompact : public CHeapObj<mtGC> {
 private:
-  static STWGCTimer* _gc_timer;
+  STWGCTimer* _gc_timer;
 
 public:
-  static void initialize();
-  static void do_mark_compact(GCCause::Cause gc_cause);
+  void initialize();
+  void do_it(GCCause::Cause gc_cause);
 
-  static GCTimer* gc_timer() {
+  GCTimer* gc_timer() {
     assert(_gc_timer != NULL, "Timer not yet initialized");
     return _gc_timer;
   }
 
 private:
-
-  static void phase1_mark_heap();
-  static void phase2_calculate_target_addresses(ShenandoahHeapRegionSet** copy_queues);
-  static void phase3_update_references();
-  static void phase4_compact_objects(ShenandoahHeapRegionSet** copy_queues);
+  void phase1_mark_heap();
+  void phase2_calculate_target_addresses(ShenandoahHeapRegionSet** worker_slices);
+  void phase3_update_references();
+  void phase4_compact_objects(ShenandoahHeapRegionSet** worker_slices);
 
 };
 

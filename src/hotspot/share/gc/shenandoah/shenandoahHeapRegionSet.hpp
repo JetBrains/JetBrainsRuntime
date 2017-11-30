@@ -76,8 +76,8 @@ public:
   // Get current region
   ShenandoahHeapRegion* current() const;
 
-  // Advance the cursor to next region
-  void next();
+  // Get current region and advance the cursor to next region
+  ShenandoahHeapRegion* current_then_next();
 
   // Atomically return the current region, and advance iteration pointer to next one
   ShenandoahHeapRegion* claim_next();

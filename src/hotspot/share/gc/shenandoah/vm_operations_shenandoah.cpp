@@ -55,7 +55,7 @@ void VM_ShenandoahInitMark::doit() {
 
 void VM_ShenandoahFullGC::doit() {
   ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::full_gc, SvcGCMarker::FULL);
-  ShenandoahMarkCompact::do_mark_compact(_gc_cause);
+  ShenandoahHeap::heap()->full_gc()->do_it(_gc_cause);
 }
 
 bool VM_ShenandoahReferenceOperation::doit_prologue() {
