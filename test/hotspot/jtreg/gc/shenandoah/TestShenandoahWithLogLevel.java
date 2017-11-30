@@ -24,11 +24,11 @@
  /*
  * @test TestShenandoahWithLogLevel.java
  * @summary Test Shenandoah with different log levels
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx4G -Xlog:gc*=error TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx4G -Xlog:gc*=warning TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx4G -Xlog:gc*=info TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx4G -Xlog:gc*=debug TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx4G -Xlog:gc*=trace TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=debug   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestShenandoahWithLogLevel
  */
 
 
@@ -37,7 +37,7 @@ import java.util.*;
 public class TestShenandoahWithLogLevel {
   public static void main(String[] args) {
     ArrayList<Object> list = new ArrayList<>();
-    long count = 5000 * 1024 * 1024 / 16; // 500MB allocation
+    long count = 300 * 1024 * 1024 / 16; // 300MB allocation
     for (long index = 0; index < count; index ++) {
       Object sink = new Object();
       list.add(sink);

@@ -49,7 +49,7 @@ public class EvilSyncBug {
             test();
         } else {
             for (int i = 0; i < NUM_RUNS; i++) {
-                ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xmx128m",
+                ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
                                                                           "-Xmx128m",
                                                                           "-XX:+UseShenandoahGC",
                                                                           "-XX:+UnlockDiagnosticVMOptions",

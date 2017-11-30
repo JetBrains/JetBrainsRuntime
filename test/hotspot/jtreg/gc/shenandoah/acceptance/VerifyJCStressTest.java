@@ -27,7 +27,7 @@
  * @key gc
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main/othervm  -XX:+UseShenandoahGC -Xmx2g -Xms2g
+ * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g
  *                    -XX:+IgnoreUnrecognizedVMOptions
  *                    -XX:+UnlockExperimentalVMOptions
  *                    -XX:+UnlockDiagnosticVMOptions

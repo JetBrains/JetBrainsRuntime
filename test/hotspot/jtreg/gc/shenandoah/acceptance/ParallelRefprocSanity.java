@@ -25,9 +25,9 @@
  * @test ParallelRefprocSanity
  * @summary Test that reference processing works with both parallel and non-parallel variants.
  *
- * @run main/othervm -XX:+UseShenandoahGC -Xmx2g -Xms2g                              ParallelRefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx2g -Xms2g  -XX:-ParallelRefProcEnabled ParallelRefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx2g -Xms2g  -XX:+ParallelRefProcEnabled ParallelRefprocSanity
+ * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g                              ParallelRefprocSanity
+ * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:-ParallelRefProcEnabled ParallelRefprocSanity
+ * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:+ParallelRefProcEnabled ParallelRefprocSanity
  */
 
 import java.lang.ref.*;

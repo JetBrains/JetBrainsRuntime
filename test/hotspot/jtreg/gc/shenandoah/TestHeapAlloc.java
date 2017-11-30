@@ -49,7 +49,7 @@ public class TestHeapAlloc {
 
     ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
         true,
-        "-Xmx4G",
+        "-Xmx1G",
         "-Xms256M",
         "-XX:+UseShenandoahGC",
         "-XX:ShenandoahFailHeapExpansionAfter=50",
