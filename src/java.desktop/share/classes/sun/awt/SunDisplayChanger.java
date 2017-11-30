@@ -26,13 +26,8 @@
 package sun.awt;
 
 import java.awt.IllegalComponentStateException;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.*;
+import java.util.function.Consumer;
 
 import sun.util.logging.PlatformLogger;
 
@@ -105,38 +100,7 @@ public class SunDisplayChanger {
         if (log.isLoggable(PlatformLogger.Level.FINEST)) {
             log.finest("notifyListeners");
         }
-    // This method is implemented by making a clone of the set of listeners,
-    // and then iterating over the clone.  This is because during the course
-    // of responding to a display change, it may be appropriate for a
-    // DisplayChangedListener to add or remove itself from a SunDisplayChanger.
-    // If the set itself were iterated over, rather than a clone, it is
-    // trivial to get a ConcurrentModificationException by having a
-    // DisplayChangedListener remove itself from its list.
-    // Because all display change handling is done on the event thread,
-    // synchronization provides no protection against modifying the listener
-    // list while in the middle of iterating over it.  -bchristi 7/10/2001
-
-        Set<DisplayChangedListener> cloneSet;
-
-        synchronized(listeners) {
-            cloneSet = new HashSet<DisplayChangedListener>(listeners.keySet());
-        }
-
-        for (DisplayChangedListener current : cloneSet) {
-            try {
-                if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                    log.finest("displayChanged for listener: " + current);
-                }
-                current.displayChanged();
-            } catch (IllegalComponentStateException e) {
-                // This DisplayChangeListener is no longer valid.  Most
-                // likely, a top-level window was dispose()d, but its
-                // Java objects have not yet been garbage collected.  In any
-                // case, we no longer need to track this listener, though we
-                // do need to remove it from the original list, not the clone.
-                listeners.remove(current);
-            }
-        }
+        notifyChanged(DisplayChangedListener::displayChanged, "displayChanged");
     }
 
     /*
@@ -147,28 +111,34 @@ public class SunDisplayChanger {
         if (log.isLoggable(PlatformLogger.Level.FINEST)) {
             log.finest("notifyPaletteChanged");
         }
-    // This method is implemented by making a clone of the set of listeners,
-    // and then iterating over the clone.  This is because during the course
-    // of responding to a display change, it may be appropriate for a
-    // DisplayChangedListener to add or remove itself from a SunDisplayChanger.
-    // If the set itself were iterated over, rather than a clone, it is
-    // trivial to get a ConcurrentModificationException by having a
-    // DisplayChangedListener remove itself from its list.
-    // Because all display change handling is done on the event thread,
-    // synchronization provides no protection against modifying the listener
-    // list while in the middle of iterating over it.  -bchristi 7/10/2001
+        notifyChanged(DisplayChangedListener::paletteChanged, "paletteChanged");
+    }
 
-        Set<DisplayChangedListener> cloneSet;
+    private void notifyChanged(Consumer<DisplayChangedListener> callback, String callbackName) {
+        // This method is implemented by making a clone of the set of listeners,
+        // and then iterating over the clone.  This is because during the course
+        // of responding to a display change, it may be appropriate for a
+        // DisplayChangedListener to add or remove itself from a SunDisplayChanger.
+        // If the set itself were iterated over, rather than a clone, it is
+        // trivial to get a ConcurrentModificationException by having a
+        // DisplayChangedListener remove itself from its list.
+        // Because all display change handling is done on the event thread,
+        // synchronization provides no protection against modifying the listener
+        // list while in the middle of iterating over it.  -bchristi 7/10/2001
 
-        synchronized (listeners) {
-            cloneSet = new HashSet<DisplayChangedListener>(listeners.keySet());
+        // Preserve "weakness" of the original map to avoid OOME.
+        WeakHashMap<DisplayChangedListener, Void> cloneMap;
+
+        synchronized(listeners) {
+            cloneMap = new WeakHashMap<>(listeners);
         }
-        for (DisplayChangedListener current : cloneSet) {
+
+        for (DisplayChangedListener current : cloneMap.keySet()) {
             try {
                 if (log.isLoggable(PlatformLogger.Level.FINEST)) {
-                    log.finest("paletteChanged for listener: " + current);
+                    log.finest(callbackName + " for listener: " + current);
                 }
-                current.paletteChanged();
+                callback.accept(current);
             } catch (IllegalComponentStateException e) {
                 // This DisplayChangeListener is no longer valid.  Most
                 // likely, a top-level window was dispose()d, but its
