@@ -1449,7 +1449,7 @@ void PhaseMacroExpand::expand_allocate_common(
     Node* init_size_in_bytes = size_in_bytes;
     if (UseShenandoahGC) {
       // Allocate several words more for the Shenandoah brooks pointer.
-      size_in_bytes = new AddLNode(size_in_bytes, _igvn.MakeConX(BrooksPointer::byte_size()));
+      size_in_bytes = new AddXNode(size_in_bytes, _igvn.MakeConX(BrooksPointer::byte_size()));
       transform_later(size_in_bytes);
     }
 
