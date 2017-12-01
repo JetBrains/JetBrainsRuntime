@@ -99,6 +99,10 @@ public:
       r->make_regular_bypass();
     }
     assert (r->is_active(), "only active regions in heap now");
+
+    // Record current region occupancy: this communicates empty regions are free
+    // to the rest of Full GC code.
+    r->set_new_top(r->top());
     return false;
   }
 };
@@ -198,13 +202,9 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
       heap->set_need_update_refs(true);
 
-      // Setup workers for phase 1
-      {
-        OrderAccess::fence();
+      OrderAccess::fence();
 
-        ShenandoahGCPhase mark_phase(ShenandoahPhaseTimings::full_gc_mark);
-        phase1_mark_heap();
-      }
+      phase1_mark_heap();
 
       heap->set_full_gc_move_in_progress(true);
 
@@ -218,27 +218,18 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
           worker_slices[i] = new ShenandoahHeapRegionSet(heap->num_regions());
         }
 
-        {
-          ShenandoahGCPhase calculate_address_phase(ShenandoahPhaseTimings::full_gc_calculate_addresses);
-          phase2_calculate_target_addresses(worker_slices);
-        }
+        phase2_calculate_target_addresses(worker_slices);
 
         OrderAccess::fence();
 
-        {
-          ShenandoahGCPhase adjust_pointer_phase(ShenandoahPhaseTimings::full_gc_adjust_pointers);
-          phase3_update_references();
-        }
+        phase3_update_references();
 
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahGCPhase update_str_dedup_table(ShenandoahPhaseTimings::full_gc_update_str_dedup_table);
           ShenandoahStringDedup::parallel_full_gc_update_or_unlink();
         }
 
-        {
-          ShenandoahGCPhase compaction_phase(ShenandoahPhaseTimings::full_gc_copy_objects);
-          phase4_compact_objects(worker_slices);
-        }
+        phase4_compact_objects(worker_slices);
 
         // Free worker slices
         for (uint i = 0; i < heap->max_workers(); i++) {
@@ -284,6 +275,8 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
 void ShenandoahMarkCompact::phase1_mark_heap() {
   GCTraceTime(Info, gc, phases) time("Phase 1: Mark live objects", _gc_timer);
+  ShenandoahGCPhase mark_phase(ShenandoahPhaseTimings::full_gc_mark);
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   ShenandoahConcurrentMark* cm = heap->concurrentMark();
@@ -454,25 +447,85 @@ public:
   }
 };
 
+void ShenandoahMarkCompact::calculate_target_humongous_objects() {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  // Compute the new addresses for humongous objects. We need to do this after addresses
+  // for regular objects are calculated, and we know what regions in heap suffix are
+  // available for humongous moves.
+  //
+  // Scan the heap backwards, because we are compacting humongous regions towards the end.
+  // Maintain the contiguous compaction window in [to_begin; to_end), so that we can slide
+  // humongous start there.
+  //
+  // The complication is potential non-movable regions during the scan. If such region is
+  // detected, then sliding restarts towards that non-movable region.
+
+  size_t to_begin = heap->num_regions();
+  size_t to_end = heap->num_regions();
+
+  for (size_t c = heap->num_regions() - 1; c > 0; c--) {
+    ShenandoahHeapRegion *r = heap->regions()->get(c);
+    if (r->is_humongous_continuation() || (r->new_top() == r->bottom())) {
+      // To-region candidate: record this, and continue scan
+      to_begin = r->region_number();
+      continue;
+    }
+
+    if (r->is_humongous_start() && r->is_move_allowed()) {
+      // From-region candidate: movable humongous region
+      oop old_obj = oop(r->bottom() + BrooksPointer::word_size());
+      size_t words_size = old_obj->size() + BrooksPointer::word_size();
+      size_t num_regions = ShenandoahHeapRegion::required_regions(words_size * HeapWordSize);
+
+      size_t start = to_end - num_regions;
+
+      if (start >= to_begin && start != r->region_number()) {
+        // Fits into current window, and the move is non-trivial. Record the move then, and continue scan.
+        BrooksPointer::set_raw(old_obj, heap->regions()->get(start)->bottom() + BrooksPointer::word_size());
+        to_end = start;
+        continue;
+      }
+    }
+
+    // Failed to fit. Scan starting from current region.
+    to_begin = r->region_number();
+    to_end = r->region_number();
+  }
+}
+
 void ShenandoahMarkCompact::phase2_calculate_target_addresses(ShenandoahHeapRegionSet** worker_slices) {
   GCTraceTime(Info, gc, phases) time("Phase 2: Compute new object addresses", _gc_timer);
+  ShenandoahGCPhase calculate_address_phase(ShenandoahPhaseTimings::full_gc_calculate_addresses);
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   {
-    ShenandoahHeapLocker lock(heap->lock());
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_calculate_addresses_regular);
 
-    ShenandoahMCReclaimHumongousRegionClosure cl;
-    heap->heap_region_iterate(&cl);
+    {
+      ShenandoahHeapLocker lock(heap->lock());
 
-    // After some humongous regions were reclaimed, we need to ensure their
-    // backing storage is active. This is needed because we are potentially
-    // sliding the data through them.
-    ShenandoahEnsureHeapActiveClosure ecl;
-    heap->heap_region_iterate(&ecl, false, false);
+      ShenandoahMCReclaimHumongousRegionClosure cl;
+      heap->heap_region_iterate(&cl);
+
+      // After some humongous regions were reclaimed, we need to ensure their
+      // backing storage is active. This is needed because we are potentially
+      // sliding the data through them.
+      ShenandoahEnsureHeapActiveClosure ecl;
+      heap->heap_region_iterate(&ecl, false, false);
+    }
+
+    // Compute the new addresses for regular objects
+    ShenandoahPrepareForCompactionTask prepare_task(worker_slices);
+    heap->workers()->run_task(&prepare_task);
   }
 
-  ShenandoahPrepareForCompactionTask prepare_task(worker_slices);
-  heap->workers()->run_task(&prepare_task);
+  // Compute the new addresses for humongous objects
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_calculate_addresses_humong);
+    calculate_target_humongous_objects();
+  }
 }
 
 class ShenandoahAdjustPointersClosure : public MetadataAwareOopClosure {
@@ -579,6 +632,8 @@ public:
 
 void ShenandoahMarkCompact::phase3_update_references() {
   GCTraceTime(Info, gc, phases) time("Phase 3: Adjust pointers", _gc_timer);
+  ShenandoahGCPhase adjust_pointer_phase(ShenandoahPhaseTimings::full_gc_adjust_pointers);
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   if (UseShenandoahMatrix) {
@@ -711,11 +766,89 @@ public:
   }
 };
 
+void ShenandoahMarkCompact::compact_humongous_objects() {
+  // Compact humongous regions, based on their fwdptr objects.
+  //
+  // This code is serial, because doing the in-slice parallel sliding is tricky. In most cases,
+  // humongous regions are already compacted, and do not require further moves, which alleviates
+  // sliding costs. We may consider doing this in parallel in future.
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  for (size_t c = heap->num_regions() - 1; c > 0; c--) {
+    ShenandoahHeapRegion* r = heap->regions()->get(c);
+    if (r->is_humongous_start()) {
+      oop old_obj = oop(r->bottom() + BrooksPointer::word_size());
+      size_t words_size = old_obj->size() + BrooksPointer::word_size();
+      size_t num_regions = ShenandoahHeapRegion::required_regions(words_size * HeapWordSize);
+
+      size_t old_start = r->region_number();
+      size_t old_end   = old_start + num_regions - 1;
+      size_t new_start = heap->heap_region_index_containing(BrooksPointer::get_raw(old_obj));
+      size_t new_end   = new_start + num_regions - 1;
+
+      if (old_start == new_start) {
+        // No need to move the object, it stays at the same slot
+        continue;
+      }
+
+      assert (r->is_move_allowed(), "should be movable");
+
+      Copy::aligned_conjoint_words(heap->regions()->get(old_start)->bottom(),
+                                   heap->regions()->get(new_start)->bottom(),
+                                   ShenandoahHeapRegion::region_size_words()*num_regions);
+
+      oop new_obj = oop(heap->regions()->get(new_start)->bottom() + BrooksPointer::word_size());
+      BrooksPointer::initialize(new_obj);
+
+      {
+        ShenandoahHeapLocker lock(heap->lock());
+
+        for (size_t c = old_start; c <= old_end; c++) {
+          ShenandoahHeapRegion* r = heap->regions()->get(c);
+          r->make_regular_bypass();
+          r->set_top(r->bottom());
+        }
+
+        for (size_t c = new_start; c <= new_end; c++) {
+          ShenandoahHeapRegion* r = heap->regions()->get(c);
+          if (c == new_start) {
+            r->make_humongous_start_bypass();
+          } else {
+            r->make_humongous_cont_bypass();
+          }
+
+          // Trailing region may be non-full, record the remainder there
+          size_t remainder = words_size & ShenandoahHeapRegion::region_size_words_mask();
+          if ((c == new_end) && (remainder != 0)) {
+            r->set_top(r->bottom() + remainder);
+          } else {
+            r->set_top(r->end());
+          }
+        }
+      }
+    }
+  }
+}
+
 void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** worker_slices) {
   GCTraceTime(Info, gc, phases) time("Phase 4: Move objects", _gc_timer);
+  ShenandoahGCPhase compaction_phase(ShenandoahPhaseTimings::full_gc_copy_objects);
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  ShenandoahCompactObjectsTask compact_task(worker_slices);
-  heap->workers()->run_task(&compact_task);
+
+  // Compact regular objects first
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_regular);
+    ShenandoahCompactObjectsTask compact_task(worker_slices);
+    heap->workers()->run_task(&compact_task);
+  }
+
+  // Compact humongous objects after regular object moves
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_humong);
+    compact_humongous_objects();
+  }
 
   // Reset complete bitmap. We're about to reset the complete-top-at-mark-start pointer
   // and must ensure the bitmap is in sync.

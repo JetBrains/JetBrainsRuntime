@@ -219,8 +219,12 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_purge_par_sync]          = "      Synchronization";
   _phase_names[full_gc_purge_cldg]              = "      CLDG";
   _phase_names[full_gc_calculate_addresses]     = "  Calculate Addresses";
+  _phase_names[full_gc_calculate_addresses_regular] = "    Regular Objects";
+  _phase_names[full_gc_calculate_addresses_humong]  = "    Humongous Objects";
   _phase_names[full_gc_adjust_pointers]         = "  Adjust Pointers";
   _phase_names[full_gc_copy_objects]            = "  Copy Objects";
+  _phase_names[full_gc_copy_objects_regular]    = "    Regular Objects";
+  _phase_names[full_gc_copy_objects_humong]     = "    Humongous Objects";
   _phase_names[full_gc_update_str_dedup_table]  = "  Update String Dedup Table";
   _phase_names[full_gc_resize_tlabs]            = "  Resize TLABs";
 

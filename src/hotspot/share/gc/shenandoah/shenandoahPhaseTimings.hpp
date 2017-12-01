@@ -210,8 +210,12 @@ public:
     full_gc_purge_par_sync,
     full_gc_purge_cldg,
     full_gc_calculate_addresses,
+    full_gc_calculate_addresses_regular,
+    full_gc_calculate_addresses_humong,
     full_gc_adjust_pointers,
     full_gc_copy_objects,
+    full_gc_copy_objects_regular,
+    full_gc_copy_objects_humong,
     full_gc_update_str_dedup_table,
     full_gc_resize_tlabs,
 

@@ -114,6 +114,8 @@ void ShenandoahHeapRegion::make_regular_bypass() {
       assert(_first_alloc_seq_num == 0, "Sanity");
       _first_alloc_seq_num = _last_alloc_seq_num;
     case _cset:
+    case _humongous_start:
+    case _humongous_cont:
       _state = _regular;
       return;
     case _pinned_cset:
@@ -143,6 +145,21 @@ void ShenandoahHeapRegion::make_humongous_start() {
   }
 }
 
+void ShenandoahHeapRegion::make_humongous_start_bypass() {
+  _heap->assert_heaplock_owned_by_current_thread();
+  switch (_state) {
+    case _regular:
+    case _humongous_start:
+    case _humongous_cont:
+      _last_alloc_seq_num = AllocSeqNum++;
+      _first_alloc_seq_num = _last_alloc_seq_num;
+      _state = _humongous_start;
+      return;
+    default:
+      report_illegal_transition("humongous start bypass");
+  }
+}
+
 void ShenandoahHeapRegion::make_humongous_cont() {
   _heap->assert_heaplock_owned_by_current_thread();
   switch (_state) {
@@ -156,6 +173,21 @@ void ShenandoahHeapRegion::make_humongous_cont() {
       return;
     default:
       report_illegal_transition("humongous continuation allocation");
+  }
+}
+
+void ShenandoahHeapRegion::make_humongous_cont_bypass() {
+  _heap->assert_heaplock_owned_by_current_thread();
+  switch (_state) {
+    case _regular:
+    case _humongous_start:
+    case _humongous_cont:
+      _last_alloc_seq_num = AllocSeqNum++;
+      _first_alloc_seq_num = _last_alloc_seq_num;
+      _state = _humongous_cont;
+      return;
+    default:
+      report_illegal_transition("humongous continuation bypass");
   }
 }
 

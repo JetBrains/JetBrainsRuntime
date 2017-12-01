@@ -72,6 +72,9 @@ private:
   void phase3_update_references();
   void phase4_compact_objects(ShenandoahHeapRegionSet** worker_slices);
 
+  void calculate_target_humongous_objects();
+  void compact_humongous_objects();
+
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHMARKCOMPACT_HPP
