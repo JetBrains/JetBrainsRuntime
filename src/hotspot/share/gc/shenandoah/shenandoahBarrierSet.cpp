@@ -173,7 +173,7 @@ bool ShenandoahBarrierSet::need_update_refs_barrier() {
   if (_heap->shenandoahPolicy()->update_refs()) {
     return _heap->is_update_refs_in_progress();
   } else {
-    return _heap->concurrent_mark_in_progress() && _heap->need_update_refs();
+    return _heap->is_concurrent_mark_in_progress() && _heap->need_update_refs();
   }
 }
 
@@ -235,7 +235,7 @@ void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
 #endif
 
   if (ShenandoahSATBBarrier ||
-      (ShenandoahConditionalSATBBarrier && _heap->concurrent_mark_in_progress())) {
+      (ShenandoahConditionalSATBBarrier && _heap->is_concurrent_mark_in_progress())) {
     T* elem_ptr = dst;
     for (int i = 0; i < count; i++, elem_ptr++) {
       T heap_oop = oopDesc::load_heap_oop(elem_ptr);
@@ -269,14 +269,14 @@ inline void ShenandoahBarrierSet::inline_write_ref_field_pre(T* field, oop new_v
       tty->print_cr("in_cset: %s", BOOL_TO_STR(_heap->in_collection_set(field)));
       _heap->heap_region_containing((HeapWord*)field)->print();
       tty->print_cr("marking: %s, evacuating: %s",
-                    BOOL_TO_STR(_heap->concurrent_mark_in_progress()),
+                    BOOL_TO_STR(_heap->is_concurrent_mark_in_progress()),
                     BOOL_TO_STR(_heap->is_evacuation_in_progress()));
       assert(false, "We should have fixed this earlier");
     }
   }
 #endif
 
-  if (_heap->concurrent_mark_in_progress()) {
+  if (_heap->is_concurrent_mark_in_progress()) {
     T heap_oop = oopDesc::load_heap_oop(field);
     if (!oopDesc::is_null(heap_oop)) {
       G1SATBCardTableModRefBS::enqueue(oopDesc::decode_heap_oop(heap_oop));
@@ -310,7 +310,7 @@ void ShenandoahBarrierSet::write_ref_field_work(void* v, oop o, bool release) {
     ShenandoahHeap::heap()->heap_region_containing(v)->print();
   }
   assert(heap->cancelled_concgc() || !heap->in_collection_set(v), "only write to to-space");
-  if (_heap->concurrent_mark_in_progress()) {
+  if (_heap->is_concurrent_mark_in_progress()) {
     assert(o == NULL || oopDesc::unsafe_equals(o, resolve_oop_static(o)), "only write to-space values");
     assert(o == NULL || !heap->in_collection_set(o), "only write to-space values");
   }
@@ -437,7 +437,7 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
 
 void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
   if (ShenandoahKeepAliveBarrier) {
-    if (_heap->concurrent_mark_in_progress()) {
+    if (_heap->is_concurrent_mark_in_progress()) {
       G1SATBCardTableModRefBS::enqueue(obj);
     } else if (_heap->is_concurrent_partial_in_progress()) {
       write_barrier_impl(obj);
@@ -460,7 +460,7 @@ void ShenandoahBarrierSet::verify_safe_oop(oop p) {
     heap->heap_region_containing((HeapWord*) p)->print();
     tty->print_cr("top-at-mark-start: %p", heap->next_top_at_mark_start((HeapWord*) p));
     tty->print_cr("top-at-prev-mark-start: %p", heap->complete_top_at_mark_start((HeapWord*) p));
-    tty->print_cr("marking: %s, evacuating: %s", BOOL_TO_STR(heap->concurrent_mark_in_progress()), BOOL_TO_STR(heap->is_evacuation_in_progress()));
+    tty->print_cr("marking: %s, evacuating: %s", BOOL_TO_STR(heap->is_concurrent_mark_in_progress()), BOOL_TO_STR(heap->is_evacuation_in_progress()));
     assert(false, "We should have fixed this earlier");
   }
 }

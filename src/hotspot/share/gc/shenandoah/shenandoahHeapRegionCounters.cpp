@@ -92,7 +92,7 @@ void ShenandoahHeapRegionCounters::update() {
 
       ShenandoahHeap* heap = ShenandoahHeap::heap();
       jlong status = 0;
-      if (heap->concurrent_mark_in_progress()) status |= 1 << 0;
+      if (heap->is_concurrent_mark_in_progress()) status |= 1 << 0;
       if (heap->is_evacuation_in_progress())   status |= 1 << 1;
       if (heap->is_update_refs_in_progress())  status |= 1 << 2;
       _status->set_value(status);

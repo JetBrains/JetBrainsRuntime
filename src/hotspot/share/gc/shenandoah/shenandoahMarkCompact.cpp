@@ -141,11 +141,11 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       // Full GC is supposed to recover from any GC state:
 
       // a. Cancel concurrent mark, if in progress
-      if (heap->concurrent_mark_in_progress()) {
+      if (heap->is_concurrent_mark_in_progress()) {
         heap->concurrentMark()->cancel();
         heap->stop_concurrent_marking();
       }
-      assert(!heap->concurrent_mark_in_progress(), "sanity");
+      assert(!heap->is_concurrent_mark_in_progress(), "sanity");
 
       // b1. Cancel evacuation, if in progress
       if (heap->is_evacuation_in_progress()) {

@@ -26,6 +26,7 @@
 
 #include "gc/shared/markBitMap.hpp"
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
+#include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
 
 class ConcurrentGCTimer;
@@ -181,23 +182,21 @@ private:
   HeapWord** _next_top_at_mark_starts;
   HeapWord** _next_top_at_mark_starts_base;
 
-  volatile jbyte _cancelled_concgc;
-
   size_t _bytes_allocated_since_cm;
   size_t _bytes_allocated_during_cm;
   size_t _allocated_last_gc;
   size_t _used_start_gc;
 
-  char _concurrent_mark_in_progress;
+  ShenandoahSharedFlag _concurrent_mark_in_progress;
+  ShenandoahSharedFlag _evacuation_in_progress;
+  ShenandoahSharedFlag _update_refs_in_progress;
+  ShenandoahSharedFlag _concurrent_partial_in_progress;
+  ShenandoahSharedFlag _full_gc_in_progress;
+  ShenandoahSharedFlag _full_gc_move_in_progress;
 
-  bool _full_gc_in_progress;
-  bool _full_gc_move_in_progress;
-  bool _update_refs_in_progress;
-  bool _concurrent_partial_in_progress;
+  ShenandoahSharedFlag _need_update_refs;
 
-  unsigned int _evacuation_in_progress;
-  bool _need_update_refs;
-  bool _need_reset_bitmaps;
+  ShenandoahSharedEnumFlag<CancelState> _cancelled_concgc;
 
   ReferenceProcessor* _ref_processor;
 
@@ -206,13 +205,9 @@ private:
 
   ConcurrentGCTimer* _gc_timer;
 
-  // See allocate_memory()
-  volatile jbyte _heap_lock;
-
   ShenandoahConnectionMatrix* _connection_matrix;
 
 #ifdef ASSERT
-  Thread* volatile _heap_lock_owner;
   int     _heap_expansion_count;
 #endif
 
@@ -289,6 +284,9 @@ public:
   static size_t conservative_max_heap_alignment();
   static address in_cset_fast_test_addr();
   static address cancelled_concgc_addr();
+  static address concurrent_mark_in_progress_addr();
+  static address evacuation_in_progress_addr();
+  static address update_refs_in_progress_addr();
 
   ShenandoahCollectorPolicy *shenandoahPolicy() const { return _shenandoah_policy; }
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
@@ -307,11 +305,6 @@ public:
 
   void start_concurrent_marking();
   void stop_concurrent_marking();
-  inline bool concurrent_mark_in_progress() const;
-  static address concurrent_mark_in_progress_addr();
-
-  void set_concurrent_partial_in_progress(bool in_progress);
-  inline bool is_concurrent_partial_in_progress() const;
 
   void prepare_for_concurrent_evacuation();
   void evacuate_and_update_roots();
@@ -325,27 +318,24 @@ public:
 
   void roots_iterate(OopClosure* cl);
 
-private:
-  void set_evacuation_in_progress(bool in_progress);
-
 public:
-  inline bool is_evacuation_in_progress() const;
+  void set_concurrent_mark_in_progress(bool in_progress);
+  void set_evacuation_in_progress(bool in_progress);
   void set_evacuation_in_progress_concurrently(bool in_progress);
   void set_evacuation_in_progress_at_safepoint(bool in_progress);
-  static address evacuation_in_progress_addr();
-
-  void set_full_gc_in_progress(bool in_progress);
-  bool is_full_gc_in_progress() const;
-
-  void set_full_gc_move_in_progress(bool in_progress);
-  bool is_full_gc_move_in_progress() const;
-
   void set_update_refs_in_progress(bool in_progress);
-  bool is_update_refs_in_progress() const;
-  static address update_refs_in_progress_addr();
-
-  inline bool need_update_refs() const;
+  void set_full_gc_in_progress(bool in_progress);
+  void set_full_gc_move_in_progress(bool in_progress);
+  void set_concurrent_partial_in_progress(bool in_progress);
   void set_need_update_refs(bool update_refs);
+
+  inline bool is_concurrent_mark_in_progress() const;
+  inline bool is_update_refs_in_progress() const;
+  inline bool is_evacuation_in_progress() const;
+  inline bool is_full_gc_in_progress() const;
+  inline bool is_full_gc_move_in_progress() const;
+  inline bool is_concurrent_partial_in_progress() const;
+  inline bool need_update_refs() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
 
@@ -530,8 +520,6 @@ private:
   void ref_processing_init();
 
   GCTracer* tracer();
-
-  void set_concurrent_mark_in_progress(bool in_progress);
 
   void oom_during_evacuation();
 

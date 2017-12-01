@@ -360,9 +360,6 @@ void ShenandoahConcurrentMark::initialize(uint workers) {
     task_queue->initialize();
     _task_queues->register_queue(i, task_queue);
   }
-  _process_references = false;
-  _unload_classes = false;
-  _claimed_codecache = 0;
 
   JavaThread::satb_mark_queue_set().set_buffer_size(ShenandoahSATBBufferSize);
 
@@ -1027,30 +1024,29 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
 }
 
 void ShenandoahConcurrentMark::set_process_references(bool pr) {
-  _process_references = pr;
+  _process_references.set_cond(pr);
 }
 
 bool ShenandoahConcurrentMark::process_references() const {
-  return _process_references;
+  return _process_references.is_set();
 }
 
 void ShenandoahConcurrentMark::set_unload_classes(bool uc) {
-  _unload_classes = uc;
+  _unload_classes.set_cond(uc);
 }
 
 bool ShenandoahConcurrentMark::unload_classes() const {
-  return _unload_classes;
+  return _unload_classes.is_set();
 }
 
 bool ShenandoahConcurrentMark::claim_codecache() {
   assert(ShenandoahConcurrentScanCodeRoots, "must not be called otherwise");
-  jbyte old = Atomic::cmpxchg((jbyte)1, &_claimed_codecache, (jbyte)0);
-  return old == 0;
+  return _claimed_codecache.try_set();
 }
 
 void ShenandoahConcurrentMark::clear_claim_codecache() {
   assert(ShenandoahConcurrentScanCodeRoots, "must not be called otherwise");
-  _claimed_codecache = 0;
+  _claimed_codecache.unset();
 }
 
 jushort* ShenandoahConcurrentMark::get_liveness(uint worker_id) {

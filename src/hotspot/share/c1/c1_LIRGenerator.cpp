@@ -1663,7 +1663,7 @@ void LIRGenerator::Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
     LIR_Opr mark_in_prog_addr = new_pointer_register();
     __ move(LIR_OprFact::intptrConst((intptr_t) ShenandoahHeap::concurrent_mark_in_progress_addr()), mark_in_prog_addr);
     LIR_Opr mark_in_prog = new_register(T_INT);
-    __ move(new LIR_Address(mark_in_prog_addr, T_CHAR), mark_in_prog);
+    __ move(new LIR_Address(mark_in_prog_addr, T_BYTE), mark_in_prog);
     __ cmp(lir_cond_equal, mark_in_prog, LIR_OprFact::intConst(0));
 
     LIR_PatchCode pre_val_patch_code = lir_patch_none;

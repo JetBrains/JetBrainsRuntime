@@ -38,7 +38,7 @@ class ShenandoahCodeRootsIterator VALUE_OBJ_CLASS_SPEC {
 protected:
   ShenandoahHeap* _heap;
   ParallelCodeCacheIterator _par_iterator;
-  volatile jbyte _seq_claimed;
+  ShenandoahSharedFlag _seq_claimed;
   volatile size_t _claimed;
 protected:
   ShenandoahCodeRootsIterator();

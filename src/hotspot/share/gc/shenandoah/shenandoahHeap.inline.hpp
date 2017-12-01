@@ -95,7 +95,7 @@ inline bool ShenandoahHeap::is_marked_complete(oop obj) const {
 }
 
 inline bool ShenandoahHeap::need_update_refs() const {
-  return _need_update_refs;
+  return _need_update_refs.is_set();
 }
 
 inline size_t ShenandoahHeap::heap_region_index_containing(const void* addr) const {
@@ -247,14 +247,15 @@ inline oop ShenandoahHeap::maybe_update_oop_ref_not_null(T* p, oop heap_oop) {
 }
 
 inline bool ShenandoahHeap::cancelled_concgc() const {
-  return OrderAccess::load_acquire((jbyte*) &_cancelled_concgc) == CANCELLED;
+  return _cancelled_concgc.get() == CANCELLED;
 }
 
 inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
   if (! (sts_active && ShenandoahSuspendibleWorkers)) {
     return cancelled_concgc();
   }
-  jbyte prev = Atomic::cmpxchg((jbyte)NOT_CANCELLED, &_cancelled_concgc, (jbyte)CANCELLABLE);
+
+  jbyte prev = _cancelled_concgc.cmpxchg(NOT_CANCELLED, CANCELLABLE);
   if (prev == CANCELLABLE || prev == NOT_CANCELLED) {
 
     if (SuspendibleThreadSet::should_yield()) {
@@ -264,7 +265,7 @@ inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
     // Back to CANCELLABLE. The thread that poked NOT_CANCELLED first gets
     // to restore to CANCELLABLE.
     if (prev == CANCELLABLE) {
-      OrderAccess::release_store_fence(&_cancelled_concgc, (jbyte)CANCELLABLE);
+      _cancelled_concgc.set(CANCELLABLE);
     }
     return false;
   } else {
@@ -274,7 +275,7 @@ inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
 
 inline bool ShenandoahHeap::try_cancel_concgc() {
   while (true) {
-    jbyte prev = Atomic::cmpxchg((jbyte)CANCELLED, &_cancelled_concgc, (jbyte)CANCELLABLE);
+    jbyte prev = _cancelled_concgc.cmpxchg(CANCELLED, CANCELLABLE);
     if (prev == CANCELLABLE) return true;
     else if (prev == CANCELLED) return false;
     assert(ShenandoahSuspendibleWorkers, "should not get here when not using suspendible workers");
@@ -289,7 +290,7 @@ inline bool ShenandoahHeap::try_cancel_concgc() {
 }
 
 inline void ShenandoahHeap::clear_cancelled_concgc() {
-  OrderAccess::release_store_fence(&_cancelled_concgc, (jbyte)CANCELLABLE);
+  _cancelled_concgc.set(CANCELLABLE);
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {
@@ -441,10 +442,10 @@ inline bool ShenandoahHeap::requires_marking(const void* entry) const {
   // TODO: Make this faster! It's used in a hot path.
   // TODO: it's not strictly matrix-related, but used only in partial (i.e. matrix) GCs.
   if (is_concurrent_partial_in_progress()) {
-    assert(! in_collection_set((oop) entry), "must not get cset objects here");
+    assert(! in_collection_set((oop) entry), "must not get cset objects here: " PTR_FORMAT, p2i(entry));
     // assert(free_regions()->contains(heap_region_containing(entry)), "expect to-space object");
     return true;
-  } else if (concurrent_mark_in_progress()) {
+  } else if (is_concurrent_mark_in_progress()) {
     return ! is_marked_next(oop(entry));
   } else {
     return false;
@@ -469,24 +470,28 @@ inline bool ShenandoahHeap::in_collection_set(T p) const {
   return collection_set()->is_in(obj);
 }
 
-inline bool ShenandoahHeap::concurrent_mark_in_progress() const {
-  return _concurrent_mark_in_progress != 0;
+inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
+  return _concurrent_mark_in_progress.is_set();
 }
 
 inline bool ShenandoahHeap::is_concurrent_partial_in_progress() const {
-  return _concurrent_partial_in_progress;
-}
-
-inline address ShenandoahHeap::update_refs_in_progress_addr() {
-  return (address) &(ShenandoahHeap::heap()->_update_refs_in_progress);
+  return _concurrent_partial_in_progress.is_set();
 }
 
 inline bool ShenandoahHeap::is_evacuation_in_progress() const {
-  return _evacuation_in_progress != 0;
+  return _evacuation_in_progress.is_set();
 }
 
-inline address ShenandoahHeap::evacuation_in_progress_addr() {
-  return (address) &(ShenandoahHeap::heap()->_evacuation_in_progress);
+inline bool ShenandoahHeap::is_full_gc_in_progress() const {
+  return _full_gc_in_progress.is_set();
+}
+
+inline bool ShenandoahHeap::is_full_gc_move_in_progress() const {
+  return _full_gc_move_in_progress.is_set();
+}
+
+inline bool ShenandoahHeap::is_update_refs_in_progress() const {
+  return _update_refs_in_progress.is_set();
 }
 
 inline bool ShenandoahHeap::allocated_after_next_mark_start(HeapWord* addr) const {

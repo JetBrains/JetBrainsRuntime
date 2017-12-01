@@ -194,7 +194,7 @@ ShenandoahCsetCodeRootsIterator ShenandoahCodeRoots::cset_iterator() {
 
 ShenandoahCodeRootsIterator::ShenandoahCodeRootsIterator() :
         _claimed(0), _heap(ShenandoahHeap::heap()),
-        _par_iterator(CodeCache::parallel_iterator()), _seq_claimed(0) {
+        _par_iterator(CodeCache::parallel_iterator()) {
   switch (ShenandoahCodeRootsStyle) {
     case 0:
     case 1:
@@ -224,7 +224,7 @@ template<bool CSET_FILTER>
 void ShenandoahCodeRootsIterator::dispatch_parallel_blobs_do(CodeBlobClosure *f) {
   switch (ShenandoahCodeRootsStyle) {
     case 0:
-      if (Atomic::cmpxchg((jbyte)1, &_seq_claimed, (jbyte)0) == 0) {
+      if (_seq_claimed.try_set()) {
         CodeCache::blobs_do(f);
       }
       break;

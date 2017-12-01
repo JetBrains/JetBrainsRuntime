@@ -38,7 +38,7 @@ private:
   ShenandoahConnectionMatrix* _matrix;
   ShenandoahObjToScanQueueSet* _task_queues;
   size_t* from_idxs;
-  volatile jbyte _has_work;
+  ShenandoahSharedFlag _has_work;
 
   void set_has_work(bool value);
 

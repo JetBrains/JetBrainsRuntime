@@ -548,11 +548,11 @@ void ShenandoahPartialGC::reset() {
 }
 
 void ShenandoahPartialGC::set_has_work(bool value) {
-  OrderAccess::release_store_fence(&_has_work, (jbyte)(value ? 1 : 0));
+  _has_work.set_cond(value);
 }
 
 bool ShenandoahPartialGC::has_work() {
-  return OrderAccess::load_acquire(&_has_work) == 1;
+  return _has_work.is_set();
 }
 
 ShenandoahObjToScanQueueSet* ShenandoahPartialGC::task_queues() {

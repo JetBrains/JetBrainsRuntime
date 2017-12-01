@@ -1318,8 +1318,7 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _successful_cm(0),
   _degenerated_cm(0),
   _successful_uprefs(0),
-  _degenerated_uprefs(0),
-  _in_shutdown(0)
+  _degenerated_uprefs(0)
 {
 
   ShenandoahHeapRegion::setup_heap_region_size(initial_heap_byte_size(), max_heap_byte_size());
@@ -1568,11 +1567,11 @@ void ShenandoahCollectorPolicy::record_cycle_end() {
 }
 
 void ShenandoahCollectorPolicy::record_shutdown() {
-  OrderAccess::release_store_fence(&_in_shutdown, (jbyte)1);
+  _in_shutdown.set();
 }
 
 bool ShenandoahCollectorPolicy::is_at_shutdown() {
-  return OrderAccess::load_acquire(&_in_shutdown) == 1;
+  return _in_shutdown.is_set();
 }
 
 void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {

@@ -38,10 +38,10 @@ private:
   // The per-worker-thread work queues
   ShenandoahObjToScanQueueSet* _task_queues;
 
-  bool _process_references;
-  bool _unload_classes;
+  ShenandoahSharedFlag _process_references;
+  ShenandoahSharedFlag _unload_classes;
 
-  volatile jbyte _claimed_codecache;
+  ShenandoahSharedFlag _claimed_codecache;
 
   // Used for buffering per-region liveness data.
   // Needed since ShenandoahHeapRegion uses atomics to update liveness.

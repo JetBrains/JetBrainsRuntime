@@ -49,7 +49,7 @@ private:
   size_t _degenerated_uprefs;
   size_t _successful_uprefs;
 
-  volatile jbyte _in_shutdown;
+  ShenandoahSharedFlag _in_shutdown;
 
   ShenandoahHeuristics* _heuristics;
   ShenandoahHeuristics* _minor_heuristics;
