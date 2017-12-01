@@ -45,7 +45,7 @@
 #define  FloatToFTFixed(f) (FT_Fixed)((f) * (float)(ftFixed1))
 #define  FTFixedToFloat(x) ((x) / (float)(ftFixed1))
 #define  FT26Dot6ToFloat(x)  ((x) / ((float) (1<<6)))
-#define  ROUND(x) ((int) (x+0.5))
+#define  ROUND(x) ((int) ((x<0) ? (x-0.5) : (x+0.5)))
 
 typedef struct {
     /* Important note:
