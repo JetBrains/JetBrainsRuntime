@@ -389,25 +389,6 @@ public:
     static BOOL CALLBACK CommonPeekMessageFunc(MSG& msg);
     static BOOL activateKeyboardLayout(HKL hkl);
 
-    static INLINE DPI_AWARENESS_CONTEXT GetToolkitDpiAwarenessContext()
-    {
-        return lpGetThreadDpiAwarenessContext != NULL ? lpGetThreadDpiAwarenessContext() : NULL;
-    }
-
-    static INLINE DPI_AWARENESS_CONTEXT SetToolkitDpiAwarenessContext(DPI_AWARENESS_CONTEXT context)
-    {
-        return lpSetThreadDpiAwarenessContext != NULL ? lpSetThreadDpiAwarenessContext(context) : NULL;
-    }
-
-    static INLINE void UpdateToolkitDpiAwarenessContext(DPI_AWARENESS_CONTEXT context = NULL)
-    {
-        if (AwtToolkit::IsMainThread()) {
-            _UpdateToolkitDpiAwarenessContext(context);
-        } else {
-            AwtToolkit::GetInstance().InvokeFunctionLater(_UpdateToolkitDpiAwarenessContext, static_cast<void*>(context));
-        }
-    }
-
     static INLINE BOOL EnableNcDpiScaling(HWND hwnd)
     {
         return lpEnableNonClientDpiScaling != NULL ? lpEnableNonClientDpiScaling(hwnd) : FALSE;
@@ -460,11 +441,7 @@ private:
 
     CriticalSection m_Sync;
 
-    static GetThreadDpiAwarenessContextFunc *lpGetThreadDpiAwarenessContext;
-    static SetThreadDpiAwarenessContextFunc *lpSetThreadDpiAwarenessContext;
-    static AreDpiAwarenessContextsEqualFunc *lpAreDpiAwarenessContextsEqual;
     static EnableNonClientDpiScalingFunc *lpEnableNonClientDpiScaling;
-    static void _UpdateToolkitDpiAwarenessContext(void*);
 
 /* track display changes - used by palette-updating code.
    This is a workaround for a windows bug that prevents
