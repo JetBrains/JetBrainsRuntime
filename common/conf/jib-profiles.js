@@ -728,9 +728,9 @@ var getJibProfilesProfiles = function (input, common, data) {
                 jdk: {
                     local: "bundles/\\(jdk.*bin.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x64/openjdk-" + data.version
                             + "_linux-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
+                        "bundles/openjdk/GPL/linux-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
@@ -741,17 +741,17 @@ var getJibProfilesProfiles = function (input, common, data) {
                 test: {
                     local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x64/openjdk-" + data.version
                             + "_linux-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
+                        "bundles/openjdk/GPL/linux-x64/open\\1"
                     ]
                 },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x64/openjdk-" + data.version
                             + "_linux-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/linux-x64/\\1"
+                        "bundles/openjdk/GPL/linux-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
@@ -771,27 +771,27 @@ var getJibProfilesProfiles = function (input, common, data) {
                 jdk: {
                     local: "bundles/\\(jdk.*bin.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x86/openjdk-" + data.version
                             + "_linux-x86_bin.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
+                        "bundles/openjdk/GPL/linux-x86/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x86/openjdk-" + data.version
                             + "_linux-x86_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
+                        "bundles/openjdk/GPL/linux-x86/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
                 test: {
                     local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/linux-x86/jdk-" + data.version
+                        "bundles/openjdk/GPL/linux-x86/openjdk-" + data.version
                             + "_linux-x86_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/linux-x86/\\1"
+                        "bundles/openjdk/GPL/linux-x86/open\\1"
                     ]
                 },
                 jre: {
@@ -819,9 +819,9 @@ var getJibProfilesProfiles = function (input, common, data) {
                 jdk: {
                     local: "bundles/\\(jdk.*bin.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/osx-x64/openjdk-" + data.version
                             + "_osx-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
+                        "bundles/openjdk/GPL/osx-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
@@ -832,17 +832,17 @@ var getJibProfilesProfiles = function (input, common, data) {
                 test: {
                     local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/osx-x64/openjdk-" + data.version
                             + "_osx-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
+                        "bundles/openjdk/GPL/osx-x64/open\\1"
                     ]
                 },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/osx-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/osx-x64/openjdk-" + data.version
                             + "_osx-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/osx-x64/\\1"
+                        "bundles/openjdk/GPL/osx-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
@@ -862,9 +862,9 @@ var getJibProfilesProfiles = function (input, common, data) {
                 jdk: {
                     local: "bundles/\\(jdk.*bin.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/windows-x64/openjdk-" + data.version
                             + "_windows-x64_bin.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
+                        "bundles/openjdk/GPL/windows-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
@@ -875,17 +875,17 @@ var getJibProfilesProfiles = function (input, common, data) {
                 test: {
                     local: "bundles/\\(jdk.*bin-tests.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/windows-x64/openjdk-" + data.version
                             + "_windows-x64_bin-tests.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
+                        "bundles/openjdk/GPL/windows-x64/open\\1"
                     ]
                 },
                 jdk_symbols: {
                     local: "bundles/\\(jdk.*bin-symbols.tar.gz\\)",
                     remote: [
-                        "bundles/openjdk/GPL/windows-x64/jdk-" + data.version
+                        "bundles/openjdk/GPL/windows-x64/openjdk-" + data.version
                             + "_windows-x64_bin-symbols.tar.gz",
-                        "bundles/openjdk/GPL/windows-x64/\\1"
+                        "bundles/openjdk/GPL/windows-x64/open\\1"
                     ],
                     subdir: "jdk-" + data.version
                 },
