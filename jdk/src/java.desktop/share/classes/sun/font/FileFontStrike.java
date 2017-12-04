@@ -358,10 +358,6 @@ public class FileFontStrike extends PhysicalStrike {
             if (rotation == 0 || rotation == 2) {
                 float advance = getGlyphAdvance(glyphCode, false);
                 StrikeCache.unsafe.putFloat(ptr + StrikeCache.xAdvanceOffset, advance);
-            } else if (rotation == 1 || rotation == 3) {
-                Point2D.Float metrics = new Point2D.Float();
-                fileFont.getGlyphMetrics(pScalerContext, glyphCode, metrics);
-                StrikeCache.unsafe.putFloat(ptr + StrikeCache.yAdvanceOffset, metrics.y);
             }
             return ptr;
         } else {
