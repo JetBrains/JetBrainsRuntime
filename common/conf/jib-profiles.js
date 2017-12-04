@@ -435,7 +435,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "macosx-x64": {
             target_os: "macosx",
             target_cpu: "x64",
-            dependencies: ["devkit"],
+            dependencies: ["devkit", "freetype"],
             configure_args: concat(common.configure_args_64bit, "--with-zlib=system"),
         },
 
@@ -937,16 +937,6 @@ var getJibProfilesProfiles = function (input, common, data) {
             }
         });
 
-    // The windows ri profile needs to add the freetype license file
-    profilesRiFreetype = {
-        "windows-x64-ri": {
-            configure_args: "--with-freetype-license="
-                + input.get("freetype", "install_path")
-                + "/freetype-2.7.1-v120-x64/freetype.md"
-        }
-    };
-    profiles = concatObjects(profiles, profilesRiFreetype);
-
     // Generate the missing platform attributes
     profiles = generatePlatformAttributes(profiles);
     profiles = generateDefaultMakeTargetsConfigureArg(common, profiles);
@@ -977,6 +967,12 @@ var getJibProfilesDependencies = function (input, common) {
     var devkit_platform = (input.target_cpu == "x86"
         ? input.target_os + "_x64"
         : input.target_platform);
+
+    var freetype_version = {
+        windows_x64: "2.7.1-v120+1.1",
+        windows_x86: "2.7.1-v120+1.1",
+        macosx_x64: "2.7.1-Xcode6.3-MacOSX10.9+1.0"
+    }[input.target_platform];
 
     var dependencies = {
 
@@ -1042,7 +1038,7 @@ var getJibProfilesDependencies = function (input, common) {
         freetype: {
             organization: common.organization,
             ext: "tar.gz",
-            revision: "2.7.1-v120+1.0",
+            revision: freetype_version,
             module: "freetype-" + input.target_platform
         },
 
