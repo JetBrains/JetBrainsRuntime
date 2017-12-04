@@ -358,7 +358,11 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
           immediate_regions += reclaimed;
           immediate_garbage += reclaimed * ShenandoahHeapRegion::region_size_bytes();
         }
-      }
+    } else if (region->is_trash()) {
+      // Count in just trashed collection set, during coalesced CM-with-UR
+      immediate_regions++;
+      immediate_garbage += ShenandoahHeapRegion::region_size_bytes();
+    }
   }
 
   // Step 2. Process the remaining candidates, if any.
