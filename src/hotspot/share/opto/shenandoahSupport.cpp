@@ -899,10 +899,18 @@ bool ShenandoahBarrierNode::verify_helper(Node* in, Node_Stack& phis, VectorSet&
   }
   return true;
 }
-#endif
+
+void ShenandoahBarrierNode::report_verify_failure(const char *msg, Node *n1, Node *n2) {
+  if (n1 != NULL) {
+    n1->dump(+10);
+  }
+  if (n2 != NULL) {
+    n2->dump(+10);
+  }
+  fatal("%s", msg);
+}
 
 void ShenandoahBarrierNode::verify(RootNode* root) {
-#ifdef ASSERT
   ResourceMark rm;
   Unique_Node_List wq;
   GrowableArray<Node*> barriers;
@@ -955,8 +963,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
           }
 
           if (verify && !ShenandoahBarrierNode::verify_helper(n->in(MemNode::Address), phis, visited, ShenandoahLoad, trace, barriers_used)) {
-            n->dump(10);
-            ShouldNotReachHere();
+            report_verify_failure("Shenandoah verification: Load should have barriers", n);
           }
         }
       }
@@ -985,13 +992,11 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
         }
 
         if (verify && !ShenandoahBarrierNode::verify_helper(n->in(MemNode::ValueIn), phis, visited, ShenandoahValue, trace, barriers_used)) {
-          n->dump(10);
-          ShouldNotReachHere();
+          report_verify_failure("Shenandoah verification: Store should have barriers", n);
         }
       }
       if (!ShenandoahBarrierNode::verify_helper(n->in(MemNode::Address), phis, visited, ShenandoahStore, trace, barriers_used)) {
-        n->dump(10);
-        ShouldNotReachHere();
+        report_verify_failure("Shenandoah verification: Store (address) should have barriers", n);
       }
     } else if (n->Opcode() == Op_CmpP) {
       const bool trace = false;
@@ -1015,8 +1020,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
 
           if (!ShenandoahBarrierNode::verify_helper(in1, phis, visited, ShenandoahStore, trace, barriers_used) ||
               !ShenandoahBarrierNode::verify_helper(in2, phis, visited, ShenandoahStore, trace, barriers_used)) {
-            n->dump(10);
-            ShouldNotReachHere();
+            report_verify_failure("Shenandoah verification: Cmp should have barriers", n);
           }
         }
         if (verify_no_useless_barrier &&
@@ -1030,13 +1034,11 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
     } else if (n->is_LoadStore()) {
       if (n->in(MemNode::ValueIn)->bottom_type()->isa_ptr() &&
           !ShenandoahBarrierNode::verify_helper(n->in(MemNode::ValueIn), phis, visited, ShenandoahLoad, trace, barriers_used)) {
-        n->dump(10);
-        ShouldNotReachHere();
+        report_verify_failure("Shenandoah verification: LoadStore (value) should have barriers", n);
       }
 
       if (n->in(MemNode::Address)->bottom_type()->isa_oopptr() && !ShenandoahBarrierNode::verify_helper(n->in(MemNode::Address), phis, visited, ShenandoahStore, trace, barriers_used)) {
-        n->dump(10);
-        ShouldNotReachHere();
+        report_verify_failure("Shenandoah verification: LoadStore (address) should have barriers", n);
       }
     } else if (n->Opcode() == Op_CallLeafNoFP || n->Opcode() == Op_CallLeaf) {
       CallNode* call = n->as_Call();
@@ -1130,14 +1132,12 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
         }
         if (!ShenandoahBarrierNode::verify_helper(n->in(TypeFunc::Parms), phis, visited, ShenandoahLoad, trace, barriers_used) ||
             !ShenandoahBarrierNode::verify_helper(dest, phis, visited, ShenandoahStore, trace, barriers_used)) {
-          n->dump(10);
-          ShouldNotReachHere();
+          report_verify_failure("Shenandoah verification: ArrayCopy should have barriers", n);
         }
       } else if (strlen(call->_name) > 5 &&
                  !strcmp(call->_name + strlen(call->_name) - 5, "_fill")) {
         if (!ShenandoahBarrierNode::verify_helper(n->in(TypeFunc::Parms), phis, visited, ShenandoahStore, trace, barriers_used)) {
-          n->dump(10);
-          ShouldNotReachHere();
+          report_verify_failure("Shenandoah verification: _fill should have barriers", n);
         }
       } else if (!strcmp(call->_name, "g1_wb_pre")) {
         // skip
@@ -1157,8 +1157,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
               break;
             }
             if (!ShenandoahBarrierNode::verify_helper(call->in(pos), phis, visited, calls[i].args[j].t, trace, barriers_used)) {
-              n->dump(10);
-              ShouldNotReachHere();
+              report_verify_failure("Shenandoah verification: intrinsic calls should have barriers", n);
             }
           }
           for (uint j = TypeFunc::Parms; j < call->req(); j++) {
@@ -1252,8 +1251,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
             break;
           }
           if (!ShenandoahBarrierNode::verify_helper(n->in(pos), phis, visited, others[i].inputs[j].t, trace, barriers_used)) {
-            n->dump(10);
-            ShouldNotReachHere();
+            report_verify_failure("Shenandoah verification: intrinsic calls should have barriers", n);
           }
         }
         for (uint j = 1; j < stop; j++) {
@@ -1315,9 +1313,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
             n->Opcode() == Op_EncodeP ||
             n->Opcode() == Op_DecodeN)) {
         if (m->bottom_type()->make_oopptr() && m->bottom_type()->make_oopptr()->meet(TypePtr::NULL_PTR) == m->bottom_type()) {
-          n->dump();
-          m->dump();
-          ShouldNotReachHere();
+          report_verify_failure("Shenandoah verification: null input", n, m);
         }
       }
 
@@ -1334,10 +1330,8 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
       }
     }
   }
-#endif
 }
-
-#include "opto/loopnode.hpp"
+#endif
 
 MergeMemNode* ShenandoahWriteBarrierNode::allocate_merge_mem(Node* mem, int alias, Node* rep_proj, Node* rep_ctrl, PhaseIdealLoop* phase) {
   MergeMemNode* mm = MergeMemNode::make(mem);

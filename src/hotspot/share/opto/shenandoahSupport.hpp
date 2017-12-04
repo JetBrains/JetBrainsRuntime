@@ -101,8 +101,9 @@ public:
 
   static bool needs_barrier(PhaseGVN* phase, ShenandoahBarrierNode* orig, Node* n, Node* rb_mem, bool allow_fromspace);
 
-  static void verify(RootNode* root);
 #ifdef ASSERT
+  static void report_verify_failure(const char* msg, Node* n1 = NULL, Node* n2 = NULL);
+  static void verify(RootNode* root);
   static void verify_raw_mem(RootNode* root);
 #endif
 #ifndef PRODUCT
