@@ -224,9 +224,10 @@ private:
     verify(_safe_unknown, obj, check_obj_alignment(obj),
               "oop must be aligned");
 
+    ShenandoahHeapRegion *obj_reg = _heap->heap_region_containing(obj);
+
     // Verify that obj is not in dead space:
     {
-      ShenandoahHeapRegion *obj_reg = _heap->heap_region_containing(obj);
 
       HeapWord *obj_addr = (HeapWord *) obj;
       verify(_safe_unknown, obj, obj_addr < obj_reg->top(),
@@ -269,6 +270,9 @@ private:
     }
 
     oop fwd = (oop) BrooksPointer::get_raw(obj);
+
+    ShenandoahHeapRegion* fwd_reg = NULL;
+
     if (!oopDesc::unsafe_equals(obj, fwd)) {
       verify(_safe_oop, obj, _heap->is_in(fwd),
              "Forwardee must be in heap");
@@ -277,18 +281,17 @@ private:
       verify(_safe_oop, obj, check_obj_alignment(fwd),
              "Forwardee must be aligned");
 
-      // Verify that forwardee is not in the dead space:
-      if (!oopDesc::unsafe_equals(obj, fwd)) {
-        ShenandoahHeapRegion *fwd_reg = _heap->heap_region_containing(fwd);
-        verify(_safe_oop, obj, !fwd_reg->is_humongous(),
-               "Should have no humongous forwardees");
+      fwd_reg = _heap->heap_region_containing(fwd);
 
-        HeapWord *fwd_addr = (HeapWord *) fwd;
-        verify(_safe_oop, obj, fwd_addr < fwd_reg->top(),
-               "Forwardee start should be within the region");
-        verify(_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
-               "Forwardee end should be within the region");
-      }
+      // Verify that forwardee is not in the dead space:
+      verify(_safe_oop, obj, !fwd_reg->is_humongous(),
+             "Should have no humongous forwardees");
+
+      HeapWord *fwd_addr = (HeapWord *) fwd;
+      verify(_safe_oop, obj, fwd_addr < fwd_reg->top(),
+             "Forwardee start should be within the region");
+      verify(_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
+             "Forwardee end should be within the region");
 
       verify(_safe_oop, obj, Metaspace::contains(fwd->klass()),
              "Forwardee klass pointer must go to metaspace");
@@ -298,6 +301,8 @@ private:
       oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
       verify(_safe_oop, obj, oopDesc::unsafe_equals(fwd, fwd2),
              "Double forwarding");
+    } else {
+      fwd_reg = obj_reg;
     }
 
     // ------------ obj and fwd are safe at this point --------------
@@ -329,7 +334,7 @@ private:
       }
       case ShenandoahVerifier::_verify_forwarded_allow: {
         if (!oopDesc::unsafe_equals(obj, fwd)) {
-          verify(_safe_all, obj, _heap->heap_region_containing(obj) != _heap->heap_region_containing(fwd),
+          verify(_safe_all, obj, obj_reg != fwd_reg,
                  "Forwardee should be in another region");
         }
         break;
