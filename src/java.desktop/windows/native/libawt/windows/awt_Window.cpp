@@ -1472,7 +1472,7 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     int user_right = ScaleDownX(m_insets.right);
     int user_bottom = ScaleDownY(m_insets.bottom);
 
-    // [int] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
+    // [tav] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
     // This will align the origin of the non-client area with its physical origin after transforming back to the
     // device space. This will avoid gaps b/w the window's rendered content and the window's upper/left borders.
     // However, even so the size of the non-client area, transformed back from the user space, may not exactly match
@@ -1825,8 +1825,40 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
     AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
 
-    (env)->SetIntField(target, AwtComponent::xID, device->ScaleDownDX(rect.x));
-    (env)->SetIntField(target, AwtComponent::yID, device->ScaleDownDY(rect.y));
+    int usrX = device->ScaleDownDX(rect.x);
+    int usrY = device->ScaleDownDY(rect.y);
+
+    // [tav] Convert x/y to user space, asymmetrically to AwtComponent::Reshape.
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownDX(parentRect.left);
+        int parentUsrY = device->ScaleDownDY(parentRect.top);
+
+        // Calc the offset from the owner's client area in device space
+        int offsetDevX = rect.x - parentRect.left - parentInsets.left;
+        int offsetDevY = rect.y - parentRect.top - parentInsets.top;
+
+        // Convert the offset to user space
+        int offsetUsrX = device->ScaleDownX(offsetDevX);
+        int offsetUsrY = device->ScaleDownY(offsetDevY);
+
+        // Finally calc the window's location based on the frame's and its insets user space values.
+        usrX = parentUsrX + parentInsetsUsrX + offsetUsrX;
+        usrY = parentUsrY + parentInsetsUsrY + offsetUsrY;
+    }
+
+    (env)->SetIntField(target, AwtComponent::xID, usrX);
+    (env)->SetIntField(target, AwtComponent::yID, usrY);
     (env)->SetIntField(peer, AwtWindow::sysXID, rect.x);
     (env)->SetIntField(peer, AwtWindow::sysYID, rect.y);
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);

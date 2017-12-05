@@ -982,6 +982,9 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
     DTRACE_PRINTLN4("AwtComponent::Reshape from %d, %d, %d, %d", rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 #endif
 
+    int usrX = x;
+    int usrY = y;
+
     AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(RECT_BOUNDS(x, y, w, h), GetHWnd());
     x = device->ScaleUpDX(x);
     y = device->ScaleUpDY(y);
@@ -991,35 +994,43 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
     AwtWindow* container = GetContainer();
     AwtComponent* parent = GetParent();
 
-    // The on-screen location of a component is affected by its toplevel. The toplvel's location in user space
-    // is represented with some loss of precision - the result of device->ScaleDownXY is ceil'ed. For instance,
-    // say we have scale 2.0 and a toplevel displayed at [13, 7] in device space. This location is translated to
-    // [7, 4] in user space. Were the toplevel moved to [14, 8] its location would still be translated to [7, 4]
-    // in user space. One of the problems caused by this fact is the problem of positioning of an owned window
-    // relative to its owner (or to the owner's content). Until we have a floating point API for managing Component
-    // bounds the following workaround is suggested. When a window with non-empty owner is positioned on the device,
-    // the component of the owner's position coordinate which is lost (as the fractional component) on translation to
-    // user space should be used to adjust the owned window position. For the example above this would be:
-    // [13, 7] is translated to [7, 4], the lost component is [1, 1]. So if one wants to display an owned window at,
-    // say, [11, 9] in user space, which is translated to [22, 18] on the device, the windows' position should be
-    // adjusted by [1, 1] (the owner's position lost component). Thus the result would be: [22, 18] - [1, 1] = [21, 17].
-    // The same formula works for fractional scale factors.
+    // [tav] Handle the fact that an owned window is most likely positioned relative to its owner, and it may
+    // require pixel-perfect alignment. For that, compensate rounding errors (caused by converting from the device
+    // space to the integer user space and back) for the owner's origin and for the owner's client area origin
+    // (see Window::GetAlignedInsets).
     if (IsTopLevel() && parent != NULL &&
         (device->GetScaleX() > 1 || device->GetScaleY() > 1))
     {
-        RECT rect;
-        VERIFY(::GetWindowRect(parent->GetHWnd(), &rect));
-        int xOffset = /*ceil'd*/device->ScaleUpDX(device->ScaleDownDX(rect.left)) - rect.left;
-        int yOffset = /*ceil'd*/device->ScaleUpDY(device->ScaleDownDY(rect.top)) - rect.top;
-        int newX = x - xOffset;
-        int newY = y - yOffset;
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownDX(parentRect.left);
+        int parentUsrY = device->ScaleDownDY(parentRect.top);
+
+        // Calc the offset from the owner's client area in user space
+        int offsetUsrX = usrX - parentUsrX - parentInsetsUsrX;
+        int offsetUsrY = usrY - parentUsrY - parentInsetsUsrY;
+
+        // Convert the offset to device space
+        int offsetDevX = device->ScaleUpX(offsetUsrX);
+        int offsetDevY = device->ScaleUpY(offsetUsrY);
+
+        // Finally calc the window's location based on the frame's and its insets system numbers.
+        int devX = parentRect.left + parentInsets.left + offsetDevX;
+        int devY = parentRect.top + parentInsets.top + offsetDevY;
 
         // Check the toplevel is not going to be moved to another screen.
-        ::SetRect(&rect, newX, newY, newX + w, newY + h);
-        HMONITOR hmon = ::MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST);
+        ::SetRect(&parentRect, devX, devY, devX + w, devY + h);
+        HMONITOR hmon = ::MonitorFromRect(&parentRect, MONITOR_DEFAULTTONEAREST);
         if (hmon != NULL && AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon) == device->GetDeviceIndex()) {
-            x = newX;
-            y = newY;
+            x = devX;
+            y = devY;
         }
     }
 
