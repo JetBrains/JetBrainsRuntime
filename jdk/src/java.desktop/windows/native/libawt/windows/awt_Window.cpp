@@ -1466,7 +1466,7 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     int user_right = ScaleDownX(m_insets.right);
     int user_bottom = ScaleDownY(m_insets.bottom);
 
-    // [int] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
+    // [tav] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
     // This will align the origin of the non-client area with its physical origin after transforming back to the
     // device space. This will avoid gaps b/w the window's rendered content and the window's upper/left borders.
     // However, even so the size of the non-client area, transformed back from the user space, may not exactly match
