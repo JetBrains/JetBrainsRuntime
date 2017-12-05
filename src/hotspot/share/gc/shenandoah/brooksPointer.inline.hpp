@@ -52,10 +52,11 @@ inline HeapWord* BrooksPointer::get_raw(oop holder) {
 }
 
 inline oop BrooksPointer::forwardee(oop obj) {
+  oop result = oop(*brooks_ptr_addr(obj));
 #ifdef ASSERT
-  ShenandoahVerifier::verify_oop(obj);
+  ShenandoahVerifier::verify_oop_fwdptr(obj, result);
 #endif
-  return oop(*brooks_ptr_addr(obj));
+  return result;
 }
 
 inline oop BrooksPointer::try_update_forwardee(oop holder, oop update) {
@@ -64,12 +65,7 @@ inline oop BrooksPointer::try_update_forwardee(oop holder, oop update) {
 #endif
 
   oop result = (oop) Atomic::cmpxchg(update, (oop*)brooks_ptr_addr(holder), holder);
-
-#ifdef ASSERT
   assert(result != NULL, "CAS result is not NULL");
-  ShenandoahVerifier::verify_oop(holder);
-#endif
-
   return result;
 }
 

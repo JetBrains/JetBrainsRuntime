@@ -990,8 +990,8 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
 
   // Step 2. Check that forwardee points to correct region.
   if (!oopDesc::unsafe_equals(fwd, obj) &&
-      (heap->heap_region_containing(fwd) ==
-       heap->heap_region_containing(obj))) {
+      (heap->heap_region_index_containing(fwd) ==
+       heap->heap_region_index_containing(obj))) {
     ResourceMark rm;
 
     ShenandoahHeapRegion* ro = heap->heap_region_containing(obj);
@@ -1041,9 +1041,4 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
             obj_region.as_string(), fwd_region.as_string(), fwd2_region.as_string());
     }
   }
-}
-
-void ShenandoahVerifier::verify_oop(oop obj) {
-  oop fwd = oop(BrooksPointer::get_raw(obj));
-  verify_oop_fwdptr(obj, fwd);
 }
