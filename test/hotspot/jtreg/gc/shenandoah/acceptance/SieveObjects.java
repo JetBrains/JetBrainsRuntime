@@ -50,8 +50,9 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class SieveObjects {
 
-  static final int COUNT = 1_000_000_000;
-  static final int WINDOW = 10_000_000;
+  static final int COUNT = 100_000_000;
+  static final int WINDOW = 1_000_000;
+  static final int PAYLOAD = 100;
 
   static final MyObject[] arr = new MyObject[WINDOW];
 
@@ -80,8 +81,10 @@ public class SieveObjects {
 
   public static class MyObject {
     public int x;
+    public byte[] payload;
     public MyObject(int x) {
       this.x = x;
+      this.payload = new byte[PAYLOAD];
     }
   }
 
