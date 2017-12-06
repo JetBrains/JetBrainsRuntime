@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -260,7 +260,7 @@ public class Resources_ja extends java.util.ListResourceBundle {
         {"The.1.algorithm.specified.for.the.2.option.is.considered.a.security.risk.",
                 "%1$s\u30A2\u30EB\u30B4\u30EA\u30BA\u30E0(%2$s\u30AA\u30D7\u30B7\u30E7\u30F3\u306B\u6307\u5B9A)\u306F\u3001\u30BB\u30AD\u30E5\u30EA\u30C6\u30A3\u30FB\u30EA\u30B9\u30AF\u3068\u307F\u306A\u3055\u308C\u307E\u3059\u3002"},
         {"The.1.signing.key.has.a.keysize.of.2.which.is.considered.a.security.risk.",
-                "%s\u7F72\u540D\u9375\u306B\u306F\u3001\u30BB\u30AD\u30E5\u30EA\u30C6\u30A3\u30FB\u30EA\u30B9\u30AF\u3068\u307F\u306A\u3055\u308C\u308B%d\u306E\u9375\u30B5\u30A4\u30BA\u304C\u3042\u308A\u307E\u3059\u3002"},
+                "%1$s\u7F72\u540D\u9375\u306B\u306F\u3001\u30BB\u30AD\u30E5\u30EA\u30C6\u30A3\u30FB\u30EA\u30B9\u30AF\u3068\u307F\u306A\u3055\u308C\u308B%2$d\u306E\u9375\u30B5\u30A4\u30BA\u304C\u3042\u308A\u307E\u3059\u3002"},
         {"This.jar.contains.entries.whose.certificate.chain.is.not.validated.reason.1",
                  "\u3053\u306Ejar\u306B\u306F\u3001\u8A3C\u660E\u66F8\u30C1\u30A7\u30FC\u30F3\u304C\u307E\u3060\u691C\u8A3C\u3055\u308C\u3066\u3044\u306A\u3044\u30A8\u30F3\u30C8\u30EA\u304C\u542B\u307E\u308C\u3066\u3044\u307E\u3059\u3002\u7406\u7531: %s"},
         {"no.timestamp.signing",
