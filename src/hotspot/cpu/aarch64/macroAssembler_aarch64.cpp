@@ -4062,14 +4062,12 @@ void MacroAssembler::keep_alive_barrier(Register val,
   if (UseG1GC) {
     // Generate the G1 pre-barrier code to log the value of
     // the referent field in an SATB buffer.
-    enter(); // g1_write may call runtime
     g1_write_barrier_pre(noreg,
                          val /* pre_val */,
                          thread /* thread */,
                          tmp,
                          true /* tosca_live */,
                          true /* expand_call */);
-    leave();
   } else if (UseShenandoahGC && ShenandoahKeepAliveBarrier) {
     shenandoah_write_barrier_pre(noreg,
                                  val /* pre_val */,

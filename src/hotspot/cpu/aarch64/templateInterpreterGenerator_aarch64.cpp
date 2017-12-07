@@ -929,9 +929,11 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
 
     // Generate the G1 pre-barrier code to log the value of
     // the referent field in an SATB buffer.
+    __ enter(); // g1_write may call runtime
     __ keep_alive_barrier(local_0 /* pre_val */,
                           rthread /* thread */,
                           rscratch2 /* tmp */);
+    __ leave();
     // areturn
     __ andr(sp, r19, -16);  // done with stack
     __ ret(lr);
