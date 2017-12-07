@@ -24,9 +24,11 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTMARK_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTMARK_INLINE_HPP
 
+#include "classfile/javaClasses.inline.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.hpp"
+#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "memory/iterator.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/prefetch.inline.hpp"
@@ -211,6 +213,11 @@ inline bool ShenandoahConcurrentMark::try_draining_satb_buffer(ShenandoahObjToSc
 
 template<class T, UpdateRefsMode UPDATE_REFS>
 inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q) {
+  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, heap, q, NULL);
+}
+
+template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
+inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
@@ -245,6 +252,13 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
 
         bool pushed = q->push(ShenandoahMarkTask(obj));
         assert(pushed, "overflow queue should always succeed pushing");
+
+        if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj)) {
+          assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
+          assert(dq != NULL, "Dedup queue not set");
+          ShenandoahStringDedup::enqueue_candidate(obj, dq);
+        }
+
       } else {
         log_develop_trace(gc, marking)("Failed to mark obj (already marked): " PTR_FORMAT, p2i((HeapWord*) obj));
         assert(heap->is_marked_next(obj), "Consistency: should be marked.");

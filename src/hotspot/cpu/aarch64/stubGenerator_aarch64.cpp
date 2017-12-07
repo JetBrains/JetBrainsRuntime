@@ -30,7 +30,6 @@
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "interpreter/interpreter.hpp"
 #include "nativeInst_aarch64.hpp"
 #include "oops/instanceOop.hpp"
@@ -590,13 +589,6 @@ class StubGenerator: public StubCodeGenerator {
       __ cbz(newobj, slow_case); // No GCLAB
 
       __ load_klass(r1, obj);
-
-      if (ShenandoahStringDedup::is_enabled()) {
-        assert(SystemDictionary::String_klass() != NULL, "Must be initialized");
-        __ mov(rscratch2, (address)SystemDictionary::String_klass());
-        __ cmp(r1, rscratch2);
-        __ br(Assembler::EQ, slow_case);
-      }
 
       __ ldrw(size, Address(r1, Klass::layout_helper_offset()));
       __ tbnz(size, BitsPerInt - 1, not_an_instance);  // make sure it's an instance (LH > 0)

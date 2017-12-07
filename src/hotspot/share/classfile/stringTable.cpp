@@ -44,6 +44,7 @@
 #if INCLUDE_ALL_GCS
 #include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/g1/g1StringDedup.hpp"
+#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #endif
 
 // the number of buckets a thread claims
@@ -262,6 +263,8 @@ oop StringTable::intern(Handle string_or_null, jchar* name,
     // deduplicate a string after it has been interned. Doing so will counteract
     // compiler optimizations done on e.g. interned string literals.
     G1StringDedup::deduplicate(string());
+  } else if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::deduplicate(string());
   }
 #endif
 

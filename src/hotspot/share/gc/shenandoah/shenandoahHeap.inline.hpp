@@ -36,7 +36,6 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -346,21 +345,6 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
   log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT,
                                     p2i(p), p2i(copy));
 
-  // String dedup support
-  bool need_str_dedup = false;
-  if (ShenandoahStringDedup::is_enabled()
-    // Can not deduplication string inside a write barrier, as it takes lock,
-    // that violates write barrier's leaf call constraint.
-    && !from_write_barrier
-    && java_lang_String::is_instance_inlined(copy_val)) {
-    // We need to increase age before CAS to avoid race condition.
-    // Once new copy is published, other threads may set hash code,
-    // or perform locking, etc. which will race age bits manipulation.
-    copy_val->incr_age();
-
-    need_str_dedup = ShenandoahStringDedup::is_candidate(copy_val);
-  }
-
   // Try to install the new forwarding pointer.
   oop result = BrooksPointer::try_update_forwardee(p, copy_val);
 
@@ -370,25 +354,6 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
     log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT " succeeded",
                                       p2i(p), p2i(copy));
 
-    // Only dedup evacuated string
-    if (need_str_dedup) {
-      // Shenandoah evacuates objects inside and outside of GC safepoints.
-      // But string dedup protocol requires deduplication outside of GC safepoints,
-      // so we need to queue candidates during GC safepoints.
-      // SafepointSynchronize::is_at_safepoint() is not sufficient, because generic safepoints
-      // that might happen during concurrent evacuation are not suspending the deduplication thread,
-      // and pushes to the dedup queue are unsafe.
-      if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
-        assert(!is_full_gc_in_progress(), "Should not get to here");
-        assert(thread->is_Worker_thread(), "Must be a worker thread during a safepoint");
-        // Use worker thread id instead of worker_id to avoid passing down worker_id.
-        // This may cause imbalance among the queues, but it is okay, since deduplication is
-        // single threaded.
-        ShenandoahStringDedup::enqueue_from_safepoint(copy_val, thread->as_Worker_thread()->id());
-      } else {
-        ShenandoahStringDedup::deduplicate(copy_val);
-      }
-    }
 
 #ifdef ASSERT
     assert(oopDesc::is_oop(copy_val), "expect oop");

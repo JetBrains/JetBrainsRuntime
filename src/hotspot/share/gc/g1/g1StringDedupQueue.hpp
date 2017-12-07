@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,15 +71,13 @@ private:
   // Statistics counter, only used for logging.
   uintx                      _dropped;
 
-  G1StringDedupQueue(size_t num_queues);
+  G1StringDedupQueue();
   ~G1StringDedupQueue();
 
   static void unlink_or_oops_do(G1StringDedupUnlinkOrOopsDoClosure* cl, size_t queue);
 
 public:
   static void create();
-
-  static void create(size_t num_queues);
 
   // Blocks and waits for the queue to become non-empty.
   static void wait();

@@ -31,6 +31,9 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
+#include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
+#include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
+#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 #include "memory/allocation.inline.hpp"
 #include "runtime/mutex.hpp"
@@ -51,6 +54,10 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
   VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
   if (op == NULL || !op->_safepoint_cleanup_done) {
     _threads_nmethods_cl = NMethodSweeper::prepare_mark_active_nmethods();
+  }
+
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::clear_claimed();
   }
 }
 
@@ -80,6 +87,10 @@ void ShenandoahRootProcessor::process_all_roots_slow(OopClosure* oops) {
   ObjectSynchronizer::oops_do(oops);
   SystemDictionary::roots_oops_do(oops, oops);
   StringTable::oops_do(oops);
+
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::parallel_oops_do(oops);
+  }
 }
 
 void ShenandoahRootProcessor::process_strong_roots(OopClosure* oops,
@@ -169,6 +180,11 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
       ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::JNIWeakRoots, worker_id);
       JNIHandles::weak_oops_do(&always_true, jni_weak_roots);
     }
+  }
+
+  if (ShenandoahStringDedup::is_enabled() && weak_roots != NULL) {
+    ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::StringDedupRoots, worker_id);
+    ShenandoahStringDedup::oops_do(weak_roots, worker_id);
   }
 
   {

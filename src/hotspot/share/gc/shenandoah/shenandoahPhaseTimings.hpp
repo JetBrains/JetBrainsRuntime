@@ -58,8 +58,8 @@ public:
     scan_system_dictionary_roots,
     scan_cldg_roots,
     scan_jvmti_roots,
+    scan_string_dedup_roots,
 
-    update_refs_dedup_table,
     resize_tlabs,
 
     final_mark_gross,
@@ -79,6 +79,7 @@ public:
     update_system_dictionary_roots,
     update_cldg_roots,
     update_jvmti_roots,
+    update_string_dedup_roots,
 
     finish_queues,
     weakrefs,
@@ -92,6 +93,7 @@ public:
     purge_par_rmt,
     purge_par_classes,
     purge_par_sync,
+    purge_par_string_dedup,
     purge_cldg,
     prepare_evac,
     recycle_regions,
@@ -110,6 +112,7 @@ public:
     evac_system_dictionary_roots,
     evac_cldg_roots,
     evac_jvmti_roots,
+    evac_string_dedup_roots,
 
     init_update_refs_gross,
     init_update_refs,
@@ -132,7 +135,7 @@ public:
     final_update_refs_system_dict_roots,
     final_update_refs_cldg_roots,
     final_update_refs_jvmti_roots,
-    final_update_refs_dedup_table,
+    final_update_refs_string_dedup_roots,
 
     final_update_refs_recycle,
 
@@ -154,6 +157,7 @@ public:
     init_partial_gc_system_dict_roots,
     init_partial_gc_cldg_roots,
     init_partial_gc_jvmti_roots,
+    init_partial_gc_string_dedup_roots,
 
     final_partial_gc_gross,
     final_partial_gc,
@@ -172,8 +176,8 @@ public:
     final_partial_gc_system_dict_roots,
     final_partial_gc_cldg_roots,
     final_partial_gc_jvmti_roots,
+    final_partial_gc_string_dedup_roots,
 
-    partial_gc_update_str_dedup_table,
     partial_gc_cleanup,
 
     full_gc,
@@ -194,6 +198,7 @@ public:
     full_gc_system_dictionary_roots,
     full_gc_cldg_roots,
     full_gc_jvmti_roots,
+    full_gc_string_dedup_roots,
 
     full_gc_mark,
     full_gc_mark_finish_queues,
@@ -209,6 +214,7 @@ public:
     full_gc_purge_par_classes,
     full_gc_purge_par_sync,
     full_gc_purge_cldg,
+    full_gc_purge_par_string_dedup,
     full_gc_calculate_addresses,
     full_gc_calculate_addresses_regular,
     full_gc_calculate_addresses_humong,
@@ -253,6 +259,7 @@ public:
     SystemDictionaryRoots,
     CLDGRoots,
     JVMTIRoots,
+    StringDedupRoots,
     GCParPhasesSentinel
   };
 

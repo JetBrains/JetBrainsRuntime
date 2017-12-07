@@ -37,7 +37,6 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoah_specialized_oop_closures.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "code/codeCache.hpp"
@@ -56,7 +55,7 @@ private:
 
   template <class T>
   inline void do_oop_nv(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, _heap, _queue);
   }
 
 public:
@@ -70,9 +69,18 @@ public:
 ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
   MetadataAwareOopClosure(rp),
   _queue(q),
+  _dedup_queue(NULL),
   _heap(ShenandoahHeap::heap())
-{
-}
+{ }
+
+
+ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+  MetadataAwareOopClosure(rp),
+  _queue(q),
+  _dedup_queue(dq),
+  _heap(ShenandoahHeap::heap())
+{ }
+
 
 template<UpdateRefsMode UPDATE_REFS>
 class ShenandoahInitMarkRootsTask : public AbstractGangTask {
@@ -214,7 +222,8 @@ public:
                    true, // drain SATBs as we go
                    true, // count liveness
                    _cm->unload_classes(),
-                   _update_refs);
+                   _update_refs,
+                   ShenandoahStringDedup::is_enabled()); // perform string dedup
   }
 };
 
@@ -225,10 +234,13 @@ private:
   bool _update_refs;
   bool _count_live;
   bool _unload_classes;
+  bool _dedup_string;
 
 public:
-  ShenandoahFinalMarkingTask(ShenandoahConcurrentMark* cm, ParallelTaskTerminator* terminator, bool update_refs, bool count_live, bool unload_classes) :
-    AbstractGangTask("Shenandoah Final Marking"), _cm(cm), _terminator(terminator), _update_refs(update_refs), _count_live(count_live), _unload_classes(unload_classes) {
+  ShenandoahFinalMarkingTask(ShenandoahConcurrentMark* cm, ParallelTaskTerminator* terminator, bool update_refs,
+    bool count_live, bool unload_classes, bool dedup_string = false) :
+    AbstractGangTask("Shenandoah Final Marking"), _cm(cm), _terminator(terminator), _update_refs(update_refs),
+    _count_live(count_live), _unload_classes(unload_classes), _dedup_string(dedup_string) {
   }
 
   void work(uint worker_id) {
@@ -253,7 +265,8 @@ public:
                    false, // do not drain SATBs, already drained
                    _count_live,
                    _unload_classes,
-                   _update_refs);
+                   _update_refs,
+                   _dedup_string);
 
     assert(_cm->task_queues()->is_empty(), "Should be empty");
   }
@@ -277,12 +290,6 @@ void ShenandoahConcurrentMark::mark_roots(ShenandoahPhaseTimings::Phase root_pha
   task_queues()->reserve(nworkers);
 
   if (heap->need_update_refs()) {
-    if (ShenandoahStringDedup::is_enabled() && root_phase != ShenandoahPhaseTimings::full_gc_roots) {
-      // Don't need update refs here if it is full GC, which will fixup table at the end of full GC.
-      ShenandoahGCPhase update_str_dedup_table(ShenandoahPhaseTimings::update_refs_dedup_table);
-      ShenandoahStringDedup::parallel_update_or_unlink();
-    }
-
     ShenandoahInitMarkRootsTask<RESOLVE> mark_roots(&root_proc, process_references());
     workers->run_task(&mark_roots);
   } else {
@@ -448,11 +455,13 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
     StrongRootsScope scope(nworkers);
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalMarkingTask task(this, &terminator, sh->need_update_refs(), count_live, unload_classes());
+      ShenandoahFinalMarkingTask task(this, &terminator, sh->need_update_refs(), count_live,
+        unload_classes(), full_gc && ShenandoahStringDedup::is_enabled());
       sh->workers()->run_task(&task);
     } else {
       ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalMarkingTask task(this, &terminator, sh->need_update_refs(), count_live, unload_classes());
+      ShenandoahFinalMarkingTask task(this, &terminator, sh->need_update_refs(), count_live,
+        unload_classes(), full_gc && ShenandoahStringDedup::is_enabled());
       sh->workers()->run_task(&task);
     }
   }
@@ -591,7 +600,7 @@ private:
 
   template <class T>
   inline void do_oop_nv(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, NONE>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, NONE, false /* string dedup */>(p, _heap, _queue);
   }
 
 public:
@@ -609,7 +618,7 @@ private:
 
   template <class T>
   inline void do_oop_nv(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE, false /* string dedup */>(p, _heap, _queue);
   }
 
 public:
@@ -839,7 +848,7 @@ private:
 
   template <class T>
   inline void do_oop_nv(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT, false /* string dedup */>(p, _heap, _queue);
   }
 
 public:
@@ -916,7 +925,7 @@ void ShenandoahConcurrentMark::clear_queue(ShenandoahObjToScanQueue *q) {
   q->clear_buffer();
 }
 
-template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS, bool CLASS_UNLOAD, bool UPDATE_REFS>
+template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS, bool CLASS_UNLOAD, bool UPDATE_REFS, bool STRING_DEDUP>
 void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator *t, ReferenceProcessor *rp) {
   ShenandoahObjToScanQueue* q = get_queue(w);
 
@@ -932,19 +941,44 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
   // play nice with specialized_oop_iterators.
   if (CLASS_UNLOAD) {
     if (UPDATE_REFS) {
-      ShenandoahMarkUpdateRefsMetadataClosure cl(q, rp);
-      mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      if (STRING_DEDUP) {
+        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+        ShenandoahMarkUpdateRefsMetadataDedupClosure cl(q, dq, rp);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      } else {
+        ShenandoahMarkUpdateRefsMetadataClosure cl(q, rp);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      }
     } else {
-      ShenandoahMarkRefsMetadataClosure cl(q, rp);
-      mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      if (STRING_DEDUP) {
+        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+        ShenandoahMarkRefsMetadataDedupClosure cl(q, dq, rp);
+        mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+
+      } else {
+        ShenandoahMarkRefsMetadataClosure cl(q, rp);
+        mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      }
     }
   } else {
     if (UPDATE_REFS) {
-      ShenandoahMarkUpdateRefsClosure cl(q, rp);
-      mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      if (STRING_DEDUP) {
+        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+        ShenandoahMarkUpdateRefsDedupClosure cl(q, dq, rp);
+        mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      } else {
+        ShenandoahMarkUpdateRefsClosure cl(q, rp);
+        mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      }
     } else {
-      ShenandoahMarkRefsClosure cl(q, rp);
-      mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      if (STRING_DEDUP) {
+        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+        ShenandoahMarkRefsDedupClosure cl(q, dq, rp);
+        mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      } else {
+        ShenandoahMarkRefsClosure cl(q, rp);
+        mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+      }
     }
   }
   if (COUNT_LIVENESS) {

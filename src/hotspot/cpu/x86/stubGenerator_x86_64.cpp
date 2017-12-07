@@ -29,7 +29,6 @@
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "interpreter/interpreter.hpp"
 #include "nativeInst_x86.hpp"
 #include "oops/instanceOop.hpp"
@@ -858,13 +857,6 @@ class StubGenerator: public StubCodeGenerator {
       __ jcc(Assembler::zero, slow_case); // No TLAB.
 
       __ load_klass(rcx, rax);
-
-      if (ShenandoahStringDedup::is_enabled()) {
-        assert(SystemDictionary::String_klass() != NULL, "Must be initialized");
-        __ movptr(rdi, (intptr_t)SystemDictionary::String_klass());
-        __ cmpptr(rcx, rdi);
-        __ jcc(Assembler::equal, slow_case);
-      }
 
       // Figure out object size.
       __ movl(rcx, Address(rcx, Klass::layout_helper_offset()));

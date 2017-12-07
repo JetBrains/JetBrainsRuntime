@@ -30,6 +30,8 @@
 #include "gc/shenandoah/shenandoahOopClosures.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
+class ShenandoahStrDedupQueue;
+
 class ShenandoahConcurrentMark: public CHeapObj<mtGC> {
 
 private:
@@ -69,44 +71,53 @@ private:
   template <class T, bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>
   void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *t);
 
-  template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS, bool CLASS_UNLOAD, bool UPDATE_REFS>
+  template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS, bool CLASS_UNLOAD, bool UPDATE_REFS, bool STRDEDUP>
   void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp);
 
   // ------------------------ Currying dynamic arguments to template args ----------------------------
 
-  template <bool B1, bool B2, bool B3, bool B4>
-  void mark_loop_4(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b5) {
-    if (b5) {
-      mark_loop_prework<B1, B2, B3, B4, true>(w, t, rp);
+  template <bool B1, bool B2, bool B3, bool B4, bool B5>
+  void mark_loop_5(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b6) {
+    if (b6) {
+      mark_loop_prework<B1, B2, B3, B4, B5, true>(w, t, rp);
     } else {
-      mark_loop_prework<B1, B2, B3, B4, false>(w, t, rp);
+      mark_loop_prework<B1, B2, B3, B4, B5, false>(w, t, rp);
+    }
+  };
+
+  template <bool B1, bool B2, bool B3, bool B4>
+  void mark_loop_4(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b5, bool b6) {
+    if (b5) {
+      mark_loop_5<B1, B2, B3, B4, true>(w, t, rp, b6);
+    } else {
+      mark_loop_5<B1, B2, B3, B4, false>(w, t, rp, b6);
     }
   };
 
   template <bool B1, bool B2, bool B3>
-  void mark_loop_3(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b4, bool b5) {
+  void mark_loop_3(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b4, bool b5, bool b6) {
     if (b4) {
-      mark_loop_4<B1, B2, B3, true>(w, t, rp, b5);
+      mark_loop_4<B1, B2, B3, true>(w, t, rp, b5, b6);
     } else {
-      mark_loop_4<B1, B2, B3, false>(w, t, rp, b5);
+      mark_loop_4<B1, B2, B3, false>(w, t, rp, b5, b6);
     }
   };
 
   template <bool B1, bool B2>
-  void mark_loop_2(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b3, bool b4, bool b5) {
+  void mark_loop_2(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b3, bool b4, bool b5, bool b6) {
     if (b3) {
-      mark_loop_3<B1, B2, true>(w, t, rp, b4, b5);
+      mark_loop_3<B1, B2, true>(w, t, rp, b4, b5, b6);
     } else {
-      mark_loop_3<B1, B2, false>(w, t, rp, b4, b5);
+      mark_loop_3<B1, B2, false>(w, t, rp, b4, b5, b6);
     }
   };
 
   template <bool B1>
-  void mark_loop_1(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b2, bool b3, bool b4, bool b5) {
+  void mark_loop_1(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp, bool b2, bool b3, bool b4, bool b5, bool b6) {
     if (b2) {
-      mark_loop_2<B1, true>(w, t, rp, b3, b4, b5);
+      mark_loop_2<B1, true>(w, t, rp, b3, b4, b5, b6);
     } else {
-      mark_loop_2<B1, false>(w, t, rp, b3, b4, b5);
+      mark_loop_2<B1, false>(w, t, rp, b3, b4, b5, b6);
     }
   };
 
@@ -128,6 +139,9 @@ public:
   template<class T, UpdateRefsMode UPDATE_REFS>
   static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q);
 
+  template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
+  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq = NULL);
+
   void mark_from_roots();
 
   // Prepares unmarked root objects by marking them and putting
@@ -144,11 +158,11 @@ public:
   // Translates dynamic arguments to template parameters with progressive currying.
   void mark_loop(uint worker_id, ParallelTaskTerminator* terminator, ReferenceProcessor *rp,
                  bool cancellable, bool drain_satb, bool count_liveness, bool class_unload,
-                 bool update_refs) {
+                 bool update_refs, bool strdedup = false) {
     if (cancellable) {
-      mark_loop_1<true>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs);
+      mark_loop_1<true>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs, strdedup);
     } else {
-      mark_loop_1<false>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs);
+      mark_loop_1<false>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs, strdedup);
     }
   }
 

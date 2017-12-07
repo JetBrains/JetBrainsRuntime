@@ -22,7 +22,6 @@
  */
 
  /*
- * @ignore // disabled until dedup is fixed
  * @test TestShenandoahStringDedup.java
  * @summary Test Shenandoah string deduplication implementation
  * @key gc
@@ -113,7 +112,8 @@ public class ShenandoahStrDedupStress {
         if (item.id() != existing_item.id() ||
             !item.str().equals(existing_item.str())) {
           System.out.println("StringDedup error:");
-          System.out.println("String: " + item.str() + " != " + existing_item.str());
+          System.out.println("id: " + item.id() + " != " + existing_item.id());
+          System.out.println("or String: " + item.str() + " != " + existing_item.str());
           throw new RuntimeException("StringDedup Test failed");
         } else {
           dedup ++;
@@ -137,7 +137,14 @@ public class ShenandoahStrDedupStress {
         StringAndId item = astrs.get(index);
         int n = rn.nextInt() % UniqueStrings;
         item.str = "Unique String " + n;
+        item.id = n;
       }
+    }
+
+    try {
+      Thread.sleep(10000);
+    } catch (Exception e) {
+
     }
 
     verifyDedepString(astrs);

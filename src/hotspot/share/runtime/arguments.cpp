@@ -2102,11 +2102,6 @@ void Arguments::set_shenandoah_gc_flags() {
     }
     FLAG_SET_DEFAULT(ShenandoahUncommitDelay, max_uintx);
   }
-
-  if (UseStringDeduplication) {
-    warning("String Deduplication is unstable with Shenandoah, forcefully disabled.");
-    FLAG_SET_DEFAULT(UseStringDeduplication, false);
-  }
 }
 
 void Arguments::set_gc_specific_flags() {

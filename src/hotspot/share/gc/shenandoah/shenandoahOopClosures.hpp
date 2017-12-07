@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
 class ShenandoahHeap;
+class ShenandoahStrDedupQueue;
 
 enum UpdateRefsMode {
   NONE,       // No reference updating
@@ -38,11 +39,13 @@ enum UpdateRefsMode {
 class ShenandoahMarkRefsSuperClosure : public MetadataAwareOopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
+  ShenandoahStrDedupQueue*  _dedup_queue;
   ShenandoahHeap* _heap;
 public:
   ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp);
+  ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp);
 
-  template <class T, UpdateRefsMode UPDATE_MODE>
+  template <class T, UpdateRefsMode UPDATE_MODE, bool STRING_DEDUP>
   void work(T *p);
 };
 
@@ -52,7 +55,20 @@ public:
           ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   template <class T>
-  inline void do_oop_nv(T* p)       { work<T, CONCURRENT>(p); }
+  inline void do_oop_nv(T* p)       { work<T, CONCURRENT, false /* string dedup */>(p); }
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahMarkUpdateRefsDedupClosure : public ShenandoahMarkRefsSuperClosure {
+public:
+  ShenandoahMarkUpdateRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+          ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+
+  template <class T>
+  inline void do_oop_nv(T* p)       { work<T, CONCURRENT, true /* string dedup */>(p); }
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
   inline bool do_metadata_nv()      { return false; }
@@ -62,10 +78,23 @@ public:
 class ShenandoahMarkUpdateRefsMetadataClosure : public ShenandoahMarkRefsSuperClosure {
 public:
   ShenandoahMarkUpdateRefsMetadataClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
-          ShenandoahMarkRefsSuperClosure(q, rp) {};
+    ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   template <class T>
-  inline void do_oop_nv(T* p)       { work<T, CONCURRENT>(p); }
+  inline void do_oop_nv(T* p)       { work<T, CONCURRENT, false /* string dedup */>(p); }
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahMarkUpdateRefsMetadataDedupClosure : public ShenandoahMarkRefsSuperClosure {
+public:
+  ShenandoahMarkUpdateRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+  ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+
+  template <class T>
+  inline void do_oop_nv(T* p)       { work<T, CONCURRENT, true /* string dedup */>(p); }
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
   inline bool do_metadata_nv()      { return true; }
@@ -78,7 +107,20 @@ public:
     ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   template <class T>
-  inline void do_oop_nv(T* p)       { work<T, NONE>(p); }
+  inline void do_oop_nv(T* p)       { work<T, NONE, false /* string dedup */>(p); }
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahMarkRefsDedupClosure : public ShenandoahMarkRefsSuperClosure {
+public:
+  ShenandoahMarkRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+
+  template <class T>
+  inline void do_oop_nv(T* p)       { work<T, NONE, true /* string dedup */>(p); }
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
   inline bool do_metadata_nv()      { return false; }
@@ -91,7 +133,20 @@ public:
     ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   template <class T>
-  inline void do_oop_nv(T* p)       { work<T, RESOLVE>(p); }
+  inline void do_oop_nv(T* p)       { work<T, RESOLVE, false /* string dedup */>(p); }
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahMarkResolveRefsDedupClosure : public ShenandoahMarkRefsSuperClosure {
+public:
+  ShenandoahMarkResolveRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+
+  template <class T>
+  inline void do_oop_nv(T* p)       { work<T, RESOLVE, true /* string dedup */>(p); }
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
   inline bool do_metadata_nv()      { return false; }
@@ -104,7 +159,20 @@ public:
     ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   template <class T>
-  inline void do_oop_nv(T* p)       { work<T, NONE>(p); }
+  inline void do_oop_nv(T* p)       { work<T, NONE, false /* string dedup */>(p); }
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahMarkRefsMetadataDedupClosure : public ShenandoahMarkRefsSuperClosure {
+public:
+  ShenandoahMarkRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+
+  template <class T>
+  inline void do_oop_nv(T* p)       { work<T, NONE, true /* string dedup */>(p); }
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
   inline bool do_metadata_nv()      { return true; }

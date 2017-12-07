@@ -28,9 +28,9 @@
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.inline.hpp"
 
-template<class T, UpdateRefsMode UPDATE_REFS>
+template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
 inline void ShenandoahMarkRefsSuperClosure::work(T *p) {
-  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS>(p, _heap, _queue);
+  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, STRING_DEDUP>(p, _heap, _queue, _dedup_queue);
 }
 
 template <class T, bool UPDATE_MATRIX>

@@ -779,7 +779,7 @@ private:
   Thread* _thread;
 public:
   ShenandoahEvacuateUpdateRootsClosure() :
-          _heap(ShenandoahHeap::heap()), _thread(Thread::current()) {
+    _heap(ShenandoahHeap::heap()), _thread(Thread::current()) {
   }
 
 private:
@@ -1109,7 +1109,6 @@ void ShenandoahHeap::evacuate_and_update_roots() {
   }
 }
 
-
 void ShenandoahHeap::fixup_roots() {
     assert(cancelled_concgc(), "Only after concurrent cycle failed");
 
@@ -1308,10 +1307,16 @@ void ShenandoahHeap::prepare_for_verify() {
 
 void ShenandoahHeap::print_gc_threads_on(outputStream* st) const {
   workers()->print_worker_threads_on(st);
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::print_worker_threads_on(st);
+  }
 }
 
 void ShenandoahHeap::gc_threads_do(ThreadClosure* tcl) const {
   workers()->threads_do(tcl);
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::threads_do(tcl);
+  }
 }
 
 void ShenandoahHeap::print_tracing_info() const {
@@ -1710,7 +1715,7 @@ void ShenandoahHeap::stop() {
 
   // Step 4. Stop String Dedup thread if it is active
   if (ShenandoahStringDedup::is_enabled()) {
-    G1StringDedup::stop();
+    ShenandoahStringDedup::stop();
   }
 }
 
@@ -1791,6 +1796,16 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
     p->record_phase_time(phase_par_symbstring, times.tables_work_us() / active);
     p->record_phase_time(phase_par_sync,       times.sync_us() / active);
   }
+
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahPhaseTimings::Phase phase_par_string_dedup =
+            full_gc ?
+            ShenandoahPhaseTimings::full_gc_purge_par_string_dedup :
+            ShenandoahPhaseTimings::purge_par_string_dedup;
+    ShenandoahGCPhase phase(phase_par_string_dedup);
+    ShenandoahStringDedup::parallel_cleanup();
+  }
+
 
   {
     ShenandoahGCPhase phase(phase_cldg);
@@ -2077,11 +2092,6 @@ void ShenandoahHeap::finish_update_refs() {
   assert(! cancelled_concgc(), "Should have been done right before");
   concurrentMark()->update_roots(ShenandoahPhaseTimings::final_update_refs_roots);
 
-  if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahGCPhase final_str_dedup_table(ShenandoahPhaseTimings::final_update_refs_dedup_table);
-    ShenandoahStringDedup::parallel_update_or_unlink();
-  }
-
   // Allocations might have happened before we STWed here, record peak:
   shenandoahPolicy()->record_peak_occupancy();
 
@@ -2238,14 +2248,13 @@ bool ShenandoahHeap::uncommit_bitmap_slice(ShenandoahHeapRegion *r) {
 }
 
 void ShenandoahHeap::safepoint_synchronize_begin() {
-  if (ShenandoahSuspendibleWorkers) {
+  if (ShenandoahSuspendibleWorkers || UseStringDeduplication) {
     SuspendibleThreadSet::synchronize();
   }
 }
 
 void ShenandoahHeap::safepoint_synchronize_end() {
-  if (ShenandoahSuspendibleWorkers) {
+  if (ShenandoahSuspendibleWorkers || UseStringDeduplication) {
     SuspendibleThreadSet::desynchronize();
   }
 }
-

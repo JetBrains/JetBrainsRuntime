@@ -37,7 +37,6 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
@@ -223,11 +222,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
         OrderAccess::fence();
 
         phase3_update_references();
-
-        if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahGCPhase update_str_dedup_table(ShenandoahPhaseTimings::full_gc_update_str_dedup_table);
-          ShenandoahStringDedup::parallel_full_gc_update_or_unlink();
-        }
 
         phase4_compact_objects(worker_slices);
 
@@ -661,12 +655,11 @@ void ShenandoahMarkCompact::phase3_update_references() {
 class ShenandoahCompactObjectsClosure : public ObjectClosure {
 private:
   ShenandoahHeap* const _heap;
-  bool            const _str_dedup;
   uint            const _worker_id;
 
 public:
-  ShenandoahCompactObjectsClosure(uint worker_id) : _heap(ShenandoahHeap::heap()),
-    _str_dedup(ShenandoahStringDedup::is_enabled()), _worker_id(worker_id) {}
+  ShenandoahCompactObjectsClosure(uint worker_id) :
+    _heap(ShenandoahHeap::heap()), _worker_id(worker_id) {}
 
   void do_object(oop p) {
     assert(_heap->is_marked_complete(p), "must be marked");
@@ -678,14 +671,6 @@ public:
     }
     oop new_obj = oop(compact_to);
     BrooksPointer::initialize(new_obj);
-
-    // String Dedup support
-    if(_str_dedup && java_lang_String::is_instance_inlined(new_obj)) {
-      new_obj->incr_age();
-      if (ShenandoahStringDedup::is_candidate(new_obj)) {
-        ShenandoahStringDedup::enqueue_from_safepoint(new_obj, _worker_id);
-      }
-    }
   }
 };
 

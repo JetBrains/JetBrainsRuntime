@@ -38,7 +38,6 @@
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
-#include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
@@ -493,11 +492,6 @@ void ShenandoahPartialGC::final_partial_collection() {
   if (!_heap->cancelled_concgc()) {
     // Still good? Update the roots then
     _heap->concurrentMark()->update_roots(ShenandoahPhaseTimings::final_partial_gc_work);
-
-    if (ShenandoahStringDedup::is_enabled()) {
-      ShenandoahGCPhase update_str_dedup_table(ShenandoahPhaseTimings::partial_gc_update_str_dedup_table);
-      ShenandoahStringDedup::parallel_partial_update_or_unlink();
-    }
   }
 
   if (!_heap->cancelled_concgc()) {
