@@ -25,8 +25,8 @@
  * @test TestHeapDump
  * @summary Tests JVMTI heap dumps
  * @compile TestHeapDump.java
- * @run main/othervm/native -agentlib:TestHeapDump -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:+UseCompressedOops TestHeapDump
- * @run main/othervm/native -agentlib:TestHeapDump -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:-UseCompressedOops TestHeapDump
+ * @run main/othervm/native/timeout=300 -agentlib:TestHeapDump -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:+UseCompressedOops TestHeapDump
+ * @run main/othervm/native/timeout=300 -agentlib:TestHeapDump -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:-UseCompressedOops TestHeapDump
  */
 
 public class TestHeapDump {
