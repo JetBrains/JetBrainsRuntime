@@ -150,8 +150,8 @@ public class FileFontStrike extends PhysicalStrike {
             !GraphicsEnvironment.isHeadless()) {
             isXPorLater = initNative();
             if (isXPorLater) {
-                AccessController.doPrivileged(new PrivilegedAction() {
-                    public Object run() {
+                AccessController.doPrivileged(new PrivilegedAction<Void>() {
+                    public Void run() {
                         String rotatedProperty = System.getProperty("rotated.text.native.rendering");
                         useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
                         useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
