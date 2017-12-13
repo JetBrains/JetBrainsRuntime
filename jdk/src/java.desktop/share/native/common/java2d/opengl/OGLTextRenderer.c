@@ -1090,10 +1090,6 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y);
             }
         } else if (ginfo->rowBytes == ginfo->width * 4) {
-            if (lcdOpened) {
-                lcdOpened = JNI_FALSE;
-                j2d_glEnd();
-            }
             // color glyph data
             ok = OGLTR_DrawColorGlyphNoCache(oglc, ginfo, x, y);
         } else {
