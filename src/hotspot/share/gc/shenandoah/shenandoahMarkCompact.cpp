@@ -159,7 +159,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       }
 
       // c. Reset the bitmaps for new marking
-      heap->reset_next_mark_bitmap(heap->workers());
+      heap->reset_next_mark_bitmap();
       assert(heap->is_next_bitmap_clear(), "sanity");
 
       // d. Abandon reference discovery and clear all discovered references.
@@ -837,7 +837,7 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
 
   // Reset complete bitmap. We're about to reset the complete-top-at-mark-start pointer
   // and must ensure the bitmap is in sync.
-  heap->reset_complete_mark_bitmap(heap->workers());
+  heap->reset_complete_mark_bitmap();
 
   // Bring regions in proper states after the collection, and set heap properties.
   {
@@ -851,5 +851,5 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
   heap->clear_cancelled_concgc();
 
   // Also clear the next bitmap in preparation for next marking.
-  heap->reset_next_mark_bitmap(heap->workers());
+  heap->reset_next_mark_bitmap();
 }

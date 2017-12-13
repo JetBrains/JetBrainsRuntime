@@ -416,11 +416,11 @@ public:
   }
 };
 
-void ShenandoahHeap::reset_next_mark_bitmap(WorkGang* workers) {
-  assert_gc_workers(workers->active_workers());
+void ShenandoahHeap::reset_next_mark_bitmap() {
+  assert_gc_workers(_workers->active_workers());
 
-  ShenandoahResetNextBitmapTask task = ShenandoahResetNextBitmapTask(_ordered_regions);
-  workers->run_task(&task);
+  ShenandoahResetNextBitmapTask task(_ordered_regions);
+  _workers->run_task(&task);
 }
 
 class ShenandoahResetCompleteBitmapTask : public AbstractGangTask {
@@ -451,11 +451,11 @@ public:
   }
 };
 
-void ShenandoahHeap::reset_complete_mark_bitmap(WorkGang* workers) {
-  assert_gc_workers(workers->active_workers());
+void ShenandoahHeap::reset_complete_mark_bitmap() {
+  assert_gc_workers(_workers->active_workers());
 
-  ShenandoahResetCompleteBitmapTask task = ShenandoahResetCompleteBitmapTask(_ordered_regions);
-  workers->run_task(&task);
+  ShenandoahResetCompleteBitmapTask task(_ordered_regions);
+  _workers->run_task(&task);
 }
 
 bool ShenandoahHeap::is_next_bitmap_clear() {

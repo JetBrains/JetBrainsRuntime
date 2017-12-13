@@ -370,7 +370,7 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
       ShenandoahGCPhase phase_reset(ShenandoahPhaseTimings::conc_cleanup_reset_bitmaps);
       WorkGang *workers = heap->workers();
       ShenandoahPushWorkerScope scope(workers, ConcGCThreads);
-      heap->reset_next_mark_bitmap(workers);
+      heap->reset_next_mark_bitmap();
     }
   }
 
