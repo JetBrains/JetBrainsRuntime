@@ -231,7 +231,8 @@ SurfaceData_IntersectBlitBounds(SurfaceDataBounds *src,
     GETMIN(src->y2, dst->y2 - dy);
 }
 
-SurfaceDataOps *SurfaceData_InitOps(JNIEnv *env, jobject sData, int opsSize)
+JNIEXPORT SurfaceDataOps * JNICALL
+SurfaceData_InitOps(JNIEnv *env, jobject sData, int opsSize)
 {
     SurfaceDataOps *ops = malloc(opsSize);
     SurfaceData_SetOps(env, sData, ops);

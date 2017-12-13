@@ -156,7 +156,19 @@ JNF_COCOA_ENTER(env);
     // to indicate we should use CoreText to substitute the character
     CGGlyph glyph;
     const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
-    CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
+    if (CGGI_IsColorFont(cgFallback)) {
+        CGAffineTransform matrix = awtStrike->fAltTx;
+        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CTFontRef font = CTFontCreateWithGraphicsFont(cgFallback, fontSize, NULL, NULL);
+        CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
+        CFRelease(font);
+        advance.width /= fontSize;
+        advance.height /= fontSize;
+    } else {
+        CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    }
+    CFRelease(cgFallback);
     CFRelease(fallback);
     advance = CGSizeApplyAffineTransform(advance, awtStrike->fFontTx);
     if (!JRSFontStyleUsesFractionalMetrics(awtStrike->fStyle)) {
