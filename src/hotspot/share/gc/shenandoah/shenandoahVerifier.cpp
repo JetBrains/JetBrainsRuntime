@@ -225,9 +225,15 @@ private:
               "oop must be aligned");
 
     ShenandoahHeapRegion *obj_reg = _heap->heap_region_containing(obj);
+    Klass* obj_klass = obj->klass_or_null();
 
     // Verify that obj is not in dead space:
     {
+      // Do this before touching obj->size()
+      verify(_safe_unknown, obj, obj_klass != NULL,
+             "Object klass pointer should not be NULL");
+      verify(_safe_unknown, obj, Metaspace::contains(obj_klass),
+             "Object klass pointer must go to metaspace");
 
       HeapWord *obj_addr = (HeapWord *) obj;
       verify(_safe_unknown, obj, obj_addr < obj_reg->top(),
@@ -244,9 +250,6 @@ private:
                  "Humongous object is in continuation that fits it");
         }
       }
-
-      verify(_safe_unknown, obj, Metaspace::contains(obj->klass()),
-             "klass pointer must go to metaspace");
 
       // ------------ obj is safe at this point --------------
 
@@ -281,6 +284,15 @@ private:
       verify(_safe_oop, obj, check_obj_alignment(fwd),
              "Forwardee must be aligned");
 
+      // Do this before touching fwd->size()
+      Klass* fwd_klass = fwd->klass_or_null();
+      verify(_safe_oop, obj, fwd_klass != NULL,
+             "Forwardee klass pointer should not be NULL");
+      verify(_safe_oop, obj, Metaspace::contains(fwd_klass),
+             "Forwardee klass pointer must go to metaspace");
+      verify(_safe_oop, obj, obj_klass == fwd_klass,
+             "Forwardee klass pointer must go to metaspace");
+
       fwd_reg = _heap->heap_region_containing(fwd);
 
       // Verify that forwardee is not in the dead space:
@@ -292,11 +304,6 @@ private:
              "Forwardee start should be within the region");
       verify(_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
              "Forwardee end should be within the region");
-
-      verify(_safe_oop, obj, Metaspace::contains(fwd->klass()),
-             "Forwardee klass pointer must go to metaspace");
-      verify(_safe_oop, obj, obj->klass() == fwd->klass(),
-             "Forwardee klass pointer must go to metaspace");
 
       oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
       verify(_safe_oop, obj, oopDesc::unsafe_equals(fwd, fwd2),
