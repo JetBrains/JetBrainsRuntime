@@ -127,6 +127,7 @@
 #include "gc/parallel/psVirtualspace.hpp"
 #include "gc/parallel/psYoungGen.hpp"
 #include "gc/parallel/vmStructs_parallelgc.hpp"
+#include "gc/shenandoah/vmStructs_shenandoah.hpp"
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_JVMCI
@@ -2270,6 +2271,7 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_constant(CollectedHeap::CMSHeap)                                \
   declare_constant(CollectedHeap::ParallelScavengeHeap)                   \
   declare_constant(CollectedHeap::G1CollectedHeap)                        \
+  declare_constant(CollectedHeap::ShenandoahHeap)                         \
                                                                           \
   /* constants from Generation::Name enum */                              \
                                                                           \
@@ -2965,6 +2967,11 @@ VMStructEntry VMStructs::localHotSpotVMStructs[] = {
 
   VM_STRUCTS_G1(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
                 GENERATE_STATIC_VM_STRUCT_ENTRY)
+
+  VM_STRUCTS_SHENANDOAH(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
+                        GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
+                        GENERATE_STATIC_VM_STRUCT_ENTRY)
+
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE
@@ -3032,6 +3039,10 @@ VMTypeEntry VMStructs::localHotSpotVMTypes[] = {
   VM_TYPES_G1(GENERATE_VM_TYPE_ENTRY,
               GENERATE_TOPLEVEL_VM_TYPE_ENTRY,
               GENERATE_INTEGER_VM_TYPE_ENTRY)
+
+  VM_TYPES_SHENANDOAH(GENERATE_VM_TYPE_ENTRY,
+                      GENERATE_TOPLEVEL_VM_TYPE_ENTRY,
+                      GENERATE_INTEGER_VM_TYPE_ENTRY)
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE
@@ -3091,6 +3102,10 @@ VMIntConstantEntry VMStructs::localHotSpotVMIntConstants[] = {
 
   VM_INT_CONSTANTS_G1(GENERATE_VM_INT_CONSTANT_ENTRY,
                       GENERATE_VM_INT_CONSTANT_WITH_VALUE_ENTRY)
+
+  VM_INT_CONSTANTS_SHENANDOAH(GENERATE_VM_INT_CONSTANT_ENTRY,
+                              GENERATE_VM_INT_CONSTANT_WITH_VALUE_ENTRY)
+
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE
@@ -3182,6 +3197,10 @@ VMStructs::init() {
   VM_STRUCTS_G1(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
                 CHECK_STATIC_VM_STRUCT_ENTRY);
 
+
+  VM_STRUCTS_SHENANDOAH(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
+                        CHECK_VOLATILE_NONSTATIC_VM_STRUCT_ENTRY,
+                        CHECK_STATIC_VM_STRUCT_ENTRY);
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE
@@ -3232,6 +3251,9 @@ VMStructs::init() {
               CHECK_SINGLE_ARG_VM_TYPE_NO_OP,
               CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
 
+  VM_TYPES_SHENANDOAH(CHECK_VM_TYPE_ENTRY,
+                      CHECK_SINGLE_ARG_VM_TYPE_NO_OP,
+                      CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
 #endif // INCLUDE_ALL_GCS
 
 #if INCLUDE_TRACE

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.gc.cms.*;
 import sun.jvm.hotspot.gc.shared.*;
 import sun.jvm.hotspot.gc.g1.*;
+import sun.jvm.hotspot.gc.shenandoah.*;
 import sun.jvm.hotspot.gc.parallel.*;
 import sun.jvm.hotspot.memory.*;
 import sun.jvm.hotspot.runtime.*;
@@ -316,13 +317,17 @@ public class ObjectHeap {
       }
     }
 
+    // Offset of the first oop from region's bottom
+    int oop_offset = heap.oop_region_offset_words() * VM.getVM().getHeapWordSize();
+    int oop_extra_size = heap.oop_extra_words() * VM.getVM().getHeapWordSize();
+
     for (int i = 0; i < liveRegions.size(); i += 2) {
       Address bottom = (Address) liveRegions.get(i);
       Address top    = (Address) liveRegions.get(i+1);
 
       try {
         // Traverses the space from bottom to top
-        OopHandle handle = bottom.addOffsetToAsOopHandle(0);
+        OopHandle handle = bottom.addOffsetToAsOopHandle(oop_offset);
 
         while (handle.lessThan(top)) {
         Oop obj = null;
@@ -359,7 +364,7 @@ public class ObjectHeap {
           if ( (cmsSpaceOld != null) && cmsSpaceOld.contains(handle)) {
               handle = handle.addOffsetToAsOopHandle(CompactibleFreeListSpace.adjustObjectSizeInBytes(obj.getObjectSize()) );
           } else {
-              handle = handle.addOffsetToAsOopHandle(obj.getObjectSize());
+              handle = handle.addOffsetToAsOopHandle(obj.getObjectSize() + oop_extra_size);
           }
         }
       }
@@ -438,10 +443,13 @@ public class ObjectHeap {
     } else if (heap instanceof G1CollectedHeap) {
         G1CollectedHeap g1h = (G1CollectedHeap) heap;
         g1h.heapRegionIterate(lrc);
+    } else if (heap instanceof ShenandoahHeap) {
+        ShenandoahHeap sh = (ShenandoahHeap) heap;
+        sh.heapRegionIterate(lrc);
     } else {
        if (Assert.ASSERTS_ENABLED) {
           Assert.that(false, "Expecting GenCollectedHeap, G1CollectedHeap, " +
-                      "or ParallelScavengeHeap, but got " +
+                      "SheandoahHeap or ParallelScavengeHeap, but got " +
                       heap.getClass().getName());
        }
     }

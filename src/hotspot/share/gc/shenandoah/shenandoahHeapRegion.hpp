@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2013, 2017, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -28,7 +28,10 @@
 #include "memory/universe.hpp"
 #include "utilities/sizes.hpp"
 
+class VMStructs;
+
 class ShenandoahHeapRegion : public ContiguousSpace {
+  friend class VMStructs;
 private:
   /*
     Region state is described by a state machine. Transitions are guarded by

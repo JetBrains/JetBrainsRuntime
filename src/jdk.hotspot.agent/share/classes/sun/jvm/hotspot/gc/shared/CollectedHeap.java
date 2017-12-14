@@ -75,6 +75,15 @@ public abstract class CollectedHeap extends VMObject {
 
   public abstract CollectedHeapName kind();
 
+  public int oop_extra_words() {
+    return 0;
+  }
+
+  // offset of the first oop from region's bottom
+  public int oop_region_offset_words() {
+    return 0;
+  }
+
   public void print() { printOn(System.out); }
   public void printOn(PrintStream tty) {
     MemRegion mr = reservedRegion();

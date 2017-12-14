@@ -29,6 +29,7 @@
 #include "utilities/quickSort.hpp"
 
 class ShenandoahHeapRegion;
+class VMStructs;
 
 class ShenandoahHeapRegionClosure : public StackObj {
 public:
@@ -39,6 +40,7 @@ public:
 // The basic set.
 // Implements iteration.
 class ShenandoahHeapRegionSet: public CHeapObj<mtGC> {
+  friend class VMStructs;
 protected:
   ShenandoahHeapRegion** _regions;
   size_t                 _active_end;

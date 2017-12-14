@@ -36,6 +36,7 @@ public class CollectedHeapName {
   public static final CollectedHeapName SERIAL_HEAP = new CollectedHeapName("SerialHeap");
   public static final CollectedHeapName G1_COLLECTED_HEAP = new CollectedHeapName("G1CollectedHeap");
   public static final CollectedHeapName PARALLEL_SCAVENGE_HEAP = new CollectedHeapName("ParallelScavengeHeap");
+  public static final CollectedHeapName SHENANDOAH_HEAP = new CollectedHeapName("ShenandoahHeap");
 
   public String toString() {
     return name;
