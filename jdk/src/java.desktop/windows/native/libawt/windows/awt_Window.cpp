@@ -1819,8 +1819,40 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
     AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
 
-    (env)->SetIntField(target, AwtComponent::xID, device->ScaleDownDX(rect.x));
-    (env)->SetIntField(target, AwtComponent::yID, device->ScaleDownDY(rect.y));
+    int usrX = device->ScaleDownDX(rect.x);
+    int usrY = device->ScaleDownDY(rect.y);
+
+    // [tav] Convert x/y to user space, asymmetrically to AwtComponent::Reshape.
+    AwtComponent* parent = GetParent();
+    if (parent != NULL && (device->GetScaleX() > 1 || device->GetScaleY() > 1)) {
+
+        RECT parentInsets;
+        parent->GetInsets(&parentInsets);
+        // Convert the owner's client area origin to user space
+        int parentInsetsUsrX = device->ScaleDownX(parentInsets.left);
+        int parentInsetsUsrY = device->ScaleDownY(parentInsets.top);
+
+        RECT parentRect;
+        VERIFY(::GetWindowRect(parent->GetHWnd(), &parentRect));
+        // Convert the owner's origin to user space
+        int parentUsrX = device->ScaleDownDX(parentRect.left);
+        int parentUsrY = device->ScaleDownDY(parentRect.top);
+
+        // Calc the offset from the owner's client area in device space
+        int offsetDevX = rect.x - parentRect.left - parentInsets.left;
+        int offsetDevY = rect.y - parentRect.top - parentInsets.top;
+
+        // Convert the offset to user space
+        int offsetUsrX = device->ScaleDownX(offsetDevX);
+        int offsetUsrY = device->ScaleDownY(offsetDevY);
+
+        // Finally calc the window's location based on the frame's and its insets user space values.
+        usrX = parentUsrX + parentInsetsUsrX + offsetUsrX;
+        usrY = parentUsrY + parentInsetsUsrY + offsetUsrY;
+    }
+
+    (env)->SetIntField(target, AwtComponent::xID, usrX);
+    (env)->SetIntField(target, AwtComponent::yID, usrY);
     (env)->SetIntField(peer, AwtWindow::sysXID, rect.x);
     (env)->SetIntField(peer, AwtWindow::sysYID, rect.y);
     SendComponentEvent(java_awt_event_ComponentEvent_COMPONENT_MOVED);
