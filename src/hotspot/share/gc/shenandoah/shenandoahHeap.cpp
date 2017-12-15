@@ -50,6 +50,7 @@
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "gc/shenandoah/shenandoahCodeRoots.hpp"
+#include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 
 #include "runtime/vmThread.hpp"
@@ -1130,51 +1131,6 @@ void ShenandoahHeap::fixup_roots() {
 #endif
 }
 
-void ShenandoahHeap::do_evacuation() {
-  ShenandoahGCPhase conc_evac_phase(ShenandoahPhaseTimings::conc_evac);
-
-  LogTarget(Trace, gc, region) lt_region;
-  LogTarget(Trace, gc, cset) lt_cset;
-
-  if (lt_region.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_region);
-    ls.print_cr("All available regions:");
-    print_heap_regions_on(&ls);
-  }
-
-  if (lt_cset.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_cset);
-    ls.print_cr("Collection set ("SIZE_FORMAT" regions):", _collection_set->count());
-    _collection_set->print_on(&ls);
-
-    ls.print_cr("Free set:");
-    _free_regions->print_on(&ls);
-  }
-
-  ShenandoahParallelEvacuationTask task(this, _collection_set);
-  workers()->run_task(&task);
-
-  if (lt_cset.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_cset);
-    ls.print_cr("After evacuation collection set ("SIZE_FORMAT" regions):",
-               _collection_set->count());
-    _collection_set->print_on(&ls);
-
-    ls.print_cr("After evacuation free set:");
-    _free_regions->print_on(&ls);
-  }
-
-  if (lt_region.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_region);
-    ls.print_cr("All regions after evacuation:");
-    print_heap_regions_on(&ls);
-  }
-}
-
 void ShenandoahHeap::roots_iterate(OopClosure* cl) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only iterate roots while world is stopped");
 
@@ -1474,7 +1430,11 @@ public:
   }
 };
 
-void ShenandoahHeap::start_concurrent_marking() {
+void ShenandoahHeap::op_init_mark() {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
+
+  assert(is_next_bitmap_clear(), "need clear marking bitmap");
+
   if (ShenandoahVerify) {
     verifier()->verify_before_concmark();
   }
@@ -1509,6 +1469,150 @@ void ShenandoahHeap::start_concurrent_marking() {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::resize_tlabs);
     resize_all_tlabs();
   }
+}
+
+void ShenandoahHeap::op_mark() {
+  concurrentMark()->mark_from_roots();
+
+  // Allocations happen during concurrent mark, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
+}
+
+void ShenandoahHeap::op_final_mark() {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
+
+  ShenandoahHeap *sh = ShenandoahHeap::heap();
+
+  // It is critical that we
+  // evacuate roots right after finishing marking, so that we don't
+  // get unmarked objects in the roots.
+
+  if (! sh->cancelled_concgc()) {
+    sh->concurrentMark()->finish_mark_from_roots();
+    sh->stop_concurrent_marking();
+
+    {
+      ShenandoahGCPhase prepare_evac(ShenandoahPhaseTimings::prepare_evac);
+      sh->prepare_for_concurrent_evacuation();
+    }
+
+    // If collection set has candidates, start evacuation.
+    // Otherwise, bypass the rest of the cycle.
+    if (!sh->collection_set()->is_empty()) {
+      sh->set_evacuation_in_progress_at_safepoint(true);
+      // From here on, we need to update references.
+      sh->set_need_update_refs(true);
+
+      ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
+      sh->evacuate_and_update_roots();
+    }
+  } else {
+    sh->concurrentMark()->cancel();
+    sh->stop_concurrent_marking();
+  }
+}
+
+void ShenandoahHeap::op_evac() {
+
+  LogTarget(Trace, gc, region) lt_region;
+  LogTarget(Trace, gc, cset) lt_cset;
+
+  if (lt_region.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt_region);
+    ls.print_cr("All available regions:");
+    print_heap_regions_on(&ls);
+  }
+
+  if (lt_cset.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt_cset);
+    ls.print_cr("Collection set ("SIZE_FORMAT" regions):", _collection_set->count());
+    _collection_set->print_on(&ls);
+
+    ls.print_cr("Free set:");
+    _free_regions->print_on(&ls);
+  }
+
+  ShenandoahParallelEvacuationTask task(this, _collection_set);
+  workers()->run_task(&task);
+
+  if (lt_cset.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt_cset);
+    ls.print_cr("After evacuation collection set ("SIZE_FORMAT" regions):",
+                _collection_set->count());
+    _collection_set->print_on(&ls);
+
+    ls.print_cr("After evacuation free set:");
+    _free_regions->print_on(&ls);
+  }
+
+  if (lt_region.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt_region);
+    ls.print_cr("All regions after evacuation:");
+    print_heap_regions_on(&ls);
+  }
+
+  // Allocations happen during evacuation, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
+}
+
+void ShenandoahHeap::op_verify_after_evac() {
+  verifier()->verify_after_evacuation();
+}
+
+void ShenandoahHeap::op_updaterefs() {
+  ShenandoahHeapRegionSet* update_regions = regions();
+  update_regions->clear_current_index();
+  update_heap_references(update_regions, true);
+
+  // Allocations happen during update-refs, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
+}
+
+void ShenandoahHeap::op_cleanup() {
+  ShenandoahGCPhase phase_recycle(ShenandoahPhaseTimings::conc_cleanup_recycle);
+  recycle_trash();
+
+  // Allocations happen during cleanup, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
+}
+
+void ShenandoahHeap::op_cleanup_bitmaps() {
+  op_cleanup();
+
+  ShenandoahGCPhase phase_reset(ShenandoahPhaseTimings::conc_cleanup_reset_bitmaps);
+  reset_next_mark_bitmap();
+
+  // Allocations happen during bitmap cleanup, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
+}
+
+void ShenandoahHeap::op_preclean() {
+  if (ShenandoahPreclean && concurrentMark()->process_references()) {
+    concurrentMark()->preclean_weak_refs();
+
+    // Allocations happen during concurrent preclean, record peak after the phase:
+    shenandoahPolicy()->record_peak_occupancy();
+  }
+}
+
+void ShenandoahHeap::op_init_partial() {
+  partial_gc()->init_partial_collection();
+}
+
+void ShenandoahHeap::op_partial() {
+  partial_gc()->concurrent_partial_collection();
+}
+
+void ShenandoahHeap::op_final_partial() {
+  partial_gc()->final_partial_collection();
+}
+
+void ShenandoahHeap::op_full(GCCause::Cause cause) {
+  full_gc()->do_it(cause);
 }
 
 void ShenandoahHeap::swap_mark_bitmaps() {
@@ -2051,14 +2155,7 @@ void ShenandoahHeap::update_heap_references(ShenandoahHeapRegionSet* update_regi
   }
 }
 
-void ShenandoahHeap::concurrent_update_heap_references() {
-  ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_update_refs);
-  ShenandoahHeapRegionSet* update_regions = regions();
-  update_regions->clear_current_index();
-  update_heap_references(update_regions, true);
-}
-
-void ShenandoahHeap::prepare_update_refs() {
+void ShenandoahHeap::op_init_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
   if (ShenandoahVerify) {
@@ -2077,7 +2174,7 @@ void ShenandoahHeap::prepare_update_refs() {
   }
 }
 
-void ShenandoahHeap::finish_update_refs() {
+void ShenandoahHeap::op_final_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
   if (cancelled_concgc()) {
@@ -2257,4 +2354,218 @@ void ShenandoahHeap::safepoint_synchronize_end() {
   if (ShenandoahSuspendibleWorkers || UseStringDeduplication) {
     SuspendibleThreadSet::desynchronize();
   }
+}
+
+void ShenandoahHeap::vmop_entry_init_mark() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_mark_gross);
+
+  VM_ShenandoahInitMark op;
+  VMThread::execute(&op); // jump to entry_init_mark() under safepoint
+}
+
+void ShenandoahHeap::vmop_entry_final_mark() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_mark_gross);
+
+  VM_ShenandoahFinalMarkStartEvac op;
+  VMThread::execute(&op); // jump to entry_final_mark under safepoint
+}
+
+void ShenandoahHeap::vmop_entry_init_updaterefs() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_update_refs_gross);
+
+  VM_ShenandoahInitUpdateRefs op;
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::vmop_entry_final_updaterefs() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_update_refs_gross);
+
+  VM_ShenandoahFinalUpdateRefs op;
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::vmop_entry_init_partial() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_partial_gc_gross);
+
+  VM_ShenandoahInitPartialGC op;
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::vmop_entry_final_partial() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_partial_gc_gross);
+
+  VM_ShenandoahFinalPartialGC op;
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::vmop_entry_verify_after_evac() {
+  if (ShenandoahVerify) {
+    ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+
+    VM_ShenandoahVerifyHeapAfterEvacuation op;
+    VMThread::execute(&op);
+  }
+}
+
+void ShenandoahHeap::vmop_entry_full(GCCause::Cause cause) {
+  TraceCollectorStats tcs(monitoring_support()->full_stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_gross);
+
+  TraceMemoryManagerStats tmms(true, cause);
+  VM_ShenandoahFullGC op(cause);
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::entry_init_mark() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_mark);
+  GCTraceTime(Info, gc) time("Pause Init Mark", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_init_marking());
+
+  op_init_mark();
+}
+
+void ShenandoahHeap::entry_final_mark() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_mark);
+  GCTraceTime(Info, gc) time("Pause Final Mark", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_marking());
+
+  op_final_mark();
+}
+
+void ShenandoahHeap::entry_init_updaterefs() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_update_refs);
+  GCTraceTime(Info, gc) time("Pause Init Update Refs", gc_timer());
+
+  // No workers used in this phase, no setup required
+
+  op_init_updaterefs();
+}
+
+void ShenandoahHeap::entry_final_updaterefs() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_update_refs);
+  GCTraceTime(Info, gc) time("Pause Final Update Refs", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_update_ref());
+
+  op_final_updaterefs();
+}
+
+void ShenandoahHeap::entry_init_partial() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_partial_gc);
+  GCTraceTime(Info, gc) time("Pause Init Partial", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
+
+  op_init_partial();
+}
+
+void ShenandoahHeap::entry_final_partial() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_partial_gc);
+  GCTraceTime(Info, gc) time("Pause Final Partial", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
+
+  op_final_partial();
+}
+
+void ShenandoahHeap::entry_full(GCCause::Cause cause) {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc);
+  GCTraceTime(Info, gc) time("Pause Full", full_gc()->gc_timer(), cause, true);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_fullgc());
+
+  op_full(cause);
+}
+
+void ShenandoahHeap::entry_verify_after_evac() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::pause_other);
+  GCTraceTime(Info, gc) time("Pause Verify After Evac", gc_timer());
+
+  op_verify_after_evac();
+}
+
+void ShenandoahHeap::entry_mark() {
+  TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
+  GCTraceTime(Info, gc) time("Concurrent marking", gc_timer(), GCCause::_no_gc, true);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_marking());
+
+  op_mark();
+}
+
+void ShenandoahHeap::entry_evac() {
+  ShenandoahGCPhase conc_evac_phase(ShenandoahPhaseTimings::conc_evac);
+  TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
+  GCTraceTime(Info, gc) time("Concurrent evacuation", gc_timer(), GCCause::_no_gc, true);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_evac());
+
+  op_evac();
+}
+
+void ShenandoahHeap::entry_updaterefs() {
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_update_refs);
+  GCTraceTime(Info, gc) time("Concurrent update references", gc_timer(), GCCause::_no_gc, true);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_update_ref());
+
+  op_updaterefs();
+}
+void ShenandoahHeap::entry_cleanup() {
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_cleanup);
+  GCTraceTime(Info, gc) time("Concurrent cleanup", gc_timer(), GCCause::_no_gc, true);
+
+  // This phase does not use workers, no need for setup
+
+  op_cleanup();
+}
+
+void ShenandoahHeap::entry_cleanup_bitmaps() {
+  GCTraceTime(Info, gc) time("Concurrent cleanup", gc_timer(), GCCause::_no_gc, true);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_cleanup);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_cleanup());
+
+  op_cleanup_bitmaps();
+}
+
+void ShenandoahHeap::entry_preclean() {
+  GCTraceTime(Info, gc) time("Concurrent precleaning", gc_timer(), GCCause::_no_gc, true);
+  ShenandoahGCPhase conc_preclean(ShenandoahPhaseTimings::conc_preclean);
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_preclean());
+
+  op_preclean();
+}
+
+void ShenandoahHeap::entry_partial() {
+  GCTraceTime(Info, gc) time("Concurrent partial", gc_timer(), GCCause::_no_gc, true);
+  TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_partial());
+
+  op_partial();
 }

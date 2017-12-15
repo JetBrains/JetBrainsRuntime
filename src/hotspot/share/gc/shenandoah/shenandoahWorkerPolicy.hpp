@@ -38,6 +38,7 @@ private:
   static uint _prev_conc_partial;
   static uint _prev_conc_update_ref;
   static uint _prev_par_update_ref;
+  static uint _prev_conc_cleanup;
 
 public:
   // Calculate the number of workers for initial marking
@@ -66,6 +67,12 @@ public:
 
   // Calculate workers for parallel/final reference update
   static uint calc_workers_for_final_update_ref();
+
+  // Calculate workers for concurrent precleaning
+  static uint calc_workers_for_conc_preclean();
+
+  // Calculate workers for concurrent cleanup
+  static uint calc_workers_for_conc_cleanup();
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHWORKERPOLICY_HPP

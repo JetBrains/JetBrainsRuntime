@@ -35,29 +35,6 @@
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 
-void VM_ShenandoahInitMark::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::init_mark, SvcGCMarker::OTHER);
-
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-
-  GCTraceTime(Info, gc) time("Pause Init Mark", sh->gc_timer());
-  WorkGang* workers = sh->workers();
-
-  // Calculate workers for initial marking
-  uint nworkers = ShenandoahWorkerPolicy::calc_workers_for_init_marking();
-
-  ShenandoahWorkerScope scope(workers, nworkers);
-
-  assert(sh->is_next_bitmap_clear(), "need clear marking bitmap");
-
-  sh->start_concurrent_marking();
-}
-
-void VM_ShenandoahFullGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::full_gc, SvcGCMarker::FULL);
-  ShenandoahHeap::heap()->full_gc()->do_it(_gc_cause);
-}
-
 bool VM_ShenandoahReferenceOperation::doit_prologue() {
   Heap_lock->lock();
   return true;
@@ -70,86 +47,42 @@ void VM_ShenandoahReferenceOperation::doit_epilogue() {
   Heap_lock->unlock();
 }
 
+void VM_ShenandoahInitMark::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_init_mark();
+}
+
 void VM_ShenandoahFinalMarkStartEvac::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::final_mark, SvcGCMarker::OTHER);
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_final_mark();
+}
 
-  ShenandoahHeap *sh = ShenandoahHeap::heap();
-
-  // It is critical that we
-  // evacuate roots right after finishing marking, so that we don't
-  // get unmarked objects in the roots.
-  // Setup workers for final marking
-  WorkGang* workers = sh->workers();
-  uint n_workers = ShenandoahWorkerPolicy::calc_workers_for_final_marking();
-  ShenandoahWorkerScope scope(workers, n_workers);
-
-  if (! sh->cancelled_concgc()) {
-    GCTraceTime(Info, gc) time("Pause Final Mark", sh->gc_timer());
-    sh->concurrentMark()->finish_mark_from_roots();
-    sh->stop_concurrent_marking();
-
-    {
-      ShenandoahGCPhase prepare_evac(ShenandoahPhaseTimings::prepare_evac);
-      sh->prepare_for_concurrent_evacuation();
-    }
-
-    // If collection set has candidates, start evacuation.
-    // Otherwise, bypass the rest of the cycle.
-    if (!sh->collection_set()->is_empty()) {
-      sh->set_evacuation_in_progress_at_safepoint(true);
-      // From here on, we need to update references.
-      sh->set_need_update_refs(true);
-
-      ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
-      sh->evacuate_and_update_roots();
-    }
-  } else {
-    GCTraceTime(Info, gc) time("Cancel Concurrent Mark", sh->gc_timer(), GCCause::_no_gc, true);
-    sh->concurrentMark()->cancel();
-    sh->stop_concurrent_marking();
-  }
+void VM_ShenandoahFullGC::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::FULL);
+  ShenandoahHeap::heap()->entry_full(_gc_cause);
 }
 
 void VM_ShenandoahInitPartialGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::init_partial_gc, SvcGCMarker::MINOR);
-
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-  GCTraceTime(Info, gc) time("Pause Init Partial", sh->gc_timer());
-
-  sh->partial_gc()->init_partial_collection();
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::MINOR);
+  ShenandoahHeap::heap()->entry_init_partial();
 }
 
 void VM_ShenandoahFinalPartialGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::final_partial_gc, SvcGCMarker::MINOR);
-
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-  GCTraceTime(Info, gc) time("Pause Final Partial", sh->gc_timer());
-
-  sh->partial_gc()->final_partial_collection();
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::MINOR);
+  ShenandoahHeap::heap()->entry_final_partial();
 }
 
 void VM_ShenandoahInitUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::init_update_refs, SvcGCMarker::OTHER);
-
-  ShenandoahHeap *sh = ShenandoahHeap::heap();
-  GCTraceTime(Info, gc) time("Pause Init Update Refs", sh->gc_timer());
-
-  sh->prepare_update_refs();
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_init_updaterefs();
 }
 
 void VM_ShenandoahFinalUpdateRefs::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::final_update_refs, SvcGCMarker::OTHER);
-
-  ShenandoahHeap *sh = ShenandoahHeap::heap();
-  GCTraceTime(Info, gc) time("Pause Final Update Refs", sh->gc_timer());
-  WorkGang* workers = sh->workers();
-  uint n_workers = ShenandoahWorkerPolicy::calc_workers_for_final_update_ref();
-  ShenandoahWorkerScope scope(workers, n_workers);
-
-  sh->finish_update_refs();
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_final_updaterefs();
 }
 
 void VM_ShenandoahVerifyHeapAfterEvacuation::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, ShenandoahPhaseTimings::pause_other, SvcGCMarker::OTHER);
-  ShenandoahHeap::heap()->verifier()->verify_after_evacuation();
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_verify_after_evac();
 }

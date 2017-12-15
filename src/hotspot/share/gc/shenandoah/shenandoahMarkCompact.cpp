@@ -113,14 +113,7 @@ void ShenandoahMarkCompact::initialize() {
 void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  // Default, use number of parallel GC threads
-  WorkGang* workers = heap->workers();
-  uint nworkers = ShenandoahWorkerPolicy::calc_workers_for_fullgc();
-  ShenandoahWorkerScope full_gc_worker_scope(workers, nworkers);
-
   {
-    ShenandoahGCSession session(/* is_full_gc */true);
-
     if (ShenandoahVerify) {
       heap->verifier()->verify_before_fullgc();
     }
@@ -187,8 +180,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
     oopDesc::set_bs(&bs);
 
     {
-      GCTraceTime(Info, gc) time("Pause Full", _gc_timer, gc_cause, true);
-
       if (UseTLAB) {
         heap->make_tlabs_parsable(true);
       }

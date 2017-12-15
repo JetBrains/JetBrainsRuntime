@@ -54,13 +54,11 @@ public:
 // Aggregates all the things that should happen before/after the pause.
 class ShenandoahGCPauseMark : public StackObj {
 private:
-  const ShenandoahGCPhase _phase_total;
-  const ShenandoahGCPhase _phase_this;
   const GCIdMark          _gc_id_mark;
   const SvcGCMarker       _svc_gc_mark;
   const IsGCActiveMark    _is_gc_active_mark;
 public:
-  ShenandoahGCPauseMark(uint gc_id, ShenandoahPhaseTimings::Phase phase, SvcGCMarker::reason_type type);
+  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type);
   ~ShenandoahGCPauseMark();
 };
 

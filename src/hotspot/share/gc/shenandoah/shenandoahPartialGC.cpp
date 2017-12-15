@@ -317,7 +317,6 @@ bool ShenandoahPartialGC::prepare() {
 
 void ShenandoahPartialGC::init_partial_collection() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "STW partial GC");
-  ShenandoahWorkerScope partial_gc_scope(_heap->workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
   _heap->set_alloc_seq_gc_start();
 
@@ -444,8 +443,6 @@ bool ShenandoahPartialGC::check_and_handle_cancelled_gc(ParallelTaskTerminator* 
 void ShenandoahPartialGC::concurrent_partial_collection() {
   assert(has_work(), "Performance: should only be here when there is work");
 
-  ShenandoahWorkerScope partial_gc_scope(_heap->workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_partial());
-
   ShenandoahGCPhase phase_work(ShenandoahPhaseTimings::conc_partial);
   if (!_heap->cancelled_concgc()) {
     uint nworkers = _heap->workers()->active_workers();
@@ -469,8 +466,6 @@ void ShenandoahPartialGC::concurrent_partial_collection() {
 
 void ShenandoahPartialGC::final_partial_collection() {
   assert(has_work(), "Performance: should only be here when there is work");
-
-  ShenandoahWorkerScope partial_gc_scope(_heap->workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
   if (!_heap->cancelled_concgc()) {
     ShenandoahGCPhase phase_work(ShenandoahPhaseTimings::final_partial_gc_work);
