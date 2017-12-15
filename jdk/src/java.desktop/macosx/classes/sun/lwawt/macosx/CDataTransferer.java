@@ -29,12 +29,8 @@ package sun.lwawt.macosx;
 import java.awt.*;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.text.Normalizer;
-import java.text.Normalizer.Form;
 import java.util.*;
 import java.util.regex.*;
 import java.awt.datatransfer.*;
@@ -159,8 +155,6 @@ public class CDataTransferer extends DataTransferer {
             // regular string that allows to translate data to target represantation
             // class by base method
             format = CF_STRING;
-        } else if (format == CF_STRING) {
-            bytes = Normalizer.normalize(new String(bytes, "UTF8"), Form.NFC).getBytes("UTF8");
         }
 
         return super.translateBytes(bytes, flavor, format, transferable);
