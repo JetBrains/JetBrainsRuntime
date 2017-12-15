@@ -46,14 +46,14 @@ hb_jdk_get_glyph (hb_font_t *font HB_UNUSED,
 		 hb_codepoint_t *glyph,
 		 void *user_data HB_UNUSED)
 {
+    if (variation_selector != 0) return false;
 
     JDKFontInfo *jdkFontInfo = (JDKFontInfo*)font_data;
     JNIEnv* env = jdkFontInfo->env;
     jobject font2D = jdkFontInfo->font2D;
-    hb_codepoint_t u = (variation_selector==0) ? unicode : variation_selector;
 
     *glyph = (hb_codepoint_t)
-          env->CallIntMethod(font2D, sunFontIDs.f2dCharToGlyphMID, u);
+          env->CallIntMethod(font2D, sunFontIDs.f2dCharToGlyphMID, unicode);
     if ((int)*glyph < 0) {
         *glyph = 0;
     }
