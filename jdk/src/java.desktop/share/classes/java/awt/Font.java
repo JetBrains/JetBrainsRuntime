@@ -1825,6 +1825,7 @@ public class Font implements java.io.Serializable
                 nonIdentityTx == font.nonIdentityTx &&
                 hasLayoutAttributes == font.hasLayoutAttributes &&
                 pointSize == font.pointSize &&
+                createdFont == font.createdFont &&
                 name.equals(font.name)) {
 
                 /* 'values' is usually initialized lazily, except when
