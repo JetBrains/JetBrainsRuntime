@@ -405,7 +405,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         jlong pScalerContext, jlong pScaler) {
 
     jobject metrics;
-    jfloat ax, ay, dx, dy, bx, by, lx, ly, mx, my;
+    jfloat ax, ay, dx, dy, bx, by, lx, ly, mx, my, txx, txy, tyx, tyy;
     jfloat f0 = 0.0;
     FTScalerContext *context =
         (FTScalerContext*) jlong_to_ptr(pScalerContext);
@@ -474,6 +474,20 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
                      OBLIQUE_MODIFIER(scalerInfo->face->size->metrics.height));
     my = 0;
 
+    // apply transformation matrix
+    txx = (jfloat)  FTFixedToFloat(context->transform.xx);
+    txy = (jfloat) -FTFixedToFloat(context->transform.xy);
+    tyx = (jfloat) -FTFixedToFloat(context->transform.yx);
+    tyy = (jfloat)  FTFixedToFloat(context->transform.yy);
+    ax = txy * ay;
+    ay = tyy * ay;
+    dx = txy * dy;
+    dy = tyy * dy;
+    lx = txy * ly;
+    ly = tyy * ly;
+    my = tyx * mx;
+    mx = txx * mx; 
+    
     metrics = (*env)->NewObject(env,
                                 sunFontIDs.strikeMetricsClass,
                                 sunFontIDs.strikeMetricsCtr,
@@ -761,7 +775,7 @@ Java_sun_font_FreetypeFontScaler_getGlyphImageNative(
         glyphInfo->advanceX =
             (float) (advh * FTFixedToFloat(context->transform.xx));
         glyphInfo->advanceY =
-            (float) (advh * FTFixedToFloat(context->transform.xy));
+            (float) (-advh * FTFixedToFloat(context->transform.yx));
     } else {
         if (!ftglyph->advance.y) {
             glyphInfo->advanceX =
