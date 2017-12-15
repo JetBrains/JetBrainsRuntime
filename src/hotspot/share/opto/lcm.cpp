@@ -784,9 +784,12 @@ void PhaseCFG::needed_for_next_call(Block* block, Node* this_call, VectorSet& ne
 
 //------------------------------add_call_kills-------------------------------------
 // helper function that adds caller save registers to MachProjNode
-static void add_call_kills(MachProjNode *proj, RegMask& regs, const char* save_policy, bool exclude_soe) {
+static void add_call_kills(MachProjNode *proj, RegMask& regs, const char* save_policy, bool exclude_soe, bool exclude_fp) {
   // Fill in the kill mask for the call
   for( OptoReg::Name r = OptoReg::Name(0); r < _last_Mach_Reg; r=OptoReg::add(r,1) ) {
+    if (exclude_fp && (register_save_type[r] == Op_RegF || register_save_type[r] == Op_RegD)) {
+      continue;
+    }
     if( !regs.Member(r) ) {     // Not already defined by the call
       // Save-on-call register?
       if ((save_policy[r] == 'C') ||
@@ -887,7 +890,12 @@ uint PhaseCFG::sched_call(Block* block, uint node_cnt, Node_List& worklist, Grow
       proj->_rout.OR(Matcher::method_handle_invoke_SP_save_mask());
   }
 
-  add_call_kills(proj, regs, save_policy, exclude_soe);
+  if (UseShenandoahGC && mcall->entry_point() == StubRoutines::shenandoah_wb_C()) {
+    assert(op == Op_CallLeafNoFP, "shenandoah_wb_C should be called with Op_CallLeafNoFP");
+    add_call_kills(proj, regs, save_policy, exclude_soe, true);
+  } else {
+    add_call_kills(proj, regs, save_policy, exclude_soe, false);
+  }
 
   return node_cnt;
 }
@@ -1149,7 +1157,7 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
       map_node_to_block(proj, block);
       block->insert_node(proj, phi_cnt++);
 
-      add_call_kills(proj, regs, _matcher._c_reg_save_policy, false);
+      add_call_kills(proj, regs, _matcher._c_reg_save_policy, false, false);
     }
 
     // Children are now all ready
