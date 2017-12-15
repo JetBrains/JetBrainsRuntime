@@ -872,14 +872,14 @@ public class DefaultEditorKit extends EditorKit {
                 String content = e.getActionCommand();
                 int mod = e.getModifiers();
                 if ((content != null) && (content.length() > 0)) {
+                    char c = content.charAt(0);
                     boolean isPrintableMask = true;
                     Toolkit tk = Toolkit.getDefaultToolkit();
                     if (tk instanceof SunToolkit) {
-                        isPrintableMask = ((SunToolkit)tk).isPrintableCharacterModifiersMask(mod);
+                        isPrintableMask = ((SunToolkit)tk).isPrintableCharacter(c, mod);
                     }
 
                     if (isPrintableMask) {
-                        char c = content.charAt(0);
                         if ((c >= 0x20) && (c != 0x7F)) {
                             target.replaceSelection(content);
                         }

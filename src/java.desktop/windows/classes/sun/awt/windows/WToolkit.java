@@ -977,6 +977,14 @@ public final class WToolkit extends SunToolkit implements Runnable {
         return (wprops != null) ? wprops.getProperties() : null;
     }
 
+    @Override
+    public boolean isPrintableCharacter(char c, int mods) {
+        // Allow input of special characters on Windows in Persian keyboard layout using Ctrl+Shift+1..4 
+        if (c >= 0x200C && c <= 0x200F) return true;
+
+        return super.isPrintableCharacter(c, mods);
+    }
+
     private void updateXPStyleEnabled(final Object dskProp) {
         ThemeReader.xpStyleEnabled = Boolean.TRUE.equals(dskProp);
     }
