@@ -394,11 +394,10 @@ public final class FontUtilities {
 
         FontManager fm = FontManagerFactory.getInstance();
         Font2D dialog = fm.findFont2D("dialog", font.getStyle(), FontManager.NO_FALLBACK);
-        // Should never be null, but MACOSX fonts are not CompositeFonts
-        if (dialog == null || !(dialog instanceof CompositeFont)) {
+        // Should never be null
+        if (dialog == null) {
             return fuir;
         }
-        CompositeFont dialog2D = (CompositeFont)dialog;
         PhysicalFont physicalFont = (PhysicalFont)font2D;
         ConcurrentHashMap<PhysicalFont, CompositeFont> compMap = compMapRef.get();
         if (compMap == null) { // Its been collected.
@@ -407,7 +406,9 @@ public final class FontUtilities {
         }
         CompositeFont compFont = compMap.get(physicalFont);
         if (compFont == null) {
-            compFont = new CompositeFont(physicalFont, dialog2D);
+            compFont = dialog instanceof CompositeFont 
+                    ? new CompositeFont(physicalFont, (CompositeFont) dialog)
+                    : new CompositeFont(new PhysicalFont[]{physicalFont, (PhysicalFont) dialog});
             compMap.put(physicalFont, compFont);
         }
         FontAccess.getFontAccess().setFont2D(fuir, compFont.handle);
