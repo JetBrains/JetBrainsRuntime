@@ -70,6 +70,7 @@ jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
 
 static
 jint Agent_Initialize(JavaVM *jvm, char *options, void *reserved) {
+    jvmtiCapabilities capabilities;
     jint res = JNI_ENV_PTR(jvm)->GetEnv(JNI_ENV_ARG(jvm, (void **) &jvmti),
                                         JVMTI_VERSION_9);
     if (res != JNI_OK || jvmti == NULL) {
@@ -77,7 +78,6 @@ jint Agent_Initialize(JavaVM *jvm, char *options, void *reserved) {
         return JNI_ERR;
     }
 
-    jvmtiCapabilities   capabilities;
     (void)memset(&capabilities, 0, sizeof(capabilities));
     capabilities.can_tag_objects = 1;
     capabilities.can_generate_garbage_collection_events = 1;
@@ -112,15 +112,15 @@ static jint JNICALL heap_iter_callback(jlong class_tag,
 
 JNIEXPORT jint JNICALL
 Java_TestHeapDump_heapdump(JNIEnv *env, jclass cls, jclass filter_cls) {
+    jvmtiHeapCallbacks callbacks;
+    jint totalCount = 0;
     if (jvmti == NULL) {
         throw_exc(env, "JVMTI client was not properly loaded!\n");
         return 0;
     }
 
-    jvmtiHeapCallbacks callbacks;
     (void)memset(&callbacks, 0, sizeof(callbacks));
     callbacks.heap_iteration_callback = &heap_iter_callback;
-    jint totalCount = 0;
     (*jvmti)->IterateThroughHeap(jvmti, 0, filter_cls, &callbacks, (const void *)&totalCount);
     return totalCount;
 }
