@@ -269,7 +269,9 @@ public final class FontUtilities {
         else if (code <  0x0f00) {
             return false;
         }
-        else if (code <= 0x0fff) { // U+0F00 - U+0FFF Tibetan
+        else if (code <= 0x109f) {
+            // U+0F00 - U+0FFF Tibetan
+            // U+1000 - U+109F Myanmar
             return true;
         }
         else if (code < 0x1100) {
