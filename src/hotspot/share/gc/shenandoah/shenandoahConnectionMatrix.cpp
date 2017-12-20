@@ -42,7 +42,10 @@ ShenandoahConnectionMatrix::ShenandoahConnectionMatrix(size_t max_regions) :
   assert(UseShenandoahMatrix, "Call only when matrix is enabled");
 
   size_t page_size = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
-  size_t matrix_size = align_up(max_regions * max_regions, page_size);
+  size_t granularity = os::vm_allocation_granularity();
+  granularity = MAX2(granularity, page_size);
+  size_t matrix_size = align_up(max_regions * max_regions, granularity);
+
   ReservedSpace matrix_bitmap(matrix_size, page_size);
   os::commit_memory_or_exit(matrix_bitmap.base(), matrix_bitmap.size(), false,
                               "couldn't allocate matrix bitmap");
