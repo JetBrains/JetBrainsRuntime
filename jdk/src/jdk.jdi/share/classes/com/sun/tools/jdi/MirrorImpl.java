@@ -27,7 +27,6 @@ package com.sun.tools.jdi;
 
 import com.sun.jdi.*;
 import java.util.Collection;
-import java.util.Iterator;
 
 abstract class MirrorImpl extends Object implements Mirror {
 
@@ -84,12 +83,8 @@ abstract class MirrorImpl extends Object implements Mirror {
      * Throw VMMismatchException on wrong VM.
      */
     void validateMirrors(Collection<? extends Mirror> mirrors) {
-        Iterator<? extends Mirror> iter = mirrors.iterator();
-        while (iter.hasNext()) {
-            MirrorImpl mirror = (MirrorImpl)iter.next();
-            if (!vm.equals(mirror.vm)) {
-                throw new VMMismatchException(mirror.toString());
-            }
+        for (Mirror mirror : mirrors) {
+            validateMirror(mirror);
         }
     }
     /**
@@ -97,12 +92,8 @@ abstract class MirrorImpl extends Object implements Mirror {
      * Throw VMMismatchException on wrong VM.
      */
     void validateMirrorsOrNulls(Collection<? extends Mirror> mirrors) {
-        Iterator<? extends Mirror> iter = mirrors.iterator();
-        while (iter.hasNext()) {
-            MirrorImpl mirror = (MirrorImpl)iter.next();
-            if ((mirror != null) && !vm.equals(mirror.vm)) {
-                throw new VMMismatchException(mirror.toString());
-            }
+        for (Mirror mirror : mirrors) {
+            validateMirrorOrNull(mirror);
         }
     }
 }
