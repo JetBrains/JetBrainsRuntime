@@ -248,7 +248,7 @@ bool KlassCleaningTask::claim_clean_klass_tree_task() {
     return false;
   }
 
-  return Atomic::cmpxchg(1, (jint*)&_clean_klass_tree_claimed, 0) == 0;
+  return Atomic::cmpxchg(1, &_clean_klass_tree_claimed, 0) == 0;
 }
 
 InstanceKlass* KlassCleaningTask::claim_next_klass() {
@@ -284,7 +284,7 @@ bool ResolvedMethodCleaningTask::claim_resolved_method_task() {
   if (_resolved_method_task_claimed) {
     return false;
   }
-  return Atomic::cmpxchg(1, (jint*)&_resolved_method_task_claimed, 0) == 0;
+  return Atomic::cmpxchg(1, &_resolved_method_task_claimed, 0) == 0;
 }
 
 // These aren't big, one thread can do it all.

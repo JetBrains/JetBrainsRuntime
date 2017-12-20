@@ -208,7 +208,7 @@ private:
 
   ShenandoahHeap* _heap;
   size_t _region_number;
-  volatile jint _live_data;
+  volatile int _live_data;
   MemRegion _reserved;
 
   size_t _tlab_allocs;
@@ -324,7 +324,7 @@ public:
   void clear_live_data();
   void set_live_data(size_t s);
   inline void increase_live_data_words(size_t s);
-  inline void increase_live_data_words(jint s);
+  inline void increase_live_data_words(int s);
 
   void reset_alloc_stats_to_shared();
   void reset_alloc_stats();

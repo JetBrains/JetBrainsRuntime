@@ -86,14 +86,14 @@ public:
   static ShenandoahCsetCodeRootsIterator cset_iterator();
 
 private:
-  static volatile jint _recorded_nmethods_lock;
+  static volatile int _recorded_nmethods_lock;
   static GrowableArray<nmethod*>* _recorded_nmethods;
 
   static void fast_add_nmethod(nmethod* nm);
   static void fast_remove_nmethod(nmethod* nm);
 
   static void acquire_lock(bool write) {
-    volatile jint* loc = &_recorded_nmethods_lock;
+    volatile int* loc = &_recorded_nmethods_lock;
     if (write) {
       while ((OrderAccess::load_acquire(loc) != 0) ||
              Atomic::cmpxchg(-1, loc, 0) != 0) {
@@ -102,7 +102,7 @@ private:
       assert (*loc == -1, "acquired for write");
     } else {
       while (true) {
-        jint cur = OrderAccess::load_acquire(loc);
+        int cur = OrderAccess::load_acquire(loc);
         if (cur >= 0) {
           if (Atomic::cmpxchg(cur + 1, loc, cur) == cur) {
             // Success!
@@ -116,7 +116,7 @@ private:
   }
 
   static void release_lock(bool write) {
-    volatile jint* loc = &ShenandoahCodeRoots::_recorded_nmethods_lock;
+    volatile int* loc = &ShenandoahCodeRoots::_recorded_nmethods_lock;
     if (write) {
       OrderAccess::release_store_fence(loc, 0);
     } else {

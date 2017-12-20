@@ -62,11 +62,11 @@ HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahHeap::AllocType 
 
 inline void ShenandoahHeapRegion::increase_live_data_words(size_t s) {
   assert (s <= (size_t)max_jint, "sanity");
-  increase_live_data_words((jint)s);
+  increase_live_data_words((int)s);
 }
 
-inline void ShenandoahHeapRegion::increase_live_data_words(jint s) {
-  jint new_live_data = Atomic::add(s, &_live_data);
+inline void ShenandoahHeapRegion::increase_live_data_words(int s) {
+  int new_live_data = Atomic::add(s, &_live_data);
 #ifdef ASSERT
   size_t live_bytes = (size_t)(new_live_data * HeapWordSize);
   size_t used_bytes = used();

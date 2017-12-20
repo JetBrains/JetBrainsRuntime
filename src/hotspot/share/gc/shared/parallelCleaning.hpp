@@ -104,7 +104,7 @@ private:
 
 class KlassCleaningTask : public StackObj {
   BoolObjectClosure*                      _is_alive;
-  volatile jint                           _clean_klass_tree_claimed;
+  volatile int                            _clean_klass_tree_claimed;
   ClassLoaderDataGraphKlassIteratorAtomic _klass_iterator;
 
  public:
@@ -124,7 +124,7 @@ public:
 
 class ResolvedMethodCleaningTask : public StackObj {
   BoolObjectClosure* _is_alive;
-  volatile jint      _resolved_method_task_claimed;
+  volatile int       _resolved_method_task_claimed;
 public:
   ResolvedMethodCleaningTask(BoolObjectClosure* is_alive) :
           _is_alive(is_alive), _resolved_method_task_claimed(0) {}

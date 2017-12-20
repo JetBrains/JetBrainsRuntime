@@ -113,7 +113,7 @@ public:
   }
 };
 
-volatile jint ShenandoahCodeRoots::_recorded_nmethods_lock;
+volatile int ShenandoahCodeRoots::_recorded_nmethods_lock;
 GrowableArray<nmethod*>* ShenandoahCodeRoots::_recorded_nmethods;
 
 void ShenandoahCodeRoots::initialize() {
