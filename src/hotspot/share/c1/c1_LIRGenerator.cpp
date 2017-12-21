@@ -2125,11 +2125,12 @@ void LIRGenerator::do_NIOCheckIndex(Intrinsic* x) {
   if (GenerateRangeChecks) {
     CodeEmitInfo* info = state_for(x);
     CodeStub* stub = new RangeCheckStub(info, index.result(), true);
+    LIR_Opr buf_obj = shenandoah_read_barrier(buf.result(), info, false);
     if (index.result()->is_constant()) {
-      cmp_mem_int(lir_cond_belowEqual, buf.result(), java_nio_Buffer::limit_offset(), index.result()->as_jint(), info);
+      cmp_mem_int(lir_cond_belowEqual, buf_obj, java_nio_Buffer::limit_offset(), index.result()->as_jint(), info);
       __ branch(lir_cond_belowEqual, T_INT, stub);
     } else {
-      cmp_reg_mem(lir_cond_aboveEqual, index.result(), buf.result(),
+      cmp_reg_mem(lir_cond_aboveEqual, index.result(), buf_obj,
                   java_nio_Buffer::limit_offset(), T_INT, info);
       __ branch(lir_cond_aboveEqual, T_INT, stub);
     }
