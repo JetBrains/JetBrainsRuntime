@@ -372,6 +372,7 @@ public final class SunGraphics2D
         // changes parameters according to the current scale and translate.
         final double scaleX = transform.getScaleX();
         final double scaleY = transform.getScaleY();
+        // [tav] rounding down affects aligning by insets in RepaintManager.paintDoubleBuffered
         x = constrainX = (int) transform.getTranslateX();
         y = constrainY = (int) transform.getTranslateY();
         w = Region.dimAdd(x, Region.clipScale(w, scaleX));

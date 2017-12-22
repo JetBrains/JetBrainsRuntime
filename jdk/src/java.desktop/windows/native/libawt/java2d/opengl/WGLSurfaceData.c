@@ -51,7 +51,7 @@ extern void AwtWindow_UpdateWindow(JNIEnv *env, jobject peer,
 extern HBITMAP BitmapUtil_CreateBitmapFromARGBPre(int width, int height,
                                                   int srcStride,
                                                   int* imageData);
-extern void AwtComponent_GetAlignedInsets(JNIEnv *env, jobject peer, RECT *insets);
+extern void AwtComponent_GetInsets(JNIEnv *env, jobject peer, RECT *insets);
 
 extern void
     OGLSD_SetNativeDimensions(JNIEnv *env, OGLSDOps *oglsdo, jint w, jint h);
@@ -89,7 +89,7 @@ Java_sun_java2d_opengl_WGLSurfaceData_initOps(JNIEnv *env, jobject wglsd,
     oglsdo->needsInit = JNI_TRUE;
     if (peer != NULL) {
         RECT insets;
-        AwtComponent_GetAlignedInsets(env, peer, &insets);
+        AwtComponent_GetInsets(env, peer, &insets);
         oglsdo->xOffset = -insets.left;
         oglsdo->yOffset = -insets.bottom;
     } else {
