@@ -185,6 +185,7 @@ jfieldID AwtWindow::sysYID;
 jfieldID AwtWindow::sysWID;
 jfieldID AwtWindow::sysHID;
 jfieldID AwtWindow::windowTypeID;
+jfieldID AwtWindow::sysInsetsID;
 
 jmethodID AwtWindow::getWarningStringMID;
 jmethodID AwtWindow::calculateSecurityWarningPositionMID;
@@ -1467,28 +1468,25 @@ BOOL AwtWindow::UpdateInsets(jobject insets)
     jobject peerInsets = (env)->GetObjectField(peer, AwtPanel::insets_ID);
     DASSERT(!safe_ExceptionOccurred(env));
 
+    jobject peerSysInsets = (env)->GetObjectField(peer, AwtWindow::sysInsetsID);
+    DASSERT(!safe_ExceptionOccurred(env));
+
     int user_left = ScaleDownX(m_insets.left);
     int user_top = ScaleDownY(m_insets.top);
     int user_right = ScaleDownX(m_insets.right);
     int user_bottom = ScaleDownY(m_insets.bottom);
-
-    // [tav] Align the insets in the device space with their transformed (and rounded to int) values in the user space.
-    // This will align the origin of the non-client area with its physical origin after transforming back to the
-    // device space. This will avoid gaps b/w the window's rendered content and the window's upper/left borders.
-    // However, even so the size of the non-client area, transformed back from the user space, may not exactly match
-    // the device size of the client area when the the window is resized natively (with mouse). In that case the
-    // right/bottom gaps will be filled with the window background color, which is configured in java and is
-    // expected to not contrast with the overall UI.
-    m_aligned_insets.left = ScaleUpX(user_left);
-    m_aligned_insets.top = ScaleUpY(user_top);
-    m_aligned_insets.right = ScaleUpX(user_right);
-    m_aligned_insets.bottom = ScaleUpY(user_bottom);
 
     if (peerInsets != NULL) { // may have been called during creation
         (env)->SetIntField(peerInsets, AwtInsets::topID, user_top);
         (env)->SetIntField(peerInsets, AwtInsets::bottomID, user_bottom);
         (env)->SetIntField(peerInsets, AwtInsets::leftID, user_left);
         (env)->SetIntField(peerInsets, AwtInsets::rightID, user_right);
+    }
+    if (peerSysInsets != NULL) {
+        (env)->SetIntField(peerSysInsets, AwtInsets::topID, m_insets.top);
+        (env)->SetIntField(peerSysInsets, AwtInsets::bottomID, m_insets.bottom);
+        (env)->SetIntField(peerSysInsets, AwtInsets::leftID, m_insets.left);
+        (env)->SetIntField(peerSysInsets, AwtInsets::rightID, m_insets.right);
     }
     /* Get insets into the Inset object (if any) that was passed */
     if (insets != NULL) {
@@ -3400,6 +3398,8 @@ Java_sun_awt_windows_WWindowPeer_initIDs(JNIEnv *env, jclass cls)
     CHECK_NULL(AwtWindow::sysYID = env->GetFieldID(cls, "sysY", "I"));
     CHECK_NULL(AwtWindow::sysWID = env->GetFieldID(cls, "sysW", "I"));
     CHECK_NULL(AwtWindow::sysHID = env->GetFieldID(cls, "sysH", "I"));
+
+    CHECK_NULL(AwtWindow::sysInsetsID = env->GetFieldID(cls, "sysInsets", "Ljava/awt/Insets;"));
 
     AwtWindow::windowTypeID = env->GetFieldID(cls, "windowType",
             "Ljava/awt/Window$Type;");

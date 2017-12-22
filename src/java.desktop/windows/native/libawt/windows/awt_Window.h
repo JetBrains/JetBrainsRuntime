@@ -63,6 +63,8 @@ public:
     static jfieldID sysWID;
     static jfieldID sysHID;
 
+    static jfieldID sysInsetsID;
+
     static jfieldID windowTypeID;
 
     static jmethodID getWarningStringMID;
@@ -102,10 +104,6 @@ public:
 
     virtual void GetInsets(RECT* rect) {
         VERIFY(::CopyRect(rect, &m_insets));
-    }
-
-    virtual void GetAlignedInsets(RECT* rect) {
-        VERIFY(::CopyRect(rect, &m_aligned_insets));
     }
 
     /* to make embedded frames easier */
@@ -279,7 +277,6 @@ private:
 
     RECT m_insets;          /* a cache of the insets being used */
     RECT m_old_insets;      /* help determine if insets change */
-    RECT m_aligned_insets;  /* transformed to user space and back to device scape */
     POINT m_sizePt;         /* the last value of WM_SIZE */
     RECT m_warningRect;     /* The window's warning banner area, if any. */
     AwtFrame *m_owningFrameDialog; /* The nearest Frame/Dialog which owns us */

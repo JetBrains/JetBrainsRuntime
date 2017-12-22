@@ -137,8 +137,8 @@ struct SetRectangularShapeStruct {
     jint x1, x2, y1, y2;
     jobject region;
 };
-// Struct for _GetAlignedInsets function
-struct GetAlignedInsetsStruct {
+// Struct for _GetInsets function
+struct GetInsetsStruct {
     jobject window;
     RECT *insets;
 };
@@ -996,8 +996,7 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
 
     // [tav] Handle the fact that an owned window is most likely positioned relative to its owner, and it may
     // require pixel-perfect alignment. For that, compensate rounding errors (caused by converting from the device
-    // space to the integer user space and back) for the owner's origin and for the owner's client area origin
-    // (see Window::GetAlignedInsets).
+    // space to the integer user space and back) for the owner's origin and for the owner's client area origin.
     if (IsTopLevel() && parent != NULL &&
         (device->GetScaleX() > 1 || device->GetScaleY() > 1))
     {
@@ -6567,11 +6566,11 @@ AwtComponent_GetHWnd(JNIEnv *env, jlong pData)
     return p->GetHWnd();
 }
 
-static void _GetAlignedInsets(void* param)
+static void _GetInsets(void* param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
-    GetAlignedInsetsStruct *gis = (GetAlignedInsetsStruct *)param;
+    GetInsetsStruct *gis = (GetInsetsStruct *)param;
     jobject self = gis->window;
 
     gis->insets->left = gis->insets->top =
@@ -6581,7 +6580,7 @@ static void _GetAlignedInsets(void* param)
     JNI_CHECK_PEER_GOTO(self, ret);
     AwtComponent *component = (AwtComponent *)pData;
 
-    component->GetAlignedInsets(gis->insets);
+    component->GetInsets(gis->insets);
 
   ret:
     env->DeleteGlobalRef(self);
@@ -6592,15 +6591,15 @@ static void _GetAlignedInsets(void* param)
  * This method is called from the WGL pipeline when it needs to retrieve
  * the insets associated with a ComponentPeer's C++ level object.
  */
-void AwtComponent_GetAlignedInsets(JNIEnv *env, jobject peer, RECT *insets)
+void AwtComponent_GetInsets(JNIEnv *env, jobject peer, RECT *insets)
 {
     TRY;
 
-    GetAlignedInsetsStruct *gis = new GetAlignedInsetsStruct;
+    GetInsetsStruct *gis = new GetInsetsStruct;
     gis->window = env->NewGlobalRef(peer);
     gis->insets = insets;
 
-    AwtToolkit::GetInstance().InvokeFunction(_GetAlignedInsets, gis);
+    AwtToolkit::GetInstance().InvokeFunction(_GetInsets, gis);
     // global refs and mds are deleted in _UpdateWindow
 
     CATCH_BAD_ALLOC;

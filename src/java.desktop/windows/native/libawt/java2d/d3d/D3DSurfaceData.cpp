@@ -338,7 +338,7 @@ JNICALL Java_sun_java2d_d3d_D3DSurfaceData_initFlipBackbuffer
         return JNI_FALSE;
     }
 
-    pPeer->GetAlignedInsets(&r);
+    pPeer->GetInsets(&r);
     d3dsdo->xoff = -r.left;
     d3dsdo->yoff = -r.top;
 

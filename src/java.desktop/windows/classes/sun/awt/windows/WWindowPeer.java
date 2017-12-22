@@ -109,6 +109,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     private float scaleX;
     private float scaleY;
 
+    private Insets sysInsets; // set from native updateInsets
+
     /**
      * Initialize JNI field IDs
      */
@@ -205,6 +207,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     void initialize() {
         super.initialize();
 
+        sysInsets = (Insets)insets_.clone();
         updateInsets(insets_);
 
         if (!((Window) target).isFontSet()) {
@@ -313,6 +316,11 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     // Synchronize the insets members (here & in helper) with actual window
     // state.
     native void updateInsets(Insets i);
+
+    @Override
+    public Insets getSysInsets() {
+        return (Insets)sysInsets.clone();
+    }
 
     static native int getSysMinWidth();
     static native int getSysMinHeight();
