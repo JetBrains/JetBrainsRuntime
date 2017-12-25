@@ -1182,6 +1182,19 @@ MsgRouting AwtFrame::WmGetIcon(WPARAM iconType, LRESULT& retVal)
     }
 }
 
+void _UpdateIcon(void* p) {
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject self = reinterpret_cast<jobject>(p);
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(self, ret);
+
+    AwtFrame* frame = (AwtFrame*)pData;
+    frame->DoUpdateIcon();
+ret:
+    env->DeleteGlobalRef(self);
+}
+
 void AwtFrame::DoUpdateIcon()
 {
     //Workaround windows bug:
@@ -1198,7 +1211,7 @@ HICON AwtFrame::GetEffectiveIcon(int iconType)
     BOOL smallIcon = ((iconType == ICON_SMALL) || (iconType == 2/*ICON_SMALL2*/));
     HICON hIcon = (smallIcon) ? GetHIconSm() : GetHIcon();
     if (hIcon == NULL) {
-        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm() :
+        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm(reinterpret_cast<void*>(this)) :
             AwtToolkit::GetInstance().GetAwtIcon();
     }
     return hIcon;
@@ -2005,6 +2018,17 @@ Java_sun_awt_windows_WFramePeer_synthesizeWmActivate(JNIEnv *env, jobject self, 
      */
     AwtToolkit::GetInstance().InvokeFunction(AwtFrame::_SynthesizeWmActivate, sas);
     // global ref and sas are deleted in _SynthesizeWmActivate()
+
+    CATCH_BAD_ALLOC;
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WFramePeer_updateIcon(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(_UpdateIcon, env->NewGlobalRef(self));
+    // global ref is deleted in _UpdateIcon()
 
     CATCH_BAD_ALLOC;
 }
