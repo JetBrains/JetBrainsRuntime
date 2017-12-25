@@ -1866,7 +1866,7 @@ HICON AwtToolkit::GetAwtIcon()
     return ::LoadIcon(GetModuleHandle(), TEXT("AWT_ICON"));
 }
 
-HICON AwtToolkit::GetAwtIconSm()
+HICON AwtToolkit::GetAwtIconSm(void* pAwtWindow)
 {
     static HICON defaultIconSm = NULL;
     static int prevSmx = 0;
@@ -1874,6 +1874,16 @@ HICON AwtToolkit::GetAwtIconSm()
 
     int smx = GetSystemMetrics(SM_CXSMICON);
     int smy = GetSystemMetrics(SM_CYSMICON);
+
+    if (AwtWin32GraphicsDevice::IsUiScaleEnabled() && pAwtWindow != NULL) {
+        AwtWindow *wnd = reinterpret_cast<AwtWindow*>(pAwtWindow);
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(wnd->GetHWnd()));
+        if (device) {
+            smx = 16 * device->GetScaleX();
+            smy = 16 * device->GetScaleY();
+        }
+    }
 
     // Fixed 6364216: LoadImage() may leak memory
     if (defaultIconSm == NULL || smx != prevSmx || smy != prevSmy) {
