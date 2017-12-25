@@ -1204,7 +1204,7 @@ HICON AwtFrame::GetEffectiveIcon(int iconType)
     BOOL smallIcon = ((iconType == ICON_SMALL) || (iconType == 2/*ICON_SMALL2*/));
     HICON hIcon = (smallIcon) ? GetHIconSm() : GetHIcon();
     if (hIcon == NULL) {
-        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm() :
+        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm(reinterpret_cast<void*>(this)) :
             AwtToolkit::GetInstance().GetAwtIcon();
     }
     return hIcon;

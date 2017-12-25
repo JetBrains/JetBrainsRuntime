@@ -1782,6 +1782,13 @@ MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
     return mrConsume;
 }
 
+void _DoUpdateIcon(void *p)
+{
+    DASSERT(p);
+    AwtWindow* window = reinterpret_cast<AwtWindow*>(p);
+    window->DoUpdateIcon();
+}
+
 /*
  * Override AwtComponent's move handling to first update the
  * java AWT target's position fields directly, since Windows
@@ -1802,8 +1809,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     // Set initial value
         m_screenNum = GetScreenImOn();
     }
-    else {
-        CheckIfOnNewScreen();
+    else if (CheckIfOnNewScreen()) {
+        AwtToolkit::GetInstance().InvokeFunctionLater(_DoUpdateIcon, (void*)this);
     }
 
     /* Update the java AWT target component's fields directly */
@@ -2165,7 +2172,7 @@ int AwtWindow::GetScreenImOn() {
  * If so, update internal data, surfaces, etc.
  */
 
-void AwtWindow::CheckIfOnNewScreen() {
+BOOL AwtWindow::CheckIfOnNewScreen() {
     int curScrn = GetScreenImOn();
 
     if (curScrn != m_screenNum) {  // we've been moved
@@ -2173,21 +2180,23 @@ void AwtWindow::CheckIfOnNewScreen() {
 
         jclass peerCls = env->GetObjectClass(m_peerObject);
         DASSERT(peerCls);
-        CHECK_NULL(peerCls);
+        CHECK_NULL_RETURN(peerCls, TRUE);
 
         jmethodID draggedID = env->GetMethodID(peerCls, "draggedToNewScreen",
                                                "()V");
         DASSERT(draggedID);
         if (draggedID == NULL) {
             env->DeleteLocalRef(peerCls);
-            return;
+            return TRUE;
         }
 
         env->CallVoidMethod(m_peerObject, draggedID);
         m_screenNum = curScrn;
 
         env->DeleteLocalRef(peerCls);
+        return TRUE;
     }
+    return FALSE;
 }
 
 void AwtWindow::CheckWindowDPIChange() {
