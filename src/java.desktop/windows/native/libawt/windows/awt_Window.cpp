@@ -1886,8 +1886,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     // NOTE: See also AwtWindow::Reshape
         return mrDoDefault;
     }
-    // Check for the new screen and update the java peer
-    CheckIfOnNewScreen(false); // postpone if different DPI
+
+    if (CheckIfOnNewScreen(false)) DoUpdateIcon();
 
     /* Update the java AWT target component's fields directly */
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
@@ -2259,7 +2259,7 @@ int AwtWindow::GetScreenImOn() {
  * Check to see if we've been moved onto another screen.
  * If so, update internal data, surfaces, etc.
  */
-void AwtWindow::CheckIfOnNewScreen(BOOL force) {
+BOOL AwtWindow::CheckIfOnNewScreen(BOOL force) {
     int curScrn = GetScreenImOn();
 
     if (curScrn != m_screenNum) {  // we've been moved
@@ -2273,7 +2273,7 @@ void AwtWindow::CheckIfOnNewScreen(BOOL force) {
             if (oldDevice->GetScaleX() != newDevice->GetScaleX()
                     || oldDevice->GetScaleY() != newDevice->GetScaleY()) {
                 // scales are different, wait for WM_DPICHANGED
-                return;
+                return TRUE;
             }
         }
 
@@ -2281,21 +2281,23 @@ void AwtWindow::CheckIfOnNewScreen(BOOL force) {
 
         jclass peerCls = env->GetObjectClass(m_peerObject);
         DASSERT(peerCls);
-        CHECK_NULL(peerCls);
+        CHECK_NULL_RETURN(peerCls, TRUE);
 
         jmethodID draggedID = env->GetMethodID(peerCls, "draggedToNewScreen",
                                                "()V");
         DASSERT(draggedID);
         if (draggedID == NULL) {
             env->DeleteLocalRef(peerCls);
-            return;
+            return TRUE;
         }
 
         env->CallVoidMethod(m_peerObject, draggedID);
         m_screenNum = curScrn;
 
         env->DeleteLocalRef(peerCls);
+        return TRUE;
     }
+    return FALSE;
 }
 
 // The shared code is not ready to the top-level window which crosses a few
