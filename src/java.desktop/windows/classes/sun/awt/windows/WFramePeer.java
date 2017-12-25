@@ -124,6 +124,14 @@ class WFramePeer extends WWindowPeer implements FramePeer {
     }
 
     @Override
+    public void displayChanged() {
+        super.displayChanged();
+        updateIcon();
+    }
+
+    private native void updateIcon();
+
+    @Override
     public boolean updateGraphicsData(GraphicsConfiguration gc) {
         boolean result = super.updateGraphicsData(gc);
         Rectangle bounds = AWTAccessor.getFrameAccessor().
