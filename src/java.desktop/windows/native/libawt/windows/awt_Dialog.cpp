@@ -403,7 +403,7 @@ HICON AwtDialog::GetEffectiveIcon(int iconType)
         //Java cup icon is not loaded in window class for dialogs
         //It needs to be set explicitly for resizable dialogs
         //and ownerless dialogs
-        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm() :
+        hIcon = (smallIcon) ? AwtToolkit::GetInstance().GetAwtIconSm(reinterpret_cast<void*>(this)) :
             AwtToolkit::GetInstance().GetAwtIcon();
     } else if ((hIcon != NULL) && IsIconInherited() && !isResizable) {
         //Non-resizable dialogs without explicitly set icon
