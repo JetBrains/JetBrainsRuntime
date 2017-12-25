@@ -128,7 +128,7 @@ public:
     virtual void RecalcNonClient();
     virtual void RedrawNonClient();
     virtual int  GetScreenImOn();
-    virtual void CheckIfOnNewScreen(BOOL force);
+    virtual BOOL CheckIfOnNewScreen(BOOL force);
     virtual void Grab();
     virtual void Ungrab();
     virtual void Ungrab(BOOL doPost);
