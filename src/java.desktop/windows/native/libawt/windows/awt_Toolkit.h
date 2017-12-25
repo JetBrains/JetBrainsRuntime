@@ -370,7 +370,7 @@ public:
 
     /* Return the current application icon. */
     HICON GetAwtIcon();
-    HICON GetAwtIconSm();
+    HICON GetAwtIconSm(void* pAwtWindow = NULL);
 
     // Calculate a wave-like value out of the integer 'value' and
     // the specified period.
