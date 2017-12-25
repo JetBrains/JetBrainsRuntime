@@ -66,9 +66,14 @@ public class ClientAreaOriginWindowsTest {
         EventQueue.invokeLater(() -> show());
 
         timer = new Timer(100, (event) -> {
-            Insets in = frame.getInsets();
-            Point loc = frame.getLocation();
-            Rectangle rect = new Rectangle(loc.x, loc.y, in.left + 5, in.top + 5);
+            Point loc;
+            try {
+                loc = frame.getContentPane().getLocationOnScreen();
+            } catch (IllegalComponentStateException e) {
+                latch.countDown();
+                return;
+            }
+            Rectangle rect = new Rectangle(loc.x - 1, loc.y - 1, 6, 6);
             Robot robot;
             try {
                 robot = new Robot();
@@ -160,6 +165,18 @@ public class ClientAreaOriginWindowsTest {
                 return new Dimension(F_WIDTH, F_HEIGHT);
             }
         };
+
+        // Backs the main frame with black color.
+        JFrame bgFrame = new JFrame("bg_frame");
+        bgFrame.setUndecorated(true);
+        bgFrame.setSize(F_WIDTH * 2, F_HEIGHT * 2);
+        bgFrame.setLocationRelativeTo(null);
+        bgFrame.setAlwaysOnTop(true);
+        JPanel cp = new JPanel();
+        cp.setOpaque(true);
+        cp.setBackground(Color.black);
+        bgFrame.setContentPane(cp);
+        bgFrame.setVisible(true);
 
         frame.add(panel);
         frame.pack();
