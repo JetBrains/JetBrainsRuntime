@@ -1782,13 +1782,6 @@ MsgRouting AwtWindow::WmEraseBkgnd(HDC hDC, BOOL& didErase)
     return mrConsume;
 }
 
-void _DoUpdateIcon(void *p)
-{
-    DASSERT(p);
-    AwtWindow* window = reinterpret_cast<AwtWindow*>(p);
-    window->DoUpdateIcon();
-}
-
 /*
  * Override AwtComponent's move handling to first update the
  * java AWT target's position fields directly, since Windows
@@ -1810,7 +1803,7 @@ MsgRouting AwtWindow::WmMove(int x, int y)
         m_screenNum = GetScreenImOn();
     }
     else if (CheckIfOnNewScreen()) {
-        AwtToolkit::GetInstance().InvokeFunctionLater(_DoUpdateIcon, (void*)this);
+        DoUpdateIcon();
     }
 
     /* Update the java AWT target component's fields directly */
