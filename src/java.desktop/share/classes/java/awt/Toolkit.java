@@ -1397,6 +1397,11 @@ public abstract class Toolkit {
                     public void setPlatformResources(ResourceBundle bundle) {
                         Toolkit.setPlatformResources(bundle);
                     }
+
+                    @Override
+                    public void setDesktopProperty(Toolkit tk, String prop, Object value) {
+                        tk.setDesktopProperty(prop, value);
+                    }
                 });
 
         java.security.AccessController.doPrivileged(
