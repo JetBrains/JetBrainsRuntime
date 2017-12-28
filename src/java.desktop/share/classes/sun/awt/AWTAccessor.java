@@ -769,6 +769,7 @@ public final class AWTAccessor {
      */
     public interface ToolkitAccessor {
         void setPlatformResources(ResourceBundle bundle);
+        void setDesktopProperty(Toolkit tk, String prop, Object value);
     }
 
     /*
