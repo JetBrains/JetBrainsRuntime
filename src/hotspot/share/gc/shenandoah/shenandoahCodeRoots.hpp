@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -120,7 +120,7 @@ private:
     if (write) {
       OrderAccess::release_store_fence(loc, 0);
     } else {
-      Atomic::add(-1, loc);
+      Atomic::dec(loc);
     }
   }
 };

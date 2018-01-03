@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -43,7 +43,7 @@ const uintx   ShenandoahStrDedupTable::_rehash_threshold = (uintx)(_rehash_multi
 
 
 bool ShenandoahStrDedupEntry::cas_set_next(ShenandoahStrDedupEntry* next) {
-  return Atomic::cmpxchg(next, &_next, (ShenandoahStrDedupEntry*)NULL) == NULL;
+  return Atomic::replace_if_null(next, &_next);
 }
 
 ShenandoahStrDedupTable::ShenandoahStrDedupTable(size_t size, jint hash_seed)  :
@@ -76,7 +76,7 @@ typeArrayOop ShenandoahStrDedupTable::lookup_or_add(typeArrayOop value, bool lat
   ShenandoahStrDedupEntry* new_entry = NULL;
   if (*head_addr == NULL) {
     new_entry = allocate_entry(value, latin1, hash);
-    if (Atomic::cmpxchg(new_entry, head_addr, (ShenandoahStrDedupEntry*)NULL) == NULL) {
+    if (Atomic::replace_if_null(new_entry, head_addr)) {
       Atomic::inc(&_entries);
       return value;
     }
@@ -115,7 +115,7 @@ void ShenandoahStrDedupTable::add(ShenandoahStrDedupEntry* entry) {
 
   ShenandoahStrDedupEntry* volatile* head_addr = bucket_addr(hash_to_index(hash));
   if (*head_addr == NULL) {
-    if (Atomic::cmpxchg(entry, head_addr, (ShenandoahStrDedupEntry*)NULL) == NULL) {
+    if (Atomic::replace_if_null(entry, head_addr)) {
       return;
     }
   }
@@ -323,7 +323,7 @@ void ShenandoahStrDedupTableUnlinkTask::do_parallel_cleanup() {
     }
   } while (index < table_end);
 
-  Atomic::add(-removed, &table->_entries);
+  Atomic::sub(removed, &table->_entries);
 }
 
 ShenandoahStrDedupTableRemapTask::ShenandoahStrDedupTableRemapTask(ShenandoahStrDedupTable* const src,
