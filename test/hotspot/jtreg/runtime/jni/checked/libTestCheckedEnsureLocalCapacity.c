@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,28 +21,29 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 6356530
- * @summary -Xlint:serial does not flag abstract classes with concrete methods/members
- * @compile/fail/ref=SerializableAbstractClassWithNonAbstractMethodsTest.out -XDrawDiagnostics -Werror -Xlint:serial SerializableAbstractClassWithNonAbstractMethodsTest.java
- */
+#include <jni.h>
+#include <stdio.h>
 
-abstract class SerializableAbstractClassWithNonAbstractMethodsTest implements java.io.Serializable {
-    void m1() {}
-    abstract void m2();
+void reduceLocalCapacity(JNIEnv* env) {
+    puts("reduceLocalCapacity: setting to 1");
+    (*env)->EnsureLocalCapacity(env,1);
+}
 
-    abstract class AWithUID implements java.io.Serializable {
-        private static final long serialVersionUID = 0;
-        void m(){}
-    }
+JNIEXPORT void JNICALL
+Java_TestCheckedEnsureLocalCapacity_ensureCapacity(JNIEnv *env,
+                                                   jobject unused,
+                                                   jobject target,
+                                                   jint capacity,
+                                                   jint copies) {
+  int i;
+  printf("ensureCapacity: setting to %d\n", capacity);
+  (*env)->EnsureLocalCapacity(env, capacity); // set high
+  reduceLocalCapacity(env);     // sets low
 
-    interface IDefault extends java.io.Serializable {
-        default int m() { return 1; }
-    }
+  printf("ensureCapacity: creating %d LocalRefs\n", copies);
+  for (i = 0; i < copies; i++) {
+    target = (*env)->NewLocalRef(env, target);
+  }
 
-    interface IDefaultAndUID extends java.io.Serializable {
-        static final long serialVersionUID = 0;
-        default int m() { return 1; }
-    }
+  puts("ensureCapacity: done");
 }

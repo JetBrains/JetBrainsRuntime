@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
- * @LastModified: Nov 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -62,6 +61,7 @@ import org.xml.sax.helpers.AttributesImpl;
  * @author G. Todd Miller
  * @author Morten Jorgensen
  * @author Erwin Bolwidt <ejb@klomp.org>
+ * @LastModified: Nov 2017
  */
 public class Parser implements Constants, ContentHandler {
 
