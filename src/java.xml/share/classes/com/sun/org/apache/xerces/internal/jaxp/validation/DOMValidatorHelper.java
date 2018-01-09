@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
- * @LastModified: Oct 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -63,6 +62,7 @@ import org.xml.sax.SAXException;
  * <p>A validator helper for <code>DOMSource</code>s.</p>
  *
  * @author Michael Glavassevich, IBM
+ * @LastModified: Oct 2017
  */
 final class DOMValidatorHelper implements ValidatorHelper, EntityState {
 

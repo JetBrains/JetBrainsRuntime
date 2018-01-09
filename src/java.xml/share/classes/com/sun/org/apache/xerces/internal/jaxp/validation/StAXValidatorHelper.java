@@ -49,7 +49,7 @@ import org.xml.sax.SAXException;
 /**
  * <p>A validator helper for <code>StAXSource</code>s.</p>
  *
- * @author <a href="mailto:Sunitha.Reddy@Sun.com">Sunitha Reddy</a>
+ * @author Sunitha Reddy
  */
 public final class StAXValidatorHelper implements ValidatorHelper {
 
