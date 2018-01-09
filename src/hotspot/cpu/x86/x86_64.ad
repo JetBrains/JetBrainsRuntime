@@ -2966,6 +2966,16 @@ operand immI8()
   interface(CONST_INTER);
 %}
 
+operand immU8()
+%{
+  predicate((0 <= n->get_int()) && (n->get_int() <= 255));
+  match(ConI);
+
+  op_cost(5);
+  format %{ %}
+  interface(CONST_INTER);
+%}
+
 operand immI16()
 %{
   predicate((-32768 <= n->get_int()) && (n->get_int() <= 32767));
@@ -11728,6 +11738,37 @@ instruct testUL_reg(rFlagsRegU cr, rRegL src, immL0 zero)
   ins_encode(REX_reg_reg_wide(src, src), OpcP, reg_reg(src, src));
   ins_pipe(ialu_cr_reg_imm);
 %}
+
+instruct compUB_mem_imm(rFlagsReg cr, memory op1, immU8 op2)
+%{
+  // This match is actually generic, but protect with Shenandoah flag for a while,
+  // until the fix is upstreamed.
+  predicate(UseShenandoahGC);
+  match(Set cr (CmpI (LoadUB op1) op2));
+
+  ins_cost(125);
+  format %{ "cmpb    $op1, $op2" %}
+  ins_encode %{
+    __ cmpb($op1$$Address, $op2$$constant);
+  %}
+  ins_pipe(ialu_cr_reg_mem);
+%}
+
+instruct compB_mem_imm(rFlagsReg cr, memory op1, immI8 op2)
+%{
+  // This match is actually generic, but protect with Shenandoah flag for a while,
+  // until the fix is upstreamed.
+  predicate(UseShenandoahGC);
+  match(Set cr (CmpI (LoadB op1) op2));
+
+  ins_cost(125);
+  format %{ "cmpb    $op1, $op2" %}
+  ins_encode %{
+    __ cmpb($op1$$Address, $op2$$constant);
+  %}
+  ins_pipe(ialu_cr_reg_mem);
+%}
+
 
 //----------Max and Min--------------------------------------------------------
 // Min Instructions
