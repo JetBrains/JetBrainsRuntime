@@ -598,12 +598,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             newFont = oldFont;
         }
         PhysicalFont physicalFont = (PhysicalFont)newFont;
-        CompositeFont dialog2D =
-            (CompositeFont)findFont2D("dialog", style, NO_FALLBACK);
+        Font2D dialog2D = findFont2D("dialog", style, NO_FALLBACK);
         if (dialog2D == null) { /* shouldn't happen */
             return handle;
         }
-        CompositeFont compFont = new CompositeFont(physicalFont, dialog2D);
+        CompositeFont compFont = dialog2D instanceof CompositeFont
+                ? new CompositeFont(physicalFont, (CompositeFont) dialog2D)
+                : new CompositeFont(new PhysicalFont[]{physicalFont, (PhysicalFont) dialog2D});
         Font2DHandle newHandle = new Font2DHandle(compFont);
         return newHandle;
     }
