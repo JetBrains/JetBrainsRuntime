@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,10 +31,12 @@
 
 package com.sun.corba.se.impl.ior;
 
+import java.io.ObjectInputFilter ;
 import java.io.ObjectInputStream ;
 import java.io.ObjectOutputStream ;
+import java.io.InvalidClassException ;
 import java.io.IOException ;
-import java.io.StringWriter ;
+import java.util.Objects;
 
 import org.omg.CORBA.ORB ;
 
@@ -125,14 +127,20 @@ public class StubIORImpl
     {
         // read the IOR from the ObjectInputStream
         int typeLength = stream.readInt();
+        checkArray(stream, byte[].class, typeLength);
         typeData = new byte[typeLength];
         stream.readFully(typeData);
+
         int numProfiles = stream.readInt();
+        checkArray(stream, int[].class, numProfiles);
+        checkArray(stream, byte[].class, numProfiles);
         profileTags = new int[numProfiles];
         profileData = new byte[numProfiles][];
         for (int i = 0; i < numProfiles; i++) {
             profileTags[i] = stream.readInt();
-            profileData[i] = new byte[stream.readInt()];
+            int dataSize = stream.readInt();
+            checkArray(stream, byte[].class, dataSize);
+            profileData[i] = new byte[dataSize];
             stream.readFully(profileData[i]);
         }
     }
@@ -243,6 +251,49 @@ public class StubIORImpl
     }
 
     /**
+     * Checks the given array type and length to ensure that creation of such
+     * an array is permitted by the ObjectInputStream. The arrayType argument
+     * must represent an actual array type.
+     *
+     * @param stream the ObjectInputStream
+     * @param arrayType the array type
+     * @param arrayLength the array length
+     * @throws InvalidClassException if the filter rejects creation
+     */
+    private void checkArray(ObjectInputStream stream,
+                            Class<?> arrayType, int arrayLength) throws
+            InvalidClassException {
+        Objects.requireNonNull(stream, "stream");
+        Objects.requireNonNull(arrayType, "arrayType");
+        ObjectInputFilter filter = stream.getObjectInputFilter();
+        if (filter != null) {
+            RuntimeException ex = null;
+            ObjectInputFilter.Status status;
+            try {
+                status = filter.checkInput(new FilterValues(arrayType, arrayLength,
+                        0, 0, 0));    // actual info not available
+            } catch (RuntimeException e) {
+                // Prevent interception of an exception
+                status = ObjectInputFilter.Status.REJECTED;
+                ex = e;
+            }
+            if (status == null || status == ObjectInputFilter.Status.REJECTED) {
+                // Log filter checks that fail; then throw InvalidClassException
+                System.Logger filterLog = System.getLogger("java.io.serialization");
+                filterLog.log(System.Logger.Level.DEBUG,
+                        "ObjectInputFilter {0}: {1}, array length: {2}, nRefs: {3}, depth: {4}, " +
+                                "bytes: {5}, ex: {6}",
+                        status, arrayType, arrayLength, 0, -0, 0,
+                        Objects.toString(ex, "n/a"));
+
+                InvalidClassException ice = new InvalidClassException("filter status: " + status);
+                ice.initCause(ex);
+                throw ice;
+            }
+        }
+    }
+
+    /**
      * Returns a string representation of this stub. Returns the same string
      * for all stubs that represent the same remote object.
      * {@code "SimpleIORImpl[<typeName>,[<profileID>]data, ...]"}
@@ -263,5 +314,50 @@ public class StubIORImpl
 
         result.append( "]" ) ;
         return result.toString() ;
+    }
+
+    /**
+     * Hold a snapshot of values to be passed to an ObjectInputFilter.
+     */
+    static class FilterValues implements ObjectInputFilter.FilterInfo {
+        final Class<?> clazz;
+        final long arrayLength;
+        final long totalObjectRefs;
+        final long depth;
+        final long streamBytes;
+
+        public FilterValues(Class<?> clazz, long arrayLength, long totalObjectRefs,
+                            long depth, long streamBytes) {
+            this.clazz = clazz;
+            this.arrayLength = arrayLength;
+            this.totalObjectRefs = totalObjectRefs;
+            this.depth = depth;
+            this.streamBytes = streamBytes;
+        }
+
+        @Override
+        public Class<?> serialClass() {
+            return clazz;
+        }
+
+        @Override
+        public long arrayLength() {
+            return arrayLength;
+        }
+
+        @Override
+        public long references() {
+            return totalObjectRefs;
+        }
+
+        @Override
+        public long depth() {
+            return depth;
+        }
+
+        @Override
+        public long streamBytes() {
+            return streamBytes;
+        }
     }
 }
