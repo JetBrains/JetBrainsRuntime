@@ -4091,7 +4091,9 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   membar(Assembler::LoadLoad);
 
   // The read-barrier.
-  ldr(dst, Address(dst, BrooksPointer::byte_offset()));
+  if (ShenandoahWriteBarrierRB) {
+    ldr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
 
   // Evac-check ...
   cbzw(rscratch1, done);

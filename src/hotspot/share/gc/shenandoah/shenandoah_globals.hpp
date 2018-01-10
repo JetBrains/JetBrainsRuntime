@@ -305,6 +305,9 @@
   diagnostic(bool, ShenandoahWriteBarrier, true,                            \
           "Turn on/off write barriers in Shenandoah")                       \
                                                                             \
+  diagnostic(bool, ShenandoahWriteBarrierRB, true,                          \
+          "Turn on/off RB on WB fastpath in Shenandoah.")                   \
+                                                                            \
   diagnostic(bool, ShenandoahReadBarrier, true,                             \
           "Turn on/off read barriers in Shenandoah")                        \
                                                                             \

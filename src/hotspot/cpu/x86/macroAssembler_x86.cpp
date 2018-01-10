@@ -5675,7 +5675,9 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   cmpb(evacuation_in_progress, 0);
 
   // The read-barrier.
-  movptr(dst, Address(dst, BrooksPointer::byte_offset()));
+  if (ShenandoahWriteBarrierRB) {
+    movptr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
 
   jccb(Assembler::equal, done);
 

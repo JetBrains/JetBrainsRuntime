@@ -3542,9 +3542,13 @@ void ShenandoahWriteBarrierNode::evacuation_not_in_progress(Node* c, Node* val, 
                                                             Node* val_phi, Node* mem_phi, Node* raw_mem_phi, Node*& unc_region, PhaseIdealLoop* phase) {
   evacuation_not_in_progress_null_check(c, val, unc_ctrl, unc_region, phase);
   region->init_req(1, c);
-  Node* rbfalse = new ShenandoahReadBarrierNode(c, wb_mem, val);
-  phase->register_new_node(rbfalse, c);
-  val_phi->init_req(1, rbfalse);
+  if (ShenandoahWriteBarrierRB) {
+    Node* rbfalse = new ShenandoahReadBarrierNode(c, wb_mem, val);
+    phase->register_new_node(rbfalse, c);
+    val_phi->init_req(1, rbfalse);
+  } else {
+    val_phi->init_req(1, val);
+  }
   mem_phi->init_req(1, wb_mem);
   raw_mem_phi->init_req(1, raw_mem);
 }
