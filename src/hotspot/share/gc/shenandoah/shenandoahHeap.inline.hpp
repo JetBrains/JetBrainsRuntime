@@ -385,17 +385,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
 }
 
 inline bool ShenandoahHeap::requires_marking(const void* entry) const {
-  // TODO: Make this faster! It's used in a hot path.
-  // TODO: it's not strictly matrix-related, but used only in partial (i.e. matrix) GCs.
-  if (is_concurrent_partial_in_progress()) {
-    assert(! in_collection_set((oop) entry), "must not get cset objects here: " PTR_FORMAT, p2i(entry));
-    // assert(free_regions()->contains(heap_region_containing(entry)), "expect to-space object");
-    return true;
-  } else if (is_concurrent_mark_in_progress()) {
-    return ! is_marked_next(oop(entry));
-  } else {
-    return false;
-  }
+  return ! is_marked_next(oop(entry));
 }
 
 bool ShenandoahHeap::region_in_collection_set(size_t region_index) const {

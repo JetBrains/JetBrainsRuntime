@@ -294,6 +294,10 @@ bool ShenandoahPartialGC::prepare() {
 
   for (uint from_idx = 0; from_idx < num_regions; from_idx++) {
     ShenandoahHeapRegion* r = regions->get(from_idx);
+
+    // Never assume anything implicitely marked.
+    _heap->set_next_top_at_mark_start(r->bottom(), r->end());
+
     if (r->is_alloc_allowed()) {
       _free_regions->add_region(r);
     }
@@ -318,6 +322,7 @@ bool ShenandoahPartialGC::prepare() {
 void ShenandoahPartialGC::init_partial_collection() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "STW partial GC");
 
+  assert(_heap->is_next_bitmap_clear(), "need clear marking bitmap");
   _heap->set_alloc_seq_gc_start();
 
   if (ShenandoahVerify) {
