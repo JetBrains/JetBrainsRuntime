@@ -4158,7 +4158,15 @@ void GraphKit::g1_write_barrier_pre(bool do_load,
   Node* index_adr   = __ AddP(no_base, tls, __ ConX(index_offset));
 
   // Now some of the values
-  Node* marking = __ load(__ ctrl(), marking_adr, TypeInt::INT, active_type, Compile::AliasIdxRaw);
+  Node* marking;
+  if (UseShenandoahGC) {
+    Node* gc_state = __ AddP(no_base, tls, __ ConX(in_bytes(JavaThread::gc_state_offset())));
+    Node* ld = __ load(__ ctrl(), gc_state, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+    marking = __ AndI(ld, __ ConI(ShenandoahHeap::MARKING));
+  } else {
+    assert(UseG1GC, "should be");
+    marking = __ load(__ ctrl(), marking_adr, TypeInt::INT, active_type, Compile::AliasIdxRaw);
+  }
 
   // if (!marking)
   __ if_then(marking, BoolTest::ne, zero, unlikely); {
@@ -4224,11 +4232,11 @@ void GraphKit::shenandoah_write_barrier_pre(bool do_load,
     Node* prev_mem = memory(Compile::AliasIdxRaw);
     Node* memphi    = PhiNode::make(region, prev_mem, Type::MEMORY, TypeRawPtr::BOTTOM);
 
-    Node* mark_in_progr_addr_x = MakeConX((intptr_t) ShenandoahHeap::concurrent_mark_in_progress_addr());
-    Node* mark_in_progr_addr_p = _gvn.transform(new CastX2PNode(mark_in_progr_addr_x));
-    Node* mark_in_progr_addr = _gvn.transform(new AddPNode(top(), mark_in_progr_addr_p, MakeConX(0)));
-    Node* mark_in_progr = _gvn.transform(LoadNode::make(_gvn, control(), memory(Compile::AliasIdxRaw), mark_in_progr_addr, TypeRawPtr::BOTTOM, TypeInt::INT, T_BYTE, MemNode::unordered));
-    Node* cmp_set = _gvn.transform(new CmpINode(mark_in_progr, intcon(0)));
+    Node* gc_state_addr_p = _gvn.transform(new CastX2PNode(MakeConX((intptr_t) ShenandoahHeap::gc_state_addr())));
+    Node* gc_state_addr = _gvn.transform(new AddPNode(top(), gc_state_addr_p, MakeConX(0)));
+    Node* gc_state = _gvn.transform(LoadNode::make(_gvn, control(), memory(Compile::AliasIdxRaw), gc_state_addr, TypeRawPtr::BOTTOM, TypeInt::INT, T_BYTE, MemNode::unordered));
+    Node* add_set = _gvn.transform(new AddINode(gc_state, intcon(ShenandoahHeap::MARKING)));
+    Node* cmp_set = _gvn.transform(new CmpINode(add_set, intcon(0)));
     Node* cmp_set_bool = _gvn.transform(new BoolNode(cmp_set, BoolTest::eq));
     IfNode* cmp_iff = create_and_map_if(control(), cmp_set_bool, PROB_MIN, COUNT_UNKNOWN);
     Node* if_not_set = _gvn.transform(new IfTrueNode(cmp_iff));

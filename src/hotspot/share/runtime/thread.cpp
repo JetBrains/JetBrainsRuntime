@@ -1507,7 +1507,7 @@ void JavaThread::initialize() {
 #if INCLUDE_ALL_GCS
 SATBMarkQueueSet JavaThread::_satb_mark_queue_set;
 DirtyCardQueueSet JavaThread::_dirty_card_queue_set;
-bool JavaThread::_evacuation_in_progress_global = false;
+char JavaThread::_gc_state_global = 0;
 #endif // INCLUDE_ALL_GCS
 
 JavaThread::JavaThread(bool is_attaching_via_jni) :
@@ -1515,7 +1515,7 @@ JavaThread::JavaThread(bool is_attaching_via_jni) :
 #if INCLUDE_ALL_GCS
                        , _satb_mark_queue(&_satb_mark_queue_set),
                        _dirty_card_queue(&_dirty_card_queue_set),
-                       _evacuation_in_progress(_evacuation_in_progress_global)
+                       _gc_state(_gc_state_global)
 #endif // INCLUDE_ALL_GCS
 {
   initialize();
@@ -1583,7 +1583,7 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) :
 #if INCLUDE_ALL_GCS
                        , _satb_mark_queue(&_satb_mark_queue_set),
                        _dirty_card_queue(&_dirty_card_queue_set),
-                       _evacuation_in_progress(_evacuation_in_progress_global)
+                       _gc_state(_gc_state_global)
 #endif // INCLUDE_ALL_GCS
 {
   initialize();
@@ -1953,22 +1953,18 @@ void JavaThread::initialize_queues() {
   // active field set to true.
   assert(dirty_queue.is_active(), "dirty card queue should be active");
 
-  _evacuation_in_progress = _evacuation_in_progress_global;
+  _gc_state = _gc_state_global;
 }
 
-bool JavaThread::evacuation_in_progress() const {
-  return _evacuation_in_progress;
+void JavaThread::set_gc_state(char in_prog) {
+  _gc_state = in_prog;
 }
 
-void JavaThread::set_evacuation_in_progress(bool in_prog) {
-  _evacuation_in_progress = in_prog;
-}
-
-void JavaThread::set_evacuation_in_progress_all_threads(bool in_prog) {
+void JavaThread::set_gc_state_all_threads(char in_prog) {
   assert_locked_or_safepoint(Threads_lock);
-  _evacuation_in_progress_global = in_prog;
+  _gc_state_global = in_prog;
   for (JavaThread* t = Threads::first(); t != NULL; t = t->next()) {
-    t->set_evacuation_in_progress(in_prog);
+    t->set_gc_state(in_prog);
   }
 }
 #endif // INCLUDE_ALL_GCS

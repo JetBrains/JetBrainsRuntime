@@ -1001,7 +1001,7 @@ public:
   bool should_start_partial_gc() {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-    if (heap->need_update_refs()) {
+    if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
       return false;
     }
@@ -1168,7 +1168,7 @@ public:
   bool should_start_partial_gc() {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-    if (heap->need_update_refs()) {
+    if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
       return false;
     }
@@ -1279,7 +1279,7 @@ public:
   bool should_start_partial_gc() {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-    if (heap->need_update_refs()) {
+    if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
       return false;
     }

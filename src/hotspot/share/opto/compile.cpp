@@ -4690,11 +4690,11 @@ void Compile::shenandoah_eliminate_g1_wb_pre(Node* call, PhaseIterGVN* igvn) {
   assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
   Node* iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
   assert(iff->is_If(), "expect test");
-  if (!iff->is_g1_marking_if(igvn)) {
+  if (!iff->is_shenandoah_marking_if(igvn)) {
     c = c->unique_ctrl_out();
     assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
     iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
-    assert(iff->is_g1_marking_if(igvn), "expect marking test");
+    assert(iff->is_shenandoah_marking_if(igvn), "expect marking test");
   }
   Node* cmpx = iff->in(1)->in(1);
   igvn->replace_node(cmpx, igvn->makecon(TypeInt::CC_EQ));

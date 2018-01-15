@@ -129,6 +129,42 @@ class ShenandoahHeap : public CollectedHeap {
   };
 
 public:
+  // GC state describes the important parts of collector state, that may be
+  // used to make barrier selection decisions in the native and generated code.
+  // Multiple bits can be set at once.
+  //
+  // Important invariant: when GC state is zero, the heap is stable, and no barriers
+  // are required.
+  enum GCStateBitPos {
+    // Heap has forwarded objects: need RB, ACMP, CAS barriers.
+    HAS_FORWARDED_BITPOS   = 0,
+
+    // Heap is under marking: needs SATB barriers.
+    MARKING_BITPOS    = 1,
+
+    // Heap is under evacuation: needs WB barriers. (Set together with UNSTABLE)
+    EVACUATION_BITPOS = 2,
+
+    // Heap is under updating: needs SVRB/SVWB barriers.
+    UPDATEREFS_BITPOS = 3,
+
+    // Heap is under partial collection
+    PARTIAL_BITPOS    = 4,
+  };
+
+  enum GCState {
+    STABLE        = 0,
+    HAS_FORWARDED = 1 << HAS_FORWARDED_BITPOS,
+    MARKING       = 1 << MARKING_BITPOS,
+    EVACUATION    = 1 << EVACUATION_BITPOS,
+    UPDATEREFS    = 1 << UPDATEREFS_BITPOS,
+    PARTIAL       = 1 << PARTIAL_BITPOS,
+  };
+
+private:
+  ShenandoahSharedBitmap _gc_state;
+
+public:
   enum ShenandoahCancelCause {
     _oom_evacuation,
     _vm_stop,
@@ -189,14 +225,8 @@ private:
   size_t _allocated_last_gc;
   size_t _used_start_gc;
 
-  ShenandoahSharedFlag _concurrent_mark_in_progress;
-  ShenandoahSharedFlag _evacuation_in_progress;
-  ShenandoahSharedFlag _update_refs_in_progress;
-  ShenandoahSharedFlag _concurrent_partial_in_progress;
   ShenandoahSharedFlag _full_gc_in_progress;
   ShenandoahSharedFlag _full_gc_move_in_progress;
-
-  ShenandoahSharedFlag _need_update_refs;
 
   ShenandoahSharedEnumFlag<CancelState> _cancelled_concgc;
 
@@ -286,9 +316,7 @@ public:
   static size_t conservative_max_heap_alignment();
   static address in_cset_fast_test_addr();
   static address cancelled_concgc_addr();
-  static address concurrent_mark_in_progress_addr();
-  static address evacuation_in_progress_addr();
-  static address update_refs_in_progress_addr();
+  static address gc_state_addr();
 
   ShenandoahCollectorPolicy *shenandoahPolicy() const { return _shenandoah_policy; }
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
@@ -316,16 +344,18 @@ public:
 
   void roots_iterate(OopClosure* cl);
 
+private:
+  void set_gc_state_bit(uint bit, bool value);
+
 public:
   void set_concurrent_mark_in_progress(bool in_progress);
-  void set_evacuation_in_progress(bool in_progress);
   void set_evacuation_in_progress_concurrently(bool in_progress);
   void set_evacuation_in_progress_at_safepoint(bool in_progress);
   void set_update_refs_in_progress(bool in_progress);
   void set_full_gc_in_progress(bool in_progress);
   void set_full_gc_move_in_progress(bool in_progress);
   void set_concurrent_partial_in_progress(bool in_progress);
-  void set_need_update_refs(bool update_refs);
+  void set_has_forwarded_objects(bool cond);
 
   inline bool is_concurrent_mark_in_progress() const;
   inline bool is_update_refs_in_progress() const;
@@ -333,7 +363,7 @@ public:
   inline bool is_full_gc_in_progress() const;
   inline bool is_full_gc_move_in_progress() const;
   inline bool is_concurrent_partial_in_progress() const;
-  inline bool need_update_refs() const;
+  inline bool has_forwarded_objects() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
 

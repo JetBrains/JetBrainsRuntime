@@ -173,7 +173,7 @@ bool ShenandoahBarrierSet::need_update_refs_barrier() {
   if (_heap->shenandoahPolicy()->update_refs()) {
     return _heap->is_update_refs_in_progress();
   } else {
-    return _heap->is_concurrent_mark_in_progress() && _heap->need_update_refs();
+    return _heap->is_concurrent_mark_in_progress() && _heap->has_forwarded_objects();
   }
 }
 

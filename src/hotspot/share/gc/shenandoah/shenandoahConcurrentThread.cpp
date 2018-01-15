@@ -252,13 +252,13 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
   }
 
   // Perform update-refs phase, if required.
-  // This phase can be skipped if there was nothing evacuated. If so, need_update_refs would be unset
+  // This phase can be skipped if there was nothing evacuated. If so, has_forwarded would be unset
   // by collection set preparation code. However, adaptive heuristics need to record "success" when
   // this phase is skipped. Therefore, we conditionally execute all ops, leaving heuristics adjustments
   // intact.
   if (heap->shenandoahPolicy()->should_start_update_refs()) {
 
-    bool do_it = heap->need_update_refs();
+    bool do_it = heap->has_forwarded_objects();
     if (do_it) {
       heap->vmop_entry_init_updaterefs();
       heap->entry_updaterefs();

@@ -838,7 +838,7 @@ void ShenandoahVerifier::verify_generic(VerifyOption vo) {
 }
 
 void ShenandoahVerifier::verify_before_concmark() {
-  if (_heap->need_update_refs()) {
+  if (_heap->has_forwarded_objects()) {
     verify_at_safepoint(
             "Before Mark",
             _verify_forwarded_allow,     // may have forwarded references

@@ -11769,6 +11769,20 @@ instruct compB_mem_imm(rFlagsReg cr, memory op1, immI8 op2)
   ins_pipe(ialu_cr_reg_mem);
 %}
 
+instruct testUB_mem_imm(rFlagsReg cr, memory op1, immU8 op2, immI0 opZ)
+%{
+  // This match is actually generic, but protect with Shenandoah flag for a while,
+  // until the fix is upstreamed.
+  predicate(UseShenandoahGC);
+  match(Set cr (CmpI (AndI (LoadUB op1) op2) opZ));
+
+  ins_cost(125);
+  format %{ "testb   $op1, $op2" %}
+  ins_encode %{
+    __ testb($op1$$Address, $op2$$constant);
+  %}
+  ins_pipe(ialu_cr_reg_mem);
+%}
 
 //----------Max and Min--------------------------------------------------------
 // Min Instructions

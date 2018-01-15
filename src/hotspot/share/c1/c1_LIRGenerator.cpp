@@ -1659,12 +1659,12 @@ void LIRGenerator::G1SATBCardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_Opr
 void LIRGenerator::Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
                                           bool do_load, bool patch, CodeEmitInfo* info) {
   if (ShenandoahConditionalSATBBarrier) {
-    LabelObj* L_done = new LabelObj();
-    LIR_Opr mark_in_prog_addr = new_pointer_register();
-    __ move(LIR_OprFact::intptrConst((intptr_t) ShenandoahHeap::concurrent_mark_in_progress_addr()), mark_in_prog_addr);
-    LIR_Opr mark_in_prog = new_register(T_INT);
-    __ move(new LIR_Address(mark_in_prog_addr, T_BYTE), mark_in_prog);
-    __ cmp(lir_cond_equal, mark_in_prog, LIR_OprFact::intConst(0));
+    LIR_Opr gc_state_addr = new_pointer_register();
+    __ move(LIR_OprFact::intptrConst((intptr_t) ShenandoahHeap::gc_state_addr()), gc_state_addr);
+    LIR_Opr gc_state = new_register(T_INT);
+    __ move(new LIR_Address(gc_state_addr, T_BYTE), gc_state);
+    __ logical_and(gc_state, LIR_OprFact::intConst(ShenandoahHeap::MARKING), gc_state);
+    __ cmp(lir_cond_equal, gc_state, LIR_OprFact::intConst(0));
 
     LIR_PatchCode pre_val_patch_code = lir_patch_none;
 

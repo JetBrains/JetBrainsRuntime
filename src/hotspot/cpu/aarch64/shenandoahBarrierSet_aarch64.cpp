@@ -69,16 +69,14 @@ void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, 
 
   Label done;
 
-  Address evacuation_in_progress
-    = Address(rthread, in_bytes(JavaThread::evacuation_in_progress_offset()));
-
-  __ ldrb(rscratch2, evacuation_in_progress);
+  Address gc_state(rthread, in_bytes(JavaThread::gc_state_offset()));
+  __ ldrb(rscratch1, gc_state);
   __ membar(Assembler::LoadLoad);
 
   // Now check if evacuation is in progress.
   interpreter_read_barrier_not_null(masm, dst);
 
-  __ cbzw(rscratch2, done);
+  __ tbz(rscratch1, ShenandoahHeap::EVACUATION_BITPOS, done);
 
   __ lsr(rscratch1, dst, ShenandoahHeapRegion::region_size_bytes_shift_jint());
   __ mov(rscratch2,  ShenandoahHeap::in_cset_fast_test_addr());

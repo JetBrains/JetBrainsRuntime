@@ -280,6 +280,14 @@ public:
       && in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == marking_offset;
   }
 
+  virtual bool is_shenandoah_state_load() const {
+    if (!UseShenandoahGC) return false;
+    const int state_offset = in_bytes(JavaThread::gc_state_offset());
+    return in(2)->is_AddP() && in(2)->in(2)->Opcode() == Op_ThreadLocal
+      && in(2)->in(3)->is_Con()
+      && in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == state_offset;
+  }
+
 protected:
   const Type* load_array_final_field(const TypeKlassPtr *tkls,
                                      ciKlass* klass) const;

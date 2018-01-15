@@ -5405,15 +5405,21 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
   Address buffer(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
                                        SATBMarkQueue::byte_offset_of_buf()));
 
-
-  // Is marking active?
-  if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-    cmpl(in_progress, 0);
+  if (UseShenandoahGC) {
+    Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
+    testb(gc_state, ShenandoahHeap::MARKING);
+    jcc(Assembler::zero, done);
   } else {
-    assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-    cmpb(in_progress, 0);
+    assert(UseG1GC, "Should be");
+    // Is marking active?
+    if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
+      cmpl(in_progress, 0);
+    } else {
+      assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
+      cmpb(in_progress, 0);
+    }
+    jcc(Assembler::equal, done);
   }
-  jcc(Assembler::equal, done);
 
   // Do we need to load the previous value?
   if (obj != noreg) {
@@ -5496,8 +5502,8 @@ void MacroAssembler::shenandoah_write_barrier_pre(Register obj,
 
   if (ShenandoahConditionalSATBBarrier) {
     Label done;
-    movptr(tmp, (intptr_t) ShenandoahHeap::concurrent_mark_in_progress_addr());
-    testb(Address(tmp, 0), 1);
+    Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
+    testb(gc_state, ShenandoahHeap::MARKING);
     jcc(Assembler::zero, done); // Skip SATB barrier when conc-mark is not active
     g1_write_barrier_pre(obj, pre_val, thread, tmp, tosca_live, expand_call);
     bind(done);
@@ -5671,15 +5677,15 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   Label done;
 
   // Check for evacuation-in-progress
-  Address evacuation_in_progress = Address(r15_thread, in_bytes(JavaThread::evacuation_in_progress_offset()));
-  cmpb(evacuation_in_progress, 0);
+  Address gc_state(r15_thread, in_bytes(JavaThread::gc_state_offset()));
+  testb(gc_state, ShenandoahHeap::EVACUATION);
 
   // The read-barrier.
   if (ShenandoahWriteBarrierRB) {
     movptr(dst, Address(dst, BrooksPointer::byte_offset()));
   }
 
-  jccb(Assembler::equal, done);
+  jccb(Assembler::zero, done);
 
   if (dst != rax) {
     xchgptr(dst, rax); // Move obj into rax and save rax into obj.
@@ -6503,9 +6509,8 @@ void MacroAssembler::shenandoah_store_val_check(Register dst, Register value) {
   // Poll the heap directly: that would be the least performant, yet more reliable way,
   // because it will also capture the errors in thread-local flags that may break the
   // write barrier.
-  movptr(tmp, (intptr_t) ShenandoahHeap::evacuation_in_progress_addr());
-  movbool(tmp, Address(tmp, 0));
-  testbool(tmp);
+  movptr(tmp, (intptr_t) ShenandoahHeap::gc_state_addr());
+  testb(Address(tmp, 0), ShenandoahHeap::EVACUATION);
   jcc(Assembler::notZero, done);
 
   // Null-check dst.

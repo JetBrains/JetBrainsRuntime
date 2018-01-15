@@ -104,6 +104,96 @@ private:
 
 } ShenandoahSharedFlag;
 
+typedef struct ShenandoahSharedBitmap {
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile ShenandoahSharedValue));
+  volatile ShenandoahSharedValue value;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
+
+  ShenandoahSharedBitmap() {
+    clear();
+  }
+
+  void set(uint pos) {
+    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
+    ShenandoahSharedValue mask = (ShenandoahSharedValue)(1 << pos);
+    while (true) {
+      ShenandoahSharedValue ov = OrderAccess::load_acquire(&value);
+      if ((ov & mask) != 0) {
+        // already set
+        return;
+      }
+
+      ShenandoahSharedValue nv = ov | mask;
+      if (Atomic::cmpxchg(nv, &value, ov) == ov) {
+        // successfully set
+        return;
+      }
+    }
+  }
+
+  void unset(uint pos) {
+    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
+    ShenandoahSharedValue mask = (ShenandoahSharedValue)(1 << pos);
+    while (true) {
+      ShenandoahSharedValue ov = OrderAccess::load_acquire(&value);
+      if ((ov & mask) == 0) {
+        // already unset
+        return;
+      }
+
+      ShenandoahSharedValue nv = ov & ~mask;
+      if (Atomic::cmpxchg(nv, &value, ov) == ov) {
+        // successfully unset
+        return;
+      }
+    }
+  }
+
+  void clear() {
+    OrderAccess::release_store_fence(&value, (ShenandoahSharedValue)0);
+  }
+
+  bool is_set(uint pos) const {
+    return !is_unset(pos);
+  }
+
+  bool is_unset(uint pos) const {
+    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
+    return (OrderAccess::load_acquire(&value) & (1 << pos)) == 0;
+  }
+
+  void set_cond(uint pos, bool value) {
+    if (value) {
+      set(pos);
+    } else {
+      unset(pos);
+    }
+  }
+
+  volatile ShenandoahSharedValue* addr_of() {
+    return &value;
+  }
+
+  ShenandoahSharedValue raw_value() {
+    return value;
+  }
+
+private:
+  volatile ShenandoahSharedValue* operator&() {
+    fatal("Use addr_of() instead");
+    return NULL;
+  }
+
+  bool operator==(ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+  bool operator!=(ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+  bool operator> (ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+  bool operator>=(ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+  bool operator< (ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+  bool operator<=(ShenandoahSharedFlag& other) { fatal("Use is_set() instead"); return false; }
+
+} ShenandoahSharedBitmap;
+
+
 template<class T>
 struct ShenandoahSharedEnumFlag {
   DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile ShenandoahSharedValue));

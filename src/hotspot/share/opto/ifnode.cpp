@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "ci/ciTypeFlow.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
@@ -1696,6 +1697,29 @@ bool IfNode::is_g1_marking_if(PhaseTransform *phase) const {
   return false;
 }
 
+
+bool IfNode::is_shenandoah_marking_if(PhaseTransform *phase) const {
+  if (!UseShenandoahGC) {
+    return false;
+  }
+
+  if (Opcode() != Op_If) {
+    return false;
+  }
+
+  Node* bol = in(1);
+  assert(bol->is_Bool(), "");
+  Node* cmpx = bol->in(1);
+  if (bol->as_Bool()->_test._test == BoolTest::ne &&
+      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
+      cmpx->in(1)->in(1)->is_shenandoah_state_load() &&
+      cmpx->in(1)->in(2)->is_Con() &&
+      cmpx->in(1)->in(2) == phase->intcon(ShenandoahHeap::MARKING)) {
+    return true;
+  }
+
+  return false;
+}
 
 
 Node* RangeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {

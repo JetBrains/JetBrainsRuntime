@@ -4004,9 +4004,9 @@ void MacroAssembler::shenandoah_write_barrier_pre(Register obj,
 
   if (ShenandoahConditionalSATBBarrier) {
     Label done;
-    mov(tmp, (uint64_t) ShenandoahHeap::concurrent_mark_in_progress_addr());
-    ldrb(tmp, Address(tmp, 0));
-    cbz(tmp, done);
+    Address gc_state(rthread, in_bytes(JavaThread::gc_state_offset()));
+    ldrb(tmp, gc_state);
+    tbz(tmp, ShenandoahHeap::MARKING_BITPOS, done);
     g1_write_barrier_pre(obj, pre_val, thread, tmp, tosca_live, expand_call);
     bind(done);
   }
@@ -4086,8 +4086,8 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   Label done;
 
   // Check for evacuation-in-progress
-  Address evacuation_in_progress = Address(rthread, in_bytes(JavaThread::evacuation_in_progress_offset()));
-  ldrb(rscratch1, evacuation_in_progress);
+  Address gc_state(rthread, in_bytes(JavaThread::gc_state_offset()));
+  ldrb(rscratch1, gc_state);
   membar(Assembler::LoadLoad);
 
   // The read-barrier.
@@ -4096,7 +4096,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   }
 
   // Evac-check ...
-  cbzw(rscratch1, done);
+  tbz(rscratch1, ShenandoahHeap::EVACUATION_BITPOS, done);
 
   RegSet to_save = RegSet::of(r0);
   if (dst != r0) {
@@ -5774,9 +5774,9 @@ void MacroAssembler::_shenandoah_store_check(Register addr, Register value, cons
   // Poll the heap directly: that would be the least performant, yet more reliable way,
   // because it will also capture the errors in thread-local flags that may break the
   // write barrier.
-  mov(tmp1, ShenandoahHeap::evacuation_in_progress_addr());
+  mov(tmp1, ShenandoahHeap::gc_state_addr());
   ldrb(tmp1, Address(tmp1));
-  cbnz(tmp1, done);
+  tbnz(tmp1, ShenandoahHeap::EVACUATION_BITPOS, done);
 
   // Null-check value.
   cbz(rval, done);

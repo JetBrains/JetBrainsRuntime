@@ -43,6 +43,7 @@
 #include "vmreg_aarch64.inline.hpp"
 #if INCLUDE_ALL_GCS
 #include "gc/g1/g1SATBCardTableModRefBS.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #endif
 
 
@@ -1183,14 +1184,21 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         Label done;
         Label runtime;
 
-        // Is marking still active?
-        if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
-          __ ldrw(tmp, in_progress);
+        if (UseShenandoahGC) {
+          Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
+          __ ldrb(tmp, gc_state);
+          __ tbz(tmp, ShenandoahHeap::MARKING_BITPOS, done);
         } else {
-          assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
-          __ ldrb(tmp, in_progress);
+          assert(UseG1GC, "Should be");
+          // Is marking still active?
+          if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
+            __ ldrw(tmp, in_progress);
+          } else {
+            assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "Assumption");
+            __ ldrb(tmp, in_progress);
+          }
+          __ cbzw(tmp, done);
         }
-        __ cbzw(tmp, done);
 
         // Can we store original value in the thread's buffer?
         __ ldr(tmp, queue_index);

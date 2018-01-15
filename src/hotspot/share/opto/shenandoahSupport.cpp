@@ -574,6 +574,14 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
   if (in2->find_int_con(-1) != 0) {
     return false;
   }
+  if (in1->Opcode() != Op_AndI) {
+    return false;
+  }
+  in2 = in1->in(2);
+  if (in2->find_int_con(-1) != ShenandoahHeap::EVACUATION) {
+    return false;
+  }
+  in1 = in1->in(1);
   if (in1->Opcode() != Op_LoadUB) {
     return false;
   }
@@ -586,7 +594,7 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
   if (base->Opcode() != Op_ThreadLocal) {
     return false;
   }
-  if (off->find_intptr_t_con(-1) != in_bytes(JavaThread::evacuation_in_progress_offset())) {
+  if (off->find_intptr_t_con(-1) != in_bytes(JavaThread::gc_state_offset())) {
     return false;
   }
   return true;
@@ -3468,17 +3476,16 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   IdealLoopTree *loop = phase->get_loop(ctrl);
   Node* thread = new ThreadLocalNode();
   phase->register_new_node(thread, ctrl);
-  Node* offset = phase->igvn().MakeConX(in_bytes(JavaThread::evacuation_in_progress_offset()));
+  Node* offset = phase->igvn().MakeConX(in_bytes(JavaThread::gc_state_offset()));
   phase->set_ctrl(offset, phase->C->root());
-  Node* evacuation_in_progress_adr = new AddPNode(phase->C->top(), thread, offset);
-  phase->register_new_node(evacuation_in_progress_adr, ctrl);
-  uint evacuation_in_progress_idx = Compile::AliasIdxRaw;
-  const TypePtr* evacuation_in_progress_adr_type = NULL; // debug-mode-only argument
-  debug_only(evacuation_in_progress_adr_type = phase->C->get_adr_type(evacuation_in_progress_idx));
+  Node* gc_state_addr = new AddPNode(phase->C->top(), thread, offset);
+  phase->register_new_node(gc_state_addr, ctrl);
+  uint gc_state_idx = Compile::AliasIdxRaw;
+  const TypePtr* gc_state_adr_type = NULL; // debug-mode-only argument
+  debug_only(gc_state_adr_type = phase->C->get_adr_type(gc_state_idx));
 
-  Node* evacuation_in_progress = new LoadUBNode(ctrl, raw_mem, evacuation_in_progress_adr,
-                                                evacuation_in_progress_adr_type, TypeInt::BOOL, MemNode::unordered);
-  phase->register_new_node(evacuation_in_progress, ctrl);
+  Node* gc_state = new LoadUBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
+  phase->register_new_node(gc_state, ctrl);
 
   Node* mb = MemBarNode::make(phase->C, Op_MemBarAcquire, Compile::AliasIdxRaw);
   mb->init_req(TypeFunc::Control, ctrl);
@@ -3498,6 +3505,8 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   wb_mem = new ProjNode(mb,TypeFunc::Memory);
   phase->register_new_node(wb_mem, mb);
 
+  Node* evacuation_in_progress = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::EVACUATION));
+  phase->register_new_node(evacuation_in_progress, ctrl_proj);
   Node* evacuation_in_progress_cmp = new CmpINode(evacuation_in_progress, phase->igvn().zerocon(T_INT));
   phase->register_new_node(evacuation_in_progress_cmp, ctrl_proj);
   Node* evacuation_in_progress_test = new BoolNode(evacuation_in_progress_cmp, BoolTest::ne);
@@ -3961,7 +3970,7 @@ void ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(IfNode* iff, P
   phase->set_idom(loop_head, c, phase->dom_depth(c));
   //phase->recompute_dom_depth();
 
-  Node* load = iff->in(1)->in(1)->in(1);
+  Node* load = iff->in(1)->in(1)->in(1)->in(1);
   assert(load->Opcode() == Op_LoadUB, "inconsistent");
   phase->igvn().replace_input_of(load, MemNode::Memory, new_mbs.at(new_mbs.length()-1)->in(0)->in(TypeFunc::Memory));
   phase->igvn().replace_input_of(load, 0, entry_c);
