@@ -181,8 +181,10 @@ public:
   virtual bool depends_only_on_test() const { return false; }
 
   static bool expand(Compile* C, PhaseIterGVN& igvn, int& loop_opts_cnt);
+  static bool is_gc_state_load(Node *n);
   static bool is_evacuation_in_progress_test(Node* iff);
   static Node* evacuation_in_progress_test_ctrl(Node* iff);
+  static bool try_common_gc_state_load(Node *n, PhaseIdealLoop *phase);
 
   static LoopNode* try_move_before_pre_loop(Node* c, Node* val_ctrl, PhaseIdealLoop* phase);
   static Node* move_above_predicates(LoopNode* cl, Node* val_ctrl, PhaseIdealLoop* phase);
@@ -231,7 +233,7 @@ public:
   static bool mem_is_valid(Node* m, Node* c, PhaseIdealLoop* phase);
   static void backtoback_evacs(IfNode* iff, IfNode* dom_if, PhaseIdealLoop* phase);
   static void move_evacuation_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
-  static void optimize_after_expansion(const Node_List& evacuation_tests, Node_List &old_new, PhaseIdealLoop* phase);
+  static void optimize_after_expansion(const Node_List& evacuation_tests, const Node_List& gc_state_loads, Node_List &old_new, PhaseIdealLoop* phase);
   static void merge_back_to_back_evacuation_tests(Node* n, PhaseIdealLoop* phase);
 };
 

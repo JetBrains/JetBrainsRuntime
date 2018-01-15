@@ -351,6 +351,9 @@
           "larger than this threshold would be reported as warnings. "      \
           "Time is in microseconds.")                                       \
                                                                             \
+  experimental(bool, ShenandoahCommonGCStateLoads, false,                   \
+         "Enable commonning for GC state loads in generated code.")         \
+                                                                            \
   diagnostic(bool, ShenandoahAsmWB, true,                                   \
           "Enable/disable inline assembler write barrier code.")            \
                                                                             \

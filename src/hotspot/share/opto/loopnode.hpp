@@ -1218,6 +1218,7 @@ public:
 private:
 
   Unique_Node_List _shenandoah_evacuation_tests;
+  Unique_Node_List _shenandoah_gc_state_loads;
 
   bool _created_loop_node;
 public:

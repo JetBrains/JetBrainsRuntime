@@ -582,10 +582,15 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
     return false;
   }
   in1 = in1->in(1);
-  if (in1->Opcode() != Op_LoadUB) {
+
+  return is_gc_state_load(in1);
+}
+
+bool ShenandoahWriteBarrierNode::is_gc_state_load(Node *n) {
+  if (n->Opcode() != Op_LoadUB && n->Opcode() != Op_LoadB) {
     return false;
   }
-  Node* addp = in1->in(MemNode::Address);
+  Node* addp = n->in(MemNode::Address);
   if (!addp->is_AddP()) {
     return false;
   }
@@ -597,6 +602,46 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
   if (off->find_intptr_t_con(-1) != in_bytes(JavaThread::gc_state_offset())) {
     return false;
   }
+  return true;
+}
+
+bool ShenandoahWriteBarrierNode::try_common_gc_state_load(Node *n, PhaseIdealLoop *phase) {
+  assert(is_gc_state_load(n), "inconsistent");
+  Node* addp = n->in(MemNode::Address);
+  Node* dominator = NULL;
+  for (DUIterator_Fast imax, i = addp->fast_outs(imax); i < imax; i++) {
+    Node* u = addp->fast_out(i);
+    if (u != n && phase->is_dominator(u->in(0), n->in(0))) {
+      if (dominator == NULL) {
+        dominator = u;
+      } else {
+        if (phase->dom_depth(u->in(0)) < phase->dom_depth(dominator->in(0))) {
+          dominator = u;
+        }
+      }
+    }
+  }
+  if (dominator == NULL) {
+    return false;
+  }
+  ResourceMark rm;
+  Unique_Node_List wq;
+  wq.push(n->in(0));
+  for (uint next = 0; next < wq.size(); next++) {
+    Node *m = wq.at(next);
+    if (m->is_SafePoint() && !m->is_CallLeaf()) {
+      return false;
+    }
+    if (m->is_Region()) {
+      for (uint i = 1; i < m->req(); i++) {
+        wq.push(m->in(i));
+      }
+    } else {
+      wq.push(m->in(0));
+    }
+  }
+  phase->igvn().replace_node(n, dominator);
+
   return true;
 }
 
@@ -3514,7 +3559,8 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   evacuation_iff = new IfNode(ctrl_proj, evacuation_in_progress_test, PROB_UNLIKELY(0.999), COUNT_UNKNOWN);
   phase->register_control(evacuation_iff, loop, ctrl_proj);
 
-  assert(is_evacuation_in_progress_test(evacuation_iff), "inconsistent");
+  assert(is_evacuation_in_progress_test(evacuation_iff), "Should match the shape");
+  assert(is_gc_state_load(gc_state), "Should match the shape");
 
   evac_not_in_progress = new IfFalseNode(evacuation_iff);
   phase->register_control(evac_not_in_progress, loop, evacuation_iff);
@@ -4100,7 +4146,18 @@ void ShenandoahWriteBarrierNode::merge_back_to_back_evacuation_tests(Node* n, Ph
   }
 }
 
-void ShenandoahWriteBarrierNode::optimize_after_expansion(const Node_List& evacuation_tests, Node_List &old_new, PhaseIdealLoop* phase) {
+void ShenandoahWriteBarrierNode::optimize_after_expansion(const Node_List& evacuation_tests, const Node_List& gc_state_loads, Node_List &old_new, PhaseIdealLoop* phase) {
+  bool progress;
+  do {
+    progress = false;
+    for (uint i = 0; i < gc_state_loads.size(); i++) {
+      Node* n = gc_state_loads.at(i);
+      if (n->outcnt() != 0) {
+        progress |= ShenandoahWriteBarrierNode::try_common_gc_state_load(n, phase);
+      }
+    }
+  } while(progress);
+
   for (uint i = 0; i < evacuation_tests.size(); i++) {
     Node* n = evacuation_tests.at(i);
     assert(is_evacuation_in_progress_test(n), "only evacuation test");
