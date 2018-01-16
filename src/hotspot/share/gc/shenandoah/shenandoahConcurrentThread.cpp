@@ -97,7 +97,7 @@ void ShenandoahConcurrentThread::run_service() {
       }
 
       if (heap->is_update_refs_in_progress()) {
-        heap->set_update_refs_in_progress(false);
+        heap->set_update_refs_in_progress_concurrently(false);
       }
 
       reset_conc_gc_requested();
