@@ -37,16 +37,23 @@ import java.util.concurrent.FutureTask;
 
 public class CThreading {
     static String APPKIT_THREAD_NAME = "AWT-AppKit";
-    static String FX_APPKIT_THREAD_NAME = "JavaFX Application Thread";
 
     static boolean isEventQueue() {
         return EventQueue.isDispatchThread();
     }
 
+    private static native boolean isMainThread();
+
     public static boolean isAppKit() {
-        return APPKIT_THREAD_NAME.equals(Thread.currentThread().getName()) ||
-               FX_APPKIT_THREAD_NAME.equals(Thread.currentThread().getName());
+        if (APPKIT_THREAD_NAME.equals(Thread.currentThread().getName())) return true;
+
+        if (isMainThread()) {
+            Thread.currentThread().setName(APPKIT_THREAD_NAME);
+            return true;
+        }
+        return false;
     }
+
 
     static boolean assertEventQueue() {
         final boolean isEventQueue = isEventQueue();
@@ -72,7 +79,7 @@ public class CThreading {
         return isNotAppKitThread;
     }
 
-    public static <V> V executeOnAppKit(Callable<V> command) throws Throwable {
+    public static <V> V executeOnAppKit(final Callable<V> command) throws Throwable {
         if (!isAppKit()) {
             Dispatch dispatch = Dispatch.getInstance();
 
@@ -80,7 +87,15 @@ public class CThreading {
                 throw new AWTError("Could not get Dispatch object");
             }
 
-            FutureTask<V> future = new FutureTask<>(command);
+            Callable<V> commandWithTNameFix = () -> {
+                if (!APPKIT_THREAD_NAME.equals(Thread.currentThread().getName())) {
+                    Thread.currentThread().setName(APPKIT_THREAD_NAME);
+                }
+
+                return command.call();
+            };
+
+            FutureTask<V> future = new FutureTask<>(commandWithTNameFix);
 
             dispatch.getNonBlockingMainQueueExecutor().execute(future);
 
