@@ -1557,9 +1557,7 @@ void ShenandoahHeap::op_verify_after_evac() {
 }
 
 void ShenandoahHeap::op_updaterefs() {
-  ShenandoahHeapRegionSet* update_regions = regions();
-  update_regions->clear_current_index();
-  update_heap_references(update_regions, true);
+  update_heap_references(regions(), true);
 
   // Allocations happen during update-refs, record peak after the phase:
   shenandoahPolicy()->record_peak_occupancy();
@@ -2128,12 +2126,16 @@ void ShenandoahHeap::op_init_updaterefs() {
     ShenandoahHeapRegion* r = _ordered_regions->get(i);
     r->set_concurrent_iteration_safe_limit(r->top());
   }
+
+  // Initiate region walk: this cursor will update in concurrent and final phases
+  _ordered_regions->clear_current_index();
 }
 
 void ShenandoahHeap::op_final_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
-  if (cancelled_concgc()) {
+  // Check if there is left-over work, and finish it
+  if (_ordered_regions->current() != NULL) {
     ShenandoahGCPhase final_work(ShenandoahPhaseTimings::final_update_refs_finish_work);
 
     // Finish updating references where we left off.
@@ -2142,7 +2144,13 @@ void ShenandoahHeap::op_final_updaterefs() {
     update_heap_references(update_regions, false);
   }
 
-  assert(! cancelled_concgc(), "Should have been done right before");
+  // Clear cancelled conc GC, if set. On cancellation path, the block before would handle
+  // everything. On degenerated paths, cancelled gc would not be set anyway.
+  if (cancelled_concgc()) {
+    clear_cancelled_concgc();
+  }
+  assert(!cancelled_concgc(), "Should have been done right before");
+
   concurrentMark()->update_roots(ShenandoahPhaseTimings::final_update_refs_roots);
 
   // Allocations might have happened before we STWed here, record peak:
