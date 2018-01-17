@@ -212,7 +212,7 @@ public:
     _bytes_in_cset = 0;
   }
 
-  virtual void record_user_requested_gc() {
+  virtual void record_explicit_gc() {
     _bytes_in_cset = 0;
   }
 
@@ -836,8 +836,8 @@ public:
     ShenandoahHeuristics::record_uprefs_success();
   }
 
-  virtual void record_user_requested_gc() {
-    ShenandoahHeuristics::record_user_requested_gc();
+  virtual void record_explicit_gc() {
+    ShenandoahHeuristics::record_explicit_gc();
     adjust_free_threshold(UserRequested_Hit);
   }
 
@@ -1330,8 +1330,10 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   initialize_all();
 
   _tracer = new (ResourceObj::C_HEAP, mtGC) ShenandoahTracer();
-  _user_requested_gcs = 0;
+  _explicit_gcs = 0;
   _allocation_failure_gcs = 0;
+  _success_conc_gcs = 0;
+  _cancelled_conc_gcs = 0;
 
   if (ShenandoahGCHeuristics != NULL) {
     _minor_heuristics = NULL;
@@ -1449,14 +1451,22 @@ void ShenandoahCollectorPolicy::record_bytes_reclaimed(size_t bytes) {
   _heuristics->record_bytes_reclaimed(bytes);
 }
 
-void ShenandoahCollectorPolicy::record_user_requested_gc() {
-  _heuristics->record_user_requested_gc();
-  _user_requested_gcs++;
+void ShenandoahCollectorPolicy::record_explicit_gc() {
+  _heuristics->record_explicit_gc();
+  _explicit_gcs++;
 }
 
 void ShenandoahCollectorPolicy::record_allocation_failure_gc() {
   _heuristics->record_allocation_failure_gc();
   _allocation_failure_gcs++;
+}
+
+void ShenandoahCollectorPolicy::record_success_gc() {
+  _success_conc_gcs++;
+}
+
+void ShenandoahCollectorPolicy::record_cancelled_gc() {
+  _cancelled_conc_gcs++;
 }
 
 bool ShenandoahCollectorPolicy::should_start_concurrent_mark(size_t used,
@@ -1497,6 +1507,7 @@ void ShenandoahCollectorPolicy::record_cm_degenerated() {
 
 void ShenandoahCollectorPolicy::record_cm_cancelled() {
   _heuristics->record_cm_cancelled();
+  _cancelled_conc_gcs++;
 }
 
 void ShenandoahCollectorPolicy::record_uprefs_success() {
@@ -1510,6 +1521,7 @@ void ShenandoahCollectorPolicy::record_uprefs_degenerated() {
 
 void ShenandoahCollectorPolicy::record_uprefs_cancelled() {
   _heuristics->record_uprefs_cancelled();
+  _cancelled_conc_gcs++;
 }
 
 void ShenandoahCollectorPolicy::record_peak_occupancy() {
@@ -1579,7 +1591,25 @@ bool ShenandoahCollectorPolicy::is_at_shutdown() {
 }
 
 void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
-  out->print_cr("" SIZE_FORMAT " allocation failure and " SIZE_FORMAT " user requested GCs", _allocation_failure_gcs, _user_requested_gcs);
-  out->print_cr("" SIZE_FORMAT " successful and " SIZE_FORMAT " degenerated concurrent markings", _successful_cm, _degenerated_cm);
-  out->print_cr("" SIZE_FORMAT " successful and " SIZE_FORMAT " degenerated update references  ", _successful_uprefs, _degenerated_uprefs);
+  out->print_cr("Under allocation pressure, concurrent cycles will cancel, and either continue phase");
+  out->print_cr("under stop-the-world pause or result in stop-the-world Full GC. Increase heap size,");
+  out->print_cr("tune GC heuristics, or lower allocation rate to avoid degenerated and Full GC cycles.");
+  out->cr();
+
+  out->print_cr(SIZE_FORMAT_W(4) " successful concurrent GC cycles",
+                _success_conc_gcs);
+
+  // Cancellation probably means allocation failure, but not vice versa.
+  size_t in_band_afs = _cancelled_conc_gcs > (_degenerated_cm + _degenerated_uprefs) ?
+                       _cancelled_conc_gcs - (_degenerated_cm + _degenerated_uprefs) :
+                       0;
+  size_t out_band_afs = _allocation_failure_gcs > in_band_afs ?
+                        _allocation_failure_gcs - in_band_afs : 0;
+
+  out->print_cr(SIZE_FORMAT_W(4) " cancelled concurrent GC cycles (" SIZE_FORMAT " degenerated marks, " SIZE_FORMAT " degenerated update refs, " SIZE_FORMAT " Full GCs)",
+                _cancelled_conc_gcs, _degenerated_cm, _degenerated_uprefs, in_band_afs);
+  out->print_cr(SIZE_FORMAT_W(4) " out-of-cycle allocation failures (" SIZE_FORMAT " Full GCs)",
+                out_band_afs, out_band_afs);
+  out->print_cr(SIZE_FORMAT_W(4) " explicitly requested GC cycles (" SIZE_FORMAT " %s)",
+                _explicit_gcs, _explicit_gcs, ExplicitGCInvokesConcurrent ? "Concurrent GCs" : "Full GCs");
 }

@@ -80,6 +80,11 @@ class GCCause : public AllStatic {
 
     _dcmd_gc_run,
 
+    _shenandoah_stop_vm,
+    _shenandoah_allocation_failure_evac,
+    _shenandoah_concurrent_gc,
+    _shenandoah_partial_gc,
+
     _last_gc_cause
   };
 
@@ -117,7 +122,8 @@ class GCCause : public AllStatic {
     // _allocation_failure is the generic cause a collection for allocation failure
     // _adaptive_size_policy is for a collecton done before a full GC
     return (cause == GCCause::_allocation_failure ||
-            cause == GCCause::_adaptive_size_policy);
+            cause == GCCause::_adaptive_size_policy ||
+            cause == GCCause::_shenandoah_allocation_failure_evac);
   }
 
   // Return a string describing the GCCause.

@@ -47,10 +47,18 @@ class ShenandoahConcurrentThread: public ConcurrentGCThread {
   friend class VMStructs;
 
 private:
+  typedef enum {
+    none,
+    concurrent_partial,
+    concurrent_normal,
+    stw_full,
+  } GCMode;
+
   // While we could have a single lock for these, it may risk unblocking
-  // full GC waiters when concurrent cycle finishes.
-  Monitor _full_gc_lock;
-  Monitor _conc_gc_lock;
+  // explicit GC waiters when alloc failure GC cycle finishes. We want instead
+  // to make complete explicit cycle for for demanding customers.
+  Monitor _alloc_failure_waiters_lock;
+  Monitor _explicit_gc_waiters_lock;
   ShenandoahPeriodicTask _periodic_task;
 
 public:
@@ -58,47 +66,55 @@ public:
   void stop_service();
 
 private:
-  ShenandoahSharedFlag _do_concurrent_gc;
-  ShenandoahSharedFlag _do_full_gc;
+  ShenandoahSharedFlag _explicit_gc;
+  ShenandoahSharedFlag _alloc_failure_gc;
   ShenandoahSharedFlag _graceful_shutdown;
   ShenandoahSharedFlag _do_counters_update;
   ShenandoahSharedFlag _force_counters_update;
-  GCCause::Cause _full_gc_cause;
+  GCCause::Cause _explicit_gc_cause;
 
   bool check_cancellation();
-  void service_normal_cycle();
-  void service_fullgc_cycle();
-  void service_partial_cycle();
+  void service_concurrent_normal_cycle(GCCause::Cause cause);
+  void service_stw_full_cycle(GCCause::Cause cause);
+  void service_concurrent_partial_cycle(GCCause::Cause cause);
+
+  bool try_set_alloc_failure_gc();
+  void notify_alloc_failure_waiters();
+  bool is_alloc_failure_gc();
+
+  void notify_explicit_gc_waiters();
 
 public:
   // Constructor
   ShenandoahConcurrentThread();
   ~ShenandoahConcurrentThread();
 
-  // Printing
-  void print_on(outputStream* st) const;
-  void print() const;
+  // Handle allocation failure from normal allocation.
+  // Blocks until memory is available.
+  void handle_alloc_failure();
 
-  void do_conc_gc();
-  void do_full_gc(GCCause::Cause cause);
+  // Handle allocation failure from evacuation path.
+  // Optionally blocks while collector is handling the failure.
+  void handle_alloc_failure_evac();
 
-  bool try_set_full_gc();
-  void reset_full_gc();
-  bool is_full_gc();
-
-  bool is_conc_gc_requested();
-  void reset_conc_gc_requested();
+  // Handle explicit GC request.
+  // Blocks until GC is over.
+  void handle_explicit_gc(GCCause::Cause cause);
 
   void handle_counters_update();
   void trigger_counters_update();
   void handle_force_counters_update();
   void set_forced_counters_update(bool value);
 
-  char* name() const { return (char*)"ShenandoahConcurrentThread";}
   void start();
-
   void prepare_for_graceful_shutdown();
   bool in_graceful_shutdown();
+
+  char* name() const { return (char*)"ShenandoahConcurrentThread";}
+
+  // Printing
+  void print_on(outputStream* st) const;
+  void print() const;
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTTHREAD_HPP

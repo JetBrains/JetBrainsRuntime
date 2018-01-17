@@ -163,13 +163,6 @@ public:
 
 private:
   ShenandoahSharedBitmap _gc_state;
-
-public:
-  enum ShenandoahCancelCause {
-    _oom_evacuation,
-    _vm_stop,
-  };
-private:
   ShenandoahHeapLock _lock;
   ShenandoahCollectorPolicy* _shenandoah_policy;
   size_t _bitmap_size;
@@ -495,7 +488,6 @@ public:
   void swap_mark_bitmaps();
 
   void cancel_concgc(GCCause::Cause cause);
-  void cancel_concgc(ShenandoahCancelCause cause);
 
   ShenandoahHeapLock* lock() { return &_lock; }
   void assert_heaplock_owned_by_current_thread() PRODUCT_RETURN;
@@ -550,10 +542,6 @@ private:
   void ref_processing_init();
 
   GCTracer* tracer();
-
-  void oom_during_evacuation();
-
-  const char* cancel_cause_to_string(ShenandoahCancelCause cause);
 
 private:
   uint64_t _alloc_seq_at_last_gc_start;

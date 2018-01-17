@@ -32,6 +32,7 @@
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
@@ -327,7 +328,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
 #endif
 
   if (filler == NULL) {
-    oom_during_evacuation();
+    concurrent_thread()->handle_alloc_failure_evac();
     // If this is a Java thread, it should have waited
     // until all GC threads are done, and then we
     // return the forwardee.

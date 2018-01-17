@@ -735,12 +735,16 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
     // retrying for some bounded number of times.
     // TODO: Poll if Full GC made enough progress to warrant retry.
     int tries = 0;
-    while ((result == NULL) && (tries++ < ShenandoahFullGCTries)) {
-      log_debug(gc)("[" PTR_FORMAT " Failed to allocate " SIZE_FORMAT " bytes, doing full GC, try %d",
+    while ((result == NULL) && (tries++ < ShenandoahAllocGCTries)) {
+      log_debug(gc)("[" PTR_FORMAT " Failed to allocate " SIZE_FORMAT " bytes, doing GC, try %d",
                     p2i(Thread::current()), word_size * HeapWordSize, tries);
-      collect(GCCause::_allocation_failure);
+      concurrent_thread()->handle_alloc_failure();
       result = allocate_memory_under_lock(word_size, type, in_new_region);
     }
+  } else {
+    assert(type == _alloc_gclab || type == _alloc_shared_gc, "Can only accept these types here");
+    // Do not call handle_alloc_failure() here, because we cannot block.
+    // The allocation failure would be handled by the WB slowpath with handle_alloc_failure_evac().
   }
 
   if (in_new_region) {
@@ -1203,19 +1207,7 @@ bool ShenandoahHeap::card_mark_must_follow_store() const {
 }
 
 void ShenandoahHeap::collect(GCCause::Cause cause) {
-  assert(cause != GCCause::_gc_locker, "no JNI critical callback");
-  if (GCCause::is_user_requested_gc(cause)) {
-    if (!DisableExplicitGC) {
-      if (ExplicitGCInvokesConcurrent) {
-        _concurrent_gc_thread->do_conc_gc();
-      } else {
-        _concurrent_gc_thread->do_full_gc(cause);
-      }
-    }
-  } else if (cause == GCCause::_allocation_failure) {
-    collector_policy()->set_should_clear_all_soft_refs(true);
-    _concurrent_gc_thread->do_full_gc(cause);
-  }
+  _concurrent_gc_thread->handle_explicit_gc(cause);
 }
 
 void ShenandoahHeap::do_full_collection(bool clear_all_soft_refs) {
@@ -1687,26 +1679,6 @@ void ShenandoahHeap::set_evacuation_in_progress_at_safepoint(bool in_progress) {
   set_gc_state_bit(EVACUATION_BITPOS, in_progress);
 }
 
-void ShenandoahHeap::oom_during_evacuation() {
-  log_develop_trace(gc)("Out of memory during evacuation, cancel evacuation, schedule full GC by thread %d",
-                        Thread::current()->osthread()->thread_id());
-
-  // We ran out of memory during evacuation. Cancel evacuation, and schedule a full-GC.
-  collector_policy()->set_should_clear_all_soft_refs(true);
-  concurrent_thread()->try_set_full_gc();
-  cancel_concgc(_oom_evacuation);
-
-  if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
-    assert(! Threads_lock->owned_by_self()
-           || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
-    log_warning(gc)("OOM during evacuation. Let Java thread wait until evacuation finishes.");
-    while (is_evacuation_in_progress()) { // wait.
-      Thread::current()->_ParkEvent->park(1);
-    }
-  }
-
-}
-
 HeapWord* ShenandoahHeap::tlab_post_allocation_setup(HeapWord* obj) {
   // Initialize Brooks pointer for the next object
   HeapWord* result = obj + BrooksPointer::word_size();
@@ -1784,24 +1756,6 @@ void ShenandoahHeap::cancel_concgc(GCCause::Cause cause) {
   }
 }
 
-void ShenandoahHeap::cancel_concgc(ShenandoahCancelCause cause) {
-  if (try_cancel_concgc()) {
-    log_info(gc)("Cancelling concurrent GC: %s", cancel_cause_to_string(cause));
-    _shenandoah_policy->report_concgc_cancelled();
-  }
-}
-
-const char* ShenandoahHeap::cancel_cause_to_string(ShenandoahCancelCause cause) {
-  switch (cause) {
-    case _oom_evacuation:
-      return "Out of memory for evacuation";
-    case _vm_stop:
-      return "Stopping VM";
-    default:
-      return "Unknown";
-  }
-}
-
 uint ShenandoahHeap::max_workers() {
   return _max_workers;
 }
@@ -1818,7 +1772,7 @@ void ShenandoahHeap::stop() {
   _concurrent_gc_thread->prepare_for_graceful_shutdown();
 
   // Step 2. Notify GC workers that we are cancelling GC.
-  cancel_concgc(_vm_stop);
+  cancel_concgc(GCCause::_shenandoah_stop_vm);
 
   // Step 3. Wait until GC worker exits normally.
   _concurrent_gc_thread->stop();

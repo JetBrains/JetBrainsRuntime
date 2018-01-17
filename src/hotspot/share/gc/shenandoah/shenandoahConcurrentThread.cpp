@@ -39,10 +39,10 @@
 
 ShenandoahConcurrentThread::ShenandoahConcurrentThread() :
   ConcurrentGCThread(),
-  _full_gc_lock(Mutex::leaf, "ShenandoahFullGC_lock", true, Monitor::_safepoint_check_always),
-  _conc_gc_lock(Mutex::leaf, "ShenandoahConcGC_lock", true, Monitor::_safepoint_check_always),
+  _alloc_failure_waiters_lock(Mutex::leaf, "ShenandoahAllocFailureGC_lock", true, Monitor::_safepoint_check_always),
+  _explicit_gc_waiters_lock(Mutex::leaf, "ShenandoahExplicitGC_lock", true, Monitor::_safepoint_check_always),
   _periodic_task(this),
-  _full_gc_cause(GCCause::_no_cause_specified)
+  _explicit_gc_cause(GCCause::_no_cause_specified)
 {
   create_and_start();
   _periodic_task.enroll();
@@ -68,11 +68,40 @@ void ShenandoahConcurrentThread::run_service() {
   // ShenandoahUncommitDelay is in msecs, but shrink_period is in seconds.
   double shrink_period = (double)ShenandoahUncommitDelay / 1000 / 10;
 
+  ShenandoahCollectorPolicy* policy = heap->shenandoahPolicy();
+
   while (!in_graceful_shutdown() && !should_terminate()) {
-    bool partial_gc_requested = heap->shenandoahPolicy()->should_start_partial_gc();
-    bool conc_gc_requested = is_conc_gc_requested() || heap->shenandoahPolicy()->should_start_concurrent_mark(heap->used(), heap->capacity());
-    bool full_gc_requested = is_full_gc();
-    bool gc_requested = partial_gc_requested || conc_gc_requested || full_gc_requested;
+    // Figure out if we have pending requests.
+    bool alloc_failure_pending = _alloc_failure_gc.is_set();
+    bool explicit_gc_requested = _explicit_gc.is_set();
+
+    // Choose which GC mode to run in. The block below should select a single mode.
+    GCMode mode = none;
+    GCCause::Cause cause = GCCause::_last_gc_cause;
+
+    if (alloc_failure_pending) {
+      // Allocation failure takes precedence: we have to deal with it first thing
+      mode = stw_full;
+      cause = GCCause::_allocation_failure;
+      policy->record_allocation_failure_gc();
+    } else if (explicit_gc_requested) {
+      // Honor explicit GC requests
+      mode = ExplicitGCInvokesConcurrent ? concurrent_normal : stw_full;
+      cause = _explicit_gc_cause;
+      policy->record_explicit_gc();
+    } else {
+      // Potential normal cycle: ask heuristics if it wants to act
+      if (policy->should_start_partial_gc()) {
+        mode = concurrent_partial;
+        cause = GCCause::_shenandoah_partial_gc;
+      } else if (policy->should_start_concurrent_mark(heap->used(), heap->capacity())) {
+        mode = concurrent_normal;
+        cause = GCCause::_shenandoah_concurrent_gc;
+      }
+    }
+
+    bool gc_requested = (mode != none);
+    assert (!gc_requested || cause != GCCause::_last_gc_cause, "GC cause should be set");
 
     if (gc_requested) {
       // If GC was requested, we are sampling the counters even without actual triggers
@@ -80,12 +109,20 @@ void ShenandoahConcurrentThread::run_service() {
       set_forced_counters_update(true);
     }
 
-    if (full_gc_requested) {
-      service_fullgc_cycle();
-    } else if (partial_gc_requested) {
-      service_partial_cycle();
-    } else if (conc_gc_requested) {
-      service_normal_cycle();
+    switch (mode) {
+      case none:
+        break;
+      case concurrent_partial:
+        service_concurrent_partial_cycle(cause);
+        break;
+      case concurrent_normal:
+        service_concurrent_normal_cycle(cause);
+        break;
+      case stw_full:
+        service_stw_full_cycle(cause);
+        break;
+      default:
+        ShouldNotReachHere();
     }
 
     if (gc_requested) {
@@ -100,7 +137,15 @@ void ShenandoahConcurrentThread::run_service() {
         heap->set_update_refs_in_progress_concurrently(false);
       }
 
-      reset_conc_gc_requested();
+      // If this was the explicit GC cycle, notify waiters about it
+      if (explicit_gc_requested) {
+        notify_explicit_gc_waiters();
+      }
+
+      // If this was the allocation failure GC cycle, notify waiters about it
+      if (alloc_failure_pending) {
+        notify_alloc_failure_waiters();
+      }
 
       // Disable forced counters update, and update counters one more time
       // to capture the state at the end of GC session.
@@ -128,7 +173,7 @@ void ShenandoahConcurrentThread::run_service() {
   }
 }
 
-void ShenandoahConcurrentThread::service_partial_cycle() {
+void ShenandoahConcurrentThread::service_concurrent_partial_cycle(GCCause::Cause cause) {
   GCIdMark gc_id_mark;
   ShenandoahGCSession session;
 
@@ -152,7 +197,7 @@ void ShenandoahConcurrentThread::service_partial_cycle() {
   heap->entry_cleanup();
 }
 
-void ShenandoahConcurrentThread::service_normal_cycle() {
+void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause cause) {
   // Normal cycle goes via all concurrent phases. If allocation failure (af) happens during
   // any of the concurrent phases, it optionally degenerates to nearest STW operation, and
   // then continues the cycle. Otherwise, allocation failure leads to Full GC.
@@ -199,7 +244,7 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
   heap->shenandoahPolicy()->record_peak_occupancy();
 
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
-  TraceMemoryManagerStats tmms(false, GCCause::_no_cause_specified);
+  TraceMemoryManagerStats tmms(false, cause);
 
   // Start initial mark under STW
   heap->vmop_entry_init_mark();
@@ -210,13 +255,11 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
   heap->entry_mark();
 
   // Possibly hand over remaining marking work to degenerated final-mark phase
-  bool clear_full_gc = false;
   if (heap->cancelled_concgc()) {
     heap->shenandoahPolicy()->record_cm_cancelled();
-    if (_full_gc_cause == GCCause::_allocation_failure &&
+    if (_alloc_failure_gc.is_set() &&
         heap->shenandoahPolicy()->handover_cancelled_marking()) {
       heap->clear_cancelled_concgc();
-      clear_full_gc = true;
       heap->shenandoahPolicy()->record_cm_degenerated();
     } else {
       return;
@@ -235,12 +278,6 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
 
   // Final mark had reclaimed some immediate garbage, kick cleanup to reclaim the space
   heap->entry_cleanup();
-
-  // If we degenerated mark work above, we need to kick off waiting Java threads, now that
-  // more space is available
-  if (clear_full_gc) {
-    reset_full_gc();
-  }
 
   // Perform concurrent evacuation, if required.
   // This phase can be skipped if there is nothing to evacuate.
@@ -263,12 +300,10 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
       heap->vmop_entry_init_updaterefs();
       heap->entry_updaterefs();
 
-      clear_full_gc = false;
       if (heap->cancelled_concgc()) {
         heap->shenandoahPolicy()->record_uprefs_cancelled();
-        if (_full_gc_cause == GCCause::_allocation_failure &&
+        if (_alloc_failure_gc.is_set() &&
             heap->shenandoahPolicy()->handover_cancelled_uprefs()) {
-          clear_full_gc = true;
           heap->shenandoahPolicy()->record_uprefs_degenerated();
         } else {
           return;
@@ -289,22 +324,17 @@ void ShenandoahConcurrentThread::service_normal_cycle() {
   // Reclaim space and prepare for the next normal cycle:
   heap->entry_cleanup_bitmaps();
 
-  if (check_cancellation()) return;
-
-  // If we degenerated update-refs above, we need to kick off waiting Java threads, now that
-  // more space is available
-  if (clear_full_gc) {
-    reset_full_gc();
-  }
-
   // Cycle is complete
   heap->shenandoahPolicy()->record_cycle_end();
+
+  heap->shenandoahPolicy()->record_success_gc();
 }
 
 bool ShenandoahConcurrentThread::check_cancellation() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (heap->cancelled_concgc()) {
-    assert (is_full_gc() || in_graceful_shutdown(), "Cancel GC either for Full GC, or gracefully exiting");
+    assert (is_alloc_failure_gc() || in_graceful_shutdown(), "Cancel GC either for alloc failure GC, or gracefully exiting");
+    heap->shenandoahPolicy()->record_cancelled_gc();
     return true;
   }
   return false;
@@ -315,88 +345,81 @@ void ShenandoahConcurrentThread::stop_service() {
   // Nothing to do here.
 }
 
-void ShenandoahConcurrentThread::service_fullgc_cycle() {
+void ShenandoahConcurrentThread::service_stw_full_cycle(GCCause::Cause cause) {
   GCIdMark gc_id_mark;
   ShenandoahGCSession session(/* is_full_gc */true);
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-
-  {
-    if (_full_gc_cause == GCCause::_allocation_failure) {
-      heap->shenandoahPolicy()->record_allocation_failure_gc();
-    } else {
-      heap->shenandoahPolicy()->record_user_requested_gc();
-    }
-
-    heap->vmop_entry_full(_full_gc_cause);
-  }
-
-  reset_full_gc();
+  ShenandoahHeap::heap()->vmop_entry_full(cause);
 }
 
-void ShenandoahConcurrentThread::do_full_gc(GCCause::Cause cause) {
-  assert(Thread::current()->is_Java_thread(), "expect Java thread here");
+void ShenandoahConcurrentThread::handle_explicit_gc(GCCause::Cause cause) {
+  assert(GCCause::is_user_requested_gc(cause) || GCCause::is_serviceability_requested_gc(cause),
+         "only requested GCs here");
+  if (!DisableExplicitGC) {
+    _explicit_gc_cause = cause;
 
-  if (try_set_full_gc()) {
-    _full_gc_cause = cause;
-
-    // Now that full GC is scheduled, we can abort everything else
-    ShenandoahHeap::heap()->cancel_concgc(cause);
-  } else {
-    GCCause::Cause last_cause = _full_gc_cause;
-    if (last_cause != cause) {
-      switch (cause) {
-        // These GC causes take precedence:
-        case GCCause::_allocation_failure:
-          log_info(gc)("Full GC was already pending with cause: %s; new cause is %s, overwriting",
-                       GCCause::to_string(last_cause),
-                       GCCause::to_string(cause));
-          _full_gc_cause = cause;
-          break;
-        // Other GC causes can be ignored
-        default:
-          log_info(gc)("Full GC is already pending with cause: %s; new cause was %s, ignoring",
-                       GCCause::to_string(last_cause),
-                       GCCause::to_string(cause));
-          break;
-      }
+    _explicit_gc.set();
+    MonitorLockerEx ml(&_explicit_gc_waiters_lock);
+    while (_explicit_gc.is_set()) {
+      ml.wait();
     }
   }
+}
 
-  MonitorLockerEx ml(&_full_gc_lock);
-  while (is_full_gc()) {
+void ShenandoahConcurrentThread::handle_alloc_failure() {
+  ShenandoahHeap::heap()->collector_policy()->set_should_clear_all_soft_refs(true);
+  assert(current()->is_Java_thread(), "expect Java thread here");
+
+  if (try_set_alloc_failure_gc()) {
+    // Now that alloc failure GC is scheduled, we can abort everything else
+    ShenandoahHeap::heap()->cancel_concgc(GCCause::_allocation_failure);
+  }
+
+  MonitorLockerEx ml(&_alloc_failure_waiters_lock);
+  while (is_alloc_failure_gc()) {
     ml.wait();
   }
-  assert(!is_full_gc(), "expect full GC to have completed");
+  assert(!is_alloc_failure_gc(), "expect alloc failure GC to have completed");
 }
 
-void ShenandoahConcurrentThread::reset_full_gc() {
-  _do_full_gc.unset();
-  MonitorLockerEx ml(&_full_gc_lock);
+void ShenandoahConcurrentThread::handle_alloc_failure_evac() {
+  log_develop_trace(gc)("Out of memory during evacuation, cancel evacuation, schedule GC by thread %d",
+                        Thread::current()->osthread()->thread_id());
+
+  // We ran out of memory during evacuation. Cancel evacuation, and schedule a GC.
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  heap->collector_policy()->set_should_clear_all_soft_refs(true);
+  try_set_alloc_failure_gc();
+  heap->cancel_concgc(GCCause::_shenandoah_allocation_failure_evac);
+
+  if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
+    assert(! Threads_lock->owned_by_self()
+           || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
+    log_warning(gc)("OOM during evacuation. Let Java thread wait until evacuation finishes.");
+    while (heap->is_evacuation_in_progress()) { // wait.
+      Thread::current()->_ParkEvent->park(1);
+    }
+  }
+}
+
+void ShenandoahConcurrentThread::notify_alloc_failure_waiters() {
+  _alloc_failure_gc.unset();
+  MonitorLockerEx ml(&_alloc_failure_waiters_lock);
   ml.notify_all();
 }
 
-bool ShenandoahConcurrentThread::try_set_full_gc() {
-  return _do_full_gc.try_set();
+bool ShenandoahConcurrentThread::try_set_alloc_failure_gc() {
+  return _alloc_failure_gc.try_set();
 }
 
-bool ShenandoahConcurrentThread::is_full_gc() {
-  return _do_full_gc.is_set();
+bool ShenandoahConcurrentThread::is_alloc_failure_gc() {
+  return _alloc_failure_gc.is_set();
 }
 
-bool ShenandoahConcurrentThread::is_conc_gc_requested() {
-  return _do_concurrent_gc.is_set();
-}
-
-void ShenandoahConcurrentThread::do_conc_gc() {
-  _do_concurrent_gc.set();
-  MonitorLockerEx ml(&_conc_gc_lock);
-  ml.wait();
-}
-
-void ShenandoahConcurrentThread::reset_conc_gc_requested() {
-  _do_concurrent_gc.unset();
-  MonitorLockerEx ml(&_conc_gc_lock);
+void ShenandoahConcurrentThread::notify_explicit_gc_waiters() {
+  _explicit_gc.unset();
+  MonitorLockerEx ml(&_explicit_gc_waiters_lock);
   ml.notify_all();
 }
 

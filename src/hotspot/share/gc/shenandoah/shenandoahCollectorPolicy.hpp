@@ -41,8 +41,10 @@ class outputStream;
 
 class ShenandoahCollectorPolicy: public CollectorPolicy {
 private:
-  size_t _user_requested_gcs;
+  size_t _explicit_gcs;
   size_t _allocation_failure_gcs;
+  size_t _success_conc_gcs;
+  size_t _cancelled_conc_gcs;
   size_t _degenerated_cm;
   size_t _successful_cm;
 
@@ -87,8 +89,10 @@ public:
 
   void report_concgc_cancelled();
 
-  void record_user_requested_gc();
+  void record_explicit_gc();
   void record_allocation_failure_gc();
+  void record_success_gc();
+  void record_cancelled_gc();
 
   void record_bytes_allocated(size_t bytes);
   void record_bytes_reclaimed(size_t bytes);
