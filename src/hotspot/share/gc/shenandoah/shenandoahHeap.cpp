@@ -224,7 +224,9 @@ jint ShenandoahHeap::initialize() {
                                                Shared_SATB_Q_lock);
 
   // Reserve space for prev and next bitmap.
+  size_t bitmap_page_size = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
   _bitmap_size = MarkBitMap::compute_size(heap_rs.size());
+  _bitmap_size = align_up(_bitmap_size, bitmap_page_size);
   _heap_region = MemRegion((HeapWord*) heap_rs.base(), heap_rs.size() / HeapWordSize);
 
   size_t bitmap_bytes_per_region = reg_size_bytes / MarkBitMap::heap_map_factor();
@@ -233,8 +235,6 @@ jint ShenandoahHeap::initialize() {
             "Bitmap bytes per region should not be zero");
   guarantee(is_power_of_2(bitmap_bytes_per_region),
             "Bitmap bytes per region should be power of two: " SIZE_FORMAT, bitmap_bytes_per_region);
-
-  size_t bitmap_page_size = UseLargePages ? (size_t)os::large_page_size() : (size_t)os::vm_page_size();
 
   if (bitmap_page_size > bitmap_bytes_per_region) {
     _bitmap_regions_per_slice = bitmap_page_size / bitmap_bytes_per_region;
