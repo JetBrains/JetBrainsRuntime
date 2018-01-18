@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -403,6 +403,7 @@ Java_java_net_TwoStacksPlainSocketImpl_socketBind(JNIEnv *env, jobject this,
     fd1Obj = (*env)->GetObjectField(env, this, psi_fd1ID);
 
     family = getInetAddress_family(env, iaObj);
+    JNU_CHECK_EXCEPTION(env);
 
     if (family == java_net_InetAddress_IPv6 && !ipv6_supported) {
         JNU_ThrowByName(env, JNU_JAVANETPKG "SocketException",
@@ -719,7 +720,9 @@ Java_java_net_TwoStacksPlainSocketImpl_socketAccept(JNIEnv *env, jobject this,
         }
 
         setInetAddress_addr(env, socketAddressObj, ntohl(sa.sa4.sin_addr.s_addr));
+        JNU_CHECK_EXCEPTION(env);
         setInetAddress_family(env, socketAddressObj, java_net_InetAddress_IPv4);
+        JNU_CHECK_EXCEPTION(env);
         (*env)->SetObjectField(env, socket, psi_addressID, socketAddressObj);
     } else {
         /* AF_INET6 -> Inet6Address */
@@ -746,6 +749,7 @@ Java_java_net_TwoStacksPlainSocketImpl_socketAccept(JNIEnv *env, jobject this,
         }
         setInet6Address_ipaddress(env, socketAddressObj, (char *)&sa.sa6.sin6_addr);
         setInetAddress_family(env, socketAddressObj, java_net_InetAddress_IPv6);
+        JNU_CHECK_EXCEPTION(env);
         setInet6Address_scopeid(env, socketAddressObj, sa.sa6.sin6_scope_id);
 
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -762,6 +762,7 @@ NET_InetAddressToSockaddr(JNIEnv *env, jobject iaObj, int port,
                           jboolean v4MappedAddress)
 {
     jint family = getInetAddress_family(env, iaObj);
+    JNU_CHECK_EXCEPTION_RETURN(env, -1);
     memset((char *)sa, 0, sizeof(SOCKETADDRESS));
 
     if (ipv6_available() &&
@@ -775,6 +776,7 @@ NET_InetAddressToSockaddr(JNIEnv *env, jobject iaObj, int port,
             // convert to IPv4-mapped address
             memset((char *)caddr, 0, 16);
             address = getInetAddress_addr(env, iaObj);
+            JNU_CHECK_EXCEPTION_RETURN(env, -1);
             if (address == INADDR_ANY) {
                 /* we would always prefer IPv6 wildcard address
                  * caddr[10] = 0xff;
@@ -869,6 +871,7 @@ NET_InetAddressToSockaddr(JNIEnv *env, jobject iaObj, int port,
             return -1;
         }
         address = getInetAddress_addr(env, iaObj);
+        JNU_CHECK_EXCEPTION_RETURN(env, -1);
         sa->sa4.sin_port = htons(port);
         sa->sa4.sin_addr.s_addr = htonl(address);
         sa->sa4.sin_family = AF_INET;
