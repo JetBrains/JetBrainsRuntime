@@ -43,16 +43,15 @@ import java.util.function.Function;
  *                    ClientAreaOriginWindowsTest
  */
 //
-// Note, -Dsun.java2d.d3d=false is the current IDEA (ver. 181) mode.
+// Notes:
+// 1) -Dsun.java2d.d3d=false is the current IDEA (ver. 181) mode.
+// 2) The JDK build should contain the fix for JRE-573 for the test to pass.
 //
 public class ClientAreaOriginWindowsTest {
     static final int F_WIDTH = 300;
     static final int F_HEIGHT = 200;
 
     static final Color COLOR_BG = Color.green;
-    // WIth older JBSDK (not containing the fix for JRE-573) the frame's background isn't set correctly.
-    // To let the test work correctly with it, use WHITE bg as well.
-    static final Color COLOR_BG_FALLBACK = Color.white;
     static final Color COLOR_OUTLINE = Color.red;
     static final Color COLOR_FG = Color.blue;
 
@@ -104,7 +103,7 @@ public class ClientAreaOriginWindowsTest {
                     Color c = new Color(capture.getRGB(x, y));
                     hasOutline = c.equals(COLOR_OUTLINE) || hasOutline;
                     // assuming the frame's border system color is not COLOR_BG/COLOR_BG_FALLBACK.
-                    hasBg = c.equals(COLOR_BG) || c.equals(COLOR_BG_FALLBACK) || hasBg;
+                    hasBg = c.equals(COLOR_BG) || hasBg;
                     hasFg = c.equals(COLOR_FG) || hasFg;
                 }
                 String axis = isXaxis ? "X-axis" : "Y-axis";
