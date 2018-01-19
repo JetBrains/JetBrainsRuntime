@@ -397,6 +397,9 @@
                                                                             \
   diagnostic(bool, ShenandoahOOMDuringEvacALot, false,                      \
           "Simulate OOM during evacuation frequently.")                     \
+                                                                            \
+  diagnostic(bool, ShenandoahAllocFailureALot, false,                       \
+          "Make lots of artificial allocation failures.")                   \
 
 
 

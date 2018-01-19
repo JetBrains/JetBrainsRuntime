@@ -40,6 +40,7 @@ import java.io.IOException;
  * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=continuous                         TestGCBasherWithShenandoah 120000
  * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                         TestGCBasherWithShenandoah 120000
  * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahOOMDuringEvacALot TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahAllocFailureALot  TestGCBasherWithShenandoah 120000
  */
 public class TestGCBasherWithShenandoah {
     public static void main(String[] args) throws IOException {
