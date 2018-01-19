@@ -258,6 +258,9 @@
   experimental(bool, ShenandoahLoopOptsAfterExpansion, true,                \
           "Attempt more loop opts after write barrier expansion")           \
                                                                             \
+  experimental(bool, ShenandoahWriteBarrierMemBar, true,                    \
+          "Emit write barrier with membar for concurrent change of flag")   \
+                                                                            \
   experimental(bool, UseShenandoahOWST, true,                               \
           "Use Shenandoah work stealing termination protocol")              \
                                                                             \

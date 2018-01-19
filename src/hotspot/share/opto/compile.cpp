@@ -3381,7 +3381,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   }
   case Op_If: {
 #ifdef ASSERT
-    if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n->as_If())) {
+    if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n->as_If()) && ShenandoahWriteBarrierMemBar) {
       Node* c = n->in(0);
       int count = 0;
       for (;;) {
