@@ -69,10 +69,11 @@ public class TestSelectiveBarrierFlags {
 
             StringBuilder sb = new StringBuilder();
             for (String[] l : opts) {
-                int f = t % (l.length + 1);
-                conf.add("-XX:" + ((f & 1) == 1 ? "+" : "-") + l[0]);
-                if (l.length > 1) {
-                    conf.add("-XX:" + ((f & 2) == 2 ? "+" : "-") + l[1]);
+                // Make a choice which flag to select from the group.
+                // Zero means no flag is selected from the group.
+                int choice = t % (l.length + 1);
+                for (int e = 0; e < l.length; e++) {
+                  conf.add("-XX:" + ((choice == (e + 1)) ? "+" : "-") + l[e]);
                 }
                 t = t / (l.length + 1);
             }
