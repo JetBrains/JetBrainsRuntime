@@ -396,6 +396,7 @@ void ShenandoahConcurrentThread::handle_alloc_failure_evac() {
   if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
     assert(! Threads_lock->owned_by_self()
            || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
+    ResourceMark rm;
     log_info(gc)("%s. Thread \"%s\" waits until evacuation finishes.",
                  GCCause::to_string(GCCause::_shenandoah_allocation_failure_evac),
                  Thread::current()->name());
