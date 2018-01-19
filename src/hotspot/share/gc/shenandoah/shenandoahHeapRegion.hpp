@@ -153,6 +153,10 @@ private:
 
   void report_illegal_transition(const char* method);
 
+  void make_idle();
+  void activate_region();
+
+  bool can_idle_region() const;
 public:
   // Allowed transitions from the outside code:
   void make_regular_allocation();
@@ -229,6 +233,9 @@ private:
   RegionState _state;
   double _empty_time;
 
+  // If the region has been initially committed. It has been committed before
+  // it can be idled
+  bool   _initialized;
 public:
   ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start, size_t size_words, size_t index, bool committed);
 

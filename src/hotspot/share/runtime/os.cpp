@@ -1787,6 +1787,32 @@ char* os::remap_memory(int fd, const char* file_name, size_t file_offset,
                     read_only, allow_exec);
 }
 
+bool os::idle_memory(char* addr, size_t bytes) {
+#ifdef LINUX
+  // madvise(DONTNEED) reduces RSS immediately, so adjusts NMT accordingly.
+  if (MemTracker::tracking_level() > NMT_minimal) {
+    Tracker tracker(Tracker::uncommit);
+    bool can_idle = pd_idle_memory(addr, bytes);
+    if (can_idle) {
+      tracker.record((address)addr, bytes);
+    }
+    return can_idle;
+  } else {
+    return pd_idle_memory(addr, bytes);
+  }
+#else
+  return false;
+#endif
+}
+
+void os::activate_memory(char* addr, size_t bytes) {
+#ifdef LINUX
+  if (MemTracker::tracking_level() > NMT_minimal) {
+    MemTracker::record_virtual_memory_commit((address)addr, bytes, CALLER_PC);
+  }
+#endif
+}
+
 bool os::unmap_memory(char *addr, size_t bytes) {
   bool result;
   if (MemTracker::tracking_level() > NMT_minimal) {

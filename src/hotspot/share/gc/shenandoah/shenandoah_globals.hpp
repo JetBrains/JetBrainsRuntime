@@ -233,6 +233,9 @@
            "Setting this delay to 0 effectively makes Shenandoah to "       \
            "uncommit the regions almost immediately.")                      \
                                                                             \
+  experimental(bool, ShenandoahIdleRegions, false,                          \
+           "Make region idle instead of uncommit.")                         \
+                                                                            \
   experimental(bool, ShenandoahBarriersForConst, false,                     \
           "Emit barriers for constant oops in generated code, improving "   \
           "throughput. If no barriers are emitted, GC will need to "        \

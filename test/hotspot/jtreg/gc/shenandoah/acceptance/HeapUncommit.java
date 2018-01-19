@@ -25,17 +25,26 @@
  * @test HeapUncommit
  * @summary Acceptance tests: collector can withstand allocation
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                                         -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=adaptive     -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=static       -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=connected    -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=generational -XX:+ShenandoahVerify HeapUncommit
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=LRU          -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                                               -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:+UseLargePages                            -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                    -XX:+ShenandoahIdleRegions -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:+UseLargePages -XX:+ShenandoahIdleRegions -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=passive            -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=adaptive           -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=static             -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=connected          -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=generational       -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=LRU                -XX:+ShenandoahVerify HeapUncommit
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB                            -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB                                               -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB                            -XX:+UseLargePages -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB -XX:+ShenandoahIdleRegions                    -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB -XX:+ShenandoahIdleRegions -XX:+UseLargePages -XX:+ShenandoahVerify HeapUncommit
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                                         HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                                               HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0                            -XX:+UseLargePages HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:+ShenandoahIdleRegions                    HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:+ShenandoahIdleRegions -XX:+UseLargePages HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=passive      HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=adaptive     HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=static       HeapUncommit

@@ -2309,6 +2309,39 @@ bool ShenandoahHeap::uncommit_bitmap_slice(ShenandoahHeapRegion *r) {
   return true;
 }
 
+bool ShenandoahHeap::idle_bitmap_slice(ShenandoahHeapRegion *r) {
+  assert_heaplock_owned_by_current_thread();
+  assert(ShenandoahIdleRegions, "Must be enabled");
+
+  if (is_bitmap_slice_committed(r, true)) {
+    // Some other region from the group is still committed, meaning the bitmap
+    // slice is should stay committed, exit right away.
+    return true;
+  }
+
+  // Idle the bitmap slice:
+  size_t slice = r->region_number() / _bitmap_regions_per_slice;
+  size_t off = _bitmap_bytes_per_slice * slice;
+  size_t len = _bitmap_bytes_per_slice;
+  if (!os::idle_memory((char*)_bitmap0_region.start() + off, len)) {
+    return false;
+  }
+  if (!os::idle_memory((char*)_bitmap1_region.start() + off, len)) {
+    return false;
+  }
+  return true;
+}
+
+void ShenandoahHeap::activate_bitmap_slice(ShenandoahHeapRegion* r) {
+  assert_heaplock_owned_by_current_thread();
+  assert(ShenandoahIdleRegions, "Must be enabled");
+  size_t slice = r->region_number() / _bitmap_regions_per_slice;
+  size_t off = _bitmap_bytes_per_slice * slice;
+  size_t len = _bitmap_bytes_per_slice;
+  os::activate_memory((char*)_bitmap0_region.start() + off, len);
+  os::activate_memory((char*)_bitmap1_region.start() + off, len);
+}
+
 void ShenandoahHeap::safepoint_synchronize_begin() {
   if (ShenandoahSuspendibleWorkers || UseStringDeduplication) {
     SuspendibleThreadSet::synchronize();
