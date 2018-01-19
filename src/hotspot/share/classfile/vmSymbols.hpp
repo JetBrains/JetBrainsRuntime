@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,6 +86,7 @@
   template(java_lang_ref_FinalReference,              "java/lang/ref/FinalReference")             \
   template(java_lang_ref_PhantomReference,            "java/lang/ref/PhantomReference")           \
   template(java_lang_ref_Finalizer,                   "java/lang/ref/Finalizer")                  \
+  template(java_lang_ref_ReferenceQueue,              "java/lang/ref/ReferenceQueue")             \
   template(java_lang_reflect_AccessibleObject,        "java/lang/reflect/AccessibleObject")       \
   template(java_lang_reflect_Method,                  "java/lang/reflect/Method")                 \
   template(java_lang_reflect_Constructor,             "java/lang/reflect/Constructor")            \
@@ -462,6 +463,8 @@
   template(module_entry_name,                         "module_entry")                             \
   template(resolved_references_name,                  "<resolved_references>")                    \
   template(init_lock_name,                            "<init_lock>")                              \
+  template(referencequeue_null_name,                  "NULL")                                     \
+  template(referencequeue_enqueued_name,              "ENQUEUED")                                 \
                                                                                                   \
   /* name symbols needed by intrinsics */                                                         \
   VM_INTRINSICS_DO(VM_INTRINSIC_IGNORE, VM_SYMBOL_IGNORE, template, VM_SYMBOL_IGNORE, VM_ALIAS_IGNORE) \
@@ -553,6 +556,7 @@
   template(class_signature,                           "Ljava/lang/Class;")                                        \
   template(string_signature,                          "Ljava/lang/String;")                                       \
   template(reference_signature,                       "Ljava/lang/ref/Reference;")                                \
+  template(referencequeue_signature,                  "Ljava/lang/ref/ReferenceQueue;")                           \
   template(sun_misc_Cleaner_signature,                "Lsun/misc/Cleaner;")                                       \
   template(executable_signature,                      "Ljava/lang/reflect/Executable;")                           \
   template(module_signature,                          "Ljava/lang/Module;")                                       \
