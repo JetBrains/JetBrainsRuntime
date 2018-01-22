@@ -624,6 +624,8 @@ private:
 private:
   void try_inject_alloc_failure();
   bool should_inject_alloc_failure();
+
+  const char* mark_message();
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAP_HPP
