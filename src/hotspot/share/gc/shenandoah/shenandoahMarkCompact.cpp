@@ -145,7 +145,13 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       }
       assert(!heap->is_evacuation_in_progress(), "sanity");
 
-      // b2. Cancel concurrent partial GC, if in progress
+      // b2. Cancel update-refs, if in progress
+      if (heap->is_update_refs_in_progress()) {
+        heap->set_update_refs_in_progress(false);
+      }
+      assert(!heap->is_update_refs_in_progress(), "sanity");
+
+      // b3. Cancel concurrent partial GC, if in progress
       if (heap->is_concurrent_partial_in_progress()) {
         heap->partial_gc()->reset();
         heap->set_concurrent_partial_in_progress(false);

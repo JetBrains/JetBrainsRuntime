@@ -347,8 +347,7 @@ public:
   void set_concurrent_mark_in_progress(bool in_progress);
   void set_evacuation_in_progress_concurrently(bool in_progress);
   void set_evacuation_in_progress_at_safepoint(bool in_progress);
-  void set_update_refs_in_progress_concurrently(bool in_progress);
-  void set_update_refs_in_progress_at_safepoint(bool in_progress);
+  void set_update_refs_in_progress(bool in_progress);
   void set_full_gc_in_progress(bool in_progress);
   void set_full_gc_move_in_progress(bool in_progress);
   void set_concurrent_partial_in_progress(bool in_progress);

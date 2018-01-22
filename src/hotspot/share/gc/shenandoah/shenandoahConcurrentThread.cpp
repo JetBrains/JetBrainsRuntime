@@ -133,10 +133,6 @@ void ShenandoahConcurrentThread::run_service() {
         heap->set_evacuation_in_progress_concurrently(false);
       }
 
-      if (heap->is_update_refs_in_progress()) {
-        heap->set_update_refs_in_progress_concurrently(false);
-      }
-
       // If this was the explicit GC cycle, notify waiters about it
       if (explicit_gc_requested) {
         notify_explicit_gc_waiters();

@@ -1970,12 +1970,8 @@ void ShenandoahHeap::set_full_gc_move_in_progress(bool in_progress) {
   _full_gc_move_in_progress.set_cond(in_progress);
 }
 
-void ShenandoahHeap::set_update_refs_in_progress_at_safepoint(bool in_progress) {
+void ShenandoahHeap::set_update_refs_in_progress(bool in_progress) {
   set_gc_state_bit(UPDATEREFS_BITPOS, in_progress);
-}
-
-void ShenandoahHeap::set_update_refs_in_progress_concurrently(bool in_progress) {
-  set_gc_state_bit_concurrently(UPDATEREFS_BITPOS, in_progress);
 }
 
 void ShenandoahHeap::register_nmethod(nmethod* nm) {
@@ -2120,7 +2116,7 @@ void ShenandoahHeap::op_init_updaterefs() {
   }
 
   set_evacuation_in_progress_at_safepoint(false);
-  set_update_refs_in_progress_at_safepoint(true);
+  set_update_refs_in_progress(true);
   make_tlabs_parsable(true);
   if (UseShenandoahMatrix) {
     connection_matrix()->clear_all();
@@ -2182,7 +2178,7 @@ void ShenandoahHeap::op_final_updaterefs() {
     }
   }
 
-  set_update_refs_in_progress_at_safepoint(false);
+  set_update_refs_in_progress(false);
 }
 
 void ShenandoahHeap::set_alloc_seq_gc_start() {
