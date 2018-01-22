@@ -51,6 +51,7 @@ private:
     none,
     concurrent_partial,
     concurrent_normal,
+    stw_degenerated,
     stw_full,
   } GCMode;
 
@@ -72,10 +73,12 @@ private:
   ShenandoahSharedFlag _do_counters_update;
   ShenandoahSharedFlag _force_counters_update;
   GCCause::Cause _explicit_gc_cause;
+  ShenandoahHeap::ShenandoahDegenerationPoint _degen_point;
 
-  bool check_cancellation();
+  bool check_cancellation_or_degen(ShenandoahHeap::ShenandoahDegenerationPoint point);
   void service_concurrent_normal_cycle(GCCause::Cause cause);
   void service_stw_full_cycle(GCCause::Cause cause);
+  void service_stw_degenerated_cycle(GCCause::Cause cause, ShenandoahHeap::ShenandoahDegenerationPoint point);
   void service_concurrent_partial_cycle(GCCause::Cause cause);
 
   bool try_set_alloc_failure_gc();

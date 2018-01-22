@@ -186,6 +186,7 @@ public:
   void verify_after_fullgc();
   void verify_before_partial();
   void verify_after_partial();
+  void verify_after_degenerated();
   void verify_generic(VerifyOption option);
 
   static void verify_oop_fwdptr(oop obj, oop new_fwd);

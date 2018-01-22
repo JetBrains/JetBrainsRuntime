@@ -180,6 +180,9 @@ public:
 
     partial_gc_cleanup,
 
+    degen_gc_gross,
+    degen_gc,
+
     full_gc_gross,
     full_gc,
     full_gc_heapdumps,

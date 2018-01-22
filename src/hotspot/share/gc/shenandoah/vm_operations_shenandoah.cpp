@@ -62,6 +62,11 @@ void VM_ShenandoahFullGC::doit() {
   ShenandoahHeap::heap()->entry_full(_gc_cause);
 }
 
+void VM_ShenandoahDegeneratedGC::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_degenerated(_point);
+}
+
 void VM_ShenandoahInitPartialGC::doit() {
   ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::MINOR);
   ShenandoahHeap::heap()->entry_init_partial();

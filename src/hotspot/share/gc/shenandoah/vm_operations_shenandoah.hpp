@@ -72,6 +72,23 @@ public:
   virtual  void doit();
 };
 
+class VM_ShenandoahDegeneratedGC: public VM_ShenandoahReferenceOperation {
+private:
+  // Really the ShenandoahHeap::ShenandoahDegenerationPoint, but casted to int here
+  // in order to avoid dependency on ShenandoahHeap
+  int _point;
+public:
+  VM_ShenandoahDegeneratedGC(int point) : VM_ShenandoahReferenceOperation(), _point(point) {};
+  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahDegeneratedGC; }
+  const char* name()             const { return "Shenandoah Degenerated GC"; }
+  virtual  void doit();
+
+  // Degenerate GC may be upgraded to Full GC, and therefore we need to block deflation and
+  // marking, as VM_ShenandoahFullGC does.
+  bool deflates_idle_monitors() { return false; }
+  bool marks_nmethods() { return false; }
+};
+
 class VM_ShenandoahFullGC : public VM_ShenandoahReferenceOperation {
 private:
   GCCause::Cause _gc_cause;

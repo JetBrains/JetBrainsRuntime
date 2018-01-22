@@ -118,11 +118,8 @@ protected:
   size_t _bytes_allocated_start_CM;
   size_t _bytes_allocated_during_CM;
 
-  uint _cancelled_cm_cycles_in_a_row;
-  uint _successful_cm_cycles_in_a_row;
-
-  uint _cancelled_uprefs_cycles_in_a_row;
-  uint _successful_uprefs_cycles_in_a_row;
+  uint _degenerated_cycles_in_a_row;
+  uint _successful_cycles_in_a_row;
 
   size_t _bytes_in_cset;
 
@@ -180,32 +177,23 @@ public:
     return false;
   }
 
-  virtual bool handover_cancelled_marking() {
-    return _cancelled_cm_cycles_in_a_row <= ShenandoahFullGCThreshold;
+  virtual bool should_degenerate_cycle() {
+    return _degenerated_cycles_in_a_row <= ShenandoahFullGCThreshold;
   }
 
-  virtual bool handover_cancelled_uprefs() {
-    return _cancelled_uprefs_cycles_in_a_row <= ShenandoahFullGCThreshold;
+  virtual void record_success_concurrent() {
+    _degenerated_cycles_in_a_row = 0;
+    _successful_cycles_in_a_row++;
   }
 
-  virtual void record_cm_cancelled() {
-    _cancelled_cm_cycles_in_a_row++;
-    _successful_cm_cycles_in_a_row = 0;
+  virtual void record_success_degenerated() {
+    _degenerated_cycles_in_a_row++;
+    _successful_cycles_in_a_row = 0;
   }
 
-  virtual void record_cm_success() {
-    _cancelled_cm_cycles_in_a_row = 0;
-    _successful_cm_cycles_in_a_row++;
-  }
-
-  virtual void record_uprefs_cancelled() {
-    _cancelled_uprefs_cycles_in_a_row++;
-    _successful_uprefs_cycles_in_a_row = 0;
-  }
-
-  virtual void record_uprefs_success() {
-    _cancelled_uprefs_cycles_in_a_row = 0;
-    _successful_uprefs_cycles_in_a_row++;
+  virtual void record_success_full() {
+    _degenerated_cycles_in_a_row = 0;
+    _successful_cycles_in_a_row++;
   }
 
   virtual void record_allocation_failure_gc() {
@@ -259,10 +247,8 @@ ShenandoahHeuristics::ShenandoahHeuristics() :
   _bytes_allocated_start_CM(0),
   _bytes_allocated_during_CM(0),
   _bytes_in_cset(0),
-  _cancelled_cm_cycles_in_a_row(0),
-  _successful_cm_cycles_in_a_row(0),
-  _cancelled_uprefs_cycles_in_a_row(0),
-  _successful_uprefs_cycles_in_a_row(0),
+  _degenerated_cycles_in_a_row(0),
+  _successful_cycles_in_a_row(0),
   _region_data(NULL),
   _region_data_size(0),
   _region_connects(NULL),
@@ -418,9 +404,6 @@ void ShenandoahCollectorPolicy::record_gc_end() {
   _heuristics->record_gc_end();
 }
 
-void ShenandoahCollectorPolicy::report_concgc_cancelled() {
-}
-
 void ShenandoahHeuristics::record_bytes_allocated(size_t bytes) {
   _bytes_allocated_since_CM = bytes;
   _bytes_allocated_start_CM = bytes;
@@ -495,6 +478,11 @@ public:
     if (ShenandoahUnloadClassesFrequency == 0) return false;
     // Always unload classes.
     return true;
+  }
+
+  virtual bool should_degenerate_cycle() {
+    // Always fail to Full GC
+    return false;
   }
 
   virtual const char* name() {
@@ -750,7 +738,7 @@ public:
   }
 
   static const intx MaxNormalStep = 5;      // max step towards goal under normal conditions
-  static const intx CancelledGC_Hit = 10;   // how much to step on cancelled GC
+  static const intx DegeneratedGC_Hit = 10; // how much to step on degenerated GC
   static const intx AllocFailure_Hit = 20;  // how much to step on allocation failure full GC
   static const intx UserRequested_Hit = 0;  // how much to step on user requested full GC
 
@@ -774,22 +762,15 @@ public:
       adjust_free_threshold(step);
     } else if (step < 0) {
       // Optimize, if enough happy cycles happened
-      if (_successful_cm_cycles_in_a_row > ShenandoahHappyCyclesThreshold &&
-          (! update_refs() || (_successful_uprefs_cycles_in_a_row > ShenandoahHappyCyclesThreshold)) &&
+      if (_successful_cycles_in_a_row > ShenandoahHappyCyclesThreshold &&
           _free_threshold > 0) {
         adjust_free_threshold(step);
-        _successful_cm_cycles_in_a_row = 0;
-        _successful_uprefs_cycles_in_a_row = 0;
+        _successful_cycles_in_a_row = 0;
       }
     } else {
       // do nothing
     }
     _peak_occupancy = 0;
-  }
-
-  void record_cycle_end() {
-    ShenandoahHeuristics::record_cycle_end();
-    handle_cycle_success();
   }
 
   void record_cycle_start() {
@@ -818,32 +799,24 @@ public:
     }
   }
 
-  virtual void record_cm_cancelled() {
-    ShenandoahHeuristics::record_cm_cancelled();
-    adjust_free_threshold(CancelledGC_Hit);
+  virtual void record_success_concurrent() {
+    ShenandoahHeuristics::record_success_concurrent();
+    handle_cycle_success();
   }
 
-  virtual void record_cm_success() {
-    ShenandoahHeuristics::record_cm_success();
+  virtual void record_success_degenerated() {
+    ShenandoahHeuristics::record_success_degenerated();
+    adjust_free_threshold(DegeneratedGC_Hit);
   }
 
-  virtual void record_uprefs_cancelled() {
-    ShenandoahHeuristics::record_uprefs_cancelled();
-    adjust_free_threshold(CancelledGC_Hit);
-  }
-
-  virtual void record_uprefs_success() {
-    ShenandoahHeuristics::record_uprefs_success();
+  virtual void record_success_full() {
+    ShenandoahHeuristics::record_success_full();
+    adjust_free_threshold(AllocFailure_Hit);
   }
 
   virtual void record_explicit_gc() {
     ShenandoahHeuristics::record_explicit_gc();
     adjust_free_threshold(UserRequested_Hit);
-  }
-
-  virtual void record_allocation_failure_gc() {
-    ShenandoahHeuristics::record_allocation_failure_gc();
-    adjust_free_threshold(AllocFailure_Hit);
   }
 
   virtual void record_peak_occupancy() {
@@ -1319,10 +1292,15 @@ public:
 
 ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _cycle_counter(0),
-  _successful_cm(0),
-  _degenerated_cm(0),
-  _successful_uprefs(0),
-  _degenerated_uprefs(0)
+  _success_concurrent_gcs(0),
+  _success_partial_gcs(0),
+  _success_degenerated_gcs(0),
+  _success_full_gcs(0),
+  _explicit_concurrent(0),
+  _explicit_full(0),
+  _alloc_failure_degenerated(0),
+  _alloc_failure_full(0),
+  _alloc_failure_degenerated_upgrade_to_full(0)
 {
 
   ShenandoahHeapRegion::setup_heap_region_size(initial_heap_byte_size(), max_heap_byte_size());
@@ -1330,10 +1308,6 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   initialize_all();
 
   _tracer = new (ResourceObj::C_HEAP, mtGC) ShenandoahTracer();
-  _explicit_gcs = 0;
-  _allocation_failure_gcs = 0;
-  _success_conc_gcs = 0;
-  _cancelled_conc_gcs = 0;
 
   if (ShenandoahGCHeuristics != NULL) {
     _minor_heuristics = NULL;
@@ -1451,22 +1425,47 @@ void ShenandoahCollectorPolicy::record_bytes_reclaimed(size_t bytes) {
   _heuristics->record_bytes_reclaimed(bytes);
 }
 
-void ShenandoahCollectorPolicy::record_explicit_gc() {
+void ShenandoahCollectorPolicy::record_explicit_to_concurrent() {
   _heuristics->record_explicit_gc();
-  _explicit_gcs++;
+  _explicit_concurrent++;
 }
 
-void ShenandoahCollectorPolicy::record_allocation_failure_gc() {
+void ShenandoahCollectorPolicy::record_explicit_to_full() {
+  _heuristics->record_explicit_gc();
+  _explicit_full++;
+}
+
+void ShenandoahCollectorPolicy::record_alloc_failure_to_full() {
   _heuristics->record_allocation_failure_gc();
-  _allocation_failure_gcs++;
+  _alloc_failure_full++;
 }
 
-void ShenandoahCollectorPolicy::record_success_gc() {
-  _success_conc_gcs++;
+void ShenandoahCollectorPolicy::record_alloc_failure_to_degenerated() {
+  _heuristics->record_allocation_failure_gc();
+  _alloc_failure_degenerated++;
 }
 
-void ShenandoahCollectorPolicy::record_cancelled_gc() {
-  _cancelled_conc_gcs++;
+void ShenandoahCollectorPolicy::record_degenerated_upgrade_to_full() {
+  _alloc_failure_degenerated_upgrade_to_full++;
+}
+
+void ShenandoahCollectorPolicy::record_success_concurrent() {
+  _heuristics->record_success_concurrent();
+  _success_concurrent_gcs++;
+}
+
+void ShenandoahCollectorPolicy::record_success_partial() {
+  _success_partial_gcs++;
+}
+
+void ShenandoahCollectorPolicy::record_success_degenerated() {
+  _heuristics->record_success_degenerated();
+  _success_degenerated_gcs++;
+}
+
+void ShenandoahCollectorPolicy::record_success_full() {
+  _heuristics->record_success_full();
+  _success_full_gcs++;
 }
 
 bool ShenandoahCollectorPolicy::should_start_concurrent_mark(size_t used,
@@ -1474,12 +1473,8 @@ bool ShenandoahCollectorPolicy::should_start_concurrent_mark(size_t used,
   return _heuristics->should_start_concurrent_mark(used, capacity);
 }
 
-bool ShenandoahCollectorPolicy::handover_cancelled_marking() {
-  return _heuristics->handover_cancelled_marking();
-}
-
-bool ShenandoahCollectorPolicy::handover_cancelled_uprefs() {
-  return _heuristics->handover_cancelled_uprefs();
+bool ShenandoahCollectorPolicy::should_degenerate_cycle() {
+  return _heuristics->should_degenerate_cycle();
 }
 
 bool ShenandoahCollectorPolicy::update_refs() {
@@ -1494,34 +1489,6 @@ bool ShenandoahCollectorPolicy::should_start_update_refs() {
     return true;
   }
   return _heuristics->should_start_update_refs();
-}
-
-void ShenandoahCollectorPolicy::record_cm_success() {
-  _heuristics->record_cm_success();
-  _successful_cm++;
-}
-
-void ShenandoahCollectorPolicy::record_cm_degenerated() {
-  _degenerated_cm++;
-}
-
-void ShenandoahCollectorPolicy::record_cm_cancelled() {
-  _heuristics->record_cm_cancelled();
-  _cancelled_conc_gcs++;
-}
-
-void ShenandoahCollectorPolicy::record_uprefs_success() {
-  _heuristics->record_uprefs_success();
-  _successful_uprefs++;
-}
-
-void ShenandoahCollectorPolicy::record_uprefs_degenerated() {
-  _degenerated_uprefs++;
-}
-
-void ShenandoahCollectorPolicy::record_uprefs_cancelled() {
-  _heuristics->record_uprefs_cancelled();
-  _cancelled_conc_gcs++;
 }
 
 void ShenandoahCollectorPolicy::record_peak_occupancy() {
@@ -1591,25 +1558,25 @@ bool ShenandoahCollectorPolicy::is_at_shutdown() {
 }
 
 void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
-  out->print_cr("Under allocation pressure, concurrent cycles will cancel, and either continue phase");
+  out->print_cr("Under allocation pressure, concurrent cycles will cancel, and either continue cycle");
   out->print_cr("under stop-the-world pause or result in stop-the-world Full GC. Increase heap size,");
   out->print_cr("tune GC heuristics, or lower allocation rate to avoid degenerated and Full GC cycles.");
   out->cr();
 
-  out->print_cr(SIZE_FORMAT_W(4) " successful concurrent GC cycles",
-                _success_conc_gcs);
+  out->print_cr(SIZE_FORMAT_W(5) " successful partial concurrent GCs", _success_partial_gcs);
+  out->cr();
 
-  // Cancellation probably means allocation failure, but not vice versa.
-  size_t in_band_afs = _cancelled_conc_gcs > (_degenerated_cm + _degenerated_uprefs) ?
-                       _cancelled_conc_gcs - (_degenerated_cm + _degenerated_uprefs) :
-                       0;
-  size_t out_band_afs = _allocation_failure_gcs > in_band_afs ?
-                        _allocation_failure_gcs - in_band_afs : 0;
+  out->print_cr(SIZE_FORMAT_W(5) " successful concurrent GCs",         _success_concurrent_gcs);
+  out->print_cr("  " SIZE_FORMAT_W(5) " invoked explicitly",           _explicit_concurrent);
+  out->cr();
 
-  out->print_cr(SIZE_FORMAT_W(4) " cancelled concurrent GC cycles (" SIZE_FORMAT " degenerated marks, " SIZE_FORMAT " degenerated update refs, " SIZE_FORMAT " Full GCs)",
-                _cancelled_conc_gcs, _degenerated_cm, _degenerated_uprefs, in_band_afs);
-  out->print_cr(SIZE_FORMAT_W(4) " out-of-cycle allocation failures (" SIZE_FORMAT " Full GCs)",
-                out_band_afs, out_band_afs);
-  out->print_cr(SIZE_FORMAT_W(4) " explicitly requested GC cycles (" SIZE_FORMAT " %s)",
-                _explicit_gcs, _explicit_gcs, ExplicitGCInvokesConcurrent ? "Concurrent GCs" : "Full GCs");
+  out->print_cr(SIZE_FORMAT_W(5) " Degenerated GCs",                   _success_degenerated_gcs);
+  out->print_cr("  " SIZE_FORMAT_W(5) " caused by allocation failure", _alloc_failure_degenerated);
+  out->print_cr("  " SIZE_FORMAT_W(5) " upgraded to Full GC",          _alloc_failure_degenerated_upgrade_to_full);
+  out->cr();
+
+  out->print_cr(SIZE_FORMAT_W(5) " Full GCs",                          _success_full_gcs + _alloc_failure_degenerated_upgrade_to_full);
+  out->print_cr("  " SIZE_FORMAT_W(5) " invoked explicitly",           _explicit_full);
+  out->print_cr("  " SIZE_FORMAT_W(5) " caused by allocation failure", _alloc_failure_full);
+  out->print_cr("  " SIZE_FORMAT_W(5) " upgraded from Degenerated GC", _alloc_failure_degenerated_upgrade_to_full);
 }

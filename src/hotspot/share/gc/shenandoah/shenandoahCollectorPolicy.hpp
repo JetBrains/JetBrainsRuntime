@@ -41,15 +41,15 @@ class outputStream;
 
 class ShenandoahCollectorPolicy: public CollectorPolicy {
 private:
-  size_t _explicit_gcs;
-  size_t _allocation_failure_gcs;
-  size_t _success_conc_gcs;
-  size_t _cancelled_conc_gcs;
-  size_t _degenerated_cm;
-  size_t _successful_cm;
-
-  size_t _degenerated_uprefs;
-  size_t _successful_uprefs;
+  size_t _success_partial_gcs;
+  size_t _success_concurrent_gcs;
+  size_t _success_degenerated_gcs;
+  size_t _success_full_gcs;
+  size_t _alloc_failure_degenerated;
+  size_t _alloc_failure_degenerated_upgrade_to_full;
+  size_t _alloc_failure_full;
+  size_t _explicit_concurrent;
+  size_t _explicit_full;
 
   ShenandoahSharedFlag _in_shutdown;
 
@@ -87,12 +87,15 @@ public:
 
   void record_phase_time(ShenandoahPhaseTimings::Phase phase, double secs);
 
-  void report_concgc_cancelled();
-
-  void record_explicit_gc();
-  void record_allocation_failure_gc();
-  void record_success_gc();
-  void record_cancelled_gc();
+  void record_success_partial();
+  void record_success_concurrent();
+  void record_success_degenerated();
+  void record_success_full();
+  void record_alloc_failure_to_degenerated();
+  void record_alloc_failure_to_full();
+  void record_degenerated_upgrade_to_full();
+  void record_explicit_to_concurrent();
+  void record_explicit_to_full();
 
   void record_bytes_allocated(size_t bytes);
   void record_bytes_reclaimed(size_t bytes);
@@ -107,15 +110,8 @@ public:
   bool should_start_update_refs();
   bool update_refs();
 
-  bool handover_cancelled_marking();
-  bool handover_cancelled_uprefs();
+  bool should_degenerate_cycle();
 
-  void record_cm_cancelled();
-  void record_cm_success();
-  void record_cm_degenerated();
-  void record_uprefs_cancelled();
-  void record_uprefs_success();
-  void record_uprefs_degenerated();
 
   void record_peak_occupancy();
 

@@ -161,6 +161,32 @@ public:
     PARTIAL       = 1 << PARTIAL_BITPOS,
   };
 
+  enum ShenandoahDegenerationPoint {
+    _degenerated_partial,
+    _degenerated_outside_cycle,
+    _degenerated_mark,
+    _degenerated_evac,
+    _degenerated_updaterefs,
+  };
+
+  static const char* degen_point_to_string(ShenandoahDegenerationPoint point) {
+    switch (point) {
+      case _degenerated_partial:
+        return "Partial";
+      case _degenerated_outside_cycle:
+        return "Outside of Cycle";
+      case _degenerated_mark:
+        return "Mark";
+      case _degenerated_evac:
+        return "Evacuation";
+      case _degenerated_updaterefs:
+        return "Update Refs";
+      default:
+        ShouldNotReachHere();
+        return "ERROR";
+    }
+  };
+
 private:
   ShenandoahSharedBitmap _gc_state;
   ShenandoahHeapLock _lock;
@@ -580,6 +606,7 @@ public:
   void vmop_entry_final_partial();
   void vmop_entry_full(GCCause::Cause cause);
   void vmop_entry_verify_after_evac();
+  void vmop_degenerated(ShenandoahDegenerationPoint point);
 
   // Entry methods to normally STW GC operations. These set up logging, monitoring
   // and workers for net VM operation
@@ -591,6 +618,7 @@ public:
   void entry_final_partial();
   void entry_full(GCCause::Cause cause);
   void entry_verify_after_evac();
+  void entry_degenerated(int point);
 
   // Entry methods to normally concurrent GC operations. These set up logging, monitoring
   // for concurrent operation.
@@ -612,6 +640,9 @@ private:
   void op_final_partial();
   void op_full(GCCause::Cause cause);
   void op_verify_after_evac();
+  void op_degenerated(ShenandoahDegenerationPoint point);
+  void op_degenerated_fail();
+
   void op_mark();
   void op_preclean();
   void op_cleanup();

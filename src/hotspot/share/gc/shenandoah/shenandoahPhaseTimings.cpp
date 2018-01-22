@@ -191,6 +191,9 @@ void ShenandoahPhaseTimings::init_phase_names() {
 
   _phase_names[recycle_regions]                 = "  Recycle regions";
 
+  _phase_names[degen_gc_gross]                  = "Pause Degenerated GC (G)";
+  _phase_names[degen_gc]                        = "Pause Degenerated GC (N)";
+
   _phase_names[full_gc_gross]                   = "Pause Full GC (G)";
   _phase_names[full_gc]                         = "Pause Full GC (N)";
   _phase_names[full_gc_heapdumps]               = "  Heap Dumps";

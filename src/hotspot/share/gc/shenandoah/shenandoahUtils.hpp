@@ -89,7 +89,8 @@ public:
            type == VM_Operation::VMOp_ShenandoahFinalPartialGC ||
            type == VM_Operation::VMOp_ShenandoahInitUpdateRefs ||
            type == VM_Operation::VMOp_ShenandoahFinalUpdateRefs ||
-           type == VM_Operation::VMOp_ShenandoahFullGC;
+           type == VM_Operation::VMOp_ShenandoahFullGC ||
+           type == VM_Operation::VMOp_ShenandoahDegeneratedGC;
   }
 };
 

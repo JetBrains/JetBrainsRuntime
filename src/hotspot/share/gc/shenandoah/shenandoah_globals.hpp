@@ -384,7 +384,7 @@
           "Set to 0 to disable prefetching.")                               \
           range(0, 256)                                                     \
                                                                             \
-  experimental(intx, ShenandoahAllocGCTries, 3,                             \
+  experimental(intx, ShenandoahAllocGCTries, 5,                             \
           "How many times to try to do GC on allocation failure."           \
           "Set to 0 to never try, and fail instead.")                       \
           range(0, 16)                                                      \
@@ -400,6 +400,10 @@
                                                                             \
   diagnostic(bool, ShenandoahAllocFailureALot, false,                       \
           "Make lots of artificial allocation failures.")                   \
+                                                                            \
+  diagnostic(bool, ShenandoahDegeneratedGC, true,                           \
+          "Use Degenerated GC.")                                            \
+                                                                            \
 
 
 

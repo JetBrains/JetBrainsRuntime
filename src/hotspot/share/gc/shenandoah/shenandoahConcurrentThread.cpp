@@ -42,7 +42,8 @@ ShenandoahConcurrentThread::ShenandoahConcurrentThread() :
   _alloc_failure_waiters_lock(Mutex::leaf, "ShenandoahAllocFailureGC_lock", true, Monitor::_safepoint_check_always),
   _explicit_gc_waiters_lock(Mutex::leaf, "ShenandoahExplicitGC_lock", true, Monitor::_safepoint_check_always),
   _periodic_task(this),
-  _explicit_gc_cause(GCCause::_no_cause_specified)
+  _explicit_gc_cause(GCCause::_no_cause_specified),
+  _degen_point(ShenandoahHeap::_degenerated_outside_cycle)
 {
   create_and_start();
   _periodic_task.enroll();
@@ -78,17 +79,31 @@ void ShenandoahConcurrentThread::run_service() {
     // Choose which GC mode to run in. The block below should select a single mode.
     GCMode mode = none;
     GCCause::Cause cause = GCCause::_last_gc_cause;
+    ShenandoahHeap::ShenandoahDegenerationPoint degen_point = ShenandoahHeap::_degenerated_outside_cycle;
 
     if (alloc_failure_pending) {
       // Allocation failure takes precedence: we have to deal with it first thing
-      mode = stw_full;
       cause = GCCause::_allocation_failure;
-      policy->record_allocation_failure_gc();
+      if (ShenandoahDegeneratedGC && policy->should_degenerate_cycle()) {
+        policy->record_alloc_failure_to_degenerated();
+        mode = stw_degenerated;
+      } else {
+        policy->record_alloc_failure_to_full();
+        mode = stw_full;
+      }
+
+      degen_point = _degen_point;
+      _degen_point = ShenandoahHeap::_degenerated_outside_cycle;
     } else if (explicit_gc_requested) {
       // Honor explicit GC requests
-      mode = ExplicitGCInvokesConcurrent ? concurrent_normal : stw_full;
+      if (ExplicitGCInvokesConcurrent) {
+        policy->record_explicit_to_concurrent();
+        mode = concurrent_normal;
+      } else {
+        policy->record_explicit_to_full();
+        mode = stw_full;
+      }
       cause = _explicit_gc_cause;
-      policy->record_explicit_gc();
     } else {
       // Potential normal cycle: ask heuristics if it wants to act
       if (policy->should_start_partial_gc()) {
@@ -117,6 +132,9 @@ void ShenandoahConcurrentThread::run_service() {
         break;
       case concurrent_normal:
         service_concurrent_normal_cycle(cause);
+        break;
+      case stw_degenerated:
+        service_stw_degenerated_cycle(cause, degen_point);
         break;
       case stw_full:
         service_stw_full_cycle(cause);
@@ -170,68 +188,78 @@ void ShenandoahConcurrentThread::run_service() {
 }
 
 void ShenandoahConcurrentThread::service_concurrent_partial_cycle(GCCause::Cause cause) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahPartialGC* partial_gc = heap->partial_gc();
+
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_outside_cycle)) return;
+
   GCIdMark gc_id_mark;
   ShenandoahGCSession session;
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  ShenandoahPartialGC* partial_gc = heap->partial_gc();
   TraceCollectorStats tcs(heap->monitoring_support()->partial_collection_counters());
 
   heap->vmop_entry_init_partial();
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
 
   if (!partial_gc->has_work()) return;
-  if (check_cancellation()) return;
 
   heap->entry_partial();
-
-  if (check_cancellation()) return;
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
 
   heap->vmop_entry_final_partial();
-
-  if (check_cancellation()) return;
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
 
   heap->entry_cleanup();
+
+  heap->shenandoahPolicy()->record_success_partial();
 }
 
 void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause cause) {
   // Normal cycle goes via all concurrent phases. If allocation failure (af) happens during
-  // any of the concurrent phases, it optionally degenerates to nearest STW operation, and
-  // then continues the cycle. Otherwise, allocation failure leads to Full GC.
+  // any of the concurrent phases, it first degrades to Degenerated GC and completes GC there.
+  // If second allocation failure happens during Degenerated GC cycle (for example, when GC
+  // tries to evac something and no memory is available), cycle degrades to Full GC.
   //
-  // If second allocation failure happens during STW cycle (for example, when GC tries to evac
-  // something and no memory is available, cycle degrades to Full GC.
+  // The only current exception is allocation failure in Conc Evac: it goes straight to Full GC,
+  // because we don't recover well from the case of incompletely evacuated heap in STW cycle.
   //
   // There are also two shortcuts through the normal cycle: a) immediate garbage shortcut, when
   // heuristics says there are no regions to compact, and all the collection comes from immediately
   // reclaimable regions; b) coalesced UR shortcut, when heuristics decides to coalesce UR with the
   // mark from the next cycle.
   //
-  //                                    (immediate garbage shortcut)
+  // ................................................................................................
+  //
+  //                                    (immediate garbage shortcut)                Concurrent GC
   //                             /-------------------------------------------\
   //                             |                       (coalesced UR)      v
-  //                             |                  /------------------------\
+  //                             |                  /----------------------->o
+  //                             |                  |                        |
   //                             |                  |                        v
   // [START] ----> Conc Mark ----o----> Conc Evac --o--> Conc Update-Refs ---o----> [END]
-  //                   |         ^          |                 |              |
-  //                   |         |          |                 |              |
-  //                   | (af)    |          | (af)            | (af)         |
-  //                   |         |          |                 |              |
-  //                   v         |          |                 |              |
-  //               STW Mark -----/          |          STW Update-Refs ----->o
   //                   |                    |                 |              ^
-  //                   | (af)               |                 | (af)         |
-  //                   |                    v                 |              |
-  //                   \------------------->o<----------------/              |
+  //                   | (af)               | (af)            | (af)         |
+  // ..................|....................|.................|..............|.......................
+  //                   |                    |                 |              |
+  //                   |          /---------/                 |              |      Degenerated GC
+  //                   v          |                           v              |
+  //               STW Mark ------+---> STW Evac ----> STW Update-Refs ----->o
+  //                   |          |         |                 |              ^
+  //                   | (af)     |         | (af)            | (af)         |
+  // ..................|..........|.........|.................|..............|.......................
+  //                   |          |         |                 |              |
+  //                   |          v         v                 |              |      Full GC
+  //                   \--------->o-------->o<----------------/              |
   //                                        |                                |
   //                                        v                                |
   //                                      Full GC  --------------------------/
-
+  //
   ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_outside_cycle)) return;
 
   GCIdMark gc_id_mark;
   ShenandoahGCSession session;
-
-  if (check_cancellation()) return;
 
   // Cycle started
   heap->shenandoahPolicy()->record_cycle_start();
@@ -245,32 +273,15 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
   // Start initial mark under STW
   heap->vmop_entry_init_mark();
 
-  if (check_cancellation()) return;
-
   // Continue concurrent mark
   heap->entry_mark();
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_mark)) return;
 
-  // Possibly hand over remaining marking work to degenerated final-mark phase
-  if (heap->cancelled_concgc()) {
-    heap->shenandoahPolicy()->record_cm_cancelled();
-    if (_alloc_failure_gc.is_set() &&
-        heap->shenandoahPolicy()->handover_cancelled_marking()) {
-      heap->clear_cancelled_concgc();
-      heap->shenandoahPolicy()->record_cm_degenerated();
-    } else {
-      return;
-    }
-  } else {
-    heap->shenandoahPolicy()->record_cm_success();
-
-    // If not cancelled, can try to concurrently pre-clean
-    heap->entry_preclean();
-  }
+  // If not cancelled, can try to concurrently pre-clean
+  heap->entry_preclean();
 
   // Complete marking under STW, and start evacuation
   heap->vmop_entry_final_mark();
-
-  if (check_cancellation()) return;
 
   // Final mark had reclaimed some immediate garbage, kick cleanup to reclaim the space
   heap->entry_cleanup();
@@ -280,37 +291,19 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
   // If so, evac_in_progress would be unset by collection set preparation code.
   if (heap->is_evacuation_in_progress()) {
     heap->entry_evac();
-
-    if (check_cancellation()) return;
+    if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_evac)) return;
   }
 
   // Perform update-refs phase, if required.
   // This phase can be skipped if there was nothing evacuated. If so, has_forwarded would be unset
-  // by collection set preparation code. However, adaptive heuristics need to record "success" when
-  // this phase is skipped. Therefore, we conditionally execute all ops, leaving heuristics adjustments
-  // intact.
+  // by collection set preparation code.
   if (heap->shenandoahPolicy()->should_start_update_refs()) {
-
-    bool do_it = heap->has_forwarded_objects();
-    if (do_it) {
+    if (heap->has_forwarded_objects()) {
       heap->vmop_entry_init_updaterefs();
       heap->entry_updaterefs();
-
-      if (heap->cancelled_concgc()) {
-        heap->shenandoahPolicy()->record_uprefs_cancelled();
-        if (_alloc_failure_gc.is_set() &&
-            heap->shenandoahPolicy()->handover_cancelled_uprefs()) {
-          heap->shenandoahPolicy()->record_uprefs_degenerated();
-        } else {
-          return;
-        }
-      } else {
-        heap->shenandoahPolicy()->record_uprefs_success();
-      }
+      if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_updaterefs)) return;
 
       heap->vmop_entry_final_updaterefs();
-    } else {
-      heap->shenandoahPolicy()->record_uprefs_success();
     }
   } else {
     // If update-refs were skipped, need to do another verification pass after evacuation.
@@ -322,20 +315,22 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
 
   // Cycle is complete
   heap->shenandoahPolicy()->record_cycle_end();
-
-  heap->shenandoahPolicy()->record_success_gc();
+  heap->shenandoahPolicy()->record_success_concurrent();
 }
 
-bool ShenandoahConcurrentThread::check_cancellation() {
+bool ShenandoahConcurrentThread::check_cancellation_or_degen(ShenandoahHeap::ShenandoahDegenerationPoint point) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (heap->cancelled_concgc()) {
     assert (is_alloc_failure_gc() || in_graceful_shutdown(), "Cancel GC either for alloc failure GC, or gracefully exiting");
-    heap->shenandoahPolicy()->record_cancelled_gc();
+    if (!in_graceful_shutdown()) {
+      assert (_degen_point == ShenandoahHeap::_degenerated_outside_cycle,
+              "Should not be set yet: %s", ShenandoahHeap::degen_point_to_string(_degen_point));
+      _degen_point = point;
+    }
     return true;
   }
   return false;
 }
-
 
 void ShenandoahConcurrentThread::stop_service() {
   // Nothing to do here.
@@ -345,7 +340,20 @@ void ShenandoahConcurrentThread::service_stw_full_cycle(GCCause::Cause cause) {
   GCIdMark gc_id_mark;
   ShenandoahGCSession session(/* is_full_gc */true);
 
-  ShenandoahHeap::heap()->vmop_entry_full(cause);
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  heap->vmop_entry_full(cause);
+
+  heap->shenandoahPolicy()->record_success_full();
+}
+
+void ShenandoahConcurrentThread::service_stw_degenerated_cycle(GCCause::Cause cause, ShenandoahHeap::ShenandoahDegenerationPoint point) {
+  GCIdMark gc_id_mark;
+  ShenandoahGCSession session(/* is_full_gc */true);
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  heap->vmop_degenerated(point);
+
+  heap->shenandoahPolicy()->record_success_degenerated();
 }
 
 void ShenandoahConcurrentThread::handle_explicit_gc(GCCause::Cause cause) {
