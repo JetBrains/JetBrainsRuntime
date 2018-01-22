@@ -1587,12 +1587,10 @@ void ShenandoahHeap::op_cleanup_bitmaps() {
 }
 
 void ShenandoahHeap::op_preclean() {
-  if (ShenandoahPreclean && concurrentMark()->process_references()) {
-    concurrentMark()->preclean_weak_refs();
+  concurrentMark()->preclean_weak_refs();
 
-    // Allocations happen during concurrent preclean, record peak after the phase:
-    shenandoahPolicy()->record_peak_occupancy();
-  }
+  // Allocations happen during concurrent preclean, record peak after the phase:
+  shenandoahPolicy()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_init_partial() {
@@ -2569,13 +2567,15 @@ void ShenandoahHeap::entry_cleanup_bitmaps() {
 }
 
 void ShenandoahHeap::entry_preclean() {
-  GCTraceTime(Info, gc) time("Concurrent precleaning", gc_timer(), GCCause::_no_gc, true);
-  ShenandoahGCPhase conc_preclean(ShenandoahPhaseTimings::conc_preclean);
+  if (ShenandoahPreclean && concurrentMark()->process_references()) {
+    GCTraceTime(Info, gc) time("Concurrent precleaning", gc_timer(), GCCause::_no_gc, true);
+    ShenandoahGCPhase conc_preclean(ShenandoahPhaseTimings::conc_preclean);
 
-  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_preclean());
+    ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_preclean());
 
-  try_inject_alloc_failure();
-  op_preclean();
+    try_inject_alloc_failure();
+    op_preclean();
+  }
 }
 
 void ShenandoahHeap::entry_partial() {
