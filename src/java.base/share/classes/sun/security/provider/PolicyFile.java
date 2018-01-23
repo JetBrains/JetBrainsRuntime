@@ -40,7 +40,7 @@ import javax.security.auth.x500.X500Principal;
 import java.io.FilePermission;
 import java.net.SocketPermission;
 import java.net.NetPermission;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ConcurrentHashMap;
 import jdk.internal.misc.JavaSecurityProtectionDomainAccess;
 import static jdk.internal.misc.JavaSecurityProtectionDomainAccess.ProtectionDomainCache;
 import jdk.internal.misc.SharedSecrets;
@@ -275,7 +275,8 @@ public class PolicyFile extends java.security.Policy {
     private static final int DEFAULT_CACHE_SIZE = 1;
 
     // contains the policy grant entries, PD cache, and alias mapping
-    private AtomicReference<PolicyInfo> policyInfo = new AtomicReference<>();
+    // can be updated if refresh() is called
+    private volatile PolicyInfo policyInfo;
 
     private boolean expandProperties = true;
     private boolean allowSystemProperties = true;
@@ -295,8 +296,8 @@ public class PolicyFile extends java.security.Policy {
      * previously parsed and have syntax errors, so that they can be
      * subsequently ignored.
      */
-    private static AtomicReference<Set<URL>> badPolicyURLs =
-        new AtomicReference<>(new HashSet<>());
+    private static Set<URL> badPolicyURLs =
+        Collections.newSetFromMap(new ConcurrentHashMap<URL,Boolean>());
 
     // The default.policy file
     private static final URL DEFAULT_POLICY_URL =
@@ -368,7 +369,7 @@ public class PolicyFile extends java.security.Policy {
         // System.out.println("number caches=" + numCaches);
         PolicyInfo newInfo = new PolicyInfo(numCaches);
         initPolicyFile(newInfo, url);
-        policyInfo.set(newInfo);
+        policyInfo = newInfo;
     }
 
     private void initPolicyFile(final PolicyInfo newInfo, final URL url) {
@@ -535,7 +536,7 @@ public class PolicyFile extends java.security.Policy {
 
         // skip parsing policy file if it has been previously parsed and
         // has syntax errors
-        if (badPolicyURLs.get().contains(policy)) {
+        if (badPolicyURLs.contains(policy)) {
             if (debug != null) {
                 debug.println("skipping bad policy file: " + policy);
             }
@@ -576,10 +577,7 @@ public class PolicyFile extends java.security.Policy {
                 throw new InternalError("Failed to load default.policy", pe);
             }
             // record bad policy file to avoid later reparsing it
-            badPolicyURLs.updateAndGet(k -> {
-                k.add(policy);
-                return k;
-            });
+            badPolicyURLs.add(policy);
             Object[] source = {policy, pe.getLocalizedMessage()};
             System.err.println(LocalizedMessage.getMessage
                 (POLICY + ".error.parsing.policy.message", source));
@@ -1028,9 +1026,7 @@ public class PolicyFile extends java.security.Policy {
      */
     @Override
     public boolean implies(ProtectionDomain pd, Permission p) {
-        PolicyInfo pi = policyInfo.get();
-        ProtectionDomainCache pdMap = pi.getPdMapping();
-
+        ProtectionDomainCache pdMap = policyInfo.getPdMapping();
         PermissionCollection pc = pdMap.get(pd);
 
         if (pc != null) {
@@ -1176,9 +1172,7 @@ public class PolicyFile extends java.security.Policy {
     private Permissions getPermissions(Permissions perms,
                                        final CodeSource cs,
                                        Principal[] principals) {
-        PolicyInfo pi = policyInfo.get();
-
-        for (PolicyEntry entry : pi.policyEntries) {
+        for (PolicyEntry entry : policyInfo.policyEntries) {
             addPermissions(perms, cs, principals, entry);
         }
 

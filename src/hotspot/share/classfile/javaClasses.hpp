@@ -890,6 +890,8 @@ class java_lang_ref_Reference: AllStatic {
   static inline void set_discovered(oop ref, oop value);
   static inline void set_discovered_raw(oop ref, oop value);
   static inline HeapWord* discovered_addr(oop ref);
+  static inline oop queue(oop ref);
+  static inline void set_queue(oop ref, oop value);
   static bool is_referent_field(oop obj, ptrdiff_t offset);
   static inline bool is_phantom(oop ref);
 };
@@ -908,6 +910,20 @@ class java_lang_ref_SoftReference: public java_lang_ref_Reference {
   // Accessors for statics
   static jlong clock();
   static void set_clock(jlong value);
+
+  static void compute_offsets();
+};
+
+// Interface to java.lang.ref.ReferenceQueue objects
+
+class java_lang_ref_ReferenceQueue: public AllStatic {
+public:
+  static int static_NULL_queue_offset;
+  static int static_ENQUEUED_queue_offset;
+
+  // Accessors
+  static oop NULL_queue();
+  static oop ENQUEUED_queue();
 
   static void compute_offsets();
 };
