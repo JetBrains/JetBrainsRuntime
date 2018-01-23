@@ -125,7 +125,7 @@ public:
       ShenandoahPartialEvacuateUpdateRootsClosure roots_cl(q);
       CLDToOopClosure cld_cl(&roots_cl);
       MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
-      _rp->process_all_roots(&roots_cl, &roots_cl, &cld_cl, &code_cl, worker_id);
+      _rp->process_all_roots(&roots_cl, &roots_cl, &cld_cl, &code_cl, NULL, worker_id);
     }
   }
 };

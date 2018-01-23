@@ -96,12 +96,14 @@ public:
   void process_strong_roots(OopClosure* oops, OopClosure* weak_oops,
                             CLDClosure* clds,
                             CodeBlobClosure* blobs,
-                              uint worker_id);
+                            ThreadClosure* thread_cl,
+                            uint worker_id);
 
   // Apply oops, clds and blobs to strongly and weakly reachable roots in the system
   void process_all_roots(OopClosure* oops, OopClosure* weak_oops,
                          CLDClosure* clds,
                          CodeBlobClosure* blobs,
+                         ThreadClosure* thread_cl,
                          uint worker_id);
 
   // For slow debug/verification code

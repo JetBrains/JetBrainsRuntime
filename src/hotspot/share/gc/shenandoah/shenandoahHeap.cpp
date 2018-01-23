@@ -1148,7 +1148,7 @@ void ShenandoahHeap::roots_iterate(OopClosure* cl) {
   CLDToOopClosure cldCl(cl);
 
   ShenandoahRootProcessor rp(this, 1, ShenandoahPhaseTimings::_num_phases);
-  rp.process_all_roots(cl, NULL, &cldCl, &blobsCl, 0);
+  rp.process_all_roots(cl, NULL, &cldCl, &blobsCl, NULL, 0);
 }
 
 bool ShenandoahHeap::supports_tlab_allocation() const {
@@ -1376,7 +1376,7 @@ void ShenandoahHeap::object_iterate(ObjectClosure* cl) {
   ObjectIterateScanRootClosure oops(&_aux_bit_map, &oop_stack);
   CLDToOopClosure clds(&oops, false);
   CodeBlobToOopClosure blobs(&oops, false);
-  rp.process_all_roots(&oops, &oops, &clds, &blobs, 0);
+  rp.process_all_roots(&oops, &oops, &clds, &blobs, NULL, 0);
 
   // Work through the oop stack to traverse heap.
   while (! oop_stack.is_empty()) {

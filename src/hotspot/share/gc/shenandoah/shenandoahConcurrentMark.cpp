@@ -121,7 +121,7 @@ public:
 
     ResourceMark m;
     if (heap->concurrentMark()->unload_classes()) {
-      _rp->process_strong_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, &blobsCl, worker_id);
+      _rp->process_strong_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, &blobsCl, NULL, worker_id);
     } else {
       if (ShenandoahConcurrentScanCodeRoots) {
         CodeBlobClosure* code_blobs = NULL;
@@ -134,9 +134,9 @@ public:
           code_blobs = &assert_to_space;
         }
 #endif
-        _rp->process_all_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, code_blobs, worker_id);
+        _rp->process_all_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, code_blobs, NULL, worker_id);
       } else {
-        _rp->process_all_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, &blobsCl, worker_id);
+        _rp->process_all_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, &blobsCl, NULL, worker_id);
       }
     }
   }
@@ -173,7 +173,7 @@ public:
         DEBUG_ONLY(&assert_to_space)
         NOT_DEBUG(NULL);
     }
-    _rp->process_all_roots(&cl, &cl, &cldCl, code_blobs, worker_id);
+    _rp->process_all_roots(&cl, &cl, &cldCl, code_blobs, NULL, worker_id);
   }
 };
 

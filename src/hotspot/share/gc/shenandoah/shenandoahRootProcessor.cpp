@@ -97,8 +97,10 @@ void ShenandoahRootProcessor::process_strong_roots(OopClosure* oops,
                                                    OopClosure* weak_oops,
                                                    CLDClosure* clds,
                                                    CodeBlobClosure* blobs,
+                                                   ThreadClosure* thread_cl,
                                                    uint worker_id) {
 
+  assert(thread_cl == NULL, "not implemented yet");
   process_java_roots(oops, clds, NULL, blobs, _threads_nmethods_cl, worker_id);
   process_vm_roots(oops, NULL, weak_oops, worker_id);
 
@@ -109,8 +111,10 @@ void ShenandoahRootProcessor::process_all_roots(OopClosure* oops,
                                                 OopClosure* weak_oops,
                                                 CLDClosure* clds,
                                                 CodeBlobClosure* blobs,
+                                                ThreadClosure* thread_cl,
                                                 uint worker_id) {
 
+  assert(thread_cl == NULL, "not implemented yet");
   ShenandoahWorkerTimings* worker_times = ShenandoahHeap::heap()->phase_timings()->worker_times();
   process_java_roots(oops, clds, clds, blobs, _threads_nmethods_cl, worker_id);
   process_vm_roots(oops, oops, weak_oops, worker_id);

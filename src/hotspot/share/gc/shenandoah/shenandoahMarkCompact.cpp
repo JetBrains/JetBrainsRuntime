@@ -617,7 +617,7 @@ public:
 
     _rp->process_all_roots(&cl, &cl,
                            &adjust_cld_closure,
-                           &adjust_code_closure, worker_id);
+                           &adjust_code_closure, NULL, worker_id);
   }
 };
 
