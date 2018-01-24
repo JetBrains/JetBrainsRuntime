@@ -315,6 +315,10 @@ jint ShenandoahHeap::initialize() {
                 new ShenandoahPartialGC(this, _num_regions) :
                 NULL;
 
+  _traversal_gc = _shenandoah_policy->can_do_traversal_gc() ?
+                new ShenandoahTraversalGC(this, _num_regions) :
+                NULL;
+
   _monitoring_support = new ShenandoahMonitoringSupport(this);
 
   _phase_timings = new ShenandoahPhaseTimings();
@@ -490,6 +494,7 @@ void ShenandoahHeap::print_on(outputStream* st) const {
   if (is_evacuation_in_progress())         st->print("evacuating, ");
   if (is_update_refs_in_progress())        st->print("updating refs, ");
   if (is_concurrent_partial_in_progress()) st->print("partial, ");
+  if (is_concurrent_traversal_in_progress()) st->print("traversal, ");
   if (is_full_gc_in_progress())            st->print("full gc, ");
   if (is_full_gc_move_in_progress())       st->print("full gc move, ");
 
@@ -1613,6 +1618,18 @@ void ShenandoahHeap::op_final_partial() {
   partial_gc()->final_partial_collection();
 }
 
+void ShenandoahHeap::op_init_traversal() {
+  traversal_gc()->init_traversal_collection();
+}
+
+void ShenandoahHeap::op_traversal() {
+  traversal_gc()->concurrent_traversal_collection();
+}
+
+void ShenandoahHeap::op_final_traversal() {
+  traversal_gc()->final_traversal_collection();
+}
+
 void ShenandoahHeap::op_full(GCCause::Cause cause) {
   full_gc()->do_it(cause);
 }
@@ -1626,6 +1643,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenerationPoint point) {
 
   switch (point) {
     case _degenerated_partial:
+    case _degenerated_traversal:
     case _degenerated_evac:
       // Not possible to degenerate from here, upgrade to Full GC right away.
       cancel_concgc(GCCause::_allocation_failure);
@@ -1637,6 +1655,12 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenerationPoint point) {
     // degenerated.
 
     case _degenerated_outside_cycle:
+      if (shenandoahPolicy()->can_do_traversal_gc()) {
+        // Not possible to degenerate from here, upgrade to Full GC right away.
+        cancel_concgc(GCCause::_allocation_failure);
+        op_degenerated_fail();
+        return;
+      }
       op_init_mark();
       if (cancelled_concgc()) {
         op_degenerated_fail();
@@ -1748,6 +1772,14 @@ void ShenandoahHeap::set_concurrent_partial_in_progress(bool in_progress) {
   set_evacuation_in_progress_at_safepoint(in_progress);
 }
 
+void ShenandoahHeap::set_concurrent_traversal_in_progress(bool in_progress) {
+   set_gc_state_bit(TRAVERSAL_BITPOS, in_progress);
+   set_gc_state_bit(MARKING_BITPOS, in_progress);
+   set_gc_state_bit(HAS_FORWARDED_BITPOS, in_progress);
+   set_gc_state_bit(EVACUATION_BITPOS, in_progress);
+   JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
+}
+
 void ShenandoahHeap::set_evacuation_in_progress_concurrently(bool in_progress) {
   // Note: it is important to first release the _evacuation_in_progress flag here,
   // so that Java threads can get out of oom_during_evacuation() and reach a safepoint,
@@ -1777,9 +1809,12 @@ ShenandoahForwardedIsAliveClosure::ShenandoahForwardedIsAliveClosure() :
 
 bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
   assert(_heap != NULL, "sanity");
+  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)) ||
+         (!_heap->is_marked_next(obj)), "from-space obj must not be marked");
+
   obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
 #ifdef ASSERT
-  if (_heap->is_concurrent_mark_in_progress()) {
+  if (_heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress()) {
     assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
   }
 #endif
@@ -2130,6 +2165,10 @@ ShenandoahConnectionMatrix* ShenandoahHeap::connection_matrix() const {
 
 ShenandoahPartialGC* ShenandoahHeap::partial_gc() {
   return _partial_gc;
+}
+
+ShenandoahTraversalGC* ShenandoahHeap::traversal_gc() {
+  return _traversal_gc;
 }
 
 ShenandoahVerifier* ShenandoahHeap::verifier() {
@@ -2492,6 +2531,26 @@ void ShenandoahHeap::vmop_entry_final_partial() {
   VMThread::execute(&op);
 }
 
+void ShenandoahHeap::vmop_entry_init_traversal() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc_gross);
+
+  try_inject_alloc_failure();
+  VM_ShenandoahInitTraversalGC op;
+  VMThread::execute(&op);
+}
+
+void ShenandoahHeap::vmop_entry_final_traversal() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc_gross);
+
+  try_inject_alloc_failure();
+  VM_ShenandoahFinalTraversalGC op;
+  VMThread::execute(&op);
+}
+
 void ShenandoahHeap::vmop_entry_verify_after_evac() {
   if (ShenandoahVerify) {
     ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
@@ -2581,6 +2640,26 @@ void ShenandoahHeap::entry_final_partial() {
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
   op_final_partial();
+}
+
+void ShenandoahHeap::entry_init_traversal() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc);
+  GCTraceTime(Info, gc) time("Pause Init Traversal", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_traversal());
+
+  op_init_traversal();
+}
+
+void ShenandoahHeap::entry_final_traversal() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc);
+  GCTraceTime(Info, gc) time("Pause Final Traversal", gc_timer());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_traversal());
+
+  op_final_traversal();
 }
 
 void ShenandoahHeap::entry_full(GCCause::Cause cause) {
@@ -2686,6 +2765,16 @@ void ShenandoahHeap::entry_partial() {
 
   try_inject_alloc_failure();
   op_partial();
+}
+
+void ShenandoahHeap::entry_traversal() {
+  GCTraceTime(Info, gc) time("Concurrent traversal", gc_timer(), GCCause::_no_gc, true);
+  TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
+
+  ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_traversal());
+
+  try_inject_alloc_failure();
+  op_traversal();
 }
 
 void ShenandoahHeap::try_inject_alloc_failure() {

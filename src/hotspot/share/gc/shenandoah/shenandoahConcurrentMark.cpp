@@ -330,6 +330,7 @@ void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_p
       break;
     case ShenandoahPhaseTimings::full_gc_roots:
     case ShenandoahPhaseTimings::final_partial_gc_work:
+    case ShenandoahPhaseTimings::final_traversal_gc_work:
       update_code_cache = true;
       break;
     default:
@@ -1030,7 +1031,6 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
       }
     }
   }
-
   q = get_queue(worker_id);
 
   /*

@@ -104,6 +104,8 @@ public:
   bool should_start_concurrent_mark(size_t used, size_t capacity);
   bool should_start_partial_gc();
   bool can_do_partial_gc();
+  bool should_start_traversal_gc();
+  bool can_do_traversal_gc();
 
   // Returns true when there should be a separate concurrent reference
   // updating phase after evacuation.

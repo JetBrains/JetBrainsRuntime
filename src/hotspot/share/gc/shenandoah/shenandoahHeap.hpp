@@ -43,6 +43,7 @@ class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
 class ShenandoahMarkCompact;
 class ShenandoahPartialGC;
+class ShenandoahTraversalGC;
 class ShenandoahVerifier;
 class ShenandoahConcurrentThread;
 class ShenandoahMonitoringSupport;
@@ -150,6 +151,9 @@ public:
 
     // Heap is under partial collection
     PARTIAL_BITPOS    = 4,
+
+    // Heap is under traversal collection
+    TRAVERSAL_BITPOS  = 5,
   };
 
   enum GCState {
@@ -159,10 +163,12 @@ public:
     EVACUATION    = 1 << EVACUATION_BITPOS,
     UPDATEREFS    = 1 << UPDATEREFS_BITPOS,
     PARTIAL       = 1 << PARTIAL_BITPOS,
+    TRAVERSAL     = 1 << TRAVERSAL_BITPOS,
   };
 
   enum ShenandoahDegenerationPoint {
     _degenerated_partial,
+    _degenerated_traversal,
     _degenerated_outside_cycle,
     _degenerated_mark,
     _degenerated_evac,
@@ -173,6 +179,8 @@ public:
     switch (point) {
       case _degenerated_partial:
         return "Partial";
+      case _degenerated_traversal:
+        return "Traversal";
       case _degenerated_outside_cycle:
         return "Outside of Cycle";
       case _degenerated_mark:
@@ -207,6 +215,7 @@ private:
   ShenandoahConcurrentMark* _scm;
   ShenandoahMarkCompact* _full_gc;
   ShenandoahPartialGC* _partial_gc;
+  ShenandoahTraversalGC* _traversal_gc;
   ShenandoahVerifier*  _verifier;
 
   ShenandoahConcurrentThread* _concurrent_gc_thread;
@@ -377,6 +386,7 @@ public:
   void set_full_gc_in_progress(bool in_progress);
   void set_full_gc_move_in_progress(bool in_progress);
   void set_concurrent_partial_in_progress(bool in_progress);
+  void set_concurrent_traversal_in_progress(bool in_progress);
   void set_has_forwarded_objects(bool cond);
 
   inline bool is_concurrent_mark_in_progress() const;
@@ -385,6 +395,7 @@ public:
   inline bool is_full_gc_in_progress() const;
   inline bool is_full_gc_move_in_progress() const;
   inline bool is_concurrent_partial_in_progress() const;
+  inline bool is_concurrent_traversal_in_progress() const;
   inline bool has_forwarded_objects() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
@@ -472,6 +483,7 @@ public:
   ShenandoahConcurrentMark* concurrentMark() { return _scm; }
   ShenandoahMarkCompact* full_gc() { return _full_gc; }
   ShenandoahPartialGC* partial_gc();
+  ShenandoahTraversalGC* traversal_gc();
   ShenandoahVerifier* verifier();
 
   ReferenceProcessor* ref_processor() { return _ref_processor;}
@@ -604,6 +616,8 @@ public:
   void vmop_entry_final_updaterefs();
   void vmop_entry_init_partial();
   void vmop_entry_final_partial();
+  void vmop_entry_init_traversal();
+  void vmop_entry_final_traversal();
   void vmop_entry_full(GCCause::Cause cause);
   void vmop_entry_verify_after_evac();
   void vmop_degenerated(ShenandoahDegenerationPoint point);
@@ -616,6 +630,8 @@ public:
   void entry_final_updaterefs();
   void entry_init_partial();
   void entry_final_partial();
+  void entry_init_traversal();
+  void entry_final_traversal();
   void entry_full(GCCause::Cause cause);
   void entry_verify_after_evac();
   void entry_degenerated(int point);
@@ -629,6 +645,7 @@ public:
   void entry_evac();
   void entry_updaterefs();
   void entry_partial();
+  void entry_traversal();
 
 private:
   // Actual work for the phases
@@ -638,6 +655,8 @@ private:
   void op_final_updaterefs();
   void op_init_partial();
   void op_final_partial();
+  void op_init_traversal();
+  void op_final_traversal();
   void op_full(GCCause::Cause cause);
   void op_verify_after_evac();
   void op_degenerated(ShenandoahDegenerationPoint point);
@@ -650,6 +669,7 @@ private:
   void op_updaterefs();
   void op_cleanup_bitmaps();
   void op_partial();
+  void op_traversal();
 
 private:
   void try_inject_alloc_failure();

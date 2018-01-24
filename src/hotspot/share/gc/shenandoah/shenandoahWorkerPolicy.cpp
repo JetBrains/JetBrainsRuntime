@@ -34,6 +34,8 @@ uint ShenandoahWorkerPolicy::_prev_fullgc          = 0;
 uint ShenandoahWorkerPolicy::_prev_degengc         = 0;
 uint ShenandoahWorkerPolicy::_prev_stw_partial     = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_partial    = 0;
+uint ShenandoahWorkerPolicy::_prev_stw_traversal   = 0;
+uint ShenandoahWorkerPolicy::_prev_conc_traversal  = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_update_ref = 0;
 uint ShenandoahWorkerPolicy::_prev_par_update_ref  = 0;
 uint ShenandoahWorkerPolicy::_prev_conc_cleanup    = 0;
@@ -110,6 +112,26 @@ uint ShenandoahWorkerPolicy::calc_workers_for_conc_partial() {
                                                  active_workers,
                                                  Threads::number_of_non_daemon_threads());
   return _prev_conc_partial;
+}
+
+// Calculate workers for Stop-the-world traversal GC
+uint ShenandoahWorkerPolicy::calc_workers_for_stw_traversal() {
+  uint active_workers = (_prev_stw_traversal == 0) ? ParallelGCThreads : _prev_stw_traversal;
+  _prev_stw_traversal =
+    AdaptiveSizePolicy::calc_active_workers(ParallelGCThreads,
+                                            active_workers,
+                                            Threads::number_of_non_daemon_threads());
+  return _prev_stw_traversal;
+}
+
+// Calculate workers for concurent traversal GC
+uint ShenandoahWorkerPolicy::calc_workers_for_conc_traversal() {
+  uint active_workers = (_prev_conc_traversal == 0) ? ConcGCThreads : _prev_conc_traversal;
+  _prev_conc_traversal =
+    AdaptiveSizePolicy::calc_active_conc_workers(ConcGCThreads,
+                                                 active_workers,
+                                                 Threads::number_of_non_daemon_threads());
+  return _prev_conc_traversal;
 }
 
 // Calculate workers for concurrent reference update

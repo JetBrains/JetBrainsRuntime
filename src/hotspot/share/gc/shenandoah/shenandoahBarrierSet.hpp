@@ -111,10 +111,12 @@ public:
   virtual void verify_safe_oop(oop p);
 #endif
 
+  static void enqueue(oop obj);
+
 private:
   bool need_update_refs_barrier();
 
-  template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
+  template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
   void write_ref_array_loop(HeapWord* start, size_t count);
 
   oop write_barrier_impl(oop obj);
@@ -124,7 +126,7 @@ public:
   void interpreter_read_barrier(MacroAssembler* masm, Register dst);
   void interpreter_read_barrier_not_null(MacroAssembler* masm, Register dst);
   void interpreter_write_barrier(MacroAssembler* masm, Register dst);
-  void interpreter_storeval_barrier(MacroAssembler* masm, Register dst);
+  void interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp, Register thread);
   void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
 
 private:

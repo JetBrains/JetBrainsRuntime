@@ -4211,6 +4211,106 @@ void GraphKit::g1_write_barrier_pre(bool do_load,
   g1_write_barrier_pre_helper(*this, adr);
 }
 
+void GraphKit::shenandoah_enqueue_barrier(Node* pre_val) {
+
+  // Some sanity checks
+  assert(pre_val != NULL, "must be loaded already");
+  // Nothing to be done if pre_val is null.
+  if (pre_val->bottom_type()->higher_equal(TypePtr::NULL_PTR)) return;
+  assert(pre_val->bottom_type()->basic_type() == T_OBJECT, "or we shouldn't be here");
+
+  IdealKit ideal(this, true);
+
+  Node* tls = __ thread(); // ThreadLocalStorage
+
+  Node* no_base = __ top();
+  Node* zero  = __ ConI(0);
+  Node* zeroX = __ ConX(0);
+
+  float likely  = PROB_LIKELY(0.999);
+  float unlikely  = PROB_UNLIKELY(0.999);
+
+  // Offsets into the thread
+  const int gc_state_offset = in_bytes(JavaThread::gc_state_offset());
+  const int index_offset    = in_bytes(JavaThread::satb_mark_queue_offset() +  // 656
+                                       SATBMarkQueue::byte_offset_of_index());
+  const int buffer_offset   = in_bytes(JavaThread::satb_mark_queue_offset() +  // 652
+                                       SATBMarkQueue::byte_offset_of_buf());
+
+  // Now the actual pointers into the thread
+  Node* gc_state_adr = __ AddP(no_base, tls, __ ConX(gc_state_offset));
+  Node* buffer_adr   = __ AddP(no_base, tls, __ ConX(buffer_offset));
+  Node* index_adr    = __ AddP(no_base, tls, __ ConX(index_offset));
+
+  const Type* obj_type = pre_val->bottom_type();
+  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
+    // dunno if it's NULL or not.
+  // if (pre_val != NULL)
+  __ if_then(pre_val, BoolTest::ne, null()); {
+
+    // Now some of the values
+    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+    // if (!marking)
+    __ if_then(marking, BoolTest::ne, zero, unlikely); {
+      BasicType index_bt = TypeX_X->basic_type();
+      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
+      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
+
+      // is the queue for this thread full?
+      __ if_then(index, BoolTest::ne, zeroX, likely); {
+
+        // decrement the index
+        Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
+
+        // Now get the buffer location we will log the previous value into and store it
+        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
+        Node *log_addr = __ AddP(no_base, buffer, next_index);
+        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
+        // update the index
+        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
+
+      } __ else_(); {
+        // logging buffer is full, call the runtime
+        const TypeFunc *tf = OptoRuntime::g1_wb_pre_Type();
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
+      } __ end_if();  // (!index)
+    } __ end_if();  // (!marking)
+  } __ end_if();  // (pre_val != NULL)
+  } else {
+    // We know it is not null.
+    // Now some of the values
+    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BOOL, T_BOOLEAN, Compile::AliasIdxRaw);
+
+    // if (!marking)
+    __ if_then(marking, BoolTest::ne, zero, unlikely); {
+      BasicType index_bt = TypeX_X->basic_type();
+      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
+      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
+
+      // is the queue for this thread full?
+      __ if_then(index, BoolTest::ne, zeroX, likely); {
+
+        // decrement the index
+        Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
+
+        // Now get the buffer location we will log the previous value into and store it
+        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
+        Node *log_addr = __ AddP(no_base, buffer, next_index);
+        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
+        // update the index
+        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
+
+      } __ else_(); {
+        // logging buffer is full, call the runtime
+        const TypeFunc *tf = OptoRuntime::g1_wb_pre_Type();
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
+      } __ end_if();  // (!index)
+    } __ end_if();  // (!marking)
+  }
+  // Final sync IdealKit and GraphKit.
+  final_sync(ideal);
+}
+
 void GraphKit::shenandoah_write_barrier_pre(bool do_load,
                                             Node* obj,
                                             Node* adr,
@@ -4781,11 +4881,14 @@ Node* GraphKit::shenandoah_read_barrier(Node* obj) {
 
 Node* GraphKit::shenandoah_storeval_barrier(Node* obj) {
   if (UseShenandoahGC) {
-    if (ShenandoahStoreValWriteBarrier) {
-      return shenandoah_write_barrier_impl(obj);
+    if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+      obj = shenandoah_write_barrier(obj);
+    }
+    if (ShenandoahStoreValEnqueueBarrier && !ShenandoahMWF) {
+      shenandoah_enqueue_barrier(obj);
     }
     if (ShenandoahStoreValReadBarrier) {
-      return shenandoah_read_barrier_impl(obj, true, false, false);
+      obj = shenandoah_read_barrier_impl(obj, true, false, false);
     }
   }
   return obj;
@@ -4843,7 +4946,7 @@ Node* GraphKit::shenandoah_read_barrier_impl(Node* obj, bool use_ctrl, bool use_
   }
 }
 
-static Node* shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const TypePtr* adr_type) {
+Node* GraphKit::shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const TypePtr* adr_type) {
   ShenandoahWriteBarrierNode* wb = new ShenandoahWriteBarrierNode(kit.C, kit.control(), kit.memory(adr_type), obj);
   Node* n = kit.gvn().transform(wb);
   if (n == wb) { // New barrier needs memory projection.
@@ -4857,7 +4960,11 @@ static Node* shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const Typ
 Node* GraphKit::shenandoah_write_barrier(Node* obj) {
 
   if (UseShenandoahGC && ShenandoahWriteBarrier) {
-    return shenandoah_write_barrier_impl(obj);
+    obj = shenandoah_write_barrier_impl(obj);
+    if (ShenandoahStoreValEnqueueBarrier && ShenandoahMWF) {
+      shenandoah_enqueue_barrier(obj);
+    }
+    return obj;
   } else {
     return obj;
   }

@@ -183,6 +183,47 @@ public:
     degen_gc_gross,
     degen_gc,
 
+    init_traversal_gc_gross,
+    init_traversal_gc,
+    traversal_gc_prepare,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    init_traversal_gc_work,
+    init_traversal_gc_thread_roots,
+    init_traversal_gc_code_roots,
+    init_traversal_gc_string_table_roots,
+    init_traversal_gc_universe_roots,
+    init_traversal_gc_jni_roots,
+    init_traversal_gc_jni_weak_roots,
+    init_traversal_gc_synchronizer_roots,
+    init_traversal_gc_flat_profiler_roots,
+    init_traversal_gc_management_roots,
+    init_traversal_gc_system_dict_roots,
+    init_traversal_gc_cldg_roots,
+    init_traversal_gc_jvmti_roots,
+    init_traversal_gc_string_dedup_roots,
+
+    final_traversal_gc_gross,
+    final_traversal_gc,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    final_traversal_gc_work,
+    final_traversal_gc_thread_roots,
+    final_traversal_gc_code_roots,
+    final_traversal_gc_string_table_roots,
+    final_traversal_gc_universe_roots,
+    final_traversal_gc_jni_roots,
+    final_traversal_gc_jni_weak_roots,
+    final_traversal_gc_synchronizer_roots,
+    final_traversal_gc_flat_profiler_roots,
+    final_traversal_gc_management_roots,
+    final_traversal_gc_system_dict_roots,
+    final_traversal_gc_cldg_roots,
+    final_traversal_gc_jvmti_roots,
+    final_traversal_gc_string_dedup_roots,
+
+    traversal_gc_cleanup,
+
     full_gc_gross,
     full_gc,
     full_gc_heapdumps,
@@ -238,6 +279,7 @@ public:
     conc_cleanup_recycle,
     conc_cleanup_reset_bitmaps,
     conc_partial,
+    conc_traversal,
 
     // Unclassified
     pause_other,

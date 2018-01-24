@@ -37,6 +37,8 @@ private:
   static uint _prev_degengc;
   static uint _prev_stw_partial;
   static uint _prev_conc_partial;
+  static uint _prev_stw_traversal;
+  static uint _prev_conc_traversal;
   static uint _prev_conc_update_ref;
   static uint _prev_par_update_ref;
   static uint _prev_conc_cleanup;
@@ -65,6 +67,12 @@ public:
 
   // Calculate workers for concurrent partial GC
   static uint calc_workers_for_conc_partial();
+
+  // Calculate workers for Stop-the-world traversal GC
+  static uint calc_workers_for_stw_traversal();
+
+  // Calculate workers for concurrent traversal GC
+  static uint calc_workers_for_conc_traversal();
 
   // Calculate workers for concurrent reference update
   static uint calc_workers_for_conc_update_ref();

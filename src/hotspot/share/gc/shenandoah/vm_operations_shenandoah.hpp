@@ -38,6 +38,8 @@
 //       - VM_ShenandoahFullGC: do full GC
 //       - VM_ShenandoahInitPartialGC: init partial GC
 //       - VM_ShenandoahFinalPartialGC: finish partial GC
+//       - VM_ShenandoahInitTraversalGC: init traversal GC
+//       - VM_ShenandoahFinalTraversalGC: finish traversal GC
 
 class VM_ShenandoahOperation : public VM_Operation {
 protected:
@@ -117,6 +119,22 @@ public:
   VM_ShenandoahFinalPartialGC() : VM_ShenandoahOperation() {};
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFinalPartialGC; }
   const char* name()             const { return "Shenandoah Final Partial Collection"; }
+  virtual void doit();
+};
+
+class VM_ShenandoahInitTraversalGC: public VM_ShenandoahOperation {
+public:
+  VM_ShenandoahInitTraversalGC() : VM_ShenandoahOperation() {};
+  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahInitTraversalGC; }
+  const char* name()             const { return "Shenandoah Init Traversal Collection"; }
+  virtual void doit();
+};
+
+class VM_ShenandoahFinalTraversalGC: public VM_ShenandoahReferenceOperation {
+public:
+  VM_ShenandoahFinalTraversalGC() : VM_ShenandoahReferenceOperation() {};
+  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFinalTraversalGC; }
+  const char* name()             const { return "Shenandoah Final Traversal Collection"; }
   virtual void doit();
 };
 

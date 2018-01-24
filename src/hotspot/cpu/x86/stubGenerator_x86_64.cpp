@@ -5309,7 +5309,7 @@ class StubGenerator: public StubCodeGenerator {
                                                 throw_NullPointerException_at_call));
 
     // entry points that are platform specific
-    if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier)) {
+    if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier)) {
          StubRoutines::x86::_shenandoah_wb = generate_shenandoah_wb(false, true);
          StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
     }

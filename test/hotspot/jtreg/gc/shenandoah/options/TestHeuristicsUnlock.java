@@ -50,6 +50,7 @@ public class TestHeuristicsUnlock {
         testWith("connected",       Mode.EXPERIMENTAL);
         testWith("generational",    Mode.EXPERIMENTAL);
         testWith("LRU",             Mode.EXPERIMENTAL);
+        testWith("traversal",       Mode.EXPERIMENTAL);
 
         testWith("aggressive",      Mode.DIAGNOSTIC);
         testWith("passive",         Mode.DIAGNOSTIC);

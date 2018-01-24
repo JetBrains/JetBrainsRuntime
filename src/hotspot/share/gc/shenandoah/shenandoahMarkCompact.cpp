@@ -37,6 +37,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
@@ -132,30 +133,36 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       ShenandoahGCPhase prepare_phase(ShenandoahPhaseTimings::full_gc_prepare);
       // Full GC is supposed to recover from any GC state:
 
-      // a. Cancel concurrent mark, if in progress
-      if (heap->is_concurrent_mark_in_progress()) {
-        heap->concurrentMark()->cancel();
-        heap->stop_concurrent_marking();
-      }
-      assert(!heap->is_concurrent_mark_in_progress(), "sanity");
-
-      // b1. Cancel evacuation, if in progress
+      // a1. Cancel evacuation, if in progress
       if (heap->is_evacuation_in_progress()) {
         heap->set_evacuation_in_progress_at_safepoint(false);
       }
       assert(!heap->is_evacuation_in_progress(), "sanity");
 
-      // b2. Cancel update-refs, if in progress
+      // a2. Cancel update-refs, if in progress
       if (heap->is_update_refs_in_progress()) {
         heap->set_update_refs_in_progress(false);
       }
       assert(!heap->is_update_refs_in_progress(), "sanity");
 
-      // b3. Cancel concurrent partial GC, if in progress
+      // a3. Cancel concurrent partial GC, if in progress
       if (heap->is_concurrent_partial_in_progress()) {
         heap->partial_gc()->reset();
         heap->set_concurrent_partial_in_progress(false);
       }
+
+      // a3. Cancel concurrent traversal GC, if in progress
+      if (heap->is_concurrent_traversal_in_progress()) {
+        heap->traversal_gc()->reset();
+        heap->set_concurrent_traversal_in_progress(false);
+      }
+
+      // b. Cancel concurrent mark, if in progress
+      if (heap->is_concurrent_mark_in_progress()) {
+        heap->concurrentMark()->cancel();
+        heap->stop_concurrent_marking();
+      }
+      assert(!heap->is_concurrent_mark_in_progress(), "sanity");
 
       // c. Reset the bitmaps for new marking
       heap->reset_next_mark_bitmap();

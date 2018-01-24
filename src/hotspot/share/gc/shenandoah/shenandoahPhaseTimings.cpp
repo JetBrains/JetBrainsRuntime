@@ -73,6 +73,8 @@ void ShenandoahPhaseTimings::record_workers_end(Phase phase) {
             phase == update_roots ||
             phase == init_partial_gc_work ||
             phase == final_partial_gc_work ||
+            phase == init_traversal_gc_work ||
+            phase == final_traversal_gc_work ||
             phase == final_update_refs_roots ||
             phase == full_gc_roots ||
             phase == _num_phases,
@@ -273,6 +275,42 @@ void ShenandoahPhaseTimings::init_phase_names() {
 
   _phase_names[partial_gc_cleanup]              = "  Cleanup";
 
+  _phase_names[init_traversal_gc_gross]           = "Pause Init Traversal (G)";
+  _phase_names[init_traversal_gc]                 = "Pause Init Traversal (N)";
+  _phase_names[traversal_gc_prepare]              = "  Prepare";
+  _phase_names[init_traversal_gc_work]            = "  Work";
+  _phase_names[init_traversal_gc_thread_roots]        = "    TI: Thread Roots";
+  _phase_names[init_traversal_gc_code_roots]          = "    TI: Code Cache Roots";
+  _phase_names[init_traversal_gc_string_table_roots]  = "    TI: String Table Roots";
+  _phase_names[init_traversal_gc_universe_roots]      = "    TI: Universe Roots";
+  _phase_names[init_traversal_gc_jni_roots]           = "    TI: JNI Roots";
+  _phase_names[init_traversal_gc_jni_weak_roots]      = "    TI: JNI Weak Roots";
+  _phase_names[init_traversal_gc_synchronizer_roots]  = "    TI: Synchronizer Roots";
+  _phase_names[init_traversal_gc_flat_profiler_roots] = "    TI: Flat Profiler Roots";
+  _phase_names[init_traversal_gc_management_roots]    = "    TI: Management Roots";
+  _phase_names[init_traversal_gc_system_dict_roots]   = "    TI: System Dict Roots";
+  _phase_names[init_traversal_gc_cldg_roots]          = "    TI: CLDG Roots";
+  _phase_names[init_traversal_gc_jvmti_roots]         = "    TI: JVMTI Roots";
+  _phase_names[init_traversal_gc_string_dedup_roots]  = "    TI: String Dedup Roots";
+  _phase_names[final_traversal_gc_gross]          = "Pause Final Traversal (G)";
+  _phase_names[final_traversal_gc]                = "Pause Final Traversal (N)";
+  _phase_names[final_traversal_gc_work]           = "  Work";
+  _phase_names[final_traversal_gc_thread_roots]        = "    TF: Thread Roots";
+  _phase_names[final_traversal_gc_code_roots]          = "    TF: Code Cache Roots";
+  _phase_names[final_traversal_gc_string_table_roots]  = "    TF: String Table Roots";
+  _phase_names[final_traversal_gc_universe_roots]      = "    TF: Universe Roots";
+  _phase_names[final_traversal_gc_jni_roots]           = "    TF: JNI Roots";
+  _phase_names[final_traversal_gc_jni_weak_roots]      = "    TF: JNI Weak Roots";
+  _phase_names[final_traversal_gc_synchronizer_roots]  = "    TF: Synchronizer Roots";
+  _phase_names[final_traversal_gc_flat_profiler_roots] = "    TF: Flat Profiler Roots";
+  _phase_names[final_traversal_gc_management_roots]    = "    TF: Management Roots";
+  _phase_names[final_traversal_gc_system_dict_roots]   = "    TF: System Dict Roots";
+  _phase_names[final_traversal_gc_cldg_roots]          = "    TF: CLDG Roots";
+  _phase_names[final_traversal_gc_jvmti_roots]         = "    TF: JVMTI Roots";
+  _phase_names[final_traversal_gc_string_dedup_roots]  = "    TF: String Dedup Roots";
+
+  _phase_names[traversal_gc_cleanup]              = "  Cleanup";
+
   _phase_names[pause_other]                     = "Pause Other";
 
   _phase_names[conc_mark]                       = "Concurrent Marking";
@@ -283,6 +321,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[conc_cleanup_reset_bitmaps]      = "  Reset Bitmaps";
   _phase_names[conc_other]                      = "Concurrent Other";
   _phase_names[conc_partial]                    = "Concurrent Partial";
+  _phase_names[conc_traversal]                  = "Concurrent Traversal";
 
   _phase_names[init_update_refs_gross]          = "Pause Init  Update Refs (G)";
   _phase_names[init_update_refs]                = "Pause Init  Update Refs (N)";

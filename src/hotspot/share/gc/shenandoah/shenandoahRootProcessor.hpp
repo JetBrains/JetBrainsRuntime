@@ -80,6 +80,7 @@ class ShenandoahRootProcessor : public StackObj {
                           CLDClosure* scan_weak_clds,
                           CodeBlobClosure* scan_strong_code,
                           CodeBlobClosure* nmethods_cl,
+                          ThreadClosure* thread_cl,
                           uint worker_i);
 
   void process_vm_roots(OopClosure* scan_non_heap_roots,

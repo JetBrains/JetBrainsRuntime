@@ -118,6 +118,9 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _shenandoah_partial_gc:
       return "Shenandoah Partial GC";
 
+    case _shenandoah_traversal_gc:
+      return "Shenandoah Traversal GC";
+
     case _dcmd_gc_run:
       return "Diagnostic Command";
 

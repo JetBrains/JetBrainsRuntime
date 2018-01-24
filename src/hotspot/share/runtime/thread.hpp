@@ -2121,7 +2121,7 @@ class Threads: AllStatic {
   // This version may only be called by sequential code.
   static void oops_do(OopClosure* f, CodeBlobClosure* cf);
   // This version may be called by sequential or parallel code.
-  static void possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl = NULL);
+  static void possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl = NULL, ThreadClosure* thread_cl = NULL);
   // This creates a list of GCTasks, one per thread.
   static void create_thread_roots_tasks(GCTaskQueue* q);
   // This creates a list of GCTasks, one per thread, for marking objects.

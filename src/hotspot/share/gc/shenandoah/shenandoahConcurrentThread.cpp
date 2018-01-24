@@ -30,6 +30,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
@@ -109,6 +110,9 @@ void ShenandoahConcurrentThread::run_service() {
       if (policy->should_start_partial_gc()) {
         mode = concurrent_partial;
         cause = GCCause::_shenandoah_partial_gc;
+      } else if (policy->should_start_traversal_gc()) {
+        mode = concurrent_traversal;
+        cause = GCCause::_shenandoah_traversal_gc;
       } else if (policy->should_start_concurrent_mark(heap->used(), heap->capacity())) {
         mode = concurrent_normal;
         cause = GCCause::_shenandoah_concurrent_gc;
@@ -129,6 +133,9 @@ void ShenandoahConcurrentThread::run_service() {
         break;
       case concurrent_partial:
         service_concurrent_partial_cycle(cause);
+        break;
+      case concurrent_traversal:
+        service_concurrent_traversal_cycle(cause);
         break;
       case concurrent_normal:
         service_concurrent_normal_cycle(cause);
@@ -212,6 +219,28 @@ void ShenandoahConcurrentThread::service_concurrent_partial_cycle(GCCause::Cause
   heap->entry_cleanup();
 
   heap->shenandoahPolicy()->record_success_partial();
+}
+
+void ShenandoahConcurrentThread::service_concurrent_traversal_cycle(GCCause::Cause cause) {
+  GCIdMark gc_id_mark;
+  ShenandoahGCSession session;
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
+
+  heap->vmop_entry_init_traversal();
+
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
+
+  heap->entry_traversal();
+
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
+
+  heap->vmop_entry_final_traversal();
+
+  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
+
+  heap->entry_cleanup_bitmaps();
 }
 
 void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause cause) {

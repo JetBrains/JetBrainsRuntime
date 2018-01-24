@@ -1909,7 +1909,7 @@ void JavaThread::exit(bool destroy_vm, ExitType exit_type) {
   // from the list of active threads. We must do this after any deferred
   // card marks have been flushed (above) so that any entries that are
   // added to the thread's dirty card queue as a result are not lost.
-  if (UseG1GC || (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahKeepAliveBarrier))) {
+  if (UseG1GC || (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahKeepAliveBarrier || ShenandoahStoreValEnqueueBarrier))) {
     flush_barrier_queues();
   }
   if (UseShenandoahGC && UseTLAB && gclab().is_initialized()) {
@@ -1990,7 +1990,7 @@ void JavaThread::cleanup_failed_attach_current_thread() {
   }
 
 #if INCLUDE_ALL_GCS
-  if (UseG1GC || (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahKeepAliveBarrier))) {
+  if (UseG1GC || (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahKeepAliveBarrier || ShenandoahStoreValEnqueueBarrier))) {
     flush_barrier_queues();
   }
   if (UseShenandoahGC && UseTLAB && gclab().is_initialized()) {
@@ -4363,18 +4363,24 @@ private:
   OopClosure* _f;
   CodeBlobClosure* _cf;
   CodeBlobClosure* _nmethods_cl;
+  ThreadClosure* _thread_cl;
 public:
-  ParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) : _f(f), _cf(cf), _nmethods_cl(nmethods_cl) {}
+  ParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl, ThreadClosure* thread_cl) :
+          _f(f), _cf(cf), _nmethods_cl(nmethods_cl), _thread_cl(thread_cl) {}
   void do_thread(Thread* t) {
     t->oops_do(_f, _cf);
+    if (_thread_cl != NULL) {
+      _thread_cl->do_thread(t);
+    }
     if (_nmethods_cl != NULL && t->is_Java_thread() && !t->is_Code_cache_sweeper_thread()) {
       ((JavaThread*)t)->nmethods_do(_nmethods_cl);
     }
   }
 };
 
-void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl) {
-  ParallelOopsDoThreadClosure tc(f, cf, nmethods_cl);
+void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl,
+                                        ThreadClosure* thread_cl) {
+  ParallelOopsDoThreadClosure tc(f, cf, nmethods_cl, thread_cl);
   possibly_parallel_threads_do(is_par, &tc);
 }
 

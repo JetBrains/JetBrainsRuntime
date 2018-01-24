@@ -84,6 +84,7 @@ class GCCause : public AllStatic {
     _shenandoah_allocation_failure_evac,
     _shenandoah_concurrent_gc,
     _shenandoah_partial_gc,
+    _shenandoah_traversal_gc,
 
     _last_gc_cause
   };

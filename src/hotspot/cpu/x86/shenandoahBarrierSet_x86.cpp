@@ -65,7 +65,7 @@ void ShenandoahBarrierSet::interpreter_write_barrier(MacroAssembler* masm, Regis
 }
 
 void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
 #ifdef _LP64
   assert(dst != rscratch1, "different regs");
 
@@ -149,13 +149,32 @@ void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, 
 #endif
 }
 
-void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst) {
-  if (ShenandoahStoreValWriteBarrier) {
+void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp, Register thread) {
+  if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
     Label is_null;
     __ testptr(dst, dst);
     __ jcc(Assembler::zero, is_null);
     interpreter_write_barrier_impl(masm, dst);
     __ bind(is_null);
+  }
+
+  if (ShenandoahStoreValEnqueueBarrier) {
+    // The set of registers to be saved+restored is the same as in the write-barrier above.
+    // Those are the commonly used registers in the interpreter.
+    __ push(rbx);
+    __ push(rcx);
+    __ push(rdx);
+    __ push(c_rarg1);
+    __ subptr(rsp, 2 * Interpreter::stackElementSize);
+    __ movdbl(Address(rsp, 0), xmm0);
+
+    __ g1_write_barrier_pre(noreg, dst, r15_thread, tmp, true, false);
+    __ movdbl(xmm0, Address(rsp, 0));
+    __ addptr(rsp, 2 * Interpreter::stackElementSize);
+    __ pop(c_rarg1);
+    __ pop(rdx);
+    __ pop(rcx);
+    __ pop(rbx);
   }
   if (ShenandoahStoreValReadBarrier) {
     interpreter_read_barrier_impl(masm, dst);

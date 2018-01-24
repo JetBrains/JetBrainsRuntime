@@ -1616,7 +1616,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
           break;
         }
 
-        if (bs->kind() == BarrierSet::ShenandoahBarrierSet && !ShenandoahSATBBarrier && !ShenandoahConditionalSATBBarrier) {
+        if (bs->kind() == BarrierSet::ShenandoahBarrierSet && !(ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahStoreValEnqueueBarrier)) {
           break;
         }
 

@@ -5672,7 +5672,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 }
 #else
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "Should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
 
   Label done;
 

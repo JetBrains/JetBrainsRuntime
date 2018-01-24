@@ -65,6 +65,7 @@ public class TestPeriodicGC {
            "connected",
            "generational",
            "LRU",
+           "traversal",
         };
 
         String[] disabled = new String[] {

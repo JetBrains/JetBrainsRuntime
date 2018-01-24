@@ -100,8 +100,7 @@ void ShenandoahRootProcessor::process_strong_roots(OopClosure* oops,
                                                    ThreadClosure* thread_cl,
                                                    uint worker_id) {
 
-  assert(thread_cl == NULL, "not implemented yet");
-  process_java_roots(oops, clds, NULL, blobs, _threads_nmethods_cl, worker_id);
+  process_java_roots(oops, clds, NULL, blobs, _threads_nmethods_cl, thread_cl, worker_id);
   process_vm_roots(oops, NULL, weak_oops, worker_id);
 
   _process_strong_tasks->all_tasks_completed(n_workers());
@@ -114,9 +113,8 @@ void ShenandoahRootProcessor::process_all_roots(OopClosure* oops,
                                                 ThreadClosure* thread_cl,
                                                 uint worker_id) {
 
-  assert(thread_cl == NULL, "not implemented yet");
   ShenandoahWorkerTimings* worker_times = ShenandoahHeap::heap()->phase_timings()->worker_times();
-  process_java_roots(oops, clds, clds, blobs, _threads_nmethods_cl, worker_id);
+  process_java_roots(oops, clds, clds, blobs, _threads_nmethods_cl, thread_cl, worker_id);
   process_vm_roots(oops, oops, weak_oops, worker_id);
 
   if (blobs != NULL) {
@@ -132,6 +130,7 @@ void ShenandoahRootProcessor::process_java_roots(OopClosure* strong_roots,
                                                  CLDClosure* weak_clds,
                                                  CodeBlobClosure* strong_code,
                                                  CodeBlobClosure* nmethods_cl,
+                                                 ThreadClosure* thread_cl,
                                                  uint worker_id)
 {
   ShenandoahWorkerTimings* worker_times = ShenandoahHeap::heap()->phase_timings()->worker_times();
@@ -147,7 +146,7 @@ void ShenandoahRootProcessor::process_java_roots(OopClosure* strong_roots,
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::ThreadRoots, worker_id);
     bool is_par = n_workers() > 1;
     ResourceMark rm;
-    Threads::possibly_parallel_oops_do(is_par, strong_roots, strong_code, nmethods_cl);
+    Threads::possibly_parallel_oops_do(is_par, strong_roots, strong_code, nmethods_cl, thread_cl);
   }
 }
 

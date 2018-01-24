@@ -782,6 +782,7 @@ class GraphKit : public Phase {
                             const TypeOopPtr* val_type,
                             Node* pre_val,
                             BasicType bt);
+  void shenandoah_enqueue_barrier(Node* val);
 
   void g1_write_barrier_post(Node* store,
                              Node* obj,
@@ -939,6 +940,7 @@ class GraphKit : public Phase {
 private:
   Node* shenandoah_read_barrier_impl(Node* obj, bool use_ctrl, bool use_mem, bool allow_fromspace);
   Node* shenandoah_write_barrier_impl(Node* obj);
+  Node* shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const TypePtr* adr_type);
 };
 
 // Helper class to support building of control flow branches. Upon

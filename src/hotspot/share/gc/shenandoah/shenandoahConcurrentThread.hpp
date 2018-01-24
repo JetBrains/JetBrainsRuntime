@@ -50,6 +50,7 @@ private:
   typedef enum {
     none,
     concurrent_partial,
+    concurrent_traversal,
     concurrent_normal,
     stw_degenerated,
     stw_full,
@@ -80,6 +81,7 @@ private:
   void service_stw_full_cycle(GCCause::Cause cause);
   void service_stw_degenerated_cycle(GCCause::Cause cause, ShenandoahHeap::ShenandoahDegenerationPoint point);
   void service_concurrent_partial_cycle(GCCause::Cause cause);
+  void service_concurrent_traversal_cycle(GCCause::Cause cause);
 
   bool try_set_alloc_failure_gc();
   void notify_alloc_failure_waiters();

@@ -177,6 +177,14 @@ public:
     return false;
   }
 
+  virtual bool should_start_traversal_gc() {
+    return false;
+  }
+
+  virtual bool can_do_traversal_gc() {
+    return false;
+  }
+
   virtual bool should_degenerate_cycle() {
     return _degenerated_cycles_in_a_row <= ShenandoahFullGCThreshold;
   }
@@ -1289,6 +1297,86 @@ public:
 
 };
 
+class ShenandoahTraversalHeuristics : public ShenandoahHeuristics {
+public:
+  ShenandoahTraversalHeuristics() : ShenandoahHeuristics() {
+    FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
+    FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
+    FLAG_SET_DEFAULT(ShenandoahConditionalSATBBarrier, false);
+    FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
+    FLAG_SET_DEFAULT(ShenandoahStoreValWriteBarrier,   false);
+    FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, true);
+    FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
+    FLAG_SET_DEFAULT(ShenandoahAsmWB,                  true);
+    FLAG_SET_DEFAULT(ShenandoahBarriersForConst,       true);
+    FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
+  }
+
+  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+    return false;
+  }
+
+  virtual bool is_experimental() {
+    return true;
+  }
+
+  virtual bool is_diagnostic() {
+    return false;
+  }
+
+  virtual bool can_do_traversal_gc() {
+    return true;
+  }
+
+  virtual const char* name() {
+    return "traversal";
+  }
+
+  virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahHeapRegionSet* regions = ShenandoahHeap::heap()->regions();
+    size_t active = regions->active_regions();
+    for (size_t i = 0; i < active; i++) {
+      ShenandoahHeapRegion *r = regions->get(i);
+      assert(!r->is_root(), "must not be root region");
+      assert(!collection_set->is_in(r), "must not yet be in cset");
+      size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
+      if ((r->is_regular() && r->used() > 0) && garbage_percent > ShenandoahGarbageThreshold) {
+        collection_set->add_region(r);
+      }
+      heap->set_next_top_at_mark_start(r->bottom(), r->end()); // No implicitely live stuff.
+      heap->set_complete_top_at_mark_start(r->bottom(), r->top()); // For debugging purposes
+      r->clear_live_data();
+    }
+    collection_set->update_region_status();
+  }
+
+  virtual bool should_start_traversal_gc() {
+
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+    if (heap->has_forwarded_objects()) return false;
+
+    double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
+    bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
+    if (periodic_gc) {
+      log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
+                        last_time_ms, ShenandoahGuaranteedGCInterval);
+      return true;
+    }
+
+    size_t capacity  = heap->capacity();
+    size_t used      = heap->used();
+    return 100 - (used * 100 / capacity) < ShenandoahFreeThreshold;
+  }
+
+  virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
+                                                     RegionData* data, size_t data_size,
+                                                     size_t trash, size_t free) {
+    ShouldNotReachHere();
+  }
+};
+
 
 ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _cycle_counter(0),
@@ -1330,7 +1418,9 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
     } else if (strcmp(ShenandoahGCHeuristics, "LRU") == 0) {
       _heuristics = new ShenandoahAdaptiveHeuristics();
       _minor_heuristics = new ShenandoahLRUPartialHeuristics();
-     } else {
+    } else if (strcmp(ShenandoahGCHeuristics, "traversal") == 0) {
+      _heuristics = new ShenandoahTraversalHeuristics();
+    } else {
       vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option");
     }
 
@@ -1361,7 +1451,12 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
     if (ShenandoahStoreValWriteBarrier && ShenandoahStoreValReadBarrier) {
       vm_exit_during_initialization("Cannot use both ShenandoahStoreValWriteBarrier and ShenandoahStoreValReadBarrier");
     }
-
+    if (ShenandoahStoreValEnqueueBarrier && ShenandoahStoreValReadBarrier) {
+      vm_exit_during_initialization("Cannot use both ShenandoahStoreValEnqueueBarrier and ShenandoahStoreValReadBarrier");
+    }
+    if (ShenandoahStoreValWriteBarrier && ShenandoahStoreValEnqueueBarrier) {
+      vm_exit_during_initialization("Cannot use both ShenandoahStoreValWriteBarrier and ShenandoahStoreValEnqueueBarrier");
+    }
     if (_minor_heuristics != NULL) {
       log_info(gc, init)("Shenandoah heuristics: %s minor with %s major",
                          _minor_heuristics->name(), _heuristics->name());
@@ -1538,6 +1633,14 @@ bool ShenandoahCollectorPolicy::can_do_partial_gc() {
   } else {
     return false; // no minor heuristics -> no partial gc
   }
+}
+
+bool ShenandoahCollectorPolicy::should_start_traversal_gc() {
+  return _heuristics->should_start_traversal_gc();
+}
+
+bool ShenandoahCollectorPolicy::can_do_traversal_gc() {
+  return _heuristics->can_do_traversal_gc();
 }
 
 void ShenandoahCollectorPolicy::record_cycle_start() {

@@ -35,6 +35,7 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=connected          -XX:+ShenandoahVerify HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=generational       -XX:+ShenandoahVerify HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=LRU                -XX:+ShenandoahVerify HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=traversal          -XX:+ShenandoahVerify HeapUncommit
  *
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB                                               -XX:+ShenandoahVerify HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:-UseTLAB                            -XX:+UseLargePages -XX:+ShenandoahVerify HeapUncommit
@@ -53,6 +54,7 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=connected    HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=generational HeapUncommit
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=LRU          HeapUncommit
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:ShenandoahUncommitDelay=0 -XX:ShenandoahGCHeuristics=traversal    HeapUncommit
  */
 
 import java.util.Random;

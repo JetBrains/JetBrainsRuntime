@@ -194,7 +194,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
           __ store_heap_oop_null(Address(rdx, 0));
         } else {
           // For Shenandoah, make sure we only store refs into to-space.
-          oopDesc::bs()->interpreter_storeval_barrier(_masm, val);
+          oopDesc::bs()->interpreter_storeval_barrier(_masm, val, rtmp, rthread);
 
           // G1 barrier needs uncompressed oop for region cross check.
           Register new_val = val;

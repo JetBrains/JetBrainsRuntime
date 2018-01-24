@@ -415,6 +415,10 @@ inline bool ShenandoahHeap::is_concurrent_partial_in_progress() const {
   return _gc_state.is_set(PARTIAL_BITPOS);
 }
 
+inline bool ShenandoahHeap::is_concurrent_traversal_in_progress() const {
+  return _gc_state.is_set(TRAVERSAL_BITPOS);
+}
+
 inline bool ShenandoahHeap::is_evacuation_in_progress() const {
   return _gc_state.is_set(EVACUATION_BITPOS);
 }

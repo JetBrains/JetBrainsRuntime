@@ -29,7 +29,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "runtime/interfaceSupport.hpp"
 
-template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
+template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
 class ShenandoahUpdateRefsForOopClosure: public ExtendedOopClosure {
 private:
   ShenandoahHeap* _heap;
@@ -39,8 +39,8 @@ private:
     if (STOREVAL_WRITE_BARRIER) {
       bool evac;
       o = _heap->evac_update_oop_ref(p, evac);
-      if (evac) {
-        G1SATBCardTableModRefBS::enqueue(o);
+      if ((ALWAYS_ENQUEUE || evac) && !oopDesc::is_null(o)) {
+        ShenandoahBarrierSet::enqueue(o);
       }
     } else {
       o = _heap->maybe_update_oop_ref(p);
@@ -167,7 +167,7 @@ bool ShenandoahBarrierSet::write_prim_needs_barrier(HeapWord* hw, size_t s, juin
 }
 
 bool ShenandoahBarrierSet::need_update_refs_barrier() {
-  if (UseShenandoahMatrix) {
+  if (UseShenandoahMatrix || _heap->is_concurrent_traversal_in_progress()) {
     return true;
   }
   if (_heap->shenandoahPolicy()->update_refs()) {
@@ -181,10 +181,10 @@ void ShenandoahBarrierSet::write_ref_array_work(MemRegion r) {
   ShouldNotReachHere();
 }
 
-template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
+template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
 void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
   assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
-  ShenandoahUpdateRefsForOopClosure<UPDATE_MATRIX, STOREVAL_WRITE_BARRIER> cl;
+  ShenandoahUpdateRefsForOopClosure<UPDATE_MATRIX, STOREVAL_WRITE_BARRIER, ALWAYS_ENQUEUE> cl;
   T* dst = (T*) start;
   for (size_t i = 0; i < count; i++) {
     cl.do_oop(dst++);
@@ -199,24 +199,32 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (UseCompressedOops) {
     if (UseShenandoahMatrix) {
       if (_heap->is_concurrent_partial_in_progress()) {
-        write_ref_array_loop<narrowOop, true, true>(start, count);
+        write_ref_array_loop<narrowOop, true, true, false>(start, count);
       } else {
-        write_ref_array_loop<narrowOop, true, false>(start, count);
+        write_ref_array_loop<narrowOop, true, false, false>(start, count);
       }
     } else {
       assert(! _heap->is_concurrent_partial_in_progress(), "partial GC needs matrix");
-      write_ref_array_loop<narrowOop, false, false>(start, count);
+      if (!_heap->is_concurrent_traversal_in_progress()) {
+        write_ref_array_loop<narrowOop, false, true, true>(start, count);
+      } else {
+        write_ref_array_loop<narrowOop, false, false, false>(start, count);
+      }
     }
   } else {
     if (UseShenandoahMatrix) {
       if (_heap->is_concurrent_partial_in_progress()) {
-        write_ref_array_loop<oop, true, true>(start, count);
+        write_ref_array_loop<oop, true, true, false>(start, count);
       } else {
-        write_ref_array_loop<oop, true, false>(start, count);
+        write_ref_array_loop<oop, true, false, false>(start, count);
       }
     } else {
       assert(! _heap->is_concurrent_partial_in_progress(), "partial GC needs matrix");
-      write_ref_array_loop<oop, false, false>(start, count);
+      if (_heap->is_concurrent_traversal_in_progress()) {
+        write_ref_array_loop<oop, false, true, true>(start, count);
+      } else {
+        write_ref_array_loop<oop, false, false, false>(start, count);
+      }
     }
   }
 }
@@ -240,7 +248,7 @@ void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
     for (int i = 0; i < count; i++, elem_ptr++) {
       T heap_oop = oopDesc::load_heap_oop(elem_ptr);
       if (!oopDesc::is_null(heap_oop)) {
-        G1SATBCardTableModRefBS::enqueue(oopDesc::decode_heap_oop_not_null(heap_oop));
+        enqueue(oopDesc::decode_heap_oop_not_null(heap_oop));
       }
     }
   }
@@ -279,7 +287,7 @@ inline void ShenandoahBarrierSet::inline_write_ref_field_pre(T* field, oop new_v
   if (_heap->is_concurrent_mark_in_progress()) {
     T heap_oop = oopDesc::load_heap_oop(field);
     if (!oopDesc::is_null(heap_oop)) {
-      G1SATBCardTableModRefBS::enqueue(oopDesc::decode_heap_oop(heap_oop));
+      enqueue(oopDesc::decode_heap_oop(heap_oop));
     }
   }
   if (UseShenandoahMatrix && ! oopDesc::is_null(new_val)) {
@@ -331,16 +339,21 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
   assert(oopDesc::is_oop(obj), "must be an oop");
   if (UseShenandoahMatrix) {
     if (_heap->is_concurrent_partial_in_progress()) {
-      ShenandoahUpdateRefsForOopClosure<true, true> cl;
+      ShenandoahUpdateRefsForOopClosure<true, true, false> cl;
       obj->oop_iterate(&cl);
     } else {
-      ShenandoahUpdateRefsForOopClosure<true, false> cl;
+      ShenandoahUpdateRefsForOopClosure<true, false, false> cl;
       obj->oop_iterate(&cl);
     }
   } else {
     assert(! _heap->is_concurrent_partial_in_progress(), "partial GC needs matrix");
-    ShenandoahUpdateRefsForOopClosure<false, false> cl;
-    obj->oop_iterate(&cl);
+    if (_heap->is_concurrent_traversal_in_progress()) {
+      ShenandoahUpdateRefsForOopClosure<false, true, true> cl;
+      obj->oop_iterate(&cl);
+    } else {
+      ShenandoahUpdateRefsForOopClosure<false, false, false> cl;
+      obj->oop_iterate(&cl);
+    }
   }
 }
 
@@ -406,7 +419,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
       bool evac;
       oop copy = _heap->evacuate_object(obj, Thread::current(), evac, true /* from write barrier */);
       if (evac && _heap->is_concurrent_partial_in_progress()) {
-        G1SATBCardTableModRefBS::enqueue(copy);
+        enqueue(copy);
       }
       return copy;
     } else {
@@ -426,11 +439,14 @@ oop ShenandoahBarrierSet::write_barrier(oop obj) {
 }
 
 oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
-  if (ShenandoahStoreValWriteBarrier) {
-    return write_barrier_impl(obj);
+  if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    obj = write_barrier(obj);
+  }
+  if (ShenandoahStoreValEnqueueBarrier && !oopDesc::is_null(obj)) {
+    enqueue(obj);
   }
   if (ShenandoahStoreValReadBarrier) {
-    return resolve_oop_static(obj);
+    obj = resolve_oop_static(obj);
   }
   return obj;
 }
@@ -438,11 +454,23 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
 void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
   if (ShenandoahKeepAliveBarrier) {
     if (_heap->is_concurrent_mark_in_progress()) {
-      G1SATBCardTableModRefBS::enqueue(obj);
+      enqueue(obj);
     } else if (_heap->is_concurrent_partial_in_progress()) {
       write_barrier_impl(obj);
     }
   }
+}
+
+void ShenandoahBarrierSet::enqueue(oop obj) {
+
+#ifdef ASSERT
+  if (ShenandoahHeap::heap()->is_concurrent_traversal_in_progress()) {
+    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only enqueue to-space oops");
+    assert(!ShenandoahHeap::heap()->in_collection_set(obj), "no cset objects please");
+  }
+#endif
+
+  G1SATBCardTableModRefBS::enqueue(obj);
 }
 
 #ifdef ASSERT

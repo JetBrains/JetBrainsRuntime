@@ -227,5 +227,50 @@ public:
   void do_oop(narrowOop* p) { do_oop_nv(p); }
 };
 
+class ShenandoahTraversalSuperClosure : public MetadataAwareOopClosure {
+private:
+  ShenandoahTraversalGC* _traversal_gc;
+  Thread* _thread;
+  ShenandoahObjToScanQueue* _queue;
+
+public:
+  ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    MetadataAwareOopClosure(rp),
+    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
+    _thread(Thread::current()), _queue(q) {}
+
+  template <class T>
+  void work(T* p);
+};
+
+class ShenandoahTraversalClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahTraversalMetadataClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMetadataClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_HPP

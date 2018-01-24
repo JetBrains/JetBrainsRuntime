@@ -317,6 +317,12 @@
   diagnostic(bool, ShenandoahReadBarrier, true,                             \
           "Turn on/off read barriers in Shenandoah")                        \
                                                                             \
+  diagnostic(bool, ShenandoahStoreValEnqueueBarrier, false,                 \
+          "Turn on/off enqueuing of oops for storeval barriers")            \
+                                                                            \
+  diagnostic(bool, ShenandoahMWF, false,                                    \
+          "Turn on/off enqueuing of oops after write barriers (MWF)")       \
+                                                                            \
   diagnostic(bool, ShenandoahStoreValWriteBarrier, false,                   \
           "Turn on/off store val write barriers in Shenandoah")             \
                                                                             \

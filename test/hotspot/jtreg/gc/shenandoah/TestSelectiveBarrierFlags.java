@@ -43,7 +43,7 @@ public class TestSelectiveBarrierFlags {
             new String[]{ "ShenandoahKeepAliveBarrier" },
             new String[]{ "ShenandoahWriteBarrier" },
             new String[]{ "ShenandoahReadBarrier" },
-            new String[]{ "ShenandoahStoreValWriteBarrier", "ShenandoahStoreValReadBarrier" },
+            new String[]{ "ShenandoahStoreValWriteBarrier", "ShenandoahStoreValReadBarrier", "ShenandoahStoreValEnqueueBarrier" },
             new String[]{ "ShenandoahCASBarrier" },
             new String[]{ "ShenandoahAcmpBarrier" },
             new String[]{ "ShenandoahCloneBarrier" },

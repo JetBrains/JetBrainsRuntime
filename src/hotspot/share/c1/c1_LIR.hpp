@@ -1460,7 +1460,7 @@ private:
 public:
   LIR_OpShenandoahWriteBarrier(LIR_Opr obj, LIR_Opr result, CodeEmitInfo* info, bool need_null_check)
     : LIR_Op1(lir_shenandoah_wb, obj, result, T_OBJECT, lir_patch_none, info), _need_null_check(need_null_check) {
-    assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
+    assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
   }
   bool need_null_check() const { return _need_null_check; }
   virtual void emit_code(LIR_Assembler* masm);

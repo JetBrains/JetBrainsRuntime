@@ -102,6 +102,8 @@
   template(ShenandoahVerifyHeapAfterEvacuation)   \
   template(ShenandoahInitPartialGC)               \
   template(ShenandoahFinalPartialGC)              \
+  template(ShenandoahInitTraversalGC)             \
+  template(ShenandoahFinalTraversalGC)            \
   template(ShenandoahInitUpdateRefs)              \
   template(ShenandoahFinalUpdateRefs)             \
   template(ShenandoahDegeneratedGC)               \
