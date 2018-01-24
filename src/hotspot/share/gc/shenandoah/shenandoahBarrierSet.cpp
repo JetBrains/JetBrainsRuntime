@@ -196,35 +196,31 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (!ShenandoahCloneBarrier) return;
   if (!need_update_refs_barrier()) return;
 
-  if (UseCompressedOops) {
-    if (UseShenandoahMatrix) {
-      if (_heap->is_concurrent_partial_in_progress()) {
-        write_ref_array_loop<narrowOop, true, true, false>(start, count);
+  if (UseShenandoahMatrix) {
+    if (_heap->is_concurrent_partial_in_progress()) {
+      if (UseCompressedOops) {
+        write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ true,  /* enqueue = */ false>(start, count);
       } else {
-        write_ref_array_loop<narrowOop, true, false, false>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ true, /* wb = */ true,  /* enqueue = */ false>(start, count);
       }
     } else {
-      assert(! _heap->is_concurrent_partial_in_progress(), "partial GC needs matrix");
-      if (!_heap->is_concurrent_traversal_in_progress()) {
-        write_ref_array_loop<narrowOop, false, true, true>(start, count);
+      if (UseCompressedOops) {
+        write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ false, /* enqueue = */ false>(start, count);
       } else {
-        write_ref_array_loop<narrowOop, false, false, false>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ true, /* wb = */ false, /* enqueue = */ false>(start, count);
       }
     }
-  } else {
-    if (UseShenandoahMatrix) {
-      if (_heap->is_concurrent_partial_in_progress()) {
-        write_ref_array_loop<oop, true, true, false>(start, count);
-      } else {
-        write_ref_array_loop<oop, true, false, false>(start, count);
-      }
+  } else if (_heap->is_concurrent_traversal_in_progress()) {
+    if (UseCompressedOops) {
+      write_ref_array_loop<narrowOop,   /* matrix = */ false, /* wb = */ true, /* enqueue = */ true>(start, count);
     } else {
-      assert(! _heap->is_concurrent_partial_in_progress(), "partial GC needs matrix");
-      if (_heap->is_concurrent_traversal_in_progress()) {
-        write_ref_array_loop<oop, false, true, true>(start, count);
-      } else {
-        write_ref_array_loop<oop, false, false, false>(start, count);
-      }
+      write_ref_array_loop<oop,         /* matrix = */ false, /* wb = */ true, /* enqueue = */ true>(start, count);
+    }
+  } else {
+    if (UseCompressedOops) {
+      write_ref_array_loop<narrowOop,   /* matrix = */ false, /* wb = */ false, /* enqueue = */ false>(start, count);
+    } else {
+      write_ref_array_loop<oop,         /* matrix = */ false, /* wb = */ false, /* enqueue = */ false>(start, count);
     }
   }
 }
