@@ -151,7 +151,7 @@ inline oop ShenandoahHeap::evac_update_oop_ref(T* p, bool& evac) {
         forwarded_oop = evacuate_object(heap_oop, Thread::current(), evac);
       }
       oop prev = atomic_compare_exchange_oop(forwarded_oop, p, heap_oop);
-      if (prev == heap_oop) {
+      if (oopDesc::unsafe_equals(prev, heap_oop)) {
         return forwarded_oop;
       } else {
         return NULL;
