@@ -1641,6 +1641,8 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenerationPoint point) {
 
   clear_cancelled_concgc();
 
+  size_t used_before = used();
+
   switch (point) {
     case _degenerated_partial:
     case _degenerated_traversal:
@@ -1676,23 +1678,33 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenerationPoint point) {
 
       op_cleanup();
 
-      op_evac();
-      if (cancelled_concgc()) {
-        op_degenerated_fail();
-        return;
+      // If heuristics thinks we should do the cycle, this flag would be set,
+      // and we can do evacuation. Otherwise, it would be the shortcut cycle.
+      if (is_evacuation_in_progress()) {
+        op_evac();
+        if (cancelled_concgc()) {
+          op_degenerated_fail();
+          return;
+        }
       }
 
-      op_init_updaterefs();
-      if (cancelled_concgc()) {
-        op_degenerated_fail();
-        return;
+      // If heuristics thinks we should do the cycle, this flag would be set,
+      // and we need to do update-refs. Otherwise, it would be the shortcut cycle.
+      if (has_forwarded_objects()) {
+        op_init_updaterefs();
+        if (cancelled_concgc()) {
+          op_degenerated_fail();
+          return;
+        }
       }
 
     case _degenerated_updaterefs:
-      op_final_updaterefs();
-      if (cancelled_concgc()) {
-        op_degenerated_fail();
-        return;
+      if (has_forwarded_objects()) {
+        op_final_updaterefs();
+        if (cancelled_concgc()) {
+          op_degenerated_fail();
+          return;
+        }
       }
 
       op_cleanup_bitmaps();
@@ -1705,10 +1717,25 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenerationPoint point) {
   if (ShenandoahVerify) {
     verifier()->verify_after_degenerated();
   }
+
+  // Check for futility and fail. There is no reason to do several back-to-back Degenerated cycles,
+  // because that probably means the heap is overloaded and/or fragmented.
+  size_t used_after = used();
+  size_t difference = (used_before > used_after) ? used_before - used_after : 0;
+  if (difference < ShenandoahHeapRegion::region_size_words()) {
+    cancel_concgc(GCCause::_allocation_failure);
+    op_degenerated_futile();
+  }
 }
 
 void ShenandoahHeap::op_degenerated_fail() {
   log_info(gc)("Cannot finish degeneration, upgrading to Full GC");
+  shenandoahPolicy()->record_degenerated_upgrade_to_full();
+  op_full(GCCause::_allocation_failure);
+}
+
+void ShenandoahHeap::op_degenerated_futile() {
+  log_info(gc)("Degenerated GC had not reclaimed enough, upgrading to Full GC");
   shenandoahPolicy()->record_degenerated_upgrade_to_full();
   op_full(GCCause::_allocation_failure);
 }

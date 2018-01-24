@@ -661,6 +661,7 @@ private:
   void op_verify_after_evac();
   void op_degenerated(ShenandoahDegenerationPoint point);
   void op_degenerated_fail();
+  void op_degenerated_futile();
 
   void op_mark();
   void op_preclean();
