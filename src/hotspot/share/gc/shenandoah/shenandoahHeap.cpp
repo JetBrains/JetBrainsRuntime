@@ -2621,7 +2621,10 @@ void ShenandoahHeap::entry_init_mark() {
 void ShenandoahHeap::entry_final_mark() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_mark);
-  FormatBuffer<> msg("Pause Final Mark%s", mark_message());
+  FormatBuffer<> msg("Pause Final Mark%s%s%s",
+                     has_forwarded_objects() ?                " (update refs)"    : "",
+                     concurrentMark()->process_references() ? " (process refs)"   : "",
+                     concurrentMark()->unload_classes() ?     " (unload classes)" : "");
   GCTraceTime(Info, gc) time(msg, gc_timer());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_marking());
@@ -2723,7 +2726,10 @@ void ShenandoahHeap::entry_degenerated(int point) {
 void ShenandoahHeap::entry_mark() {
   TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
 
-  FormatBuffer<> msg("Concurrent marking%s", mark_message());
+  FormatBuffer<> msg("Concurrent marking%s%s%s",
+                     has_forwarded_objects() ?                " (update refs)"    : "",
+                     concurrentMark()->process_references() ? " (process refs)"   : "",
+                     concurrentMark()->unload_classes() ?     " (unload classes)" : "");
   GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_marking());
@@ -2816,23 +2822,4 @@ void ShenandoahHeap::try_inject_alloc_failure() {
 
 bool ShenandoahHeap::should_inject_alloc_failure() {
   return _inject_alloc_failure.is_set() && _inject_alloc_failure.try_unset();
-}
-
-const char* ShenandoahHeap::mark_message() {
-  bool ref_proc = concurrentMark()->process_references();
-  bool class_unload = concurrentMark()->unload_classes();
-
-  if (ref_proc) {
-    if (class_unload) {
-      return " (ref process, class unload)";
-    } else {
-      return " (ref process)";
-    }
-  } else {
-    if (class_unload) {
-      return " (class unload)";
-    } else {
-      return "";
-    }
-  }
 }
