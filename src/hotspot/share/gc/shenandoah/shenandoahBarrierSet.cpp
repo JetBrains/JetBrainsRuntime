@@ -383,7 +383,7 @@ bool ShenandoahBarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
 #ifdef ASSERT
 bool ShenandoahBarrierSet::is_safe(oop o) {
   if (o == NULL) return true;
-  if (_heap->in_collection_set(o)) {
+  if (_heap->in_collection_set(o) && ! _heap->cancelled_concgc()) {
     return false;
   }
   if (! oopDesc::unsafe_equals(o, read_barrier(o))) {
