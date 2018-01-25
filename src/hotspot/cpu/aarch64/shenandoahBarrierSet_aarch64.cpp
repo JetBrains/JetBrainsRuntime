@@ -107,7 +107,7 @@ void ShenandoahHeap::compile_prepare_oop(MacroAssembler* masm, Register obj) {
   __ str(obj, Address(obj, BrooksPointer::byte_offset()));
 }
 
-void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst) {
+void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
   if (ShenandoahStoreValWriteBarrier) {
     Label is_null;
     __ cbz(dst, is_null);

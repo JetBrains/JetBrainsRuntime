@@ -126,7 +126,7 @@ public:
   void interpreter_read_barrier(MacroAssembler* masm, Register dst);
   void interpreter_read_barrier_not_null(MacroAssembler* masm, Register dst);
   void interpreter_write_barrier(MacroAssembler* masm, Register dst);
-  void interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp, Register thread);
+  void interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
   void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
 
 private:

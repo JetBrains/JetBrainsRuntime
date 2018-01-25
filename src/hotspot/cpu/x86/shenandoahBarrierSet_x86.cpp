@@ -149,7 +149,7 @@ void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, 
 #endif
 }
 
-void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp, Register thread) {
+void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
   if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
     Label is_null;
     __ testptr(dst, dst);
