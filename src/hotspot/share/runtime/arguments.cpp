@@ -2035,8 +2035,10 @@ void Arguments::set_shenandoah_gc_flags() {
     FLAG_SET_DEFAULT(ParallelRefProcEnabled, true);
   }
 
-  if (FLAG_IS_DEFAULT(PerfDataMemorySize)) {
-    FLAG_SET_DEFAULT(PerfDataMemorySize, 512*K);
+  if (ShenandoahRegionSampling && FLAG_IS_DEFAULT(PerfDataMemorySize)) {
+    // When sampling is enabled, max out the PerfData memory to get more
+    // Shenandoah data in, including Matrix.
+    FLAG_SET_DEFAULT(PerfDataMemorySize, 2048*K);
   }
 
 #ifdef COMPILER2
