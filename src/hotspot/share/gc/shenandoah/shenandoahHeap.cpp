@@ -1776,34 +1776,30 @@ void ShenandoahHeap::stop_concurrent_marking() {
   }
 }
 
-void ShenandoahHeap::set_gc_state_bit(uint bit, bool value) {
+void ShenandoahHeap::set_gc_state_mask(uint mask, bool value) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should really be Shenandoah safepoint");
-  _gc_state.set_cond(bit, value);
+  _gc_state.set_cond(mask, value);
   JavaThread::set_gc_state_all_threads(_gc_state.raw_value());
 }
 
-void ShenandoahHeap::set_gc_state_bit_concurrently(uint bit, bool value) {
-  _gc_state.set_cond(bit, value);
+void ShenandoahHeap::set_gc_state_mask_concurrently(uint mask, bool value) {
+  _gc_state.set_cond(mask, value);
   MutexLocker mu(Threads_lock);
   JavaThread::set_gc_state_all_threads(_gc_state.raw_value());
 }
 
 void ShenandoahHeap::set_concurrent_mark_in_progress(bool in_progress) {
-  set_gc_state_bit(MARKING_BITPOS, in_progress);
+  set_gc_state_mask(MARKING, in_progress);
   JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
 void ShenandoahHeap::set_concurrent_partial_in_progress(bool in_progress) {
-  set_gc_state_bit(PARTIAL_BITPOS, in_progress);
+  set_gc_state_mask(PARTIAL | HAS_FORWARDED, in_progress);
   JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
-  set_evacuation_in_progress_at_safepoint(in_progress);
 }
 
 void ShenandoahHeap::set_concurrent_traversal_in_progress(bool in_progress) {
-   set_gc_state_bit(TRAVERSAL_BITPOS, in_progress);
-   set_gc_state_bit(MARKING_BITPOS, in_progress);
-   set_gc_state_bit(HAS_FORWARDED_BITPOS, in_progress);
-   set_gc_state_bit(EVACUATION_BITPOS, in_progress);
+   set_gc_state_mask(TRAVERSAL | HAS_FORWARDED, in_progress);
    JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
@@ -1811,12 +1807,12 @@ void ShenandoahHeap::set_evacuation_in_progress_concurrently(bool in_progress) {
   // Note: it is important to first release the _evacuation_in_progress flag here,
   // so that Java threads can get out of oom_during_evacuation() and reach a safepoint,
   // in case a VM task is pending.
-  set_gc_state_bit_concurrently(EVACUATION_BITPOS, in_progress);
+  set_gc_state_mask_concurrently(EVACUATION, in_progress);
 }
 
 void ShenandoahHeap::set_evacuation_in_progress_at_safepoint(bool in_progress) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only call this at safepoint");
-  set_gc_state_bit(EVACUATION_BITPOS, in_progress);
+  set_gc_state_mask(EVACUATION, in_progress);
 }
 
 HeapWord* ShenandoahHeap::tlab_post_allocation_setup(HeapWord* obj) {
@@ -2020,7 +2016,7 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
 }
 
 void ShenandoahHeap::set_has_forwarded_objects(bool cond) {
-  set_gc_state_bit(HAS_FORWARDED_BITPOS, cond);
+  set_gc_state_mask(HAS_FORWARDED, cond);
 }
 
 //fixme this should be in heapregionset
@@ -2112,7 +2108,7 @@ void ShenandoahHeap::set_full_gc_move_in_progress(bool in_progress) {
 }
 
 void ShenandoahHeap::set_update_refs_in_progress(bool in_progress) {
-  set_gc_state_bit(UPDATEREFS_BITPOS, in_progress);
+  set_gc_state_mask(UPDATEREFS, in_progress);
 }
 
 void ShenandoahHeap::register_nmethod(nmethod* nm) {

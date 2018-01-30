@@ -5407,7 +5407,7 @@ void MacroAssembler::g1_write_barrier_pre(Register obj,
 
   if (UseShenandoahGC) {
     Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
-    testb(gc_state, ShenandoahHeap::MARKING);
+    testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::TRAVERSAL);
     jcc(Assembler::zero, done);
   } else {
     assert(UseG1GC, "Should be");
@@ -5678,7 +5678,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 
   // Check for evacuation-in-progress
   Address gc_state(r15_thread, in_bytes(JavaThread::gc_state_offset()));
-  testb(gc_state, ShenandoahHeap::EVACUATION);
+  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
 
   // The read-barrier.
   if (ShenandoahWriteBarrierRB) {

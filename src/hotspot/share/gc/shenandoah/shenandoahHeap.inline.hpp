@@ -95,7 +95,7 @@ inline bool ShenandoahHeap::is_marked_complete(oop obj) const {
 }
 
 inline bool ShenandoahHeap::has_forwarded_objects() const {
-  return _gc_state.is_set(HAS_FORWARDED_BITPOS);
+  return _gc_state.is_set(HAS_FORWARDED);
 }
 
 inline size_t ShenandoahHeap::heap_region_index_containing(const void* addr) const {
@@ -408,19 +408,23 @@ inline bool ShenandoahHeap::in_collection_set(T p) const {
 }
 
 inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
-  return _gc_state.is_set(MARKING_BITPOS);
+  return _gc_state.is_set(MARKING);
 }
 
 inline bool ShenandoahHeap::is_concurrent_partial_in_progress() const {
-  return _gc_state.is_set(PARTIAL_BITPOS);
+  return _gc_state.is_set(PARTIAL);
 }
 
 inline bool ShenandoahHeap::is_concurrent_traversal_in_progress() const {
-  return _gc_state.is_set(TRAVERSAL_BITPOS);
+  return _gc_state.is_set(TRAVERSAL);
 }
 
 inline bool ShenandoahHeap::is_evacuation_in_progress() const {
-  return _gc_state.is_set(EVACUATION_BITPOS);
+  return _gc_state.is_set(EVACUATION);
+}
+
+inline bool ShenandoahHeap::is_gc_in_progress_mask(uint mask) const {
+  return _gc_state.is_set(mask);
 }
 
 inline bool ShenandoahHeap::is_full_gc_in_progress() const {
@@ -432,7 +436,7 @@ inline bool ShenandoahHeap::is_full_gc_move_in_progress() const {
 }
 
 inline bool ShenandoahHeap::is_update_refs_in_progress() const {
-  return _gc_state.is_set(UPDATEREFS_BITPOS);
+  return _gc_state.is_set(UPDATEREFS);
 }
 
 inline bool ShenandoahHeap::allocated_after_next_mark_start(HeapWord* addr) const {

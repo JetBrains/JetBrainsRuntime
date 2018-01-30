@@ -578,7 +578,7 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
     return false;
   }
   in2 = in1->in(2);
-  if (in2->find_int_con(-1) != ShenandoahHeap::EVACUATION) {
+  if (in2->find_int_con(-1) != (ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL)) {
     return false;
   }
   in1 = in1->in(1);
@@ -3556,8 +3556,7 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
     ctrl = ctrl_proj;
   }
 
-  Node* evacuation_in_progress = gc_state;
-  evacuation_in_progress = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::EVACUATION));
+  Node* evacuation_in_progress = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL));
   phase->register_new_node(evacuation_in_progress, ctrl);
   Node* evacuation_in_progress_cmp = new CmpINode(evacuation_in_progress, phase->igvn().zerocon(T_INT));
   phase->register_new_node(evacuation_in_progress_cmp, ctrl);

@@ -406,7 +406,7 @@ IRT_END
 oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
   if (!oopDesc::is_null(obj)) {
-    bool evac_in_progress = _heap->is_evacuation_in_progress();
+    bool evac_in_progress = _heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
     OrderAccess::loadload();
     oop fwd = resolve_oop_static_not_null(obj);
     if (evac_in_progress &&

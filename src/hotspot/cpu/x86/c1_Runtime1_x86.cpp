@@ -1641,7 +1641,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
         if (UseShenandoahGC) {
           Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
-          __ testb(gc_state, ShenandoahHeap::MARKING);
+          __ testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
           __ jcc(Assembler::zero, done);
         } else {
           assert(UseG1GC, "Should be");

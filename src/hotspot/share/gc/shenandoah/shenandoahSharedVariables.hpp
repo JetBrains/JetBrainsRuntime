@@ -113,17 +113,17 @@ typedef struct ShenandoahSharedBitmap {
     clear();
   }
 
-  void set(uint pos) {
-    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
-    ShenandoahSharedValue mask = (ShenandoahSharedValue)(1 << pos);
+  void set(uint mask) {
+    assert (mask < (sizeof(ShenandoahSharedValue) * CHAR_MAX), "sanity");
+    ShenandoahSharedValue mask_val = (ShenandoahSharedValue) mask;
     while (true) {
       ShenandoahSharedValue ov = OrderAccess::load_acquire(&value);
-      if ((ov & mask) != 0) {
+      if ((ov & mask_val) != 0) {
         // already set
         return;
       }
 
-      ShenandoahSharedValue nv = ov | mask;
+      ShenandoahSharedValue nv = ov | mask_val;
       if (Atomic::cmpxchg(nv, &value, ov) == ov) {
         // successfully set
         return;
@@ -131,17 +131,17 @@ typedef struct ShenandoahSharedBitmap {
     }
   }
 
-  void unset(uint pos) {
-    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
-    ShenandoahSharedValue mask = (ShenandoahSharedValue)(1 << pos);
+  void unset(uint mask) {
+    assert (mask < (sizeof(ShenandoahSharedValue) * CHAR_MAX), "sanity");
+    ShenandoahSharedValue mask_val = (ShenandoahSharedValue) mask;
     while (true) {
       ShenandoahSharedValue ov = OrderAccess::load_acquire(&value);
-      if ((ov & mask) == 0) {
+      if ((ov & mask_val) == 0) {
         // already unset
         return;
       }
 
-      ShenandoahSharedValue nv = ov & ~mask;
+      ShenandoahSharedValue nv = ov & ~mask_val;
       if (Atomic::cmpxchg(nv, &value, ov) == ov) {
         // successfully unset
         return;
@@ -153,20 +153,20 @@ typedef struct ShenandoahSharedBitmap {
     OrderAccess::release_store_fence(&value, (ShenandoahSharedValue)0);
   }
 
-  bool is_set(uint pos) const {
-    return !is_unset(pos);
+  bool is_set(uint mask) const {
+    return !is_unset(mask);
   }
 
-  bool is_unset(uint pos) const {
-    assert (pos < sizeof(ShenandoahSharedValue) * 8, "sanity");
-    return (OrderAccess::load_acquire(&value) & (1 << pos)) == 0;
+  bool is_unset(uint mask) const {
+    assert (mask < (sizeof(ShenandoahSharedValue) * CHAR_MAX), "sanity");
+    return (OrderAccess::load_acquire(&value) & (ShenandoahSharedValue) mask) == 0;
   }
 
-  void set_cond(uint pos, bool value) {
+  void set_cond(uint mask, bool value) {
     if (value) {
-      set(pos);
+      set(mask);
     } else {
-      unset(pos);
+      unset(mask);
     }
   }
 
