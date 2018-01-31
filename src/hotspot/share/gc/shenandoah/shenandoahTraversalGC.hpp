@@ -30,6 +30,7 @@
 class Thread;
 class ShenandoahHeapRegionSet;
 class ShenandoahHeap;
+class ShenandoahStrDedupQueue;
 
 class ShenandoahTraversalGC : public CHeapObj<mtGC> {
 private:
@@ -57,8 +58,8 @@ public:
   void concurrent_traversal_collection();
   void final_traversal_collection();
 
-  template <class T>
-  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue);
+  template <class T, bool STRING_DEDUP>
+  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahStrDedupQueue* dq = NULL);
 
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
 

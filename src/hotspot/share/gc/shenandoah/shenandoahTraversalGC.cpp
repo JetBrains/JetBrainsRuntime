@@ -38,6 +38,8 @@
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
+#include "gc/shenandoah/shenandoahStringDedup.hpp"
+#include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
@@ -350,11 +352,23 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
     rp = _heap->ref_processor();
   }
   if (_heap->shenandoahPolicy()->unload_classes()) {
-    ShenandoahTraversalMetadataClosure cl(q, rp);
-    main_loop_work<ShenandoahTraversalMetadataClosure, DO_SATB>(&cl, ld, w, t);
+    if (ShenandoahStringDedup::is_enabled()) {
+      ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+      ShenandoahTraversalMetadataDedupClosure cl(q, rp, dq);
+      main_loop_work<ShenandoahTraversalMetadataDedupClosure, DO_SATB>(&cl, ld, w, t);
+    } else {
+      ShenandoahTraversalMetadataClosure cl(q, rp);
+      main_loop_work<ShenandoahTraversalMetadataClosure, DO_SATB>(&cl, ld, w, t);
+    }
   } else {
-    ShenandoahTraversalClosure cl(q, rp);
-    main_loop_work<ShenandoahTraversalClosure, DO_SATB>(&cl, ld, w, t);
+    if (ShenandoahStringDedup::is_enabled()) {
+      ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
+      ShenandoahTraversalDedupClosure cl(q, rp, dq);
+      main_loop_work<ShenandoahTraversalDedupClosure, DO_SATB>(&cl, ld, w, t);
+    } else {
+      ShenandoahTraversalClosure cl(q, rp);
+      main_loop_work<ShenandoahTraversalClosure, DO_SATB>(&cl, ld, w, t);
+    }
   }
 }
 
@@ -600,10 +614,9 @@ private:
   ShenandoahObjToScanQueue* _queue;
   Thread* _thread;
   ShenandoahTraversalGC* _traversal_gc;
-
   template <class T>
   inline void do_oop_nv(T* p) {
-    _traversal_gc->process_oop(p, _thread, _queue);
+    _traversal_gc->process_oop<T, false /* string dedup */>(p, _thread, _queue);
   }
 
 public:

@@ -25,15 +25,20 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAH_SPECIALIZED_OOP_CLOSURES_HPP
 
 class ShenandoahMarkUpdateRefsClosure;
+class ShenandoahMarkUpdateRefsDedupClosure;
 class ShenandoahMarkUpdateRefsMetadataClosure;
+class ShenandoahMarkUpdateRefsMetadataDedupClosure;
 class ShenandoahMarkRefsClosure;
+class ShenandoahMarkRefsDedupClosure;
 class ShenandoahMarkRefsMetadataClosure;
+class ShenandoahMarkRefsMetadataDedupClosure;
 class ShenandoahUpdateHeapRefsClosure;
 class ShenandoahUpdateHeapRefsMatrixClosure;
 class ShenandoahPartialEvacuateUpdateHeapClosure;
-class ShenandoahPartialEvacuateUpdateHeapClosure;
 class ShenandoahTraversalClosure;
 class ShenandoahTraversalMetadataClosure;
+class ShenandoahTraversalDedupClosure;
+class ShenandoahTraversalMetadataDedupClosure;
 
 #define SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_SHENANDOAH(f) \
       f(ShenandoahMarkUpdateRefsClosure,_nv)               \
@@ -44,6 +49,12 @@ class ShenandoahTraversalMetadataClosure;
       f(ShenandoahUpdateHeapRefsMatrixClosure,_nv)         \
       f(ShenandoahTraversalClosure,_nv)                    \
       f(ShenandoahTraversalMetadataClosure,_nv)            \
-      f(ShenandoahPartialEvacuateUpdateHeapClosure,_nv)
+      f(ShenandoahPartialEvacuateUpdateHeapClosure,_nv)    \
+      f(ShenandoahMarkUpdateRefsDedupClosure,_nv)          \
+      f(ShenandoahMarkUpdateRefsMetadataDedupClosure,_nv)  \
+      f(ShenandoahMarkRefsDedupClosure,_nv)                \
+      f(ShenandoahMarkRefsMetadataDedupClosure,_nv)        \
+      f(ShenandoahTraversalDedupClosure,_nv)               \
+      f(ShenandoahTraversalMetadataDedupClosure,_nv)
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAH_SPECIALIZED_OOP_CLOSURES_HPP
