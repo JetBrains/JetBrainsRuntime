@@ -367,7 +367,7 @@ void ShenandoahConcurrentThread::stop_service() {
 
 void ShenandoahConcurrentThread::service_stw_full_cycle(GCCause::Cause cause) {
   GCIdMark gc_id_mark;
-  ShenandoahGCSession session(/* is_full_gc */true);
+  ShenandoahGCSession session;
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   heap->vmop_entry_full(cause);
@@ -377,7 +377,7 @@ void ShenandoahConcurrentThread::service_stw_full_cycle(GCCause::Cause cause) {
 
 void ShenandoahConcurrentThread::service_stw_degenerated_cycle(GCCause::Cause cause, ShenandoahHeap::ShenandoahDegenerationPoint point) {
   GCIdMark gc_id_mark;
-  ShenandoahGCSession session(/* is_full_gc */true);
+  ShenandoahGCSession session;
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   heap->vmop_degenerated(point);

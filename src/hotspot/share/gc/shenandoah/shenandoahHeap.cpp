@@ -549,7 +549,7 @@ void ShenandoahHeap::post_initialize() {
   }
 
   _scm->initialize(_max_workers);
-  _full_gc->initialize();
+  _full_gc->initialize(_gc_timer);
 
   ref_processing_init();
 
@@ -1977,7 +1977,7 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
   {
     ShenandoahGCPhase phase(phase_unload);
     purged_class = SystemDictionary::do_unloading(is_alive,
-                                                  full_gc ? this->full_gc()->gc_timer() : gc_timer(),
+                                                  gc_timer(),
                                                   false /* defer cleaning */);
   }
 
@@ -2691,7 +2691,7 @@ void ShenandoahHeap::entry_final_traversal() {
 void ShenandoahHeap::entry_full(GCCause::Cause cause) {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc);
-  GCTraceTime(Info, gc) time("Pause Full", full_gc()->gc_timer(), cause, true);
+  GCTraceTime(Info, gc) time("Pause Full", gc_timer(), cause, true);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_fullgc());
 
@@ -2712,7 +2712,7 @@ void ShenandoahHeap::entry_degenerated(int point) {
 
   ShenandoahDegenerationPoint dpoint = (ShenandoahDegenerationPoint)point;
   FormatBuffer<> msg("Pause Degenerated GC (%s)", degen_point_to_string(dpoint));
-  GCTraceTime(Info, gc) time(msg, full_gc()->gc_timer(), GCCause::_no_gc, true);
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated());
 

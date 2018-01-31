@@ -55,16 +55,11 @@ class HeapWord;
 
 class ShenandoahMarkCompact : public CHeapObj<mtGC> {
 private:
-  STWGCTimer* _gc_timer;
+  GCTimer* _gc_timer;
 
 public:
-  void initialize();
+  void initialize(GCTimer* gc_timer);
   void do_it(GCCause::Cause gc_cause);
-
-  GCTimer* gc_timer() {
-    assert(_gc_timer != NULL, "Timer not yet initialized");
-    return _gc_timer;
-  }
 
 private:
   void phase1_mark_heap();

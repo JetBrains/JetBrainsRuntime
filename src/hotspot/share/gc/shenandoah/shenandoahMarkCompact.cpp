@@ -107,8 +107,8 @@ public:
   }
 };
 
-void ShenandoahMarkCompact::initialize() {
-  _gc_timer = new (ResourceObj::C_HEAP, mtGC) STWGCTimer();
+void ShenandoahMarkCompact::initialize(GCTimer* gc_timer) {
+  _gc_timer = gc_timer;
 }
 
 void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {

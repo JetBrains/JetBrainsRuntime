@@ -785,7 +785,7 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
 
   ShenandoahRefProcTaskExecutor executor(workers);
 
-  ReferenceProcessorPhaseTimes pt(full_gc ? sh->full_gc()->gc_timer() : sh->gc_timer(), rp->num_q());
+  ReferenceProcessorPhaseTimes pt(sh->gc_timer(), rp->num_q());
 
   {
     ShenandoahGCPhase phase(phase_process);

@@ -39,7 +39,7 @@ private:
   GCTimer*  _timer;
 
 public:
-  ShenandoahGCSession(bool is_full_gc = false);
+  ShenandoahGCSession();
   ~ShenandoahGCSession();
 };
 

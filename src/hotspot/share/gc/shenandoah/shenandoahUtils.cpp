@@ -31,10 +31,8 @@
 #include "gc/shenandoah/shenandoahUtils.hpp"
 
 
-ShenandoahGCSession::ShenandoahGCSession(bool is_full_gc) {
-  _timer = is_full_gc ? ShenandoahHeap::heap()->full_gc()->gc_timer() :
-                        ShenandoahHeap::heap()->gc_timer();
-
+ShenandoahGCSession::ShenandoahGCSession() {
+  _timer = ShenandoahHeap::heap()->gc_timer();
   _timer->register_gc_start();
 }
 
