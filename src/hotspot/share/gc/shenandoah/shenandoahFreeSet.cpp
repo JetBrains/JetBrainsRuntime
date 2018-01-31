@@ -97,7 +97,7 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(size_t word_size, ShenandoahHeap::A
 
   if (result != NULL) {
     // Allocation successful, bump live data stats:
-    if (!ShenandoahHeap::heap()->is_concurrent_traversal_in_progress()) {
+    if (implicit_live(type)) {
       r->increase_live_data_words(word_size);
     }
     increase_used(word_size * HeapWordSize);
@@ -197,7 +197,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
       used_words = ShenandoahHeapRegion::region_size_words();
     }
 
-    if (!sh->is_concurrent_traversal_in_progress()) {
+    if (implicit_live(ShenandoahHeap::_alloc_shared)) {
       r->increase_live_data_words(used_words);
     }
     r->set_top(r->bottom() + used_words);
@@ -340,6 +340,23 @@ void ShenandoahFreeSet::print_on(outputStream* out) const {
     if (is_free(index)) {
       _regions->get(index)->print_on(out);
     }
+  }
+}
+
+bool ShenandoahFreeSet::implicit_live(ShenandoahHeap::AllocType type) const {
+  if (ShenandoahHeap::heap()->is_concurrent_traversal_in_progress()) {
+    return false;
+  }
+  switch (type) {
+    case ShenandoahHeap::_alloc_tlab:
+    case ShenandoahHeap::_alloc_shared:
+      return ShenandoahAllocImplicitLive;
+    case ShenandoahHeap::_alloc_gclab:
+    case ShenandoahHeap::_alloc_shared_gc:
+      return true;
+    default:
+      ShouldNotReachHere();
+      return true;
   }
 }
 

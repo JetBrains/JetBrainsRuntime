@@ -1310,6 +1310,7 @@ public:
     FLAG_SET_DEFAULT(ShenandoahAsmWB,                  true);
     FLAG_SET_DEFAULT(ShenandoahBarriersForConst,       true);
     FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
+    FLAG_SET_DEFAULT(ShenandoahAllocImplicitLive,      false);
   }
 
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
