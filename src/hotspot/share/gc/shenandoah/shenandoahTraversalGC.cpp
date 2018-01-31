@@ -661,7 +661,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   rp->preclean_discovered_references(&is_alive, &keep_alive,
                                      &complete_gc, &yield,
                                      NULL);
-  assert(task_queues()->is_empty(), "Should be empty");
+  assert(!sh->cancelled_concgc() || task_queues()->is_empty(), "Should be empty");
 }
 
 // Weak Reference Closures
@@ -844,8 +844,10 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
                                       &pt);
     pt.print_all_references();
 
-    assert(task_queues()->is_empty(), "Should be empty");
+    assert(!_heap->cancelled_concgc() || task_queues()->is_empty(), "Should be empty");
   }
+
+  if (_heap->cancelled_concgc()) return;
 
   {
     ShenandoahGCPhase phase(phase_enqueue);
