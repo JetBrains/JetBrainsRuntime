@@ -4021,7 +4021,6 @@ void ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(IfNode* iff, P
     }
     phase->igvn().replace_input_of(loop_head, LoopNode::EntryControl, c);
     phase->set_idom(loop_head, c, phase->dom_depth(c));
-    //phase->recompute_dom_depth();
 
     Node* load = iff->in(1)->in(1)->in(1)->in(1);
     assert(load->Opcode() == Op_LoadUB, "inconsistent");
@@ -4057,9 +4056,13 @@ void ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(IfNode* iff, P
     Node* loop_head = loop->_head;
     Node* entry_c = loop_head->in(LoopNode::EntryControl);
 
-    Node* load = iff->in(1)->in(1)->in(1);
+    Node* load = iff->in(1)->in(1)->in(1)->in(1);
     assert(load->Opcode() == Op_LoadUB, "inconsistent");
     Node* mem_ctrl = NULL;
+    Node* mem = dom_mem(load->in(MemNode::Memory), loop_head, Compile::AliasIdxRaw, mem_ctrl, phase);
+    phase->igvn().replace_input_of(load, MemNode::Memory, mem);
+    phase->igvn().replace_input_of(load, 0, entry_c);
+    phase->set_ctrl_and_loop(load, entry_c);
   }
 }
 
