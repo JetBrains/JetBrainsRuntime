@@ -515,11 +515,11 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 #endif
   }
 
-  if (_heap->shenandoahPolicy()->process_references()) {
+  if (!_heap->cancelled_concgc() && _heap->shenandoahPolicy()->process_references()) {
     weak_refs_work();
   }
 
-  if (_heap->shenandoahPolicy()->unload_classes()) {
+  if (!_heap->cancelled_concgc() && _heap->shenandoahPolicy()->unload_classes()) {
     _heap->unload_classes_and_cleanup_tables(false);
     _heap->concurrentMark()->update_roots(ShenandoahPhaseTimings::final_traversal_gc_work);
   }
