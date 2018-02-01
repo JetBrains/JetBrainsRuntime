@@ -183,12 +183,12 @@ ciConstantPoolCache* ciInstanceKlass::field_cache() {
 //
 ciInstanceKlass* ciInstanceKlass::get_canonical_holder(int offset) {
   #ifdef ASSERT
-  if (!(offset >= 0 && offset < layout_helper() || (offset == BrooksPointer::byte_offset() && UseShenandoahGC))) {
+  if (!((offset >= 0 && offset < layout_helper()) || (UseShenandoahGC && offset == BrooksPointer::byte_offset()))) {
     tty->print("*** get_canonical_holder(%d) on ", offset);
     this->print();
     tty->print_cr(" ***");
-  };
-  assert(offset >= 0 && offset < layout_helper() || (offset == BrooksPointer::byte_offset() && UseShenandoahGC), "offset must be tame");
+    fatal("offset must be tame");
+  }
   #endif
 
   if (offset < instanceOopDesc::base_offset_in_bytes()) {

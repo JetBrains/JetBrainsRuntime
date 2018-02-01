@@ -215,6 +215,7 @@ private:
 
 public:
   ShenandoahStrDedupTableCleanupTask();
+  virtual ~ShenandoahStrDedupTableCleanupTask() {};
   virtual void do_parallel_cleanup() = 0;
 
 protected:
