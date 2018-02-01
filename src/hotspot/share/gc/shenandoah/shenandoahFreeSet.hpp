@@ -60,7 +60,6 @@ private:
 
   size_t count()    const { return _free_bitmap.count_one_bits(); }
 
-  bool implicit_live(ShenandoahHeap::AllocType type) const;
 public:
   ShenandoahFreeSet(ShenandoahHeapRegionSet* regions, size_t max_regions);
 
