@@ -750,6 +750,14 @@ public:
 #endif
 };
 
+class MachJumpNode : public MachConstantNode {
+public:
+  float* _probs;
+  MachJumpNode() : MachConstantNode() {
+    init_class_id(Class_MachJump);
+  }
+};
+
 //------------------------------MachGotoNode-----------------------------------
 // Machine-specific versions of GotoNodes
 class MachGotoNode : public MachBranchNode {

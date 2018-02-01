@@ -51,6 +51,7 @@ enum CompilerPhaseType {
   PHASE_BEFORE_MATCHING,
   PHASE_INCREMENTAL_INLINE,
   PHASE_INCREMENTAL_BOXING_INLINE,
+  PHASE_BEFORE_BARRIER_EXPAND,
   PHASE_END,
   PHASE_FAILURE,
 
@@ -86,6 +87,7 @@ class CompilerPhaseTypeHelper {
       case PHASE_BEFORE_MATCHING:            return "Before Matching";
       case PHASE_INCREMENTAL_INLINE:         return "Incremental Inline";
       case PHASE_INCREMENTAL_BOXING_INLINE:  return "Incremental Boxing Inline";
+      case PHASE_BEFORE_BARRIER_EXPAND:      return "Before Barrier Expand";
       case PHASE_END:                        return "End";
       case PHASE_FAILURE:                    return "Failure";
       default:

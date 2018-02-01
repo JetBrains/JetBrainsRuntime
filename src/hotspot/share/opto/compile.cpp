@@ -2189,9 +2189,9 @@ void Compile::Optimize() {
     igvn.optimize();
   }
 
-  print_method(PHASE_ITER_GVN1, 2);
-
   if (failing())  return;
+
+  print_method(PHASE_ITER_GVN1, 2);
 
   inline_incrementally(igvn);
 
@@ -2361,6 +2361,8 @@ void Compile::Optimize() {
       return;
     }
   }
+
+  print_method(PHASE_BEFORE_BARRIER_EXPAND, 2);
 
   if (!ShenandoahWriteBarrierNode::expand(this, igvn, loop_opts_cnt)) {
     assert(failing(), "must bail out w/ explicit message");

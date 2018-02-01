@@ -4056,8 +4056,11 @@ public:
   diagnostic(bool, CompilerDirectivesPrint, false,                          \
              "Print compiler directives on installation.")                  \
   diagnostic(int,  CompilerDirectivesLimit, 50,                             \
-             "Limit on number of compiler directives.")
-
+             "Limit on number of compiler directives.")                     \
+                                                                            \
+  experimental(bool, UseSwitchProfiling, true,                              \
+          "leverage profiling for table/lookup switch")                     \
+                                                                            \
 
 /*
  *  Macros for factoring of globals

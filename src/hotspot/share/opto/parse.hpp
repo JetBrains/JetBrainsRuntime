@@ -552,11 +552,11 @@ class Parse : public GraphKit {
   void    sharpen_type_after_if(BoolTest::mask btest,
                                 Node* con, const Type* tcon,
                                 Node* val, const Type* tval);
-  IfNode* jump_if_fork_int(Node* a, Node* b, BoolTest::mask mask);
+  IfNode* jump_if_fork_int(Node* a, Node* b, BoolTest::mask mask, float prob, float cnt);
   Node*   jump_if_join(Node* iffalse, Node* iftrue);
-  void    jump_if_true_fork(IfNode *ifNode, int dest_bci_if_true, int prof_table_index);
-  void    jump_if_false_fork(IfNode *ifNode, int dest_bci_if_false, int prof_table_index);
-  void    jump_if_always_fork(int dest_bci_if_true, int prof_table_index);
+  void    jump_if_true_fork(IfNode *ifNode, int dest_bci_if_true, int prof_table_index, bool unc);
+  void    jump_if_false_fork(IfNode *ifNode, int dest_bci_if_false, int prof_table_index, bool unc);
+  void    jump_if_always_fork(int dest_bci_if_true, int prof_table_index, bool unc);
 
   friend class SwitchRange;
   void    do_tableswitch();
