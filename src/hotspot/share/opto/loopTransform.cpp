@@ -151,6 +151,21 @@ float IdealLoopTree::compute_profile_trip_cnt_helper(Node* n) {
       }
     }
   }
+  if (n->is_Jump()) {
+    JumpNode *jmp = n->as_Jump();
+    if (jmp->_fcnt != COUNT_UNKNOWN) {
+      float* probs = jmp->_probs;
+      float exit_prob = 0;
+      PhaseIdealLoop *phase = _phase;
+      for (DUIterator_Fast imax, i = jmp->fast_outs(imax); i < imax; i++) {
+        JumpProjNode* u = jmp->fast_out(i)->as_JumpProj();
+        if (!is_member(_phase->get_loop(u))) {
+          exit_prob += probs[u->_con];
+        }
+      }
+      return exit_prob * jmp->_fcnt;
+    }
+  }
   return 0;
 }
 
@@ -201,10 +216,10 @@ void IdealLoopTree::compute_profile_trip_cnt(PhaseIdealLoop *phase) {
             for (uint j = 1; j < n->req(); j++) {
               wq.push(n->in(j));
             }
+          } else {
+            loop_exit_cnt += compute_profile_trip_cnt_helper(n);
+            wq.push(n->in(0));
           }
-        } else {
-          loop_exit_cnt += compute_profile_trip_cnt_helper(n);
-          wq.push(n->in(0));
         }
       }
 
@@ -2695,7 +2710,7 @@ bool IdealLoopTree::policy_do_remove_empty_loop( PhaseIdealLoop *phase ) {
   }
   if (needs_guard) {
     // Check for an obvious zero trip guard.
-    Node* inctrl = PhaseIdealLoop::skip_loop_predicates(cl->skip_strip_mined()->in(LoopNode::EntryControl));
+    Node* inctrl = PhaseIdealLoop::skip_all_loop_predicates(cl->skip_strip_mined()->in(LoopNode::EntryControl));
     if (inctrl->Opcode() == Op_IfTrue || inctrl->Opcode() == Op_IfFalse) {
       bool maybe_swapped = (inctrl->Opcode() == Op_IfFalse);
       // The test should look like just the backedge of a CountedLoop

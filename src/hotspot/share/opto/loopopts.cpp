@@ -293,6 +293,7 @@ void PhaseIdealLoop::dominated_by( Node *prevdom, Node *iff, bool flip, bool exc
   ProjNode* unc_proj = iff->as_If()->proj_out(1 - dp_proj->_con)->as_Proj();
   if (exclude_loop_predicate &&
       (unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_predicate) != NULL ||
+       unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_profile_predicate) != NULL ||
        unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_range_check) != NULL)) {
     // If this is a range check (IfNode::is_range_check), do not
     // reorder because Compile::allow_range_check_smearing might have
@@ -1110,9 +1111,16 @@ static bool merge_point_safe(Node* region) {
 // For inner loop uses move it to the preheader area.
 Node *PhaseIdealLoop::place_near_use( Node *useblock ) const {
   IdealLoopTree *u_loop = get_loop( useblock );
-  return (u_loop->_irreducible || u_loop->_child)
-    ? useblock
-    : u_loop->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
+  if (u_loop->_irreducible) {
+    return useblock;
+  }
+  if (u_loop->_child) {
+    if (useblock == u_loop->_head && u_loop->_head->as_Loop()->is_strip_mined()) {
+      return u_loop->_head->in(LoopNode::EntryControl);
+    }
+    return useblock;
+  }
+  return u_loop->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
 }
 
 

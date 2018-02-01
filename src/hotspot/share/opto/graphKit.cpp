@@ -3825,7 +3825,7 @@ InitializeNode* AllocateNode::initialization() {
 //----------------------------- loop predicates ---------------------------
 
 //------------------------------add_predicate_impl----------------------------
-void GraphKit::add_predicate_impl(Deoptimization::DeoptReason reason, int nargs) {
+bool GraphKit::add_predicate_impl(Deoptimization::DeoptReason reason, int nargs) {
   // Too many traps seen?
   if (too_many_traps(reason)) {
 #ifdef ASSERT
@@ -3839,7 +3839,7 @@ void GraphKit::add_predicate_impl(Deoptimization::DeoptReason reason, int nargs)
 #endif
     // We cannot afford to take more traps here,
     // do not generate predicate.
-    return;
+    return false;
   }
 
   Node *cont    = _gvn.intcon(1);
@@ -3856,11 +3856,16 @@ void GraphKit::add_predicate_impl(Deoptimization::DeoptReason reason, int nargs)
   }
   Node* iftrue = _gvn.transform(new IfTrueNode(iff));
   set_control(iftrue);
+  return true;
 }
 
 //------------------------------add_predicate---------------------------------
 void GraphKit::add_predicate(int nargs) {
-  if (UseLoopPredicate) {
+  bool added = false;
+  if (UseProfiledLoopPredicate) {
+    added = add_predicate_impl(Deoptimization::Reason_profile_predicate, nargs);
+  }
+  if (!added && UseLoopPredicate) {
     add_predicate_impl(Deoptimization::Reason_predicate, nargs);
   }
   // loop's limit check predicate should be near the loop.

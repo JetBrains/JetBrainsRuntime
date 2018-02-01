@@ -2360,7 +2360,9 @@ Node* ShenandoahBarrierNode::try_common(Node *n_ctrl, PhaseIdealLoop* phase) {
               int req = unc->uncommon_trap_request();
               Deoptimization::DeoptReason trap_reason = Deoptimization::trap_request_reason(req);
               if ((trap_reason == Deoptimization::Reason_loop_limit_check ||
-                   trap_reason == Deoptimization::Reason_predicate) && phase->is_dominator(val_ctrl, rep_ctrl->in(0)->in(0))) {
+                   trap_reason == Deoptimization::Reason_predicate ||
+                   trap_reason == Deoptimization::Reason_profile_predicate) &&
+                  phase->is_dominator(val_ctrl, rep_ctrl->in(0)->in(0))) {
                 rep_ctrl = rep_ctrl->in(0)->in(0);
                 continue;
               }
@@ -2453,7 +2455,7 @@ static void disconnect_barrier_mem(Node* wb, PhaseIterGVN& igvn) {
 
 Node* ShenandoahWriteBarrierNode::move_above_predicates(LoopNode* cl, Node* val_ctrl, PhaseIdealLoop* phase) {
   Node* entry = cl->skip_strip_mined()->in(LoopNode::EntryControl);
-  Node* above_pred = phase->skip_loop_predicates(entry);
+  Node* above_pred = phase->skip_all_loop_predicates(entry);
   Node* ctrl = entry;
   while (ctrl != above_pred) {
     Node* next = ctrl->in(0);

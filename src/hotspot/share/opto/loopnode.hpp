@@ -1021,6 +1021,7 @@ public:
                                          PhaseIterGVN* igvn);
   Node* clone_loop_predicates(Node* old_entry, Node* new_entry, bool clone_limit_check);
 
+  static Node* skip_all_loop_predicates(Node* entry);
   static Node* skip_loop_predicates(Node* entry);
 
   // Find a good location to insert a predicate
@@ -1036,9 +1037,10 @@ public:
   // Implementation of the loop predication to promote checks outside the loop
   bool loop_predication_impl(IdealLoopTree *loop);
   bool loop_predication_impl_helper(IdealLoopTree *loop, ProjNode* proj, ProjNode *predicate_proj,
-                                    CountedLoopNode *cl, ConNode* zero, Invariance& invar);
-  bool loop_predication_should_follow_branches(IdealLoopTree *loop, float& loop_trip_cnt);
-  bool loop_predication_follow_branches(Node *current_proj, IdealLoopTree *loop, float loop_trip_cnt,
+                                    CountedLoopNode *cl, ConNode* zero, Invariance& invar,
+                                    Deoptimization::DeoptReason reason);
+  bool loop_predication_should_follow_branches(IdealLoopTree *loop, ProjNode *predicate_proj, float& loop_trip_cnt);
+  void loop_predication_follow_branches(Node *current_proj, IdealLoopTree *loop, float loop_trip_cnt,
                                         Node_Stack& stack, GrowableArray<float>& freqs_stack,
                                         GrowableArray<float>& freqs, Node_List& if_proj_list);
 

@@ -1409,9 +1409,9 @@ void LIR_Assembler::emit_typecheck_helper(LIR_OpTypeCheck *op, Label* success, L
       __ mov_metadata(mdo, md->constant_encoding());
       Address data_addr
         = __ form_address(rscratch2, mdo,
-                          md->byte_offset_of_slot(data, DataLayout::DataLayout::header_offset()),
+                          md->byte_offset_of_slot(data, DataLayout::DataLayout::flags_offset()),
                           LogBytesPerWord);
-      int header_bits = DataLayout::flag_mask_to_header_mask(BitData::null_seen_byte_constant());
+      int header_bits = DataLayout::flag_number_to_constant(BitData::null_seen_byte_constant());
       __ ldr(rscratch1, data_addr);
       __ orr(rscratch1, rscratch1, header_bits);
       __ str(rscratch1, data_addr);
@@ -1539,9 +1539,9 @@ void LIR_Assembler::emit_opTypeCheck(LIR_OpTypeCheck* op) {
                           md->byte_offset_of_slot(data, DataLayout::header_offset()),
                           LogBytesPerInt);
       int header_bits = DataLayout::flag_mask_to_header_mask(BitData::null_seen_byte_constant());
-      __ ldrw(rscratch1, data_addr);
-      __ orrw(rscratch1, rscratch1, header_bits);
-      __ strw(rscratch1, data_addr);
+      __ ldr(rscratch1, data_addr);
+      __ orr(rscratch1, rscratch1, header_bits);
+      __ str(rscratch1, data_addr);
       __ b(done);
       __ bind(not_null);
     } else {

@@ -913,8 +913,9 @@ Node* LoadNode::can_see_arraycopy_value(Node* st, PhaseGVN* phase) const {
     if (ac->as_ArrayCopy()->is_clonebasic()) {
       assert(ld_alloc != NULL, "need an alloc");
       assert(addp->is_AddP(), "address must be addp");
-      assert(addp->in(AddPNode::Base) == ac->in(ArrayCopyNode::Dest)->in(AddPNode::Base), "strange pattern");
-      assert(addp->in(AddPNode::Address) == ac->in(ArrayCopyNode::Dest)->in(AddPNode::Address), "strange pattern");
+      assert(ac->in(ArrayCopyNode::Dest)->is_AddP(), "dest must be an address");
+      assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Base)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Base)), "strange pattern");
+      assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Address)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Address)), "strange pattern");
       addp->set_req(AddPNode::Base, src->in(AddPNode::Base));
       addp->set_req(AddPNode::Address, src->in(AddPNode::Address));
     } else {
