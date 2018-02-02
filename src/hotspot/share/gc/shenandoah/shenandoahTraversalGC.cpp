@@ -202,8 +202,13 @@ public:
       }
     }
 
-    // Step 3: Finally drain all outstanding work in queues.
-    traversal_gc->main_loop(worker_id, _terminator, false);
+    {
+      ShenandoahWorkerTimings *worker_times = _heap->phase_timings()->worker_times();
+      ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::FinishQueues, worker_id);
+
+      // Step 3: Finally drain all outstanding work in queues.
+      traversal_gc->main_loop(worker_id, _terminator, false);
+    }
 
     // Flush remaining liveness data.
     traversal_gc->flush_liveness(worker_id);
@@ -521,7 +526,7 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
   if (!_heap->cancelled_concgc() && _heap->shenandoahPolicy()->unload_classes()) {
     _heap->unload_classes_and_cleanup_tables(false);
-    _heap->concurrentMark()->update_roots(ShenandoahPhaseTimings::final_traversal_gc_work);
+    _heap->concurrentMark()->update_roots(ShenandoahPhaseTimings::final_traversal_update_roots);
   }
 
   if (!_heap->cancelled_concgc()) {

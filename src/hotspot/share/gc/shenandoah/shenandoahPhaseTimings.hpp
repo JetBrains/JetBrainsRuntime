@@ -59,6 +59,7 @@ public:
     scan_cldg_roots,
     scan_jvmti_roots,
     scan_string_dedup_roots,
+    scan_finish_queues,
 
     resize_tlabs,
 
@@ -80,6 +81,7 @@ public:
     update_cldg_roots,
     update_jvmti_roots,
     update_string_dedup_roots,
+    update_finish_queues,
 
     finish_queues,
     weakrefs,
@@ -113,6 +115,7 @@ public:
     evac_cldg_roots,
     evac_jvmti_roots,
     evac_string_dedup_roots,
+    evac_finish_queues,
 
     init_update_refs_gross,
     init_update_refs,
@@ -136,6 +139,7 @@ public:
     final_update_refs_cldg_roots,
     final_update_refs_jvmti_roots,
     final_update_refs_string_dedup_roots,
+    final_update_refs_finish_queues,
 
     final_update_refs_recycle,
 
@@ -158,6 +162,7 @@ public:
     init_partial_gc_cldg_roots,
     init_partial_gc_jvmti_roots,
     init_partial_gc_string_dedup_roots,
+    init_partial_gc_finish_queues,
 
     final_partial_gc_gross,
     final_partial_gc,
@@ -177,6 +182,7 @@ public:
     final_partial_gc_cldg_roots,
     final_partial_gc_jvmti_roots,
     final_partial_gc_string_dedup_roots,
+    final_partial_gc_finish_queues,
 
     partial_gc_cleanup,
 
@@ -202,6 +208,7 @@ public:
     init_traversal_gc_cldg_roots,
     init_traversal_gc_jvmti_roots,
     init_traversal_gc_string_dedup_roots,
+    init_traversal_gc_finish_queues,
 
     final_traversal_gc_gross,
     final_traversal_gc,
@@ -221,6 +228,24 @@ public:
     final_traversal_gc_cldg_roots,
     final_traversal_gc_jvmti_roots,
     final_traversal_gc_string_dedup_roots,
+    final_traversal_gc_finish_queues,
+
+    // Per-thread timer block, should have "roots" counters in consistent order
+    final_traversal_update_roots,
+    final_traversal_update_thread_roots,
+    final_traversal_update_code_roots,
+    final_traversal_update_string_table_roots,
+    final_traversal_update_universe_roots,
+    final_traversal_update_jni_roots,
+    final_traversal_update_jni_weak_roots,
+    final_traversal_update_synchronizer_roots,
+    final_traversal_update_flat_profiler_roots,
+    final_traversal_update_management_roots,
+    final_traversal_update_system_dict_roots,
+    final_traversal_update_cldg_roots,
+    final_traversal_update_jvmti_roots,
+    final_traversal_update_string_dedup_roots,
+    final_traversal_update_finish_queues,
 
     traversal_gc_cleanup,
 
@@ -244,6 +269,7 @@ public:
     full_gc_cldg_roots,
     full_gc_jvmti_roots,
     full_gc_string_dedup_roots,
+    full_gc_finish_queues,
 
     full_gc_mark,
     full_gc_mark_finish_queues,
@@ -306,6 +332,7 @@ public:
     CLDGRoots,
     JVMTIRoots,
     StringDedupRoots,
+    FinishQueues,
     GCParPhasesSentinel
   };
 

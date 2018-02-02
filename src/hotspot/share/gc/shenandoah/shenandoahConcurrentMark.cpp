@@ -330,7 +330,7 @@ void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_p
       break;
     case ShenandoahPhaseTimings::full_gc_roots:
     case ShenandoahPhaseTimings::final_partial_gc_work:
-    case ShenandoahPhaseTimings::final_traversal_gc_work:
+    case ShenandoahPhaseTimings::final_traversal_update_roots:
       update_code_cache = true;
       break;
     default:
