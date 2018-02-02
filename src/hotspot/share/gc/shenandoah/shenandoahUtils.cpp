@@ -34,9 +34,11 @@
 ShenandoahGCSession::ShenandoahGCSession() {
   _timer = ShenandoahHeap::heap()->gc_timer();
   _timer->register_gc_start();
+  ShenandoahHeap::heap()->shenandoahPolicy()->record_cycle_start();
 }
 
 ShenandoahGCSession::~ShenandoahGCSession() {
+  ShenandoahHeap::heap()->shenandoahPolicy()->record_cycle_end();
   _timer->register_gc_end();
 }
 
