@@ -1832,6 +1832,15 @@ ShenandoahForwardedIsAliveClosure::ShenandoahForwardedIsAliveClosure() :
 
 bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
   assert(_heap != NULL, "sanity");
+  if (_heap->is_concurrent_traversal_in_progress() && oopDesc::is_null(obj)) {
+    // NOTE:
+    // The situation might arise only with traversal GC, because it can mark through the Reference object
+    // right after it is created, but fields not yet initialized. In this case, referent is still NULL, but
+    // it can already be visible to the GC. A subsequent putfield to store the referent will do the right
+    // thing (i.e. put the referent in the traversal work queue, and mark it live). Returning 'is-alive'
+    // for the NULL is the best we can do.
+    return true;
+  }
   assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)) ||
          (!_heap->is_marked_next(obj)), "from-space obj must not be marked");
 
@@ -1851,6 +1860,15 @@ ShenandoahIsAliveClosure::ShenandoahIsAliveClosure() :
 
 bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
   assert(_heap != NULL, "sanity");
+  if (_heap->is_concurrent_traversal_in_progress() && oopDesc::is_null(obj)) {
+    // NOTE:
+    // The situation might arise only with traversal GC, because it can mark through the Reference object
+    // right after it is created, but fields not yet initialized. In this case, referent is still NULL, but
+    // it can already be visible to the GC. A subsequent putfield to store the referent will do the right
+    // thing (i.e. put the referent in the traversal work queue, and mark it live). Returning 'is-alive'
+    // for the NULL is the best we can do.
+    return true;
+  }
   assert(!oopDesc::is_null(obj), "null");
   assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
   return _heap->is_marked_next(obj);
