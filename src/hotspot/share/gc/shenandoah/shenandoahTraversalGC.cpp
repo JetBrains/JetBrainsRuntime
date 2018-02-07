@@ -95,6 +95,31 @@ class ShenandoahTraversalSATBThreadsClosure : public ThreadClosure {
   }
 };
 
+// Like CLDToOopClosure, but clears has_modified_oops, so that we can record modified CLDs during traversal
+// and remark them later during final-traversal.
+class ShenandoahMarkCLDClosure : public CLDClosure {
+private:
+  OopClosure* _cl;
+public:
+  ShenandoahMarkCLDClosure(OopClosure* cl) : _cl(cl) {}
+  void do_cld(ClassLoaderData* cld) {
+    cld->oops_do(_cl, true, true);
+  }
+};
+
+// Like CLDToOopClosure, but only process modified CLDs
+class ShenandoahRemarkCLDClosure : public CLDClosure {
+private:
+  OopClosure* _cl;
+public:
+  ShenandoahRemarkCLDClosure(OopClosure* cl) : _cl(cl) {}
+  void do_cld(ClassLoaderData* cld) {
+    if (cld->has_modified_oops()) {
+      cld->oops_do(_cl, true, true);
+    }
+  }
+};
+
 class ShenandoahInitTraversalCollectionTask : public AbstractGangTask {
 private:
   ShenandoahRootProcessor* _rp;
@@ -123,10 +148,10 @@ public:
     // Step 1: Process ordinary GC roots.
     {
       ShenandoahTraversalClosure roots_cl(q, rp);
-      CLDToOopClosure cld_cl(&roots_cl);
+      ShenandoahMarkCLDClosure cld_cl(&roots_cl);
       MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
       if (unload_classes) {
-        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, NULL, worker_id);
+        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, NULL, &code_cl, NULL, worker_id);
       } else {
         _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, NULL, worker_id);
       }
@@ -196,7 +221,8 @@ public:
       MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
       ShenandoahTraversalSATBThreadsClosure tc(&satb_cl);
       if (unload_classes) {
-        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, &tc, worker_id);
+        ShenandoahRemarkCLDClosure weak_cld_cl(&roots_cl);
+        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &weak_cld_cl, &code_cl, &tc, worker_id);
       } else {
         _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, &tc, worker_id);
       }
@@ -468,18 +494,6 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
   assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
 }
 
-class ShenandoahRemarkCLDClosure : public CLDClosure {
-private:
-  OopClosure* _cl;
-public:
-  ShenandoahRemarkCLDClosure(OopClosure* cl) : _cl(cl) {}
-  void do_cld(ClassLoaderData* cld) {
-    if (cld->has_modified_oops()) {
-      cld->oops_do(_cl, false, true);
-    }
-  }
-};
-
 void ShenandoahTraversalGC::final_traversal_collection() {
 
   _heap->make_tlabs_parsable(true);
@@ -491,18 +505,6 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     ShenandoahGCPhase phase_work(ShenandoahPhaseTimings::final_traversal_gc_work);
     uint nworkers = _heap->workers()->active_workers();
     task_queues()->reserve(nworkers);
-
-    {
-      bool process_refs = _heap->shenandoahPolicy()->process_references();
-      ReferenceProcessor* rp = NULL;
-      if (process_refs) {
-        rp = _heap->ref_processor();
-      }
-
-      ShenandoahTraversalClosure roots_cl(task_queues()->queue(0), rp);
-      ShenandoahRemarkCLDClosure remark_clds(&roots_cl);
-      ClassLoaderDataGraph::cld_do(&remark_clds);
-    }
 
     // Finish traversal
     ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::final_traversal_gc_work);

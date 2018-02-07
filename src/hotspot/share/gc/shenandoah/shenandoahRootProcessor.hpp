@@ -96,6 +96,7 @@ public:
   // Apply oops, clds and blobs to all strongly reachable roots in the system
   void process_strong_roots(OopClosure* oops, OopClosure* weak_oops,
                             CLDClosure* clds,
+                            CLDClosure* weak_clds,
                             CodeBlobClosure* blobs,
                             ThreadClosure* thread_cl,
                             uint worker_id);

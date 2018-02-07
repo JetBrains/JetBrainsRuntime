@@ -121,7 +121,7 @@ public:
 
     ResourceMark m;
     if (heap->concurrentMark()->unload_classes()) {
-      _rp->process_strong_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, &blobsCl, NULL, worker_id);
+      _rp->process_strong_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, NULL, &blobsCl, NULL, worker_id);
     } else {
       if (ShenandoahConcurrentScanCodeRoots) {
         CodeBlobClosure* code_blobs = NULL;
