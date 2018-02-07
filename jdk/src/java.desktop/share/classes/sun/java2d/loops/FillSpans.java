@@ -112,8 +112,12 @@ public class FillSpans extends GraphicsPrimitive
         public void FillSpans(SunGraphics2D sg2d, SurfaceData dest,
                               SpanIterator si)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.FillSpans(sg2d, dest, si);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

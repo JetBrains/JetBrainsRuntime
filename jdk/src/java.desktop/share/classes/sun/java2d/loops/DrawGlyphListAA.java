@@ -150,8 +150,12 @@ public class DrawGlyphListAA extends GraphicsPrimitive {
         public void DrawGlyphListAA(SunGraphics2D sg2d, SurfaceData dest,
                                     GlyphList glyphs, int fromGlyph, int toGlyph)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.DrawGlyphListAA(sg2d, dest, glyphs, fromGlyph, toGlyph);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

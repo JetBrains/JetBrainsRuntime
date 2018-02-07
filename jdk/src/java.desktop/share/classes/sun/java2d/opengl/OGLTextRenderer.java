@@ -71,8 +71,13 @@ class OGLTextRenderer extends BufferedTextPipe {
             super(ogltr.rq);
         }
         protected void drawGlyphList(SunGraphics2D sg2d, GlyphList gl) {
-            GraphicsPrimitive.tracePrimitive("OGLDrawGlyphs");
+            final String prim = "OGLDrawGlyphs" + (gl.isRGBOrder() ? "LCD" : "Gray");
+            if ((GraphicsPrimitive.traceflags & GraphicsPrimitive.TRACEPTIME) == 0) {
+                GraphicsPrimitive.tracePrimitive(prim);
+            }
+            long time = System.nanoTime();
             super.drawGlyphList(sg2d, gl);
+            GraphicsPrimitive.tracePrimitiveTime(prim, System.nanoTime() - time);
         }
     }
 }

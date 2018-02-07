@@ -209,9 +209,13 @@ public class BlitBg extends GraphicsPrimitive
                            int srcx, int srcy, int dstx, int dsty,
                            int width, int height)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.BlitBg(src, dst, comp, clip, bgColor,
                           srcx, srcy, dstx, dsty, width, height);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

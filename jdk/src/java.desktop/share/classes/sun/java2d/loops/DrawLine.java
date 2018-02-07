@@ -104,8 +104,12 @@ public class DrawLine extends GraphicsPrimitive
         public void DrawLine(SunGraphics2D sg2d, SurfaceData dest,
                              int x1, int y1, int x2, int y2)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.DrawLine(sg2d, dest, x1, y1, x2, y2);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

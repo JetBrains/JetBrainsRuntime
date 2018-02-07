@@ -111,8 +111,12 @@ public class FillParallelogram extends GraphicsPrimitive
                                       double dx1, double dy1,
                                       double dx2, double dy2)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.FillParallelogram(sg2d, dest, x0, y0, dx1, dy1, dx2, dy2);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

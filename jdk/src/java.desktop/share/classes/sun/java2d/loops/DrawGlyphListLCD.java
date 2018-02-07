@@ -109,8 +109,12 @@ public class DrawGlyphListLCD extends GraphicsPrimitive {
         public void DrawGlyphListLCD(SunGraphics2D sg2d, SurfaceData dest,
                                       GlyphList glyphs, int fromGlyph, int toGlyph)
         {
+            if ((traceflags & TRACEPTIME) == 0) {
             tracePrimitive(target);
+        }
+            long time = System.nanoTime();
             target.DrawGlyphListLCD(sg2d, dest, glyphs, fromGlyph, toGlyph);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }
