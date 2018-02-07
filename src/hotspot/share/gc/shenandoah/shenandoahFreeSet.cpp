@@ -72,7 +72,9 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
     }
     case ShenandoahHeap::_alloc_gclab:
     case ShenandoahHeap::_alloc_shared_gc: {
-      for (size_t idx = _rightmost; idx > _leftmost; idx--) {
+      // size_t is unsigned, need to dodge underflow when _leftmost = 0
+      for (size_t c = _rightmost + 1; c > _leftmost; c--) {
+        size_t idx = c - 1;
         if (is_free(idx)) {
           HeapWord* result = try_allocate_in(word_size, type, idx, in_new_region);
           if (result != NULL) {
