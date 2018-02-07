@@ -322,17 +322,27 @@ public abstract class GraphicsPrimitive {
 
     public static int traceflags;
     public static String tracefile;
+    public static String pname;
     public static PrintStream traceout;
+    public static long treshold = 0;
+    public static boolean verbose = false;
 
     public static final int TRACELOG = 1;
     public static final int TRACETIMESTAMP = 2;
     public static final int TRACECOUNTS = 4;
+    public static final int TRACEPTIME = 8;
+    public static final int TRACEPNAME = 16;
+
+    static void showTraceUsage() {
+        System.err.println("usage: -Dsun.java2d.trace="+
+                "[log[,timestamp]],[count],[ptime],"+
+                "[out:<filename>],[td=<treshold>],[help],[verbose]");
+    }
 
     static {
         GetPropertyAction gpa = new GetPropertyAction("sun.java2d.trace");
         String trace = AccessController.doPrivileged(gpa);
         if (trace != null) {
-            boolean verbose = false;
             int traceflags = 0;
             StringTokenizer st = new StringTokenizer(trace, ",");
             while (st.hasMoreTokens()) {
@@ -343,17 +353,26 @@ public abstract class GraphicsPrimitive {
                     traceflags |= GraphicsPrimitive.TRACELOG;
                 } else if (tok.equalsIgnoreCase("timestamp")) {
                     traceflags |= GraphicsPrimitive.TRACETIMESTAMP;
+                } else if (tok.equalsIgnoreCase("ptime")) {
+                    traceflags |=GraphicsPrimitive.TRACEPTIME;
+                } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
+                    traceflags |=GraphicsPrimitive.TRACEPNAME;
+                    pname = tok.substring(6);
                 } else if (tok.equalsIgnoreCase("verbose")) {
                     verbose = true;
                 } else if (tok.regionMatches(true, 0, "out:", 0, 4)) {
                     tracefile = tok.substring(4);
+                } else if (tok.regionMatches(true, 0, "td=", 0, 3)) {
+                    try {
+                        treshold = Long.parseLong(tok.substring(3));
+                    } catch (NumberFormatException e) {
+                        showTraceUsage();
+                    }
                 } else {
                     if (!tok.equalsIgnoreCase("help")) {
                         System.err.println("unrecognized token: "+tok);
                     }
-                    System.err.println("usage: -Dsun.java2d.trace="+
-                                       "[log[,timestamp]],[count],"+
-                                       "[out:<filename>],[help],[verbose]");
+                    showTraceUsage();
                 }
             }
             if (verbose) {
@@ -456,7 +475,11 @@ public abstract class GraphicsPrimitive {
         }
     }
 
-    public static synchronized void tracePrimitive(Object prim) {
+    public synchronized static void tracePrimitive(Object prim) {
+        if ((traceflags & TRACEPNAME) != 0) {
+            if (!prim.toString().contains(pname)) return;
+        }
+
         if ((traceflags & TRACECOUNTS) != 0) {
             if (traceMap == null) {
                 traceMap = new HashMap<>();
@@ -475,6 +498,25 @@ public abstract class GraphicsPrimitive {
                 ps.print(System.currentTimeMillis()+": ");
             }
             ps.println(prim);
+        }
+    }
+
+    public synchronized static void tracePrimitiveTime(Object prim, long time) {
+        if ((traceflags & TRACEPNAME) != 0) {
+            if (!prim.toString().contains(pname)) return;
+        }
+        if (time > treshold && (traceflags & TRACEPTIME) != 0  && (traceflags & TRACELOG) != 0) {
+            PrintStream ps = getTraceOutputFile();
+            ps.println(prim + " time: " + time);
+            if (verbose) {
+                final StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
+                if (stackTrace.length > 3) {
+                    for (int i = 3; i < stackTrace.length; i++) {
+                        ps.println("  " + stackTrace[i].toString());
+                    }
+                }
+                ps.println();
+            }
         }
     }
 

@@ -129,11 +129,15 @@ public class TransformHelper extends GraphicsPrimitive
                               int dx1, int dy1, int dx2, int dy2,
                               int edges[], int dxoff, int dyoff)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.Transform(output, src, dst, comp, clip, itx, txtype,
                              sx1, sy1, sx2, sy2,
                              dx1, dy1, dx2, dy2,
                              edges, dxoff, dyoff);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

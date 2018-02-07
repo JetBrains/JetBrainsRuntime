@@ -125,8 +125,12 @@ public class FillRect extends GraphicsPrimitive
         public void FillRect(SunGraphics2D sg2d, SurfaceData dest,
                              int x, int y, int w, int h)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.FillRect(sg2d, dest, x, y, w, h);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

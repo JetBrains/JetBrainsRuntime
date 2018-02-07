@@ -255,10 +255,14 @@ public class MaskBlit extends GraphicsPrimitive
                              int width, int height,
                              byte[] mask, int maskoff, int maskscan)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.MaskBlit(src, dst, comp, clip,
                             srcx, srcy, dstx, dsty, width, height,
                             mask, maskoff, maskscan);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

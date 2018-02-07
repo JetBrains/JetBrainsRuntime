@@ -237,9 +237,13 @@ public class MaskFill extends GraphicsPrimitive
                              int x, int y, int w, int h,
                              byte[] mask, int maskoff, int maskscan)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.MaskFill(sg2d, sData, comp, x, y, w, h,
                             mask, maskoff, maskscan);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
 
         public void FillAAPgram(SunGraphics2D sg2d, SurfaceData sData,
@@ -248,9 +252,13 @@ public class MaskFill extends GraphicsPrimitive
                                 double dx1, double dy1,
                                 double dx2, double dy2)
         {
-            tracePrimitive(fillPgramTarget);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(fillPgramTarget);
+            }
+            long time = System.nanoTime();
             target.FillAAPgram(sg2d, sData, comp,
                                x, y, dx1, dy1, dx2, dy2);
+            tracePrimitiveTime(fillPgramTarget, System.nanoTime() - time);
         }
 
         public void DrawAAPgram(SunGraphics2D sg2d, SurfaceData sData,
@@ -260,9 +268,13 @@ public class MaskFill extends GraphicsPrimitive
                                 double dx2, double dy2,
                                 double lw1, double lw2)
         {
-            tracePrimitive(drawPgramTarget);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(drawPgramTarget);
+            }
+            long time = System.nanoTime();
             target.DrawAAPgram(sg2d, sData, comp,
                                x, y, dx1, dy1, dx2, dy2, lw1, lw2);
+            tracePrimitiveTime(drawPgramTarget, System.nanoTime() - time);
         }
 
         public boolean canDoParallelograms() {
