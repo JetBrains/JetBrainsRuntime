@@ -39,6 +39,7 @@
 #include "gc/shenandoah/shenandoah_specialized_oop_closures.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
+#include "gc/shared/weakProcessor.hpp"
 #include "code/codeCache.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
@@ -796,12 +797,16 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
       rp->process_discovered_references(&is_alive, &keep_alive,
                                         &complete_gc, &executor,
                                         &pt);
+
+      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
     } else {
       ShenandoahIsAliveClosure is_alive;
       ShenandoahCMKeepAliveClosure keep_alive(get_queue(serial_worker_id));
       rp->process_discovered_references(&is_alive, &keep_alive,
                                         &complete_gc, &executor,
                                         &pt);
+
+      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
     }
     pt.print_all_references();
 

@@ -27,6 +27,7 @@
 #include "gc/shared/markBitMap.inline.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "gc/shared/taskqueue.inline.hpp"
+#include "gc/shared/weakProcessor.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
@@ -850,6 +851,8 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
                                       &complete_gc, &executor,
                                       &pt);
     pt.print_all_references();
+
+    WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
 
     assert(!_heap->cancelled_concgc() || task_queues()->is_empty(), "Should be empty");
   }

@@ -35,6 +35,7 @@
 #include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
+#include "gc/shared/weakProcessor.hpp"
 #include "memory/allocation.inline.hpp"
 #include "runtime/mutex.hpp"
 #include "runtime/sweeper.hpp"
@@ -83,7 +84,7 @@ void ShenandoahRootProcessor::process_all_roots_slow(OopClosure* oops) {
   Management::oops_do(oops);
   JvmtiExport::oops_do(oops);
   JNIHandles::oops_do(oops);
-  JNIHandles::weak_oops_do(&always_true, oops);
+  WeakProcessor::oops_do(oops);
   ObjectSynchronizer::oops_do(oops);
   SystemDictionary::roots_oops_do(oops, oops);
   StringTable::oops_do(oops);
@@ -180,9 +181,8 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
   }
   if (jni_weak_roots != NULL) {
     if (!_process_strong_tasks->is_task_claimed(SHENANDOAH_RP_PS_JNIHandles_weak_oops_do)) {
-      ShenandoahAlwaysTrueClosure always_true;
       ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::JNIWeakRoots, worker_id);
-      JNIHandles::weak_oops_do(&always_true, jni_weak_roots);
+      WeakProcessor::oops_do(jni_weak_roots);
     }
   }
 
