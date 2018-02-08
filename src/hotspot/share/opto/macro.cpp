@@ -2676,13 +2676,14 @@ void PhaseMacroExpand::eliminate_macro_nodes() {
         break;
       case Node::Class_ArrayCopy:
         break;
+      case Node::Class_OuterStripMinedLoop:
+        break;
       default:
         assert(n->Opcode() == Op_LoopLimit ||
                n->Opcode() == Op_Opaque1   ||
                n->Opcode() == Op_Opaque2   ||
                n->Opcode() == Op_Opaque3   ||
-               n->Opcode() == Op_Opaque4   ||
-               n->Opcode() == Op_Opaque5, "unknown node type in macro list");
+               n->Opcode() == Op_Opaque4, "unknown node type in macro list");
       }
       assert(success == (C->macro_count() < old_macro_count), "elimination reduces macro count");
       progress = progress || success;
@@ -2750,10 +2751,9 @@ bool PhaseMacroExpand::expand_macro_nodes() {
       } else if (n->Opcode() == Op_Opaque4) {
         _igvn.replace_node(n, n->in(2));
         success = true;
-      } else if (n->Opcode() == Op_Opaque5) {
-        Node* res = ((Opaque5Node*)n)->adjust_strip_mined_loop(&_igvn);
-        guarantee(res != NULL, "strip mined adjustment failed");
-        _igvn.replace_node(n, res);
+      } else if (n->Opcode() == Op_OuterStripMinedLoop) {
+        n->as_OuterStripMinedLoop()->adjust_strip_mined_loop(&_igvn);
+        C->remove_macro_node(n);
         success = true;
       }
       assert(success == (C->macro_count() < old_macro_count), "elimination reduces macro count");

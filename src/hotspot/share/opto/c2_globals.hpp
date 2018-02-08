@@ -749,10 +749,6 @@
           "Loop with fewer iterations are not strip mined")                 \
           range(0, max_juint)                                               \
                                                                             \
-  product(bool, LoopStripMiningCopyShort, true,                             \
-          "Make a copy of loop with no strip mining when profiling shows "  \
-          "they execute few iterations")                                    \
-                                                                            \
   product(bool, UseProfiledLoopPredicate, true,                             \
           "move predicates out of loops based on profiling data")           \
 

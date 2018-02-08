@@ -573,27 +573,14 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     } else if (can_reshape) {   // Optimization phase - remove the node
       PhaseIterGVN *igvn = phase->is_IterGVN();
       // Strip mined (inner) loop is going away, remove outer loop.
-      if (is_CountedLoop() && as_Loop()->is_strip_mined() &&
-          in(LoopNode::EntryControl) != NULL &&
-          in(LoopNode::EntryControl)->is_Loop()) {
-        LoopNode* outer = in(LoopNode::EntryControl)->as_Loop();
-        assert(outer->is_strip_mined(), "where's the outer loop?");
-        Node* outer_tail = outer->in(LoopNode::LoopBackControl);
-        if (outer_tail != NULL && !outer_tail->is_top()) {
-          assert(outer_tail->Opcode() == Op_IfTrue, "broken outer loop");
-          Node* outer_le = outer_tail->in(0);
-          if (outer_le != NULL && !outer_le->is_top() && outer_le->outcnt() == 2) {
-            assert(outer_le->Opcode() == Op_If, "broken outer loop");
-            Node* outer_sfpt = outer_le->in(0);
-            if (outer_sfpt != NULL && !outer_sfpt->is_top()) {
-              assert(outer_sfpt->Opcode() == Op_SafePoint, "broken outer loop");
-              Node* in = outer_sfpt->in(0);
-              Node* outer_out = outer_le->as_If()->proj_out(false);
-              if (outer_out != NULL) {
-                igvn->replace_node(outer_out, in);
-              }
-            }
-          }
+      if (is_CountedLoop() &&
+          as_Loop()->is_strip_mined()) {
+        Node* outer_sfpt = as_CountedLoop()->outer_safepoint();
+        Node* outer_out = as_CountedLoop()->outer_loop_exit();
+        if (outer_sfpt != NULL && outer_out != NULL) {
+          Node* in = outer_sfpt->in(0);
+          igvn->replace_node(outer_out, in);
+          LoopNode* outer = as_CountedLoop()->outer_loop();
           igvn->replace_input_of(outer, LoopNode::LoopBackControl, igvn->C->top());
         }
       }

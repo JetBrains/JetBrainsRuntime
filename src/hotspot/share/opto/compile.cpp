@@ -3291,6 +3291,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     break;
   case Op_Loop:
   case Op_CountedLoop:
+  case Op_OuterStripMinedLoop:
     if (n->as_Loop()->is_inner_loop()) {
       frc.inc_inner_loop_count();
     }
@@ -3599,6 +3600,14 @@ bool Compile::final_graph_reshaping() {
         record_method_not_compilable("infinite loop");
         return true;            // Found unvisited kid; must be unreach
       }
+
+    // Here so verification code in final_graph_reshaping_walk()
+    // always see an OuterStripMinedLoopEnd
+    if (n->is_OuterStripMinedLoopEnd()) {
+      IfNode* init_iff = n->as_If();
+      Node* iff = new IfNode(init_iff->in(0), init_iff->in(1), init_iff->_prob, init_iff->_fcnt);
+      n->subsume_by(iff, this);
+    }
   }
 
   // If original bytecodes contained a mixture of floats and doubles

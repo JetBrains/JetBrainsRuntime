@@ -1628,16 +1628,6 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   // whether they are testing a 'gt' or 'lt' condition.  The 'gt' condition
   // happens in count-down loops
   if (iff->is_CountedLoopEnd())  return NULL;
-  Node* proj_true = iff->proj_out(true);
-  if (proj_true->outcnt() == 1) {
-    Node* c = proj_true->unique_out();
-    // Leave test of outer strip mined loop alone
-    if (c != NULL && c->is_Loop() &&
-        c->in(LoopNode::LoopBackControl) == proj_true &&
-        c->as_Loop()->is_strip_mined()) {
-      return NULL;
-    }
-  }
   if (!iff->in(1)->is_Bool())  return NULL; // Happens for partially optimized IF tests
   BoolNode *b = iff->in(1)->as_Bool();
   BoolTest bt = b->_test;

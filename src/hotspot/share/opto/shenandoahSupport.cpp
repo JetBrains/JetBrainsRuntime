@@ -4203,8 +4203,15 @@ void ShenandoahWriteBarrierNode::optimize_after_expansion(const Node_List& evacu
           if (iff != NULL && is_evacuation_in_progress_test(iff)) {
             if (head->is_strip_mined()) {
               head->verify_strip_mined(0);
+              OuterStripMinedLoopNode* outer = head->as_CountedLoop()->outer_loop();
+              OuterStripMinedLoopEndNode* le = head->outer_loop_end();
+              Node* new_outer = new LoopNode(outer->in(LoopNode::EntryControl), outer->in(LoopNode::LoopBackControl));
+              phase->register_control(new_outer, phase->get_loop(outer), outer->in(LoopNode::EntryControl));
+              Node* new_le = new IfNode(le->in(0), le->in(1), le->_prob, le->_fcnt);
+              phase->register_control(new_le, phase->get_loop(le), le->in(0));
+              phase->lazy_replace(outer, new_outer);
+              phase->lazy_replace(le, new_le);
               head->clear_strip_mined();
-              head->in(LoopNode::EntryControl)->as_Loop()->clear_strip_mined();
             }
             phase->do_unswitching(loop, old_new);
           }

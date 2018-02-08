@@ -26,6 +26,7 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
+#include "opto/callnode.hpp"
 #include "opto/castnode.hpp"
 #include "opto/connode.hpp"
 #include "opto/castnode.hpp"
@@ -351,7 +352,7 @@ Node *PhaseIdealLoop::has_local_phi_input( Node *n ) {
           get_ctrl(m->in(3)) != n_ctrl) {
         // Move the AddP up to dominating point
         Node* c = find_non_split_ctrl(idom(n_ctrl));
-        if (c->Opcode() == Op_Loop && c->as_Loop()->is_strip_mined()) {
+        if (c->is_OuterStripMinedLoop()) {
           c->as_Loop()->verify_strip_mined(1);
           c = c->in(LoopNode::EntryControl);
         }
@@ -874,53 +875,36 @@ void PhaseIdealLoop::try_move_store_after_loop(Node* n) {
             }
           }
           if (mem_ok) {
-            // Move the Store out of the loop creating clones along
-            // all paths out of the loop that observe the stored value
+            // Move the store out of the loop if the LCA of all
+            // users (except for the phi) is outside the loop.
+            Node* hook = new Node(1);
             _igvn.rehash_node_delayed(phi);
-            IdealLoopTree* outer_loop = n_loop;
+            int count = phi->replace_edge(n, hook);
+            assert(count > 0, "inconsistent phi");
+
+            // Compute latest point this store can go
+            Node* lca = get_late_ctrl(n, get_ctrl(n));
+            if (n_loop->is_member(get_loop(lca))) {
+              // LCA is in the loop - bail out
+              _igvn.replace_node(hook, n);
+              return;
+            }
+#ifdef ASSERT
             if (n_loop->_head->is_Loop() && n_loop->_head->as_Loop()->is_strip_mined()) {
               assert(n_loop->_head->Opcode() == Op_CountedLoop, "outer loop is a strip mined");
               n_loop->_head->as_Loop()->verify_strip_mined(1);
-              Node* outer = n_loop->_head->in(LoopNode::EntryControl);
-              outer_loop = get_loop(outer);
+              Node* outer = n_loop->_head->as_CountedLoop()->outer_loop();
+              IdealLoopTree* outer_loop = get_loop(outer);
               assert(n_loop->_parent == outer_loop, "broken loop tree");
+              assert(get_loop(lca) == outer_loop, "safepoint in outer loop consume all memory state");
             }
-            int count = phi->replace_edge(n, n->in(MemNode::Memory));
-            assert(count > 0, "inconsistent phi");
-            for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
-              Node* u = n->fast_out(i);
-              Node* c = get_ctrl(u);
+#endif
 
-              if (u->is_Phi()) {
-                c = u->in(0)->in(u->find_edge(n));
-              }
-              IdealLoopTree *u_loop = get_loop(c);
-              assert (!n_loop->is_member(u_loop), "only the phi should have been a use in the loop");
-              while(true) {
-                Node* next_c = find_non_split_ctrl(idom(c));
-                if (outer_loop->is_member(get_loop(next_c))) {
-                  break;
-                }
-                c = next_c;
-              }
+            // Move store out of the loop
+            _igvn.replace_node(hook, n->in(MemNode::Memory));
+            _igvn.replace_input_of(n, 0, lca);
+            set_ctrl_and_loop(n, lca);
 
-              Node* st = n->clone();
-              st->set_req(0, c);
-              _igvn.register_new_node_with_optimizer(st);
-
-              set_ctrl(st, c);
-              IdealLoopTree* new_loop = get_loop(c);
-              assert(new_loop != n_loop, "should be moved out of loop");
-              if (new_loop->_child == NULL) new_loop->_body.push(st);
-
-              _igvn.replace_input_of(u, u->find_edge(n), st);
-              --imax;
-              --i;
-            }
-
-
-            assert(n->outcnt() == 0, "all uses should be gone");
-            _igvn.replace_input_of(n, MemNode::Memory, C->top());
             // Disconnect the phi now. An empty phi can confuse other
             // optimizations in this pass of loop opts..
             if (phi->in(LoopNode::LoopBackControl) == phi) {
@@ -952,9 +936,8 @@ Node *PhaseIdealLoop::split_if_with_blocks_pre( Node *n ) {
   }
   if( n->is_CFG() || n->is_LoadStore() )
     return n;
-  if (n_op == Op_Opaque1 ||     // Opaque nodes cannot be mod'd
-      n_op == Op_Opaque2 ||
-      n_op == Op_Opaque5) {
+  if( n_op == Op_Opaque1 ||     // Opaque nodes cannot be mod'd
+      n_op == Op_Opaque2 ) {
     if( !C->major_progress() )   // If chance of no more loop opts...
       _igvn._worklist.push(n);  // maybe we'll remove them
     return n;
@@ -1111,16 +1094,9 @@ static bool merge_point_safe(Node* region) {
 // For inner loop uses move it to the preheader area.
 Node *PhaseIdealLoop::place_near_use( Node *useblock ) const {
   IdealLoopTree *u_loop = get_loop( useblock );
-  if (u_loop->_irreducible) {
-    return useblock;
-  }
-  if (u_loop->_child) {
-    if (useblock == u_loop->_head && u_loop->_head->as_Loop()->is_strip_mined()) {
-      return u_loop->_head->in(LoopNode::EntryControl);
-    }
-    return useblock;
-  }
-  return u_loop->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
+  return (u_loop->_irreducible || u_loop->_child)
+    ? useblock
+    : u_loop->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
 }
 
 
@@ -1715,14 +1691,8 @@ void PhaseIdealLoop::clone_loop_handle_data_uses(Node* old, Node_List &old_new,
     // must not be a CFG node.
 #ifdef ASSERT
     if (loop->_head->as_Loop()->is_strip_mined() && outer_loop->is_member(use_loop) && !loop->is_member(use_loop) && old_new[use->_idx] == NULL) {
-      Node* l = loop->_head->in(LoopNode::EntryControl);
-      Node* tail = l->in(LoopNode::LoopBackControl);
-      IfNode* le = tail->in(0)->as_If();
-      Node* sfpt = le->in(0);
-      Node* bol = le->in(1);
-      Node* cmp = bol->in(1);
-      Node* opaq = cmp->in(2);
-      assert(mode == ControlAroundStripMined && (use == cmp || use == sfpt), "missed a node");
+      Node* sfpt = loop->_head->as_CountedLoop()->outer_safepoint();
+      assert(mode == ControlAroundStripMined && use == sfpt, "missed a node");
     }
 #endif
     if (!loop->is_member(use_loop) && !outer_loop->is_member(use_loop) && (!old->is_CFG() || !use->is_CFG())) {
@@ -1785,13 +1755,13 @@ void PhaseIdealLoop::clone_loop_handle_data_uses(Node* old, Node_List &old_new,
       // private Phi and those Phis need to be merged here.
       Node *phi;
       if( prev->is_Region() ) {
-        if( idx == 0  && use->Opcode() != Op_ShenandoahWBMemProj) {      // Updating control edge?
+        if (idx == 0 && use->Opcode() != Op_ShenandoahWBMemProj) {      // Updating control edge?
           phi = prev;         // Just use existing control
         } else {              // Else need a new Phi
           phi = PhiNode::make( prev, old );
           // Now recursively fix up the new uses of old!
           uint first = use->Opcode() != Op_ShenandoahWBMemProj ? 1 : 0;
-          for( uint i = first; i < prev->req(); i++ ) {
+          for (uint i = first; i < prev->req(); i++) {
             worklist.push(phi); // Onto worklist once for each 'old' input
           }
         }
@@ -1799,7 +1769,7 @@ void PhaseIdealLoop::clone_loop_handle_data_uses(Node* old, Node_List &old_new,
         // Get new RegionNode merging old and new loop exits
         prev = old_new[prev->_idx];
         assert( prev, "just made this in step 7" );
-        if( idx == 0 && use->Opcode() != Op_ShenandoahWBMemProj) {      // Updating control edge?
+        if( idx == 0) {      // Updating control edge?
           phi = prev;         // Just use existing control
         } else {              // Else need a new Phi
           // Make a new Phi merging data values properly
@@ -1808,7 +1778,7 @@ void PhaseIdealLoop::clone_loop_handle_data_uses(Node* old, Node_List &old_new,
         }
       }
       // If inserting a new Phi, check for prior hits
-      if( idx != 0 ) {
+      if (idx != 0 && use->Opcode() != Op_ShenandoahWBMemProj) {
         Node *hit = _igvn.hash_find_insert(phi);
         if( hit == NULL ) {
           _igvn.register_new_node_with_optimizer(phi); // Register new phi
@@ -1842,15 +1812,11 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
                                       IdealLoopTree* outer_loop, int dd, Node_List &old_new,
                                       Node_List& extra_data_nodes) {
   if (head->is_strip_mined() && mode != IgnoreStripMined) {
-    assert(head->is_CountedLoop(), "outer loop shouldn't be cloned");
-    Node* l = head->in(LoopNode::EntryControl);
-    Node* tail = l->in(LoopNode::LoopBackControl);
-    IfNode* le = tail->in(0)->as_If();
-    Node* sfpt = le->in(0);
-    Node* bol = le->in(1);
-    Node* cmp = bol->in(1);
-    Node* opaq = cmp->in(2);
     CountedLoopNode* cl = head->as_CountedLoop();
+    Node* l = cl->outer_loop();
+    Node* tail = cl->outer_loop_tail();
+    IfNode* le = cl->outer_loop_end();
+    Node* sfpt = cl->outer_safepoint();
     CountedLoopEndNode* cle = cl->loopexit();
     CountedLoopNode* new_cl = old_new[cl->_idx]->as_CountedLoop();
     CountedLoopEndNode* new_cle = new_cl->as_CountedLoop()->loopexit();
@@ -1865,9 +1831,6 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
       Node* new_tail = tail->clone();
       IfNode* new_le = le->clone()->as_If();
       new_sfpt = sfpt->clone();
-      Node* new_bol = bol->clone();
-      Node* new_cmp = cmp->clone();
-      Node* new_opaq = opaq->clone();
 
       set_loop(new_l, outer_loop->_parent);
       set_idom(new_l, new_l->in(LoopNode::EntryControl), dd);
@@ -1879,38 +1842,24 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
       set_idom(new_le, new_sfpt, dd);
       set_loop(new_tail, outer_loop->_parent);
       set_idom(new_tail, new_le, dd);
-      set_ctrl(new_bol, new_sfpt);
-      set_ctrl(new_cmp, new_sfpt);
-      set_ctrl(new_cmp, new_sfpt);
       set_idom(new_cl, new_l, dd);
 
       old_new.map(l->_idx, new_l);
       old_new.map(tail->_idx, new_tail);
       old_new.map(le->_idx, new_le);
       old_new.map(sfpt->_idx, new_sfpt);
-      old_new.map(bol->_idx, new_bol);
-      old_new.map(cmp->_idx, new_cmp);
-      old_new.map(opaq->_idx, new_opaq);
 
       new_l->set_req(LoopNode::LoopBackControl, new_tail);
       new_l->set_req(0, new_l);
       new_tail->set_req(0, new_le);
       new_le->set_req(0, new_sfpt);
       new_sfpt->set_req(0, new_cle_out);
-      new_le->set_req(1, new_bol);
-      new_bol->set_req(1, new_cmp);
-      new_cmp->set_req(2, new_opaq);
-      new_cmp->set_req(1, new_cle->incr());
       new_cle_out->set_req(0, new_cle);
       new_cl->set_req(LoopNode::EntryControl, new_l);
-      new_opaq->set_req(0, new_sfpt);
 
       _igvn.register_new_node_with_optimizer(new_l);
       _igvn.register_new_node_with_optimizer(new_tail);
       _igvn.register_new_node_with_optimizer(new_le);
-      _igvn.register_new_node_with_optimizer(new_bol);
-      _igvn.register_new_node_with_optimizer(new_cmp);
-      _igvn.register_new_node_with_optimizer(new_opaq);
     } else {
       Node *newhead = old_new[loop->_head->_idx];
       newhead->as_Loop()->clear_strip_mined();
@@ -1996,7 +1945,7 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
 //   When nonnull, the clone and original are side-by-side, both are
 //      dominated by the side_by_side_idom node.  Used in construction of
 //      unswitched loops.
-void PhaseIdealLoop::clone_loop(IdealLoopTree *loop, Node_List &old_new, int dd,
+void PhaseIdealLoop::clone_loop( IdealLoopTree *loop, Node_List &old_new, int dd,
                                 CloneLoopMode mode, Node* side_by_side_idom) {
 
   LoopNode* head = loop->_head->as_Loop();
@@ -2033,7 +1982,7 @@ void PhaseIdealLoop::clone_loop(IdealLoopTree *loop, Node_List &old_new, int dd,
     _igvn.register_new_node_with_optimizer(nnn);
   }
 
-  IdealLoopTree* outer_loop = (head->is_strip_mined() && mode != IgnoreStripMined) ? get_loop(head->in(LoopNode::EntryControl)) : loop;
+  IdealLoopTree* outer_loop = (head->is_strip_mined() && mode != IgnoreStripMined) ? get_loop(head->as_CountedLoop()->outer_loop()) : loop;
 
   // Step 2: Fix the edges in the new body.  If the old input is outside the
   // loop use it.  If the old input is INside the loop, use the corresponding
@@ -2097,9 +2046,7 @@ void PhaseIdealLoop::clone_loop(IdealLoopTree *loop, Node_List &old_new, int dd,
           CountedLoopEndNode* cle = cl->loopexit();
           Node* cle_out = cle->proj_out(false);
           if (use == cle_out) {
-            Node* l = head->in(LoopNode::EntryControl);
-            Node* tail = l->in(LoopNode::LoopBackControl);
-            IfNode* le = tail->in(0)->as_If();
+            IfNode* le = cl->outer_loop_end();
             use = le->proj_out(false);
             use_loop = get_loop(use);
             if (mode == CloneIncludesStripMined) {
@@ -2172,7 +2119,7 @@ void PhaseIdealLoop::clone_loop(IdealLoopTree *loop, Node_List &old_new, int dd,
   Node_List *split_if_set = NULL;
   Node_List *split_bool_set = NULL;
   Node_List *split_cex_set = NULL;
-  for (i = 0; i < loop->_body.size(); i++) {
+  for( i = 0; i < loop->_body.size(); i++ ) {
     Node* old = loop->_body.at(i);
     clone_loop_handle_data_uses(old, old_new, loop, outer_loop, split_if_set,
                                 split_bool_set, split_cex_set, worklist, new_counter,
@@ -2687,9 +2634,9 @@ void PhaseIdealLoop::clone_for_special_use_inside_loop( IdealLoopTree *loop, Nod
   assert(worklist.size() == 0, "should be empty");
   for (DUIterator_Fast jmax, j = n->fast_outs(jmax); j < jmax; j++) {
     Node* use = n->fast_out(j);
-    if (not_peel.test(use->_idx) &&
-        (use->is_If() || use->is_CMove() || use->is_Bool()) &&
-        use->in(1) == n) {
+    if ( not_peel.test(use->_idx) &&
+         (use->is_If() || use->is_CMove() || use->is_Bool()) &&
+         use->in(1) == n)  {
       worklist.push(use);
     }
   }

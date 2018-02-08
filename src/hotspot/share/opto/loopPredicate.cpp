@@ -827,8 +827,7 @@ bool PhaseIdealLoop::loop_predication_should_follow_branches(IdealLoopTree *loop
   while (l != NULL && follow_branches) {
     IdealLoopTree* child = l;
     if (child->_child != NULL &&
-        child->_head->Opcode() == Op_Loop &&
-        child->_head->as_Loop()->is_strip_mined()) {
+        child->_head->is_OuterStripMinedLoop()) {
       assert(child->_child->_next == NULL, "only one inner loop for strip mined loop");
       assert(child->_child->_head->is_CountedLoop() && child->_child->_head->as_CountedLoop()->is_strip_mined(), "inner loop should be strip mined");
       child = child->_child;
@@ -881,7 +880,7 @@ void PhaseIdealLoop::loop_predication_follow_branches(Node *current_proj, IdealL
             IdealLoopTree* inner_loop = get_loop(n->in(0));
             LoopNode* inner_head = inner_loop->_head->as_Loop();
             assert(get_loop(n) == loop, "only 1 inner loop");
-            if (inner_head->Opcode() == Op_Loop && inner_head->is_strip_mined()) {
+            if (inner_head->is_OuterStripMinedLoop()) {
               inner_head->verify_strip_mined(1);
               if (n->in(0) == inner_head->in(LoopNode::LoopBackControl)->in(0)) {
                 n = n->in(0)->in(0)->in(0);
@@ -1177,7 +1176,7 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
     return false;
   }
 
-  if (head->Opcode() == Op_Loop && head->is_strip_mined()) {
+  if (head->is_OuterStripMinedLoop()) {
     return false;
   }
 

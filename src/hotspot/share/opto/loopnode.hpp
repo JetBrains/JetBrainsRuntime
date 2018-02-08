@@ -37,6 +37,7 @@ class CountedLoopNode;
 class IdealLoopTree;
 class LoopNode;
 class Node;
+class OuterStripMinedLoopEndNode;
 class PhaseIdealLoop;
 class CountedLoopReserveKit;
 class VectorSet;
@@ -73,8 +74,7 @@ protected:
          HasRangeChecks=8192,
          IsMultiversioned=16384,
          StripMined=32768,
-         StripMinedShortCloned=65536,
-         ProfileTripFailed = 131072};
+         ProfileTripFailed=65536};
   char _unswitch_count;
   enum { _unswitch_max=3 };
   char _postloop_flags;
@@ -97,7 +97,6 @@ public:
   void set_partial_peel_loop() { _loop_flags |= PartialPeelLoop; }
   uint partial_peel_has_failed() const { return _loop_flags & PartialPeelFailed; }
   uint is_strip_mined() const { return _loop_flags & StripMined; }
-  uint is_strip_mined_short_cloned() const { return _loop_flags & StripMinedShortCloned; }
   uint is_profile_trip_failed() const { return _loop_flags & ProfileTripFailed; }
 
   void mark_partial_peel_failed() { _loop_flags |= PartialPeelFailed; }
@@ -111,7 +110,6 @@ public:
   void mark_is_multiversioned() { _loop_flags |= IsMultiversioned; }
   void mark_strip_mined() { _loop_flags |= StripMined; }
   void clear_strip_mined() { _loop_flags &= ~StripMined; }
-  void mark_strip_mined_short_cloned() { _loop_flags |= StripMinedShortCloned; }
   void mark_profile_trip_failed() { _loop_flags |= ProfileTripFailed; }
 
   int unswitch_max() { return _unswitch_max; }
@@ -150,8 +148,12 @@ public:
   virtual void dump_spec(outputStream *st) const;
 #endif
 
-  void verify_strip_mined(int expect_opaq) const;
+  void verify_strip_mined(int expect_skeleton) const;
   virtual LoopNode* skip_strip_mined(int expect_opaq = 1) { return this; }
+  virtual IfTrueNode* outer_loop_tail() const { ShouldNotReachHere(); return NULL; }
+  virtual OuterStripMinedLoopEndNode* outer_loop_end() const { ShouldNotReachHere(); return NULL; }
+  virtual IfFalseNode* outer_loop_exit() const { ShouldNotReachHere(); return NULL; }
+  virtual SafePointNode* outer_safepoint() const { ShouldNotReachHere(); return NULL; }
 };
 
 //------------------------------Counted Loops----------------------------------
@@ -294,6 +296,11 @@ public:
   int  slp_max_unroll() const                { return _slp_maximum_unroll_factor; }
 
   virtual LoopNode* skip_strip_mined(int expect_opaq = 1);
+  OuterStripMinedLoopNode* outer_loop() const;
+  virtual IfTrueNode* outer_loop_tail() const;
+  virtual OuterStripMinedLoopEndNode* outer_loop_end() const;
+  virtual IfFalseNode* outer_loop_exit() const;
+  virtual SafePointNode* outer_safepoint() const;
 
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const;
@@ -391,6 +398,40 @@ class LoopLimitNode : public Node {
   virtual Node* Identity(PhaseGVN* phase);
 };
 
+// Support for strip mining
+class OuterStripMinedLoopNode : public LoopNode {
+private:
+  CountedLoopNode* inner_loop() const;
+public:
+  OuterStripMinedLoopNode(Compile* C, Node *entry, Node *backedge)
+    : LoopNode(entry, backedge) {
+    init_class_id(Class_OuterStripMinedLoop);
+    init_flags(Flag_is_macro);
+    C->add_macro_node(this);
+  }
+
+  virtual int Opcode() const;
+
+  virtual IfTrueNode* outer_loop_tail() const;
+  virtual OuterStripMinedLoopEndNode* outer_loop_end() const;
+  virtual IfFalseNode* outer_loop_exit() const;
+  virtual SafePointNode* outer_safepoint() const;
+  void adjust_strip_mined_loop(PhaseIterGVN* igvn);
+};
+
+class OuterStripMinedLoopEndNode : public IfNode {
+public:
+  OuterStripMinedLoopEndNode(Node *control, Node *test, float prob, float cnt)
+    : IfNode(control, test, prob, cnt) {
+    init_class_id(Class_OuterStripMinedLoopEnd);
+  }
+
+  virtual int Opcode() const;
+
+  virtual const Type* Value(PhaseGVN* phase) const;
+  virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
+};
+
 // -----------------------------IdealLoopTree----------------------------------
 class IdealLoopTree : public ResourceObj {
 public:
@@ -466,11 +507,6 @@ public:
   // Driver for various flavors of iteration splitting.  Returns false
   // if the current round of loop opts should stop.
   bool iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_new );
-
-  // If profiling shows an inner strip mined loop runs for few
-  // iterations, make a copy without the outer strip mined loop and
-  // the safepoint
-  bool copy_strip_mined_short(PhaseIdealLoop *phase, Node_List &old_new);
 
   // Given dominators, try to find loops with calls that must always be
   // executed (call dominates loop tail).  These loops do not need non-call
@@ -803,8 +839,9 @@ private:
 
   // Place Data nodes in some loop nest
   void build_loop_early( VectorSet &visited, Node_List &worklist, Node_Stack &nstack );
-  void build_loop_late ( VectorSet &visited, Node_List &worklist, Node_Stack &nstack );
-  void build_loop_late_post ( Node* n );
+  void build_loop_late(VectorSet &visited, Node_List &worklist, Node_Stack &nstack, bool verify_strip_mined);
+  void build_loop_late_post(Node* n, bool verify_strip_mined);
+  void verify_strip_mined_scheduling(Node *n, Node* least);
 
   // Array of immediate dominance info for each CFG node indexed by node idx
 private:
@@ -947,7 +984,7 @@ public:
                                  // either to inner clone or outer
                                  // strip mined loop.
   };
-  void clone_loop(IdealLoopTree *loop, Node_List &old_new, int dom_depth,
+  void clone_loop( IdealLoopTree *loop, Node_List &old_new, int dom_depth,
                   CloneLoopMode mode, Node* side_by_side_idom = NULL);
   void clone_loop_handle_data_uses(Node* old, Node_List &old_new,
                                    IdealLoopTree* loop, IdealLoopTree* companion_loop,

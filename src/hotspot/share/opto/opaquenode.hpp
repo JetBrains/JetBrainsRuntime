@@ -109,14 +109,6 @@ class Opaque4Node : public Node {
 };
 
 
-class Opaque5Node : public Opaque2Node {
-  public:
-  Opaque5Node(Compile* C, Node *n) : Opaque2Node(C, n) {}
-  virtual int Opcode() const;
-
-  Node* adjust_strip_mined_loop(PhaseGVN* phase);
-};
-
 //------------------------------ProfileBooleanNode-------------------------------
 // A node represents value profile for a boolean during parsing.
 // Once parsing is over, the node goes away (during IGVN).

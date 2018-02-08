@@ -2049,7 +2049,6 @@ void Arguments::set_shenandoah_gc_flags() {
   if (UseCountedLoopSafepoints && FLAG_IS_DEFAULT(LoopStripMiningIter)) {
     FLAG_SET_DEFAULT(LoopStripMiningIter, 1000);
   }
-
 #ifdef ASSERT
   // C2 barrier verification is only reliable when all default barriers are enabled
   if (ShenandoahVerifyOptoBarriers &&

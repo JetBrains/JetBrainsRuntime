@@ -68,22 +68,13 @@ void IdealLoopTree::record_for_igvn() {
     _phase->_igvn._worklist.push(n);
   }
   // put body of outer strip mined loop on igvn work list as well
-  if (_head->is_Loop() && _head->as_Loop()->is_strip_mined()) {
-    Node* l = _head->in(LoopNode::EntryControl);
-    Node* tail = l->in(LoopNode::LoopBackControl);
-    IfNode* le = tail->in(0)->as_If();
-    Node* sfpt = le->in(0);
-    Node* bol = le->in(1);
-    Node* cmp = bol->in(1);
-    Node* opaq = cmp->in(2);
+  if (_head->is_CountedLoop() && _head->as_Loop()->is_strip_mined()) {
+    CountedLoopNode* l = _head->as_CountedLoop();
+    _phase->_igvn._worklist.push(l->outer_loop());
+    _phase->_igvn._worklist.push(l->outer_loop_tail());
+    _phase->_igvn._worklist.push(l->outer_loop_end());
+    _phase->_igvn._worklist.push(l->outer_safepoint());
     Node* cle_out = _head->as_CountedLoop()->loopexit()->proj_out(false);
-    _phase->_igvn._worklist.push(l);
-    _phase->_igvn._worklist.push(tail);
-    _phase->_igvn._worklist.push(le);
-    _phase->_igvn._worklist.push(sfpt);
-    _phase->_igvn._worklist.push(bol);
-    _phase->_igvn._worklist.push(cmp);
-    _phase->_igvn._worklist.push(opaq);
     _phase->_igvn._worklist.push(cle_out);
   }
 }
@@ -1112,7 +1103,7 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
   IdealLoopTree* outer_loop = loop;
   if (main_head->is_strip_mined()) {
     main_head->verify_strip_mined(1);
-    outer_main_head = main_head->in(LoopNode::EntryControl)->as_Loop();
+    outer_main_head = main_head->outer_loop();
     outer_loop = loop->_parent;
     assert(outer_loop->_head == outer_main_head, "broken loop tree");
   }
@@ -1245,15 +1236,6 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
     BoolNode* new_bol2 = new BoolNode(main_bol->in(1), new_test);
     register_new_node( new_bol2, main_end->in(CountedLoopEndNode::TestControl) );
     _igvn.replace_input_of(main_end, CountedLoopEndNode::TestValue, new_bol2);
-    if (main_head->is_strip_mined()) {
-      Node* tail = outer_main_head->in(LoopNode::LoopBackControl);
-      Node* le = tail->in(0);
-      Node* bol = le->in(1);
-      Node* new_bol3 = new_bol2->clone();
-      new_bol3->set_req(1, bol->in(1));
-      register_new_node(new_bol3, le->in(0));
-      _igvn.replace_input_of(le, 1, new_bol3);
-    }
   }
 
   // Flag main loop
@@ -1392,7 +1374,7 @@ Node *PhaseIdealLoop::insert_post_loop(IdealLoopTree *loop, Node_List &old_new,
   IdealLoopTree* outer_loop = loop;
   if (main_head->is_strip_mined()) {
     main_head->verify_strip_mined(1);
-    outer_main_end = main_head->in(LoopNode::EntryControl)->in(LoopNode::LoopBackControl)->in(0)->as_If();
+    outer_main_end = main_head->outer_loop_end();
     outer_loop = loop->_parent;
     assert(outer_loop->_head == main_head->in(LoopNode::EntryControl), "broken loop tree");
   }
@@ -2804,42 +2786,6 @@ bool IdealLoopTree::policy_do_one_iteration_loop( PhaseIdealLoop *phase ) {
   return true;
 }
 
-bool IdealLoopTree::copy_strip_mined_short(PhaseIdealLoop *phase, Node_List &old_new) {
-  CountedLoopNode *cl = _head->as_CountedLoop();
-  if (LoopStripMiningCopyShort &&
-      cl->is_strip_mined() &&
-      !cl->is_strip_mined_short_cloned() &&
-      !cl->has_exact_trip_count() &&
-      cl->profile_trip_cnt() < LoopStripMiningIterShortLoop) {
-    int nodes_left = phase->C->max_node_limit() - phase->C->live_nodes();
-    if ((int)(2 * _body.size()) <= nodes_left) {
-      int stride = cl->stride_con();
-      jlong scaled_iters_long = ((jlong)LoopStripMiningIter/10) * ABS(stride);
-      int scaled_iters = (int)scaled_iters_long;
-      if ((jlong)scaled_iters == scaled_iters_long) {
-        cl->mark_strip_mined_short_cloned();
-        ProjNode* proj_true = phase->create_slow_version_of_loop(this, old_new, Op_If, PhaseIdealLoop::ControlAroundStripMined);
-        IfNode* iff = proj_true->in(0)->as_If();
-        Node* proj_false = iff->proj_out(1-proj_true->_con);
-        Node* sub = NULL;
-        if (stride > 0) {
-          sub = phase->_igvn.transform(new SubINode(cl->limit(), cl->init_trip()));
-        } else {
-          sub = phase->_igvn.transform(new SubINode(cl->init_trip(), cl->limit()));
-        }
-        Node* cmp = phase->_igvn.transform(new CmpINode(sub, phase->_igvn.intcon(scaled_iters)));
-        Node* bol = phase->_igvn.transform(new BoolNode(cmp, BoolTest::ge));
-        iff = phase->_igvn.transform(new IfNode(iff->in(0), bol, PROB_MIN, COUNT_UNKNOWN))->as_If();
-        proj_true->set_req(0, iff);
-        proj_false->set_req(0, iff);
-        phase->C->set_major_progress();
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 //=============================================================================
 //------------------------------iteration_split_impl---------------------------
 bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_new ) {
@@ -2895,9 +2841,6 @@ bool IdealLoopTree::iteration_split_impl( PhaseIdealLoop *phase, Node_List &old_
       // Here we did some unrolling and peeling.  Eventually we will
       // completely unroll this loop and it will no longer be a loop.
       phase->do_maximally_unroll(this,old_new);
-      return true;
-    }
-    if (copy_strip_mined_short(phase, old_new)) {
       return true;
     }
   }
@@ -3423,16 +3366,9 @@ bool PhaseIdealLoop::intrinsify_fill(IdealLoopTree* lpt) {
   if (head->is_strip_mined()) {
     // Inner strip mined loop goes away so get rid of outer strip
     // mined loop
-    Node* outer = head->in(LoopNode::EntryControl);
-    assert(outer->is_Loop() && outer->as_Loop()->is_strip_mined(), "where's the outer loop?");
-    Node* outer_tail = outer->in(LoopNode::LoopBackControl);
-    assert(outer_tail->Opcode() == Op_IfTrue, "broken outer loop");
-    Node* outer_le = outer_tail->in(0);
-    assert(outer_le->Opcode() == Op_If, "broken outer loop");
-    Node* outer_sfpt = outer_le->in(0);
-    assert(outer_sfpt->Opcode() == Op_SafePoint, "broken outer loop");
+    Node* outer_sfpt = head->outer_safepoint();
     Node* in = outer_sfpt->in(0);
-    Node* outer_out = outer_le->as_If()->proj_out(false);
+    Node* outer_out = head->outer_loop_exit();
     lazy_replace(outer_out, in);
     _igvn.replace_input_of(outer_sfpt, 0, C->top());
   }
