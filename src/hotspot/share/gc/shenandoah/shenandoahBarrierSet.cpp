@@ -110,6 +110,7 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (!need_update_refs_barrier()) return;
 
   if (UseShenandoahMatrix) {
+    assert(! _heap->is_concurrent_traversal_in_progress(), "traversal GC should take another branch");
     if (_heap->is_concurrent_partial_in_progress()) {
       if (UseCompressedOops) {
         write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ true,  /* enqueue = */ false>(start, count);
@@ -247,6 +248,7 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
   oop obj = oop(mr.start());
   assert(oopDesc::is_oop(obj), "must be an oop");
   if (UseShenandoahMatrix) {
+    assert(! _heap->is_concurrent_traversal_in_progress(), "traversal GC should take another branch");
     if (_heap->is_concurrent_partial_in_progress()) {
       ShenandoahUpdateRefsForOopClosure<true, true, false> cl;
       obj->oop_iterate(&cl);
