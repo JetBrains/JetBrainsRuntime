@@ -202,7 +202,7 @@ inline oop ShenandoahHeap::maybe_update_oop_ref_not_null(T* p, oop heap_oop) {
 
     assert(oopDesc::is_oop(forwarded_oop), "oop required");
     assert(is_in(forwarded_oop), "forwardee must be in heap");
-    assert(BarrierSet::barrier_set()->is_safe(forwarded_oop), "forwardee must not be in collection set");
+    DEBUG_ONLY(barrier_set()->verify_safe_oop(forwarded_oop);)
     // If this fails, another thread wrote to p before us, it will be logged in SATB and the
     // reference be updated later.
     oop result = atomic_compare_exchange_oop(forwarded_oop, p, heap_oop);

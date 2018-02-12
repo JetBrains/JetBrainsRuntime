@@ -985,7 +985,7 @@ bool ReferenceProcessor::discover_reference(oop obj, ReferenceType rt) {
   if (!_discovering_refs || !RegisterReferences) {
     return false;
   }
-  assert(BarrierSet::barrier_set()->is_safe(obj), "sanity");
+  DEBUG_ONLY(BarrierSet::barrier_set()->verify_safe_oop(obj);)
   // We only discover active references.
   oop next = java_lang_ref_Reference::next(obj);
   if (next != NULL) {   // Ref is no longer active
