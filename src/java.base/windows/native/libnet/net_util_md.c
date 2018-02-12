@@ -525,7 +525,7 @@ NET_SocketClose(int fd) {
     int len = sizeof (l);
     if (getsockopt(fd, SOL_SOCKET, SO_LINGER, (char *)&l, &len) == 0) {
         if (l.l_onoff == 0) {
-            WSASendDisconnect(fd, NULL);
+            shutdown(fd, SD_SEND);
         }
     }
     ret = closesocket (fd);
