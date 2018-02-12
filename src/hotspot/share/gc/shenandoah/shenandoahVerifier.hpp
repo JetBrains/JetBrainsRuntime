@@ -191,7 +191,9 @@ public:
   void verify_after_degenerated();
   void verify_generic(VerifyOption option);
 
-  static void verify_oop_fwdptr(oop obj, oop new_fwd);
+#ifdef ASSERT
+  static void assert_correct(oop obj, oop fwdptr);
+#endif
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHVERIFIER_HPP

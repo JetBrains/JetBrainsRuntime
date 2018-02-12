@@ -1007,13 +1007,9 @@ void ShenandoahVerifier::verify_after_fullgc() {
   );
 }
 
-void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
-  guarantee(UseShenandoahGC, "must only be called when Shenandoah is used");
-
+#ifdef ASSERT
+void ShenandoahVerifier::assert_correct(oop obj, oop fwd) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-
-  guarantee(obj != NULL, "oop is not NULL");
-  guarantee(fwd != NULL, "forwardee is not NULL");
 
   // Step 1. Check that both obj and its fwdptr are in heap.
   // After this step, it is safe to call heap_region_containing().
@@ -1090,3 +1086,4 @@ void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
     }
   }
 }
+#endif
