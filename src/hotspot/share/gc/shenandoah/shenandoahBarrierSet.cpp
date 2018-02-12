@@ -378,23 +378,6 @@ bool ShenandoahBarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
   return obj_equals(oopDesc::decode_heap_oop(obj1), oopDesc::decode_heap_oop(obj2));
 }
 
-#ifdef ASSERT
-bool ShenandoahBarrierSet::is_safe(oop o) {
-  if (o == NULL) return true;
-  if (_heap->in_collection_set(o) && ! _heap->cancelled_concgc()) {
-    return false;
-  }
-  if (! oopDesc::unsafe_equals(o, read_barrier(o))) {
-    return false;
-  }
-  return true;
-}
-
-bool ShenandoahBarrierSet::is_safe(narrowOop o) {
-  return is_safe(oopDesc::decode_heap_oop(o));
-}
-#endif
-
 JRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_JRT(oopDesc* src))
   oop result = ((ShenandoahBarrierSet*)oopDesc::bs())->write_barrier(src);
   return (oopDesc*) result;
@@ -489,5 +472,9 @@ void ShenandoahBarrierSet::verify_safe_oop(oop p) {
     tty->print_cr("marking: %s, evacuating: %s", BOOL_TO_STR(heap->is_concurrent_mark_in_progress()), BOOL_TO_STR(heap->is_evacuation_in_progress()));
     assert(false, "We should have fixed this earlier");
   }
+}
+
+void ShenandoahBarrierSet::verify_safe_oop(narrowOop p) {
+  verify_safe_oop(oopDesc::decode_heap_oop(p));
 }
 #endif

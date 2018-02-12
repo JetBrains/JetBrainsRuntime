@@ -161,14 +161,18 @@ class oopDesc {
   }
 
   inline static bool safe_equals(oop o1, oop o2) {
-    assert(bs()->is_safe(o1), "o1 not safe?");
-    assert(bs()->is_safe(o2), "o2 not safe?");
+#ifdef ASSERT
+    bs()->verify_safe_oop(o1);
+    bs()->verify_safe_oop(o2);
+#endif
     return unsafe_equals(o1, o2);
   }
 
   inline static bool safe_equals(narrowOop o1, narrowOop o2) {
-    assert(bs()->is_safe(o1), "o1 not safe?");
-    assert(bs()->is_safe(o2), "o2 not safe?");
+#ifdef ASSERT
+    bs()->verify_safe_oop(o1);
+    bs()->verify_safe_oop(o2);
+#endif
     return unsafe_equals(o1, o2);
   }
 

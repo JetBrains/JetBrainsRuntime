@@ -39,11 +39,9 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
 
   assert(obj != NULL, "expect non-null object");
   assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "expect forwarded obj in queue");
-  assert(_heap->cancelled_concgc()
-         || oopDesc::bs()->is_safe(obj),
-         "we don't want to mark objects in from-space");
   assert(_heap->is_in(obj), "referenced objects must be in the heap. No?");
   assert(_heap->is_marked_next(obj), "only marked objects on task queue");
+  DEBUG_ONLY(_heap->barrier_set()->verify_safe_oop(obj);)
 
   if (task->is_not_chunked()) {
     if (COUNT_LIVENESS) count_liveness(live_data, obj);
@@ -245,7 +243,7 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
     if (UPDATE_REFS != CONCURRENT || !oopDesc::is_null(obj)) {
       assert(!oopDesc::is_null(obj), "Must not be null here");
       assert(heap->is_in(obj), "We shouldn't be calling this on objects not in the heap: " PTR_FORMAT, p2i(obj));
-      assert(oopDesc::bs()->is_safe(obj), "Only mark objects in from-space");
+      DEBUG_ONLY(heap->barrier_set()->verify_safe_oop(obj);)
 
       if (heap->mark_next(obj)) {
         log_develop_trace(gc, marking)("Marked obj: " PTR_FORMAT, p2i((HeapWord*) obj));

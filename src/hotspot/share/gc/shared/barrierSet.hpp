@@ -168,9 +168,8 @@ public:
   virtual bool obj_equals(narrowOop obj1, narrowOop obj2);
 
 #ifdef ASSERT
-  virtual bool is_safe(oop o);
-  virtual bool is_safe(narrowOop o);
   virtual void verify_safe_oop(oop p);
+  virtual void verify_safe_oop(narrowOop p);
 #endif
 
 #ifndef CC_INTERP

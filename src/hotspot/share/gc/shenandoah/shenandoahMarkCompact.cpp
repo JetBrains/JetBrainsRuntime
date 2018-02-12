@@ -58,15 +58,8 @@ public:
   }
 
 #ifdef ASSERT
-  bool is_safe(oop o) {
-    if (o == NULL) return true;
-    return oopDesc::unsafe_equals(o, read_barrier(o));
-  }
-
-  bool is_safe(narrowOop o) {
-    oop obj = oopDesc::decode_heap_oop(o);
-    return is_safe(obj);
-  }
+  void verify_safe_oop(oop o) {}
+  void verify_safe_oop(narrowOop o) {}
 #endif
 };
 
