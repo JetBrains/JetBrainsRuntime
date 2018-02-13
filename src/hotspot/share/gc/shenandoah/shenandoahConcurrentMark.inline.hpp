@@ -26,6 +26,7 @@
 
 #include "classfile/javaClasses.inline.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
@@ -37,11 +38,9 @@ template <class T, bool COUNT_LIVENESS>
 void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
-  assert(obj != NULL, "expect non-null object");
-  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "expect forwarded obj in queue");
-  assert(_heap->is_in(obj), "referenced objects must be in the heap. No?");
-  assert(_heap->is_marked_next(obj), "only marked objects on task queue");
-  DEBUG_ONLY(_heap->barrier_set()->verify_safe_oop(obj);)
+  shenandoah_assert_not_forwarded(NULL, obj);
+  shenandoah_assert_marked_next(NULL, obj);
+  shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_concgc());
 
   if (task->is_not_chunked()) {
     if (COUNT_LIVENESS) count_liveness(live_data, obj);
@@ -235,19 +234,15 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
     default:
       ShouldNotReachHere();
     }
-    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static(obj)), "need to-space object here");
 
     // Note: Only when concurrently updating references can obj become NULL here.
     // It happens when a mutator thread beats us by writing another value. In that
     // case we don't need to do anything else.
     if (UPDATE_REFS != CONCURRENT || !oopDesc::is_null(obj)) {
-      assert(!oopDesc::is_null(obj), "Must not be null here");
-      assert(heap->is_in(obj), "We shouldn't be calling this on objects not in the heap: " PTR_FORMAT, p2i(obj));
-      DEBUG_ONLY(heap->barrier_set()->verify_safe_oop(obj);)
+      shenandoah_assert_not_forwarded(p, obj);
+      shenandoah_assert_not_in_cset_except(p, obj, heap->cancelled_concgc());
 
       if (heap->mark_next(obj)) {
-        log_develop_trace(gc, marking)("Marked obj: " PTR_FORMAT, p2i((HeapWord*) obj));
-
         bool pushed = q->push(ShenandoahMarkTask(obj));
         assert(pushed, "overflow queue should always succeed pushing");
 
@@ -256,11 +251,9 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
           assert(dq != NULL, "Dedup queue not set");
           ShenandoahStringDedup::enqueue_candidate(obj, dq);
         }
-
-      } else {
-        log_develop_trace(gc, marking)("Failed to mark obj (already marked): " PTR_FORMAT, p2i((HeapWord*) obj));
-        assert(heap->is_marked_next(obj), "Consistency: should be marked.");
       }
+
+      shenandoah_assert_marked_next(p, obj);
     }
   }
 }

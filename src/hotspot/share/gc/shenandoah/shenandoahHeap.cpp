@@ -64,9 +64,7 @@ void ShenandoahAssertToSpaceClosure::do_oop_nv(T* p) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
-    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)),
-           "need to-space object here obj: "PTR_FORMAT" , rb(obj): "PTR_FORMAT", p: "PTR_FORMAT,
-           p2i(obj), p2i(ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), p2i(p));
+    shenandoah_assert_not_forwarded(p, obj);
   }
 }
 
@@ -807,8 +805,7 @@ private:
     if (! oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
       if (_heap->in_collection_set(obj)) {
-        assert(_heap->is_marked_complete(obj), "only evacuate marked objects %d %d",
-               _heap->is_marked_complete(obj), _heap->is_marked_complete(ShenandoahBarrierSet::resolve_oop_static_not_null(obj)));
+        shenandoah_assert_marked_complete(p, obj);
         oop resolved = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
           bool evac;
@@ -871,7 +868,7 @@ public:
     _heap(heap), _thread(Thread::current()) {}
 
   void do_object(oop p) {
-    assert(_heap->is_marked_complete(p), "expect only marked objects");
+    shenandoah_assert_marked_complete(NULL, p);
     if (oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_oop_static_not_null(p))) {
       bool evac;
       _heap->evacuate_object(p, _thread, evac);
@@ -1841,16 +1838,9 @@ bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
     // for the NULL is the best we can do.
     return true;
   }
-  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)) ||
-         (!_heap->is_marked_next(obj)), "from-space obj must not be marked");
 
   obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
-#ifdef ASSERT
-  if (_heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress()) {
-    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
-  }
-#endif
-  assert(!oopDesc::is_null(obj), "null");
+  shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress())
   return _heap->is_marked_next(obj);
 }
 
@@ -1869,8 +1859,7 @@ bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
     // for the NULL is the best we can do.
     return true;
   }
-  assert(!oopDesc::is_null(obj), "null");
-  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
+  shenandoah_assert_not_forwarded(NULL, obj);
   return _heap->is_marked_next(obj);
 }
 

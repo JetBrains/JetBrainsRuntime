@@ -367,8 +367,7 @@ public:
 
     // Object fits into current region, record new location:
     assert(_compact_point + obj_size <= _to_region->end(), "must fit");
-    assert(oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_oop_static_not_null(p)),
-           "expect forwarded oop");
+    shenandoah_assert_not_forwarded(NULL, p);
     BrooksPointer::set_raw(p, _compact_point + BrooksPointer::word_size());
     _compact_point += obj_size;
   }

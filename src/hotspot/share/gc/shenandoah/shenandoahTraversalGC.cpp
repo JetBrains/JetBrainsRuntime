@@ -70,8 +70,7 @@ public:
     for (size_t i = 0; i < size; ++i) {
       oop* p = (oop*) &buffer[i];
       oop obj = oopDesc::load_heap_oop(p);
-      assert(!oopDesc::is_null(obj), "no NULL refs in oop queue");
-      assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only to-space objs");
+      shenandoah_assert_not_forwarded(p, obj);
       if ((!_bitmap->isMarked((HeapWord*) obj)) && _bitmap->parMark((HeapWord*) obj)) {
         _queue->push(ShenandoahMarkTask(obj));
       }

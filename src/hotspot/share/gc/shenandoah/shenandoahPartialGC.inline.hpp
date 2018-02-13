@@ -24,6 +24,7 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHPARTIALGC_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHPARTIALGC_INLINE_HPP
 
+#include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 
 template <class T, bool UPDATE_MATRIX>
@@ -51,10 +52,7 @@ void ShenandoahPartialGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQ
       obj = forw; // For matrix update below.
     }
     if (UPDATE_MATRIX) {
-#ifdef ASSERT
-      oop forw = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
-      assert(oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_concgc(), "must not be evacuated: "PTR_FORMAT" -> "PTR_FORMAT, p2i(obj), p2i(forw));
-#endif
+      shenandoah_assert_not_forwarded_except(p, obj, _heap->cancelled_concgc());
       _matrix->set_connected(p, obj);
     }
   }
