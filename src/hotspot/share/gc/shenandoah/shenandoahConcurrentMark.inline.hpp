@@ -222,14 +222,14 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
     case NONE:
       break;
     case RESOLVE:
-      obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+      obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       break;
     case SIMPLE:
       // We piggy-back reference updating to the marking tasks.
-      obj = heap->update_oop_ref_not_null(p, obj);
+      obj = heap->update_with_forwarded_not_null(p, obj);
       break;
     case CONCURRENT:
-      obj = heap->maybe_update_oop_ref_not_null(p, obj);
+      obj = heap->maybe_update_with_forwarded_not_null(p, obj);
       break;
     default:
       ShouldNotReachHere();

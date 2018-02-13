@@ -28,13 +28,13 @@
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 
-inline oop ShenandoahBarrierSet::resolve_oop_static_not_null(oop p) {
+inline oop ShenandoahBarrierSet::resolve_forwarded_not_null(oop p) {
   return BrooksPointer::forwardee(p);
 }
 
-inline oop ShenandoahBarrierSet::resolve_oop_static(oop p) {
+inline oop ShenandoahBarrierSet::resolve_forwarded(oop p) {
   if (((HeapWord*) p) != NULL) {
-    return resolve_oop_static_not_null(p);
+    return resolve_forwarded_not_null(p);
   } else {
     return p;
   }
