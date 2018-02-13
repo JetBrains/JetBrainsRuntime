@@ -90,9 +90,8 @@ public:
 
   virtual oop read_barrier(oop src);
 
-  static inline oop resolve_oop_static_not_null(oop p);
-
-  static inline oop resolve_oop_static(oop p);
+  static inline oop resolve_forwarded_not_null(oop p);
+  static inline oop resolve_forwarded(oop p);
 
   virtual oop write_barrier(oop obj);
   static oopDesc* write_barrier_IRT(oopDesc* src);

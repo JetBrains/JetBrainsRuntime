@@ -355,11 +355,18 @@ public:
   inline ShenandoahHeapRegion* heap_region_containing(const void* addr) const;
   inline size_t heap_region_index_containing(const void* addr) const;
   inline bool requires_marking(const void* entry) const;
-  template <class T>
-  inline oop maybe_update_oop_ref(T* p);
 
   template <class T>
-  inline oop evac_update_oop_ref(T* p, bool& evac);
+  inline oop evac_update_with_forwarded(T* p, bool &evac);
+
+  template <class T>
+  inline oop maybe_update_with_forwarded(T* p);
+
+  template <class T>
+  inline oop maybe_update_with_forwarded_not_null(T* p, oop obj);
+
+  template <class T>
+  inline oop update_with_forwarded_not_null(T* p, oop obj);
 
   void trash_cset_regions();
 
@@ -466,12 +473,6 @@ public:
   void activate_bitmap_slice(ShenandoahHeapRegion* r);
 
   bool is_bitmap_slice_committed(ShenandoahHeapRegion* r, bool skip_self = false);
-
-  template <class T>
-  inline oop update_oop_ref_not_null(T* p, oop obj);
-
-  template <class T>
-  inline oop maybe_update_oop_ref_not_null(T* p, oop obj);
 
   void print_heap_regions_on(outputStream* st) const;
 

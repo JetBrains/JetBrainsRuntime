@@ -806,7 +806,7 @@ private:
       oop obj = oopDesc::decode_heap_oop_not_null(o);
       if (_heap->in_collection_set(obj)) {
         shenandoah_assert_marked_complete(p, obj);
-        oop resolved = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+        oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
           bool evac;
           resolved = _heap->evacuate_object(obj, _thread, evac);
@@ -841,7 +841,7 @@ private:
     if (! oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
       if (_heap->in_collection_set(obj)) {
-        oop resolved = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+        oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
           bool evac;
           _heap->evacuate_object(obj, _thread, evac);
@@ -869,7 +869,7 @@ public:
 
   void do_object(oop p) {
     shenandoah_assert_marked_complete(NULL, p);
-    if (oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_oop_static_not_null(p))) {
+    if (oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_forwarded_not_null(p))) {
       bool evac;
       _heap->evacuate_object(p, _thread, evac);
     }
@@ -1324,7 +1324,7 @@ private:
     T o = oopDesc::load_heap_oop(p);
     if (!oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
-      obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+      obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       assert(oopDesc::is_oop(obj), "must be a valid oop");
       if (!_bitmap->isMarked((HeapWord*) obj)) {
         _bitmap->mark((HeapWord*) obj);
@@ -1839,7 +1839,7 @@ bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
     return true;
   }
 
-  obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+  obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
   shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress())
   return _heap->is_marked_next(obj);
 }

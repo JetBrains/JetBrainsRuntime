@@ -33,7 +33,7 @@ void ShenandoahPartialGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQ
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
     if (_heap->in_collection_set(obj)) {
-      oop forw = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+      oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (oopDesc::unsafe_equals(obj, forw)) {
         bool evacuated = false;
         forw = _heap->evacuate_object(obj, thread, evacuated);

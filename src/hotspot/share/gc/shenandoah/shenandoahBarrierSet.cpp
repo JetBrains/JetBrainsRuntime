@@ -39,12 +39,12 @@ private:
     oop o;
     if (STOREVAL_WRITE_BARRIER) {
       bool evac;
-      o = _heap->evac_update_oop_ref(p, evac);
+      o = _heap->evac_update_with_forwarded(p, evac);
       if ((ALWAYS_ENQUEUE || evac) && !oopDesc::is_null(o)) {
         ShenandoahBarrierSet::enqueue(o);
       }
     } else {
-      o = _heap->maybe_update_oop_ref(p);
+      o = _heap->maybe_update_with_forwarded(p);
     }
     if (UPDATE_MATRIX && !oopDesc::is_null(o)) {
       _heap->connection_matrix()->set_connected(p, o);
@@ -323,7 +323,7 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
 
 oop ShenandoahBarrierSet::read_barrier(oop src) {
   if (ShenandoahReadBarrier) {
-    return ShenandoahBarrierSet::resolve_oop_static(src);
+    return ShenandoahBarrierSet::resolve_forwarded(src);
   } else {
     return src;
   }
@@ -333,8 +333,8 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
   bool eq = oopDesc::unsafe_equals(obj1, obj2);
   if (! eq && ShenandoahAcmpBarrier) {
     OrderAccess::loadload();
-    obj1 = resolve_oop_static(obj1);
-    obj2 = resolve_oop_static(obj2);
+    obj1 = resolve_forwarded(obj1);
+    obj2 = resolve_forwarded(obj2);
     eq = oopDesc::unsafe_equals(obj1, obj2);
   }
   return eq;
@@ -359,7 +359,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   if (!oopDesc::is_null(obj)) {
     bool evac_in_progress = _heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
     OrderAccess::loadload();
-    oop fwd = resolve_oop_static_not_null(obj);
+    oop fwd = resolve_forwarded_not_null(obj);
     if (evac_in_progress &&
         _heap->in_collection_set(obj) &&
         oopDesc::unsafe_equals(obj, fwd)) {
@@ -393,7 +393,7 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
     enqueue(obj);
   }
   if (ShenandoahStoreValReadBarrier) {
-    obj = resolve_oop_static(obj);
+    obj = resolve_forwarded(obj);
   }
   return obj;
 }
