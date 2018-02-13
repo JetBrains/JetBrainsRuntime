@@ -68,11 +68,9 @@ template <class T>
 void ShenandoahTraversalGC::do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
-  assert(obj != NULL, "expect non-null object");
-  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "expect forwarded obj in queue");
-  assert(_heap->is_in(obj), "referenced objects must be in the heap. No?");
-  assert(_heap->is_marked_next(obj), "only marked objects on task queue");
-  DEBUG_ONLY(_heap->barrier_set()->verify_safe_oop(obj);)
+  shenandoah_assert_not_forwarded(NULL, obj);
+  shenandoah_assert_marked_next(NULL, obj);
+  shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_concgc());
 
   if (task->is_not_chunked()) {
     count_liveness(live_data, obj);
