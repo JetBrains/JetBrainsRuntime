@@ -280,11 +280,6 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   ClassLoaderData(Handle h_class_loader, bool is_anonymous, Dependencies dependencies);
   ~ClassLoaderData();
 
-  // GC interface.
-  void clear_claimed()          { _claimed = 0; }
-  bool claimed() const          { return _claimed == 1; }
-  bool claim();
-
   // The CLD are not placed in the Heap, so the Card Table or
   // the Mod Union Table can't be used to mark when CLD have modified oops.
   // The CT and MUT bits saves this information for the whole class loader data.
@@ -308,13 +303,18 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   void packages_do(void f(PackageEntry*));
 
   // Deallocate free list during class unloading.
-  void free_deallocate_list();
+  void free_deallocate_list();      // for the classes that are not unloaded
+  void unload_deallocate_list();    // for the classes that are unloaded
 
   // Allocate out of this class loader data
   MetaWord* allocate(size_t size);
 
   Dictionary* create_dictionary();
  public:
+  // GC interface.
+  void clear_claimed() { _claimed = 0; }
+  bool claimed() const { return _claimed == 1; }
+  bool claim();
 
   bool is_alive(BoolObjectClosure* is_alive_closure) const;
 

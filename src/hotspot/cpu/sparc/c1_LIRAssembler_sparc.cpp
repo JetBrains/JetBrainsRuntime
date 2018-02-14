@@ -35,6 +35,7 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "nativeInst_sparc.hpp"
 #include "oops/objArrayKlass.hpp"
+#include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 
 #define __ _masm->
@@ -397,8 +398,13 @@ void LIR_Assembler::jobject2reg(jobject o, Register reg) {
   if (o == NULL) {
     __ set(NULL_WORD, reg);
   } else {
+#ifdef ASSERT
+    {
+      ThreadInVMfromNative tiv(JavaThread::current());
+      assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(o)), "should be real oop");
+    }
+#endif
     int oop_index = __ oop_recorder()->find_index(o);
-    assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(o)), "should be real oop");
     RelocationHolder rspec = oop_Relocation::spec(oop_index);
     __ set(NULL_WORD, reg, rspec); // Will be set when the nmethod is created
   }
@@ -1415,7 +1421,11 @@ void LIR_Assembler::return_op(LIR_Opr result) {
   if (StackReservedPages > 0 && compilation()->has_reserved_stack_access()) {
     __ reserved_stack_check();
   }
-  __ set((intptr_t)os::get_polling_page(), L0);
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    __ ld_ptr(Address(G2_thread, Thread::polling_page_offset()), L0);
+  } else {
+    __ set((intptr_t)os::get_polling_page(), L0);
+  }
   __ relocate(relocInfo::poll_return_type);
   __ ld_ptr(L0, 0, G0);
   __ ret();
@@ -1424,11 +1434,16 @@ void LIR_Assembler::return_op(LIR_Opr result) {
 
 
 int LIR_Assembler::safepoint_poll(LIR_Opr tmp, CodeEmitInfo* info) {
-  __ set((intptr_t)os::get_polling_page(), tmp->as_register());
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    __ ld_ptr(Address(G2_thread, Thread::polling_page_offset()), tmp->as_register());
+  } else {
+    __ set((intptr_t)os::get_polling_page(), tmp->as_register());
+  }
   if (info != NULL) {
     add_debug_info_for_branch(info);
   }
   int offset = __ offset();
+
   __ relocate(relocInfo::poll_type);
   __ ld_ptr(tmp->as_register(), 0, G0);
   return offset;

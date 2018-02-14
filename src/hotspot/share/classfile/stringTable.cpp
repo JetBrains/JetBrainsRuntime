@@ -199,7 +199,7 @@ static void ensure_string_alive(oop string) {
   // potential resurrection, otherwise the marking might not find the object.
 #if INCLUDE_ALL_GCS
   if (string != NULL) {
-    oopDesc::bs()->keep_alive_barrier(string);
+    BarrierSet::barrier_set()->keep_alive_barrier(string);
   }
 #endif
 }

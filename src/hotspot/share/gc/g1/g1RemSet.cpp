@@ -31,7 +31,7 @@
 #include "gc/g1/g1GCPhaseTimes.hpp"
 #include "gc/g1/g1HotCardCache.hpp"
 #include "gc/g1/g1OopClosures.inline.hpp"
-#include "gc/g1/g1RemSet.inline.hpp"
+#include "gc/g1/g1RemSet.hpp"
 #include "gc/g1/g1SATBCardTableModRefBS.inline.hpp"
 #include "gc/g1/heapRegion.inline.hpp"
 #include "gc/g1/heapRegionManager.inline.hpp"
@@ -298,7 +298,7 @@ G1RemSet::~G1RemSet() {
 }
 
 uint G1RemSet::num_par_rem_sets() {
-  return MAX2(DirtyCardQueueSet::num_par_ids() + G1ConcurrentRefine::thread_num(), ParallelGCThreads);
+  return MAX2(DirtyCardQueueSet::num_par_ids() + G1ConcurrentRefine::max_num_threads(), ParallelGCThreads);
 }
 
 void G1RemSet::initialize(size_t capacity, uint max_regions) {
@@ -532,7 +532,7 @@ public:
 
 void G1RemSet::scrub(uint worker_num, HeapRegionClaimer *hrclaimer) {
   G1ScrubRSClosure scrub_cl(&_card_live_data);
-  _g1->heap_region_par_iterate(&scrub_cl, worker_num, hrclaimer);
+  _g1->heap_region_par_iterate_from_worker_offset(&scrub_cl, hrclaimer, worker_num);
 }
 
 inline void check_card_ptr(jbyte* card_ptr, CardTableModRefBS* ct_bs) {
@@ -586,20 +586,6 @@ void G1RemSet::refine_card_concurrently(jbyte* card_ptr,
     return;
   }
 
-  // While we are processing RSet buffers during the collection, we
-  // actually don't want to scan any cards on the collection set,
-  // since we don't want to update remembered sets with entries that
-  // point into the collection set, given that live objects from the
-  // collection set are about to move and such entries will be stale
-  // very soon. This change also deals with a reliability issue which
-  // involves scanning a card in the collection set and coming across
-  // an array that was being chunked and looking malformed. Note,
-  // however, that if evacuation fails, we have to scan any objects
-  // that were not moved and create any missing entries.
-  if (r->in_collection_set()) {
-    return;
-  }
-
   // The result from the hot card cache insert call is either:
   //   * pointer to the current card
   //     (implying that the current card is not 'hot'),
@@ -624,8 +610,7 @@ void G1RemSet::refine_card_concurrently(jbyte* card_ptr,
 
       // Check whether the region formerly in the cache should be
       // ignored, as discussed earlier for the original card.  The
-      // region could have been freed while in the cache.  The cset is
-      // not relevant here, since we're in concurrent phase.
+      // region could have been freed while in the cache.
       if (!r->is_old_or_humongous()) {
         return;
       }

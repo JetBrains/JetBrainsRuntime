@@ -134,8 +134,6 @@ public final class Main {
     private Set<Pair <String, String>> providers = null;
     private Set<Pair <String, String>> providerClasses = null;
     private String storetype = null;
-    private boolean hasStoretypeOption = false;
-    private boolean hasSrcStoretypeOption = false;
     private String srcProviderName = null;
     private String providerName = null;
     private String pathlist = null;
@@ -549,14 +547,12 @@ public final class Main {
                 passwords.add(storePass);
             } else if (collator.compare(flags, "-storetype") == 0 ||
                     collator.compare(flags, "-deststoretype") == 0) {
-                storetype = args[++i];
-                hasStoretypeOption = true;
+                storetype = KeyStoreUtil.niceStoreTypeName(args[++i]);
             } else if (collator.compare(flags, "-srcstorepass") == 0) {
                 srcstorePass = getPass(modifier, args[++i]);
                 passwords.add(srcstorePass);
             } else if (collator.compare(flags, "-srcstoretype") == 0) {
-                srcstoretype = args[++i];
-                hasSrcStoretypeOption = true;
+                srcstoretype = KeyStoreUtil.niceStoreTypeName(args[++i]);
             } else if (collator.compare(flags, "-srckeypass") == 0) {
                 srckeyPass = getPass(modifier, args[++i]);
                 passwords.add(srckeyPass);
@@ -708,16 +704,6 @@ public final class Main {
             ksfname = KeyStoreUtil.getCacerts();
         }
 
-        if (storetype == null) {
-            storetype = KeyStore.getDefaultType();
-        }
-        storetype = KeyStoreUtil.niceStoreTypeName(storetype);
-
-        if (srcstoretype == null) {
-            srcstoretype = KeyStore.getDefaultType();
-        }
-        srcstoretype = KeyStoreUtil.niceStoreTypeName(srcstoretype);
-
         if (P11KEYSTORE.equalsIgnoreCase(storetype) ||
                 KeyStoreUtil.isWindowsKeyStore(storetype)) {
             token = true;
@@ -740,11 +726,6 @@ public final class Main {
             (command == KEYPASSWD || command == STOREPASSWD)) {
             throw new UnsupportedOperationException(MessageFormat.format(rb.getString
                         (".storepasswd.and.keypasswd.commands.not.supported.if.storetype.is.{0}"), storetype));
-        }
-
-        if (P12KEYSTORE.equalsIgnoreCase(storetype) && command == KEYPASSWD) {
-            throw new UnsupportedOperationException(rb.getString
-                        (".keypasswd.commands.not.supported.if.storetype.is.PKCS12"));
         }
 
         if (token && (keyPass != null || newPass != null || destKeyPass != null)) {
@@ -923,9 +904,13 @@ public final class Main {
         // Create new keystore
         // Probe for keystore type when filename is available
         if (ksfile != null && ksStream != null && providerName == null &&
-                hasStoretypeOption == false && !inplaceImport) {
+                storetype == null && !inplaceImport) {
             keyStore = KeyStore.getInstance(ksfile, storePass);
+            storetype = keyStore.getType();
         } else {
+            if (storetype == null) {
+                storetype = KeyStore.getDefaultType();
+            }
             if (providerName == null) {
                 keyStore = KeyStore.getInstance(storetype);
             } else {
@@ -962,6 +947,11 @@ public final class Main {
                     ksStream.close();
                 }
             }
+        }
+
+        if (P12KEYSTORE.equalsIgnoreCase(storetype) && command == KEYPASSWD) {
+            throw new UnsupportedOperationException(rb.getString
+                    (".keypasswd.commands.not.supported.if.storetype.is.PKCS12"));
         }
 
         // All commands that create or modify the keystore require a keystore
@@ -1067,11 +1057,6 @@ public final class Main {
                 Object[] source = {"-keypass"};
                 System.err.println(form.format(source));
                 keyPass = storePass;
-            }
-            if (newPass != null && !Arrays.equals(storePass, newPass)) {
-                Object[] source = {"-new"};
-                System.err.println(form.format(source));
-                newPass = storePass;
             }
             if (destKeyPass != null && !Arrays.equals(storePass, destKeyPass)) {
                 Object[] source = {"-destkeypass"};
@@ -1253,10 +1238,7 @@ public final class Main {
             doSelfCert(alias, dname, sigAlgName);
             kssave = true;
         } else if (command == STOREPASSWD) {
-            storePassNew = newPass;
-            if (storePassNew == null) {
-                storePassNew = getNewPasswd("keystore password", storePass);
-            }
+            doChangeStorePasswd();
             kssave = true;
         } else if (command == GENCERT) {
             if (alias == null) {
@@ -1822,8 +1804,7 @@ public final class Main {
             } else if ("RSA".equalsIgnoreCase(keyAlgName)) {
                 keysize = SecurityProviderConstants.DEF_RSA_KEY_SIZE;
             } else if ("DSA".equalsIgnoreCase(keyAlgName)) {
-                // hardcode for now as DEF_DSA_KEY_SIZE is still 1024
-                keysize = 2048; // SecurityProviderConstants.DEF_DSA_KEY_SIZE;
+                keysize = SecurityProviderConstants.DEF_DSA_KEY_SIZE;
             }
         }
 
@@ -2123,9 +2104,13 @@ public final class Main {
         try {
             // Probe for keystore type when filename is available
             if (srcksfile != null && is != null && srcProviderName == null &&
-                hasSrcStoretypeOption == false) {
+                    srcstoretype == null) {
                 store = KeyStore.getInstance(srcksfile, srcstorePass);
+                srcstoretype = store.getType();
             } else {
+                if (srcstoretype == null) {
+                    srcstoretype = KeyStore.getDefaultType();
+                }
                 if (srcProviderName == null) {
                     store = KeyStore.getInstance(srcstoretype);
                 } else {
@@ -2264,8 +2249,9 @@ public final class Main {
             newPass = destKeyPass;
             pp = new PasswordProtection(destKeyPass);
         } else if (objs.snd != null) {
-            newPass = objs.snd;
-            pp = new PasswordProtection(objs.snd);
+            newPass = P12KEYSTORE.equalsIgnoreCase(storetype) ?
+                    storePass : objs.snd;
+            pp = new PasswordProtection(newPass);
         }
 
         try {
@@ -2746,12 +2732,12 @@ public final class Main {
                     if (rfc) {
                         dumpCert(cert, out);
                     } else {
-                        out.println("Certificate #" + i++);
+                        out.println("Certificate #" + i);
                         out.println("====================================");
                         printX509Cert((X509Certificate)cert, out);
                         out.println();
                     }
-                    checkWeak(oneInMany(rb.getString("the.certificate"), i, chain.size()), cert);
+                    checkWeak(oneInMany(rb.getString("the.certificate"), i++, chain.size()), cert);
                 } catch (Exception e) {
                     if (debug) {
                         e.printStackTrace();
@@ -2768,6 +2754,28 @@ public final class Main {
             }
         }
     }
+
+    private void doChangeStorePasswd() throws Exception {
+        storePassNew = newPass;
+        if (storePassNew == null) {
+            storePassNew = getNewPasswd("keystore password", storePass);
+        }
+        if (P12KEYSTORE.equalsIgnoreCase(storetype)) {
+            // When storetype is PKCS12, we need to change all keypass as well
+            for (String alias : Collections.list(keyStore.aliases())) {
+                if (!keyStore.isCertificateEntry(alias)) {
+                    // keyPass should be either null or same with storePass,
+                    // but keep it in case one day we want to "normalize"
+                    // a PKCS12 keystore having different passwords.
+                    Pair<Entry, char[]> objs
+                            = recoverEntry(keyStore, alias, storePass, keyPass);
+                    keyStore.setEntry(alias, objs.fst,
+                            new PasswordProtection(storePassNew));
+                }
+            }
+        }
+    }
+
     /**
      * Creates a self-signed certificate, and stores it as a single-element
      * certificate chain.

@@ -1923,9 +1923,11 @@ private:
   void vdivpd(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
   void vdivps(XMMRegister dst, XMMRegister nds, Address src, int vector_len);
 
-  // Sqrt Packed Floating-Point Values - Double precision only
+  // Sqrt Packed Floating-Point Values
   void vsqrtpd(XMMRegister dst, XMMRegister src, int vector_len);
   void vsqrtpd(XMMRegister dst, Address src, int vector_len);
+  void vsqrtps(XMMRegister dst, XMMRegister src, int vector_len);
+  void vsqrtps(XMMRegister dst, Address src, int vector_len);
 
   // Bitwise Logical AND of Packed Floating-Point Values
   void andpd(XMMRegister dst, XMMRegister src);
@@ -2116,9 +2118,11 @@ private:
   // runtime code and native libraries.
   void vzeroupper();
 
-  // AVX support for vectorized conditional move (double). The following two instructions used only coupled.
+  // AVX support for vectorized conditional move (float/double). The following two instructions used only coupled.
   void cmppd(XMMRegister dst, XMMRegister nds, XMMRegister src, int cop, int vector_len);
   void blendvpd(XMMRegister dst, XMMRegister nds, XMMRegister src1, XMMRegister src2, int vector_len);
+  void cmpps(XMMRegister dst, XMMRegister nds, XMMRegister src, int cop, int vector_len);
+  void blendvps(XMMRegister dst, XMMRegister nds, XMMRegister src1, XMMRegister src2, int vector_len);
   void vpblendd(XMMRegister dst, XMMRegister nds, XMMRegister src, int imm8, int vector_len);
 
  protected:

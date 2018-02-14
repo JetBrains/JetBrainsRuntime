@@ -723,6 +723,14 @@ bool os::has_allocatable_memory_limit(julong* limit) {
 }
 
 int os::active_processor_count() {
+  // User has overridden the number of active processors
+  if (ActiveProcessorCount > 0) {
+    log_trace(os)("active_processor_count: "
+                  "active processor count set by user : %d",
+                  ActiveProcessorCount);
+    return ActiveProcessorCount;
+  }
+
   DWORD_PTR lpProcessAffinityMask = 0;
   DWORD_PTR lpSystemAffinityMask = 0;
   int proc_count = processor_count();
@@ -2487,6 +2495,20 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo) {
     } // /EXCEPTION_ACCESS_VIOLATION
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+    if (exception_code == EXCEPTION_IN_PAGE_ERROR) {
+      CompiledMethod* nm = NULL;
+      JavaThread* thread = (JavaThread*)t;
+      if (in_java) {
+        CodeBlob* cb = CodeCache::find_blob_unsafe(pc);
+        nm = (cb != NULL) ? cb->as_compiled_method_or_null() : NULL;
+      }
+      if ((thread->thread_state() == _thread_in_vm &&
+          thread->doing_unsafe_access()) ||
+          (nm != NULL && nm->has_unsafe_access())) {
+        return Handle_Exception(exceptionInfo, SharedRuntime::handle_unsafe_access(thread, (address)Assembler::locate_next_instruction(pc)));
+      }
+    }
+
     if (in_java) {
       switch (exception_code) {
       case EXCEPTION_INT_DIVIDE_BY_ZERO:
@@ -2882,6 +2904,75 @@ void os::large_page_init() {
   UseLargePages = success;
 }
 
+int os::create_file_for_heap(const char* dir) {
+
+  const char name_template[] = "/jvmheap.XXXXXX";
+  char *fullname = (char*)os::malloc((strlen(dir) + strlen(name_template) + 1), mtInternal);
+  if (fullname == NULL) {
+    vm_exit_during_initialization(err_msg("Malloc failed during creation of backing file for heap (%s)", os::strerror(errno)));
+    return -1;
+  }
+
+  (void)strncpy(fullname, dir, strlen(dir)+1);
+  (void)strncat(fullname, name_template, strlen(name_template));
+
+  os::native_path(fullname);
+
+  char *path = _mktemp(fullname);
+  if (path == NULL) {
+    warning("_mktemp could not create file name from template %s (%s)", fullname, os::strerror(errno));
+    os::free(fullname);
+    return -1;
+  }
+
+  int fd = _open(path, O_RDWR | O_CREAT | O_TEMPORARY | O_EXCL, S_IWRITE | S_IREAD);
+
+  os::free(fullname);
+  if (fd < 0) {
+    warning("Problem opening file for heap (%s)", os::strerror(errno));
+    return -1;
+  }
+  return fd;
+}
+
+// If 'base' is not NULL, function will return NULL if it cannot get 'base'
+char* os::map_memory_to_file(char* base, size_t size, int fd) {
+  assert(fd != -1, "File descriptor is not valid");
+
+  HANDLE fh = (HANDLE)_get_osfhandle(fd);
+#ifdef _LP64
+  HANDLE fileMapping = CreateFileMapping(fh, NULL, PAGE_READWRITE,
+    (DWORD)(size >> 32), (DWORD)(size & 0xFFFFFFFF), NULL);
+#else
+  HANDLE fileMapping = CreateFileMapping(fh, NULL, PAGE_READWRITE,
+    0, (DWORD)size, NULL);
+#endif
+  if (fileMapping == NULL) {
+    if (GetLastError() == ERROR_DISK_FULL) {
+      vm_exit_during_initialization(err_msg("Could not allocate sufficient disk space for Java heap"));
+    }
+    else {
+      vm_exit_during_initialization(err_msg("Error in mapping Java heap at the given filesystem directory"));
+    }
+
+    return NULL;
+  }
+
+  LPVOID addr = MapViewOfFileEx(fileMapping, FILE_MAP_WRITE, 0, 0, size, base);
+
+  CloseHandle(fileMapping);
+
+  return (char*)addr;
+}
+
+char* os::replace_existing_mapping_with_file_mapping(char* base, size_t size, int fd) {
+  assert(fd != -1, "File descriptor is not valid");
+  assert(base != NULL, "Base address cannot be NULL");
+
+  release_memory(base, size);
+  return map_memory_to_file(base, size, fd);
+}
+
 // On win32, one cannot release just a part of reserved memory, it's an
 // all or nothing deal.  When we split a reservation, we must break the
 // reservation into two reservations.
@@ -2901,7 +2992,7 @@ void os::pd_split_reserved_memory(char *base, size_t size, size_t split,
 // Multiple threads can race in this code but it's not possible to unmap small sections of
 // virtual space to get requested alignment, like posix-like os's.
 // Windows prevents multiple thread from remapping over each other so this loop is thread-safe.
-char* os::reserve_memory_aligned(size_t size, size_t alignment) {
+char* os::reserve_memory_aligned(size_t size, size_t alignment, int file_desc) {
   assert((alignment & (os::vm_allocation_granularity() - 1)) == 0,
          "Alignment must be a multiple of allocation granularity (page size)");
   assert((size & (alignment -1)) == 0, "size must be 'alignment' aligned");
@@ -2912,16 +3003,20 @@ char* os::reserve_memory_aligned(size_t size, size_t alignment) {
   char* aligned_base = NULL;
 
   do {
-    char* extra_base = os::reserve_memory(extra_size, NULL, alignment);
+    char* extra_base = os::reserve_memory(extra_size, NULL, alignment, file_desc);
     if (extra_base == NULL) {
       return NULL;
     }
     // Do manual alignment
     aligned_base = align_up(extra_base, alignment);
 
-    os::release_memory(extra_base, extra_size);
+    if (file_desc != -1) {
+      os::unmap_memory(extra_base, extra_size);
+    } else {
+      os::release_memory(extra_base, extra_size);
+    }
 
-    aligned_base = os::reserve_memory(size, aligned_base);
+    aligned_base = os::reserve_memory(size, aligned_base, 0, file_desc);
 
   } while (aligned_base == NULL);
 
@@ -2965,6 +3060,11 @@ char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr) {
   // Windows os::reserve_memory() fails of the requested address range is
   // not avilable.
   return reserve_memory(bytes, requested_addr);
+}
+
+char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr, int file_desc) {
+  assert(file_desc >= 0, "file_desc is not valid");
+  return map_memory_to_file(requested_addr, bytes, file_desc);
 }
 
 size_t os::large_page_size() {
@@ -3468,9 +3568,7 @@ OSReturn os::get_native_priority(const Thread* const thread,
 void os::hint_no_preempt() {}
 
 void os::interrupt(Thread* thread) {
-  assert(!thread->is_Java_thread() || Thread::current() == thread ||
-         Threads_lock->owned_by_self(),
-         "possibility of dangling Thread pointer");
+  debug_only(Thread::check_for_dangling_thread_pointer(thread);)
 
   OSThread* osthread = thread->osthread();
   osthread->set_interrupted(true);
@@ -3491,8 +3589,7 @@ void os::interrupt(Thread* thread) {
 
 
 bool os::is_interrupted(Thread* thread, bool clear_interrupted) {
-  assert(!thread->is_Java_thread() || Thread::current() == thread || Threads_lock->owned_by_self(),
-         "possibility of dangling Thread pointer");
+  debug_only(Thread::check_for_dangling_thread_pointer(thread);)
 
   OSThread* osthread = thread->osthread();
   // There is no synchronization between the setting of the interrupt
@@ -3911,27 +4008,6 @@ static jint initSock();
 
 // this is called _after_ the global arguments have been parsed
 jint os::init_2(void) {
-  // Allocate a single page and mark it as readable for safepoint polling
-  address polling_page = (address)VirtualAlloc(NULL, os::vm_page_size(), MEM_RESERVE, PAGE_READONLY);
-  guarantee(polling_page != NULL, "Reserve Failed for polling page");
-
-  address return_page  = (address)VirtualAlloc(polling_page, os::vm_page_size(), MEM_COMMIT, PAGE_READONLY);
-  guarantee(return_page != NULL, "Commit Failed for polling page");
-
-  os::set_polling_page(polling_page);
-  log_info(os)("SafePoint Polling address: " INTPTR_FORMAT, p2i(polling_page));
-
-  if (!UseMembar) {
-    address mem_serialize_page = (address)VirtualAlloc(NULL, os::vm_page_size(), MEM_RESERVE, PAGE_READWRITE);
-    guarantee(mem_serialize_page != NULL, "Reserve Failed for memory serialize page");
-
-    return_page  = (address)VirtualAlloc(mem_serialize_page, os::vm_page_size(), MEM_COMMIT, PAGE_READWRITE);
-    guarantee(return_page != NULL, "Commit Failed for memory serialize page");
-
-    os::set_memory_serialize_page(mem_serialize_page);
-    log_info(os)("Memory Serialize Page address: " INTPTR_FORMAT, p2i(mem_serialize_page));
-  }
-
   // Setup Windows Exceptions
 
   // for debugging float code generation bugs
@@ -4060,41 +4136,116 @@ void os::make_polling_page_readable(void) {
   }
 }
 
+// combine the high and low DWORD into a ULONGLONG
+static ULONGLONG make_double_word(DWORD high_word, DWORD low_word) {
+  ULONGLONG value = high_word;
+  value <<= sizeof(high_word) * 8;
+  value |= low_word;
+  return value;
+}
+
+// Transfers data from WIN32_FILE_ATTRIBUTE_DATA structure to struct stat
+static void file_attribute_data_to_stat(struct stat* sbuf, WIN32_FILE_ATTRIBUTE_DATA file_data) {
+  ::memset((void*)sbuf, 0, sizeof(struct stat));
+  sbuf->st_size = (_off_t)make_double_word(file_data.nFileSizeHigh, file_data.nFileSizeLow);
+  sbuf->st_mtime = make_double_word(file_data.ftLastWriteTime.dwHighDateTime,
+                                  file_data.ftLastWriteTime.dwLowDateTime);
+  sbuf->st_ctime = make_double_word(file_data.ftCreationTime.dwHighDateTime,
+                                  file_data.ftCreationTime.dwLowDateTime);
+  sbuf->st_atime = make_double_word(file_data.ftLastAccessTime.dwHighDateTime,
+                                  file_data.ftLastAccessTime.dwLowDateTime);
+  if ((file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+    sbuf->st_mode |= S_IFDIR;
+  } else {
+    sbuf->st_mode |= S_IFREG;
+  }
+}
+
+// The following function is adapted from java.base/windows/native/libjava/canonicalize_md.c
+// Creates an UNC path from a single byte path. Return buffer is
+// allocated in C heap and needs to be freed by the caller.
+// Returns NULL on error.
+static wchar_t* create_unc_path(const char* path, errno_t &err) {
+  wchar_t* wpath = NULL;
+  size_t converted_chars = 0;
+  size_t path_len = strlen(path) + 1; // includes the terminating NULL
+  if (path[0] == '\\' && path[1] == '\\') {
+    if (path[2] == '?' && path[3] == '\\'){
+      // if it already has a \\?\ don't do the prefix
+      wpath = (wchar_t*)os::malloc(path_len * sizeof(wchar_t), mtInternal);
+      if (wpath != NULL) {
+        err = ::mbstowcs_s(&converted_chars, wpath, path_len, path, path_len);
+      } else {
+        err = ENOMEM;
+      }
+    } else {
+      // only UNC pathname includes double slashes here
+      wpath = (wchar_t*)os::malloc((path_len + 7) * sizeof(wchar_t), mtInternal);
+      if (wpath != NULL) {
+        ::wcscpy(wpath, L"\\\\?\\UNC\0");
+        err = ::mbstowcs_s(&converted_chars, &wpath[7], path_len, path, path_len);
+      } else {
+        err = ENOMEM;
+      }
+    }
+  } else {
+    wpath = (wchar_t*)os::malloc((path_len + 4) * sizeof(wchar_t), mtInternal);
+    if (wpath != NULL) {
+      ::wcscpy(wpath, L"\\\\?\\\0");
+      err = ::mbstowcs_s(&converted_chars, &wpath[4], path_len, path, path_len);
+    } else {
+      err = ENOMEM;
+    }
+  }
+  return wpath;
+}
+
+static void destroy_unc_path(wchar_t* wpath) {
+  os::free(wpath);
+}
 
 int os::stat(const char *path, struct stat *sbuf) {
-  char pathbuf[MAX_PATH];
-  if (strlen(path) > MAX_PATH - 1) {
-    errno = ENAMETOOLONG;
+  char* pathbuf = (char*)os::strdup(path, mtInternal);
+  if (pathbuf == NULL) {
+    errno = ENOMEM;
     return -1;
   }
-  os::native_path(strcpy(pathbuf, path));
-  int ret = ::stat(pathbuf, sbuf);
-  if (sbuf != NULL && UseUTCFileTimestamp) {
-    // Fix for 6539723.  st_mtime returned from stat() is dependent on
-    // the system timezone and so can return different values for the
-    // same file if/when daylight savings time changes.  This adjustment
-    // makes sure the same timestamp is returned regardless of the TZ.
-    //
-    // See:
-    // http://msdn.microsoft.com/library/
-    //   default.asp?url=/library/en-us/sysinfo/base/
-    //   time_zone_information_str.asp
-    // and
-    // http://msdn.microsoft.com/library/default.asp?url=
-    //   /library/en-us/sysinfo/base/settimezoneinformation.asp
-    //
-    // NOTE: there is a insidious bug here:  If the timezone is changed
-    // after the call to stat() but before 'GetTimeZoneInformation()', then
-    // the adjustment we do here will be wrong and we'll return the wrong
-    // value (which will likely end up creating an invalid class data
-    // archive).  Absent a better API for this, or some time zone locking
-    // mechanism, we'll have to live with this risk.
-    TIME_ZONE_INFORMATION tz;
-    DWORD tzid = GetTimeZoneInformation(&tz);
-    int daylightBias =
-      (tzid == TIME_ZONE_ID_DAYLIGHT) ?  tz.DaylightBias : tz.StandardBias;
-    sbuf->st_mtime += (tz.Bias + daylightBias) * 60;
+  os::native_path(pathbuf);
+  int ret;
+  WIN32_FILE_ATTRIBUTE_DATA file_data;
+  // Not using stat() to avoid the problem described in JDK-6539723
+  if (strlen(path) < MAX_PATH) {
+    BOOL bret = ::GetFileAttributesExA(pathbuf, GetFileExInfoStandard, &file_data);
+    if (!bret) {
+      errno = ::GetLastError();
+      ret = -1;
+    }
+    else {
+      file_attribute_data_to_stat(sbuf, file_data);
+      ret = 0;
+    }
+  } else {
+    errno_t err = ERROR_SUCCESS;
+    wchar_t* wpath = create_unc_path(pathbuf, err);
+    if (err != ERROR_SUCCESS) {
+      if (wpath != NULL) {
+        destroy_unc_path(wpath);
+      }
+      os::free(pathbuf);
+      errno = err;
+      return -1;
+    }
+    BOOL bret = ::GetFileAttributesExW(wpath, GetFileExInfoStandard, &file_data);
+    if (!bret) {
+      errno = ::GetLastError();
+      ret = -1;
+    } else {
+      file_attribute_data_to_stat(sbuf, file_data);
+      ret = 0;
+    }
+    destroy_unc_path(wpath);
   }
+  os::free(pathbuf);
   return ret;
 }
 
@@ -4207,14 +4358,34 @@ bool os::dont_yield() {
 // from src/windows/hpi/src/sys_api_md.c
 
 int os::open(const char *path, int oflag, int mode) {
-  char pathbuf[MAX_PATH];
-
-  if (strlen(path) > MAX_PATH - 1) {
-    errno = ENAMETOOLONG;
+  char* pathbuf = (char*)os::strdup(path, mtInternal);
+  if (pathbuf == NULL) {
+    errno = ENOMEM;
     return -1;
   }
-  os::native_path(strcpy(pathbuf, path));
-  return ::open(pathbuf, oflag | O_BINARY | O_NOINHERIT, mode);
+  os::native_path(pathbuf);
+  int ret;
+  if (strlen(path) < MAX_PATH) {
+    ret = ::open(pathbuf, oflag | O_BINARY | O_NOINHERIT, mode);
+  } else {
+    errno_t err = ERROR_SUCCESS;
+    wchar_t* wpath = create_unc_path(pathbuf, err);
+    if (err != ERROR_SUCCESS) {
+      if (wpath != NULL) {
+        destroy_unc_path(wpath);
+      }
+      os::free(pathbuf);
+      errno = err;
+      return -1;
+    }
+    ret = ::_wopen(wpath, oflag | O_BINARY | O_NOINHERIT, mode);
+    if (ret == -1) {
+      errno = ::GetLastError();
+    }
+    destroy_unc_path(wpath);
+  }
+  os::free(pathbuf);
+  return ret;
 }
 
 FILE* os::open(int fd, const char* mode) {

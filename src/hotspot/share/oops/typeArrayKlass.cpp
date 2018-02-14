@@ -149,8 +149,8 @@ void TypeArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d, int dst_pos
   if (length == 0)
     return;
 
-  s = arrayOop(oopDesc::bs()->read_barrier(s));
-  d = arrayOop(oopDesc::bs()->write_barrier(d));
+  s = arrayOop(BarrierSet::barrier_set()->read_barrier(s));
+  d = arrayOop(BarrierSet::barrier_set()->write_barrier(d));
 
   // This is an attempt to make the copy_array fast.
   int l2es = log2_element_size();

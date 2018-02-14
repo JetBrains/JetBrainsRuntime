@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
- * @LastModified: Oct 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -92,9 +91,10 @@ import org.xml.sax.ext.EntityResolver2;
  * <p>Implementation of ValidatorHandler for W3C XML Schemas and
  * also a validator helper for <code>SAXSource</code>s.</p>
  *
- * @author Kohsuke Kawaguchi (kohsuke.kawaguchi@sun.com)
+ * @author Kohsuke Kawaguchi
  * @author Michael Glavassevich, IBM
  *
+ * @LastModified: Oct 2017
  */
 final class ValidatorHandlerImpl extends ValidatorHandler implements
     DTDHandler, EntityState, PSVIProvider, ValidatorHelper, XMLDocumentHandler {
@@ -675,16 +675,14 @@ final class ValidatorHandlerImpl extends ValidatorHandler implements
                 XMLReader reader = saxSource.getXMLReader();
                 if( reader==null ) {
                     // create one now
-                    SAXParserFactory spf = fComponentManager.getFeature(Constants.ORACLE_FEATURE_SERVICE_MECHANISM) ?
-                                    SAXParserFactory.newInstance() : new SAXParserFactoryImpl();
-                    spf.setNamespaceAware(true);
+                    reader = JdkXmlUtils.getXMLReader(fComponentManager.getFeature(JdkXmlUtils.OVERRIDE_PARSER),
+                            fComponentManager.getFeature(XMLConstants.FEATURE_SECURE_PROCESSING));
+
                     try {
-                        spf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING,
-                                fComponentManager.getFeature(XMLConstants.FEATURE_SECURE_PROCESSING));
-                        reader = spf.newSAXParser().getXMLReader();
                         // If this is a Xerces SAX parser, set the security manager if there is one
                         if (reader instanceof com.sun.org.apache.xerces.internal.parsers.SAXParser) {
-                           XMLSecurityManager securityManager = (XMLSecurityManager) fComponentManager.getProperty(SECURITY_MANAGER);
+                           XMLSecurityManager securityManager =
+                                   (XMLSecurityManager) fComponentManager.getProperty(SECURITY_MANAGER);
                            if (securityManager != null) {
                                try {
                                    reader.setProperty(SECURITY_MANAGER, securityManager);

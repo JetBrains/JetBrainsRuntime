@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
- * @LastModified: Oct 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -46,6 +45,7 @@ import javax.xml.transform.Result;
 import javax.xml.transform.Source;
 import javax.xml.transform.dom.DOMResult;
 import javax.xml.transform.dom.DOMSource;
+import jdk.xml.internal.JdkXmlUtils;
 import org.w3c.dom.Attr;
 import org.w3c.dom.CDATASection;
 import org.w3c.dom.Comment;
@@ -62,6 +62,7 @@ import org.xml.sax.SAXException;
  * <p>A validator helper for <code>DOMSource</code>s.</p>
  *
  * @author Michael Glavassevich, IBM
+ * @LastModified: Oct 2017
  */
 final class DOMValidatorHelper implements ValidatorHelper, EntityState {
 
@@ -380,9 +381,8 @@ final class DOMValidatorHelper implements ValidatorHelper, EntityState {
         }
         if (result.getNode() == null) {
             try {
-                DocumentBuilderFactory factory = fComponentManager.getFeature(Constants.ORACLE_FEATURE_SERVICE_MECHANISM) ?
-                                    DocumentBuilderFactory.newInstance() : new DocumentBuilderFactoryImpl();
-                factory.setNamespaceAware(true);
+                DocumentBuilderFactory factory = JdkXmlUtils.getDOMFactory(
+                        fComponentManager.getFeature(JdkXmlUtils.OVERRIDE_PARSER));
                 DocumentBuilder builder = factory.newDocumentBuilder();
                 result.setNode(builder.newDocument());
             }

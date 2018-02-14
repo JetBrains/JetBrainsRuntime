@@ -26,7 +26,6 @@
 #define SHARE_VM_CLASSFILE_VMSYMBOLS_HPP
 
 #include "classfile/moduleEntry.hpp"
-#include "classfile/vmSymbols_ext.hpp"
 #include "oops/symbol.hpp"
 #include "memory/iterator.hpp"
 #include "trace/traceMacros.hpp"
@@ -305,6 +304,7 @@
   /* internal up-calls made only by the JVM, via class sun.invoke.MethodHandleNatives: */         \
   template(findMethodHandleType_name,                 "findMethodHandleType")                     \
   template(findMethodHandleType_signature,       "(Ljava/lang/Class;[Ljava/lang/Class;)Ljava/lang/invoke/MethodType;") \
+  template(invokeExact_name,                          "invokeExact")                              \
   template(linkMethodHandleConstant_name,             "linkMethodHandleConstant")                 \
   template(linkMethodHandleConstant_signature, "(Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/String;Ljava/lang/Object;)Ljava/lang/invoke/MethodHandle;") \
   template(linkMethod_name,                           "linkMethod")                               \
@@ -673,8 +673,12 @@
   /* trace signatures */                                                                                          \
   TRACE_TEMPLATES(template)                                                                                       \
                                                                                                                   \
-  /* extensions */                                                                                                \
-  VM_SYMBOLS_DO_EXT(template, do_alias)                                                                           \
+  /* cds */                                                                                                       \
+  template(jdk_internal_loader_ClassLoaders,       "jdk/internal/loader/ClassLoaders")                            \
+  template(jdk_vm_cds_SharedClassInfo,             "jdk/vm/cds/SharedClassInfo")                                  \
+  template(url_void_signature,                     "(Ljava/net/URL;)V")                                           \
+  template(toFileURL_name,                         "toFileURL")                                                   \
+  template(toFileURL_signature,                    "(Ljava/lang/String;)Ljava/net/URL;")                          \
                                                                                                                   \
   /*end*/
 

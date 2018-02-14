@@ -148,7 +148,7 @@ class JNIHandleBlock : public CHeapObj<mtInternal> {
   static int      _blocks_allocated;            // For debugging/printing
 
   // Fill block with bad_handle values
-  void zap();
+  void zap() NOT_DEBUG_RETURN;
 
   // Free list computation
   void rebuild_free_list();
@@ -219,9 +219,8 @@ inline oop& JNIHandles::jweak_ref(jobject handle) {
 template<bool external_guard>
 inline oop JNIHandles::guard_value(oop value) {
   if (!external_guard) {
-    assert(!oopDesc::unsafe_equals(value, badJNIHandle), "Pointing to zapped jni handle area");
     assert(!oopDesc::equals(value, deleted_handle()),    "Used a deleted global handle");
-  } else if (oopDesc::unsafe_equals(value, badJNIHandle) || oopDesc::equals(value, deleted_handle())) {
+  } else if (oopDesc::equals(value, deleted_handle())) {
     value = NULL;
   }
   return value;

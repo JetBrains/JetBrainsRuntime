@@ -36,7 +36,7 @@ inline void ShenandoahMarkRefsSuperClosure::work(T *p) {
 
 template <class T, bool UPDATE_MATRIX>
 inline void ShenandoahUpdateHeapRefsSuperClosure::work(T* p) {
-  oop obj = _heap->maybe_update_with_forwarded(p);
+  oop obj = _heap->maybe_update_oop_ref(p);
   if (UPDATE_MATRIX) {
     if (!oopDesc::is_null(obj)) {
       _heap->connection_matrix()->set_connected(p, obj);

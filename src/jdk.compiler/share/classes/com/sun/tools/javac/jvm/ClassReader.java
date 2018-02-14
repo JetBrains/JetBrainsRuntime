@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,7 @@ import javax.lang.model.element.NestingKind;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 
+import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.comp.Annotate;
 import com.sun.tools.javac.comp.Annotate.AnnotationTypeCompleter;
 import com.sun.tools.javac.code.*;
@@ -246,8 +247,8 @@ public class ClassReader {
         verbose         = options.isSet(Option.VERBOSE);
 
         Source source = Source.instance(context);
-        allowSimplifiedVarargs = source.allowSimplifiedVarargs();
-        allowModules     = source.allowModules();
+        allowSimplifiedVarargs = Feature.SIMPLIFIED_VARARGS.allowedInSource(source);
+        allowModules     = Feature.MODULES.allowedInSource(source);
 
         saveParameterNames = options.isSet(PARAMETERS);
 
@@ -1314,7 +1315,8 @@ public class ClassReader {
                             throw badClassFile("module.name.mismatch", moduleName, currentModule.name);
                         }
 
-                        msym.flags.addAll(readModuleFlags(nextChar()));
+                        Set<ModuleFlags> moduleFlags = readModuleFlags(nextChar());
+                        msym.flags.addAll(moduleFlags);
                         msym.version = readName(nextChar());
 
                         ListBuffer<RequiresDirective> requires = new ListBuffer<>();
@@ -1322,6 +1324,14 @@ public class ClassReader {
                         for (int i = 0; i < nrequires; i++) {
                             ModuleSymbol rsym = syms.enterModule(readModuleName(nextChar()));
                             Set<RequiresFlag> flags = readRequiresFlags(nextChar());
+                            if (rsym == syms.java_base && majorVersion >= V54.major) {
+                                if (flags.contains(RequiresFlag.TRANSITIVE)) {
+                                    throw badClassFile("bad.requires.flag", RequiresFlag.TRANSITIVE);
+                                }
+                                if (flags.contains(RequiresFlag.STATIC_PHASE)) {
+                                    throw badClassFile("bad.requires.flag", RequiresFlag.STATIC_PHASE);
+                                }
+                            }
                             nextChar(); // skip compiled version
                             requires.add(new RequiresDirective(rsym, flags));
                         }
@@ -2683,7 +2693,7 @@ public class ClassReader {
 
         minorVersion = nextChar();
         majorVersion = nextChar();
-        int maxMajor = 53; // Version.MAX().major;  //******* TEMPORARY *******
+        int maxMajor = Version.MAX().major;
         int maxMinor = Version.MAX().minor;
         if (majorVersion > maxMajor ||
             majorVersion * 1000 + minorVersion <

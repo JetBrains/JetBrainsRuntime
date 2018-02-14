@@ -58,8 +58,15 @@ public:
   }
 
 #ifdef ASSERT
-  void verify_safe_oop(oop o) {}
-  void verify_safe_oop(narrowOop o) {}
+  bool is_safe(oop o) {
+    if (o == NULL) return true;
+    return oopDesc::unsafe_equals(o, read_barrier(o));
+  }
+
+  bool is_safe(narrowOop o) {
+    oop obj = oopDesc::decode_heap_oop(o);
+    return is_safe(obj);
+  }
 #endif
 };
 
@@ -181,9 +188,9 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       }
     }
 
-    BarrierSet* old_bs = oopDesc::bs();
+    BarrierSet* old_bs = BarrierSet::barrier_set();
     ShenandoahMarkCompactBarrierSet bs(heap);
-    oopDesc::set_bs(&bs);
+    BarrierSet::set_bs(&bs);
 
     {
       if (UseTLAB) {
@@ -253,7 +260,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       heap->resize_all_tlabs();
     }
 
-    oopDesc::set_bs(old_bs);
+    BarrierSet::set_bs(old_bs);
   }
 
 
@@ -367,7 +374,8 @@ public:
 
     // Object fits into current region, record new location:
     assert(_compact_point + obj_size <= _to_region->end(), "must fit");
-    shenandoah_assert_not_forwarded(NULL, p);
+    assert(oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_oop_static_not_null(p)),
+           "expect forwarded oop");
     BrooksPointer::set_raw(p, _compact_point + BrooksPointer::word_size());
     _compact_point += obj_size;
   }

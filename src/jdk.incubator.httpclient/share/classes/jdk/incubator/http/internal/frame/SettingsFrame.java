@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,6 +98,11 @@ public class SettingsFrame extends Http2Frame {
 
     public SettingsFrame() {
         this(0);
+    }
+
+    public SettingsFrame(SettingsFrame other) {
+        super(0, other.flags);
+        parameters = Arrays.copyOf(other.parameters, MAX_PARAM);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,9 +63,11 @@ import com.sun.tools.javac.code.Directive.RequiresDirective;
 import com.sun.tools.javac.code.Directive.RequiresFlag;
 import com.sun.tools.javac.code.Directive.UsesDirective;
 import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Flags.Flag;
 import com.sun.tools.javac.code.Lint.LintCategory;
 import com.sun.tools.javac.code.ModuleFinder;
 import com.sun.tools.javac.code.Source;
+import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.ClassSymbol;
 import com.sun.tools.javac.code.Symbol.Completer;
@@ -108,11 +110,15 @@ import static com.sun.tools.javac.code.Flags.ABSTRACT;
 import static com.sun.tools.javac.code.Flags.ENUM;
 import static com.sun.tools.javac.code.Flags.PUBLIC;
 import static com.sun.tools.javac.code.Flags.UNATTRIBUTED;
+
 import com.sun.tools.javac.code.Kinds;
+
 import static com.sun.tools.javac.code.Kinds.Kind.ERR;
 import static com.sun.tools.javac.code.Kinds.Kind.MDL;
 import static com.sun.tools.javac.code.Kinds.Kind.MTH;
+
 import com.sun.tools.javac.code.Symbol.ModuleResolutionFlags;
+
 import static com.sun.tools.javac.code.TypeTag.CLASS;
 
 /**
@@ -185,7 +191,7 @@ public class Modules extends JCTree.Visitor {
         types = Types.instance(context);
         fileManager = context.get(JavaFileManager.class);
         source = Source.instance(context);
-        allowModules = source.allowModules();
+        allowModules = Feature.MODULES.allowedInSource(source);
         Options options = Options.instance(context);
 
         allowAccessIntoSystem = options.isUnset(Option.RELEASE);
@@ -774,10 +780,20 @@ public class Modules extends JCTree.Visitor {
             } else {
                 allRequires.add(msym);
                 Set<RequiresFlag> flags = EnumSet.noneOf(RequiresFlag.class);
-                if (tree.isTransitive)
-                    flags.add(RequiresFlag.TRANSITIVE);
-                if (tree.isStaticPhase)
-                    flags.add(RequiresFlag.STATIC_PHASE);
+                if (tree.isTransitive) {
+                    if (msym == syms.java_base && source.compareTo(Source.JDK10) >= 0) {
+                        log.error(tree.pos(), Errors.ModifierNotAllowedHere(names.transitive));
+                    } else {
+                        flags.add(RequiresFlag.TRANSITIVE);
+                    }
+                }
+                if (tree.isStaticPhase) {
+                    if (msym == syms.java_base && source.compareTo(Source.JDK10) >= 0) {
+                        log.error(tree.pos(), Errors.ModNotAllowedHere(EnumSet.of(Flag.STATIC)));
+                    } else {
+                        flags.add(RequiresFlag.STATIC_PHASE);
+                    }
+                }
                 RequiresDirective d = new RequiresDirective(msym, flags);
                 tree.directive = d;
                 sym.requires = sym.requires.prepend(d);

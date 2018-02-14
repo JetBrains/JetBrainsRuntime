@@ -48,7 +48,7 @@ private:
 public:
   // _vo == UsePrevMarking -> use "prev" marking information,
   // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseMarkWord    -> use mark word from object header.
+  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
   VerifyRootsClosure(VerifyOption vo) :
     _g1h(G1CollectedHeap::heap()),
     _vo(vo),
@@ -63,9 +63,6 @@ public:
       if (_g1h->is_obj_dead_cond(obj, _vo)) {
         Log(gc, verify) log;
         log.error("Root location " PTR_FORMAT " points to dead obj " PTR_FORMAT, p2i(p), p2i(obj));
-        if (_vo == VerifyOption_G1UseMarkWord) {
-          log.error("  Mark word: " PTR_FORMAT, p2i(obj->mark()));
-        }
         ResourceMark rm;
         LogStream ls(log.error());
         obj->print_on(&ls);
@@ -95,7 +92,7 @@ class G1VerifyCodeRootOopClosure: public OopClosure {
     }
 
     // Don't check the code roots during marking verification in a full GC
-    if (_vo == VerifyOption_G1UseMarkWord) {
+    if (_vo == VerifyOption_G1UseFullMarking) {
       return;
     }
 
@@ -203,7 +200,7 @@ private:
 public:
   // _vo == UsePrevMarking -> use "prev" marking information,
   // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseMarkWord    -> use mark word from object header.
+  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS.
   VerifyObjsInRegionClosure(HeapRegion *hr, VerifyOption vo)
     : _live_bytes(0), _hr(hr), _vo(vo) {
     _g1h = G1CollectedHeap::heap();
@@ -212,15 +209,15 @@ public:
     VerifyLivenessOopClosure isLive(_g1h, _vo);
     assert(o != NULL, "Huh?");
     if (!_g1h->is_obj_dead_cond(o, _vo)) {
-      // If the object is alive according to the mark word,
+      // If the object is alive according to the full gc mark,
       // then verify that the marking information agrees.
       // Note we can't verify the contra-positive of the
       // above: if the object is dead (according to the mark
       // word), it may not be marked, or may have been marked
       // but has since became dead, or may have been allocated
       // since the last marking.
-      if (_vo == VerifyOption_G1UseMarkWord) {
-        guarantee(!_g1h->is_obj_dead(o), "mark word and concurrent mark mismatch");
+      if (_vo == VerifyOption_G1UseFullMarking) {
+        guarantee(!_g1h->is_obj_dead(o), "Full GC marking and concurrent mark mismatch");
       }
 
       o->oop_iterate_no_header(&isLive);
@@ -299,7 +296,7 @@ private:
 public:
   // _vo == UsePrevMarking -> use "prev" marking information,
   // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseMarkWord    -> use mark word from object header.
+  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
   VerifyRegionClosure(bool par, VerifyOption vo)
     : _par(par),
       _vo(vo),
@@ -357,7 +354,7 @@ private:
 public:
   // _vo == UsePrevMarking -> use "prev" marking information,
   // _vo == UseNextMarking -> use "next" marking information,
-  // _vo == UseMarkWord    -> use mark word from object header.
+  // _vo == UseFullMarking -> use "next" marking bitmap but no TAMS
   G1ParVerifyTask(G1CollectedHeap* g1h, VerifyOption vo) :
       AbstractGangTask("Parallel verify task"),
       _g1h(g1h),
@@ -372,13 +369,44 @@ public:
   void work(uint worker_id) {
     HandleMark hm;
     VerifyRegionClosure blk(true, _vo);
-    _g1h->heap_region_par_iterate(&blk, worker_id, &_hrclaimer);
+    _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
     if (blk.failures()) {
       _failures = true;
     }
   }
 };
 
+void G1HeapVerifier::parse_verification_type(const char* type) {
+  if (strcmp(type, "young-only") == 0) {
+    enable_verification_type(G1VerifyYoungOnly);
+  } else if (strcmp(type, "initial-mark") == 0) {
+    enable_verification_type(G1VerifyInitialMark);
+  } else if (strcmp(type, "mixed") == 0) {
+    enable_verification_type(G1VerifyMixed);
+  } else if (strcmp(type, "remark") == 0) {
+    enable_verification_type(G1VerifyRemark);
+  } else if (strcmp(type, "cleanup") == 0) {
+    enable_verification_type(G1VerifyCleanup);
+  } else if (strcmp(type, "full") == 0) {
+    enable_verification_type(G1VerifyFull);
+  } else {
+    log_warning(gc, verify)("VerifyGCType: '%s' is unknown. Available types are: "
+                            "young-only, initial-mark, mixed, remark, cleanup and full", type);
+  }
+}
+
+void G1HeapVerifier::enable_verification_type(G1VerifyType type) {
+  // First enable will clear _enabled_verification_types.
+  if (_enabled_verification_types == G1VerifyAll) {
+    _enabled_verification_types = type;
+  } else {
+    _enabled_verification_types |= type;
+  }
+}
+
+bool G1HeapVerifier::should_verify(G1VerifyType type) {
+  return (_enabled_verification_types & type) == type;
+}
 
 void G1HeapVerifier::verify(VerifyOption vo) {
   if (!SafepointSynchronize::is_at_safepoint()) {
@@ -407,7 +435,7 @@ void G1HeapVerifier::verify(VerifyOption vo) {
 
   bool failures = rootsCl.failures() || codeRootsCl.failures();
 
-  if (vo != VerifyOption_G1UseMarkWord) {
+  if (!_g1h->g1_policy()->collector_state()->full_collection()) {
     // If we're verifying during a full GC then the region sets
     // will have been torn down at the start of the GC. Therefore
     // verifying the region sets will fail. So we only verify
@@ -544,28 +572,32 @@ void G1HeapVerifier::prepare_for_verify() {
   }
 }
 
-double G1HeapVerifier::verify(bool guard, const char* msg) {
+double G1HeapVerifier::verify(G1VerifyType type, VerifyOption vo, const char* msg) {
   double verify_time_ms = 0.0;
 
-  if (guard && _g1h->total_collections() >= VerifyGCStartAt) {
+  if (should_verify(type) && _g1h->total_collections() >= VerifyGCStartAt) {
     double verify_start = os::elapsedTime();
     HandleMark hm;  // Discard invalid handles created during verification
     prepare_for_verify();
-    Universe::verify(VerifyOption_G1UsePrevMarking, msg);
+    Universe::verify(vo, msg);
     verify_time_ms = (os::elapsedTime() - verify_start) * 1000;
   }
 
   return verify_time_ms;
 }
 
-void G1HeapVerifier::verify_before_gc() {
-  double verify_time_ms = verify(VerifyBeforeGC, "Before GC");
-  _g1h->g1_policy()->phase_times()->record_verify_before_time_ms(verify_time_ms);
+void G1HeapVerifier::verify_before_gc(G1VerifyType type) {
+  if (VerifyBeforeGC) {
+    double verify_time_ms = verify(type, VerifyOption_G1UsePrevMarking, "Before GC");
+    _g1h->g1_policy()->phase_times()->record_verify_before_time_ms(verify_time_ms);
+  }
 }
 
-void G1HeapVerifier::verify_after_gc() {
-  double verify_time_ms = verify(VerifyAfterGC, "After GC");
-  _g1h->g1_policy()->phase_times()->record_verify_after_time_ms(verify_time_ms);
+void G1HeapVerifier::verify_after_gc(G1VerifyType type) {
+  if (VerifyAfterGC) {
+    double verify_time_ms = verify(type, VerifyOption_G1UsePrevMarking, "After GC");
+    _g1h->g1_policy()->phase_times()->record_verify_after_time_ms(verify_time_ms);
+  }
 }
 
 

@@ -105,8 +105,8 @@ import org.xml.sax.SAXParseException;
  *   </tbody>
  * </table>
  *
- * @author  <a href="mailto:Kohsuke.Kawaguchi@Sun.com">Kohsuke Kawaguchi</a>
- * @author  <a href="mailto:Neeraj.Bajaj@sun.com">Neeraj Bajaj</a>
+ * @author  Kohsuke Kawaguchi
+ * @author  Neeraj Bajaj
  *
  * @since 1.5
  */
@@ -139,7 +139,7 @@ public abstract class SchemaFactory {
      * @since 9
      */
     public static SchemaFactory newDefaultInstance() {
-        return XMLSchemaFactory.newXMLSchemaFactoryNoServiceLoader();
+        return new XMLSchemaFactory();
     }
 
     /**

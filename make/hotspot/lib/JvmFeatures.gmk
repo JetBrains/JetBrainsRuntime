@@ -129,6 +129,8 @@ ifneq ($(call check-jvm-feature, all-gcs), true)
   JVM_EXCLUDE_FILES += \
       g1MemoryPool.cpp \
       psMemoryPool.cpp
+else
+  JVM_CFLAGS_FEATURES += -DSUPPORT_BARRIER_ON_PRIMITIVES
 endif
 
 ifneq ($(call check-jvm-feature, nmt), true)
@@ -153,7 +155,7 @@ ifeq ($(call check-jvm-feature, link-time-opt), true)
   # like the old build, but it's probably not right.
   JVM_OPTIMIZATION :=
   JVM_CFLAGS_FEATURES += -O3 -flto
-  JVM_LDFLAGS_FEATURES += -O3 -flto -fwhole-program -fno-strict-aliasing
+  JVM_LDFLAGS_FEATURES += -O3 -flto -fuse-linker-plugin -fno-strict-aliasing
 endif
 
 ifeq ($(call check-jvm-feature, minimal), true)

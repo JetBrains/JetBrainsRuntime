@@ -49,16 +49,21 @@
 #include "runtime/arguments.hpp"
 #include "runtime/compilationPolicy.hpp"
 #include "runtime/deoptimization.hpp"
+#include "runtime/handshake.hpp"
 #include "runtime/interfaceSupport.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/thread.hpp"
+#include "runtime/threadSMR.hpp"
 #include "runtime/vm_version.hpp"
 #include "utilities/align.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_CDS
+#include "prims/cdsoffsets.hpp"
+#endif // INCLUDE_CDS
 #if INCLUDE_ALL_GCS
 #include "gc/g1/concurrentMarkThread.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
@@ -75,6 +80,7 @@
 
 #ifdef LINUX
 #include "utilities/elfFile.hpp"
+#include "osContainer_linux.hpp"
 #endif
 
 #define SIZE_T_MAX_VALUE ((size_t) -1)
@@ -668,7 +674,7 @@ class VM_WhiteBoxDeoptimizeFrames : public VM_WhiteBoxOperation {
   int  result() const { return _result; }
 
   void doit() {
-    for (JavaThread* t = Threads::first(); t != NULL; t = t->next()) {
+    for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
       if (t->has_last_Java_frame()) {
         for (StackFrameStream fst(t, UseBiasedLocking); !fst.is_done(); fst.next()) {
           frame* f = fst.current();
@@ -1732,6 +1738,52 @@ WB_ENTRY(jboolean, WB_IsCDSIncludedInVmBuild(JNIEnv* env))
 #endif
 WB_END
 
+
+#if INCLUDE_CDS
+
+WB_ENTRY(jint, WB_GetOffsetForName(JNIEnv* env, jobject o, jstring name))
+  ResourceMark rm;
+  char* c_name = java_lang_String::as_utf8_string(JNIHandles::resolve_non_null(name));
+  int result = CDSOffsets::find_offset(c_name);
+  return (jint)result;
+WB_END
+
+#endif // INCLUDE_CDS
+
+WB_ENTRY(jint, WB_HandshakeWalkStack(JNIEnv* env, jobject wb, jobject thread_handle, jboolean all_threads))
+  class TraceSelfClosure : public ThreadClosure {
+    jint _num_threads_completed;
+
+    void do_thread(Thread* th) {
+      assert(th->is_Java_thread(), "sanity");
+      JavaThread* jt = (JavaThread*)th;
+      ResourceMark rm;
+
+      jt->print_on(tty);
+      jt->print_stack_on(tty);
+      tty->cr();
+      Atomic::inc(&_num_threads_completed);
+    }
+
+  public:
+    TraceSelfClosure() : _num_threads_completed(0) {}
+
+    jint num_threads_completed() const { return _num_threads_completed; }
+  };
+  TraceSelfClosure tsc;
+
+  if (all_threads) {
+    Handshake::execute(&tsc);
+  } else {
+    oop thread_oop = JNIHandles::resolve(thread_handle);
+    if (thread_oop != NULL) {
+      JavaThread* target = java_lang_Thread::thread(thread_oop);
+      Handshake::execute(&tsc, target);
+    }
+  }
+  return tsc.num_threads_completed();
+WB_END
+
 //Some convenience methods to deal with objects from java
 int WhiteBox::offset_for_field(const char* field_name, oop object,
     Symbol* signature_symbol) {
@@ -1849,6 +1901,16 @@ WB_ENTRY(jboolean, WB_CheckLibSpecifiesNoexecstack(JNIEnv* env, jobject o, jstri
   return ret;
 WB_END
 
+WB_ENTRY(jboolean, WB_IsContainerized(JNIEnv* env, jobject o))
+  LINUX_ONLY(return OSContainer::is_containerized();)
+  return false;
+WB_END
+
+WB_ENTRY(void, WB_PrintOsInfo(JNIEnv* env, jobject o))
+  os::print_os_info(tty);
+WB_END
+
+
 #define CC (char*)
 
 static JNINativeMethod methods[] = {
@@ -1876,6 +1938,9 @@ static JNINativeMethod methods[] = {
   {CC"runMemoryUnitTests", CC"()V",                   (void*)&WB_RunMemoryUnitTests},
   {CC"readFromNoaccessArea",CC"()V",                  (void*)&WB_ReadFromNoaccessArea},
   {CC"stressVirtualSpaceResize",CC"(JJJ)I",           (void*)&WB_StressVirtualSpaceResize},
+#if INCLUDE_CDS
+  {CC"getOffsetForName0", CC"(Ljava/lang/String;)I",  (void*)&WB_GetOffsetForName},
+#endif
 #if INCLUDE_ALL_GCS
   {CC"g1InConcurrentMark", CC"()Z",                   (void*)&WB_G1InConcurrentMark},
   {CC"g1IsHumongous0",      CC"(Ljava/lang/Object;)Z", (void*)&WB_G1IsHumongous     },
@@ -2043,6 +2108,7 @@ static JNINativeMethod methods[] = {
   {CC"areOpenArchiveHeapObjectsMapped",   CC"()Z",    (void*)&WB_AreOpenArchiveHeapObjectsMapped},
   {CC"isCDSIncludedInVmBuild",            CC"()Z",    (void*)&WB_IsCDSIncludedInVmBuild },
   {CC"clearInlineCaches0",  CC"(Z)V",                 (void*)&WB_ClearInlineCaches },
+  {CC"handshakeWalkStack", CC"(Ljava/lang/Thread;Z)I", (void*)&WB_HandshakeWalkStack },
   {CC"addCompilerDirective",    CC"(Ljava/lang/String;)I",
                                                       (void*)&WB_AddCompilerDirective },
   {CC"removeCompilerDirective",   CC"(I)V",             (void*)&WB_RemoveCompilerDirective },
@@ -2056,7 +2122,10 @@ static JNINativeMethod methods[] = {
                                                       (void*)&WB_RequestConcurrentGCPhase},
   {CC"checkLibSpecifiesNoexecstack", CC"(Ljava/lang/String;)Z",
                                                       (void*)&WB_CheckLibSpecifiesNoexecstack},
+  {CC"isContainerized",           CC"()Z",            (void*)&WB_IsContainerized },
+  {CC"printOsInfo",               CC"()V",            (void*)&WB_PrintOsInfo },
 };
+
 
 #undef CC
 

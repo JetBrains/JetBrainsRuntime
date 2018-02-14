@@ -1468,7 +1468,7 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
     case BarrierSet::G1SATBCTLogging:
       G1SATBCardTableModRef_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       Shenandoah_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
 #endif // INCLUDE_ALL_GCS
@@ -1495,7 +1495,7 @@ void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
                   false  /* patch */,
                   NULL   /* info */);
       break;
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       if (ShenandoahKeepAliveBarrier) {
         pre_barrier(LIR_OprFact::illegalOpr /* addr_opr */,
                     val /* pre_val */,
@@ -1521,7 +1521,7 @@ void LIRGenerator::post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
     case BarrierSet::G1SATBCTLogging:
       G1SATBCardTableModRef_post_barrier(addr,  new_val);
       break;
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       Shenandoah_post_barrier(addr,  new_val);
       break;
 #endif // INCLUDE_ALL_GCS

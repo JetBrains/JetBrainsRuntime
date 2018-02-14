@@ -54,6 +54,7 @@
   LOG_TAG(compilation) \
   LOG_TAG(constraints) \
   LOG_TAG(constantpool) \
+  LOG_TAG(container) \
   LOG_TAG(coops) \
   LOG_TAG(cpu) \
   LOG_TAG(cset) \
@@ -67,6 +68,7 @@
   LOG_TAG(fingerprint) \
   LOG_TAG(freelist) \
   LOG_TAG(gc) \
+  LOG_TAG(handshake) \
   LOG_TAG(hashtables) \
   LOG_TAG(heap) \
   LOG_TAG(humongous) \
@@ -119,6 +121,7 @@
   LOG_TAG(safepoint) \
   LOG_TAG(scavenge) \
   LOG_TAG(scrub) \
+  LOG_TAG(smr) \
   LOG_TAG(stacktrace) \
   LOG_TAG(stackwalk) \
   LOG_TAG(start) \

@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -45,7 +47,7 @@ Object.defineProperty(this, "JavaAdapter", {
 // importPackage
 // avoid unnecessary chaining of __noSuchProperty__ again
 // in case user loads this script more than once.
-if (typeof importPackage == 'undefined') {
+if (typeof importPackage == 'undefined' || !(importPackage instanceof Function)) {
 
 Object.defineProperty(this, "importPackage", {
     configurable: true, enumerable: false, writable: true,

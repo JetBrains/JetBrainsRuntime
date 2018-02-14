@@ -25,6 +25,7 @@ package org.graalvm.compiler.core.test;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
+import org.graalvm.compiler.nodes.NodeView;
 import org.junit.Test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -223,7 +224,7 @@ public class CountedLoopTest extends GraalCompilerTest {
         @Input private ValueNode iv;
 
         protected IVPropertyNode(IVProperty property, ValueNode iv) {
-            super(TYPE, iv.stamp().unrestricted());
+            super(TYPE, iv.stamp(NodeView.DEFAULT).unrestricted());
             this.property = property;
             this.iv = iv;
         }
@@ -263,7 +264,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     @Override
-    protected boolean checkMidTierGraph(StructuredGraph graph) {
+    protected boolean checkHighTierGraph(StructuredGraph graph) {
         LoopsData loops = new LoopsData(graph);
         loops.detectedCountedLoops();
         for (IVPropertyNode node : graph.getNodes().filter(IVPropertyNode.class)) {

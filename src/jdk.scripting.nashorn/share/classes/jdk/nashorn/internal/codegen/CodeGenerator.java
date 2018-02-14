@@ -151,6 +151,7 @@ import jdk.nashorn.internal.runtime.Undefined;
 import jdk.nashorn.internal.runtime.UnwarrantedOptimismException;
 import jdk.nashorn.internal.runtime.arrays.ArrayData;
 import jdk.nashorn.internal.runtime.linker.LinkerCallSite;
+import jdk.nashorn.internal.runtime.linker.NashornCallSiteDescriptor;
 import jdk.nashorn.internal.runtime.logging.DebugLogger;
 import jdk.nashorn.internal.runtime.logging.Loggable;
 import jdk.nashorn.internal.runtime.logging.Logger;
@@ -346,28 +347,30 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
 
         assert identNode.getSymbol().isScope() : identNode + " is not in scope!";
         final int flags = getScopeCallSiteFlags(symbol);
-        if (isFastScope(symbol)) {
-            // Only generate shared scope getter for fast-scope symbols so we know we can dial in correct scope.
-            if (symbol.getUseCount() > SharedScopeCall.FAST_SCOPE_GET_THRESHOLD && !identNode.isOptimistic()) {
-                // As shared scope vars are only used with non-optimistic identifiers, we switch from using TypeBounds to
-                // just a single definitive type, resultBounds.widest.
-                new OptimisticOperation(identNode, TypeBounds.OBJECT) {
-                    @Override
-                    void loadStack() {
-                        method.loadCompilerConstant(SCOPE);
-                    }
-
-                    @Override
-                    void consumeStack() {
-                        loadSharedScopeVar(resultBounds.widest, symbol, flags);
-                    }
-                }.emit();
-            } else {
-                new LoadFastScopeVar(identNode, resultBounds, flags).emit();
-            }
-        } else {
-            //slow scope load, we have no proto depth
+        if (!isFastScope(symbol)) {
+            // slow scope load, prototype chain must be inspected at runtime
             new LoadScopeVar(identNode, resultBounds, flags).emit();
+        } else if (identNode.isCompileTimePropertyName() || symbol.getUseCount() < SharedScopeCall.SHARED_GET_THRESHOLD) {
+            // fast scope load with known prototype depth
+            new LoadFastScopeVar(identNode, resultBounds, flags).emit();
+        } else {
+            // Only generate shared scope getter for often used fast-scope symbols.
+            new OptimisticOperation(identNode, resultBounds) {
+                @Override
+                void loadStack() {
+                    method.loadCompilerConstant(SCOPE);
+                    final int depth = getScopeProtoDepth(lc.getCurrentBlock(), symbol);
+                    assert depth >= 0;
+                    method.load(depth);
+                    method.load(getProgramPoint());
+                }
+
+                @Override
+                void consumeStack() {
+                    final Type resultType = isOptimistic ? getOptimisticCoercedType() : resultBounds.widest;
+                    lc.getScopeGet(unit, symbol, resultType, flags, isOptimistic).generateInvoke(method);
+                }
+            }.emit();
         }
 
         return method;
@@ -467,12 +470,6 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
         throw new AssertionError();
     }
 
-    private MethodEmitter loadSharedScopeVar(final Type valueType, final Symbol symbol, final int flags) {
-        assert isFastScope(symbol);
-        method.load(getScopeProtoDepth(lc.getCurrentBlock(), symbol));
-        return lc.getScopeGet(unit, symbol, valueType, flags).generateInvoke(method);
-    }
-
     private class LoadScopeVar extends OptimisticOperation {
         final IdentNode identNode;
         private final int flags;
@@ -551,15 +548,20 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             if (swap) {
                 method.swap();
             }
-            if (depth > 1) {
-                method.load(depth);
-                method.invoke(ScriptObject.GET_PROTO_DEPTH);
-            } else {
-                method.invoke(ScriptObject.GET_PROTO);
-            }
+            invokeGetProto(depth);
             if (swap) {
                 method.swap();
             }
+        }
+    }
+
+    private void invokeGetProto(final int depth) {
+        assert depth > 0;
+        if (depth > 1) {
+            method.load(depth);
+            method.invoke(ScriptObject.GET_PROTO_DEPTH);
+        } else {
+            method.invoke(ScriptObject.GET_PROTO);
         }
     }
 
@@ -1141,6 +1143,12 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             }
 
             @Override
+            public boolean enterDELETE(final UnaryNode unaryNode) {
+                loadDELETE(unaryNode);
+                return false;
+            }
+
+            @Override
             public boolean enterEQ(final BinaryNode binaryNode) {
                 loadCmp(binaryNode, Condition.EQ);
                 return false;
@@ -1278,7 +1286,7 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
     }
 
     boolean useOptimisticTypes() {
-        return !lc.inSplitNode() && compiler.useOptimisticTypes();
+        return !lc.inSplitLiteral() && compiler.useOptimisticTypes();
     }
 
     @Override
@@ -1386,12 +1394,7 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             return;
         }
         method.loadCompilerConstant(SCOPE);
-        if (count > 1) {
-            method.load(count);
-            method.invoke(ScriptObject.GET_PROTO_DEPTH);
-        } else {
-            method.invoke(ScriptObject.GET_PROTO);
-        }
+        invokeGetProto(count);
         method.storeCompilerConstant(SCOPE);
     }
 
@@ -1444,20 +1447,22 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
         final CodeGeneratorLexicalContext codegenLexicalContext = lc;
 
         function.accept(new SimpleNodeVisitor() {
+
             private MethodEmitter sharedScopeCall(final IdentNode identNode, final int flags) {
                 final Symbol symbol = identNode.getSymbol();
-                final boolean isFastScope = isFastScope(symbol);
+                assert isFastScope(symbol);
+
                 new OptimisticOperation(callNode, resultBounds) {
                     @Override
                     void loadStack() {
                         method.loadCompilerConstant(SCOPE);
-                        if (isFastScope) {
-                            method.load(getScopeProtoDepth(currentBlock, symbol));
-                        } else {
-                            method.load(-1); // Bypass fast-scope code in shared callsite
-                        }
+                        final int depth = getScopeProtoDepth(currentBlock, symbol);
+                        assert depth >= 0;
+                        method.load(depth);
+                        method.load(getProgramPoint());
                         loadArgs(args);
                     }
+
                     @Override
                     void consumeStack() {
                         final Type[] paramTypes = method.getTypesFromStack(args.size());
@@ -1466,13 +1471,14 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
                         for(int i = 0; i < paramTypes.length; ++i) {
                             paramTypes[i] = Type.generic(paramTypes[i]);
                         }
-                        // As shared scope calls are only used in non-optimistic compilation, we switch from using
-                        // TypeBounds to just a single definitive type, resultBounds.widest.
+
+                        final Type resultType = isOptimistic ? getOptimisticCoercedType() : resultBounds.widest;
                         final SharedScopeCall scopeCall = codegenLexicalContext.getScopeCall(unit, symbol,
-                                identNode.getType(), resultBounds.widest, paramTypes, flags);
+                                identNode.getType(), resultType, paramTypes, flags, isOptimistic);
                         scopeCall.generateInvoke(method);
                     }
                 }.emit();
+
                 return method;
             }
 
@@ -1573,15 +1579,10 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
                     final int flags = getScopeCallSiteFlags(symbol);
                     final int useCount = symbol.getUseCount();
 
-                    // Threshold for generating shared scope callsite is lower for fast scope symbols because we know
-                    // we can dial in the correct scope. However, we also need to enable it for non-fast scopes to
-                    // support huge scripts like mandreel.js.
+                    // We only use shared scope calls for fast scopes
                     if (callNode.isEval()) {
                         evalCall(node, flags);
-                    } else if (useCount <= SharedScopeCall.FAST_SCOPE_CALL_THRESHOLD
-                            || !isFastScope(symbol) && useCount <= SharedScopeCall.SLOW_SCOPE_CALL_THRESHOLD
-                            || CodeGenerator.this.lc.inDynamicScope()
-                            || callNode.isOptimistic()) {
+                    } else if (!isFastScope(symbol) || symbol.getUseCount() < SharedScopeCall.SHARED_CALL_THRESHOLD) {
                         scopeCall(node, flags);
                     } else {
                         sharedScopeCall(node, flags);
@@ -2679,9 +2680,8 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             return false;
         }
 
-        if(isDeoptimizedExpression(lhs)) {
-            // This is actually related to "lhs.getType().isPrimitive()" above: any expression being deoptimized in
-            // the current chain of rest-of compilations used to have a type narrower than Object (so it was primitive).
+        if(containsOptimisticExpression(lhs)) {
+            // Any optimistic expression within lhs could be deoptimized and trigger a rest-of compilation.
             // We must not perform undefined check specialization for them, as then we'd violate the basic rule of
             // "Thou shalt not alter the stack shape between a deoptimized method and any of its (transitive) rest-ofs."
             return false;
@@ -2748,11 +2748,10 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             return false;
         }
 
-        if(isDeoptimizedExpression(lhs)) {
-            // This is actually related to "!lhs.getType().isObject()" above: any expression being deoptimized in
-            // the current chain of rest-of compilations used to have a type narrower than Object. We must not
-            // perform null check specialization for them, as then we'd no longer be loading aconst_null on stack
-            // and thus violate the basic rule of "Thou shalt not alter the stack shape between a deoptimized
+        if(containsOptimisticExpression(lhs)) {
+            // Any optimistic expression within lhs could be deoptimized and trigger a rest-of compilation.
+            // We must not perform null check specialization for them, as then we'd no longer be loading aconst_null
+            // on stack and thus violate the basic rule of "Thou shalt not alter the stack shape between a deoptimized
             // method and any of its (transitive) rest-ofs."
             // NOTE also that if we had a representation for well-known constants (e.g. null, 0, 1, -1, etc.) in
             // Label$Stack.localLoads then this wouldn't be an issue, as we would never (somewhat ridiculously)
@@ -2817,12 +2816,14 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
     }
 
     /**
-     * Was this expression or any of its subexpressions deoptimized in the current recompilation chain of rest-of methods?
+     * Is this expression or any of its subexpressions optimistic? This includes formerly optimistic
+     * expressions that have been deoptimized in a subsequent compilation.
+     *
      * @param rootExpr the expression being tested
-     * @return true if the expression or any of its subexpressions was deoptimized in the current recompilation chain.
+     * @return true if the expression or any of its subexpressions is optimistic in the current compilation.
      */
-    private boolean isDeoptimizedExpression(final Expression rootExpr) {
-        if(!isRestOf()) {
+    private boolean containsOptimisticExpression(final Expression rootExpr) {
+        if(!useOptimisticTypes()) {
             return false;
         }
         return new Supplier<Boolean>() {
@@ -2838,7 +2839,7 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
                     public boolean enterDefault(final Node node) {
                         if(!contains && node instanceof Optimistic) {
                             final int pp = ((Optimistic)node).getProgramPoint();
-                            contains = isValid(pp) && isContinuationEntryPoint(pp);
+                            contains = isValid(pp);
                         }
                         return !contains;
                     }
@@ -2923,12 +2924,12 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             // to synthetic functions, and FunctionNode.needsCallee() will no longer need to test for isSplit().
             final int literalSlot = fixScopeSlot(currentFunction, 3);
 
-            lc.enterSplitNode();
+            lc.enterSplitLiteral();
 
             creator.populateRange(method, literalType, literalSlot, splitRange.getLow(), splitRange.getHigh());
 
             method._return();
-            lc.exitSplitNode();
+            lc.exitSplitLiteral();
             method.end();
             lc.releaseSlots();
             popMethodEmitter();
@@ -3797,6 +3798,53 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
         }
     }
 
+    public void loadDELETE(final UnaryNode unaryNode) {
+        final Expression expression = unaryNode.getExpression();
+        if (expression instanceof IdentNode) {
+            final IdentNode ident = (IdentNode)expression;
+            final Symbol symbol = ident.getSymbol();
+            final String name = ident.getName();
+
+            if (symbol.isThis()) {
+                // Can't delete "this", ignore and return true
+                if (!lc.popDiscardIfCurrent(unaryNode)) {
+                    method.load(true);
+                }
+            } else if (lc.getCurrentFunction().isStrict()) {
+                // All other scope identifier delete attempts fail for strict mode
+                method.load(name);
+                method.invoke(ScriptRuntime.STRICT_FAIL_DELETE);
+            } else if (!symbol.isScope() && (symbol.isParam() || (symbol.isVar() && !symbol.isProgramLevel()))) {
+                // If symbol is a function parameter, or a declared non-global variable, delete is a no-op and returns false.
+                if (!lc.popDiscardIfCurrent(unaryNode)) {
+                    method.load(false);
+                }
+            } else {
+                method.loadCompilerConstant(SCOPE);
+                method.load(name);
+                if ((symbol.isGlobal() && !symbol.isFunctionDeclaration()) || symbol.isProgramLevel()) {
+                    method.invoke(ScriptRuntime.SLOW_DELETE);
+                } else {
+                    method.load(false); // never strict here; that was handled with STRICT_FAIL_DELETE above.
+                    method.invoke(ScriptObject.DELETE);
+                }
+            }
+        } else if (expression instanceof BaseNode) {
+            loadExpressionAsObject(((BaseNode)expression).getBase());
+            if (expression instanceof AccessNode) {
+                final AccessNode accessNode = (AccessNode) expression;
+                method.dynamicRemove(accessNode.getProperty(), getCallSiteFlags(), accessNode.isIndex());
+            } else if (expression instanceof IndexNode) {
+                loadExpressionAsObject(((IndexNode) expression).getIndex());
+                method.dynamicRemoveIndex(getCallSiteFlags());
+            } else {
+                throw new AssertionError(expression.getClass().getName());
+            }
+        } else {
+            throw new AssertionError(expression.getClass().getName());
+        }
+    }
+
     public void loadADD(final BinaryNode binaryNode, final TypeBounds resultBounds) {
         new OptimisticOperation(binaryNode, resultBounds) {
             @Override
@@ -4650,7 +4698,7 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
     }
 
     private abstract class OptimisticOperation {
-        private final boolean isOptimistic;
+        final boolean isOptimistic;
         // expression and optimistic are the same reference
         private final Expression expression;
         private final Optimistic optimistic;
@@ -4660,10 +4708,12 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
             this.optimistic = optimistic;
             this.expression = (Expression)optimistic;
             this.resultBounds = resultBounds;
-            this.isOptimistic = isOptimistic(optimistic) && useOptimisticTypes() &&
+            this.isOptimistic = isOptimistic(optimistic)
                     // Operation is only effectively optimistic if its type, after being coerced into the result bounds
                     // is narrower than the upper bound.
-                    resultBounds.within(Type.generic(((Expression)optimistic).getType())).narrowerThan(resultBounds.widest);
+                    && resultBounds.within(Type.generic(((Expression)optimistic).getType())).narrowerThan(resultBounds.widest);
+            // Optimistic operations need to be executed in optimistic context, else unwarranted optimism will go unnoticed
+            assert !this.isOptimistic || useOptimisticTypes();
         }
 
         MethodEmitter emit() {
@@ -4966,7 +5016,7 @@ final class CodeGenerator extends NodeOperatorVisitor<CodeGeneratorLexicalContex
          * affect it.
          * @return
          */
-        private Type getOptimisticCoercedType() {
+        Type getOptimisticCoercedType() {
             final Type optimisticType = expression.getType();
             assert resultBounds.widest.widerThan(optimisticType);
             final Type narrowest = resultBounds.narrowest;

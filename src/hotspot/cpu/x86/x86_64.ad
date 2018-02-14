@@ -317,6 +317,18 @@ reg_class ptr_rsp_reg(RSP, RSP_H);
 // Singleton class for TLS pointer
 reg_class ptr_r15_reg(R15, R15_H);
 
+// The registers which can be used for
+// a thread local safepoint poll
+// * R12 is reserved for heap base
+// * R13 cannot be encoded for addressing without an offset byte
+// * R15 is reserved for the JavaThread
+reg_class ptr_rex_reg(R8,  R8_H,
+                      R9,  R9_H,
+                      R10, R10_H,
+                      R11, R11_H,
+                      R14, R14_H);
+
+
 // Class for all long registers (excluding RSP)
 reg_class long_reg_with_rbp(RAX, RAX_H,
                             RDX, RDX_H,
@@ -541,8 +553,12 @@ source %{
 
 #define __ _masm.
 
+static bool generate_vzeroupper(Compile* C) {
+  return (VM_Version::supports_vzeroupper() && (C->max_vector_size() > 16 || C->clear_upper_avx() == true)) ? true: false;  // Generate vzeroupper
+}
+
 static int clear_avx_size() {
-  return (VM_Version::supports_vzeroupper()) ? 3: 0;  // vzeroupper
+  return generate_vzeroupper(Compile::current()) ? 3: 0;  // vzeroupper
 }
 
 // !!!!! Special hack to get all types of calls to specify the byte offset
@@ -572,7 +588,7 @@ int MachCallRuntimeNode::ret_addr_offset() {
 // it does if the polling page is more than disp32 away.
 bool SafePointNode::needs_polling_address_input()
 {
-  return Assembler::is_polling_page_far();
+  return SafepointMechanism::uses_thread_local_poll() || Assembler::is_polling_page_far();
 }
 
 //
@@ -925,7 +941,7 @@ int MachPrologNode::reloc() const
 void MachEpilogNode::format(PhaseRegAlloc* ra_, outputStream* st) const
 {
   Compile* C = ra_->C;
-  if (VM_Version::supports_vzeroupper()) {
+  if (generate_vzeroupper(C)) {
     st->print("vzeroupper");
     st->cr(); st->print("\t");
   }
@@ -944,7 +960,11 @@ void MachEpilogNode::format(PhaseRegAlloc* ra_, outputStream* st) const
   st->print_cr("popq   rbp");
   if (do_polling() && C->is_method_compilation()) {
     st->print("\t");
-    if (Assembler::is_polling_page_far()) {
+    if (SafepointMechanism::uses_thread_local_poll()) {
+      st->print_cr("movq   rscratch1, poll_offset[r15_thread] #polling_page_address\n\t"
+                   "testl  rax, [rscratch1]\t"
+                   "# Safepoint: poll for GC");
+    } else if (Assembler::is_polling_page_far()) {
       st->print_cr("movq   rscratch1, #polling_page_address\n\t"
                    "testl  rax, [rscratch1]\t"
                    "# Safepoint: poll for GC");
@@ -961,9 +981,11 @@ void MachEpilogNode::emit(CodeBuffer& cbuf, PhaseRegAlloc* ra_) const
   Compile* C = ra_->C;
   MacroAssembler _masm(&cbuf);
 
-  // Clear upper bits of YMM registers when current compiled code uses
-  // wide vectors to avoid AVX <-> SSE transition penalty during call.
-  __ vzeroupper();
+  if (generate_vzeroupper(C)) {
+    // Clear upper bits of YMM registers when current compiled code uses
+    // wide vectors to avoid AVX <-> SSE transition penalty during call.
+    __ vzeroupper();
+  }
 
   int framesize = C->frame_size_in_bytes();
   assert((framesize & (StackAlignmentInBytes-1)) == 0, "frame size not aligned");
@@ -995,13 +1017,19 @@ void MachEpilogNode::emit(CodeBuffer& cbuf, PhaseRegAlloc* ra_) const
 
   if (do_polling() && C->is_method_compilation()) {
     MacroAssembler _masm(&cbuf);
-    AddressLiteral polling_page(os::get_polling_page(), relocInfo::poll_return_type);
-    if (Assembler::is_polling_page_far()) {
-      __ lea(rscratch1, polling_page);
+    if (SafepointMechanism::uses_thread_local_poll()) {
+      __ movq(rscratch1, Address(r15_thread, Thread::polling_page_offset()));
       __ relocate(relocInfo::poll_return_type);
       __ testl(rax, Address(rscratch1, 0));
     } else {
-      __ testl(rax, polling_page);
+      AddressLiteral polling_page(os::get_polling_page(), relocInfo::poll_return_type);
+      if (Assembler::is_polling_page_far()) {
+        __ lea(rscratch1, polling_page);
+        __ relocate(relocInfo::poll_return_type);
+        __ testl(rax, Address(rscratch1, 0));
+      } else {
+        __ testl(rax, polling_page);
+      }
     }
   }
 }
@@ -2096,11 +2124,13 @@ encode %{
 
   enc_class clear_avx %{
     debug_only(int off0 = cbuf.insts_size());
-    // Clear upper bits of YMM registers to avoid AVX <-> SSE transition penalty
-    // Clear upper bits of YMM registers when current compiled code uses
-    // wide vectors to avoid AVX <-> SSE transition penalty during call.
-    MacroAssembler _masm(&cbuf);
-    __ vzeroupper();
+    if (generate_vzeroupper(Compile::current())) {
+      // Clear upper bits of YMM registers to avoid AVX <-> SSE transition penalty
+      // Clear upper bits of YMM registers when current compiled code uses
+      // wide vectors to avoid AVX <-> SSE transition penalty during call.
+      MacroAssembler _masm(&cbuf);
+      __ vzeroupper();
+    }
     debug_only(int off1 = cbuf.insts_size());
     assert(off1 - off0 == clear_avx_size(), "correct size prediction");
   %}
@@ -3530,6 +3560,16 @@ operand rdi_RegP()
 operand r15_RegP()
 %{
   constraint(ALLOC_IN_RC(ptr_r15_reg));
+  match(RegP);
+  match(rRegP);
+
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand rex_RegP()
+%{
+  constraint(ALLOC_IN_RC(ptr_rex_reg));
   match(RegP);
   match(rRegP);
 
@@ -12287,7 +12327,7 @@ instruct cmpFastUnlock(rFlagsReg cr, rRegP object, rax_RegP box, rRegP tmp) %{
 // Safepoint Instructions
 instruct safePoint_poll(rFlagsReg cr)
 %{
-  predicate(!Assembler::is_polling_page_far());
+  predicate(!Assembler::is_polling_page_far() && SafepointMechanism::uses_global_page_poll());
   match(SafePoint);
   effect(KILL cr);
 
@@ -12303,7 +12343,7 @@ instruct safePoint_poll(rFlagsReg cr)
 
 instruct safePoint_poll_far(rFlagsReg cr, rRegP poll)
 %{
-  predicate(Assembler::is_polling_page_far());
+  predicate(Assembler::is_polling_page_far() && SafepointMechanism::uses_global_page_poll());
   match(SafePoint poll);
   effect(KILL cr, USE poll);
 
@@ -12313,6 +12353,26 @@ instruct safePoint_poll_far(rFlagsReg cr, rRegP poll)
   ins_encode %{
     __ relocate(relocInfo::poll_type);
     __ testl(rax, Address($poll$$Register, 0));
+  %}
+  ins_pipe(ialu_reg_mem);
+%}
+
+instruct safePoint_poll_tls(rFlagsReg cr, rex_RegP poll)
+%{
+  predicate(SafepointMechanism::uses_thread_local_poll());
+  match(SafePoint poll);
+  effect(KILL cr, USE poll);
+
+  format %{ "testl  rax, [$poll]\t"
+            "# Safepoint: poll for GC" %}
+  ins_cost(125);
+  size(3); /* setting an explicit size will cause debug builds to assert if size is incorrect */
+  ins_encode %{
+    __ relocate(relocInfo::poll_type);
+    address pre_pc = __ pc();
+    __ testl(rax, Address($poll$$Register, 0));
+    address post_pc = __ pc();
+    guarantee(pre_pc[0] == 0x41 && pre_pc[1] == 0x85, "must emit #rex test-ax [reg]");
   %}
   ins_pipe(ialu_reg_mem);
 %}

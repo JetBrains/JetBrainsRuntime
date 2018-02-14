@@ -31,6 +31,7 @@
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "interpreter/linkResolver.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/heapInspection.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/metaspaceClosure.hpp"
@@ -333,7 +334,7 @@ void ConstantPool::restore_unshareable_info(TRAPS) {
       // initial GC marking and during concurrent marking as strong roots are only
       // scanned during initial marking (at the start of the GC marking).
       assert(UseG1GC, "Requires G1 GC");
-      oopDesc::bs()->keep_alive_barrier(archived);
+      BarrierSet::barrier_set()->keep_alive_barrier(archived);
       // Create handle for the archived resolved reference array object
       Handle refs_handle(THREAD, (oop)archived);
       set_resolved_references(loader_data->add_handle(refs_handle));
@@ -962,8 +963,6 @@ oop ConstantPool::resolve_constant_at_impl(const constantPoolHandle& this_cp, in
     // It doesn't matter which racing thread wins, as long as only one
     // result is used by all threads, and all future queries.
     objArrayOop resolved_refs = this_cp->resolved_references();
-    resolved_refs = objArrayOop(oopDesc::bs()->write_barrier(resolved_refs));
-    result_oop = oopDesc::bs()->storeval_barrier(result_oop);
     oop old_result = resolved_refs->atomic_compare_exchange_oop(cache_index, result_oop, NULL);
     if (old_result == NULL) {
       return result_oop;  // was installed
@@ -2299,4 +2298,12 @@ SymbolHashMapEntry* SymbolHashMap::find_entry(Symbol* sym) {
     }
   }
   return NULL;
+}
+
+void SymbolHashMap::initialize_table(int table_size) {
+  _table_size = table_size;
+  _buckets = NEW_C_HEAP_ARRAY(SymbolHashMapBucket, table_size, mtSymbol);
+  for (int index = 0; index < table_size; index++) {
+    _buckets[index].clear();
+  }
 }

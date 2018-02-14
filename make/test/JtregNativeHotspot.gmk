@@ -60,6 +60,7 @@ BUILD_HOTSPOT_JTREG_NATIVE_SRC += \
     $(TOPDIR)/test/hotspot/jtreg/runtime/SameObject \
     $(TOPDIR)/test/hotspot/jtreg/runtime/BoolReturn \
     $(TOPDIR)/test/hotspot/jtreg/runtime/noClassDefFoundMsg \
+    $(TOPDIR)/test/hotspot/jtreg/runtime/handshake \
     $(TOPDIR)/test/hotspot/jtreg/runtime/RedefineTests \
     $(TOPDIR)/test/hotspot/jtreg/compiler/floatingpoint/ \
     $(TOPDIR)/test/hotspot/jtreg/compiler/calls \
@@ -78,6 +79,7 @@ BUILD_HOTSPOT_JTREG_NATIVE_SRC += \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/ModuleAwareAgents/ClassLoadPrepare \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/ModuleAwareAgents/ThreadStart \
     $(TOPDIR)/test/hotspot/jtreg/serviceability/jvmti/StartPhase/AllowedFunctions \
+    $(TOPDIR)/test/hotspot/jtreg/serviceability/dcmd/jvmti/AttachFailed \
     $(TOPDIR)/test/hotspot/jtreg/gc/shenandoah \
     #
 
@@ -109,6 +111,11 @@ ifeq ($(TOOLCHAIN_TYPE), solstudio)
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libMAAThreadStart := -lc
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libAllowedFunctions := -lc
     BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libRedefineDoubleDelete := -lc
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libHandshakeTransitionTest := -lc
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libHasNoEntryPoint := -lc
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libReturnError := -lc
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LIBS_libCNLookUp := -lc
+    BUILD_HOTSPOT_JTREG_LIBRARIES_LDFLAGS_libTestCheckedEnsureLocalCapacity := -lc
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), linux)

@@ -26,7 +26,7 @@
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionCounters.hpp"
-#include "runtime/perfData.hpp"
+#include "runtime/perfData.inline.hpp"
 
 ShenandoahHeapRegionCounters::ShenandoahHeapRegionCounters() :
   _last_sample_millis(0)

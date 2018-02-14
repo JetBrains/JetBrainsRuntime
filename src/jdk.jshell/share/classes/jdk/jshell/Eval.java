@@ -59,7 +59,6 @@ import jdk.jshell.Snippet.Kind;
 import jdk.jshell.Snippet.SubKind;
 import jdk.jshell.TaskFactory.AnalyzeTask;
 import jdk.jshell.TaskFactory.BaseTask;
-import jdk.jshell.TaskFactory.CompileTask;
 import jdk.jshell.TaskFactory.ParseTask;
 import jdk.jshell.Wrap.CompoundWrap;
 import jdk.jshell.Wrap.Range;
@@ -454,7 +453,7 @@ class Eval {
                         name = "$" + ++varNumber;
                     }
                 }
-                guts = Wrap.tempVarWrap(compileSource, typeName, name);
+                guts = Wrap.tempVarWrap(compileSource, ei.accessibleTypeName, name);
                 Collection<String> declareReferences = null; //TODO
                 snip = new VarSnippet(state.keyMap.keyForVariable(name), userSource, guts,
                         name, SubKind.TEMP_VAR_EXPRESSION_SUBKIND, typeName, declareReferences, null);
@@ -835,6 +834,8 @@ class Eval {
                         if (!toReplace.isEmpty()) {
                             replaced.addAll(toReplace);
                             replaced.stream().forEach(Unit::markForReplacement);
+                            //ensure correct classnames are set in the snippets:
+                            replaced.stream().forEach(u -> u.setWrap(ins, legit));
                         }
 
                         return toReplace.isEmpty() ? Result.SUCESS : Result.FAILURE;

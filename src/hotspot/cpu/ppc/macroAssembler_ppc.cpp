@@ -37,6 +37,8 @@
 #include "runtime/interfaceSupport.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/os.hpp"
+#include "runtime/safepoint.hpp"
+#include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
@@ -1786,11 +1788,10 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
                                              RegisterOrConstant itable_index,
                                              Register method_result,
                                              Register scan_temp,
-                                             Register sethi_temp,
-                                             Label& L_no_such_interface) {
+                                             Register temp2,
+                                             Label& L_no_such_interface,
+                                             bool return_method) {
   assert_different_registers(recv_klass, intf_klass, method_result, scan_temp);
-  assert(itable_index.is_constant() || itable_index.as_register() == method_result,
-         "caller must use same register for non-constant itable index as for method");
 
   // Compute start of first itableOffsetEntry (which is at the end of the vtable).
   int vtable_base = in_bytes(Klass::vtable_start_offset());
@@ -1808,15 +1809,17 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
   add(scan_temp, recv_klass, scan_temp);
 
   // Adjust recv_klass by scaled itable_index, so we can free itable_index.
-  if (itable_index.is_register()) {
-    Register itable_offset = itable_index.as_register();
-    sldi(itable_offset, itable_offset, logMEsize);
-    if (itentry_off) addi(itable_offset, itable_offset, itentry_off);
-    add(recv_klass, itable_offset, recv_klass);
-  } else {
-    long itable_offset = (long)itable_index.as_constant();
-    load_const_optimized(sethi_temp, (itable_offset<<logMEsize)+itentry_off); // static address, no relocation
-    add(recv_klass, sethi_temp, recv_klass);
+  if (return_method) {
+    if (itable_index.is_register()) {
+      Register itable_offset = itable_index.as_register();
+      sldi(method_result, itable_offset, logMEsize);
+      if (itentry_off) { addi(method_result, method_result, itentry_off); }
+      add(method_result, method_result, recv_klass);
+    } else {
+      long itable_offset = (long)itable_index.as_constant();
+      // static address, no relocation
+      add_const_optimized(method_result, recv_klass, (itable_offset << logMEsize) + itentry_off, temp2);
+    }
   }
 
   // for (scan = klass->itable(); scan->interface() != NULL; scan += scan_step) {
@@ -1829,12 +1832,12 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
   for (int peel = 1; peel >= 0; peel--) {
     // %%%% Could load both offset and interface in one ldx, if they were
     // in the opposite order. This would save a load.
-    ld(method_result, itableOffsetEntry::interface_offset_in_bytes(), scan_temp);
+    ld(temp2, itableOffsetEntry::interface_offset_in_bytes(), scan_temp);
 
     // Check that this entry is non-null. A null entry means that
     // the receiver class doesn't implement the interface, and wasn't the
     // same as when the caller was compiled.
-    cmpd(CCR0, method_result, intf_klass);
+    cmpd(CCR0, temp2, intf_klass);
 
     if (peel) {
       beq(CCR0, found_method);
@@ -1847,7 +1850,7 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
 
     bind(search);
 
-    cmpdi(CCR0, method_result, 0);
+    cmpdi(CCR0, temp2, 0);
     beq(CCR0, L_no_such_interface);
     addi(scan_temp, scan_temp, scan_step);
   }
@@ -1855,9 +1858,11 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
   bind(found_method);
 
   // Got a hit.
-  int ito_offset = itableOffsetEntry::offset_offset_in_bytes();
-  lwz(scan_temp, ito_offset, scan_temp);
-  ldx(method_result, scan_temp, recv_klass);
+  if (return_method) {
+    int ito_offset = itableOffsetEntry::offset_offset_in_bytes();
+    lwz(scan_temp, ito_offset, scan_temp);
+    ldx(method_result, scan_temp, method_result);
+  }
 }
 
 // virtual method calling
@@ -3017,6 +3022,18 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp1, Register t
   load_const(tmp1, (long) os::get_memory_serialize_page());
   release();
   stwx(R0, tmp1, tmp2);
+}
+
+void MacroAssembler::safepoint_poll(Label& slow_path, Register temp_reg) {
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    ld(temp_reg, in_bytes(Thread::polling_page_offset()), R16_thread);
+    // Armed page has poll_bit set.
+    andi_(temp_reg, temp_reg, SafepointMechanism::poll_bit());
+  } else {
+    lwz(temp_reg, (RegisterOrConstant)(intptr_t)SafepointSynchronize::address_of_state());
+    cmpwi(CCR0, temp_reg, SafepointSynchronize::_not_synchronized);
+  }
+  bne(CCR0, slow_path);
 }
 
 

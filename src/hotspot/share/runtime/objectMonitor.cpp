@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/markOop.hpp"
 #include "oops/oop.inline.hpp"
@@ -35,6 +36,7 @@
 #include "runtime/objectMonitor.inline.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/osThread.hpp"
+#include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
 #include "services/threadService.hpp"
@@ -240,6 +242,19 @@ static volatile int InitDone        = 0;
 //
 // * See also http://blogs.sun.com/dave
 
+
+void* ObjectMonitor::operator new (size_t size) throw() {
+  return AllocateHeap(size, mtInternal);
+}
+void* ObjectMonitor::operator new[] (size_t size) throw() {
+  return operator new (size);
+}
+void ObjectMonitor::operator delete(void* p) {
+  FreeHeap(p);
+}
+void ObjectMonitor::operator delete[] (void *p) {
+  operator delete(p);
+}
 
 // -----------------------------------------------------------------------------
 // Enter support
@@ -1282,7 +1297,7 @@ void ObjectMonitor::ExitEpilog(Thread * Self, ObjectWaiter * Wakee) {
   OrderAccess::release_store(&_owner, (void*)NULL);
   OrderAccess::fence();                               // ST _owner vs LD in unpark()
 
-  if (SafepointSynchronize::do_call_back()) {
+  if (SafepointMechanism::poll(Self)) {
     TEVENT(unpark before SAFEPOINT);
   }
 
@@ -1936,7 +1951,7 @@ int ObjectMonitor::TrySpin(Thread * Self) {
     // This is in keeping with the "no loitering in runtime" rule.
     // We periodically check to see if there's a safepoint pending.
     if ((ctr & 0xFF) == 0) {
-      if (SafepointSynchronize::do_call_back()) {
+      if (SafepointMechanism::poll(Self)) {
         TEVENT(Spin: safepoint);
         goto Abort;           // abrupt spin egress
       }
@@ -2137,6 +2152,7 @@ ObjectWaiter::ObjectWaiter(Thread* thread) {
   _next     = NULL;
   _prev     = NULL;
   _notified = 0;
+  _notifier_tid = 0;
   TState    = TS_RUN;
   _thread   = thread;
   _event    = thread->_ParkEvent;

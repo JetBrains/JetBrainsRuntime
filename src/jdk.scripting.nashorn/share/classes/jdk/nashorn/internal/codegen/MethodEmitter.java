@@ -702,19 +702,21 @@ public class MethodEmitter {
         }
         pushType(Type.typeFor(Throwable.class));
     }
+
     /**
      * Start a try/catch block.
      *
-     * @param entry          start label for try
-     * @param exit           end label for try
-     * @param recovery       start label for catch
-     * @param typeDescriptor type descriptor for exception
+     * @param entry    start label for try
+     * @param exit     end label for try
+     * @param recovery start label for catch
+     * @param clazz    exception class or null for any Throwable
      * @param isOptimismHandler true if this is a hander for {@code UnwarrantedOptimismException}. Normally joining on a
      * catch handler kills temporary variables, but optimism handlers are an exception, as they need to capture
      * temporaries as well, so they must remain live.
      */
-    private void _try(final Label entry, final Label exit, final Label recovery, final String typeDescriptor, final boolean isOptimismHandler) {
+    void _try(final Label entry, final Label exit, final Label recovery, final Class<?> clazz, final boolean isOptimismHandler) {
         recovery.joinFromTry(entry.getStack(), isOptimismHandler);
+        final String typeDescriptor = clazz == null ? null : CompilerConstants.className(clazz);
         method.visitTryCatchBlock(entry.getLabel(), exit.getLabel(), recovery.getLabel(), typeDescriptor);
     }
 
@@ -727,7 +729,7 @@ public class MethodEmitter {
      * @param clazz    exception class
      */
     void _try(final Label entry, final Label exit, final Label recovery, final Class<?> clazz) {
-        _try(entry, exit, recovery, CompilerConstants.className(clazz), clazz == UnwarrantedOptimismException.class);
+        _try(entry, exit, recovery, clazz, clazz == UnwarrantedOptimismException.class);
     }
 
     /**
@@ -2201,7 +2203,7 @@ public class MethodEmitter {
     }
 
     /**
-     * Generate dynamic getter. Pop scope from stack. Push result
+     * Generate dynamic getter. Pop object from stack. Push result.
      *
      * @param valueType type of the value to set
      * @param name      name of property
@@ -2222,7 +2224,7 @@ public class MethodEmitter {
             type = Type.OBJECT; //promote e.g strings to object generic setter
         }
 
-        popType(Type.SCOPE);
+        popType(Type.OBJECT);
         method.visitInvokeDynamicInsn(NameCodec.encode(name),
                 Type.getMethodDescriptor(type, Type.OBJECT), LINKERBOOTSTRAP, flags | dynGetOperation(isMethod, isIndex));
 
@@ -2254,13 +2256,38 @@ public class MethodEmitter {
             convert(Type.OBJECT); //TODO bad- until we specialize boolean setters,
         }
         popType(type);
-        popType(Type.SCOPE);
+        popType(Type.OBJECT);
 
         method.visitInvokeDynamicInsn(NameCodec.encode(name),
                 methodDescriptor(void.class, Object.class, type.getTypeClass()), LINKERBOOTSTRAP, flags | dynSetOperation(isIndex));
     }
 
-     /**
+    /**
+     * Generate dynamic remover. Pop object from stack. Push result.
+     *
+     * @param name      name of property
+     * @param flags     call site flags
+     * @return the method emitter
+     */
+    MethodEmitter dynamicRemove(final String name, final int flags, final boolean isIndex) {
+        if (name.length() > LARGE_STRING_THRESHOLD) { // use removeIndex for extremely long names
+            return load(name).dynamicRemoveIndex(flags);
+        }
+
+        debug("dynamic_remove", name, Type.BOOLEAN, getProgramPoint(flags));
+
+        popType(Type.OBJECT);
+        // Type is widened to OBJECT then coerced back to BOOLEAN
+        method.visitInvokeDynamicInsn(NameCodec.encode(name),
+                Type.getMethodDescriptor(Type.OBJECT, Type.OBJECT), LINKERBOOTSTRAP, flags | dynRemoveOperation(isIndex));
+
+        pushType(Type.OBJECT);
+        convert(Type.BOOLEAN); //most probably a nop
+
+        return this;
+    }
+
+    /**
      * Dynamic getter for indexed structures. Pop index and receiver from stack,
      * generate appropriate signatures based on types
      *
@@ -2337,6 +2364,35 @@ public class MethodEmitter {
         method.visitInvokeDynamicInsn(EMPTY_NAME,
                 methodDescriptor(void.class, receiver.getTypeClass(), index.getTypeClass(), value.getTypeClass()),
                 LINKERBOOTSTRAP, flags | NashornCallSiteDescriptor.SET_ELEMENT);
+    }
+
+    /**
+     * Dynamic remover for indexed structures. Pop index and receiver from stack,
+     * generate appropriate signatures based on types
+     *
+     * @param flags call site flags for getter
+     *
+     * @return the method emitter
+     */
+    MethodEmitter dynamicRemoveIndex(final int flags) {
+        debug("dynamic_remove_index", peekType(1), "[", peekType(), "]", getProgramPoint(flags));
+
+        Type index = peekType();
+        if (index.isObject() || index.isBoolean()) {
+            index = Type.OBJECT; //e.g. string->object
+            convert(Type.OBJECT);
+        }
+        popType();
+
+        popType(Type.OBJECT);
+
+        final String signature = Type.getMethodDescriptor(Type.OBJECT, Type.OBJECT /*e.g STRING->OBJECT*/, index);
+
+        method.visitInvokeDynamicInsn(EMPTY_NAME, signature, LINKERBOOTSTRAP, flags | dynRemoveOperation(true));
+        pushType(Type.OBJECT);
+        convert(Type.BOOLEAN);
+
+        return this;
     }
 
     /**
@@ -2516,6 +2572,10 @@ public class MethodEmitter {
 
     private static int dynSetOperation(final boolean isIndex) {
         return isIndex ? NashornCallSiteDescriptor.SET_ELEMENT : NashornCallSiteDescriptor.SET_PROPERTY;
+    }
+
+    private static int dynRemoveOperation(final boolean isIndex) {
+        return isIndex ? NashornCallSiteDescriptor.REMOVE_ELEMENT : NashornCallSiteDescriptor.REMOVE_PROPERTY;
     }
 
     private Type emitLocalVariableConversion(final LocalVariableConversion conversion, final boolean onlySymbolLiveValue) {

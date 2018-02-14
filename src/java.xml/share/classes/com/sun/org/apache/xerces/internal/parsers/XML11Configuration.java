@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2008, 2017, Oracle and/or its affiliates. All rights reserved.
- * @LastModified: Oct 2017
  */
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -78,6 +77,7 @@ import jdk.xml.internal.JdkXmlUtils;
  * @author Neil Graham, IBM
  * @author Michael Glavassevich, IBM
  *
+ * @LastModified: Oct 2017
  */
 public class XML11Configuration extends ParserConfigurationSettings
     implements XMLPullParserConfiguration, XML11Configurable {
@@ -508,7 +508,8 @@ public class XML11Configuration extends ParserConfigurationSettings
             PARSER_SETTINGS,
             XMLConstants.FEATURE_SECURE_PROCESSING,
             XMLConstants.USE_CATALOG,
-            JdkXmlUtils.RESET_SYMBOL_TABLE
+            JdkXmlUtils.RESET_SYMBOL_TABLE,
+            JdkXmlUtils.OVERRIDE_PARSER
         };
         addRecognizedFeatures(recognizedFeatures);
         // set state for default features
@@ -535,6 +536,7 @@ public class XML11Configuration extends ParserConfigurationSettings
         fFeatures.put(XMLConstants.FEATURE_SECURE_PROCESSING, Boolean.TRUE);
         fFeatures.put(XMLConstants.USE_CATALOG, JdkXmlUtils.USE_CATALOG_DEFAULT);
         fFeatures.put(JdkXmlUtils.RESET_SYMBOL_TABLE, JdkXmlUtils.RESET_SYMBOL_TABLE_DEFAULT);
+        fFeatures.put(JdkXmlUtils.OVERRIDE_PARSER, JdkXmlUtils.OVERRIDE_PARSER_DEFAULT);
 
         // add default recognized properties
         final String[] recognizedProperties =

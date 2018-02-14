@@ -121,7 +121,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
     private static void addSectionCounters(FixedWithNextNode start, Collection<Block> sectionBlocks, Collection<Loop<Block>> childLoops, ScheduleResult schedule, ControlFlowGraph cfg) {
         HashSet<Block> blocks = new HashSet<>(sectionBlocks);
-        for (Loop<?> loop : childLoops) {
+        for (Loop<Block> loop : childLoops) {
             blocks.removeAll(loop.getBlocks());
         }
         double weight = getSectionWeight(schedule, blocks) / cfg.blockFor(start).probability();
@@ -160,7 +160,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 10;
         } else if (node instanceof Access) {
             return 2;
-        } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof BinaryNode || node instanceof NotNode) {
+        } else if (node instanceof LogicNode || node instanceof ConvertNode || node instanceof NotNode) {
             return 1;
         } else if (node instanceof IntegerDivRemNode || node instanceof FloatDivNode || node instanceof RemNode) {
             return 10;
@@ -168,7 +168,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             return 3;
         } else if (node instanceof Invoke) {
             return 5;
-        } else if (node instanceof IfNode || node instanceof SafepointNode) {
+        } else if (node instanceof IfNode || node instanceof SafepointNode || node instanceof BinaryNode) {
             return 1;
         } else if (node instanceof SwitchNode) {
             return node.successors().count();

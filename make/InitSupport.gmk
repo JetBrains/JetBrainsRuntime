@@ -47,7 +47,7 @@ ifeq ($(HAS_SPEC),)
 
   # Make control variables, handled by Init.gmk
   INIT_CONTROL_VARIABLES += LOG CONF CONF_NAME SPEC JOBS TEST_JOBS CONF_CHECK \
-      COMPARE_BUILD JTREG GTEST
+      COMPARE_BUILD JTREG GTEST TEST_OPTS TEST_VM_OPTS
 
   # All known make control variables
   MAKE_CONTROL_VARIABLES := $(INIT_CONTROL_VARIABLES) TEST JDK_FILTER
@@ -279,7 +279,9 @@ ifeq ($(HAS_SPEC),)
           # generated files.
           ifeq ($$(MAKE_RESTARTS),)
             ifeq ($$(words $$(matching_confs)), 1)
-              $$(info Building configuration '$$(matching_confs)' (matching CONF=$$(CONF)))
+              ifneq ($$(findstring $$(LOG_LEVEL), info debug trace),)
+                $$(info Building configuration '$$(matching_confs)' (matching CONF=$$(CONF)))
+              endif
             else
               $$(info Building these configurations (matching CONF=$$(CONF)):)
               $$(foreach var, $$(matching_confs), $$(info * $$(var)))

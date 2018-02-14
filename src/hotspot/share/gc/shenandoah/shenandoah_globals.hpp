@@ -78,6 +78,12 @@
           "regions, based on ShenandoahMinRegionSize and "                  \
           "ShenandoahMaxRegionSizeSize. ")                                  \
                                                                             \
+  product(bool, UseShenandoahMatrix, false,                                 \
+          "Keep a connection matrix and use this to drive collection sets") \
+                                                                            \
+  product(bool, PrintShenandoahMatrix, false,                               \
+          "Print connection matrix after marking")                          \
+                                                                            \
   product(ccstr, ShenandoahGCHeuristics, "adaptive",                        \
           "The heuristics to use in Shenandoah GC. Possible values:"        \
           " *) adaptive - adapt to maintain the given amount of free heap;" \
@@ -334,12 +340,6 @@
                                                                             \
   diagnostic(bool, ShenandoahCloneBarrier, true,                            \
           "Turn on/off clone barriers in Shenandoah")                       \
-                                                                            \
-  diagnostic(bool, UseShenandoahMatrix, false,                              \
-          "Turn on/off Shenandoah connection matrix collection")            \
-                                                                            \
-  diagnostic(bool, PrintShenandoahMatrix, false,                            \
-          "Print connection matrix after marking")                          \
                                                                             \
   diagnostic(bool, ShenandoahStoreCheck, false,                             \
           "Emit additional code that checks objects are written to only"    \

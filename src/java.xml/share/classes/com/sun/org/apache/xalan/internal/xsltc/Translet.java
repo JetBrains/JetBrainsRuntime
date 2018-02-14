@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
  * @LastModified: Oct 2017
  */
 /*
@@ -27,6 +27,7 @@ import com.sun.org.apache.xml.internal.serializer.SerializationHandler;
 /**
  * @author Jacek Ambroziak
  * @author Santiago Pericas-Geertsen
+ * @LastModified: Oct 2017
  */
 public interface Translet {
 
@@ -49,7 +50,7 @@ public interface Translet {
     public String[] getUrisArray();
     public int[]    getTypesArray();
     public String[] getNamespaceArray();
-    public boolean useServicesMechnism();
-    public void setServicesMechnism(boolean flag);
+    public boolean overrideDefaultParser();
+    public void setOverrideDefaultParser(boolean flag);
 
 }

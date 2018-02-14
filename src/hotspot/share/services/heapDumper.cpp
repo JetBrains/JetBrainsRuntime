@@ -39,6 +39,8 @@
 #include "runtime/jniHandles.hpp"
 #include "runtime/os.hpp"
 #include "runtime/reflectionUtils.hpp"
+#include "runtime/thread.inline.hpp"
+#include "runtime/threadSMR.hpp"
 #include "runtime/vframe.hpp"
 #include "runtime/vmThread.hpp"
 #include "runtime/vm_operations.hpp"
@@ -1179,7 +1181,7 @@ void DumperSupport::dump_prim_array(DumpWriter* writer, typeArrayOop array) {
 
   // If the byte ordering is big endian then we can copy most types directly
 
-  array = typeArrayOop(oopDesc::bs()->read_barrier(array));
+  array = typeArrayOop(BarrierSet::barrier_set()->read_barrier(array));
   switch (type) {
     case T_INT : {
       if (Endian::is_Java_byte_ordering_different()) {
@@ -1896,7 +1898,7 @@ void VM_HeapDumper::dump_stack_traces() {
 
   _stack_traces = NEW_C_HEAP_ARRAY(ThreadStackTrace*, Threads::number_of_threads(), mtInternal);
   int frame_serial_num = 0;
-  for (JavaThread* thread = Threads::first(); thread != NULL ; thread = thread->next()) {
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *thread = jtiwh.next(); ) {
     oop threadObj = thread->threadObj();
     if (threadObj != NULL && !thread->is_exiting() && !thread->is_hidden_from_external_view()) {
       // dump thread stack trace

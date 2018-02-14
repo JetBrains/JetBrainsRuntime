@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,20 @@
 
 package jdk.incubator.http;
 
-import java.io.IOException;
+import java.lang.System.Logger.Level;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 
+import jdk.incubator.http.internal.common.Log;
+import jdk.incubator.http.internal.common.MinimalFuture;
 import jdk.incubator.http.internal.common.Utils;
 import jdk.incubator.http.internal.frame.SettingsFrame;
 import static jdk.incubator.http.internal.frame.SettingsFrame.INITIAL_WINDOW_SIZE;
@@ -49,6 +52,10 @@ import static jdk.incubator.http.internal.frame.SettingsFrame.MAX_FRAME_SIZE;
  */
 class Http2ClientImpl {
 
+    static final boolean DEBUG = Utils.DEBUG; // Revisit: temporary dev flag.
+    final static System.Logger debug =
+            Utils.getDebugLogger("Http2ClientImpl"::toString, DEBUG);
+
     private final HttpClientImpl client;
 
     Http2ClientImpl(HttpClientImpl client) {
@@ -58,80 +65,92 @@ class Http2ClientImpl {
     /* Map key is "scheme:host:port" */
     private final Map<String,Http2Connection> connections = new ConcurrentHashMap<>();
 
-    private final Set<String> opening = Collections.synchronizedSet(new HashSet<>());
-
-    boolean haveConnectionFor(URI uri, InetSocketAddress proxy) {
-        return connections.containsKey(Http2Connection.keyFor(uri,proxy));
-    }
+    private final Set<String> failures = Collections.synchronizedSet(new HashSet<>());
 
     /**
-     * If a https request then blocks and waits until a connection is opened.
-     * Returns null if the request is 'http' as a different (upgrade)
-     * mechanism is used.
+     * When HTTP/2 requested only. The following describes the aggregate behavior including the
+     * calling code. In all cases, the HTTP2 connection cache
+     * is checked first for a suitable connection and that is returned if available.
+     * If not, a new connection is opened, except in https case when a previous negotiate failed.
+     * In that case, we want to continue using http/1.1. When a connection is to be opened and
+     * if multiple requests are sent in parallel then each will open a new connection.
      *
-     * Only one connection per destination is created. Blocks when opening
-     * connection, or when waiting for connection to be opened.
-     * First thread opens the connection and notifies the others when done.
+     * If negotiation/upgrade succeeds then
+     * one connection will be put in the cache and the others will be closed
+     * after the initial request completes (not strictly necessary for h2, only for h2c)
      *
-     * If the request is secure (https) then we open the connection here.
-     * If not, then the more complicated upgrade from 1.1 to 2 happens (not here)
-     * In latter case, when the Http2Connection is connected, putConnection() must
-     * be called to store it.
+     * If negotiate/upgrade fails, then any opened connections remain open (as http/1.1)
+     * and will be used and cached in the http/1 cache. Note, this method handles the
+     * https failure case only (by completing the CF with an ALPN exception, handled externally)
+     * The h2c upgrade is handled externally also.
+     *
+     * Specific CF behavior of this method.
+     * 1. completes with ALPN exception: h2 negotiate failed for first time. failure recorded.
+     * 2. completes with other exception: failure not recorded. Caller must handle
+     * 3. completes normally with null: no connection in cache for h2c or h2 failed previously
+     * 4. completes normally with connection: h2 or h2c connection in cache. Use it.
      */
-    Http2Connection getConnectionFor(HttpRequestImpl req)
-            throws IOException, InterruptedException {
+    CompletableFuture<Http2Connection> getConnectionFor(HttpRequestImpl req) {
         URI uri = req.uri();
-        InetSocketAddress proxy = req.proxy(client);
+        InetSocketAddress proxy = req.proxy();
         String key = Http2Connection.keyFor(uri, proxy);
-        Http2Connection connection = connections.get(key);
-        if (connection != null) { // fast path if connection already exists
-            return connection;
-        }
-        synchronized (opening) {
-            while ((connection = connections.get(key)) == null) {
-                if (!req.secure()) {
-                    return null;
-                }
-                if (!opening.contains(key)) {
-                    opening.add(key);
-                    break;
-                } else {
-                    opening.wait();
-                }
+
+        synchronized (this) {
+            Http2Connection connection = connections.get(key);
+            if (connection != null) { // fast path if connection already exists
+                return CompletableFuture.completedFuture(connection);
+            }
+
+            if (!req.secure() || failures.contains(key)) {
+                // secure: negotiate failed before. Use http/1.1
+                // !secure: no connection available in cache. Attempt upgrade
+                return MinimalFuture.completedFuture(null);
             }
         }
-        if (connection != null) {
-            return connection;
-        }
-        // we are opening the connection here blocking until it is done.
-        try {
-            connection = new Http2Connection(req, this);
-        } catch (Throwable t) {
-            synchronized (opening) {
-                opening.remove(key);
-                opening.notifyAll();
-            }
-            throw t;
-        }
-        synchronized (opening) {
-            connections.put(key, connection);
-            opening.remove(key);
-            opening.notifyAll();
-        }
-        return connection;
+        return Http2Connection
+                .createAsync(req, this)
+                .whenComplete((conn, t) -> {
+                    synchronized (Http2ClientImpl.this) {
+                        if (conn != null) {
+                            offerConnection(conn);
+                        } else {
+                            Throwable cause = Utils.getCompletionCause(t);
+                            if (cause instanceof Http2Connection.ALPNException)
+                                failures.add(key);
+                        }
+                    }
+                });
     }
 
-
     /*
-     * TODO: If there isn't a connection to the same destination, then
-     * store it. If there is already a connection, then close it
+     * Cache the given connection, if no connection to the same
+     * destination exists. If one exists, then we let the initial stream
+     * complete but allow it to close itself upon completion.
+     * This situation should not arise with https because the request
+     * has not been sent as part of the initial alpn negotiation
      */
-    void putConnection(Http2Connection c) {
-        connections.put(c.key(), c);
+    boolean offerConnection(Http2Connection c) {
+        String key = c.key();
+        Http2Connection c1 = connections.putIfAbsent(key, c);
+        if (c1 != null) {
+            c.setSingleStream(true);
+            return false;
+        }
+        return true;
     }
 
     void deleteConnection(Http2Connection c) {
         connections.remove(c.key());
+    }
+
+    void stop() {
+        debug.log(Level.DEBUG, "stopping");
+        connections.values().forEach(this::close);
+        connections.clear();
+    }
+
+    private void close(Http2Connection h2c) {
+        try { h2c.close(); } catch (Throwable t) {}
     }
 
     HttpClientImpl client() {
@@ -149,18 +168,64 @@ class Http2ClientImpl {
 
     private static final int K = 1024;
 
+    private static int getParameter(String property, int min, int max, int defaultValue) {
+        int value =  Utils.getIntegerNetProperty(property, defaultValue);
+        // use default value if misconfigured
+        if (value < min || value > max) {
+            Log.logError("Property value for {0}={1} not in [{2}..{3}]: " +
+                    "using default={4}", property, value, min, max, defaultValue);
+            value = defaultValue;
+        }
+        return value;
+    }
+
+    // used for the connection window, to have a connection window size
+    // bigger than the initial stream window size.
+    int getConnectionWindowSize(SettingsFrame clientSettings) {
+        // Maximum size is 2^31-1. Don't allow window size to be less
+        // than the stream window size. HTTP/2 specify a default of 64 * K -1,
+        // but we use 2^26 by default for better performance.
+        int streamWindow = clientSettings.getParameter(INITIAL_WINDOW_SIZE);
+
+        // The default is the max between the stream window size
+        // and the connection window size.
+        int defaultValue = Math.min(Integer.MAX_VALUE,
+                Math.max(streamWindow, K*K*32));
+
+        return getParameter(
+                "jdk.httpclient.connectionWindowSize",
+                streamWindow, Integer.MAX_VALUE, defaultValue);
+    }
+
     SettingsFrame getClientSettings() {
         SettingsFrame frame = new SettingsFrame();
-        frame.setParameter(HEADER_TABLE_SIZE, Utils.getIntegerNetProperty(
-                "jdk.httpclient.hpack.maxheadertablesize", 16 * K));
-        frame.setParameter(ENABLE_PUSH, Utils.getIntegerNetProperty(
-            "jdk.httpclient.enablepush", 1));
-        frame.setParameter(MAX_CONCURRENT_STREAMS, Utils.getIntegerNetProperty(
-            "jdk.httpclient.maxstreams", 16));
-        frame.setParameter(INITIAL_WINDOW_SIZE, Utils.getIntegerNetProperty(
-            "jdk.httpclient.windowsize", 64 * K - 1));
-        frame.setParameter(MAX_FRAME_SIZE, Utils.getIntegerNetProperty(
-            "jdk.httpclient.maxframesize", 16 * K));
+        // default defined for HTTP/2 is 4 K, we use 16 K.
+        frame.setParameter(HEADER_TABLE_SIZE, getParameter(
+                "jdk.httpclient.hpack.maxheadertablesize",
+                0, Integer.MAX_VALUE, 16 * K));
+        // O: does not accept push streams. 1: accepts push streams.
+        frame.setParameter(ENABLE_PUSH, getParameter(
+                "jdk.httpclient.enablepush",
+                0, 1, 1));
+        // HTTP/2 recommends to set the number of concurrent streams
+        // no lower than 100. We use 100. 0 means no stream would be
+        // accepted. That would render the client to be non functional,
+        // so we won't let 0 be configured for our Http2ClientImpl.
+        frame.setParameter(MAX_CONCURRENT_STREAMS, getParameter(
+                "jdk.httpclient.maxstreams",
+                1, Integer.MAX_VALUE, 100));
+        // Maximum size is 2^31-1. Don't allow window size to be less
+        // than the minimum frame size as this is likely to be a
+        // configuration error. HTTP/2 specify a default of 64 * K -1,
+        // but we use 16 M  for better performance.
+        frame.setParameter(INITIAL_WINDOW_SIZE, getParameter(
+                "jdk.httpclient.windowsize",
+                16 * K, Integer.MAX_VALUE, 16*K*K));
+        // HTTP/2 specify a minimum size of 16 K, a maximum size of 2^24-1,
+        // and a default of 16 K. We use 16 K as default.
+        frame.setParameter(MAX_FRAME_SIZE, getParameter(
+                "jdk.httpclient.maxframesize",
+                16 * K, 16 * K * K -1, 16 * K));
         return frame;
     }
 }

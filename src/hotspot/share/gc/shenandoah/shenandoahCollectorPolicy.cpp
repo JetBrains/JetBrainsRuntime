@@ -1476,7 +1476,7 @@ ShenandoahCollectorPolicy* ShenandoahCollectorPolicy::as_pgc_policy() {
 }
 
 BarrierSet::Name ShenandoahCollectorPolicy::barrier_set_name() {
-  return BarrierSet::ShenandoahBarrierSet;
+  return BarrierSet::Shenandoah;
 }
 
 HeapWord* ShenandoahCollectorPolicy::mem_allocate_work(size_t size,

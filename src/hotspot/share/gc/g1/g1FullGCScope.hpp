@@ -37,6 +37,8 @@
 #include "memory/allocation.hpp"
 #include "services/memoryService.hpp"
 
+class GCMemoryManager;
+
 // Class used to group scoped objects used in the Full GC together.
 class G1FullGCScope : public StackObj {
   ResourceMark            _rm;
@@ -45,7 +47,7 @@ class G1FullGCScope : public StackObj {
   GCIdMark                _gc_id;
   SvcGCMarker             _svc_marker;
   STWGCTimer              _timer;
-  SerialOldTracer         _tracer;
+  G1FullGCTracer          _tracer;
   IsGCActiveMark          _active;
   GCTraceCPUTime          _cpu_time;
   ClearedAllSoftRefs      _soft_refs;
@@ -53,19 +55,15 @@ class G1FullGCScope : public StackObj {
   TraceMemoryManagerStats _memory_stats;
   G1HeapTransition        _heap_transition;
 
-  // Singleton instance.
-  static G1FullGCScope* _instance;
 public:
-  static G1FullGCScope* instance();
-
-  G1FullGCScope(bool explicit_gc, bool clear_soft);
+  G1FullGCScope(GCMemoryManager* memory_manager, bool explicit_gc, bool clear_soft);
   ~G1FullGCScope();
 
   bool is_explicit_gc();
   bool should_clear_soft_refs();
 
   STWGCTimer* timer();
-  SerialOldTracer* tracer();
+  G1FullGCTracer* tracer();
   G1HeapTransition* heap_transition();
 };
 

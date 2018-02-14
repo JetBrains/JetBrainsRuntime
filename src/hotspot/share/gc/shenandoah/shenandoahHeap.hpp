@@ -28,13 +28,14 @@
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
+#include "services/memoryManager.hpp"
 
 class ConcurrentGCTimer;
-
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
 class ShenandoahPhaseTimings;
+class ShenandoahHeap;
 class ShenandoahHeapRegion;
 class ShenandoahHeapRegionClosure;
 class ShenandoahHeapRegionSet;
@@ -269,6 +270,12 @@ private:
 
   ShenandoahConnectionMatrix* _connection_matrix;
 
+  GCMemoryManager _minor_memory_manager;
+  GCMemoryManager _major_memory_manager;
+
+  MemoryPool* _memory_pool;
+  MemoryPool* _dummy_pool;
+
 #ifdef ASSERT
   int     _heap_expansion_count;
 #endif
@@ -343,7 +350,6 @@ public:
 
   static ShenandoahHeap* heap();
   static ShenandoahHeap* heap_no_check();
-  static size_t conservative_max_heap_alignment();
   static address in_cset_fast_test_addr();
   static address cancelled_concgc_addr();
   static address gc_state_addr();
@@ -355,18 +361,11 @@ public:
   inline ShenandoahHeapRegion* heap_region_containing(const void* addr) const;
   inline size_t heap_region_index_containing(const void* addr) const;
   inline bool requires_marking(const void* entry) const;
+  template <class T>
+  inline oop maybe_update_oop_ref(T* p);
 
   template <class T>
-  inline oop evac_update_with_forwarded(T* p, bool &evac);
-
-  template <class T>
-  inline oop maybe_update_with_forwarded(T* p);
-
-  template <class T>
-  inline oop maybe_update_with_forwarded_not_null(T* p, oop obj);
-
-  template <class T>
-  inline oop update_with_forwarded_not_null(T* p, oop obj);
+  inline oop evac_update_oop_ref(T* p, bool& evac);
 
   void trash_cset_regions();
 
@@ -474,12 +473,21 @@ public:
 
   bool is_bitmap_slice_committed(ShenandoahHeapRegion* r, bool skip_self = false);
 
+  template <class T>
+  inline oop update_oop_ref_not_null(T* p, oop obj);
+
+  template <class T>
+  inline oop maybe_update_oop_ref_not_null(T* p, oop obj);
+
   void print_heap_regions_on(outputStream* st) const;
 
   size_t bytes_allocated_since_cm();
   void set_bytes_allocated_since_cm(size_t bytes);
 
   size_t trash_humongous_region_at(ShenandoahHeapRegion *r);
+
+  virtual GrowableArray<GCMemoryManager*> memory_managers();
+  virtual GrowableArray<MemoryPool*> memory_pools();
 
   ShenandoahMonitoringSupport* monitoring_support();
   ShenandoahConcurrentMark* concurrentMark() { return _scm; }
@@ -565,6 +573,9 @@ public:
     }
   }
 private:
+
+  virtual void initialize_serviceability();
+
   HeapWord* allocate_new_lab(size_t word_size, AllocType type);
   HeapWord* allocate_memory_under_lock(size_t word_size, AllocType type, bool &new_region);
   HeapWord* allocate_memory(size_t word_size, AllocType type);
@@ -608,6 +619,9 @@ public:
   void set_used_at_last_gc() {_used_at_last_gc = used();}
 
   void make_tlabs_parsable(bool retire_tlabs) /* override */;
+
+  GCMemoryManager* major_memory_manager() { return &_major_memory_manager; }
+  GCMemoryManager* minor_memory_manager() { return &_minor_memory_manager; }
 
 public:
   // Entry points to STW GC operations, these cause a related safepoint, that then

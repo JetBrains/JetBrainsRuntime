@@ -96,7 +96,7 @@ private:
     T o = oopDesc::load_heap_oop(p);
     if (! oopDesc::is_null(o)) {
       oop obj1 = oopDesc::decode_heap_oop_not_null(o);
-      oop obj2 = oopDesc::bs()->write_barrier(obj1);
+      oop obj2 = BarrierSet::barrier_set()->write_barrier(obj1);
       if (! oopDesc::unsafe_equals(obj1, obj2)) {
         assert (!ShenandoahHeap::heap()->in_collection_set(obj2), "sanity");
         oopDesc::encode_store_heap_oop(p, obj2);

@@ -37,6 +37,8 @@
 #include "runtime/interfaceSupport.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/os.inline.hpp"
+#include "runtime/safepoint.hpp"
+#include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "utilities/align.hpp"
@@ -236,6 +238,20 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp1, Register t
 }
 
 
+void MacroAssembler::safepoint_poll(Label& slow_path, bool a, Register thread_reg, Register temp_reg) {
+  if (SafepointMechanism::uses_thread_local_poll()) {
+    ldx(Address(thread_reg, Thread::polling_page_offset()), temp_reg, 0);
+    // Armed page has poll bit set.
+    and3(temp_reg, SafepointMechanism::poll_bit(), temp_reg);
+    br_notnull(temp_reg, a, Assembler::pn, slow_path);
+  } else {
+    AddressLiteral sync_state(SafepointSynchronize::address_of_state());
+
+    load_contents(sync_state, temp_reg);
+    cmp(temp_reg, SafepointSynchronize::_not_synchronized);
+    br(Assembler::notEqual, a, Assembler::pn, slow_path);
+  }
+}
 
 void MacroAssembler::enter() {
   Unimplemented();
@@ -2042,9 +2058,10 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
                                              Register method_result,
                                              Register scan_temp,
                                              Register sethi_temp,
-                                             Label& L_no_such_interface) {
+                                             Label& L_no_such_interface,
+                                             bool return_method) {
   assert_different_registers(recv_klass, intf_klass, method_result, scan_temp);
-  assert(itable_index.is_constant() || itable_index.as_register() == method_result,
+  assert(!return_method || itable_index.is_constant() || itable_index.as_register() == method_result,
          "caller must use same register for non-constant itable index as for method");
 
   Label L_no_such_interface_restore;
@@ -2076,11 +2093,13 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
   add(scan_temp, itb_offset, scan_temp);
   add(recv_klass, scan_temp, scan_temp);
 
-  // Adjust recv_klass by scaled itable_index, so we can free itable_index.
-  RegisterOrConstant itable_offset = itable_index;
-  itable_offset = regcon_sll_ptr(itable_index, exact_log2(itableMethodEntry::size() * wordSize), itable_offset);
-  itable_offset = regcon_inc_ptr(itable_offset, itableMethodEntry::method_offset_in_bytes(), itable_offset);
-  add(recv_klass, ensure_simm13_or_reg(itable_offset, sethi_temp), recv_klass);
+  if (return_method) {
+    // Adjust recv_klass by scaled itable_index, so we can free itable_index.
+    RegisterOrConstant itable_offset = itable_index;
+    itable_offset = regcon_sll_ptr(itable_index, exact_log2(itableMethodEntry::size() * wordSize), itable_offset);
+    itable_offset = regcon_inc_ptr(itable_offset, itableMethodEntry::method_offset_in_bytes(), itable_offset);
+    add(recv_klass, ensure_simm13_or_reg(itable_offset, sethi_temp), recv_klass);
+  }
 
   // for (scan = klass->itable(); scan->interface() != NULL; scan += scan_step) {
   //   if (scan->interface() == intf) {
@@ -2115,12 +2134,14 @@ void MacroAssembler::lookup_interface_method(Register recv_klass,
 
   bind(L_found_method);
 
-  // Got a hit.
-  int ito_offset = itableOffsetEntry::offset_offset_in_bytes();
-  // scan_temp[-scan_step] points to the vtable offset we need
-  ito_offset -= scan_step;
-  lduw(scan_temp, ito_offset, scan_temp);
-  ld_ptr(recv_klass, scan_temp, method_result);
+  if (return_method) {
+    // Got a hit.
+    int ito_offset = itableOffsetEntry::offset_offset_in_bytes();
+    // scan_temp[-scan_step] points to the vtable offset we need
+    ito_offset -= scan_step;
+    lduw(scan_temp, ito_offset, scan_temp);
+    ld_ptr(recv_klass, scan_temp, method_result);
+  }
 
   if (did_save) {
     Label L_done;

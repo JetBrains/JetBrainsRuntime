@@ -59,6 +59,7 @@ private:
   oop _obj;
 };
 
+typedef FormatBuffer<8192> ShenandoahMessageBuffer;
 typedef Stack<ShenandoahVerifierTask, mtGC> ShenandoahVerifierStack;
 typedef volatile juint ShenandoahLivenessData;
 
@@ -189,6 +190,8 @@ public:
   void verify_after_traversal();
   void verify_after_degenerated();
   void verify_generic(VerifyOption option);
+
+  static void verify_oop_fwdptr(oop obj, oop new_fwd);
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHVERIFIER_HPP

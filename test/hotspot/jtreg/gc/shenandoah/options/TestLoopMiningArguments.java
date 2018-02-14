@@ -57,11 +57,11 @@ public class TestLoopMiningArguments {
     }
 
     public static void testDefaultGC() throws Exception {
-        testWith("Default GC should have CLS disabled, LSM = 0",
-            false, 0);
+        testWith("Default GC should have CLS enabled, LSM = 1000",
+            true, 1000);
 
-        testWith("Default GC with +CLS should set LSM = 1",
-            true, 1,
+        testWith("Default GC with +CLS should set LSM = 1000",
+            true, 1000,
             "-XX:+UseCountedLoopSafepoints"
         );
 
@@ -92,16 +92,6 @@ public class TestLoopMiningArguments {
             false, 0,
             "-XX:LoopStripMiningIter=10",
             "-XX:-UseCountedLoopSafepoints"
-        );
-
-        testWith("Default GC with LSM=1 leaves CLS disabled and LSM drooped to 0",
-            false, 0,
-            "-XX:LoopStripMiningIter=1"
-        );
-
-        testWith("Default GC with LSM>1 leaves CLS disabled and LSM dropped to 0",
-            false, 0,
-            "-XX:LoopStripMiningIter=10"
         );
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -282,7 +282,7 @@ void PhaseIdealLoop::dominated_by( Node *prevdom, Node *iff, bool flip, bool exc
   // Make control-dependent data Nodes on the live path (path that will remain
   // once the dominated IF is removed) become control-dependent on the
   // dominating projection.
-  Node* dp = iff->as_If()->proj_out(pop == Op_IfTrue);
+  Node* dp = iff->as_If()->proj_out_or_null(pop == Op_IfTrue);
 
   // Loop predicates may have depending checks which should not
   // be skipped. For example, range check predicate has two checks
@@ -572,13 +572,12 @@ Node *PhaseIdealLoop::conditional_move( Node *region ) {
     BasicType bt = phi->type()->basic_type();
     switch (bt) {
     case T_DOUBLE:
+    case T_FLOAT:
       if (C->use_cmove()) {
         continue; //TODO: maybe we want to add some cost
       }
-    case T_FLOAT: {
       cost += Matcher::float_cmove_cost(); // Could be very expensive
       break;
-    }
     case T_LONG: {
       cost += Matcher::long_cmove_cost(); // May encodes as 2 CMOV's
     }
@@ -657,8 +656,9 @@ Node *PhaseIdealLoop::conditional_move( Node *region ) {
   }
   // Check for highly predictable branch.  No point in CMOV'ing if
   // we are going to predict accurately all the time.
-  if (C->use_cmove() && cmp_op == Op_CmpD) ;//keep going
-  else if (iff->_prob < infrequent_prob ||
+  if (C->use_cmove() && (cmp_op == Op_CmpF || cmp_op == Op_CmpD)) {
+    //keep going
+  } else if (iff->_prob < infrequent_prob ||
       iff->_prob > (1.0f - infrequent_prob))
     return NULL;
 
@@ -1101,7 +1101,7 @@ Node *PhaseIdealLoop::place_near_use( Node *useblock ) const {
 
 
 bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
-  if (!n->is_If()) {
+  if (!n->is_If() || n->is_CountedLoopEnd()) {
     return false;
   }
   Node* region = NULL;
@@ -1819,7 +1819,7 @@ void PhaseIdealLoop::clone_outer_loop(LoopNode* head, CloneLoopMode mode, IdealL
     Node* sfpt = cl->outer_safepoint();
     CountedLoopEndNode* cle = cl->loopexit();
     CountedLoopNode* new_cl = old_new[cl->_idx]->as_CountedLoop();
-    CountedLoopEndNode* new_cle = new_cl->as_CountedLoop()->loopexit();
+    CountedLoopEndNode* new_cle = new_cl->as_CountedLoop()->loopexit_or_null();
     Node* cle_out = cle->proj_out(false);
 
     Node* new_sfpt = NULL;
@@ -2044,7 +2044,7 @@ void PhaseIdealLoop::clone_loop( IdealLoopTree *loop, Node_List &old_new, int dd
         if (head->is_strip_mined() && mode != IgnoreStripMined) {
           CountedLoopNode* cl = head->as_CountedLoop();
           CountedLoopEndNode* cle = cl->loopexit();
-          Node* cle_out = cle->proj_out(false);
+          Node* cle_out = cle->proj_out_or_null(false);
           if (use == cle_out) {
             IfNode* le = cl->outer_loop_end();
             use = le->proj_out(false);

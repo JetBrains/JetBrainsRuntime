@@ -37,6 +37,7 @@
 #include "oops/oop.inline.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "runtime/javaCalls.hpp"
+#include "runtime/safepointMechanism.inline.hpp"
 #include "utilities/align.hpp"
 
 // frequently used constants
@@ -599,6 +600,9 @@ JVMCIEnv::CodeInstallResult CodeInstaller::install(JVMCICompiler* compiler, Hand
 
   if (!compiled_code->is_a(HotSpotCompiledNmethod::klass())) {
     oop stubName = HotSpotCompiledCode::name(compiled_code_obj);
+    if (oopDesc::is_null(stubName)) {
+      JVMCI_ERROR_OK("stub should have a name");
+    }
     char* name = strdup(java_lang_String::as_utf8_string(stubName));
     cb = RuntimeStub::new_runtime_stub(name,
                                        &buffer,
@@ -854,9 +858,10 @@ JVMCIEnv::CodeInstallResult CodeInstaller::initialize_buffer(CodeBuffer& buffer,
     }
     last_pc_offset = pc_offset;
 
-    if (SafepointSynchronize::do_call_back()) {
+    JavaThread* thread = JavaThread::current();
+    if (SafepointMechanism::poll(thread)) {
       // this is a hacky way to force a safepoint check but nothing else was jumping out at me.
-      ThreadToNativeFromVM ttnfv(JavaThread::current());
+      ThreadToNativeFromVM ttnfv(thread);
     }
   }
 

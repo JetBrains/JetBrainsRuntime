@@ -25,13 +25,9 @@
 #ifndef SHARE_VM_RUNTIME_THREAD_INLINE_HPP
 #define SHARE_VM_RUNTIME_THREAD_INLINE_HPP
 
-#define SHARE_VM_RUNTIME_THREAD_INLINE_HPP_SCOPE
-
 #include "runtime/atomic.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/thread.hpp"
-
-#undef SHARE_VM_RUNTIME_THREAD_INLINE_HPP_SCOPE
 
 inline void Thread::set_suspend_flag(SuspendFlags f) {
   assert(sizeof(jint) == sizeof(_suspend_flags), "size mismatch");
@@ -87,6 +83,18 @@ inline jlong Thread::cooked_allocated_bytes() {
     }
   }
   return allocated_bytes;
+}
+
+inline ThreadsList* Thread::cmpxchg_threads_hazard_ptr(ThreadsList* exchange_value, ThreadsList* compare_value) {
+  return (ThreadsList*)Atomic::cmpxchg(exchange_value, &_threads_hazard_ptr, compare_value);
+}
+
+inline ThreadsList* Thread::get_threads_hazard_ptr() {
+  return (ThreadsList*)OrderAccess::load_acquire(&_threads_hazard_ptr);
+}
+
+inline void Thread::set_threads_hazard_ptr(ThreadsList* new_list) {
+  OrderAccess::release_store_fence(&_threads_hazard_ptr, new_list);
 }
 
 inline void JavaThread::set_ext_suspended() {
@@ -156,7 +164,8 @@ inline size_t JavaThread::stack_available(address cur_sp) {
 
 inline bool JavaThread::stack_guards_enabled() {
 #ifdef ASSERT
-  if (os::uses_stack_guard_pages()) {
+  if (os::uses_stack_guard_pages() &&
+      !(DisablePrimordialThreadGuardPages && os::is_primordial_thread())) {
     assert(_stack_guard_state != stack_guard_unused, "guard pages must be in use");
   }
 #endif
@@ -165,6 +174,45 @@ inline bool JavaThread::stack_guards_enabled() {
 
 char JavaThread::gc_state() const {
   return _gc_state;
+}
+
+// The release make sure this store is done after storing the handshake
+// operation or global state
+inline void JavaThread::set_polling_page(void* poll_value) {
+  OrderAccess::release_store(polling_page_addr(), poll_value);
+}
+
+// The aqcquire make sure reading of polling page is done before
+// the reading the handshake operation or the global state
+inline volatile void* JavaThread::get_polling_page() {
+  return OrderAccess::load_acquire(polling_page_addr());
+}
+
+inline bool JavaThread::is_exiting() const {
+  // Use load-acquire so that setting of _terminated by
+  // JavaThread::exit() is seen more quickly.
+  TerminatedTypes l_terminated = (TerminatedTypes)
+      OrderAccess::load_acquire((volatile jint *) &_terminated);
+  return l_terminated == _thread_exiting || check_is_terminated(l_terminated);
+}
+
+inline bool JavaThread::is_terminated() const {
+  // Use load-acquire so that setting of _terminated by
+  // JavaThread::exit() is seen more quickly.
+  TerminatedTypes l_terminated = (TerminatedTypes)
+      OrderAccess::load_acquire((volatile jint *) &_terminated);
+  return check_is_terminated(l_terminated);
+}
+
+inline void JavaThread::set_terminated(TerminatedTypes t) {
+  // use release-store so the setting of _terminated is seen more quickly
+  OrderAccess::release_store((volatile jint *) &_terminated, (jint) t);
+}
+
+// special for Threads::remove() which is static:
+inline void JavaThread::set_terminated_value() {
+  // use release-store so the setting of _terminated is seen more quickly
+  OrderAccess::release_store((volatile jint *) &_terminated, (jint) _thread_terminated);
 }
 
 #endif // SHARE_VM_RUNTIME_THREAD_INLINE_HPP

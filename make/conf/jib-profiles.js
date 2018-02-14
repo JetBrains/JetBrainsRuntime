@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -203,7 +203,7 @@ var getJibProfiles = function (input) {
     data.src_bundle_excludes = "./build webrev* */webrev* */*/webrev* */*/*/webrev* .hg */.hg */*/.hg */*/*/.hg";
     // Include list to use when creating a minimal jib source bundle which
     // contains just the jib configuration files.
-    data.conf_bundle_includes = "*/conf/jib-profiles.* common/autoconf/version-numbers"
+    data.conf_bundle_includes = "*/conf/jib-profiles.* make/autoconf/version-numbers"
 
     // Define some common values
     var common = getJibProfilesCommon(input, data);
@@ -429,7 +429,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "macosx-x64": {
             target_os: "macosx",
             target_cpu: "x64",
-            dependencies: ["devkit"],
+            dependencies: ["devkit", "freetype"],
             configure_args: concat(common.configure_args_64bit, "--with-zlib=system",
                 "--with-macosx-version-max=10.7.0"),
         },
@@ -662,20 +662,15 @@ var getJibProfilesProfiles = function (input, common, data) {
         }
     });
 
-    // The windows ri profile needs to add the freetype license file
-    profilesRiFreetype = {
-        "windows-x86-ri": {
-            configure_args: "--with-freetype-license="
-                + input.get("freetype", "install_path")
-                + "/freetype-2.7.1-v120-x86/freetype.md"
-        },
-        "windows-x64-ri": {
-            configure_args: "--with-freetype-license="
-                + input.get("freetype", "install_path")
-                + "/freetype-2.7.1-v120-x64/freetype.md"
-        }
-    };
-    profiles = concatObjects(profiles, profilesRiFreetype);
+    // For open profiles, the non-debug jdk bundles, need an "open" prefix on the
+    // remote bundle names, forming the word "openjdk". See JDK-8188789.
+    common.main_profile_names.forEach(function (name) {
+        var openName = name + common.open_suffix;
+        profiles[openName].artifacts["jdk"].remote = replaceAll(
+            "\/jdk-", "/openjdk-",
+            replaceAll("\/\\1", "/open\\1",
+                       profiles[openName].artifacts["jdk"].remote));
+    });
 
     // Profiles used to run tests. Used in JPRT and Mach 5.
     var testOnlyProfiles = {
@@ -788,6 +783,16 @@ var getJibProfilesDependencies = function (input, common) {
     var boot_jdk_platform = (input.build_os == "macosx" ? "osx" : input.build_os)
         + "-" + input.build_cpu;
 
+    var freetype_version = {
+        windows_x64: "2.7.1-v120+1.1",
+        windows_x86: "2.7.1-v120+1.1",
+        macosx_x64: "2.7.1-Xcode6.3-MacOSX10.9+1.0"
+    }[input.target_platform];
+
+    var makeBinDir = (input.build_os == "windows"
+        ? input.get("gnumake", "install_path") + "/cygwin/bin"
+        : input.get("gnumake", "install_path") + "/bin");
+
     var dependencies = {
 
         boot_jdk: {
@@ -840,19 +845,19 @@ var getJibProfilesDependencies = function (input, common) {
                 ? "gnumake-" + input.build_osenv_platform
                 : "gnumake-" + input.build_platform),
 
-            configure_args: (input.build_os == "windows"
-                ? "MAKE=" + input.get("gnumake", "install_path") + "/cygwin/bin/make"
-                : "MAKE=" + input.get("gnumake", "install_path") + "/bin/make"),
+            configure_args: "MAKE=" + makeBinDir + "/make",
 
-            environment_path: (input.build_os == "windows"
-                ? input.get("gnumake", "install_path") + "/cygwin/bin"
-                : input.get("gnumake", "install_path") + "/bin")
+            environment: {
+                "MAKE": makeBinDir + "/make"
+            },
+
+            environment_path: makeBinDir
         },
 
         freetype: {
             organization: common.organization,
             ext: "tar.gz",
-            revision: "2.7.1-v120+1.0",
+            revision: freetype_version,
             module: "freetype-" + input.target_platform
         },
 
@@ -1043,19 +1048,19 @@ var concatObjects = function (o1, o2) {
 
 /**
  * Constructs the numeric version string from reading the
- * common/autoconf/version-numbers file and removing all trailing ".0".
+ * make/autoconf/version-numbers file and removing all trailing ".0".
  *
- * @param major Override major version
- * @param minor Override minor version
- * @param security Override security version
+ * @param feature Override feature version
+ * @param interim Override interim version
+ * @param update Override update version
  * @param patch Override patch version
  * @returns {String} The numeric version string
  */
-var getVersion = function (major, minor, security, patch) {
+var getVersion = function (feature, interim, update, patch) {
     var version_numbers = getVersionNumbers();
-    var version = (major != null ? major : version_numbers.get("DEFAULT_VERSION_MAJOR"))
-        + "." + (minor != null ? minor : version_numbers.get("DEFAULT_VERSION_MINOR"))
-        + "." + (security != null ? security :  version_numbers.get("DEFAULT_VERSION_SECURITY"))
+    var version = (feature != null ? feature : version_numbers.get("DEFAULT_VERSION_FEATURE"))
+        + "." + (interim != null ? interim : version_numbers.get("DEFAULT_VERSION_INTERIM"))
+        + "." + (update != null ? update :  version_numbers.get("DEFAULT_VERSION_UPDATE"))
         + "." + (patch != null ? patch : version_numbers.get("DEFAULT_VERSION_PATCH"));
     while (version.match(".*\\.0$")) {
         version = version.substring(0, version.length - 2);
@@ -1072,7 +1077,8 @@ var versionArgs = function(input, common) {
     if (input.build_type == "promoted") {
         args = concat(args,
                       // This needs to be changed when we start building release candidates
-                      "--with-version-pre=ea",
+                      // with-version-pre must be set to ea for 'ea' and empty for fcs build
+                      "--with-version-pre=",
                       "--without-version-opt");
     } else {
         args = concat(args, "--with-version-opt=" + common.build_id);
@@ -1080,17 +1086,17 @@ var versionArgs = function(input, common) {
     return args;
 }
 
-// Properties representation of the common/autoconf/version-numbers file. Lazily
+// Properties representation of the make/autoconf/version-numbers file. Lazily
 // initiated by the function below.
 var version_numbers;
 
 /**
- * Read the common/autoconf/version-numbers file into a Properties object.
+ * Read the make/autoconf/version-numbers file into a Properties object.
  *
  * @returns {java.utilProperties}
  */
 var getVersionNumbers = function () {
-    // Read version information from common/autoconf/version-numbers
+    // Read version information from make/autoconf/version-numbers
     if (version_numbers == null) {
         version_numbers = new java.util.Properties();
         var stream = new java.io.FileInputStream(__DIR__ + "/../autoconf/version-numbers");

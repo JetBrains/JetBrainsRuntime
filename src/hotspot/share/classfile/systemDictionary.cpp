@@ -1087,7 +1087,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
 #if INCLUDE_CDS
   ResourceMark rm(THREAD);
   if (DumpSharedSpaces && !class_loader.is_null() &&
-      !ArgumentsExt::using_AppCDS() && strcmp(class_name->as_C_string(), "Unnamed") != 0) {
+      !UseAppCDS && strcmp(class_name->as_C_string(), "Unnamed") != 0) {
     // If AppCDS is not enabled, don't define the class at dump time (except for the "Unnamed"
     // class, which is used by MethodHandles).
     THROW_MSG_NULL(vmSymbols::java_lang_ClassNotFoundException(), class_name->as_C_string());
@@ -1465,25 +1465,23 @@ InstanceKlass* SystemDictionary::load_instance_class(Symbol* class_name, Handle 
       // java.base packages in the boot loader's PackageEntryTable.
       // No class outside of java.base is allowed to be loaded during
       // this bootstrapping window.
-      if (!DumpSharedSpaces) {
-        if (pkg_entry == NULL || pkg_entry->in_unnamed_module()) {
-          // Class is either in the unnamed package or in
-          // a named package within the unnamed module.  Either
-          // case is outside of java.base, do not attempt to
-          // load the class post java.base definition.  If
-          // java.base has not been defined, let the class load
-          // and its package will be checked later by
-          // ModuleEntryTable::verify_javabase_packages.
-          if (ModuleEntryTable::javabase_defined()) {
-            return NULL;
-          }
-        } else {
-          // Check that the class' package is defined within java.base.
-          ModuleEntry* mod_entry = pkg_entry->module();
-          Symbol* mod_entry_name = mod_entry->name();
-          if (mod_entry_name->fast_compare(vmSymbols::java_base()) != 0) {
-            return NULL;
-          }
+      if (pkg_entry == NULL || pkg_entry->in_unnamed_module()) {
+        // Class is either in the unnamed package or in
+        // a named package within the unnamed module.  Either
+        // case is outside of java.base, do not attempt to
+        // load the class post java.base definition.  If
+        // java.base has not been defined, let the class load
+        // and its package will be checked later by
+        // ModuleEntryTable::verify_javabase_packages.
+        if (ModuleEntryTable::javabase_defined()) {
+          return NULL;
+        }
+      } else {
+        // Check that the class' package is defined within java.base.
+        ModuleEntry* mod_entry = pkg_entry->module();
+        Symbol* mod_entry_name = mod_entry->name();
+        if (mod_entry_name->fast_compare(vmSymbols::java_base()) != 0) {
+          return NULL;
         }
       }
     } else {
@@ -1501,7 +1499,7 @@ InstanceKlass* SystemDictionary::load_instance_class(Symbol* class_name, Handle 
 
     // Prior to bootstrapping's module initialization, never load a class outside
     // of the boot loader's module path
-    assert(Universe::is_module_initialized() || DumpSharedSpaces ||
+    assert(Universe::is_module_initialized() ||
            !search_only_bootloader_append,
            "Attempt to load a class outside of boot loader's module path");
 
@@ -2736,43 +2734,68 @@ Handle SystemDictionary::find_method_handle_type(Symbol* signature,
   return method_type;
 }
 
+Handle SystemDictionary::find_field_handle_type(Symbol* signature,
+                                                Klass* accessing_klass,
+                                                TRAPS) {
+  Handle empty;
+  ResourceMark rm(THREAD);
+  SignatureStream ss(signature, /*is_method=*/ false);
+  if (!ss.is_done()) {
+    Handle class_loader, protection_domain;
+    if (accessing_klass != NULL) {
+      class_loader      = Handle(THREAD, accessing_klass->class_loader());
+      protection_domain = Handle(THREAD, accessing_klass->protection_domain());
+    }
+    oop mirror = ss.as_java_mirror(class_loader, protection_domain, SignatureStream::NCDFError, CHECK_(empty));
+    ss.next();
+    if (ss.is_done()) {
+      return Handle(THREAD, mirror);
+    }
+  }
+  return empty;
+}
+
 // Ask Java code to find or construct a method handle constant.
 Handle SystemDictionary::link_method_handle_constant(Klass* caller,
                                                      int ref_kind, //e.g., JVM_REF_invokeVirtual
                                                      Klass* callee,
-                                                     Symbol* name_sym,
+                                                     Symbol* name,
                                                      Symbol* signature,
                                                      TRAPS) {
   Handle empty;
-  Handle name = java_lang_String::create_from_symbol(name_sym, CHECK_(empty));
-  Handle type;
-  if (signature->utf8_length() > 0 && signature->byte_at(0) == '(') {
-    type = find_method_handle_type(signature, caller, CHECK_(empty));
-  } else if (caller == NULL) {
-    // This should not happen.  JDK code should take care of that.
+  if (caller == NULL) {
     THROW_MSG_(vmSymbols::java_lang_InternalError(), "bad MH constant", empty);
+  }
+  Handle name_str      = java_lang_String::create_from_symbol(name,      CHECK_(empty));
+  Handle signature_str = java_lang_String::create_from_symbol(signature, CHECK_(empty));
+
+  // Put symbolic info from the MH constant into freshly created MemberName and resolve it.
+  Handle mname = MemberName_klass()->allocate_instance_handle(CHECK_(empty));
+  java_lang_invoke_MemberName::set_clazz(mname(), callee->java_mirror());
+  java_lang_invoke_MemberName::set_name (mname(), name_str());
+  java_lang_invoke_MemberName::set_type (mname(), signature_str());
+  java_lang_invoke_MemberName::set_flags(mname(), MethodHandles::ref_kind_to_flags(ref_kind));
+
+  if (ref_kind == JVM_REF_invokeVirtual &&
+      callee->name() == vmSymbols::java_lang_invoke_MethodHandle() &&
+      (name == vmSymbols::invoke_name() || name == vmSymbols::invokeExact_name())) {
+    // Skip resolution for j.l.i.MethodHandle.invoke()/invokeExact().
+    // They are public signature polymorphic methods, but require appendix argument
+    // which MemberName resolution doesn't handle. There's special logic on JDK side to handle them
+    // (see MethodHandles.linkMethodHandleConstant() and MethodHandles.findVirtualForMH()).
   } else {
-    ResourceMark rm(THREAD);
-    SignatureStream ss(signature, false);
-    if (!ss.is_done()) {
-      oop mirror = ss.as_java_mirror(Handle(THREAD, caller->class_loader()),
-                                     Handle(THREAD, caller->protection_domain()),
-                                     SignatureStream::NCDFError, CHECK_(empty));
-      type = Handle(THREAD, mirror);
-      ss.next();
-      if (!ss.is_done())  type = Handle();  // error!
-    }
+    MethodHandles::resolve_MemberName(mname, caller, CHECK_(empty));
   }
-  if (type.is_null()) {
-    THROW_MSG_(vmSymbols::java_lang_LinkageError(), "bad signature", empty);
-  }
+
+  // After method/field resolution succeeded, it's safe to resolve MH signature as well.
+  Handle type = MethodHandles::resolve_MemberName_type(mname, caller, CHECK_(empty));
 
   // call java.lang.invoke.MethodHandleNatives::linkMethodHandleConstant(Class caller, int refKind, Class callee, String name, Object type) -> MethodHandle
   JavaCallArguments args;
   args.push_oop(Handle(THREAD, caller->java_mirror()));  // the referring class
   args.push_int(ref_kind);
   args.push_oop(Handle(THREAD, callee->java_mirror()));  // the target class
-  args.push_oop(name);
+  args.push_oop(name_str);
   args.push_oop(type);
   JavaValue result(T_OBJECT);
   JavaCalls::call_static(&result,

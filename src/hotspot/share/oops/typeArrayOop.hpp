@@ -94,92 +94,92 @@ class typeArrayOopDesc : public arrayOopDesc {
   }
 
   jbyte byte_at(int which) const                  {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->byte_at_addr(which);
   }
   void byte_at_put(int which, jbyte contents)     {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->byte_at_addr(which) = contents;
   }
 
   jboolean bool_at(int which) const               {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->bool_at_addr(which);
   }
   void bool_at_put(int which, jboolean contents)  {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->bool_at_addr(which) = (((jint)contents) & 1);
   }
 
   jchar char_at(int which) const                  {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->char_at_addr(which);
   }
   void char_at_put(int which, jchar contents)     {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->char_at_addr(which) = contents;
   }
 
   jint int_at(int which) const                    {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->int_at_addr(which);
   }
   void int_at_put(int which, jint contents)       {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->int_at_addr(which) = contents;
   }
 
   jshort short_at(int which) const                {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->short_at_addr(which);
   }
   void short_at_put(int which, jshort contents)   {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->short_at_addr(which) = contents;
   }
 
   jushort ushort_at(int which) const              {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->ushort_at_addr(which);
   }
   void ushort_at_put(int which, jushort contents) {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->ushort_at_addr(which) = contents;
   }
 
   jlong long_at(int which) const                  {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->long_at_addr(which);
   }
   void long_at_put(int which, jlong contents)     {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->long_at_addr(which) = contents;
   }
 
   jfloat float_at(int which) const                {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->float_at_addr(which);
   }
   void float_at_put(int which, jfloat contents)   {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->float_at_addr(which) = contents;
   }
 
   jdouble double_at(int which) const              {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return *p->double_at_addr(which);
   }
   void double_at_put(int which, jdouble contents) {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->double_at_addr(which) = contents;
   }
 
   jbyte byte_at_acquire(int which) const              {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return OrderAccess::load_acquire(p->byte_at_addr(which));
   }
   void release_byte_at_put(int which, jbyte contents) {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     OrderAccess::release_store(p->byte_at_addr(which), contents);
   }
 
@@ -188,20 +188,20 @@ class typeArrayOopDesc : public arrayOopDesc {
   // casting
 #ifdef _LP64
   Symbol* symbol_at(int which) const {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return (Symbol*)*p->long_at_addr(which);
   }
   void symbol_at_put(int which, Symbol* contents) {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->long_at_addr(which) = (jlong)contents;
   }
 #else
   Symbol* symbol_at(int which) const {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->read_barrier((oop) this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->read_barrier((oop) this));
     return (Symbol*)*p->int_at_addr(which);
   }
   void symbol_at_put(int which, Symbol* contents) {
-    typeArrayOop p = typeArrayOop(oopDesc::bs()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
     *p->int_at_addr(which) = (int)contents;
   }
 #endif // _LP64

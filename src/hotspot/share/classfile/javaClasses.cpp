@@ -265,7 +265,7 @@ Handle java_lang_String::create_from_str(const char* utf8_str, TRAPS) {
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
-    buffer = typeArrayOop(oopDesc::bs()->write_barrier(buffer));
+    buffer = typeArrayOop(BarrierSet::barrier_set()->write_barrier(buffer));
     if (!has_multibyte) {
       strncpy((char*)buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
@@ -313,7 +313,7 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
-    buffer = typeArrayOop(oopDesc::bs()->write_barrier(buffer));
+    buffer = typeArrayOop(BarrierSet::barrier_set()->write_barrier(buffer));
     if (!has_multibyte) {
       strncpy((char*) buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
@@ -3068,6 +3068,25 @@ void java_lang_boxing_object::print(BasicType type, jvalue* value, outputStream*
   }
 }
 
+// Support for java_lang_ref_Reference
+
+bool java_lang_ref_Reference::is_referent_field(oop obj, ptrdiff_t offset) {
+  assert(!oopDesc::is_null(obj), "sanity");
+  if (offset != java_lang_ref_Reference::referent_offset) {
+    return false;
+  }
+
+  Klass* k = obj->klass();
+  if (!k->is_instance_klass()) {
+    return false;
+  }
+
+  InstanceKlass* ik = InstanceKlass::cast(obj->klass());
+  bool is_reference = ik->reference_type() != REF_NONE;
+  assert(!is_reference || ik->is_subclass_of(SystemDictionary::Reference_klass()), "sanity");
+  return is_reference;
+}
+
 // Support for java_lang_ref_SoftReference
 
 jlong java_lang_ref_SoftReference::timestamp(oop ref) {
@@ -3406,7 +3425,7 @@ void java_lang_invoke_MethodHandleNatives_CallSiteContext::compute_offsets() {
 DependencyContext java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(oop call_site) {
   assert(java_lang_invoke_MethodHandleNatives_CallSiteContext::is_instance(call_site), "");
   // DependencyContext can write to the field address -> need write barrier.
-  call_site = oopDesc::bs()->write_barrier(call_site);
+  call_site = BarrierSet::barrier_set()->write_barrier(call_site);
   intptr_t* vmdeps_addr = (intptr_t*)call_site->address_field_addr(_vmdependencies_offset);
   DependencyContext dep_ctx(vmdeps_addr);
   return dep_ctx;
@@ -3484,7 +3503,7 @@ ClassLoaderData** java_lang_ClassLoader::loader_data_addr(oop loader) {
 }
 
 ClassLoaderData* java_lang_ClassLoader::loader_data(oop loader) {
-  loader = oopDesc::bs()->read_barrier(loader);
+  loader = BarrierSet::barrier_set()->read_barrier(loader);
   return *java_lang_ClassLoader::loader_data_addr(loader);
 }
 

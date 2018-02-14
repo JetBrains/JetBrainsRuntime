@@ -40,6 +40,7 @@
 #include "oops/oop.inline.hpp"
 #include "runtime/init.hpp"
 #include "runtime/thread.inline.hpp"
+#include "runtime/threadSMR.hpp"
 #include "services/heapDumper.hpp"
 #include "utilities/align.hpp"
 
@@ -243,7 +244,7 @@ void CollectedHeap::collect_as_vm_thread(GCCause::Cause cause) {
 
 void CollectedHeap::set_barrier_set(BarrierSet* barrier_set) {
   _barrier_set = barrier_set;
-  oopDesc::set_bs(_barrier_set);
+  BarrierSet::set_bs(barrier_set);
 }
 
 void CollectedHeap::pre_initialize() {
@@ -548,10 +549,11 @@ void CollectedHeap::ensure_parsability(bool retire_tlabs) {
   const bool deferred = _defer_initial_card_mark;
   // The main thread starts allocating via a TLAB even before it
   // has added itself to the threads list at vm boot-up.
-  assert(!use_tlab || Threads::first() != NULL,
+  JavaThreadIteratorWithHandle jtiwh;
+  assert(!use_tlab || jtiwh.length() > 0,
          "Attempt to fill tlabs before main thread has been added"
          " to threads list is doomed to failure!");
-  for (JavaThread *thread = Threads::first(); thread; thread = thread->next()) {
+  for (; JavaThread *thread = jtiwh.next(); ) {
      if (use_tlab) thread->tlab().make_parsable(retire_tlabs);
 #if COMPILER2_OR_JVMCI
      // The deferred store barriers must all have been flushed to the
@@ -616,6 +618,10 @@ void CollectedHeap::initialize_reserved_region(HeapWord *start, HeapWord *end) {
   _reserved.set_word_size(0);
   _reserved.set_start(start);
   _reserved.set_end(end);
+}
+
+void CollectedHeap::post_initialize() {
+  initialize_serviceability();
 }
 
 HeapWord* CollectedHeap::tlab_post_allocation_setup(HeapWord* obj) {

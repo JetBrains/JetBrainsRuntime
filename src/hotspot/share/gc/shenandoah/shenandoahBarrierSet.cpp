@@ -23,7 +23,6 @@
 
 #include "precompiled.hpp"
 #include "gc/g1/g1SATBCardTableModRefBS.hpp"
-#include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
@@ -39,12 +38,12 @@ private:
     oop o;
     if (STOREVAL_WRITE_BARRIER) {
       bool evac;
-      o = _heap->evac_update_with_forwarded(p, evac);
+      o = _heap->evac_update_oop_ref(p, evac);
       if ((ALWAYS_ENQUEUE || evac) && !oopDesc::is_null(o)) {
         ShenandoahBarrierSet::enqueue(o);
       }
     } else {
-      o = _heap->maybe_update_with_forwarded(p);
+      o = _heap->maybe_update_oop_ref(p);
     }
     if (UPDATE_MATRIX && !oopDesc::is_null(o)) {
       _heap->connection_matrix()->set_connected(p, o);
@@ -59,7 +58,7 @@ public:
 };
 
 ShenandoahBarrierSet::ShenandoahBarrierSet(ShenandoahHeap* heap) :
-  BarrierSet(BarrierSet::FakeRtti(BarrierSet::ShenandoahBarrierSet)),
+  BarrierSet(BarrierSet::FakeRtti(BarrierSet::Shenandoah)),
   _heap(heap)
 {
 }
@@ -69,102 +68,15 @@ void ShenandoahBarrierSet::print_on(outputStream* st) const {
 }
 
 bool ShenandoahBarrierSet::is_a(BarrierSet::Name bsn) {
-  return bsn == BarrierSet::ShenandoahBarrierSet;
-}
-
-bool ShenandoahBarrierSet::has_read_prim_array_opt() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_read_prim_barrier() {
-  return false;
-}
-
-bool ShenandoahBarrierSet::has_read_ref_array_opt() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_read_ref_barrier() {
-  return false;
-}
-
-bool ShenandoahBarrierSet::has_read_region_opt() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_write_prim_array_opt() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_write_prim_barrier() {
-  return false;
-}
-
-bool ShenandoahBarrierSet::has_write_ref_array_opt() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_write_ref_barrier() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_write_ref_pre_barrier() {
-  return true;
-}
-
-bool ShenandoahBarrierSet::has_write_region_opt() {
-  return true;
+  return bsn == BarrierSet::Shenandoah;
 }
 
 bool ShenandoahBarrierSet::is_aligned(HeapWord* hw) {
   return true;
 }
 
-void ShenandoahBarrierSet::read_prim_array(MemRegion mr) {
-  Unimplemented();
-}
-
-void ShenandoahBarrierSet::read_prim_field(HeapWord* hw, size_t s){
-  Unimplemented();
-}
-
-bool ShenandoahBarrierSet::read_prim_needs_barrier(HeapWord* hw, size_t s) {
-  return false;
-}
-
-void ShenandoahBarrierSet::read_ref_array(MemRegion mr) {
-  Unimplemented();
-}
-
-void ShenandoahBarrierSet::read_ref_field(void* v) {
-  //    tty->print_cr("read_ref_field: v = "PTR_FORMAT, v);
-  // return *v;
-}
-
-bool ShenandoahBarrierSet::read_ref_needs_barrier(void* v) {
-  Unimplemented();
-  return false;
-}
-
-void ShenandoahBarrierSet::read_region(MemRegion mr) {
-  Unimplemented();
-}
-
 void ShenandoahBarrierSet::resize_covered_region(MemRegion mr) {
   Unimplemented();
-}
-
-void ShenandoahBarrierSet::write_prim_array(MemRegion mr) {
-  Unimplemented();
-}
-
-void ShenandoahBarrierSet::write_prim_field(HeapWord* hw, size_t s , juint x, juint y) {
-  Unimplemented();
-}
-
-bool ShenandoahBarrierSet::write_prim_needs_barrier(HeapWord* hw, size_t s, juint x, juint y) {
-  Unimplemented();
-  return false;
 }
 
 bool ShenandoahBarrierSet::need_update_refs_barrier() {
@@ -198,7 +110,6 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (!need_update_refs_barrier()) return;
 
   if (UseShenandoahMatrix) {
-    assert(! _heap->is_concurrent_traversal_in_progress(), "traversal GC should take another branch");
     if (_heap->is_concurrent_partial_in_progress()) {
       if (UseCompressedOops) {
         write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ true,  /* enqueue = */ false>(start, count);
@@ -229,7 +140,17 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
 
 template <class T>
 void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
-  shenandoah_assert_not_in_cset_loc_except(dst, _heap->cancelled_concgc());
+
+#ifdef ASSERT
+    if (_heap->is_in(dst) &&
+        _heap->in_collection_set(dst) &&
+        ! _heap->cancelled_concgc()) {
+      tty->print_cr("dst = "PTR_FORMAT, p2i(dst));
+      _heap->heap_region_containing((HeapWord*) dst)->print();
+      assert(false, "We should have fixed this earlier");
+    }
+#endif
+
   if (ShenandoahSATBBarrier ||
       (ShenandoahConditionalSATBBarrier && _heap->is_concurrent_mark_in_progress())) {
     T* elem_ptr = dst;
@@ -256,7 +177,22 @@ void ShenandoahBarrierSet::write_ref_array_pre(narrowOop* dst, int count, bool d
 
 template <class T>
 inline void ShenandoahBarrierSet::inline_write_ref_field_pre(T* field, oop new_val) {
-  shenandoah_assert_not_in_cset_loc_except(field, _heap->cancelled_concgc());
+#ifdef ASSERT
+  {
+    if (_heap->is_in(field) &&
+        _heap->in_collection_set(field) &&
+        ! _heap->cancelled_concgc()) {
+      tty->print_cr("field = "PTR_FORMAT, p2i(field));
+      tty->print_cr("in_cset: %s", BOOL_TO_STR(_heap->in_collection_set(field)));
+      _heap->heap_region_containing((HeapWord*)field)->print();
+      tty->print_cr("marking: %s, evacuating: %s",
+                    BOOL_TO_STR(_heap->is_concurrent_mark_in_progress()),
+                    BOOL_TO_STR(_heap->is_evacuation_in_progress()));
+      assert(false, "We should have fixed this earlier");
+    }
+  }
+#endif
+
   if (_heap->is_concurrent_mark_in_progress()) {
     T heap_oop = oopDesc::load_heap_oop(field);
     if (!oopDesc::is_null(heap_oop)) {
@@ -283,9 +219,19 @@ void ShenandoahBarrierSet::write_ref_field_pre_work(void* field, oop new_val) {
 }
 
 void ShenandoahBarrierSet::write_ref_field_work(void* v, oop o, bool release) {
-  shenandoah_assert_not_in_cset_loc_except(v, _heap->cancelled_concgc());
-  shenandoah_assert_not_forwarded_except  (v, o, o == NULL || _heap->cancelled_concgc() || !_heap->is_concurrent_mark_in_progress());
-  shenandoah_assert_not_in_cset_except    (v, o, o == NULL || _heap->cancelled_concgc() || !_heap->is_concurrent_mark_in_progress());
+#ifdef ASSERT
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  if (!(heap->cancelled_concgc() || !heap->in_collection_set(v))) {
+    tty->print_cr("field not in collection set: "PTR_FORMAT, p2i(v));
+    tty->print_cr("containing heap region:");
+    ShenandoahHeap::heap()->heap_region_containing(v)->print();
+  }
+  assert(heap->cancelled_concgc() || !heap->in_collection_set(v), "only write to to-space");
+  if (_heap->is_concurrent_mark_in_progress()) {
+    assert(o == NULL || oopDesc::unsafe_equals(o, resolve_oop_static(o)), "only write to-space values");
+    assert(o == NULL || !heap->in_collection_set(o), "only write to-space values");
+  }
+#endif
 }
 
 void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
@@ -301,7 +247,6 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
   oop obj = oop(mr.start());
   assert(oopDesc::is_oop(obj), "must be an oop");
   if (UseShenandoahMatrix) {
-    assert(! _heap->is_concurrent_traversal_in_progress(), "traversal GC should take another branch");
     if (_heap->is_concurrent_partial_in_progress()) {
       ShenandoahUpdateRefsForOopClosure<true, true, false> cl;
       obj->oop_iterate(&cl);
@@ -323,7 +268,7 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
 
 oop ShenandoahBarrierSet::read_barrier(oop src) {
   if (ShenandoahReadBarrier) {
-    return ShenandoahBarrierSet::resolve_forwarded(src);
+    return ShenandoahBarrierSet::resolve_oop_static(src);
   } else {
     return src;
   }
@@ -333,8 +278,8 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
   bool eq = oopDesc::unsafe_equals(obj1, obj2);
   if (! eq && ShenandoahAcmpBarrier) {
     OrderAccess::loadload();
-    obj1 = resolve_forwarded(obj1);
-    obj2 = resolve_forwarded(obj2);
+    obj1 = resolve_oop_static(obj1);
+    obj2 = resolve_oop_static(obj2);
     eq = oopDesc::unsafe_equals(obj1, obj2);
   }
   return eq;
@@ -344,13 +289,30 @@ bool ShenandoahBarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
   return obj_equals(oopDesc::decode_heap_oop(obj1), oopDesc::decode_heap_oop(obj2));
 }
 
+#ifdef ASSERT
+bool ShenandoahBarrierSet::is_safe(oop o) {
+  if (o == NULL) return true;
+  if (_heap->in_collection_set(o) && ! _heap->cancelled_concgc()) {
+    return false;
+  }
+  if (! oopDesc::unsafe_equals(o, read_barrier(o))) {
+    return false;
+  }
+  return true;
+}
+
+bool ShenandoahBarrierSet::is_safe(narrowOop o) {
+  return is_safe(oopDesc::decode_heap_oop(o));
+}
+#endif
+
 JRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_JRT(oopDesc* src))
-  oop result = ((ShenandoahBarrierSet*)oopDesc::bs())->write_barrier(src);
+  oop result = ((ShenandoahBarrierSet*)BarrierSet::barrier_set())->write_barrier(src);
   return (oopDesc*) result;
 JRT_END
 
 IRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_IRT(oopDesc* src))
-  oop result = ((ShenandoahBarrierSet*)oopDesc::bs())->write_barrier(src);
+  oop result = ((ShenandoahBarrierSet*)BarrierSet::barrier_set())->write_barrier(src);
   return (oopDesc*) result;
 IRT_END
 
@@ -359,7 +321,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   if (!oopDesc::is_null(obj)) {
     bool evac_in_progress = _heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
     OrderAccess::loadload();
-    oop fwd = resolve_forwarded_not_null(obj);
+    oop fwd = resolve_oop_static_not_null(obj);
     if (evac_in_progress &&
         _heap->in_collection_set(obj) &&
         oopDesc::unsafe_equals(obj, fwd)) {
@@ -393,7 +355,7 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
     enqueue(obj);
   }
   if (ShenandoahStoreValReadBarrier) {
-    obj = resolve_forwarded(obj);
+    obj = resolve_oop_static(obj);
   }
   return obj;
 }
@@ -409,16 +371,34 @@ void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
 }
 
 void ShenandoahBarrierSet::enqueue(oop obj) {
-  shenandoah_assert_not_forwarded_if(NULL, obj, ShenandoahHeap::heap()->is_concurrent_traversal_in_progress());
+
+#ifdef ASSERT
+  if (ShenandoahHeap::heap()->is_concurrent_traversal_in_progress()) {
+    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only enqueue to-space oops");
+    assert(!ShenandoahHeap::heap()->in_collection_set(obj), "no cset objects please");
+  }
+#endif
+
   G1SATBCardTableModRefBS::enqueue(obj);
 }
 
 #ifdef ASSERT
 void ShenandoahBarrierSet::verify_safe_oop(oop p) {
-  shenandoah_assert_not_in_cset_except(NULL, p, (p == NULL) || ShenandoahHeap::heap()->cancelled_concgc());
-}
-
-void ShenandoahBarrierSet::verify_safe_oop(narrowOop p) {
-  verify_safe_oop(oopDesc::decode_heap_oop(p));
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  if (p == NULL) return;
+  if (heap->in_collection_set(p) &&
+      ! heap->cancelled_concgc()) {
+    tty->print_cr("oop = "PTR_FORMAT", resolved: "PTR_FORMAT", marked-next %s, marked-complete: %s",
+                  p2i(p),
+                  p2i(read_barrier(p)),
+                  BOOL_TO_STR(heap->is_marked_next(p)),
+                  BOOL_TO_STR(heap->is_marked_complete(p)));
+    tty->print_cr("in_cset: %s", BOOL_TO_STR(heap->in_collection_set(p)));
+    heap->heap_region_containing((HeapWord*) p)->print();
+    tty->print_cr("top-at-mark-start: %p", heap->next_top_at_mark_start((HeapWord*) p));
+    tty->print_cr("top-at-prev-mark-start: %p", heap->complete_top_at_mark_start((HeapWord*) p));
+    tty->print_cr("marking: %s, evacuating: %s", BOOL_TO_STR(heap->is_concurrent_mark_in_progress()), BOOL_TO_STR(heap->is_evacuation_in_progress()));
+    assert(false, "We should have fixed this earlier");
+  }
 }
 #endif

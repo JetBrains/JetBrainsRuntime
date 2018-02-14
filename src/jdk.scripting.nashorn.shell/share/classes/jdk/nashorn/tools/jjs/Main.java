@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -296,10 +296,10 @@ public final class Main extends Shell {
         }
     }
 
-    private static String JAVADOC_BASE = "https://docs.oracle.com/javase/9/docs/api/";
+    private static String JAVADOC_BASE = "https://docs.oracle.com/javase/%d/docs/api/";
     private static void openBrowserForJavadoc(ScriptFunction browse, String relativeUrl) {
         try {
-            final URI uri = new URI(JAVADOC_BASE + relativeUrl);
+            final URI uri = new URI(String.format(JAVADOC_BASE, Runtime.version().feature()) + relativeUrl);
             ScriptRuntime.apply(browse, null, uri);
         } catch (Exception ignored) {
         }

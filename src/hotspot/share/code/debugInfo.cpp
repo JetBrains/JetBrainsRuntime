@@ -28,6 +28,8 @@
 #include "code/nmethod.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/interfaceSupport.hpp"
+#include "runtime/thread.hpp"
 
 // Constructors
 
@@ -221,14 +223,24 @@ void ConstantOopWriteValue::write_on(DebugInfoWriteStream* stream) {
 }
 
 void ConstantOopWriteValue::write_on_impl(DebugInfoWriteStream* stream) {
-  assert(JNIHandles::resolve(value()) == NULL ||
-         Universe::heap()->is_in_reserved(JNIHandles::resolve(value())),
-         "Should be in heap");
+#ifdef ASSERT
+  {
+    // cannot use ThreadInVMfromNative here since in case of JVMCI compiler,
+    // thread is already in VM state.
+    ThreadInVMfromUnknown tiv;
+    assert(JNIHandles::resolve(value()) == NULL ||
+           Universe::heap()->is_in_reserved(JNIHandles::resolve(value())),
+           "Should be in heap");
+ }
+#endif
   stream->write_int(CONSTANT_OOP_CODE);
   stream->write_handle(value());
 }
 
 void ConstantOopWriteValue::print_on(outputStream* st) const {
+  // using ThreadInVMfromUnknown here since in case of JVMCI compiler,
+  // thread is already in VM state.
+  ThreadInVMfromUnknown tiv;
   JNIHandles::resolve(value())->print_value_on(st);
 }
 

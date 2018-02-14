@@ -277,8 +277,16 @@ public:
   virtual int Opcode() const;
 };
 
+//------------------------------CMoveVFNode--------------------------------------
+// Vector float conditional move
+class CMoveVFNode : public VectorNode {
+public:
+  CMoveVFNode(Node* in1, Node* in2, Node* in3, const TypeVect* vt) : VectorNode(in1, in2, in3, vt) {}
+  virtual int Opcode() const;
+};
+
 //------------------------------CMoveVDNode--------------------------------------
-// Vector multiply double
+// Vector double conditional move
 class CMoveVDNode : public VectorNode {
 public:
   CMoveVDNode(Node* in1, Node* in2, Node* in3, const TypeVect* vt) : VectorNode(in1, in2, in3, vt) {}
@@ -370,6 +378,14 @@ class NegVFNode : public VectorNode {
 class NegVDNode : public VectorNode {
  public:
   NegVDNode(Node* in, const TypeVect* vt) : VectorNode(in,vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------SqrtVFNode--------------------------------------
+// Vector Sqrt float
+class SqrtVFNode : public VectorNode {
+ public:
+  SqrtVFNode(Node* in, const TypeVect* vt) : VectorNode(in,vt) {}
   virtual int Opcode() const;
 };
 

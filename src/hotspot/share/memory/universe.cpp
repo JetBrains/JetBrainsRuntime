@@ -32,9 +32,9 @@
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "code/dependencies.hpp"
-#include "gc/serial/serialHeap.hpp"
 #include "gc/shared/cardTableModRefBS.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
+#include "gc/shared/gcArguments.hpp"
 #include "gc/shared/gcLocker.inline.hpp"
 #include "gc/shared/generation.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
@@ -82,16 +82,6 @@
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
 #include "utilities/preserveException.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
-#include "gc/cms/cmsCollectorPolicy.hpp"
-#include "gc/cms/cmsHeap.hpp"
-#include "gc/g1/g1CollectedHeap.inline.hpp"
-#include "gc/g1/g1CollectorPolicy.hpp"
-#include "gc/parallel/parallelScavengeHeap.hpp"
-#include "gc/shared/adaptiveSizePolicy.hpp"
-#endif // INCLUDE_ALL_GCS
 #if INCLUDE_CDS
 #include "classfile/sharedClassUtil.hpp"
 #endif
@@ -697,6 +687,10 @@ jint universe_init() {
 
   Metaspace::global_initialize();
 
+  // Initialize performance counters for metaspaces
+  MetaspaceCounters::initialize_performance_counters();
+  CompressedClassSpaceCounters::initialize_performance_counters();
+
   AOTLoader::universe_init();
 
   // Checks 'AfterMemoryInit' constraints.
@@ -748,32 +742,8 @@ jint universe_init() {
 
 CollectedHeap* Universe::create_heap() {
   assert(_collectedHeap == NULL, "Heap already created");
-#if !INCLUDE_ALL_GCS
-  if (UseParallelGC) {
-    fatal("UseParallelGC not supported in this VM.");
-  } else if (UseG1GC) {
-    fatal("UseG1GC not supported in this VM.");
-  } else if (UseConcMarkSweepGC) {
-    fatal("UseConcMarkSweepGC not supported in this VM.");
-  } else if (UseShenandoahGC) {
-    fatal("UseShenandoahGC not supported in this VM.");
-  }
-#else
-  if (UseParallelGC) {
-    return Universe::create_heap_with_policy<ParallelScavengeHeap, GenerationSizer>();
-  } else if (UseG1GC) {
-    return Universe::create_heap_with_policy<G1CollectedHeap, G1CollectorPolicy>();
-  } else if (UseConcMarkSweepGC) {
-    return Universe::create_heap_with_policy<CMSHeap, ConcurrentMarkSweepPolicy>();
-  } else if (UseShenandoahGC) {
-    return Universe::create_heap_with_policy<ShenandoahHeap, ShenandoahCollectorPolicy>();
-#endif
-  } else if (UseSerialGC) {
-    return Universe::create_heap_with_policy<SerialHeap, MarkSweepPolicy>();
-  }
-
-  ShouldNotReachHere();
-  return NULL;
+  assert(GCArguments::is_initialized(), "GC must be initialized here");
+  return GCArguments::arguments()->create_heap();
 }
 
 // Choose the heap base address and oop encoding mode
@@ -798,6 +768,7 @@ jint Universe::initialize_heap() {
   }
   log_info(gc)("Using %s", _collectedHeap->name());
 
+  GCArguments::arguments()->post_heap_initialize();
   ThreadLocalAllocBuffer::set_max_size(Universe::heap()->max_tlab_size());
 
 #ifdef _LP64
@@ -886,7 +857,7 @@ ReservedSpace Universe::reserve_heap(size_t heap_size, size_t alignment) {
       || use_large_pages, "Wrong alignment to use large pages");
 
   // Now create the space.
-  ReservedHeapSpace total_rs(total_reserved, alignment, use_large_pages);
+  ReservedHeapSpace total_rs(total_reserved, alignment, use_large_pages, AllocateHeapAt);
 
   if (total_rs.is_reserved()) {
     assert((total_reserved == total_rs.size()) && ((uintptr_t)total_rs.base() % alignment == 0),
@@ -900,6 +871,9 @@ ReservedSpace Universe::reserve_heap(size_t heap_size, size_t alignment) {
       Universe::set_narrow_oop_base((address)total_rs.compressed_oop_base());
     }
 
+    if (AllocateHeapAt != NULL) {
+      log_info(gc,heap)("Successfully allocated Java heap at location %s", AllocateHeapAt);
+    }
     return total_rs;
   }
 
@@ -1118,10 +1092,6 @@ bool universe_post_init() {
 
   // ("weak") refs processing infrastructure initialization
   Universe::heap()->post_initialize();
-
-  // Initialize performance counters for metaspaces
-  MetaspaceCounters::initialize_performance_counters();
-  CompressedClassSpaceCounters::initialize_performance_counters();
 
   MemoryService::add_metaspace_memory_pools();
 

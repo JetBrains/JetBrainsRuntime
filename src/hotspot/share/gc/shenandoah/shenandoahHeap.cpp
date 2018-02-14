@@ -42,6 +42,7 @@
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
+#include "gc/shenandoah/shenandoahMemoryPool.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
@@ -64,7 +65,9 @@ void ShenandoahAssertToSpaceClosure::do_oop_nv(T* p) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
-    shenandoah_assert_not_forwarded(p, obj);
+    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)),
+           "need to-space object here obj: "PTR_FORMAT" , rb(obj): "PTR_FORMAT", p: "PTR_FORMAT,
+           p2i(obj), p2i(ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), p2i(p));
   }
 }
 
@@ -363,7 +366,11 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
 #endif
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
   _phase_timings(NULL),
-  _alloc_tracker(NULL)
+  _alloc_tracker(NULL),
+  _minor_memory_manager("Shenandoah Minor", "end of minor GC"),
+  _major_memory_manager("Shenandoah Major", "end of major GC"),
+  _memory_pool(NULL),
+  _dummy_pool(NULL)
 {
   log_info(gc, init)("Parallel GC threads: "UINT32_FORMAT, ParallelGCThreads);
   log_info(gc, init)("Concurrent GC threads: "UINT32_FORMAT, ConcGCThreads);
@@ -534,6 +541,7 @@ public:
 };
 
 void ShenandoahHeap::post_initialize() {
+  CollectedHeap::post_initialize();
   if (UseTLAB) {
     MutexLocker ml(Threads_lock);
 
@@ -805,8 +813,9 @@ private:
     if (! oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
       if (_heap->in_collection_set(obj)) {
-        shenandoah_assert_marked_complete(p, obj);
-        oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+        assert(_heap->is_marked_complete(obj), "only evacuate marked objects %d %d",
+               _heap->is_marked_complete(obj), _heap->is_marked_complete(ShenandoahBarrierSet::resolve_oop_static_not_null(obj)));
+        oop resolved = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
           bool evac;
           resolved = _heap->evacuate_object(obj, _thread, evac);
@@ -841,7 +850,7 @@ private:
     if (! oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
       if (_heap->in_collection_set(obj)) {
-        oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+        oop resolved = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
           bool evac;
           _heap->evacuate_object(obj, _thread, evac);
@@ -868,8 +877,8 @@ public:
     _heap(heap), _thread(Thread::current()) {}
 
   void do_object(oop p) {
-    shenandoah_assert_marked_complete(NULL, p);
-    if (oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_forwarded_not_null(p))) {
+    assert(_heap->is_marked_complete(p), "expect only marked objects");
+    if (oopDesc::unsafe_equals(p, ShenandoahBarrierSet::resolve_oop_static_not_null(p))) {
       bool evac;
       _heap->evacuate_object(p, _thread, evac);
     }
@@ -1324,7 +1333,7 @@ private:
     T o = oopDesc::load_heap_oop(p);
     if (!oopDesc::is_null(o)) {
       oop obj = oopDesc::decode_heap_oop_not_null(o);
-      obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+      obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
       assert(oopDesc::is_oop(obj), "must be a valid oop");
       if (!_bitmap->isMarked((HeapWord*) obj)) {
         _bitmap->mark((HeapWord*) obj);
@@ -1838,9 +1847,16 @@ bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
     // for the NULL is the best we can do.
     return true;
   }
+  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)) ||
+         (!_heap->is_marked_next(obj)), "from-space obj must not be marked");
 
-  obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
-  shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress())
+  obj = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+#ifdef ASSERT
+  if (_heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress()) {
+    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
+  }
+#endif
+  assert(!oopDesc::is_null(obj), "null");
   return _heap->is_marked_next(obj);
 }
 
@@ -1859,7 +1875,8 @@ bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
     // for the NULL is the best we can do.
     return true;
   }
-  shenandoah_assert_not_forwarded(NULL, obj);
+  assert(!oopDesc::is_null(obj), "null");
+  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "only query to-space");
   return _heap->is_marked_next(obj);
 }
 
@@ -2071,10 +2088,6 @@ address ShenandoahHeap::cancelled_concgc_addr() {
 
 address ShenandoahHeap::gc_state_addr() {
   return (address) ShenandoahHeap::heap()->_gc_state.addr_of();
-}
-
-size_t ShenandoahHeap::conservative_max_heap_alignment() {
-  return ShenandoahMaxRegionSize;
 }
 
 size_t ShenandoahHeap::bytes_allocated_since_cm() {
@@ -2595,7 +2608,7 @@ void ShenandoahHeap::vmop_entry_full(GCCause::Cause cause) {
   TraceCollectorStats tcs(monitoring_support()->full_stw_collection_counters());
   ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_gross);
-  TraceMemoryManagerStats tmms(true, cause);
+  TraceMemoryManagerStats tmms(major_memory_manager(), cause);
 
   try_inject_alloc_failure();
   VM_ShenandoahFullGC op(cause);
@@ -2825,4 +2838,26 @@ void ShenandoahHeap::try_inject_alloc_failure() {
 
 bool ShenandoahHeap::should_inject_alloc_failure() {
   return _inject_alloc_failure.is_set() && _inject_alloc_failure.try_unset();
+}
+
+void ShenandoahHeap::initialize_serviceability() {
+  _memory_pool = new ShenandoahMemoryPool(this);
+  _major_memory_manager.add_pool(_memory_pool);
+
+  _dummy_pool = new ShenandoahDummyMemoryPool();
+  _minor_memory_manager.add_pool(_dummy_pool);
+}
+
+GrowableArray<GCMemoryManager*> ShenandoahHeap::memory_managers() {
+  GrowableArray<GCMemoryManager*> memory_managers(2);
+  memory_managers.append(&_major_memory_manager);
+  memory_managers.append(&_minor_memory_manager);
+  return memory_managers;
+}
+
+GrowableArray<MemoryPool*> ShenandoahHeap::memory_pools() {
+  GrowableArray<MemoryPool*> memory_pools(2);
+  memory_pools.append(_memory_pool);
+  memory_pools.append(_dummy_pool);
+  return memory_pools;
 }

@@ -105,6 +105,21 @@ public interface DocTreeVisitor<R,P> {
     R visitDocRoot(DocRootTree node, P p);
 
     /**
+     * Visits a DocTypeTree node.
+     *
+     * @implSpec Visits a {@code DocTypeTree} node
+     * by calling {@code visitOther(node, p)}.
+     *
+     * @param node the node being visited
+     * @param p    a parameter value
+     * @return a result value
+     * @since 10
+     */
+    default R visitDocType(DocTypeTree node, P p) {
+        return visitOther(node, p);
+    }
+
+    /**
      * Visits an EndElementTree node.
      * @param node the node being visited
      * @param p a parameter value
@@ -130,11 +145,19 @@ public interface DocTreeVisitor<R,P> {
 
     /**
      * Visits a HiddenTree node.
+     *
+     * @implSpec Visits a {@code HiddenTree} node
+     * by calling {@code visitOther(node, p)}.
+     *
      * @param node the node being visited
      * @param p a parameter value
      * @return a result value
+     *
+     * @since 9
      */
-    R visitHidden(HiddenTree node, P p);
+    default R visitHidden(HiddenTree node, P p)  {
+        return visitOther(node, p);
+    }
 
     /**
      * Visits an IdentifierTree node.
@@ -146,11 +169,19 @@ public interface DocTreeVisitor<R,P> {
 
     /**
      * Visits an IndexTree node.
+     *
+     * @implSpec Visits an {@code IndexTree} node
+     * by calling {@code visitOther(node, p)}.
+     *
      * @param node the node being visited
      * @param p a parameter value
      * @return a result value
+     *
+     * @since 9
      */
-    R visitIndex(IndexTree node, P p);
+    default R visitIndex(IndexTree node, P p) {
+        return visitOther(node, p);
+    }
 
     /**
      * Visits an InheritDocTree node.
@@ -186,11 +217,19 @@ public interface DocTreeVisitor<R,P> {
 
     /**
      * Visits a ProvidesTree node.
+     *
+     * @implSpec Visits a {@code ProvidesTree} node
+     * by calling {@code visitOther(node, p)}.
+     *
      * @param node the node being visited
      * @param p a parameter value
      * @return a result value
+     *
+     * @since 9
      */
-    R visitProvides(ProvidesTree node, P p);
+    default R visitProvides(ProvidesTree node, P p) {
+        return visitOther(node, p);
+    }
 
     /**
      * Visits a ReferenceTree node.
@@ -267,7 +306,9 @@ public interface DocTreeVisitor<R,P> {
      * @return a result value
      * @since 10
      */
-    default R visitSummary(SummaryTree node, P p) { return visitOther(node, p);}
+    default R visitSummary(SummaryTree node, P p) {
+        return visitOther(node, p);
+    }
 
     /**
      * Visits a TextTree node.
@@ -303,11 +344,19 @@ public interface DocTreeVisitor<R,P> {
 
     /**
      * Visits a UsesTree node.
+     *
+     * @implSpec Visits a {@code UsesTree} node
+     * by calling {@code visitOther(node, p)}.
+     *
      * @param node the node being visited
      * @param p a parameter value
      * @return a result value
+     *
+     * @since 9
      */
-    R visitUses(UsesTree node, P p);
+    default R visitUses(UsesTree node, P p) {
+        return visitOther(node, p);
+    }
 
     /**
      * Visits a ValueTree node.

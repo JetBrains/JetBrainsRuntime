@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,7 @@
 
 /*
  * @test
- * @bug 8153142
+ * @bug 8153142 8195138
  * @modules jdk.incubator.httpclient
  *          jdk.httpserver
  * @run testng/othervm HeadersTest1
@@ -95,16 +95,34 @@ public class HeadersTest1 {
             assertTrue(v1.isEmpty(), String.valueOf(v1));
             TestKit.assertUnmodifiableList(v1);
 
-            List<String> v2 = hd.allValues("X-Foo-Response");
-            assertNotNull(v2);
-            assertEquals(new HashSet<>(v2), Set.of("resp1", "resp2"));
-            TestKit.assertUnmodifiableList(v2);
+            // case insensitive
+            List<String> headernames = List.of("X-Foo-Response",
+                                               "x-foo-Response",
+                                               "x-fOo-REspoNse");
+            for (String headerName : headernames) {
+                List<String> v2 = hd.allValues(headerName);
+                assertNotNull(v2);
+                assertEquals(new HashSet<>(v2), Set.of("resp1", "resp2"));
+                TestKit.assertUnmodifiableList(v2);
+            }
 
             Map<String, List<String>> map = hd.map();
             TestKit.assertUnmodifiableMap(map);
             for (List<String> values : map.values()) {
                 TestKit.assertUnmodifiableList(values);
             }
+
+            // toString
+            assertTrue(hd.toString().toLowerCase().contains("content-length"));
+            assertTrue(hd.toString().toLowerCase().contains("x-foo-response"));
+            assertTrue(hd.toString().toLowerCase().contains("x-multi-line-response"));
+
+            // multi-line
+            List<String> multiline = hd.allValues("x-multi-line-response");
+            assertTrue(multiline.get(0).startsWith("Custom "));
+            assertTrue(multiline.get(0).contains(" foo=\"bar\""));
+            assertTrue(multiline.get(0).contains(" bar=\"foo\""));
+            assertTrue(multiline.get(0).contains(" foobar=\"barfoo\""));
         } finally {
             server.stop(0);
             e.shutdownNow();
@@ -128,6 +146,9 @@ public class HeadersTest1 {
             Headers h = he.getResponseHeaders();
             h.add("X-Foo-Response", "resp1");
             h.add("X-Foo-Response", "resp2");
+            h.add("X-multi-line-response", "Custom foo=\"bar\","
+                    + "\r\n    bar=\"foo\","
+                    + "\r\n    foobar=\"barfoo\"");
             he.sendResponseHeaders(200, RESPONSE.length());
             OutputStream os = he.getResponseBody();
             os.write(RESPONSE.getBytes(US_ASCII));

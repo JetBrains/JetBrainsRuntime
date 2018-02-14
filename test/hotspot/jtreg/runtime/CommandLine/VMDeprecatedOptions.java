@@ -46,6 +46,11 @@ public class VMDeprecatedOptions {
         {"MinRAMFraction",            "2"},
         {"InitialRAMFraction",        "64"},
         {"AssumeMP",                  "false"},
+        {"UseMembar",                 "true"},
+        {"FastTLABRefill",            "false"},
+        {"DeferPollingPageLoopCount", "-1"},
+        {"SafepointSpinBeforeYield",  "2000"},
+        {"DeferThrSuspendLoopCount",  "4000"},
 
         // deprecated alias flags (see also aliased_jvm_flags):
         {"DefaultMaxRAMFraction", "4"},
@@ -88,9 +93,23 @@ public class VMDeprecatedOptions {
         output.shouldMatch(match);
     }
 
+    // Deprecated experimental command line options need to be preceded on the
+    // command line by -XX:+UnlockExperimentalVMOption.
+    static void testDeprecatedExperimental(String option, String value)  throws Throwable {
+        String XXoption = CommandLineOptionTest.prepareFlag(option, value);
+        ProcessBuilder processBuilder = ProcessTools.createJavaProcessBuilder(
+            CommandLineOptionTest.UNLOCK_EXPERIMENTAL_VM_OPTIONS, XXoption, "-version");
+        OutputAnalyzer output = new OutputAnalyzer(processBuilder.start());
+        // check for option deprecation message:
+        output.shouldHaveExitValue(0);
+        String match = getDeprecationString(option);
+        output.shouldMatch(match);
+    }
+
     public static void main(String[] args) throws Throwable {
         testDeprecated(DEPRECATED_OPTIONS);  // Make sure that each deprecated option is mentioned in the output.
         testDeprecatedDiagnostic("UnsyncloadClass", "false");
         testDeprecatedDiagnostic("IgnoreUnverifiableClassesDuringDump", "false");
+        testDeprecatedExperimental("UseCGroupMemoryLimitForHeap", "true");
     }
 }

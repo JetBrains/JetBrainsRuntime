@@ -29,6 +29,7 @@
 #include "classfile/vmSymbols.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/access.inline.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "oops/oop.inline.hpp"
@@ -38,6 +39,8 @@
 #include "runtime/interfaceSupport.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/reflection.hpp"
+#include "runtime/thread.hpp"
+#include "runtime/threadSMR.hpp"
 #include "runtime/vm_version.hpp"
 #include "services/threadService.hpp"
 #include "trace/tracing.hpp"
@@ -97,10 +100,10 @@ static inline jlong field_offset_from_byte_offset(jlong byte_offset) {
   return byte_offset;
 }
 
-static inline void* index_oop_from_field_offset_long(oop p, jlong field_offset) {
+static inline void assert_field_offset_sane(oop p, jlong field_offset) {
+#ifdef ASSERT
   jlong byte_offset = field_offset_to_byte_offset(field_offset);
 
-#ifdef ASSERT
   if (p != NULL) {
     assert(byte_offset >= 0 && byte_offset <= (jlong)MAX_OBJECT_SIZE, "sane offset");
     if (byte_offset == (jint)byte_offset) {
@@ -112,6 +115,11 @@ static inline void* index_oop_from_field_offset_long(oop p, jlong field_offset) 
     assert(byte_offset < p_size, "Unsafe access: offset " INT64_FORMAT " > object's size " INT64_FORMAT, (int64_t)byte_offset, (int64_t)p_size);
   }
 #endif
+}
+
+static inline void* index_oop_from_field_offset_long(oop p, jlong field_offset) {
+  assert_field_offset_sane(p, field_offset);
+  jlong byte_offset = field_offset_to_byte_offset(field_offset);
 
   if (sizeof(char*) == sizeof(jint)) {   // (this constant folds!)
     return (address)p + (jint) byte_offset;
@@ -138,22 +146,25 @@ jlong Unsafe_field_offset_from_byte_offset(jlong byte_offset) {
  * Normalizes values and wraps accesses in
  * JavaThread::doing_unsafe_access() if needed.
  */
+template <typename T>
 class MemoryAccess : StackObj {
   JavaThread* _thread;
-  jobject _obj;
-  jlong _offset;
+  oop _obj;
+  ptrdiff_t _offset;
 
-  // Resolves and returns the address of the memory access
-  void* get_addr() {
-    return index_oop_from_field_offset_long(oopDesc::bs()->read_barrier(JNIHandles::resolve(_obj)), _offset);
+  // Resolves and returns the address of the memory access.
+  // This raw memory access may fault, so we make sure it happens within the
+  // guarded scope by making the access volatile at least. Since the store
+  // of Thread::set_doing_unsafe_access() is also volatile, these accesses
+  // can not be reordered by the compiler. Therefore, if the access triggers
+  // a fault, we will know that Thread::doing_unsafe_access() returns true.
+  volatile T* addr() {
+    void* addr = index_oop_from_field_offset_long(_obj, _offset);
+    return static_cast<volatile T*>(addr);
   }
 
-  void* put_addr() {
-    return index_oop_from_field_offset_long(oopDesc::bs()->write_barrier(JNIHandles::resolve(_obj)), _offset);
-  }
-
-  template <typename T>
-  T normalize_for_write(T x) {
+  template <typename U>
+  U normalize_for_write(U x) {
     return x;
   }
 
@@ -161,8 +172,8 @@ class MemoryAccess : StackObj {
     return x & 1;
   }
 
-  template <typename T>
-  T normalize_for_read(T x) {
+  template <typename U>
+  U normalize_for_read(U x) {
     return x;
   }
 
@@ -175,258 +186,103 @@ class MemoryAccess : StackObj {
    */
   class GuardUnsafeAccess {
     JavaThread* _thread;
-    bool _active;
 
   public:
-    GuardUnsafeAccess(JavaThread* thread, jobject _obj) : _thread(thread) {
-      if (JNIHandles::resolve(_obj) == NULL) {
-        // native/off-heap access which may raise SIGBUS if accessing
-        // memory mapped file data in a region of the file which has
-        // been truncated and is now invalid
-        _thread->set_doing_unsafe_access(true);
-        _active = true;
-      } else {
-        _active = false;
-      }
+    GuardUnsafeAccess(JavaThread* thread) : _thread(thread) {
+      // native/off-heap access which may raise SIGBUS if accessing
+      // memory mapped file data in a region of the file which has
+      // been truncated and is now invalid
+      _thread->set_doing_unsafe_access(true);
     }
 
     ~GuardUnsafeAccess() {
-      if (_active) {
-        _thread->set_doing_unsafe_access(false);
-      }
+      _thread->set_doing_unsafe_access(false);
     }
   };
 
 public:
   MemoryAccess(JavaThread* thread, jobject obj, jlong offset)
-    : _thread(thread), _obj(obj), _offset(offset) {
+    : _thread(thread), _obj(JNIHandles::resolve(obj)), _offset((ptrdiff_t)offset) {
+    assert_field_offset_sane(_obj, offset);
   }
 
-  template <typename T>
   T get() {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    T* p = (T*)get_addr();
-
-    T x = normalize_for_read(*p);
-
-    return x;
+    if (oopDesc::is_null(_obj)) {
+      GuardUnsafeAccess guard(_thread);
+      T ret = RawAccess<>::load(addr());
+      return normalize_for_read(ret);
+    } else {
+      T ret = HeapAccess<>::load_at(_obj, _offset);
+      return normalize_for_read(ret);
+    }
   }
 
-  template <typename T>
   void put(T x) {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    T* p = (T*)put_addr();
-
-    *p = normalize_for_write(x);
+    if (oopDesc::is_null(_obj)) {
+      GuardUnsafeAccess guard(_thread);
+      RawAccess<>::store(addr(), normalize_for_write(x));
+    } else {
+      HeapAccess<>::store_at(_obj, _offset, normalize_for_write(x));
+    }
   }
 
 
-  template <typename T>
   T get_volatile() {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    T* p = (T*)get_addr();
-
-    if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
-      OrderAccess::fence();
+    if (oopDesc::is_null(_obj)) {
+      GuardUnsafeAccess guard(_thread);
+      volatile T ret = RawAccess<MO_SEQ_CST>::load(addr());
+      return normalize_for_read(ret);
+    } else {
+      T ret = HeapAccess<MO_SEQ_CST>::load_at(_obj, _offset);
+      return normalize_for_read(ret);
     }
-
-    T x = OrderAccess::load_acquire((volatile T*)p);
-
-    return normalize_for_read(x);
   }
 
-  template <typename T>
   void put_volatile(T x) {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    T* p = (T*)put_addr();
-
-    OrderAccess::release_store_fence((volatile T*)p, normalize_for_write(x));
-  }
-
-
-#ifndef SUPPORTS_NATIVE_CX8
-  jlong get_jlong_locked() {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
-
-    jlong* p = (jlong*)get_addr();
-
-    jlong x = Atomic::load(p);
-
-    return x;
-  }
-
-  void put_jlong_locked(jlong x) {
-    GuardUnsafeAccess guard(_thread, _obj);
-
-    MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
-
-    jlong* p = (jlong*)put_addr();
-
-    Atomic::store(normalize_for_write(x),  p);
-  }
-#endif
-};
-
-// Get/PutObject must be special-cased, since it works with handles.
-
-// We could be accessing the referent field in a reference
-// object. If G1 is enabled then we need to register non-null
-// referent with the SATB barrier.
-
-#if INCLUDE_ALL_GCS
-static bool is_java_lang_ref_Reference_access(oop o, jlong offset) {
-  if (offset == java_lang_ref_Reference::referent_offset && o != NULL) {
-    Klass* k = o->klass();
-    if (InstanceKlass::cast(k)->reference_type() != REF_NONE) {
-      assert(InstanceKlass::cast(k)->is_subclass_of(SystemDictionary::Reference_klass()), "sanity");
-      return true;
+    if (oopDesc::is_null(_obj)) {
+      GuardUnsafeAccess guard(_thread);
+      RawAccess<MO_SEQ_CST>::store(addr(), normalize_for_write(x));
+    } else {
+      HeapAccess<MO_SEQ_CST>::store_at(_obj, _offset, normalize_for_write(x));
     }
   }
-  return false;
-}
-#endif
-
-static void ensure_satb_referent_alive(oop o, jlong offset, oop v) {
-#if INCLUDE_ALL_GCS
-  if (v != NULL && is_java_lang_ref_Reference_access(o, offset)) {
-    oopDesc::bs()->keep_alive_barrier(v);
-  }
-#endif
-}
+};
 
 // These functions allow a null base pointer with an arbitrary address.
 // But if the base pointer is non-null, the offset should make some sense.
 // That is, it should be in the range [0, MAX_OBJECT_SIZE].
 UNSAFE_ENTRY(jobject, Unsafe_GetObject(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) {
   oop p = JNIHandles::resolve(obj);
-  p = oopDesc::bs()->read_barrier(p);
-  oop v;
-
-  if (UseCompressedOops) {
-    narrowOop n = *(narrowOop*)index_oop_from_field_offset_long(p, offset);
-    v = oopDesc::decode_heap_oop(n);
-  } else {
-    v = *(oop*)index_oop_from_field_offset_long(p, offset);
-  }
-
-  ensure_satb_referent_alive(p, offset, v);
-
+  assert_field_offset_sane(p, offset);
+  oop v = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_load_at(p, offset);
   return JNIHandles::make_local(env, v);
 } UNSAFE_END
 
 UNSAFE_ENTRY(void, Unsafe_PutObject(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jobject x_h)) {
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
-
-  x = oopDesc::bs()->storeval_barrier(x);
-  p = oopDesc::bs()->write_barrier(p);
-
-  if (UseCompressedOops) {
-    oop_store((narrowOop*)index_oop_from_field_offset_long(p, offset), x);
-  } else {
-    oop_store((oop*)index_oop_from_field_offset_long(p, offset), x);
-  }
+  assert_field_offset_sane(p, offset);
+  HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(p, offset, x);
 } UNSAFE_END
 
 UNSAFE_ENTRY(jobject, Unsafe_GetObjectVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) {
   oop p = JNIHandles::resolve(obj);
-  p = oopDesc::bs()->read_barrier(p);
-  void* addr = index_oop_from_field_offset_long(p, offset);
-
-  volatile oop v;
-
-  if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
-    OrderAccess::fence();
-  }
-
-  if (UseCompressedOops) {
-    volatile narrowOop n = *(volatile narrowOop*) addr;
-    (void)const_cast<oop&>(v = oopDesc::decode_heap_oop(n));
-  } else {
-    (void)const_cast<oop&>(v = *(volatile oop*) addr);
-  }
-
-  ensure_satb_referent_alive(p, offset, v);
-
-  OrderAccess::acquire();
+  assert_field_offset_sane(p, offset);
+  oop v = HeapAccess<MO_SEQ_CST | ON_UNKNOWN_OOP_REF>::oop_load_at(p, offset);
   return JNIHandles::make_local(env, v);
 } UNSAFE_END
 
 UNSAFE_ENTRY(void, Unsafe_PutObjectVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jobject x_h)) {
   oop x = JNIHandles::resolve(x_h);
   oop p = JNIHandles::resolve(obj);
-  x = oopDesc::bs()->storeval_barrier(x);
-  p = oopDesc::bs()->write_barrier(p);
-  void* addr = index_oop_from_field_offset_long(p, offset);
-  OrderAccess::release();
-
-  if (UseCompressedOops) {
-    oop_store((narrowOop*)addr, x);
-  } else {
-    oop_store((oop*)addr, x);
-  }
-
-  OrderAccess::fence();
+  assert_field_offset_sane(p, offset);
+  HeapAccess<MO_SEQ_CST | ON_UNKNOWN_OOP_REF>::oop_store_at(p, offset, x);
 } UNSAFE_END
 
 UNSAFE_ENTRY(jobject, Unsafe_GetUncompressedObject(JNIEnv *env, jobject unsafe, jlong addr)) {
   oop v = *(oop*) (address) addr;
-
   return JNIHandles::make_local(env, v);
 } UNSAFE_END
-
-#ifndef SUPPORTS_NATIVE_CX8
-
-// VM_Version::supports_cx8() is a surrogate for 'supports atomic long memory ops'.
-//
-// On platforms which do not support atomic compare-and-swap of jlong (8 byte)
-// values we have to use a lock-based scheme to enforce atomicity. This has to be
-// applied to all Unsafe operations that set the value of a jlong field. Even so
-// the compareAndSetLong operation will not be atomic with respect to direct stores
-// to the field from Java code. It is important therefore that any Java code that
-// utilizes these Unsafe jlong operations does not perform direct stores. To permit
-// direct loads of the field from Java code we must also use Atomic::store within the
-// locked regions. And for good measure, in case there are direct stores, we also
-// employ Atomic::load within those regions. Note that the field in question must be
-// volatile and so must have atomic load/store accesses applied at the Java level.
-//
-// The locking scheme could utilize a range of strategies for controlling the locking
-// granularity: from a lock per-field through to a single global lock. The latter is
-// the simplest and is used for the current implementation. Note that the Java object
-// that contains the field, can not, in general, be used for locking. To do so can lead
-// to deadlocks as we may introduce locking into what appears to the Java code to be a
-// lock-free path.
-//
-// As all the locked-regions are very short and themselves non-blocking we can treat
-// them as leaf routines and elide safepoint checks (ie we don't perform any thread
-// state transitions even when blocking for the lock). Note that if we do choose to
-// add safepoint checks and thread state transitions, we must ensure that we calculate
-// the address of the field _after_ we have acquired the lock, else the object may have
-// been moved by the GC
-
-UNSAFE_ENTRY(jlong, Unsafe_GetLongVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) {
-  if (VM_Version::supports_cx8()) {
-    return MemoryAccess(thread, obj, offset).get_volatile<jlong>();
-  } else {
-    return MemoryAccess(thread, obj, offset).get_jlong_locked();
-  }
-} UNSAFE_END
-
-UNSAFE_ENTRY(void, Unsafe_PutLongVolatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jlong x)) {
-  if (VM_Version::supports_cx8()) {
-    MemoryAccess(thread, obj, offset).put_volatile<jlong>(x);
-  } else {
-    MemoryAccess(thread, obj, offset).put_jlong_locked(x);
-  }
-} UNSAFE_END
-
-#endif // not SUPPORTS_NATIVE_CX8
 
 UNSAFE_LEAF(jboolean, Unsafe_isBigEndian0(JNIEnv *env, jobject unsafe)) {
 #ifdef VM_LITTLE_ENDIAN
@@ -443,11 +299,11 @@ UNSAFE_LEAF(jint, Unsafe_unalignedAccess0(JNIEnv *env, jobject unsafe)) {
 #define DEFINE_GETSETOOP(java_type, Type) \
  \
 UNSAFE_ENTRY(java_type, Unsafe_Get##Type(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) { \
-  return MemoryAccess(thread, obj, offset).get<java_type>(); \
+  return MemoryAccess<java_type>(thread, obj, offset).get(); \
 } UNSAFE_END \
  \
 UNSAFE_ENTRY(void, Unsafe_Put##Type(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, java_type x)) { \
-  MemoryAccess(thread, obj, offset).put<java_type>(x); \
+  MemoryAccess<java_type>(thread, obj, offset).put(x); \
 } UNSAFE_END \
  \
 // END DEFINE_GETSETOOP.
@@ -466,11 +322,11 @@ DEFINE_GETSETOOP(jdouble, Double);
 #define DEFINE_GETSETOOP_VOLATILE(java_type, Type) \
  \
 UNSAFE_ENTRY(java_type, Unsafe_Get##Type##Volatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) { \
-  return MemoryAccess(thread, obj, offset).get_volatile<java_type>(); \
+  return MemoryAccess<java_type>(thread, obj, offset).get_volatile(); \
 } UNSAFE_END \
  \
 UNSAFE_ENTRY(void, Unsafe_Put##Type##Volatile(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, java_type x)) { \
-  MemoryAccess(thread, obj, offset).put_volatile<java_type>(x); \
+  MemoryAccess<java_type>(thread, obj, offset).put_volatile(x); \
 } UNSAFE_END \
  \
 // END DEFINE_GETSETOOP_VOLATILE.
@@ -480,12 +336,9 @@ DEFINE_GETSETOOP_VOLATILE(jbyte, Byte)
 DEFINE_GETSETOOP_VOLATILE(jshort, Short);
 DEFINE_GETSETOOP_VOLATILE(jchar, Char);
 DEFINE_GETSETOOP_VOLATILE(jint, Int);
+DEFINE_GETSETOOP_VOLATILE(jlong, Long);
 DEFINE_GETSETOOP_VOLATILE(jfloat, Float);
 DEFINE_GETSETOOP_VOLATILE(jdouble, Double);
-
-#ifdef SUPPORTS_NATIVE_CX8
-DEFINE_GETSETOOP_VOLATILE(jlong, Long);
-#endif
 
 #undef DEFINE_GETSETOOP_VOLATILE
 
@@ -537,7 +390,7 @@ UNSAFE_ENTRY(void, Unsafe_SetMemory0(JNIEnv *env, jobject unsafe, jobject obj, j
   size_t sz = (size_t)size;
 
   oop base = JNIHandles::resolve(obj);
-  base = oopDesc::bs()->write_barrier(base);
+  base = BarrierSet::barrier_set()->write_barrier(base);
   void* p = index_oop_from_field_offset_long(base, offset);
 
   Copy::fill_to_memory_atomic(p, sz, value);
@@ -549,8 +402,8 @@ UNSAFE_ENTRY(void, Unsafe_CopyMemory0(JNIEnv *env, jobject unsafe, jobject srcOb
   oop srcp = JNIHandles::resolve(srcObj);
   oop dstp = JNIHandles::resolve(dstObj);
 
-  srcp = oopDesc::bs()->read_barrier(srcp);
-  dstp = oopDesc::bs()->write_barrier(dstp);
+  srcp = BarrierSet::barrier_set()->read_barrier(srcp);
+  dstp = BarrierSet::barrier_set()->write_barrier(dstp);
 
   void* src = index_oop_from_field_offset_long(srcp, srcOffset);
   void* dst = index_oop_from_field_offset_long(dstp, dstOffset);
@@ -907,7 +760,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
   // caller responsible to free it:
   *temp_alloc = class_bytes;
 
-  jbyte* array_base = typeArrayOop(oopDesc::bs()->read_barrier(JNIHandles::resolve_non_null(data)))->byte_at_addr(0);
+  jbyte* array_base = typeArrayOop(BarrierSet::barrier_set()->read_barrier(JNIHandles::resolve_non_null(data)))->byte_at_addr(0);
   Copy::conjoint_jbytes(array_base, class_bytes, length);
 
   objArrayHandle cp_patches_h;
@@ -1013,116 +866,62 @@ UNSAFE_ENTRY(jobject, Unsafe_CompareAndExchangeObject(JNIEnv *env, jobject unsaf
   oop x = JNIHandles::resolve(x_h);
   oop e = JNIHandles::resolve(e_h);
   oop p = JNIHandles::resolve(obj);
-
-  p = oopDesc::bs()->write_barrier(p);
-  x = oopDesc::bs()->storeval_barrier(x);
-
-  HeapWord* addr = (HeapWord *)index_oop_from_field_offset_long(p, offset);
-
-  oop res;
-  if (UseShenandoahGC && ShenandoahCASBarrier) {
-    oop expected = e;
-    do {
-      e = expected;
-      res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
-      expected = res;
-    } while ((! oopDesc::unsafe_equals(e, expected)) && oopDesc::unsafe_equals(oopDesc::bs()->read_barrier(e), oopDesc::bs()->read_barrier(expected)));
-  } else {
-    res = oopDesc::atomic_compare_exchange_oop(x, addr, e, true);
-  }
-  if (oopDesc::unsafe_equals(res, e)) {
-    update_barrier_set((void*)addr, x);
-  }
+  assert_field_offset_sane(p, offset);
+  oop res = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e);
   return JNIHandles::make_local(env, res);
 } UNSAFE_END
 
 UNSAFE_ENTRY(jint, Unsafe_CompareAndExchangeInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x)) {
   oop p = JNIHandles::resolve(obj);
-  p = oopDesc::bs()->write_barrier(p);
-  jint* addr = (jint *) index_oop_from_field_offset_long(p, offset);
-
-  return (jint)(Atomic::cmpxchg(x, addr, e));
+  if (oopDesc::is_null(p)) {
+    volatile jint* addr = (volatile jint*)index_oop_from_field_offset_long(p, offset);
+    return RawAccess<>::atomic_cmpxchg(x, addr, e);
+  } else {
+    assert_field_offset_sane(p, offset);
+    return HeapAccess<>::atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e);
+  }
 } UNSAFE_END
 
 UNSAFE_ENTRY(jlong, Unsafe_CompareAndExchangeLong(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x)) {
-  Handle p (THREAD, oopDesc::bs()->write_barrier(JNIHandles::resolve(obj)));
-  jlong* addr = (jlong*)index_oop_from_field_offset_long(p(), offset);
-
-#ifdef SUPPORTS_NATIVE_CX8
-  return (jlong)(Atomic::cmpxchg(x, addr, e));
-#else
-  if (VM_Version::supports_cx8()) {
-    return (jlong)(Atomic::cmpxchg(x, addr, e));
+  oop p = JNIHandles::resolve(obj);
+  if (oopDesc::is_null(p)) {
+    volatile jlong* addr = (volatile jlong*)index_oop_from_field_offset_long(p, offset);
+    return RawAccess<>::atomic_cmpxchg(x, addr, e);
   } else {
-    MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
-
-    jlong val = Atomic::load(addr);
-    if (val == e) {
-      Atomic::store(x, addr);
-    }
-    return val;
+    assert_field_offset_sane(p, offset);
+    return HeapAccess<>::atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e);
   }
-#endif
 } UNSAFE_END
 
 UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetObject(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jobject e_h, jobject x_h)) {
   oop x = JNIHandles::resolve(x_h);
   oop e = JNIHandles::resolve(e_h);
   oop p = JNIHandles::resolve(obj);
-
-  p = oopDesc::bs()->write_barrier(p);
-  x = oopDesc::bs()->storeval_barrier(x);
-
-  HeapWord* addr = (HeapWord *)index_oop_from_field_offset_long(p, offset);
-  jboolean success;
-  if (UseShenandoahGC && ShenandoahCASBarrier) {
-    oop expected;
-    do {
-      expected = e;
-      e = oopDesc::atomic_compare_exchange_oop(x, addr, expected, true);
-      success  = oopDesc::unsafe_equals(e, expected);
-    } while ((! success) && oopDesc::unsafe_equals(oopDesc::bs()->read_barrier(e), oopDesc::bs()->read_barrier(expected)));
-  } else {
-    success = oopDesc::unsafe_equals(e, oopDesc::atomic_compare_exchange_oop(x, addr, e, true));
-  }
-  if (! success) {
-    return false;
-  }
-
-  update_barrier_set((void*)addr, x);
-
-  return true;
+  assert_field_offset_sane(p, offset);
+  oop ret = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e);
+  return oopDesc::equals(ret, e);
 } UNSAFE_END
 
 UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetInt(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jint e, jint x)) {
   oop p = JNIHandles::resolve(obj);
-  p = oopDesc::bs()->write_barrier(p);
-  jint* addr = (jint *)index_oop_from_field_offset_long(p, offset);
-
-  return (jint)(Atomic::cmpxchg(x, addr, e)) == e;
+  if (oopDesc::is_null(p)) {
+    volatile jint* addr = (volatile jint*)index_oop_from_field_offset_long(p, offset);
+    return RawAccess<>::atomic_cmpxchg(x, addr, e) == e;
+  } else {
+    assert_field_offset_sane(p, offset);
+    return HeapAccess<>::atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e) == e;
+  }
 } UNSAFE_END
 
 UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSetLong(JNIEnv *env, jobject unsafe, jobject obj, jlong offset, jlong e, jlong x)) {
-  Handle p (THREAD, oopDesc::bs()->write_barrier(JNIHandles::resolve(obj)));
-  jlong* addr = (jlong*)index_oop_from_field_offset_long(p(), offset);
-
-#ifdef SUPPORTS_NATIVE_CX8
-  return (jlong)(Atomic::cmpxchg(x, addr, e)) == e;
-#else
-  if (VM_Version::supports_cx8()) {
-    return (jlong)(Atomic::cmpxchg(x, addr, e)) == e;
+  oop p = JNIHandles::resolve(obj);
+  if (oopDesc::is_null(p)) {
+    volatile jlong* addr = (volatile jlong*)index_oop_from_field_offset_long(p, offset);
+    return RawAccess<>::atomic_cmpxchg(x, addr, e) == e;
   } else {
-    MutexLockerEx mu(UnsafeJlong_lock, Mutex::_no_safepoint_check_flag);
-
-    jlong val = Atomic::load(addr);
-    if (val != e) {
-      return false;
-    }
-
-    Atomic::store(x, addr);
-    return true;
+    assert_field_offset_sane(p, offset);
+    return HeapAccess<>::atomic_cmpxchg_at(x, p, (ptrdiff_t)offset, e) == e;
   }
-#endif
 } UNSAFE_END
 
 UNSAFE_ENTRY(void, Unsafe_Park(JNIEnv *env, jobject unsafe, jboolean isAbsolute, jlong time)) {
@@ -1147,8 +946,12 @@ UNSAFE_ENTRY(void, Unsafe_Unpark(JNIEnv *env, jobject unsafe, jobject jthread)) 
   Parker* p = NULL;
 
   if (jthread != NULL) {
-    oop java_thread = JNIHandles::resolve_non_null(jthread);
+    ThreadsListHandle tlh;
+    JavaThread* thr = NULL;
+    oop java_thread = NULL;
+    (void) tlh.cv_internal_thread_to_JavaThread(jthread, &thr, &java_thread);
     if (java_thread != NULL) {
+      // This is a valid oop.
       jlong lp = java_lang_Thread::park_event(java_thread);
       if (lp != 0) {
         // This cast is OK even though the jlong might have been read
@@ -1156,22 +959,19 @@ UNSAFE_ENTRY(void, Unsafe_Unpark(JNIEnv *env, jobject unsafe, jobject jthread)) 
         // always be zero anyway and the value set is always the same
         p = (Parker*)addr_from_java(lp);
       } else {
-        // Grab lock if apparently null or using older version of library
-        MutexLocker mu(Threads_lock);
-        java_thread = JNIHandles::resolve_non_null(jthread);
-
-        if (java_thread != NULL) {
-          JavaThread* thr = java_lang_Thread::thread(java_thread);
-          if (thr != NULL) {
-            p = thr->parker();
-            if (p != NULL) { // Bind to Java thread for next time.
-              java_lang_Thread::set_park_event(java_thread, addr_to_java(p));
-            }
+        // Not cached in the java.lang.Thread oop yet (could be an
+        // older version of library).
+        if (thr != NULL) {
+          // The JavaThread is alive.
+          p = thr->parker();
+          if (p != NULL) {
+            // Cache the Parker in the java.lang.Thread oop for next time.
+            java_lang_Thread::set_park_event(java_thread, addr_to_java(p));
           }
         }
       }
     }
-  }
+  } // ThreadsListHandle is destroyed here.
 
   if (p != NULL) {
     HOTSPOT_THREAD_UNPARK((uintptr_t) p);

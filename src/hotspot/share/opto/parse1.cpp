@@ -487,7 +487,7 @@ Parse::Parse(JVMState* caller, ciMethod* parse_method, float expected_uses)
     log->elem("observe that='has_exception_handlers'");
   }
 
-  assert(method()->can_be_compiled(),       "Can not parse this method, cutout earlier");
+  assert(InlineTree::check_can_parse(method()) == NULL, "Can not parse this method, cutout earlier");
   assert(method()->has_balanced_monitors(), "Can not parse unbalanced monitors, cutout earlier");
 
   // Always register dependence if JVMTI is enabled, because
@@ -2286,7 +2286,14 @@ void Parse::add_safepoint() {
 
   // Create a node for the polling address
   if( add_poll_param ) {
-    Node *polladr = ConPNode::make((address)os::get_polling_page());
+    Node *polladr;
+    if (SafepointMechanism::uses_thread_local_poll()) {
+      Node *thread = _gvn.transform(new ThreadLocalNode());
+      Node *polling_page_load_addr = _gvn.transform(basic_plus_adr(top(), thread, in_bytes(Thread::polling_page_offset())));
+      polladr = make_load(control(), polling_page_load_addr, TypeRawPtr::BOTTOM, T_ADDRESS, Compile::AliasIdxRaw, MemNode::unordered);
+    } else {
+      polladr = ConPNode::make((address)os::get_polling_page());
+    }
     sfpnt->init_req(TypeFunc::Parms+0, _gvn.transform(polladr));
   }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1568,7 +1568,7 @@ void GraphKit::pre_barrier(bool do_load,
     case BarrierSet::G1SATBCTLogging:
       g1_write_barrier_pre(do_load, obj, adr, adr_idx, val, val_type, pre_val, bt);
       break;
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       shenandoah_write_barrier_pre(do_load, obj, adr, adr_idx, val, val_type, pre_val, bt);
       break;
     case BarrierSet::CardTableForRS:
@@ -1586,7 +1586,7 @@ bool GraphKit::can_move_pre_barrier() const {
   BarrierSet* bs = Universe::heap()->barrier_set();
   switch (bs->kind()) {
     case BarrierSet::G1SATBCTLogging:
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       return true; // Can move it if no safepoint
 
     case BarrierSet::CardTableForRS:
@@ -1621,7 +1621,7 @@ void GraphKit::post_barrier(Node* ctl,
       break;
 
     case BarrierSet::ModRef:
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       break;
 
     default      :
@@ -1644,7 +1644,7 @@ void GraphKit::keep_alive_barrier(Node* ctl, Node* obj) {
                   obj /* pre_val */,
                   T_OBJECT);
       break;
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       if (ShenandoahKeepAliveBarrier) {
         pre_barrier(false /* do_load */,
                     ctl,
@@ -3810,7 +3810,7 @@ AllocateNode* InitializeNode::allocation() {
 
 // Trace Allocate -> Proj[Parm] -> Initialize
 InitializeNode* AllocateNode::initialization() {
-  ProjNode* rawoop = proj_out(AllocateNode::RawAddress);
+  ProjNode* rawoop = proj_out_or_null(AllocateNode::RawAddress);
   if (rawoop == NULL)  return NULL;
   for (DUIterator_Fast imax, i = rawoop->fast_outs(imax); i < imax; i++) {
     Node* init = rawoop->fast_out(i);

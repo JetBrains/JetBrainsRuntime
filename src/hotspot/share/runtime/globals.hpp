@@ -598,6 +598,13 @@ public:
   develop(bool, CleanChunkPoolAsync, true,                                  \
           "Clean the chunk pool asynchronously")                            \
                                                                             \
+  product_pd(bool, ThreadLocalHandshakes,                                   \
+          "Use thread-local polls instead of global poll for safepoints.")  \
+          constraint(ThreadLocalHandshakesConstraintFunc,AfterErgo)         \
+                                                                            \
+  diagnostic(uint, HandshakeTimeout, 0,                                     \
+          "If nonzero set a timeout in milliseconds for handshakes")        \
+                                                                            \
   experimental(bool, AlwaysSafeConstructors, false,                         \
           "Force safe construction, as if all fields are final.")           \
                                                                             \
@@ -910,9 +917,6 @@ public:
   notproduct(bool, ZapVMHandleArea, trueInDebug,                            \
           "Zap freed VM handle space with 0xBCBCBCBC")                      \
                                                                             \
-  develop(bool, ZapJNIHandleArea, trueInDebug,                              \
-          "Zap freed JNI handle space with 0xFEFEFEFE")                     \
-                                                                            \
   notproduct(bool, ZapStackSegments, trueInDebug,                           \
           "Zap allocated/freed stack segments with 0xFADFADED")             \
                                                                             \
@@ -1170,6 +1174,10 @@ public:
   develop(bool, UseDetachedThreads, true,                                   \
           "Use detached threads that are recycled upon termination "        \
           "(for Solaris only)")                                             \
+                                                                            \
+  experimental(bool, DisablePrimordialThreadGuardPages, false,              \
+               "Disable the use of stack guard pages if the JVM is loaded " \
+               "on the primordial process thread")                          \
                                                                             \
   product(bool, UseLWPSynchronization, true,                                \
           "Use LWP-based instead of libthread-based synchronization "       \
@@ -2016,8 +2024,8 @@ public:
   product(bool, ZeroTLAB, false,                                            \
           "Zero out the newly created TLAB")                                \
                                                                             \
-  product(bool, FastTLABRefill, true,                                       \
-          "Use fast TLAB refill code")                                      \
+  product(bool, FastTLABRefill, false,                                      \
+          "(Deprecated) Use fast TLAB refill code")                         \
                                                                             \
   product(bool, TLABStats, true,                                            \
           "Provide more detailed and expensive TLAB statistics.")           \
@@ -2032,6 +2040,9 @@ public:
           "Real memory size (in bytes) used to set maximum heap size")      \
           range(0, 0XFFFFFFFFFFFFFFFF)                                      \
                                                                             \
+  product(bool, AggressiveHeap, false,                                      \
+          "Optimize heap options for long-running memory intensive apps")   \
+                                                                            \
   product(size_t, ErgoHeapSizeLimit, 0,                                     \
           "Maximum ergonomically set heap size (in bytes); zero means use " \
           "MaxRAM * MaxRAMPercentage / 100")                                \
@@ -2039,7 +2050,8 @@ public:
                                                                             \
   experimental(bool, UseCGroupMemoryLimitForHeap, false,                    \
           "Use CGroup memory limit as physical memory limit for heap "      \
-          "sizing")                                                         \
+          "sizing"                                                          \
+          "Deprecated, replaced by container support")                      \
                                                                             \
   product(uintx, MaxRAMFraction, 4,                                         \
           "Maximum fraction (1/n) of real memory used for maximum heap "    \
@@ -2070,6 +2082,9 @@ public:
   product(double, InitialRAMPercentage, 1.5625,                             \
           "Percentage of real memory used for initial heap size")           \
           range(0.0, 100.0)                                                 \
+                                                                            \
+  product(int, ActiveProcessorCount, -1,                                    \
+          "Specify the CPU count the VM should use and report as active")   \
                                                                             \
   develop(uintx, MaxVirtMemFraction, 2,                                     \
           "Maximum fraction (1/n) of virtual memory used for ergonomically "\
@@ -2255,6 +2270,10 @@ public:
                                                                             \
   diagnostic(bool, VerifyDuringGC, false,                                   \
           "Verify memory system during GC (between phases)")                \
+                                                                            \
+  diagnostic(ccstrlist, VerifyGCType, "",                                   \
+             "GC type(s) to verify when Verify*GC is enabled."              \
+             "Available types are collector specific.")                     \
                                                                             \
   diagnostic(ccstrlist, VerifySubSet, "",                                   \
           "Memory sub-systems to verify when Verify*GC flag(s) "            \
@@ -2468,6 +2487,12 @@ public:
           "more than PrintSafepointSatisticsTimeout in millis")             \
   LP64_ONLY(range(-1, max_intx/MICROUNITS))                                 \
   NOT_LP64(range(-1, max_intx))                                             \
+                                                                            \
+  diagnostic(bool, EnableThreadSMRExtraValidityChecks, true,                \
+             "Enable Thread SMR extra validity checks")                     \
+                                                                            \
+  diagnostic(bool, EnableThreadSMRStatistics, trueInDebug,                  \
+             "Enable Thread SMR Statistics")                                \
                                                                             \
   product(bool, Inline, true,                                               \
           "Enable inlining")                                                \
@@ -3263,16 +3288,18 @@ public:
           "Delay in scheduling GC workers (in milliseconds)")               \
                                                                             \
   product(intx, DeferThrSuspendLoopCount,     4000,                         \
-          "(Unstable) Number of times to iterate in safepoint loop "        \
+          "(Unstable, Deprecated) "                                         \
+          "Number of times to iterate in safepoint loop "                   \
           "before blocking VM threads ")                                    \
           range(-1, max_jint-1)                                             \
                                                                             \
   product(intx, DeferPollingPageLoopCount,     -1,                          \
-          "(Unsafe,Unstable) Number of iterations in safepoint loop "       \
+          "(Unsafe,Unstable,Deprecated) "                                   \
+          "Number of iterations in safepoint loop "                         \
           "before changing safepoint polling page to RO ")                  \
           range(-1, max_jint-1)                                             \
                                                                             \
-  product(intx, SafepointSpinBeforeYield, 2000, "(Unstable)")               \
+  product(intx, SafepointSpinBeforeYield, 2000, "(Unstable, Deprecated)")   \
           range(0, max_intx)                                                \
                                                                             \
   product(bool, PSChunkLargeArrays, true,                                   \
@@ -3342,7 +3369,7 @@ public:
                                                                             \
   product_pd(uintx, InitialCodeCacheSize,                                   \
           "Initial code cache size (in bytes)")                             \
-          range(0, max_uintx)                                               \
+          range(os::vm_page_size(), max_uintx)                              \
                                                                             \
   develop_pd(uintx, CodeCacheMinimumUseSpace,                               \
           "Minimum code cache size (in bytes) required to start VM.")       \
@@ -3353,7 +3380,7 @@ public:
                                                                             \
   product_pd(uintx, ReservedCodeCacheSize,                                  \
           "Reserved code cache size (in bytes) - maximum code cache size")  \
-          range(0, max_uintx)                                               \
+          range(os::vm_page_size(), max_uintx)                              \
                                                                             \
   product_pd(uintx, NonProfiledCodeHeapSize,                                \
           "Size of code heap with non-profiled methods (in bytes)")         \
@@ -3365,11 +3392,11 @@ public:
                                                                             \
   product_pd(uintx, NonNMethodCodeHeapSize,                                 \
           "Size of code heap with non-nmethods (in bytes)")                 \
-          range(0, max_uintx)                                               \
+          range(os::vm_page_size(), max_uintx)                              \
                                                                             \
   product_pd(uintx, CodeCacheExpansionSize,                                 \
           "Code cache expansion size (in bytes)")                           \
-          range(0, max_uintx)                                               \
+          range(32*K, max_uintx)                                            \
                                                                             \
   diagnostic_pd(uintx, CodeCacheMinBlockLength,                             \
           "Minimum number of segments in a code cache block")               \
@@ -3909,6 +3936,13 @@ public:
           "Address to allocate shared memory region for class data")        \
           range(0, SIZE_MAX)                                                \
                                                                             \
+  product(bool, UseAppCDS, false,                                           \
+          "Enable Application Class Data Sharing when using shared spaces") \
+          writeable(CommandLineOnly)                                        \
+                                                                            \
+  product(ccstr, SharedArchiveConfigFile, NULL,                             \
+          "Data to add to the CDS archive file")                            \
+                                                                            \
   product(uintx, SharedSymbolTableBucketSize, 4,                            \
           "Average number of symbols per bucket in shared table")           \
           range(2, 246)                                                     \
@@ -4061,6 +4095,10 @@ public:
   experimental(bool, UseSwitchProfiling, true,                              \
           "leverage profiling for table/lookup switch")                     \
                                                                             \
+  product(ccstr, AllocateHeapAt, NULL,                                      \
+          "Path to the directoy where a temporary file will be created "    \
+          "to use as the backing store for Java Heap.")
+
 
 /*
  *  Macros for factoring of globals

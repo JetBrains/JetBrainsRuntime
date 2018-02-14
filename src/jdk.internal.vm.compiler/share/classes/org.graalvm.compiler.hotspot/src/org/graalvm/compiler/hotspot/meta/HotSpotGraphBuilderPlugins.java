@@ -46,6 +46,7 @@ import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CRC32Substitutions;
+import org.graalvm.compiler.hotspot.replacements.CRC32CSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.ClassGetHubNode;
@@ -66,6 +67,7 @@ import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -164,6 +166,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerConstantPoolPlugins(invocationPlugins, wordTypes, config, replacementBytecodeProvider);
                 registerAESPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerCRC32Plugins(invocationPlugins, config, replacementBytecodeProvider);
+                registerCRC32CPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerBigIntegerPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerSHAPlugins(invocationPlugins, config, replacementBytecodeProvider);
                 registerUnsafePlugins(invocationPlugins, replacementBytecodeProvider);
@@ -318,7 +321,7 @@ public class HotSpotGraphBuilderPlugins {
     private static boolean readMetaspaceConstantPoolElement(GraphBuilderContext b, ValueNode constantPoolOop, ValueNode index, JavaKind elementKind, WordTypes wordTypes, GraalHotSpotVMConfig config) {
         ValueNode constants = getMetaspaceConstantPool(b, constantPoolOop, wordTypes, config);
         int shift = CodeUtil.log2(wordTypes.getWordKind().getByteCount());
-        ValueNode scaledIndex = b.add(new LeftShiftNode(IntegerConvertNode.convert(index, StampFactory.forKind(JavaKind.Long)), b.add(ConstantNode.forInt(shift))));
+        ValueNode scaledIndex = b.add(new LeftShiftNode(IntegerConvertNode.convert(index, StampFactory.forKind(JavaKind.Long), NodeView.DEFAULT), b.add(ConstantNode.forInt(shift))));
         ValueNode offset = b.add(new AddNode(scaledIndex, b.add(ConstantNode.forLong(config.constantPoolSize))));
         AddressNode elementAddress = b.add(new OffsetAddressNode(constants, offset));
         boolean notCompressible = false;
@@ -527,6 +530,14 @@ public class HotSpotGraphBuilderPlugins {
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateBytes0", int.class, byte[].class, int.class, int.class);
                 r.registerMethodSubstitution(CRC32Substitutions.class, "updateByteBuffer0", int.class, long.class, int.class, int.class);
             }
+        }
+    }
+
+    private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, BytecodeProvider bytecodeProvider) {
+        if (config.useCRC32CIntrinsics) {
+            Registration r = new Registration(plugins, "java.util.zip.CRC32C", bytecodeProvider);
+            r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateBytes", int.class, byte[].class, int.class, int.class);
+            r.registerMethodSubstitution(CRC32CSubstitutions.class, "updateDirectByteBuffer", int.class, long.class, int.class, int.class);
         }
     }
 }

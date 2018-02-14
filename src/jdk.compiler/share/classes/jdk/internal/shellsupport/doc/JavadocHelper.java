@@ -61,6 +61,7 @@ import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
+import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
@@ -76,6 +77,7 @@ import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.VariableTree;
+import com.sun.source.util.DocSourcePositions;
 import com.sun.source.util.DocTreePath;
 import com.sun.source.util.DocTreeScanner;
 import com.sun.source.util.DocTrees;
@@ -193,6 +195,8 @@ public abstract class JavadocHelper implements AutoCloseable {
             String docComment = trees.getDocComment(el);
 
             if (docComment == null && element.getKind() == ElementKind.METHOD) {
+                //if a method does not have a javadoc,
+                //try to use javadoc from the methods overridden by this method:
                 ExecutableElement executableElement = (ExecutableElement) element;
                 Iterable<Element> superTypes =
                         () -> superTypeForInheritDoc(task, element.getEnclosingElement()).iterator();
@@ -214,25 +218,65 @@ public abstract class JavadocHelper implements AutoCloseable {
                 }
             }
 
-            DocCommentTree docCommentTree = parseDocComment(task, docComment);
-            IOException[] exception = new IOException[1];
-            Map<int[], String> replace = new TreeMap<>((span1, span2) -> span2[0] - span1[0]);
+            if (docComment == null)
+                return null;
 
+            Pair<DocCommentTree, Integer> parsed = parseDocComment(task, docComment);
+            DocCommentTree docCommentTree = parsed.fst;
+            int offset = parsed.snd;
+            IOException[] exception = new IOException[1];
+            Comparator<int[]> spanComp =
+                    (span1, span2) -> span1[0] != span2[0] ? span2[0] - span1[0]
+                                                           : span2[1] - span1[0];
+            //spans in the docComment that should be replaced with the given Strings:
+            Map<int[], List<String>> replace = new TreeMap<>(spanComp);
+            DocSourcePositions sp = trees.getSourcePositions();
+
+            //fill in missing elements and resolve {@inheritDoc}
+            //if an element is (silently) missing in the javadoc, a synthetic {@inheritDoc}
+            //is created for it.
             new DocTreeScanner<Void, Void>() {
+                /* enclosing doctree that may contain {@inheritDoc} (explicit or synthetic)*/
                 private Stack<DocTree> interestingParent = new Stack<>();
+                /* current top-level DocCommentTree*/
                 private DocCommentTree dcTree;
-                private JavacTask inheritedJavacTask;
-                private TreePath inheritedTreePath;
+                /* javadoc from a super method from which we may copy elements.*/
                 private String inherited;
+                /* JavacTask from which inherited originates.*/
+                private JavacTask inheritedJavacTask;
+                /* TreePath to the super method from which inherited originates.*/
+                private TreePath inheritedTreePath;
+                /* Synthetic trees that contain {@inheritDoc} and
+                 * texts which which they should be replaced.*/
                 private Map<DocTree, String> syntheticTrees = new IdentityHashMap<>();
-                private long lastPos = 0;
+                /* Position on which the synthetic trees should be inserted.*/
+                private long insertPos = offset;
                 @Override @DefinedBy(Api.COMPILER_TREE)
                 public Void visitDocComment(DocCommentTree node, Void p) {
                     dcTree = node;
                     interestingParent.push(node);
                     try {
-                        scan(node.getFirstSentence(), p);
-                        scan(node.getBody(), p);
+                        if (node.getFullBody().isEmpty()) {
+                            //there is no body in the javadoc, add synthetic {@inheritDoc}, which
+                            //will be automatically filled in visitInheritDoc:
+                            DocCommentTree dc = parseDocComment(task, "{@inheritDoc}").fst;
+                            syntheticTrees.put(dc, "*\n");
+                            interestingParent.push(dc);
+                            boolean prevInSynthetic = inSynthetic;
+                            try {
+                                inSynthetic = true;
+                                scan(dc.getFirstSentence(), p);
+                                scan(dc.getBody(), p);
+                            } finally {
+                                inSynthetic = prevInSynthetic;
+                                interestingParent.pop();
+                            }
+                        } else {
+                            scan(node.getFirstSentence(), p);
+                            scan(node.getBody(), p);
+                        }
+                        //add missing @param, @throws and @return, augmented with {@inheritDoc}
+                        //which will be resolved in visitInheritDoc:
                         List<DocTree> augmentedBlockTags = new ArrayList<>(node.getBlockTags());
                         if (element.getKind() == ElementKind.METHOD) {
                             ExecutableElement executableElement = (ExecutableElement) element;
@@ -266,19 +310,19 @@ public abstract class JavadocHelper implements AutoCloseable {
 
                             for (String missingParam : missingParams) {
                                 DocTree syntheticTag = parseBlockTag(task, "@param " + missingParam + " {@inheritDoc}");
-                                syntheticTrees.put(syntheticTag, "@param " + missingParam + " ");
+                                syntheticTrees.put(syntheticTag, "@param " + missingParam + " *\n");
                                 insertTag(augmentedBlockTags, syntheticTag, parameters, throwsList);
                             }
 
                             for (String missingThrow : missingThrows) {
                                 DocTree syntheticTag = parseBlockTag(task, "@throws " + missingThrow + " {@inheritDoc}");
-                                syntheticTrees.put(syntheticTag, "@throws " + missingThrow + " ");
+                                syntheticTrees.put(syntheticTag, "@throws " + missingThrow + " *\n");
                                 insertTag(augmentedBlockTags, syntheticTag, parameters, throwsList);
                             }
 
                             if (!hasReturn) {
                                 DocTree syntheticTag = parseBlockTag(task, "@return {@inheritDoc}");
-                                syntheticTrees.put(syntheticTag, "@return ");
+                                syntheticTrees.put(syntheticTag, "@return *\n");
                                 insertTag(augmentedBlockTags, syntheticTag, parameters, throwsList);
                             }
                         }
@@ -317,26 +361,32 @@ public abstract class JavadocHelper implements AutoCloseable {
                 }
                 @Override @DefinedBy(Api.COMPILER_TREE)
                 public Void visitInheritDoc(InheritDocTree node, Void p) {
+                    //replace (schedule replacement into the replace map)
+                    //{@inheritDoc} with the corresponding text from an overridden method
+
+                    //first, fill in inherited, inheritedJavacTask and inheritedTreePath if not
+                    //done yet:
                     if (inherited == null) {
                         try {
                             if (element.getKind() == ElementKind.METHOD) {
                                 ExecutableElement executableElement = (ExecutableElement) element;
-                                Iterable<Element> superTypes = () -> superTypeForInheritDoc(task, element.getEnclosingElement()).iterator();
-                                OUTER: for (Element sup : superTypes) {
-                                   for (ExecutableElement supMethod : ElementFilter.methodsIn(sup.getEnclosedElements())) {
-                                       if (task.getElements().overrides(executableElement, supMethod, (TypeElement) executableElement.getEnclosingElement())) {
-                                           Pair<JavacTask, TreePath> source = getSourceElement(task, supMethod);
+                                Iterable<ExecutableElement> superMethods =
+                                        () -> superMethodsForInheritDoc(task, executableElement).
+                                              iterator();
+                                for (Element supMethod : superMethods) {
+                                   Pair<JavacTask, TreePath> source =
+                                           getSourceElement(task, supMethod);
 
-                                           if (source != null) {
-                                               String overriddenComment = getResolvedDocComment(source.fst, source.snd);
+                                   if (source != null) {
+                                       String overriddenComment =
+                                               getResolvedDocComment(source.fst,
+                                                                     source.snd);
 
-                                               if (overriddenComment != null) {
-                                                   inheritedJavacTask = source.fst;
-                                                   inheritedTreePath = source.snd;
-                                                   inherited = overriddenComment;
-                                                   break OUTER;
-                                               }
-                                           }
+                                       if (overriddenComment != null) {
+                                           inheritedJavacTask = source.fst;
+                                           inheritedTreePath = source.snd;
+                                           inherited = overriddenComment;
+                                           break;
                                        }
                                    }
                                 }
@@ -349,8 +399,13 @@ public abstract class JavadocHelper implements AutoCloseable {
                     if (inherited == null) {
                         return null;
                     }
-                    DocCommentTree inheritedDocTree = parseDocComment(inheritedJavacTask, inherited);
+                    Pair<DocCommentTree, Integer> parsed =
+                            parseDocComment(inheritedJavacTask, inherited);
+                    DocCommentTree inheritedDocTree = parsed.fst;
+                    int offset = parsed.snd;
                     List<List<? extends DocTree>> inheritedText = new ArrayList<>();
+                    //find the corresponding piece in the inherited javadoc
+                    //(interesting parent keeps the enclosing tree):
                     DocTree parent = interestingParent.peek();
                     switch (parent.getKind()) {
                         case DOC_COMMENT:
@@ -391,23 +446,33 @@ public abstract class JavadocHelper implements AutoCloseable {
                             break;
                     }
                     if (!inheritedText.isEmpty()) {
-                        long offset = trees.getSourcePositions().getStartPosition(null, inheritedDocTree, inheritedDocTree);
                         long start = Long.MAX_VALUE;
                         long end = Long.MIN_VALUE;
 
                         for (DocTree t : inheritedText.get(0)) {
-                            start = Math.min(start, trees.getSourcePositions().getStartPosition(null, inheritedDocTree, t) - offset);
-                            end   = Math.max(end,   trees.getSourcePositions().getEndPosition(null, inheritedDocTree, t) - offset);
+                            start = Math.min(start,
+                                             sp.getStartPosition(null, inheritedDocTree, t) - offset);
+                            end   = Math.max(end,
+                                             sp.getEndPosition(null, inheritedDocTree, t) - offset);
                         }
-                        String text = inherited.substring((int) start, (int) end);
+                        String text = end >= 0 ? inherited.substring((int) start, (int) end) : "";
 
                         if (syntheticTrees.containsKey(parent)) {
-                            replace.put(new int[] {(int) lastPos + 1, (int) lastPos}, "\n" + syntheticTrees.get(parent) + text);
+                            //if the {@inheritDoc} is inside a synthetic tree, don't delete anything,
+                            //but insert the required text
+                            //(insertPos is the position at which new stuff should be added):
+                            int[] span = new int[] {(int) insertPos, (int) insertPos};
+                            replace.computeIfAbsent(span, s -> new ArrayList<>())
+                                    .add(syntheticTrees.get(parent).replace("*", text));
                         } else {
-                            long inheritedStart = trees.getSourcePositions().getStartPosition(null, dcTree, node);
-                            long inheritedEnd   = trees.getSourcePositions().getEndPosition(null, dcTree, node);
+                            //replace the {@inheritDoc} with the full text from
+                            //the overridden method:
+                            long inheritedStart = sp.getStartPosition(null, dcTree, node);
+                            long inheritedEnd   = sp.getEndPosition(null, dcTree, node);
+                            int[] span = new int[] {(int) inheritedStart, (int) inheritedEnd};
 
-                            replace.put(new int[] {(int) inheritedStart, (int) inheritedEnd}, text);
+                            replace.computeIfAbsent(span, s -> new ArrayList<>())
+                                    .add(text);
                         }
                     }
                     return super.visitInheritDoc(node, p);
@@ -423,13 +488,31 @@ public abstract class JavadocHelper implements AutoCloseable {
                         inSynthetic |= syntheticTrees.containsKey(tree);
                         return super.scan(tree, p);
                     } finally {
-                        if (!inSynthetic) {
-                            lastPos = trees.getSourcePositions().getEndPosition(null, dcTree, tree);
+                        if (!inSynthetic && tree != null) {
+                            //for nonsynthetic trees, preserve the ending position as the future
+                            //insertPos (as future missing elements should be inserted behind
+                            //this tree)
+                            //if there is a newline immediately behind this tree, insert behind
+                            //the newline:
+                            long endPos = sp.getEndPosition(null, dcTree, tree);
+                            if (endPos >= 0) {
+                                if (endPos - offset + 1 < docComment.length() &&
+                                    docComment.charAt((int) (endPos - offset + 1)) == '\n') {
+                                    endPos++;
+                                }
+                                if (endPos - offset < docComment.length()) {
+                                    insertPos = endPos + 1;
+                                } else {
+                                    insertPos = endPos;
+                                }
+                            }
                         }
                         inSynthetic = prevInSynthetic;
                     }
                 }
 
+                /* Insert a synthetic tag (toInsert) into the list of tags at
+                 * an appropriate position.*/
                 private void insertTag(List<DocTree> tags, DocTree toInsert, List<String> parameters, List<String> throwsTypes) {
                     Comparator<DocTree> comp = (tag1, tag2) -> {
                         if (tag1.getKind() == tag2.getKind()) {
@@ -474,17 +557,30 @@ public abstract class JavadocHelper implements AutoCloseable {
             if (replace.isEmpty())
                 return docComment;
 
+            //do actually replace {@inheritDoc} with the new text (as scheduled by the visitor
+            //above):
             StringBuilder replacedInheritDoc = new StringBuilder(docComment);
-            int offset = (int) trees.getSourcePositions().getStartPosition(null, docCommentTree, docCommentTree);
 
-            for (Entry<int[], String> e : replace.entrySet()) {
-                replacedInheritDoc.delete(e.getKey()[0] - offset, e.getKey()[1] - offset + 1);
-                replacedInheritDoc.insert(e.getKey()[0] - offset, e.getValue());
+            for (Entry<int[], List<String>> e : replace.entrySet()) {
+                replacedInheritDoc.delete(e.getKey()[0] - offset, e.getKey()[1] - offset);
+                replacedInheritDoc.insert(e.getKey()[0] - offset,
+                                          e.getValue().stream().collect(Collectors.joining("")));
             }
 
             return replacedInheritDoc.toString();
         }
 
+        /* Find methods from which the given method may inherit javadoc, in the proper order.*/
+        private Stream<ExecutableElement> superMethodsForInheritDoc(JavacTask task,
+                                                                     ExecutableElement method) {
+            TypeElement type = (TypeElement) method.getEnclosingElement();
+
+            return this.superTypeForInheritDoc(task, type)
+                       .flatMap(sup -> ElementFilter.methodsIn(sup.getEnclosedElements()).stream())
+                       .filter(supMethod -> task.getElements().overrides(method, supMethod, type));
+        }
+
+        /* Find types from which methods in type may inherit javadoc, in the proper order.*/
         private Stream<Element> superTypeForInheritDoc(JavacTask task, Element type) {
             TypeElement clazz = (TypeElement) type;
             Stream<Element> result = interfaces(clazz);
@@ -507,22 +603,28 @@ public abstract class JavadocHelper implements AutoCloseable {
             }
 
          private DocTree parseBlockTag(JavacTask task, String blockTag) {
-            DocCommentTree dc = parseDocComment(task, blockTag);
+            DocCommentTree dc = parseDocComment(task, blockTag).fst;
 
             return dc.getBlockTags().get(0);
         }
 
-        private DocCommentTree parseDocComment(JavacTask task, String javadoc) {
+        private Pair<DocCommentTree, Integer> parseDocComment(JavacTask task, String javadoc) {
             DocTrees trees = DocTrees.instance(task);
             try {
-                return trees.getDocCommentTree(new SimpleJavaFileObject(new URI("mem://doc.html"), javax.tools.JavaFileObject.Kind.HTML) {
+                SimpleJavaFileObject fo =
+                        new SimpleJavaFileObject(new URI("mem://doc.html"), Kind.HTML) {
                     @Override @DefinedBy(Api.COMPILER)
-                    public CharSequence getCharContent(boolean ignoreEncodingErrors) throws IOException {
+                    public CharSequence getCharContent(boolean ignoreEncodingErrors)
+                            throws IOException {
                         return "<body>" + javadoc + "</body>";
                     }
-                });
+                };
+                DocCommentTree tree = trees.getDocCommentTree(fo);
+                int offset = (int) trees.getSourcePositions().getStartPosition(null, tree, tree);
+                offset += "<body>".length();
+                return Pair.of(tree, offset);
             } catch (URISyntaxException ex) {
-                return null;
+                throw new IllegalStateException(ex);
             }
         }
 

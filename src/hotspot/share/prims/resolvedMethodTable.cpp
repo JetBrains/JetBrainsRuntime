@@ -74,7 +74,7 @@ static void ensure_oop_alive(oop mname) {
   // potential resurrection, otherwise the marking might not find the object.
 #if INCLUDE_ALL_GCS
   if (mname != NULL) {
-    oopDesc::bs()->keep_alive_barrier(mname);
+    BarrierSet::barrier_set()->keep_alive_barrier(mname);
   }
 #endif
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import com.sun.source.util.SimpleTreeVisitor;
 import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.code.Lint.LintCategory;
 import com.sun.tools.javac.code.Scope.WriteableScope;
+import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.code.Symbol.*;
 import com.sun.tools.javac.code.Type.*;
 import com.sun.tools.javac.code.TypeMetadata.Annotations;
@@ -150,12 +151,12 @@ public class Attr extends JCTree.Visitor {
         Options options = Options.instance(context);
 
         Source source = Source.instance(context);
-        allowStringsInSwitch = source.allowStringsInSwitch();
-        allowPoly = source.allowPoly();
-        allowTypeAnnos = source.allowTypeAnnotations();
-        allowLambda = source.allowLambda();
-        allowDefaultMethods = source.allowDefaultMethods();
-        allowStaticInterfaceMethods = source.allowStaticInterfaceMethods();
+        allowStringsInSwitch = Feature.STRINGS_IN_SWITCH.allowedInSource(source);
+        allowPoly = Feature.POLY.allowedInSource(source);
+        allowTypeAnnos = Feature.TYPE_ANNOTATIONS.allowedInSource(source);
+        allowLambda = Feature.LAMBDA.allowedInSource(source);
+        allowDefaultMethods = Feature.DEFAULT_METHODS.allowedInSource(source);
+        allowStaticInterfaceMethods = Feature.STATIC_INTERFACE_METHODS.allowedInSource(source);
         sourceName = source.name;
         useBeforeDeclarationWarning = options.isSet("useBeforeDeclarationWarning");
 
@@ -1392,7 +1393,7 @@ public class Attr extends JCTree.Visitor {
             boolean enumSwitch = (seltype.tsym.flags() & Flags.ENUM) != 0;
             boolean stringSwitch = types.isSameType(seltype, syms.stringType);
             if (stringSwitch && !allowStringsInSwitch) {
-                log.error(DiagnosticFlag.SOURCE_LEVEL, tree.selector.pos(), Errors.StringSwitchNotSupportedInSource(sourceName));
+                log.error(DiagnosticFlag.SOURCE_LEVEL, tree.selector.pos(), Feature.STRINGS_IN_SWITCH.error(sourceName));
             }
             if (!enumSwitch && !stringSwitch)
                 seltype = chk.checkType(tree.selector.pos(), seltype, syms.intType);
@@ -3667,7 +3668,7 @@ public class Attr extends JCTree.Visitor {
             }
             if (!allowStaticInterfaceMethods && sitesym.isInterface() &&
                     sym.isStatic() && sym.kind == MTH) {
-                log.error(DiagnosticFlag.SOURCE_LEVEL, tree.pos(), Errors.StaticIntfMethodInvokeNotSupportedInSource(sourceName));
+                log.error(DiagnosticFlag.SOURCE_LEVEL, tree.pos(), Feature.STATIC_INTERFACE_METHODS_INVOKE.error(sourceName));
             }
         } else if (sym.kind != ERR &&
                    (sym.flags() & STATIC) != 0 &&
@@ -4237,9 +4238,6 @@ public class Attr extends JCTree.Visitor {
     public void visitTypeArray(JCArrayTypeTree tree) {
         Type etype = attribType(tree.elemtype, env);
         Type type = new ArrayType(etype, syms.arrayClass);
-        if (etype.isErroneous()) {
-            type = types.createErrorType(type);
-        }
         result = check(tree, type, KindSelector.TYP, resultInfo);
     }
 
@@ -4745,9 +4743,8 @@ public class Attr extends JCTree.Visitor {
         // Check for proper use of serialVersionUID
         if (env.info.lint.isEnabled(LintCategory.SERIAL)
                 && isSerializable(c.type)
-                && (c.flags() & Flags.ENUM) == 0
-                && !c.isAnonymous()
-                && checkForSerial(c)) {
+                && (c.flags() & (Flags.ENUM | Flags.INTERFACE)) == 0
+                && !c.isAnonymous()) {
             checkSerialVersionUID(tree, c);
         }
         if (allowTypeAnnos) {
@@ -4759,17 +4756,6 @@ public class Attr extends JCTree.Visitor {
         }
     }
         // where
-        boolean checkForSerial(ClassSymbol c) {
-            if ((c.flags() & ABSTRACT) == 0) {
-                return true;
-            } else {
-                return c.members().anyMatch(anyNonAbstractOrDefaultMethod);
-            }
-        }
-
-        public static final Filter<Symbol> anyNonAbstractOrDefaultMethod = s ->
-                s.kind == MTH && (s.flags() & (DEFAULT | ABSTRACT)) != ABSTRACT;
-
         /** get a diagnostic position for an attribute of Type t, or null if attribute missing */
         private DiagnosticPosition getDiagnosticPosition(JCClassDecl tree, Type t) {
             for(List<JCAnnotation> al = tree.mods.annotations; !al.isEmpty(); al = al.tail) {

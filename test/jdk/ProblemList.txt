@@ -1,6 +1,6 @@
 ###########################################################################
 #
-# Copyright (c) 2009, 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -111,6 +111,52 @@
 
 # jdk_awt
 
+java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.html 8168389 windows-all,macosx-all
+java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8168408 windows-all
+java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
+java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
+java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all 
+java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
+
+java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
+java/awt/Modal/FileDialog/FileDialogTKModal1Test.java 7186009 windows-all,macosx-all
+java/awt/Modal/FileDialog/FileDialogTKModal2Test.java 7186009 windows-all,macosx-all
+java/awt/Modal/FileDialog/FileDialogTKModal3Test.java 7186009 windows-all,macosx-all
+java/awt/Modal/FileDialog/FileDialogTKModal4Test.java 7186009 windows-all,macosx-all
+java/awt/Modal/FileDialog/FileDialogTKModal5Test.java 7186009 windows-all,macosx-all
+java/awt/Modal/FileDialog/FileDialogTKModal6Test.java 7186009 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java 8060176 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java 8060176 windows-all,macosx-all
+java/awt/dnd/BadSerializaionTest/BadSerializationTest.java 8039082 generic-all
+java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all
+java/awt/event/KeyEvent/CorrectTime/CorrectTime.java 6626492 generic-all
+java/awt/Frame/MaximizedToUnmaximized/MaximizedToUnmaximized.java 8129569 generic-all
+java/awt/EventQueue/6980209/bug6980209.java 8131670 generic-all
+java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java 8168646 generic-all
+java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java 8048171 generic-all
+java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
+java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
+java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java 6829250 windows-all
+java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 8159252 windows-all
+java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java 6990210 generic-all
+java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html 4931413 windows-all
+java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 generic-all
+java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java 7019055 windows-all
+java/awt/Focus/8013611/JDK8013611.java 8175366 windows-all
+java/awt/Focus/6981400/Test1.java 8029675 windows-all
+java/awt/Focus/6981400/Test3.java 8173264 generic-all
+java/awt/Mixing/AWT_Mixing/JSplitPaneOverlapping.java 6986109 windows-all
+java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java 6986109 windows-all
+java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
+java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474 windows-all
+java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java 6854300 generic-all
+java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
+java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
+java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
+java/awt/Modal/ModalFocusTransferTests/FocusTransferWDFAppModal2Test.java 8058813 windows-all
+
+
 ############################################################################
 
 # jdk_beans
@@ -123,8 +169,6 @@ java/beans/Introspector/8132566/OverrideUserDefPropertyInfoTest.java 8132565 gen
 # jdk_lang
 
 java/lang/StringCoding/CheckEncodings.sh                        7008363 generic-all
-
-jdk/internal/misc/JavaLangAccess/NewUnsafeString.java           8176188 generic-all
 
 java/lang/String/nativeEncoding/StringPlatformChars.java        8182569 windows-all,solaris-all
 
@@ -153,7 +197,6 @@ java/io/pathNames/GeneralWin32.java                             8180264 windows-
 com/sun/management/OperatingSystemMXBean/GetProcessCpuLoad.java 8030957 aix-all
 com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java  8030957 aix-all
 sun/management/HotspotRuntimeMBean/GetSafepointSyncTime.java    8174734 generic-all
-sun/management/jdp/JdpOffTest.java                              8175542 generic-all
 
 ############################################################################
 
@@ -173,8 +216,6 @@ java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-a
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
 
 java/net/DatagramSocket/SendDatagramToBadAddress.java           7143960 macosx-all
-
-java/net/httpclient/websocket/ConnectionHandover.java           8188895 windows-all
 
 ############################################################################
 
@@ -222,13 +263,11 @@ javax/net/ssl/DTLS/RespondToRetransmit.java                     8169086 macosx-x
 
 sun/security/krb5/auto/UnboundSSL.java                          8180265 windows-all
 sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
-sun/security/ssl/X509KeyManager/PreferredKey.java               8176354 generic-all
+sun/security/ssl/X509KeyManager/PreferredKey.java               8190333 generic-all
 
 ############################################################################
 
 # jdk_sound
-javax/sound/sampled/AudioInputStream/FrameLengthAfterConversion.java 8178401 windows-all
-
 javax/sound/sampled/DirectAudio/bug6372428.java                      8055097 generic-all
 javax/sound/sampled/Clip/bug5070081.java                             8055097 generic-all
 javax/sound/sampled/DataLine/LongFramePosition.java                  8055097 generic-all
@@ -244,6 +283,19 @@ javax/sound/sampled/Mixers/DisabledAssertionCrash.java 7067310 generic-all
 ############################################################################
 
 # jdk_swing
+
+javax/swing/JComponent/7154030/bug7154030.java 7190978 generic-all
+javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java 8186513 generic-all
+javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java 8067986 generic-all
+javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
+javax/swing/JComboBox/6236162/bug6236162.java 8028707 windows-all
+javax/swing/text/html/parser/Test8017492.java 8022535 generic-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java 8081476 windows-all
+# The next test below is an intermittent failure
+javax/swing/JComboBox/8033069/bug8033069ScrollBar.java 8163367 generic-all
+javax/swing/JColorChooser/Test6541987.java 8143021 linux-all
+javax/swing/JTable/7124218/SelectEditTableCell.java 8148958 linux-all
+javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java 8159131 linux-all
 
 ############################################################################
 
@@ -302,20 +354,20 @@ sun/tools/jstat/jstatClassloadOutput1.sh                        8173942 generic-
 
 sun/jvmstat/monitor/MonitoredVm/MonitorVmStartTerminate.java    8057732 generic-all
 
-com/sun/tools/attach/StartManagementAgent.java                  8179700 generic-all
-
 ############################################################################
 
 # jdk_other
 
 com/sun/jndi/ldap/DeadSSLLdapTimeoutTest.java                   8169942 linux-i586,macosx-all,windows-x64
 
-javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java 8169737 generic-all
+com/sun/jndi/ldap/LdapTimeoutTest.java                          8151678 linux-all
+
+javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java 8194663 generic-all
  
-org/omg/CORBA/OrbPropertiesTest.java			        8175177 generic-all
+org/omg/CORBA/OrbPropertiesTest.java			        8194663 generic-all
 
-javax/rmi/PortableRemoteObject/ConcurrentHashMapTest.java       8080643 generic-all
+javax/rmi/PortableRemoteObject/ConcurrentHashMapTest.java       8194663 generic-all
 
-javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-all
+javax/rmi/ssl/SSLSocketParametersTest.sh                        8194663 generic-all
 
 ############################################################################

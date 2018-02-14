@@ -31,6 +31,7 @@
 #include "oops/oop.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "runtime/frame.hpp"
+#include "runtime/handshake.hpp"
 #include "runtime/javaFrameAnchor.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -56,6 +57,9 @@
 #endif
 
 class ThreadSafepointState;
+class ThreadsList;
+class ThreadsSMRSupport;
+class NestedThreadsList;
 
 class JvmtiThreadState;
 class JvmtiGetLoadedClassesClosure;
@@ -117,6 +121,49 @@ class Thread: public ThreadShadow {
  protected:
   // Support for forcing alignment of thread objects for biased locking
   void*       _real_malloc_address;
+
+  // JavaThread lifecycle support:
+  friend class ScanHazardPtrGatherProtectedThreadsClosure;  // for cmpxchg_threads_hazard_ptr(), get_threads_hazard_ptr(), is_hazard_ptr_tagged() access
+  friend class ScanHazardPtrGatherThreadsListClosure;  // for get_nested_threads_hazard_ptr(), get_threads_hazard_ptr(), untag_hazard_ptr() access
+  friend class ScanHazardPtrPrintMatchingThreadsClosure;  // for get_threads_hazard_ptr(), is_hazard_ptr_tagged() access
+  friend class ThreadsListSetter;  // for get_threads_hazard_ptr() access
+  friend class ThreadsSMRSupport;  // for get_threads_hazard_ptr() access
+
+  ThreadsList* volatile _threads_hazard_ptr;
+  ThreadsList*          cmpxchg_threads_hazard_ptr(ThreadsList* exchange_value, ThreadsList* compare_value);
+  ThreadsList*          get_threads_hazard_ptr();
+  void                  set_threads_hazard_ptr(ThreadsList* new_list);
+  static bool           is_hazard_ptr_tagged(ThreadsList* list) {
+    return (intptr_t(list) & intptr_t(1)) == intptr_t(1);
+  }
+  static ThreadsList*   tag_hazard_ptr(ThreadsList* list) {
+    return (ThreadsList*)(intptr_t(list) | intptr_t(1));
+  }
+  static ThreadsList*   untag_hazard_ptr(ThreadsList* list) {
+    return (ThreadsList*)(intptr_t(list) & ~intptr_t(1));
+  }
+  NestedThreadsList* _nested_threads_hazard_ptr;
+  NestedThreadsList* get_nested_threads_hazard_ptr() {
+    return _nested_threads_hazard_ptr;
+  }
+  void set_nested_threads_hazard_ptr(NestedThreadsList* value) {
+    assert(Threads_lock->owned_by_self(),
+           "must own Threads_lock for _nested_threads_hazard_ptr to be valid.");
+    _nested_threads_hazard_ptr = value;
+  }
+  // This field is enabled via -XX:+EnableThreadSMRStatistics:
+  uint _nested_threads_hazard_ptr_cnt;
+  void dec_nested_threads_hazard_ptr_cnt() {
+    assert(_nested_threads_hazard_ptr_cnt != 0, "mismatched {dec,inc}_nested_threads_hazard_ptr_cnt()");
+    _nested_threads_hazard_ptr_cnt--;
+  }
+  void inc_nested_threads_hazard_ptr_cnt() {
+    _nested_threads_hazard_ptr_cnt++;
+  }
+  uint nested_threads_hazard_ptr_cnt() {
+    return _nested_threads_hazard_ptr_cnt;
+  }
+
  public:
   void* operator new(size_t size) throw() { return allocate(size, true); }
   void* operator new(size_t size, const std::nothrow_t& nothrow_constant) throw() {
@@ -271,6 +318,8 @@ class Thread: public ThreadShadow {
   friend class PauseNoSafepointVerifier;
   friend class GCLocker;
 
+  volatile void* _polling_page;                 // Thread local polling page
+
   ThreadLocalAllocBuffer _tlab;                 // Thread-local eden
   ThreadLocalAllocBuffer _gclab;                // Thread-local allocation buffer for GC (e.g. evacuation)
   jlong _allocated_bytes;                       // Cumulative number of bytes allocated on
@@ -359,6 +408,9 @@ class Thread: public ThreadShadow {
   static inline Thread* current_or_null_safe();
 
   // Common thread operations
+#ifdef ASSERT
+  static void check_for_dangling_thread_pointer(Thread *thread);
+#endif
   static void set_priority(Thread* thread, ThreadPriority priority);
   static ThreadPriority get_priority(const Thread* const thread);
   static void start(Thread* thread);
@@ -560,6 +612,8 @@ protected:
   uintptr_t        _self_raw_id;      // used by get_thread (mutable)
   int              _lgrp_id;
 
+  volatile void** polling_page_addr() { return &_polling_page; }
+
  public:
   // Stack overflow support
   address stack_base() const           { assert(_stack_base != NULL,"Sanity check"); return _stack_base; }
@@ -582,6 +636,7 @@ protected:
 
   // Printing
   virtual void print_on(outputStream* st) const;
+  virtual void print_nested_threads_hazard_ptrs_on(outputStream* st) const;
   void print() const { print_on(tty); }
   virtual void print_on_error(outputStream* st, char* buf, int buflen) const;
   void print_value_on(outputStream* st) const;
@@ -627,6 +682,8 @@ protected:
 
   static ByteSize stack_base_offset()            { return byte_offset_of(Thread, _stack_base); }
   static ByteSize stack_size_offset()            { return byte_offset_of(Thread, _stack_size); }
+
+  static ByteSize polling_page_offset()          { return byte_offset_of(Thread, _polling_page); }
 
 #define TLAB_FIELD_OFFSET(name) \
   static ByteSize tlab_##name##_offset()         { return byte_offset_of(Thread, _tlab) + ThreadLocalAllocBuffer::name##_offset(); }
@@ -806,6 +863,7 @@ class JavaThread: public Thread {
   friend class WhiteBox;
  private:
   JavaThread*    _next;                          // The next thread in the Threads list
+  bool           _on_thread_list;                // Is set when this JavaThread is added to the Threads list
   oop            _threadObj;                     // The Java level thread object
 
 #ifdef ASSERT
@@ -1138,15 +1196,23 @@ class JavaThread: public Thread {
   void set_safepoint_state(ThreadSafepointState *state) { _safepoint_state = state; }
   bool is_at_poll_safepoint()                    { return _safepoint_state->is_at_poll_safepoint(); }
 
+  // JavaThread termination and lifecycle support:
+  void smr_delete();
+  bool on_thread_list() const { return _on_thread_list; }
+  void set_on_thread_list() { _on_thread_list = true; }
+
   // thread has called JavaThread::exit() or is terminated
-  bool is_exiting()                              { return _terminated == _thread_exiting || is_terminated(); }
+  bool is_exiting() const;
   // thread is terminated (no longer on the threads list); we compare
   // against the two non-terminated values so that a freed JavaThread
   // will also be considered terminated.
-  bool is_terminated()                           { return _terminated != _not_terminated && _terminated != _thread_exiting; }
-  void set_terminated(TerminatedTypes t)         { _terminated = t; }
+  bool check_is_terminated(TerminatedTypes l_terminated) const {
+    return l_terminated != _not_terminated && l_terminated != _thread_exiting;
+  }
+  bool is_terminated() const;
+  void set_terminated(TerminatedTypes t);
   // special for Threads::remove() which is static:
-  void set_terminated_value()                    { _terminated = _thread_terminated; }
+  void set_terminated_value();
   void block_if_vm_exited();
 
   bool doing_unsafe_access()                     { return _doing_unsafe_access; }
@@ -1154,6 +1220,33 @@ class JavaThread: public Thread {
 
   bool do_not_unlock_if_synchronized()             { return _do_not_unlock_if_synchronized; }
   void set_do_not_unlock_if_synchronized(bool val) { _do_not_unlock_if_synchronized = val; }
+
+  inline void set_polling_page(void* poll_value);
+  inline volatile void* get_polling_page();
+
+ private:
+  // Support for thread handshake operations
+  HandshakeState _handshake;
+ public:
+  void set_handshake_operation(HandshakeOperation* op) {
+    _handshake.set_operation(this, op);
+  }
+
+  bool has_handshake() const {
+    return _handshake.has_operation();
+  }
+
+  void cancel_handshake() {
+    _handshake.cancel(this);
+  }
+
+  void handshake_process_by_self() {
+    _handshake.process_by_self(this);
+  }
+
+  void handshake_process_by_vmthread() {
+    _handshake.process_by_vmthread(this);
+  }
 
   // Suspend/resume support for JavaThread
  private:
@@ -1205,6 +1298,9 @@ class JavaThread: public Thread {
   // other values in the code. Experiments with all calls can be done
   // via the appropriate -XX options.
   bool wait_for_ext_suspend_completion(int count, int delay, uint32_t *bits);
+
+  // test for suspend - most (all?) of these should go away
+  bool is_thread_fully_suspended(bool wait_for_suspend, uint32_t *bits);
 
   inline void set_external_suspend();
   inline void clear_external_suspend();
@@ -2000,13 +2096,13 @@ class CompilerThread : public JavaThread {
  private:
   CompilerCounters* _counters;
 
-  ciEnv*            _env;
-  CompileLog*       _log;
-  CompileTask*      _task;
-  CompileQueue*     _queue;
-  BufferBlob*       _buffer_blob;
+  ciEnv*                _env;
+  CompileLog*           _log;
+  CompileTask* volatile _task;  // print_threads_compiling can read this concurrently.
+  CompileQueue*         _queue;
+  BufferBlob*           _buffer_blob;
 
-  AbstractCompiler* _compiler;
+  AbstractCompiler*     _compiler;
 
  public:
 
@@ -2075,14 +2171,13 @@ class Threads: AllStatic {
 
   static void initialize_java_lang_classes(JavaThread* main_thread, TRAPS);
   static void initialize_jsr292_core_classes(TRAPS);
+
  public:
   // Thread management
   // force_daemon is a concession to JNI, where we may need to add a
   // thread to the thread list before allocating its thread object
   static void add(JavaThread* p, bool force_daemon = false);
   static void remove(JavaThread* p);
-  static bool includes(JavaThread* p);
-  static JavaThread* first()                     { return _thread_list; }
   static void threads_do(ThreadClosure* tc);
   static void java_threads_do(ThreadClosure* tc);
   static void possibly_parallel_threads_do(bool is_par, ThreadClosure* tc);
@@ -2157,17 +2252,13 @@ class Threads: AllStatic {
                              int buflen, bool* found_current);
   static void print_threads_compiling(outputStream* st, char* buf, int buflen);
 
-  // Get Java threads that are waiting to enter a monitor. If doLock
-  // is true, then Threads_lock is grabbed as needed. Otherwise, the
-  // VM needs to be at a safepoint.
-  static GrowableArray<JavaThread*>* get_pending_threads(int count,
-                                                         address monitor, bool doLock);
+  // Get Java threads that are waiting to enter a monitor.
+  static GrowableArray<JavaThread*>* get_pending_threads(ThreadsList * t_list,
+                                                         int count, address monitor);
 
-  // Get owning Java thread from the monitor's owner field. If doLock
-  // is true, then Threads_lock is grabbed as needed. Otherwise, the
-  // VM needs to be at a safepoint.
-  static JavaThread *owning_thread_from_monitor_owner(address owner,
-                                                      bool doLock);
+  // Get owning Java thread from the monitor's owner field.
+  static JavaThread *owning_thread_from_monitor_owner(ThreadsList * t_list,
+                                                      address owner);
 
   // Number of threads on the active threads list
   static int number_of_threads()                 { return _number_of_threads; }
@@ -2176,9 +2267,6 @@ class Threads: AllStatic {
 
   // Deoptimizes all frames tied to marked nmethods
   static void deoptimized_wrt_marked_nmethods();
-
-  static JavaThread* find_java_thread_from_java_tid(jlong java_tid);
-
 };
 
 

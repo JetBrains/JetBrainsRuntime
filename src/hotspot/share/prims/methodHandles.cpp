@@ -122,6 +122,48 @@ enum {
   ALL_KINDS      = IS_METHOD | IS_CONSTRUCTOR | IS_FIELD | IS_TYPE
 };
 
+int MethodHandles::ref_kind_to_flags(int ref_kind) {
+  assert(ref_kind_is_valid(ref_kind), "%d", ref_kind);
+  int flags = (ref_kind << REFERENCE_KIND_SHIFT);
+  if (ref_kind_is_field(ref_kind)) {
+    flags |= IS_FIELD;
+  } else if (ref_kind_is_method(ref_kind)) {
+    flags |= IS_METHOD;
+  } else if (ref_kind == JVM_REF_newInvokeSpecial) {
+    flags |= IS_CONSTRUCTOR;
+  }
+  return flags;
+}
+
+Handle MethodHandles::resolve_MemberName_type(Handle mname, Klass* caller, TRAPS) {
+  Handle empty;
+  Handle type(THREAD, java_lang_invoke_MemberName::type(mname()));
+  if (!java_lang_String::is_instance_inlined(type())) {
+    return type; // already resolved
+  }
+  Symbol* signature = java_lang_String::as_symbol_or_null(type());
+  if (signature == NULL) {
+    return empty;  // no such signature exists in the VM
+  }
+  Handle resolved;
+  int flags = java_lang_invoke_MemberName::flags(mname());
+  switch (flags & ALL_KINDS) {
+    case IS_METHOD:
+    case IS_CONSTRUCTOR:
+      resolved = SystemDictionary::find_method_handle_type(signature, caller, CHECK_(empty));
+      break;
+    case IS_FIELD:
+      resolved = SystemDictionary::find_field_handle_type(signature, caller, CHECK_(empty));
+      break;
+    default:
+      THROW_MSG_(vmSymbols::java_lang_InternalError(), "unrecognized MemberName format", empty);
+  }
+  if (resolved.is_null()) {
+    THROW_MSG_(vmSymbols::java_lang_InternalError(), "bad MemberName type", empty);
+  }
+  return resolved;
+}
+
 oop MethodHandles::init_MemberName(Handle mname, Handle target, TRAPS) {
   // This method is used from java.lang.invoke.MemberName constructors.
   // It fills in the new MemberName from a java.lang.reflect.Member.
@@ -1026,6 +1068,26 @@ void MethodHandles::flush_dependent_nmethods(Handle call_site, Handle target) {
     // At least one nmethod has been marked for deoptimization.
     VM_Deoptimize op;
     VMThread::execute(&op);
+  }
+}
+
+void MethodHandles::trace_method_handle_interpreter_entry(MacroAssembler* _masm, vmIntrinsics::ID iid) {
+  if (TraceMethodHandles) {
+    const char* name = vmIntrinsics::name_at(iid);
+    if (*name == '_')  name += 1;
+    const size_t len = strlen(name) + 50;
+    char* qname = NEW_C_HEAP_ARRAY(char, len, mtInternal);
+    const char* suffix = "";
+    if (is_signature_polymorphic(iid)) {
+      if (is_signature_polymorphic_static(iid))
+        suffix = "/static";
+      else
+        suffix = "/private";
+    }
+    jio_snprintf(qname, len, "MethodHandle::interpreter_entry::%s%s", name, suffix);
+    trace_method_handle(_masm, qname);
+    // Note:  Don't free the allocated char array because it's used
+    // during runtime.
   }
 }
 

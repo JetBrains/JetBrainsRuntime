@@ -2350,6 +2350,17 @@ bool os::can_execute_large_page_memory() {
   return UseHugeTLBFS;
 }
 
+char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr, int file_desc) {
+  assert(file_desc >= 0, "file_desc is not valid");
+  char* result = pd_attempt_reserve_memory_at(bytes, requested_addr);
+  if (result != NULL) {
+    if (replace_existing_mapping_with_file_mapping(result, bytes, file_desc) == NULL) {
+      vm_exit_during_initialization(err_msg("Error in mapping Java heap at the given filesystem directory"));
+    }
+  }
+  return result;
+}
+
 // Reserve memory at an arbitrary address, only if that area is
 // available (and not reserved for something else).
 
@@ -3360,7 +3371,7 @@ void os::init(void) {
 
   Bsd::initialize_system_info();
 
-  // main_thread points to the aboriginal thread
+  // _main_thread points to the thread that created/loaded the JVM.
   Bsd::_main_thread = pthread_self();
 
   Bsd::clock_init();
@@ -3390,20 +3401,6 @@ extern "C" {
 jint os::init_2(void) {
 
   os::Posix::init_2();
-
-  // Allocate a single page and mark it as readable for safepoint polling
-  address polling_page = (address) ::mmap(NULL, Bsd::page_size(), PROT_READ, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  guarantee(polling_page != MAP_FAILED, "os::init_2: failed to allocate polling page");
-
-  os::set_polling_page(polling_page);
-  log_info(os)("SafePoint Polling address: " INTPTR_FORMAT, p2i(polling_page));
-
-  if (!UseMembar) {
-    address mem_serialize_page = (address) ::mmap(NULL, Bsd::page_size(), PROT_READ | PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-    guarantee(mem_serialize_page != MAP_FAILED, "mmap Failed for memory serialize page");
-    os::set_memory_serialize_page(mem_serialize_page);
-    log_info(os)("Memory Serialize Page address: " INTPTR_FORMAT, p2i(mem_serialize_page));
-  }
 
   // initialize suspend/resume support - must do this before signal_sets_init()
   if (SR_initialize() != 0) {
@@ -3491,6 +3488,14 @@ void os::make_polling_page_readable(void) {
 }
 
 int os::active_processor_count() {
+  // User has overridden the number of active processors
+  if (ActiveProcessorCount > 0) {
+    log_trace(os)("active_processor_count: "
+                  "active processor count set by user : %d",
+                  ActiveProcessorCount);
+    return ActiveProcessorCount;
+  }
+
   return _processor_count;
 }
 

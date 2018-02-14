@@ -25,6 +25,7 @@
 #ifndef SHARE_VM_OOPS_CONSTANTPOOLOOP_HPP
 #define SHARE_VM_OOPS_CONSTANTPOOLOOP_HPP
 
+#include "memory/allocation.inline.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/cpCache.hpp"
 #include "oops/objArrayOop.hpp"
@@ -982,13 +983,7 @@ class SymbolHashMap: public CHeapObj<mtSymbol> {
   int                   _table_size;
   SymbolHashMapBucket*  _buckets;
 
-  void initialize_table(int table_size) {
-    _table_size = table_size;
-    _buckets = NEW_C_HEAP_ARRAY(SymbolHashMapBucket, table_size, mtSymbol);
-    for (int index = 0; index < table_size; index++) {
-      _buckets[index].clear();
-    }
-  }
+  void initialize_table(int table_size);
 
  public:
 
@@ -1027,7 +1022,7 @@ class SymbolHashMap: public CHeapObj<mtSymbol> {
         delete(cur);
       }
     }
-    delete _buckets;
+    FREE_C_HEAP_ARRAY(SymbolHashMapBucket, _buckets);
   }
 }; // End SymbolHashMap class
 

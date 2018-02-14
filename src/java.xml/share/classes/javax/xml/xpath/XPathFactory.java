@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,8 +45,8 @@ import jdk.xml.internal.SecuritySupport;
  * may not attempt to recursively invoke a <code>newInstance</code> method,
  * even from the same thread.
  *
- * @author  <a href="mailto:Norman.Walsh@Sun.com">Norman Walsh</a>
- * @author  <a href="mailto:Jeff.Suttor@Sun.com">Jeff Suttor</a>
+ * @author  Norman Walsh
+ * @author  Jeff Suttor
  *
  * @since 1.5
  */
@@ -87,7 +87,7 @@ public abstract class XPathFactory {
      * @since 9
      */
     public static XPathFactory newDefaultInstance() {
-        return XPathFactoryImpl.newXPathFactoryNoServiceLoader();
+        return new XPathFactoryImpl();
     }
 
     /**

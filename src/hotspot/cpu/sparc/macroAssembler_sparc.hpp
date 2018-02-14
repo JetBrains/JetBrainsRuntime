@@ -986,6 +986,8 @@ public:
   // Support for serializing memory accesses between threads
   void serialize_memory(Register thread, Register tmp1, Register tmp2);
 
+  void safepoint_poll(Label& slow_path, bool a, Register thread_reg, Register temp_reg);
+
   // Stack frame creation/removal
   void enter();
   void leave();
@@ -1275,7 +1277,8 @@ public:
                                RegisterOrConstant itable_index,
                                Register method_result,
                                Register temp_reg, Register temp2_reg,
-                               Label& no_such_interface);
+                               Label& no_such_interface,
+                               bool return_method = true);
 
   // virtual method calling
   void lookup_virtual_method(Register recv_klass,

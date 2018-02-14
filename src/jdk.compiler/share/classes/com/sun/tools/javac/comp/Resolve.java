@@ -28,6 +28,7 @@ package com.sun.tools.javac.comp;
 import com.sun.tools.javac.api.Formattable.LocalizedString;
 import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.code.Scope.WriteableScope;
+import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.code.Symbol.*;
 import com.sun.tools.javac.code.Type.*;
 import com.sun.tools.javac.comp.Attr.ResultInfo;
@@ -137,15 +138,15 @@ public class Resolve {
         verboseResolutionMode = VerboseResolutionMode.getVerboseResolutionMode(options);
         Target target = Target.instance(context);
         allowMethodHandles = target.hasMethodHandles();
-        allowFunctionalInterfaceMostSpecific = source.allowFunctionalInterfaceMostSpecific();
-        allowLocalVariableTypeInference = source.allowLocalVariableTypeInference();
+        allowFunctionalInterfaceMostSpecific = Feature.FUNCTIONAL_INTERFACE_MOST_SPECIFIC.allowedInSource(source);
+        allowLocalVariableTypeInference = Feature.LOCAL_VARIABLE_TYPE_INFERENCE.allowedInSource(source);
         checkVarargsAccessAfterResolution =
-                source.allowPostApplicabilityVarargsAccessCheck();
+                Feature.POST_APPLICABILITY_VARARGS_ACCESS_CHECK.allowedInSource(source);
         polymorphicSignatureScope = WriteableScope.create(syms.noSymbol);
 
         inapplicableMethodException = new InapplicableMethodException(diags);
 
-        allowModules = source.allowModules();
+        allowModules = Feature.MODULES.allowedInSource(source);
     }
 
     /** error symbols, which are returned when resolution fails
@@ -1548,7 +1549,8 @@ public class Resolve {
                       boolean allowBoxing,
                       boolean useVarargs) {
         if (sym.kind == ERR ||
-                !sym.isInheritedIn(site.tsym, types)) {
+                (site.tsym != sym.owner && !sym.isInheritedIn(site.tsym, types)) ||
+                !notOverriddenIn(site, sym)) {
             return bestSoFar;
         } else if (useVarargs && (sym.flags() & VARARGS) == 0) {
             return bestSoFar.kind.isResolutionError() ?

@@ -40,7 +40,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
     if (_heap->in_collection_set(obj)) {
-      oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+      oop forw = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
       if (oopDesc::unsafe_equals(obj, forw)) {
         bool evacuated = false;
         forw = _heap->evacuate_object(obj, thread, evacuated);
@@ -68,9 +68,13 @@ template <class T>
 void ShenandoahTraversalGC::do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
-  shenandoah_assert_not_forwarded(NULL, obj);
-  shenandoah_assert_marked_next(NULL, obj);
-  shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_concgc());
+  assert(obj != NULL, "expect non-null object");
+  assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "expect forwarded obj in queue");
+  assert(_heap->cancelled_concgc()
+         || BarrierSet::barrier_set()->is_safe(obj),
+         "we don't want to mark objects in from-space");
+  assert(_heap->is_in(obj), "referenced objects must be in the heap. No?");
+  assert(_heap->is_marked_next(obj), "only marked objects on task queue");
 
   if (task->is_not_chunked()) {
     count_liveness(live_data, obj);

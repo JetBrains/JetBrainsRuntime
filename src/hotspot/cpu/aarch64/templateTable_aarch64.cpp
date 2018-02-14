@@ -1759,7 +1759,7 @@ void TemplateTable::branch(bool is_jsr, bool is_wide)
     __ push_i(r1);
     // Adjust the bcp by the 16-bit displacement in r2
     __ add(rbcp, rbcp, r2);
-    __ dispatch_only(vtos);
+    __ dispatch_only(vtos, /*generate_poll*/true);
     return;
   }
 
@@ -1875,7 +1875,7 @@ void TemplateTable::branch(bool is_jsr, bool is_wide)
   // continue with the bytecode @ target
   // rscratch1: target bytecode
   // rbcp: target bcp
-  __ dispatch_only(vtos);
+  __ dispatch_only(vtos, /*generate_poll*/true);
 
   if (UseLoopCounter) {
     if (ProfileInterpreter) {
@@ -2015,7 +2015,7 @@ void TemplateTable::ret() {
   __ ldr(rbcp, Address(rmethod, Method::const_offset()));
   __ lea(rbcp, Address(rbcp, r1));
   __ add(rbcp, rbcp, in_bytes(ConstMethod::codes_offset()));
-  __ dispatch_next(vtos);
+  __ dispatch_next(vtos, 0, /*generate_poll*/true);
 }
 
 void TemplateTable::wide_ret() {
@@ -2026,7 +2026,7 @@ void TemplateTable::wide_ret() {
   __ ldr(rbcp, Address(rmethod, Method::const_offset()));
   __ lea(rbcp, Address(rbcp, r1));
   __ add(rbcp, rbcp, in_bytes(ConstMethod::codes_offset()));
-  __ dispatch_next(vtos);
+  __ dispatch_next(vtos, 0, /*generate_poll*/true);
 }
 
 
@@ -2056,7 +2056,7 @@ void TemplateTable::tableswitch() {
   __ rev32(r3, r3);
   __ load_unsigned_byte(rscratch1, Address(rbcp, r3, Address::sxtw(0)));
   __ add(rbcp, rbcp, r3, ext::sxtw);
-  __ dispatch_only(vtos);
+  __ dispatch_only(vtos, /*generate_poll*/true);
   // handle default
   __ bind(default_case);
   __ profile_switch_default(r0);
@@ -2106,7 +2106,7 @@ void TemplateTable::fast_linearswitch() {
   __ rev32(r3, r3);
   __ add(rbcp, rbcp, r3, ext::sxtw);
   __ ldrb(rscratch1, Address(rbcp, 0));
-  __ dispatch_only(vtos);
+  __ dispatch_only(vtos, /*generate_poll*/true);
 }
 
 void TemplateTable::fast_binaryswitch() {
@@ -2204,7 +2204,7 @@ void TemplateTable::fast_binaryswitch() {
   __ rev32(j, j);
   __ load_unsigned_byte(rscratch1, Address(rbcp, j, Address::sxtw(0)));
   __ lea(rbcp, Address(rbcp, j, Address::sxtw(0)));
-  __ dispatch_only(vtos);
+  __ dispatch_only(vtos, /*generate_poll*/true);
 
   // default case -> j = default offset
   __ bind(default_case);
@@ -2213,7 +2213,7 @@ void TemplateTable::fast_binaryswitch() {
   __ rev32(j, j);
   __ load_unsigned_byte(rscratch1, Address(rbcp, j, Address::sxtw(0)));
   __ lea(rbcp, Address(rbcp, j, Address::sxtw(0)));
-  __ dispatch_only(vtos);
+  __ dispatch_only(vtos, /*generate_poll*/true);
 }
 
 
@@ -2236,13 +2236,6 @@ void TemplateTable::_return(TosState state)
 
     __ bind(skip_register_finalizer);
   }
-
-  // Explicitly reset last_sp, for handling special case in TemplateInterpreter::deopt_reexecute_entry
-#ifdef ASSERT
-  if (state == vtos) {
-    __ str(zr, Address(rfp, frame::interpreter_frame_last_sp_offset * wordSize));
-  }
-#endif
 
   // Issue a StoreStore barrier after all stores but before return
   // from any constructor for any class with a final field.  We don't
@@ -3341,11 +3334,11 @@ void TemplateTable::invokeinterface(int byte_no) {
   transition(vtos, vtos);
   assert(byte_no == f1_byte, "use this argument");
 
-  prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 itable index
+  prepare_invoke(byte_no, r0, rmethod,  // get f1 Klass*, f2 Method*
                  r2, r3); // recv, flags
 
   // r0: interface klass (from f1)
-  // rmethod: itable index (from f2)
+  // rmethod: method (from f2)
   // r2: receiver
   // r3: flags
 
@@ -3364,10 +3357,27 @@ void TemplateTable::invokeinterface(int byte_no) {
   __ null_check(r2, oopDesc::klass_offset_in_bytes());
   __ load_klass(r3, r2);
 
+  Label no_such_interface, no_such_method;
+
+  // Receiver subtype check against REFC.
+  // Superklass in r0. Subklass in r3. Blows rscratch2, r13
+  __ lookup_interface_method(// inputs: rec. class, interface, itable index
+                             r3, r0, noreg,
+                             // outputs: scan temp. reg, scan temp. reg
+                             rscratch2, r13,
+                             no_such_interface,
+                             /*return_method=*/false);
+
   // profile this call
   __ profile_virtual_call(r3, r13, r19);
 
-  Label no_such_interface, no_such_method;
+  // Get declaring interface class from method, and itable index
+  __ ldr(r0, Address(rmethod, Method::const_offset()));
+  __ ldr(r0, Address(r0, ConstMethod::constants_offset()));
+  __ ldr(r0, Address(r0, ConstantPool::pool_holder_offset_in_bytes()));
+  __ ldrw(rmethod, Address(rmethod, Method::itable_index_offset()));
+  __ subw(rmethod, rmethod, Method::itable_index_max);
+  __ negw(rmethod, rmethod);
 
   __ lookup_interface_method(// inputs: rec. class, interface, itable index
                              r3, r0, rmethod,

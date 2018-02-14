@@ -43,6 +43,7 @@
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.inline.hpp"
+#include "oops/access.inline.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceOop.hpp"
 #include "oops/markOop.hpp"
@@ -2066,26 +2067,9 @@ JNI_ENTRY(jobject, jni_GetObjectField(JNIEnv *env, jobject obj, jfieldID fieldID
   if (JvmtiExport::should_post_field_access()) {
     o = JvmtiExport::jni_GetField_probe(thread, obj, o, k, fieldID, false);
   }
-  jobject ret = JNIHandles::make_local(env, o->obj_field(offset));
-#if INCLUDE_ALL_GCS
-  // If G1 is enabled and we are accessing the value of the referent
-  // field in a reference object then we need to register a non-null
-  // referent with the SATB barrier.
-  bool needs_barrier = false;
-
-  if (ret != NULL &&
-      offset == java_lang_ref_Reference::referent_offset &&
-      InstanceKlass::cast(k)->reference_type() != REF_NONE) {
-    assert(InstanceKlass::cast(k)->is_subclass_of(SystemDictionary::Reference_klass()), "sanity");
-    needs_barrier = true;
-  }
-
-  if (needs_barrier) {
-    oop referent = JNIHandles::resolve(ret);
-    oopDesc::bs()->keep_alive_barrier(referent);
-  }
-#endif // INCLUDE_ALL_GCS
-HOTSPOT_JNI_GETOBJECTFIELD_RETURN(ret);
+  oop loaded_obj = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_load_at(o, offset);
+  jobject ret = JNIHandles::make_local(env, loaded_obj);
+  HOTSPOT_JNI_GETOBJECTFIELD_RETURN(ret);
   return ret;
 JNI_END
 
@@ -2182,7 +2166,7 @@ JNI_QUICK_ENTRY(void, jni_SetObjectField(JNIEnv *env, jobject obj, jfieldID fiel
     field_value.l = value;
     o = JvmtiExport::jni_SetField_probe_nh(thread, obj, o, k, fieldID, false, 'L', (jvalue *)&field_value);
   }
-  o->obj_field_put(offset, JNIHandles::resolve(value));
+  HeapAccess<ON_UNKNOWN_OOP_REF>::oop_store_at(o, offset, JNIHandles::resolve(value));
   HOTSPOT_JNI_SETOBJECTFIELD_RETURN();
 JNI_END
 
@@ -2728,7 +2712,7 @@ JNI_QUICK_ENTRY(ElementType*, \
   EntryProbe; \
   /* allocate an chunk of memory in c land */ \
   typeArrayOop a = typeArrayOop(JNIHandles::resolve_non_null(array)); \
-  a = typeArrayOop(oopDesc::bs()->read_barrier(a)); \
+  a = typeArrayOop(BarrierSet::barrier_set()->read_barrier(a)); \
   ElementType* result; \
   int len = a->length(); \
   if (len == 0) { \
@@ -2787,7 +2771,7 @@ JNI_QUICK_ENTRY(void, \
   JNIWrapper("Release" XSTR(Result) "ArrayElements"); \
   EntryProbe; \
   typeArrayOop a = typeArrayOop(JNIHandles::resolve_non_null(array)); \
-  a = typeArrayOop(oopDesc::bs()->write_barrier(a)); \
+  a = typeArrayOop(BarrierSet::barrier_set()->write_barrier(a)); \
   int len = a->length(); \
   if (len != 0) {   /* Empty array:  nothing to free or copy. */  \
     if ((mode == 0) || (mode == JNI_COMMIT)) { \
@@ -2838,8 +2822,8 @@ jni_Get##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
   EntryProbe; \
   DT_VOID_RETURN_MARK(Get##Result##ArrayRegion); \
   typeArrayOop src = typeArrayOop(JNIHandles::resolve_non_null(array)); \
-  src = typeArrayOop(oopDesc::bs()->read_barrier(src)); \
-  if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)src->length())) { \
+  src = typeArrayOop(BarrierSet::barrier_set()->read_barrier(src)); \
+  if (start < 0 || len < 0 || (start > src->length() - len)) { \
     THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
     if (len > 0) { \
@@ -2889,8 +2873,8 @@ jni_Set##Result##ArrayRegion(JNIEnv *env, ElementType##Array array, jsize start,
   EntryProbe; \
   DT_VOID_RETURN_MARK(Set##Result##ArrayRegion); \
   typeArrayOop dst = typeArrayOop(JNIHandles::resolve_non_null(array)); \
-  dst = typeArrayOop(oopDesc::bs()->write_barrier(dst)); \
-  if (start < 0 || len < 0 || ((unsigned int)start + (unsigned int)len > (unsigned int)dst->length())) { \
+  dst = typeArrayOop(BarrierSet::barrier_set()->write_barrier(dst)); \
+  if (start < 0 || len < 0 || (start > dst->length() - len)) { \
     THROW(vmSymbols::java_lang_ArrayIndexOutOfBoundsException()); \
   } else { \
     if (len > 0) { \
@@ -3126,7 +3110,7 @@ JNI_ENTRY(void, jni_GetStringRegion(JNIEnv *env, jstring string, jsize start, js
   DT_VOID_RETURN_MARK(GetStringRegion);
   oop s = JNIHandles::resolve_non_null(string);
   int s_len = java_lang_String::length(s);
-  if (start < 0 || len < 0 || start + len > s_len) {
+  if (start < 0 || len < 0 || start > s_len - len) {
     THROW(vmSymbols::java_lang_StringIndexOutOfBoundsException());
   } else {
     if (len > 0) {
@@ -3152,7 +3136,7 @@ JNI_ENTRY(void, jni_GetStringUTFRegion(JNIEnv *env, jstring string, jsize start,
   DT_VOID_RETURN_MARK(GetStringUTFRegion);
   oop s = JNIHandles::resolve_non_null(string);
   int s_len = java_lang_String::length(s);
-  if (start < 0 || len < 0 || start + len > s_len) {
+  if (start < 0 || len < 0 || start > s_len - len) {
     THROW(vmSymbols::java_lang_StringIndexOutOfBoundsException());
   } else {
     //%note jni_7
@@ -3178,7 +3162,7 @@ JNI_ENTRY(void*, jni_GetPrimitiveArrayCritical(JNIEnv *env, jarray array, jboole
     *isCopy = JNI_FALSE;
   }
   oop a = JNIHandles::resolve_non_null(array);
-  a = oopDesc::bs()->write_barrier(a);
+  a = BarrierSet::barrier_set()->write_barrier(a);
   Universe::heap()->pin_object(a);
   assert(a->is_array(), "just checking");
   BasicType type;
@@ -3198,7 +3182,7 @@ JNI_ENTRY(void, jni_ReleasePrimitiveArrayCritical(JNIEnv *env, jarray array, voi
   HOTSPOT_JNI_RELEASEPRIMITIVEARRAYCRITICAL_ENTRY(env, array, carray, mode);
   // The array, carray and mode arguments are ignored
   oop a = JNIHandles::resolve_non_null(array);
-  a = oopDesc::bs()->read_barrier(a);
+  a = BarrierSet::barrier_set()->read_barrier(a);
 #ifdef ASSERT
   assert(a->is_array(), "just checking");
   BasicType type;
@@ -3222,7 +3206,7 @@ JNI_ENTRY(const jchar*, jni_GetStringCritical(JNIEnv *env, jstring string, jbool
   HOTSPOT_JNI_GETSTRINGCRITICAL_ENTRY(env, string, (uintptr_t *) isCopy);
   GCLocker::lock_critical(thread);
   oop s = JNIHandles::resolve_non_null(string);
-  s = oopDesc::bs()->write_barrier(s);
+  s = BarrierSet::barrier_set()->write_barrier(s);
   Universe::heap()->pin_object(s);
   typeArrayOop s_value = java_lang_String::value(s);
   bool is_latin1 = java_lang_String::is_latin1(s);
@@ -3254,7 +3238,7 @@ JNI_ENTRY(void, jni_ReleaseStringCritical(JNIEnv *env, jstring str, const jchar 
   HOTSPOT_JNI_RELEASESTRINGCRITICAL_ENTRY(env, str, (uint16_t *) chars);
   // The str and chars arguments are ignored for UTF16 strings
   oop s = JNIHandles::resolve_non_null(str);
-  s = oopDesc::bs()->read_barrier(s);
+  s = BarrierSet::barrier_set()->read_barrier(s);
   Universe::heap()->unpin_object(s);
   bool is_latin1 = java_lang_String::is_latin1(s);
   if (is_latin1) {
@@ -4160,7 +4144,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
   thread->initialize_thread_current();
 
   if (!os::create_attached_thread(thread)) {
-    delete thread;
+    thread->smr_delete();
     return JNI_ERR;
   }
   // Enable stack overflow checks
@@ -4291,7 +4275,7 @@ jint JNICALL jni_DetachCurrentThread(JavaVM *vm)  {
   // (platform-dependent) methods where we do alternate stack
   // maintenance work?)
   thread->exit(false, JavaThread::jni_detach);
-  delete thread;
+  thread->smr_delete();
 
   HOTSPOT_JNI_DETACHCURRENTTHREAD_RETURN(JNI_OK);
   return JNI_OK;

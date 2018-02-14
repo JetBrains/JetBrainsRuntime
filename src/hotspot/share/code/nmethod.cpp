@@ -386,7 +386,7 @@ const char* nmethod::compile_kind() const {
 
 // Fill in default values for various flag fields
 void nmethod::init_defaults() {
-  _state                      = in_use;
+  _state                      = not_installed;
   _has_flushed_dependencies   = 0;
   _lock_count                 = 0;
   _stack_traversal_mark       = 0;
@@ -438,13 +438,14 @@ nmethod* nmethod::new_native_nmethod(const methodHandle& method,
                                             basic_lock_sp_offset, oop_maps);
     NOT_PRODUCT(if (nm != NULL)  native_nmethod_stats.note_native_nmethod(nm));
   }
-  // verify nmethod
-  debug_only(if (nm) nm->verify();) // might block
 
   if (nm != NULL) {
-    nm->log_new_nmethod();
-  }
+    // verify nmethod
+    debug_only(nm->verify();) // might block
 
+    nm->log_new_nmethod();
+    nm->make_in_use();
+  }
   return nm;
 }
 
@@ -1129,7 +1130,7 @@ void nmethod::log_state_change() const {
 /**
  * Common functionality for both make_not_entrant and make_zombie
  */
-bool nmethod::make_not_entrant_or_zombie(unsigned int state) {
+bool nmethod::make_not_entrant_or_zombie(int state) {
   assert(state == zombie || state == not_entrant, "must be zombie or not_entrant");
   assert(!is_zombie(), "should not already be a zombie");
 
@@ -1544,7 +1545,7 @@ void nmethod::metadata_do(void f(Metadata*)) {
         CompiledIC *ic = CompiledIC_at(&iter);
         if (ic->is_icholder_call()) {
           CompiledICHolder* cichk = ic->cached_icholder();
-          f(cichk->holder_method());
+          f(cichk->holder_metadata());
           f(cichk->holder_klass());
         } else {
           Metadata* ic_oop = ic->cached_metadata();
@@ -2097,9 +2098,7 @@ void nmethod::verify() {
 
 void nmethod::verify_interrupt_point(address call_site) {
   // Verify IC only when nmethod installation is finished.
-  bool is_installed = (method()->code() == this) // nmethod is in state 'in_use' and installed
-                      || !this->is_in_use();     // nmethod is installed, but not in 'in_use' state
-  if (is_installed) {
+  if (!is_not_installed()) {
     Thread *cur = Thread::current();
     if (CompiledIC_lock->owner() == cur ||
         ((cur->is_VM_thread() || cur->is_ConcurrentGC_thread()) &&

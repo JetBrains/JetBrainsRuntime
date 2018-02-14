@@ -23,14 +23,16 @@
 #include "precompiled.hpp"
 
 #include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
+#include "gc/shenandoah/shenandoahWorkGroup.hpp"
 #include "memory/allocation.hpp"
 
 class ShenandoahVerifyOopClosure : public ExtendedOopClosure {
@@ -51,9 +53,140 @@ public:
           _phase(phase), _options(options) {};
 
 private:
-  void verify(ShenandoahAsserts::SafeLevel level, oop obj, bool test, const char* label) {
+  void print_obj(ShenandoahMessageBuffer& msg, oop obj) {
+    ShenandoahHeapRegion *r = _heap->heap_region_containing(obj);
+    stringStream ss;
+    r->print_on(&ss);
+
+    msg.append("  " PTR_FORMAT " - klass " PTR_FORMAT " %s\n", p2i(obj), p2i(obj->klass()), obj->klass()->external_name());
+    msg.append("    %3s allocated after complete mark start\n", _heap->allocated_after_complete_mark_start((HeapWord *) obj) ? "" : "not");
+    msg.append("    %3s allocated after next mark start\n",     _heap->allocated_after_next_mark_start((HeapWord *) obj)     ? "" : "not");
+    msg.append("    %3s marked complete\n",      _heap->is_marked_complete(obj) ? "" : "not");
+    msg.append("    %3s marked next\n",          _heap->is_marked_next(obj) ? "" : "not");
+    msg.append("    %3s in collection set\n",    _heap->in_collection_set(obj) ? "" : "not");
+    msg.append("  region: %s", ss.as_string());
+  }
+
+  void print_non_obj(ShenandoahMessageBuffer& msg, void* loc) {
+    msg.append("  outside of Java heap\n");
+    stringStream ss;
+    os::print_location(&ss, (intptr_t) loc, false);
+    msg.append("  %s\n", ss.as_string());
+  }
+
+  void print_obj_safe(ShenandoahMessageBuffer& msg, void* loc) {
+    msg.append("  " PTR_FORMAT " - safe print, no details\n", p2i(loc));
+    if (_heap->is_in(loc)) {
+      ShenandoahHeapRegion* r = _heap->heap_region_containing(loc);
+      if (r != NULL) {
+        stringStream ss;
+        r->print_on(&ss);
+        msg.append("  region: %s", ss.as_string());
+      }
+    }
+  }
+
+  enum SafeLevel {
+    _safe_unknown,
+    _safe_oop,
+    _safe_oop_fwd,
+    _safe_all,
+  };
+
+  void print_failure(SafeLevel level, oop obj, const char* label) {
+    ResourceMark rm;
+
+    bool loc_in_heap = (_loc != NULL && _heap->is_in(_loc));
+    bool interior_loc_in_heap = (_interior_loc != NULL && _heap->is_in(_interior_loc));
+
+    ShenandoahMessageBuffer msg("Shenandoah verification failed; %s: %s\n\n", _phase, label);
+
+    msg.append("Referenced from:\n");
+    if (_interior_loc != NULL) {
+      msg.append("  interior location: " PTR_FORMAT "\n", p2i(_interior_loc));
+      if (loc_in_heap) {
+        print_obj(msg, _loc);
+      } else {
+        print_non_obj(msg, _interior_loc);
+      }
+    } else {
+      msg.append("  no location recorded, probably a plain heap scan\n");
+    }
+    msg.append("\n");
+
+    msg.append("Object:\n");
+    if (level >= _safe_oop) {
+      print_obj(msg, obj);
+    } else {
+      print_obj_safe(msg, obj);
+    }
+    msg.append("\n");
+
+    if (level >= _safe_oop) {
+      oop fwd = (oop) BrooksPointer::get_raw(obj);
+      if (!oopDesc::unsafe_equals(obj, fwd)) {
+        msg.append("Forwardee:\n");
+        if (level >= _safe_oop_fwd) {
+          print_obj(msg, fwd);
+        } else {
+          print_obj_safe(msg, fwd);
+        }
+        msg.append("\n");
+      }
+    }
+
+    if (level >= _safe_oop_fwd) {
+      oop fwd = (oop) BrooksPointer::get_raw(obj);
+      oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
+      if (!oopDesc::unsafe_equals(fwd, fwd2)) {
+        msg.append("Second forwardee:\n");
+        print_obj_safe(msg, fwd2);
+        msg.append("\n");
+      }
+    }
+
+    if (loc_in_heap && UseShenandoahMatrix && (level == _safe_all)) {
+      msg.append("Matrix connections:\n");
+
+      oop fwd_to = (oop) BrooksPointer::get_raw(obj);
+      oop fwd_from = (oop) BrooksPointer::get_raw(_loc);
+
+      size_t from_idx = _heap->heap_region_index_containing(_loc);
+      size_t to_idx = _heap->heap_region_index_containing(obj);
+      size_t fwd_from_idx = _heap->heap_region_index_containing(fwd_from);
+      size_t fwd_to_idx = _heap->heap_region_index_containing(fwd_to);
+
+      ShenandoahConnectionMatrix* matrix = _heap->connection_matrix();
+      msg.append("  %35s %3s connected\n",
+                 "reference and object",
+                 matrix->is_connected(from_idx, to_idx) ? "" : "not");
+      msg.append("  %35s %3s connected\n",
+                 "fwd(reference) and object",
+                 matrix->is_connected(fwd_from_idx, to_idx) ? "" : "not");
+      msg.append("  %35s %3s connected\n",
+                 "reference and fwd(object)",
+                 matrix->is_connected(from_idx, fwd_to_idx) ? "" : "not");
+      msg.append("  %35s %3s connected\n",
+                 "fwd(reference) and fwd(object)",
+                 matrix->is_connected(fwd_from_idx, fwd_to_idx) ? "" : "not");
+
+      if (interior_loc_in_heap) {
+        size_t from_interior_idx = _heap->heap_region_index_containing(_interior_loc);
+        msg.append("  %35s %3s connected\n",
+                   "interior-reference and object",
+                   matrix->is_connected(from_interior_idx, to_idx) ? "" : "not");
+        msg.append("  %35s %3s connected\n",
+                   "interior-reference and fwd(object)",
+                   matrix->is_connected(from_interior_idx, fwd_to_idx) ? "" : "not");
+      }
+    }
+
+    report_vm_error(__FILE__, __LINE__, msg.buffer());
+  }
+
+  void verify(SafeLevel level, oop obj, bool test, const char* label) {
     if (!test) {
-      ShenandoahAsserts::print_failure(level, obj, _interior_loc, _loc, _phase, label, __FILE__, __LINE__);
+      print_failure(level, obj, label);
     }
   }
 
@@ -86,9 +219,9 @@ private:
     // that failure report would not try to touch something that was not yet verified to be
     // safe to process.
 
-    verify(ShenandoahAsserts::_safe_unknown, obj, _heap->is_in(obj),
+    verify(_safe_unknown, obj, _heap->is_in(obj),
               "oop must be in heap");
-    verify(ShenandoahAsserts::_safe_unknown, obj, check_obj_alignment(obj),
+    verify(_safe_unknown, obj, check_obj_alignment(obj),
               "oop must be aligned");
 
     ShenandoahHeapRegion *obj_reg = _heap->heap_region_containing(obj);
@@ -97,30 +230,30 @@ private:
     // Verify that obj is not in dead space:
     {
       // Do this before touching obj->size()
-      verify(ShenandoahAsserts::_safe_unknown, obj, obj_klass != NULL,
+      verify(_safe_unknown, obj, obj_klass != NULL,
              "Object klass pointer should not be NULL");
-      verify(ShenandoahAsserts::_safe_unknown, obj, Metaspace::contains(obj_klass),
+      verify(_safe_unknown, obj, Metaspace::contains(obj_klass),
              "Object klass pointer must go to metaspace");
 
       HeapWord *obj_addr = (HeapWord *) obj;
-      verify(ShenandoahAsserts::_safe_unknown, obj, obj_addr < obj_reg->top(),
+      verify(_safe_unknown, obj, obj_addr < obj_reg->top(),
              "Object start should be within the region");
 
       if (!obj_reg->is_humongous()) {
-        verify(ShenandoahAsserts::_safe_unknown, obj, (obj_addr + obj->size()) <= obj_reg->top(),
+        verify(_safe_unknown, obj, (obj_addr + obj->size()) <= obj_reg->top(),
                "Object end should be within the region");
       } else {
         size_t humongous_start = obj_reg->region_number();
         size_t humongous_end = humongous_start + (obj->size() >> ShenandoahHeapRegion::region_size_words_shift());
         for (size_t idx = humongous_start + 1; idx < humongous_end; idx++) {
-          verify(ShenandoahAsserts::_safe_unknown, obj, _heap->regions()->get(idx)->is_humongous_continuation(),
+          verify(_safe_unknown, obj, _heap->regions()->get(idx)->is_humongous_continuation(),
                  "Humongous object is in continuation that fits it");
         }
       }
 
       // ------------ obj is safe at this point --------------
 
-      verify(ShenandoahAsserts::_safe_oop, obj, obj_reg->is_active(),
+      verify(_safe_oop, obj, obj_reg->is_active(),
             "Object should be in active region");
 
       switch (_options._verify_liveness) {
@@ -131,7 +264,7 @@ private:
           Atomic::add(obj->size() + BrooksPointer::word_size(), &_ld[obj_reg->region_number()]);
           // fallthrough for fast failure for un-live regions:
         case ShenandoahVerifier::_verify_liveness_conservative:
-          verify(ShenandoahAsserts::_safe_oop, obj, obj_reg->has_live(),
+          verify(_safe_oop, obj, obj_reg->has_live(),
                    "Object must belong to region with live data");
           break;
         default:
@@ -144,36 +277,36 @@ private:
     ShenandoahHeapRegion* fwd_reg = NULL;
 
     if (!oopDesc::unsafe_equals(obj, fwd)) {
-      verify(ShenandoahAsserts::_safe_oop, obj, _heap->is_in(fwd),
+      verify(_safe_oop, obj, _heap->is_in(fwd),
              "Forwardee must be in heap");
-      verify(ShenandoahAsserts::_safe_oop, obj, !oopDesc::is_null(fwd),
+      verify(_safe_oop, obj, !oopDesc::is_null(fwd),
              "Forwardee is set");
-      verify(ShenandoahAsserts::_safe_oop, obj, check_obj_alignment(fwd),
+      verify(_safe_oop, obj, check_obj_alignment(fwd),
              "Forwardee must be aligned");
 
       // Do this before touching fwd->size()
       Klass* fwd_klass = fwd->klass_or_null();
-      verify(ShenandoahAsserts::_safe_oop, obj, fwd_klass != NULL,
+      verify(_safe_oop, obj, fwd_klass != NULL,
              "Forwardee klass pointer should not be NULL");
-      verify(ShenandoahAsserts::_safe_oop, obj, Metaspace::contains(fwd_klass),
+      verify(_safe_oop, obj, Metaspace::contains(fwd_klass),
              "Forwardee klass pointer must go to metaspace");
-      verify(ShenandoahAsserts::_safe_oop, obj, obj_klass == fwd_klass,
+      verify(_safe_oop, obj, obj_klass == fwd_klass,
              "Forwardee klass pointer must go to metaspace");
 
       fwd_reg = _heap->heap_region_containing(fwd);
 
       // Verify that forwardee is not in the dead space:
-      verify(ShenandoahAsserts::_safe_oop, obj, !fwd_reg->is_humongous(),
+      verify(_safe_oop, obj, !fwd_reg->is_humongous(),
              "Should have no humongous forwardees");
 
       HeapWord *fwd_addr = (HeapWord *) fwd;
-      verify(ShenandoahAsserts::_safe_oop, obj, fwd_addr < fwd_reg->top(),
+      verify(_safe_oop, obj, fwd_addr < fwd_reg->top(),
              "Forwardee start should be within the region");
-      verify(ShenandoahAsserts::_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
+      verify(_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
              "Forwardee end should be within the region");
 
       oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
-      verify(ShenandoahAsserts::_safe_oop, obj, oopDesc::unsafe_equals(fwd, fwd2),
+      verify(_safe_oop, obj, oopDesc::unsafe_equals(fwd, fwd2),
              "Double forwarding");
     } else {
       fwd_reg = obj_reg;
@@ -186,11 +319,11 @@ private:
         // skip
         break;
       case ShenandoahVerifier::_verify_marked_next:
-        verify(ShenandoahAsserts::_safe_all, obj, _heap->is_marked_next(obj),
+        verify(_safe_all, obj, _heap->is_marked_next(obj),
                "Must be marked in next bitmap");
         break;
       case ShenandoahVerifier::_verify_marked_complete:
-        verify(ShenandoahAsserts::_safe_all, obj, _heap->is_marked_complete(obj),
+        verify(_safe_all, obj, _heap->is_marked_complete(obj),
                "Must be marked in complete bitmap");
         break;
       default:
@@ -202,13 +335,13 @@ private:
         // skip
         break;
       case ShenandoahVerifier::_verify_forwarded_none: {
-        verify(ShenandoahAsserts::_safe_all, obj, oopDesc::unsafe_equals(obj, fwd),
+        verify(_safe_all, obj, oopDesc::unsafe_equals(obj, fwd),
                "Should not be forwarded");
         break;
       }
       case ShenandoahVerifier::_verify_forwarded_allow: {
         if (!oopDesc::unsafe_equals(obj, fwd)) {
-          verify(ShenandoahAsserts::_safe_all, obj, obj_reg != fwd_reg,
+          verify(_safe_all, obj, obj_reg != fwd_reg,
                  "Forwardee should be in another region");
         }
         break;
@@ -222,12 +355,12 @@ private:
         // skip
         break;
       case ShenandoahVerifier::_verify_cset_none:
-        verify(ShenandoahAsserts::_safe_all, obj, !_heap->in_collection_set(obj),
+        verify(_safe_all, obj, !_heap->in_collection_set(obj),
                "Should not have references to collection set");
         break;
       case ShenandoahVerifier::_verify_cset_forwarded:
         if (_heap->in_collection_set(obj)) {
-          verify(ShenandoahAsserts::_safe_all, obj, !oopDesc::unsafe_equals(obj, fwd),
+          verify(_safe_all, obj, !oopDesc::unsafe_equals(obj, fwd),
                  "Object in collection set, should have forwardee");
         }
         break;
@@ -245,7 +378,7 @@ private:
         size_t from_idx = _heap->heap_region_index_containing(interior);
         size_t to_idx   = _heap->heap_region_index_containing(obj);
         _interior_loc = interior;
-        verify(ShenandoahAsserts::_safe_all, obj, _heap->connection_matrix()->is_connected(from_idx, to_idx),
+        verify(_safe_all, obj, _heap->connection_matrix()->is_connected(from_idx, to_idx),
                "Must be connected");
         _interior_loc = NULL;
         break;
@@ -448,7 +581,7 @@ public:
     if (((ShenandoahVerifyLevel == 2) && (worker_id == 0))
         || (ShenandoahVerifyLevel >= 3)) {
         ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                      ShenandoahMessageBuffer("Shenandoah verification failed; %s, Roots", _label),
+                                      ShenandoahMessageBuffer("%s, Roots", _label),
                                       _options);
         _rp->process_all_roots_slow(&cl);
     }
@@ -457,7 +590,7 @@ public:
 
     if (ShenandoahVerifyLevel >= 3) {
       ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                    ShenandoahMessageBuffer("Shenandoah verification failed; %s, Reachable", _label),
+                                    ShenandoahMessageBuffer("%s, Reachable", _label),
                                     _options);
       while (!stack.is_empty()) {
         processed++;
@@ -497,7 +630,7 @@ public:
   virtual void work(uint worker_id) {
     ShenandoahVerifierStack stack;
     ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                  ShenandoahMessageBuffer("Shenandoah verification failed; %s, Marked", _label),
+                                  ShenandoahMessageBuffer("%s, Marked", _label),
                                   _options);
 
     while (true) {
@@ -874,3 +1007,86 @@ void ShenandoahVerifier::verify_after_fullgc() {
   );
 }
 
+void ShenandoahVerifier::verify_oop_fwdptr(oop obj, oop fwd) {
+  guarantee(UseShenandoahGC, "must only be called when Shenandoah is used");
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  guarantee(obj != NULL, "oop is not NULL");
+  guarantee(fwd != NULL, "forwardee is not NULL");
+
+  // Step 1. Check that both obj and its fwdptr are in heap.
+  // After this step, it is safe to call heap_region_containing().
+  guarantee(heap->is_in(obj), "oop must point to a heap address: " PTR_FORMAT, p2i(obj));
+
+  if (!heap->is_in(fwd)) {
+    ResourceMark rm;
+    ShenandoahHeapRegion* r = heap->heap_region_containing(obj);
+    stringStream obj_region;
+    r->print_on(&obj_region);
+
+    fatal("forwardee must point to a heap address: " PTR_FORMAT " -> " PTR_FORMAT "\n"
+          "region(obj): %s",
+          p2i(obj), p2i(fwd), obj_region.as_string());
+  }
+
+  // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
+  // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
+  // that still points to the object itself.
+  guarantee(oopDesc::unsafe_equals(obj, fwd) || !heap->is_full_gc_move_in_progress(),
+            "Non-trivial forwarding pointer during Full GC moves, probable bug.");
+
+  // Step 2. Check that forwardee points to correct region.
+  if (!oopDesc::unsafe_equals(fwd, obj) &&
+      (heap->heap_region_index_containing(fwd) ==
+       heap->heap_region_index_containing(obj))) {
+    ResourceMark rm;
+
+    ShenandoahHeapRegion* ro = heap->heap_region_containing(obj);
+    stringStream obj_region;
+    ro->print_on(&obj_region);
+
+    ShenandoahHeapRegion* rf = heap->heap_region_containing(fwd);
+    stringStream fwd_region;
+    rf->print_on(&fwd_region);
+
+    fatal("forwardee should be self, or another region: " PTR_FORMAT " -> " PTR_FORMAT "\n"
+          "region(obj):    %s"
+          "region(fwdptr): %s",
+          p2i(obj), p2i(fwd),
+          obj_region.as_string(), fwd_region.as_string());
+  }
+
+  // Step 3. Check for multiple forwardings
+  if (!oopDesc::unsafe_equals(obj, fwd)) {
+    oop fwd2 = oop(BrooksPointer::get_raw(fwd));
+    if (!oopDesc::unsafe_equals(fwd, fwd2)) {
+      ResourceMark rm;
+
+      ShenandoahHeapRegion* ro = heap->heap_region_containing(obj);
+      stringStream obj_region;
+      ro->print_on(&obj_region);
+
+      ShenandoahHeapRegion* rf = heap->heap_region_containing(fwd);
+      stringStream fwd_region;
+      rf->print_on(&fwd_region);
+
+      // Second fwdptr had not been checked yet, cannot ask for its heap region
+      // without a check. Do it now.
+      stringStream fwd2_region;
+      if (heap->is_in(fwd2)) {
+        ShenandoahHeapRegion* rf2 = heap->heap_region_containing(fwd2);
+        rf2->print_on(&fwd2_region);
+      } else {
+        fwd2_region.print_cr("Ptr is out of heap");
+      }
+
+      fatal("Multiple forwardings: " PTR_FORMAT " -> " PTR_FORMAT " -> " PTR_FORMAT "\n"
+            "region(obj):     %s"
+            "region(fwdptr):  %s"
+            "region(fwdptr2): %s",
+            p2i(obj), p2i(fwd), p2i(fwd2),
+            obj_region.as_string(), fwd_region.as_string(), fwd2_region.as_string());
+    }
+  }
+}

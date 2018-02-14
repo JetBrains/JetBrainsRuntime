@@ -22,9 +22,9 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/g1/hSpaceCounters.hpp"
 #include "gc/shared/collectorCounters.hpp"
 #include "gc/shared/generationCounters.hpp"
+#include "gc/shared/hSpaceCounters.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionCounters.hpp"
@@ -65,7 +65,7 @@ ShenandoahMonitoringSupport::ShenandoahMonitoringSupport(ShenandoahHeap* heap) :
   // We report young gen as unused.
   _young_counters = new ShenandoahYoungGenerationCounters();
   _heap_counters  = new ShenandoahGenerationCounters(heap);
-  _space_counters = new HSpaceCounters("Heap", 0, heap->max_capacity(), heap->initial_capacity(), _heap_counters);
+  _space_counters = new HSpaceCounters(_heap_counters->name_space(), "Heap", 0, heap->max_capacity(), heap->initial_capacity());
 
   _heap_region_counters = new ShenandoahHeapRegionCounters();
 }

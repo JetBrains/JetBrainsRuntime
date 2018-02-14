@@ -96,7 +96,14 @@ import sun.util.locale.provider.LocaleServiceProviderPool;
  * NumberFormat nf = NumberFormat.getInstance(Locale.FRENCH);
  * }</pre>
  * </blockquote>
- * You can also use a <code>NumberFormat</code> to parse numbers:
+ *
+ * <p>If the locale contains "nu" (numbers) and/or "rg" (region override)
+ * <a href="../util/Locale.html#def_locale_extension">Unicode extensions</a>,
+ * the decimal digits, and/or the country used for formatting are overridden.
+ * If both "nu" and "rg" are specified, the decimal digits from the "nu"
+ * extension supersedes the implicit one from the "rg" extension.
+ *
+ * <p>You can also use a {@code NumberFormat} to parse numbers:
  * <blockquote>
  * <pre>{@code
  * myNumber = nf.parse(myString);
@@ -240,8 +247,14 @@ public abstract class NumberFormat extends Format  {
      * @param number     the number to format
      * @param toAppendTo the <code>StringBuffer</code> to which the formatted
      *                   text is to be appended
-     * @param pos        On input: an alignment field, if desired.
-     *                   On output: the offsets of the alignment field.
+     * @param pos        keeps track on the position of the field within the
+     *                   returned string. For example, for formatting a number
+     *                   {@code 1234567.89} in {@code Locale.US} locale,
+     *                   if the given {@code fieldPosition} is
+     *                   {@link NumberFormat#INTEGER_FIELD}, the begin index
+     *                   and end index of {@code fieldPosition} will be set
+     *                   to 0 and 9, respectively for the output string
+     *                   {@code 1,234,567.89}.
      * @return           the value passed in as <code>toAppendTo</code>
      * @exception        IllegalArgumentException if <code>number</code> is
      *                   null or not an instance of <code>Number</code>.
@@ -342,7 +355,14 @@ public abstract class NumberFormat extends Format  {
      * @param number     the double number to format
      * @param toAppendTo the StringBuffer to which the formatted text is to be
      *                   appended
-     * @param pos        the field position
+     * @param pos        keeps track on the position of the field within the
+     *                   returned string. For example, for formatting a number
+     *                   {@code 1234567.89} in {@code Locale.US} locale,
+     *                   if the given {@code fieldPosition} is
+     *                   {@link NumberFormat#INTEGER_FIELD}, the begin index
+     *                   and end index of {@code fieldPosition} will be set
+     *                   to 0 and 9, respectively for the output string
+     *                   {@code 1,234,567.89}.
      * @return the formatted StringBuffer
      * @exception        ArithmeticException if rounding is needed with rounding
      *                   mode being set to RoundingMode.UNNECESSARY
@@ -358,7 +378,14 @@ public abstract class NumberFormat extends Format  {
      * @param number     the long number to format
      * @param toAppendTo the StringBuffer to which the formatted text is to be
      *                   appended
-     * @param pos        the field position
+     * @param pos        keeps track on the position of the field within the
+     *                   returned string. For example, for formatting a number
+     *                   {@code 123456789} in {@code Locale.US} locale,
+     *                   if the given {@code fieldPosition} is
+     *                   {@link NumberFormat#INTEGER_FIELD}, the begin index
+     *                   and end index of {@code fieldPosition} will be set
+     *                   to 0 and 11, respectively for the output string
+     *                   {@code 123,456,789}.
      * @return the formatted StringBuffer
      * @exception        ArithmeticException if rounding is needed with rounding
      *                   mode being set to RoundingMode.UNNECESSARY

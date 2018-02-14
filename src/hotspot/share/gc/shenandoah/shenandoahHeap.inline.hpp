@@ -29,7 +29,6 @@
 #include "gc/shared/threadLocalAllocBuffer.inline.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shenandoah/brooksPointer.inline.hpp"
-#include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
@@ -52,7 +51,7 @@ void ShenandoahUpdateRefsClosure::do_oop_work(T* p) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
-    _heap->update_with_forwarded_not_null(p, obj);
+    _heap->update_oop_ref_not_null(p, obj);
   }
 }
 
@@ -65,7 +64,18 @@ void ShenandoahUpdateRefsClosure::do_oop(narrowOop* p) { do_oop_work(p); }
  * or if a competing thread succeeded in marking this object.
  */
 inline bool ShenandoahHeap::mark_next(oop obj) const {
-  shenandoah_assert_not_forwarded(NULL, obj);
+#ifdef ASSERT
+  if (! oopDesc::unsafe_equals(obj, BarrierSet::barrier_set()->read_barrier(obj))) {
+    tty->print_cr("heap region containing obj:");
+    ShenandoahHeapRegion* obj_region = heap_region_containing(obj);
+    obj_region->print();
+    tty->print_cr("heap region containing forwardee:");
+    ShenandoahHeapRegion* forward_region = heap_region_containing(BarrierSet::barrier_set()->read_barrier(obj));
+    forward_region->print();
+  }
+#endif
+
+  assert(oopDesc::unsafe_equals(obj, BarrierSet::barrier_set()->read_barrier(obj)), "only mark forwarded copy of objects");
   return mark_next_no_checks(obj);
 }
 
@@ -103,39 +113,40 @@ inline ShenandoahHeapRegion* ShenandoahHeap::heap_region_containing(const void* 
 }
 
 template <class T>
-inline oop ShenandoahHeap::update_with_forwarded_not_null(T* p, oop obj) {
+inline oop ShenandoahHeap::update_oop_ref_not_null(T* p, oop obj) {
   if (in_collection_set(obj)) {
-    shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_concgc());
-    obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+    oop forw = ShenandoahBarrierSet::resolve_oop_static_not_null(obj);
+    assert(! oopDesc::unsafe_equals(forw, obj) || is_full_gc_in_progress() || cancelled_concgc(), "expect forwarded object");
+    obj = forw;
     oopDesc::encode_store_heap_oop(p, obj);
   }
 #ifdef ASSERT
   else {
-    shenandoah_assert_not_forwarded(p, obj);
+    assert(oopDesc::unsafe_equals(obj, ShenandoahBarrierSet::resolve_oop_static_not_null(obj)), "expect not forwarded");
   }
 #endif
   return obj;
 }
 
 template <class T>
-inline oop ShenandoahHeap::maybe_update_with_forwarded(T* p) {
+inline oop ShenandoahHeap::maybe_update_oop_ref(T* p) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
-    return maybe_update_with_forwarded_not_null(p, obj);
+    return maybe_update_oop_ref_not_null(p, obj);
   } else {
     return NULL;
   }
 }
 
 template <class T>
-inline oop ShenandoahHeap::evac_update_with_forwarded(T* p, bool &evac) {
+inline oop ShenandoahHeap::evac_update_oop_ref(T* p, bool& evac) {
   evac = false;
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop heap_oop = oopDesc::decode_heap_oop_not_null(o);
     if (in_collection_set(heap_oop)) {
-      oop forwarded_oop = ShenandoahBarrierSet::resolve_forwarded_not_null(heap_oop);
+      oop forwarded_oop = ShenandoahBarrierSet::resolve_oop_static_not_null(heap_oop); // read brooks ptr
       if (oopDesc::unsafe_equals(forwarded_oop, heap_oop)) {
         forwarded_oop = evacuate_object(heap_oop, Thread::current(), evac);
       }
@@ -163,23 +174,35 @@ inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, narrowOop* addr, o
 }
 
 template <class T>
-inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_oop) {
-  shenandoah_assert_not_in_cset_loc_except(p, !is_in(p) || is_full_gc_in_progress());
-  shenandoah_assert_correct(p, heap_oop, ShenandoahBarrierSet::resolve_forwarded(heap_oop));
+inline oop ShenandoahHeap::maybe_update_oop_ref_not_null(T* p, oop heap_oop) {
 
+  assert((! is_in(p)) || (! in_collection_set(p))
+         || is_full_gc_in_progress(),
+         "never update refs in from-space, unless evacuation has been cancelled");
+
+#ifdef ASSERT
+  if (! is_in(heap_oop)) {
+    print_heap_regions_on(tty);
+    tty->print_cr("object not in heap: "PTR_FORMAT", referenced by: "PTR_FORMAT, p2i((HeapWord*) heap_oop), p2i(p));
+    assert(is_in(heap_oop), "object must be in heap");
+  }
+#endif
+  assert(is_in(heap_oop), "only ever call this on objects in the heap");
   if (in_collection_set(heap_oop)) {
-    oop forwarded_oop = ShenandoahBarrierSet::resolve_forwarded_not_null(heap_oop);
+    oop forwarded_oop = ShenandoahBarrierSet::resolve_oop_static_not_null(heap_oop); // read brooks ptr
     if (oopDesc::unsafe_equals(forwarded_oop, heap_oop)) {
       // E.g. during evacuation.
       return forwarded_oop;
     }
 
-    shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress());
-    shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_concgc());
+    assert(! oopDesc::unsafe_equals(forwarded_oop, heap_oop) || is_full_gc_in_progress(), "expect forwarded object");
 
     log_develop_trace(gc)("Updating old ref: "PTR_FORMAT" pointing to "PTR_FORMAT" to new ref: "PTR_FORMAT,
                           p2i(p), p2i(heap_oop), p2i(forwarded_oop));
 
+    assert(oopDesc::is_oop(forwarded_oop), "oop required");
+    assert(is_in(forwarded_oop), "forwardee must be in heap");
+    assert(BarrierSet::barrier_set()->is_safe(forwarded_oop), "forwardee must not be in collection set");
     // If this fails, another thread wrote to p before us, it will be logged in SATB and the
     // reference be updated later.
     oop result = atomic_compare_exchange_oop(forwarded_oop, p, heap_oop);
@@ -198,7 +221,8 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
       return NULL;
     }
   } else {
-    shenandoah_assert_not_forwarded(p, heap_oop);
+    assert(oopDesc::unsafe_equals(heap_oop, ShenandoahBarrierSet::resolve_oop_static_not_null(heap_oop)),
+           "expect not forwarded");
     return heap_oop;
   }
 }
@@ -308,7 +332,8 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
     // If this is a Java thread, it should have waited
     // until all GC threads are done, and then we
     // return the forwardee.
-    return ShenandoahBarrierSet::resolve_forwarded(p);
+    oop resolved = ShenandoahBarrierSet::resolve_oop_static(p);
+    return resolved;
   }
 
   // Copy the object and initialize its forwarding ptr:
