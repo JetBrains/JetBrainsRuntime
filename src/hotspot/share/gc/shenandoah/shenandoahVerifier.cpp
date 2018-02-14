@@ -448,7 +448,7 @@ public:
     if (((ShenandoahVerifyLevel == 2) && (worker_id == 0))
         || (ShenandoahVerifyLevel >= 3)) {
         ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                      ShenandoahMessageBuffer("%s, Roots", _label),
+                                      ShenandoahMessageBuffer("Shenandoah verification failed; %s, Roots", _label),
                                       _options);
         _rp->process_all_roots_slow(&cl);
     }
@@ -457,7 +457,7 @@ public:
 
     if (ShenandoahVerifyLevel >= 3) {
       ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                    ShenandoahMessageBuffer("%s, Reachable", _label),
+                                    ShenandoahMessageBuffer("Shenandoah verification failed; %s, Reachable", _label),
                                     _options);
       while (!stack.is_empty()) {
         processed++;
@@ -497,7 +497,7 @@ public:
   virtual void work(uint worker_id) {
     ShenandoahVerifierStack stack;
     ShenandoahVerifyOopClosure cl(&stack, _bitmap, _ld,
-                                  ShenandoahMessageBuffer("%s, Marked", _label),
+                                  ShenandoahMessageBuffer("Shenandoah verification failed; %s, Marked", _label),
                                   _options);
 
     while (true) {

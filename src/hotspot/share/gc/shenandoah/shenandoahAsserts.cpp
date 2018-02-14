@@ -59,7 +59,7 @@ void ShenandoahAsserts::print_non_obj(ShenandoahMessageBuffer& msg, void* loc) {
     msg.append("  outside of Java heap\n");
     stringStream ss;
     os::print_location(&ss, (intptr_t) loc, false);
-    msg.append("  %s\n", ss.as_string());
+    msg.append("  %s", ss.as_string());
   }
 }
 
@@ -85,7 +85,7 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   bool loc_in_heap = (loc != NULL && heap->is_in(loc));
   bool interior_loc_in_heap = (interior_loc != NULL && heap->is_in(interior_loc));
 
-  ShenandoahMessageBuffer msg("%s: %s\n\n", phase, label);
+  ShenandoahMessageBuffer msg("%s; %s\n\n", phase, label);
 
   msg.append("Referenced from:\n");
   if (interior_loc != NULL) {
@@ -117,10 +117,10 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
       } else {
         print_obj_safe(msg, fwd);
       }
-      msg.append("\n");
     } else {
       msg.append("  (the object itself)");
     }
+    msg.append("\n");
   }
 
   if (level >= _safe_oop_fwd) {
@@ -176,7 +176,7 @@ void ShenandoahAsserts::assert_obj_correct(void* interior_loc, oop obj, const ch
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   if (!heap->is_in(obj)) {
-    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_obj_correct failed",
                   "oop must point to a heap address",
                   file, line);
   }
@@ -191,13 +191,13 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
   // Step 1. Check that both obj and its fwdptr are in heap.
   // After this step, it is safe to call heap_region_containing().
   if (!heap->is_in(obj)) {
-    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "oop must point to a heap address",
                   file, line);
   }
 
   if (!heap->is_in(fwd)) {
-    print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "Forwardee must point to a heap address",
                   file, line);
   }
@@ -206,7 +206,7 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
   // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
   // that still points to the object itself.
   if (!oopDesc::unsafe_equals(obj, fwd) && heap->is_full_gc_move_in_progress()) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "Non-trivial forwarding pointer during Full GC moves, probable bug.",
                   file, line);
   }
@@ -215,7 +215,7 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
   if (!oopDesc::unsafe_equals(fwd, obj) &&
       (heap->heap_region_index_containing(fwd) ==
        heap->heap_region_index_containing(obj))) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "Forwardee should be self, or another region",
                   file, line);
   }
@@ -224,7 +224,7 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
   if (!oopDesc::unsafe_equals(obj, fwd)) {
     oop fwd2 = oop(BrooksPointer::get_raw(fwd));
     if (!oopDesc::unsafe_equals(fwd, fwd2)) {
-      print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+      print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                     "Multiple forwardings",
                     file, line);
     }
@@ -236,7 +236,7 @@ void ShenandoahAsserts::assert_forwarded(void* interior_loc, oop obj, const char
   oop fwd = BrooksPointer::forwardee(obj);
 
   if (oopDesc::unsafe_equals(obj, fwd)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_forwarded failed",
                   "Object should be forwarded",
                   file, line);
   }
@@ -247,7 +247,7 @@ void ShenandoahAsserts::assert_not_forwarded(void* interior_loc, oop obj, const 
   oop fwd = oop(BrooksPointer::get_raw(obj));
 
   if (!oopDesc::unsafe_equals(obj, fwd)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_not_forwarded failed",
                   "Object should not be forwarded",
                   file, line);
   }
@@ -258,7 +258,7 @@ void ShenandoahAsserts::assert_marked_complete(void* interior_loc, oop obj, cons
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (!heap->is_marked_complete(obj)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_complete failed",
                   "Object should be marked (complete)",
                   file, line);
   }
@@ -269,7 +269,7 @@ void ShenandoahAsserts::assert_marked_next(void* interior_loc, oop obj, const ch
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (!heap->is_marked_next(obj)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_next failed",
                   "Object should be marked (next)",
                   file, line);
   }
@@ -280,7 +280,7 @@ void ShenandoahAsserts::assert_not_in_cset(void* interior_loc, oop obj, const ch
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (heap->in_collection_set(obj)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_not_in_cset failed",
                   "Object should not be in collection set",
                   file, line);
   }
@@ -289,7 +289,7 @@ void ShenandoahAsserts::assert_not_in_cset(void* interior_loc, oop obj, const ch
 void ShenandoahAsserts::assert_not_in_cset_loc(void* interior_loc, const char* file, int line) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (heap->in_collection_set(interior_loc)) {
-    print_failure(_safe_unknown, NULL, interior_loc, NULL, "Shenandoah assert",
+    print_failure(_safe_unknown, NULL, interior_loc, NULL, "Shenandoah assert_not_in_cset_loc failed",
                   "Interior location should not be in collection set",
                   file, line);
   }
