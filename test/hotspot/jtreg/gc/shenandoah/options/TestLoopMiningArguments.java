@@ -60,8 +60,8 @@ public class TestLoopMiningArguments {
         testWith("Default GC should have CLS enabled, LSM = 1000",
             true, 1000);
 
-        testWith("Default GC with +CLS should set LSM = 1000",
-            true, 1000,
+        testWith("Default GC with +CLS should set LSM = 1",
+            true, 1,
             "-XX:+UseCountedLoopSafepoints"
         );
 
@@ -101,8 +101,8 @@ public class TestLoopMiningArguments {
             "-XX:+UseShenandoahGC"
         );
 
-        testWith("Shenandoah with +CLS should set LSM = 1000",
-            true, 1000,
+        testWith("Shenandoah with +CLS should set LSM = 1",
+            true, 1,
             "-XX:+UseShenandoahGC",
             "-XX:+UseCountedLoopSafepoints"
         );

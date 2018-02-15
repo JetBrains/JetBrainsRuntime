@@ -69,9 +69,9 @@ void ShenandoahArguments::initialize_flags() {
   // Shenandoah cares more about pause times, rather than raw throughput.
   if (FLAG_IS_DEFAULT(UseCountedLoopSafepoints)) {
     FLAG_SET_DEFAULT(UseCountedLoopSafepoints, true);
-  }
-  if (UseCountedLoopSafepoints && FLAG_IS_DEFAULT(LoopStripMiningIter)) {
-    FLAG_SET_DEFAULT(LoopStripMiningIter, 1000);
+    if (FLAG_IS_DEFAULT(LoopStripMiningIter)) {
+      FLAG_SET_DEFAULT(LoopStripMiningIter, 1000);
+    }
   }
 #ifdef ASSERT
   // C2 barrier verification is only reliable when all default barriers are enabled
