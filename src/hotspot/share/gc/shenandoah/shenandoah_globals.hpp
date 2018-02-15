@@ -298,7 +298,7 @@
               "heap conditions, at the expense of higher perf overhead. "   \
               "Time is in milliseconds.")                                   \
                                                                             \
-  experimental(bool, ShenandoahAllocImplicitLive, true,                     \
+  diagnostic(bool, ShenandoahAllocImplicitLive, true,                       \
               "Treat (non-evac) allocations implicitely live")              \
                                                                             \
   diagnostic(bool, ShenandoahSATBBarrier, true,                             \
