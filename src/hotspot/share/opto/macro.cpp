@@ -708,7 +708,7 @@ bool PhaseMacroExpand::can_eliminate_allocation(AllocateNode *alloc, GrowableArr
                                    k < kmax && can_eliminate; k++) {
           Node* n = use->fast_out(k);
           if (!n->is_Store() && n->Opcode() != Op_CastP2X &&
-              !n->is_g1_wb_pre_call() &&
+              (!UseShenandoahGC || !n->is_g1_wb_pre_call()) &&
               !(n->is_ArrayCopy() &&
                 n->as_ArrayCopy()->is_clonebasic() &&
                 n->in(ArrayCopyNode::Dest) == use)) {
@@ -1015,7 +1015,7 @@ void PhaseMacroExpand::process_users_of_allocation(CallNode *alloc) {
             if (membar_after->is_MemBar()) {
               disconnect_projections(membar_after->as_MemBar(), _igvn);
             }
-          } else if (n->is_g1_wb_pre_call()) {
+          } else if (UseShenandoahGC && n->is_g1_wb_pre_call()) {
             C->shenandoah_eliminate_g1_wb_pre(n, &_igvn);
           } else {
             eliminate_card_mark(n);
