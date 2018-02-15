@@ -600,4 +600,3 @@ void Dictionary::verify() {
   tempst.print("System Dictionary for %s", cld->loader_name());
   verify_table<DictionaryEntry>(tempst.as_string());
 }
-

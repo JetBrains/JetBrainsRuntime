@@ -1029,7 +1029,7 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
     ready_cnt.at_put(block->get_node(i2)->_idx, 0);
 
   // All the prescheduled guys do not hold back internal nodes
- uint i3;
+  uint i3;
   for (i3 = 0; i3 < phi_cnt; i3++) {  // For all pre-scheduled
     Node *n = block->get_node(i3);       // Get pre-scheduled
     for (DUIterator_Fast jmax, j = n->fast_outs(jmax); j < jmax; j++) {
@@ -1114,7 +1114,6 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
 
     // Select and pop a ready guy from worklist
     Node* n = select(block, worklist, ready_cnt, next_call, phi_cnt, recalc_pressure_nodes);
-
     block->map_node(n, phi_cnt++);    // Schedule him next
 
     n->add_flag(Node::Flag_is_scheduled);

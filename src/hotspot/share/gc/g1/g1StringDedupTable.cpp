@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -385,7 +385,8 @@ void G1StringDedupTable::deduplicate(oop java_string, G1StringDedupStat& stat) {
     G1SATBCardTableModRefBS::enqueue(existing_value);
 
     // Existing value found, deduplicate string
-    java_lang_String::set_value(java_string, typeArrayOop(existing_value));
+    java_lang_String::set_value(java_string, existing_value);
+
     if (G1CollectedHeap::heap()->is_in_young(value)) {
       stat.inc_deduped_young(size_in_bytes);
     } else {
