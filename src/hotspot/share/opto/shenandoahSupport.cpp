@@ -2921,7 +2921,7 @@ Node* ShenandoahWriteBarrierNode::find_bottom_mem(Node* ctrl, PhaseIdealLoop* ph
         }
       }
     } else {
-      if (c->is_Call() && c->as_Call()->_entry_point != OptoRuntime::rethrow_stub()) {
+      if (c->is_Call() && c->as_Call()->adr_type() != NULL) {
         CallProjections projs;
         c->as_Call()->extract_projections(&projs, true, false);
         if (projs.fallthrough_memproj != NULL) {
@@ -2955,6 +2955,7 @@ Node* ShenandoahWriteBarrierNode::find_bottom_mem(Node* ctrl, PhaseIdealLoop* ph
               mem = u;
           }
         }
+        assert(!c->is_Call() || c->as_Call()->adr_type() != NULL || mem == NULL, "no mem projection expected");
       }
     }
     c = phase->idom(c);
