@@ -1181,7 +1181,6 @@ void DumperSupport::dump_prim_array(DumpWriter* writer, typeArrayOop array) {
 
   // If the byte ordering is big endian then we can copy most types directly
 
-  array = typeArrayOop(BarrierSet::barrier_set()->read_barrier(array));
   switch (type) {
     case T_INT : {
       if (Endian::is_Java_byte_ordering_different()) {

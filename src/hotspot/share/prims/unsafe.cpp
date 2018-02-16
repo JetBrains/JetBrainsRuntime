@@ -760,7 +760,7 @@ Unsafe_DefineAnonymousClass_impl(JNIEnv *env,
   // caller responsible to free it:
   *temp_alloc = class_bytes;
 
-  jbyte* array_base = typeArrayOop(BarrierSet::barrier_set()->read_barrier(JNIHandles::resolve_non_null(data)))->byte_at_addr(0);
+  jbyte* array_base = typeArrayOop(JNIHandles::resolve_non_null(data))->byte_at_addr(0);
   Copy::conjoint_jbytes(array_base, class_bytes, length);
 
   objArrayHandle cp_patches_h;

@@ -419,7 +419,7 @@ JRT_ENTRY(void, OptoRuntime::multianewarrayN_C(Klass* elem_type, arrayOopDesc* d
   ResourceMark rm;
   jint len = dims->length();
   assert(len > 0, "Dimensions array should contain data");
-  jint *j_dims = typeArrayOop(BarrierSet::barrier_set()->read_barrier(dims))->int_at_addr(0);
+  jint *j_dims = typeArrayOop(dims)->int_at_addr(0);
   jint *c_dims = NEW_RESOURCE_ARRAY(jint, len);
   Copy::conjoint_jints_atomic(j_dims, c_dims, len);
 

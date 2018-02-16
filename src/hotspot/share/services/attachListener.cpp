@@ -94,7 +94,6 @@ static jint get_properties(AttachOperation* op, outputStream* out, Symbol* seria
   assert(TypeArrayKlass::cast(res->klass())->element_type() == T_BYTE, "just checking");
 
   // copy the bytes to the output stream
-  res = BarrierSet::barrier_set()->read_barrier(res);
   typeArrayOop ba = typeArrayOop(res);
   jbyte* addr = typeArrayOop(res)->byte_at_addr(0);
   out->print_raw((const char*)addr, ba->length());

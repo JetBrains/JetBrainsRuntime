@@ -265,7 +265,6 @@ Handle java_lang_String::create_from_str(const char* utf8_str, TRAPS) {
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
-    buffer = typeArrayOop(BarrierSet::barrier_set()->write_barrier(buffer));
     if (!has_multibyte) {
       strncpy((char*)buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
@@ -313,7 +312,6 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
-    buffer = typeArrayOop(BarrierSet::barrier_set()->write_barrier(buffer));
     if (!has_multibyte) {
       strncpy((char*) buffer->byte_at_addr(0), utf8_str, length);
     } else if (is_latin1) {
