@@ -813,7 +813,7 @@ class StubGenerator: public StubCodeGenerator {
     BarrierSet* bs = Universe::heap()->barrier_set();
     switch (bs->kind()) {
     case BarrierSet::G1SATBCTLogging:
-    case BarrierSet::ShenandoahBarrierSet:
+    case BarrierSet::Shenandoah:
       // Don't generate the call if we statically know that the target is uninitialized
       if (!dest_uninitialized) {
         __ push(saved_regs, sp);
@@ -863,7 +863,7 @@ class StubGenerator: public StubCodeGenerator {
     BarrierSet* bs = Universe::heap()->barrier_set();
     switch (bs->kind()) {
       case BarrierSet::G1SATBCTLogging:
-      case BarrierSet::ShenandoahBarrierSet:
+      case BarrierSet::Shenandoah:
         {
           __ push(saved_regs, sp);
           // must compute element count unless barrier set interface is changed (other platforms supply count)

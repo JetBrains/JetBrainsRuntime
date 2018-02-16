@@ -2335,8 +2335,8 @@ void MacroAssembler::cmpxchg_oop_shenandoah(Register addr, Register expected,
     decode_heap_oop(result, result);
     decode_heap_oop(tmp2, tmp2);
   }
-  oopDesc::bs()->interpreter_read_barrier(this, result);
-  oopDesc::bs()->interpreter_read_barrier(this, tmp2);
+  BarrierSet::barrier_set()->interpreter_read_barrier(this, result);
+  BarrierSet::barrier_set()->interpreter_read_barrier(this, tmp2);
   cmp(result, tmp2);
   // Retry with expected now being the value we just loaded from addr.
   br(Assembler::EQ, retry);
@@ -3504,7 +3504,7 @@ void MacroAssembler::cmpptr(Register src1, Address src2) {
 
 void MacroAssembler::cmpoop(Register src1, Register src2) {
   cmp(src1, src2);
-  oopDesc::bs()->asm_acmp_barrier(this, src1, src2);
+  BarrierSet::barrier_set()->asm_acmp_barrier(this, src1, src2);
 }
 
 
@@ -3558,7 +3558,7 @@ void MacroAssembler::load_klass(Register dst, Register src) {
 void MacroAssembler::resolve_oop_handle(Register result) {
   // OopHandle::resolve is an indirection.
   ldr(result, Address(result, 0));
-  oopDesc::bs()->interpreter_read_barrier_not_null(this, result);
+  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(this, result);
 }
 
 void MacroAssembler::load_mirror(Register dst, Register method) {

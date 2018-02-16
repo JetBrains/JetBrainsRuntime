@@ -805,7 +805,7 @@ void TemplateInterpreterGenerator::lock_method() {
 #endif // ASSERT
 
     __ bind(done);
-    oopDesc::bs()->interpreter_write_barrier(_masm, r0);
+    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r0);
   }
 
   // add space for monitor & lock
@@ -932,7 +932,7 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
     __ ldr(local_0, Address(esp, 0));
     __ cbz(local_0, slow_path);
 
-    oopDesc::bs()->interpreter_read_barrier_not_null(_masm, local_0);
+    BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, local_0);
 
     // Load the value of the referent field.
     const Address field_address(local_0, referent_offset);
@@ -1046,7 +1046,7 @@ address TemplateInterpreterGenerator::generate_CRC32_updateBytes_entry(AbstractI
       __ ldrw(crc,   Address(esp, 4*wordSize)); // Initial CRC
     } else {
       __ ldr(buf, Address(esp, 2*wordSize)); // byte[] array
-      oopDesc::bs()->interpreter_read_barrier_not_null(_masm, buf);
+      BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, buf);
       __ add(buf, buf, arrayOopDesc::base_offset_in_bytes(T_BYTE)); // + header size
       __ ldrw(off, Address(esp, wordSize)); // offset
       __ add(buf, buf, off); // + offset

@@ -1158,14 +1158,14 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         // arg0 : previous value of memory
 
         BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() != BarrierSet::G1SATBCTLogging && bs->kind() != BarrierSet::ShenandoahBarrierSet) {
+        if (bs->kind() != BarrierSet::G1SATBCTLogging && bs->kind() != BarrierSet::Shenandoah) {
           __ mov(r0, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
           __ should_not_reach_here();
           break;
         }
 
-        if (bs->kind() == BarrierSet::ShenandoahBarrierSet && !ShenandoahSATBBarrier && !ShenandoahConditionalSATBBarrier) {
+        if (bs->kind() == BarrierSet::Shenandoah && !ShenandoahSATBBarrier && !ShenandoahConditionalSATBBarrier) {
           break;
         }
 
@@ -1228,7 +1228,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         Address store_addr(rfp, 2*BytesPerWord);
 
         BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() == BarrierSet::ShenandoahBarrierSet) {
+        if (bs->kind() == BarrierSet::Shenandoah) {
           __ movptr(r0, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
           __ should_not_reach_here();
