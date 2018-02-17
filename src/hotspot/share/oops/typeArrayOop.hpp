@@ -50,55 +50,55 @@ class typeArrayOopDesc : public arrayOopDesc {
  public:
   jbyte* byte_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->byte_base()[which];
   }
 
   jboolean* bool_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->bool_base()[which];
   }
 
   jchar* char_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->char_base()[which];
   }
 
   jint* int_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->int_base()[which];
   }
 
   jshort* short_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->short_base()[which];
   }
 
   jushort* ushort_at_addr(int which) const {  // for field descriptor arrays
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return (jushort*) &p->short_base()[which];
   }
 
   jlong* long_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->long_base()[which];
   }
 
   jfloat* float_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->float_base()[which];
   }
 
   jdouble* double_at_addr(int which) const {
     assert(is_within_bounds(which), "index %d out of bounds %d", which, length());
-    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(this));
+    typeArrayOop p = typeArrayOop(BarrierSet::barrier_set()->write_barrier(oop(this)));
     return &p->double_base()[which];
   }
 
