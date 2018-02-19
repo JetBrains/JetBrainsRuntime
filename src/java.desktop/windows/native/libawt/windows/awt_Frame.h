@@ -116,6 +116,7 @@ public:
     MsgRouting WmNcMouseUp(WPARAM hitTest, int x, int y, int button);
     MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     MsgRouting WmShowWindow(BOOL show, UINT status);
+    MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds);
 
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
 
@@ -140,7 +141,9 @@ public:
 
     // some methods called on Toolkit thread
     static void _SetState(void *param);
+    static void __SetState(AwtFrame* f, int state, float factorX = 1, float factorY = 1);
     static jint _GetState(void *param);
+    static jint __GetState(AwtFrame* f);
     static void _SetMaximizedBounds(void *param);
     static void _ClearMaximizedBounds(void *param);
     static void _SetMenuBar(void *param);

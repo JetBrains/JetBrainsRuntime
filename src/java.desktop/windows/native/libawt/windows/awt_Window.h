@@ -250,6 +250,7 @@ public:
     static void _SetFullScreenExclusiveModeState(void* param);
     static void _GetNativeWindowSize(void* param);
 //    static void _WindowDPIChange(void* param);
+    static void _AdjustBoundsOnDPIChange(void* param);
     static void _OverrideHandle(void *param);
 
     inline static BOOL IsResizing() {
@@ -286,6 +287,8 @@ private:
     BOOL m_isRetainingHierarchyZOrder; // Is this a window that shouldn't change z-order of any window
                                        // from its hierarchy when shown. Currently applied to instances of
                                        // javax/swing/Popup$HeavyWeightWindow class.
+
+    RECT m_boundsOnDPIChange; /* bounds to asynchronously adjust on DPI change */
 
     // SetTranslucency() is the setter for the following two fields
     BYTE m_opacity;         // The opacity level. == 0xff by default (when opacity mode is disabled)

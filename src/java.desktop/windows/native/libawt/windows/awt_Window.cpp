@@ -983,11 +983,34 @@ MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
         // may diverge with Component::Reshape in this state
         return mrDoDefault;
     }
-    ::SetWindowPos(GetHWnd(), NULL,
-                   bounds->left, bounds->top,
-                   bounds->right - bounds->left, bounds->bottom - bounds->top,
-                   SWP_NOZORDER | SWP_NOACTIVATE);
+    // set the new bounds for async update
+    ::CopyRect(&m_boundsOnDPIChange, bounds);
     return mrConsume;
+}
+
+void AwtWindow::_AdjustBoundsOnDPIChange(void* param)
+{
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+
+    jobject jwnd = (jobject)param;
+    PDATA pData;
+    JNI_CHECK_PEER_GOTO(jwnd, done);
+    AwtWindow *window = (AwtWindow *)pData;
+
+    int x = window->m_boundsOnDPIChange.left;
+    int y = window->m_boundsOnDPIChange.top;
+    int width = window->m_boundsOnDPIChange.right - window->m_boundsOnDPIChange.left;
+    int height = window->m_boundsOnDPIChange.bottom - window->m_boundsOnDPIChange.top;
+
+    if (width > 0 && height > 0) {
+        ::SetRect(&window->m_boundsOnDPIChange, 0, 0, 0, 0); // drop it
+
+        ::SetWindowPos(window->GetHWnd(), NULL,
+                       x, y, width, height,
+                       SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+done:
+    env->DeleteGlobalRef(jwnd);
 }
 
 // The security warning is visible if:
@@ -4033,6 +4056,22 @@ Java_sun_awt_windows_WWindowPeer_repositionSecurityWarning(JNIEnv *env,
     AwtToolkit::GetInstance().InvokeFunction(
             AwtWindow::_RepositionSecurityWarning, rsws);
     // global refs and mds are deleted in _RepositionSecurityWarning
+
+    CATCH_BAD_ALLOC;
+}
+
+/*
+ * Class:     sun_awt_windows_WWindowPeer
+ * Method:    _AdjustBoundsOnDPIChange
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_windows_WWindowPeer_adjustBoundsOnDPIChange(JNIEnv *env, jobject self)
+{
+    TRY;
+
+    AwtToolkit::GetInstance().InvokeFunction(AwtWindow::_AdjustBoundsOnDPIChange, (void*)env->NewGlobalRef(self));
+    // global refs deleted in _AdjustBoundsOnDisplayChange
 
     CATCH_BAD_ALLOC;
 }
