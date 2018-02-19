@@ -557,6 +557,9 @@ bool ShenandoahWriteBarrierNode::expand(Compile* C, PhaseIterGVN& igvn, int& loo
 }
 
 bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
+  if (!UseShenandoahGC) {
+    return false;
+  }
   assert(iff->is_If(), "bad input");
   if (iff->Opcode() != Op_If) {
     return false;
@@ -587,6 +590,9 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
 }
 
 bool ShenandoahWriteBarrierNode::is_gc_state_load(Node *n) {
+  if (!UseShenandoahGC) {
+    return false;
+  }
   if (n->Opcode() != Op_LoadUB && n->Opcode() != Op_LoadB) {
     return false;
   }
