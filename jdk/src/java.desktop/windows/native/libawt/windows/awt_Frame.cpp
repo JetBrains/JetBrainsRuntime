@@ -1255,6 +1255,22 @@ MsgRouting AwtFrame::WmSysCommand(UINT uCmdType, int xPos, int yPos)
     return AwtWindow::WmSysCommand(uCmdType, xPos, yPos);
 }
 
+MsgRouting AwtFrame::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
+    if (isZoomed()) {
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd()));
+        if (device) {
+            float factorX = xDPI / 96.0f / device->GetScaleX();
+            float factorY = yDPI / 96.0f / device->GetScaleY();
+
+            // adjust rcNormalPosition for the zoomed frame
+            AwtFrame::__SetState(this, AwtFrame::__GetState(this), factorX, factorY);
+            return mrConsume;
+        }
+    }
+    return AwtWindow::WmDPIChanged(xDPI, yDPI, bounds);
+}
+
 LRESULT AwtFrame::WinThreadExecProc(ExecuteArgs * args)
 {
     switch( args->cmdId ) {
@@ -1365,6 +1381,15 @@ void AwtFrame::_SetState(void *param)
     PDATA pData;
     JNI_CHECK_PEER_GOTO(self, ret);
     f = (AwtFrame *)pData;
+    AwtFrame::__SetState(f, state);
+ret:
+    env->DeleteGlobalRef(self);
+
+    delete sss;
+}
+
+void AwtFrame::__SetState(AwtFrame* f, int state, float factorX, float factorY)
+{
     HWND hwnd = f->GetHWnd();
     if (::IsWindow(hwnd))
     {
@@ -1387,6 +1412,11 @@ void AwtFrame::_SetState(void *param)
             ::ZeroMemory(&wp, sizeof(wp));
             wp.length = sizeof(wp);
             ::GetWindowPlacement(hwnd, &wp);
+
+            wp.rcNormalPosition.left *= factorX;
+            wp.rcNormalPosition.right *= factorX;
+            wp.rcNormalPosition.top *= factorY;
+            wp.rcNormalPosition.bottom *= factorY;
 
             // Iconify first.
             // If both iconify & zoom are TRUE, handle this case
@@ -1421,10 +1451,6 @@ void AwtFrame::_SetState(void *param)
             f->setZoomed(zoom);
         }
     }
-ret:
-    env->DeleteGlobalRef(self);
-
-    delete sss;
 }
 
 jint AwtFrame::_GetState(void *param)
@@ -1433,12 +1459,21 @@ jint AwtFrame::_GetState(void *param)
 
     jobject self = (jobject)param;
 
-    jint result = java_awt_Frame_NORMAL;
     AwtFrame *f = NULL;
 
     PDATA pData;
     JNI_CHECK_PEER_GOTO(self, ret);
     f = (AwtFrame *)pData;
+    jint result = AwtFrame::__GetState(f);
+ret:
+    env->DeleteGlobalRef(self);
+
+    return result;
+}
+
+jint AwtFrame::__GetState(AwtFrame* f)
+{
+    jint result = java_awt_Frame_NORMAL;
     if (::IsWindow(f->GetHWnd()))
     {
         DASSERT(!::IsBadReadPtr(f, sizeof(AwtFrame)));
@@ -1453,9 +1488,6 @@ jint AwtFrame::_GetState(void *param)
                   f->isIconic() ? " iconic" : "",
                   f->isZoomed() ? " zoomed" : "");
     }
-ret:
-    env->DeleteGlobalRef(self);
-
     return result;
 }
 

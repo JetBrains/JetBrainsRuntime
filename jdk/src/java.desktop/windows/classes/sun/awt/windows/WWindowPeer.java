@@ -55,6 +55,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     private TranslucentWindowPainter painter;
 
+    private int screenNum;
+    protected boolean screenChangedFlag;
+
     /*
      * A key used for storing a list of active windows in AppContext. The value
      * is a list of windows, sorted by the time of activation: later a window is
@@ -517,6 +520,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     public void updateGC() {
         int scrn = getScreenImOn();
+        screenChangedFlag = scrn != screenNum;
+        screenNum = scrn;
+
         if (screenLog.isLoggable(PlatformLogger.Level.FINER)) {
             log.finer("Screen number: " + scrn);
         }
@@ -586,7 +592,10 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     @Override
     public void displayChanged() {
         updateGC();
+        adjustBoundsOnDPIChange();
     }
+
+    private native void adjustBoundsOnDPIChange();
 
     /**
      * Part of the DisplayChangedListener interface: components
