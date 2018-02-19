@@ -1341,9 +1341,11 @@ public:
       ShenandoahHeapRegion *r = regions->get(i);
       assert(!r->is_root(), "must not be root region");
       assert(!collection_set->is_in(r), "must not yet be in cset");
-      size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
-      if ((r->is_regular() && r->used() > 0) && garbage_percent > ShenandoahGarbageThreshold) {
-        collection_set->add_region(r);
+      if (r->is_regular() && r->used() > 0) {
+        size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
+        if (garbage_percent > ShenandoahGarbageThreshold) {
+          collection_set->add_region(r);
+        }
       }
       heap->set_next_top_at_mark_start(r->bottom(), r->end()); // No implicitely live stuff.
       heap->set_complete_top_at_mark_start(r->bottom(), r->top()); // For debugging purposes
