@@ -24,19 +24,19 @@
 /*
  * @test LotsOfCycles
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m                                         -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=passive      -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=adaptive     -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=static       -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=continuous   -Dtarget=1000  LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=connected    -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=generational -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=LRU          -Dtarget=10000 LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=traversal    -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m                                         -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=passive      -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=adaptive     -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=static       -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=continuous   -Dtarget=1000  LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=connected    -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=generational -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=LRU          -Dtarget=10000 LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=traversal    -Dtarget=10000 LotsOfCycles
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  -XX:+ShenandoahOOMDuringEvacALot LotsOfCycles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  -XX:+ShenandoahAllocFailureALot  LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  -XX:+ShenandoahOOMDuringEvacALot LotsOfCycles
+ * @run main/othervm/timeout=480 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx16m -XX:ShenandoahGCHeuristics=aggressive   -Dtarget=1000  -XX:+ShenandoahAllocFailureALot  LotsOfCycles
  */
 
 public class LotsOfCycles {
