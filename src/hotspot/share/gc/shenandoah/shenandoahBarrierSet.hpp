@@ -243,6 +243,8 @@ public:
 
     // Clone barrier support
     static void clone_in_heap(oop src, oop dst, size_t size) {
+      src = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src));
+      dst = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst));
       Raw::clone(src, dst, size);
       ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_region(MemRegion((HeapWord*) dst, size));
     }
