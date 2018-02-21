@@ -203,7 +203,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
       r->increase_live_data_words(used_words);
     }
     r->set_top(r->bottom() + used_words);
-    r->reset_alloc_stats_to_shared();
+    r->reset_alloc_metadata_to_shared();
     sh->increase_used(used_words * HeapWordSize);
 
     _free_bitmap.clear_bit(r->region_number());

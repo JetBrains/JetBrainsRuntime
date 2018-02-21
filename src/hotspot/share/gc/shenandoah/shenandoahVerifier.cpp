@@ -400,14 +400,26 @@ public:
     verify(r, r->is_cset() == r->in_collection_set(),
            "Transitional: region flags and collection set agree");
 
-    verify(r, r->is_empty() || r->first_alloc_seq_num() != 0,
-           "Non-empty regions should have first timestamp set");
+    verify(r, r->is_empty() || r->seqnum_first_alloc() != 0,
+           "Non-empty regions should have first seqnum set");
 
-    verify(r, r->is_empty() || r->last_alloc_seq_num() != 0,
-           "Non-empty regions should have last timestamp set");
+    verify(r, r->is_empty() || (r->seqnum_first_alloc_mutator() != 0 || r->seqnum_first_alloc_gc() != 0),
+           "Non-empty regions should have first seqnum set to either GC or mutator");
 
-    verify(r, r->first_alloc_seq_num() <= r->last_alloc_seq_num(),
-           "First timestamp should not be greater than last timestamp");
+    verify(r, r->is_empty() || r->seqnum_last_alloc() != 0,
+           "Non-empty regions should have last seqnum set");
+
+    verify(r, r->is_empty() || (r->seqnum_last_alloc_mutator() != 0 || r->seqnum_last_alloc_gc() != 0),
+           "Non-empty regions should have last seqnum set to either GC or mutator");
+
+    verify(r, r->seqnum_first_alloc() <= r->seqnum_last_alloc(),
+           "First seqnum should not be greater than last timestamp");
+
+    verify(r, r->seqnum_first_alloc_mutator() <= r->seqnum_last_alloc_mutator(),
+           "First mutator seqnum should not be greater than last seqnum");
+
+    verify(r, r->seqnum_first_alloc_gc() <= r->seqnum_last_alloc_gc(),
+           "First GC seqnum should not be greater than last seqnum");
 
     return false;
   }

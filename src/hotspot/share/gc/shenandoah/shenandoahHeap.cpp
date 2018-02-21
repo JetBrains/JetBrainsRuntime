@@ -945,7 +945,8 @@ void ShenandoahHeap::print_heap_regions_on(outputStream* st) const {
   st->print_cr("EU=empty-uncommitted, EC=empty-committed, R=regular, H=humongous start, HC=humongous continuation, CS=collection set, T=trash, P=pinned");
   st->print_cr("BTE=bottom/top/end, U=used, T=TLAB allocs, G=GCLAB allocs, S=shared allocs, L=live data");
   st->print_cr("R=root, CP=critical pins, TAMS=top-at-mark-start (previous, next)");
-  st->print_cr("FTS=first use timestamp, LTS=last use timestamp");
+  st->print_cr("FMSN=first mutator alloc seqnum, LMSN=last mutator alloc seqnum");
+  st->print_cr("FGSN=first GC alloc seqnum, LGSN=last GC alloc seqnum");
 
   _ordered_regions->print_on(st);
 }
@@ -2333,12 +2334,12 @@ void ShenandoahHeap::op_final_updaterefs() {
 
 void ShenandoahHeap::set_alloc_seq_gc_start() {
   // Take next number, the start seq number is inclusive
-  _alloc_seq_at_last_gc_start = ShenandoahHeapRegion::alloc_seq_num() + 1;
+  _alloc_seq_at_last_gc_start = ShenandoahHeapRegion::seqnum_current_alloc() + 1;
 }
 
 void ShenandoahHeap::set_alloc_seq_gc_end() {
   // Take current number, the end seq number is also inclusive
-  _alloc_seq_at_last_gc_end = ShenandoahHeapRegion::alloc_seq_num();
+  _alloc_seq_at_last_gc_end = ShenandoahHeapRegion::seqnum_current_alloc();
 }
 
 

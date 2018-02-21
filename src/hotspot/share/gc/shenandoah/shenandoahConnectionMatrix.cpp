@@ -85,7 +85,7 @@ void ShenandoahConnectionMatrix::print_on(outputStream* st) const {
         st->print("%8u, " SIZE_FORMAT_W(10) ", " SIZE_FORMAT_W(10) ", " SIZE_FORMAT_W(10) ", "
           UINT64_FORMAT_W(8) ", " UINT64_FORMAT_W(8) ", %8u, {",
                 from_idx, r->get_live_data_bytes(), r->used(), r->garbage(),
-                  r->first_alloc_seq_num(), r->last_alloc_seq_num(), count);
+                  r->seqnum_first_alloc(), r->seqnum_last_alloc(), count);
         for (uint to_idx = 0; to_idx < _stride; to_idx++) {
           if (is_connected(to_idx, from_idx)) {
             st->print("%u, ", to_idx);

@@ -60,8 +60,10 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start
   _reserved(MemRegion(start, size_words)),
   _root(false),
   _new_top(NULL),
-  _first_alloc_seq_num(0),
-  _last_alloc_seq_num(0),
+  _seqnum_first_alloc_mutator(0),
+  _seqnum_last_alloc_mutator(0),
+  _seqnum_first_alloc_gc(0),
+  _seqnum_last_alloc_gc(0),
   _state(committed ? _empty_committed : _empty_uncommitted),
   _empty_time(os::elapsedTime()),
   _initialized(false),
@@ -85,14 +87,10 @@ void ShenandoahHeapRegion::report_illegal_transition(const char *method) {
 void ShenandoahHeapRegion::make_regular_allocation() {
   _heap->assert_heaplock_owned_by_current_thread();
 
-  _last_alloc_seq_num = AllocSeqNum++;
-
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
     case _empty_committed:
-      assert(_first_alloc_seq_num == 0, "Sanity");
-      _first_alloc_seq_num = _last_alloc_seq_num;
       _state = _regular;
     case _regular:
     case _pinned:
@@ -106,14 +104,10 @@ void ShenandoahHeapRegion::make_regular_bypass() {
   _heap->assert_heaplock_owned_by_current_thread();
   assert (_heap->is_full_gc_in_progress(), "only for full GC");
 
-  _last_alloc_seq_num = AllocSeqNum++;
-
   switch (_state) {
     case _empty_uncommitted:
       do_commit();
     case _empty_committed:
-      assert(_first_alloc_seq_num == 0, "Sanity");
-      _first_alloc_seq_num = _last_alloc_seq_num;
     case _cset:
     case _humongous_start:
     case _humongous_cont:
@@ -136,9 +130,6 @@ void ShenandoahHeapRegion::make_humongous_start() {
     case _empty_uncommitted:
       do_commit();
     case _empty_committed:
-      assert(_first_alloc_seq_num == 0, "Sanity");
-      _last_alloc_seq_num = AllocSeqNum++;
-      _first_alloc_seq_num = _last_alloc_seq_num;
       _state = _humongous_start;
       return;
     default:
@@ -152,8 +143,6 @@ void ShenandoahHeapRegion::make_humongous_start_bypass() {
     case _regular:
     case _humongous_start:
     case _humongous_cont:
-      _last_alloc_seq_num = AllocSeqNum++;
-      _first_alloc_seq_num = _last_alloc_seq_num;
       _state = _humongous_start;
       return;
     default:
@@ -168,9 +157,6 @@ void ShenandoahHeapRegion::make_humongous_cont() {
       do_commit();
     case _empty_committed:
       _state = _humongous_cont;
-      assert(_first_alloc_seq_num == 0, "Sanity");
-      _last_alloc_seq_num = AllocSeqNum++;
-      _first_alloc_seq_num = _last_alloc_seq_num;
       return;
     default:
       report_illegal_transition("humongous continuation allocation");
@@ -183,8 +169,6 @@ void ShenandoahHeapRegion::make_humongous_cont_bypass() {
     case _regular:
     case _humongous_start:
     case _humongous_cont:
-      _last_alloc_seq_num = AllocSeqNum++;
-      _first_alloc_seq_num = _last_alloc_seq_num;
       _state = _humongous_cont;
       return;
     default:
@@ -315,16 +299,29 @@ void ShenandoahHeapRegion::clear_live_data() {
   OrderAccess::release_store_fence(&_live_data, 0);
 }
 
-void ShenandoahHeapRegion::reset_alloc_stats() {
+void ShenandoahHeapRegion::reset_alloc_metadata() {
   _tlab_allocs = 0;
   _gclab_allocs = 0;
   _shared_allocs = 0;
+  _seqnum_first_alloc_mutator = 0;
+  _seqnum_last_alloc_mutator = 0;
+  _seqnum_first_alloc_gc = 0;
+  _seqnum_last_alloc_gc = 0;
 }
 
-void ShenandoahHeapRegion::reset_alloc_stats_to_shared() {
-  _tlab_allocs = 0;
-  _gclab_allocs = 0;
-  _shared_allocs = used() >> LogHeapWordSize;
+void ShenandoahHeapRegion::reset_alloc_metadata_to_shared() {
+  if (used() > 0) {
+    _tlab_allocs = 0;
+    _gclab_allocs = 0;
+    _shared_allocs = used() >> LogHeapWordSize;
+    uint64_t next = AllocSeqNum++;
+    _seqnum_first_alloc_mutator = next;
+    _seqnum_last_alloc_mutator = next;
+    _seqnum_first_alloc_gc = 0;
+    _seqnum_last_alloc_gc = 0;
+  } else {
+    reset_alloc_metadata();
+  }
 }
 
 size_t ShenandoahHeapRegion::get_shared_allocs() const {
@@ -423,8 +420,10 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
   st->print("|S %3d%%", (int) ((double) get_shared_allocs() * 100 / capacity()));
   st->print("|L %3d%%", (int) ((double) get_live_data_bytes() * 100 / capacity()));
-  st->print("|FTS " UINT64_FORMAT_W(15), first_alloc_seq_num());
-  st->print("|LTS " UINT64_FORMAT_W(15), last_alloc_seq_num());
+  st->print("|FMSN " UINT64_FORMAT_W(15), seqnum_first_alloc_mutator());
+  st->print("|LMSN " UINT64_FORMAT_W(15), seqnum_last_alloc_mutator());
+  st->print("|FGSN " UINT64_FORMAT_W(15), seqnum_first_alloc_gc());
+  st->print("|LGSN " UINT64_FORMAT_W(15), seqnum_last_alloc_gc());
   if (is_root()) {
     st->print("|R");
   } else {
@@ -498,11 +497,8 @@ void ShenandoahHeapRegion::recycle() {
   }
   clear_live_data();
   _root = false;
-  reset_alloc_stats();
 
-  // Reset seq numbers
-  _first_alloc_seq_num = 0;
-  _last_alloc_seq_num = 0;
+  reset_alloc_metadata();
 
   // Reset C-TAMS pointer to ensure size-based iteration, everything
   // in that regions is going to be new objects.

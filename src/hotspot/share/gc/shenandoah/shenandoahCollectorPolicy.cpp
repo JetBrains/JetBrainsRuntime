@@ -57,9 +57,9 @@ protected:
   }
 
   static int compare_by_alloc_seq_ascending(ShenandoahHeapRegion* a, ShenandoahHeapRegion* b) {
-    if (a->last_alloc_seq_num() == b->last_alloc_seq_num())
+    if (a->seqnum_last_alloc() == b->seqnum_last_alloc())
       return 0;
-    else if (a->last_alloc_seq_num() < b->last_alloc_seq_num())
+    else if (a->seqnum_last_alloc() < b->seqnum_last_alloc())
       return -1;
     else return 1;
   }
@@ -1119,7 +1119,7 @@ public:
 
     for (uint i = 0; (i < sorted_active) && (count < target); i++) {
       ShenandoahHeapRegion* contender = sorted_regions.get(i);
-      if (contender->last_alloc_seq_num() <= alloc_seq_at_last_gc_end) {
+      if (contender->seqnum_last_alloc() <= alloc_seq_at_last_gc_end) {
         break;
       }
 
@@ -1207,7 +1207,7 @@ public:
 
     for (size_t i = 0; i < active; i++) {
       ShenandoahHeapRegion* r = regions->get(i);
-      if (r->is_regular() && (r->last_alloc_seq_num() > 0)) {
+      if (r->is_regular() && (r->seqnum_last_alloc() > 0)) {
         sorted_regions.add_region(regions->get(i));
       }
     }
@@ -1231,7 +1231,7 @@ public:
 
     for (uint i = 0; (i < sorted_active) && (count < target); i++) {
       ShenandoahHeapRegion* contender = sorted_regions.get(i);
-      if (contender->last_alloc_seq_num() >= alloc_seq_at_last_gc_start) {
+      if (contender->seqnum_last_alloc() >= alloc_seq_at_last_gc_start) {
         break;
       }
 

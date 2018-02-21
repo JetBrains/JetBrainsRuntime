@@ -34,29 +34,55 @@ HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahHeap::AllocType 
   HeapWord* obj = top();
   if (pointer_delta(end(), obj) >= size) {
     make_regular_allocation();
+    adjust_alloc_metadata(type, size);
 
     HeapWord* new_top = obj + size;
     set_top(new_top);
     assert(is_aligned(obj) && is_aligned(new_top), "checking alignment");
 
-    switch (type) {
-      case ShenandoahHeap::_alloc_shared:
-      case ShenandoahHeap::_alloc_shared_gc:
-        _shared_allocs += size;
-        break;
-      case ShenandoahHeap::_alloc_tlab:
-        _tlab_allocs += size;
-        break;
-      case ShenandoahHeap::_alloc_gclab:
-        _gclab_allocs += size;
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-
     return obj;
   } else {
     return NULL;
+  }
+}
+
+inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahHeap::AllocType type, size_t size) {
+  bool is_first_alloc = (top() == bottom());
+
+  switch (type) {
+    case ShenandoahHeap::_alloc_shared:
+    case ShenandoahHeap::_alloc_tlab:
+      _seqnum_last_alloc_mutator = AllocSeqNum++;
+      if (is_first_alloc) {
+        assert (_seqnum_first_alloc_mutator == 0, "Region " SIZE_FORMAT " metadata is correct", _region_number);
+        _seqnum_first_alloc_mutator = _seqnum_last_alloc_mutator;
+      }
+      break;
+    case ShenandoahHeap::_alloc_shared_gc:
+    case ShenandoahHeap::_alloc_gclab:
+      _seqnum_last_alloc_gc = AllocSeqNum++;
+      if (is_first_alloc) {
+        assert (_seqnum_first_alloc_gc == 0, "Region " SIZE_FORMAT " metadata is correct", _region_number);
+        _seqnum_first_alloc_gc = _seqnum_last_alloc_gc;
+      }
+      break;
+    default:
+      ShouldNotReachHere();
+  }
+
+  switch (type) {
+    case ShenandoahHeap::_alloc_shared:
+    case ShenandoahHeap::_alloc_shared_gc:
+      _shared_allocs += size;
+      break;
+    case ShenandoahHeap::_alloc_tlab:
+      _tlab_allocs += size;
+      break;
+    case ShenandoahHeap::_alloc_gclab:
+      _gclab_allocs += size;
+      break;
+    default:
+      ShouldNotReachHere();
   }
 }
 

@@ -225,10 +225,12 @@ private:
 
   size_t _critical_pins;
 
-  // Seq numbers are used for generational and Least Recently Used heuristics.
+  // Seq numbers are used to drive heuristics decisions for collection.
   // They are set when the region is used for allocation.
-  uint64_t  _first_alloc_seq_num;
-  uint64_t  _last_alloc_seq_num;
+  uint64_t  _seqnum_first_alloc_mutator;
+  uint64_t  _seqnum_first_alloc_gc;
+  uint64_t  _seqnum_last_alloc_mutator;
+  uint64_t  _seqnum_last_alloc_gc;
 
   RegionState _state;
   double _empty_time;
@@ -309,7 +311,7 @@ public:
     return ShenandoahHeapRegion::MaxTLABSizeBytes;
   }
 
-  static uint64_t alloc_seq_num() {
+  static uint64_t seqnum_current_alloc() {
     // Last used seq number
     return AllocSeqNum - 1;
   }
@@ -332,12 +334,6 @@ public:
   void set_live_data(size_t s);
   inline void increase_live_data_words(size_t s);
   inline void increase_live_data_words(int s);
-
-  void reset_alloc_stats_to_shared();
-  void reset_alloc_stats();
-  size_t get_shared_allocs() const;
-  size_t get_tlab_allocs() const;
-  size_t get_gclab_allocs() const;
 
   bool has_live() const;
   size_t get_live_data_bytes() const;
@@ -378,12 +374,37 @@ public:
     return _root;
   }
 
-  uint64_t first_alloc_seq_num() const {
-    return _first_alloc_seq_num;
+  inline void adjust_alloc_metadata(ShenandoahHeap::AllocType type, size_t);
+  void reset_alloc_metadata_to_shared();
+  void reset_alloc_metadata();
+  size_t get_shared_allocs() const;
+  size_t get_tlab_allocs() const;
+  size_t get_gclab_allocs() const;
+
+  uint64_t seqnum_first_alloc() const {
+    if (_seqnum_first_alloc_mutator == 0) return _seqnum_first_alloc_gc;
+    if (_seqnum_first_alloc_gc == 0)      return _seqnum_first_alloc_mutator;
+    return MIN2(_seqnum_first_alloc_mutator, _seqnum_first_alloc_gc);
   }
 
-  uint64_t last_alloc_seq_num()  const {
-    return _last_alloc_seq_num;
+  uint64_t seqnum_last_alloc() const {
+    return MAX2(_seqnum_last_alloc_mutator, _seqnum_last_alloc_gc);
+  }
+
+  uint64_t seqnum_first_alloc_mutator() const {
+    return _seqnum_first_alloc_mutator;
+  }
+
+  uint64_t seqnum_last_alloc_mutator()  const {
+    return _seqnum_last_alloc_mutator;
+  }
+
+  uint64_t seqnum_first_alloc_gc() const {
+    return _seqnum_first_alloc_gc;
+  }
+
+  uint64_t seqnum_last_alloc_gc()  const {
+    return _seqnum_last_alloc_gc;
   }
 
 private:
