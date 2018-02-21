@@ -376,8 +376,8 @@ bool ShenandoahHeapRegion::in_collection_set() const {
 }
 
 void ShenandoahHeapRegion::print_on(outputStream* st) const {
-  st->print("|" PTR_FORMAT, p2i(this));
-  st->print("|" SIZE_FORMAT_W(5), this->_region_number);
+  st->print("|");
+  st->print(SIZE_FORMAT_W(5), this->_region_number);
 
   switch (_state) {
     case _empty_uncommitted:
@@ -413,27 +413,26 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
     default:
       ShouldNotReachHere();
   }
-  st->print("|BTE " PTR_FORMAT ", " PTR_FORMAT ", " PTR_FORMAT,
+  st->print("|BTE " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
             p2i(bottom()), p2i(top()), p2i(end()));
+  st->print("|TAMS " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
+            p2i(ShenandoahHeap::heap()->complete_top_at_mark_start(_bottom)),
+            p2i(ShenandoahHeap::heap()->next_top_at_mark_start(_bottom)));
   st->print("|U %3d%%", (int) ((double) used() * 100 / capacity()));
   st->print("|T %3d%%", (int) ((double) get_tlab_allocs() * 100 / capacity()));
   st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
   st->print("|S %3d%%", (int) ((double) get_shared_allocs() * 100 / capacity()));
   st->print("|L %3d%%", (int) ((double) get_live_data_bytes() * 100 / capacity()));
-  st->print("|FMSN " UINT64_FORMAT_W(15), seqnum_first_alloc_mutator());
-  st->print("|LMSN " UINT64_FORMAT_W(15), seqnum_last_alloc_mutator());
-  st->print("|FGSN " UINT64_FORMAT_W(15), seqnum_first_alloc_gc());
-  st->print("|LGSN " UINT64_FORMAT_W(15), seqnum_last_alloc_gc());
   if (is_root()) {
     st->print("|R");
   } else {
     st->print("| ");
   }
   st->print("|CP " SIZE_FORMAT_W(3), _critical_pins);
-
-  st->print_cr("|TAMS " PTR_FORMAT ", " PTR_FORMAT "|",
-               p2i(ShenandoahHeap::heap()->complete_top_at_mark_start(_bottom)),
-               p2i(ShenandoahHeap::heap()->next_top_at_mark_start(_bottom)));
+  st->print("|SN " UINT64_FORMAT_HEX_W(12) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8),
+            seqnum_first_alloc_mutator(), seqnum_last_alloc_mutator(),
+            seqnum_first_alloc_gc(), seqnum_last_alloc_gc());
+  st->cr();
 }
 
 void ShenandoahHeapRegion::oop_iterate(ExtendedOopClosure* blk) {
