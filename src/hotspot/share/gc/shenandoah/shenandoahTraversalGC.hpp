@@ -35,7 +35,6 @@ class ShenandoahStrDedupQueue;
 class ShenandoahTraversalGC : public CHeapObj<mtGC> {
 private:
   ShenandoahHeap* _heap;
-  MarkBitMap* _bitmap;
   ShenandoahObjToScanQueueSet* _task_queues;
 
   // Used for buffering per-region liveness data.

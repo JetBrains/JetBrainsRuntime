@@ -1347,7 +1347,7 @@ public:
           collection_set->add_region(r);
         }
       }
-      heap->set_next_top_at_mark_start(r->bottom(), r->end()); // No implicitely live stuff.
+      heap->set_next_top_at_mark_start(r->bottom(), r->top());
       heap->set_complete_top_at_mark_start(r->bottom(), r->top()); // For debugging purposes
       r->clear_live_data();
     }

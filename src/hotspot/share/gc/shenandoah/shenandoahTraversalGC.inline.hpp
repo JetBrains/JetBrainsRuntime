@@ -51,7 +51,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       obj = forw;
     }
 
-    if ((!_bitmap->isMarked((HeapWord*) obj)) && _bitmap->parMark((HeapWord*) obj)) {
+    if (!_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 

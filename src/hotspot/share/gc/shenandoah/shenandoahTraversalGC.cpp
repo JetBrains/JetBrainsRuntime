@@ -53,17 +53,53 @@
  * NOTE: We are using the SATB buffer in thread.hpp and satbMarkQueue.hpp, however, it is not an SATB algorithm.
  * We're using the buffer as generic oop buffer to enqueue new values in concurrent oop stores, IOW, the algorithm
  * is incremental-update-based.
+ *
+ * NOTE on interaction with TAMS: we want to avoid traversing new objects for
+ * several reasons:
+ * - We will not reclaim them in this cycle anyway, because they are not in the
+ *   cset
+ * - It makes up for the bulk of work during final-pause
+ * - It also shortens the concurrent cycle because we don't need to
+ *   pointlessly traverse through newly allocated objects.
+ * - As a nice side-effect, it solves the I-U termination problem (mutators
+ *   cannot outrun the GC by allocating like crazy)
+ * - It is an easy way to achieve MWF. What MWF does is to also enqueue the
+ *   target object of stores if it's new. Treating new objects live implicitely
+ *   achieves the same, but without extra barriers. I think the effect of
+ *   shortened final-pause (mentioned above) is the main advantage of MWF. In
+ *   particular, we will not see the head of a completely new long linked list
+ *   in final-pause and end up traversing huge chunks of the heap there.
+ * - We don't need to see/update the fields of new objects either, because they
+ *   are either still null, or anything that's been stored into them has been
+ *   evacuated+enqueued before (and will thus be treated later).
+ *
+ * We achieve this by setting TAMS for each region, and everything allocated
+ * beyond TAMS will be 'implicitely marked'.
+ *
+ * Gotchas:
+ * - While we want new objects to be implicitely marked, we don't want to count
+ *   them alive. Otherwise the next cycle wouldn't pick them up and consider
+ *   them for cset. This means that we need to protect such regions from
+ *   getting accidentally thrashed at the end of traversal cycle. This is why I
+ *   keep track of alloc-regions and check is_alloc_region() in the trashing
+ *   code.
+ * - We *need* to traverse through evacuated objects. Those objects are
+ *   pre-existing, and any references in them point to interesting objects that
+ *   we need to see. We also want to count them as live, because we just
+ *   determined that they are alive :-) I achieve this by upping TAMS
+ *   concurrently for every gclab/gc-shared alloc before publishing the
+ *   evacuated object. This way, the GC threads will not consider such objects
+ *   implictely marked, and traverse through them as normal.
  */
 class ShenandoahTraversalSATBBufferClosure : public SATBBufferClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahTraversalGC* _traversal_gc;
   ShenandoahHeap* _heap;
-  MarkBitMap* _bitmap;
 public:
   ShenandoahTraversalSATBBufferClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _heap(ShenandoahHeap::heap()), _bitmap(ShenandoahHeap::heap()->next_mark_bit_map())
+    _heap(ShenandoahHeap::heap())
  { }
 
   void do_buffer(void** buffer, size_t size) {
@@ -71,7 +107,7 @@ public:
       oop* p = (oop*) &buffer[i];
       oop obj = oopDesc::load_heap_oop(p);
       shenandoah_assert_not_forwarded(p, obj);
-      if ((!_bitmap->isMarked((HeapWord*) obj)) && _bitmap->parMark((HeapWord*) obj)) {
+      if (!_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
         _queue->push(ShenandoahMarkTask(obj));
       }
     }
@@ -283,7 +319,6 @@ void ShenandoahTraversalGC::prepare() {
   _heap->make_tlabs_parsable(true);
 
   assert(_heap->is_next_bitmap_clear(), "need clean mark bitmap");
-  _bitmap = _heap->next_mark_bit_map();
 
   ShenandoahHeapRegionSet* regions = _heap->regions();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
@@ -308,8 +343,6 @@ void ShenandoahTraversalGC::prepare() {
 
 void ShenandoahTraversalGC::init_traversal_collection() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "STW traversal GC");
-
-  _heap->set_alloc_seq_gc_start();
 
   if (ShenandoahVerify) {
     _heap->verifier()->verify_before_traversal();
@@ -545,9 +578,11 @@ void ShenandoahTraversalGC::final_traversal_collection() {
       free_regions->clear();
       for (size_t i = 0; i < active; i++) {
         ShenandoahHeapRegion* r = regions->get(i);
-        if (r->is_humongous_start() && !r->has_live()) {
+        bool not_allocated = _heap->next_top_at_mark_start(r->bottom()) == r->top();
+        if (r->is_humongous_start() && !r->has_live() && not_allocated) {
+          // Trash humongous.
           HeapWord* humongous_obj = r->bottom() + BrooksPointer::word_size();
-          assert(!_bitmap->isMarked(humongous_obj), "must not be marked");
+          assert(!_heap->is_marked_next(oop(humongous_obj)), "must not be marked");
           r->make_trash();
           while (i + 1 < active && regions->get(i + 1)->is_humongous_continuation()) {
             i++;
@@ -555,10 +590,8 @@ void ShenandoahTraversalGC::final_traversal_collection() {
             assert(r->is_humongous_continuation(), "must be humongous continuation");
             r->make_trash();
           }
-        } else if (!r->is_empty() && !r->has_live()) {
-          if (r->is_humongous()) {
-            r->print_on(tty);
-          }
+        } else if (!r->is_empty() && !r->has_live() && not_allocated) {
+          // Trash regular.
           assert(!r->is_humongous(), "handled above");
           assert(!r->is_trash(), "must not already be trashed");
           r->make_trash();

@@ -857,7 +857,7 @@ void ShenandoahVerifier::verify_after_traversal() {
           _verify_marked_next,         // marking should be complete in next bitmap
           _verify_matrix_disable,      // matrix is conservatively consistent
           _verify_cset_none,           // no cset references left after traversal
-          _verify_liveness_complete,   // liveness data must be complete here
+          _verify_liveness_disable,    // liveness data is not collected for new allocations
           _verify_regions_nocset       // no cset regions, trash regions allowed
   );
 }

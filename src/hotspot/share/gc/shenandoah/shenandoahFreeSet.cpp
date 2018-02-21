@@ -104,6 +104,23 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(size_t word_size, ShenandoahHeap::A
     }
     increase_used(word_size * HeapWordSize);
     ShenandoahHeap::heap()->increase_used(word_size * HeapWordSize);
+    if (ShenandoahHeap::heap()->is_concurrent_traversal_in_progress()) {
+      switch (type) {
+        case ShenandoahHeap::_alloc_gclab:
+        case ShenandoahHeap::_alloc_shared_gc:
+          // We're updating TAMS for evacuation-allocs, such that we will not
+          // treat evacuated objects as implicitely live and traverse through them.
+          // See top of shenandoahTraversal.cpp for an explanation.
+          ShenandoahHeap::heap()->set_next_top_at_mark_start(r->bottom(), r->end());
+          OrderAccess::fence();
+          break;
+        case ShenandoahHeap::_alloc_tlab:
+        case ShenandoahHeap::_alloc_shared:
+          break;
+        default:
+          ShouldNotReachHere();
+      }
+    }
   } else {
     // Region cannot afford allocation. Retire it.
     // While this seems a bit harsh, especially in the case when this large allocation does not
