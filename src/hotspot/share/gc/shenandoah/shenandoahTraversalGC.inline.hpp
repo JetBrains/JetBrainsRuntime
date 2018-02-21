@@ -68,7 +68,7 @@ template <class T>
 void ShenandoahTraversalGC::do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
-  shenandoah_assert_not_forwarded(NULL, obj);
+  shenandoah_assert_not_forwarded_except(NULL, obj, _heap->cancelled_concgc());
   shenandoah_assert_marked_next(NULL, obj);
   shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_concgc());
 
