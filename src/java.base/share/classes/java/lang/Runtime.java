@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringTokenizer;
+
+import jdk.internal.misc.SharedSecrets;
 import jdk.internal.reflect.CallerSensitive;
 import jdk.internal.reflect.Reflection;
 
@@ -702,9 +704,6 @@ public class Runtime {
      */
     public native void gc();
 
-    /* Wormhole for calling java.lang.ref.Finalizer.runFinalization */
-    private static native void runFinalization0();
-
     /**
      * Runs the finalization methods of any objects pending finalization.
      * Calling this method suggests that the Java virtual machine expend
@@ -724,7 +723,7 @@ public class Runtime {
      * @see     java.lang.Object#finalize()
      */
     public void runFinalization() {
-        runFinalization0();
+        SharedSecrets.getJavaLangRefAccess().runFinalization();
     }
 
     /**
@@ -1099,16 +1098,23 @@ public class Runtime {
                     m.group(VersionPattern.OPT_GROUP));
 
             // empty '+'
-            if ((m.group(VersionPattern.PLUS_GROUP) != null)
-                    && !build.isPresent()) {
-                if (optional.isPresent()) {
-                    if (pre.isPresent())
-                        throw new IllegalArgumentException("'+' found with"
-                            + " pre-release and optional components:'" + s
-                            + "'");
+            if (!build.isPresent()) {
+                if (m.group(VersionPattern.PLUS_GROUP) != null) {
+                    if (optional.isPresent()) {
+                        if (pre.isPresent())
+                            throw new IllegalArgumentException("'+' found with"
+                                + " pre-release and optional components:'" + s
+                                + "'");
+                    } else {
+                        throw new IllegalArgumentException("'+' found with neither"
+                            + " build or optional components: '" + s + "'");
+                    }
                 } else {
-                    throw new IllegalArgumentException("'+' found with neither"
-                        + " build or optional components: '" + s + "'");
+                    if (optional.isPresent() && !pre.isPresent()) {
+                        throw new IllegalArgumentException("optional component"
+                            + " must be preceeded by a pre-release component"
+                            + " or '+': '" + s + "'");
+                    }
                 }
             }
             return new Version(List.of(version), pre, build, optional);
