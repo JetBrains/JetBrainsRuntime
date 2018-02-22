@@ -254,6 +254,7 @@ private:
   size_t _allocated_last_gc;
   size_t _used_start_gc;
 
+  ShenandoahSharedFlag _degenerated_gc_in_progress;
   ShenandoahSharedFlag _full_gc_in_progress;
   ShenandoahSharedFlag _full_gc_move_in_progress;
 
@@ -396,6 +397,7 @@ public:
   void set_evacuation_in_progress_concurrently(bool in_progress);
   void set_evacuation_in_progress_at_safepoint(bool in_progress);
   void set_update_refs_in_progress(bool in_progress);
+  void set_degenerated_gc_in_progress(bool in_progress);
   void set_full_gc_in_progress(bool in_progress);
   void set_full_gc_move_in_progress(bool in_progress);
   void set_concurrent_partial_in_progress(bool in_progress);
@@ -405,6 +407,7 @@ public:
   inline bool is_concurrent_mark_in_progress() const;
   inline bool is_update_refs_in_progress() const;
   inline bool is_evacuation_in_progress() const;
+  inline bool is_degenerated_gc_in_progress() const;
   inline bool is_full_gc_in_progress() const;
   inline bool is_full_gc_move_in_progress() const;
   inline bool is_concurrent_partial_in_progress() const;

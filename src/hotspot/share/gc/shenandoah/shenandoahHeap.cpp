@@ -496,14 +496,15 @@ void ShenandoahHeap::print_on(outputStream* st) const {
                num_regions(), ShenandoahHeapRegion::region_size_bytes() / K);
 
   st->print("Status: ");
-  if (has_forwarded_objects())                st->print("has forwarded objects, ");
-  if (is_concurrent_mark_in_progress())    st->print("marking, ");
-  if (is_evacuation_in_progress())         st->print("evacuating, ");
-  if (is_update_refs_in_progress())        st->print("updating refs, ");
-  if (is_concurrent_partial_in_progress()) st->print("partial, ");
+  if (has_forwarded_objects())               st->print("has forwarded objects, ");
+  if (is_concurrent_mark_in_progress())      st->print("marking, ");
+  if (is_evacuation_in_progress())           st->print("evacuating, ");
+  if (is_update_refs_in_progress())          st->print("updating refs, ");
+  if (is_concurrent_partial_in_progress())   st->print("partial, ");
   if (is_concurrent_traversal_in_progress()) st->print("traversal, ");
-  if (is_full_gc_in_progress())            st->print("full gc, ");
-  if (is_full_gc_move_in_progress())       st->print("full gc move, ");
+  if (is_degenerated_gc_in_progress())       st->print("degenerated gc, ");
+  if (is_full_gc_in_progress())              st->print("full gc, ");
+  if (is_full_gc_move_in_progress())         st->print("full gc move, ");
 
   if (cancelled_concgc()) {
     st->print("conc gc cancelled");
@@ -2111,6 +2112,10 @@ HeapWord* ShenandoahHeap::complete_top_at_mark_start(HeapWord* region_base) {
   return _complete_top_at_mark_starts[index];
 }
 
+void ShenandoahHeap::set_degenerated_gc_in_progress(bool in_progress) {
+  _degenerated_gc_in_progress.set_cond(in_progress);
+}
+
 void ShenandoahHeap::set_full_gc_in_progress(bool in_progress) {
   _full_gc_in_progress.set_cond(in_progress);
 }
@@ -2729,7 +2734,9 @@ void ShenandoahHeap::entry_degenerated(int point) {
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated());
 
+  set_degenerated_gc_in_progress(true);
   op_degenerated(dpoint);
+  set_degenerated_gc_in_progress(false);
 }
 
 void ShenandoahHeap::entry_mark() {

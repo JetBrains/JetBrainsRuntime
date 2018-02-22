@@ -403,6 +403,10 @@ inline bool ShenandoahHeap::is_gc_in_progress_mask(uint mask) const {
   return _gc_state.is_set(mask);
 }
 
+inline bool ShenandoahHeap::is_degenerated_gc_in_progress() const {
+  return _degenerated_gc_in_progress.is_set();
+}
+
 inline bool ShenandoahHeap::is_full_gc_in_progress() const {
   return _full_gc_in_progress.is_set();
 }
