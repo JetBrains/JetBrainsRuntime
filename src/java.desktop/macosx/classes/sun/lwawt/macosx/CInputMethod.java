@@ -304,6 +304,18 @@ public final class CInputMethod extends InputMethodAdapter {
             if (component.getInputMethodRequests() == null) {
                 imInstance = null;
             }
+
+            LWWindowPeer windowPeer = peer.getPlatformWindow().getPeer();
+            if (windowPeer.isSimpleWindow()) {
+                // A simple window gains focus. Cocoa won't dispatch IME events into the simple window, but into its owner.
+                // This IM represents the focused component in the simple window. We will use the owner as IME proxy.
+                // For that, this IM is set for the owner and is dropped for the simple window.
+                Window owner = windowPeer.getTarget().getOwner();
+                assert owner != null && owner.isActive();
+                long ownerPtr = getNativeViewPtr((LWComponentPeer)AWTAccessor.getComponentAccessor().getPeer(owner));
+                nativeNotifyPeer(ownerPtr, this);
+                imInstance = null;
+            }
         }
 
         if (peer != null) {
@@ -380,6 +392,14 @@ public final class CInputMethod extends InputMethodAdapter {
         fIMContext = null;
         fAwtFocussedComponent = null;
         fAwtFocussedComponentPeer = null;
+    }
+
+    private boolean isValid() {
+        return  fIMContext != null &&
+                fAwtFocussedComponent != null &&
+                fAwtFocussedComponentPeer != null &&
+                fCurrentText != null &&
+                fCurrentTextAsString != null;
     }
 
     /**
@@ -602,6 +622,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final String[] retString = new String[1];
 
         try {
+            if (isValid())
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(retString) {
                     int location = locationIn;
@@ -654,6 +675,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] returnValue = new int[2];
 
         try {
+            if (isValid())
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
@@ -729,6 +751,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] rect = new int[4];
 
         try {
+            if (isValid())
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(rect) {
                     int insertOffset = fIMContext.getInsertPositionOffset();
@@ -773,6 +796,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] insertPositionOffset = new int[1];
 
         try {
+            if (isValid())
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(offsetInfo) {
                     offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
