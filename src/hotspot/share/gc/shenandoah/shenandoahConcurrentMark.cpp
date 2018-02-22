@@ -203,21 +203,7 @@ public:
 
     ReferenceProcessorMaybeNullIsAliveMutator fix_alive(rp, ShenandoahHeap::heap()->is_alive_closure());
 
-    if (ShenandoahConcurrentScanCodeRoots && _cm->claim_codecache()) {
-      if (! _cm->unload_classes()) {
-        MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
-        if (_update_refs) {
-          ShenandoahMarkResolveRefsClosure cl(q, rp);
-          CodeBlobToOopClosure blobs(&cl, !CodeBlobToOopClosure::FixRelocations);
-          CodeCache::blobs_do(&blobs);
-        } else {
-          ShenandoahMarkRefsClosure cl(q, rp);
-          CodeBlobToOopClosure blobs(&cl, !CodeBlobToOopClosure::FixRelocations);
-          CodeCache::blobs_do(&blobs);
-        }
-      }
-    }
-
+    _cm->concurrent_scan_code_roots(worker_id, rp, _update_refs);
     _cm->mark_loop(worker_id, _terminator, rp,
                    true, // cancellable
                    true, // drain SATBs as we go
@@ -261,6 +247,9 @@ public:
 
     ReferenceProcessorMaybeNullIsAliveMutator fix_alive(rp, ShenandoahHeap::heap()->is_alive_closure());
 
+    // Degenerated cycle may bypass concurrent cycle, so code roots might not be scanned,
+    // let's check here.
+    _cm->concurrent_scan_code_roots(worker_id, rp, _update_refs);
     _cm->mark_loop(worker_id, _terminator, rp,
                    false, // not cancellable
                    false, // do not drain SATBs, already drained
@@ -376,6 +365,24 @@ void ShenandoahConcurrentMark::initialize(uint workers) {
   _liveness_local = NEW_C_HEAP_ARRAY(jushort*, workers, mtGC);
   for (uint worker = 0; worker < workers; worker++) {
      _liveness_local[worker] = NEW_C_HEAP_ARRAY(jushort, num_regions, mtGC);
+  }
+}
+
+void ShenandoahConcurrentMark::concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp, bool update_refs) {
+  if (ShenandoahConcurrentScanCodeRoots && claim_codecache()) {
+    ShenandoahObjToScanQueue* q = task_queues()->queue(worker_id);
+    if (!unload_classes()) {
+      MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+      if (update_refs) {
+        ShenandoahMarkResolveRefsClosure cl(q, rp);
+        CodeBlobToOopClosure blobs(&cl, !CodeBlobToOopClosure::FixRelocations);
+        CodeCache::blobs_do(&blobs);
+      } else {
+        ShenandoahMarkRefsClosure cl(q, rp);
+        CodeBlobToOopClosure blobs(&cl, !CodeBlobToOopClosure::FixRelocations);
+        CodeCache::blobs_do(&blobs);
+      }
+    }
   }
 }
 

@@ -100,7 +100,6 @@ private:
   };
 
   // ------------------------ END: Currying dynamic arguments to template args ----------------------------
-
 public:
   // Mark loop entry.
   // Translates dynamic arguments to template parameters with progressive currying.
@@ -159,6 +158,7 @@ public:
 
   void preclean_weak_refs();
 
+  void concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp, bool update_ref);
 private:
 
   void weak_refs_work(bool full_gc);
