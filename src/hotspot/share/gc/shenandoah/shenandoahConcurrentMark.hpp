@@ -66,6 +66,7 @@ private:
   inline void do_chunked_array(ShenandoahObjToScanQueue* q, T* cl, oop array, int chunk, int pow);
 
   inline void count_liveness(jushort* live_data, oop obj);
+  inline void count_liveness_humongous(oop obj);
 
   // Actual mark loop with closures set up
   template <class T, bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>

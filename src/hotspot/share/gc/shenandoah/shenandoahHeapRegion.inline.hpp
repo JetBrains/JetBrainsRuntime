@@ -96,7 +96,7 @@ inline void ShenandoahHeapRegion::increase_live_data_words(int s) {
 #ifdef ASSERT
   size_t live_bytes = (size_t)(new_live_data * HeapWordSize);
   size_t used_bytes = used();
-  assert(live_bytes <= used_bytes || is_humongous() || _heap->is_concurrent_traversal_in_progress(),
+  assert(live_bytes <= used_bytes,
          "can't have more live data than used: " SIZE_FORMAT ", " SIZE_FORMAT, live_bytes, used_bytes);
 #endif
 }

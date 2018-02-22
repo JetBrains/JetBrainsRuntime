@@ -342,17 +342,7 @@ void ShenandoahHeapRegion::set_live_data(size_t s) {
 }
 
 size_t ShenandoahHeapRegion::get_live_data_words() const {
-  if (is_humongous()) {
-    if (is_humongous_start()) {
-      size_t live_data = (size_t)OrderAccess::load_acquire(&_live_data);
-      return (live_data == 0) ? 0 : (used() >> LogHeapWordSize);
-    } else {
-      const ShenandoahHeapRegion* start = humongous_start_region();
-      return start->get_live_data_words() == 0 ? 0 : (used() >> LogHeapWordSize);
-    }
-  } else {
-    return (size_t)OrderAccess::load_acquire(&_live_data);
-  }
+  return (size_t)OrderAccess::load_acquire(&_live_data);
 }
 
 size_t ShenandoahHeapRegion::get_live_data_bytes() const {
