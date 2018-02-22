@@ -1908,7 +1908,9 @@ size_t ShenandoahHeap::tlab_used(Thread* thread) const {
 
 void ShenandoahHeap::cancel_concgc(GCCause::Cause cause) {
   if (try_cancel_concgc()) {
-    log_info(gc)("Cancelling concurrent GC: %s", GCCause::to_string(cause));
+    FormatBuffer<> msg("Cancelling concurrent GC: %s", GCCause::to_string(cause));
+    log_info(gc)("%s", msg.buffer());
+    Events::log(Thread::current(), "%s", msg.buffer());
   }
 }
 
@@ -2625,7 +2627,10 @@ void ShenandoahHeap::vmop_degenerated(ShenandoahDegenerationPoint point) {
 void ShenandoahHeap::entry_init_mark() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_mark);
-  GCTraceTime(Info, gc) time("Pause Init Mark", gc_timer());
+
+  static const char* msg = "Pause Init Mark";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_init_marking());
 
@@ -2635,11 +2640,13 @@ void ShenandoahHeap::entry_init_mark() {
 void ShenandoahHeap::entry_final_mark() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_mark);
+
   FormatBuffer<> msg("Pause Final Mark%s%s%s",
                      has_forwarded_objects() ?                " (update refs)"    : "",
                      concurrentMark()->process_references() ? " (process refs)"   : "",
                      concurrentMark()->unload_classes() ?     " (unload classes)" : "");
   GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg.buffer());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_marking());
 
@@ -2649,7 +2656,10 @@ void ShenandoahHeap::entry_final_mark() {
 void ShenandoahHeap::entry_init_updaterefs() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_update_refs);
-  GCTraceTime(Info, gc) time("Pause Init Update Refs", gc_timer());
+
+  static const char* msg = "Pause Init Update Refs";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   // No workers used in this phase, no setup required
 
@@ -2659,7 +2669,10 @@ void ShenandoahHeap::entry_init_updaterefs() {
 void ShenandoahHeap::entry_final_updaterefs() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_update_refs);
-  GCTraceTime(Info, gc) time("Pause Final Update Refs", gc_timer());
+
+  static const char* msg = "Pause Final Update Refs";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_update_ref());
 
@@ -2669,7 +2682,10 @@ void ShenandoahHeap::entry_final_updaterefs() {
 void ShenandoahHeap::entry_init_partial() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_partial_gc);
-  GCTraceTime(Info, gc) time("Pause Init Partial", gc_timer());
+
+  static const char* msg = "Pause Init Partial";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
@@ -2679,7 +2695,10 @@ void ShenandoahHeap::entry_init_partial() {
 void ShenandoahHeap::entry_final_partial() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_partial_gc);
-  GCTraceTime(Info, gc) time("Pause Final Partial", gc_timer());
+
+  static const char* msg = "Pause Final Partial";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_partial());
 
@@ -2689,7 +2708,10 @@ void ShenandoahHeap::entry_final_partial() {
 void ShenandoahHeap::entry_init_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc);
-  GCTraceTime(Info, gc) time("Pause Init Traversal", gc_timer());
+
+  static const char* msg = "Pause Init Traversal";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_traversal());
 
@@ -2699,7 +2721,10 @@ void ShenandoahHeap::entry_init_traversal() {
 void ShenandoahHeap::entry_final_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc);
-  GCTraceTime(Info, gc) time("Pause Final Traversal", gc_timer());
+
+  static const char* msg = "Pause Final Traversal";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_traversal());
 
@@ -2709,7 +2734,10 @@ void ShenandoahHeap::entry_final_traversal() {
 void ShenandoahHeap::entry_full(GCCause::Cause cause) {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc);
-  GCTraceTime(Info, gc) time("Pause Full", gc_timer(), cause, true);
+
+  static const char* msg = "Pause Full";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), cause, true);
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_fullgc());
 
@@ -2719,7 +2747,10 @@ void ShenandoahHeap::entry_full(GCCause::Cause cause) {
 void ShenandoahHeap::entry_verify_after_evac() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::pause_other);
-  GCTraceTime(Info, gc) time("Pause Verify After Evac", gc_timer());
+
+  static const char* msg = "Pause Verify After Evac";
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg);
 
   op_verify_after_evac();
 }
@@ -2731,6 +2762,7 @@ void ShenandoahHeap::entry_degenerated(int point) {
   ShenandoahDegenerationPoint dpoint = (ShenandoahDegenerationPoint)point;
   FormatBuffer<> msg("Pause Degenerated GC (%s)", degen_point_to_string(dpoint));
   GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg.buffer());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated());
 
@@ -2747,6 +2779,7 @@ void ShenandoahHeap::entry_mark() {
                      concurrentMark()->process_references() ? " (process refs)"   : "",
                      concurrentMark()->unload_classes() ?     " (unload classes)" : "");
   GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg.buffer());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_marking());
 
@@ -2757,7 +2790,10 @@ void ShenandoahHeap::entry_mark() {
 void ShenandoahHeap::entry_evac() {
   ShenandoahGCPhase conc_evac_phase(ShenandoahPhaseTimings::conc_evac);
   TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
-  GCTraceTime(Info, gc) time("Concurrent evacuation", gc_timer(), GCCause::_no_gc, true);
+
+  static const char* msg = "Concurrent evacuation";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_evac());
 
@@ -2767,7 +2803,10 @@ void ShenandoahHeap::entry_evac() {
 
 void ShenandoahHeap::entry_updaterefs() {
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_update_refs);
-  GCTraceTime(Info, gc) time("Concurrent update references", gc_timer(), GCCause::_no_gc, true);
+
+  static const char* msg = "Concurrent update references";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_update_ref());
 
@@ -2776,7 +2815,10 @@ void ShenandoahHeap::entry_updaterefs() {
 }
 void ShenandoahHeap::entry_cleanup() {
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_cleanup);
-  GCTraceTime(Info, gc) time("Concurrent cleanup", gc_timer(), GCCause::_no_gc, true);
+
+  static const char* msg = "Concurrent cleanup";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
 
   // This phase does not use workers, no need for setup
 
@@ -2785,8 +2827,11 @@ void ShenandoahHeap::entry_cleanup() {
 }
 
 void ShenandoahHeap::entry_cleanup_bitmaps() {
-  GCTraceTime(Info, gc) time("Concurrent cleanup", gc_timer(), GCCause::_no_gc, true);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_cleanup);
+
+  static const char* msg = "Concurrent cleanup";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_cleanup());
 
@@ -2796,7 +2841,10 @@ void ShenandoahHeap::entry_cleanup_bitmaps() {
 
 void ShenandoahHeap::entry_preclean() {
   if (ShenandoahPreclean && concurrentMark()->process_references()) {
-    GCTraceTime(Info, gc) time("Concurrent precleaning", gc_timer(), GCCause::_no_gc, true);
+    static const char* msg = "Concurrent precleaning";
+    GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+    EventMark em("%s", msg);
+
     ShenandoahGCPhase conc_preclean(ShenandoahPhaseTimings::conc_preclean);
 
     ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_preclean());
@@ -2807,7 +2855,10 @@ void ShenandoahHeap::entry_preclean() {
 }
 
 void ShenandoahHeap::entry_partial() {
-  GCTraceTime(Info, gc) time("Concurrent partial", gc_timer(), GCCause::_no_gc, true);
+  static const char* msg = "Concurrent partial";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
+
   TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_partial());
@@ -2817,7 +2868,10 @@ void ShenandoahHeap::entry_partial() {
 }
 
 void ShenandoahHeap::entry_traversal() {
-  GCTraceTime(Info, gc) time("Concurrent traversal", gc_timer(), GCCause::_no_gc, true);
+  static const char* msg = "Concurrent traversal";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
+
   TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
 
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_conc_traversal());

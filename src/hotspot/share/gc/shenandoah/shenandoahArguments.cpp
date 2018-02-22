@@ -114,6 +114,11 @@ void ShenandoahArguments::initialize_flags() {
     }
   }
 
+  // Record more information about previous cycles for improved debugging pleasure
+  if (FLAG_IS_DEFAULT(LogEventsBufferEntries)) {
+    FLAG_SET_DEFAULT(LogEventsBufferEntries, 250);
+  }
+
   if (ShenandoahConcurrentEvacCodeRoots) {
     if (!ShenandoahBarriersForConst) {
       if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {
