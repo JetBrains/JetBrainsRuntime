@@ -102,6 +102,18 @@ void ShenandoahArguments::initialize_flags() {
     FLAG_SET_DEFAULT(ShenandoahAlwaysPreTouch, true);
   }
 
+  // Shenandoah C2 optimizations apparently dislike the shape of thread-local handshakes.
+  // Disable it by default, unless we enable it specifically for debugging.
+  if (FLAG_IS_DEFAULT(ThreadLocalHandshakes)) {
+    if (ThreadLocalHandshakes) {
+      FLAG_SET_DEFAULT(ThreadLocalHandshakes, false);
+    }
+  } else {
+    if (ThreadLocalHandshakes) {
+      warning("Thread-local handshakes are not working correctly with Shenandoah at the moment. Enable at your own risk.");
+    }
+  }
+
   if (ShenandoahConcurrentEvacCodeRoots) {
     if (!ShenandoahBarriersForConst) {
       if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {

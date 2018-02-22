@@ -332,6 +332,10 @@ jint ShenandoahHeap::initialize() {
 
   ShenandoahCodeRoots::initialize();
 
+  log_info(gc, init)("Safepointing mechanism: %s",
+                     SafepointMechanism::uses_thread_local_poll() ? "thread-local poll" :
+                     (SafepointMechanism::uses_global_page_poll() ? "global-page poll" : "unknown"));
+
   return JNI_OK;
 }
 
