@@ -170,10 +170,6 @@ public:
     ShenandoahObjToScanQueueSet* queues = _heap->traversal_gc()->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
-    // Initialize live data.
-    jushort* ld = _heap->traversal_gc()->get_liveness(worker_id);
-    Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
-
     bool process_refs = _heap->shenandoahPolicy()->process_references();
     bool unload_classes = _heap->shenandoahPolicy()->unload_classes();
     ReferenceProcessor* rp = NULL;
@@ -271,9 +267,6 @@ public:
       // Step 3: Finally drain all outstanding work in queues.
       traversal_gc->main_loop(worker_id, _terminator, false);
     }
-
-    // Flush remaining liveness data.
-    traversal_gc->flush_liveness(worker_id);
 
   }
 };
@@ -409,7 +402,10 @@ void ShenandoahTraversalGC::main_loop(uint worker_id, ParallelTaskTerminator* te
 template <bool DO_SATB>
 void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t) {
   ShenandoahObjToScanQueue* q = task_queues()->queue(w);
+
+  // Initialize live data.
   jushort* ld = get_liveness(w);
+  Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
 
   ReferenceProcessor* rp = NULL;
   if (_heap->shenandoahPolicy()->process_references()) {
@@ -434,6 +430,9 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
       main_loop_work<ShenandoahTraversalClosure, DO_SATB>(&cl, ld, w, t);
     }
   }
+
+  flush_liveness(w);
+
 }
 
 template <class T, bool DO_SATB>
@@ -728,7 +727,6 @@ public:
     ReferenceProcessorIsAliveMutator fix_alive(rp, sh->is_alive_closure());
 
     traversal_gc->main_loop(_worker_id, _terminator, false);
-    traversal_gc->flush_liveness(_worker_id);
 
     if (_reset_terminator) {
       _terminator->reset_for_reuse();
