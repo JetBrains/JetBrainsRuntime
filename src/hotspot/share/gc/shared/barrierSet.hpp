@@ -241,8 +241,9 @@ public:
     }
 
     template <typename T>
-    static bool arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, size_t src_pos, size_t dst_pos, size_t length) {
-      return Raw::arraycopy(src_obj, dst_obj, src_pos, dst_pos, length);
+    static bool arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
+      // TODO: Upstream this change to fix the Access API for primitive arraycopy.
+      return Raw::arraycopy(src, dst, length);
     }
 
     // Heap oop accesses. These accessors get resolved when

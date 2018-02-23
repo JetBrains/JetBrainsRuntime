@@ -180,9 +180,7 @@ public:
     }
 
     template <typename T>
-    static bool arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
-      return Raw::arraycopy(src_obj, dst_obj, src, dst, length);
-    }
+    static bool arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length);
 
     // Heap oop accesses. These accessors get resolved when
     // IN_HEAP is set (e.g. when using the HeapAccess API), it is
@@ -234,12 +232,7 @@ public:
     }
 
     template <typename T>
-    static bool oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
-      ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_ref_array_pre(dst, length, false);
-      bool success = Raw::oop_arraycopy(src_obj, dst_obj, src, dst, length);
-      ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_ref_array((HeapWord*) dst, length);
-      return success;
-    }
+    static bool oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length);
 
     // Clone barrier support
     static void clone_in_heap(oop src, oop dst, size_t size) {

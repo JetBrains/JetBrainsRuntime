@@ -1398,9 +1398,6 @@ JRT_LEAF(int, Runtime1::arraycopy(oopDesc* src, int src_pos, oopDesc* dst, int d
 
   if (length == 0) return ac_ok;
 
-  BarrierSet::barrier_set()->read_barrier(src);
-  BarrierSet::barrier_set()->write_barrier(dst);
-
   if (src->is_typeArray()) {
     Klass* klass_oop = src->klass();
     if (klass_oop != dst->klass()) return ac_failed;
@@ -1411,8 +1408,8 @@ JRT_LEAF(int, Runtime1::arraycopy(oopDesc* src, int src_pos, oopDesc* dst, int d
     char* dst_addr = (char*) ((oopDesc**)dst + ihs) + (dst_pos << l2es);
     // Potential problem: memmove is not guaranteed to be word atomic
     // Revisit in Merlin
-    memmove(dst_addr, src_addr, length << l2es);
-    return ac_ok;
+    // TODO: Upstream this change to use Access API.
+    return HeapAccess<>::arraycopy(arrayOop(src), arrayOop(dst), src_addr, dst_addr, length << l2es) ? ac_ok : ac_failed;
   } else if (src->is_objArray() && dst->is_objArray()) {
     if (UseCompressedOops) {
       narrowOop *src_addr  = objArrayOop(src)->obj_at_addr<narrowOop>(src_pos);

@@ -149,15 +149,13 @@ void TypeArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d, int dst_pos
   if (length == 0)
     return;
 
-  s = arrayOop(BarrierSet::barrier_set()->read_barrier(s));
-  d = arrayOop(BarrierSet::barrier_set()->write_barrier(d));
-
   // This is an attempt to make the copy_array fast.
   int l2es = log2_element_size();
   int ihs = array_header_in_bytes() / wordSize;
   char* src = (char*) ((oop*)s + ihs) + ((size_t)src_pos << l2es);
   char* dst = (char*) ((oop*)d + ihs) + ((size_t)dst_pos << l2es);
-  Copy::conjoint_memory_atomic(src, dst, (size_t)length << l2es);
+  // TODO: Upstream this change to use Access API.
+  HeapAccess<>::arraycopy(s, d, src, dst, (size_t)length << l2es);
 }
 
 

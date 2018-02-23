@@ -267,9 +267,6 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
     return;
   }
 
-  s = arrayOop(BarrierSet::barrier_set()->read_barrier(s));
-  d = arrayOop(BarrierSet::barrier_set()->write_barrier(d));
-
   if (UseCompressedOops) {
     narrowOop* const src = objArrayOop(s)->obj_at_addr<narrowOop>(src_pos);
     narrowOop* const dst = objArrayOop(d)->obj_at_addr<narrowOop>(dst_pos);

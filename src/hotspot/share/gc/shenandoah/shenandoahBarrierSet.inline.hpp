@@ -78,4 +78,39 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
   return previous;
 }
 
+template <DecoratorSet decorators, typename BarrierSetT>
+template <typename T>
+bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
+  if (!oopDesc::is_null(src_obj)) {
+    size_t src_offset = pointer_delta((void*) src, (void*) src_obj, sizeof(T));
+    src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
+    src =  ((T*)(void*) src_obj) + src_offset;
+  }
+  if (!oopDesc::is_null(dst_obj)) {
+    size_t dst_offset = pointer_delta((void*) dst, (void*) dst_obj, sizeof(T));
+    dst_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst_obj));
+    dst = ((T*)(void*) dst_obj) + dst_offset;
+  }
+  return Raw::arraycopy(src, dst, length);
+}
+
+template <DecoratorSet decorators, typename BarrierSetT>
+template <typename T>
+bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
+  if (!oopDesc::is_null(src_obj)) {
+    size_t src_offset = pointer_delta((void*) src, (void*) src_obj, sizeof(T));
+    src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
+    src =  ((T*)(void*) src_obj) + src_offset;
+  }
+  if (!oopDesc::is_null(dst_obj)) {
+    size_t dst_offset = pointer_delta((void*) dst, (void*) dst_obj, sizeof(T));
+    dst_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst_obj));
+    dst = ((T*)(void*) dst_obj) + dst_offset;
+  }
+  ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_ref_array_pre(dst, length, false);
+  bool success = Raw::oop_arraycopy(src_obj, dst_obj, src, dst, length);
+  ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_ref_array((HeapWord*) dst, length);
+  return success;
+}
+
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
