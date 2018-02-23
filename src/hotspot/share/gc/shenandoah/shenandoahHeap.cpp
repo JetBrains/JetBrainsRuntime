@@ -1838,37 +1838,22 @@ ShenandoahForwardedIsAliveClosure::ShenandoahForwardedIsAliveClosure() :
   _heap(ShenandoahHeap::heap_no_check()) {
 }
 
-bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
-  assert(_heap != NULL, "sanity");
-  if (_heap->is_concurrent_traversal_in_progress() && oopDesc::is_null(obj)) {
-    // NOTE:
-    // The situation might arise only with traversal GC, because it can mark through the Reference object
-    // right after it is created, but fields not yet initialized. In this case, referent is still NULL, but
-    // it can already be visible to the GC. A subsequent putfield to store the referent will do the right
-    // thing (i.e. put the referent in the traversal work queue, and mark it live). Returning 'is-alive'
-    // for the NULL is the best we can do.
-    return true;
-  }
+ShenandoahIsAliveClosure::ShenandoahIsAliveClosure() :
+  _heap(ShenandoahHeap::heap_no_check()) {
+}
 
+bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
+  if (oopDesc::is_null(obj)) {
+    return false;
+  }
   obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
   shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress())
   return _heap->is_marked_next(obj);
 }
 
-ShenandoahIsAliveClosure::ShenandoahIsAliveClosure() :
-  _heap(ShenandoahHeap::heap_no_check()) {
-}
-
 bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
-  assert(_heap != NULL, "sanity");
-  if (_heap->is_concurrent_traversal_in_progress() && oopDesc::is_null(obj)) {
-    // NOTE:
-    // The situation might arise only with traversal GC, because it can mark through the Reference object
-    // right after it is created, but fields not yet initialized. In this case, referent is still NULL, but
-    // it can already be visible to the GC. A subsequent putfield to store the referent will do the right
-    // thing (i.e. put the referent in the traversal work queue, and mark it live). Returning 'is-alive'
-    // for the NULL is the best we can do.
-    return true;
+  if (oopDesc::is_null(obj)) {
+    return false;
   }
   shenandoah_assert_not_forwarded(NULL, obj);
   return _heap->is_marked_next(obj);
