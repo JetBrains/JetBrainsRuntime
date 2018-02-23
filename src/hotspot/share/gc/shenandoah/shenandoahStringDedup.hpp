@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -122,8 +122,11 @@ public:
 
   // Parallel scan string dedup queues/table
   static void clear_claimed();
+
   static void parallel_oops_do(OopClosure* cl);
-  static void oops_do(OopClosure* cl, uint worker_id);
+
+  // For verification only
+  static void oops_do_slow(OopClosure* cl);
 
   static void threads_do(ThreadClosure* tc);
 

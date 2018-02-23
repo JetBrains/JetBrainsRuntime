@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -50,20 +50,17 @@ void ShenandoahStrDedupThread::run_service() {
   for (;;) {
     ShenandoahStrDedupStats stats;
 
-    stats.mark_idle();
-
     assert(is_work_list_empty(), "Work list must be empty");
-
     // Queue has been shutdown
-    if (!poll()) {
-      assert(_queues->has_terminated(), "Must be terminated");
+    if (!poll(&stats)) {
+      assert(queues()->has_terminated(), "Must be terminated");
       break;
     }
 
     // Include thread in safepoints
     SuspendibleThreadSetJoiner sts_join;
     // Process the queue
-    for (uint queue_index = 0; queue_index < _queues->num_queues(); queue_index ++) {
+    for (uint queue_index = 0; queue_index < queues()->num_queues(); queue_index ++) {
       QueueChunkedList* cur_list = _work_list[queue_index];
 
       while (cur_list != NULL) {
@@ -72,6 +69,7 @@ void ShenandoahStrDedupThread::run_service() {
         while (!cur_list->is_empty()) {
           oop java_string = cur_list->pop();
           stats.inc_inspected();
+          assert(!ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must not at Shenandoah safepoint");
 
           if (oopDesc::is_null(java_string) ||
               !ShenandoahStringDedup::is_candidate(java_string)) {
@@ -95,7 +93,7 @@ void ShenandoahStrDedupThread::run_service() {
         // Advance list only after processed. Otherwise, we may miss scanning
         // during safepoints
         _work_list[queue_index] = cur_list->next();
-        _queues->release_chunked_list(cur_list);
+        queues()->release_chunked_list(cur_list);
         cur_list = _work_list[queue_index];
       }
     }
@@ -120,15 +118,27 @@ void ShenandoahStrDedupThread::run_service() {
   }
 }
 
+
 void ShenandoahStrDedupThread::stop_service() {
-  _queues->terminate();
+  queues()->terminate();
 }
 
 void ShenandoahStrDedupThread::parallel_oops_do(OopClosure* cl) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
   size_t claimed_index;
-  while ((claimed_index = claim()) < _queues->num_queues()) {
+  while ((claimed_index = claim()) < queues()->num_queues()) {
     QueueChunkedList* q = _work_list[claimed_index];
+    while (q != NULL) {
+      q->oops_do(cl);
+      q = q->next();
+    }
+  }
+}
+
+void ShenandoahStrDedupThread::oops_do_slow(OopClosure* cl) {
+  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  for (size_t index = 0; index < queues()->num_queues(); index ++) {
+    QueueChunkedList* q = _work_list[index];
     while (q != NULL) {
       q->oops_do(cl);
       q = q->next();
@@ -138,7 +148,7 @@ void ShenandoahStrDedupThread::parallel_oops_do(OopClosure* cl) {
 
 bool ShenandoahStrDedupThread::is_work_list_empty() const {
   assert(Thread::current() == this, "Only from dedup thread");
-  for (uint index = 0; index < _queues->num_queues(); index ++) {
+  for (uint index = 0; index < queues()->num_queues(); index ++) {
     if (_work_list[index] != NULL) return false;
   }
   return true;
@@ -149,22 +159,39 @@ void ShenandoahStrDedupThread::parallel_cleanup() {
   parallel_oops_do(&cl);
 }
 
-bool ShenandoahStrDedupThread::poll() {
+bool ShenandoahStrDedupThread::poll(ShenandoahStrDedupStats* stats) {
   assert(is_work_list_empty(), "Only poll when work list is empty");
-  MonitorLockerEx locker(_queues->lock(), Mutex::_no_safepoint_check_flag);
 
   while (!_queues->has_terminated()) {
-    bool has_work = false;
-    for (uint index = 0; index < _queues->num_queues(); index ++) {
-      _work_list[index] = _queues->remove_work_list(index);
-      if (_work_list[index] != NULL) {
-        has_work = true;
+    {
+      bool has_work = false;
+      stats->mark_exec();
+      // Include thread in safepoints
+      SuspendibleThreadSetJoiner sts_join;
+
+      for (uint index = 0; index < queues()->num_queues(); index ++) {
+        assert(!ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Not at Shenandoah Safepoint");
+        _work_list[index] = queues()->remove_work_list_atomic(index);
+        if (_work_list[index] != NULL) {
+          has_work = true;
+        }
+
+        // Safepoint this thread if needed
+        if (sts_join.should_yield()) {
+          stats->mark_block();
+          sts_join.yield();
+          stats->mark_unblock();
+        }
       }
+
+      if (has_work) return true;
     }
 
-    if (has_work) return true;
-
-    locker.wait(Mutex::_no_safepoint_check_flag);
+    {
+      stats->mark_idle();
+      MonitorLockerEx locker(queues()->lock(), Monitor::_no_safepoint_check_flag);
+      locker.wait(Mutex::_no_safepoint_check_flag);
+    }
   }
   return false;
 }

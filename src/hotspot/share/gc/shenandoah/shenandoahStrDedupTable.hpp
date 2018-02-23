@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -154,6 +154,9 @@ public:
   void clear_claimed();
   size_t claim();
   void parallel_oops_do(OopClosure* cl);
+
+  // For verification only
+  void oops_do_slow(OopClosure* cl);
 
   bool deduplicate(oop java_string);
 

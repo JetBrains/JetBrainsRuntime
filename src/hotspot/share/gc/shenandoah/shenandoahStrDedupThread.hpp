@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -28,29 +28,34 @@
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "memory/iterator.hpp"
 
+class ShenandoahStrDedupStats;
 
 class ShenandoahStrDedupThread: public ConcurrentGCThread {
 private:
   ShenandoahStrDedupQueueSet*   _queues;
   QueueChunkedList**            _work_list;
-
   volatile size_t               _claimed;
 public:
   ShenandoahStrDedupThread(ShenandoahStrDedupQueueSet* queues);
   ~ShenandoahStrDedupThread();
 
-  void parallel_oops_do(OopClosure* cl);
-
   void clear_claimed() { _claimed = 0; }
-
+  void parallel_oops_do(OopClosure* cl);
   void parallel_cleanup();
+
+  // For verification only
+  void oops_do_slow(OopClosure* cl);
 
   void run_service();
   void stop_service();
 
 private:
-  bool poll();
+  bool poll(ShenandoahStrDedupStats* stats);
   bool is_work_list_empty() const;
+
+  ShenandoahStrDedupQueueSet* queues() const {
+    return _queues;
+  }
 
   size_t claim();
 };

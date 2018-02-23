@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -103,10 +103,17 @@ void ShenandoahStringDedup::threads_do(ThreadClosure* tc) {
   tc->do_thread(_thread);
 }
 
-void ShenandoahStringDedup::oops_do(OopClosure* cl, uint worker_id) {
+void ShenandoahStringDedup::parallel_oops_do(OopClosure* cl) {
   _queues->parallel_oops_do(cl);
   _table->parallel_oops_do(cl);
   _thread->parallel_oops_do(cl);
+}
+
+
+void ShenandoahStringDedup::oops_do_slow(OopClosure* cl) {
+  _queues->oops_do_slow(cl);
+  _table->oops_do_slow(cl);
+  _thread->oops_do_slow(cl);
 }
 
 class ShenandoahStrDedupCleanupTask : public AbstractGangTask {
@@ -176,7 +183,7 @@ void ShenandoahStringDedup::parallel_cleanup() {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
   log_debug(gc, stringdedup)("String dedup cleanup");
   ShenandoahStringDedup::clear_claimed();
-  ShenandoahStrDedupCleanupTask task(_queues,  _thread, &_table);
+  ShenandoahStrDedupCleanupTask task(_queues, _thread, &_table);
   ShenandoahHeap::heap()->workers()->run_task(&task);
 }
 
@@ -191,26 +198,6 @@ void ShenandoahStringDedup::clear_claimed() {
   _queues->clear_claimed();
   _table->clear_claimed();
   _thread->clear_claimed();
-}
-
-class ShenandoahStrDedupParTask : public AbstractGangTask {
-private:
-  OopClosure* _cl;
-
-public:
-  ShenandoahStrDedupParTask(OopClosure* cl)
-  : AbstractGangTask("Shenandoah Dedup task"),
-    _cl(cl) {
-  }
-
-  void work(uint worker_id) {
-    ShenandoahStringDedup::parallel_oops_do(_cl);
-  }
-};
-
-void ShenandoahStringDedup::parallel_oops_do(OopClosure* cl) {
-  ShenandoahStrDedupParTask task(cl);
-  ShenandoahHeap::heap()->workers()->run_task(&task);
 }
 
 void ShenandoahStringDedup::print_statistics(outputStream* out) {

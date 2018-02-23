@@ -196,6 +196,17 @@ void ShenandoahStrDedupTable::parallel_oops_do(OopClosure* cl) {
   } while (index < size());
 }
 
+void ShenandoahStrDedupTable::oops_do_slow(OopClosure* cl) {
+  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  for (size_t index = 0; index < size(); index ++) {
+    ShenandoahStrDedupEntry* volatile p = bucket(index);
+    while (p != NULL) {
+      p->do_oop(cl);
+      p = p->next();
+    }
+  }
+}
+
 ShenandoahStrDedupEntry* ShenandoahStrDedupTable::allocate_entry(typeArrayOop value, bool latin1, unsigned int hash) {
   ShenandoahStrDedupEntry* entry = new ShenandoahStrDedupEntry();
   entry->set_hash(hash);

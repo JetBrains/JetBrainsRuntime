@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
+#include "runtime/atomic.hpp"
 
 ShenandoahStrDedupQueue::ShenandoahStrDedupQueue(ShenandoahStrDedupQueueSet* queue_set, uint num) :
   _queue_set(queue_set), _current_list(NULL), _queue_num(num) {
@@ -108,6 +109,19 @@ void ShenandoahStrDedupQueueSet::parallel_oops_do(OopClosure* cl) {
   }
 }
 
+void ShenandoahStrDedupQueueSet::oops_do_slow(OopClosure* cl) {
+  assert(cl != NULL, "No closure");
+  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+  for (size_t index = 0; index < num_queues(); index ++) {
+    queue_at(index)->oops_do(cl);
+    QueueChunkedList* head = _outgoing_work_list[index];
+    while (head != NULL) {
+      head->oops_do(cl);
+      head = head->next();
+    }
+  }
+}
+
 void ShenandoahStrDedupQueueSet::terminate() {
   MonitorLockerEx locker(_lock, Mutex::_no_safepoint_check_flag);
   _terminated = true;
@@ -116,8 +130,7 @@ void ShenandoahStrDedupQueueSet::terminate() {
 
 void ShenandoahStrDedupQueueSet::release_chunked_list(QueueChunkedList* q) {
   assert(q != NULL, "null queue");
-
-  MutexLockerEx locker(_lock, Mutex::_no_safepoint_check_flag);
+  MutexLockerEx locker(lock(), Mutex::_no_safepoint_check_flag);
   if (_num_free_queues >= 2 * num_queues()) {
     delete q;
   } else {
@@ -146,24 +159,34 @@ QueueChunkedList* ShenandoahStrDedupQueueSet::allocate_chunked_list() {
   return allocate_no_lock();
 }
 
-QueueChunkedList* ShenandoahStrDedupQueueSet::push_and_get(QueueChunkedList* q, uint queue_num) {
-  MutexLockerEx locker(lock(), Mutex::_no_safepoint_check_flag);
-  q->set_next(_outgoing_work_list[queue_num]);
-  _outgoing_work_list[queue_num] = q;
-  q = allocate_no_lock();
-  lock()->notify();
+QueueChunkedList* ShenandoahStrDedupQueueSet::push_and_get_atomic(QueueChunkedList* q, uint queue_num) {
+  QueueChunkedList* head = _outgoing_work_list[queue_num];
+  QueueChunkedList* result;
+  q->set_next(head);
+  while ((result = Atomic::cmpxchg(q, &_outgoing_work_list[queue_num], head)) != head) {
+    head = result;
+    q->set_next(head);
+  }
+
+  {
+    MutexLockerEx locker(lock(), Mutex::_no_safepoint_check_flag);
+    q = allocate_no_lock();
+    lock()->notify();
+  }
   return q;
 }
 
-QueueChunkedList* ShenandoahStrDedupQueueSet::remove_work_list(uint queue_num) {
-  assert_lock_strong(lock());
+QueueChunkedList* ShenandoahStrDedupQueueSet::remove_work_list_atomic(uint queue_num) {
   assert(queue_num < num_queues(), "Invalid queue number");
 
   QueueChunkedList* list = _outgoing_work_list[queue_num];
-  _outgoing_work_list[queue_num] = NULL;
+  QueueChunkedList* result;
+  while ((result = Atomic::cmpxchg((QueueChunkedList*)NULL, &_outgoing_work_list[queue_num], list)) != list) {
+    list = result;
+  }
+
   return list;
 }
-
 
 void ShenandoahStrDedupQueueSet::parallel_cleanup() {
   ShenandoahStrDedupQueueCleanupClosure cl;

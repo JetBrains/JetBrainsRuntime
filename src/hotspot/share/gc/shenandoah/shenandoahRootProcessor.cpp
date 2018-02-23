@@ -87,7 +87,7 @@ void ShenandoahRootProcessor::process_all_roots_slow(OopClosure* oops) {
   StringTable::oops_do(oops);
 
   if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahStringDedup::parallel_oops_do(oops);
+    ShenandoahStringDedup::oops_do_slow(oops);
   }
 
   // Do thread roots the last. This allows verification code to find
@@ -190,7 +190,7 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
 
   if (ShenandoahStringDedup::is_enabled() && weak_roots != NULL) {
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::StringDedupRoots, worker_id);
-    ShenandoahStringDedup::oops_do(weak_roots, worker_id);
+    ShenandoahStringDedup::parallel_oops_do(weak_roots);
   }
 
   {

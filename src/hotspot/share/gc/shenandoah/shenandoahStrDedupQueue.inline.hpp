@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -31,7 +31,7 @@ void ShenandoahStrDedupQueue::push(oop java_string) {
   if (_current_list == NULL) {
     _current_list = _queue_set->allocate_chunked_list();
   } else if (_current_list->is_full()) {
-    _current_list = _queue_set->push_and_get(_current_list, queue_num());
+    _current_list = _queue_set->push_and_get_atomic(_current_list, queue_num());
   }
 
   assert(_current_list != NULL && !_current_list->is_full(), "Sanity");

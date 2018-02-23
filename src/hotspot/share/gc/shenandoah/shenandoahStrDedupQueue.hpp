@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -87,9 +87,9 @@ class ShenandoahStrDedupQueueSet : public CHeapObj<mtGC> {
   friend class ShenandoahStrDedupThread;
 
 private:
-  ShenandoahStrDedupQueue** _local_queues;
-  uint                      _num_queues;
-  QueueChunkedList**        _outgoing_work_list;
+  ShenandoahStrDedupQueue**     _local_queues;
+  uint                          _num_queues;
+  QueueChunkedList* volatile *  _outgoing_work_list;
 
   QueueChunkedList*   _free_list;
   uint                _num_free_queues;
@@ -112,10 +112,11 @@ public:
   }
 
   void clear_claimed() { _claimed = 0; }
-
   void parallel_cleanup();
-
   void parallel_oops_do(OopClosure* cl);
+
+  // For verification only
+  void oops_do_slow(OopClosure* cl);
 
   void terminate();
   bool has_terminated() {
@@ -124,12 +125,14 @@ public:
 
 private:
   void release_chunked_list(QueueChunkedList* l);
+
   QueueChunkedList* allocate_chunked_list();
   QueueChunkedList* allocate_no_lock();
 
-  QueueChunkedList* push_and_get(QueueChunkedList* q, uint queue_num);
-
-  QueueChunkedList* remove_work_list(uint queue_num);
+  // Atomic publish and retrieve outgoing work list.
+  // We don't have ABA problem, since there is only one dedup thread.
+  QueueChunkedList* push_and_get_atomic(QueueChunkedList* q, uint queue_num);
+  QueueChunkedList* remove_work_list_atomic(uint queue_num);
 
   Monitor* lock() const { return _lock; }
 
