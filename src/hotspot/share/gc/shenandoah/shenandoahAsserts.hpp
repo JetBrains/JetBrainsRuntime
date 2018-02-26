@@ -47,6 +47,9 @@ public:
                             const char *phase, const char *label,
                             const char *file, int line);
 
+  static void print_rp_failure(const char *label, BoolObjectClosure* actual, BoolObjectClosure* expected,
+                               const char *file, int line);
+
   static void assert_obj_correct(void* interior_loc, oop obj, const char* file, int line);
   static void assert_correct(void* interior_loc, oop obj, oop fwdptr, const char* file, int line);
   static void assert_forwarded(void* interior_loc, oop obj, const char* file, int line);
@@ -55,6 +58,9 @@ public:
   static void assert_marked_next(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_in_cset(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_in_cset_loc(void* interior_loc, const char* file, int line);
+
+  static void assert_rp_isalive_not_installed(const char *file, int line);
+  static void assert_rp_isalive_installed(const char *file, int line);
 
 #ifdef ASSERT
 #define shenandoah_assert_correct_if(interior_loc, obj, fwdptr, condition) \
@@ -106,6 +112,10 @@ public:
 #define shenandoah_assert_not_in_cset_loc(interior_loc) \
                     ShenandoahAsserts::assert_not_in_cset_loc(interior_loc, __FILE__, __LINE__);
 
+#define shenandoah_assert_rp_isalive_installed() \
+                    ShenandoahAsserts::assert_rp_isalive_installed(__FILE__, __LINE__);
+#define shenandoah_assert_rp_isalive_not_installed() \
+                    ShenandoahAsserts::assert_rp_isalive_not_installed(__FILE__, __LINE__);
 #else
 #define shenandoah_assert_correct_if(interior_loc, obj, fwdptr, condition)
 #define shenandoah_assert_correct_except(interior_loc, obj, fwdptr, exception)
@@ -134,6 +144,9 @@ public:
 #define shenandoah_assert_not_in_cset_loc_if(interior_loc, condition)
 #define shenandoah_assert_not_in_cset_loc_except(interior_loc, exception)
 #define shenandoah_assert_not_in_cset_loc(interior_loc)
+
+#define shenandoah_assert_rp_isalive_installed()
+#define shenandoah_assert_rp_isalive_not_installed()
 #endif
 
 };

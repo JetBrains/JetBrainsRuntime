@@ -31,6 +31,7 @@
 #include "services/memoryManager.hpp"
 
 class ConcurrentGCTimer;
+class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
@@ -111,6 +112,7 @@ class VMStructs;
 // //    SharedHeap
 // //      ShenandoahHeap
 class ShenandoahHeap : public CollectedHeap {
+  friend class ShenandoahAsserts;
   friend class VMStructs;
 
   enum CancelState {

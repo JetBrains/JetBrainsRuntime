@@ -642,9 +642,8 @@ public:
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = sh->traversal_gc();
     assert(sh->shenandoahPolicy()->process_references(), "why else would we be here?");
-    ReferenceProcessor* rp = sh->ref_processor();
     ParallelTaskTerminator terminator(1, traversal_gc->task_queues());
-    ReferenceProcessorIsAliveMutator fix_alive(rp, sh->is_alive_closure());
+    shenandoah_assert_rp_isalive_installed();
     traversal_gc->main_loop((uint) 0, &terminator, false);
   }
 };
@@ -687,7 +686,9 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   }
 
   ReferenceProcessorMTDiscoveryMutator fix_mt_discovery(rp, false);
-  ReferenceProcessorIsAliveMutator fix_alive(rp, sh->is_alive_closure());
+
+  shenandoah_assert_rp_isalive_not_installed();
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
 
   // Interrupt on cancelled GC
   ShenandoahTraversalCancelledGCYieldClosure yield;
@@ -723,8 +724,7 @@ public:
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = sh->traversal_gc();
     assert(sh->shenandoahPolicy()->process_references(), "why else would we be here?");
-    ReferenceProcessor* rp = sh->ref_processor();
-    ReferenceProcessorIsAliveMutator fix_alive(rp, sh->is_alive_closure());
+    shenandoah_assert_rp_isalive_installed();
 
     traversal_gc->main_loop(_worker_id, _terminator, false);
 
@@ -848,7 +848,8 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   ShenandoahPhaseTimings::Phase phase_process = ShenandoahPhaseTimings::weakrefs_process;
   ShenandoahPhaseTimings::Phase phase_enqueue = ShenandoahPhaseTimings::weakrefs_enqueue;
 
-  ReferenceProcessorIsAliveMutator fix_alive(rp, sh->is_alive_closure());
+  shenandoah_assert_rp_isalive_not_installed();
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
 
   WorkGang* workers = sh->workers();
   uint nworkers = workers->active_workers();

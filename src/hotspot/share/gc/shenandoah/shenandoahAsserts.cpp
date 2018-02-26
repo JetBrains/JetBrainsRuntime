@@ -294,3 +294,32 @@ void ShenandoahAsserts::assert_not_in_cset_loc(void* interior_loc, const char* f
                   file, line);
   }
 }
+
+void ShenandoahAsserts::print_rp_failure(const char *label, BoolObjectClosure* actual, BoolObjectClosure* expected,
+                                         const char *file, int line) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahMessageBuffer msg("%s\n", label);
+  msg.append(" Actual:                  " PTR_FORMAT "\n", p2i(actual));
+  msg.append(" Expected:                " PTR_FORMAT "\n", p2i(expected));
+  msg.append(" SH->_is_alive:           " PTR_FORMAT "\n", p2i(&heap->_is_alive));
+  msg.append(" SH->_forwarded_is_alive: " PTR_FORMAT "\n", p2i(&heap->_forwarded_is_alive));
+  report_vm_error(file, line, msg.buffer());
+}
+
+void ShenandoahAsserts::assert_rp_isalive_not_installed(const char *file, int line) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ReferenceProcessor* rp = heap->ref_processor();
+  if (rp->is_alive_non_header() != NULL) {
+    print_rp_failure("Shenandoah assert_rp_isalive_not_installed failed", rp->is_alive_non_header(), NULL,
+                     file, line);
+  }
+}
+
+void ShenandoahAsserts::assert_rp_isalive_installed(const char *file, int line) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ReferenceProcessor* rp = heap->ref_processor();
+  if (rp->is_alive_non_header() != heap->is_alive_closure()) {
+    print_rp_failure("Shenandoah assert_rp_isalive_installed failed", rp->is_alive_non_header(), heap->is_alive_closure(),
+                     file, line);
+  }
+}
