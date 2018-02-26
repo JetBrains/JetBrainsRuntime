@@ -166,7 +166,7 @@ inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, narrowOop* addr, o
 template <class T>
 inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_oop) {
   shenandoah_assert_not_in_cset_loc_except(p, !is_in(p) || is_full_gc_in_progress());
-  shenandoah_assert_correct(p, heap_oop, ShenandoahBarrierSet::resolve_forwarded(heap_oop));
+  shenandoah_assert_correct(p, heap_oop);
 
   if (in_collection_set(heap_oop)) {
     oop forwarded_oop = ShenandoahBarrierSet::resolve_forwarded_not_null(heap_oop);

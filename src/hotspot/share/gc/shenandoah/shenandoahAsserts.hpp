@@ -50,8 +50,9 @@ public:
   static void print_rp_failure(const char *label, BoolObjectClosure* actual, BoolObjectClosure* expected,
                                const char *file, int line);
 
-  static void assert_obj_correct(void* interior_loc, oop obj, const char* file, int line);
-  static void assert_correct(void* interior_loc, oop obj, oop fwdptr, const char* file, int line);
+  static void assert_in_heap(void* interior_loc, oop obj, const char* file, int line);
+
+  static void assert_correct(void* interior_loc, oop obj, const char* file, int line);
   static void assert_forwarded(void* interior_loc, oop obj, const char* file, int line);
   static void assert_not_forwarded(void* interior_loc, oop obj, const char* file, int line);
   static void assert_marked_complete(void* interior_loc, oop obj, const char* file, int line);
@@ -63,12 +64,15 @@ public:
   static void assert_rp_isalive_installed(const char *file, int line);
 
 #ifdef ASSERT
-#define shenandoah_assert_correct_if(interior_loc, obj, fwdptr, condition) \
-  if (condition)    ShenandoahAsserts::assert_correct(interior_loc, obj, fwdptr, __FILE__, __LINE__);
-#define shenandoah_assert_correct_except(interior_loc, obj, fwdptr, exception) \
-  if (!(exception)) ShenandoahAsserts::assert_correct(interior_loc, obj, fwdptr, __FILE__, __LINE__);
-#define shenandoah_assert_correct(interior_loc, obj, fwdptr) \
-                    ShenandoahAsserts::assert_correct(interior_loc, obj, fwdptr, __FILE__, __LINE__);
+#define shenandoah_assert_in_heap(interior_loc, obj) \
+                    ShenandoahAsserts::assert_in_heap(interior_loc, obj, __FILE__, __LINE__);
+
+#define shenandoah_assert_correct_if(interior_loc, obj, condition) \
+  if (condition)    ShenandoahAsserts::assert_correct(interior_loc, obj, __FILE__, __LINE__);
+#define shenandoah_assert_correct_except(interior_loc, obj, exception) \
+  if (!(exception)) ShenandoahAsserts::assert_correct(interior_loc, obj, __FILE__, __LINE__);
+#define shenandoah_assert_correct(interior_loc, obj) \
+                    ShenandoahAsserts::assert_correct(interior_loc, obj, __FILE__, __LINE__);
 
 #define shenandoah_assert_forwarded_if(interior_loc, obj, condition) \
   if (condition)    ShenandoahAsserts::assert_forwarded(interior_loc, obj, __FILE__, __LINE__);
@@ -117,9 +121,11 @@ public:
 #define shenandoah_assert_rp_isalive_not_installed() \
                     ShenandoahAsserts::assert_rp_isalive_not_installed(__FILE__, __LINE__);
 #else
-#define shenandoah_assert_correct_if(interior_loc, obj, fwdptr, condition)
-#define shenandoah_assert_correct_except(interior_loc, obj, fwdptr, exception)
-#define shenandoah_assert_correct(interior_loc, obj, fwdptr)
+#define shenandoah_assert_in_heap(interior_loc, obj)
+
+#define shenandoah_assert_correct_if(interior_loc, obj, condition)
+#define shenandoah_assert_correct_except(interior_loc, obj, exception)
+#define shenandoah_assert_correct(interior_loc, obj)
 
 #define shenandoah_assert_forwarded_if(interior_loc, obj, condition)
 #define shenandoah_assert_forwarded_except(interior_loc, obj, exception)

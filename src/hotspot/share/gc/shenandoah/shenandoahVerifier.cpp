@@ -139,7 +139,7 @@ private:
       }
     }
 
-    oop fwd = (oop) BrooksPointer::get_raw(obj);
+    oop fwd = (oop) BrooksPointer::get_raw_unchecked(obj);
 
     ShenandoahHeapRegion* fwd_reg = NULL;
 
@@ -172,7 +172,7 @@ private:
       verify(ShenandoahAsserts::_safe_oop, obj, (fwd_addr + fwd->size()) <= fwd_reg->top(),
              "Forwardee end should be within the region");
 
-      oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
+      oop fwd2 = (oop) BrooksPointer::get_raw_unchecked(fwd);
       verify(ShenandoahAsserts::_safe_oop, obj, oopDesc::unsafe_equals(fwd, fwd2),
              "Double forwarding");
     } else {

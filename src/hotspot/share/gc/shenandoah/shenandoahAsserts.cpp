@@ -109,7 +109,7 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   msg.append("\n");
 
   if (level >= _safe_oop) {
-    oop fwd = (oop) BrooksPointer::get_raw(obj);
+    oop fwd = (oop) BrooksPointer::get_raw_unchecked(obj);
     msg.append("Forwardee:\n");
     if (!oopDesc::unsafe_equals(obj, fwd)) {
       if (level >= _safe_oop_fwd) {
@@ -124,8 +124,8 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   }
 
   if (level >= _safe_oop_fwd) {
-    oop fwd = (oop) BrooksPointer::get_raw(obj);
-    oop fwd2 = (oop) BrooksPointer::get_raw(fwd);
+    oop fwd = (oop) BrooksPointer::get_raw_unchecked(obj);
+    oop fwd2 = (oop) BrooksPointer::get_raw_unchecked(fwd);
     if (!oopDesc::unsafe_equals(fwd, fwd2)) {
       msg.append("Second forwardee:\n");
       print_obj_safe(msg, fwd2);
@@ -136,8 +136,8 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   if (loc_in_heap && UseShenandoahMatrix && (level == _safe_all)) {
     msg.append("Matrix connections:\n");
 
-    oop fwd_to = (oop) BrooksPointer::get_raw(obj);
-    oop fwd_from = (oop) BrooksPointer::get_raw(loc);
+    oop fwd_to = (oop) BrooksPointer::get_raw_unchecked(obj);
+    oop fwd_from = (oop) BrooksPointer::get_raw_unchecked(loc);
 
     size_t from_idx = heap->heap_region_index_containing(loc);
     size_t to_idx = heap->heap_region_index_containing(obj);
@@ -172,21 +172,18 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   report_vm_error(file, line, msg.buffer());
 }
 
-void ShenandoahAsserts::assert_obj_correct(void* interior_loc, oop obj, const char* file, int line) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+void ShenandoahAsserts::assert_in_heap(void* interior_loc, oop obj, const char *file, int line) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
 
   if (!heap->is_in(obj)) {
-    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_obj_correct failed",
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_in_heap failed",
                   "oop must point to a heap address",
                   file, line);
   }
-
-  oop fwd = oop(BrooksPointer::get_raw(obj));
-  assert_correct(interior_loc, obj, fwd, file, line);
 }
 
-void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, const char* file, int line) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* file, int line) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
 
   // Step 1. Check that both obj and its fwdptr are in heap.
   // After this step, it is safe to call heap_region_containing().
@@ -196,23 +193,28 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
                   file, line);
   }
 
+  oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
+
   if (!heap->is_in(fwd)) {
     print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "Forwardee must point to a heap address",
                   file, line);
   }
 
+  bool is_forwarded = !oopDesc::unsafe_equals(obj, fwd);
+
   // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
   // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
   // that still points to the object itself.
-  if (!oopDesc::unsafe_equals(obj, fwd) && heap->is_full_gc_move_in_progress()) {
+
+  if (is_forwarded && heap->is_full_gc_move_in_progress()) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                   "Non-trivial forwarding pointer during Full GC moves, probable bug.",
                   file, line);
   }
 
   // Step 2. Check that forwardee points to correct region.
-  if (!oopDesc::unsafe_equals(fwd, obj) &&
+  if (is_forwarded &&
       (heap->heap_region_index_containing(fwd) ==
        heap->heap_region_index_containing(obj))) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
@@ -221,8 +223,8 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
   }
 
   // Step 3. Check for multiple forwardings
-  if (!oopDesc::unsafe_equals(obj, fwd)) {
-    oop fwd2 = oop(BrooksPointer::get_raw(fwd));
+  if (is_forwarded) {
+    oop fwd2 = oop(BrooksPointer::get_raw_unchecked(fwd));
     if (!oopDesc::unsafe_equals(fwd, fwd2)) {
       print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                     "Multiple forwardings",
@@ -232,8 +234,8 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, oop fwd, con
 }
 
 void ShenandoahAsserts::assert_forwarded(void* interior_loc, oop obj, const char* file, int line) {
-  assert_obj_correct(interior_loc, obj, file, line);
-  oop fwd = BrooksPointer::forwardee(obj);
+  assert_correct(interior_loc, obj, file, line);
+  oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
 
   if (oopDesc::unsafe_equals(obj, fwd)) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_forwarded failed",
@@ -243,8 +245,8 @@ void ShenandoahAsserts::assert_forwarded(void* interior_loc, oop obj, const char
 }
 
 void ShenandoahAsserts::assert_not_forwarded(void* interior_loc, oop obj, const char* file, int line) {
-  assert_obj_correct(interior_loc, obj, file, line);
-  oop fwd = oop(BrooksPointer::get_raw(obj));
+  assert_correct(interior_loc, obj, file, line);
+  oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
 
   if (!oopDesc::unsafe_equals(obj, fwd)) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_not_forwarded failed",
@@ -254,9 +256,9 @@ void ShenandoahAsserts::assert_not_forwarded(void* interior_loc, oop obj, const 
 }
 
 void ShenandoahAsserts::assert_marked_complete(void* interior_loc, oop obj, const char* file, int line) {
-  assert_obj_correct(interior_loc, obj, file, line);
+  assert_correct(interior_loc, obj, file, line);
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
   if (!heap->is_marked_complete(obj)) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_complete failed",
                   "Object should be marked (complete)",
@@ -265,9 +267,9 @@ void ShenandoahAsserts::assert_marked_complete(void* interior_loc, oop obj, cons
 }
 
 void ShenandoahAsserts::assert_marked_next(void* interior_loc, oop obj, const char* file, int line) {
-  assert_obj_correct(interior_loc, obj, file, line);
+  assert_correct(interior_loc, obj, file, line);
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
   if (!heap->is_marked_next(obj)) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_next failed",
                   "Object should be marked (next)",
@@ -276,9 +278,9 @@ void ShenandoahAsserts::assert_marked_next(void* interior_loc, oop obj, const ch
 }
 
 void ShenandoahAsserts::assert_not_in_cset(void* interior_loc, oop obj, const char* file, int line) {
-  assert_obj_correct(interior_loc, obj, file, line);
+  assert_correct(interior_loc, obj, file, line);
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
   if (heap->in_collection_set(obj)) {
     print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_not_in_cset failed",
                   "Object should not be in collection set",
@@ -287,7 +289,7 @@ void ShenandoahAsserts::assert_not_in_cset(void* interior_loc, oop obj, const ch
 }
 
 void ShenandoahAsserts::assert_not_in_cset_loc(void* interior_loc, const char* file, int line) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
   if (heap->in_collection_set(interior_loc)) {
     print_failure(_safe_unknown, NULL, interior_loc, NULL, "Shenandoah assert_not_in_cset_loc failed",
                   "Interior location should not be in collection set",

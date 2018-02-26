@@ -96,6 +96,11 @@ public:
    */
   static inline HeapWord* get_raw(oop obj);
 
+  /* Returns the raw value from forwardee slot without any checks.
+   * Used for quick verification.
+   */
+  static inline HeapWord* get_raw_unchecked(oop obj);
+
 private:
   static inline HeapWord** brooks_ptr_addr(oop obj);
 };
