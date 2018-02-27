@@ -282,7 +282,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
     } else if (heap->is_concurrent_mark_in_progress() || heap->is_update_refs_in_progress()) {
       storeval_mode = READ_BARRIER;
     } else {
-      assert(heap->is_stable() || heap->is_evacuation_in_progress(), "must not have anything in progress");
+      assert(heap->is_idle() || heap->is_evacuation_in_progress(), "must not have anything in progress");
       storeval_mode = NONE; // E.g. during evac or outside cycle
     }
   } else {

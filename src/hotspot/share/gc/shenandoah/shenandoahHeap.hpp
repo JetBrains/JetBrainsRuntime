@@ -407,6 +407,7 @@ public:
   void set_has_forwarded_objects(bool cond);
 
   inline bool is_stable() const;
+  inline bool is_idle() const;
   inline bool is_concurrent_mark_in_progress() const;
   inline bool is_update_refs_in_progress() const;
   inline bool is_evacuation_in_progress() const;

@@ -387,6 +387,10 @@ inline bool ShenandoahHeap::is_stable() const {
   return _gc_state.is_clear();
 }
 
+inline bool ShenandoahHeap::is_idle() const {
+  return _gc_state.is_unset(MARKING | EVACUATION | UPDATEREFS | PARTIAL | TRAVERSAL);
+}
+
 inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
   return _gc_state.is_set(MARKING);
 }
