@@ -391,7 +391,7 @@ size_t BinaryMagnitudeSeq::level(int level) const {
 }
 
 size_t BinaryMagnitudeSeq::num() const {
-  int r = 0;
+  size_t r = 0;
   for (int c = 0; c < BitsPerSize_t; c++) {
     r += _mags[c];
   }

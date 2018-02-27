@@ -47,7 +47,7 @@ public:
   }
 
   void set_next(ShenandoahStrDedupEntry* next) {
-    _next = static_cast<ShenandoahStrDedupEntry* volatile>(next);
+    _next = next;
   }
 
   bool cas_set_next(ShenandoahStrDedupEntry* next);
