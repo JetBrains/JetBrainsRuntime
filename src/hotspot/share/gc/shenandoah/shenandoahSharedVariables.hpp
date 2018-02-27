@@ -162,6 +162,10 @@ typedef struct ShenandoahSharedBitmap {
     return (OrderAccess::load_acquire(&value) & (ShenandoahSharedValue) mask) == 0;
   }
 
+  bool is_clear() const {
+    return (OrderAccess::load_acquire(&value)) == 0;
+  }
+
   void set_cond(uint mask, bool value) {
     if (value) {
       set(mask);

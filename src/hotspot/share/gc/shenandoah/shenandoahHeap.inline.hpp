@@ -383,6 +383,10 @@ inline bool ShenandoahHeap::in_collection_set(T p) const {
   return collection_set()->is_in(obj);
 }
 
+inline bool ShenandoahHeap::is_stable() const {
+  return _gc_state.is_clear();
+}
+
 inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
   return _gc_state.is_set(MARKING);
 }
