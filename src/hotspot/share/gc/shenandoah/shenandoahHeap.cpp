@@ -594,17 +594,19 @@ bool ShenandoahHeap::is_scavengable(oop p) {
   return true;
 }
 
-void ShenandoahHeap::handle_heap_shrinkage() {
+void ShenandoahHeap::handle_heap_shrinkage(double shrink_before) {
+  if (!ShenandoahUncommit) {
+    return;
+  }
+
   ShenandoahHeapLocker locker(lock());
 
   ShenandoahHeapRegionSet* set = regions();
 
   size_t count = 0;
-  double current = os::elapsedTime();
   for (size_t i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* r = set->get(i);
-    if (r->is_empty_committed() &&
-            (current - r->empty_time()) * 1000 > ShenandoahUncommitDelay) {
+    if (r->is_empty_committed() && (r->empty_time() < shrink_before)) {
       r->make_uncommitted();
       count++;
     }
@@ -2432,7 +2434,7 @@ bool ShenandoahHeap::uncommit_bitmap_slice(ShenandoahHeapRegion *r) {
 
 bool ShenandoahHeap::idle_bitmap_slice(ShenandoahHeapRegion *r) {
   assert_heaplock_owned_by_current_thread();
-  assert(ShenandoahIdleRegions, "Must be enabled");
+  assert(ShenandoahUncommitWithIdle, "Must be enabled");
 
   if (is_bitmap_slice_committed(r, true)) {
     // Some other region from the group is still committed, meaning the bitmap
@@ -2455,7 +2457,7 @@ bool ShenandoahHeap::idle_bitmap_slice(ShenandoahHeapRegion *r) {
 
 void ShenandoahHeap::activate_bitmap_slice(ShenandoahHeapRegion* r) {
   assert_heaplock_owned_by_current_thread();
-  assert(ShenandoahIdleRegions, "Must be enabled");
+  assert(ShenandoahUncommitWithIdle, "Must be enabled");
   size_t slice = r->region_number() / _bitmap_regions_per_slice;
   size_t off = _bitmap_bytes_per_slice * slice;
   size_t len = _bitmap_bytes_per_slice;

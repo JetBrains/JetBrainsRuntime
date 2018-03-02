@@ -167,6 +167,9 @@ void ShenandoahConcurrentThread::run_service() {
       // If this was the explicit GC cycle, notify waiters about it
       if (explicit_gc_requested) {
         notify_explicit_gc_waiters();
+
+        // Explicit GC tries to uncommit everything
+        heap->handle_heap_shrinkage(DBL_MAX);
       }
 
       // If this was the allocation failure GC cycle, notify waiters about it
@@ -183,7 +186,7 @@ void ShenandoahConcurrentThread::run_service() {
     // Try to uncommit stale regions
     double current = os::elapsedTime();
     if (current - last_shrink_time > shrink_period) {
-      heap->handle_heap_shrinkage();
+      heap->handle_heap_shrinkage(current - (ShenandoahUncommitDelay / 1000.0));
       last_shrink_time = current;
     }
 

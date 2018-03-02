@@ -470,7 +470,7 @@ public:
 
   void increase_allocated(size_t bytes);
 
-  void handle_heap_shrinkage();
+  void handle_heap_shrinkage(double shrink_before);
 
   size_t garbage();
 

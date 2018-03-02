@@ -713,5 +713,5 @@ void ShenandoahHeapRegion::do_uncommit() {
 
 
 bool ShenandoahHeapRegion::can_idle_region() const {
-  return LINUX_ONLY(ShenandoahIdleRegions && !UseLargePages) NOT_LINUX(false);
+  return LINUX_ONLY(ShenandoahUncommitWithIdle && !UseLargePages) NOT_LINUX(false);
 }

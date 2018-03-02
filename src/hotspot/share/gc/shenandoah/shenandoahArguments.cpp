@@ -139,10 +139,10 @@ void ShenandoahArguments::initialize_flags() {
   }
 
   if (ShenandoahAlwaysPreTouch) {
-    if (!FLAG_IS_DEFAULT(ShenandoahUncommitDelay)) {
-      warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommitDelay");
+    if (!FLAG_IS_DEFAULT(ShenandoahUncommit)) {
+      warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommit");
     }
-    FLAG_SET_DEFAULT(ShenandoahUncommitDelay, max_uintx);
+    FLAG_SET_DEFAULT(ShenandoahUncommit, false);
   }
 }
 

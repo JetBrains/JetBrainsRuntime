@@ -219,6 +219,9 @@
           " 1 - parallel iterator;"                                         \
           " 2 - parallel iterator with filters;")                           \
                                                                             \
+  experimental(bool, ShenandoahUncommit, true,                              \
+          "Allow Shenandoah to uncommit unused memory.")                    \
+                                                                            \
   experimental(uintx, ShenandoahUncommitDelay, 5*60*1000,                   \
            "Shenandoah would start to uncommit memory for regions that were"\
            " not used for more than this time. First use after that would " \
@@ -227,8 +230,8 @@
            "Setting this delay to 0 effectively makes Shenandoah to "       \
            "uncommit the regions almost immediately.")                      \
                                                                             \
-  experimental(bool, ShenandoahIdleRegions, false,                          \
-           "Make region idle instead of uncommit.")                         \
+  experimental(bool, ShenandoahUncommitWithIdle, false,                     \
+           "Uncommit memory using MADV_DONTNEED.")                          \
                                                                             \
   experimental(bool, ShenandoahBarriersForConst, false,                     \
           "Emit barriers for constant oops in generated code, improving "   \
