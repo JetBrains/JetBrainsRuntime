@@ -232,8 +232,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
         JvmtiExport::gc_epilogue();
       }
 
-      heap->set_bytes_allocated_since_cm(0);
-
       heap->set_has_forwarded_objects(false);
       heap->set_full_gc_move_in_progress(false);
       heap->set_full_gc_in_progress(false);

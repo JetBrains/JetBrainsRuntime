@@ -97,10 +97,6 @@ public:
   void record_explicit_to_concurrent();
   void record_explicit_to_full();
 
-  void record_bytes_allocated(size_t bytes);
-  void record_bytes_reclaimed(size_t bytes);
-  void record_bytes_start_CM(size_t bytes);
-  void record_bytes_end_CM(size_t bytes);
   bool should_start_concurrent_mark(size_t used, size_t capacity);
   bool should_start_partial_gc();
   bool can_do_partial_gc();

@@ -344,10 +344,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _shenandoah_policy(policy),
   _free_regions(NULL),
   _collection_set(NULL),
-  _bytes_allocated_since_cm(0),
-  _bytes_allocated_during_cm(0),
-  _allocated_last_gc(0),
-  _used_start_gc(0),
+  _bytes_allocated_since_gc_start(0),
   _max_workers(MAX2(ConcGCThreads, ParallelGCThreads)),
   _ref_processor(NULL),
   _next_top_at_mark_starts(NULL),
@@ -566,6 +563,10 @@ void ShenandoahHeap::decrease_used(size_t bytes) {
   _used -= bytes;
 }
 
+void ShenandoahHeap::increase_allocated(size_t bytes) {
+  Atomic::add(bytes, &_bytes_allocated_since_gc_start);
+}
+
 size_t ShenandoahHeap::capacity() const {
   return num_regions() * ShenandoahHeapRegion::region_size_bytes();
 }
@@ -676,7 +677,6 @@ HeapWord* ShenandoahHeap::allocate_new_lab(size_t word_size, AllocType type) {
 
   if (result != NULL) {
     assert(! in_collection_set(result), "Never allocate in collection set");
-    _bytes_allocated_since_cm += word_size * HeapWordSize;
 
     log_develop_trace(gc, tlab)("allocating new tlab of size "SIZE_FORMAT" at addr "PTR_FORMAT, word_size, p2i(result));
 
@@ -740,6 +740,10 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
   log_develop_trace(gc, alloc)("allocate memory chunk of size "SIZE_FORMAT" at addr "PTR_FORMAT " by thread %d ",
                                word_size, p2i(result), Thread::current()->osthread()->thread_id());
 
+  if (result != NULL) {
+    increase_allocated(word_size * HeapWordSize);
+  }
+
   return result;
 }
 
@@ -754,7 +758,6 @@ HeapWord*  ShenandoahHeap::mem_allocate(size_t size,
   HeapWord* result = filler + BrooksPointer::word_size();
   if (filler != NULL) {
     BrooksPointer::initialize(oop(result));
-    _bytes_allocated_since_cm += size * HeapWordSize;
 
     assert(! in_collection_set(result), "never allocate in targetted region");
     return result;
@@ -1000,8 +1003,6 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
 
       _shenandoah_policy->choose_free_set(_free_regions);
     }
-
-    _bytes_allocated_since_cm = 0;
 
     Universe::update_heap_info_at_gc();
 
@@ -1426,9 +1427,6 @@ void ShenandoahHeap::op_init_mark() {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::make_parsable);
     make_tlabs_parsable(true);
   }
-
-  _shenandoah_policy->record_bytes_allocated(_bytes_allocated_since_cm);
-  _used_start_gc = used();
 
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::clear_liveness);
@@ -2038,12 +2036,12 @@ address ShenandoahHeap::gc_state_addr() {
   return (address) ShenandoahHeap::heap()->_gc_state.addr_of();
 }
 
-size_t ShenandoahHeap::bytes_allocated_since_cm() {
-  return _bytes_allocated_since_cm;
+size_t ShenandoahHeap::bytes_allocated_since_gc_start() {
+  return OrderAccess::load_acquire(&_bytes_allocated_since_gc_start);
 }
 
-void ShenandoahHeap::set_bytes_allocated_since_cm(size_t bytes) {
-  _bytes_allocated_since_cm = bytes;
+void ShenandoahHeap::reset_bytes_allocated_since_gc_start() {
+  OrderAccess::release_store_fence(&_bytes_allocated_since_gc_start, (size_t)0);
 }
 
 void ShenandoahHeap::set_next_top_at_mark_start(HeapWord* region_base, HeapWord* addr) {
@@ -2338,14 +2336,11 @@ void ShenandoahHeap::recycle_trash() {
   // lock is not reentrable, check we don't have it
   assert_heaplock_not_owned_by_current_thread();
 
-  size_t bytes_reclaimed = 0;
-
   for (size_t i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* r = _ordered_regions->get(i);
     if (r->is_trash()) {
       ShenandoahHeapLocker locker(lock());
       if (r->is_trash()) {
-        bytes_reclaimed += r->used();
         decrease_used(r->used());
         r->recycle();
         _free_regions->add_region(r);
@@ -2353,8 +2348,6 @@ void ShenandoahHeap::recycle_trash() {
     }
     SpinPause(); // allow allocators to take the lock
   }
-
-  _shenandoah_policy->record_bytes_reclaimed(bytes_reclaimed);
 }
 
 void ShenandoahHeap::print_extended_on(outputStream *st) const {

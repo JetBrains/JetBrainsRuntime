@@ -123,6 +123,8 @@ void ShenandoahConcurrentThread::run_service() {
     assert (!gc_requested || cause != GCCause::_last_gc_cause, "GC cause should be set");
 
     if (gc_requested) {
+      heap->reset_bytes_allocated_since_gc_start();
+
       // If GC was requested, we are sampling the counters even without actual triggers
       // from allocation machinery. This captures GC phases more accurately.
       set_forced_counters_update(true);
