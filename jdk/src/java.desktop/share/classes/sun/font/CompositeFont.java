@@ -418,7 +418,7 @@ public class CompositeFont extends Font2D {
             return getMapper().getMissingGlyphCode();
         }
 
-        int slotglyphCode = getSlotGlyphCode(glyphCode);
+        int slotglyphCode = glyphCode & CompositeStrike.SLOTMASK;
         PhysicalFont slotFont = getSlotFont(slot);
         if (slotFont.getValidatedGlyphCode(slotglyphCode) ==
             slotFont.getMissingGlyphCode()) {
@@ -426,12 +426,6 @@ public class CompositeFont extends Font2D {
         } else {
             return glyphCode;
         }
-    }
-
-    static int getSlotGlyphCode(int glyphCode) {
-        int code = glyphCode & CompositeStrike.SLOTMASK;
-        int extension = (code & 0x800000) == 0 ? 0 : 0xff000000; // support negative glyph codes (used on macOS)
-        return code | extension;
     }
 
     public CharToGlyphMapper getMapper() {
