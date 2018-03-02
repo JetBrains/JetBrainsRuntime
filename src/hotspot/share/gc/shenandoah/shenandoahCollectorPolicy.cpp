@@ -31,6 +31,30 @@
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "runtime/os.hpp"
 
+#define SHENANDOAH_ERGO_DISABLE_FLAG(name)                                  \
+  do {                                                                      \
+    if (FLAG_IS_DEFAULT(name) && (name)) {                                  \
+      log_info(gc)("Heuristics ergonomically sets -XX:-" #name);            \
+      FLAG_SET_DEFAULT(name, false);                                        \
+    }                                                                       \
+  } while (0)
+
+#define SHENANDOAH_ERGO_ENABLE_FLAG(name)                                   \
+  do {                                                                      \
+    if (FLAG_IS_DEFAULT(name) && !(name)) {                                 \
+      log_info(gc)("Heuristics ergonomically sets -XX:+" #name);            \
+      FLAG_SET_DEFAULT(name, true);                                         \
+    }                                                                       \
+  } while (0)
+
+#define SHENANDOAH_ERGO_OVERRIDE_DEFAULT(name, value)                       \
+  do {                                                                      \
+    if (FLAG_IS_DEFAULT(name)) {                                            \
+      log_info(gc)("Heuristics ergonomically sets -XX:" #name "=" #value);  \
+      FLAG_SET_DEFAULT(name, value);                                        \
+    }                                                                       \
+  } while (0)
+
 class ShenandoahHeuristics : public CHeapObj<mtGC> {
 protected:
   bool _update_refs_early;
@@ -392,14 +416,6 @@ void ShenandoahCollectorPolicy::record_gc_end() {
   _heuristics->record_gc_end();
 }
 
-#define SHENANDOAH_PASSIVE_OVERRIDE_FLAG(name)                              \
-  do {                                                                      \
-    if (FLAG_IS_DEFAULT(name) && (name)) {                                  \
-      log_info(gc)("Passive heuristics implies -XX:-" #name " by default"); \
-      FLAG_SET_DEFAULT(name, false);                                        \
-    }                                                                       \
-  } while (0)
-
 class ShenandoahPassiveHeuristics : public ShenandoahHeuristics {
 public:
   ShenandoahPassiveHeuristics() : ShenandoahHeuristics() {
@@ -407,17 +423,17 @@ public:
     FLAG_SET_DEFAULT(ExplicitGCInvokesConcurrent, false);
 
     // Disable known barriers by default.
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahSATBBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahConditionalSATBBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahKeepAliveBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahWriteBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahReadBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahStoreValWriteBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahStoreValReadBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahCASBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahAcmpBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(ShenandoahCloneBarrier);
-    SHENANDOAH_PASSIVE_OVERRIDE_FLAG(UseShenandoahMatrix);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahSATBBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahConditionalSATBBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahKeepAliveBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahWriteBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahReadBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahStoreValWriteBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahStoreValReadBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCASBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahAcmpBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCloneBarrier);
+    SHENANDOAH_ERGO_DISABLE_FLAG(UseShenandoahMatrix);
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
@@ -470,9 +486,7 @@ class ShenandoahAggressiveHeuristics : public ShenandoahHeuristics {
 public:
   ShenandoahAggressiveHeuristics() : ShenandoahHeuristics() {
     // Do not shortcut evacuation
-    if (FLAG_IS_DEFAULT(ShenandoahImmediateThreshold)) {
-      FLAG_SET_DEFAULT(ShenandoahImmediateThreshold, 100);
-    }
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 100);
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
@@ -521,9 +535,7 @@ public:
     // Static heuristics may degrade to continuous if live data is larger
     // than free threshold. ShenandoahAllocationThreshold is supposed to break this,
     // but it only works if it is non-zero.
-    if (FLAG_IS_DEFAULT(ShenandoahAllocationThreshold) && (ShenandoahAllocationThreshold == 0)) {
-      FLAG_SET_DEFAULT(ShenandoahAllocationThreshold, 1);
-    }
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 1);
   }
 
   void print_thresholds() {
@@ -887,9 +899,7 @@ public:
     FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier, false);
     FLAG_SET_DEFAULT(ShenandoahAsmWB, false);
 
-    if (FLAG_IS_DEFAULT(ShenandoahRefProcFrequency)) {
-       FLAG_SET_DEFAULT(ShenandoahRefProcFrequency,1);
-    }
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
     // TODO: Disable this optimization for now, as it also requires the matrix barriers.
 #ifdef COMPILER2
     FLAG_SET_DEFAULT(ArrayCopyLoadStoreMaxElem, 0);
@@ -1036,9 +1046,7 @@ class ShenandoahGenerationalPartialHeuristics : public ShenandoahPartialHeuristi
 public:
 
   ShenandoahGenerationalPartialHeuristics() : ShenandoahPartialHeuristics() {
-     if (FLAG_IS_DEFAULT(ShenandoahPartialInboundThreshold)) {
-       FLAG_SET_DEFAULT(ShenandoahPartialInboundThreshold, 100);
-     }
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahPartialInboundThreshold, 100);
   }
 
   virtual const char* name() {
@@ -1147,9 +1155,7 @@ public:
 class ShenandoahLRUPartialHeuristics : public ShenandoahPartialHeuristics {
 public:
   ShenandoahLRUPartialHeuristics() : ShenandoahPartialHeuristics() {
-    if (FLAG_IS_DEFAULT(ShenandoahPartialInboundThreshold)) {
-      FLAG_SET_DEFAULT(ShenandoahPartialInboundThreshold, 100);
-    }
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahPartialInboundThreshold, 100);
   }
 
   virtual const char* name() {
