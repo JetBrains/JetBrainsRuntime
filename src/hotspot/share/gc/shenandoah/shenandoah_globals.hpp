@@ -87,6 +87,9 @@
           " *) passive -  do not start concurrent GC, wait for Full GC; "   \
           " *) aggressive - run concurrent GC continuously, evacuate "      \
           "               everything;"                                      \
+          " *) compact - run GC with lower footprint target, may end up "   \
+          "               doing continuous GC, evacuate lots of live "      \
+          "               objects, uncommit heap aggressively;"             \
           " *) connected - run partial cycles focusing on least connected " \
           "               regions, along with adaptive concurrent GC;"      \
           " *) generational - run partial cycles focusing on young regions,"\

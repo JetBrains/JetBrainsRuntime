@@ -601,27 +601,64 @@ public:
   }
 };
 
-class ShenandoahContinuousHeuristics : public ShenandoahHeuristics {
+class ShenandoahCompactHeuristics : public ShenandoahHeuristics {
 public:
+  ShenandoahCompactHeuristics() : ShenandoahHeuristics() {
+    SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahUncommit);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahAllocationThreshold,  10);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUncommitDelay,        5000);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGuaranteedGCInterval, 30000);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGarbageThreshold,     20);
+  }
+
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
-    // Start the cycle, unless completely idle.
-    return ShenandoahHeap::heap()->bytes_allocated_since_gc_start() > 0;
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+    size_t available = heap->free_regions()->available();
+    double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
+    bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
+    size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
+    size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
+
+    if (available < threshold_bytes_allocated || bytes_allocated > threshold_bytes_allocated) {
+      log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
+                         available / M, bytes_allocated / M, threshold_bytes_allocated / M);
+      return true;
+    } else if (periodic_gc) {
+      log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
+                        last_time_ms, ShenandoahGuaranteedGCInterval);
+      return true;
+    }
+
+    return false;
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
                                                      size_t trash, size_t free) {
+
+    // Do not select too large CSet that would overflow the available free space
+    size_t actual_free = free + trash;
+    size_t max_cset = actual_free * 3 / 4;
+
+    log_info(gc, ergo)("CSet selection: actual free = " SIZE_FORMAT "M; max cset = " SIZE_FORMAT "M",
+                       actual_free / M, max_cset / M);
+
     size_t threshold = ShenandoahHeapRegion::region_size_bytes() * ShenandoahGarbageThreshold / 100;
+
+    size_t live_cset = 0;
     for (size_t idx = 0; idx < size; idx++) {
       ShenandoahHeapRegion* r = data[idx]._region;
-      if (r->garbage() > threshold) {
+      size_t new_cset = live_cset + r->get_live_data_bytes();
+      if (new_cset < max_cset && r->garbage() > threshold) {
+        live_cset = new_cset;
         cset->add_region(r);
       }
     }
   }
 
   virtual const char* name() {
-    return "continuous";
+    return "compact";
   }
 
   virtual bool is_diagnostic() {
@@ -1376,8 +1413,8 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
       _heuristics = new ShenandoahAdaptiveHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "passive") == 0) {
       _heuristics = new ShenandoahPassiveHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "continuous") == 0) {
-      _heuristics = new ShenandoahContinuousHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
+      _heuristics = new ShenandoahCompactHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "connected") == 0) {
       _heuristics = new ShenandoahAdaptiveHeuristics();
       _minor_heuristics = new ShenandoahPartialConnectedHeuristics();

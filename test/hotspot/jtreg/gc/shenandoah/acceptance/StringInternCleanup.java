@@ -38,7 +38,7 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=passive      StringInternCleanup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=adaptive     StringInternCleanup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=static       StringInternCleanup
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=continuous   StringInternCleanup
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=compact      StringInternCleanup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=aggressive   StringInternCleanup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=connected    StringInternCleanup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx64m -Xms64m -XX:ShenandoahGCHeuristics=generational StringInternCleanup

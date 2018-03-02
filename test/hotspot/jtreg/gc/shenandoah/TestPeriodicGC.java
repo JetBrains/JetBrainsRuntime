@@ -61,6 +61,7 @@ public class TestPeriodicGC {
 
         String[] enabled = new String[] {
            "adaptive",
+           "compact",
            "static",
            "connected",
            "generational",
@@ -70,7 +71,6 @@ public class TestPeriodicGC {
 
         String[] disabled = new String[] {
            "aggressive",
-           "continuous",
            "passive",
         };
 
