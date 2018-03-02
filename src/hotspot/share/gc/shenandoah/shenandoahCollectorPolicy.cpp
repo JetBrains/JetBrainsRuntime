@@ -202,14 +202,14 @@ public:
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set);
   virtual void choose_free_set(ShenandoahFreeSet* free_set);
 
-  virtual bool process_references() {
+  virtual bool should_process_references() {
     if (ShenandoahRefProcFrequency == 0) return false;
     size_t cycle = ShenandoahHeap::heap()->shenandoahPolicy()->cycle_counter();
     // Process references every Nth GC cycle.
     return cycle % ShenandoahRefProcFrequency == 0;
   }
 
-  virtual bool unload_classes() {
+  virtual bool should_unload_classes() {
     if (ShenandoahUnloadClassesFrequency == 0) return false;
     size_t cycle = ShenandoahHeap::heap()->shenandoahPolicy()->cycle_counter();
     // Unload classes every Nth GC cycle.
@@ -436,13 +436,13 @@ public:
     return false;
   }
 
-  virtual bool process_references() {
+  virtual bool should_process_references() {
     if (ShenandoahRefProcFrequency == 0) return false;
     // Always process references.
     return true;
   }
 
-  virtual bool unload_classes() {
+  virtual bool should_unload_classes() {
     if (ShenandoahUnloadClassesFrequency == 0) return false;
     // Always unload classes.
     return true;
@@ -490,13 +490,13 @@ public:
     return true;
   }
 
-  virtual bool process_references() {
+  virtual bool should_process_references() {
     if (ShenandoahRefProcFrequency == 0) return false;
     // Randomly process refs with 50% chance.
     return (os::random() & 1) == 1;
   }
 
-  virtual bool unload_classes() {
+  virtual bool should_unload_classes() {
     if (ShenandoahUnloadClassesFrequency == 0) return false;
     // Randomly unload classes with 50% chance.
     return (os::random() & 1) == 1;
@@ -1550,12 +1550,12 @@ void ShenandoahCollectorPolicy::choose_free_set(ShenandoahFreeSet* free_set) {
 }
 
 
-bool ShenandoahCollectorPolicy::process_references() {
-  return _heuristics->process_references();
+bool ShenandoahCollectorPolicy::should_process_references() {
+  return _heuristics->should_process_references();
 }
 
-bool ShenandoahCollectorPolicy::unload_classes() {
-  return _heuristics->unload_classes();
+bool ShenandoahCollectorPolicy::should_unload_classes() {
+  return _heuristics->should_unload_classes();
 }
 
 size_t ShenandoahCollectorPolicy::cycle_counter() const {

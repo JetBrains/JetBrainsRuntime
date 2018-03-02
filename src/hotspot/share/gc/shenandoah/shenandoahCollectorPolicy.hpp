@@ -120,8 +120,8 @@ public:
                              bool minor = false);
   void choose_free_set(ShenandoahFreeSet* free_set);
 
-  bool process_references();
-  bool unload_classes();
+  bool should_process_references();
+  bool should_unload_classes();
 
   ShenandoahTracer* tracer() {return _tracer;}
 

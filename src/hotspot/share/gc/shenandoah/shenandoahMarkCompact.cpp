@@ -272,8 +272,8 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
 
   // Do not trust heuristics, because this can be our last resort collection.
   // Only ignore processing references and class unloading if explicitly disabled.
-  cm->set_process_references(ShenandoahRefProcFrequency != 0);
-  cm->set_unload_classes(ShenandoahUnloadClassesFrequency != 0);
+  heap->set_process_references(ShenandoahRefProcFrequency != 0);
+  heap->set_unload_classes(ShenandoahUnloadClassesFrequency != 0);
 
   ReferenceProcessor* rp = heap->ref_processor();
   // enable ("weak") refs discovery

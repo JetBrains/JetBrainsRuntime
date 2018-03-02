@@ -259,6 +259,9 @@ private:
 
   ShenandoahSharedFlag _inject_alloc_failure;
 
+  ShenandoahSharedFlag _process_references;
+  ShenandoahSharedFlag _unload_classes;
+
   ShenandoahSharedEnumFlag<CancelState> _cancelled_concgc;
 
   ReferenceProcessor* _ref_processor;
@@ -403,6 +406,9 @@ public:
   void set_concurrent_traversal_in_progress(bool in_progress);
   void set_has_forwarded_objects(bool cond);
 
+  void set_process_references(bool pr);
+  void set_unload_classes(bool uc);
+
   inline bool is_stable() const;
   inline bool is_idle() const;
   inline bool is_concurrent_mark_in_progress() const;
@@ -415,6 +421,9 @@ public:
   inline bool is_concurrent_traversal_in_progress() const;
   inline bool has_forwarded_objects() const;
   inline bool is_gc_in_progress_mask(uint mask) const;
+
+  bool process_references() const;
+  bool unload_classes() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
 

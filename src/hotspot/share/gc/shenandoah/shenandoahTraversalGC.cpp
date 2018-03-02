@@ -170,8 +170,8 @@ public:
     ShenandoahObjToScanQueueSet* queues = _heap->traversal_gc()->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
-    bool process_refs = _heap->shenandoahPolicy()->process_references();
-    bool unload_classes = _heap->shenandoahPolicy()->unload_classes();
+    bool process_refs = _heap->process_references();
+    bool unload_classes = _heap->unload_classes();
     ReferenceProcessor* rp = NULL;
     if (process_refs) {
       rp = _heap->ref_processor();
@@ -229,8 +229,8 @@ public:
     ShenandoahObjToScanQueueSet* queues = traversal_gc->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
-    bool process_refs = _heap->shenandoahPolicy()->process_references();
-    bool unload_classes = _heap->shenandoahPolicy()->unload_classes();
+    bool process_refs = _heap->process_references();
+    bool unload_classes = _heap->unload_classes();
     ReferenceProcessor* rp = NULL;
     if (process_refs) {
       rp = _heap->ref_processor();
@@ -349,7 +349,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
 
   _heap->set_concurrent_traversal_in_progress(true);
 
-  bool process_refs = _heap->shenandoahPolicy()->process_references();
+  bool process_refs = _heap->process_references();
   if (process_refs) {
     ReferenceProcessor* rp = _heap->ref_processor();
     rp->enable_discovery(true /*verify_no_refs*/);
@@ -408,10 +408,10 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
   Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
 
   ReferenceProcessor* rp = NULL;
-  if (_heap->shenandoahPolicy()->process_references()) {
+  if (_heap->process_references()) {
     rp = _heap->ref_processor();
   }
-  if (_heap->shenandoahPolicy()->unload_classes()) {
+  if (_heap->unload_classes()) {
     if (ShenandoahStringDedup::is_enabled()) {
       ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
       ShenandoahTraversalMetadataDedupClosure cl(q, rp, dq);
@@ -517,7 +517,7 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
     }
   }
 
-  if (!_heap->cancelled_concgc() && ShenandoahPreclean && _heap->shenandoahPolicy()->process_references()) {
+  if (!_heap->cancelled_concgc() && ShenandoahPreclean && _heap->process_references()) {
     preclean_weak_refs();
   }
 
@@ -555,11 +555,11 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 #endif
   }
 
-  if (!_heap->cancelled_concgc() && _heap->shenandoahPolicy()->process_references()) {
+  if (!_heap->cancelled_concgc() && _heap->process_references()) {
     weak_refs_work();
   }
 
-  if (!_heap->cancelled_concgc() && _heap->shenandoahPolicy()->unload_classes()) {
+  if (!_heap->cancelled_concgc() && _heap->unload_classes()) {
     _heap->unload_classes_and_cleanup_tables(false);
     _heap->concurrentMark()->update_roots(ShenandoahPhaseTimings::final_traversal_update_roots);
   }
@@ -641,7 +641,7 @@ public:
   void do_void() {
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = sh->traversal_gc();
-    assert(sh->shenandoahPolicy()->process_references(), "why else would we be here?");
+    assert(sh->process_references(), "why else would we be here?");
     ParallelTaskTerminator terminator(1, traversal_gc->task_queues());
     shenandoah_assert_rp_isalive_installed();
     traversal_gc->main_loop((uint) 0, &terminator, false);
@@ -675,7 +675,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   // that missed the initial filtering, i.e. when referent was marked alive after
   // reference was discovered by RP.
 
-  assert(_heap->shenandoahPolicy()->process_references(), "sanity");
+  assert(_heap->process_references(), "sanity");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
   ReferenceProcessor* rp = sh->ref_processor();
@@ -723,7 +723,7 @@ public:
 
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = sh->traversal_gc();
-    assert(sh->shenandoahPolicy()->process_references(), "why else would we be here?");
+    assert(sh->process_references(), "why else would we be here?");
     shenandoah_assert_rp_isalive_installed();
 
     traversal_gc->main_loop(_worker_id, _terminator, false);
@@ -735,7 +735,7 @@ public:
 };
 
 void ShenandoahTraversalGC::weak_refs_work() {
-  assert(_heap->shenandoahPolicy()->process_references(), "sanity");
+  assert(_heap->process_references(), "sanity");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
 

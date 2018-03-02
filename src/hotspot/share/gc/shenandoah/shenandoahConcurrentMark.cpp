@@ -296,13 +296,6 @@ void ShenandoahConcurrentMark::init_mark_roots() {
   assert(Thread::current()->is_VM_thread(), "can only do this in VMThread");
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-
-  // Set up ref processing and class unloading.
-  ShenandoahCollectorPolicy* policy = heap->shenandoahPolicy();
-  set_process_references(policy->process_references());
-  set_unload_classes(policy->unload_classes());
-
   mark_roots(ShenandoahPhaseTimings::scan_roots);
 }
 
@@ -1076,20 +1069,12 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
   }
 }
 
-void ShenandoahConcurrentMark::set_process_references(bool pr) {
-  _process_references.set_cond(pr);
-}
-
 bool ShenandoahConcurrentMark::process_references() const {
-  return _process_references.is_set();
-}
-
-void ShenandoahConcurrentMark::set_unload_classes(bool uc) {
-  _unload_classes.set_cond(uc);
+  return _heap->process_references();
 }
 
 bool ShenandoahConcurrentMark::unload_classes() const {
-  return _unload_classes.is_set();
+  return _heap->unload_classes();
 }
 
 bool ShenandoahConcurrentMark::claim_codecache() {
