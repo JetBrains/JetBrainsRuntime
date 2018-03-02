@@ -713,7 +713,11 @@ public:
     // Need to reset the complete-top-at-mark-start pointer here because
     // the complete marking bitmap is no longer valid. This ensures
     // size-based iteration in marked_object_iterate().
-    _heap->set_complete_top_at_mark_start(r->bottom(), r->bottom());
+    // NOTE: See blurb at ShenandoahMCResetCompleteBitmapTask on why we need to skip
+    // pinned regions.
+    if (!r->is_pinned()) {
+      _heap->set_complete_top_at_mark_start(r->bottom(), r->bottom());
+    }
 
     size_t live = r->used();
 
@@ -814,6 +818,41 @@ void ShenandoahMarkCompact::compact_humongous_objects() {
   }
 }
 
+// This is slightly different to ShHeap::reset_next_mark_bitmap:
+// we need to remain able to walk pinned regions.
+// Since pinned region do not move and don't get compacted, we will get holes with
+// unreachable objects in them (which may have pointers to unloaded Klasses and thus
+// cannot be iterated over using oop->size(). The only way to safely iterate over those is using
+// a valid marking bitmap and valid TAMS pointer. This class only resets marking
+// bitmaps for un-pinned regions, and later we only reset TAMS for unpinned regions.
+class ShenandoahMCResetCompleteBitmapTask : public AbstractGangTask {
+private:
+  ShenandoahHeapRegionSet* _regions;
+
+public:
+  ShenandoahMCResetCompleteBitmapTask(ShenandoahHeapRegionSet* regions) :
+    AbstractGangTask("Parallel Reset Bitmap Task"),
+    _regions(regions) {
+    _regions->clear_current_index();
+  }
+
+  void work(uint worker_id) {
+    ShenandoahHeapRegion* region = _regions->claim_next();
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    while (region != NULL) {
+      if (heap->is_bitmap_slice_committed(region) && !region->is_pinned()) {
+        HeapWord* bottom = region->bottom();
+        HeapWord* top = heap->complete_top_at_mark_start(region->bottom());
+        if (top > bottom) {
+          heap->complete_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
+        }
+        assert(heap->is_complete_bitmap_clear_range(bottom, region->end()), "must be clear");
+      }
+      region = _regions->claim_next();
+    }
+  }
+};
+
 void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** worker_slices) {
   GCTraceTime(Info, gc, phases) time("Phase 4: Move objects", _gc_timer);
   ShenandoahGCPhase compaction_phase(ShenandoahPhaseTimings::full_gc_copy_objects);
@@ -835,7 +874,8 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
 
   // Reset complete bitmap. We're about to reset the complete-top-at-mark-start pointer
   // and must ensure the bitmap is in sync.
-  heap->reset_complete_mark_bitmap();
+  ShenandoahMCResetCompleteBitmapTask task(heap->regions());
+  heap->workers()->run_task(&task);
 
   // Bring regions in proper states after the collection, and set heap properties.
   {

@@ -467,7 +467,6 @@ public:
   size_t garbage();
 
   void reset_next_mark_bitmap();
-  void reset_complete_mark_bitmap();
 
   MarkBitMap* complete_mark_bit_map();
   MarkBitMap* next_mark_bit_map();

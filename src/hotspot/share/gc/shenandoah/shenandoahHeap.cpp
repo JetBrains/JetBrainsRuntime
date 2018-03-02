@@ -435,41 +435,6 @@ void ShenandoahHeap::reset_next_mark_bitmap() {
   _workers->run_task(&task);
 }
 
-class ShenandoahResetCompleteBitmapTask : public AbstractGangTask {
-private:
-  ShenandoahHeapRegionSet* _regions;
-
-public:
-  ShenandoahResetCompleteBitmapTask(ShenandoahHeapRegionSet* regions) :
-    AbstractGangTask("Parallel Reset Bitmap Task"),
-    _regions(regions) {
-    _regions->clear_current_index();
-  }
-
-  void work(uint worker_id) {
-    ShenandoahHeapRegion* region = _regions->claim_next();
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
-    while (region != NULL) {
-      if (heap->is_bitmap_slice_committed(region)) {
-        HeapWord* bottom = region->bottom();
-        HeapWord* top = heap->complete_top_at_mark_start(region->bottom());
-        if (top > bottom) {
-          heap->complete_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
-        }
-        assert(heap->is_complete_bitmap_clear_range(bottom, region->end()), "must be clear");
-      }
-      region = _regions->claim_next();
-    }
-  }
-};
-
-void ShenandoahHeap::reset_complete_mark_bitmap() {
-  assert_gc_workers(_workers->active_workers());
-
-  ShenandoahResetCompleteBitmapTask task(_ordered_regions);
-  _workers->run_task(&task);
-}
-
 bool ShenandoahHeap::is_next_bitmap_clear() {
   for (size_t idx = 0; idx < _num_regions; idx++) {
     ShenandoahHeapRegion* r = _ordered_regions->get(idx);
