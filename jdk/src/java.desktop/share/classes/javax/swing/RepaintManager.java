@@ -1606,18 +1606,15 @@ public class RepaintManager
                 Graphics g, int clipX, int clipY,
                 int clipW, int clipH)
         {
-            Graphics gg = g;
-            // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
-            // to place [0, 0] of the client area in its correct device pixel.
-            if (g instanceof SunGraphics2D) {
-                SunGraphics2D sg = (SunGraphics2D)gg;
+            SunGraphics2D sg = (SunGraphics2D)g.create();
+            try {
+                // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
+                // to place [0, 0] of the client area in its correct device pixel.
                 if (sg.transformState == SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
                     Point2D err = getInsetsRoundingError(sg);
                     double errX = err.getX();
                     double errY = err.getY();
                     if (errX != 0 || errY != 0) {
-                        gg = sg = (SunGraphics2D)sg.create();
-
                         // save the current tx
                         AffineTransform tx = sg.transform;
 
@@ -1659,15 +1656,13 @@ public class RepaintManager
                         sg.setTransform(newTx);
                     }
                 }
-            }
-            try {
                 if (image instanceof VolatileImage && isPixelsCopying(c, g)) {
-                    paintDoubleBufferedFPScales(c, image, gg, clipX, clipY, clipW, clipH);
+                    paintDoubleBufferedFPScales(c, image, sg, clipX, clipY, clipW, clipH);
                 } else {
-                    paintDoubleBufferedImpl(c, image, gg, clipX, clipY, clipW, clipH);
+                    paintDoubleBufferedImpl(c, image, sg, clipX, clipY, clipW, clipH);
                 }
             } finally {
-                if (gg != g) g.dispose();
+                sg.dispose();
             }
         }
 
