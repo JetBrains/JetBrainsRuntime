@@ -66,11 +66,6 @@ void ShenandoahUpdateRefsClosure::do_oop(narrowOop* p) { do_oop_work(p); }
  */
 inline bool ShenandoahHeap::mark_next(oop obj) const {
   shenandoah_assert_not_forwarded(NULL, obj);
-  assert(oopDesc::unsafe_equals(obj, BarrierSet::barrier_set()->read_barrier(obj)), "only mark forwarded copy of objects");
-  return mark_next_no_checks(obj);
-}
-
-inline bool ShenandoahHeap::mark_next_no_checks(oop obj) const {
   HeapWord* addr = (HeapWord*) obj;
   return (! allocated_after_next_mark_start(addr)) && _next_mark_bit_map->parMark(addr);
 }
