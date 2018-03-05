@@ -564,8 +564,6 @@ class StubGenerator: public StubCodeGenerator {
     __ align(6);
     address start = __ pc();
 
-    Label slow_case, lose, not_an_instance, is_array;
-
     if (do_cset_test) {
       Label work;
       __ mov(rscratch2, ShenandoahHeap::in_cset_fast_test_addr());
@@ -577,129 +575,6 @@ class StubGenerator: public StubCodeGenerator {
     }
 
     Register obj = r0;
-    if (UseTLAB && ShenandoahAsmWB) {
-      RegSet saved = RegSet::range(r1, r4);
-      if (!c_abi) {
-        __ push(saved, sp);
-      }
-
-      Register size = r2, newobj = r3, newobj_end = rscratch2;
-
-      __ ldr(newobj, Address(rthread, JavaThread::gclab_top_offset()));
-      __ cbz(newobj, slow_case); // No GCLAB
-
-      __ load_klass(r1, obj);
-
-      __ ldrw(size, Address(r1, Klass::layout_helper_offset()));
-      __ tbnz(size, BitsPerInt - 1, not_an_instance);  // make sure it's an instance (LH > 0)
-      assert(Klass::_lh_neutral_value == 0, "must be");
-      __ cbzw(size, slow_case);
-      __ tbnz(size, exact_log2(Klass::_lh_instance_slow_path_bit), slow_case);
-      __ bind(is_array);
-
-      // size contains the size (in bytes) of the object.
-
-      // Make sure it's not a really big object.
-      // ??? Maybe this test is not necessary.
-      __ cmp(size, 128 * HeapWordSize);
-      __ br(Assembler::GE, slow_case);
-
-      int oop_extra_words = Universe::heap()->oop_extra_words();
-      __ add(newobj_end, newobj, oop_extra_words * HeapWordSize);
-      __ add(newobj_end, newobj_end, size, ext::uxtw);
-
-      // Pointer to end of new object is in newobj_end.
-
-      __ ldr(rscratch1, Address(rthread, JavaThread::gclab_end_offset()));
-      __ cmp(newobj_end, rscratch1);
-      __ br(Assembler::HS, slow_case); // No room in GCLAB
-
-      // Store Brooks pointer and adjust start of newobj.
-      Universe::heap()->compile_prepare_oop(_masm, newobj);
-
-      // We can reuse newobj_end (rscratch2) to hold dst.
-      Register src = r1, dst = newobj_end;
-
-      // Copy the object from obj to newobj.  This loop is short and
-      // sweet: the typical size of an object is about eight HeapWords
-      // so it makes no sense to optimize for a large memory copy.
-      // There might be some sense to calling generate_copy_longs from
-      // here if the object to be copied is very large.
-      Label loop, odd_count;
-      {
-        __ mov(src, obj);
-        __ mov(dst, newobj);
-        __ tbnz(size, exact_log2(HeapWordSize), odd_count);
-
-        // Live registers: obj, newobj, size, src, dst.
-
-        __ bind(loop);
-        // Count is even.  Copy pairs of HeapWords.
-        __ ldp(rscratch1, r4, __ post(src, 2 * HeapWordSize));
-        __ stp(rscratch1, r4, __ post(dst, 2 * HeapWordSize));
-        __ subs(size, size, 2 * HeapWordSize);
-        __ br(Assembler::GT, loop);
-      }
-
-      // All copied.  Now try to CAS the Brooks pointer.
-      Label succeed;
-      __ lea(r2, Address(obj, BrooksPointer::byte_offset()));
-      __ cmpxchgptr(obj, newobj, r2, rscratch1, succeed, NULL);
-      // If we lose the CAS we are racing with someone who just beat
-      // us evacuating the object.  This leaves the address of the
-      // evacuated object in r0.
-
-      // We lost.
-      if (!c_abi) {
-        __ pop(saved, sp);
-      }
-      __ ret(lr);
-
-      // We won.
-      __ bind(succeed);
-      __ mov(obj, newobj);
-      // dst points to end of newobj.
-      __ str(dst, Address(rthread, JavaThread::gclab_top_offset()));
-      if (!c_abi) {
-        __ pop(saved, sp);
-      }
-      __ ret(lr);
-
-      // Come here if the count of HeapWords is odd.
-      {
-        __ bind(odd_count);
-        __ ldr(rscratch1, __ post(src, HeapWordSize));
-        __ str(rscratch1, __ post(dst, HeapWordSize));
-        __ subs(size, size, HeapWordSize);
-        __ b(loop);
-      }
-
-      // Come here if obj is an array of some kind.
-      {
-        __ bind(not_an_instance);
-
-        // It's an array.  Calculate the size in r4.
-        __ ubfx(r4, size, Klass::_lh_header_size_shift,
-                exact_log2(Klass::_lh_header_size_mask+1));
-        __ ldrw(rscratch1, Address(obj, arrayOopDesc::length_offset_in_bytes()));
-        __ ubfx(rscratch2, size, Klass::_lh_log2_element_size_shift,
-                exact_log2(Klass::_lh_log2_element_size_mask+1));
-        __ lslv(rscratch1, rscratch1, rscratch2);
-        __ add(size, rscratch1, r4);
-
-        // Round up the size.
-        __ add(size, size, MinObjAlignmentInBytes-1);
-        __ andr(size, size, -MinObjAlignmentInBytes);
-
-        __ b(is_array);
-      }
-
-      // Make a runtime call to evacuate the object.
-      __ bind(slow_case);
-      if (!c_abi) {
-          __ pop(saved, sp);
-      }
-    }
 
     __ enter(); // required for proper stackwalking of RuntimeStub frame
 

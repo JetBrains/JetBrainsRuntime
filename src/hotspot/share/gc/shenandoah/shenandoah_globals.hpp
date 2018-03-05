@@ -375,9 +375,6 @@
   experimental(bool, ShenandoahCommonGCStateLoads, false,                   \
          "Enable commonning for GC state loads in generated code.")         \
                                                                             \
-  diagnostic(bool, ShenandoahAsmWB, true,                                   \
-          "Enable/disable inline assembler write barrier code.")            \
-                                                                            \
   diagnostic(bool, ShenandoahConcMarkGC, true,                              \
           "Enable/disable inline concurrent mark GC.")                      \
                                                                             \

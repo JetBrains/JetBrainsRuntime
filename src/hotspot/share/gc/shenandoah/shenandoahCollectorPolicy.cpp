@@ -934,7 +934,6 @@ public:
     FLAG_SET_DEFAULT(ShenandoahSATBBarrier, false);
     FLAG_SET_DEFAULT(ShenandoahStoreValWriteBarrier, true);
     FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier, false);
-    FLAG_SET_DEFAULT(ShenandoahAsmWB, false);
 
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
     // TODO: Disable this optimization for now, as it also requires the matrix barriers.
@@ -1310,7 +1309,6 @@ public:
     FLAG_SET_DEFAULT(ShenandoahStoreValWriteBarrier,   false);
     FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, true);
     FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
-    FLAG_SET_DEFAULT(ShenandoahAsmWB,                  true);
     FLAG_SET_DEFAULT(ShenandoahBarriersForConst,       true);
     FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
     FLAG_SET_DEFAULT(ShenandoahAllocImplicitLive,      false);
