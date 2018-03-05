@@ -169,7 +169,7 @@ void ShenandoahConcurrentThread::run_service() {
         notify_explicit_gc_waiters();
 
         // Explicit GC tries to uncommit everything
-        heap->handle_heap_shrinkage(DBL_MAX);
+        heap->handle_heap_shrinkage(os::elapsedTime());
       }
 
       // If this was the allocation failure GC cycle, notify waiters about it
