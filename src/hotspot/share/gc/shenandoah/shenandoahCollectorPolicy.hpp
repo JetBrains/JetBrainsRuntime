@@ -50,6 +50,7 @@ private:
   size_t _alloc_failure_full;
   size_t _explicit_concurrent;
   size_t _explicit_full;
+  size_t _degen_points[ShenandoahHeap::_DEGENERATED_LIMIT];
 
   ShenandoahSharedFlag _in_shutdown;
 
@@ -91,7 +92,7 @@ public:
   void record_success_concurrent();
   void record_success_degenerated();
   void record_success_full();
-  void record_alloc_failure_to_degenerated();
+  void record_alloc_failure_to_degenerated(ShenandoahHeap::ShenandoahDegenPoint point);
   void record_alloc_failure_to_full();
   void record_degenerated_upgrade_to_full();
   void record_explicit_to_concurrent();

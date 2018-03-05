@@ -1394,6 +1394,7 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _alloc_failure_full(0),
   _alloc_failure_degenerated_upgrade_to_full(0)
 {
+  Copy::zero_to_bytes(_degen_points, sizeof(size_t) * ShenandoahHeap::_DEGENERATED_LIMIT);
 
   ShenandoahHeapRegion::setup_heap_region_size(initial_heap_byte_size(), max_heap_byte_size());
 
@@ -1523,9 +1524,11 @@ void ShenandoahCollectorPolicy::record_alloc_failure_to_full() {
   _alloc_failure_full++;
 }
 
-void ShenandoahCollectorPolicy::record_alloc_failure_to_degenerated() {
+void ShenandoahCollectorPolicy::record_alloc_failure_to_degenerated(ShenandoahHeap::ShenandoahDegenPoint point) {
+  assert(point < ShenandoahHeap::_DEGENERATED_LIMIT, "sanity");
   _heuristics->record_allocation_failure_gc();
   _alloc_failure_degenerated++;
+  _degen_points[point]++;
 }
 
 void ShenandoahCollectorPolicy::record_degenerated_upgrade_to_full() {
@@ -1663,6 +1666,12 @@ void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
 
   out->print_cr(SIZE_FORMAT_W(5) " Degenerated GCs",                   _success_degenerated_gcs);
   out->print_cr("  " SIZE_FORMAT_W(5) " caused by allocation failure", _alloc_failure_degenerated);
+  for (int c = 0; c < ShenandoahHeap::_DEGENERATED_LIMIT; c++) {
+    if (_degen_points[c] > 0) {
+      const char* desc = ShenandoahHeap::degen_point_to_string((ShenandoahHeap::ShenandoahDegenPoint)c);
+      out->print_cr("    " SIZE_FORMAT_W(5) " happened at %s",         _degen_points[c], desc);
+    }
+  }
   out->print_cr("  " SIZE_FORMAT_W(5) " upgraded to Full GC",          _alloc_failure_degenerated_upgrade_to_full);
   out->cr();
 
