@@ -146,6 +146,8 @@ template <typename T, bool CHECKCAST, bool SATB, bool MATRIX, ShenandoahBarrierS
 bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* bound) {
   Thread* thread = Thread::current();
 
+  ShenandoahEvacOOMScope oom_evac_scope;
+
   // We need to handle four cases:
   //
   // a) src < dst, intersecting, can only copy backward only

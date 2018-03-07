@@ -873,6 +873,7 @@ public:
 
   void work(uint worker_id) {
 
+    ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
 
     // If concurrent code cache evac is enabled, evacuate it here.
@@ -1050,6 +1051,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahEvacuateUpdateRootsClosure cl;
 
     if (ShenandoahConcurrentEvacCodeRoots) {
@@ -2880,4 +2882,12 @@ GrowableArray<MemoryPool*> ShenandoahHeap::memory_pools() {
   memory_pools.append(_memory_pool);
   memory_pools.append(_dummy_pool);
   return memory_pools;
+}
+
+void ShenandoahHeap::enter_evacuation() {
+  _oom_evac_handler.enter_evacuation();
+}
+
+void ShenandoahHeap::leave_evacuation() {
+  _oom_evac_handler.leave_evacuation();
 }

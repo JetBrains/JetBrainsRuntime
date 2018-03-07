@@ -244,6 +244,7 @@ inline bool ShenandoahHeap::try_cancel_concgc() {
 
 inline void ShenandoahHeap::clear_cancelled_concgc() {
   _cancelled_concgc.set(CANCELLABLE);
+  _oom_evac_handler.clear();
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {
@@ -268,6 +269,12 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
 inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated, bool from_write_barrier) {
   evacuated = false;
 
+  if (Thread::current()->is_oom_during_evac()) {
+    // This thread went through the OOM during evac protocol and it is safe to return
+    // the forward pointer. It must not attempt to evacuate any more.
+    return ShenandoahBarrierSet::resolve_forwarded(p);
+  }
+
   size_t size_no_fwdptr = (size_t) p->size();
   size_t size_with_fwdptr = size_no_fwdptr + BrooksPointer::word_size();
 
@@ -276,16 +283,10 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
   bool alloc_from_gclab = true;
   HeapWord* filler;
 #ifdef ASSERT
-  // Checking that current Java thread does not hold Threads_lock when we get here.
-  // If that ever be the case, we'd deadlock in oom_during_evacuation.
-  if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
-    assert(! Threads_lock->owned_by_self()
-           || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
-  }
+
+  assert(thread->is_evac_allowed(), "must be enclosed in ShenandoahOOMDuringEvacHandler");
 
   if (ShenandoahOOMDuringEvacALot &&
-      (! Thread::current()->is_GC_task_thread()) &&
-      (! Thread::current()->is_ConcurrentGC_thread()) &&
       (os::random() & 1) == 0) { // Simulate OOM every ~2nd slow-path call
         filler = NULL;
   } else {
@@ -301,9 +302,9 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
 
   if (filler == NULL) {
     concurrent_thread()->handle_alloc_failure_evac();
-    // If this is a Java thread, it should have waited
-    // until all GC threads are done, and then we
-    // return the forwardee.
+
+    _oom_evac_handler.handle_out_of_memory_during_evacuation();
+
     return ShenandoahBarrierSet::resolve_forwarded(p);
   }
 

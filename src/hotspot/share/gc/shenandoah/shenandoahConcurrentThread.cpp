@@ -432,18 +432,6 @@ void ShenandoahConcurrentThread::handle_alloc_failure_evac() {
   heap->collector_policy()->set_should_clear_all_soft_refs(true);
   try_set_alloc_failure_gc();
   heap->cancel_concgc(GCCause::_shenandoah_allocation_failure_evac);
-
-  if ((! Thread::current()->is_GC_task_thread()) && (! Thread::current()->is_ConcurrentGC_thread())) {
-    assert(! Threads_lock->owned_by_self()
-           || SafepointSynchronize::is_at_safepoint(), "must not hold Threads_lock here");
-    ResourceMark rm;
-    log_info(gc)("%s. Thread \"%s\" waits until evacuation finishes.",
-                 GCCause::to_string(GCCause::_shenandoah_allocation_failure_evac),
-                 Thread::current()->name());
-    while (heap->is_evacuation_in_progress()) { // wait.
-      os::naked_short_sleep(1);
-    }
-  }
 }
 
 void ShenandoahConcurrentThread::notify_alloc_failure_waiters() {

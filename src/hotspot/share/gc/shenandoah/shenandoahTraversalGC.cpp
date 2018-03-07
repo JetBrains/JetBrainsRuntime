@@ -167,6 +167,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahObjToScanQueueSet* queues = _heap->traversal_gc()->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
@@ -202,6 +203,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
     ShenandoahObjToScanQueueSet* queues = traversal_gc->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
@@ -224,6 +226,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
 
     ShenandoahObjToScanQueueSet* queues = traversal_gc->task_queues();
@@ -450,6 +453,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   while (q != NULL) {
     if (_heap->check_cancelled_concgc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
+      ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
       while (!terminator->offer_termination(&tt));
       return;
     }
@@ -484,6 +488,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
            queues->steal(worker_id, &seed, task))) {
         conc_mark->do_task<T, true>(q, cl, live_data, &task);
       } else {
+        ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
         if (terminator->offer_termination()) return;
       }
     }
@@ -493,6 +498,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator) {
   if (_heap->cancelled_concgc()) {
     ShenandoahCancelledTerminatorTerminator tt;
+    ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
     while (! terminator->offer_termination(&tt));
     return true;
   }
@@ -518,6 +524,7 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
   }
 
   if (!_heap->cancelled_concgc() && ShenandoahPreclean && _heap->process_references()) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     preclean_weak_refs();
   }
 
@@ -770,6 +777,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahTraversalDrainMarkingStackClosure complete_gc(worker_id, _terminator);

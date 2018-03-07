@@ -334,6 +334,8 @@ class Thread: public ThreadShadow {
   int   _vm_operation_started_count;            // VM_Operation support
   int   _vm_operation_completed_count;          // VM_Operation support
 
+  char _oom_during_evac;
+
   ObjectMonitor* _current_pending_monitor;      // ObjectMonitor this thread
                                                 // is waiting to lock
   bool _current_pending_monitor_is_from_java;   // locking is from Java code
@@ -440,6 +442,14 @@ class Thread: public ThreadShadow {
 
   inline void set_trace_flag();
   inline void clear_trace_flag();
+
+  bool is_oom_during_evac() const;
+  void set_oom_during_evac(bool oom);
+
+#ifdef ASSERT
+  bool is_evac_allowed() const;
+  void set_evac_allowed(bool evac_allowed);
+#endif
 
   // Support for Unhandled Oop detection
   // Add the field for both, fastdebug and debug, builds to keep

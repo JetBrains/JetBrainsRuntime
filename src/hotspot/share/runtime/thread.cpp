@@ -307,7 +307,35 @@ Thread::Thread() {
            "bug in forced alignment of thread objects");
   }
 #endif // ASSERT
+
+  _oom_during_evac = 0;
 }
+
+void Thread::set_oom_during_evac(bool oom) {
+  if (oom) {
+    _oom_during_evac |= 1;
+  } else {
+    _oom_during_evac &= ~1;
+  }
+}
+
+bool Thread::is_oom_during_evac() const {
+  return (_oom_during_evac & 1) == 1;
+}
+
+#ifdef ASSERT
+void Thread::set_evac_allowed(bool evac_allowed) {
+  if (evac_allowed) {
+    _oom_during_evac |= 2;
+  } else {
+    _oom_during_evac &= ~2;
+  }
+}
+
+bool Thread::is_evac_allowed() const {
+  return (_oom_during_evac & 2) == 2;
+}
+#endif
 
 void Thread::initialize_thread_current() {
 #ifndef USE_LIBRARY_BASED_TLS_ONLY

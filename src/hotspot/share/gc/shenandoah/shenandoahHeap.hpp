@@ -26,6 +26,7 @@
 
 #include "gc/shared/markBitMap.hpp"
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
+#include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
 #include "services/memoryManager.hpp"
@@ -283,6 +284,8 @@ private:
   MemoryPool* _memory_pool;
   MemoryPool* _dummy_pool;
 
+  ShenandoahEvacOOMHandler _oom_evac_handler;
+
 #ifdef ASSERT
   int     _heap_expansion_count;
 #endif
@@ -535,6 +538,11 @@ public:
   inline size_t num_regions() const { return _num_regions; }
 
   BoolObjectClosure* is_alive_closure();
+
+  // Call before starting evacuation.
+  void enter_evacuation();
+  // Call after finished with evacuation.
+  void leave_evacuation();
 
 private:
   template<class T>

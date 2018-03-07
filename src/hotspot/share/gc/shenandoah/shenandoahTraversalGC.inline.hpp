@@ -58,6 +58,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj)) {
         assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
         assert(dq != NULL, "Dedup queue not set");
+        ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
         ShenandoahStringDedup::enqueue_candidate(obj, dq);
       }
     }

@@ -120,6 +120,8 @@ public:
     ShenandoahObjToScanQueueSet* queues = _heap->partial_gc()->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
+    ShenandoahEvacOOMScope oom_evac_scope;
+
     // Step 1: Process ordinary GC roots.
     {
       ShenandoahPartialEvacuateUpdateRootsClosure roots_cl(q);
@@ -143,6 +145,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahPartialGC* partial_gc = _heap->partial_gc();
     ShenandoahObjToScanQueueSet* queues = partial_gc->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
@@ -179,6 +182,8 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
+
     ShenandoahPartialGC* partial_gc = _heap->partial_gc();
 
     ShenandoahObjToScanQueueSet* queues = partial_gc->task_queues();
@@ -391,6 +396,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
   while (q != NULL) {
     if (_heap->check_cancelled_concgc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
+      ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
       while (!terminator->offer_termination(&tt));
       return;
     }
@@ -430,6 +436,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
         assert(!oopDesc::is_null(obj), "must not be null");
         obj->oop_iterate(&cl);
       } else {
+        ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
         if (terminator->offer_termination()) return;
       }
     }
@@ -439,6 +446,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
 bool ShenandoahPartialGC::check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator) {
   if (_heap->cancelled_concgc()) {
     ShenandoahCancelledTerminatorTerminator tt;
+    ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
     while (! terminator->offer_termination(&tt));
     return true;
   }

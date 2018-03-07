@@ -99,6 +99,7 @@ template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_
 void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
   assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
   ShenandoahUpdateRefsForOopClosure<UPDATE_MATRIX, STOREVAL_WRITE_BARRIER, ALWAYS_ENQUEUE> cl;
+  ShenandoahEvacOOMScope oom_evac_scope;
   T* dst = (T*) start;
   for (size_t i = 0; i < count; i++) {
     cl.do_oop(dst++);
@@ -211,6 +212,7 @@ void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
   // it would be NULL in any case. But we *are* interested in any oop*
   // that potentially need to be updated.
 
+  ShenandoahEvacOOMScope oom_evac_scope;
   oop obj = oop(mr.start());
   assert(oopDesc::is_oop(obj), "must be an oop");
   if (UseShenandoahMatrix) {
@@ -276,6 +278,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
     if (evac_in_progress &&
         _heap->in_collection_set(obj) &&
         oopDesc::unsafe_equals(obj, fwd)) {
+      ShenandoahEvacOOMScope oom_evac_scope;
       bool evac;
       oop copy = _heap->evacuate_object(obj, Thread::current(), evac, true /* from write barrier */);
       if (evac && _heap->is_concurrent_partial_in_progress()) {
