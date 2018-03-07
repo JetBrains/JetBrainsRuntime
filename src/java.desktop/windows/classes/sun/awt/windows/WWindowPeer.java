@@ -48,6 +48,9 @@ import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
 import java.awt.peer.WindowPeer;
 import java.beans.PropertyChangeEvent;
@@ -64,6 +67,8 @@ import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.Win32GraphicsEnvironment;
 import sun.java2d.pipe.Region;
+
+import sun.java2d.SunGraphics2D;
 import sun.util.logging.PlatformLogger;
 
 import static sun.java2d.SunGraphicsEnvironment.toUserSpace;
@@ -901,5 +906,84 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                 }
             }
         }
+    }
+
+    @Override
+    public Graphics getGraphics() {
+        Graphics g = super.getGraphics();
+        if (!(g instanceof SunGraphics2D)) return g;
+        SunGraphics2D sg = (SunGraphics2D)g;
+
+        // [tav] For the scaling graphics we need to compensate the toplevel insets rounding error
+        // to place [0, 0] of the client area in its correct device pixel.
+        if (sg.transformState == SunGraphics2D.TRANSFORM_TRANSLATESCALE) {
+            Point2D err = getInsetsRoundingError(sg);
+            double errX = err.getX();
+            double errY = err.getY();
+            if (errX != 0 || errY != 0) {
+                // save the current tx
+                AffineTransform tx = sg.transform;
+
+                // translate the constrain
+                Region constrainClip = sg.constrainClip;
+                Shape usrClip = sg.usrClip;
+                if (constrainClip != null) {
+                    // SunGraphics2D.constrain(..) rounds down x/y, so to compensate we need to round up
+                    int _errX = (int) Math.ceil(errX);
+                    int _errY = (int) Math.ceil(errY);
+                    if ((_errX | _errY) != 0) {
+                        // drop everything to default
+                        sg.constrainClip = null;
+                        sg.usrClip = null;
+                        sg.clipState = SunGraphics2D.CLIP_DEVICE;
+                        sg.transform = new AffineTransform();
+                        sg.setDevClip(sg.getSurfaceData().getBounds());
+
+                        Region r = constrainClip.getTranslatedRegion(_errX, _errY);
+                        sg.constrain(r.getLoX(), r.getLoY(), r.getWidth(), r.getHeight());
+                    }
+                }
+
+                // translate usrClip
+                if (usrClip != null) {
+                    if (usrClip instanceof Rectangle2D) {
+                        Rectangle2D u = (Rectangle2D) usrClip;
+                        u.setRect(u.getX() + errX, u.getY() + errY, u.getWidth(), u.getHeight());
+                    } else {
+                        usrClip = AffineTransform.getTranslateInstance(errX, errY).createTransformedShape(usrClip);
+                    }
+                    sg.transform = new AffineTransform();
+                    sg.setClip(usrClip); // constrain clip is already valid
+                }
+
+                // finally translate the tx (in the device space, so via concatenate)
+                AffineTransform newTx = AffineTransform.getTranslateInstance(errX - sg.constrainX, errY - sg.constrainY);
+                newTx.concatenate(tx);
+                sg.setTransform(newTx);
+            }
+        }
+        return sg;
+    }
+
+    /**
+     * For the scaling graphics and a decorated toplevel as the destination,
+     * calculates the rounding error of the toplevel insets.
+     *
+     * @return the left/top insets rounding error, in device space
+     */
+    private Point2D getInsetsRoundingError(SunGraphics2D g) {
+        Point2D.Double err = new Point2D.Double(0, 0);
+        if (g.transformState >= SunGraphics2D.TRANSFORM_TRANSLATESCALE && !isTargetUndecorated()) {
+            Insets sysInsets = getSysInsets();
+            if (sysInsets != null) {
+                Insets insets = ((Window)target).getInsets();
+                // insets.left/top is a scaled down rounded value
+                // insets.left/top * tx.scale is a scaled up value (which contributes to graphics translate)
+                // sysInsets.left/top is the precise system value
+                err.x = sysInsets.left - insets.left * g.transform.getScaleX();
+                err.y = sysInsets.top - insets.top * g.transform.getScaleY();
+            }
+        }
+        return err;
     }
 }
