@@ -70,16 +70,16 @@ inline void ShenandoahConcurrentMark::count_liveness(jushort* live_data, oop obj
   if (!region->is_humongous_start()) {
     assert(!region->is_humongous(), "Cannot have continuations here");
     jushort cur = live_data[region_idx];
-    int size = obj->size() + BrooksPointer::word_size();
-    int max = (1 << (sizeof(jushort) * 8)) - 1;
+    size_t size = obj->size() + BrooksPointer::word_size();
+    size_t max = (1 << (sizeof(jushort) * 8)) - 1;
     if (size >= max) {
       // too big, add to region data directly
-      region->increase_live_data_words(size);
+      region->increase_live_data_gc_words(size);
     } else {
-      int new_val = cur + size;
+      size_t new_val = cur + size;
       if (new_val >= max) {
         // overflow, flush to region data
-        region->increase_live_data_words(new_val);
+        region->increase_live_data_gc_words(new_val);
         live_data[region_idx] = 0;
       } else {
         // still good, remember in locals
@@ -99,7 +99,7 @@ inline void ShenandoahConcurrentMark::count_liveness_humongous(oop obj) {
     ShenandoahHeapRegion* chain_reg = _heap->regions()->get(i);
     assert (i == region_idx ? chain_reg->is_humongous_start() : chain_reg->is_humongous_continuation(),
             "Region " SIZE_FORMAT " is inconsistent", i);
-    chain_reg->increase_live_data_words(chain_reg->used() >> LogHeapWordSize);
+    chain_reg->increase_live_data_gc_words(chain_reg->used() >> LogHeapWordSize);
   }
 }
 

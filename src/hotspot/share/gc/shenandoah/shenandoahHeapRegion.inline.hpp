@@ -86,15 +86,21 @@ inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahHeap::AllocTyp
   }
 }
 
-inline void ShenandoahHeapRegion::increase_live_data_words(size_t s) {
-  assert (s <= (size_t)max_jint, "sanity");
-  increase_live_data_words((int)s);
+inline void ShenandoahHeapRegion::increase_live_data_alloc_words(size_t s) {
+  if (!ShenandoahAllocImplicitLive) {
+    return;
+  }
+  internal_increase_live_data(s);
 }
 
-inline void ShenandoahHeapRegion::increase_live_data_words(int s) {
-  int new_live_data = Atomic::add(s, &_live_data);
+inline void ShenandoahHeapRegion::increase_live_data_gc_words(size_t s) {
+  internal_increase_live_data(s);
+}
+
+inline void ShenandoahHeapRegion::internal_increase_live_data(size_t s) {
+  size_t new_live_data = Atomic::add(s, &_live_data);
 #ifdef ASSERT
-  size_t live_bytes = (size_t)(new_live_data * HeapWordSize);
+  size_t live_bytes = new_live_data * HeapWordSize;
   size_t used_bytes = used();
   assert(live_bytes <= used_bytes,
          "can't have more live data than used: " SIZE_FORMAT ", " SIZE_FORMAT, live_bytes, used_bytes);

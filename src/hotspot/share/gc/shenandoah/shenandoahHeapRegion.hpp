@@ -212,7 +212,7 @@ private:
 
   ShenandoahHeap* _heap;
   size_t _region_number;
-  volatile int _live_data;
+  volatile size_t _live_data;
   MemRegion _reserved;
 
   size_t _tlab_allocs;
@@ -332,8 +332,12 @@ public:
 
   void clear_live_data();
   void set_live_data(size_t s);
-  inline void increase_live_data_words(size_t s);
-  inline void increase_live_data_words(int s);
+
+  // Increase live data for newly allocated region
+  inline void increase_live_data_alloc_words(size_t s);
+
+  // Increase live data for region scanned with GC
+  inline void increase_live_data_gc_words(size_t s);
 
   bool has_live() const;
   size_t get_live_data_bytes() const;
@@ -413,6 +417,8 @@ private:
 
   void oop_iterate_objects(ExtendedOopClosure* cl);
   void oop_iterate_humongous(ExtendedOopClosure* cl);
+
+  inline void internal_increase_live_data(size_t s);
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPREGION_HPP

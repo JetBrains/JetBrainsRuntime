@@ -999,7 +999,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       ShenandoahHeapRegion* r = _heap->regions()->get(i);
       jushort live = ld[i];
       if (live > 0) {
-        r->increase_live_data_words(live);
+        r->increase_live_data_gc_words(live);
       }
     }
   }

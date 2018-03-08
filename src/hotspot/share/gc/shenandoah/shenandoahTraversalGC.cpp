@@ -280,7 +280,7 @@ void ShenandoahTraversalGC::flush_liveness(uint worker_id) {
     ShenandoahHeapRegion* r = _heap->regions()->get(i);
     jushort live = ld[i];
     if (live > 0) {
-      r->increase_live_data_words(live);
+      r->increase_live_data_gc_words(live);
       ld[i] = 0;
     }
   }

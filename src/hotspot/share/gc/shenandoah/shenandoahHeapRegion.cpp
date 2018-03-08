@@ -296,7 +296,7 @@ bool ShenandoahHeapRegion::rollback_allocation(uint size) {
 }
 
 void ShenandoahHeapRegion::clear_live_data() {
-  OrderAccess::release_store_fence(&_live_data, 0);
+  OrderAccess::release_store_fence<size_t>(&_live_data, 0);
 }
 
 void ShenandoahHeapRegion::reset_alloc_metadata() {
@@ -338,11 +338,11 @@ size_t ShenandoahHeapRegion::get_gclab_allocs() const {
 
 void ShenandoahHeapRegion::set_live_data(size_t s) {
   assert(Thread::current()->is_VM_thread(), "by VM thread");
-  _live_data = (int) (s >> LogHeapWordSize);
+  _live_data = (s >> LogHeapWordSize);
 }
 
 size_t ShenandoahHeapRegion::get_live_data_words() const {
-  return (size_t)OrderAccess::load_acquire(&_live_data);
+  return OrderAccess::load_acquire(&_live_data);
 }
 
 size_t ShenandoahHeapRegion::get_live_data_bytes() const {
