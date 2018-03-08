@@ -62,7 +62,10 @@ void ShenandoahPeriodicTask::task() {
 void ShenandoahConcurrentThread::run_service() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
+  int sleep = ShenandoahControlIntervalMin;
+
   double last_shrink_time = os::elapsedTime();
+  double last_sleep_adjust_time = os::elapsedTime();
 
   // Shrink period avoids constantly polling regions for shrinking.
   // Having a period 10x lower than the delay would mean we hit the
@@ -186,20 +189,29 @@ void ShenandoahConcurrentThread::run_service() {
       set_forced_counters_update(false);
     }
 
-    // Try to uncommit stale regions
     double current = os::elapsedTime();
+
+    // Try to uncommit stale regions
     if (current - last_shrink_time > shrink_period) {
       heap->handle_heap_shrinkage(current - (ShenandoahUncommitDelay / 1000.0));
       last_shrink_time = current;
     }
 
-    // Wait before performing the next action
-    os::naked_short_sleep(ShenandoahControlLoopInterval);
+    // Wait before performing the next action. If allocation happened during this wait,
+    // we exit sooner, to let heuristics re-evaluate new conditions. If we are at idle,
+    // back off exponentially.
+    if (_heap_changed.try_unset()) {
+      sleep = ShenandoahControlIntervalMin;
+    } else if ((current - last_sleep_adjust_time) * 1000 > ShenandoahControlIntervalAdjustPeriod){
+      sleep = MIN2<int>(ShenandoahControlIntervalMax, MAX2(1, sleep * 2));
+      last_sleep_adjust_time = current;
+    }
+    os::naked_short_sleep(sleep);
   }
 
   // Wait for the actual stop(), can't leave run_service() earlier.
   while (!should_terminate()) {
-    os::naked_short_sleep(ShenandoahControlLoopInterval);
+    os::naked_short_sleep(ShenandoahControlIntervalMin);
   }
 }
 
@@ -468,9 +480,17 @@ void ShenandoahConcurrentThread::handle_force_counters_update() {
   }
 }
 
-void ShenandoahConcurrentThread::trigger_counters_update() {
+void ShenandoahConcurrentThread::notify_heap_changed() {
+  // This is called from allocation path, and thus should be fast.
+
+  // Update monitoring counters when we took a new region. This amortizes the
+  // update costs on slow path.
   if (_do_counters_update.is_unset()) {
     _do_counters_update.set();
+  }
+  // Notify that something had changed.
+  if (_heap_changed.is_unset()) {
+    _heap_changed.set();
   }
 }
 

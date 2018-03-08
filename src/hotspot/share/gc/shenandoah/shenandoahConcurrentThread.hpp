@@ -71,6 +71,7 @@ private:
   ShenandoahSharedFlag _explicit_gc;
   ShenandoahSharedFlag _alloc_failure_gc;
   ShenandoahSharedFlag _graceful_shutdown;
+  ShenandoahSharedFlag _heap_changed;
   ShenandoahSharedFlag _do_counters_update;
   ShenandoahSharedFlag _force_counters_update;
   GCCause::Cause _explicit_gc_cause;
@@ -107,9 +108,10 @@ public:
   void handle_explicit_gc(GCCause::Cause cause);
 
   void handle_counters_update();
-  void trigger_counters_update();
   void handle_force_counters_update();
   void set_forced_counters_update(bool value);
+
+  void notify_heap_changed();
 
   void start();
   void prepare_for_graceful_shutdown();
