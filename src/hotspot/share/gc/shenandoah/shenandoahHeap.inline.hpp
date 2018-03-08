@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2015, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -266,7 +266,7 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
   }
 }
 
-inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated, bool from_write_barrier) {
+inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated) {
   evacuated = false;
 
   if (Thread::current()->is_oom_during_evac()) {

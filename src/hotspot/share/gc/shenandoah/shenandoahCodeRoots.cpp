@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -117,7 +117,6 @@ volatile int ShenandoahCodeRoots::_recorded_nmethods_lock;
 GrowableArray<nmethod*>* ShenandoahCodeRoots::_recorded_nmethods;
 
 void ShenandoahCodeRoots::initialize() {
-  ResourceMark rm;
   _recorded_nmethods_lock = 0;
   _recorded_nmethods = new (ResourceObj::C_HEAP, mtGC) GrowableArray<nmethod*>(100, true, mtGC);
 }

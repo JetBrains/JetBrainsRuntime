@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2013, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -280,7 +280,7 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
         oopDesc::unsafe_equals(obj, fwd)) {
       ShenandoahEvacOOMScope oom_evac_scope;
       bool evac;
-      oop copy = _heap->evacuate_object(obj, Thread::current(), evac, true /* from write barrier */);
+      oop copy = _heap->evacuate_object(obj, Thread::current(), evac);
       if (evac && _heap->is_concurrent_partial_in_progress()) {
         enqueue(copy);
       }
