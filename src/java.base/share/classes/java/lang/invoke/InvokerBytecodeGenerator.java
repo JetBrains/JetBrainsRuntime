@@ -93,6 +93,10 @@ class InvokerBytecodeGenerator {
     private ClassWriter cw;
     private MethodVisitor mv;
 
+    /** Single element internal class name lookup cache. */
+    private Class<?> lastClass;
+    private String lastInternalName;
+
     private static final MemberName.Factory MEMBERNAME_FACTORY = MemberName.getFactory();
     private static final Class<?> HOST_CLASS = LambdaForm.class;
 
@@ -602,13 +606,18 @@ class InvokerBytecodeGenerator {
         mv.visitInsn(opcode);
     }
 
-    private static String getInternalName(Class<?> c) {
+    private String getInternalName(Class<?> c) {
         if (c == Object.class)             return OBJ;
         else if (c == Object[].class)      return OBJARY;
         else if (c == Class.class)         return CLS;
         else if (c == MethodHandle.class)  return MH;
         assert(VerifyAccess.isTypeVisible(c, Object.class)) : c.getName();
-        return c.getName().replace('.', '/');
+
+        if (c == lastClass) {
+            return lastInternalName;
+        }
+        lastClass = c;
+        return lastInternalName = c.getName().replace('.', '/');
     }
 
     private static MemberName resolveFrom(String name, MethodType type, Class<?> holder) {
@@ -928,6 +937,12 @@ class InvokerBytecodeGenerator {
         if (member == null)  return false;
         if (member.isConstructor())  return false;
         Class<?> cls = member.getDeclaringClass();
+        // Fast-path non-private members declared by MethodHandles, which is a common
+        // case
+        if (MethodHandle.class.isAssignableFrom(cls) && !member.isPrivate()) {
+            assert(isStaticallyInvocableType(member.getMethodOrFieldType()));
+            return true;
+        }
         if (cls.isArray() || cls.isPrimitive())
             return false;  // FIXME
         if (cls.isAnonymousClass() || cls.isLocalClass())
@@ -936,12 +951,8 @@ class InvokerBytecodeGenerator {
             return false;  // not on BCP
         if (ReflectUtil.isVMAnonymousClass(cls)) // FIXME: switch to supported API once it is added
             return false;
-        MethodType mtype = member.getMethodOrFieldType();
-        if (!isStaticallyNameable(mtype.returnType()))
+        if (!isStaticallyInvocableType(member.getMethodOrFieldType()))
             return false;
-        for (Class<?> ptype : mtype.parameterArray())
-            if (!isStaticallyNameable(ptype))
-                return false;
         if (!member.isPrivate() && VerifyAccess.isSamePackage(MethodHandle.class, cls))
             return true;   // in java.lang.invoke package
         if (member.isPublic() && isStaticallyNameable(cls))
@@ -949,9 +960,22 @@ class InvokerBytecodeGenerator {
         return false;
     }
 
+    private static boolean isStaticallyInvocableType(MethodType mtype) {
+        if (!isStaticallyNameable(mtype.returnType()))
+            return false;
+        for (Class<?> ptype : mtype.parameterArray())
+            if (!isStaticallyNameable(ptype))
+                return false;
+        return true;
+    }
+
     static boolean isStaticallyNameable(Class<?> cls) {
         if (cls == Object.class)
             return true;
+        if (MethodHandle.class.isAssignableFrom(cls)) {
+            assert(!ReflectUtil.isVMAnonymousClass(cls));
+            return true;
+        }
         while (cls.isArray())
             cls = cls.getComponentType();
         if (cls.isPrimitive())
