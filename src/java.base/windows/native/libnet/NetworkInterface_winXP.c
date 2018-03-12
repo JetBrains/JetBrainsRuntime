@@ -39,14 +39,15 @@ int getAddrsFromAdapter(IP_ADAPTER_ADDRESSES *ptr, netaddr **netaddrPP);
 #ifdef DEBUG
 void printnif (netif *nif) {
 #ifdef _WIN64
-        printf ("nif:0x%I64x name:%s\n", nif,nif->name);
+        printf ("nif:0x%I64x name:%s\n", (UINT_PTR)nif, nif->name);
 #else
-        printf ("nif:0x%x name:%s\n", nif,nif->name);
+        printf ("nif:0x%x name:%s\n", nif, nif->name);
 #endif
         if (nif->dNameIsUnicode) {
-            printf ("dName:%S index:%d ", nif->displayName,nif->index);
+            printf ("dName:%S index:%d ", (unsigned short *)nif->displayName,
+                nif->index);
         } else {
-            printf ("dName:%s index:%d ", nif->displayName,nif->index);
+            printf ("dName:%s index:%d ", nif->displayName, nif->index);
         }
         printf ("naddrs:%d\n", nif->naddrs);
 }
