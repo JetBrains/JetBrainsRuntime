@@ -514,11 +514,11 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       if (adr_type == NULL) {
         break; // skip dead nodes
       }
-      if (adr_type->isa_oopptr() ||
-          (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass) &&
-                        (adr_type == TypeRawPtr::NOTNULL &&
-                         adr->in(AddPNode::Address)->is_Proj() &&
-                         adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
+      if (   adr_type->isa_oopptr()
+          || (   (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
+              && adr_type == TypeRawPtr::NOTNULL
+              && adr->in(AddPNode::Address)->is_Proj()
+              && adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
         delayed_worklist->push(n); // Process it later.
 #ifdef ASSERT
         assert(adr->is_AddP(), "expecting an AddP");
@@ -733,11 +733,11 @@ void ConnectionGraph::add_final_edges(Node *n) {
           opcode == Op_CompareAndExchangeN || opcode == Op_CompareAndExchangeP) {
         add_local_var_and_edge(n, PointsToNode::NoEscape, adr, NULL);
       }
-      if (adr_type->isa_oopptr() ||
-          (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass) &&
-                        (adr_type == TypeRawPtr::NOTNULL &&
-                         adr->in(AddPNode::Address)->is_Proj() &&
-                         adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
+      if (   adr_type->isa_oopptr()
+          || (   (opcode == Op_StoreP || opcode == Op_StoreN || opcode == Op_StoreNKlass)
+              && adr_type == TypeRawPtr::NOTNULL
+              && adr->in(AddPNode::Address)->is_Proj()
+              && adr->in(AddPNode::Address)->in(0)->is_Allocate())) {
         // Point Address to Value
         PointsToNode* adr_ptn = ptnode_adr(adr->_idx);
         assert(adr_ptn != NULL &&
