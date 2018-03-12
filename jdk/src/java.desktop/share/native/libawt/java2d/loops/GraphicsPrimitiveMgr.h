@@ -557,6 +557,7 @@ extern jfieldID path2DWindingRuleID;
 extern jfieldID path2DFloatCoordsID;
 extern jfieldID sg2dStrokeHintID;
 extern jint sunHints_INTVAL_STROKE_PURE;
+extern jint graphicsPrimitive_traceflags;
 
 /*
  * Macros for using jlong variables as 32bits.32bits fractional values

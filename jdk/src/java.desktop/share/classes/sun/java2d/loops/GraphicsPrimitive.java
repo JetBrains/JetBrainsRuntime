@@ -335,7 +335,7 @@ public abstract class GraphicsPrimitive {
 
     static void showTraceUsage() {
         System.err.println("usage: -Dsun.java2d.trace="+
-                "[log[,timestamp]],[count],[ptime],"+
+                "[log[,timestamp]],[count],[ptime],[name:<substr pattern>],"+
                 "[out:<filename>],[td=<treshold>],[help],[verbose]");
     }
 
@@ -375,6 +375,9 @@ public abstract class GraphicsPrimitive {
                     showTraceUsage();
                 }
             }
+
+            GraphicsPrimitiveMgr.setTraceFlags(traceflags);
+
             if (verbose) {
                 System.err.print("GraphicsPrimitive logging ");
                 if ((traceflags & GraphicsPrimitive.TRACELOG) != 0) {
