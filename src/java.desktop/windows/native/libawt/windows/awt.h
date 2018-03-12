@@ -203,7 +203,7 @@ typedef AwtObject* PDATA;
 #define LO_INT(l)           ((int)(short)(l))
 #define HI_INT(l)           ((int)(short)(((DWORD)(l) >> 16) & 0xFFFF))
 
-extern JavaVM *jvm;
+extern "C" JavaVM *jvm;
 
 // Platform encoding is Unicode (UTF-16), re-define JNU_ functions
 // to proper JNI functions.

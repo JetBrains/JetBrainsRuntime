@@ -51,6 +51,7 @@ public final class GraphicsPrimitiveMgr {
                                        Class<?> Path2D, Class<?> Path2DFloat,
                                        Class<?> SHints);
     private static native void registerNativeLoops();
+    static native void setTraceFlags(int traceflags);
 
     static {
         initIDs(GraphicsPrimitive.class,

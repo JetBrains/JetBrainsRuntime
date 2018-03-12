@@ -558,6 +558,7 @@ JNIEXPORT extern jfieldID path2DWindingRuleID;
 JNIEXPORT extern jfieldID path2DFloatCoordsID;
 JNIEXPORT extern jfieldID sg2dStrokeHintID;
 JNIEXPORT extern jint sunHints_INTVAL_STROKE_PURE;
+JNIEXPORT extern jint graphicsPrimitive_traceflags;
 
 /*
  * Macros for using jlong variables as 32bits.32bits fractional values

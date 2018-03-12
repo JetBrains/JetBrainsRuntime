@@ -43,8 +43,8 @@
  * The following constants define the inner and outer bounds of the
  * accelerated glyph cache.
  */
-#define OGLTR_CACHE_WIDTH       1024
-#define OGLTR_CACHE_HEIGHT      1024
+#define OGLTR_CACHE_WIDTH       2048
+#define OGLTR_CACHE_HEIGHT      2048
 #define OGLTR_CACHE_CELL_WIDTH  64
 #define OGLTR_CACHE_CELL_HEIGHT 64
 
@@ -224,8 +224,10 @@ OGLTR_AddToGlyphCache(GlyphInfo *glyph, GLenum pixelFormat)
     J2dTraceLn(J2D_TRACE_INFO, "OGLTR_AddToGlyphCache");
 
     if (pixelFormat == GL_LUMINANCE) {
+        J2dTracePrimitive("OGLTR_AddToGlyphCacheGray");
         gcinfo = glyphCacheAA;
     } else {
+        J2dTracePrimitive("OGLTR_AddToGlyphCacheLCD");
         gcinfo = glyphCacheLCD;
     }
 
