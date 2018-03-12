@@ -1133,8 +1133,8 @@ Node* LoadNode::Identity(PhaseGVN* phase) {
           (value->in(0)->in(1) != NULL &&
            value->in(0)->in(1)->is_IfProj() &&
            (igvn->_worklist.member(value->in(0)->in(1)) ||
-            value->in(0)->in(1)->in(0) != NULL &&
-            igvn->_worklist.member(value->in(0)->in(1)->in(0))))) {
+            (value->in(0)->in(1)->in(0) != NULL &&
+             igvn->_worklist.member(value->in(0)->in(1)->in(0)))))) {
         igvn->_worklist.push(this);
         return this;
       }
@@ -1266,10 +1266,10 @@ Node* LoadNode::eliminate_autobox(PhaseGVN* phase) {
         Node* elements[4];
         int shift = exact_log2(type2aelembytes(T_OBJECT));
         int count = address->unpack_offsets(elements, ARRAY_SIZE(elements));
-        if ((count >  0) && elements[0]->is_Con() &&
-            ((count == 1) ||
-             (count == 2) && elements[1]->Opcode() == Op_LShiftX &&
-                             elements[1]->in(2) == phase->intcon(shift))) {
+        if (count > 0 && elements[0]->is_Con() &&
+            (count == 1 ||
+             (count == 2 && elements[1]->Opcode() == Op_LShiftX &&
+                            elements[1]->in(2) == phase->intcon(shift)))) {
           ciObjArray* array = base_type->const_oop()->as_obj_array();
           // Fetch the box object cache[0] at the base of the array and get its value
           ciInstance* box = array->obj_at(0)->as_instance();
