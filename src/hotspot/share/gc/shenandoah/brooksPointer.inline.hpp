@@ -26,8 +26,6 @@
 
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "runtime/atomic.hpp"
 
 inline HeapWord** BrooksPointer::brooks_ptr_addr(oop obj) {

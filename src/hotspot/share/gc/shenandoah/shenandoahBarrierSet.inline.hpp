@@ -24,6 +24,8 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
 
+#include "gc/shared/barrierSet.inline.hpp"
+#include "gc/shenandoah/brooksPointer.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
@@ -256,6 +258,16 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
   }
   return true;
 }
+
+// Clone barrier support
+template <DecoratorSet decorators, typename BarrierSetT>
+void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::clone_in_heap(oop src, oop dst, size_t size) {
+  src = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src));
+  dst = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst));
+  Raw::clone(src, dst, size);
+  ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_region(MemRegion((HeapWord*) dst, size));
+}
+
 
 template <DecoratorSet decorators, typename BarrierSetT>
 template <typename T>

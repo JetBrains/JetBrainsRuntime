@@ -29,6 +29,7 @@
 #include "utilities/sizes.hpp"
 
 class VMStructs;
+class ShenandoahHeap;
 
 class ShenandoahHeapRegion : public ContiguousSpace {
   friend class VMStructs;

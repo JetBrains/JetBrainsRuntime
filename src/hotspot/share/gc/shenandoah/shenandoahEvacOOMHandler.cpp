@@ -23,7 +23,12 @@
 
 #include "precompiled.hpp"
 
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
+#include "runtime/orderAccess.hpp"
+#include "runtime/os.hpp"
+#include "runtime/thread.hpp"
 
 const jint ShenandoahEvacOOMHandler::OOM_MARKER_MASK = 0x80000000;
 

@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "ci/ciUtilities.hpp"
 #include "code/debugInfo.hpp"
 #include "code/debugInfoRec.hpp"
 #include "code/nmethod.hpp"

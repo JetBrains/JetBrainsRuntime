@@ -24,6 +24,9 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHEVACOOMHANDLER_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHEVACOOMHANDLER_HPP
 
+#include "memory/allocation.hpp"
+#include "utilities/globalDefinitions.hpp"
+
 /**
  * Provides safe handling of out-of-memory situations during evacuation.
  *

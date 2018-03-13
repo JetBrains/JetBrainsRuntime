@@ -25,6 +25,7 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAP_HPP
 
 #include "gc/shared/markBitMap.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
