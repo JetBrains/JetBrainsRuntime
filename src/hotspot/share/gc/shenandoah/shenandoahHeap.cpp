@@ -1068,6 +1068,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahUpdateRefsClosure cl;
     MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
 

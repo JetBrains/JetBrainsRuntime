@@ -28,6 +28,7 @@
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionCounters.hpp"
+#include "services/memoryService.hpp"
 
 class ShenandoahYoungGenerationCounters : public GenerationCounters {
 public:

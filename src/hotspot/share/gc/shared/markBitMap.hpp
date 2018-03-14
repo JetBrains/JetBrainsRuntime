@@ -26,7 +26,6 @@
 #define SHARE_VM_GC_SHARED_CMBITMAP_HPP
 
 #include "memory/memRegion.hpp"
-#include "oops/oop.inline.hpp"
 #include "utilities/bitMap.hpp"
 #include "utilities/globalDefinitions.hpp"
 

@@ -24,8 +24,9 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_HPP
 
-#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shared/accessBarrierSupport.hpp"
 #include "gc/shared/barrierSet.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
 
 class ShenandoahBarrierSet: public BarrierSet {
 private:
@@ -267,12 +268,7 @@ public:
     static bool oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length);
 
     // Clone barrier support
-    static void clone_in_heap(oop src, oop dst, size_t size) {
-      src = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src));
-      dst = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst));
-      Raw::clone(src, dst, size);
-      ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_region(MemRegion((HeapWord*) dst, size));
-    }
+    static void clone_in_heap(oop src, oop dst, size_t size);
 
     // Needed for loads on non-heap weak references
     template <typename T>
