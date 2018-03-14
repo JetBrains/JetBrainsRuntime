@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -134,7 +134,6 @@ oop Universe::_null_ptr_exception_instance            = NULL;
 oop Universe::_arithmetic_exception_instance          = NULL;
 oop Universe::_virtual_machine_error_instance         = NULL;
 oop Universe::_vm_exception                           = NULL;
-oop Universe::_allocation_context_notification_obj    = NULL;
 oop Universe::_reference_pending_list                 = NULL;
 
 Array<int>* Universe::_the_empty_int_array            = NULL;
@@ -213,7 +212,6 @@ void Universe::oops_do(OopClosure* f, bool do_all) {
   f->do_oop((oop*)&_main_thread_group);
   f->do_oop((oop*)&_system_thread_group);
   f->do_oop((oop*)&_vm_exception);
-  f->do_oop((oop*)&_allocation_context_notification_obj);
   f->do_oop((oop*)&_reference_pending_list);
   debug_only(f->do_oop((oop*)&_fullgc_alot_dummy_array);)
 }
@@ -542,32 +540,6 @@ oop Universe::swap_reference_pending_list(oop list) {
 #undef assert_pll_locked
 #undef assert_pll_ownership
 
-
-static bool has_run_finalizers_on_exit = false;
-
-void Universe::run_finalizers_on_exit() {
-  if (has_run_finalizers_on_exit) return;
-  has_run_finalizers_on_exit = true;
-
-  // Called on VM exit. This ought to be run in a separate thread.
-  log_trace(ref)("Callback to run finalizers on exit");
-  {
-    PRESERVE_EXCEPTION_MARK;
-    Klass* finalizer_klass = SystemDictionary::Finalizer_klass();
-    JavaValue result(T_VOID);
-    JavaCalls::call_static(
-      &result,
-      finalizer_klass,
-      vmSymbols::run_finalizers_on_exit_name(),
-      vmSymbols::void_method_signature(),
-      THREAD
-    );
-    // Ignore any pending exceptions
-    CLEAR_PENDING_EXCEPTION;
-  }
-}
-
-
 // initialize_vtable could cause gc if
 // 1) we specified true to initialize_vtable and
 // 2) this ran after gc was enabled
@@ -762,14 +734,8 @@ CollectedHeap* Universe::create_heap() {
 // HeapBased - Use compressed oops with heap base + encoding.
 
 jint Universe::initialize_heap() {
-  jint status = JNI_ERR;
-
-  _collectedHeap = create_heap_ext();
-  if (_collectedHeap == NULL) {
-    _collectedHeap = create_heap();
-  }
-
-  status = _collectedHeap->initialize();
+  _collectedHeap = create_heap();
+  jint status = _collectedHeap->initialize();
   if (status != JNI_OK) {
     return status;
   }

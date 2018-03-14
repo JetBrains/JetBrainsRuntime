@@ -41,6 +41,12 @@ void BarrierSet::static_write_ref_array_pre(HeapWord* start, size_t count) {
 }
 
 // count is number of array elements being written
+void BarrierSet::static_write_ref_array_post(HeapWord* start, size_t count) {
+  // simply delegate to instance method
+  Universe::heap()->barrier_set()->write_ref_array(start, count);
+}
+
+// count is number of array elements being written
 void BarrierSet::write_ref_array(HeapWord* start, size_t count) {
   assert(count <= (size_t)max_intx, "count too large");
   HeapWord* end = (HeapWord*)((char*)start + (count*heapOopSize));
@@ -63,12 +69,6 @@ void BarrierSet::write_ref_array(HeapWord* start, size_t count) {
   write_ref_array_work(MemRegion(aligned_start, aligned_end));
 }
 
-// count is number of array elements being written
-void BarrierSet::static_write_ref_array_post(HeapWord* start, size_t count) {
-  // simply delegate to instance method
-  Universe::heap()->barrier_set()->write_ref_array(start, count);
-}
-
 bool BarrierSet::obj_equals(oop obj1, oop obj2) {
   return oopDesc::unsafe_equals(obj1, obj2);
 }
@@ -85,4 +85,5 @@ void BarrierSet::verify_safe_oop(oop p) {
 void BarrierSet::verify_safe_oop(narrowOop p) {
   // Do nothing
 }
+
 #endif

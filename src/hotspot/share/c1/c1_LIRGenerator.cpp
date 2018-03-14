@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@
 #include "ci/ciArrayKlass.hpp"
 #include "ci/ciInstance.hpp"
 #include "ci/ciObjArray.hpp"
+#include "ci/ciUtilities.hpp"
+#include "gc/shared/cardTable.hpp"
 #include "gc/shared/cardTableModRefBS.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "runtime/arguments.hpp"
@@ -1472,11 +1474,7 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
       Shenandoah_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableForRS:
-    case BarrierSet::CardTableExtension:
-      // No pre barriers
-      break;
-    case BarrierSet::ModRef:
+    case BarrierSet::CardTableModRef:
       // No pre barriers
       break;
     default      :
@@ -1505,10 +1503,7 @@ void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
       }
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableForRS:
-    case BarrierSet::CardTableExtension:
-      break;
-    case BarrierSet::ModRef:
+    case BarrierSet::CardTableModRef:
       break;
     default      :
       ShouldNotReachHere();
@@ -1525,12 +1520,8 @@ void LIRGenerator::post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
       Shenandoah_post_barrier(addr,  new_val);
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableForRS:
-    case BarrierSet::CardTableExtension:
+    case BarrierSet::CardTableModRef:
       CardTableModRef_post_barrier(addr,  new_val);
-      break;
-    case BarrierSet::ModRef:
-      // No post barriers
       break;
     default      :
       ShouldNotReachHere();
@@ -1780,9 +1771,7 @@ void LIRGenerator::Shenandoah_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_v
 ////////////////////////////////////////////////////////////////////////
 
 void LIRGenerator::CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
-  CardTableModRefBS* ct = barrier_set_cast<CardTableModRefBS>(_bs);
-  assert(sizeof(*(ct->byte_map_base)) == sizeof(jbyte), "adjust this code");
-  LIR_Const* card_table_base = new LIR_Const(ct->byte_map_base);
+  LIR_Const* card_table_base = new LIR_Const(ci_card_table_address());
   if (addr->is_address()) {
     LIR_Address* address = addr->as_address_ptr();
     // ptr cannot be an object because we use this barrier for array card marks
@@ -1804,9 +1793,9 @@ void LIRGenerator::CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* 
   LIR_Opr tmp = new_pointer_register();
   if (TwoOperandLIRForm) {
     __ move(addr, tmp);
-    __ unsigned_shift_right(tmp, CardTableModRefBS::card_shift, tmp);
+    __ unsigned_shift_right(tmp, CardTable::card_shift, tmp);
   } else {
-    __ unsigned_shift_right(addr, CardTableModRefBS::card_shift, tmp);
+    __ unsigned_shift_right(addr, CardTable::card_shift, tmp);
   }
 
   LIR_Address* card_addr;
@@ -1816,7 +1805,7 @@ void LIRGenerator::CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* 
     card_addr = new LIR_Address(tmp, load_constant(card_table_base), T_BYTE);
   }
 
-  LIR_Opr dirty = LIR_OprFact::intConst(CardTableModRefBS::dirty_card_val());
+  LIR_Opr dirty = LIR_OprFact::intConst(CardTable::dirty_card_val());
   if (UseCondCardMark) {
     LIR_Opr cur_value = new_register(T_INT);
     if (UseConcMarkSweepGC) {

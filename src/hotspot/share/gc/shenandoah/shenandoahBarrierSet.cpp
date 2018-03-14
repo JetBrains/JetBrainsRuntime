@@ -202,7 +202,7 @@ void ShenandoahBarrierSet::write_ref_field_work(void* v, oop o, bool release) {
   shenandoah_assert_not_in_cset_except    (v, o, o == NULL || _heap->cancelled_concgc() || !_heap->is_concurrent_mark_in_progress());
 }
 
-void ShenandoahBarrierSet::write_region_work(MemRegion mr) {
+void ShenandoahBarrierSet::write_region(MemRegion mr) {
   assert(UseShenandoahGC, "should be enabled");
   if (!ShenandoahCloneBarrier) return;
   if (! need_update_refs_barrier()) return;
@@ -338,3 +338,20 @@ void ShenandoahBarrierSet::verify_safe_oop(narrowOop p) {
   verify_safe_oop(oopDesc::decode_heap_oop(p));
 }
 #endif
+
+void ShenandoahBarrierSet::on_thread_attach(JavaThread* thread) {
+  assert(!SafepointSynchronize::is_at_safepoint(), "We should not be at a safepoint");
+  assert(!thread->satb_mark_queue().is_active(), "SATB queue should not be active");
+  assert(thread->satb_mark_queue().is_empty(), "SATB queue should be empty");
+  if (thread->satb_mark_queue_set().is_active()) {
+    thread->satb_mark_queue().set_active(true);
+  }
+  thread->set_gc_state(JavaThread::gc_state_global());
+}
+
+void ShenandoahBarrierSet::on_thread_detach(JavaThread* thread) {
+  thread->satb_mark_queue().flush();
+  if (UseTLAB && thread->gclab().is_initialized()) {
+    thread->gclab().make_parsable(true);
+  }
+}

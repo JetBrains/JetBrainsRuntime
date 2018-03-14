@@ -863,7 +863,7 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   uint nworkers = workers->active_workers();
 
   // Setup collector policy for softref cleaning.
-  bool clear_soft_refs = sh->collector_policy()->use_should_clear_all_soft_refs(true /* bogus arg*/);
+  bool clear_soft_refs = sh->soft_ref_policy()->use_should_clear_all_soft_refs(true /* bogus arg*/);
   log_develop_debug(gc, ref)("clearing soft refs: %s", BOOL_TO_STR(clear_soft_refs));
   rp->setup_policy(clear_soft_refs);
   rp->set_active_mt_degree(nworkers);

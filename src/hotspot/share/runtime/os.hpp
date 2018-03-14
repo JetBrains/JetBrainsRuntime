@@ -27,6 +27,8 @@
 
 #include "jvm.h"
 #include "jvmtifiles/jvmti.h"
+#include "metaprogramming/isRegisteredEnum.hpp"
+#include "metaprogramming/integralConstant.hpp"
 #include "runtime/extendedPC.hpp"
 #include "runtime/handles.hpp"
 #include "utilities/macros.hpp"
@@ -270,6 +272,10 @@ class os: AllStatic {
   static bool must_commit_stack_guard_pages();
   static void map_stack_shadow_pages(address sp);
   static bool stack_shadow_pages_available(Thread *thread, const methodHandle& method, address sp);
+
+  // Return size of stack that is actually committed. For Java thread, the bottom should be above
+  // guard pages (stack grows downward)
+  static size_t committed_stack_size(address bottom, size_t size);
 
   // OS interface to Virtual Memory
 
@@ -643,8 +649,10 @@ class os: AllStatic {
   static void *find_agent_function(AgentLibrary *agent_lib, bool check_lib,
                                    const char *syms[], size_t syms_len);
 
-  // Write to stream
-  static int log_vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
+  // Provide C99 compliant versions of these functions, since some versions
+  // of some platforms don't.
+  static int vsnprintf(char* buf, size_t len, const char* fmt, va_list args) ATTRIBUTE_PRINTF(3, 0);
+  static int snprintf(char* buf, size_t len, const char* fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 
   // Get host name in buffer provided
   static bool get_host_name(char* buf, size_t buflen);
@@ -913,11 +921,11 @@ class os: AllStatic {
   class SuspendedThreadTask {
   public:
     SuspendedThreadTask(Thread* thread) : _thread(thread), _done(false) {}
-    virtual ~SuspendedThreadTask() {}
     void run();
     bool is_done() { return _done; }
     virtual void do_task(const SuspendedThreadTaskContext& context) = 0;
   protected:
+    ~SuspendedThreadTask() {}
   private:
     void internal_do_task();
     Thread* _thread;
@@ -1011,6 +1019,10 @@ class os: AllStatic {
   static bool set_boot_path(char fileSep, char pathSep);
 
 };
+
+#ifndef _WINDOWS
+template<> struct IsRegisteredEnum<os::SuspendResume::State> : public TrueType {};
+#endif // !_WINDOWS
 
 // Note that "PAUSE" is almost always used with synchronization
 // so arguably we should provide Atomic::SpinPause() instead

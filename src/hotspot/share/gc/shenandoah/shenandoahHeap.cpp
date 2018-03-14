@@ -88,12 +88,7 @@ public:
   ShenandoahPretouchTask(ShenandoahHeapRegionSet* regions,
                          char* bitmap0_base, char* bitmap1_base, size_t bitmap_size,
                          size_t page_size) :
-    AbstractGangTask("Shenandoah PreTouch",
-                     Universe::is_fully_initialized() ? GCId::current_raw() :
-                                                        // During VM initialization there is
-                                                        // no GC cycle that this task can be
-                                                        // associated with.
-                                                        GCId::undefined()),
+    AbstractGangTask("Shenandoah PreTouch"),
     _bitmap0_base(bitmap0_base),
     _bitmap1_base(bitmap1_base),
     _regions(regions),
@@ -127,7 +122,6 @@ public:
 };
 
 jint ShenandoahHeap::initialize() {
-  CollectedHeap::pre_initialize();
 
   BrooksPointer::initial_checks();
 
@@ -342,6 +336,7 @@ jint ShenandoahHeap::initialize() {
 ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   CollectedHeap(),
   _shenandoah_policy(policy),
+  _soft_ref_policy(),
   _free_regions(NULL),
   _collection_set(NULL),
   _bytes_allocated_since_gc_start(0),
@@ -2888,4 +2883,8 @@ void ShenandoahHeap::enter_evacuation() {
 
 void ShenandoahHeap::leave_evacuation() {
   _oom_evac_handler.leave_evacuation();
+}
+
+SoftRefPolicy* ShenandoahHeap::soft_ref_policy() {
+  return &_soft_ref_policy;
 }

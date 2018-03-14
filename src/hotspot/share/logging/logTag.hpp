@@ -60,6 +60,7 @@
   LOG_TAG(cset) \
   LOG_TAG(data) \
   LOG_TAG(datacreation) \
+  LOG_TAG(decoder) \
   LOG_TAG(defaultmethods) \
   LOG_TAG(dump) \
   LOG_TAG(ergo) \
@@ -191,6 +192,8 @@ class LogTag : public AllStatic {
   }
 
   static LogTag::type from_string(const char *str);
+  static LogTag::type fuzzy_match(const char *tag);
+  static void list_tags(outputStream* out);
 
  private:
   static const char* _name[];

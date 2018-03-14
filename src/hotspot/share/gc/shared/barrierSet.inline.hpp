@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,5 @@
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetConfig.inline.hpp"
 #include "utilities/align.hpp"
-
-inline void BarrierSet::write_region(MemRegion mr) {
-  write_region_work(mr);
-}
 
 #endif // SHARE_VM_GC_SHARED_BARRIERSET_INLINE_HPP

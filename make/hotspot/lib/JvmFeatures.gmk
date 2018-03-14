@@ -130,7 +130,7 @@ ifneq ($(call check-jvm-feature, all-gcs), true)
       g1MemoryPool.cpp \
       psMemoryPool.cpp
 else
-  JVM_CFLAGS_FEATURES += -DSUPPORT_BARRIER_ON_PRIMITIVES
+  JVM_CFLAGS_FEATURES += -DSUPPORT_BARRIER_ON_PRIMITIVES -DSUPPORT_NOT_TO_SPACE_INVARIANT
 endif
 
 ifneq ($(call check-jvm-feature, nmt), true)

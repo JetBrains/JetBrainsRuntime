@@ -25,6 +25,7 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAP_HPP
 
 #include "gc/shared/markBitMap.hpp"
+#include "gc/shared/softRefPolicy.hpp"
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
@@ -207,6 +208,7 @@ private:
   ShenandoahSharedBitmap _gc_state;
   ShenandoahHeapLock _lock;
   ShenandoahCollectorPolicy* _shenandoah_policy;
+  SoftRefPolicy _soft_ref_policy;
   size_t _bitmap_size;
   size_t _bitmap_regions_per_slice;
   size_t _bitmap_bytes_per_slice;
@@ -321,6 +323,7 @@ public:
   void do_full_collection(bool clear_all_soft_refs) /* override */;
   AdaptiveSizePolicy* size_policy() /* override */;
   CollectorPolicy* collector_policy() const /* override */;
+  SoftRefPolicy* soft_ref_policy() /* override */;
   void ensure_parsability(bool retire_tlabs) /* override */;
   HeapWord* block_start(const void* addr) const /* override */;
   size_t block_size(const HeapWord* addr) const /* override */;

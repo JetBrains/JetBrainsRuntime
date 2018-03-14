@@ -93,13 +93,7 @@ public:
   }
 
 private:
-  static bool equals(typeArrayOop value1, typeArrayOop value2) {
-    return (oopDesc::equals(value1, value2) ||
-            (value1->length() == value2->length() &&
-            (!memcmp(value1->base(T_BYTE),
-                     value2->base(T_BYTE),
-                    value1->length() * sizeof(jbyte)))));
-  }
+  static bool equals(typeArrayOop value1, typeArrayOop value2);
 };
 
 /* ShenandoahStringDedupTable:

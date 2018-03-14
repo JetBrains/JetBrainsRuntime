@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ G1ParScanThreadState::G1ParScanThreadState(G1CollectedHeap* g1h, uint worker_id,
   : _g1h(g1h),
     _refs(g1h->task_queue(worker_id)),
     _dcq(&g1h->dirty_card_queue_set()),
-    _ct_bs(g1h->g1_barrier_set()),
+    _ct(g1h->card_table()),
     _closures(NULL),
     _hash_seed(17),
     _worker_id(worker_id),
@@ -206,7 +206,7 @@ void G1ParScanThreadState::report_promotion_event(InCSetState const dest_state,
                                                   oop const old, size_t word_sz, uint age,
                                                   HeapWord * const obj_ptr,
                                                   const AllocationContext_t context) const {
-  G1PLAB* alloc_buf = _plab_allocator->alloc_buffer(dest_state, context);
+  PLAB* alloc_buf = _plab_allocator->alloc_buffer(dest_state, context);
   if (alloc_buf->contains(obj_ptr)) {
     _g1h->_gc_tracer_stw->report_promotion_in_new_plab_event(old->klass(), word_sz, age,
                                                              dest_state.value() == InCSetState::Old,
@@ -390,7 +390,6 @@ oop G1ParScanThreadState::handle_evacuation_failure_par(oop old, markOop m) {
     return forward_ptr;
   }
 }
-
 G1ParScanThreadStateSet::G1ParScanThreadStateSet(G1CollectedHeap* g1h, uint n_workers, size_t young_cset_length) :
     _g1h(g1h),
     _states(NEW_C_HEAP_ARRAY(G1ParScanThreadState*, n_workers, mtGC)),

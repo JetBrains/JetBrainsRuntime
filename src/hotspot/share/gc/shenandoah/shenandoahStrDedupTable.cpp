@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahStrDedupTable.hpp"
 #include "memory/allocation.hpp"
+#include "oops/arrayOop.inline.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/safepoint.hpp"
 
@@ -518,4 +519,12 @@ size_t ShenandoahStrDedupExpandTableTask::split_bucket(ShenandoahStrDedupEntry* 
     }
   }
   return transferred;
+}
+
+bool ShenandoahStrDedupEntry::equals(typeArrayOop value1, typeArrayOop value2) {
+  return (oopDesc::equals(value1, value2) ||
+          (value1->length() == value2->length() &&
+           (!memcmp(value1->base(T_BYTE),
+                    value2->base(T_BYTE),
+                    value1->length() * sizeof(jbyte)))));
 }

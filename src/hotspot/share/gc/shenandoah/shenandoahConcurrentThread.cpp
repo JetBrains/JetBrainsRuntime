@@ -419,7 +419,7 @@ void ShenandoahConcurrentThread::handle_explicit_gc(GCCause::Cause cause) {
 }
 
 void ShenandoahConcurrentThread::handle_alloc_failure() {
-  ShenandoahHeap::heap()->collector_policy()->set_should_clear_all_soft_refs(true);
+  ShenandoahHeap::heap()->soft_ref_policy()->set_should_clear_all_soft_refs(true);
   assert(current()->is_Java_thread(), "expect Java thread here");
 
   if (try_set_alloc_failure_gc()) {
@@ -441,7 +441,7 @@ void ShenandoahConcurrentThread::handle_alloc_failure_evac() {
   // We ran out of memory during evacuation. Cancel evacuation, and schedule a GC.
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  heap->collector_policy()->set_should_clear_all_soft_refs(true);
+  heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
   try_set_alloc_failure_gc();
   heap->cancel_concgc(GCCause::_shenandoah_allocation_failure_evac);
 }

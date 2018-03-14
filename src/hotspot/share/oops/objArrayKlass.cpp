@@ -268,10 +268,14 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
   }
 
   if (UseCompressedOops) {
+    s = arrayOop(Access<>::resolve(s));
+    d = arrayOop(Access<>::resolve(d));
     narrowOop* const src = objArrayOop(s)->obj_at_addr<narrowOop>(src_pos);
     narrowOop* const dst = objArrayOop(d)->obj_at_addr<narrowOop>(dst_pos);
     do_copy<narrowOop>(s, src, d, dst, length, CHECK);
   } else {
+    s = arrayOop(Access<>::resolve(s));
+    d = arrayOop(Access<>::resolve(d));
     oop* const src = objArrayOop(s)->obj_at_addr<oop>(src_pos);
     oop* const dst = objArrayOop(d)->obj_at_addr<oop>(dst_pos);
     do_copy<oop> (s, src, d, dst, length, CHECK);

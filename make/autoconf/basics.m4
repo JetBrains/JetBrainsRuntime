@@ -263,7 +263,7 @@ AC_DEFUN([BASIC_REMOVE_SYMBOLIC_LINKS],
       READLINK_TESTED=yes
     fi
 
-    if test "x$READLINK" != x && "x$READLINK_ISGNU" != x; then
+    if test "x$READLINK" != x && test "x$READLINK_ISGNU" != x; then
       $1=`$READLINK -f [$]$1`
     else
       # Save the current directory for restoring afterwards
@@ -1127,6 +1127,8 @@ AC_DEFUN_ONCE([BASIC_SETUP_COMPLEX_TOOLS],
       fi
     fi
     BASIC_REQUIRE_PROGS(SETFILE, SetFile)
+  elif test "x$OPENJDK_TARGET_OS" = "xsolaris"; then
+    BASIC_REQUIRE_PROGS(ELFEDIT, elfedit)
   fi
 ])
 

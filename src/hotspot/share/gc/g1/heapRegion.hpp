@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@
 #include "gc/g1/heapRegionType.hpp"
 #include "gc/g1/survRateGroup.hpp"
 #include "gc/shared/ageTable.hpp"
+#include "gc/shared/cardTable.hpp"
 #include "gc/shared/spaceDecorator.hpp"
 #include "utilities/macros.hpp"
 
@@ -719,23 +720,23 @@ class HeapRegion: public G1ContiguousSpace {
 };
 
 // HeapRegionClosure is used for iterating over regions.
-// Terminates the iteration when the "doHeapRegion" method returns "true".
+// Terminates the iteration when the "do_heap_region" method returns "true".
 class HeapRegionClosure : public StackObj {
   friend class HeapRegionManager;
   friend class G1CollectionSet;
 
-  bool _complete;
-  void incomplete() { _complete = false; }
+  bool _is_complete;
+  void set_incomplete() { _is_complete = false; }
 
  public:
-  HeapRegionClosure(): _complete(true) {}
+  HeapRegionClosure(): _is_complete(true) {}
 
   // Typically called on each region until it returns true.
-  virtual bool doHeapRegion(HeapRegion* r) = 0;
+  virtual bool do_heap_region(HeapRegion* r) = 0;
 
   // True after iteration if the closure was applied to all heap regions
   // and returned "false" in all cases.
-  bool complete() { return _complete; }
+  bool is_complete() { return _is_complete; }
 };
 
 #endif // SHARE_VM_GC_G1_HEAPREGION_HPP

@@ -44,6 +44,7 @@
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/typeArrayOop.inline.hpp"
 #include "prims/wbtestmethods/parserTests.hpp"
 #include "prims/whitebox.hpp"
 #include "runtime/arguments.hpp"
@@ -52,6 +53,7 @@
 #include "runtime/handshake.hpp"
 #include "runtime/interfaceSupport.hpp"
 #include "runtime/javaCalls.hpp"
+#include "runtime/jniHandles.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/thread.hpp"
@@ -59,6 +61,7 @@
 #include "runtime/vm_version.hpp"
 #include "utilities/align.hpp"
 #include "utilities/debug.hpp"
+#include "utilities/elfFile.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_CDS
@@ -79,7 +82,6 @@
 #endif // INCLUDE_NMT
 
 #ifdef LINUX
-#include "utilities/elfFile.hpp"
 #include "osContainer_linux.hpp"
 #endif
 
@@ -533,7 +535,7 @@ class OldRegionsLivenessClosure: public HeapRegionClosure {
     size_t total_memory() { return _total_memory; }
     size_t total_memory_to_free() { return _total_memory_to_free; }
 
-  bool doHeapRegion(HeapRegion* r) {
+  bool do_heap_region(HeapRegion* r) {
     if (r->is_old()) {
       size_t prev_live = r->marked_bytes();
       size_t live = r->live_bytes();
@@ -601,6 +603,13 @@ WB_ENTRY(jlong, WB_NMTReserveMemory(JNIEnv* env, jobject o, jlong size))
   jlong addr = 0;
 
   addr = (jlong)(uintptr_t)os::reserve_memory(size);
+  MemTracker::record_virtual_memory_type((address)addr, mtTest);
+
+  return addr;
+WB_END
+
+WB_ENTRY(jlong, WB_NMTAttemptReserveMemoryAt(JNIEnv* env, jobject o, jlong addr, jlong size))
+  addr = (jlong)(uintptr_t)os::attempt_reserve_memory_at((size_t)size, (char*)(uintptr_t)addr);
   MemTracker::record_virtual_memory_type((address)addr, mtTest);
 
   return addr;
@@ -1216,12 +1225,12 @@ WB_ENTRY(jboolean, WB_IsInStringTable(JNIEnv* env, jobject o, jstring javaString
 WB_END
 
 WB_ENTRY(void, WB_FullGC(JNIEnv* env, jobject o))
-  Universe::heap()->collector_policy()->set_should_clear_all_soft_refs(true);
+  Universe::heap()->soft_ref_policy()->set_should_clear_all_soft_refs(true);
   Universe::heap()->collect(GCCause::_wb_full_gc);
 #if INCLUDE_ALL_GCS
   if (UseG1GC) {
     // Needs to be cleared explicitly for G1
-    Universe::heap()->collector_policy()->set_should_clear_all_soft_refs(false);
+    Universe::heap()->soft_ref_policy()->set_should_clear_all_soft_refs(false);
   }
 #endif // INCLUDE_ALL_GCS
 WB_END
@@ -1744,6 +1753,10 @@ WB_ENTRY(jboolean, WB_IsCDSIncludedInVmBuild(JNIEnv* env))
 #endif // INCLUDE_CDS
 WB_END
 
+WB_ENTRY(jboolean, WB_IsJavaHeapArchiveSupported(JNIEnv* env))
+  return MetaspaceShared::is_heap_object_archiving_allowed();
+WB_END
+
 
 #if INCLUDE_CDS
 
@@ -1916,6 +1929,13 @@ WB_ENTRY(void, WB_PrintOsInfo(JNIEnv* env, jobject o))
   os::print_os_info(tty);
 WB_END
 
+// Elf decoder
+WB_ENTRY(void, WB_DisableElfSectionCache(JNIEnv* env))
+#if !defined(_WINDOWS) && !defined(__APPLE__) && !defined(_AIX)
+  ElfFile::_do_not_cache_elf_section = true;
+#endif
+WB_END
+
 
 #define CC (char*)
 
@@ -1967,6 +1987,7 @@ static JNINativeMethod methods[] = {
   {CC"NMTMallocWithPseudoStack", CC"(JI)J",           (void*)&WB_NMTMallocWithPseudoStack},
   {CC"NMTFree",             CC"(J)V",                 (void*)&WB_NMTFree            },
   {CC"NMTReserveMemory",    CC"(J)J",                 (void*)&WB_NMTReserveMemory   },
+  {CC"NMTAttemptReserveMemoryAt",    CC"(JJ)J",       (void*)&WB_NMTAttemptReserveMemoryAt },
   {CC"NMTCommitMemory",     CC"(JJ)V",                (void*)&WB_NMTCommitMemory    },
   {CC"NMTUncommitMemory",   CC"(JJ)V",                (void*)&WB_NMTUncommitMemory  },
   {CC"NMTReleaseMemory",    CC"(JJ)V",                (void*)&WB_NMTReleaseMemory   },
@@ -2113,6 +2134,8 @@ static JNINativeMethod methods[] = {
   {CC"getResolvedReferences", CC"(Ljava/lang/Class;)Ljava/lang/Object;", (void*)&WB_GetResolvedReferences},
   {CC"areOpenArchiveHeapObjectsMapped",   CC"()Z",    (void*)&WB_AreOpenArchiveHeapObjectsMapped},
   {CC"isCDSIncludedInVmBuild",            CC"()Z",    (void*)&WB_IsCDSIncludedInVmBuild },
+  {CC"isJavaHeapArchiveSupported",      CC"()Z",      (void*)&WB_IsJavaHeapArchiveSupported },
+
   {CC"clearInlineCaches0",  CC"(Z)V",                 (void*)&WB_ClearInlineCaches },
   {CC"handshakeWalkStack", CC"(Ljava/lang/Thread;Z)I", (void*)&WB_HandshakeWalkStack },
   {CC"addCompilerDirective",    CC"(Ljava/lang/String;)I",
@@ -2130,6 +2153,7 @@ static JNINativeMethod methods[] = {
                                                       (void*)&WB_CheckLibSpecifiesNoexecstack},
   {CC"isContainerized",           CC"()Z",            (void*)&WB_IsContainerized },
   {CC"printOsInfo",               CC"()V",            (void*)&WB_PrintOsInfo },
+  {CC"disableElfSectionCache",    CC"()V",            (void*)&WB_DisableElfSectionCache },
 };
 
 

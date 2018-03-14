@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@
 #include "code/codeCache.hpp"
 #include "gc/parallel/adjoiningGenerations.hpp"
 #include "gc/parallel/adjoiningVirtualSpaces.hpp"
-#include "gc/parallel/cardTableExtension.hpp"
 #include "gc/parallel/gcTaskManager.hpp"
 #include "gc/parallel/generationSizer.hpp"
 #include "gc/parallel/objectStartArray.inline.hpp"
@@ -57,8 +56,6 @@ PSGCAdaptivePolicyCounters* ParallelScavengeHeap::_gc_policy_counters = NULL;
 GCTaskManager* ParallelScavengeHeap::_gc_task_manager = NULL;
 
 jint ParallelScavengeHeap::initialize() {
-  CollectedHeap::pre_initialize();
-
   const size_t heap_size = _collector_policy->max_heap_byte_size();
 
   ReservedSpace heap_rs = Universe::reserve_heap(heap_size, _collector_policy->heap_alignment());
@@ -72,7 +69,9 @@ jint ParallelScavengeHeap::initialize() {
 
   initialize_reserved_region((HeapWord*)heap_rs.base(), (HeapWord*)(heap_rs.base() + heap_rs.size()));
 
-  CardTableExtension* const barrier_set = new CardTableExtension(reserved_region());
+  PSCardTable* card_table = new PSCardTable(reserved_region());
+  card_table->initialize();
+  CardTableModRefBS* const barrier_set = new CardTableModRefBS(card_table);
   barrier_set->initialize();
   set_barrier_set(barrier_set);
 
@@ -333,7 +332,7 @@ HeapWord* ParallelScavengeHeap::mem_allocate(
         // excesses).  Fill op.result() with a filler object so that the
         // heap remains parsable.
         const bool limit_exceeded = size_policy()->gc_overhead_limit_exceeded();
-        const bool softrefs_clear = collector_policy()->all_soft_refs_clear();
+        const bool softrefs_clear = soft_ref_policy()->all_soft_refs_clear();
 
         if (limit_exceeded && softrefs_clear) {
           *gc_overhead_limit_was_exceeded = true;
@@ -490,13 +489,6 @@ void ParallelScavengeHeap::resize_all_tlabs() {
   CollectedHeap::resize_all_tlabs();
 }
 
-bool ParallelScavengeHeap::can_elide_initializing_store_barrier(oop new_obj) {
-  // We don't need barriers for stores to objects in the
-  // young gen and, a fortiori, for initializing stores to
-  // objects therein.
-  return is_in_young(new_obj);
-}
-
 // This method is used by System.gc() and JVMTI.
 void ParallelScavengeHeap::collect(GCCause::Cause cause) {
   assert(!Heap_lock->owned_by_self(),
@@ -634,6 +626,14 @@ ParallelScavengeHeap* ParallelScavengeHeap::heap() {
   return (ParallelScavengeHeap*)heap;
 }
 
+CardTableModRefBS* ParallelScavengeHeap::barrier_set() {
+  return barrier_set_cast<CardTableModRefBS>(CollectedHeap::barrier_set());
+}
+
+PSCardTable* ParallelScavengeHeap::card_table() {
+  return static_cast<PSCardTable*>(barrier_set()->card_table());
+}
+
 // Before delegating the resize to the young generation,
 // the reserved space for the young and old generations
 // may be changed to accommodate the desired resize.
@@ -719,4 +719,3 @@ GrowableArray<MemoryPool*> ParallelScavengeHeap::memory_pools() {
   memory_pools.append(_old_pool);
   return memory_pools;
 }
-

@@ -71,7 +71,10 @@ public:
   void write_ref_field_pre_work(void* field, oop new_val);
 
   void write_ref_field_work(void* v, oop o, bool release = false);
-  void write_region_work(MemRegion mr);
+  void write_region(MemRegion mr);
+
+  virtual void on_thread_attach(JavaThread* thread);
+  virtual void on_thread_detach(JavaThread* thread);
 
   virtual oop read_barrier(oop src);
 
@@ -277,6 +280,10 @@ public:
       oop value = Raw::oop_load_not_in_heap(addr);
       keep_alive_if_weak(decorators, value);
       return value;
+    }
+
+    static oop resolve(oop obj) {
+      return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set())->write_barrier(obj);
     }
 
   };

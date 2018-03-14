@@ -232,7 +232,8 @@ var getJibProfilesCommon = function (input, data) {
     common.main_profile_names = [
         "linux-x64", "linux-x86", "macosx-x64", "solaris-x64",
         "solaris-sparcv9", "windows-x64", "windows-x86",
-        "linux-arm64", "linux-arm-vfp-hflt", "linux-arm-vfp-hflt-dyn"
+        "linux-aarch64", "linux-arm64", "linux-arm-vfp-hflt",
+        "linux-arm-vfp-hflt-dyn"
     ];
 
     // These are the base setttings for all the main build profiles.
@@ -465,6 +466,16 @@ var getJibProfilesProfiles = function (input, common, data) {
             configure_args: concat(common.configure_args_32bit),
         },
 
+        "linux-aarch64": {
+            target_os: "linux",
+            target_cpu: "aarch64",
+            build_cpu: "x64",
+            dependencies: ["devkit", "autoconf", "build_devkit", "cups"],
+            configure_args: [
+                "--openjdk-target=aarch64-linux-gnu"
+            ],
+        },
+
         "linux-arm64": {
             target_os: "linux",
             target_cpu: "aarch64",
@@ -581,6 +592,9 @@ var getJibProfilesProfiles = function (input, common, data) {
         },
         "windows-x86": {
             platform: "windows-x86",
+        },
+       "linux-aarch64": {
+            platform: "linux-aarch64",
         },
        "linux-arm64": {
             platform: "linux-arm64-vfp-hflt",
@@ -743,10 +757,21 @@ var getJibProfilesProfiles = function (input, common, data) {
             dependencies: [ "devkit" ],
             environment_path: input.get("devkit", "install_path")
                 + "/Xcode.app/Contents/Developer/usr/bin"
-        }
+        };
         profiles["run-test"] = concatObjects(profiles["run-test"], macosxRunTestExtra);
         profiles["run-test-jprt"] = concatObjects(profiles["run-test-jprt"], macosxRunTestExtra);
         profiles["run-test-prebuilt"] = concatObjects(profiles["run-test-prebuilt"], macosxRunTestExtra);
+    }
+    // On windows we want the debug symbols available at test time
+    if (input.build_os == "windows") {
+        windowsRunTestPrebuiltExtra = {
+            dependencies: [ testedProfile + ".jdk_symbols" ],
+            environment: {
+                "PRODUCT_SYMBOLS_HOME": input.get(testedProfile + ".jdk_symbols", "home_path"),
+            }
+        };
+        profiles["run-test-prebuilt"] = concatObjects(profiles["run-test-prebuilt"],
+            windowsRunTestPrebuiltExtra);
     }
 
     // Generate the missing platform attributes
@@ -770,7 +795,9 @@ var getJibProfilesDependencies = function (input, common) {
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
         windows_x64: "VS2013SP4+1.0",
-        linux_aarch64: "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0",
+        linux_aarch64: (input.profile != null && input.profile.indexOf("arm64") >= 0
+                    ? "gcc-linaro-aarch64-linux-gnu-4.8-2013.11_linux+1.0"
+                    : "gcc7.3.0-Fedora27+1.0"),
         linux_arm: (input.profile != null && input.profile.indexOf("hflt") >= 0
                     ? "gcc-linaro-arm-linux-gnueabihf-raspbian-2012.09-20120921_linux+1.0"
                     : "arm-linaro-4.7+1.0")

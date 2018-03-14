@@ -35,7 +35,6 @@ import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.code.Source.Feature;
 import com.sun.tools.javac.parser.Tokens.*;
 import com.sun.tools.javac.parser.Tokens.Comment.CommentStyle;
-import com.sun.tools.javac.resources.CompilerProperties;
 import com.sun.tools.javac.resources.CompilerProperties.Errors;
 import com.sun.tools.javac.resources.CompilerProperties.Fragments;
 import com.sun.tools.javac.resources.CompilerProperties.Warnings;
@@ -43,9 +42,7 @@ import com.sun.tools.javac.tree.*;
 import com.sun.tools.javac.tree.JCTree.*;
 import com.sun.tools.javac.util.*;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag;
-import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
 import com.sun.tools.javac.util.JCDiagnostic.Error;
-import com.sun.tools.javac.util.JCDiagnostic.Warning;
 import com.sun.tools.javac.util.JCDiagnostic.Fragment;
 import com.sun.tools.javac.util.List;
 
@@ -58,6 +55,9 @@ import static com.sun.tools.javac.parser.Tokens.TokenKind.GT;
 import static com.sun.tools.javac.parser.Tokens.TokenKind.IMPORT;
 import static com.sun.tools.javac.parser.Tokens.TokenKind.LT;
 import static com.sun.tools.javac.tree.JCTree.Tag.*;
+import static com.sun.tools.javac.resources.CompilerProperties.Fragments.ImplicitAndExplicitNotAllowed;
+import static com.sun.tools.javac.resources.CompilerProperties.Fragments.VarAndExplicitNotAllowed;
+import static com.sun.tools.javac.resources.CompilerProperties.Fragments.VarAndImplicitNotAllowed;
 
 /** The parser maps a token sequence into an abstract syntax
  *  tree. It operates by recursive descent, with code derived
@@ -1680,8 +1680,84 @@ public class JavacParser implements Parser {
         List<JCVariableDecl> params = explicitParams ?
                 formalParameters(true) :
                 implicitParameters(hasParens);
-
+        if (explicitParams) {
+            LambdaClassifier lambdaClassifier = new LambdaClassifier();
+            for (JCVariableDecl param: params) {
+                if (param.vartype != null &&
+                        isRestrictedLocalVarTypeName(param.vartype) &&
+                        param.vartype.hasTag(TYPEARRAY)) {
+                    log.error(DiagnosticFlag.SYNTAX, param.pos, Errors.VarNotAllowedArray);
+                }
+                lambdaClassifier.addParameter(param);
+                if (lambdaClassifier.result() == LambdaParameterKind.ERROR) {
+                    break;
+                }
+            }
+            if (lambdaClassifier.diagFragment != null) {
+                log.error(DiagnosticFlag.SYNTAX, pos, Errors.InvalidLambdaParameterDeclaration(lambdaClassifier.diagFragment));
+            }
+            for (JCVariableDecl param: params) {
+                if (param.vartype != null && isRestrictedLocalVarTypeName(param.vartype)) {
+                    param.vartype = null;
+                }
+            }
+        }
         return lambdaExpressionOrStatementRest(params, pos);
+    }
+
+    enum LambdaParameterKind {
+        EXPLICIT(0),
+        IMPLICIT(1),
+        VAR(2),
+        ERROR(-1);
+
+        private final int index;
+
+        LambdaParameterKind(int index) {
+            this.index = index;
+        }
+    }
+
+    private final static Fragment[][] decisionTable = new Fragment[][]{
+        /*              EXPLICIT                         IMPLICIT                         VAR  */
+        /* EXPLICIT */ {null,                            ImplicitAndExplicitNotAllowed,   VarAndExplicitNotAllowed},
+        /* IMPLICIT */ {ImplicitAndExplicitNotAllowed,   null,                            VarAndImplicitNotAllowed},
+        /* VAR      */ {VarAndExplicitNotAllowed,        VarAndImplicitNotAllowed,        null}
+    };
+
+    class LambdaClassifier {
+
+        LambdaParameterKind kind;
+        Fragment diagFragment;
+        List<JCVariableDecl> params;
+
+        void addParameter(JCVariableDecl param) {
+            if (param.vartype != null && param.name != names.empty) {
+                if (isRestrictedLocalVarTypeName(param.vartype)) {
+                    reduce(LambdaParameterKind.VAR);
+                } else {
+                    reduce(LambdaParameterKind.EXPLICIT);
+                }
+            }
+            if (param.vartype == null && param.name != names.empty ||
+                param.vartype != null && param.name == names.empty) {
+                reduce(LambdaParameterKind.IMPLICIT);
+            }
+        }
+
+        private void reduce(LambdaParameterKind newKind) {
+            if (kind == null) {
+                kind = newKind;
+            } else if (kind != newKind && kind != LambdaParameterKind.ERROR) {
+                LambdaParameterKind currentKind = kind;
+                kind = LambdaParameterKind.ERROR;
+                diagFragment = decisionTable[currentKind.index][newKind.index];
+            }
+        }
+
+        LambdaParameterKind result() {
+            return kind;
+        }
     }
 
     JCExpression lambdaExpressionOrStatementRest(List<JCVariableDecl> args, int pos) {
@@ -3044,7 +3120,21 @@ public class JavacParser implements Parser {
                     return toP(F.at(pos).ReceiverVarDef(mods, pn, type));
                 }
             } else {
-                name = ident();
+                if (!lambdaParameter ||
+                        LAX_IDENTIFIER.accepts(token.kind) ||
+                        mods.flags != Flags.PARAMETER ||
+                        mods.annotations.nonEmpty()) {
+                    name = ident();
+                } else {
+                    /** if it is a lambda parameter and the token kind is not an identifier,
+                     *  and there are no modifiers or annotations, then this means that the compiler
+                     *  supposed the lambda to be explicit but it can contain a mix of implicit,
+                     *  var or explicit parameters. So we assign the error name to the parameter name
+                     *  instead of issuing an error and analyze the lambda parameters as a whole at
+                     *  a higher level.
+                     */
+                    name = names.empty;
+                }
             }
         }
         if ((mods.flags & Flags.VARARGS) != 0 &&
@@ -3947,7 +4037,7 @@ public class JavacParser implements Parser {
         // need to distinguish between vararg annos and array annos
         // look at typeAnnotationsPushedBack comment
         this.permitTypeAnnotationsPushBack = true;
-        JCExpression type = parseType();
+        JCExpression type = parseType(lambdaParameter);
         this.permitTypeAnnotationsPushBack = false;
 
         if (token.kind == ELLIPSIS) {

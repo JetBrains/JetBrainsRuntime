@@ -85,12 +85,32 @@ julong os::num_frees = 0;           // # of calls to free
 julong os::free_bytes = 0;          // # of bytes freed
 #endif
 
-static juint cur_malloc_words = 0;  // current size for MallocMaxTestWords
+static size_t cur_malloc_words = 0;  // current size for MallocMaxTestWords
 
 void os_init_globals() {
   // Called from init_globals().
   // See Threads::create_vm() in thread.cpp, and init.cpp.
   os::init_globals();
+}
+
+static time_t get_timezone(const struct tm* time_struct) {
+#if defined(_ALLBSD_SOURCE)
+  return time_struct->tm_gmtoff;
+#elif defined(_WINDOWS)
+  long zone;
+  _get_timezone(&zone);
+  return static_cast<time_t>(zone);
+#else
+  return timezone;
+#endif
+}
+
+int os::snprintf(char* buf, size_t len, const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  int result = os::vsnprintf(buf, len, fmt, args);
+  va_end(args);
+  return result;
 }
 
 // Fill in buffer with current local time as an ISO-8601 string.
@@ -137,11 +157,7 @@ char* os::iso8601_time(char* buffer, size_t buffer_length, bool utc) {
       return NULL;
     }
   }
-#if defined(_ALLBSD_SOURCE)
-  const time_t zone = (time_t) time_struct.tm_gmtoff;
-#else
-  const time_t zone = timezone;
-#endif
+  const time_t zone = get_timezone(&time_struct);
 
   // If daylight savings time is in effect,
   // we are 1 hour East of our time zone
@@ -228,6 +244,13 @@ OSReturn os::get_priority(const Thread* const thread, ThreadPriority& priority) 
   priority = (ThreadPriority)p;
   return OS_OK;
 }
+
+
+#if !defined(LINUX) && !defined(_WINDOWS)
+size_t os::committed_stack_size(address bottom, size_t size) {
+  return size;
+}
+#endif
 
 bool os::dll_build_name(char* buffer, size_t size, const char* fname) {
   int n = jio_snprintf(buffer, size, "%s%s%s", JNI_LIB_PREFIX, fname, JNI_LIB_SUFFIX);
@@ -629,12 +652,12 @@ static void verify_memory(void* ptr) {
 //
 static bool has_reached_max_malloc_test_peak(size_t alloc_size) {
   if (MallocMaxTestWords > 0) {
-    jint words = (jint)(alloc_size / BytesPerWord);
+    size_t words = (alloc_size / BytesPerWord);
 
     if ((cur_malloc_words + words) > MallocMaxTestWords) {
       return true;
     }
-    Atomic::add(words, (volatile jint *)&cur_malloc_words);
+    Atomic::add(words, &cur_malloc_words);
   }
   return false;
 }
@@ -1706,7 +1729,7 @@ char* os::attempt_reserve_memory_at(size_t bytes, char* addr, int file_desc) {
   } else {
     result = pd_attempt_reserve_memory_at(bytes, addr);
     if (result != NULL) {
-      MemTracker::record_virtual_memory_reserve_and_commit((address)result, bytes, CALLER_PC);
+      MemTracker::record_virtual_memory_reserve((address)result, bytes, CALLER_PC);
     }
   }
   return result;
@@ -1852,8 +1875,7 @@ void os::realign_memory(char *addr, size_t bytes, size_t alignment_hint) {
 os::SuspendResume::State os::SuspendResume::switch_state(os::SuspendResume::State from,
                                                          os::SuspendResume::State to)
 {
-  os::SuspendResume::State result =
-    (os::SuspendResume::State) Atomic::cmpxchg((jint) to, (jint *) &_state, (jint) from);
+  os::SuspendResume::State result = Atomic::cmpxchg(to, &_state, from);
   if (result == from) {
     // success
     return to;

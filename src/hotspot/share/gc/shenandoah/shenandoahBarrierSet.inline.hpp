@@ -81,6 +81,8 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
 template <DecoratorSet decorators, typename BarrierSetT>
 template <typename T>
 bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
+  assert(((T*)(void*) src_obj) <= src && ((HeapWord*) src) < (((HeapWord*)(void*) src_obj) + src_obj->size()), "pointer out of object bounds src_obj: %p, src: %p, end: %p, size: %u", (void*) src_obj, src, (((HeapWord*)(void*) src_obj) + src_obj->size()), src_obj->size());
+  assert(((T*)(void*) dst_obj) <= dst && ((HeapWord*) dst) < ((HeapWord*)(void*) dst_obj) + dst_obj->size(), "pointer out of object bounds dst_obj: %p, dst: %p, end: %p, size: %u", (void*) dst_obj, dst, (((HeapWord*)(void*) dst_obj) + dst_obj->size()), dst_obj->size());
   if (!oopDesc::is_null(src_obj)) {
     size_t src_offset = pointer_delta((void*) src, (void*) src_obj, sizeof(T));
     src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
@@ -260,6 +262,9 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
 template <DecoratorSet decorators, typename BarrierSetT>
 template <typename T>
 bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length) {
+  assert(((HeapWord*)(void*) src_obj) <= (HeapWord*) src && (HeapWord*) src < (((HeapWord*)(void*) src_obj) + src_obj->size()), "pointer out of object bounds src_obj: %p, src: %p, size: %ul", (void*) src_obj, src, src_obj->size());
+  assert(((HeapWord*)(void*) dst_obj) <= (HeapWord*) dst && (HeapWord*) dst < (((HeapWord*)(void*) dst_obj) + dst_obj->size()), "pointer out of object bounds dst_obj: "/*POINTER_FORMAT", dst: "POINTER_FORMAT", length: "SIZE_FORMAT, p2i(dst_obj), p2i(dst), length*/);
+
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   if (!oopDesc::is_null(src_obj)) {
