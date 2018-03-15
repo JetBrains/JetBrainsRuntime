@@ -1453,36 +1453,34 @@ void ShenandoahHeap::op_mark() {
 void ShenandoahHeap::op_final_mark() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
-  ShenandoahHeap *sh = ShenandoahHeap::heap();
-
   // It is critical that we
   // evacuate roots right after finishing marking, so that we don't
   // get unmarked objects in the roots.
 
-  if (! sh->cancelled_concgc()) {
-    sh->concurrentMark()->finish_mark_from_roots();
-    sh->stop_concurrent_marking();
+  if (! cancelled_concgc()) {
+    concurrentMark()->finish_mark_from_roots();
+    stop_concurrent_marking();
 
     {
       ShenandoahGCPhase prepare_evac(ShenandoahPhaseTimings::prepare_evac);
-      sh->prepare_for_concurrent_evacuation();
+      prepare_for_concurrent_evacuation();
     }
 
     // If collection set has candidates, start evacuation.
     // Otherwise, bypass the rest of the cycle.
-    if (!sh->collection_set()->is_empty()) {
-      sh->set_evacuation_in_progress(true);
+    if (!collection_set()->is_empty()) {
+      set_evacuation_in_progress(true);
       // From here on, we need to update references.
-      sh->set_has_forwarded_objects(true);
+      set_has_forwarded_objects(true);
 
       ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
-      sh->evacuate_and_update_roots();
+      evacuate_and_update_roots();
     }
   } else {
-    sh->concurrentMark()->cancel();
-    sh->stop_concurrent_marking();
+    concurrentMark()->cancel();
+    stop_concurrent_marking();
 
-    if (sh->process_references()) {
+    if (process_references()) {
       // Abandon reference processing right away: pre-cleaning must have failed.
       ReferenceProcessor *rp = ref_processor();
       rp->disable_discovery();
@@ -1821,8 +1819,8 @@ BoolObjectClosure* ShenandoahHeap::is_alive_closure() {
 void ShenandoahHeap::ref_processing_init() {
   MemRegion mr = reserved_region();
 
-  _forwarded_is_alive.init(ShenandoahHeap::heap());
-  _is_alive.init(ShenandoahHeap::heap());
+  _forwarded_is_alive.init(this);
+  _is_alive.init(this);
   assert(_max_workers > 0, "Sanity");
 
   _ref_processor =
@@ -1947,7 +1945,7 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
     ParallelCleaningTask unlink_task(is_alive, true, true, active, purged_class);
     _workers->run_task(&unlink_task);
 
-    ShenandoahPhaseTimings* p = ShenandoahHeap::heap()->phase_timings();
+    ShenandoahPhaseTimings* p = phase_timings();
     ParallelCleaningTimes times = unlink_task.times();
 
     // "times" report total time, phase_tables_cc reports wall time. Divide total times
