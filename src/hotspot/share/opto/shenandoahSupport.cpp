@@ -2446,6 +2446,83 @@ Node* ShenandoahBarrierNode::try_common(Node *n_ctrl, PhaseIdealLoop* phase) {
   return NULL;
 }
 
+const TypePtr* ShenandoahBarrierNode::fix_addp_type(const TypePtr* res, Node* base) {
+  if (UseShenandoahGC && ShenandoahBarriersForConst) {
+    // With barriers on constant oops, if a field being accessed is a
+    // static field, correct alias analysis requires that we look
+    // beyond the barriers (that hide the constant) to find the actual
+    // java class mirror constant.
+    const TypeInstPtr* ti = res->isa_instptr();
+    if (ti != NULL &&
+        ti->const_oop() == NULL &&
+        ti->klass() == ciEnv::current()->Class_klass() &&
+        ti->offset() >= (ti->klass()->as_instance_klass()->size_helper() * wordSize)) {
+      ResourceMark rm;
+      Unique_Node_List wq;
+      ciObject* const_oop = NULL;
+      wq.push(base);
+      for (uint i = 0; i < wq.size(); i++) {
+        Node *n = wq.at(i);
+        if (n->is_ShenandoahBarrier() ||
+            (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_ShenandoahReadBarrier)) {
+          Node* m = n->in(ShenandoahBarrierNode::ValueIn);
+          if (m != NULL) {
+            wq.push(m);
+          }
+        } else if (n->is_Phi()) {
+          for (uint j = 1; j < n->req(); j++) {
+            Node* m = n->in(j);
+            if (m != NULL) {
+              wq.push(m);
+            }
+          }
+        } else if (n->is_ConstraintCast() || (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_CheckCastPP)) {
+          Node* m = n->in(1);
+          if (m != NULL) {
+            wq.push(m);
+          }
+        } else {
+          const TypeInstPtr* tn = n->bottom_type()->isa_instptr();
+          if (tn != NULL) {
+            if (tn->const_oop() != NULL) {
+              if (const_oop == NULL) {
+                const_oop = tn->const_oop();
+              } else if (const_oop != tn->const_oop()) {
+                const_oop = NULL;
+                break;
+              }
+            } else {
+              if (n->is_Proj()) {
+                if (n->in(0)->Opcode() == Op_CallLeafNoFP) {
+                  if (n->in(0)->as_Call()->entry_point() != StubRoutines::shenandoah_wb_C()) {
+                    const_oop = NULL;
+                    break;
+                  }
+                } else if (n->in(0)->is_MachCallLeaf()) {
+                  if (n->in(0)->as_MachCall()->entry_point() != StubRoutines::shenandoah_wb_C()) {
+                    const_oop = NULL;
+                    break;
+                  }
+                }
+              } else {
+                fatal("2 different static fields being accessed with a single AddP");
+                const_oop = NULL;
+                break;
+              }
+            }
+          } else {
+            assert(n->bottom_type() == Type::TOP, "not an instance ptr?");
+          }
+        }
+      }
+      if (const_oop != NULL) {
+        res = ti->cast_to_const(const_oop);
+      }
+    }
+  }
+  return res;
+}
+
 static void disconnect_barrier_mem(Node* wb, PhaseIterGVN& igvn) {
   Node* mem_in = wb->in(ShenandoahBarrierNode::Memory);
   Node* proj = wb->find_out_with(Op_ShenandoahWBMemProj);
@@ -2688,6 +2765,7 @@ CallStaticJavaNode* ShenandoahWriteBarrierNode::pin_and_expand_null_check(PhaseI
 #endif
 
   if (val->Opcode() == Op_CastPP &&
+      val->in(0) != NULL &&
       val->in(0)->Opcode() == Op_IfTrue &&
       val->in(0)->as_Proj()->is_uncommon_trap_if_pattern(Deoptimization::Reason_none) &&
       val->in(0)->in(0)->is_If() &&
@@ -3386,7 +3464,8 @@ void ShenandoahWriteBarrierNode::fix_raw_mem(Node* ctrl, Node* region, Node* raw
                 uses.push(u);
               }
             }
-          } else if (!mem_is_valid(m, u, phase)) {
+          } else if (!mem_is_valid(m, u, phase) &&
+                     !(u->Opcode() == Op_CProj && u->in(0)->Opcode() == Op_NeverBranch && u->as_Proj()->_con == 1)) {
             uses.push(u);
           }
         }
@@ -4247,7 +4326,8 @@ void ShenandoahBarrierNode::verify_raw_mem(RootNode* root) {
         if (!m->is_Loop() || controls.member(m->in(LoopNode::EntryControl)) || 1) {
           for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
             Node* u = m->fast_out(i);
-            if (u->is_CFG() && !u->is_Root()) {
+            if (u->is_CFG() && !u->is_Root() &&
+                !(u->Opcode() == Op_CProj && u->in(0)->Opcode() == Op_NeverBranch && u->as_Proj()->_con == 1)) {
               if (trace) { tty->print("XXXXXX pushing control"); u->dump(); }
               controls.push(u);
             }

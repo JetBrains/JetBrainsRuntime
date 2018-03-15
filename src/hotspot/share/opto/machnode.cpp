@@ -248,7 +248,7 @@ const MachOper*  MachNode::memory_inputs(Node* &base, Node* &index) const {
 }
 
 //-----------------------------get_base_and_disp----------------------------
-const Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const {
+Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const {
 
   // Find the memory inputs using our helper function
   Node* base;
@@ -327,32 +327,10 @@ const Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_ty
 const class TypePtr *MachNode::adr_type() const {
   intptr_t offset = 0;
   const TypePtr *adr_type = TYPE_PTR_SENTINAL;  // attempt computing adr_type
-  const Node *base = get_base_and_disp(offset, adr_type);
-
-  if (ShenandoahBarriersForConst) {
-    // Load/store from a constant object may have been replaced by
-    // load/store from a barrier by
-    // PhaseCFG::replace_uses_with_shenandoah_barrier() which could
-    // cause the alias index to change (if from a Class object)
-    const Node* improved_base = base;
-    if (improved_base != NULL &&
-        improved_base != NodeSentinel &&
-        offset != 0 &&
-        offset != Type::OffsetBot) {
-      while (improved_base->is_Mach() &&
-             improved_base->as_Mach()->ideal_Opcode() == Op_ShenandoahReadBarrier) {
-        improved_base = improved_base->in(ShenandoahBarrierNode::ValueIn);
-      }
-      if (improved_base != base &&
-          improved_base->is_Mach() &&
-          improved_base->as_Mach()->ideal_Opcode() == Op_ConP) {
-        base = improved_base;
-      }
-    }
-  }
+  Node *base = get_base_and_disp(offset, adr_type);
 
   if( adr_type != TYPE_PTR_SENTINAL ) {
-    return adr_type;      // get_base_and_disp has the answer
+    return ShenandoahBarrierNode::fix_addp_type(adr_type, base);      // get_base_and_disp has the answer
   }
 
   // Direct addressing modes have no base node, simply an indirect
@@ -404,7 +382,7 @@ const class TypePtr *MachNode::adr_type() const {
   }
   assert(tp->base() != Type::AnyPtr, "not a bare pointer");
 
-  return tp->add_offset(offset);
+  return ShenandoahBarrierNode::fix_addp_type(tp->add_offset(offset), base);
 }
 
 
