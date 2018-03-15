@@ -2063,6 +2063,9 @@ class SpeculativeTrapData : public ProfileData {
 protected:
   enum {
     speculative_trap_method,
+#ifndef _LP64
+    speculative_trap_padding,
+#endif
     speculative_trap_cell_count
   };
 public:
@@ -2175,7 +2178,7 @@ public:
 
   // Whole-method sticky bits and flags
   enum {
-    _trap_hist_limit    = 23 JVMCI_ONLY(+5),   // decoupled from Deoptimization::Reason_LIMIT
+    _trap_hist_limit    = 24 JVMCI_ONLY(+5),   // decoupled from Deoptimization::Reason_LIMIT
     _trap_hist_mask     = max_jubyte,
     _extra_data_count   = 4     // extra DataLayout headers, for trap history
   }; // Public flag values
