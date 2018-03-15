@@ -4376,7 +4376,6 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   // Check for evacuation-in-progress
   Address gc_state(rthread, in_bytes(JavaThread::gc_state_offset()));
   ldrb(rscratch1, gc_state);
-  membar(Assembler::LoadLoad);
 
   // The read-barrier.
   if (ShenandoahWriteBarrierRB) {

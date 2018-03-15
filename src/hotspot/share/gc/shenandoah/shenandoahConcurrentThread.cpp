@@ -165,11 +165,6 @@ void ShenandoahConcurrentThread::run_service() {
     if (gc_requested) {
       heap->set_used_at_last_gc();
 
-      // Coming out of (cancelled) concurrent GC, reset these for sanity
-      if (heap->is_evacuation_in_progress() || heap->is_concurrent_partial_in_progress()) {
-        heap->set_evacuation_in_progress_concurrently(false);
-      }
-
       // If this was the explicit GC cycle, notify waiters about it
       if (explicit_gc_requested) {
         notify_explicit_gc_waiters();
@@ -353,8 +348,8 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
       heap->vmop_entry_final_updaterefs();
     }
   } else {
-    // If update-refs were skipped, need to do another verification pass after evacuation.
-    heap->vmop_entry_verify_after_evac();
+    // Need to turn off evacuation.
+    heap->vmop_entry_final_evac();
   }
 
   // Reclaim space and prepare for the next normal cycle:

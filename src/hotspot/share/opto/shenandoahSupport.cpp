@@ -653,14 +653,7 @@ bool ShenandoahWriteBarrierNode::try_common_gc_state_load(Node *n, PhaseIdealLoo
 
 Node* ShenandoahWriteBarrierNode::evacuation_in_progress_test_ctrl(Node* iff) {
   assert(is_evacuation_in_progress_test(iff), "bad input");
-  Node* c = iff;
-  if (ShenandoahWriteBarrierMemBar) {
-    do {
-      assert(c->in(0)->is_Proj() && c->in(0)->in(0)->is_MemBar(), "where's the mem bar?");
-      c = c->in(0)->in(0);
-    } while (c->adr_type() != TypeRawPtr::BOTTOM);
-  }
-  return c->in(0);
+  return iff->in(0);
 }
 
 bool ShenandoahBarrierNode::dominates_memory_impl(PhaseGVN* phase,
@@ -3622,28 +3615,6 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   Node* gc_state = new LoadUBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
   phase->register_new_node(gc_state, ctrl);
 
-  if (ShenandoahWriteBarrierMemBar) {
-    Node* mb = MemBarNode::make(phase->C, Op_MemBarAcquire, Compile::AliasIdxRaw);
-    mb->init_req(TypeFunc::Control, ctrl);
-    mb->init_req(TypeFunc::Memory, raw_mem);
-    phase->register_control(mb, loop, ctrl);
-    Node* ctrl_proj = new ProjNode(mb,TypeFunc::Control);
-    phase->register_control(ctrl_proj, loop, mb);
-    raw_mem = new ProjNode(mb, TypeFunc::Memory);
-    phase->register_new_node(raw_mem, mb);
-
-    mb = MemBarNode::make(phase->C, Op_MemBarAcquire, alias);
-    mb->init_req(TypeFunc::Control, ctrl_proj);
-    mb->init_req(TypeFunc::Memory, wb_mem);
-    phase->register_control(mb, loop, ctrl_proj);
-    ctrl_proj = new ProjNode(mb,TypeFunc::Control);
-    phase->register_control(ctrl_proj, loop, mb);
-    wb_mem = new ProjNode(mb,TypeFunc::Memory);
-    phase->register_new_node(wb_mem, mb);
-
-    ctrl = ctrl_proj;
-  }
-
   Node* evacuation_in_progress = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL));
   phase->register_new_node(evacuation_in_progress, ctrl);
   Node* evacuation_in_progress_cmp = new CmpINode(evacuation_in_progress, phase->igvn().zerocon(T_INT));
@@ -4065,168 +4036,17 @@ void ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(IfNode* iff, P
   // move test and its mem barriers out of the loop
   assert(is_evacuation_in_progress_test(iff), "inconsistent");
 
-  if (ShenandoahWriteBarrierMemBar) {
-    IdealLoopTree *loop = phase->get_loop(iff);
-    Node* loop_head = loop->_head;
-    Node* entry_c = loop_head->in(LoopNode::EntryControl);
-    IdealLoopTree *entry_loop = phase->get_loop(entry_c);
+  IdealLoopTree *loop = phase->get_loop(iff);
+  Node* loop_head = loop->_head;
+  Node* entry_c = loop_head->in(LoopNode::EntryControl);
 
-    GrowableArray<Node*> new_mbs;
-    Node* c = iff->in(0);
-    MemBarNode* mb = NULL;
-    do {
-      Node* proj_ctrl = c;
-      assert(c->is_Proj(), "proj expected");
-      mb = proj_ctrl->in(0)->as_MemBar();
-      c = c->in(0)->in(0);
-
-      Node* proj_mem = mb->proj_out(TypeFunc::Memory);
-
-      MemBarNode* new_mb = mb->clone()->as_MemBar();;
-      Node* new_proj_ctrl = new ProjNode(new_mb,TypeFunc::Control);
-      Node* new_proj_mem = new ProjNode(new_mb,TypeFunc::Memory);
-
-      int alias = phase->C->get_alias_index(mb->adr_type());
-      Node* mem_ctrl = NULL;
-      Node* mem = dom_mem(mb, loop_head, alias, mem_ctrl, phase);
-      new_mb->set_req(TypeFunc::Memory, mem);
-      phase->register_new_node(new_proj_mem, new_mb);
-      fix_memory_uses(mem, new_mb, new_proj_mem, entry_c, alias, phase);
-      assert(new_proj_mem->outcnt() >= 1, "memory projection is disconnected");
-      new_mbs.push(new_proj_ctrl);
-    } while (mb->adr_type() != TypeRawPtr::BOTTOM);
-
-    c = entry_c;
-    for (int i = new_mbs.length()-1; i >= 0; i--) {
-      Node* proj_ctrl = new_mbs.at(i);
-      Node* mb = proj_ctrl->in(0);
-      mb->set_req(0, c);
-      phase->set_idom(mb, mb->in(0), phase->dom_depth(mb->in(0)));
-      phase->set_idom(proj_ctrl, mb, phase->dom_depth(mb));
-      c = proj_ctrl;
-      phase->register_control(mb, entry_loop, mb->in(0));
-      phase->register_control(proj_ctrl, entry_loop, mb);
-    }
-    phase->igvn().replace_input_of(loop_head, LoopNode::EntryControl, c);
-    phase->set_idom(loop_head, c, phase->dom_depth(c));
-
-    Node* load = iff->in(1)->in(1)->in(1)->in(1);
-    assert(load->Opcode() == Op_LoadUB, "inconsistent");
-    phase->igvn().replace_input_of(load, MemNode::Memory, new_mbs.at(new_mbs.length()-1)->in(0)->in(TypeFunc::Memory));
-    phase->igvn().replace_input_of(load, 0, entry_c);
-    phase->set_ctrl_and_loop(load, entry_c);
-
-    c = iff->in(0);
-    for (;;) {
-      Node* next = c->in(0)->in(0);
-      assert(c->is_Proj(), "proj expected");
-      Node* proj_ctrl = c;
-      MemBarNode* mb = proj_ctrl->in(0)->as_MemBar();
-      Node* proj_mem = mb->proj_out(TypeFunc::Memory);
-      Node* ctrl = mb->in(TypeFunc::Control);
-      Node* mem = mb->in(TypeFunc::Memory);
-
-      phase->lazy_replace(proj_mem, mem);
-      phase->lazy_replace(proj_ctrl, ctrl);
-      phase->lazy_replace(mb, ctrl);
-      loop->_body.yank(proj_ctrl);
-      loop->_body.yank(proj_mem);
-      loop->_body.yank(mb);
-      if (mb->adr_type() == TypeRawPtr::BOTTOM) {
-        break;
-      }
-      c = next;
-    }
-
-    assert(phase->is_dominator(phase->get_ctrl(load->in(MemNode::Address)), entry_c), "address not out of loop?");
-  } else {
-    IdealLoopTree *loop = phase->get_loop(iff);
-    Node* loop_head = loop->_head;
-    Node* entry_c = loop_head->in(LoopNode::EntryControl);
-
-    Node* load = iff->in(1)->in(1)->in(1)->in(1);
-    assert(load->Opcode() == Op_LoadUB, "inconsistent");
-    Node* mem_ctrl = NULL;
-    Node* mem = dom_mem(load->in(MemNode::Memory), loop_head, Compile::AliasIdxRaw, mem_ctrl, phase);
-    phase->igvn().replace_input_of(load, MemNode::Memory, mem);
-    phase->igvn().replace_input_of(load, 0, entry_c);
-    phase->set_ctrl_and_loop(load, entry_c);
-  }
-}
-
-void ShenandoahWriteBarrierNode::backtoback_evacs(IfNode* iff, IfNode* dom_if, PhaseIdealLoop* phase) {
-  if (!ShenandoahWriteBarrierMemBar) {
-    return;
-  }
-  // move all mem barriers from this evac test to the dominating one,
-  // removing duplicates in the process
-  IdealLoopTree *loop = phase->get_loop(dom_if);
-  Node* c1 = iff->in(0);
-  Node* mb1 = NULL;
-  GrowableArray<Node*> new_mbs;
-  for(;;) {
-    mb1 = c1->in(0);
-    c1 = c1->in(0)->in(0);
-    assert(mb1->Opcode() == Op_MemBarAcquire, "mem bar expected");
-    if (mb1->adr_type() == TypeRawPtr::BOTTOM) {
-      phase->lazy_replace(mb1->as_MemBar()->proj_out(TypeFunc::Memory), mb1->in(TypeFunc::Memory));
-      break;
-    }
-    Node* c2 = dom_if->in(0);
-    Node* mb2 = NULL;
-    do {
-      mb2 = c2->in(0);
-      c2 = c2->in(0)->in(0);
-      assert(mb2->Opcode() == Op_MemBarAcquire, "mem bar expected");
-      if (mb2->adr_type() == TypeRawPtr::BOTTOM) {
-        // Barrier on same slice doesn't exist at dominating if:
-        // move barrier up
-        MemBarNode* mb = mb1->clone()->as_MemBar();
-        Node* proj_ctrl = new ProjNode(mb,TypeFunc::Control);
-        Node* proj_mem = new ProjNode(mb,TypeFunc::Memory);
-        int alias = phase->C->get_alias_index(mb->adr_type());
-        Node* mem_ctrl = NULL;
-        Node* mem = dom_mem(mb1, dom_if->in(0), alias, mem_ctrl, phase);
-        mb->set_req(TypeFunc::Memory, mem);
-        phase->register_new_node(proj_mem, mb);
-        fix_memory_uses(mem, mb, proj_mem, dom_if->in(0), alias, phase);
-        assert(proj_mem->outcnt() >= 1, "memory projection is disconnected");
-        new_mbs.push(proj_ctrl);
-        break;
-      }
-    } while (mb2->adr_type() != mb1->adr_type());
-    phase->lazy_replace(mb1->as_MemBar()->proj_out(TypeFunc::Memory), mb1->in(TypeFunc::Memory));
-  }
-  if (new_mbs.length() > 0) {
-    Node* c = dom_if->in(0);
-    for (int i = 0; i < new_mbs.length(); i++) {
-      Node* proj_ctrl = new_mbs.at(i);
-      Node* mb = proj_ctrl->in(0);
-      mb->set_req(0, c);
-      phase->set_idom(mb, mb->in(0), phase->dom_depth(mb->in(0)));
-      phase->set_idom(proj_ctrl, mb, phase->dom_depth(mb));
-      c = proj_ctrl;
-      phase->register_control(mb, loop, mb->in(0));
-      phase->register_control(proj_ctrl, loop, mb);
-    }
-    phase->igvn().replace_input_of(dom_if, 0, c);
-    phase->set_idom(dom_if, dom_if->in(0), phase->dom_depth(dom_if->in(0)));
-  }
-  Node* c = iff->in(0);
-  for (;;) {
-    Node* next = c->in(0)->in(0);
-    assert(c->is_Proj(), "proj expected");
-    MemBarNode* mb = c->in(0)->as_MemBar();
-    Node* proj_ctrl = c;
-    Node* ctrl = mb->in(TypeFunc::Control);
-
-    phase->lazy_replace(proj_ctrl, ctrl);
-    phase->lazy_replace(mb, ctrl);
-    if (mb->adr_type() == TypeRawPtr::BOTTOM) {
-      break;
-    }
-    c = next;
-  }
+  Node* load = iff->in(1)->in(1)->in(1)->in(1);
+  assert(load->Opcode() == Op_LoadUB, "inconsistent");
+  Node* mem_ctrl = NULL;
+  Node* mem = dom_mem(load->in(MemNode::Memory), loop_head, Compile::AliasIdxRaw, mem_ctrl, phase);
+  phase->igvn().replace_input_of(load, MemNode::Memory, mem);
+  phase->igvn().replace_input_of(load, 0, entry_c);
+  phase->set_ctrl_and_loop(load, entry_c);
 }
 
 void ShenandoahWriteBarrierNode::merge_back_to_back_evacuation_tests(Node* n, PhaseIdealLoop* phase) {
@@ -4234,7 +4054,6 @@ void ShenandoahWriteBarrierNode::merge_back_to_back_evacuation_tests(Node* n, Ph
     Node* n_ctrl = ShenandoahWriteBarrierNode::evacuation_in_progress_test_ctrl(n);
     if (phase->can_split_if(n_ctrl)) {
       IfNode* dom_if = phase->idom(n_ctrl)->as_If();
-      ShenandoahWriteBarrierNode::backtoback_evacs(n->as_If(), dom_if, phase);
       PhiNode* bolphi = PhiNode::make_blank(n_ctrl, n->in(1));
       Node* proj_true = dom_if->proj_out(1);
       Node* proj_false = dom_if->proj_out(0);

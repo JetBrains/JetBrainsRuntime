@@ -3384,27 +3384,6 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     }
     break;
   }
-  case Op_If: {
-#ifdef ASSERT
-    if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n->as_If()) && ShenandoahWriteBarrierMemBar) {
-      Node* c = n->in(0);
-      int count = 0;
-      for (;;) {
-        assert(c->is_Proj(), "proj expected");
-        MemBarNode* mb = c->in(0)->as_MemBar();
-        c = c->in(0)->in(0);
-        count++;
-        assert(mb->outcnt() == 2, "lost a projection?");
-
-        if (mb->adr_type() == TypeRawPtr::BOTTOM) {
-          break;
-        }
-      }
-      assert(count >= 2, "at least 2 membars");
-    }
-#endif
-    break;
-  }
   default:
     assert( !n->is_Call(), "" );
     assert( !n->is_Mem(), "" );

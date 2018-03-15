@@ -128,7 +128,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
       // a1. Cancel evacuation, if in progress
       if (heap->is_evacuation_in_progress()) {
-        heap->set_evacuation_in_progress_at_safepoint(false);
+        heap->set_evacuation_in_progress(false);
       }
       assert(!heap->is_evacuation_in_progress(), "sanity");
 

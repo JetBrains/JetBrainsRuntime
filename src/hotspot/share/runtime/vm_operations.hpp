@@ -102,7 +102,7 @@
   template(ShenandoahFullGC)                      \
   template(ShenandoahInitMark)                    \
   template(ShenandoahFinalMarkStartEvac)          \
-  template(ShenandoahVerifyHeapAfterEvacuation)   \
+  template(ShenandoahFinalEvac)                   \
   template(ShenandoahInitPartialGC)               \
   template(ShenandoahFinalPartialGC)              \
   template(ShenandoahInitTraversalGC)             \

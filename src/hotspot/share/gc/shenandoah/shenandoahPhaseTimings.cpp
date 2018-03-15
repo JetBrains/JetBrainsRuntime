@@ -127,6 +127,8 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[init_mark_gross]                 = "Pause Init Mark (G)";
   _phase_names[final_mark]                      = "Pause Final Mark (N)";
   _phase_names[final_mark_gross]                = "Pause Final Mark (G)";
+  _phase_names[final_evac]                      = "Pause Final Evac (N)";
+  _phase_names[final_evac_gross]                = "Pause Final Evac (G)";
   _phase_names[accumulate_stats]                = "  Accumulate Stats";
   _phase_names[make_parsable]                   = "  Make Parsable";
   _phase_names[clear_liveness]                  = "  Clear Liveness";

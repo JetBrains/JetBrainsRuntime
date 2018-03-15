@@ -1471,7 +1471,7 @@ void ShenandoahHeap::op_final_mark() {
     // If collection set has candidates, start evacuation.
     // Otherwise, bypass the rest of the cycle.
     if (!sh->collection_set()->is_empty()) {
-      sh->set_evacuation_in_progress_at_safepoint(true);
+      sh->set_evacuation_in_progress(true);
       // From here on, we need to update references.
       sh->set_has_forwarded_objects(true);
 
@@ -1489,6 +1489,15 @@ void ShenandoahHeap::op_final_mark() {
       rp->abandon_partial_discovery();
       rp->verify_no_references_recorded();
     }
+  }
+}
+
+void ShenandoahHeap::op_final_evac() {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
+
+  set_evacuation_in_progress(false);
+  if (ShenandoahVerify) {
+    verifier()->verify_after_evacuation();
   }
 }
 
@@ -1537,10 +1546,6 @@ void ShenandoahHeap::op_evac() {
 
   // Allocations happen during evacuation, record peak after the phase:
   shenandoahPolicy()->record_peak_occupancy();
-}
-
-void ShenandoahHeap::op_verify_after_evac() {
-  verifier()->verify_after_evacuation();
 }
 
 void ShenandoahHeap::op_updaterefs() {
@@ -1751,12 +1756,6 @@ void ShenandoahHeap::set_gc_state_mask(uint mask, bool value) {
   JavaThread::set_gc_state_all_threads(_gc_state.raw_value());
 }
 
-void ShenandoahHeap::set_gc_state_mask_concurrently(uint mask, bool value) {
-  _gc_state.set_cond(mask, value);
-  MutexLocker mu(Threads_lock);
-  JavaThread::set_gc_state_all_threads(_gc_state.raw_value());
-}
-
 void ShenandoahHeap::set_concurrent_mark_in_progress(bool in_progress) {
   set_gc_state_mask(MARKING, in_progress);
   JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
@@ -1772,14 +1771,7 @@ void ShenandoahHeap::set_concurrent_traversal_in_progress(bool in_progress) {
    JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
-void ShenandoahHeap::set_evacuation_in_progress_concurrently(bool in_progress) {
-  // Note: it is important to first release the _evacuation_in_progress flag here,
-  // so that Java threads can get out of oom_during_evacuation() and reach a safepoint,
-  // in case a VM task is pending.
-  set_gc_state_mask_concurrently(EVACUATION, in_progress);
-}
-
-void ShenandoahHeap::set_evacuation_in_progress_at_safepoint(bool in_progress) {
+void ShenandoahHeap::set_evacuation_in_progress(bool in_progress) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Only call this at safepoint");
   set_gc_state_mask(EVACUATION, in_progress);
 }
@@ -2240,7 +2232,7 @@ void ShenandoahHeap::op_init_updaterefs() {
     verifier()->verify_before_updaterefs();
   }
 
-  set_evacuation_in_progress_at_safepoint(false);
+  set_evacuation_in_progress(false);
   set_update_refs_in_progress(true);
   make_tlabs_parsable(true);
   if (UseShenandoahMatrix) {
@@ -2493,6 +2485,15 @@ void ShenandoahHeap::vmop_entry_final_mark() {
   VMThread::execute(&op); // jump to entry_final_mark under safepoint
 }
 
+void ShenandoahHeap::vmop_entry_final_evac() {
+  TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
+  ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_evac_gross);
+
+  VM_ShenandoahFinalEvac op;
+  VMThread::execute(&op); // jump to entry_final_evac under safepoint
+}
+
 void ShenandoahHeap::vmop_entry_init_updaterefs() {
   TraceCollectorStats tcs(monitoring_support()->stw_collection_counters());
   ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
@@ -2553,16 +2554,6 @@ void ShenandoahHeap::vmop_entry_final_traversal() {
   VMThread::execute(&op);
 }
 
-void ShenandoahHeap::vmop_entry_verify_after_evac() {
-  if (ShenandoahVerify) {
-    ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
-
-    try_inject_alloc_failure();
-    VM_ShenandoahVerifyHeapAfterEvacuation op;
-    VMThread::execute(&op);
-  }
-}
-
 void ShenandoahHeap::vmop_entry_full(GCCause::Cause cause) {
   TraceCollectorStats tcs(monitoring_support()->full_stw_collection_counters());
   ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
@@ -2613,6 +2604,17 @@ void ShenandoahHeap::entry_final_mark() {
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_final_marking());
 
   op_final_mark();
+}
+
+void ShenandoahHeap::entry_final_evac() {
+  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_evac);
+
+  FormatBuffer<> msg("Pause Final Evac");
+  GCTraceTime(Info, gc) time(msg, gc_timer());
+  EventMark em("%s", msg.buffer());
+
+  op_final_evac();
 }
 
 void ShenandoahHeap::entry_init_updaterefs() {
@@ -2704,17 +2706,6 @@ void ShenandoahHeap::entry_full(GCCause::Cause cause) {
   ShenandoahWorkerScope scope(workers(), ShenandoahWorkerPolicy::calc_workers_for_fullgc());
 
   op_full(cause);
-}
-
-void ShenandoahHeap::entry_verify_after_evac() {
-  ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
-  ShenandoahGCPhase phase(ShenandoahPhaseTimings::pause_other);
-
-  static const char* msg = "Pause Verify After Evac";
-  GCTraceTime(Info, gc) time(msg, gc_timer());
-  EventMark em("%s", msg);
-
-  op_verify_after_evac();
 }
 
 void ShenandoahHeap::entry_degenerated(int point) {

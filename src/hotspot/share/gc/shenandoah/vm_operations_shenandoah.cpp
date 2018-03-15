@@ -58,6 +58,11 @@ void VM_ShenandoahFinalMarkStartEvac::doit() {
   ShenandoahHeap::heap()->entry_final_mark();
 }
 
+void VM_ShenandoahFinalEvac::doit() {
+  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
+  ShenandoahHeap::heap()->entry_final_evac();
+}
+
 void VM_ShenandoahFullGC::doit() {
   ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::FULL);
   ShenandoahHeap::heap()->entry_full(_gc_cause);
@@ -96,9 +101,4 @@ void VM_ShenandoahInitUpdateRefs::doit() {
 void VM_ShenandoahFinalUpdateRefs::doit() {
   ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
   ShenandoahHeap::heap()->entry_final_updaterefs();
-}
-
-void VM_ShenandoahVerifyHeapAfterEvacuation::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
-  ShenandoahHeap::heap()->entry_verify_after_evac();
 }

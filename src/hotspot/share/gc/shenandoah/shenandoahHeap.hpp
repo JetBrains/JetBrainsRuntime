@@ -403,12 +403,10 @@ public:
 
 private:
   void set_gc_state_mask(uint mask, bool value);
-  void set_gc_state_mask_concurrently(uint mask, bool value);
 
 public:
   void set_concurrent_mark_in_progress(bool in_progress);
-  void set_evacuation_in_progress_concurrently(bool in_progress);
-  void set_evacuation_in_progress_at_safepoint(bool in_progress);
+  void set_evacuation_in_progress(bool in_progress);
   void set_update_refs_in_progress(bool in_progress);
   void set_degenerated_gc_in_progress(bool in_progress);
   void set_full_gc_in_progress(bool in_progress);
@@ -657,6 +655,7 @@ public:
   // call the entry method below
   void vmop_entry_init_mark();
   void vmop_entry_final_mark();
+  void vmop_entry_final_evac();
   void vmop_entry_init_updaterefs();
   void vmop_entry_final_updaterefs();
   void vmop_entry_init_partial();
@@ -664,13 +663,13 @@ public:
   void vmop_entry_init_traversal();
   void vmop_entry_final_traversal();
   void vmop_entry_full(GCCause::Cause cause);
-  void vmop_entry_verify_after_evac();
   void vmop_degenerated(ShenandoahDegenPoint point);
 
   // Entry methods to normally STW GC operations. These set up logging, monitoring
   // and workers for net VM operation
   void entry_init_mark();
   void entry_final_mark();
+  void entry_final_evac();
   void entry_init_updaterefs();
   void entry_final_updaterefs();
   void entry_init_partial();
@@ -678,7 +677,6 @@ public:
   void entry_init_traversal();
   void entry_final_traversal();
   void entry_full(GCCause::Cause cause);
-  void entry_verify_after_evac();
   void entry_degenerated(int point);
 
   // Entry methods to normally concurrent GC operations. These set up logging, monitoring
@@ -696,6 +694,7 @@ private:
   // Actual work for the phases
   void op_init_mark();
   void op_final_mark();
+  void op_final_evac();
   void op_init_updaterefs();
   void op_final_updaterefs();
   void op_init_partial();
@@ -703,7 +702,6 @@ private:
   void op_init_traversal();
   void op_final_traversal();
   void op_full(GCCause::Cause cause);
-  void op_verify_after_evac();
   void op_degenerated(ShenandoahDegenPoint point);
   void op_degenerated_fail();
   void op_degenerated_futile();

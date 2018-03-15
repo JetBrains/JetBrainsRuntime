@@ -84,7 +84,7 @@ public:
     VM_Operation::VMOp_Type type = vm_op->type();
     return type == VM_Operation::VMOp_ShenandoahInitMark ||
            type == VM_Operation::VMOp_ShenandoahFinalMarkStartEvac ||
-           type == VM_Operation::VMOp_ShenandoahVerifyHeapAfterEvacuation ||
+           type == VM_Operation::VMOp_ShenandoahFinalEvac ||
            type == VM_Operation::VMOp_ShenandoahInitPartialGC ||
            type == VM_Operation::VMOp_ShenandoahFinalPartialGC ||
            type == VM_Operation::VMOp_ShenandoahInitTraversalGC ||

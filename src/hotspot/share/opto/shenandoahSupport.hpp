@@ -232,7 +232,6 @@ public:
   static Node* get_ctrl(Node* n, PhaseIdealLoop* phase);
   static Node* ctrl_or_self(Node* n, PhaseIdealLoop* phase);
   static bool mem_is_valid(Node* m, Node* c, PhaseIdealLoop* phase);
-  static void backtoback_evacs(IfNode* iff, IfNode* dom_if, PhaseIdealLoop* phase);
   static void move_evacuation_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
   static void optimize_after_expansion(const Node_List& evacuation_tests, const Node_List& gc_state_loads, Node_List &old_new, PhaseIdealLoop* phase);
   static void merge_back_to_back_evacuation_tests(Node* n, PhaseIdealLoop* phase);
