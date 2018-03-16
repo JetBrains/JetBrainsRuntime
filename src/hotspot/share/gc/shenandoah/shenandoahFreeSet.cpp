@@ -27,7 +27,8 @@
 
 ShenandoahFreeSet::ShenandoahFreeSet(ShenandoahHeapRegionSet* regions, size_t max_regions) :
   _regions(regions),
-  _free_bitmap(max_regions, mtGC),
+  _mutator_free_bitmap(max_regions, mtGC),
+  _collector_free_bitmap(max_regions, mtGC),
   _max(max_regions)
 {
   clear_internal();
@@ -41,10 +42,16 @@ void ShenandoahFreeSet::increase_used(size_t num_bytes) {
          ", capacity: "SIZE_FORMAT", num_bytes: "SIZE_FORMAT, _used, _capacity, num_bytes);
 }
 
-bool ShenandoahFreeSet::is_free(size_t idx) const {
+bool ShenandoahFreeSet::is_mutator_free(size_t idx) const {
   assert (idx < _max, "index is sane: " SIZE_FORMAT " < " SIZE_FORMAT " (left: " SIZE_FORMAT ", right: " SIZE_FORMAT ")",
-          idx, _max, _leftmost, _rightmost);
-  return _free_bitmap.at(idx);
+          idx, _max, _mutator_leftmost, _mutator_rightmost);
+  return _mutator_free_bitmap.at(idx);
+}
+
+bool ShenandoahFreeSet::is_collector_free(size_t idx) const {
+  assert (idx < _max, "index is sane: " SIZE_FORMAT " < " SIZE_FORMAT " (left: " SIZE_FORMAT ", right: " SIZE_FORMAT ")",
+          idx, _max, _collector_leftmost, _collector_rightmost);
+  return _collector_free_bitmap.at(idx);
 }
 
 HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {
@@ -56,32 +63,95 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
   // Allocations are biased: new application allocs go to beginning of the heap, and GC allocs
   // go to the end. This makes application allocation faster, because we would clear lots
   // of regions from the beginning most of the time.
+  //
+  // Free set maintains mutator and collector views, and normally they allocate in their views only,
+  // unless we special cases for stealing and mixed allocations.
 
   switch (type) {
     case ShenandoahHeap::_alloc_tlab:
     case ShenandoahHeap::_alloc_shared: {
-      for (size_t idx = _leftmost; idx <= _rightmost; idx++) {
-        if (is_free(idx)) {
-          HeapWord* result = try_allocate_in(word_size, type, idx, in_new_region);
+
+      // Fast-path: try to allocate in the mutator view first:
+      for (size_t idx = _mutator_leftmost; idx <= _mutator_rightmost; idx++) {
+        if (is_mutator_free(idx)) {
+          HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
           if (result != NULL) {
             return result;
           }
         }
       }
+
+      // Recovery: try to steal the empty region from the collector view:
+      for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
+        if (is_collector_free(idx)) {
+          ShenandoahHeapRegion* r = _regions->get(idx);
+          if (r->is_empty()) {
+            HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
+            if (result != NULL) {
+              flip_to_mutator(idx);
+              return result;
+            }
+          }
+        }
+      }
+
+      // Recovery: try to mix the allocation into the collector view:
+      if (ShenandoahAllowMixedAllocs) {
+        for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
+          if (is_collector_free(idx)) {
+            HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+            if (result != NULL) {
+              return result;
+            }
+          }
+        }
+      }
+
       break;
     }
     case ShenandoahHeap::_alloc_gclab:
     case ShenandoahHeap::_alloc_shared_gc: {
       // size_t is unsigned, need to dodge underflow when _leftmost = 0
-      for (size_t c = _rightmost + 1; c > _leftmost; c--) {
+
+      // Fast-path: try to allocate in the collector view first:
+      for (size_t c = _collector_rightmost + 1; c > _collector_leftmost; c--) {
         size_t idx = c - 1;
-        if (is_free(idx)) {
-          HeapWord* result = try_allocate_in(word_size, type, idx, in_new_region);
+        if (is_collector_free(idx)) {
+          HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
           if (result != NULL) {
             return result;
           }
         }
       }
+
+      // Recovery: try to steal the empty region from the mutator view:
+      for (size_t c = _mutator_rightmost + 1; c > _mutator_leftmost; c--) {
+        size_t idx = c - 1;
+        if (is_mutator_free(idx)) {
+          ShenandoahHeapRegion* r = _regions->get(idx);
+          if (r->is_empty()) {
+            HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
+            if (result != NULL) {
+              flip_to_gc(idx);
+              return result;
+            }
+          }
+        }
+      }
+
+      // Recovery: try to mix the allocation into the mutator view:
+      if (ShenandoahAllowMixedAllocs) {
+        for (size_t c = _mutator_rightmost + 1; c > _mutator_leftmost; c--) {
+          size_t idx = c - 1;
+          if (is_mutator_free(idx)) {
+            HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+            if (result != NULL) {
+              return result;
+            }
+          }
+        }
+      }
+
       break;
     }
     default:
@@ -91,8 +161,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
   return NULL;
 }
 
-HeapWord* ShenandoahFreeSet::try_allocate_in(size_t word_size, ShenandoahHeap::AllocType type, size_t idx, bool& in_new_region) {
-  ShenandoahHeapRegion* r = _regions->get(idx);
+HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {
   in_new_region = r->is_empty();
 
   HeapWord* result = r->allocate(word_size, type);
@@ -127,10 +196,11 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(size_t word_size, ShenandoahHeap::A
     // TODO: Record first fully-empty region, and use that for large allocations
     size_t num = r->region_number();
     increase_used(r->free());
-    _free_bitmap.clear_bit(num);
 
+    _collector_free_bitmap.clear_bit(num);
+    _mutator_free_bitmap.clear_bit(num);
     // Touched the bounds? Need to update:
-    if (num == _leftmost || num == _rightmost) {
+    if (touches_bounds(num)) {
       adjust_bounds();
     }
     assert_bounds();
@@ -138,13 +208,24 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(size_t word_size, ShenandoahHeap::A
   return result;
 }
 
+bool ShenandoahFreeSet::touches_bounds(size_t num) const {
+  return num == _collector_leftmost || num == _collector_rightmost || num == _mutator_leftmost || num == _mutator_rightmost;
+}
+
 void ShenandoahFreeSet::adjust_bounds() {
-  // Rewind both bounds until the next bit.
-  while (_leftmost < _max && !is_free(_leftmost)) {
-    _leftmost++;
+  // Rewind both mutator bounds until the next bit.
+  while (_mutator_leftmost < _max && !is_mutator_free(_mutator_leftmost)) {
+    _mutator_leftmost++;
   }
-  while (_rightmost > 0 && !is_free(_rightmost)) {
-    _rightmost--;
+  while (_mutator_rightmost > 0 && !is_mutator_free(_mutator_rightmost)) {
+    _mutator_rightmost--;
+  }
+  // Rewind both collector bounds until the next bit.
+  while (_collector_leftmost < _max && !is_collector_free(_collector_leftmost)) {
+    _collector_leftmost++;
+  }
+  while (_collector_rightmost > 0 && !is_collector_free(_collector_rightmost)) {
+    _collector_rightmost--;
   }
 }
 
@@ -154,14 +235,14 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
   size_t num = ShenandoahHeapRegion::required_regions(words_size * HeapWordSize);
 
   // No regions left to satisfy allocation, bye.
-  if (num > count()) {
+  if (num > mutator_count()) {
     return NULL;
   }
 
   // Find the continuous interval of $num regions, starting from $beg and ending in $end,
   // inclusive. Contiguous allocations are biased to the beginning.
 
-  size_t beg = _leftmost;
+  size_t beg = _mutator_leftmost;
   size_t end = beg;
 
   while (true) {
@@ -172,7 +253,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
 
     // If regions are not adjacent, then current [beg; end] is useless, and we may fast-forward.
     // If region is not empty, the current [beg; end] is useless, and we may fast-forward.
-    if (!is_free(end) || !_regions->get(end)->is_empty()) {
+    if (!is_mutator_free(end) || !_regions->get(end)->is_empty()) {
       end++;
       beg = end;
       continue;
@@ -220,7 +301,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
     r->increase_live_data_alloc_words(used_words);
     sh->increase_used(used_words * HeapWordSize);
 
-    _free_bitmap.clear_bit(r->region_number());
+    _mutator_free_bitmap.clear_bit(r->region_number());
   }
 
   // While individual regions report their true use, all humongous regions are
@@ -228,7 +309,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
   increase_used(ShenandoahHeapRegion::region_size_bytes() * num);
 
   // Allocated at left/rightmost? Move the bounds appropriately.
-  if (beg == _leftmost || end == _rightmost) {
+  if (beg == _mutator_leftmost || end == _mutator_rightmost) {
     adjust_bounds();
   }
   assert_bounds();
@@ -237,18 +318,41 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
 }
 
 void ShenandoahFreeSet::add_region(ShenandoahHeapRegion* r) {
+  size_t idx = r->region_number();
+
   assert_heaplock_owned_by_current_thread();
   assert(!r->in_collection_set(), "Shouldn't be adding those to the free set");
   assert(r->is_alloc_allowed(), "Should only add regions that can be allocated at");
+  assert(!is_mutator_free(idx), "We are about to add it, it shouldn't be there already");
+  assert(!is_collector_free(idx), "We are about to add it, it shouldn't be there already");
 
-#ifdef ASSERT
-  assert (!is_free(r->region_number()), "We are about to add it, it shouldn't be there already");
-#endif
-  _free_bitmap.set_bit(r->region_number());
-  _leftmost  = MIN2(_leftmost,  r->region_number());
-  _rightmost = MAX2(_rightmost, r->region_number());
+  _mutator_free_bitmap.set_bit(idx);
+  _mutator_leftmost  = MIN2(_mutator_leftmost, idx);
+  _mutator_rightmost = MAX2(_mutator_rightmost, idx);
   _capacity += r->free();
   assert(_used <= _capacity, "must not use more than we have");
+}
+
+void ShenandoahFreeSet::flip_to_gc(size_t idx) {
+  _mutator_free_bitmap.clear_bit(idx);
+  _collector_free_bitmap.set_bit(idx);
+  _collector_leftmost = MIN2(idx, _collector_leftmost);
+  _collector_rightmost = MAX2(idx, _collector_rightmost);
+  if (touches_bounds(idx)) {
+    adjust_bounds();
+  }
+  assert_bounds();
+}
+
+void ShenandoahFreeSet::flip_to_mutator(size_t idx) {
+  _collector_free_bitmap.clear_bit(idx);
+  _mutator_free_bitmap.set_bit(idx);
+  _mutator_leftmost = MIN2(idx, _mutator_leftmost);
+  _mutator_rightmost = MAX2(idx, _mutator_rightmost);
+  if (touches_bounds(idx)) {
+    adjust_bounds();
+  }
+  assert_bounds();
 }
 
 void ShenandoahFreeSet::clear() {
@@ -257,9 +361,12 @@ void ShenandoahFreeSet::clear() {
 }
 
 void ShenandoahFreeSet::clear_internal() {
-  _free_bitmap.clear();
-  _leftmost = _max;
-  _rightmost = 0;
+  _mutator_free_bitmap.clear();
+  _collector_free_bitmap.clear();
+  _mutator_leftmost = _max;
+  _mutator_rightmost = 0;
+  _collector_leftmost = _max;
+  _collector_rightmost = 0;
   _capacity = 0;
   _used = 0;
 }
@@ -337,8 +444,8 @@ HeapWord* ShenandoahFreeSet::allocate_large_memory(size_t words) {
 size_t ShenandoahFreeSet::unsafe_peek_free() const {
   // Deliberately not locked, this method is unsafe when free set is modified.
 
-  for (size_t index = _leftmost; index <= _rightmost; index++) {
-    if (index < _max && is_free(index)) {
+  for (size_t index = _mutator_leftmost; index <= _mutator_rightmost; index++) {
+    if (index < _max && is_mutator_free(index)) {
       ShenandoahHeapRegion* r = _regions->get(index);
       if (r->free() >= MinTLABSize) {
         return r->free();
@@ -351,9 +458,15 @@ size_t ShenandoahFreeSet::unsafe_peek_free() const {
 }
 
 void ShenandoahFreeSet::print_on(outputStream* out) const {
-  out->print_cr("Free Set: " SIZE_FORMAT "", count());
-  for (size_t index = _leftmost; index <= _rightmost; index++) {
-    if (is_free(index)) {
+  out->print_cr("Mutator Free Set: " SIZE_FORMAT "", mutator_count());
+  for (size_t index = _mutator_leftmost; index <= _mutator_rightmost; index++) {
+    if (is_mutator_free(index)) {
+      _regions->get(index)->print_on(out);
+    }
+  }
+  out->print_cr("Collector Free Set: " SIZE_FORMAT "", collector_count());
+  for (size_t index = _collector_leftmost; index <= _collector_rightmost; index++) {
+    if (is_collector_free(index)) {
       _regions->get(index)->print_on(out);
     }
   }
@@ -367,15 +480,26 @@ void ShenandoahFreeSet::assert_heaplock_owned_by_current_thread() const {
 void ShenandoahFreeSet::assert_bounds() const {
   // Performance invariants. Failing these would not break the free set, but performance
   // would suffer.
-  assert (_leftmost <= _max, "leftmost in bounds: "  SIZE_FORMAT " < " SIZE_FORMAT, _leftmost,  _max);
-  assert (_rightmost < _max, "rightmost in bounds: " SIZE_FORMAT " < " SIZE_FORMAT, _rightmost, _max);
+  assert (_mutator_leftmost <= _max, "leftmost in bounds: "  SIZE_FORMAT " < " SIZE_FORMAT, _mutator_leftmost,  _max);
+  assert (_mutator_rightmost < _max, "rightmost in bounds: " SIZE_FORMAT " < " SIZE_FORMAT, _mutator_rightmost, _max);
 
-  assert (_leftmost == _max || is_free(_leftmost),  "leftmost region should be free: " SIZE_FORMAT,  _leftmost);
-  assert (_rightmost == 0   || is_free(_rightmost), "rightmost region should be free: " SIZE_FORMAT, _rightmost);
+  assert (_mutator_leftmost == _max || is_mutator_free(_mutator_leftmost),  "leftmost region should be free: " SIZE_FORMAT,  _mutator_leftmost);
+  assert (_mutator_rightmost == 0   || is_mutator_free(_mutator_rightmost), "rightmost region should be free: " SIZE_FORMAT, _mutator_rightmost);
 
-  size_t beg_off = _free_bitmap.get_next_one_offset(0);
-  size_t end_off = _free_bitmap.get_next_one_offset(_rightmost + 1);
-  assert (beg_off >= _leftmost, "free regions before the leftmost: " SIZE_FORMAT ", bound " SIZE_FORMAT, beg_off, _leftmost);
-  assert (end_off == _max,      "free regions past the rightmost: " SIZE_FORMAT ", bound " SIZE_FORMAT,  end_off, _rightmost);
+  size_t beg_off = _mutator_free_bitmap.get_next_one_offset(0);
+  size_t end_off = _mutator_free_bitmap.get_next_one_offset(_mutator_rightmost + 1);
+  assert (beg_off >= _mutator_leftmost, "free regions before the leftmost: " SIZE_FORMAT ", bound " SIZE_FORMAT, beg_off, _mutator_leftmost);
+  assert (end_off == _max,      "free regions past the rightmost: " SIZE_FORMAT ", bound " SIZE_FORMAT,  end_off, _mutator_rightmost);
+
+  assert (_collector_leftmost <= _max, "leftmost in bounds: "  SIZE_FORMAT " < " SIZE_FORMAT, _collector_leftmost,  _max);
+  assert (_collector_rightmost < _max, "rightmost in bounds: " SIZE_FORMAT " < " SIZE_FORMAT, _collector_rightmost, _max);
+
+  assert (_collector_leftmost == _max || is_collector_free(_collector_leftmost),  "leftmost region should be free: " SIZE_FORMAT,  _collector_leftmost);
+  assert (_collector_rightmost == 0   || is_collector_free(_collector_rightmost), "rightmost region should be free: " SIZE_FORMAT, _collector_rightmost);
+
+  beg_off = _collector_free_bitmap.get_next_one_offset(0);
+  end_off = _collector_free_bitmap.get_next_one_offset(_collector_rightmost + 1);
+  assert (beg_off >= _collector_leftmost, "free regions before the leftmost: " SIZE_FORMAT ", bound " SIZE_FORMAT, beg_off, _collector_leftmost);
+  assert (end_off == _max,      "free regions past the rightmost: " SIZE_FORMAT ", bound " SIZE_FORMAT,  end_off, _collector_rightmost);
 }
 #endif

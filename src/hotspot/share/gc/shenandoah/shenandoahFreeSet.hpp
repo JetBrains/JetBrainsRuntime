@@ -31,12 +31,14 @@
 class ShenandoahFreeSet : public CHeapObj<mtGC> {
 private:
   ShenandoahHeapRegionSet* _regions;
-  CHeapBitMap _free_bitmap;
+  CHeapBitMap _mutator_free_bitmap;
+  CHeapBitMap _collector_free_bitmap;
   size_t _max;
 
   // Left-most and right-most region indexes. There are no free regions outside
   // of [left-most; right-most] index intervals
-  size_t _leftmost, _rightmost;
+  size_t _mutator_leftmost, _mutator_rightmost;
+  size_t _collector_leftmost, _collector_rightmost;
 
   size_t _capacity;
   size_t _used;
@@ -44,21 +46,27 @@ private:
   void assert_bounds() const PRODUCT_RETURN;
   void assert_heaplock_owned_by_current_thread() const PRODUCT_RETURN;
 
-  bool is_free(size_t idx) const;
+  bool is_mutator_free(size_t idx) const;
+  bool is_collector_free(size_t idx) const;
 
   HeapWord* allocate_small_memory(size_t words_size, ShenandoahHeap::AllocType type, bool& in_new_region);
   HeapWord* allocate_large_memory(size_t words_size);
 
-  HeapWord* try_allocate_in(size_t word_size, ShenandoahHeap::AllocType type, size_t idx, bool& in_new_region);
+  HeapWord* try_allocate_in(ShenandoahHeapRegion* region, size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region);
   HeapWord* allocate_single(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region);
   HeapWord* allocate_contiguous(size_t words_size);
 
+  void flip_to_mutator(size_t idx);
+  void flip_to_gc(size_t idx);
+
   void adjust_bounds();
+  bool touches_bounds(size_t num) const;
 
   void increase_used(size_t amount);
   void clear_internal();
 
-  size_t count()    const { return _free_bitmap.count_one_bits(); }
+  size_t collector_count() const { return _collector_free_bitmap.count_one_bits(); }
+  size_t mutator_count()   const { return _mutator_free_bitmap.count_one_bits();   }
 
 public:
   ShenandoahFreeSet(ShenandoahHeapRegionSet* regions, size_t max_regions);

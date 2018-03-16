@@ -446,6 +446,10 @@
           "uniform during the cycle.")                                      \
           range(0, 100)                                                     \
                                                                             \
+  diagnostic(bool, ShenandoahAllowMixedAllocs, true,                        \
+          "Allow mixing mutator and collector allocations in a single "     \
+          "region")                                                         \
+                                                                            \
 
 
 SHENANDOAH_FLAGS(DECLARE_DEVELOPER_FLAG, \
