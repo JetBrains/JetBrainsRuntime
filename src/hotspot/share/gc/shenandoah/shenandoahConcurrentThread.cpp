@@ -44,7 +44,8 @@ ShenandoahConcurrentThread::ShenandoahConcurrentThread() :
   _explicit_gc_waiters_lock(Mutex::leaf, "ShenandoahExplicitGC_lock", true, Monitor::_safepoint_check_always),
   _periodic_task(this),
   _explicit_gc_cause(GCCause::_no_cause_specified),
-  _degen_point(ShenandoahHeap::_degenerated_outside_cycle)
+  _degen_point(ShenandoahHeap::_degenerated_outside_cycle),
+  _allocs_seen(0)
 {
   create_and_start();
   _periodic_task.enroll();
@@ -79,6 +80,9 @@ void ShenandoahConcurrentThread::run_service() {
     // Figure out if we have pending requests.
     bool alloc_failure_pending = _alloc_failure_gc.is_set();
     bool explicit_gc_requested = _explicit_gc.is_set();
+
+    // This control loop iteration have seen this much allocations.
+    size_t allocs_seen = Atomic::xchg<size_t>(0, &_allocs_seen);
 
     // Choose which GC mode to run in. The block below should select a single mode.
     GCMode mode = none;
@@ -182,6 +186,16 @@ void ShenandoahConcurrentThread::run_service() {
       // to capture the state at the end of GC session.
       handle_force_counters_update();
       set_forced_counters_update(false);
+
+      // GC is over, we are at idle now
+      if (ShenandoahPacing) {
+        heap->pacer()->setup_for_idle();
+      }
+    } else {
+      // Allow allocators to know we have seen this much regions
+      if (ShenandoahPacing && (allocs_seen > 0)) {
+        heap->pacer()->report_alloc(allocs_seen);
+      }
     }
 
     double current = os::elapsedTime();
@@ -486,6 +500,12 @@ void ShenandoahConcurrentThread::notify_heap_changed() {
   // Notify that something had changed.
   if (_heap_changed.is_unset()) {
     _heap_changed.set();
+  }
+}
+
+void ShenandoahConcurrentThread::notify_alloc(size_t words) {
+  if (ShenandoahPacing) {
+    Atomic::add(words, &_allocs_seen);
   }
 }
 

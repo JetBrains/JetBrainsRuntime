@@ -52,6 +52,7 @@ uint64_t ShenandoahHeapRegion::AllocSeqNum = 1;
 ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start,
                                            size_t size_words, size_t index, bool committed) :
   _heap(heap),
+  _pacer(ShenandoahPacing ? heap->pacer() : NULL),
   _region_number(index),
   _live_data(0),
   _tlab_allocs(0),

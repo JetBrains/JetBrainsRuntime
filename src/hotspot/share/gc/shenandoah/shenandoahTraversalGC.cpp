@@ -392,6 +392,10 @@ void ShenandoahTraversalGC::init_traversal_collection() {
       _heap->set_concurrent_traversal_in_progress(false);
     }
   }
+
+  if (ShenandoahPacing) {
+    _heap->pacer()->setup_for_traversal();
+  }
 }
 
 void ShenandoahTraversalGC::main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb) {

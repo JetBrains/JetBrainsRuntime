@@ -422,6 +422,9 @@ public:
     // Do not allow concurrent cycles.
     FLAG_SET_DEFAULT(ExplicitGCInvokesConcurrent, false);
 
+    // Passive runs with max speed, reacts on allocation failure.
+    FLAG_SET_DEFAULT(ShenandoahPacing, false);
+
     // Disable known barriers by default.
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahSATBBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahConditionalSATBBarrier);
@@ -487,6 +490,9 @@ public:
   ShenandoahAggressiveHeuristics() : ShenandoahHeuristics() {
     // Do not shortcut evacuation
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 100);
+
+    // Aggressive runs with max speed for allocation, to capture races against mutator
+    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahPacing);
   }
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
@@ -1652,9 +1658,10 @@ bool ShenandoahCollectorPolicy::is_at_shutdown() {
 }
 
 void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
-  out->print_cr("Under allocation pressure, concurrent cycles will cancel, and either continue cycle");
+  out->print_cr("Under allocation pressure, concurrent cycles may cancel, and either continue cycle");
   out->print_cr("under stop-the-world pause or result in stop-the-world Full GC. Increase heap size,");
-  out->print_cr("tune GC heuristics, or lower allocation rate to avoid degenerated and Full GC cycles.");
+  out->print_cr("tune GC heuristics, set more aggressive pacing delay, or lower allocation rate");
+  out->print_cr("to avoid Degenerated and Full GC cycles.");
   out->cr();
 
   out->print_cr(SIZE_FORMAT_W(5) " successful partial concurrent GCs", _success_partial_gcs);

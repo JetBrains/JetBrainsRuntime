@@ -46,6 +46,8 @@
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
+#include "gc/shenandoah/shenandoahPacer.hpp"
+#include "gc/shenandoah/shenandoahPacer.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
@@ -173,6 +175,13 @@ jint ShenandoahHeap::initialize() {
   _complete_top_at_mark_starts_base = NEW_C_HEAP_ARRAY(HeapWord*, _num_regions, mtGC);
   _complete_top_at_mark_starts = _complete_top_at_mark_starts_base -
                ((uintx) pgc_rs.base() >> ShenandoahHeapRegion::region_size_bytes_shift());
+
+  if (ShenandoahPacing) {
+    _pacer = new ShenandoahPacer(this);
+    _pacer->setup_for_idle();
+  } else {
+    _pacer = NULL;
+  }
 
   {
     ShenandoahHeapLocker locker(lock());
@@ -351,6 +360,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _aux_bit_map(),
   _connection_matrix(NULL),
   _verifier(NULL),
+  _pacer(NULL),
   _used_at_last_gc(0),
   _alloc_seq_at_last_gc_start(0),
   _alloc_seq_at_last_gc_end(0),
@@ -700,6 +710,10 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
   HeapWord* result = NULL;
 
   if (type == _alloc_tlab || type == _alloc_shared) {
+    if (ShenandoahPacing) {
+      pacer()->pace_for_alloc(word_size);
+    }
+
     if (!ShenandoahAllocFailureALot || !should_inject_alloc_failure()) {
       result = allocate_memory_under_lock(word_size, type, in_new_region);
     }
@@ -737,6 +751,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
 
   if (result != NULL) {
     increase_allocated(word_size * HeapWordSize);
+    concurrent_thread()->notify_alloc(word_size);
   }
 
   return result;
@@ -892,6 +907,10 @@ public:
       if (_sh->check_cancelled_concgc_and_yield()) {
         log_develop_trace(gc, region)("Cancelled concgc while evacuating region " SIZE_FORMAT, r->region_number());
         break;
+      }
+
+      if (ShenandoahPacing) {
+        _sh->pacer()->report_evac(r->get_live_data_words());
       }
     }
   }
@@ -1266,6 +1285,13 @@ void ShenandoahHeap::print_tracing_info() const {
     ls.cr();
     ls.cr();
 
+    if (ShenandoahPacing) {
+      pacer()->print_on(&ls);
+    }
+
+    ls.cr();
+    ls.cr();
+
     if (ShenandoahAllocationTrace) {
       assert(alloc_tracker() != NULL, "Must be");
       alloc_tracker()->print_on(&ls);
@@ -1441,6 +1467,10 @@ void ShenandoahHeap::op_init_mark() {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::resize_tlabs);
     resize_all_tlabs();
   }
+
+  if (ShenandoahPacing) {
+    pacer()->setup_for_mark();
+  }
 }
 
 void ShenandoahHeap::op_mark() {
@@ -1475,6 +1505,10 @@ void ShenandoahHeap::op_final_mark() {
 
       ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
       evacuate_and_update_roots();
+    }
+
+    if (ShenandoahPacing) {
+      pacer()->setup_for_evac();
     }
   } else {
     concurrentMark()->cancel();
@@ -2048,6 +2082,11 @@ void ShenandoahHeap::reset_bytes_allocated_since_gc_start() {
   OrderAccess::release_store_fence(&_bytes_allocated_since_gc_start, (size_t)0);
 }
 
+ShenandoahPacer* ShenandoahHeap::pacer() const {
+  assert (_pacer != NULL, "sanity");
+  return _pacer;
+}
+
 void ShenandoahHeap::set_next_top_at_mark_start(HeapWord* region_base, HeapWord* addr) {
   uintx index = ((uintx) region_base) >> ShenandoahHeapRegion::region_size_bytes_shift();
   _next_top_at_mark_starts[index] = addr;
@@ -2203,6 +2242,9 @@ public:
       } else {
         if (r->is_active()) {
           _heap->marked_object_oop_safe_iterate(r, &cl);
+          if (ShenandoahPacing) {
+            _heap->pacer()->report_updaterefs(r->get_live_data_words());
+          }
         }
       }
       if (_heap->check_cancelled_concgc_and_yield(_concurrent)) {
@@ -2243,6 +2285,10 @@ void ShenandoahHeap::op_init_updaterefs() {
 
   // Initiate region walk: this cursor will update in concurrent and final phases
   _ordered_regions->clear_current_index();
+
+  if (ShenandoahPacing) {
+    pacer()->setup_for_updaterefs();
+  }
 }
 
 void ShenandoahHeap::op_final_updaterefs() {

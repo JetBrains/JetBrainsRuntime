@@ -48,6 +48,7 @@ class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
 class ShenandoahMarkCompact;
 class ShenandoahPartialGC;
+class ShenandoahPacer;
 class ShenandoahTraversalGC;
 class ShenandoahVerifier;
 class ShenandoahConcurrentThread;
@@ -228,6 +229,7 @@ private:
   ShenandoahPartialGC* _partial_gc;
   ShenandoahTraversalGC* _traversal_gc;
   ShenandoahVerifier*  _verifier;
+  ShenandoahPacer*  _pacer;
 
   ShenandoahConcurrentThread* _concurrent_gc_thread;
 
@@ -519,6 +521,7 @@ public:
   ShenandoahPartialGC* partial_gc();
   ShenandoahTraversalGC* traversal_gc();
   ShenandoahVerifier* verifier();
+  ShenandoahPacer* pacer() const;
 
   ReferenceProcessor* ref_processor() { return _ref_processor;}
 

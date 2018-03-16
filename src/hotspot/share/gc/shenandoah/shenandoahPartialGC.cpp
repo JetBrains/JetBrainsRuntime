@@ -160,6 +160,9 @@ public:
       while (r != NULL) {
         assert(r->is_root(), "must be root region");
         _heap->marked_object_oop_safe_iterate(r, &cl);
+        if (ShenandoahPacing) {
+          _heap->pacer()->report_partial(r->get_live_data_words());
+        }
         if (partial_gc->check_and_handle_cancelled_gc(_terminator)) return;
         r = _root_regions->claim_next();
       }
@@ -297,6 +300,8 @@ bool ShenandoahPartialGC::prepare() {
 
   assert(_root_regions->count() == 0, "must be cleared");
 
+  size_t work_size = 0;
+
   for (uint from_idx = 0; from_idx < num_regions; from_idx++) {
     ShenandoahHeapRegion* r = regions->get(from_idx);
 
@@ -308,6 +313,8 @@ bool ShenandoahPartialGC::prepare() {
     }
     if (r->is_root() && !r->in_collection_set()) {
       _root_regions->add_region(r);
+      work_size += r->get_live_data_words();
+
       matrix->clear_region_outbound(from_idx);
 
       // Since root region can be allocated at, we should bound the scans
@@ -316,6 +323,11 @@ bool ShenandoahPartialGC::prepare() {
       // objects under the race.
       r->set_concurrent_iteration_safe_limit(r->top());
     }
+  }
+
+  if (ShenandoahPacing) {
+    work_size += collection_set->live_data() >> LogHeapWordSize;
+    _heap->pacer()->setup_for_partial(work_size);
   }
 
   log_info(gc,ergo)("Got "SIZE_FORMAT" collection set regions, "SIZE_FORMAT" root regions",

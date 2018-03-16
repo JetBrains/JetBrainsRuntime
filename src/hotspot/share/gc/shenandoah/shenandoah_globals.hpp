@@ -424,7 +424,14 @@
   diagnostic(bool, ShenandoahDegeneratedGC, true,                           \
           "Use Degenerated GC.")                                            \
                                                                             \
-
+  experimental(bool, ShenandoahPacing, true,                                \
+          "Pace application allocations to give GC chance to start "        \
+          "and complete.")                                                  \
+                                                                            \
+  experimental(uintx, ShenandoahPacingMaxDelay, 10,                         \
+          "Max delay for pacing application allocations. "                  \
+          "Time is in milliseconds.")                                       \
+                                                                            \
 
 
 SHENANDOAH_FLAGS(DECLARE_DEVELOPER_FLAG, \

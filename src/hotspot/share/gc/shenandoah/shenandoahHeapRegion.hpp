@@ -239,6 +239,9 @@ private:
   // If the region has been initially committed. It has been committed before
   // it can be idled
   bool   _initialized;
+
+  ShenandoahPacer* _pacer;
+
 public:
   ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start, size_t size_words, size_t index, bool committed);
 

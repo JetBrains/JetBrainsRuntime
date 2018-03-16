@@ -74,6 +74,7 @@ private:
   ShenandoahSharedFlag _heap_changed;
   ShenandoahSharedFlag _do_counters_update;
   ShenandoahSharedFlag _force_counters_update;
+  volatile size_t _allocs_seen;
   GCCause::Cause _explicit_gc_cause;
   ShenandoahHeap::ShenandoahDegenPoint _degen_point;
 
@@ -112,6 +113,8 @@ public:
   void set_forced_counters_update(bool value);
 
   void notify_heap_changed();
+
+  void notify_alloc(size_t words);
 
   void start();
   void prepare_for_graceful_shutdown();
