@@ -55,10 +55,11 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 
-      if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj)) {
+      if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj) && !_heap->cancelled_concgc()) {
         assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
         assert(dq != NULL, "Dedup queue not set");
-        ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+        // Only dealing with to-space string, so that we can avoid evac-oom protocol, which is costly here.
+        assert(!_heap->in_collection_set(obj), "Must be in to-space");
         ShenandoahStringDedup::enqueue_candidate(obj, dq);
       }
     }
