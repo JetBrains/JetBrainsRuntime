@@ -432,6 +432,20 @@
           "Max delay for pacing application allocations. "                  \
           "Time is in milliseconds.")                                       \
                                                                             \
+  experimental(uintx, ShenandoahPacingIdleSlack, 2,                         \
+          "Percent of heap counted as non-taxable allocations during idle. "\
+          "Larger value makes the pacing milder during idle phases, "       \
+          "requiring less rendezvous with control thread. Lower value "     \
+          "makes the pacing control less responsive to out-of-cycle allocs.")\
+          range(0, 100)                                                     \
+                                                                            \
+  experimental(uintx, ShenandoahPacingCycleSlack, 10,                       \
+          "Percent of free space taken as non-taxable allocations during "  \
+          "the GC cycle. Larger value makes the pacing milder at the "      \
+          "beginning of the GC cycle. Lower value makes the pacing less "   \
+          "uniform during the cycle.")                                      \
+          range(0, 100)                                                     \
+                                                                            \
 
 
 SHENANDOAH_FLAGS(DECLARE_DEVELOPER_FLAG, \

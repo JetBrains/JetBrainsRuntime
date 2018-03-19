@@ -66,7 +66,7 @@ public:
   void print_on(outputStream* out) const;
 
 private:
-  void restart_with(size_t initial_budget, double tax_rate);
+  void restart_with(size_t non_taxable_bytes, double tax_rate);
 };
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_HPP
