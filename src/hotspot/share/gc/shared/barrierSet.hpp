@@ -137,9 +137,6 @@ public:
   virtual oop write_barrier(oop src) {
     return src;
   }
-  virtual oop storeval_barrier(oop src) {
-    return src;
-  }
 
   virtual void keep_alive_barrier(oop obj) {
     // Default impl does nothing.
