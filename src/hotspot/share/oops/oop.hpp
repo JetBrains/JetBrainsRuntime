@@ -155,19 +155,7 @@ class oopDesc {
     return BarrierSet::barrier_set()->obj_equals(o1, o2);
   }
 
-  inline static bool equals(narrowOop o1, narrowOop o2) {
-    return BarrierSet::barrier_set()->obj_equals(o1, o2);
-  }
-
   inline static bool safe_equals(oop o1, oop o2) {
-#ifdef ASSERT
-    BarrierSet::barrier_set()->verify_safe_oop(o1);
-    BarrierSet::barrier_set()->verify_safe_oop(o2);
-#endif
-    return unsafe_equals(o1, o2);
-  }
-
-  inline static bool safe_equals(narrowOop o1, narrowOop o2) {
 #ifdef ASSERT
     BarrierSet::barrier_set()->verify_safe_oop(o1);
     BarrierSet::barrier_set()->verify_safe_oop(o2);
@@ -181,10 +169,6 @@ class oopDesc {
 #else
     return o1 == o2;
 #endif
-  }
-
-  inline static bool unsafe_equals(narrowOop o1, narrowOop o2) {
-    return o1 == o2;
   }
 
   // Decode an oop pointer from a narrowOop if compressed.

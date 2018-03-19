@@ -255,10 +255,6 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
   return eq;
 }
 
-bool ShenandoahBarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
-  return obj_equals(oopDesc::decode_heap_oop(obj1), oopDesc::decode_heap_oop(obj2));
-}
-
 JRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_JRT(oopDesc* src))
   oop result = ((ShenandoahBarrierSet*)BarrierSet::barrier_set())->write_barrier(src);
   return (oopDesc*) result;
@@ -331,10 +327,6 @@ void ShenandoahBarrierSet::enqueue(oop obj) {
 #ifdef ASSERT
 void ShenandoahBarrierSet::verify_safe_oop(oop p) {
   shenandoah_assert_not_in_cset_except(NULL, p, (p == NULL) || ShenandoahHeap::heap()->cancelled_concgc());
-}
-
-void ShenandoahBarrierSet::verify_safe_oop(narrowOop p) {
-  verify_safe_oop(oopDesc::decode_heap_oop(p));
 }
 #endif
 

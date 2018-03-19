@@ -91,11 +91,9 @@ public:
   virtual void keep_alive_barrier(oop obj);
 
   bool obj_equals(oop obj1, oop obj2);
-  bool obj_equals(narrowOop obj1, narrowOop obj2);
 
 #ifdef ASSERT
   virtual void verify_safe_oop(oop p);
-  virtual void verify_safe_oop(narrowOop p);
 #endif
 
   static void enqueue(oop obj);

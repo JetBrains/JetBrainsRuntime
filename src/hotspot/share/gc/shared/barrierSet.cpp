@@ -73,16 +73,8 @@ bool BarrierSet::obj_equals(oop obj1, oop obj2) {
   return oopDesc::unsafe_equals(obj1, obj2);
 }
 
-bool BarrierSet::obj_equals(narrowOop obj1, narrowOop obj2) {
-  return oopDesc::unsafe_equals(obj1, obj2);
-}
-
 #ifdef ASSERT
 void BarrierSet::verify_safe_oop(oop p) {
-  // Do nothing
-}
-
-void BarrierSet::verify_safe_oop(narrowOop p) {
   // Do nothing
 }
 
