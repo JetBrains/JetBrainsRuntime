@@ -339,31 +339,30 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
   // Complete marking under STW, and start evacuation
   heap->vmop_entry_final_mark();
 
-  // Final mark had reclaimed some immediate garbage, kick cleanup to reclaim the space
-  heap->entry_cleanup();
-
-  // Perform concurrent evacuation, if required.
-  // This phase can be skipped if there is nothing to evacuate.
+  // Continue the cycle with evacuation and optional update-refs.
+  // This may be skipped if there is nothing to evacuate.
   // If so, evac_in_progress would be unset by collection set preparation code.
   if (heap->is_evacuation_in_progress()) {
+    // Final mark had reclaimed some immediate garbage, kick cleanup to reclaim the space
+    // for the rest of the cycle.
+    heap->entry_cleanup();
+
+    // Concurrently evacuate
     heap->entry_evac();
     if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_evac)) return;
-  }
 
-  // Perform update-refs phase, if required.
-  // This phase can be skipped if there was nothing evacuated. If so, has_forwarded would be unset
-  // by collection set preparation code.
-  if (heap->shenandoahPolicy()->should_start_update_refs()) {
-    if (heap->has_forwarded_objects()) {
+    // Perform update-refs phase, if required. This phase can be skipped if heuristics
+    // decides to piggy-back the update-refs on the next marking cycle. On either path,
+    // we need to turn off evacuation: either in init-update-refs, or in final-evac.
+    if (heap->shenandoahPolicy()->should_start_update_refs()) {
       heap->vmop_entry_init_updaterefs();
       heap->entry_updaterefs();
       if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_updaterefs)) return;
 
       heap->vmop_entry_final_updaterefs();
+    } else {
+      heap->vmop_entry_final_evac();
     }
-  } else {
-    // Need to turn off evacuation.
-    heap->vmop_entry_final_evac();
   }
 
   // Reclaim space and prepare for the next normal cycle:
