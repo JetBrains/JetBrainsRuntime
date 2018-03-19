@@ -29,11 +29,10 @@ import sun.lwawt.LWCursorManager;
 
 import java.awt.Cursor;
 import java.awt.Point;
-import java.awt.geom.Point2D;
 
 final class CCursorManager extends LWCursorManager {
 
-    private static native Point2D nativeGetCursorPosition();
+    private static native void nativeGetCursorPosition(int[] pos);
     private static native void nativeSetBuiltInCursor(final int type, final String name);
     private static native void nativeSetCustomCursor(final long imgPtr, final double x, final double y);
     public static native void nativeSetAllowsCursorSetInBackground(final boolean allows);
@@ -51,8 +50,9 @@ final class CCursorManager extends LWCursorManager {
 
     @Override
     protected Point getCursorPosition() {
-        final Point2D nativePosition = nativeGetCursorPosition();
-        return new Point((int)nativePosition.getX(), (int)nativePosition.getY());
+        final int [] pos = new int[2];
+        nativeGetCursorPosition(pos);
+        return new Point(pos[0], pos[1]);
     }
 
     @Override
