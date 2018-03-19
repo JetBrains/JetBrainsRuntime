@@ -617,7 +617,7 @@ private:
   HeapWord* allocate_new_gclab(size_t word_size);
 
   template<class T>
-  inline void do_marked_object(MarkBitMap* bitmap, T* cl, oop obj);
+  inline void do_object_marked_complete(T* cl, oop obj);
 
   ShenandoahConcurrentThread* concurrent_thread() { return _concurrent_gc_thread; }
 
