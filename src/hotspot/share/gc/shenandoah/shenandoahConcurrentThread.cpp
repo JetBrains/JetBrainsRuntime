@@ -109,7 +109,11 @@ void ShenandoahConcurrentThread::run_service() {
       // Honor explicit GC requests
       if (ExplicitGCInvokesConcurrent) {
         policy->record_explicit_to_concurrent();
-        mode = concurrent_normal;
+        if (policy->can_do_traversal_gc()) {
+          mode = concurrent_traversal;
+        } else {
+          mode = concurrent_normal;
+        }
       } else {
         policy->record_explicit_to_full();
         mode = stw_full;

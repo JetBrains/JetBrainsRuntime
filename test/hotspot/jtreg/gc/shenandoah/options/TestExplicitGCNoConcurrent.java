@@ -48,6 +48,8 @@ public class TestExplicitGCNoConcurrent {
             "Pause Final Mark",
             "Pause Init Update Refs",
             "Pause Final Update Refs",
+            "Pause Init Traversal",
+            "Pause Final Traversal",
         };
 
         String[] opts = new String[] {

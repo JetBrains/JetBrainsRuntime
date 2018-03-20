@@ -53,9 +53,14 @@ public class TestExplicitGC {
             "Pause Full"
         };
 
-        String[] concurrent = new String[] {
+        String[] concNormal = new String[] {
             "Pause Init Mark",
             "Pause Final Mark",
+        };
+
+        String[] concTraversal = new String[] {
+            "Pause Init Traversal",
+            "Pause Final Traversal",
         };
 
         {
@@ -68,7 +73,10 @@ public class TestExplicitGC {
             for (String p : full) {
                 output.shouldContain(p);
             }
-            for (String p : concurrent) {
+            for (String p : concNormal) {
+                output.shouldNotContain(p);
+            }
+            for (String p : concTraversal) {
                 output.shouldNotContain(p);
             }
         }
@@ -84,7 +92,10 @@ public class TestExplicitGC {
             for (String p : full) {
                 output.shouldNotContain(p);
             }
-            for (String p : concurrent) {
+            for (String p : concNormal) {
+                output.shouldNotContain(p);
+            }
+            for (String p : concTraversal) {
                 output.shouldNotContain(p);
             }
         }
@@ -100,7 +111,31 @@ public class TestExplicitGC {
             for (String p : full) {
                 output.shouldNotContain(p);
             }
-            for (String p : concurrent) {
+            for (String p : concNormal) {
+                output.shouldContain(p);
+            }
+            for (String p : concTraversal) {
+                output.shouldNotContain(p);
+            }
+        }
+
+        {
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UseShenandoahGC",
+                                    "-Xlog:gc",
+                                    "-XX:+ExplicitGCInvokesConcurrent",
+                                    "-XX:+UnlockExperimentalVMOptions",
+                                    "-XX:ShenandoahGCHeuristics=traversal",
+                                    TestExplicitGC.class.getName(),
+                                    "test");
+            OutputAnalyzer output = new OutputAnalyzer(pb.start());
+            for (String p : full) {
+                output.shouldNotContain(p);
+            }
+            for (String p : concNormal) {
+                output.shouldNotContain(p);
+            }
+            for (String p : concTraversal) {
                 output.shouldContain(p);
             }
         }
@@ -116,7 +151,10 @@ public class TestExplicitGC {
             for (String p : full) {
                 output.shouldContain(p);
             }
-            for (String p : concurrent) {
+            for (String p : concNormal) {
+                output.shouldNotContain(p);
+            }
+            for (String p : concTraversal) {
                 output.shouldNotContain(p);
             }
         }
