@@ -172,6 +172,7 @@ public:
   void make_trash();
   void make_empty();
   void make_uncommitted();
+  void make_committed_bypass();
 
   // Individual states:
   bool is_empty_uncommitted()      const { return _state == _empty_uncommitted; }

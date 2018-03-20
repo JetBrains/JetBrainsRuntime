@@ -140,7 +140,10 @@ void ShenandoahHeapRegion::make_humongous_start() {
 
 void ShenandoahHeapRegion::make_humongous_start_bypass() {
   _heap->assert_heaplock_owned_by_current_thread();
+  assert (_heap->is_full_gc_in_progress(), "only for full GC");
+
   switch (_state) {
+    case _empty_committed:
     case _regular:
     case _humongous_start:
     case _humongous_cont:
@@ -166,7 +169,10 @@ void ShenandoahHeapRegion::make_humongous_cont() {
 
 void ShenandoahHeapRegion::make_humongous_cont_bypass() {
   _heap->assert_heaplock_owned_by_current_thread();
+  assert (_heap->is_full_gc_in_progress(), "only for full GC");
+
   switch (_state) {
+    case _empty_committed:
     case _regular:
     case _humongous_start:
     case _humongous_cont:
@@ -288,6 +294,20 @@ void ShenandoahHeapRegion::make_uncommitted() {
       return;
     default:
       report_illegal_transition("uncommiting");
+  }
+}
+
+void ShenandoahHeapRegion::make_committed_bypass() {
+  _heap->assert_heaplock_owned_by_current_thread();
+  assert (_heap->is_full_gc_in_progress(), "only for full GC");
+
+  switch (_state) {
+    case _empty_uncommitted:
+      do_commit();
+      _state = _empty_committed;
+      return;
+    default:
+      report_illegal_transition("commit bypass");
   }
 }
 

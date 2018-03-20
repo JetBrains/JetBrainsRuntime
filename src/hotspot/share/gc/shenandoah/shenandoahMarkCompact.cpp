@@ -89,10 +89,13 @@ public:
     if (r->is_trash()) {
       r->recycle();
     }
-    if (r->is_empty() || r->is_cset()) {
+    if (r->is_cset()) {
       r->make_regular_bypass();
     }
-    assert (r->is_active(), "only active regions in heap now");
+    if (r->is_empty_uncommitted()) {
+      r->make_committed_bypass();
+    }
+    assert (r->is_committed(), "only committed regions in heap now, see region " SIZE_FORMAT, r->region_number());
 
     // Record current region occupancy: this communicates empty regions are free
     // to the rest of Full GC code.
@@ -719,6 +722,11 @@ public:
     }
 
     size_t live = r->used();
+
+    // Make empty regions that have been allocated into regular
+    if (r->is_empty() && live > 0) {
+      r->make_regular_bypass();
+    }
 
     // Reclaim regular regions that became empty
     if (r->is_regular() && live == 0) {
