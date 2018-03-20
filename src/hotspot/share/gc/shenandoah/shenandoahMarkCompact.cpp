@@ -29,6 +29,7 @@
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
+#include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
@@ -702,7 +703,7 @@ private:
 
 public:
   ShenandoahPostCompactClosure() : _live(0), _heap(ShenandoahHeap::heap()) {
-    _heap->clear_free_regions();
+    _heap->free_set()->clear();
   }
 
   bool heap_region_do(ShenandoahHeapRegion* r) {
@@ -735,7 +736,7 @@ public:
       if (_heap->collection_set()->is_in(r)) {
         _heap->collection_set()->remove_region(r);
       }
-      _heap->add_free_region(r);
+      _heap->free_set()->add_region(r);
     }
 
     r->set_live_data(live);

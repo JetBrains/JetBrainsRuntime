@@ -276,7 +276,7 @@ public:
 
 void ShenandoahTraversalGC::flush_liveness(uint worker_id) {
   jushort* ld = get_liveness(worker_id);
-  for (uint i = 0; i < _heap->regions()->active_regions(); i++) {
+  for (uint i = 0; i < _heap->num_regions(); i++) {
     ShenandoahHeapRegion* r = _heap->regions()->get(i);
     jushort live = ld[i];
     if (live > 0) {
@@ -317,20 +317,18 @@ void ShenandoahTraversalGC::prepare() {
   assert(_heap->is_next_bitmap_clear(), "need clean mark bitmap");
 
   ShenandoahHeapRegionSet* regions = _heap->regions();
+  ShenandoahFreeSet* free_set = _heap->free_set();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
-  size_t num_regions = _heap->num_regions();
 
   // Find collection set
   _heap->shenandoahPolicy()->choose_collection_set(collection_set, false);
 
   // Rebuild free set
-  ShenandoahFreeSet* _free_regions = _heap->free_regions();
-  _free_regions->clear();
-
-  for (uint from_idx = 0; from_idx < num_regions; from_idx++) {
+  free_set->clear();
+  for (uint from_idx = 0; from_idx < _heap->num_regions(); from_idx++) {
     ShenandoahHeapRegion* r = regions->get(from_idx);
     if (r->is_alloc_allowed()) {
-      _free_regions->add_region(r);
+      free_set->add_region(r);
     }
   }
 
@@ -584,10 +582,11 @@ void ShenandoahTraversalGC::final_traversal_collection() {
       // Trash everything
       // Clear immediate garbage regions.
       ShenandoahHeapRegionSet* regions = _heap->regions();
-      size_t active = regions->active_regions();
-      ShenandoahFreeSet* free_regions = _heap->free_regions();
+      size_t num_regions = _heap->num_regions();
+
+      ShenandoahFreeSet* free_regions = _heap->free_set();
       free_regions->clear();
-      for (size_t i = 0; i < active; i++) {
+      for (size_t i = 0; i < num_regions; i++) {
         ShenandoahHeapRegion* r = regions->get(i);
         bool not_allocated = _heap->next_top_at_mark_start(r->bottom()) == r->top();
         if (r->is_humongous_start() && !r->has_live() && not_allocated) {
@@ -595,7 +594,7 @@ void ShenandoahTraversalGC::final_traversal_collection() {
           HeapWord* humongous_obj = r->bottom() + BrooksPointer::word_size();
           assert(!_heap->is_marked_next(oop(humongous_obj)), "must not be marked");
           r->make_trash();
-          while (i + 1 < active && regions->get(i + 1)->is_humongous_continuation()) {
+          while (i + 1 < num_regions && regions->get(i + 1)->is_humongous_continuation()) {
             i++;
             r = regions->get(i);
             assert(r->is_humongous_continuation(), "must be humongous continuation");

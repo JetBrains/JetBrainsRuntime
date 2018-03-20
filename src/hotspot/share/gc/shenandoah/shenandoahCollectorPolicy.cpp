@@ -312,9 +312,9 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   // Step 1. Build up the region candidates we care about, rejecting losers and accepting winners right away.
 
   ShenandoahHeapRegionSet* regions = heap->regions();
-  size_t active = regions->active_regions();
+  size_t num_regions = heap->num_regions();
 
-  RegionData* candidates = get_region_data_cache(active);
+  RegionData* candidates = get_region_data_cache(num_regions);
 
   size_t cand_idx = 0;
 
@@ -324,7 +324,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t free = 0;
   size_t free_regions = 0;
 
-  for (size_t i = 0; i < active; i++) {
+  for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = regions->get(i);
 
     if (region->is_empty()) {
@@ -391,16 +391,16 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
     log_info(gc, ergo)("Live/garbage ratio in collected regions: "SIZE_FORMAT"%%",
                        collection_set->live_data() * 100 / MAX2(collection_set->garbage(), (size_t)1));
     log_info(gc, ergo)("Free: "SIZE_FORMAT"M, "SIZE_FORMAT" regions ("SIZE_FORMAT"%% of total)",
-                       free / M, free_regions, free_regions * 100 / active);
+                       free / M, free_regions, free_regions * 100 / num_regions);
   }
 
   collection_set->update_region_status();
 }
 
 void ShenandoahHeuristics::choose_free_set(ShenandoahFreeSet* free_set) {
-  ShenandoahHeapRegionSet* ordered_regions = ShenandoahHeap::heap()->regions();
-  for (size_t i = 0; i < ordered_regions->active_regions(); i++) {
-    ShenandoahHeapRegion* region = ordered_regions->get(i);
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  for (size_t i = 0; i < heap->num_regions(); i++) {
+    ShenandoahHeapRegion* region = heap->regions()->get(i);
     if (region->is_alloc_allowed()) {
       free_set->add_region(region);
     }
@@ -556,7 +556,7 @@ public:
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-    size_t available = heap->free_regions()->available();
+    size_t available = heap->free_set()->available();
     size_t threshold_available = (capacity * ShenandoahFreeThreshold) / 100;
     size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
     size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
@@ -620,7 +620,7 @@ public:
   virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-    size_t available = heap->free_regions()->available();
+    size_t available = heap->free_set()->available();
     double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
     bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
     size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
@@ -850,7 +850,7 @@ public:
     if (! ShenandoahConcMarkGC) return false;
     bool shouldStartConcurrentMark = false;
     ShenandoahHeap* heap = ShenandoahHeap::heap();
-    size_t available = heap->free_regions()->available();
+    size_t available = heap->free_set()->available();
     uintx factor = _free_threshold;
     size_t cset_threshold = 0;
     if (! update_refs()) {
@@ -1008,8 +1008,7 @@ public:
       return false;
     }
 
-    size_t active    = heap->regions()->active_regions() * ShenandoahHeapRegion::region_size_bytes();
-    size_t threshold = active * ShenandoahConnectednessPercentage / 100;
+    size_t threshold = heap->capacity() * ShenandoahConnectednessPercentage / 100;
     size_t allocated = used - prev_used;
     bool result = allocated > threshold;
 
@@ -1102,14 +1101,16 @@ public:
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
 
     ShenandoahHeapRegionSet* regions = heap->regions();
-    size_t active = regions->active_regions();
-    ShenandoahHeapRegionSet sorted_regions(active);
+    size_t num_regions = heap->num_regions();
 
-    for (size_t i = 0; i < active; i++) {
+    ShenandoahHeapRegionSet sorted_regions(num_regions);
+
+    for (size_t i = 0; i < num_regions; i++) {
       sorted_regions.add_region(regions->get(i));
     }
 
     sorted_regions.sort(compare_by_alloc_seq_descending);
+    size_t sorted_count = sorted_regions.count();
 
     // Heuristics triggered partial when allocated was larger than a threshold.
     // New allocations might have happened while we were preparing for GC,
@@ -1117,24 +1118,22 @@ public:
     size_t used      = heap->used();
     size_t prev_used = heap->used_at_last_gc();
     guarantee(used >= prev_used, "Invariant");
-    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_regions.active_regions());
+    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_count);
 
-    for (uint to_idx = 0; to_idx < active; to_idx++) {
+    for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
       ShenandoahHeapRegion* region = regions->get(to_idx);
       region->set_root(false);
     }
 
     uint count = 0;
-    size_t sorted_active = sorted_regions.active_regions();
 
-    for (uint i = 0; (i < sorted_active) && (count < target); i++) {
+    for (uint i = 0; (i < sorted_count) && (count < target); i++) {
       ShenandoahHeapRegion* contender = sorted_regions.get(i);
       if (contender->seqnum_last_alloc() <= alloc_seq_at_last_gc_end) {
         break;
       }
 
       size_t index = contender->region_number();
-      size_t num_regions = heap->num_regions();
       size_t from_idx_count = 0;
       if (matrix->enumerate_connected_to(index, num_regions, _from_idxs, from_idx_count,
                                          ShenandoahPartialInboundThreshold)) {
@@ -1152,8 +1151,8 @@ public:
     }
     collection_set->update_region_status();
 
-    log_info(gc,ergo)("Regions: Active: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
-                      active, target, ShenandoahGenerationalYoungGenPercentage, collection_set->count());
+    log_info(gc,ergo)("Regions: Max: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
+                      num_regions, target, ShenandoahGenerationalYoungGenPercentage, collection_set->count());
   }
 
   bool should_start_partial_gc() {
@@ -1173,8 +1172,7 @@ public:
       return false;
     }
 
-    size_t active    = heap->regions()->active_regions() * ShenandoahHeapRegion::region_size_bytes();
-    size_t threshold = active * ShenandoahGenerationalYoungGenPercentage / 100;
+    size_t threshold = heap->capacity() * ShenandoahGenerationalYoungGenPercentage / 100;
     size_t allocated = used - prev_used;
 
     // Start the next young gc after we've allocated percentage_young of the heap.
@@ -1210,10 +1208,11 @@ public:
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
 
     ShenandoahHeapRegionSet* regions = ShenandoahHeap::heap()->regions();
-    size_t active = regions->active_regions();
-    ShenandoahHeapRegionSet sorted_regions(active);
+    size_t num_regions = heap->num_regions();
 
-    for (size_t i = 0; i < active; i++) {
+    ShenandoahHeapRegionSet sorted_regions(num_regions);
+
+    for (size_t i = 0; i < num_regions; i++) {
       ShenandoahHeapRegion* r = regions->get(i);
       if (r->is_regular() && (r->seqnum_last_alloc() > 0)) {
         sorted_regions.add_region(regions->get(i));
@@ -1221,6 +1220,7 @@ public:
     }
 
     sorted_regions.sort(compare_by_alloc_seq_ascending);
+    size_t sorted_count = sorted_regions.count();
 
     // Heuristics triggered partial when allocated was larger than a threshold.
     // New allocations might have happened while we were preparing for GC,
@@ -1228,23 +1228,21 @@ public:
     size_t used      = heap->used();
     size_t prev_used = heap->used_at_last_gc();
     guarantee(used >= prev_used, "Invariant");
-    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_regions.active_regions());
+    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_count);
 
-    for (uint to_idx = 0; to_idx < active; to_idx++) {
+    for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
       ShenandoahHeapRegion* region = regions->get(to_idx);
       region->set_root(false);
     }
     uint count = 0;
-    size_t sorted_active = sorted_regions.active_regions();
 
-    for (uint i = 0; (i < sorted_active) && (count < target); i++) {
+    for (uint i = 0; (i < sorted_count) && (count < target); i++) {
       ShenandoahHeapRegion* contender = sorted_regions.get(i);
       if (contender->seqnum_last_alloc() >= alloc_seq_at_last_gc_start) {
         break;
       }
 
       size_t index = contender->region_number();
-      size_t num_regions = heap->num_regions();
       size_t from_idx_count = 0;
       if (matrix->enumerate_connected_to(index, num_regions,_from_idxs, from_idx_count,
                                          ShenandoahPartialInboundThreshold)) {
@@ -1261,8 +1259,8 @@ public:
     }
     collection_set->update_region_status();
 
-    log_info(gc,ergo)("Regions: Active: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
-                      active, target, ShenandoahLRUOldGenPercentage, collection_set->count());
+    log_info(gc,ergo)("Regions: Max: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
+                      num_regions, target, ShenandoahLRUOldGenPercentage, collection_set->count());
   }
 
   bool should_start_partial_gc() {
@@ -1284,9 +1282,8 @@ public:
 
     // For now don't start until we are 40% full
     size_t allocated = used - prev_used;
-    size_t active    = heap->regions()->active_regions() * ShenandoahHeapRegion::region_size_bytes();
-    size_t threshold = active * ShenandoahLRUOldGenPercentage / 100;
-    size_t minimum   = active * 0.4;
+    size_t threshold = heap->capacity() * ShenandoahLRUOldGenPercentage / 100;
+    size_t minimum   = heap->capacity() * 0.4;
 
     bool result = ((used > minimum) && (allocated > threshold));
 
@@ -1343,10 +1340,8 @@ public:
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
-    ShenandoahHeapRegionSet* regions = ShenandoahHeap::heap()->regions();
-    size_t active = regions->active_regions();
-    for (size_t i = 0; i < active; i++) {
-      ShenandoahHeapRegion *r = regions->get(i);
+    for (size_t i = 0; i < heap->num_regions(); i++) {
+      ShenandoahHeapRegion* r = heap->regions()->get(i);
       assert(!r->is_root(), "must not be root region");
       assert(!collection_set->is_in(r), "must not yet be in cset");
       if (r->is_regular() && r->used() > 0) {

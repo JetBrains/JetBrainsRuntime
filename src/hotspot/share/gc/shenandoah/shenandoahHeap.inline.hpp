@@ -93,7 +93,7 @@ inline size_t ShenandoahHeap::heap_region_index_containing(const void* addr) con
 
 inline ShenandoahHeapRegion* ShenandoahHeap::heap_region_containing(const void* addr) const {
   size_t index = heap_region_index_containing(addr);
-  ShenandoahHeapRegion* result = _ordered_regions->get(index);
+  ShenandoahHeapRegion* result = _regions->get(index);
   assert(addr >= result->bottom() && addr < result->end(), "Heap region contains the address: " PTR_FORMAT, p2i(addr));
   return result;
 }

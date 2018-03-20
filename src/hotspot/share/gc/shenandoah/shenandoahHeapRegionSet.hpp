@@ -54,9 +54,7 @@ public:
   ShenandoahHeapRegionSet(size_t max_regions);
   virtual ~ShenandoahHeapRegionSet();
 
-  size_t   max_regions()     const { return _reserved_end; }
-  size_t   active_regions()  const { return _active_end; }
-  size_t   count()           const { return _active_end - _current_index; }
+  size_t count() const { return _active_end; }
 
   HeapWord* bottom() const;
   HeapWord* end() const;

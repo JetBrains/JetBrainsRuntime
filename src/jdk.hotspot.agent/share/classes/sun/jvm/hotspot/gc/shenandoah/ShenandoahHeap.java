@@ -43,7 +43,7 @@ public class ShenandoahHeap extends CollectedHeap {
     static private CIntegerField numRegions;
     static private CIntegerField usedRegions;
     static private CIntegerField committedRegions;
-    static private AddressField  orderedRegionsField;
+    static private AddressField  regionsField;
 
     static {
         VM.registerVMInitializedObserver(new Observer() {
@@ -59,7 +59,7 @@ public class ShenandoahHeap extends CollectedHeap {
         usedRegions = type.getCIntegerField("_used");
         committedRegions = type.getCIntegerField("_committed");
 
-        orderedRegionsField = type.getAddressField("_ordered_regions");
+        regionsField = type.getAddressField("_regions");
     }
 
     @Override
@@ -107,7 +107,7 @@ public class ShenandoahHeap extends CollectedHeap {
     }
 
     private ShenandoahHeapRegionSet regions() {
-        Address regsAddr = orderedRegionsField.getValue(addr);
+        Address regsAddr = regionsField.getValue(addr);
         return (ShenandoahHeapRegionSet) VMObjectFactory.newObject(ShenandoahHeapRegionSet.class,
                 regsAddr);
     }

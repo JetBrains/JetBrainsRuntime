@@ -163,8 +163,8 @@ jint ShenandoahHeap::initialize() {
   size_t reg_size_words = ShenandoahHeapRegion::region_size_words();
   size_t reg_size_bytes = ShenandoahHeapRegion::region_size_bytes();
 
-  _ordered_regions = new ShenandoahHeapRegionSet(_num_regions);
-  _free_regions = new ShenandoahFreeSet(_ordered_regions, _num_regions);
+  _regions = new ShenandoahHeapRegionSet(_num_regions);
+  _free_set = new ShenandoahFreeSet(_regions, _num_regions);
 
   _collection_set = new ShenandoahCollectionSet(this, (HeapWord*)pgc_rs.base());
 
@@ -195,16 +195,13 @@ jint ShenandoahHeap::initialize() {
       _complete_top_at_mark_starts_base[i] = r->bottom();
       _next_top_at_mark_starts_base[i] = r->bottom();
 
-      // Add to ordered regions first.
-      // We use the active size of ordered regions as the number of active regions in heap,
-      // free set and collection set use the number to assert the correctness of incoming regions.
-      _ordered_regions->add_region(r);
-      _free_regions->add_region(r);
+      _regions->add_region(r);
+      _free_set->add_region(r);
       assert(!collection_set()->is_in(i), "New region should not be in collection set");
     }
   }
 
-  assert(_ordered_regions->active_regions() == _num_regions, "Must match");
+  assert(_regions->count() == _num_regions, "Must match");
   assert((((size_t) base()) & ShenandoahHeapRegion::region_size_bytes_mask()) == 0,
          "misaligned heap: "PTR_FORMAT, p2i(base()));
 
@@ -213,9 +210,9 @@ jint ShenandoahHeap::initialize() {
     ResourceMark rm;
     LogStream ls(lt);
     log_trace(gc, region)("All Regions");
-    _ordered_regions->print_on(&ls);
+    _regions->print_on(&ls);
     log_trace(gc, region)("Free Regions");
-    _free_regions->print_on(&ls);
+    _free_set->print_on(&ls);
   }
 
   // The call below uses stuff (the SATB* things) that are in G1, but probably
@@ -290,8 +287,8 @@ jint ShenandoahHeap::initialize() {
     // we touch the region and the corresponding bitmaps from the same thread.
 
     log_info(gc, heap)("Parallel pretouch " SIZE_FORMAT " regions with " SIZE_FORMAT " byte pages",
-                       _ordered_regions->count(), page_size);
-    ShenandoahPretouchTask cl(_ordered_regions, bitmap0.base(), bitmap1.base(), _bitmap_size, page_size);
+                       _regions->count(), page_size);
+    ShenandoahPretouchTask cl(_regions, bitmap0.base(), bitmap1.base(), _bitmap_size, page_size);
     _workers->run_task(&cl);
   }
 
@@ -346,7 +343,7 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   CollectedHeap(),
   _shenandoah_policy(policy),
   _soft_ref_policy(),
-  _free_regions(NULL),
+  _free_set(NULL),
   _collection_set(NULL),
   _bytes_allocated_since_gc_start(0),
   _max_workers(MAX2(ConcGCThreads, ParallelGCThreads)),
@@ -433,13 +430,13 @@ public:
 void ShenandoahHeap::reset_next_mark_bitmap() {
   assert_gc_workers(_workers->active_workers());
 
-  ShenandoahResetNextBitmapTask task(_ordered_regions);
+  ShenandoahResetNextBitmapTask task(_regions);
   _workers->run_task(&task);
 }
 
 bool ShenandoahHeap::is_next_bitmap_clear() {
   for (size_t idx = 0; idx < _num_regions; idx++) {
-    ShenandoahHeapRegion* r = _ordered_regions->get(idx);
+    ShenandoahHeapRegion* r = _regions->get(idx);
     if (is_bitmap_slice_committed(r) && !is_next_bitmap_clear_range(r->bottom(), r->end())) {
       return false;
     }
@@ -759,7 +756,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
 
 HeapWord* ShenandoahHeap::allocate_memory_under_lock(size_t word_size, AllocType type, bool& in_new_region) {
   ShenandoahHeapLocker locker(lock());
-  return _free_regions->allocate(word_size, type, in_new_region);
+  return _free_set->allocate(word_size, type, in_new_region);
 }
 
 HeapWord*  ShenandoahHeap::mem_allocate(size_t size,
@@ -935,7 +932,7 @@ void ShenandoahHeap::print_heap_regions_on(outputStream* st) const {
   st->print_cr("R=root, CP=critical pins, TAMS=top-at-mark-start (previous, next)");
   st->print_cr("SN=alloc sequence numbers (first mutator, last mutator, first gc, last gc)");
 
-  _ordered_regions->print_on(st);
+  _regions->print_on(st);
 }
 
 size_t ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
@@ -952,7 +949,7 @@ size_t ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
   for(size_t i = 0; i < required_regions; i++) {
     // Reclaim from tail. Otherwise, assertion fails when printing region to trace log,
     // as it expects that every region belongs to a humongous region starting with a humongous start region.
-    ShenandoahHeapRegion* region = _ordered_regions->get(index --);
+    ShenandoahHeapRegion* region = _regions->get(index --);
 
     LogTarget(Trace, gc, humongous) lt;
     if (lt.is_enabled()) {
@@ -979,8 +976,6 @@ class ShenandoahCheckCollectionSetClosure: public ShenandoahHeapRegionClosure {
 #endif
 
 void ShenandoahHeap::prepare_for_concurrent_evacuation() {
-  assert(_ordered_regions->get(0)->region_number() == 0, "FIXME CHF. FIXME CHF!");
-
   log_develop_trace(gc)("Thread %d started prepare_for_concurrent_evacuation", Thread::current()->osthread()->thread_id());
 
   if (!cancelled_concgc()) {
@@ -1007,16 +1002,16 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
     {
       ShenandoahHeapLocker locker(lock());
       _collection_set->clear();
-      _free_regions->clear();
+      _free_set->clear();
 
 #ifdef ASSERT
       ShenandoahCheckCollectionSetClosure ccsc;
-      _ordered_regions->heap_region_iterate(&ccsc);
+      _regions->heap_region_iterate(&ccsc);
 #endif
 
       _shenandoah_policy->choose_collection_set(_collection_set);
 
-      _shenandoah_policy->choose_free_set(_free_regions);
+      _shenandoah_policy->choose_free_set(_free_set);
     }
 
     Universe::update_heap_info_at_gc();
@@ -1152,7 +1147,7 @@ bool ShenandoahHeap::supports_tlab_allocation() const {
 }
 
 size_t  ShenandoahHeap::unsafe_max_tlab_alloc(Thread *thread) const {
-  return MIN2(_free_regions->unsafe_peek_free(), max_tlab_size());
+  return MIN2(_free_set->unsafe_peek_free(), max_tlab_size());
 }
 
 size_t ShenandoahHeap::max_tlab_size() const {
@@ -1312,7 +1307,7 @@ void ShenandoahHeap::verify(VerifyOption vo) {
   }
 }
 size_t ShenandoahHeap::tlab_capacity(Thread *thr) const {
-  return _free_regions->capacity();
+  return _free_set->capacity();
 }
 
 class ObjectIterateScanRootClosure : public ExtendedOopClosure {
@@ -1405,7 +1400,7 @@ void ShenandoahHeap::safe_object_iterate(ObjectClosure* cl) {
 // terminating the iteration early if heap_region_do() returns true.
 void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk, bool skip_cset_regions, bool skip_humongous_continuation) const {
   for (size_t i = 0; i < num_regions(); i++) {
-    ShenandoahHeapRegion* current  = _ordered_regions->get(i);
+    ShenandoahHeapRegion* current  = _regions->get(i);
     if (skip_humongous_continuation && current->is_humongous_continuation()) {
       continue;
     }
@@ -1552,7 +1547,7 @@ void ShenandoahHeap::op_evac() {
     _collection_set->print_on(&ls);
 
     ls.print_cr("Free set:");
-    _free_regions->print_on(&ls);
+    _free_set->print_on(&ls);
   }
 
   ShenandoahParallelEvacuationTask task(this, _collection_set);
@@ -1566,7 +1561,7 @@ void ShenandoahHeap::op_evac() {
     _collection_set->print_on(&ls);
 
     ls.print_cr("After evacuation free set:");
-    _free_regions->print_on(&ls);
+    _free_set->print_on(&ls);
   }
 
   if (lt_region.is_enabled()) {
@@ -1875,7 +1870,7 @@ GCTracer* ShenandoahHeap::tracer() {
 }
 
 size_t ShenandoahHeap::tlab_used(Thread* thread) const {
-  return _free_regions->used();
+  return _free_set->used();
 }
 
 void ShenandoahHeap::cancel_concgc(GCCause::Cause cause) {
@@ -2030,11 +2025,11 @@ bool ShenandoahHeap::unload_classes() const {
 //fixme this should be in heapregionset
 ShenandoahHeapRegion* ShenandoahHeap::next_compaction_region(const ShenandoahHeapRegion* r) {
   size_t region_idx = r->region_number() + 1;
-  ShenandoahHeapRegion* next = _ordered_regions->get(region_idx);
+  ShenandoahHeapRegion* next = _regions->get(region_idx);
   guarantee(next->region_number() == region_idx, "region number must match");
   while (next->is_humongous()) {
     region_idx = next->region_number() + 1;
-    next = _ordered_regions->get(region_idx);
+    next = _regions->get(region_idx);
     guarantee(next->region_number() == region_idx, "region number must match");
   }
   return next;
@@ -2050,14 +2045,6 @@ MarkBitMap* ShenandoahHeap::complete_mark_bit_map() {
 
 MarkBitMap* ShenandoahHeap::next_mark_bit_map() {
   return _next_mark_bit_map;
-}
-
-void ShenandoahHeap::add_free_region(ShenandoahHeapRegion* r) {
-  _free_regions->add_region(r);
-}
-
-void ShenandoahHeap::clear_free_regions() {
-  _free_regions->clear();
 }
 
 address ShenandoahHeap::in_cset_fast_test_addr() {
@@ -2279,12 +2266,12 @@ void ShenandoahHeap::op_init_updaterefs() {
     connection_matrix()->clear_all();
   }
   for (uint i = 0; i < num_regions(); i++) {
-    ShenandoahHeapRegion* r = _ordered_regions->get(i);
+    ShenandoahHeapRegion* r = _regions->get(i);
     r->set_concurrent_iteration_safe_limit(r->top());
   }
 
   // Initiate region walk: this cursor will update in concurrent and final phases
-  _ordered_regions->clear_current_index();
+  _regions->clear_current_index();
 
   if (ShenandoahPacing) {
     pacer()->setup_for_updaterefs();
@@ -2295,7 +2282,7 @@ void ShenandoahHeap::op_final_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
   // Check if there is left-over work, and finish it
-  if (_ordered_regions->current() != NULL) {
+  if (_regions->current() != NULL) {
     ShenandoahGCPhase final_work(ShenandoahPhaseTimings::final_update_refs_finish_work);
 
     // Finish updating references where we left off.
@@ -2328,13 +2315,12 @@ void ShenandoahHeap::op_final_updaterefs() {
   {
     // Rebuild the free set
     ShenandoahHeapLocker locker(lock());
-    _free_regions->clear();
-    size_t end = _ordered_regions->active_regions();
-    for (size_t i = 0; i < end; i++) {
-      ShenandoahHeapRegion* r = _ordered_regions->get(i);
+    _free_set->clear();
+    for (size_t i = 0; i < num_regions(); i++) {
+      ShenandoahHeapRegion* r = _regions->get(i);
       if (r->is_alloc_allowed()) {
         assert (!in_collection_set(r), "collection set should be clear");
-        _free_regions->add_region(r);
+        _free_set->add_region(r);
       }
     }
   }
@@ -2372,11 +2358,11 @@ void ShenandoahHeap::recycle_trash_assist(size_t limit) {
 
   size_t count = 0;
   for (size_t i = 0; (i < num_regions()) && (count < limit); i++) {
-    ShenandoahHeapRegion *r = _ordered_regions->get(i);
+    ShenandoahHeapRegion *r = _regions->get(i);
     if (r->is_trash()) {
       decrease_used(r->used());
       r->recycle();
-      _free_regions->add_region(r);
+      _free_set->add_region(r);
       count++;
     }
   }
@@ -2387,13 +2373,13 @@ void ShenandoahHeap::recycle_trash() {
   assert_heaplock_not_owned_by_current_thread();
 
   for (size_t i = 0; i < num_regions(); i++) {
-    ShenandoahHeapRegion* r = _ordered_regions->get(i);
+    ShenandoahHeapRegion* r = _regions->get(i);
     if (r->is_trash()) {
       ShenandoahHeapLocker locker(lock());
       if (r->is_trash()) {
         decrease_used(r->used());
         r->recycle();
-        _free_regions->add_region(r);
+        _free_set->add_region(r);
       }
     }
     SpinPause(); // allow allocators to take the lock
@@ -2413,7 +2399,7 @@ bool ShenandoahHeap::is_bitmap_slice_committed(ShenandoahHeapRegion* r, bool ski
   for (size_t g = regions_from; g < regions_to; g++) {
     assert (g / _bitmap_regions_per_slice == slice, "same slice");
     if (skip_self && g == r->region_number()) continue;
-    if (_ordered_regions->get(g)->is_committed()) {
+    if (_regions->get(g)->is_committed()) {
       return true;
     }
   }

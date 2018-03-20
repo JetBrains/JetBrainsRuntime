@@ -70,8 +70,7 @@ void ShenandoahConnectionMatrix::print_on(outputStream* st) const {
                "TS_Start", "TS_End", "Refcnt", "Referenced by");
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  size_t num_regions = heap->num_regions();
-  for (uint from_idx = 0; from_idx < num_regions; from_idx++) {
+  for (uint from_idx = 0; from_idx < heap->num_regions(); from_idx++) {
     ShenandoahHeapRegion* r = heap->regions()->get(from_idx);
     if (r->is_active()) {
       uint count = 0;

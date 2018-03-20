@@ -294,9 +294,9 @@ bool ShenandoahPartialGC::prepare() {
   }
 
   // Final pass: rebuild free set and region set.
-  ShenandoahFreeSet* _free_regions = _heap->free_regions();
+  ShenandoahFreeSet* free_set = _heap->free_set();
   _root_regions->clear();
-  _free_regions->clear();
+  free_set->clear();
 
   assert(_root_regions->count() == 0, "must be cleared");
 
@@ -309,7 +309,7 @@ bool ShenandoahPartialGC::prepare() {
     _heap->set_next_top_at_mark_start(r->bottom(), r->end());
 
     if (r->is_alloc_allowed()) {
-      _free_regions->add_region(r);
+      free_set->add_region(r);
     }
     if (r->is_root() && !r->in_collection_set()) {
       _root_regions->add_region(r);

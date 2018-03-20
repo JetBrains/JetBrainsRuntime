@@ -995,7 +995,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
     }
   }
   if (COUNT_LIVENESS) {
-    for (uint i = 0; i < _heap->regions()->active_regions(); i++) {
+    for (uint i = 0; i < _heap->num_regions(); i++) {
       ShenandoahHeapRegion* r = _heap->regions()->get(i);
       jushort live = ld[i];
       if (live > 0) {
