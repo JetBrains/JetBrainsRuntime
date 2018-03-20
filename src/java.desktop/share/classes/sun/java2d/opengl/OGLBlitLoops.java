@@ -293,7 +293,7 @@ final class OGLBlitLoops {
 
             // always flush immediately, since we (currently) have no means
             // of tracking changes to the system memory surface
-            rq.flushNow();
+            rq.flushNow(false);
         } finally {
             rq.unlock();
         }
@@ -370,7 +370,7 @@ final class OGLBlitLoops {
                 // we only have to flush immediately when copying from a
                 // (non-texture) surface to the screen; otherwise Swing apps
                 // might appear unresponsive until the auto-flush completes
-                rq.flushNow();
+                rq.flushNow(false);
             }
         } finally {
             rq.unlock();
@@ -611,7 +611,7 @@ final class OGLSurfaceToSwBlit extends Blit {
             buf.putLong(dst.getNativeOps());
 
             // always flush immediately
-            rq.flushNow();
+            rq.flushNow(false);
         } finally {
             rq.unlock();
         }

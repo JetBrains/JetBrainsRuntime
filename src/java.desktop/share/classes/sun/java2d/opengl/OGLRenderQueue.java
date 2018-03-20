@@ -174,10 +174,10 @@ public class OGLRenderQueue extends RenderQueue {
             flushNow(true);
         }
 
-        public synchronized void flushNow(boolean sync) {
+        public synchronized void flushNow(boolean latency) {
             // wake up the flusher
             needsFlush = true;
-            if (!sync) return;
+            if (!latency) notify();
 
             // wait for flush to complete
             while (needsFlush) {
