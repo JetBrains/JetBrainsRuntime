@@ -40,7 +40,7 @@
 #include "memory/oopFactory.hpp"
 #include "memory/referenceType.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/instanceKlass.hpp"
@@ -883,7 +883,7 @@ JVM_ENTRY(jclass, JVM_FindClassFromClass(JNIEnv *env, const char *name,
   if (result != NULL) {
     oop mirror = JNIHandles::resolve_non_null(result);
     Klass* to_class = java_lang_Class::as_Klass(mirror);
-    ClassLoaderData::class_loader_data(h_loader())->record_dependency(to_class, CHECK_NULL);
+    ClassLoaderData::class_loader_data(h_loader())->record_dependency(to_class);
   }
 
   if (log_is_enabled(Debug, class, resolve) && result != NULL) {
