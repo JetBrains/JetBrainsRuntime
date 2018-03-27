@@ -57,7 +57,7 @@ public:
   void concurrent_traversal_collection();
   void final_traversal_collection();
 
-  template <class T, bool STRING_DEDUP>
+  template <class T, bool STRING_DEDUP, bool DEGEN>
   inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahStrDedupQueue* dq = NULL);
 
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
@@ -81,6 +81,7 @@ private:
   void weak_refs_work();
   void weak_refs_work_doit();
 
+  void fixup_roots();
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHTRAVERSALGC_HPP

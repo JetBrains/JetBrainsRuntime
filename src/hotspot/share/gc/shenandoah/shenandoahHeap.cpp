@@ -1646,7 +1646,6 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
 
   switch (point) {
     case _degenerated_partial:
-    case _degenerated_traversal:
     case _degenerated_evac:
       // Not possible to degenerate from here, upgrade to Full GC right away.
       cancel_concgc(GCCause::_allocation_failure);
@@ -1656,6 +1655,20 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
     // The cases below form the Duff's-like device: it describes the actual GC cycle,
     // but enters it at different points, depending on which concurrent phase had
     // degenerated.
+
+    case _degenerated_traversal:
+      {
+        ShenandoahHeapLocker locker(lock());
+        collection_set()->clear_current_index();
+        for (size_t i = 0; i < collection_set()->count(); i++) {
+          ShenandoahHeapRegion* r = collection_set()->next();
+          r->make_regular_bypass();
+        }
+        collection_set()->clear();
+      }
+      op_final_traversal();
+      op_cleanup_bitmaps();
+      return;
 
     case _degenerated_outside_cycle:
       if (shenandoahPolicy()->can_do_traversal_gc()) {

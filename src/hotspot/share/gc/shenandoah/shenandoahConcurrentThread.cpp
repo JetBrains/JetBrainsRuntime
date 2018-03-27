@@ -272,8 +272,6 @@ void ShenandoahConcurrentThread::service_concurrent_traversal_cycle(GCCause::Cau
 
   heap->vmop_entry_final_traversal();
 
-  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
-
   heap->entry_cleanup_bitmaps();
 
   heap->shenandoahPolicy()->record_success_concurrent();

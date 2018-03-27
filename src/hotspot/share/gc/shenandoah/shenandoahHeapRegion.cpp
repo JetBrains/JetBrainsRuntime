@@ -103,7 +103,8 @@ void ShenandoahHeapRegion::make_regular_allocation() {
 
 void ShenandoahHeapRegion::make_regular_bypass() {
   _heap->assert_heaplock_owned_by_current_thread();
-  assert (_heap->is_full_gc_in_progress(), "only for full GC");
+  assert (_heap->is_full_gc_in_progress() || _heap->is_degenerated_gc_in_progress(),
+          "only for full or degen GC");
 
   switch (_state) {
     case _empty_uncommitted:

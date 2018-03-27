@@ -34,18 +34,25 @@
 #include "memory/iterator.inline.hpp"
 #include "oops/oop.inline.hpp"
 
-template <class T, bool STRING_DEDUP>
+template <class T, bool STRING_DEDUP, bool DEGEN>
 void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahStrDedupQueue* dq) {
   T o = oopDesc::load_heap_oop(p);
   if (! oopDesc::is_null(o)) {
     oop obj = oopDesc::decode_heap_oop_not_null(o);
-    if (_heap->in_collection_set(obj)) {
+    if (DEGEN) {
+      oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+      if (!oopDesc::unsafe_equals(obj, forw)) {
+        // Update reference.
+        oopDesc::encode_store_heap_oop(p, forw);
+      }
+      obj = forw;
+    } else if (_heap->in_collection_set(obj)) {
       oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (oopDesc::unsafe_equals(obj, forw)) {
         bool evacuated = false;
         forw = _heap->evacuate_object(obj, thread, evacuated);
       }
-      assert(! oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_concgc(), "must be evacuated");
+      assert(! oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_concgc() || _heap->is_degenerated_gc_in_progress(), "must be evacuated");
       // Update reference.
       _heap->atomic_compare_exchange_oop(forw, p, obj);
       obj = forw;
