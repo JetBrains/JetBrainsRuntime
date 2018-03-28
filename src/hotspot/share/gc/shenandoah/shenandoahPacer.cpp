@@ -55,14 +55,13 @@ void ShenandoahPacer::setup_for_mark() {
   size_t used = _heap->used();
   size_t free = (_heap->capacity() - used);
 
-  // Determine the non-taxable base
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  free -= non_taxable;
+  size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * used / free;  // base tax for available free space
-  tax *= 3;                        // mark is phase 1 of 3, claim 1/3 of free for it
-  tax = MAX2<double>(1, tax);      // never allocate more than GC collects during the cycle
-  tax *= 1.1;                      // additional surcharge to help unclutter heap
+  double tax = 1.0 * used / taxable; // base tax for available free space
+  tax *= 3;                          // mark is phase 1 of 3, claim 1/3 of free for it
+  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -77,14 +76,13 @@ void ShenandoahPacer::setup_for_evac() {
   size_t cset = _heap->collection_set()->live_data();
   size_t free = (_heap->capacity() - _heap->used());
 
-  // Determine the non-taxable base
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  free -= non_taxable;
+  size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * cset / free;  // base tax for available free space
-  tax *= 2;                        // evac is phase 2 of 3, claim 1/2 of remaining free
-  tax = MAX2<double>(1, tax);      // never allocate more than GC collects during the cycle
-  tax *= 1.1;                      // additional surcharge to help unclutter heap
+  double tax = 1.0 * cset / taxable; // base tax for available free space
+  tax *= 2;                          // evac is phase 2 of 3, claim 1/2 of remaining free
+  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -99,14 +97,13 @@ void ShenandoahPacer::setup_for_updaterefs() {
   size_t used = _heap->used();
   size_t free = (_heap->capacity() - used);
 
-  // Determine the non-taxable base
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  free -= non_taxable;
+  size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * used / free;  // base tax for available free space
-  tax *= 1;                        // update-refs is phase 3 of 3, claim the remaining free
-  tax = MAX2<double>(1, tax);      // never allocate more than GC collects during the cycle
-  tax *= 1.1;                      // additional surcharge to help unclutter heap
+  double tax = 1.0 * used / taxable; // base tax for available free space
+  tax *= 1;                          // update-refs is phase 3 of 3, claim the remaining free
+  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -127,13 +124,12 @@ void ShenandoahPacer::setup_for_traversal() {
   size_t used = _heap->used();
   size_t free = (_heap->capacity() - used);
 
-  // Determine the non-taxable base
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  free -= non_taxable;
+  size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * used / free;  // base tax for available free space
-  tax = MAX2<double>(1, tax);      // never allocate more than GC collects during the cycle
-  tax *= 1.1;                      // additional surcharge to help unclutter heap
+  double tax = 1.0 * used / taxable; // base tax for available free space
+  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -153,13 +149,12 @@ void ShenandoahPacer::setup_for_partial(size_t work_words) {
   size_t work_bytes = work_words * HeapWordSize;
   size_t free = (_heap->capacity() - _heap->used());
 
-  // Determine the non-taxable base
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  free -= non_taxable;
+  size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * work_bytes / free; // base tax for available free space
-  tax = MAX2<double>(1, tax);           // never allocate more than GC collects during the cycle
-  tax *= 1.1;                           // additional surcharge to help unclutter heap
+  double tax = 1.0 * work_bytes / taxable; // base tax for available free space
+  tax = MAX2<double>(1, tax);              // never allocate more than GC collects during the cycle
+  tax *= 1.1;                              // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
