@@ -565,6 +565,11 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual void pin_object(oop o);
   virtual void unpin_object(oop o);
 
+  // Critical native support
+  virtual bool pin_arrays_for_critical_native() const { return false; }
+  virtual oop  pin_critical_native_array(oop o) { return o; }
+  virtual void unpin_critical_native_array(oop o) { }
+
   void trace_heap_before_gc(const GCTracer* gc_tracer);
   void trace_heap_after_gc(const GCTracer* gc_tracer);
 

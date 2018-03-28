@@ -2835,6 +2835,25 @@ JRT_ENTRY_NO_ASYNC(void, SharedRuntime::block_for_jni_critical(JavaThread* threa
   GCLocker::unlock_critical(thread);
 JRT_END
 
+JRT_LEAF(oopDesc*, SharedRuntime::pin_ciritcal_native_array(oopDesc* obj))
+  assert(Universe::heap()->pin_arrays_for_critical_native(), "Why we here?");
+  oop o(obj);
+  assert(!oopDesc::is_null(o), "Should not be null");
+  assert(o->is_typeArray(), "Must be");
+  o = Universe::heap()->pin_critical_native_array(o);
+  assert(!oopDesc::is_null(o), "Should not be null");
+  assert(o->is_typeArray(), "Must be");
+  return o;
+JRT_END
+
+JRT_LEAF(void, SharedRuntime::unpin_ciritcal_native_array(oopDesc* obj))
+  assert(Universe::heap()->pin_arrays_for_critical_native(), "Why we here?");
+  oop o(obj);
+  assert(!oopDesc::is_null(o), "Should not be null");
+  assert(o->is_typeArray(), "Must be");
+  Universe::heap()->unpin_critical_native_array(o);
+JRT_END
+
 // -------------------------------------------------------------------------
 // Java-Java calling convention
 // (what you use when Java calls Java)

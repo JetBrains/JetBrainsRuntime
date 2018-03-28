@@ -2142,6 +2142,18 @@ void ShenandoahHeap::unpin_object(oop o) {
   heap_region_containing(o)->make_unpinned();
 }
 
+oop ShenandoahHeap::pin_critical_native_array(oop o) {
+  o = BarrierSet::barrier_set()->write_barrier(o);
+  pin_object(o);
+  assert(!collection_set()->is_in((HeapWord*)o) || cancelled_concgc(),
+    "Must not in collection set");
+  return o;
+}
+
+void ShenandoahHeap::unpin_critical_native_array(oop o) {
+  unpin_object(o);
+}
+
 GCTimer* ShenandoahHeap::gc_timer() const {
   return _gc_timer;
 }

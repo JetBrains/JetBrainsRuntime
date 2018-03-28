@@ -363,6 +363,11 @@ public:
   void pin_object(oop o) /* override */;
   void unpin_object(oop o) /* override */;
 
+  /* override, critical native support */
+  bool pin_arrays_for_critical_native() const { return true; }
+  oop  pin_critical_native_array(oop o);
+  void unpin_critical_native_array(oop o);
+
   static ShenandoahHeap* heap();
   static ShenandoahHeap* heap_no_check();
   static address in_cset_fast_test_addr();
