@@ -635,7 +635,7 @@ public:
     size_t actual_free = free + trash;
     size_t max_cset = actual_free * 3 / 4;
 
-    log_info(gc, ergo)("CSet selection: actual free = " SIZE_FORMAT "M; max cset = " SIZE_FORMAT "M",
+    log_info(gc, ergo)("CSet Selection. Actual Free: " SIZE_FORMAT "M, Max CSet: " SIZE_FORMAT "M",
                        actual_free / M, max_cset / M);
 
     size_t threshold = ShenandoahHeapRegion::region_size_bytes() * ShenandoahGarbageThreshold / 100;
@@ -718,8 +718,8 @@ public:
     size_t max_cset = actual_free * 3 / 4;
     min_cset = MIN2(min_cset, max_cset);
 
-    log_info(gc, ergo)("Adaptive CSet selection: free target = " SIZE_FORMAT "M, actual free = "
-                               SIZE_FORMAT "M; min cset = " SIZE_FORMAT "M, max cset = " SIZE_FORMAT "M",
+    log_info(gc, ergo)("Adaptive CSet Selection. Target Free: " SIZE_FORMAT "M, Actual Free: "
+                               SIZE_FORMAT "M, Target CSet: [" SIZE_FORMAT "M, " SIZE_FORMAT "M]",
                        free_target / M, actual_free / M, min_cset / M, max_cset / M);
 
     // Better select garbage-first regions
