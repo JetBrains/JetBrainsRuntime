@@ -306,9 +306,6 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  // Poll this before populating collection set.
-  size_t total_garbage = heap->garbage();
-
   // Step 1. Build up the region candidates we care about, rejecting losers and accepting winners right away.
 
   ShenandoahHeapRegionSet* regions = heap->regions();
@@ -317,6 +314,8 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   RegionData* candidates = get_region_data_cache(num_regions);
 
   size_t cand_idx = 0;
+
+  size_t total_garbage = 0;
 
   size_t immediate_garbage = 0;
   size_t immediate_regions = 0;
@@ -327,6 +326,9 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = regions->get(i);
 
+    size_t garbage = region->garbage();
+    total_garbage += garbage;
+
     if (region->is_empty()) {
       free_regions++;
       free += ShenandoahHeapRegion::region_size_bytes();
@@ -334,12 +336,12 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
       if (!region->has_live()) {
         // We can recycle it right away and put it in the free set.
         immediate_regions++;
-        immediate_garbage += region->garbage();
+        immediate_garbage += garbage;
         region->make_trash();
       } else {
         // This is our candidate for later consideration.
         candidates[cand_idx]._region = region;
-        candidates[cand_idx]._garbage = region->garbage();
+        candidates[cand_idx]._garbage = garbage;
         cand_idx++;
       }
     } else if (region->is_humongous_start()) {
@@ -363,38 +365,24 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
     }
   }
 
-  // Step 2. Process the remaining candidates, if any.
+  // Step 2. Look back at garbage statistics, and decide if we want to collect anything,
+  // given the amount of immediately reclaimable garbage. If we do, figure out the collection set.
 
-  if (cand_idx > 0) {
+  size_t immediate_percent = total_garbage == 0 ? 0 : (immediate_garbage * 100 / total_garbage);
+
+  if (immediate_percent <= ShenandoahImmediateThreshold) {
     choose_collection_set_from_regiondata(collection_set, candidates, cand_idx, immediate_garbage, free);
+    collection_set->update_region_status();
+
+    size_t cset_percent = total_garbage == 0 ? 0 : (collection_set->garbage() * 100 / total_garbage);
+    log_info(gc, ergo)("Collectable Garbage: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT"M CSet, "SIZE_FORMAT" CSet regions",
+                       collection_set->garbage() / M, cset_percent, collection_set->live_data() / M, collection_set->count());
   }
 
-  // Step 3. Look back at collection set, and see if it's worth it to collect,
-  // given the amount of immediately reclaimable garbage.
-
-  log_info(gc, ergo)("Total Garbage: "SIZE_FORMAT"M",
-                     total_garbage / M);
-
-  size_t total_garbage_regions = immediate_regions + collection_set->count();
-  size_t immediate_percent = total_garbage_regions == 0 ? 0 : (immediate_regions * 100 / total_garbage_regions);
-
-  log_info(gc, ergo)("Immediate Garbage: "SIZE_FORMAT"M, "SIZE_FORMAT" regions ("SIZE_FORMAT"%% of total)",
-                     immediate_garbage / M, immediate_regions, immediate_percent);
-
-  if (immediate_percent > ShenandoahImmediateThreshold) {
-    collection_set->clear();
-  } else {
-    log_info(gc, ergo)("Garbage to be collected: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT" regions",
-                       collection_set->garbage() / M, collection_set->garbage() * 100 / MAX2(total_garbage, (size_t)1), collection_set->count());
-    log_info(gc, ergo)("Live objects to be evacuated: "SIZE_FORMAT"M",
-                       collection_set->live_data() / M);
-    log_info(gc, ergo)("Live/garbage ratio in collected regions: "SIZE_FORMAT"%%",
-                       collection_set->live_data() * 100 / MAX2(collection_set->garbage(), (size_t)1));
-    log_info(gc, ergo)("Free: "SIZE_FORMAT"M, "SIZE_FORMAT" regions ("SIZE_FORMAT"%% of total)",
-                       free / M, free_regions, free_regions * 100 / num_regions);
-  }
-
-  collection_set->update_region_status();
+  log_info(gc, ergo)("Immediate Garbage: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT" regions",
+                     immediate_garbage / M, immediate_percent, immediate_regions);
+  log_info(gc, ergo)("Free: "SIZE_FORMAT"M, "SIZE_FORMAT" regions",
+                     free / M, free_regions);
 }
 
 void ShenandoahHeuristics::choose_free_set(ShenandoahFreeSet* free_set) {

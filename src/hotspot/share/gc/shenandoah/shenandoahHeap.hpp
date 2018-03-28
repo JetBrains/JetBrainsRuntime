@@ -485,8 +485,6 @@ public:
 
   void handle_heap_shrinkage(double shrink_before);
 
-  size_t garbage();
-
   void reset_next_mark_bitmap();
 
   MarkBitMap* complete_mark_bit_map();
