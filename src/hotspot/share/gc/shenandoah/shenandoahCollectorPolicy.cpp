@@ -600,6 +600,7 @@ public:
   ShenandoahCompactHeuristics() : ShenandoahHeuristics() {
     SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahUncommit);
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahAllocationThreshold,  10);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold,   100);
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUncommitDelay,        5000);
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGuaranteedGCInterval, 30000);
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGarbageThreshold,     20);
