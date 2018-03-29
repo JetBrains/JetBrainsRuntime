@@ -127,7 +127,7 @@ void ShenandoahConcurrentThread::run_service() {
       } else if (policy->should_start_traversal_gc()) {
         mode = concurrent_traversal;
         cause = GCCause::_shenandoah_traversal_gc;
-      } else if (policy->should_start_concurrent_mark(heap->used(), heap->capacity())) {
+      } else if (policy->should_start_normal_gc()) {
         mode = concurrent_normal;
         cause = GCCause::_shenandoah_concurrent_gc;
       }

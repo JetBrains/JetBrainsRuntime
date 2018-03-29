@@ -167,7 +167,7 @@ public:
   virtual void print_thresholds() {
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const=0;
+  virtual bool should_start_normal_gc() const = 0;
 
   virtual bool should_start_update_refs() {
     return _update_refs_early;
@@ -438,7 +438,7 @@ public:
     }
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  virtual bool should_start_normal_gc() const {
     // Never do concurrent GCs.
     return false;
   }
@@ -494,7 +494,7 @@ public:
     }
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  virtual bool should_start_normal_gc() const {
     return true;
   }
 
@@ -541,9 +541,10 @@ public:
 
   virtual ~ShenandoahStaticHeuristics() {}
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  virtual bool should_start_normal_gc() const {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
+    size_t capacity = heap->capacity();
     size_t available = heap->free_set()->available();
     size_t threshold_available = (capacity * ShenandoahFreeThreshold) / 100;
     size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
@@ -606,7 +607,7 @@ public:
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGarbageThreshold,     20);
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  virtual bool should_start_normal_gc() const {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
     size_t available = heap->free_set()->available();
@@ -835,10 +836,9 @@ public:
     _peak_occupancy = MAX2(_peak_occupancy, ShenandoahHeap::heap()->used());
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
-    if (! ShenandoahConcMarkGC) return false;
-    bool shouldStartConcurrentMark = false;
+  virtual bool should_start_normal_gc() const {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    size_t capacity = heap->capacity();
     size_t available = heap->free_set()->available();
     uintx factor = _free_threshold;
     size_t cset_threshold = 0;
@@ -856,6 +856,8 @@ public:
     size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
     size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
 
+    bool should_start = false;
+
     if (available < threshold_available &&
             bytes_allocated > threshold_bytes_allocated) {
       log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Free Threshold: " SIZE_FORMAT
@@ -863,21 +865,21 @@ public:
                         available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
       // Need to check that an appropriate number of regions have
       // been allocated since last concurrent mark too.
-      shouldStartConcurrentMark = true;
+      should_start = true;
     } else if (periodic_gc) {
       log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
           last_time_ms, ShenandoahGuaranteedGCInterval);
-      shouldStartConcurrentMark = true;
+      should_start = true;
     }
 
-    if (shouldStartConcurrentMark) {
+    if (should_start) {
       if (! update_refs()) {
         log_info(gc,ergo)("Predicted cset threshold: " SIZE_FORMAT ", " SIZE_FORMAT "K CSet ("SIZE_FORMAT"%%)",
                           cset_threshold, _bytes_in_cset / K, _bytes_in_cset * 100 / capacity);
         _cset_history->add((double) (_bytes_in_cset * 100 / capacity));
       }
     }
-    return shouldStartConcurrentMark;
+    return should_start;
   }
 
   virtual bool should_start_update_refs() {
@@ -957,7 +959,7 @@ public:
     return true;
   }
 
-  bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  bool should_start_normal_gc() const {
     return false;
   }
 
@@ -1307,7 +1309,7 @@ public:
     FLAG_SET_DEFAULT(ShenandoahAllowMixedAllocs,       false);
   }
 
-  virtual bool should_start_concurrent_mark(size_t used, size_t capacity) const {
+  virtual bool should_start_normal_gc() const {
     return false;
   }
 
@@ -1545,9 +1547,8 @@ void ShenandoahCollectorPolicy::record_success_full() {
   _success_full_gcs++;
 }
 
-bool ShenandoahCollectorPolicy::should_start_concurrent_mark(size_t used,
-                                                             size_t capacity) {
-  return _heuristics->should_start_concurrent_mark(used, capacity);
+bool ShenandoahCollectorPolicy::should_start_normal_gc() {
+  return _heuristics->should_start_normal_gc();
 }
 
 bool ShenandoahCollectorPolicy::should_degenerate_cycle() {

@@ -383,9 +383,6 @@
   experimental(bool, ShenandoahCommonGCStateLoads, false,                   \
          "Enable commonning for GC state loads in generated code.")         \
                                                                             \
-  diagnostic(bool, ShenandoahConcMarkGC, true,                              \
-          "Enable/disable inline concurrent mark GC.")                      \
-                                                                            \
   develop(bool, VerifyStrictOopOperations, false,                           \
           "Verify that == and != are not used on oops. Only in fastdebug")  \
                                                                             \
