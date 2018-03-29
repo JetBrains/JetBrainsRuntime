@@ -26,6 +26,7 @@
 #include "gc/shenandoah/shenandoahPacer.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahFreeSet.hpp"
 
 /*
  * In normal concurrent cycle, we have to pace the application to let GC finish.
@@ -53,7 +54,7 @@ void ShenandoahPacer::setup_for_mark() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t used = _heap->used();
-  size_t free = (_heap->capacity() - used);
+  size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
@@ -74,7 +75,7 @@ void ShenandoahPacer::setup_for_evac() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t cset = _heap->collection_set()->live_data();
-  size_t free = (_heap->capacity() - _heap->used());
+  size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
@@ -95,7 +96,7 @@ void ShenandoahPacer::setup_for_updaterefs() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t used = _heap->used();
-  size_t free = (_heap->capacity() - used);
+  size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
@@ -122,7 +123,7 @@ void ShenandoahPacer::setup_for_traversal() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t used = _heap->used();
-  size_t free = (_heap->capacity() - used);
+  size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
@@ -147,7 +148,7 @@ void ShenandoahPacer::setup_for_partial(size_t work_words) {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t work_bytes = work_words * HeapWordSize;
-  size_t free = (_heap->capacity() - _heap->used());
+  size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
