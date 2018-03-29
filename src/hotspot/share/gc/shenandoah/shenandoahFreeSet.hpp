@@ -72,6 +72,7 @@ private:
 
   bool is_empty_or_trash(ShenandoahHeapRegion *r);
   size_t alloc_capacity(ShenandoahHeapRegion *r);
+  bool has_no_alloc_capacity(ShenandoahHeapRegion *r);
 
 public:
   ShenandoahFreeSet(ShenandoahHeap* heap, ShenandoahHeapRegionSet* regions, size_t max_regions);
