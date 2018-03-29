@@ -86,7 +86,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
         if (is_collector_free(idx)) {
           ShenandoahHeapRegion* r = _regions->get(idx);
-          if (r->is_empty()) {
+          if (is_empty_or_trash(r)) {
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
               flip_to_mutator(idx);
@@ -130,7 +130,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
         size_t idx = c - 1;
         if (is_mutator_free(idx)) {
           ShenandoahHeapRegion* r = _regions->get(idx);
-          if (r->is_empty()) {
+          if (is_empty_or_trash(r)) {
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
               flip_to_gc(idx);
@@ -163,6 +163,8 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
 }
 
 HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {
+  try_recycle_trashed(r);
+
   in_new_region = r->is_empty();
 
   HeapWord* result = r->allocate(word_size, type);
@@ -253,8 +255,8 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
     }
 
     // If regions are not adjacent, then current [beg; end] is useless, and we may fast-forward.
-    // If region is not empty, the current [beg; end] is useless, and we may fast-forward.
-    if (!is_mutator_free(end) || !_regions->get(end)->is_empty()) {
+    // If region is not completely free, the current [beg; end] is useless, and we may fast-forward.
+    if (!is_mutator_free(end) || !is_empty_or_trash(_regions->get(end))) {
       end++;
       beg = end;
       continue;
@@ -268,17 +270,14 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
     end++;
   };
 
-#ifdef ASSERT
-  assert ((end - beg + 1) == num, "Found just enough regions");
-  for (size_t i = beg; i <= end; i++) {
-    assert(_regions->get(i)->is_empty(), "Should be empty");
-    assert(i == beg || _regions->get(i-1)->region_number() + 1 == _regions->get(i)->region_number(), "Should be contiguous");
-  }
-#endif
-
   // Initialize regions:
   for (size_t i = beg; i <= end; i++) {
     ShenandoahHeapRegion* r = _regions->get(i);
+    try_recycle_trashed(r);
+
+    assert(i == beg || _regions->get(i-1)->region_number() + 1 == r->region_number(), "Should be contiguous");
+    assert(r->is_empty(), "Should be empty");
+
     if (i == beg) {
       r->make_humongous_start();
     } else {
@@ -321,15 +320,50 @@ void ShenandoahFreeSet::add_region(ShenandoahHeapRegion* r) {
 
   assert_heaplock_owned_by_current_thread();
   assert(!r->in_collection_set(), "Shouldn't be adding those to the free set");
-  assert(r->is_alloc_allowed(), "Should only add regions that can be allocated at");
+  assert(r->is_alloc_allowed() || r->is_trash(), "Should only add regions that can be processed by free set");
   assert(!is_mutator_free(idx), "We are about to add it, it shouldn't be there already");
   assert(!is_collector_free(idx), "We are about to add it, it shouldn't be there already");
+
+  _capacity += alloc_capacity(r);
+  assert(_used <= _capacity, "must not use more than we have");
 
   _mutator_free_bitmap.set_bit(idx);
   _mutator_leftmost  = MIN2(_mutator_leftmost, idx);
   _mutator_rightmost = MAX2(_mutator_rightmost, idx);
-  _capacity += r->free();
-  assert(_used <= _capacity, "must not use more than we have");
+}
+
+bool ShenandoahFreeSet::is_empty_or_trash(ShenandoahHeapRegion *r) {
+  return r->is_empty() || r->is_trash();
+}
+
+size_t ShenandoahFreeSet::alloc_capacity(ShenandoahHeapRegion *r) {
+  if (r->is_trash()) {
+    // This would be recycled on allocation path
+    return ShenandoahHeapRegion::region_size_bytes();
+  } else {
+    return r->free();
+  }
+}
+
+void ShenandoahFreeSet::try_recycle_trashed(ShenandoahHeapRegion *r) {
+  if (r->is_trash()) {
+    _heap->decrease_used(r->used());
+    r->recycle();
+  }
+}
+
+void ShenandoahFreeSet::recycle_trash() {
+  // lock is not reentrable, check we don't have it
+  assert_heaplock_not_owned_by_current_thread();
+
+  for (size_t i = 0; i < _heap->num_regions(); i++) {
+    ShenandoahHeapRegion* r = _regions->get(i);
+    if (r->is_trash()) {
+      ShenandoahHeapLocker locker(_heap->lock());
+      try_recycle_trashed(r);
+    }
+    SpinPause(); // allow allocators to take the lock
+  }
 }
 
 void ShenandoahFreeSet::flip_to_gc(size_t idx) {
@@ -376,7 +410,7 @@ void ShenandoahFreeSet::rebuild() {
 
   for (size_t i = 0; i < _heap->num_regions(); i++) {
     ShenandoahHeapRegion* region = _heap->regions()->get(i);
-    if (region->is_alloc_allowed()) {
+    if (region->is_alloc_allowed() || region->is_trash()) {
       add_region(region);
     }
   }
@@ -399,7 +433,7 @@ HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocTyp
       case ShenandoahHeap::_alloc_shared:
       case ShenandoahHeap::_alloc_shared_gc:
         in_new_region = true;
-        return allocate_large_memory(word_size);
+        return allocate_contiguous(word_size);
       case ShenandoahHeap::_alloc_gclab:
       case ShenandoahHeap::_alloc_tlab:
         in_new_region = false;
@@ -411,48 +445,8 @@ HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocTyp
         return NULL;
     }
   } else {
-    return allocate_small_memory(word_size, type, in_new_region);
+    return allocate_single(word_size, type, in_new_region);
   }
-}
-
-HeapWord* ShenandoahFreeSet::allocate_small_memory(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {
-  // Try to allocate right away:
-  HeapWord* result = allocate_single(word_size, type, in_new_region);
-
-  if (result == NULL) {
-    // No free regions? Chances are, we have acquired the lock before the recycler.
-    // Ask allocator to recycle some trash and try to allocate again.
-    _heap->recycle_trash_assist(1);
-    result = allocate_single(word_size, type, in_new_region);
-  }
-
-  return result;
-}
-
-HeapWord* ShenandoahFreeSet::allocate_large_memory(size_t words) {
-  assert_heaplock_owned_by_current_thread();
-
-  // Try to allocate right away:
-  HeapWord* r = allocate_contiguous(words);
-  if (r != NULL) {
-    return r;
-  }
-
-  // Try to recycle up enough regions for this allocation:
-  _heap->recycle_trash_assist(ShenandoahHeapRegion::required_regions(words*HeapWordSize));
-  r = allocate_contiguous(words);
-  if (r != NULL) {
-    return r;
-  }
-
-  // Try to recycle all regions: it is possible we have cleaned up a fragmented block before:
-  _heap->recycle_trash_assist(_max);
-  r = allocate_contiguous(words);
-  if (r != NULL) {
-    return r;
-  }
-
-  return NULL;
 }
 
 size_t ShenandoahFreeSet::unsafe_peek_free() const {
@@ -489,6 +483,10 @@ void ShenandoahFreeSet::print_on(outputStream* out) const {
 #ifdef ASSERT
 void ShenandoahFreeSet::assert_heaplock_owned_by_current_thread() const {
   _heap->assert_heaplock_owned_by_current_thread();
+}
+
+void ShenandoahFreeSet::assert_heaplock_not_owned_by_current_thread() const {
+  _heap->assert_heaplock_not_owned_by_current_thread();
 }
 
 void ShenandoahFreeSet::assert_bounds() const {

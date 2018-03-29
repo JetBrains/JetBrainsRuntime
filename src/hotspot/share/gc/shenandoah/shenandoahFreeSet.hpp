@@ -46,12 +46,10 @@ private:
 
   void assert_bounds() const PRODUCT_RETURN;
   void assert_heaplock_owned_by_current_thread() const PRODUCT_RETURN;
+  void assert_heaplock_not_owned_by_current_thread() const PRODUCT_RETURN;
 
   bool is_mutator_free(size_t idx) const;
   bool is_collector_free(size_t idx) const;
-
-  HeapWord* allocate_small_memory(size_t words_size, ShenandoahHeap::AllocType type, bool& in_new_region);
-  HeapWord* allocate_large_memory(size_t words_size);
 
   HeapWord* try_allocate_in(ShenandoahHeapRegion* region, size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region);
   HeapWord* allocate_single(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region);
@@ -69,12 +67,19 @@ private:
   size_t collector_count() const { return _collector_free_bitmap.count_one_bits(); }
   size_t mutator_count()   const { return _mutator_free_bitmap.count_one_bits();   }
 
+  void add_region(ShenandoahHeapRegion* r);
+  void try_recycle_trashed(ShenandoahHeapRegion *r);
+
+  bool is_empty_or_trash(ShenandoahHeapRegion *r);
+  size_t alloc_capacity(ShenandoahHeapRegion *r);
+
 public:
   ShenandoahFreeSet(ShenandoahHeap* heap, ShenandoahHeapRegionSet* regions, size_t max_regions);
 
-  void add_region(ShenandoahHeapRegion* r);
   void clear();
   void rebuild();
+
+  void recycle_trash();
 
   size_t capacity()  const { return _capacity; }
   size_t used()      const { return _used;     }

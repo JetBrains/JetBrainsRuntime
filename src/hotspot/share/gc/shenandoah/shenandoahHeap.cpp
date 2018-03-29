@@ -1585,7 +1585,7 @@ void ShenandoahHeap::op_updaterefs() {
 
 void ShenandoahHeap::op_cleanup() {
   ShenandoahGCPhase phase_recycle(ShenandoahPhaseTimings::conc_cleanup_recycle);
-  recycle_trash();
+  free_set()->recycle_trash();
 
   // Allocations happen during cleanup, record peak after the phase:
   shenandoahPolicy()->record_peak_occupancy();
@@ -2345,39 +2345,6 @@ void ShenandoahHeap::assert_heaplock_or_safepoint() {
   _lock.assert_owned_by_current_thread_or_safepoint();
 }
 #endif
-
-void ShenandoahHeap::recycle_trash_assist(size_t limit) {
-  assert_heaplock_owned_by_current_thread();
-
-  size_t count = 0;
-  for (size_t i = 0; (i < num_regions()) && (count < limit); i++) {
-    ShenandoahHeapRegion *r = _regions->get(i);
-    if (r->is_trash()) {
-      decrease_used(r->used());
-      r->recycle();
-      _free_set->add_region(r);
-      count++;
-    }
-  }
-}
-
-void ShenandoahHeap::recycle_trash() {
-  // lock is not reentrable, check we don't have it
-  assert_heaplock_not_owned_by_current_thread();
-
-  for (size_t i = 0; i < num_regions(); i++) {
-    ShenandoahHeapRegion* r = _regions->get(i);
-    if (r->is_trash()) {
-      ShenandoahHeapLocker locker(lock());
-      if (r->is_trash()) {
-        decrease_used(r->used());
-        r->recycle();
-        _free_set->add_region(r);
-      }
-    }
-    SpinPause(); // allow allocators to take the lock
-  }
-}
 
 void ShenandoahHeap::print_extended_on(outputStream *st) const {
   print_on(st);
