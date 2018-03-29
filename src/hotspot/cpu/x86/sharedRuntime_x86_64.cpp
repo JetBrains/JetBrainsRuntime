@@ -1449,6 +1449,8 @@ static void gen_pin_critical_native_array(MacroAssembler* masm,
     move_ptr(masm, reg, tmp);
     reg = tmp;
     on_stack = true;
+  } else {
+    __ movptr(rax, reg.first()->as_Register());
   }
   __ testptr(reg.first()->as_Register(), reg.first()->as_Register());
   __ jccb(Assembler::equal, is_null);
@@ -1483,17 +1485,17 @@ static void gen_pin_critical_native_array(MacroAssembler* masm,
 
   if (on_stack) {
     __ movptr(Address(rbp, reg2offset_in(in_reg.first())), rax);
+    __ bind(is_null);
   } else {
     __ movptr(reg.first()->as_Register(), rax);
 
-    // also save on stack for unpinning later
+    // save on stack for unpinning later
+    __ bind(is_null);
     assert(reg.first()->is_Register(), "Must be a register");
     int offset = pinned_slot * VMRegImpl::stack_slot_size;
     pinned_slot += VMRegImpl::slots_per_word;
     __ movq(Address(rsp, offset), rax);
   }
-
-  __ bind(is_null);
   __ block_comment("} gen_pin_critical_native_array");
 }
 
@@ -1501,6 +1503,7 @@ static void gen_unpin_critical_native_array(MacroAssembler* masm,
                                         VMRegPair reg,
                                         int& pinned_slot) {
   __ block_comment("gen_unpin_critical_native_array");
+  Label is_null;
 
   if (reg.first()->is_stack()) {
     __ movptr(c_rarg0, Address(rbp, reg2offset_in(reg.first())));
@@ -1509,8 +1512,13 @@ static void gen_unpin_critical_native_array(MacroAssembler* masm,
     pinned_slot += VMRegImpl::slots_per_word;
     __ movq(c_rarg0, Address(rsp, offset));
   }
+
+  __ testptr(c_rarg0, c_rarg0);
+  __ jccb(Assembler::equal, is_null);
+
   __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::unpin_critical_native_array)));
 
+  __ bind(is_null);
   __ block_comment("} gen_unpin_critical_native_array");
 }
 
@@ -2318,6 +2326,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
         if (is_critical_native) {
           // pin before unpack
           if (Universe::heap()->pin_arrays_for_critical_native()) {
+            assert(pinned_slot <= stack_slots, "overflow");
             gen_pin_critical_native_array(masm, in_regs[i], pinned_slot);
             pinned_args.append(i);
           }
@@ -2546,6 +2555,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     save_native_result(masm, ret_type, stack_slots);
     for (int index = 0; index < pinned_args.length(); index ++) {
       int i = pinned_args.at(index);
+      assert(pinned_slot <= stack_slots, "overflow");
       gen_unpin_critical_native_array(masm, in_regs[i], pinned_slot);
     }
     restore_native_result(masm, ret_type, stack_slots);

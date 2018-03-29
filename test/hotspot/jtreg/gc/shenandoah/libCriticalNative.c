@@ -105,3 +105,19 @@ JNIEXPORT jlong JNICALL Java_CriticalNativeStress_sum2
 
   return sum;
 }
+
+
+JNIEXPORT jboolean JNICALL JavaCritical_CriticalNativeArgs_isNull
+  (jint length, jint* a) {
+  return (a == NULL) && (length == 0);
+}
+
+JNIEXPORT jboolean JNICALL Java_CriticalNativeArgs_isNull
+  (JNIEnv *env, jclass jclazz, jintArray a) {
+  jboolean is_null;
+  jsize len = (*env)->GetArrayLength(env, a);
+  jint* arr = (jint*)(*env)->GetPrimitiveArrayCritical(env, a, 0);
+  is_null = (arr == NULL) && (len == 0);
+  (*env)->ReleasePrimitiveArrayCritical(env, a, arr, 0);
+  return is_null;
+}
