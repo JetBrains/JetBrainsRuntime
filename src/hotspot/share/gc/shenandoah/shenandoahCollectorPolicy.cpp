@@ -253,7 +253,7 @@ public:
 protected:
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
                                                      RegionData* data, size_t data_size,
-                                                     size_t trash, size_t free) = 0;
+                                                     size_t free) = 0;
 };
 
 ShenandoahHeuristics::ShenandoahHeuristics() :
@@ -370,7 +370,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t immediate_percent = total_garbage == 0 ? 0 : (immediate_garbage * 100 / total_garbage);
 
   if (immediate_percent <= ShenandoahImmediateThreshold) {
-    choose_collection_set_from_regiondata(collection_set, candidates, cand_idx, immediate_garbage, free);
+    choose_collection_set_from_regiondata(collection_set, candidates, cand_idx, immediate_garbage + free);
     collection_set->update_region_status();
 
     size_t cset_percent = total_garbage == 0 ? 0 : (collection_set->garbage() * 100 / total_garbage);
@@ -415,7 +415,7 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
-                                                     size_t trash, size_t free) {
+                                                     size_t free) {
     for (size_t idx = 0; idx < size; idx++) {
       ShenandoahHeapRegion* r = data[idx]._region;
       if (r->garbage() > 0) {
@@ -471,7 +471,7 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
-                                                     size_t trash, size_t free) {
+                                                     size_t free) {
     for (size_t idx = 0; idx < size; idx++) {
       ShenandoahHeapRegion* r = data[idx]._region;
       if (r->garbage() > 0) {
@@ -558,7 +558,7 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
-                                                     size_t trash, size_t free) {
+                                                     size_t free) {
     size_t threshold = ShenandoahHeapRegion::region_size_bytes() * ShenandoahGarbageThreshold / 100;
 
     for (size_t idx = 0; idx < size; idx++) {
@@ -617,10 +617,9 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
-                                                     size_t trash, size_t free) {
+                                                     size_t actual_free) {
 
     // Do not select too large CSet that would overflow the available free space
-    size_t actual_free = free + trash;
     size_t max_cset = actual_free * 3 / 4;
 
     log_info(gc, ergo)("CSet Selection. Actual Free: " SIZE_FORMAT "M, Max CSet: " SIZE_FORMAT "M",
@@ -680,7 +679,7 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
-                                                     size_t trash, size_t free) {
+                                                     size_t actual_free) {
     size_t garbage_threshold = ShenandoahHeapRegion::region_size_bytes() * ShenandoahGarbageThreshold / 100;
 
     // The logic for cset selection in adaptive is as follows:
@@ -701,7 +700,6 @@ public:
     // ShenandoahGarbageThreshold is the soft threshold which would be ignored until min_cset is hit.
 
     size_t free_target = MIN2<size_t>(_free_threshold + MaxNormalStep, 100) * ShenandoahHeap::heap()->capacity() / 100;
-    size_t actual_free = free + trash;
     size_t min_cset = free_target > actual_free ? (free_target - actual_free) : 0;
     size_t max_cset = actual_free * 3 / 4;
     min_cset = MIN2(min_cset, max_cset);
@@ -1355,7 +1353,7 @@ public:
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
                                                      RegionData* data, size_t data_size,
-                                                     size_t trash, size_t free) {
+                                                     size_t free) {
     ShouldNotReachHere();
   }
 };
