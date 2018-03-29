@@ -26,7 +26,8 @@
 JNIEXPORT jlong JNICALL JavaCritical_CriticalNativeStress_sum1
   (jint length, jlong* a) {
   jlong sum = 0;
-  for (jint index = 0; index < length; index ++) {
+  jint index;
+  for (index = 0; index < length; index ++) {
     sum += a[index];
   }
 
@@ -36,7 +37,6 @@ JNIEXPORT jlong JNICALL JavaCritical_CriticalNativeStress_sum1
 JNIEXPORT jlong JNICALL  JavaCritical_CriticalNativeStress_sum2
   (jlong a1, jint a2_length, jint* a2, jint a4_length, jint* a4, jint a6_length, jlong* a6, jint a8_length, jint* a8) {
   jlong sum = a1;
-
   jint index;
   for (index = 0; index < a2_length; index ++) {
     sum += a2[index];
@@ -60,8 +60,9 @@ JNIEXPORT jlong JNICALL Java_CriticalNativeStress_sum1
   (JNIEnv *env, jclass jclazz, jlongArray a) {
   jlong sum = 0;
   jsize len = (*env)->GetArrayLength(env, a);
+  jsize index;
   jlong* arr = (jlong*)(*env)->GetPrimitiveArrayCritical(env, a, 0);
-  for (jsize index = 0; index < len; index ++) {
+  for (index = 0; index < len; index ++) {
     sum += arr[index];
   }
 
@@ -104,5 +105,3 @@ JNIEXPORT jlong JNICALL Java_CriticalNativeStress_sum2
 
   return sum;
 }
-
-

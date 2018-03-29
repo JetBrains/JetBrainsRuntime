@@ -1432,10 +1432,10 @@ static void save_or_restore_arguments(MacroAssembler* masm,
 }
 
 
-static void pin_critical_native_array(MacroAssembler* masm,
-                                      VMRegPair reg,
-                                      int& pinned_slot) {
-  __ block_comment("pin_critical_native_array");
+static void gen_pin_critical_native_array(MacroAssembler* masm,
+                                          VMRegPair reg,
+                                          int& pinned_slot) {
+  __ block_comment("gen_pin_critical_native_array");
   Register tmp_reg = rax;
 
   Label is_null;
@@ -1467,7 +1467,7 @@ static void pin_critical_native_array(MacroAssembler* masm,
 #endif
 
   __ movptr(c_rarg0, reg.first()->as_Register());
-  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::pin_ciritcal_native_array)));
+  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::pin_critical_native_array)));
 
 #ifdef _WIN64
   __ pop(r11);
@@ -1494,13 +1494,13 @@ static void pin_critical_native_array(MacroAssembler* masm,
   }
 
   __ bind(is_null);
-  __ block_comment("} pin_critical_native_array");
+  __ block_comment("} gen_pin_critical_native_array");
 }
 
-static void unpin_critical_native_array(MacroAssembler* masm,
+static void gen_unpin_critical_native_array(MacroAssembler* masm,
                                         VMRegPair reg,
                                         int& pinned_slot) {
-  __ block_comment("unpin_critical_native_array");
+  __ block_comment("gen_unpin_critical_native_array");
 
   if (reg.first()->is_stack()) {
     __ movptr(c_rarg0, Address(rbp, reg2offset_in(reg.first())));
@@ -1509,9 +1509,9 @@ static void unpin_critical_native_array(MacroAssembler* masm,
     pinned_slot += VMRegImpl::slots_per_word;
     __ movq(c_rarg0, Address(rsp, offset));
   }
-  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::unpin_ciritcal_native_array)));
+  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::unpin_critical_native_array)));
 
-  __ block_comment("} unpin_critical_native_array");
+  __ block_comment("} gen_unpin_critical_native_array");
 }
 
 // Check GCLocker::needs_gc and enter the runtime if it's true.  This
@@ -2318,7 +2318,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
         if (is_critical_native) {
           // pin before unpack
           if (Universe::heap()->pin_arrays_for_critical_native()) {
-            pin_critical_native_array(masm, in_regs[i], pinned_slot);
+            gen_pin_critical_native_array(masm, in_regs[i], pinned_slot);
             pinned_args.append(i);
           }
           unpack_array_argument(masm, in_regs[i], in_elem_bt[i], out_regs[c_arg + 1], out_regs[c_arg]);
@@ -2546,7 +2546,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     save_native_result(masm, ret_type, stack_slots);
     for (int index = 0; index < pinned_args.length(); index ++) {
       int i = pinned_args.at(index);
-      unpin_critical_native_array(masm, in_regs[i], pinned_slot);
+      gen_unpin_critical_native_array(masm, in_regs[i], pinned_slot);
     }
     restore_native_result(masm, ret_type, stack_slots);
   }
