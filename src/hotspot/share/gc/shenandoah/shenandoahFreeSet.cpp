@@ -320,28 +320,6 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
   return _regions->get(beg)->bottom();
 }
 
-void ShenandoahFreeSet::add_region(ShenandoahHeapRegion* r) {
-  size_t idx = r->region_number();
-
-  assert_heaplock_owned_by_current_thread();
-  assert(!r->in_collection_set(), "Shouldn't be adding those to the free set");
-  assert(r->is_alloc_allowed() || r->is_trash(), "Should only add regions that can be processed by free set");
-  assert(!is_mutator_free(idx), "We are about to add it, it shouldn't be there already");
-  assert(!is_collector_free(idx), "We are about to add it, it shouldn't be there already");
-
-  // Do not add regions that would surely fail allocation
-  if (has_no_alloc_capacity(r)) {
-    return;
-  }
-
-  _capacity += alloc_capacity(r);
-  assert(_used <= _capacity, "must not use more than we have");
-
-  _mutator_free_bitmap.set_bit(idx);
-  _mutator_leftmost  = MIN2(_mutator_leftmost, idx);
-  _mutator_rightmost = MAX2(_mutator_rightmost, idx);
-}
-
 bool ShenandoahFreeSet::is_empty_or_trash(ShenandoahHeapRegion *r) {
   return r->is_empty() || r->is_trash();
 }
@@ -422,12 +400,25 @@ void ShenandoahFreeSet::rebuild() {
   assert_heaplock_owned_by_current_thread();
   clear();
 
-  for (size_t i = 0; i < _heap->num_regions(); i++) {
-    ShenandoahHeapRegion* region = _heap->regions()->get(i);
+  for (size_t idx = 0; idx < _heap->num_regions(); idx++) {
+    ShenandoahHeapRegion* region = _heap->regions()->get(idx);
     if (region->is_alloc_allowed() || region->is_trash()) {
-      add_region(region);
+      assert(!region->in_collection_set(), "Shouldn't be adding those to the free set");
+
+      // Do not add regions that would surely fail allocation
+      if (has_no_alloc_capacity(region)) continue;
+
+      _capacity += alloc_capacity(region);
+      assert(_used <= _capacity, "must not use more than we have");
+
+      assert(!is_mutator_free(idx), "We are about to add it, it shouldn't be there already");
+      _mutator_free_bitmap.set_bit(idx);
+      _mutator_leftmost  = MIN2(_mutator_leftmost, idx);
+      _mutator_rightmost = MAX2(_mutator_rightmost, idx);
     }
   }
+
+  assert_bounds();
 
   log_info(gc, ergo)("Free: " SIZE_FORMAT "M, " SIZE_FORMAT " mutator alloc regions, " SIZE_FORMAT " collector alloc regions",
                      capacity() / M, mutator_count(), collector_count());

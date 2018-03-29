@@ -67,7 +67,6 @@ private:
   size_t collector_count() const { return _collector_free_bitmap.count_one_bits(); }
   size_t mutator_count()   const { return _mutator_free_bitmap.count_one_bits();   }
 
-  void add_region(ShenandoahHeapRegion* r);
   void try_recycle_trashed(ShenandoahHeapRegion *r);
 
   bool is_empty_or_trash(ShenandoahHeapRegion *r);
