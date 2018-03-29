@@ -428,11 +428,6 @@ HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocTyp
   assert_heaplock_owned_by_current_thread();
   assert_bounds();
 
-  // Not enough memory in free region set. Coming out of full GC, it is possible that
-  // there are no free regions available, so current_index may be invalid. Have to
-  // poll capacity as the precaution here.
-  if (word_size * HeapWordSize > capacity()) return NULL;
-
   if (word_size > ShenandoahHeapRegion::humongous_threshold_words()) {
     switch (type) {
       case ShenandoahHeap::_alloc_shared:
