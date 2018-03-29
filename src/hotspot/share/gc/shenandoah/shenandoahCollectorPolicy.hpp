@@ -119,7 +119,6 @@ public:
 
   void choose_collection_set(ShenandoahCollectionSet* collection_set,
                              bool minor = false);
-  void choose_free_set(ShenandoahFreeSet* free_set);
 
   bool should_process_references();
   bool should_unload_classes();

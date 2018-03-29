@@ -74,6 +74,7 @@ public:
 
   void add_region(ShenandoahHeapRegion* r);
   void clear();
+  void rebuild();
 
   size_t capacity()  const { return _capacity; }
   size_t used()      const { return _used;     }

@@ -224,7 +224,6 @@ public:
   }
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set);
-  virtual void choose_free_set(ShenandoahFreeSet* free_set);
 
   virtual bool should_process_references() {
     if (ShenandoahRefProcFrequency == 0) return false;
@@ -381,20 +380,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
 
   log_info(gc, ergo)("Immediate Garbage: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT" regions",
                      immediate_garbage / M, immediate_percent, immediate_regions);
-  log_info(gc, ergo)("Free: "SIZE_FORMAT"M, "SIZE_FORMAT" regions",
-                     free / M, free_regions);
 }
-
-void ShenandoahHeuristics::choose_free_set(ShenandoahFreeSet* free_set) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  for (size_t i = 0; i < heap->num_regions(); i++) {
-    ShenandoahHeapRegion* region = heap->regions()->get(i);
-    if (region->is_alloc_allowed()) {
-      free_set->add_region(region);
-    }
-  }
-}
-
 
 void ShenandoahCollectorPolicy::record_gc_start() {
   _heuristics->record_gc_start();
@@ -1580,11 +1566,6 @@ void ShenandoahCollectorPolicy::choose_collection_set(ShenandoahCollectionSet* c
   else
     _heuristics->choose_collection_set(collection_set);
 }
-
-void ShenandoahCollectorPolicy::choose_free_set(ShenandoahFreeSet* free_set) {
-   _heuristics->choose_free_set(free_set);
-}
-
 
 bool ShenandoahCollectorPolicy::should_process_references() {
   return _heuristics->should_process_references();

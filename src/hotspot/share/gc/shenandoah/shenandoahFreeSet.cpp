@@ -370,6 +370,21 @@ void ShenandoahFreeSet::clear_internal() {
   _used = 0;
 }
 
+void ShenandoahFreeSet::rebuild() {
+  assert_heaplock_owned_by_current_thread();
+  clear();
+
+  for (size_t i = 0; i < _heap->num_regions(); i++) {
+    ShenandoahHeapRegion* region = _heap->regions()->get(i);
+    if (region->is_alloc_allowed()) {
+      add_region(region);
+    }
+  }
+
+  log_info(gc, ergo)("Free: " SIZE_FORMAT "M, " SIZE_FORMAT " mutator alloc regions, " SIZE_FORMAT " collector alloc regions",
+                     capacity() / M, mutator_count(), collector_count());
+}
+
 HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {
   assert_heaplock_owned_by_current_thread();
   assert_bounds();

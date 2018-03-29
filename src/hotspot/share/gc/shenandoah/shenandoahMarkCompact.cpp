@@ -739,14 +739,6 @@ public:
       r->recycle();
     }
 
-    // Finally, add all suitable regions into the free set
-    if (r->is_alloc_allowed()) {
-      if (_heap->collection_set()->is_in(r)) {
-        _heap->collection_set()->remove_region(r);
-      }
-      _heap->free_set()->add_region(r);
-    }
-
     r->set_live_data(live);
     r->reset_alloc_metadata_to_shared();
     _live += live;
@@ -890,9 +882,11 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
     ShenandoahPostCompactClosure post_compact;
     heap->heap_region_iterate(&post_compact);
     heap->set_used(post_compact.get_live());
+
+    heap->collection_set()->clear();
+    heap->free_set()->rebuild();
   }
 
-  heap->collection_set()->clear();
   heap->clear_cancelled_concgc();
 
   // Also clear the next bitmap in preparation for next marking.

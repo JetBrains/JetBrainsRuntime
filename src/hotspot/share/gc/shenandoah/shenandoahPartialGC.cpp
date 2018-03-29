@@ -308,9 +308,6 @@ bool ShenandoahPartialGC::prepare() {
     // Never assume anything implicitely marked.
     _heap->set_next_top_at_mark_start(r->bottom(), r->end());
 
-    if (r->is_alloc_allowed()) {
-      free_set->add_region(r);
-    }
     if (r->is_root() && !r->in_collection_set()) {
       _root_regions->add_region(r);
       work_size += r->get_live_data_words();
@@ -324,6 +321,8 @@ bool ShenandoahPartialGC::prepare() {
       r->set_concurrent_iteration_safe_limit(r->top());
     }
   }
+
+  free_set->rebuild();
 
   if (ShenandoahPacing) {
     work_size += collection_set->live_data() >> LogHeapWordSize;

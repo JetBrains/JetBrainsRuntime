@@ -335,13 +335,7 @@ void ShenandoahTraversalGC::prepare() {
   _heap->shenandoahPolicy()->choose_collection_set(collection_set, false);
 
   // Rebuild free set
-  free_set->clear();
-  for (uint from_idx = 0; from_idx < _heap->num_regions(); from_idx++) {
-    ShenandoahHeapRegion* r = regions->get(from_idx);
-    if (r->is_alloc_allowed()) {
-      free_set->add_region(r);
-    }
-  }
+  free_set->rebuild();
 
   log_info(gc,ergo)("Got "SIZE_FORMAT" collection set regions", collection_set->count());
 }
@@ -627,11 +621,10 @@ void ShenandoahTraversalGC::final_traversal_collection() {
           assert(!r->is_humongous(), "handled above");
           assert(!r->is_trash(), "must not already be trashed");
           r->make_trash();
-        } else if (r->is_alloc_allowed()) {
-          free_regions->add_region(r);
         }
       }
       _heap->collection_set()->clear();
+      _heap->free_set()->rebuild();
       reset();
     }
 
