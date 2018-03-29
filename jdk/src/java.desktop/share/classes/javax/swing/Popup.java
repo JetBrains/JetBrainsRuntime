@@ -26,6 +26,8 @@
 package javax.swing;
 
 import java.awt.*;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 
 import sun.awt.ModalExclude;
 import sun.awt.SunToolkit;
@@ -233,7 +235,12 @@ public class Popup {
         HeavyWeightWindow(Window parent) {
             super(parent);
             setFocusableWindowState(false);
-            setType(Window.Type.POPUP);
+
+            if (AccessController.doPrivileged(
+                    (PrivilegedAction<Boolean>) () ->
+                            System.getProperty("jbre.popupwindow.settype") != null)) {
+                setType(Window.Type.POPUP);
+            }
 
             // Popups are typically transient and most likely won't benefit
             // from true double buffering.  Turn it off here.
