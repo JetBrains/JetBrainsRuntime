@@ -164,7 +164,7 @@ jint ShenandoahHeap::initialize() {
   size_t reg_size_bytes = ShenandoahHeapRegion::region_size_bytes();
 
   _regions = new ShenandoahHeapRegionSet(_num_regions);
-  _free_set = new ShenandoahFreeSet(_regions, _num_regions);
+  _free_set = new ShenandoahFreeSet(this, _regions, _num_regions);
 
   _collection_set = new ShenandoahCollectionSet(this, (HeapWord*)pgc_rs.base());
 

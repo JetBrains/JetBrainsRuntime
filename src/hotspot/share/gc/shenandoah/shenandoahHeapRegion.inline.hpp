@@ -30,7 +30,7 @@
 #include "runtime/atomic.hpp"
 
 HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahHeap::AllocType type) {
-  ShenandoahHeap::heap()->assert_heaplock_or_safepoint();
+  _heap->assert_heaplock_or_safepoint();
 
   HeapWord* obj = top();
   if (pointer_delta(end(), obj) >= size) {

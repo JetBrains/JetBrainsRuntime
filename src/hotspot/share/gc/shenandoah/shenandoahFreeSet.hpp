@@ -30,6 +30,7 @@
 
 class ShenandoahFreeSet : public CHeapObj<mtGC> {
 private:
+  ShenandoahHeap* const _heap;
   ShenandoahHeapRegionSet* _regions;
   CHeapBitMap _mutator_free_bitmap;
   CHeapBitMap _collector_free_bitmap;
@@ -69,7 +70,7 @@ private:
   size_t mutator_count()   const { return _mutator_free_bitmap.count_one_bits();   }
 
 public:
-  ShenandoahFreeSet(ShenandoahHeapRegionSet* regions, size_t max_regions);
+  ShenandoahFreeSet(ShenandoahHeap* heap, ShenandoahHeapRegionSet* regions, size_t max_regions);
 
   void add_region(ShenandoahHeapRegion* r);
   void clear();

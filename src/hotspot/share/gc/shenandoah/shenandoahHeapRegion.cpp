@@ -428,8 +428,8 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|BTE " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
             p2i(bottom()), p2i(top()), p2i(end()));
   st->print("|TAMS " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
-            p2i(ShenandoahHeap::heap()->complete_top_at_mark_start(_bottom)),
-            p2i(ShenandoahHeap::heap()->next_top_at_mark_start(_bottom)));
+            p2i(_heap->complete_top_at_mark_start(_bottom)),
+            p2i(_heap->next_top_at_mark_start(_bottom)));
   st->print("|U %3d%%", (int) ((double) used() * 100 / capacity()));
   st->print("|T %3d%%", (int) ((double) get_tlab_allocs() * 100 / capacity()));
   st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
@@ -477,12 +477,10 @@ void ShenandoahHeapRegion::oop_iterate_humongous(ExtendedOopClosure* blk) {
 }
 
 void ShenandoahHeapRegion::fill_region() {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-
   if (free() > (BrooksPointer::word_size() + CollectedHeap::min_fill_size())) {
     HeapWord* filler = allocate(BrooksPointer::word_size(), ShenandoahHeap::_alloc_shared);
     HeapWord* obj = allocate(end() - top(), ShenandoahHeap::_alloc_shared);
-    sh->fill_with_object(obj, end() - obj);
+    _heap->fill_with_object(obj, end() - obj);
     BrooksPointer::initialize(oop(obj));
   }
 }
