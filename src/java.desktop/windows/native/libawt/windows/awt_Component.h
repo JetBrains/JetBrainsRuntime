@@ -736,6 +736,8 @@ public:
     int ScaleUpDY(int y);
     int ScaleDownDX(int x);
     int ScaleDownDY(int y);
+    void ScaleDownRect(RECT& r);
+    //void ScaleDownDRect(RECT& r);
 
 protected:
     static AwtComponent* GetComponentImpl(HWND hWnd);
