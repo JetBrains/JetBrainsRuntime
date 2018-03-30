@@ -51,6 +51,7 @@
 #include <Region.h>
 
 #include <jawt.h>
+#include <math.h>
 
 #include <java_awt_Toolkit.h>
 #include <java_awt_FontMetrics.h>
@@ -2234,8 +2235,8 @@ void AwtComponent::PaintUpdateRgn(const RECT *insets)
          */
         RECT* r = (RECT*)(buffer + rgndata->rdh.dwSize);
         RECT* un[2] = {0, 0};
-    DWORD i;
-    for (i = 0; i < rgndata->rdh.nCount; i++, r++) {
+        DWORD i;
+        for (i = 0; i < rgndata->rdh.nCount; i++, r++) {
             int width = r->right-r->left;
             int height = r->bottom-r->top;
             if (width > 0 && height > 0) {
@@ -2249,11 +2250,12 @@ void AwtComponent::PaintUpdateRgn(const RECT *insets)
         }
         for(i = 0; i < 2; i++) {
             if (un[i] != 0) {
+                ScaleDownRect(*un[i]);
                 DoCallback("handleExpose", "(IIII)V",
-                           ScaleDownX(un[i]->left),
-                           ScaleDownY(un[i]->top),
-                           ScaleDownX(un[i]->right - un[i]->left),
-                           ScaleDownY(un[i]->bottom - un[i]->top));
+                           un[i]->left,
+                           un[i]->top,
+                           un[i]->right - un[i]->left,
+                           un[i]->bottom - un[i]->top);
             }
         }
         delete [] buffer;
@@ -4831,6 +4833,16 @@ int AwtComponent::ScaleDownAbsY(int y) {
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
     return device == NULL ? y : device->ScaleDownAbsY(y);
+}
+
+void AwtComponent::ScaleDownRect(RECT& r) {
+    int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
+    Devices::InstanceAccess devices;
+    AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
+    if (device == NULL) return;
+    float sx = device->GetScaleX();
+    float sy = device->GetScaleY();
+    ::SetRect(&r, floor(r.left / sx), floor(r.top / sy), ceil(r.right / sx), ceil(r.bottom / sy));
 }
 
 jintArray AwtComponent::CreatePrintedPixels(SIZE &loc, SIZE &size, int alpha) {
