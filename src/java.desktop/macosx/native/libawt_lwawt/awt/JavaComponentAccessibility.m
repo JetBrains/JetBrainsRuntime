@@ -528,7 +528,11 @@ static NSString* parentRole(NSAccessibilityRole nsRole)
         return NO;
     }
 
-    return isChildSelected(env, ((JavaComponentAccessibility *)[self parent])->fAccessible, fIndex, fComponent);
+    id parent = [self parent];
+    if ([parent isKindOfClass:[JavaComponentAccessibility class]]) {
+        return isChildSelected(env, ((JavaComponentAccessibility *)parent)->fAccessible, fIndex, fComponent);
+    }
+    return NO;
 }
 
 - (BOOL)isSelectable:(JNIEnv *)env
