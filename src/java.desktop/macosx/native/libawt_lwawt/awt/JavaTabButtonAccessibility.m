@@ -26,10 +26,13 @@ static BOOL javaObjectEquals(JNIEnv *env, jobject a, jobject b, jobject componen
 - (jobject)tabGroup {
     if (fTabGroupAxContext == NULL) {
         JNIEnv* env = [ThreadUtilities getJNIEnv];
-        jobject tabGroupAxContext = [(JavaComponentAccessibility *)[self parent] axContextWithEnv:env];
-        fTabGroupAxContext = (*env)->NewWeakGlobalRef(env, tabGroupAxContext);
-        CHECK_EXCEPTION();
-        (*env)->DeleteLocalRef(env, tabGroupAxContext);
+        id parent = [self parent];
+        if ([parent isKindOfClass:[JavaComponentAccessibility class]]) {
+            jobject tabGroupAxContext = [(JavaComponentAccessibility *)parent axContextWithEnv:env];
+            fTabGroupAxContext = (*env)->NewWeakGlobalRef(env, tabGroupAxContext);
+            CHECK_EXCEPTION();
+            (*env)->DeleteLocalRef(env, tabGroupAxContext);
+        }
     }
     return fTabGroupAxContext;
 }
