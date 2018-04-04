@@ -411,8 +411,11 @@ void* getProcessHandle();
 void buildJniFunctionName(const char *sym, const char *cname,
                           char *jniEntryName);
 
-extern size_t getLastErrorString(char *buf, size_t len);
-extern int getErrorString(int err, char *buf, size_t len);
+JNIEXPORT size_t JNICALL
+getLastErrorString(char *buf, size_t len);
+
+JNIEXPORT int JNICALL
+getErrorString(int err, char *buf, size_t len);
 
 #ifdef STATIC_BUILD
 /* Macros for handling declaration of static/dynamic
