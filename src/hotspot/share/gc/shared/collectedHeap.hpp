@@ -614,6 +614,13 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Accumulate additional statistics from GCLABs.
   virtual void accumulate_statistics_all_gclabs();
 
+  // Support for object pinning. This is used by JNI Get*Critical()
+  // and Release*Critical() family of functions. If supported, the GC
+  // must guarantee that pinned objects never move.
+  virtual bool supports_object_pinning() const;
+  virtual oop pin_object(JavaThread* thread, oop obj);
+  virtual void unpin_object(JavaThread* thread, oop obj);
+
   // Non product verification and debugging.
 #ifndef PRODUCT
   // Support for PromotionFailureALot.  Return true if it's time to cause a

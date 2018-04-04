@@ -610,4 +610,16 @@ void CollectedHeap::accumulate_statistics_all_gclabs() {
 void CollectedHeap::compile_prepare_oop(MacroAssembler* masm, Register obj) {
   // Default implementation does nothing.
 }
-#endif
+
+bool CollectedHeap::supports_object_pinning() const {
+  return false;
+}
+
+oop CollectedHeap::pin_object(JavaThread* thread, oop obj) {
+  ShouldNotReachHere();
+  return NULL;
+}
+
+void CollectedHeap::unpin_object(JavaThread* thread, oop obj) {
+  ShouldNotReachHere();
+}
