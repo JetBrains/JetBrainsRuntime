@@ -491,7 +491,9 @@ Java_java_net_TwoStacksPlainDatagramSocketImpl_bind0(JNIEnv *env, jobject this,
             if (WSAGetLastError() == WSAEACCES) {
                 WSASetLastError(WSAEADDRINUSE);
             }
+            (*env)->SetObjectField(env, this, pdsi_fdID, NULL);
             NET_ThrowCurrent(env, "Cannot bind");
+            closesocket(fd);
             return;
         }
     }
