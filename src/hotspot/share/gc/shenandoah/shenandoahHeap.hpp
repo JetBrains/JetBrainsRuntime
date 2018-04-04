@@ -360,13 +360,10 @@ public:
   void register_nmethod(nmethod* nm);
   void unregister_nmethod(nmethod* nm);
 
-  void pin_object(oop o) /* override */;
-  void unpin_object(oop o) /* override */;
-
-  /* override, critical native support */
-  bool pin_arrays_for_critical_native() const { return true; }
-  oop  pin_critical_native_array(oop o);
-  void unpin_critical_native_array(oop o);
+  /* override: object pinning support */
+  bool supports_object_pinning() const { return true; }
+  oop pin_object(JavaThread* thread, oop obj);
+  void unpin_object(JavaThread* thread, oop obj);
 
   static ShenandoahHeap* heap();
   static ShenandoahHeap* heap_no_check();

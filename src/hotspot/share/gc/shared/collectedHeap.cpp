@@ -139,14 +139,6 @@ void CollectedHeap::print_on_error(outputStream* st) const {
   _barrier_set->print_on(st);
 }
 
-void CollectedHeap::pin_object(oop o) {
-  // Defaults to no-op
-}
-
-void CollectedHeap::unpin_object(oop o) {
-  // Defaults to no-op
-}
-
 void CollectedHeap::trace_heap(GCWhen::Type when, const GCTracer* gc_tracer) {
   const GCHeapSummary& heap_summary = create_heap_summary();
   gc_tracer->report_gc_heap_summary(when, heap_summary);
@@ -610,6 +602,7 @@ void CollectedHeap::accumulate_statistics_all_gclabs() {
 void CollectedHeap::compile_prepare_oop(MacroAssembler* masm, Register obj) {
   // Default implementation does nothing.
 }
+#endif
 
 bool CollectedHeap::supports_object_pinning() const {
   return false;

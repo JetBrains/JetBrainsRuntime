@@ -2133,26 +2133,17 @@ void ShenandoahHeap::unregister_nmethod(nmethod* nm) {
   ShenandoahCodeRoots::remove_nmethod(nm);
 }
 
-void ShenandoahHeap::pin_object(oop o) {
+oop ShenandoahHeap::pin_object(JavaThread* thr, oop o) {
+  o = BarrierSet::barrier_set()->write_barrier(o);
   ShenandoahHeapLocker locker(lock());
   heap_region_containing(o)->make_pinned();
-}
-
-void ShenandoahHeap::unpin_object(oop o) {
-  ShenandoahHeapLocker locker(lock());
-  heap_region_containing(o)->make_unpinned();
-}
-
-oop ShenandoahHeap::pin_critical_native_array(oop o) {
-  o = BarrierSet::barrier_set()->write_barrier(o);
-  pin_object(o);
-  assert(!collection_set()->is_in((HeapWord*)o) || cancelled_concgc(),
-    "Must not in collection set");
   return o;
 }
 
-void ShenandoahHeap::unpin_critical_native_array(oop o) {
-  unpin_object(o);
+void ShenandoahHeap::unpin_object(JavaThread* thr, oop o) {
+  o = BarrierSet::barrier_set()->read_barrier(o);
+  ShenandoahHeapLocker locker(lock());
+  heap_region_containing(o)->make_unpinned();
 }
 
 GCTimer* ShenandoahHeap::gc_timer() const {
