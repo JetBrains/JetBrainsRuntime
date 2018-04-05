@@ -480,6 +480,8 @@ public:
 
   void increase_allocated(size_t bytes);
 
+  void notify_alloc(size_t words, bool waste);
+
   void handle_heap_shrinkage(double shrink_before);
 
   void reset_next_mark_bitmap();

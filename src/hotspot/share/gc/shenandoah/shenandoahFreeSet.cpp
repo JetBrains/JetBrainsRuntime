@@ -205,6 +205,9 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t wor
     size_t num = r->region_number();
     increase_used(r->free());
 
+    // Record this remainder as allocation waste
+    _heap->notify_alloc(r->free(), true);
+
     _collector_free_bitmap.clear_bit(num);
     _mutator_free_bitmap.clear_bit(num);
     // Touched the bounds? Need to update:
@@ -275,6 +278,8 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
     end++;
   };
 
+  size_t remainder = words_size & ShenandoahHeapRegion::region_size_words_mask();
+
   // Initialize regions:
   for (size_t i = beg; i <= end; i++) {
     ShenandoahHeapRegion* r = _regions->get(i);
@@ -290,7 +295,6 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
     }
 
     // Trailing region may be non-full, record the remainder there
-    size_t remainder = words_size & ShenandoahHeapRegion::region_size_words_mask();
     size_t used_words;
     if ((i == end) && (remainder != 0)) {
       used_words = remainder;
@@ -310,6 +314,11 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
   // While individual regions report their true use, all humongous regions are
   // marked used in the free set.
   increase_used(ShenandoahHeapRegion::region_size_bytes() * num);
+
+  if (remainder != 0) {
+    // Record this remainder as allocation waste
+    _heap->notify_alloc(ShenandoahHeapRegion::region_size_words() - remainder, true);
+  }
 
   // Allocated at left/rightmost? Move the bounds appropriately.
   if (beg == _mutator_leftmost || end == _mutator_rightmost) {

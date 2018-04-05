@@ -570,6 +570,16 @@ void ShenandoahHeap::increase_allocated(size_t bytes) {
   Atomic::add(bytes, &_bytes_allocated_since_gc_start);
 }
 
+void ShenandoahHeap::notify_alloc(size_t words, bool waste) {
+  increase_allocated(words * HeapWordSize);
+  if (ShenandoahPacing) {
+    concurrent_thread()->pacing_notify_alloc(words);
+    if (waste) {
+      pacer()->claim_for_alloc(words, true);
+    }
+  }
+}
+
 size_t ShenandoahHeap::capacity() const {
   return num_regions() * ShenandoahHeapRegion::region_size_bytes();
 }
@@ -748,8 +758,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
                                word_size, p2i(result), Thread::current()->osthread()->thread_id());
 
   if (result != NULL) {
-    increase_allocated(word_size * HeapWordSize);
-    concurrent_thread()->notify_alloc(word_size);
+    notify_alloc(word_size, false);
   }
 
   return result;

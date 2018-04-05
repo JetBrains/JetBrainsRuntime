@@ -114,7 +114,7 @@ public:
 
   void notify_heap_changed();
 
-  void notify_alloc(size_t words);
+  void pacing_notify_alloc(size_t words);
 
   void start();
   void prepare_for_graceful_shutdown();
