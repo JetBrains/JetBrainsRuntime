@@ -133,11 +133,6 @@
           "(ignored otherwise). Defaults to 10%.")                          \
           range(0,100)                                                      \
                                                                             \
-  product_rw(uintx, ShenandoahCSetThreshold, 40,                            \
-          "Set the approximate target percentage of the heap for the"       \
-          "collection set. Defaults to 40%.")                               \
-          range(0,100)                                                      \
-                                                                            \
   product_rw(uintx, ShenandoahAllocationThreshold, 0,                       \
           "Set percentage of memory allocated since last GC cycle before "  \
           "a new GC cycle is started. "                                     \

@@ -654,7 +654,6 @@ public:
 class ShenandoahAdaptiveHeuristics : public ShenandoahHeuristics {
 private:
   uintx _free_threshold;
-  TruncatedSeq* _cset_history;
   size_t _peak_occupancy;
   TruncatedSeq* _cycle_gap_history;
   TruncatedSeq* _conc_mark_duration_history;
@@ -666,16 +665,10 @@ public:
     _peak_occupancy(0),
     _conc_mark_duration_history(new TruncatedSeq(5)),
     _conc_uprefs_duration_history(new TruncatedSeq(5)),
-    _cycle_gap_history(new TruncatedSeq(5)),
-    _cset_history(new TruncatedSeq((uint)ShenandoahHappyCyclesThreshold)) {
-
-    _cset_history->add((double) ShenandoahCSetThreshold);
-    _cset_history->add((double) ShenandoahCSetThreshold);
+    _cycle_gap_history(new TruncatedSeq(5)) {
   }
 
-  virtual ~ShenandoahAdaptiveHeuristics() {
-    delete _cset_history;
-  }
+  virtual ~ShenandoahAdaptiveHeuristics() {}
 
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,
                                                      RegionData* data, size_t size,
@@ -824,23 +817,12 @@ public:
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     size_t capacity = heap->capacity();
     size_t available = heap->free_set()->available();
-    uintx factor = _free_threshold;
-    size_t cset_threshold = 0;
-    if (! update_refs()) {
-      // Count in the memory available after cset reclamation.
-      cset_threshold = (size_t) _cset_history->davg();
-      size_t cset = MIN2(_bytes_in_cset, (cset_threshold * capacity) / 100);
-      available += cset;
-      factor += cset_threshold;
-    }
 
     double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
     bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
-    size_t threshold_available = (capacity * factor) / 100;
+    size_t threshold_available = (capacity * _free_threshold) / 100;
     size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
     size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
-
-    bool should_start = false;
 
     if (available < threshold_available &&
             bytes_allocated > threshold_bytes_allocated) {
@@ -849,21 +831,14 @@ public:
                         available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
       // Need to check that an appropriate number of regions have
       // been allocated since last concurrent mark too.
-      should_start = true;
+      return true;
     } else if (periodic_gc) {
       log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
           last_time_ms, ShenandoahGuaranteedGCInterval);
-      should_start = true;
+      return true;
     }
 
-    if (should_start) {
-      if (! update_refs()) {
-        log_info(gc,ergo)("Predicted cset threshold: " SIZE_FORMAT ", " SIZE_FORMAT "K CSet ("SIZE_FORMAT"%%)",
-                          cset_threshold, _bytes_in_cset / K, _bytes_in_cset * 100 / capacity);
-        _cset_history->add((double) (_bytes_in_cset * 100 / capacity));
-      }
-    }
-    return should_start;
+    return false;
   }
 
   virtual bool should_start_update_refs() {
