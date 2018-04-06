@@ -531,8 +531,7 @@ void ShenandoahHeap::post_initialize() {
 }
 
 size_t ShenandoahHeap::used() const {
-  OrderAccess::acquire();
-  return _used;
+  return OrderAccess::load_acquire(&_used);
 }
 
 size_t ShenandoahHeap::committed() const {
@@ -551,19 +550,16 @@ void ShenandoahHeap::decrease_committed(size_t bytes) {
 }
 
 void ShenandoahHeap::increase_used(size_t bytes) {
-  assert_heaplock_or_safepoint();
-  _used += bytes;
+  Atomic::add(bytes, &_used);
 }
 
 void ShenandoahHeap::set_used(size_t bytes) {
-  assert_heaplock_or_safepoint();
-  _used = bytes;
+  OrderAccess::release_store_fence(&_used, bytes);
 }
 
 void ShenandoahHeap::decrease_used(size_t bytes) {
-  assert_heaplock_or_safepoint();
-  assert(_used >= bytes, "never decrease heap size by more than we've left");
-  _used -= bytes;
+  assert(used() >= bytes, "never decrease heap size by more than we've left");
+  Atomic::add(-bytes, &_used);
 }
 
 void ShenandoahHeap::increase_allocated(size_t bytes) {
@@ -571,7 +567,11 @@ void ShenandoahHeap::increase_allocated(size_t bytes) {
 }
 
 void ShenandoahHeap::notify_alloc(size_t words, bool waste) {
-  increase_allocated(words * HeapWordSize);
+  size_t bytes = words * HeapWordSize;
+  if (!waste) {
+    increase_used(bytes);
+  }
+  increase_allocated(bytes);
   if (ShenandoahPacing) {
     concurrent_thread()->pacing_notify_alloc(words);
     if (waste) {
