@@ -202,12 +202,15 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t wor
     // fit, but the next small one would, we are risking to inflate scan times when lots of
     // almost-full regions precede the fully-empty region where we want allocate the entire TLAB.
     // TODO: Record first fully-empty region, and use that for large allocations
+
+    // Record the remainder as allocation waste
+    size_t waste = r->free();
+    if (waste > 0) {
+      increase_used(waste);
+      _heap->notify_alloc(waste, true);
+    }
+
     size_t num = r->region_number();
-    increase_used(r->free());
-
-    // Record this remainder as allocation waste
-    _heap->notify_alloc(r->free(), true);
-
     _collector_free_bitmap.clear_bit(num);
     _mutator_free_bitmap.clear_bit(num);
     // Touched the bounds? Need to update:
