@@ -176,22 +176,23 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t wor
     r->increase_live_data_alloc_words(word_size);
     increase_used(word_size * HeapWordSize);
     _heap->increase_used(word_size * HeapWordSize);
-    if (_heap->is_concurrent_traversal_in_progress()) {
-      switch (type) {
-        case ShenandoahHeap::_alloc_gclab:
-        case ShenandoahHeap::_alloc_shared_gc:
+
+    switch (type) {
+      case ShenandoahHeap::_alloc_gclab:
+      case ShenandoahHeap::_alloc_shared_gc:
+        if (_heap->is_concurrent_traversal_in_progress()) {
           // We're updating TAMS for evacuation-allocs, such that we will not
           // treat evacuated objects as implicitely live and traverse through them.
           // See top of shenandoahTraversal.cpp for an explanation.
           _heap->set_next_top_at_mark_start(r->bottom(), r->end());
           OrderAccess::fence();
-          break;
-        case ShenandoahHeap::_alloc_tlab:
-        case ShenandoahHeap::_alloc_shared:
-          break;
-        default:
-          ShouldNotReachHere();
-      }
+        }
+        break;
+      case ShenandoahHeap::_alloc_tlab:
+      case ShenandoahHeap::_alloc_shared:
+        break;
+      default:
+        ShouldNotReachHere();
     }
   }
 
