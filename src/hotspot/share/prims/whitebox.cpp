@@ -40,18 +40,20 @@
 #include "memory/universe.hpp"
 #include "memory/oopFactory.hpp"
 #include "oops/array.hpp"
-#include "oops/constantPool.hpp"
+#include "oops/constantPool.inline.hpp"
+#include "oops/method.inline.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.inline.hpp"
 #include "prims/wbtestmethods/parserTests.hpp"
-#include "prims/whitebox.hpp"
+#include "prims/whitebox.inline.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/compilationPolicy.hpp"
 #include "runtime/deoptimization.hpp"
+#include "runtime/frame.inline.hpp"
 #include "runtime/handshake.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/os.hpp"
@@ -86,6 +88,22 @@
 #endif
 
 #define SIZE_T_MAX_VALUE ((size_t) -1)
+
+#define CHECK_JNI_EXCEPTION_(env, value)                               \
+  do {                                                                 \
+    JavaThread* THREAD = JavaThread::thread_from_jni_environment(env); \
+    if (HAS_PENDING_EXCEPTION) {                                       \
+      return(value);                                                   \
+    }                                                                  \
+  } while (0)
+
+#define CHECK_JNI_EXCEPTION(env)                                       \
+  do {                                                                 \
+    JavaThread* THREAD = JavaThread::thread_from_jni_environment(env); \
+    if (HAS_PENDING_EXCEPTION) {                                       \
+      return;                                                          \
+    }                                                                  \
+  } while (0)
 
 bool WhiteBox::_used = false;
 volatile bool WhiteBox::compilation_locked = false;
@@ -191,7 +209,7 @@ WB_END
 void TestReservedSpace_test();
 void TestReserveMemorySpecial_test();
 void TestVirtualSpace_test();
-void TestMetaspaceAux_test();
+void TestMetaspaceUtils_test();
 #endif
 
 WB_ENTRY(void, WB_RunMemoryUnitTests(JNIEnv* env, jobject o))
@@ -199,7 +217,7 @@ WB_ENTRY(void, WB_RunMemoryUnitTests(JNIEnv* env, jobject o))
   TestReservedSpace_test();
   TestReserveMemorySpecial_test();
   TestVirtualSpace_test();
-  TestMetaspaceAux_test();
+  TestMetaspaceUtils_test();
 #endif
 WB_END
 
@@ -853,14 +871,21 @@ WB_END
 
 bool WhiteBox::compile_method(Method* method, int comp_level, int bci, Thread* THREAD) {
   // Screen for unavailable/bad comp level or null method
-  if (method == NULL || comp_level > MIN2((CompLevel) TieredStopAtLevel, CompLevel_highest_tier) ||
-      CompileBroker::compiler(comp_level) == NULL) {
+  AbstractCompiler* comp = CompileBroker::compiler(comp_level);
+  if (method == NULL || comp_level > MIN2((CompLevel) TieredStopAtLevel, CompLevel_highest_tier) || comp == NULL) {
     return false;
   }
+
+  // Check if compilation is blocking
   methodHandle mh(THREAD, method);
+  DirectiveSet* directive = DirectivesStack::getMatchingDirective(mh, comp);
+  bool is_blocking = !directive->BackgroundCompilationOption;
+  DirectivesStack::release(directive);
+
+  // Compile method and check result
   nmethod* nm = CompileBroker::compile_method(mh, bci, comp_level, mh, mh->invocation_count(), CompileTask::Reason_Whitebox, THREAD);
   MutexLockerEx mu(Compile_lock);
-  return (mh->queued_for_compilation() || nm != NULL);
+  return ((!is_blocking && mh->queued_for_compilation()) || nm != NULL);
 }
 
 WB_ENTRY(jboolean, WB_EnqueueMethodForCompilation(JNIEnv* env, jobject o, jobject method, jint comp_level, jint bci))
@@ -2167,7 +2192,6 @@ JVM_ENTRY(void, JVM_RegisterWhiteBoxMethods(JNIEnv* env, jclass wbclass))
       Handle loader(THREAD, ik->class_loader());
       if (loader.is_null()) {
         WhiteBox::register_methods(env, wbclass, thread, methods, sizeof(methods) / sizeof(methods[0]));
-        WhiteBox::register_extended(env, wbclass, thread);
         WhiteBox::set_used();
       }
     }

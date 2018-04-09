@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,16 +30,19 @@
 #include "compiler/compileBroker.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/method.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/compilationPolicy.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/vm_operations.hpp"
+#include "runtime/vmThread.hpp"
 #include "trace/tracing.hpp"
 #include "utilities/events.hpp"
 #include "utilities/ticks.inline.hpp"

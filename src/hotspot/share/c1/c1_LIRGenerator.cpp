@@ -35,7 +35,8 @@
 #include "ci/ciObjArray.hpp"
 #include "ci/ciUtilities.hpp"
 #include "gc/shared/cardTable.hpp"
-#include "gc/shared/cardTableModRefBS.hpp"
+#include "gc/shared/cardTableBarrierSet.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -1467,14 +1468,14 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
   // Do the pre-write barrier, if any.
   switch (_bs->kind()) {
 #if INCLUDE_ALL_GCS
-    case BarrierSet::G1SATBCTLogging:
-      G1SATBCardTableModRef_pre_barrier(addr_opr, pre_val, do_load, patch, info);
+    case BarrierSet::G1BarrierSet:
+      G1BarrierSet_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
     case BarrierSet::Shenandoah:
       Shenandoah_pre_barrier(addr_opr, pre_val, do_load, patch, info);
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableModRef:
+    case BarrierSet::CardTableBarrierSet:
       // No pre barriers
       break;
     default      :
@@ -1486,7 +1487,7 @@ void LIRGenerator::pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
 void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
   switch (_bs->kind()) {
 #if INCLUDE_ALL_GCS
-    case BarrierSet::G1SATBCTLogging:
+    case BarrierSet::G1BarrierSet:
       pre_barrier(LIR_OprFact::illegalOpr /* addr_opr */,
                   val /* pre_val */,
                   false  /* do_load */,
@@ -1503,7 +1504,7 @@ void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
       }
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableModRef:
+    case BarrierSet::CardTableBarrierSet:
       break;
     default      :
       ShouldNotReachHere();
@@ -1513,15 +1514,15 @@ void LIRGenerator::keep_alive_barrier(LIR_Opr val) {
 void LIRGenerator::post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
   switch (_bs->kind()) {
 #if INCLUDE_ALL_GCS
-    case BarrierSet::G1SATBCTLogging:
-      G1SATBCardTableModRef_post_barrier(addr,  new_val);
+    case BarrierSet::G1BarrierSet:
+      G1BarrierSet_post_barrier(addr,  new_val);
       break;
     case BarrierSet::Shenandoah:
       Shenandoah_post_barrier(addr,  new_val);
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableModRef:
-      CardTableModRef_post_barrier(addr,  new_val);
+    case BarrierSet::CardTableBarrierSet:
+      CardTableBarrierSet_post_barrier(addr,  new_val);
       break;
     default      :
       ShouldNotReachHere();
@@ -1531,8 +1532,8 @@ void LIRGenerator::post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
 ////////////////////////////////////////////////////////////////////////
 #if INCLUDE_ALL_GCS
 
-void LIRGenerator::G1SATBCardTableModRef_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
-                                                     bool do_load, bool patch, CodeEmitInfo* info) {
+void LIRGenerator::G1BarrierSet_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
+                                            bool do_load, bool patch, CodeEmitInfo* info) {
   // First we test whether marking is in progress.
   BasicType flag_type;
   if (in_bytes(SATBMarkQueue::byte_width_of_active()) == 4) {
@@ -1586,7 +1587,7 @@ void LIRGenerator::G1SATBCardTableModRef_pre_barrier(LIR_Opr addr_opr, LIR_Opr p
   __ branch_destination(slow->continuation());
 }
 
-void LIRGenerator::G1SATBCardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
+void LIRGenerator::G1BarrierSet_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
   // If the "new_val" is a constant NULL, no barrier is necessary.
   if (new_val->is_constant() &&
       new_val->as_constant_ptr()->as_jobject() == NULL) return;
@@ -1688,7 +1689,7 @@ void LIRGenerator::Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
     __ branch_destination(slow->continuation());
   }
   if (ShenandoahSATBBarrier) {
-    G1SATBCardTableModRef_pre_barrier(addr_opr, pre_val, do_load, patch, info);
+    G1BarrierSet_pre_barrier(addr_opr, pre_val, do_load, patch, info);
   }
 }
 
@@ -1770,7 +1771,7 @@ void LIRGenerator::Shenandoah_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_v
 #endif // INCLUDE_ALL_GCS
 ////////////////////////////////////////////////////////////////////////
 
-void LIRGenerator::CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
+void LIRGenerator::CardTableBarrierSet_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new_val) {
   LIR_Const* card_table_base = new LIR_Const(ci_card_table_address());
   if (addr->is_address()) {
     LIR_Address* address = addr->as_address_ptr();
@@ -1787,8 +1788,8 @@ void LIRGenerator::CardTableModRef_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* 
   }
   assert(addr->is_register(), "must be a register at this point");
 
-#ifdef CARDTABLEMODREF_POST_BARRIER_HELPER
-  CardTableModRef_post_barrier_helper(addr, card_table_base);
+#ifdef CARDTABLEBARRIERSET_POST_BARRIER_HELPER
+  CardTableBarrierSet_post_barrier_helper(addr, card_table_base);
 #else
   LIR_Opr tmp = new_pointer_register();
   if (TwoOperandLIRForm) {
@@ -2092,7 +2093,7 @@ LIR_Opr LIRGenerator::shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* inf
       obj = shenandoah_write_barrier_impl(obj, info, need_null_check);
     }
     if (ShenandoahStoreValEnqueueBarrier) {
-      G1SATBCardTableModRef_pre_barrier(LIR_OprFact::illegalOpr, obj, false, false, NULL);
+      G1BarrierSet_pre_barrier(LIR_OprFact::illegalOpr, obj, false, false, NULL);
     }
     if (ShenandoahStoreValReadBarrier) {
       obj = shenandoah_read_barrier_impl(obj, info, need_null_check);

@@ -23,6 +23,7 @@
 
 #include "precompiled.hpp"
 
+#include "gc/shared/workerDataArray.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"

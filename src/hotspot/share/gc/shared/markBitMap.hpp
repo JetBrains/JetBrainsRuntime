@@ -32,7 +32,7 @@
 // A generic CM bit map.  This is essentially a wrapper around the BitMap
 // class, with one bit per (1<<_shifter) HeapWords.
 
-class MarkBitMapRO VALUE_OBJ_CLASS_SPEC {
+class MarkBitMapRO {
  protected:
   HeapWord* _bmStartWord;  // base address of range covered by map
   size_t    _bmWordSize;   // map size (in #HeapWords covered)

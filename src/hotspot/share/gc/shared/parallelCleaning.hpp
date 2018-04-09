@@ -54,7 +54,7 @@ public:
   size_t symbols_removed()   const;
 };
 
-class CodeCacheUnloadingTask VALUE_OBJ_CLASS_SPEC {
+class CodeCacheUnloadingTask {
 private:
   static Monitor* _lock;
 

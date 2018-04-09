@@ -81,7 +81,7 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
 
   elif test "x$TOOLCHAIN_TYPE" = xclang; then
     BASIC_LDFLAGS_JVM_ONLY="-mno-omit-leaf-frame-pointer -mstack-alignment=16 \
-        -stdlib=libstdc++ -fPIC"
+        -stdlib=libc++ -fPIC"
 
   elif test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     BASIC_LDFLAGS="-Wl,-z,defs"
@@ -99,7 +99,7 @@ AC_DEFUN([FLAGS_SETUP_LDFLAGS_HELPER],
   elif test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     BASIC_LDFLAGS="-nologo -opt:ref"
     BASIC_LDFLAGS_JDK_ONLY="-incremental:no"
-    BASIC_LDFLAGS_JVM_ONLY="-opt:icf,8 -subsystem:windows -base:0x8000000"
+    BASIC_LDFLAGS_JVM_ONLY="-opt:icf,8 -subsystem:windows"
   fi
 
   # Setup OS-dependent LDFLAGS

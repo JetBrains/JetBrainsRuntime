@@ -34,7 +34,6 @@
 #include "runtime/reflectionUtils.hpp"
 #include "runtime/signature.hpp"
 #include "utilities/hashtable.hpp"
-#include "utilities/hashtable.inline.hpp"
 
 // The dictionary in each ClassLoaderData stores all loaded classes, either
 // initiatied by its class loader or defined by its class loader:
@@ -493,7 +492,7 @@ public:
   static void compute_java_loaders(TRAPS);
 
   // Register a new class loader
-  static ClassLoaderData* register_loader(Handle class_loader, TRAPS);
+  static ClassLoaderData* register_loader(Handle class_loader);
 protected:
   // Mirrors for primitive classes (created eagerly)
   static oop check_mirror(oop m) {

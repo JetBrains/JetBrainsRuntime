@@ -30,7 +30,8 @@
 #include "metaprogramming/isRegisteredEnum.hpp"
 #include "metaprogramming/integralConstant.hpp"
 #include "runtime/extendedPC.hpp"
-#include "runtime/handles.hpp"
+#include "utilities/exceptions.hpp"
+#include "utilities/ostream.hpp"
 #include "utilities/macros.hpp"
 #ifndef _WINDOWS
 # include <setjmp.h>
@@ -54,6 +55,7 @@ class Event;
 class DLL;
 class FileHandle;
 class NativeCallStack;
+class methodHandle;
 
 template<class E> class GrowableArray;
 
@@ -272,10 +274,6 @@ class os: AllStatic {
   static bool must_commit_stack_guard_pages();
   static void map_stack_shadow_pages(address sp);
   static bool stack_shadow_pages_available(Thread *thread, const methodHandle& method, address sp);
-
-  // Return size of stack that is actually committed. For Java thread, the bottom should be above
-  // guard pages (stack grows downward)
-  static size_t committed_stack_size(address bottom, size_t size);
 
   // OS interface to Virtual Memory
 

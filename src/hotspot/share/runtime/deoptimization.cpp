@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,8 @@
 #include "runtime/biasedLocking.hpp"
 #include "runtime/compilationPolicy.hpp"
 #include "runtime/deoptimization.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/frame.inline.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/signature.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -56,6 +57,7 @@
 #include "runtime/vframeArray.hpp"
 #include "runtime/vframe_hp.hpp"
 #include "utilities/events.hpp"
+#include "utilities/preserveException.hpp"
 #include "utilities/xmlstream.hpp"
 
 #if INCLUDE_JVMCI
@@ -648,6 +650,8 @@ JRT_LEAF(BasicType, Deoptimization::unpack_frames(JavaThread* thread, int exec_m
 #ifndef PRODUCT
   if (VerifyStack) {
     ResourceMark res_mark;
+    // Clear pending exception to not break verification code (restored afterwards)
+    PRESERVE_EXCEPTION_MARK;
 
     thread->validate_frame_layout();
 

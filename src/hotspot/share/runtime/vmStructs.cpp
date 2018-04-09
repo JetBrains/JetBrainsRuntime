@@ -139,8 +139,6 @@
 #include "runtime/vmStructs_trace.hpp"
 #endif
 
-#include "runtime/vmStructs_ext.hpp"
-
 #ifdef COMPILER2
 #include "opto/addnode.hpp"
 #include "opto/block.hpp"
@@ -480,8 +478,8 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   nonstatic_field(CardTable,                   _committed,                                    MemRegion*)                            \
   nonstatic_field(CardTable,                   _guard_region,                                 MemRegion)                             \
   nonstatic_field(CardTable,                   _byte_map_base,                                jbyte*)                                \
-  nonstatic_field(CardTableModRefBS,           _defer_initial_card_mark,                      bool)                                  \
-  nonstatic_field(CardTableModRefBS,           _card_table,                                   CardTable*)                            \
+  nonstatic_field(CardTableBarrierSet,         _defer_initial_card_mark,                      bool)                                  \
+  nonstatic_field(CardTableBarrierSet,         _card_table,                                   CardTable*)                            \
                                                                                                                                      \
   nonstatic_field(CollectedHeap,               _reserved,                                     MemRegion)                             \
   nonstatic_field(CollectedHeap,               _barrier_set,                                  BarrierSet*)                           \
@@ -1478,7 +1476,7 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
            declare_type(TenuredSpace,                 OffsetTableContigSpace) \
   declare_toplevel_type(BarrierSet)                                       \
            declare_type(ModRefBarrierSet,             BarrierSet)         \
-           declare_type(CardTableModRefBS,            ModRefBarrierSet)   \
+           declare_type(CardTableBarrierSet,          ModRefBarrierSet)   \
   declare_toplevel_type(CardTable)                                        \
            declare_type(CardTableRS, CardTable)                           \
   declare_toplevel_type(BarrierSet::Name)                                 \
@@ -1507,8 +1505,8 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_toplevel_type(CardTable*)                                       \
   declare_toplevel_type(CardTable*const)                                  \
   declare_toplevel_type(CardTableRS*)                                     \
-  declare_toplevel_type(CardTableModRefBS*)                               \
-  declare_toplevel_type(CardTableModRefBS**)                              \
+  declare_toplevel_type(CardTableBarrierSet*)                             \
+  declare_toplevel_type(CardTableBarrierSet**)                            \
   declare_toplevel_type(CollectedHeap*)                                   \
   declare_toplevel_type(ContiguousSpace*)                                 \
   declare_toplevel_type(DefNewGeneration*)                                \
@@ -2001,6 +1999,7 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_c2_type(MulReductionVDNode, ReductionNode)                      \
   declare_c2_type(DivVFNode, VectorNode)                                  \
   declare_c2_type(DivVDNode, VectorNode)                                  \
+  declare_c2_type(PopCountVINode, VectorNode)                             \
   declare_c2_type(LShiftVBNode, VectorNode)                               \
   declare_c2_type(LShiftVSNode, VectorNode)                               \
   declare_c2_type(LShiftVINode, VectorNode)                               \
@@ -2245,9 +2244,8 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_constant(AgeTable::table_size)                                  \
                                                                           \
   declare_constant(BarrierSet::ModRef)                                    \
-  declare_constant(BarrierSet::CardTableModRef)                           \
-  declare_constant(BarrierSet::G1SATBCT)                                  \
-  declare_constant(BarrierSet::G1SATBCTLogging)                           \
+  declare_constant(BarrierSet::CardTableBarrierSet)                           \
+  declare_constant(BarrierSet::G1BarrierSet)                              \
   declare_constant(BarrierSet::Shenandoah)                                \
                                                                           \
   declare_constant(BOTConstants::LogN)                                    \
@@ -3046,9 +3044,6 @@ VMStructEntry VMStructs::localHotSpotVMStructs[] = {
                    GENERATE_STATIC_VM_STRUCT_ENTRY)
 #endif
 
-  VM_STRUCTS_EXT(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
-                 GENERATE_STATIC_VM_STRUCT_ENTRY)
-
   VM_STRUCTS_OS(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
                 GENERATE_STATIC_VM_STRUCT_ENTRY,
                 GENERATE_UNCHECKED_NONSTATIC_VM_STRUCT_ENTRY,
@@ -3116,9 +3111,6 @@ VMTypeEntry VMStructs::localHotSpotVMTypes[] = {
   VM_TYPES_TRACE(GENERATE_VM_TYPE_ENTRY,
               GENERATE_TOPLEVEL_VM_TYPE_ENTRY)
 #endif
-
-  VM_TYPES_EXT(GENERATE_VM_TYPE_ENTRY,
-               GENERATE_TOPLEVEL_VM_TYPE_ENTRY)
 
   VM_TYPES_OS(GENERATE_VM_TYPE_ENTRY,
               GENERATE_TOPLEVEL_VM_TYPE_ENTRY,
@@ -3275,9 +3267,6 @@ VMStructs::init() {
                    CHECK_STATIC_VM_STRUCT_ENTRY);
 #endif
 
-  VM_STRUCTS_EXT(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
-                 CHECK_STATIC_VM_STRUCT_ENTRY);
-
   VM_STRUCTS_CPU(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
                  CHECK_STATIC_VM_STRUCT_ENTRY,
                  CHECK_NO_OP,
@@ -3327,9 +3316,6 @@ VMStructs::init() {
   VM_TYPES_TRACE(CHECK_VM_TYPE_ENTRY,
               CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
 #endif
-
-  VM_TYPES_EXT(CHECK_VM_TYPE_ENTRY,
-               CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
 
   VM_TYPES_CPU(CHECK_VM_TYPE_ENTRY,
                CHECK_SINGLE_ARG_VM_TYPE_NO_OP,
@@ -3401,9 +3387,6 @@ VMStructs::init() {
   debug_only(VM_STRUCTS_TRACE(ENSURE_FIELD_TYPE_PRESENT,
                            ENSURE_FIELD_TYPE_PRESENT));
 #endif
-
-  debug_only(VM_STRUCTS_EXT(ENSURE_FIELD_TYPE_PRESENT,
-                            ENSURE_FIELD_TYPE_PRESENT));
 
   debug_only(VM_STRUCTS_CPU(ENSURE_FIELD_TYPE_PRESENT,
                             ENSURE_FIELD_TYPE_PRESENT,

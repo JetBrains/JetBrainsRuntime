@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,7 @@
 # include "ci/ciSymbol.hpp"
 # include "ci/ciType.hpp"
 # include "ci/ciTypeArrayKlass.hpp"
-# include "ci/ciUtilities.hpp"
+# include "ci/ciUtilities.inline.hpp"
 # include "ci/compilerInterface.hpp"
 # include "classfile/classFileParser.hpp"
 # include "classfile/classFileStream.hpp"
@@ -95,7 +95,7 @@
 # include "gc/shared/ageTable.hpp"
 # include "gc/shared/barrierSet.hpp"
 # include "gc/shared/blockOffsetTable.hpp"
-# include "gc/shared/cardTableModRefBS.hpp"
+# include "gc/shared/cardTableBarrierSet.hpp"
 # include "gc/shared/collectedHeap.hpp"
 # include "gc/shared/collectorCounters.hpp"
 # include "gc/shared/collectorPolicy.hpp"
@@ -138,7 +138,7 @@
 # include "memory/oopFactory.hpp"
 # include "memory/resourceArea.hpp"
 # include "memory/universe.hpp"
-# include "memory/universe.inline.hpp"
+# include "memory/universe.hpp"
 # include "memory/virtualspace.hpp"
 # include "oops/array.hpp"
 # include "oops/arrayKlass.hpp"
@@ -176,7 +176,7 @@
 # include "runtime/handles.inline.hpp"
 # include "runtime/icache.hpp"
 # include "runtime/init.hpp"
-# include "runtime/interfaceSupport.hpp"
+# include "runtime/interfaceSupport.inline.hpp"
 # include "runtime/java.hpp"
 # include "runtime/javaCalls.hpp"
 # include "runtime/javaFrameAnchor.hpp"

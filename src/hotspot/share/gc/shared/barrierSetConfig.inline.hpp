@@ -28,10 +28,10 @@
 #include "gc/shared/barrierSetConfig.hpp"
 
 #include "gc/shared/modRefBarrierSet.inline.hpp"
-#include "gc/shared/cardTableModRefBS.inline.hpp"
+#include "gc/shared/cardTableBarrierSet.inline.hpp"
 
 #if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.inline.hpp" // G1 support
+#include "gc/g1/g1BarrierSet.inline.hpp" // G1 support
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp" // Shenandoah support
 #endif
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "logging/log.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/padded.hpp"
 #include "memory/resourceArea.hpp"
@@ -33,7 +34,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/handles.inline.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/objectMonitor.inline.hpp"
@@ -42,6 +43,7 @@
 #include "runtime/synchronizer.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/vframe.hpp"
+#include "runtime/vmThread.hpp"
 #include "trace/traceMacros.hpp"
 #include "trace/tracing.hpp"
 #include "utilities/align.hpp"

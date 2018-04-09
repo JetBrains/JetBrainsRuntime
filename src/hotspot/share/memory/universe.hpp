@@ -194,7 +194,8 @@ class Universe: AllStatic {
   // For UseCompressedClassPointers.
   static struct NarrowPtrStruct _narrow_klass;
   static address _narrow_ptrs_base;
-
+  // CompressedClassSpaceSize set to 1GB, but appear 3GB away from _narrow_ptrs_base during CDS dump.
+  static uint64_t _narrow_klass_range;
   // array of dummy objects used with +FullGCAlot
   debug_only(static objArrayOop _fullgc_alot_dummy_array;)
   // index of next entry to clear
@@ -243,6 +244,10 @@ class Universe: AllStatic {
   static void     set_narrow_klass_base(address base) {
     assert(UseCompressedClassPointers, "no compressed klass ptrs?");
     _narrow_klass._base   = base;
+  }
+  static void     set_narrow_klass_range(uint64_t range) {
+     assert(UseCompressedClassPointers, "no compressed klass ptrs?");
+     _narrow_klass_range = range;
   }
   static void     set_narrow_oop_use_implicit_null_checks(bool use) {
     assert(UseCompressedOops, "no compressed ptrs?");
@@ -293,6 +298,16 @@ class Universe: AllStatic {
   static oop long_mirror()                  { return check_mirror(_long_mirror); }
   static oop short_mirror()                 { return check_mirror(_short_mirror); }
   static oop void_mirror()                  { return check_mirror(_void_mirror); }
+
+  static void set_int_mirror(oop m)         { _int_mirror = m;    }
+  static void set_float_mirror(oop m)       { _float_mirror = m;  }
+  static void set_double_mirror(oop m)      { _double_mirror = m; }
+  static void set_byte_mirror(oop m)        { _byte_mirror = m;   }
+  static void set_bool_mirror(oop m)        { _bool_mirror = m;   }
+  static void set_char_mirror(oop m)        { _char_mirror = m;   }
+  static void set_long_mirror(oop m)        { _long_mirror = m;   }
+  static void set_short_mirror(oop m)       { _short_mirror = m;  }
+  static void set_void_mirror(oop m)        { _void_mirror = m;   }
 
   // table of same
   static oop _mirrors[T_VOID+1];
@@ -419,6 +434,7 @@ class Universe: AllStatic {
   // For UseCompressedClassPointers
   static address  narrow_klass_base()                     { return  _narrow_klass._base; }
   static bool  is_narrow_klass_base(void* addr)           { return (narrow_klass_base() == (address)addr); }
+  static uint64_t narrow_klass_range()                    { return  _narrow_klass_range; }
   static int      narrow_klass_shift()                    { return  _narrow_klass._shift; }
   static bool     narrow_klass_use_implicit_null_checks() { return  _narrow_klass._use_implicit_null_checks; }
 
@@ -452,8 +468,6 @@ class Universe: AllStatic {
   static bool is_module_initialized()                 { return _module_initialized; }
   static bool is_fully_initialized()                  { return _fully_initialized; }
 
-  static inline bool element_type_should_be_aligned(BasicType type);
-  static inline bool field_type_should_be_aligned(BasicType type);
   static bool        on_page_boundary(void* addr);
   static bool        should_fill_in_stack_trace(Handle throwable);
   static void check_alignment(uintx size, uintx alignment, const char* name);
@@ -481,7 +495,7 @@ class Universe: AllStatic {
     Verify_CodeCache = 16,
     Verify_SystemDictionary = 32,
     Verify_ClassLoaderDataGraph = 64,
-    Verify_MetaspaceAux = 128,
+    Verify_MetaspaceUtils = 128,
     Verify_JNIHandles = 256,
     Verify_CodeCacheOops = 512,
     Verify_All = -1

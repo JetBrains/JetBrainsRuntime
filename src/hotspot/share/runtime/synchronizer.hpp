@@ -35,7 +35,7 @@ class ObjectMonitor;
 class ThreadsList;
 
 
-class ParallelObjectSynchronizerIterator VALUE_OBJ_CLASS_SPEC {
+class ParallelObjectSynchronizerIterator {
   friend class ObjectSynchronizer;
 
   private:

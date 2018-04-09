@@ -76,7 +76,7 @@ class OopClosure;
 class KlassDepChange;
 class CodeCache;
 
-class ParallelCodeHeapIterator VALUE_OBJ_CLASS_SPEC {
+class ParallelCodeHeapIterator {
   friend class CodeCache;
 private:
   CodeHeap*     _heap;
@@ -87,7 +87,7 @@ public:
   void parallel_blobs_do(CodeBlobClosure* f);
 };
 
-class ParallelCodeCacheIterator VALUE_OBJ_CLASS_SPEC {
+class ParallelCodeCacheIterator {
   friend class CodeCache;
 private:
   ParallelCodeHeapIterator* _iters;

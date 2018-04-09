@@ -29,7 +29,7 @@
 #include "c1/c1_Runtime1.hpp"
 #include "ci/ciUtilities.hpp"
 #include "gc/shared/cardTable.hpp"
-#include "gc/shared/cardTableModRefBS.hpp"
+#include "gc/shared/cardTableBarrierSet.hpp"
 #include "interpreter/interpreter.hpp"
 #include "nativeInst_ppc.hpp"
 #include "oops/compiledICHolder.hpp"
@@ -43,8 +43,8 @@
 #include "utilities/macros.hpp"
 #include "vmreg_ppc.inline.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
 #endif
 
 // Implementation of StubAssembler
@@ -711,7 +711,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
     case g1_pre_barrier_slow_id:
       {
         BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() != BarrierSet::G1SATBCTLogging) {
+        if (bs->kind() != BarrierSet::G1BarrierSet) {
           goto unimplemented_entry;
         }
 
@@ -788,7 +788,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
   case g1_post_barrier_slow_id:
     {
         BarrierSet* bs = Universe::heap()->barrier_set();
-        if (bs->kind() != BarrierSet::G1SATBCTLogging) {
+        if (bs->kind() != BarrierSet::G1BarrierSet) {
           goto unimplemented_entry;
         }
 

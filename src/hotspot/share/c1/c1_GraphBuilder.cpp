@@ -32,6 +32,7 @@
 #include "ci/ciField.hpp"
 #include "ci/ciKlass.hpp"
 #include "ci/ciMemberName.hpp"
+#include "ci/ciUtilities.inline.hpp"
 #include "compiler/compileBroker.hpp"
 #include "interpreter/bytecode.hpp"
 #include "memory/resourceArea.hpp"
@@ -41,7 +42,7 @@
 #include "runtime/vm_version.hpp"
 #include "utilities/bitMap.inline.hpp"
 
-class BlockListBuilder VALUE_OBJ_CLASS_SPEC {
+class BlockListBuilder {
  private:
   Compilation* _compilation;
   IRScope*     _scope;

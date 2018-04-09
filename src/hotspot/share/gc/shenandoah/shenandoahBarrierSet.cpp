@@ -22,13 +22,14 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
+#include "gc/g1/g1BarrierSet.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 
 template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
 class ShenandoahUpdateRefsForOopClosure: public ExtendedOopClosure {
@@ -59,7 +60,8 @@ public:
 };
 
 ShenandoahBarrierSet::ShenandoahBarrierSet(ShenandoahHeap* heap) :
-  BarrierSet(BarrierSet::FakeRtti(BarrierSet::Shenandoah)),
+  BarrierSet(make_barrier_set_assembler<ShenandoahBarrierSetAssembler>(),
+             BarrierSet::FakeRtti(BarrierSet::Shenandoah)),
   _heap(heap)
 {
 }
@@ -140,6 +142,22 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
     }
   }
 }
+
+void ShenandoahBarrierSet::write_ref_array_pre_oop_entry(oop* dst, size_t length) {
+  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  bs->write_ref_array_pre(dst, length, false);
+}
+
+void ShenandoahBarrierSet::write_ref_array_pre_narrow_oop_entry(narrowOop* dst, size_t length) {
+  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  bs->write_ref_array_pre(dst, length, false);
+}
+
+void ShenandoahBarrierSet::write_ref_array_post_entry(HeapWord* dst, size_t length) {
+  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  bs->ShenandoahBarrierSet::write_ref_array(dst, length);
+}
+
 
 template <class T>
 void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
@@ -321,7 +339,7 @@ void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
 
 void ShenandoahBarrierSet::enqueue(oop obj) {
   shenandoah_assert_not_forwarded_if(NULL, obj, ShenandoahHeap::heap()->is_concurrent_traversal_in_progress());
-  G1SATBCardTableModRefBS::enqueue(obj);
+  G1BarrierSet::enqueue(obj);
 }
 
 #ifdef ASSERT

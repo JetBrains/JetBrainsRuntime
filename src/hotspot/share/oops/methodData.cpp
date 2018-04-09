@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,14 @@
 #include "precompiled.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "compiler/compilerOracle.hpp"
+#include "gc/shared/gcLocker.hpp"
 #include "interpreter/bytecode.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "memory/heapInspection.hpp"
 #include "memory/metaspaceClosure.hpp"
 #include "memory/resourceArea.hpp"
-#include "oops/methodData.hpp"
+#include "oops/methodData.inline.hpp"
 #include "prims/jvmtiRedefineClasses.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/compilationPolicy.hpp"

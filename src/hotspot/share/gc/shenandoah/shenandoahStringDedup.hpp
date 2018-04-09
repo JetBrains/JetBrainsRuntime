@@ -32,7 +32,7 @@
 #define STRDEDUP_TIME_FORMAT_MS         "%.3fms"
 #define STRDEDUP_TIME_PARAM_MS(time)    ((time) * MILLIUNITS)
 
-class ShenandoahStrDedupStats VALUE_OBJ_CLASS_SPEC {
+class ShenandoahStrDedupStats {
 private:
   // Counters
   volatile size_t  _inspected;

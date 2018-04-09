@@ -44,7 +44,7 @@ class OopClosure;
 class SubTasksDone;
 
 
-class ParallelCLDRootIterator VALUE_OBJ_CLASS_SPEC {
+class ParallelCLDRootIterator {
 public:
   ParallelCLDRootIterator();
   void root_cld_do(CLDClosure* strong, CLDClosure* weak);

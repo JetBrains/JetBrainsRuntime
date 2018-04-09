@@ -49,7 +49,7 @@ public interface SelChImpl extends Channel {
      *          contains at least one bit that the previous value did not
      *          contain
      */
-    boolean translateAndUpdateReadyOps(int ops, SelectionKeyImpl sk);
+    boolean translateAndUpdateReadyOps(int ops, SelectionKeyImpl ski);
 
     /**
      * Sets the specified ops if present in interestOps. The specified
@@ -59,9 +59,12 @@ public interface SelChImpl extends Channel {
      *          contains at least one bit that the previous value did not
      *          contain
      */
-    boolean translateAndSetReadyOps(int ops, SelectionKeyImpl sk);
+    boolean translateAndSetReadyOps(int ops, SelectionKeyImpl ski);
 
-    void translateAndSetInterestOps(int ops, SelectionKeyImpl sk);
+    /**
+     * Translates an interest operation set into a native event set
+     */
+    int translateInterestOps(int ops);
 
     void kill() throws IOException;
 

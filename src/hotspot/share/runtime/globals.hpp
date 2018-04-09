@@ -184,7 +184,9 @@ struct Flag {
     DIAGNOSTIC_FLAG_BUT_LOCKED,
     EXPERIMENTAL_FLAG_BUT_LOCKED,
     DEVELOPER_FLAG_BUT_PRODUCT_BUILD,
-    NOTPRODUCT_FLAG_BUT_PRODUCT_BUILD
+    NOTPRODUCT_FLAG_BUT_PRODUCT_BUILD,
+    COMMERCIAL_FLAG_BUT_DISABLED,
+    COMMERCIAL_FLAG_BUT_LOCKED
   };
 
   const char* _type;
@@ -285,11 +287,12 @@ struct Flag {
   void clear_diagnostic();
 
   Flag::MsgType get_locked_message(char*, int) const;
-  void get_locked_message_ext(char*, int) const;
+  Flag::MsgType get_locked_message_ext(char*, int) const;
 
   // printRanges will print out flags type, name and range values as expected by -XX:+PrintFlagsRanges
   void print_on(outputStream* st, bool withComments = false, bool printRanges = false);
-  void print_kind_and_origin(outputStream* st);
+  void print_kind(outputStream* st, unsigned int width);
+  void print_origin(outputStream* st, unsigned int width);
   void print_as_flag(outputStream* st);
 
   static const char* flag_error_str(Flag::Error error);
@@ -1433,9 +1436,10 @@ public:
             "Use semaphore synchronization for the GC Threads, "            \
             "instead of synchronization based on mutexes")                  \
                                                                             \
-  product(bool, UseDynamicNumberOfGCThreads, false,                         \
-          "Dynamically choose the number of parallel threads "              \
-          "parallel gc will use")                                           \
+  product(bool, UseDynamicNumberOfGCThreads, true,                          \
+          "Dynamically choose the number of threads up to a maximum of "    \
+          "ParallelGCThreads parallel collectors will use for garbage "     \
+          "collection work")                                                \
                                                                             \
   diagnostic(bool, InjectGCWorkerCreationFailure, false,                    \
              "Inject thread creation failures for "                         \
@@ -2652,7 +2656,7 @@ public:
           "Inline allocations larger than this in doublewords must go slow")\
                                                                             \
   product(bool, AggressiveOpts, false,                                      \
-          "Enable aggressive optimizations - see arguments.cpp")            \
+          "(Deprecated) Enable aggressive optimizations - see arguments.cpp") \
                                                                             \
   product_pd(bool, CompactStrings,                                          \
           "Enable Strings to use single byte chars in backing store")       \
@@ -4062,7 +4066,12 @@ public:
                                                                             \
   product(ccstr, AllocateHeapAt, NULL,                                      \
           "Path to the directoy where a temporary file will be created "    \
-          "to use as the backing store for Java Heap.")
+          "to use as the backing store for Java Heap.")                     \
+                                                                            \
+  develop(bool, VerifyMetaspace, false,                                     \
+          "Verify metaspace on chunk movements.")                           \
+                                                                            \
+
 
 
 /*

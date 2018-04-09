@@ -292,8 +292,7 @@ define SetupCompileNativeFileBody
     endif
 
     ifneq ($$(strip $$($1_CFLAGS) $$($1_CXXFLAGS) $$($1_OPTIMIZATION)), )
-      $1_VARDEPS := $$($1_CFLAGS) $$($1_CXXFLAGS) $$($1_OPT_CFLAGS) \
-          $$($1_OPT_CXXFLAGS)
+      $1_VARDEPS := $$($1_CFLAGS) $$($1_CXXFLAGS) $$($1_OPTIMIZATION)
       $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, $$($1_OBJ).vardeps)
     endif
 
@@ -735,7 +734,7 @@ define SetupNativeCompilationBody
 		$$(call MakeDir, $$(@D) $$($1_OBJECT_DIR))
 		$$(call ExecuteWithLog, $$@, \
 		    $$($1_RC) $$($1_RC_FLAGS) $$($1_SYSROOT_CFLAGS) $(CC_OUT_OPTION)$$@ \
-		    $$($1_VERSIONINFO_RESOURCE))
+		    $$($1_VERSIONINFO_RESOURCE) 2>&1 )
                 # Windows RC compiler does not support -showIncludes, so we mis-use CL
                 # for this. Filter out RC specific arguments that are unknown to CL.
                 # For some unknown reason, in this case CL actually outputs the show
@@ -746,7 +745,7 @@ define SetupNativeCompilationBody
 		        $$($1_SYSROOT_CFLAGS) -showIncludes -nologo -TC \
 		        $(CC_OUT_OPTION)$$($1_RES_DEP).obj -P -Fi$$($1_RES_DEP).pp \
 		        $$($1_VERSIONINFO_RESOURCE)) 2>&1 \
-		    | $(GREP) -v -e "^Note: including file:" \
+		    | $(TR) -d '\r' | $(GREP) -v -e "^Note: including file:" \
 		        -e "^$$(notdir $$($1_VERSIONINFO_RESOURCE))$$$$" || test "$$$$?" = "1" ; \
 		$(ECHO) $$($1_RES): \\ > $$($1_RES_DEP) ; \
 		$(SED) $(WINDOWS_SHOWINCLUDE_SED_PATTERN) $$($1_RES_DEP).obj.log >> $$($1_RES_DEP) ; \
@@ -798,10 +797,6 @@ define SetupNativeCompilationBody
               "-map:$$($1_OUTPUT_DIR)/$$($1_NOSUFFIX).map"
           $1_DEBUGINFO_FILES := $$($1_OUTPUT_DIR)/$$($1_NOSUFFIX).pdb \
               $$($1_OUTPUT_DIR)/$$($1_NOSUFFIX).map
-          # No separate command is needed for debuginfo on windows, instead
-          # touch target to make sure it has a later time stamp than the debug
-          # symbol files to avoid unnecessary relinking on rebuild.
-          $1_CREATE_DEBUGINFO_CMDS := $(TOUCH) $$($1_TARGET)
 
         else ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris), )
           $1_DEBUGINFO_FILES := $$($1_OUTPUT_DIR)/$$($1_NOSUFFIX).debuginfo
@@ -816,15 +811,25 @@ define SetupNativeCompilationBody
           $1_DEBUGINFO_FILES := \
               $$($1_OUTPUT_DIR)/$$($1_BASENAME).dSYM/Contents/Info.plist \
               $$($1_OUTPUT_DIR)/$$($1_BASENAME).dSYM/Contents/Resources/DWARF/$$($1_BASENAME)
-          # On Macosx, the debuginfo generation doesn't touch the linked binary, but
-          # to avoid always relinking, touch it anyway to force a later timestamp than
-          # the dSYM files.
           $1_CREATE_DEBUGINFO_CMDS := \
-              $(DSYMUTIL) --out $$($1_OUTPUT_DIR)/$$($1_BASENAME).dSYM $$($1_TARGET) $$(NEWLINE) \
-              $(TOUCH) $$($1_TARGET)
+              $(DSYMUTIL) --out $$($1_OUTPUT_DIR)/$$($1_BASENAME).dSYM $$($1_TARGET)
         endif # OPENJDK_TARGET_OS
 
+        # Since the link rule creates more than one file that we want to track,
+        # we have to use some tricks to get make to cooperate. To properly
+        # trigger downstream dependants of $$($1_DEBUGINFO_FILES), we must have
+        # a recipe in the rule below. To avoid rerunning the recipe every time
+        # have it touch the target. If a debuginfo file is deleted by something
+        # external, explicitly delete the TARGET to trigger a rebuild of both.
+        ifneq ($$(wildcard $$($1_DEBUGINFO_FILES)), $$($1_DEBUGINFO_FILES))
+          $$(call LogDebug, Deleting $$($1_BASENAME) because debuginfo files are missing)
+          $$(shell $(RM) $$($1_TARGET))
+        endif
         $$($1_DEBUGINFO_FILES): $$($1_TARGET)
+		$$(if $$(CORRECT_FUNCTION_IN_RECIPE_EVALUATION), \
+		  $$(if $$(wildcard $$@), , $$(error $$@ was not created for $$<)) \
+		)
+		$(TOUCH) $$@
 
         $1 += $$($1_DEBUGINFO_FILES)
 
@@ -855,22 +860,69 @@ define SetupNativeCompilationBody
     endif
   endif
 
-  ifeq ($$($1_TYPE), LIBRARY)
-    # Generating a dynamic library.
-    $1_EXTRA_LDFLAGS += $$(call SET_SHARED_LIBRARY_NAME,$$($1_BASENAME))
-    ifeq ($(OPENJDK_TARGET_OS), windows)
-      $1_EXTRA_LDFLAGS += "-implib:$$($1_OBJECT_DIR)/$$($1_NAME).lib"
-      # Create a rule for the import lib so that other rules may depend on it
-      $$($1_OBJECT_DIR)/$$($1_NAME).lib: $$($1_TARGET)
+  ifeq ($$($1_TYPE), STATIC_LIBRARY)
+    $1_VARDEPS := $$($1_AR) $$($1_ARFLAGS) $$($1_LIBS) \
+        $$($1_EXTRA_LIBS)
+    $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
+        $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).vardeps)
+
+    # Generating a static library, ie object file archive.
+    ifeq ($(STATIC_BUILD), true)
+      ifeq ($$($1_USE_MAPFILE_FOR_SYMBOLS), true)
+        STATIC_MAPFILE_DEP := $$($1_MAPFILE)
+      endif
     endif
 
-    # Create loadmap on AIX. Helps in diagnosing some problems.
-    ifneq ($(COMPILER_BINDCMD_FILE_FLAG), )
-      $1_EXTRA_LDFLAGS += $(COMPILER_BINDCMD_FILE_FLAG)$$($1_OBJECT_DIR)/$$($1_NOSUFFIX).loadmap
+    $$($1_TARGET): $$($1_ALL_OBJS) $$($1_RES) $$($1_VARDEPS_FILE) $$(STATIC_MAPFILE_DEP)
+	$$(call LogInfo, Building static library $$($1_BASENAME))
+	$$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
+	    $$($1_AR) $$($1_ARFLAGS) $(AR_OUT_OPTION)$$($1_TARGET) $$($1_ALL_OBJS) \
+	        $$($1_RES))
+        ifeq ($(STATIC_BUILD), true)
+          ifeq ($$($1_USE_MAPFILE_FOR_SYMBOLS), true)
+	    $(CP) $$($1_MAPFILE) $$(@D)/$$(basename $$(@F)).symbols
+          else
+	    $(GetSymbols)
+          endif
+        endif
+  else
+    # A shared dynamic library or an executable binary has been specified
+    ifeq ($$($1_TYPE), LIBRARY)
+      # Generating a dynamic library.
+      $1_EXTRA_LDFLAGS += $$(call SET_SHARED_LIBRARY_NAME,$$($1_BASENAME))
+
+      # Create loadmap on AIX. Helps in diagnosing some problems.
+      ifneq ($(COMPILER_BINDCMD_FILE_FLAG), )
+        $1_EXTRA_LDFLAGS += $(COMPILER_BINDCMD_FILE_FLAG)$$($1_OBJECT_DIR)/$$($1_NOSUFFIX).loadmap
+      endif
+    endif
+
+    ifeq ($(OPENJDK_TARGET_OS), windows)
+      ifeq ($$($1_EMBED_MANIFEST), true)
+        $1_EXTRA_LDFLAGS += -manifest:embed
+      endif
+
+      $1_IMPORT_LIBRARY := $$($1_OBJECT_DIR)/$$($1_NAME).lib
+      $1_EXTRA_LDFLAGS += "-implib:$$($1_IMPORT_LIBRARY)"
+      # To properly trigger downstream dependants of the import library, just as
+      # for debug files, we must have a recipe in the rule. To avoid rerunning
+      # the recipe every time have it touch the target. If an import library
+      # file is deleted by something external, explicitly delete the target to
+      # trigger a rebuild of both.
+      ifneq ($$(wildcard $$($1_IMPORT_LIBRARY)), $$($1_IMPORT_LIBRARY))
+        $$(call LogDebug, Deleting $$($1_BASENAME) because import library is missing)
+        $$(shell $(RM) $$($1_TARGET))
+      endif
+      $$($1_IMPORT_LIBRARY): $$($1_TARGET)
+		$$(if $$(CORRECT_FUNCTION_IN_RECIPE_EVALUATION), \
+		  $$(if $$(wildcard $$@), , $$(error $$@ was not created for $$<)) \
+		)
+		$(TOUCH) $$@
     endif
 
     $1_VARDEPS := $$($1_LD) $$($1_SYSROOT_LDFLAGS) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) \
-        $$($1_LIBS) $$($1_EXTRA_LIBS) $$($1_CREATE_DEBUGINFO_CMDS) \
+        $$(GLOBAL_LIBS) $$($1_LIBS) $$($1_EXTRA_LIBS) $$($1_MT) \
+        $$($1_CODESIGN) $$($1_CREATE_DEBUGINFO_CMDS) $$($1_MANIFEST_VERSION) \
         $$($1_STRIP_CMD)
     $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
         $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).vardeps)
@@ -909,8 +961,8 @@ define SetupNativeCompilationBody
       endif
     endif
 
-    $$($1_TARGET): $$($1_ALL_OBJS) $$($1_RES) $$($1_REAL_MAPFILE) \
-        $$($1_VARDEPS_FILE)
+    $$($1_TARGET): $$($1_ALL_OBJS) $$($1_RES) $$($1_MANIFEST) \
+        $$($1_REAL_MAPFILE) $$($1_VARDEPS_FILE)
                 ifneq ($$($1_OBJ_FILE_LIST), )
                   ifeq ($$($1_LINK_OBJS_RELATIVE), true)
 		    $$(eval $$(call ListPathsSafely, $1_ALL_OBJS_RELATIVE, $$($1_OBJ_FILE_LIST)))
@@ -924,74 +976,21 @@ define SetupNativeCompilationBody
                 ifeq ($(OPENJDK_TARGET_OS), windows)
 		  $$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
-		      $(LD_OUT_OPTION)$$@ $$($1_LD_OBJ_ARG) $$($1_RES) $$($1_LIBS) \
-		      $$($1_EXTRA_LIBS)) \
+		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) $$(GLOBAL_LIBS) \
+		          $$($1_LIBS) $$($1_EXTRA_LIBS)) \
 		      | $(GREP) -v "^   Creating library .*\.lib and object .*\.exp" || \
-		      test "$$$$?" = "1" ; \
+		          test "$$$$?" = "1" ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
 		  $$($1_STRIP_CMD)
                 else
 		  $$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
 		      $$(if $$($1_LINK_OBJS_RELATIVE), $$(CD) $$(OUTPUTDIR) ; ) \
 		      $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
-		      $(LD_OUT_OPTION)$$@ $$($1_LD_OBJ_ARG) $$($1_RES) $$($1_LIBS) \
-		      $$($1_EXTRA_LIBS)) ; \
+		          $(LD_OUT_OPTION)$$($1_TARGET) $$($1_LD_OBJ_ARG) $$($1_RES) $$(GLOBAL_LIBS) \
+		          $$($1_LIBS) $$($1_EXTRA_LIBS)) ; \
 		  $$($1_CREATE_DEBUGINFO_CMDS)
 		  $$($1_STRIP_CMD)
                 endif
-
-  endif
-
-  ifeq ($$($1_TYPE), STATIC_LIBRARY)
-    $1_VARDEPS := $$($1_AR) $$($1_ARFLAGS) $$($1_LIBS) \
-        $$($1_EXTRA_LIBS)
-    $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
-        $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).vardeps)
-
-    # Generating a static library, ie object file archive.
-    ifeq ($(STATIC_BUILD), true)
-      ifeq ($$($1_USE_MAPFILE_FOR_SYMBOLS), true)
-        STATIC_MAPFILE_DEP := $$($1_MAPFILE)
-      endif
-    endif
-
-    $$($1_TARGET): $$($1_ALL_OBJS) $$($1_RES) $$($1_VARDEPS_FILE) $$(STATIC_MAPFILE_DEP)
-	$$(call LogInfo, Building static library $$($1_BASENAME))
-	$$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
-	    $$($1_AR) $$($1_ARFLAGS) $(AR_OUT_OPTION)$$($1_TARGET) $$($1_ALL_OBJS) \
-	        $$($1_RES))
-        ifeq ($(STATIC_BUILD), true)
-          ifeq ($$($1_USE_MAPFILE_FOR_SYMBOLS), true)
-	    $(CP) $$($1_MAPFILE) $$(@D)/$$(basename $$(@F)).symbols
-          else
-	    $(GetSymbols)
-          endif
-        endif
-  endif
-
-  ifeq ($$($1_TYPE), EXECUTABLE)
-    # A executable binary has been specified, setup the target for it.
-    $1_VARDEPS := $$($1_LD) $$($1_SYSROOT_LDFLAGS) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) \
-        $$($1_LIBS) $$($1_EXTRA_LIBS) $$($1_MT) \
-        $$($1_CODESIGN) $$($1_CREATE_DEBUGINFO_CMDS) $$($1_MANIFEST_VERSION) \
-        $$($1_STRIP_CMD)
-    $1_VARDEPS_FILE := $$(call DependOnVariable, $1_VARDEPS, \
-        $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).vardeps)
-
-    ifeq ($(OPENJDK_TARGET_OS), windows)
-      ifeq ($$($1_EMBED_MANIFEST), true)
-        $1_EXTRA_LDFLAGS += -manifest:embed
-      endif
-    endif
-
-    $$($1_TARGET): $$($1_ALL_OBJS) $$($1_RES) $$($1_MANIFEST) \
-        $$($1_VARDEPS_FILE)
-		$$(call LogInfo, Linking executable $$($1_BASENAME))
-		$$(call ExecuteWithLog, $$($1_OBJECT_DIR)/$$($1_SAFE_NAME)_link, \
-		    $$($1_LD) $$($1_LDFLAGS) $$($1_EXTRA_LDFLAGS) $$($1_SYSROOT_LDFLAGS) \
-		        $(EXE_OUT_OPTION)$$($1_TARGET) \
-		        $$($1_ALL_OBJS) $$($1_RES) \
-		        $$($1_LIBS) $$($1_EXTRA_LIBS))
                 ifeq ($(OPENJDK_TARGET_OS), windows)
                   ifneq ($$($1_MANIFEST), )
 		    $$($1_MT) -nologo -manifest $$($1_MANIFEST) -identity:"$$($1_NAME).exe, version=$$($1_MANIFEST_VERSION)" -outputresource:$$@;#1
@@ -1004,9 +1003,6 @@ define SetupNativeCompilationBody
 		    $(CODESIGN) -s openjdk_codesign $$@
                   endif
                 endif
-		$$($1_CREATE_DEBUGINFO_CMDS)
-		$$($1_STRIP_CMD)
-
   endif
 endef
 

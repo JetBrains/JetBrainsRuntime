@@ -27,6 +27,7 @@
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
 #include "oops/oop.inline.hpp"
+#include "runtime/handles.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/thread.inline.hpp"
@@ -34,7 +35,7 @@
 #include "utilities/align.hpp"
 #include "utilities/debug.hpp"
 #if INCLUDE_ALL_GCS
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
+#include "gc/g1/g1BarrierSet.hpp"
 #endif
 
 OopStorage* JNIHandles::_global_handles = NULL;
@@ -152,7 +153,7 @@ oop JNIHandles::resolve_jweak(jweak handle) {
   assert(is_jweak(handle), "precondition");
   oop result = jweak_ref(handle);
 #if INCLUDE_ALL_GCS
-  if (! oopDesc::is_null(result)) {
+  if (result != NULL) {
     BarrierSet::barrier_set()->keep_alive_barrier(result);
   }
 #endif

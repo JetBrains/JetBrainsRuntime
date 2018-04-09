@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "jvm.h"
 #include "aot/aotLoader.hpp"
+#include "code/compiledMethod.inline.hpp"
 #include "classfile/stringTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
@@ -42,8 +43,9 @@
 #include "logging/log.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/klass.hpp"
+#include "oops/method.inline.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/forte.hpp"
@@ -54,14 +56,15 @@
 #include "runtime/atomic.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/compilationPolicy.hpp"
+#include "runtime/frame.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/init.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
-#include "runtime/vframe.hpp"
+#include "runtime/vframe.inline.hpp"
 #include "runtime/vframeArray.hpp"
 #include "trace/tracing.hpp"
 #include "utilities/copy.hpp"
@@ -845,9 +848,15 @@ address SharedRuntime::continuation_for_implicit_exception(JavaThread* thread,
           if (vt_stub->is_abstract_method_error(pc)) {
             assert(!vt_stub->is_vtable_stub(), "should never see AbstractMethodErrors from vtable-type VtableStubs");
             Events::log_exception(thread, "AbstractMethodError at " INTPTR_FORMAT, p2i(pc));
-            return StubRoutines::throw_AbstractMethodError_entry();
+            // Instead of throwing the abstract method error here directly, we re-resolve
+            // and will throw the AbstractMethodError during resolve. As a result, we'll
+            // get a more detailed error message.
+            return SharedRuntime::get_handle_wrong_method_stub();
           } else {
             Events::log_exception(thread, "NullPointerException at vtable entry " INTPTR_FORMAT, p2i(pc));
+            // Assert that the signal comes from the expected location in stub code.
+            assert(vt_stub->is_null_pointer_exception(pc),
+                   "obtained signal from unexpected location in stub code");
             return StubRoutines::throw_NullPointerException_at_call_entry();
           }
         } else {
@@ -1460,7 +1469,33 @@ JRT_END
 
 // Handle abstract method call
 JRT_BLOCK_ENTRY(address, SharedRuntime::handle_wrong_method_abstract(JavaThread* thread))
-  return StubRoutines::throw_AbstractMethodError_entry();
+  // Verbose error message for AbstractMethodError.
+  // Get the called method from the invoke bytecode.
+  vframeStream vfst(thread, true);
+  assert(!vfst.at_end(), "Java frame must exist");
+  methodHandle caller(vfst.method());
+  Bytecode_invoke invoke(caller, vfst.bci());
+  DEBUG_ONLY( invoke.verify(); )
+
+  // Find the compiled caller frame.
+  RegisterMap reg_map(thread);
+  frame stubFrame = thread->last_frame();
+  assert(stubFrame.is_runtime_frame(), "must be");
+  frame callerFrame = stubFrame.sender(&reg_map);
+  assert(callerFrame.is_compiled_frame(), "must be");
+
+  // Install exception and return forward entry.
+  address res = StubRoutines::throw_AbstractMethodError_entry();
+  JRT_BLOCK
+    methodHandle callee = invoke.static_target(thread);
+    if (!callee.is_null()) {
+      oop recv = callerFrame.retrieve_receiver(&reg_map);
+      Klass *recv_klass = (recv != NULL) ? recv->klass() : NULL;
+      LinkResolver::throw_abstract_method_error(callee, recv_klass, thread);
+      res = StubRoutines::forward_exception_entry();
+    }
+  JRT_BLOCK_END
+  return res;
 JRT_END
 
 

@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
+#include "ci/ciUtilities.inline.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "compiler/compileBroker.hpp"
@@ -2673,7 +2674,8 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
       // the one that guards them: pin the Load node
       LoadNode::ControlDependency dep = LoadNode::Pinned;
       Node* ctrl = control();
-      if (adr_type->isa_instptr()) {
+      // non volatile loads may be able to float
+      if (!need_mem_bar && adr_type->isa_instptr()) {
         assert(adr_type->meet(TypePtr::NULL_PTR) != adr_type->remove_speculative(), "should be not null");
         intptr_t offset = Type::OffsetBot;
         AddPNode::Ideal_base_and_offset(adr, &_gvn, offset);

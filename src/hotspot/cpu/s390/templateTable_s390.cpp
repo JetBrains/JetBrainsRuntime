@@ -29,10 +29,12 @@
 #include "interpreter/interpreterRuntime.hpp"
 #include "interpreter/interp_masm.hpp"
 #include "interpreter/templateTable.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/methodHandles.hpp"
+#include "runtime/frame.inline.hpp"
+#include "runtime/safepointMechanism.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/synchronizer.hpp"
@@ -206,7 +208,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
   __ verify_oop(val);
   switch (barrier) {
 #if INCLUDE_ALL_GCS
-    case BarrierSet::G1SATBCTLogging:
+    case BarrierSet::G1BarrierSet:
       {
 #ifdef ASSERT
         if (val_is_null) { // Check if the flag setting reflects reality.
@@ -260,7 +262,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
       }
       break;
 #endif // INCLUDE_ALL_GCS
-    case BarrierSet::CardTableModRef:
+    case BarrierSet::CardTableBarrierSet:
     {
       if (val_is_null) {
         __ store_heap_oop_null(val, offset, base);
@@ -3742,8 +3744,12 @@ void TemplateTable::invokeinterface(int byte_no) {
   // Throw exception.
   __ restore_bcp();      // Bcp must be correct for exception handler   (was destroyed).
   __ restore_locals();   // Make sure locals pointer is correct as well (was destroyed).
+  // Pass arguments for generating a verbose error message.
+  __ z_lgr(Z_tmp_1, method); // Prevent register clash.
   __ call_VM(noreg,
-             CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_AbstractMethodError));
+             CAST_FROM_FN_PTR(address,
+                              InterpreterRuntime::throw_AbstractMethodErrorVerbose),
+                              klass, Z_tmp_1);
   // The call_VM checks for exception, so we should never return here.
   __ should_not_reach_here();
 
@@ -3752,8 +3758,11 @@ void TemplateTable::invokeinterface(int byte_no) {
   // Throw exception.
   __ restore_bcp();      // Bcp must be correct for exception handler   (was destroyed).
   __ restore_locals();   // Make sure locals pointer is correct as well (was destroyed).
+  // Pass arguments for generating a verbose error message.
   __ call_VM(noreg,
-             CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_IncompatibleClassChangeError));
+             CAST_FROM_FN_PTR(address,
+                              InterpreterRuntime::throw_IncompatibleClassChangeErrorVerbose),
+                              klass, interface);
   // The call_VM checks for exception, so we should never return here.
   __ should_not_reach_here();
 

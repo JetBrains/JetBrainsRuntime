@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@
 #include "interpreter/linkResolver.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
@@ -47,7 +47,7 @@
 #include "runtime/reflection.hpp"
 #include "runtime/reflectionUtils.hpp"
 #include "runtime/signature.hpp"
-#include "runtime/vframe.hpp"
+#include "runtime/vframe.inline.hpp"
 
 static void trace_class_resolution(const Klass* to_class) {
   ResourceMark rm;

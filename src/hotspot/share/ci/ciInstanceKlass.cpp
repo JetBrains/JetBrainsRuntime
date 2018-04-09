@@ -26,7 +26,7 @@
 #include "ci/ciField.hpp"
 #include "ci/ciInstance.hpp"
 #include "ci/ciInstanceKlass.hpp"
-#include "ci/ciUtilities.hpp"
+#include "ci/ciUtilities.inline.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "memory/allocation.hpp"
@@ -35,6 +35,7 @@
 #include "oops/oop.inline.hpp"
 #include "oops/fieldStreams.hpp"
 #include "runtime/fieldDescriptor.hpp"
+#include "runtime/handles.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
 
 // ciInstanceKlass

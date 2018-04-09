@@ -24,7 +24,7 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
 
-#include "gc/shared/barrierSet.inline.hpp"
+#include "gc/shared/barrierSet.hpp"
 #include "gc/shenandoah/brooksPointer.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
@@ -86,16 +86,16 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_
   assert(((T*)(void*) src_obj) <= src && ((HeapWord*) src) < (((HeapWord*)(void*) src_obj) + src_obj->size()), "pointer out of object bounds src_obj: %p, src: %p, end: %p, size: %u", (void*) src_obj, src, (((HeapWord*)(void*) src_obj) + src_obj->size()), src_obj->size());
   assert(((T*)(void*) dst_obj) <= dst && ((HeapWord*) dst) < ((HeapWord*)(void*) dst_obj) + dst_obj->size(), "pointer out of object bounds dst_obj: %p, dst: %p, end: %p, size: %u", (void*) dst_obj, dst, (((HeapWord*)(void*) dst_obj) + dst_obj->size()), dst_obj->size());
   if (!oopDesc::is_null(src_obj)) {
-    size_t src_offset = pointer_delta((void*) src, (void*) src_obj, sizeof(T));
+    size_t src_offset = pointer_delta((void*) src, (void*) src_obj, sizeof(char));
     src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
-    src =  ((T*)(void*) src_obj) + src_offset;
+    src =  (T*) (((char*)(void*) src_obj) + src_offset);
   }
   if (!oopDesc::is_null(dst_obj)) {
-    size_t dst_offset = pointer_delta((void*) dst, (void*) dst_obj, sizeof(T));
+    size_t dst_offset = pointer_delta((void*) dst, (void*) dst_obj, sizeof(char));
     dst_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst_obj));
-    dst = ((T*)(void*) dst_obj) + dst_offset;
+    dst = (T*) (((char*)(void*) dst_obj) + dst_offset);
   }
-  return Raw::arraycopy(src, dst, length);
+  return Raw::arraycopy(src_obj, dst_obj, src, dst, length);
 }
 
 template <typename T>

@@ -38,7 +38,7 @@
 #include "logging/logStream.hpp"
 #include "logging/logTag.hpp"
 #include "memory/allocation.inline.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "runtime/arguments.hpp"
@@ -517,6 +517,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "PrintSafepointStatistics",     JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "PrintSafepointStatisticsTimeout", JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "PrintSafepointStatisticsCount",JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
+  { "AggressiveOpts",               JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
 
   // --- Deprecated alias flags (see also aliased_jvm_flags) - sorted by obsolete_in then expired_in:
   { "DefaultMaxRAMFraction",        JDK_Version::jdk(8),  JDK_Version::undefined(), JDK_Version::undefined() },
@@ -1856,11 +1857,6 @@ jint Arguments::set_ergonomics_flags() {
   return JNI_OK;
 }
 
-void Arguments::set_gc_specific_flags() {
-  // Set GC flags
-  GCArguments::arguments()->initialize_flags();
-}
-
 julong Arguments::limit_by_allocatable_memory(julong limit) {
   julong max_allocatable;
   julong result = limit;
@@ -2347,10 +2343,6 @@ bool Arguments::check_vm_args_consistency() {
       warning("Disabling counted safepoints implies no loop strip mining: setting LoopStripMiningIter to 0");
     }
     LoopStripMiningIter = 0;
-  }
-  if (FLAG_IS_DEFAULT(LoopStripMiningIterShortLoop)) {
-    // blind guess
-    LoopStripMiningIterShortLoop = LoopStripMiningIter / 10;
   }
 #endif
   if (!FLAG_IS_DEFAULT(AllocateHeapAt)) {
@@ -4287,7 +4279,7 @@ jint Arguments::apply_ergo() {
   // Set heap size based on available physical memory
   set_heap_size();
 
-  ArgumentsExt::set_gc_specific_flags();
+  GCArguments::arguments()->initialize_flags();
 
   // Initialize Metaspace flags and alignments
   Metaspace::ergo_initialize();
@@ -4344,6 +4336,10 @@ jint Arguments::apply_ergo() {
   if (!UseTypeSpeculation && FLAG_IS_DEFAULT(TypeProfileLevel)) {
     // nothing to use the profiling, turn if off
     FLAG_SET_DEFAULT(TypeProfileLevel, 0);
+  }
+  if (FLAG_IS_DEFAULT(LoopStripMiningIterShortLoop)) {
+    // blind guess
+    LoopStripMiningIterShortLoop = LoopStripMiningIter / 10;
   }
 #endif
 

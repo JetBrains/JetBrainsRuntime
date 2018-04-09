@@ -30,23 +30,23 @@
 #include "code/nativeInst.hpp"
 #include "compiler/disassembler.hpp"
 #include "gc/shared/cardTable.hpp"
-#include "gc/shared/cardTableModRefBS.hpp"
+#include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/klass.inline.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
+#include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/g1/g1CollectedHeap.inline.hpp"
-#include "gc/g1/g1SATBCardTableModRefBS.hpp"
 #include "gc/g1/heapRegion.hpp"
 #endif
 
@@ -2267,7 +2267,7 @@ void MacroAssembler::g1_write_barrier_post(Register store_addr,
                                    DirtyCardQueue::byte_offset_of_buf()));
 
   BarrierSet* bs = Universe::heap()->barrier_set();
-  CardTableModRefBS* ctbs = barrier_set_cast<CardTableModRefBS>(bs);
+  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
   Label done;
   Label runtime;

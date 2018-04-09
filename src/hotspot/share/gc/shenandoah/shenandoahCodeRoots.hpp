@@ -33,7 +33,7 @@ class ShenandoahHeap;
 class ShenandoahHeapRegion;
 class ShenandoahCodeRootsLock;
 
-class ShenandoahCodeRootsIterator VALUE_OBJ_CLASS_SPEC {
+class ShenandoahCodeRootsIterator {
   friend class ShenandoahCodeRoots;
 protected:
   ShenandoahHeap* _heap;

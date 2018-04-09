@@ -2325,8 +2325,11 @@ void SuperWord::output() {
           vn = VectorNode::make(opc, in1, in2, vlen, velt_basic_type(n));
           vlen_in_bytes = vn->as_Vector()->length_in_bytes();
         }
-      } else if (opc == Op_SqrtF || opc == Op_SqrtD || opc == Op_AbsF || opc == Op_AbsD || opc == Op_NegF || opc == Op_NegD) {
-        // Promote operand to vector (Sqrt/Abs/Neg are 2 address instructions)
+      } else if (opc == Op_SqrtF || opc == Op_SqrtD ||
+                 opc == Op_AbsF || opc == Op_AbsD ||
+                 opc == Op_NegF || opc == Op_NegD ||
+                 opc == Op_PopCountI) {
+        assert(n->req() == 2, "only one input expected");
         Node* in = vector_opd(p, 1);
         vn = VectorNode::make(opc, in, NULL, vlen, velt_basic_type(n));
         vlen_in_bytes = vn->as_Vector()->length_in_bytes();
@@ -3325,7 +3328,7 @@ CountedLoopEndNode* SuperWord::get_pre_loop_end(CountedLoopNode* cl) {
     return NULL;
   }
 
-  Node* p_f = cl->skip_strip_mined()->in(LoopNode::EntryControl)->in(0)->in(0);
+  Node* p_f = cl->skip_predicates()->in(0)->in(0);
   if (!p_f->is_IfFalse()) return NULL;
   if (!p_f->in(0)->is_CountedLoopEnd()) return NULL;
   CountedLoopEndNode* pre_end = p_f->in(0)->as_CountedLoopEnd();
@@ -3460,10 +3463,12 @@ SWPointer::SWPointer(MemNode* mem, SuperWord* slp, Node_Stack *nstack, bool anal
   // (which could break loop alignment code)
   CountedLoopNode *main_head = slp->lp()->as_CountedLoop();
   if (main_head->is_main_loop()) {
-    Node* c = main_head->skip_strip_mined()->in(LoopNode::EntryControl)->in(0)->in(0)->in(0);
+    Node* c = main_head->skip_predicates()->in(0)->in(0)->in(0);
     if (!c->is_CountedLoopEnd()) {
       // in case of a reserve copy
-      c = c->in(0)->in(0);
+      c = main_head->skip_strip_mined()->in(LoopNode::EntryControl)->in(0)->in(0);
+      c = CountedLoopNode::skip_predicates_from_entry(c);
+      c = c->in(0)->in(0)->in(0);
       assert(c->is_CountedLoopEnd(), "where's the pre loop?");
     }
     CountedLoopEndNode* pre_end = c->as_CountedLoopEnd();

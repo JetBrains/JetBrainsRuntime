@@ -3109,18 +3109,11 @@ void ShenandoahWriteBarrierNode::collect_memory_nodes(int alias, Node_List& memo
         if (in_opc == Op_Return || in_opc == Op_Rethrow) {
           mem = in->in(TypeFunc::Memory);
         } else if (in_opc == Op_Halt) {
-          if (in->in(0)->is_Region()) {
-#ifdef ASSERT
-            Node* r = in->in(0);
-            for (uint j = 1; j <  r->req(); j++) {
-              assert(r->in(j)->is_Proj() && r->in(j)->in(0)->Opcode() == Op_NeverBranch, "");
-            }
-#endif
-          } else {
+          if (!in->in(0)->is_Region()) {
             Node* proj = in->in(0);
             assert(proj->is_Proj(), "");
             Node* in = proj->in(0);
-            assert(in->is_CallStaticJava() || in->Opcode() == Op_NeverBranch || in->Opcode() == Op_Catch, "");
+            assert(in->is_CallStaticJava() || in->Opcode() == Op_NeverBranch || in->Opcode() == Op_Catch || proj->is_IfProj(), "");
             if (in->is_CallStaticJava()) {
               mem = in->in(TypeFunc::Memory);
             } else if (in->Opcode() == Op_Catch) {
@@ -3372,7 +3365,8 @@ void ShenandoahWriteBarrierNode::fix_raw_mem(Node* ctrl, Node* region, Node* raw
         Node* u = n->fast_out(i);
         if (!u->is_Root() && u->is_CFG() && u != n) {
           Node* m = memory_nodes[u->_idx];
-          if (u->is_Region() && !has_mem_phi(phase->C, u, Compile::AliasIdxRaw)) {
+          if (u->is_Region() && !has_mem_phi(phase->C, u, Compile::AliasIdxRaw) &&
+              u->unique_ctrl_out()->Opcode() != Op_Halt) {
             DEBUG_ONLY(if (trace) { tty->print("ZZZ region"); u->dump(); });
             DEBUG_ONLY(if (trace && m != NULL) { tty->print("ZZZ mem"); m->dump(); });
 
@@ -4146,7 +4140,8 @@ void ShenandoahBarrierNode::verify_raw_mem(RootNode* root) {
           for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
             Node* u = m->fast_out(i);
             if (u->is_CFG() && !u->is_Root() &&
-                !(u->Opcode() == Op_CProj && u->in(0)->Opcode() == Op_NeverBranch && u->as_Proj()->_con == 1)) {
+                !(u->Opcode() == Op_CProj && u->in(0)->Opcode() == Op_NeverBranch && u->as_Proj()->_con == 1) &&
+                !(u->is_Region() && u->unique_ctrl_out()->Opcode() == Op_Halt)) {
               if (trace) { tty->print("XXXXXX pushing control"); u->dump(); }
               controls.push(u);
             }

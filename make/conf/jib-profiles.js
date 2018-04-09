@@ -430,9 +430,9 @@ var getJibProfilesProfiles = function (input, common, data) {
         "macosx-x64": {
             target_os: "macosx",
             target_cpu: "x64",
-            dependencies: ["devkit", "autoconf", "freetype"],
+            dependencies: ["devkit", "autoconf"],
             configure_args: concat(common.configure_args_64bit, "--with-zlib=system",
-                "--with-macosx-version-max=10.7.0"),
+                "--with-macosx-version-max=10.9.0"),
         },
 
         "solaris-x64": {
@@ -454,7 +454,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "windows-x64": {
             target_os: "windows",
             target_cpu: "x64",
-            dependencies: ["devkit", "autoconf", "freetype"],
+            dependencies: ["devkit", "autoconf"],
             configure_args: concat(common.configure_args_64bit),
         },
 
@@ -462,7 +462,7 @@ var getJibProfilesProfiles = function (input, common, data) {
             target_os: "windows",
             target_cpu: "x86",
             build_cpu: "x64",
-            dependencies: ["devkit", "autoconf", "freetype"],
+            dependencies: ["devkit", "autoconf"],
             configure_args: concat(common.configure_args_32bit),
         },
 
@@ -472,7 +472,7 @@ var getJibProfilesProfiles = function (input, common, data) {
             build_cpu: "x64",
             dependencies: ["devkit", "autoconf", "build_devkit", "cups"],
             configure_args: [
-                "--openjdk-target=aarch64-linux-gnu"
+                "--openjdk-target=aarch64-linux-gnu", "--with-freetype=bundled",
             ],
         },
 
@@ -527,6 +527,32 @@ var getJibProfilesProfiles = function (input, common, data) {
         var debugName = name + common.slowdebug_suffix;
         profiles[debugName] = concatObjects(profiles[name],
                                             common.slowdebug_profile_base);
+    });
+    // Generate testmake profiles for the main profile of each build host
+    // platform. This profile only runs the makefile tests.
+    // Ant is needed to run the idea project generator test.
+    var testmakeBase = {
+        dependencies: [ "ant" ],
+        environment: {
+            "ANT_HOME": input.get("ant", "install_path") + "/apache-ant-1.7.1"
+        }
+    };
+    [ "linux-x64", "macosx-x64", "solaris-sparcv9", "solaris-x64", "windows-x64"]
+        .forEach(function (name) {
+            var maketestName = name + "-testmake";
+            profiles[maketestName] = concatObjects(profiles[name], testmakeBase);
+            profiles[maketestName].default_make_targets = [ "test-make" ];
+        });
+    // Generate cmp-baseline profiles for each main profile. This profile does
+    // a compare build run with no changes to verify that the compare script
+    // has a clean baseline
+    common.main_profile_names.forEach(function (name) {
+        var cmpBaselineName = name + "-cmp-baseline";
+        profiles[cmpBaselineName] = clone(profiles[name]);
+        // Only compare the images target. This should pressumably be expanded
+        // to include more build targets when possible.
+        profiles[cmpBaselineName].default_make_targets = [ "images" ];
+        profiles[cmpBaselineName].make_args = [ "COMPARE_BUILD=CONF=" ];
     });
 
     // Profiles for building the zero jvm variant. These are used for verification
@@ -790,7 +816,7 @@ var getJibProfilesProfiles = function (input, common, data) {
 var getJibProfilesDependencies = function (input, common) {
 
     var devkit_platform_revisions = {
-        linux_x64: "gcc4.9.2-OEL6.4+1.2",
+        linux_x64: "gcc7.3.0-OEL6.4+1.0",
         macosx_x64: "Xcode6.3-MacOSX10.9+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
@@ -809,12 +835,6 @@ var getJibProfilesDependencies = function (input, common) {
 
     var boot_jdk_platform = (input.build_os == "macosx" ? "osx" : input.build_os)
         + "-" + input.build_cpu;
-
-    var freetype_version = {
-        windows_x64: "2.7.1-v120+1.1",
-        windows_x86: "2.7.1-v120+1.1",
-        macosx_x64: "2.7.1-Xcode6.3-MacOSX10.9+1.0"
-    }[input.target_platform];
 
     var makeBinDir = (input.build_os == "windows"
         ? input.get("gnumake", "install_path") + "/cygwin/bin"
@@ -892,13 +912,6 @@ var getJibProfilesDependencies = function (input, common) {
             environment_path: input.get("autoconf", "install_path")
         },
 
-        freetype: {
-            organization: common.organization,
-            ext: "tar.gz",
-            revision: freetype_version,
-            module: "freetype-" + input.target_platform
-        },
-
         graphviz: {
             organization: common.organization,
             ext: "tar.gz",
@@ -926,7 +939,15 @@ var getJibProfilesDependencies = function (input, common) {
             environment_name: "JIB_JAR",
             environment_value: input.get("jib", "install_path")
                 + "/jib-3.0-SNAPSHOT-distribution/lib/jib-3.0-SNAPSHOT.jar"
-       }
+        },
+
+        ant: {
+            organization: common.organization,
+            ext: "zip",
+            revision: "1.7.1+1.0",
+            configure_args: "",
+        },
+
     };
 
     // Need to add a value for the Visual Studio tools variable to make

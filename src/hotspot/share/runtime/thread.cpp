@@ -43,10 +43,11 @@
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
+#include "memory/allocation.inline.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
-#include "memory/universe.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
@@ -68,7 +69,7 @@
 #include "runtime/globals.hpp"
 #include "runtime/handshake.hpp"
 #include "runtime/init.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/jniHandles.inline.hpp"
@@ -91,7 +92,7 @@
 #include "runtime/threadSMR.inline.hpp"
 #include "runtime/timer.hpp"
 #include "runtime/timerTrace.hpp"
-#include "runtime/vframe.hpp"
+#include "runtime/vframe.inline.hpp"
 #include "runtime/vframeArray.hpp"
 #include "runtime/vframe_hp.hpp"
 #include "runtime/vmThread.hpp"
@@ -893,7 +894,6 @@ void Thread::print_on(outputStream* st) const {
       st->print("os_prio=%d ", os_prio);
     }
     st->print("tid=" INTPTR_FORMAT " ", p2i(this));
-    ext().print_on(st);
     osthread()->print_on(st);
   }
   if (_threads_hazard_ptr != NULL) {
@@ -3163,8 +3163,6 @@ void JavaThread::prepare(jobject jni_thread, ThreadPriority prio) {
 
   // Push the Java priority down to the native thread; needs Threads_lock
   Thread::set_priority(this, prio);
-
-  prepare_ext();
 
   // Add the new thread to the Threads list and set it in motion.
   // We must have threads lock in order to call Threads::add.

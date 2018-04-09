@@ -48,7 +48,7 @@
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/frame.inline.hpp"
-#include "runtime/interfaceSupport.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -244,13 +244,6 @@ OSReturn os::get_priority(const Thread* const thread, ThreadPriority& priority) 
   priority = (ThreadPriority)p;
   return OS_OK;
 }
-
-
-#if !defined(LINUX) && !defined(_WINDOWS)
-size_t os::committed_stack_size(address bottom, size_t size) {
-  return size;
-}
-#endif
 
 bool os::dll_build_name(char* buffer, size_t size, const char* fname) {
   int n = jio_snprintf(buffer, size, "%s%s%s", JNI_LIB_PREFIX, fname, JNI_LIB_SUFFIX);

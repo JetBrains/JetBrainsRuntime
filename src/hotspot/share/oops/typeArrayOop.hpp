@@ -28,7 +28,6 @@
 #include "gc/shared/barrierSet.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/typeArrayKlass.hpp"
-#include "runtime/orderAccess.inline.hpp"
 
 // A typeArrayOop is an array containing basic types (non oop elements).
 // It is used for arrays of {characters, singles, doubles, bytes, shorts, integers, longs}
