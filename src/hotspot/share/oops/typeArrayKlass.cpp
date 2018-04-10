@@ -152,8 +152,8 @@ void TypeArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d, int dst_pos
   // This is an attempt to make the copy_array fast.
   int l2es = log2_element_size();
   int ihs = array_header_in_bytes() / wordSize;
-  char* src = (char*) (s->base(element_type())) + ((size_t)src_pos << l2es);
-  char* dst = (char*) (d->base(element_type())) + ((size_t)dst_pos << l2es);
+  char* src = (char*) (s->base_raw(element_type())) + ((size_t)src_pos << l2es);
+  char* dst = (char*) (d->base_raw(element_type())) + ((size_t)dst_pos << l2es);
   HeapAccess<ARRAYCOPY_ATOMIC>::arraycopy(s, d, (void*) src, (void*) dst, (size_t)length << l2es);
 }
 
