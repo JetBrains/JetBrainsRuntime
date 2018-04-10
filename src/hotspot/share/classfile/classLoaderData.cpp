@@ -201,7 +201,7 @@ class VerifyContainsOopClosure : public OopClosure {
   VerifyContainsOopClosure(oop target) : _target(target), _found(false) {}
 
   void do_oop(oop* p) {
-    if (p != NULL && *p == _target) {
+    if (p != NULL && oopDesc::equals(*p, _target)) {
       _found = true;
     }
   }
