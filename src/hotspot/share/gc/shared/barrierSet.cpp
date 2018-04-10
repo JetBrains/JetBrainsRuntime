@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/barrierSet.hpp"
+#include "oops/oop.hpp"
 
 BarrierSet* BarrierSet::_bs = NULL;
 

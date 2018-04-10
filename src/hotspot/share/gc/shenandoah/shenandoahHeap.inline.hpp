@@ -41,6 +41,7 @@
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/prefetch.hpp"
 #include "runtime/prefetch.inline.hpp"
 #include "runtime/thread.hpp"

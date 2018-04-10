@@ -26,7 +26,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
-#include "runtime/orderAccess.hpp"
+#include "runtime/orderAccess.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/thread.hpp"
 
