@@ -235,6 +235,37 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* 
   }
 }
 
+void ShenandoahAsserts::assert_in_correct_region(void* interior_loc, oop obj, const char* file, int line) {
+  assert_correct(interior_loc, obj, file, line);
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
+  ShenandoahHeapRegion* r = heap->heap_region_containing(obj);
+  if (!r->is_active()) {
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_in_correct_region failed",
+                  "Object must reside in active region",
+                  file, line);
+  }
+
+  size_t alloc_size = obj->size() + BrooksPointer::word_size();
+  if (alloc_size > ShenandoahHeapRegion::humongous_threshold_words()) {
+    size_t idx = r->region_number();
+    size_t num_regions = ShenandoahHeapRegion::required_regions(alloc_size * HeapWordSize);
+    for (size_t i = idx; i < idx + num_regions; i++) {
+      ShenandoahHeapRegion* chain_reg = heap->regions()->get(i);
+      if (i == idx && !chain_reg->is_humongous_start()) {
+        print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_in_correct_region failed",
+                      "Object must reside in humongous start",
+                      file, line);
+      }
+      if (i != idx && !chain_reg->is_humongous_continuation()) {
+        print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_in_correct_region failed",
+                      "Humongous continuation should be of proper size",
+                      file, line);
+      }
+    }
+  }
+}
+
 void ShenandoahAsserts::assert_forwarded(void* interior_loc, oop obj, const char* file, int line) {
   assert_correct(interior_loc, obj, file, line);
   oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
