@@ -945,7 +945,7 @@ void ShenandoahHeap::print_heap_regions_on(outputStream* st) const {
   _regions->print_on(st);
 }
 
-size_t ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
+void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
   assert(start->is_humongous_start(), "reclaim regions starting with the first one");
 
   oop humongous_obj = oop(start->bottom() + BrooksPointer::word_size());
@@ -973,7 +973,6 @@ size_t ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
 
     region->make_trash();
   }
-  return required_regions;
 }
 
 #ifdef ASSERT

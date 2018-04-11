@@ -344,28 +344,34 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
         cand_idx++;
       }
     } else if (region->is_humongous_start()) {
-        // Reclaim humongous regions here, and count them as the immediate garbage
+      // Reclaim humongous regions here, and count them as the immediate garbage
 #ifdef ASSERT
-        bool reg_live = region->has_live();
-        bool bm_live = heap->is_marked_complete(oop(region->bottom() + BrooksPointer::word_size()));
-        assert(reg_live == bm_live,
-               "Humongous liveness and marks should agree. Region live: %s; Bitmap live: %s; Region Live Words: " SIZE_FORMAT,
-               BOOL_TO_STR(reg_live), BOOL_TO_STR(bm_live), region->get_live_data_words());
+      bool reg_live = region->has_live();
+      bool bm_live = heap->is_marked_complete(oop(region->bottom() + BrooksPointer::word_size()));
+      assert(reg_live == bm_live,
+             "Humongous liveness and marks should agree. Region live: %s; Bitmap live: %s; Region Live Words: " SIZE_FORMAT,
+             BOOL_TO_STR(reg_live), BOOL_TO_STR(bm_live), region->get_live_data_words());
 #endif
-        if (!region->has_live()) {
-          size_t reclaimed = heap->trash_humongous_region_at(region);
-          immediate_regions += reclaimed;
-          immediate_garbage += reclaimed * ShenandoahHeapRegion::region_size_bytes();
-        }
+      if (!region->has_live()) {
+        heap->trash_humongous_region_at(region);
+
+        // Count only the start. Continuations would be counted on "trash" path
+        immediate_regions++;
+        immediate_garbage += garbage;
+      }
     } else if (region->is_trash()) {
       // Count in just trashed collection set, during coalesced CM-with-UR
       immediate_regions++;
-      immediate_garbage += ShenandoahHeapRegion::region_size_bytes();
+      immediate_garbage += garbage;
     }
   }
 
   // Step 2. Look back at garbage statistics, and decide if we want to collect anything,
   // given the amount of immediately reclaimable garbage. If we do, figure out the collection set.
+
+  assert (immediate_garbage <= total_garbage,
+          "Cannot have more immediate garbage than total garbage: " SIZE_FORMAT "M vs " SIZE_FORMAT "M",
+          immediate_garbage / M, total_garbage / M);
 
   size_t immediate_percent = total_garbage == 0 ? 0 : (immediate_garbage * 100 / total_garbage);
 
