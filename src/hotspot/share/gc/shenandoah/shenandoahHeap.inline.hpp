@@ -301,7 +301,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
 #endif
 
   if (filler == NULL) {
-    concurrent_thread()->handle_alloc_failure_evac();
+    concurrent_thread()->handle_alloc_failure_evac(size_with_fwdptr);
 
     _oom_evac_handler.handle_out_of_memory_during_evacuation();
 

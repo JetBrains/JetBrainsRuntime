@@ -740,7 +740,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
     while ((result == NULL) && (tries++ < ShenandoahAllocGCTries)) {
       log_debug(gc)("[" PTR_FORMAT " Failed to allocate " SIZE_FORMAT " bytes, doing GC, try %d",
                     p2i(Thread::current()), word_size * HeapWordSize, tries);
-      concurrent_thread()->handle_alloc_failure();
+      concurrent_thread()->handle_alloc_failure(word_size);
       result = allocate_memory_under_lock(word_size, type, in_new_region);
     }
   } else {

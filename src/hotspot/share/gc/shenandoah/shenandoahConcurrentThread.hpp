@@ -98,11 +98,11 @@ public:
 
   // Handle allocation failure from normal allocation.
   // Blocks until memory is available.
-  void handle_alloc_failure();
+  void handle_alloc_failure(size_t words);
 
   // Handle allocation failure from evacuation path.
   // Optionally blocks while collector is handling the failure.
-  void handle_alloc_failure_evac();
+  void handle_alloc_failure_evac(size_t words);
 
   // Handle explicit GC request.
   // Blocks until GC is over.

@@ -444,13 +444,18 @@ void ShenandoahConcurrentThread::handle_explicit_gc(GCCause::Cause cause) {
   }
 }
 
-void ShenandoahConcurrentThread::handle_alloc_failure() {
-  ShenandoahHeap::heap()->soft_ref_policy()->set_should_clear_all_soft_refs(true);
+void ShenandoahConcurrentThread::handle_alloc_failure(size_t words) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
   assert(current()->is_Java_thread(), "expect Java thread here");
 
   if (try_set_alloc_failure_gc()) {
+    // Only report the first allocation failure
+    log_info(gc)("Failed to allocate " SIZE_FORMAT "K", words * HeapWordSize / K);
+
     // Now that alloc failure GC is scheduled, we can abort everything else
-    ShenandoahHeap::heap()->cancel_concgc(GCCause::_allocation_failure);
+    heap->cancel_concgc(GCCause::_allocation_failure);
   }
 
   MonitorLockerEx ml(&_alloc_failure_waiters_lock);
@@ -460,15 +465,19 @@ void ShenandoahConcurrentThread::handle_alloc_failure() {
   assert(!is_alloc_failure_gc(), "expect alloc failure GC to have completed");
 }
 
-void ShenandoahConcurrentThread::handle_alloc_failure_evac() {
+void ShenandoahConcurrentThread::handle_alloc_failure_evac(size_t words) {
   log_develop_trace(gc)("Out of memory during evacuation, cancel evacuation, schedule GC by thread %d",
                         Thread::current()->osthread()->thread_id());
 
-  // We ran out of memory during evacuation. Cancel evacuation, and schedule a GC.
-
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
-  try_set_alloc_failure_gc();
+
+  if (try_set_alloc_failure_gc()) {
+    // Only report the first allocation failure
+    log_info(gc)("Failed to allocate " SIZE_FORMAT "K for evacuation", words * HeapWordSize / K);
+  }
+
+  // Forcefully report allocation failure
   heap->cancel_concgc(GCCause::_shenandoah_allocation_failure_evac);
 }
 
