@@ -31,6 +31,7 @@
 #include "runtime/safepoint.hpp"
 #include "runtime/vmThread.hpp"
 #include "runtime/vm_operations.hpp"
+#include "services/memoryService.hpp"
 
 class GCTimer;
 
@@ -53,12 +54,21 @@ public:
 
 // Aggregates all the things that should happen before/after the pause.
 class ShenandoahGCPauseMark : public StackObj {
-private:
-  const GCIdMark          _gc_id_mark;
-  const SvcGCMarker       _svc_gc_mark;
-  const IsGCActiveMark    _is_gc_active_mark;
 public:
-  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type);
+  typedef enum {
+    init_pause,          // init pause
+    intermediate_pause,  // intermediate pause
+    final_pause,         // final pause
+    full_pause           // stw pause
+  } GCPauseType;
+
+private:
+  const GCIdMark                _gc_id_mark;
+  const SvcGCMarker             _svc_gc_mark;
+  const IsGCActiveMark          _is_gc_active_mark;
+  TraceMemoryManagerStats       _trace_stats;
+public:
+  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type, GCPauseType pause_type);
   ~ShenandoahGCPauseMark();
 };
 

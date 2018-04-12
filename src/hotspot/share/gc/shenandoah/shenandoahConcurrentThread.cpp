@@ -342,7 +342,6 @@ void ShenandoahConcurrentThread::service_concurrent_normal_cycle(GCCause::Cause 
   heap->shenandoahPolicy()->record_peak_occupancy();
 
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
-  TraceMemoryManagerStats tmms(heap->minor_memory_manager(), cause);
 
   // Start initial mark under STW
   heap->vmop_entry_init_mark();

@@ -2547,7 +2547,6 @@ void ShenandoahHeap::vmop_entry_full(GCCause::Cause cause) {
   TraceCollectorStats tcs(monitoring_support()->full_stw_collection_counters());
   ShenandoahGCPhase total(ShenandoahPhaseTimings::total_pause_gross);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_gross);
-  TraceMemoryManagerStats tmms(major_memory_manager(), cause);
 
   try_inject_alloc_failure();
   VM_ShenandoahFullGC op(cause);
