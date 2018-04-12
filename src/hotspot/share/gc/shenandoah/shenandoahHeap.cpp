@@ -1657,7 +1657,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
     case _degenerated_partial:
     case _degenerated_evac:
       // Not possible to degenerate from here, upgrade to Full GC right away.
-      cancel_concgc(GCCause::_allocation_failure);
+      cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
       op_degenerated_fail();
       return;
 
@@ -1682,7 +1682,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
     case _degenerated_outside_cycle:
       if (shenandoahPolicy()->can_do_traversal_gc()) {
         // Not possible to degenerate from here, upgrade to Full GC right away.
-        cancel_concgc(GCCause::_allocation_failure);
+        cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
         op_degenerated_fail();
         return;
       }
@@ -1746,7 +1746,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
   size_t used_after = used();
   size_t difference = (used_before > used_after) ? used_before - used_after : 0;
   if (difference < ShenandoahHeapRegion::region_size_words()) {
-    cancel_concgc(GCCause::_allocation_failure);
+    cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
     op_degenerated_futile();
   }
 }
@@ -1754,13 +1754,13 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
 void ShenandoahHeap::op_degenerated_fail() {
   log_info(gc)("Cannot finish degeneration, upgrading to Full GC");
   shenandoahPolicy()->record_degenerated_upgrade_to_full();
-  op_full(GCCause::_allocation_failure);
+  op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
 
 void ShenandoahHeap::op_degenerated_futile() {
   log_info(gc)("Degenerated GC had not reclaimed enough, upgrading to Full GC");
   shenandoahPolicy()->record_degenerated_upgrade_to_full();
-  op_full(GCCause::_allocation_failure);
+  op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
 
 void ShenandoahHeap::swap_mark_bitmaps() {
