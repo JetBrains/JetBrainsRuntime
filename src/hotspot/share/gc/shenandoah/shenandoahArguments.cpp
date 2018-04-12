@@ -79,7 +79,9 @@ void ShenandoahArguments::initialize_flags() {
           (!FLAG_IS_DEFAULT(ShenandoahSATBBarrier)            ||
            !FLAG_IS_DEFAULT(ShenandoahConditionalSATBBarrier) ||
            !FLAG_IS_DEFAULT(ShenandoahKeepAliveBarrier)       ||
+           !FLAG_IS_DEFAULT(ShenandoahWriteBarrier)           ||
            !FLAG_IS_DEFAULT(ShenandoahReadBarrier)            ||
+           !FLAG_IS_DEFAULT(ShenandoahStoreValEnqueueBarrier) ||
            !FLAG_IS_DEFAULT(ShenandoahStoreValWriteBarrier)   ||
            !FLAG_IS_DEFAULT(ShenandoahStoreValReadBarrier)    ||
            !FLAG_IS_DEFAULT(ShenandoahCASBarrier)             ||
