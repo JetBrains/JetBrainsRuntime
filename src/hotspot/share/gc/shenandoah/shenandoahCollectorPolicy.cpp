@@ -30,6 +30,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "runtime/os.hpp"
+#include "utilities/quickSort.hpp"
 
 #define SHENANDOAH_ERGO_DISABLE_FLAG(name)                                  \
   do {                                                                      \
@@ -63,6 +64,7 @@ protected:
   typedef struct {
     ShenandoahHeapRegion* _region;
     size_t _garbage;
+    uint64_t _seqnum_last_alloc;
   } RegionData;
 
   static int compare_by_garbage(RegionData a, RegionData b) {
@@ -73,15 +75,15 @@ protected:
     else return 0;
   }
 
-  static int compare_by_alloc_seq_ascending(ShenandoahHeapRegion* a, ShenandoahHeapRegion* b) {
-    if (a->seqnum_last_alloc() == b->seqnum_last_alloc())
+  static int compare_by_alloc_seq_ascending(RegionData a, RegionData b) {
+    if (a._seqnum_last_alloc == b._seqnum_last_alloc)
       return 0;
-    else if (a->seqnum_last_alloc() < b->seqnum_last_alloc())
+    else if (a._seqnum_last_alloc < b._seqnum_last_alloc)
       return -1;
     else return 1;
   }
 
-  static int compare_by_alloc_seq_descending(ShenandoahHeapRegion* a, ShenandoahHeapRegion* b) {
+  static int compare_by_alloc_seq_descending(RegionData a, RegionData b) {
     return -compare_by_alloc_seq_ascending(a, b);
   }
 
@@ -1060,14 +1062,14 @@ public:
     ShenandoahHeapRegionSet* regions = heap->regions();
     size_t num_regions = heap->num_regions();
 
-    ShenandoahHeapRegionSet sorted_regions(num_regions);
+    RegionData* candidates = get_region_data_cache(num_regions);
 
     for (size_t i = 0; i < num_regions; i++) {
-      sorted_regions.add_region(regions->get(i));
+      candidates[i]._region = regions->get(i);
+      candidates[i]._seqnum_last_alloc = regions->get(i)->seqnum_last_alloc();
     }
 
-    sorted_regions.sort(compare_by_alloc_seq_descending);
-    size_t sorted_count = sorted_regions.count();
+    QuickSort::sort<RegionData>(candidates, (int)num_regions, compare_by_alloc_seq_descending, false);
 
     // Heuristics triggered partial when allocated was larger than a threshold.
     // New allocations might have happened while we were preparing for GC,
@@ -1075,7 +1077,7 @@ public:
     size_t used      = heap->used();
     size_t prev_used = heap->used_at_last_gc();
     guarantee(used >= prev_used, "Invariant");
-    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_count);
+    size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), num_regions);
 
     for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
       ShenandoahHeapRegion* region = regions->get(to_idx);
@@ -1084,8 +1086,8 @@ public:
 
     uint count = 0;
 
-    for (uint i = 0; (i < sorted_count) && (count < target); i++) {
-      ShenandoahHeapRegion* contender = sorted_regions.get(i);
+    for (uint i = 0; (i < num_regions) && (count < target); i++) {
+      ShenandoahHeapRegion* contender = candidates[i]._region;
       if (contender->seqnum_last_alloc() <= alloc_seq_at_last_gc_end) {
         break;
       }
@@ -1167,17 +1169,19 @@ public:
     ShenandoahHeapRegionSet* regions = ShenandoahHeap::heap()->regions();
     size_t num_regions = heap->num_regions();
 
-    ShenandoahHeapRegionSet sorted_regions(num_regions);
-
+    RegionData* candidates = get_region_data_cache(num_regions);
+    int candidate_idx = 0;
     for (size_t i = 0; i < num_regions; i++) {
       ShenandoahHeapRegion* r = regions->get(i);
       if (r->is_regular() && (r->seqnum_last_alloc() > 0)) {
-        sorted_regions.add_region(regions->get(i));
+        candidates[candidate_idx]._region = regions->get(i);
+        candidates[candidate_idx]._seqnum_last_alloc = regions->get(i)->seqnum_last_alloc();
+        candidate_idx++;
       }
     }
 
-    sorted_regions.sort(compare_by_alloc_seq_ascending);
-    size_t sorted_count = sorted_regions.count();
+    size_t sorted_count = candidate_idx;
+    QuickSort::sort<RegionData>(candidates, (int)sorted_count, compare_by_alloc_seq_ascending, false);
 
     // Heuristics triggered partial when allocated was larger than a threshold.
     // New allocations might have happened while we were preparing for GC,
@@ -1194,7 +1198,7 @@ public:
     uint count = 0;
 
     for (uint i = 0; (i < sorted_count) && (count < target); i++) {
-      ShenandoahHeapRegion* contender = sorted_regions.get(i);
+      ShenandoahHeapRegion* contender = candidates[i]._region;
       if (contender->seqnum_last_alloc() >= alloc_seq_at_last_gc_start) {
         break;
       }

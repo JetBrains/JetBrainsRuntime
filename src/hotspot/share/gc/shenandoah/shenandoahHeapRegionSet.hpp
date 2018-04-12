@@ -26,8 +26,6 @@
 
 #include "memory/allocation.hpp"
 
-#include "utilities/quickSort.hpp"
-
 class ShenandoahHeapRegion;
 class VMStructs;
 
@@ -86,11 +84,6 @@ public:
   void heap_region_iterate(ShenandoahHeapRegionClosure* blk,
                            bool skip_cset_regions = false,
                            bool skip_humongous_continuation = false) const;
-
-  template<class C>
-  void sort(C comparator) {
-    QuickSort::sort<ShenandoahHeapRegion*>(_regions, (int)_active_end, comparator, false);
-  }
 
   void print_on(outputStream* out) const;
 };
