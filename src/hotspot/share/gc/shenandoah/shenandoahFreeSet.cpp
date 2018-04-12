@@ -22,6 +22,7 @@
  */
 
 #include "precompiled.hpp"
+#include "logging/logStream.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 
@@ -430,9 +431,95 @@ void ShenandoahFreeSet::rebuild() {
   }
 
   assert_bounds();
+  log_status();
+}
 
-  log_info(gc, ergo)("Free: " SIZE_FORMAT "M, " SIZE_FORMAT " mutator alloc regions, " SIZE_FORMAT " collector alloc regions",
+void ShenandoahFreeSet::log_status() {
+  log_info(gc, ergo)("Free: " SIZE_FORMAT "M, Regions: " SIZE_FORMAT " mutator, " SIZE_FORMAT " collector",
                      capacity() / M, mutator_count(), collector_count());
+}
+
+void ShenandoahFreeSet::log_status_verbose() {
+  assert_heaplock_owned_by_current_thread();
+
+  LogTarget(Info, gc, ergo) lt;
+  if (lt.is_enabled()) {
+    ResourceMark rm;
+    LogStream ls(lt);
+
+    ls.print_cr("Free set: Used: " SIZE_FORMAT "M of " SIZE_FORMAT "M, Regions: " SIZE_FORMAT " mutator, " SIZE_FORMAT " collector",
+                used() / M, capacity() / M, mutator_count(), collector_count());
+
+    {
+      ls.print("Free set: Mutator view: ");
+
+      size_t last_idx = 0;
+      size_t max = 0;
+      size_t max_contig = 0;
+      size_t empty_contig = 0;
+
+      size_t total_used = 0;
+      size_t total_free = 0;
+
+      for (size_t idx = _mutator_leftmost; idx <= _mutator_rightmost; idx++) {
+        if (is_mutator_free(idx)) {
+          ShenandoahHeapRegion *r = _regions->get(idx);
+          size_t free = r->free();
+
+          max = MAX2(max, free);
+
+          if (r->is_empty() && (last_idx + 1 == idx)) {
+            empty_contig++;
+          } else {
+            empty_contig = 0;
+          }
+
+          total_used += r->used();
+          total_free += free;
+
+          max_contig = MAX2(max_contig, empty_contig);
+          last_idx = idx;
+        }
+      }
+
+      size_t max_humongous = max_contig * ShenandoahHeapRegion::region_size_bytes();
+      size_t free = capacity() - used();
+
+      ls.print("Max regular: " SIZE_FORMAT "K, Max humongous: " SIZE_FORMAT "K, ", max / K, max_humongous / K);
+
+      size_t frag_ext;
+      if (free > 0) {
+        frag_ext = 100 - (100 * max_humongous / free);
+      } else {
+        frag_ext = 0;
+      }
+      ls.print("External frag: " SIZE_FORMAT "%%, ", frag_ext);
+
+      size_t frag_int;
+      if (mutator_count() > 0) {
+        frag_int = (100 * (total_used / mutator_count()) / ShenandoahHeapRegion::region_size_bytes());
+      } else {
+        frag_int = 0;
+      }
+      ls.print("Internal frag: " SIZE_FORMAT "%%", frag_int);
+      ls.cr();
+    }
+
+    {
+      ls.print("Free set: Collector view: ");
+
+      size_t max = 0;
+      for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
+        if (is_collector_free(idx)) {
+          ShenandoahHeapRegion *r = _regions->get(idx);
+          max = MAX2(max, r->free());
+        }
+      }
+
+      ls.print("Max regular: " SIZE_FORMAT "K", max / K);
+      ls.cr();
+    }
+  }
 }
 
 HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocType type, bool& in_new_region) {

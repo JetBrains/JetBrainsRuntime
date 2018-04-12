@@ -26,6 +26,7 @@
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
 #include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
+#include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
@@ -146,6 +147,12 @@ void ShenandoahConcurrentThread::run_service() {
       // If GC was requested, we are sampling the counters even without actual triggers
       // from allocation machinery. This captures GC phases more accurately.
       set_forced_counters_update(true);
+
+      // If GC was requested, we better dump freeset data for performance debugging
+      {
+        ShenandoahHeapLocker locker(heap->lock());
+        heap->free_set()->log_status_verbose();
+      }
     }
 
     switch (mode) {
@@ -184,6 +191,13 @@ void ShenandoahConcurrentThread::run_service() {
       // If this was the allocation failure GC cycle, notify waiters about it
       if (alloc_failure_pending) {
         notify_alloc_failure_waiters();
+      }
+
+      // Report current free set state at the end of cycle, whether
+      // it is a normal completion, or the abort.
+      {
+        ShenandoahHeapLocker locker(heap->lock());
+        heap->free_set()->log_status_verbose();
       }
 
       // Disable forced counters update, and update counters one more time
