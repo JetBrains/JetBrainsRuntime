@@ -404,7 +404,7 @@ enum {
 
 int getFastEncoding();
 
-void InitializeEncoding(JNIEnv *env, const char *name);
+JNIEXPORT void InitializeEncoding(JNIEnv *env, const char *name);
 
 void* getProcessHandle();
 
