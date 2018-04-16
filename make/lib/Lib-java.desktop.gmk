@@ -50,6 +50,7 @@ ifneq ($(OPENJDK_TARGET_OS), aix)
 
   LIBJSOUND_CFLAGS := \
       -I$(SUPPORT_OUTPUTDIR)/headers/java.desktop \
+      $(ALSA_CFLAGS) \
       $(LIBJAVA_HEADER_FLAGS) \
       $(foreach dir, $(LIBJSOUND_SRC_DIRS), -I$(dir)) \
       -DX_PLATFORM=X_$(OPENJDK_TARGET_OS_UPPERCASE) \
@@ -105,7 +106,8 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
       CFLAGS := $(CFLAGS_JDKLIB) \
           $(addprefix -I, $(LIBOSXAPP_SRC)) \
           -I$(SUPPORT_OUTPUTDIR)/headers/java.desktop, \
-      DISABLED_WARNINGS_clang := objc-method-access objc-root-class, \
+      DISABLED_WARNINGS_clang := objc-method-access objc-root-class \
+          deprecated-declarations, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
       LIBS := \

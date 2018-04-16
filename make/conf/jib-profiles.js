@@ -432,7 +432,7 @@ var getJibProfilesProfiles = function (input, common, data) {
             target_cpu: "x64",
             dependencies: ["devkit", "autoconf"],
             configure_args: concat(common.configure_args_64bit, "--with-zlib=system",
-                "--with-macosx-version-max=10.7.0"),
+                "--with-macosx-version-max=10.9.0"),
         },
 
         "solaris-x64": {
@@ -472,7 +472,7 @@ var getJibProfilesProfiles = function (input, common, data) {
             build_cpu: "x64",
             dependencies: ["devkit", "autoconf", "build_devkit", "cups"],
             configure_args: [
-                "--openjdk-target=aarch64-linux-gnu"
+                "--openjdk-target=aarch64-linux-gnu", "--with-freetype=bundled",
             ],
         },
 
@@ -497,8 +497,10 @@ var getJibProfilesProfiles = function (input, common, data) {
             configure_args: [
                 "--with-jvm-variants=minimal1,client",
                 "--with-x=" + input.get("devkit", "install_path") + "/arm-linux-gnueabihf/libc/usr/X11R6-PI",
+                "--with-fontconfig=" + input.get("devkit", "install_path") + "/arm-linux-gnueabihf/libc/usr/X11R6-PI",
                 "--openjdk-target=arm-linux-gnueabihf",
-                "--with-abi-profile=arm-vfp-hflt"
+                "--with-abi-profile=arm-vfp-hflt",
+                "--with-freetype=bundled"
             ],
         },
 

@@ -67,6 +67,7 @@ import static com.sun.tools.javac.code.Flags.*;
 import static com.sun.tools.javac.code.Kinds.Kind.*;
 import static com.sun.tools.javac.code.TypeTag.*;
 import static com.sun.tools.javac.tree.JCTree.Tag.*;
+import static com.sun.tools.javac.jvm.Pool.DynamicMethod;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.TypeKind;
@@ -183,15 +184,7 @@ public class LambdaToMethod extends TreeTranslator {
         public int hashCode() {
             int hashCode = this.hashCode;
             if (hashCode == 0) {
-                this.hashCode = hashCode = TreeHasher.hash(tree, sym -> {
-                    if (sym.owner == symbol) {
-                        int idx = symbol.params().indexOf(sym);
-                        if (idx != -1) {
-                            return idx;
-                        }
-                    }
-                    return null;
-                });
+                this.hashCode = hashCode = TreeHasher.hash(tree, symbol.params());
             }
             return hashCode;
         }
@@ -203,17 +196,7 @@ public class LambdaToMethod extends TreeTranslator {
             }
             DedupedLambda that = (DedupedLambda) o;
             return types.isSameType(symbol.asType(), that.symbol.asType())
-                    && new TreeDiffer((lhs, rhs) -> {
-                if (lhs.owner == symbol) {
-                    int idx = symbol.params().indexOf(lhs);
-                    if (idx != -1) {
-                        if (Objects.equals(idx, that.symbol.params().indexOf(rhs))) {
-                            return true;
-                        }
-                    }
-                }
-                return null;
-            }).scan(tree, that.tree);
+                    && new TreeDiffer(symbol.params(), that.symbol.params()).scan(tree, that.tree);
         }
     }
 
@@ -225,6 +208,8 @@ public class LambdaToMethod extends TreeTranslator {
         private ListBuffer<JCTree> appendedMethodList;
 
         private Map<DedupedLambda, DedupedLambda> dedupedLambdas;
+
+        private Map<DynamicMethod, DynamicMethodSymbol> dynMethSyms = new HashMap<>();
 
         /**
          * list of deserialization cases
@@ -1218,9 +1203,10 @@ public class LambdaToMethod extends TreeTranslator {
                                             (MethodSymbol)bsm,
                                             indyType,
                                             staticArgs.toArray());
-
             JCFieldAccess qualifier = make.Select(make.QualIdent(site.tsym), bsmName);
-            qualifier.sym = dynSym;
+            DynamicMethodSymbol existing = kInfo.dynMethSyms.putIfAbsent(
+                    new DynamicMethod(dynSym, types), dynSym);
+            qualifier.sym = existing != null ? existing : dynSym;
             qualifier.type = indyType.getReturnType();
 
             JCMethodInvocation proxyCall = make.Apply(List.nil(), qualifier, indyArgs);
