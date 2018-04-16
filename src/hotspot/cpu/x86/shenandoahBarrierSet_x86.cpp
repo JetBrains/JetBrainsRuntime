@@ -150,6 +150,14 @@ void ShenandoahBarrierSet::interpreter_write_barrier_impl(MacroAssembler* masm, 
 }
 
 void ShenandoahBarrierSet::interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
+  if (ShenandoahStoreValReadBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    interpreter_storeval_barrier_impl(masm, dst, tmp);
+  }
+}
+
+void ShenandoahBarrierSet::interpreter_storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp) {
+  assert(UseShenandoahGC && (ShenandoahStoreValReadBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
+
 #ifdef _LP64
   if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
     Label is_null;
