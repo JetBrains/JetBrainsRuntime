@@ -66,7 +66,7 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
 
 inline void ShenandoahConcurrentMark::count_liveness(jushort* live_data, oop obj) {
   size_t region_idx = _heap->heap_region_index_containing(obj);
-  ShenandoahHeapRegion* region = _heap->regions()->get(region_idx);
+  ShenandoahHeapRegion* region = _heap->get_region(region_idx);
   if (!region->is_humongous_start()) {
     assert(!region->is_humongous(), "Cannot have continuations here");
     jushort cur = live_data[region_idx];
@@ -97,7 +97,7 @@ inline void ShenandoahConcurrentMark::count_liveness_humongous(oop obj) {
   int size = obj->size() + BrooksPointer::word_size();
   size_t num_regions = ShenandoahHeapRegion::required_regions(size * HeapWordSize);
   for (size_t i = region_idx; i < region_idx + num_regions; i++) {
-    ShenandoahHeapRegion* chain_reg = _heap->regions()->get(i);
+    ShenandoahHeapRegion* chain_reg = _heap->get_region(i);
     chain_reg->increase_live_data_gc_words(chain_reg->used() >> LogHeapWordSize);
   }
 }

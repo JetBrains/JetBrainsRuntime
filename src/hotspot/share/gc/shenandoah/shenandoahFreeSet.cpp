@@ -26,9 +26,8 @@
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 
-ShenandoahFreeSet::ShenandoahFreeSet(ShenandoahHeap* heap, ShenandoahHeapRegionSet* regions, size_t max_regions) :
+ShenandoahFreeSet::ShenandoahFreeSet(ShenandoahHeap* heap, size_t max_regions) :
   _heap(heap),
-  _regions(regions),
   _mutator_free_bitmap(max_regions, mtGC),
   _collector_free_bitmap(max_regions, mtGC),
   _max(max_regions)
@@ -76,7 +75,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       // Fast-path: try to allocate in the mutator view first:
       for (size_t idx = _mutator_leftmost; idx <= _mutator_rightmost; idx++) {
         if (is_mutator_free(idx)) {
-          HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+          HeapWord* result = try_allocate_in(_heap->get_region(idx), word_size, type, in_new_region);
           if (result != NULL) {
             return result;
           }
@@ -86,7 +85,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       // Recovery: try to steal the empty region from the collector view:
       for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
         if (is_collector_free(idx)) {
-          ShenandoahHeapRegion* r = _regions->get(idx);
+          ShenandoahHeapRegion* r = _heap->get_region(idx);
           if (is_empty_or_trash(r)) {
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
@@ -101,7 +100,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       if (ShenandoahAllowMixedAllocs) {
         for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
           if (is_collector_free(idx)) {
-            HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+            HeapWord* result = try_allocate_in(_heap->get_region(idx), word_size, type, in_new_region);
             if (result != NULL) {
               return result;
             }
@@ -119,7 +118,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       for (size_t c = _collector_rightmost + 1; c > _collector_leftmost; c--) {
         size_t idx = c - 1;
         if (is_collector_free(idx)) {
-          HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+          HeapWord* result = try_allocate_in(_heap->get_region(idx), word_size, type, in_new_region);
           if (result != NULL) {
             return result;
           }
@@ -130,7 +129,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
       for (size_t c = _mutator_rightmost + 1; c > _mutator_leftmost; c--) {
         size_t idx = c - 1;
         if (is_mutator_free(idx)) {
-          ShenandoahHeapRegion* r = _regions->get(idx);
+          ShenandoahHeapRegion* r = _heap->get_region(idx);
           if (is_empty_or_trash(r)) {
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
@@ -146,7 +145,7 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
         for (size_t c = _mutator_rightmost + 1; c > _mutator_leftmost; c--) {
           size_t idx = c - 1;
           if (is_mutator_free(idx)) {
-            HeapWord* result = try_allocate_in(_regions->get(idx), word_size, type, in_new_region);
+            HeapWord* result = try_allocate_in(_heap->get_region(idx), word_size, type, in_new_region);
             if (result != NULL) {
               return result;
             }
@@ -268,7 +267,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
 
     // If regions are not adjacent, then current [beg; end] is useless, and we may fast-forward.
     // If region is not completely free, the current [beg; end] is useless, and we may fast-forward.
-    if (!is_mutator_free(end) || !is_empty_or_trash(_regions->get(end))) {
+    if (!is_mutator_free(end) || !is_empty_or_trash(_heap->get_region(end))) {
       end++;
       beg = end;
       continue;
@@ -286,10 +285,10 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
 
   // Initialize regions:
   for (size_t i = beg; i <= end; i++) {
-    ShenandoahHeapRegion* r = _regions->get(i);
+    ShenandoahHeapRegion* r = _heap->get_region(i);
     try_recycle_trashed(r);
 
-    assert(i == beg || _regions->get(i-1)->region_number() + 1 == r->region_number(), "Should be contiguous");
+    assert(i == beg || _heap->get_region(i-1)->region_number() + 1 == r->region_number(), "Should be contiguous");
     assert(r->is_empty(), "Should be empty");
 
     if (i == beg) {
@@ -329,7 +328,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(size_t words_size) {
   }
   assert_bounds();
 
-  return _regions->get(beg)->bottom();
+  return _heap->get_region(beg)->bottom();
 }
 
 bool ShenandoahFreeSet::is_empty_or_trash(ShenandoahHeapRegion *r) {
@@ -361,7 +360,7 @@ void ShenandoahFreeSet::recycle_trash() {
   assert_heaplock_not_owned_by_current_thread();
 
   for (size_t i = 0; i < _heap->num_regions(); i++) {
-    ShenandoahHeapRegion* r = _regions->get(i);
+    ShenandoahHeapRegion* r = _heap->get_region(i);
     if (r->is_trash()) {
       ShenandoahHeapLocker locker(_heap->lock());
       try_recycle_trashed(r);
@@ -413,7 +412,7 @@ void ShenandoahFreeSet::rebuild() {
   clear();
 
   for (size_t idx = 0; idx < _heap->num_regions(); idx++) {
-    ShenandoahHeapRegion* region = _heap->regions()->get(idx);
+    ShenandoahHeapRegion* region = _heap->get_region(idx);
     if (region->is_alloc_allowed() || region->is_trash()) {
       assert(!region->in_collection_set(), "Shouldn't be adding those to the free set");
 
@@ -463,7 +462,7 @@ void ShenandoahFreeSet::log_status_verbose() {
 
       for (size_t idx = _mutator_leftmost; idx <= _mutator_rightmost; idx++) {
         if (is_mutator_free(idx)) {
-          ShenandoahHeapRegion *r = _regions->get(idx);
+          ShenandoahHeapRegion *r = _heap->get_region(idx);
           size_t free = r->free();
 
           max = MAX2(max, free);
@@ -511,7 +510,7 @@ void ShenandoahFreeSet::log_status_verbose() {
       size_t max = 0;
       for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
         if (is_collector_free(idx)) {
-          ShenandoahHeapRegion *r = _regions->get(idx);
+          ShenandoahHeapRegion *r = _heap->get_region(idx);
           max = MAX2(max, r->free());
         }
       }
@@ -552,7 +551,7 @@ size_t ShenandoahFreeSet::unsafe_peek_free() const {
 
   for (size_t index = _mutator_leftmost; index <= _mutator_rightmost; index++) {
     if (index < _max && is_mutator_free(index)) {
-      ShenandoahHeapRegion* r = _regions->get(index);
+      ShenandoahHeapRegion* r = _heap->get_region(index);
       if (r->free() >= MinTLABSize) {
         return r->free();
       }
@@ -567,13 +566,13 @@ void ShenandoahFreeSet::print_on(outputStream* out) const {
   out->print_cr("Mutator Free Set: " SIZE_FORMAT "", mutator_count());
   for (size_t index = _mutator_leftmost; index <= _mutator_rightmost; index++) {
     if (is_mutator_free(index)) {
-      _regions->get(index)->print_on(out);
+      _heap->get_region(index)->print_on(out);
     }
   }
   out->print_cr("Collector Free Set: " SIZE_FORMAT "", collector_count());
   for (size_t index = _collector_leftmost; index <= _collector_rightmost; index++) {
     if (is_collector_free(index)) {
-      _regions->get(index)->print_on(out);
+      _heap->get_region(index)->print_on(out);
     }
   }
 }

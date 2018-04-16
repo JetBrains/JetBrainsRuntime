@@ -251,7 +251,7 @@ void ShenandoahAsserts::assert_in_correct_region(void* interior_loc, oop obj, co
     size_t idx = r->region_number();
     size_t num_regions = ShenandoahHeapRegion::required_regions(alloc_size * HeapWordSize);
     for (size_t i = idx; i < idx + num_regions; i++) {
-      ShenandoahHeapRegion* chain_reg = heap->regions()->get(i);
+      ShenandoahHeapRegion* chain_reg = heap->get_region(i);
       if (i == idx && !chain_reg->is_humongous_start()) {
         print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_in_correct_region failed",
                       "Object must reside in humongous start",

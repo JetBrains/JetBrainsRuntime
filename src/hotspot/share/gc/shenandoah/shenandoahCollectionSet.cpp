@@ -75,7 +75,7 @@ void ShenandoahCollectionSet::remove_region(ShenandoahHeapRegion* r) {
 
 void ShenandoahCollectionSet::update_region_status() {
   for (size_t index = 0; index < _heap->num_regions(); index ++) {
-    ShenandoahHeapRegion* r = _heap->regions()->get(index);
+    ShenandoahHeapRegion* r = _heap->get_region(index);
     if (is_in(r)) {
       r->make_cset();
     } else {
@@ -90,7 +90,7 @@ void ShenandoahCollectionSet::clear() {
 
 #ifdef ASSERT
   for (size_t index = 0; index < _heap->num_regions(); index ++) {
-    assert (!_heap->regions()->get(index)->is_cset(), "should have been cleared before");
+    assert (!_heap->get_region(index)->is_cset(), "should have been cleared before");
   }
 #endif
 
@@ -116,7 +116,7 @@ ShenandoahHeapRegion* ShenandoahCollectionSet::claim_next() {
       assert(cur >= (jint)saved_current, "Must move forward");
       if (cur == saved_current) {
         assert(is_in(index), "Invariant");
-        return _heap->regions()->get(index);
+        return _heap->get_region(index);
       } else {
         index = (size_t)cur;
         saved_current = cur;
@@ -136,7 +136,7 @@ ShenandoahHeapRegion* ShenandoahCollectionSet::next() {
   for (size_t index = (size_t)_current_index; index < num_regions; index ++) {
     if (is_in(index)) {
       _current_index = (jint)(index + 1);
-      return _heap->regions()->get(index);
+      return _heap->get_region(index);
     }
   }
 
@@ -150,7 +150,7 @@ void ShenandoahCollectionSet::print_on(outputStream* out) const {
   debug_only(size_t regions = 0;)
   for (size_t index = 0; index < _heap->num_regions(); index ++) {
     if (is_in(index)) {
-      _heap->regions()->get(index)->print_on(out);
+      _heap->get_region(index)->print_on(out);
       debug_only(regions ++;)
     }
   }

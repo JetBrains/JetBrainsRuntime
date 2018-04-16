@@ -33,11 +33,9 @@
   nonstatic_field(ShenandoahHeap, _num_regions,              size_t)                    \
   volatile_nonstatic_field(ShenandoahHeap, _used,            size_t)                    \
   volatile_nonstatic_field(ShenandoahHeap, _committed,       size_t)                    \
-  nonstatic_field(ShenandoahHeap,          _regions, ShenandoahHeapRegionSet*)          \
+  nonstatic_field(ShenandoahHeap,          _regions, ShenandoahHeapRegion**)            \
   nonstatic_field(ShenandoahHeapRegion,    _state,  ShenandoahHeapRegion::RegionState)  \
-  nonstatic_field(ShenandoahHeapRegion,    _region_number,   size_t)                    \
-  nonstatic_field(ShenandoahHeapRegionSet, _regions, ShenandoahHeapRegion**)            \
-  nonstatic_field(ShenandoahHeapRegionSet, _active_end,     size_t)
+  nonstatic_field(ShenandoahHeapRegion,    _region_number,   size_t)
 
 #define VM_INT_CONSTANTS_SHENANDOAH(declare_constant, declare_constant_with_value)    \
   declare_constant(ShenandoahHeapRegion::_empty_uncommitted)                          \

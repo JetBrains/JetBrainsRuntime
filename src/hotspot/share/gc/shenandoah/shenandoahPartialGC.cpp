@@ -156,7 +156,8 @@ public:
 
     // Step 2: Process all root regions.
     {
-      ShenandoahHeapRegion* r = _root_regions->claim_next();
+      ShenandoahHeapRegionSetIterator iter = _root_regions->iterator();
+      ShenandoahHeapRegion* r = iter.next();
       while (r != NULL) {
         assert(r->is_root(), "must be root region");
         _heap->marked_object_oop_safe_iterate(r, &cl);
@@ -164,7 +165,7 @@ public:
           _heap->pacer()->report_partial(r->get_live_data_words());
         }
         if (partial_gc->check_and_handle_cancelled_gc(_terminator)) return;
-        r = _root_regions->claim_next();
+        r = iter.next();
       }
     }
     if (partial_gc->check_and_handle_cancelled_gc(_terminator)) return;
@@ -237,7 +238,7 @@ public:
 ShenandoahPartialGC::ShenandoahPartialGC(ShenandoahHeap* heap, size_t num_regions) :
   _heap(heap),
   _matrix(heap->connection_matrix()),
-  _root_regions(new ShenandoahHeapRegionSet(num_regions)),
+  _root_regions(new ShenandoahHeapRegionSet()),
   _task_queues(new ShenandoahObjToScanQueueSet(heap->max_workers())) {
 
   assert(_matrix != NULL, "need matrix");
@@ -271,13 +272,12 @@ bool ShenandoahPartialGC::prepare() {
     _heap->connection_matrix()->print_on(&ls);
   }
 
-  ShenandoahHeapRegionSet* regions = _heap->regions();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
   size_t num_regions = _heap->num_regions();
 
   // First pass: reset all roots
   for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-    ShenandoahHeapRegion* r = regions->get(to_idx);
+    ShenandoahHeapRegion* r = _heap->get_region(to_idx);
     r->set_root(false);
   }
 
@@ -303,7 +303,7 @@ bool ShenandoahPartialGC::prepare() {
   size_t work_size = 0;
 
   for (uint from_idx = 0; from_idx < num_regions; from_idx++) {
-    ShenandoahHeapRegion* r = regions->get(from_idx);
+    ShenandoahHeapRegion* r = _heap->get_region(from_idx);
 
     // Never assume anything implicitely marked.
     _heap->set_next_top_at_mark_start(r->bottom(), r->end());
@@ -550,9 +550,9 @@ void ShenandoahPartialGC::final_partial_collection() {
 void ShenandoahPartialGC::reset() {
   _task_queues->clear();
 
-  _root_regions->clear_current_index();
+  ShenandoahHeapRegionSetIterator root_iter = _root_regions->iterator();
   ShenandoahHeapRegion* r;
-  while((r = _root_regions->claim_next()) != NULL) {
+  while((r = root_iter.next()) != NULL) {
     r->set_root(false);
   }
   _root_regions->clear();

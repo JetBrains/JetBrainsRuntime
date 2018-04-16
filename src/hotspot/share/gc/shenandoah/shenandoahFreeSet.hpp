@@ -31,7 +31,6 @@
 class ShenandoahFreeSet : public CHeapObj<mtGC> {
 private:
   ShenandoahHeap* const _heap;
-  ShenandoahHeapRegionSet* _regions;
   CHeapBitMap _mutator_free_bitmap;
   CHeapBitMap _collector_free_bitmap;
   size_t _max;
@@ -74,7 +73,7 @@ private:
   bool has_no_alloc_capacity(ShenandoahHeapRegion *r);
 
 public:
-  ShenandoahFreeSet(ShenandoahHeap* heap, ShenandoahHeapRegionSet* regions, size_t max_regions);
+  ShenandoahFreeSet(ShenandoahHeap* heap, size_t max_regions);
 
   void clear();
   void rebuild();

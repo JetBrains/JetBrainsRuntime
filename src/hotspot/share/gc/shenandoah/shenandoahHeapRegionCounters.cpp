@@ -103,10 +103,9 @@ void ShenandoahHeapRegionCounters::update() {
 
       {
         ShenandoahHeapLocker locker(heap->lock());
-        ShenandoahHeapRegionSet* regions = heap->regions();
         size_t rs = ShenandoahHeapRegion::region_size_bytes();
         for (uint i = 0; i < num_regions; i++) {
-          ShenandoahHeapRegion* r = regions->get(i);
+          ShenandoahHeapRegion* r = heap->get_region(i);
           jlong data = 0;
           data |= ((100 * r->used() / rs)                & PERCENT_MASK) << USED_SHIFT;
           data |= ((100 * r->get_live_data_bytes() / rs) & PERCENT_MASK) << LIVE_SHIFT;

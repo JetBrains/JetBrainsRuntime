@@ -995,7 +995,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
   }
   if (COUNT_LIVENESS) {
     for (uint i = 0; i < _heap->num_regions(); i++) {
-      ShenandoahHeapRegion* r = _heap->regions()->get(i);
+      ShenandoahHeapRegion* r = _heap->get_region(i);
       jushort live = ld[i];
       if (live > 0) {
         r->increase_live_data_gc_words(live);

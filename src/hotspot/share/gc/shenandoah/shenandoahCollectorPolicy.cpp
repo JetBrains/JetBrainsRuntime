@@ -309,7 +309,6 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
 
   // Step 1. Build up the region candidates we care about, rejecting losers and accepting winners right away.
 
-  ShenandoahHeapRegionSet* regions = heap->regions();
   size_t num_regions = heap->num_regions();
 
   RegionData* candidates = get_region_data_cache(num_regions);
@@ -325,7 +324,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
   size_t free_regions = 0;
 
   for (size_t i = 0; i < num_regions; i++) {
-    ShenandoahHeapRegion* region = regions->get(i);
+    ShenandoahHeapRegion* region = heap->get_region(i);
 
     size_t garbage = region->garbage();
     total_garbage += garbage;
@@ -987,14 +986,13 @@ public:
   void choose_collection_set(ShenandoahCollectionSet* collection_set) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
-    ShenandoahHeapRegionSet* regions = heap->regions();
     size_t num_regions = heap->num_regions();
 
     RegionConnections* connects = get_region_connects_cache(num_regions);
     size_t connect_cnt = 0;
 
     for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-      ShenandoahHeapRegion* region = regions->get(to_idx);
+      ShenandoahHeapRegion* region = heap->get_region(to_idx);
       region->set_root(false);
       if (!region->is_regular()) continue;
 
@@ -1030,7 +1028,7 @@ public:
                                          ShenandoahPartialInboundThreshold)) {
         maybe_add_heap_region(region, collection_set);
         for (size_t i = 0; i < from_idx_count; i++) {
-          ShenandoahHeapRegion* r = regions->get(_from_idxs[i]);
+          ShenandoahHeapRegion* r = heap->get_region(_from_idxs[i]);
           if (!r->is_root()) {
             r->set_root(true);
           }
@@ -1059,14 +1057,13 @@ public:
     uint64_t alloc_seq_at_last_gc_end   = heap->alloc_seq_at_last_gc_end();
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
 
-    ShenandoahHeapRegionSet* regions = heap->regions();
     size_t num_regions = heap->num_regions();
 
     RegionData* candidates = get_region_data_cache(num_regions);
 
     for (size_t i = 0; i < num_regions; i++) {
-      candidates[i]._region = regions->get(i);
-      candidates[i]._seqnum_last_alloc = regions->get(i)->seqnum_last_alloc();
+      candidates[i]._region = heap->get_region(i);
+      candidates[i]._seqnum_last_alloc = heap->get_region(i)->seqnum_last_alloc();
     }
 
     QuickSort::sort<RegionData>(candidates, (int)num_regions, compare_by_alloc_seq_descending, false);
@@ -1080,7 +1077,7 @@ public:
     size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), num_regions);
 
     for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-      ShenandoahHeapRegion* region = regions->get(to_idx);
+      ShenandoahHeapRegion* region = heap->get_region(to_idx);
       region->set_root(false);
     }
 
@@ -1101,7 +1098,7 @@ public:
         }
 
         for (uint f = 0; f < from_idx_count; f++) {
-          ShenandoahHeapRegion* r = regions->get(_from_idxs[f]);
+          ShenandoahHeapRegion* r = heap->get_region(_from_idxs[f]);
           if (!r->is_root()) {
             r->set_root(true);
           }
@@ -1166,16 +1163,15 @@ public:
     ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
 
-    ShenandoahHeapRegionSet* regions = ShenandoahHeap::heap()->regions();
     size_t num_regions = heap->num_regions();
 
     RegionData* candidates = get_region_data_cache(num_regions);
     int candidate_idx = 0;
     for (size_t i = 0; i < num_regions; i++) {
-      ShenandoahHeapRegion* r = regions->get(i);
+      ShenandoahHeapRegion* r = heap->get_region(i);
       if (r->is_regular() && (r->seqnum_last_alloc() > 0)) {
-        candidates[candidate_idx]._region = regions->get(i);
-        candidates[candidate_idx]._seqnum_last_alloc = regions->get(i)->seqnum_last_alloc();
+        candidates[candidate_idx]._region = heap->get_region(i);
+        candidates[candidate_idx]._seqnum_last_alloc = heap->get_region(i)->seqnum_last_alloc();
         candidate_idx++;
       }
     }
@@ -1192,7 +1188,7 @@ public:
     size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_count);
 
     for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-      ShenandoahHeapRegion* region = regions->get(to_idx);
+      ShenandoahHeapRegion* region = heap->get_region(to_idx);
       region->set_root(false);
     }
     uint count = 0;
@@ -1211,7 +1207,7 @@ public:
           count++;
         }
         for (uint f = 0; f < from_idx_count; f++) {
-          ShenandoahHeapRegion* r = regions->get(_from_idxs[f]);
+          ShenandoahHeapRegion* r = heap->get_region(_from_idxs[f]);
           if (!r->is_root()) {
             r->set_root(true);
           }
@@ -1302,7 +1298,7 @@ public:
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     for (size_t i = 0; i < heap->num_regions(); i++) {
-      ShenandoahHeapRegion* r = heap->regions()->get(i);
+      ShenandoahHeapRegion* r = heap->get_region(i);
       assert(!r->is_root(), "must not be root region");
       assert(!collection_set->is_in(r), "must not yet be in cset");
       if (r->is_regular() && r->used() > 0) {

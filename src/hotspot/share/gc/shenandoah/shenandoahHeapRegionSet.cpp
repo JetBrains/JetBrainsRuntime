@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2013, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,128 +22,116 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
-#include "utilities/quickSort.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "runtime/atomic.hpp"
+#include "utilities/copy.hpp"
 
-ShenandoahHeapRegionSet::ShenandoahHeapRegionSet(size_t max_regions):
-  _reserved_end(max_regions),
-  _active_end(0),
-  _regions(NEW_C_HEAP_ARRAY(ShenandoahHeapRegion*, max_regions, mtGC)),
-  _current_index(0)
+ShenandoahHeapRegionSet::ShenandoahHeapRegionSet() :
+  _heap(ShenandoahHeap::heap()),
+  _map_size(_heap->num_regions()),
+  _set_map(NEW_C_HEAP_ARRAY(jbyte, _map_size, mtGC)),
+  // Bias set map's base address for fast test if an oop is in set
+  _biased_set_map(_set_map - ((uintx)_heap->base() >> ShenandoahHeapRegion::region_size_bytes_shift())),
+  _region_count(0)
 {
+  // Use 1-byte data type
+  STATIC_ASSERT(sizeof(jbyte) == 1);
+
+  // Initialize cset map
+  Copy::zero_to_bytes(_set_map, _map_size);
 }
 
 ShenandoahHeapRegionSet::~ShenandoahHeapRegionSet() {
-  FREE_C_HEAP_ARRAY(ShenandoahHeapRegion*, _regions);
-}
-
-void ShenandoahHeapRegionSet::clear() {
-  _active_end = 0;
-  _current_index = 0;
+  FREE_C_HEAP_ARRAY(jbyte, _set_map);
 }
 
 void ShenandoahHeapRegionSet::add_region(ShenandoahHeapRegion* r) {
-  if (_active_end < _reserved_end) {
-    _regions[_active_end] = r;
-    _active_end++;
-  }
+  assert(!is_in(r), "Already in collection set");
+  _set_map[r->region_number()] = 1;
+  _region_count++;
 }
 
-// Iterates over all of the regions.
-void ShenandoahHeapRegionSet::heap_region_iterate(ShenandoahHeapRegionClosure* blk,
-                                                  bool skip_cset_regions,
-                                                  bool skip_humongous_continuation) const {
-  size_t i;
-  for (i = 0; i < _active_end; i++) {
-    ShenandoahHeapRegion* current = _regions[i];
-    assert(current->region_number() <= _reserved_end, "Tautology");
-
-    if (skip_humongous_continuation && current->is_humongous_continuation()) {
-      continue;
-    }
-    if (skip_cset_regions && current->in_collection_set()) {
-      continue;
-    }
-    if (blk->heap_region_do(current)) {
-      return;
-    }
-  }
-}
-
-class ShenandoahPrintHeapRegionsClosure : public ShenandoahHeapRegionClosure {
-private:
-  outputStream* _st;
-public:
-  ShenandoahPrintHeapRegionsClosure() : _st(tty) {}
-  ShenandoahPrintHeapRegionsClosure(outputStream* st) : _st(st) {}
-
-  bool heap_region_do(ShenandoahHeapRegion* r) {
-    r->print_on(_st);
+bool ShenandoahHeapRegionSet::add_region_check_for_duplicates(ShenandoahHeapRegion* r) {
+  if (!is_in(r)) {
+    add_region(r);
+    return true;
+  } else {
     return false;
   }
-};
-
-void ShenandoahHeapRegionSet::print_on(outputStream* out) const {
-  out->print_cr("_current_index: "SIZE_FORMAT" current region: %p, _active_end: "SIZE_FORMAT, _current_index, _regions[_current_index], _active_end);
-
-  ShenandoahPrintHeapRegionsClosure pc1(out);
-  heap_region_iterate(&pc1, false, false);
 }
 
-ShenandoahHeapRegion* ShenandoahHeapRegionSet::claim_next() {
-  size_t next = Atomic::add(1u, &_current_index) - 1;
-  if (next < _active_end) {
-    return _regions[next];
+void ShenandoahHeapRegionSet::remove_region(ShenandoahHeapRegion* r) {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
+  assert(Thread::current()->is_VM_thread(), "Must be VMThread");
+  assert(is_in(r), "Not in region set");
+  _set_map[r->region_number()] = 0;
+  _region_count --;
+}
+
+void ShenandoahHeapRegionSet::clear() {
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
+  Copy::zero_to_bytes(_set_map, _map_size);
+
+  _region_count = 0;
+}
+
+ShenandoahHeapRegion* ShenandoahHeapRegionSetIterator::claim_next() {
+  size_t num_regions = _heap->num_regions();
+  if (_current_index >= (jint)num_regions) {
+    return NULL;
+  }
+
+  jint saved_current = _current_index;
+  size_t index = (size_t)saved_current;
+
+  while(index < num_regions) {
+    if (_set->is_in(index)) {
+      jint cur = Atomic::cmpxchg((jint)(index + 1), &_current_index, saved_current);
+      assert(cur >= (jint)saved_current, "Must move forward");
+      if (cur == saved_current) {
+        assert(_set->is_in(index), "Invariant");
+        return _heap->get_region(index);
+      } else {
+        index = (size_t)cur;
+        saved_current = cur;
+      }
+    } else {
+      index ++;
+    }
   }
   return NULL;
 }
 
-class ShenandoahFindRegionClosure : public ShenandoahHeapRegionClosure {
-private:
-  ShenandoahHeapRegion* _query;
-  bool _result;
 
-public:
-  ShenandoahFindRegionClosure(ShenandoahHeapRegion* query) : _query(query), _result(false) {}
-
-  bool heap_region_do(ShenandoahHeapRegion *r) {
-    _result = (r == _query);
-    return _result;
+ShenandoahHeapRegion* ShenandoahHeapRegionSetIterator::next() {
+  size_t num_regions = _heap->num_regions();
+  for (size_t index = (size_t)_current_index; index < num_regions; index ++) {
+    if (_set->is_in(index)) {
+      _current_index = (jint)(index + 1);
+      return _heap->get_region(index);
+    }
   }
 
-  bool result() { return _result; }
-};
-
-bool ShenandoahHeapRegionSet::contains(ShenandoahHeapRegion* r) {
-  ShenandoahFindRegionClosure cl(r);
-  heap_region_iterate(&cl);
-  return cl.result();
+  return NULL;
 }
 
-HeapWord* ShenandoahHeapRegionSet::bottom() const {
-  return _regions[0]->bottom();
+ShenandoahHeapRegionSetIterator ShenandoahHeapRegionSet::iterator() const {
+  return ShenandoahHeapRegionSetIterator(this);
 }
 
-HeapWord* ShenandoahHeapRegionSet::end() const {
-  return _regions[_active_end - 1]->end();
-}
+void ShenandoahHeapRegionSet::print_on(outputStream* out) const {
+  out->print_cr("Region Set : " SIZE_FORMAT "", count());
 
-ShenandoahHeapRegion* ShenandoahHeapRegionSet::current() const {
-  if (_current_index < _active_end) {
-    return _regions[_current_index];
-  } else {
-    return NULL;
+  debug_only(size_t regions = 0;)
+  for (size_t index = 0; index < _heap->num_regions(); index ++) {
+    if (is_in(index)) {
+      _heap->get_region(index)->print_on(out);
+      debug_only(regions ++;)
+    }
   }
-}
-
-ShenandoahHeapRegion* ShenandoahHeapRegionSet::current_then_next() {
-  if (_current_index < _active_end) {
-    ShenandoahHeapRegion* r = _regions[_current_index];
-    _current_index++;
-    return r;
-  } else {
-    return NULL;
-  }
+  assert(regions == count(), "Must match");
 }

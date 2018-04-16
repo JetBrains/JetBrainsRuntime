@@ -113,7 +113,7 @@ private:
         size_t humongous_start = obj_reg->region_number();
         size_t humongous_end = humongous_start + (obj->size() >> ShenandoahHeapRegion::region_size_words_shift());
         for (size_t idx = humongous_start + 1; idx < humongous_end; idx++) {
-          verify(ShenandoahAsserts::_safe_unknown, obj, _heap->regions()->get(idx)->is_humongous_continuation(),
+          verify(ShenandoahAsserts::_safe_unknown, obj, _heap->get_region(idx)->is_humongous_continuation(),
                  "Humongous object is in continuation that fits it");
         }
       }
@@ -487,19 +487,18 @@ private:
   const char* _label;
   ShenandoahVerifier::VerifyOptions _options;
   ShenandoahHeap *_heap;
-  ShenandoahHeapRegionSet* _regions;
   MarkBitMap* _bitmap;
   ShenandoahLivenessData* _ld;
   volatile size_t _claimed;
   volatile size_t _processed;
 
 public:
-  ShenandoahVerifierMarkedRegionTask(ShenandoahHeapRegionSet* regions, MarkBitMap* bitmap,
+  ShenandoahVerifierMarkedRegionTask(MarkBitMap* bitmap,
                                      ShenandoahLivenessData* ld,
                                      const char* label,
                                      ShenandoahVerifier::VerifyOptions options) :
           AbstractGangTask("Shenandoah Parallel Verifier Marked Region"),
-          _heap(ShenandoahHeap::heap()), _regions(regions), _ld(ld), _bitmap(bitmap), _claimed(0), _processed(0),
+          _heap(ShenandoahHeap::heap()), _ld(ld), _bitmap(bitmap), _claimed(0), _processed(0),
           _label(label), _options(options) {};
 
   size_t processed() {
@@ -515,7 +514,7 @@ public:
     while (true) {
       size_t v = Atomic::add(1u, &_claimed) - 1;
       if (v < _heap->num_regions()) {
-        ShenandoahHeapRegion* r = _regions->get(v);
+        ShenandoahHeapRegion* r = _heap->get_region(v);
         if (!r->is_humongous() && !r->is_trash()) {
           work_regular(r, stack, cl);
         } else if (r->is_humongous_start()) {
@@ -660,7 +659,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
 
   size_t count_marked = 0;
   if (ShenandoahVerifyLevel >= 4 && marked == _verify_marked_complete) {
-    ShenandoahVerifierMarkedRegionTask task(_heap->regions(), _verification_bit_map, ld, label, options);
+    ShenandoahVerifierMarkedRegionTask task(_verification_bit_map, ld, label, options);
     _heap->workers()->run_task(&task);
     count_marked = task.processed();
   } else {
@@ -671,9 +670,8 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   // marked objects.
 
   if (ShenandoahVerifyLevel >= 4 && marked == _verify_marked_complete && liveness == _verify_liveness_complete) {
-    ShenandoahHeapRegionSet* set = _heap->regions();
     for (size_t i = 0; i < _heap->num_regions(); i++) {
-      ShenandoahHeapRegion* r = set->get(i);
+      ShenandoahHeapRegion* r = _heap->get_region(i);
 
       juint verf_live = 0;
       if (r->is_humongous()) {

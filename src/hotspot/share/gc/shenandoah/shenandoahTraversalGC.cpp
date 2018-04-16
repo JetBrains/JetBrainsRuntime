@@ -288,7 +288,7 @@ public:
 void ShenandoahTraversalGC::flush_liveness(uint worker_id) {
   jushort* ld = get_liveness(worker_id);
   for (uint i = 0; i < _heap->num_regions(); i++) {
-    ShenandoahHeapRegion* r = _heap->regions()->get(i);
+    ShenandoahHeapRegion* r = _heap->get_region(i);
     jushort live = ld[i];
     if (live > 0) {
       r->increase_live_data_gc_words(live);
@@ -327,7 +327,6 @@ void ShenandoahTraversalGC::prepare() {
 
   assert(_heap->is_next_bitmap_clear(), "need clean mark bitmap");
 
-  ShenandoahHeapRegionSet* regions = _heap->regions();
   ShenandoahFreeSet* free_set = _heap->free_set();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
 
@@ -597,22 +596,21 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
       // Trash everything
       // Clear immediate garbage regions.
-      ShenandoahHeapRegionSet* regions = _heap->regions();
       size_t num_regions = _heap->num_regions();
 
       ShenandoahFreeSet* free_regions = _heap->free_set();
       free_regions->clear();
       for (size_t i = 0; i < num_regions; i++) {
-        ShenandoahHeapRegion* r = regions->get(i);
+        ShenandoahHeapRegion* r = _heap->get_region(i);
         bool not_allocated = _heap->next_top_at_mark_start(r->bottom()) == r->top();
         if (r->is_humongous_start() && !r->has_live() && not_allocated) {
           // Trash humongous.
           HeapWord* humongous_obj = r->bottom() + BrooksPointer::word_size();
           assert(!_heap->is_marked_next(oop(humongous_obj)), "must not be marked");
           r->make_trash();
-          while (i + 1 < num_regions && regions->get(i + 1)->is_humongous_continuation()) {
+          while (i + 1 < num_regions && _heap->get_region(i + 1)->is_humongous_continuation()) {
             i++;
-            r = regions->get(i);
+            r = _heap->get_region(i);
             assert(r->is_humongous_continuation(), "must be humongous continuation");
             r->make_trash();
           }

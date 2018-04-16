@@ -59,6 +59,12 @@ void ShenandoahUpdateRefsClosure::do_oop_work(T* p) {
 void ShenandoahUpdateRefsClosure::do_oop(oop* p)       { do_oop_work(p); }
 void ShenandoahUpdateRefsClosure::do_oop(narrowOop* p) { do_oop_work(p); }
 
+inline ShenandoahHeapRegion* ShenandoahRegionIterator::next() {
+  size_t new_index = Atomic::add((volatile size_t) 1, &_index);
+  // get_region() provides the bounds-check and returns NULL on OOB.
+  return _heap->get_region(new_index - 1);
+}
+
 /*
  * Marks the object. Returns true if the object has not been marked before and has
  * been marked by this thread. Returns false if the object has already been marked,
@@ -91,9 +97,9 @@ inline size_t ShenandoahHeap::heap_region_index_containing(const void* addr) con
   return index;
 }
 
-inline ShenandoahHeapRegion* ShenandoahHeap::heap_region_containing(const void* addr) const {
+inline ShenandoahHeapRegion* const ShenandoahHeap::heap_region_containing(const void* addr) const {
   size_t index = heap_region_index_containing(addr);
-  ShenandoahHeapRegion* result = _regions->get(index);
+  ShenandoahHeapRegion* const result = get_region(index);
   assert(addr >= result->bottom() && addr < result->end(), "Heap region contains the address: " PTR_FORMAT, p2i(addr));
   return result;
 }
@@ -585,4 +591,13 @@ template<class T>
 inline void ShenandoahHeap::marked_object_oop_safe_iterate(ShenandoahHeapRegion* region, T* cl) {
   marked_object_oop_iterate(region, cl, region->concurrent_iteration_safe_limit());
 }
+
+inline ShenandoahHeapRegion* const ShenandoahHeap::get_region(size_t region_idx) const {
+  if (region_idx >= _num_regions) {
+    return NULL;
+  } else {
+    return _regions[region_idx];
+  }
+}
+
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAP_INLINE_HPP

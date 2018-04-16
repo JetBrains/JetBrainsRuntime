@@ -492,7 +492,7 @@ ShenandoahHeapRegion* ShenandoahHeapRegion::humongous_start_region() const {
   while (!r->is_humongous_start()) {
     assert(reg_num > 0, "Sanity");
     reg_num --;
-    r = _heap->regions()->get(reg_num);
+    r = _heap->get_region(reg_num);
     assert(r->is_humongous(), "Must be a part of the humongous region");
   }
   assert(r->is_humongous_start(), "Must be");
