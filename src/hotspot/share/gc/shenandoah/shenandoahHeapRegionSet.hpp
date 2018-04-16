@@ -28,6 +28,7 @@
 
 class ShenandoahHeap;
 class ShenandoahHeapRegion;
+class ShenandoahHeapRegionSet;
 
 class ShenandoahHeapRegionSetIterator : public StackObj {
 private:
@@ -36,8 +37,7 @@ private:
   ShenandoahHeap* const _heap;
 
 public:
-  ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set) :
-    _set(set), _current_index(0), _heap(ShenandoahHeap::heap()) {}
+  ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set);
 
   // MT version
   ShenandoahHeapRegion* claim_next();
