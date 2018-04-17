@@ -90,6 +90,8 @@ import javax.swing.JRootPane;
 
 import sun.awt.AWTAccessor;
 import sun.awt.ComponentFactory;
+import sun.awt.AppContext;
+import sun.awt.AWTAccessor;
 import sun.awt.ConstrainableGraphics;
 import sun.awt.EmbeddedFrame;
 import sun.awt.RequestFocusController;
@@ -618,6 +620,9 @@ public abstract class Component implements ImageObserver, MenuContainer,
 
         String s2 = System.getProperty("awt.image.redrawrate");
         incRate = (s2 != null) ? Integer.parseInt(s2) : 100;
+
+        boolean imeDisabled = Boolean.getBoolean("awt.ime.disabled");
+        INPUT_METHODS_DISABLED = imeDisabled;
     }
 
     /**
@@ -1588,6 +1593,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since 1.2
      */
     public void enableInputMethods(boolean enable) {
+        if (INPUT_METHODS_DISABLED) return;
         if (enable) {
             if ((eventMask & AWTEvent.INPUT_METHODS_ENABLED_MASK) != 0)
                 return;
@@ -5095,6 +5101,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     }
 
     boolean areInputMethodsEnabled() {
+        if (INPUT_METHODS_DISABLED) return false;
         // in 1.2, we assume input method support is required for all
         // components that handle key events, but components can turn off
         // input methods by calling enableInputMethods(false).
