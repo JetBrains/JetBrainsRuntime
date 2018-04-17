@@ -62,6 +62,7 @@ import javax.swing.JComponent;
 import javax.swing.JRootPane;
 
 import sun.awt.ComponentFactory;
+import sun.security.action.GetBooleanAction;
 import sun.security.action.GetPropertyAction;
 import sun.awt.AppContext;
 import sun.awt.AWTAccessor;
@@ -580,6 +581,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     long eventMask = AWTEvent.INPUT_METHODS_ENABLED_MASK;
 
+    private static final boolean INPUT_METHODS_DISABLED;
+
     /**
      * Static properties for incremental drawing.
      * @see #imageUpdate
@@ -601,6 +604,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
         s = java.security.AccessController.doPrivileged(
                                                         new GetPropertyAction("awt.image.redrawrate"));
         incRate = (s != null) ? Integer.parseInt(s) : 100;
+
+        INPUT_METHODS_DISABLED = java.security.AccessController.doPrivileged(new GetBooleanAction("awt.ime.disabled"));
     }
 
     /**
@@ -1578,6 +1583,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
      * @since 1.2
      */
     public void enableInputMethods(boolean enable) {
+        if (INPUT_METHODS_DISABLED) return;
         if (enable) {
             if ((eventMask & AWTEvent.INPUT_METHODS_ENABLED_MASK) != 0)
                 return;
@@ -5116,6 +5122,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
     }
 
     boolean areInputMethodsEnabled() {
+        if (INPUT_METHODS_DISABLED) return false;
         // in 1.2, we assume input method support is required for all
         // components that handle key events, but components can turn off
         // input methods by calling enableInputMethods(false).
