@@ -3941,8 +3941,8 @@ void AwtComponent::OpenCandidateWindow(int x, int y)
     }
     HWND hTop = GetTopLevelParentForWindow(hWnd);
     ::ClientToScreen(hTop, &p);
-    int sx = ScaleUpX(x) - p.x;
-    int sy = ScaleUpY(y) - p.y;
+    int sx = ScaleUpDX(x) - p.x;
+    int sy = ScaleUpDY(y) - p.y;
     if (!m_bitsCandType) {
         SetCandidateWindow(m_bitsCandType, sx, sy);
         return;
