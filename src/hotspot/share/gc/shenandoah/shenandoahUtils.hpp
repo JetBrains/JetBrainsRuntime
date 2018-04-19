@@ -38,7 +38,7 @@ class GCTimer;
 class ShenandoahGCSession : public StackObj {
 private:
   GCTimer*  _timer;
-
+  TraceMemoryManagerStats _trace_cycle;
 public:
   ShenandoahGCSession();
   ~ShenandoahGCSession();
@@ -54,21 +54,13 @@ public:
 
 // Aggregates all the things that should happen before/after the pause.
 class ShenandoahGCPauseMark : public StackObj {
-public:
-  typedef enum {
-    init_pause,          // init pause
-    intermediate_pause,  // intermediate pause
-    final_pause,         // final pause
-    full_pause           // stw pause
-  } GCPauseType;
-
 private:
   const GCIdMark                _gc_id_mark;
   const SvcGCMarker             _svc_gc_mark;
   const IsGCActiveMark          _is_gc_active_mark;
-  TraceMemoryManagerStats       _trace_stats;
+  TraceMemoryManagerStats       _trace_pause;
 public:
-  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type, GCPauseType pause_type);
+  ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type);
   ~ShenandoahGCPauseMark();
 };
 

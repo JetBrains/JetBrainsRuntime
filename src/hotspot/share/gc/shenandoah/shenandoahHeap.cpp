@@ -367,10 +367,9 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
   _phase_timings(NULL),
   _alloc_tracker(NULL),
-  _minor_memory_manager("Shenandoah Minor", "end of minor GC"),
-  _major_memory_manager("Shenandoah Major", "end of major GC"),
-  _memory_pool(NULL),
-  _dummy_pool(NULL)
+  _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
+  _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
+  _memory_pool(NULL)
 {
   log_info(gc, init)("Parallel GC threads: "UINT32_FORMAT, ParallelGCThreads);
   log_info(gc, init)("Concurrent GC threads: "UINT32_FORMAT, ConcGCThreads);
@@ -2832,23 +2831,20 @@ bool ShenandoahHeap::should_inject_alloc_failure() {
 
 void ShenandoahHeap::initialize_serviceability() {
   _memory_pool = new ShenandoahMemoryPool(this);
-  _major_memory_manager.add_pool(_memory_pool);
-
-  _dummy_pool = new ShenandoahDummyMemoryPool();
-  _minor_memory_manager.add_pool(_dummy_pool);
+  _cycle_memory_manager.add_pool(_memory_pool);
+  _stw_memory_manager.add_pool(_memory_pool);
 }
 
 GrowableArray<GCMemoryManager*> ShenandoahHeap::memory_managers() {
   GrowableArray<GCMemoryManager*> memory_managers(2);
-  memory_managers.append(&_major_memory_manager);
-  memory_managers.append(&_minor_memory_manager);
+  memory_managers.append(&_cycle_memory_manager);
+  memory_managers.append(&_stw_memory_manager);
   return memory_managers;
 }
 
 GrowableArray<MemoryPool*> ShenandoahHeap::memory_pools() {
-  GrowableArray<MemoryPool*> memory_pools(2);
+  GrowableArray<MemoryPool*> memory_pools(1);
   memory_pools.append(_memory_pool);
-  memory_pools.append(_dummy_pool);
   return memory_pools;
 }
 

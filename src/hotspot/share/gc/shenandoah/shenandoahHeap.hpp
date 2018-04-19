@@ -307,11 +307,10 @@ private:
 
   ShenandoahConnectionMatrix* _connection_matrix;
 
-  GCMemoryManager _minor_memory_manager;
-  GCMemoryManager _major_memory_manager;
+  GCMemoryManager _stw_memory_manager;
+  GCMemoryManager _cycle_memory_manager;
 
   MemoryPool* _memory_pool;
-  MemoryPool* _dummy_pool;
 
   ShenandoahEvacOOMHandler _oom_evac_handler;
 
@@ -674,8 +673,8 @@ public:
 
   void make_tlabs_parsable(bool retire_tlabs) /* override */;
 
-  GCMemoryManager* major_memory_manager() { return &_major_memory_manager; }
-  GCMemoryManager* minor_memory_manager() { return &_minor_memory_manager; }
+  GCMemoryManager* cycle_memory_manager() { return &_cycle_memory_manager; }
+  GCMemoryManager* stw_memory_manager()   { return &_stw_memory_manager; }
 
 public:
   // Entry points to STW GC operations, these cause a related safepoint, that then

@@ -152,10 +152,10 @@ hotspot_gc_shenandoah = \
 hotspot_fast_gc_shenandoah = \
   gc/shenandoah/options/ \
   gc/shenandoah/compiler/ \
+  gc/shenandoah/mxbeans/ \
   gc/shenandoah/TestSmallHeap.java \
   gc/shenandoah/TestAllocLargeObjOOM.java \
   gc/shenandoah/TestAllocSmallObjOOM.java \
-  gc/shenandoah/MXNotificationsFullGC.java
 
 tier1_compiler_not_xcomp = \
   compiler/aot
