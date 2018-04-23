@@ -32,9 +32,19 @@
 
 
 ShenandoahGCSession::ShenandoahGCSession() {
-  _timer = ShenandoahHeap::heap()->gc_timer();
+  ShenandoahHeap* sh = ShenandoahHeap::heap();
+  _timer = sh->gc_timer();
   _timer->register_gc_start();
-  ShenandoahHeap::heap()->shenandoahPolicy()->record_cycle_start();
+  sh->shenandoahPolicy()->record_cycle_start();
+  _trace_cycle.initialize(sh->cycle_memory_manager(), sh->gc_cause(),
+          /* recordGCBeginTime = */       true,
+          /* recordPreGCUsage = */        true,
+          /* recordPeakUsage = */         true,
+          /* recordPostGCUsage = */       true,
+          /* recordAccumulatedGCTime = */ true,
+          /* recordGCEndTime = */         true,
+          /* countCollection = */         true
+  );
 }
 
 ShenandoahGCSession::~ShenandoahGCSession() {
@@ -42,58 +52,19 @@ ShenandoahGCSession::~ShenandoahGCSession() {
   _timer->register_gc_end();
 }
 
-ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type, GCPauseType pause_type) :
+ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type) :
   _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
   ShenandoahHeap* sh = ShenandoahHeap::heap();
 
-  switch(pause_type) {
-    case init_pause:
-      _trace_stats.initialize(sh->minor_memory_manager() /* GC manager */ ,
-                 sh->gc_cause()                          /* cause of the GC */,
-                 true                                    /* recordGCBeginTime */,
-                 true                                    /* recordPreGCUsage */,
-                 true                                    /* recordPeakUsage */,
-                 false                                   /* recordPostGCusage */,
-                 true                                    /* recordAccumulatedGCTime */,
-                 false                                   /* recordGCEndTime */,
-                 true                                    /* countCollection */  );
-      break;
-    case intermediate_pause:
-      _trace_stats.initialize(sh->minor_memory_manager() /* GC manager */ ,
-                 sh->gc_cause()                          /* cause of the GC */,
-                 false                                   /* recordGCBeginTime */,
-                 false                                   /* recordPreGCUsage */,
-                 false                                   /* recordPeakUsage */,
-                 false                                   /* recordPostGCusage */,
-                 true                                    /* recordAccumulatedGCTime */,
-                 false                                   /* recordGCEndTime */,
-                 false                                   /* countCollection */  );
-      break;
-    case final_pause:
-      _trace_stats.initialize(sh->minor_memory_manager() /* GC manager */ ,
-                 sh->gc_cause()                          /* cause of the GC */,
-                 false                                   /* recordGCBeginTime */,
-                 false                                   /* recordPreGCUsage */,
-                 false                                   /* recordPeakUsage */,
-                 true                                    /* recordPostGCusage */,
-                 true                                    /* recordAccumulatedGCTime */,
-                 true                                    /* recordGCEndTime */,
-                 false                                   /* countCollection */  );
-      break;
-    case full_pause:
-      _trace_stats.initialize(sh->major_memory_manager() /* GC manager */ ,
-                 sh->gc_cause()                          /* cause of the GC */,
-                 true                                    /* recordGCBeginTime */,
-                 true                                    /* recordPreGCUsage */,
-                 true                                    /* recordPeakUsage */,
-                 true                                    /* recordPostGCusage */,
-                 true                                    /* recordAccumulatedGCTime */,
-                 true                                    /* recordGCEndTime */,
-                 true                                    /* countCollection */  );
-      break;
-    default:
-      ShouldNotReachHere();
-  }
+  _trace_pause.initialize(sh->stw_memory_manager(), sh->gc_cause(),
+          /* recordGCBeginTime = */       true,
+          /* recordPreGCUsage = */        false,
+          /* recordPeakUsage = */         false,
+          /* recordPostGCUsage = */       false,
+          /* recordAccumulatedGCTime = */ true,
+          /* recordGCEndTime = */         true,
+          /* countCollection = */         true
+  );
 
   sh->shenandoahPolicy()->record_gc_start();
 }

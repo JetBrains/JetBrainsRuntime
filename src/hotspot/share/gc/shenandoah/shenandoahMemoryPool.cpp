@@ -24,12 +24,6 @@
 #include "precompiled.hpp"
 #include "gc/shenandoah/shenandoahMemoryPool.hpp"
 
-ShenandoahDummyMemoryPool::ShenandoahDummyMemoryPool() :
-        CollectedMemoryPool("Shenandoah Dummy",
-                            0,
-                            0,
-                            false /* support_usage_threshold */) {}
-
 ShenandoahMemoryPool::ShenandoahMemoryPool(ShenandoahHeap* heap) :
         CollectedMemoryPool("Shenandoah",
                             heap->capacity(),

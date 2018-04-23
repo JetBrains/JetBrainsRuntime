@@ -30,14 +30,6 @@
 #include "services/memoryUsage.hpp"
 #endif
 
-class ShenandoahDummyMemoryPool : public CollectedMemoryPool {
-public:
-  ShenandoahDummyMemoryPool();
-  MemoryUsage get_memory_usage()      { return MemoryUsage(0, 0, 0, 0); }
-  size_t used_in_bytes()              { return 0; }
-  size_t max_size() const             { return 0; }
-};
-
 class ShenandoahMemoryPool : public CollectedMemoryPool {
 private:
    ShenandoahHeap* _heap;

@@ -179,7 +179,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
       CodeCache::gc_prologue();
 
-      // TODO: We don't strictly always need to update refs. We might want to clean
+      // TODO: We don't necessarily need to update refs. We might want to clean
       // up managing has_forwarded_objects when diving into degen/full-gc.
       heap->set_has_forwarded_objects(true);
 
