@@ -1143,6 +1143,9 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   __ b(*(op->label()), acond);
 }
 
+void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
+  Unimplemented();
+}
 
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
