@@ -51,20 +51,6 @@
 #include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/workgroup.hpp"
 
-class ShenandoahMarkCompactBarrierSet : public ShenandoahBarrierSet {
-public:
-  ShenandoahMarkCompactBarrierSet(ShenandoahHeap* heap) : ShenandoahBarrierSet(heap) {}
-
-  oop read_barrier(oop src) {
-    return src;
-  }
-
-#ifdef ASSERT
-  void verify_safe_oop(oop o) {}
-  void verify_safe_oop(narrowOop o) {}
-#endif
-};
-
 class ShenandoahClearRegionStatusClosure: public ShenandoahHeapRegionClosure {
 private:
   ShenandoahHeap* const _heap;
@@ -186,10 +172,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       }
     }
 
-    BarrierSet* old_bs = BarrierSet::barrier_set();
-    ShenandoahMarkCompactBarrierSet bs(heap);
-    BarrierSet::set_bs(&bs);
-
     {
       if (UseTLAB) {
         heap->make_tlabs_parsable(true);
@@ -197,15 +179,16 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
       CodeCache::gc_prologue();
 
-      // We should save the marks of the currently locked biased monitors.
-      // The marking doesn't preserve the marks of biased objects.
-      //BiasedLocking::preserve_marks();
-
+      // TODO: We don't necessarily need to update refs. We might want to clean
+      // up managing has_forwarded_objects when diving into degen/full-gc.
       heap->set_has_forwarded_objects(true);
 
       OrderAccess::fence();
 
       phase1_mark_heap();
+
+      // Prevent read-barrier from kicking in while adjusting pointers in phase3.
+      heap->set_has_forwarded_objects(false);
 
       heap->set_full_gc_move_in_progress(true);
 
@@ -237,7 +220,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
         JvmtiExport::gc_epilogue();
       }
 
-      heap->set_has_forwarded_objects(false);
       heap->set_full_gc_move_in_progress(false);
       heap->set_full_gc_in_progress(false);
 
@@ -255,8 +237,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_resize_tlabs);
       heap->resize_all_tlabs();
     }
-
-    BarrierSet::set_bs(old_bs);
   }
 
 

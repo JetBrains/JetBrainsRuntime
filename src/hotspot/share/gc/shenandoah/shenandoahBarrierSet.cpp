@@ -255,7 +255,11 @@ void ShenandoahBarrierSet::write_region(MemRegion mr) {
 }
 
 oop ShenandoahBarrierSet::read_barrier(oop src) {
-  if (ShenandoahReadBarrier) {
+  // Check for forwarded objects, because on Full GC path we might deal with
+  // non-trivial fwdptrs that contain Full GC specific metadata. We could check
+  // for is_full_gc_in_progress(), but this also covers the case of stable heap,
+  // which provides a bit of performance improvement.
+  if (ShenandoahReadBarrier && _heap->has_forwarded_objects()) {
     return ShenandoahBarrierSet::resolve_forwarded(src);
   } else {
     return src;
