@@ -30,7 +30,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "utilities/defaultStream.hpp"
 
-void ShenandoahArguments::initialize_flags() {
+void ShenandoahArguments::initialize() {
 
 #if !(defined AARCH64 || defined AMD64 || defined IA32)
   vm_exit_during_initialization("Shenandoah GC is not supported on this platform.");

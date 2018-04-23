@@ -64,9 +64,9 @@ ShenandoahUpdateRefsClosure::ShenandoahUpdateRefsClosure() : _heap(ShenandoahHea
 #ifdef ASSERT
 template <class T>
 void ShenandoahAssertToSpaceClosure::do_oop_nv(T* p) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (! CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     shenandoah_assert_not_forwarded(p, obj);
   }
 }
@@ -145,7 +145,7 @@ jint ShenandoahHeap::initialize() {
                                                  heap_alignment);
   initialize_reserved_region((HeapWord*)heap_rs.base(), (HeapWord*) (heap_rs.base() + heap_rs.size()));
 
-  set_barrier_set(new ShenandoahBarrierSet(this));
+  BarrierSet::set_barrier_set(new ShenandoahBarrierSet(this));
   ReservedSpace pgc_rs = heap_rs.first_part(max_byte_size);
 
   _num_regions = max_byte_size / ShenandoahHeapRegion::region_size_bytes();
@@ -214,7 +214,7 @@ jint ShenandoahHeap::initialize() {
 
   // The call below uses stuff (the SATB* things) that are in G1, but probably
   // belong into a shared location.
-  JavaThread::satb_mark_queue_set().initialize(SATB_Q_CBL_mon,
+  ShenandoahBarrierSet::satb_mark_queue_set().initialize(SATB_Q_CBL_mon,
                                                SATB_Q_FL_lock,
                                                20 /*G1SATBProcessCompletedThreshold */,
                                                Shared_SATB_Q_lock);
@@ -500,7 +500,10 @@ void ShenandoahHeap::print_on(outputStream* st) const {
 class ShenandoahInitGCLABClosure : public ThreadClosure {
 public:
   void do_thread(Thread* thread) {
-    thread->gclab().initialize(true);
+    if (thread != NULL && (thread->is_Java_thread() || thread->is_Worker_thread() ||
+                           thread->is_ConcurrentGC_thread())) {
+      thread->gclab().initialize(true);
+    }
   }
 };
 
@@ -510,7 +513,7 @@ void ShenandoahHeap::post_initialize() {
     MutexLocker ml(Threads_lock);
 
     ShenandoahInitGCLABClosure init_gclabs;
-    Threads::java_threads_do(&init_gclabs);
+    Threads::threads_do(&init_gclabs);
     gc_threads_do(&init_gclabs);
 
     // gclab can not be initialized early during VM startup, as it can not determinate its max_size.
@@ -696,7 +699,7 @@ HeapWord* ShenandoahHeap::allocate_new_lab(size_t word_size, AllocType type) {
 ShenandoahHeap* ShenandoahHeap::heap() {
   CollectedHeap* heap = Universe::heap();
   assert(heap != NULL, "Unitialized access to ShenandoahHeap::heap()");
-  assert(heap->kind() == CollectedHeap::ShenandoahHeap, "not a shenandoah heap");
+  assert(heap->kind() == CollectedHeap::Shenandoah, "not a shenandoah heap");
   return (ShenandoahHeap*) heap;
 }
 
@@ -791,9 +794,9 @@ private:
   void do_oop_work(T* p) {
     assert(_heap->is_evacuation_in_progress(), "Only do this when evacuation is in progress");
 
-    T o = oopDesc::load_heap_oop(p);
-    if (! oopDesc::is_null(o)) {
-      oop obj = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (! CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
       if (_heap->in_collection_set(obj)) {
         shenandoah_assert_marked_complete(p, obj);
         oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
@@ -801,7 +804,7 @@ private:
           bool evac;
           resolved = _heap->evacuate_object(obj, _thread, evac);
         }
-        oopDesc::encode_store_heap_oop(p, resolved);
+        RawAccess<OOP_NOT_NULL>::oop_store(p, resolved);
       }
     }
   }
@@ -827,9 +830,9 @@ public:
 private:
   template <class T>
   void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (! oopDesc::is_null(o)) {
-      oop obj = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (! CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
       if (_heap->in_collection_set(obj)) {
         oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
         if (oopDesc::unsafe_equals(resolved, obj)) {
@@ -1045,7 +1048,9 @@ void ShenandoahHeap::make_tlabs_parsable(bool retire_tlabs) {
   if (UseTLAB) {
     CollectedHeap::ensure_parsability(retire_tlabs);
     ShenandoahRetireTLABClosure cl(retire_tlabs);
-    Threads::java_threads_do(&cl);
+    for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+      cl.do_thread(t);
+    }
     gc_threads_do(&cl);
   }
 }
@@ -1171,7 +1176,9 @@ void ShenandoahHeap::resize_all_tlabs() {
   CollectedHeap::resize_all_tlabs();
 
   ShenandoahResizeGCLABClosure cl;
-  Threads::java_threads_do(&cl);
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+    cl.do_thread(t);
+  }
   gc_threads_do(&cl);
 }
 
@@ -1186,7 +1193,9 @@ public:
 
 void ShenandoahHeap::accumulate_statistics_all_gclabs() {
   ShenandoahAccumulateStatisticsGCLABClosure cl;
-  Threads::java_threads_do(&cl);
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+    cl.do_thread(t);
+  }
   gc_threads_do(&cl);
 }
 
@@ -1322,9 +1331,9 @@ private:
 
   template <class T>
   void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (!oopDesc::is_null(o)) {
-      oop obj = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
       obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       assert(oopDesc::is_oop(obj), "must be a valid oop");
       if (!_bitmap->isMarked((HeapWord*) obj)) {
@@ -1795,25 +1804,32 @@ void ShenandoahHeap::stop_concurrent_marking() {
   }
 }
 
+void ShenandoahHeap::set_gc_state_all_threads(char state) {
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+    ShenandoahThreadLocalData::set_gc_state(t, state);
+  }
+}
+
 void ShenandoahHeap::set_gc_state_mask(uint mask, bool value) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should really be Shenandoah safepoint");
   _gc_state.set_cond(mask, value);
-  JavaThread::set_gc_state_all_threads(_gc_state.raw_value());
+  set_gc_state_all_threads(_gc_state.raw_value());
 }
 
 void ShenandoahHeap::set_concurrent_mark_in_progress(bool in_progress) {
   set_gc_state_mask(MARKING, in_progress);
-  JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
+  ShenandoahBarrierSet::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
 void ShenandoahHeap::set_concurrent_partial_in_progress(bool in_progress) {
+
   set_gc_state_mask(PARTIAL | HAS_FORWARDED, in_progress);
-  JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
+  ShenandoahBarrierSet::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
 void ShenandoahHeap::set_concurrent_traversal_in_progress(bool in_progress) {
    set_gc_state_mask(TRAVERSAL | HAS_FORWARDED, in_progress);
-   JavaThread::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
+   ShenandoahBarrierSet::satb_mark_queue_set().set_active_all_threads(in_progress, !in_progress);
 }
 
 void ShenandoahHeap::set_evacuation_in_progress(bool in_progress) {
@@ -1841,7 +1857,7 @@ ShenandoahIsAliveClosure::ShenandoahIsAliveClosure() :
 }
 
 bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
-  if (oopDesc::is_null(obj)) {
+  if (CompressedOops::is_null(obj)) {
     return false;
   }
   obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
@@ -1850,7 +1866,7 @@ bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
 }
 
 bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
-  if (oopDesc::is_null(obj)) {
+  if (CompressedOops::is_null(obj)) {
     return false;
   }
   shenandoah_assert_not_forwarded(NULL, obj);
@@ -2889,4 +2905,8 @@ void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure& cl) const 
     }
     r = regions.next();
   }
+}
+
+char ShenandoahHeap::gc_state() const {
+  return _gc_state.raw_value();
 }

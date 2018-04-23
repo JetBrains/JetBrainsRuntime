@@ -167,16 +167,16 @@ void MethodHandles::jump_to_lambda_form(MacroAssembler* _masm,
   //NOT_PRODUCT({ FlagSetting fs(TraceMethodHandles, true); trace_method_handle(_masm, "LZMH"); });
 
   // Load the invoker, as MH -> MH.form -> LF.vmentry
-  BarrierSet::barrier_set()->interpreter_read_barrier(_masm, recv);
+  __ resolve_for_read(0, recv);
   __ verify_oop(recv);
-  __ load_heap_oop(method_temp, Address(recv, NONZERO(java_lang_invoke_MethodHandle::form_offset_in_bytes())));
-  BarrierSet::barrier_set()->interpreter_read_barrier(_masm, method_temp);
+  __ load_heap_oop(method_temp, Address(recv, NONZERO(java_lang_invoke_MethodHandle::form_offset_in_bytes())), temp2);
+  __ resolve_for_read(0, method_temp);
   __ verify_oop(method_temp);
-  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_LambdaForm::vmentry_offset_in_bytes())));
-  BarrierSet::barrier_set()->interpreter_read_barrier(_masm, method_temp);
+  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_LambdaForm::vmentry_offset_in_bytes())), temp2);
+  __ resolve_for_read(0, method_temp);
   __ verify_oop(method_temp);
-  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_MemberName::method_offset_in_bytes())));
-  BarrierSet::barrier_set()->interpreter_read_barrier(_masm, method_temp);
+  __ load_heap_oop(method_temp, Address(method_temp, NONZERO(java_lang_invoke_MemberName::method_offset_in_bytes())), temp2);
+  __ resolve_for_read(OOP_NOT_NULL, method_temp);
   __ verify_oop(method_temp);
   __ movptr(method_temp, Address(method_temp, NONZERO(java_lang_invoke_ResolvedMethodName::vmtarget_offset_in_bytes())));
 
@@ -366,7 +366,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
       if (VerifyMethodHandles && iid != vmIntrinsics::_linkToInterface) {
         Label L_ok;
         Register temp2_defc = temp2;
-        __ load_heap_oop(temp2_defc, member_clazz);
+        __ load_heap_oop(temp2_defc, member_clazz, temp3);
         load_klass_from_Class(_masm, temp2_defc);
         __ verify_klass_ptr(temp2_defc);
         __ check_klass_subtype(temp1_recv_klass, temp2_defc, temp3, L_ok);
@@ -387,7 +387,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
     //  rsi/r13 - interpreter linkage (if interpreted)
     //  rcx, rdx, rsi, rdi, r8 - compiler arguments (if compiled)
 
-    BarrierSet::barrier_set()->interpreter_read_barrier(_masm, member_reg);
+    __ resolve_for_read(0, member_reg);
     Label L_incompatible_class_change_error;
     switch (iid) {
     case vmIntrinsics::_linkToSpecial:
@@ -395,7 +395,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
         verify_ref_kind(_masm, JVM_REF_invokeSpecial, member_reg, temp3);
       }
       __ load_heap_oop(rbx_method, member_vmtarget);
-      BarrierSet::barrier_set()->interpreter_read_barrier(_masm, rbx_method);
+      __ resolve_for_read(0, rbx_method);
       __ movptr(rbx_method, vmtarget_method);
       break;
 
@@ -404,7 +404,7 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
         verify_ref_kind(_masm, JVM_REF_invokeStatic, member_reg, temp3);
       }
       __ load_heap_oop(rbx_method, member_vmtarget);
-      BarrierSet::barrier_set()->interpreter_read_barrier(_masm, rbx_method);
+      __ resolve_for_read(0, rbx_method);
       __ movptr(rbx_method, vmtarget_method);
       break;
 

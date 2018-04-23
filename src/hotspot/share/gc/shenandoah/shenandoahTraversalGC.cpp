@@ -105,7 +105,7 @@ public:
   void do_buffer(void** buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       oop* p = (oop*) &buffer[i];
-      oop obj = oopDesc::load_heap_oop(p);
+      oop obj = RawAccess<>::oop_load(p);
       shenandoah_assert_not_forwarded(p, obj);
       if (!_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
         _queue->push(ShenandoahMarkTask(obj));
@@ -124,9 +124,9 @@ class ShenandoahTraversalSATBThreadsClosure : public ThreadClosure {
   void do_thread(Thread* thread) {
     if (thread->is_Java_thread()) {
       JavaThread* jt = (JavaThread*)thread;
-      jt->satb_mark_queue().apply_closure_and_empty(_satb_cl);
+      ShenandoahThreadLocalData::satb_mark_queue(jt).apply_closure_and_empty(_satb_cl);
     } else if (thread->is_VM_thread()) {
-      JavaThread::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
+      ShenandoahBarrierSet::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
     }
   }
 };
@@ -244,7 +244,7 @@ public:
     ShenandoahTraversalSATBBufferClosure satb_cl(q);
     {
       // Process remaining finished SATB buffers.
-      SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+      SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
       while (satb_mq_set.apply_closure_to_completed_buffer(&satb_cl));
       // Process remaining threads SATB buffers below.
     }
@@ -495,7 +495,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   // Normal loop.
   q = queues->queue(worker_id);
   ShenandoahTraversalSATBBufferClosure satb_cl(q);
-  SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
 
   int seed = 17;
 
@@ -641,12 +641,12 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (!oopDesc::is_null(o)) {
-      oop obj = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
       oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (!oopDesc::unsafe_equals(obj, forw)) {
-        oopDesc::encode_store_heap_oop(p, forw);
+        RawAccess<OOP_NOT_NULL>::oop_store(p, forw);
       }
     }
   }

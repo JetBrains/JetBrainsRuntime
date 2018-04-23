@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2014, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,6 +25,7 @@
 
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
+#include "gc/shared/barrierSetAssembler.hpp"
 #include "interpreter/bytecodeHistogram.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
@@ -891,7 +892,6 @@ void TemplateInterpreterGenerator::generate_fixed_frame(bool native_call) {
 
 // Method entry for java.lang.ref.Reference.get.
 address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
-#if INCLUDE_ALL_GCS
   // Code: _aload_0, _getfield, _areturn
   // parameter size = 1
   //
@@ -925,43 +925,29 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
   const int referent_offset = java_lang_ref_Reference::referent_offset;
   guarantee(referent_offset > 0, "referent offset not initialized");
 
-  if (UseG1GC || UseShenandoahGC) {
-    Label slow_path;
-    const Register local_0 = c_rarg0;
-    // Check if local 0 != NULL
-    // If the receiver is null then it is OK to jump to the slow path.
-    __ ldr(local_0, Address(esp, 0));
-    __ cbz(local_0, slow_path);
+  Label slow_path;
+  const Register local_0 = c_rarg0;
+  // Check if local 0 != NULL
+  // If the receiver is null then it is OK to jump to the slow path.
+  __ ldr(local_0, Address(esp, 0));
+  __ cbz(local_0, slow_path);
 
-    BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, local_0);
+  __ mov(r19, r13);   // Move senderSP to a callee-saved register
 
-    // Load the value of the referent field.
-    const Address field_address(local_0, referent_offset);
-    __ load_heap_oop(local_0, field_address);
+  // Load the value of the referent field.
+  const Address field_address(local_0, referent_offset);
+  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->load_at(_masm, IN_HEAP | ON_WEAK_OOP_REF, T_OBJECT, local_0, field_address, /*tmp1*/ rscratch2, /*tmp2*/ rscratch1);
 
-    __ mov(r19, r13);   // Move senderSP to a callee-saved register
+  // areturn
+  __ andr(sp, r19, -16);  // done with stack
+  __ ret(lr);
 
-    // Generate the G1 pre-barrier code to log the value of
-    // the referent field in an SATB buffer.
-    __ enter(); // g1_write may call runtime
-    __ keep_alive_barrier(local_0 /* pre_val */,
-                          rthread /* thread */,
-                          rscratch2 /* tmp */);
-    __ leave();
-    // areturn
-    __ andr(sp, r19, -16);  // done with stack
-    __ ret(lr);
+  // generate a vanilla interpreter entry as the slow path
+  __ bind(slow_path);
+  __ jump_to_entry(Interpreter::entry_for_kind(Interpreter::zerolocals));
+  return entry;
 
-    // generate a vanilla interpreter entry as the slow path
-    __ bind(slow_path);
-    __ jump_to_entry(Interpreter::entry_for_kind(Interpreter::zerolocals));
-    return entry;
-  }
-#endif // INCLUDE_ALL_GCS
-
-  // If G1 is not enabled then attempt to go through the accessor entry point
-  // Reference.get is an accessor
-  return NULL;
 }
 
 /**
@@ -1437,28 +1423,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
     __ br(Assembler::NE, no_oop);
     // Unbox oop result, e.g. JNIHandles::resolve result.
     __ pop(ltos);
-    __ cbz(r0, store_result);   // Use NULL as-is.
-    STATIC_ASSERT(JNIHandles::weak_tag_mask == 1u);
-    __ tbz(r0, 0, not_weak);    // Test for jweak tag.
-    // Resolve jweak.
-    __ ldr(r0, Address(r0, -JNIHandles::weak_tag_value));
-#if INCLUDE_ALL_GCS
-    if (UseG1GC || UseShenandoahGC) {
-      __ enter();                   // Barrier may call runtime.
-      __ g1_write_barrier_pre(noreg /* obj */,
-                              r0 /* pre_val */,
-                              rthread /* thread */,
-                              t /* tmp */,
-                              true /* tosca_live */,
-                              true /* expand_call */);
-      __ leave();
-    }
-#endif // INCLUDE_ALL_GCS
-    __ b(store_result);
-    __ bind(not_weak);
-    // Resolve (untagged) jobject.
-    __ ldr(r0, Address(r0, 0));
-    __ bind(store_result);
+    __ resolve_jobject(r0, rthread, t);
     __ str(r0, Address(rfp, frame::interpreter_frame_oop_temp_offset*wordSize));
     // keep stack depth as expected by pushing oop which will eventually be discarded
     __ push(ltos);

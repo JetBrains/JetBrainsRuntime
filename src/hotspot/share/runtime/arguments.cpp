@@ -29,10 +29,9 @@
 #include "classfile/moduleEntry.hpp"
 #include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
+#include "gc/shared/collectorPolicy.hpp"
 #include "gc/shared/gcArguments.hpp"
-#include "gc/shared/genCollectedHeap.hpp"
-#include "gc/shared/referenceProcessor.hpp"
-#include "gc/shared/taskqueue.hpp"
+#include "gc/shared/gcConfig.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
 #include "logging/logStream.hpp"
@@ -49,7 +48,7 @@
 #include "runtime/globals.hpp"
 #include "runtime/globals_extension.hpp"
 #include "runtime/java.hpp"
-#include "runtime/os.hpp"
+#include "runtime/os.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/safepointMechanism.hpp"
 #include "runtime/vm_version.hpp"
@@ -96,6 +95,8 @@ bool   Arguments::_BackgroundCompilation        = BackgroundCompilation;
 bool   Arguments::_ClipInlining                 = ClipInlining;
 intx   Arguments::_Tier3InvokeNotifyFreqLog     = Tier3InvokeNotifyFreqLog;
 intx   Arguments::_Tier4InvocationThreshold     = Tier4InvocationThreshold;
+
+bool   Arguments::_enable_preview               = false;
 
 char*  Arguments::SharedArchivePath             = NULL;
 
@@ -511,7 +512,6 @@ static SpecialFlag const special_jvm_flags[] = {
   { "InitialRAMFraction",           JDK_Version::jdk(10),  JDK_Version::undefined(), JDK_Version::undefined() },
   { "UseMembar",                    JDK_Version::jdk(10), JDK_Version::undefined(), JDK_Version::undefined() },
   { "IgnoreUnverifiableClassesDuringDump", JDK_Version::jdk(10),  JDK_Version::undefined(), JDK_Version::undefined() },
-  { "CheckEndorsedAndExtDirs",      JDK_Version::jdk(10), JDK_Version::undefined(), JDK_Version::undefined() },
   { "CompilerThreadHintNoPreempt",  JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "VMThreadHintNoPreempt",        JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "PrintSafepointStatistics",     JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
@@ -535,6 +535,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "ShowSafepointMsgs",             JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "FastTLABRefill",                JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "SafepointSpinBeforeYield",      JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "CheckEndorsedAndExtDirs",       JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "DeferThrSuspendLoopCount",      JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "DeferPollingPageLoopCount",     JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "PermSize",                      JDK_Version::undefined(), JDK_Version::jdk(8),  JDK_Version::undefined() },
@@ -1445,35 +1446,23 @@ bool Arguments::add_property(const char* prop, PropertyWriteable writeable, Prop
 }
 
 #if INCLUDE_CDS
+const char* unsupported_properties[] = { "jdk.module.limitmods",
+                                         "jdk.module.upgrade.path",
+                                         "jdk.module.patch.0" };
+const char* unsupported_options[] = { "--limit-modules",
+                                      "--upgrade-module-path",
+                                      "--patch-module"
+                                    };
 void Arguments::check_unsupported_dumping_properties() {
   assert(DumpSharedSpaces, "this function is only used with -Xshare:dump");
-  const char* unsupported_properties[] = { "jdk.module.main",
-                                           "jdk.module.limitmods",
-                                           "jdk.module.path",
-                                           "jdk.module.upgrade.path",
-                                           "jdk.module.patch.0" };
-  const char* unsupported_options[] = { "-m", // cannot use at dump time
-                                        "--limit-modules", // ignored at dump time
-                                        "--module-path", // ignored at dump time
-                                        "--upgrade-module-path", // ignored at dump time
-                                        "--patch-module" // ignored at dump time
-                                      };
   assert(ARRAY_SIZE(unsupported_properties) == ARRAY_SIZE(unsupported_options), "must be");
-  // If a vm option is found in the unsupported_options array with index less than the info_idx,
-  // vm will exit with an error message. Otherwise, it will print an informational message if
-  // -Xlog:cds is enabled.
-  uint info_idx = 1;
+  // If a vm option is found in the unsupported_options array, vm will exit with an error message.
   SystemProperty* sp = system_properties();
   while (sp != NULL) {
     for (uint i = 0; i < ARRAY_SIZE(unsupported_properties); i++) {
       if (strcmp(sp->key(), unsupported_properties[i]) == 0) {
-        if (i < info_idx) {
-          vm_exit_during_initialization(
-            "Cannot use the following option when dumping the shared archive", unsupported_options[i]);
-        } else {
-          log_info(cds)("Info: the %s option is ignored when dumping the shared archive",
-                        unsupported_options[i]);
-        }
+        vm_exit_during_initialization(
+          "Cannot use the following option when dumping the shared archive", unsupported_options[i]);
       }
     }
     sp = sp->next();
@@ -1483,6 +1472,20 @@ void Arguments::check_unsupported_dumping_properties() {
   if (!has_jimage()) {
     vm_exit_during_initialization("Dumping the shared archive is not supported with an exploded module build");
   }
+}
+
+bool Arguments::check_unsupported_cds_runtime_properties() {
+  assert(UseSharedSpaces, "this function is only used with -Xshare:{on,auto}");
+  assert(ARRAY_SIZE(unsupported_properties) == ARRAY_SIZE(unsupported_options), "must be");
+  for (uint i = 0; i < ARRAY_SIZE(unsupported_properties); i++) {
+    if (get_property(unsupported_properties[i]) != NULL) {
+      if (RequireSharedSpaces) {
+        warning("CDS is disabled when the %s option is specified.", unsupported_options[i]);
+      }
+      return true;
+    }
+  }
+  return false;
 }
 #endif
 
@@ -1749,7 +1752,7 @@ void Arguments::set_conservative_max_heap_alignment() {
   // the alignments imposed by several sources: any requirements from the heap
   // itself, the collector policy and the maximum page size we may run the VM
   // with.
-  size_t heap_alignment = GCArguments::arguments()->conservative_max_heap_alignment();
+  size_t heap_alignment = GCConfig::arguments()->conservative_max_heap_alignment();
   _conservative_max_heap_alignment = MAX4(heap_alignment,
                                           (size_t)os::vm_allocation_granularity(),
                                           os::max_page_size(),
@@ -1815,10 +1818,7 @@ jint Arguments::set_ergonomics_flags() {
   }
 #endif
 
-  jint gc_result = GCArguments::initialize();
-  if (gc_result != JNI_OK) {
-    return gc_result;
-  }
+  GCConfig::initialize();
 
 #if COMPILER2_OR_JVMCI
   // Shared spaces work fine with other GCs but causes bytecode rewriting
@@ -2176,27 +2176,6 @@ bool Arguments::check_jvmci_args_consistency() {
 }
 #endif //INCLUDE_JVMCI
 
-// Check consistency of GC selection
-bool Arguments::check_gc_consistency() {
-  // Ensure that the user has not selected conflicting sets
-  // of collectors.
-  uint i = 0;
-  if (UseSerialGC)                       i++;
-  if (UseConcMarkSweepGC)                i++;
-  if (UseParallelGC || UseParallelOldGC) i++;
-  if (UseG1GC)                           i++;
-  if (UseShenandoahGC)                   i++;
-  if (i > 1) {
-    jio_fprintf(defaultStream::error_stream(),
-                "Conflicting collector combinations in option list; "
-                "please refer to the release notes for the combinations "
-                "allowed\n");
-    return false;
-  }
-
-  return true;
-}
-
 // Check the consistency of vm_init_args
 bool Arguments::check_vm_args_consistency() {
   // Method for adding checks for flag consistency.
@@ -2211,43 +2190,6 @@ bool Arguments::check_vm_args_consistency() {
                 "not " SIZE_FORMAT "\n",
                 TLABRefillWasteFraction);
     status = false;
-  }
-
-  if (FullGCALot && FLAG_IS_DEFAULT(MarkSweepAlwaysCompactCount)) {
-    MarkSweepAlwaysCompactCount = 1;  // Move objects every gc.
-  }
-
-  if (!(UseParallelGC || UseParallelOldGC) && FLAG_IS_DEFAULT(ScavengeBeforeFullGC)) {
-    FLAG_SET_DEFAULT(ScavengeBeforeFullGC, false);
-  }
-
-  if (GCTimeLimit == 100) {
-    // Turn off gc-overhead-limit-exceeded checks
-    FLAG_SET_DEFAULT(UseGCOverheadLimit, false);
-  }
-
-  status = status && check_gc_consistency();
-
-  // CMS space iteration, which FLSVerifyAllHeapreferences entails,
-  // insists that we hold the requisite locks so that the iteration is
-  // MT-safe. For the verification at start-up and shut-down, we don't
-  // yet have a good way of acquiring and releasing these locks,
-  // which are not visible at the CollectedHeap level. We want to
-  // be able to acquire these locks and then do the iteration rather
-  // than just disable the lock verification. This will be fixed under
-  // bug 4788986.
-  if (UseConcMarkSweepGC && FLSVerifyAllHeapReferences) {
-    if (VerifyDuringStartup) {
-      warning("Heap verification at start-up disabled "
-              "(due to current incompatibility with FLSVerifyAllHeapReferences)");
-      VerifyDuringStartup = false; // Disable verification at start-up
-    }
-
-    if (VerifyBeforeExit) {
-      warning("Heap verification at shutdown disabled "
-              "(due to current incompatibility with FLSVerifyAllHeapReferences)");
-      VerifyBeforeExit = false; // Disable verification at shutdown
-    }
   }
 
   if (PrintNMTStatistics) {
@@ -2801,6 +2743,9 @@ jint Arguments::parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_m
         }
       }
 #endif // !INCLUDE_JVMTI
+    // --enable_preview
+    } else if (match_option(option, "--enable-preview")) {
+      set_enable_preview();
     // -Xnoclassgc
     } else if (match_option(option, "-Xnoclassgc")) {
       if (FLAG_SET_CMDLINE(bool, ClassUnloading, false) != Flag::SUCCESS) {
@@ -3327,68 +3272,11 @@ void Arguments::fix_appclasspath() {
   }
 }
 
-static bool has_jar_files(const char* directory) {
-  DIR* dir = os::opendir(directory);
-  if (dir == NULL) return false;
-
-  struct dirent *entry;
-  char *dbuf = NEW_C_HEAP_ARRAY(char, os::readdir_buf_size(directory), mtArguments);
-  bool hasJarFile = false;
-  while (!hasJarFile && (entry = os::readdir(dir, (dirent *) dbuf)) != NULL) {
-    const char* name = entry->d_name;
-    const char* ext = name + strlen(name) - 4;
-    hasJarFile = ext > name && (os::file_name_strcmp(ext, ".jar") == 0);
-  }
-  FREE_C_HEAP_ARRAY(char, dbuf);
-  os::closedir(dir);
-  return hasJarFile ;
-}
-
-static int check_non_empty_dirs(const char* path) {
-  const char separator = *os::path_separator();
-  const char* const end = path + strlen(path);
-  int nonEmptyDirs = 0;
-  while (path < end) {
-    const char* tmp_end = strchr(path, separator);
-    if (tmp_end == NULL) {
-      if (has_jar_files(path)) {
-        nonEmptyDirs++;
-        jio_fprintf(defaultStream::output_stream(),
-          "Non-empty directory: %s\n", path);
-      }
-      path = end;
-    } else {
-      char* dirpath = NEW_C_HEAP_ARRAY(char, tmp_end - path + 1, mtArguments);
-      memcpy(dirpath, path, tmp_end - path);
-      dirpath[tmp_end - path] = '\0';
-      if (has_jar_files(dirpath)) {
-        nonEmptyDirs++;
-        jio_fprintf(defaultStream::output_stream(),
-          "Non-empty directory: %s\n", dirpath);
-      }
-      FREE_C_HEAP_ARRAY(char, dirpath);
-      path = tmp_end + 1;
-    }
-  }
-  return nonEmptyDirs;
-}
-
 jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
   // check if the default lib/endorsed directory exists; if so, error
   char path[JVM_MAXPATHLEN];
   const char* fileSep = os::file_separator();
   jio_snprintf(path, JVM_MAXPATHLEN, "%s%slib%sendorsed", Arguments::get_java_home(), fileSep, fileSep);
-
-  if (CheckEndorsedAndExtDirs) {
-    int nonEmptyDirs = 0;
-    // check endorsed directory
-    nonEmptyDirs += check_non_empty_dirs(path);
-    // check the extension directories
-    nonEmptyDirs += check_non_empty_dirs(Arguments::get_ext_dirs());
-    if (nonEmptyDirs > 0) {
-      return JNI_ERR;
-    }
-  }
 
   DIR* dir = os::opendir(path);
   if (dir != NULL) {
@@ -3488,11 +3376,24 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
     // Disable biased locking now as it interferes with the clean up of
     // the archived Klasses and Java string objects (at dump time only).
     UseBiasedLocking = false;
+
+    // Always verify non-system classes during CDS dump
+    if (!BytecodeVerificationRemote) {
+      BytecodeVerificationRemote = true;
+      log_info(cds)("All non-system classes will be verified (-Xverify:remote) during CDS dump time.");
+    }
   }
   if (UseSharedSpaces && patch_mod_javabase) {
     no_shared_spaces("CDS is disabled when " JAVA_BASE_NAME " module is patched.");
   }
+  if (UseSharedSpaces && !DumpSharedSpaces && check_unsupported_cds_runtime_properties()) {
+    FLAG_SET_DEFAULT(UseSharedSpaces, false);
+  }
 #endif
+
+#ifndef CAN_SHOW_REGISTERS_ON_ASSERT
+  UNSUPPORTED_OPTION(ShowRegistersOnAssert);
+#endif // CAN_SHOW_REGISTERS_ON_ASSERT
 
   return JNI_OK;
 }
@@ -4242,11 +4143,6 @@ jint Arguments::apply_ergo() {
 
   set_shared_spaces_flags();
 
-  // Check the GC selections again.
-  if (!check_gc_consistency()) {
-    return JNI_EINVAL;
-  }
-
   if (TieredCompilation) {
     set_tiered_flags();
   } else {
@@ -4279,7 +4175,7 @@ jint Arguments::apply_ergo() {
   // Set heap size based on available physical memory
   set_heap_size();
 
-  GCArguments::arguments()->initialize_flags();
+  GCConfig::arguments()->initialize();
 
   // Initialize Metaspace flags and alignments
   Metaspace::ergo_initialize();

@@ -167,10 +167,6 @@ inline bool JavaThread::stack_guards_enabled() {
   return _stack_guard_state == stack_guard_enabled;
 }
 
-char JavaThread::gc_state() const {
-  return _gc_state;
-}
-
 // The release make sure this store is done after storing the handshake
 // operation or global state
 inline void JavaThread::set_polling_page(void* poll_value) {

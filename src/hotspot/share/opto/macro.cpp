@@ -49,6 +49,9 @@
 #include "opto/subnode.hpp"
 #include "opto/type.hpp"
 #include "runtime/sharedRuntime.hpp"
+#if INCLUDE_ALL_GCS
+#include "gc/g1/g1ThreadLocalData.hpp"
+#endif // INCLUDE_ALL_GCS
 
 
 //
@@ -286,9 +289,22 @@ void PhaseMacroExpand::eliminate_card_mark(Node* p2x) {
           ind = 2;
         }
         if (this_region->in(ind)->is_IfFalse() &&
-            this_region->in(ind)->in(0)->is_g1_marking_if(&_igvn)) {
-          Node* cmpx = this_region->in(ind)->in(0)->in(1)->in(1);
-          _igvn.replace_node(cmpx, makecon(TypeInt::CC_EQ));
+            this_region->in(ind)->in(0)->Opcode() == Op_If) {
+          Node* bol = this_region->in(ind)->in(0)->in(1);
+          assert(bol->is_Bool(), "");
+          cmpx = bol->in(1);
+          if (bol->as_Bool()->_test._test == BoolTest::ne &&
+              cmpx->is_Cmp() && cmpx->in(2) == intcon(0) &&
+              cmpx->in(1)->is_Load()) {
+            Node* adr = cmpx->in(1)->as_Load()->in(MemNode::Address);
+            const int marking_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
+                                                        : ShenandoahThreadLocalData::satb_mark_queue_active_offset());
+            if (adr->is_AddP() && adr->in(AddPNode::Base) == top() &&
+                adr->in(AddPNode::Address)->Opcode() == Op_ThreadLocal &&
+                adr->in(AddPNode::Offset) == MakeConX(marking_offset)) {
+              _igvn.replace_node(cmpx, makecon(TypeInt::CC_EQ));
+            }
+          }
         }
       }
     } else {

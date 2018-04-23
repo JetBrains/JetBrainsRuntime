@@ -27,6 +27,7 @@
 #include "gc/shared/accessBarrierSupport.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahSATBMarkQueueSet.hpp"
 
 class ShenandoahBarrierSet: public BarrierSet {
 private:
@@ -38,11 +39,17 @@ private:
     WRITE_BARRIER_ALWAYS_ENQUEUE
   };
 
+  static ShenandoahSATBMarkQueueSet _satb_mark_queue_set;
+
   ShenandoahHeap* _heap;
 
 public:
 
   ShenandoahBarrierSet(ShenandoahHeap* heap);
+
+  static SATBMarkQueueSet& satb_mark_queue_set() {
+    return _satb_mark_queue_set;
+  }
 
   void print_on(outputStream* st) const;
 
@@ -78,6 +85,8 @@ public:
   void write_ref_field_work(void* v, oop o, bool release = false);
   void write_region(MemRegion mr);
 
+  virtual void on_thread_create(Thread* thread);
+  virtual void on_thread_destroy(Thread* thread);
   virtual void on_thread_attach(JavaThread* thread);
   virtual void on_thread_detach(JavaThread* thread);
 
@@ -109,22 +118,6 @@ private:
   void write_ref_array_loop(HeapWord* start, size_t count);
 
   oop write_barrier_impl(oop obj);
-
-#ifndef CC_INTERP
-public:
-  void interpreter_read_barrier(MacroAssembler* masm, Register dst);
-  void interpreter_read_barrier_not_null(MacroAssembler* masm, Register dst);
-  void interpreter_write_barrier(MacroAssembler* masm, Register dst);
-  void interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
-  void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
-
-private:
-  void interpreter_read_barrier_impl(MacroAssembler* masm, Register dst);
-  void interpreter_read_barrier_not_null_impl(MacroAssembler* masm, Register dst);
-  void interpreter_write_barrier_impl(MacroAssembler* masm, Register dst);
-  void interpreter_storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp);
-
-#endif
 
   static void keep_alive_if_weak(DecoratorSet decorators, oop value) {
     assert((decorators & ON_UNKNOWN_OOP_REF) == 0, "Reference strength must be known");
@@ -283,6 +276,10 @@ public:
 
     static oop resolve(oop obj) {
       return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set())->write_barrier(obj);
+    }
+
+    static bool equals(oop o1, oop o2) {
+      return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set())->obj_equals(o1, o2);
     }
 
   };

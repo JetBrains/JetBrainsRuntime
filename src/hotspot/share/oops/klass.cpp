@@ -35,6 +35,7 @@
 #include "memory/metaspaceShared.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
+#include "oops/compressedOops.inline.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/oop.inline.hpp"
@@ -61,11 +62,13 @@ bool Klass::is_cloneable() const {
 }
 
 void Klass::set_is_cloneable() {
-  if (name() != vmSymbols::java_lang_invoke_MemberName()) {
-    _access_flags.set_is_cloneable_fast();
-  } else {
+  if (name() == vmSymbols::java_lang_invoke_MemberName()) {
     assert(is_final(), "no subclasses allowed");
     // MemberName cloning should not be intrinsified and always happen in JVM_Clone.
+  } else if (is_instance_klass() && InstanceKlass::cast(this)->reference_type() != REF_NONE) {
+    // Reference cloning should not be intrinsified and always happen in JVM_Clone.
+  } else {
+    _access_flags.set_is_cloneable_fast();
   }
 }
 
@@ -569,7 +572,7 @@ void Klass::restore_unshareable_info(ClassLoaderData* loader_data, Handle protec
 oop Klass::archived_java_mirror_raw() {
   assert(DumpSharedSpaces, "called only during runtime");
   assert(has_raw_archived_mirror(), "must have raw archived mirror");
-  return oopDesc::decode_heap_oop(_archived_mirror);
+  return CompressedOops::decode(_archived_mirror);
 }
 
 // Used at CDS runtime to get the archived mirror from shared class. Uses GC barrier.
@@ -582,7 +585,7 @@ oop Klass::archived_java_mirror() {
 // No GC barrier
 void Klass::set_archived_java_mirror_raw(oop m) {
   assert(DumpSharedSpaces, "called only during runtime");
-  _archived_mirror = oopDesc::encode_heap_oop(m);
+  _archived_mirror = CompressedOops::encode(m);
 }
 #endif // INCLUDE_CDS_JAVA_HEAP
 

@@ -41,12 +41,12 @@ void ShenandoahStrDedupQueue::push(oop java_string) {
 
 template <class T>
 void ShenandoahStrDedupQueueCleanupClosure::do_oop_work(T* p) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     assert(_heap->is_in(obj), "Must be in the heap");
     if (!_heap->is_marked_next(obj)) {
-      oopDesc::encode_store_heap_oop(p, oop());
+      RawAccess<OOP_NOT_NULL>::oop_store(p, oop());
     }
   }
 }

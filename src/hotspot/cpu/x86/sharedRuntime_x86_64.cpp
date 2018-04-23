@@ -41,6 +41,7 @@
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/vframeArray.hpp"
 #include "utilities/align.hpp"
+#include "utilities/formatBuffer.hpp"
 #include "vm_version_x86.hpp"
 #include "vmreg_x86.inline.hpp"
 #ifdef COMPILER1
@@ -2473,7 +2474,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
 
-    BarrierSet::barrier_set()->interpreter_write_barrier(masm, obj_reg);
+    __ resolve_for_write(0, obj_reg);
     if (UseBiasedLocking) {
       __ biased_locking_enter(lock_reg, obj_reg, swap_reg, rscratch1, false, lock_done, &slow_path_lock);
     }
@@ -2655,7 +2656,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
     // Get locked oop from the handle we passed to jni
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
-    BarrierSet::barrier_set()->interpreter_write_barrier(masm, obj_reg);
+    __ resolve_for_write(0, obj_reg);
 
     Label done;
 

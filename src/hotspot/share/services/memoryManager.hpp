@@ -27,6 +27,7 @@
 
 #include "gc/shared/gcCause.hpp"
 #include "memory/allocation.hpp"
+#include "oops/oop.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "runtime/handles.hpp"
 #include "runtime/timer.hpp"

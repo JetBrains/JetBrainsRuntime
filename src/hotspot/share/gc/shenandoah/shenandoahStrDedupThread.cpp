@@ -71,7 +71,7 @@ void ShenandoahStrDedupThread::run_service() {
           stats.inc_inspected();
           assert(!ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must not at Shenandoah safepoint");
 
-          if (oopDesc::is_null(java_string) ||
+          if (CompressedOops::is_null(java_string) ||
               !ShenandoahStringDedup::is_candidate(java_string)) {
             stats.inc_skipped();
           } else {

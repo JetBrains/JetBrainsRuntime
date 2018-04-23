@@ -403,11 +403,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBLCMS, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \
-    LDFLAGS_solaris := /usr/lib$(OPENJDK_TARGET_CPU_ISADIR)/libm.so.2, \
-    LIBS_unix := -lawt -ljvm -ljava $(LCMS_LIBS), \
-    LIBS_linux := $(LIBM), \
-    LIBS_macosx := $(LIBM), \
-    LIBS_aix := $(LIBM),\
+    LIBS_unix := -lawt -ljvm -ljava $(LCMS_LIBS) $(LIBM), \
     LIBS_windows := $(WIN_AWT_LIB) $(WIN_JAVA_LIB), \
 ))
 
@@ -543,7 +539,7 @@ else
       DISABLED_WARNINGS_solstudio := \
          E_STATEMENT_NOT_REACHED \
          E_END_OF_LOOP_CODE_NOT_REACHED, \
-      DISABLED_WARNINGS_microsoft := 4267 4244, \
+      DISABLED_WARNINGS_microsoft := 4267 4244 4312, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
           $(call SET_SHARED_LIBRARY_ORIGIN), \
   ))
@@ -623,6 +619,10 @@ ifeq ($(TOOLCHAIN_TYPE), gcc)
   BUILD_LIBFONTMANAGER_ExtensionSubtables.cpp_CXXFLAGS := -fno-strict-aliasing
 endif
 
+# LDFLAGS clarification:
+#   Filter relevant linker flags disallowing unresolved symbols as we cannot
+#   build-time decide to which library to link against (libawt_headless or
+#   libawt_xawt). See JDK-8196516 for details.
 $(eval $(call SetupJdkLibrary, BUILD_LIBFONTMANAGER, \
     NAME := fontmanager, \
     SRC := $(LIBFONTMANAGER_SRC), \
@@ -648,7 +648,8 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBFONTMANAGER, \
         truncwarn wvarhidenmem wvarhidemem wbadlkginit identexpected \
         hidevf w_novirtualdescr arrowrtn2, \
     DISABLED_WARNINGS_microsoft := 4267 4244 4018 4090 4996 4146 4334 4819 4101, \
-    LDFLAGS := $(subst -Wl$(COMMA)-z$(COMMA)defs,,$(LDFLAGS_JDKLIB)) $(LDFLAGS_CXX_JDK) \
+    LDFLAGS := $(subst -Xlinker -z -Xlinker defs,, \
+        $(subst -Wl$(COMMA)-z$(COMMA)defs,,$(LDFLAGS_JDKLIB))) $(LDFLAGS_CXX_JDK) \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_unix := -L$(INSTALL_LIBRARIES_HERE), \
     LIBS := $(BUILD_LIBFONTMANAGER_FONTLIB), \

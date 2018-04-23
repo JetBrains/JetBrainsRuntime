@@ -24,23 +24,20 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP
 
-#include "runtime/globals.hpp"
-
-#define SHENANDOAH_FLAGS(develop, \
-                         develop_pd, \
-                         product, \
-                         product_pd, \
-                         diagnostic, \
-                         experimental, \
-                         notproduct, \
-                         manageable, \
-                         product_rw, \
-                         range, \
-                         constraint, \
-                         writeable) \
-                                                                            \
-  product(bool, UseShenandoahGC, false,                                     \
-          "Use the Shenandoah garbage collector")                           \
+#define GC_SHENANDOAH_FLAGS(develop,                                        \
+                            develop_pd,                                     \
+                            product,                                        \
+                            product_pd,                                     \
+                            diagnostic,                                     \
+                            diagnostic_pd,                                  \
+                            experimental,                                   \
+                            notproduct,                                     \
+                            manageable,                                     \
+                            product_rw,                                     \
+                            lp64_product,                                   \
+                            range,                                          \
+                            constraint,                                     \
+                            writeable)                                      \
                                                                             \
   product(bool, ShenandoahOptimizeStaticFinals, true,                       \
           "Optimize barriers on static final fields. "                      \
@@ -441,20 +438,6 @@
   diagnostic(bool, ShenandoahAllowMixedAllocs, true,                        \
           "Allow mixing mutator and collector allocations in a single "     \
           "region")                                                         \
-                                                                            \
 
-
-SHENANDOAH_FLAGS(DECLARE_DEVELOPER_FLAG, \
-                 DECLARE_PD_DEVELOPER_FLAG,     \
-                 DECLARE_PRODUCT_FLAG,          \
-                 DECLARE_PD_PRODUCT_FLAG,       \
-                 DECLARE_DIAGNOSTIC_FLAG,       \
-                 DECLARE_EXPERIMENTAL_FLAG,     \
-                 DECLARE_NOTPRODUCT_FLAG,       \
-                 DECLARE_MANAGEABLE_FLAG,       \
-                 DECLARE_PRODUCT_RW_FLAG,       \
-                 IGNORE_RANGE,                  \
-                 IGNORE_CONSTRAINT, \
-                 IGNORE_WRITEABLE)
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

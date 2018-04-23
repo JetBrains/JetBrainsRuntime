@@ -38,7 +38,7 @@
 #include "gc/parallel/psScavenge.hpp"
 #include "gc/parallel/vmPSOperations.hpp"
 #include "gc/shared/gcHeapSummary.hpp"
-#include "gc/shared/gcLocker.inline.hpp"
+#include "gc/shared/gcLocker.hpp"
 #include "gc/shared/gcWhen.hpp"
 #include "logging/log.hpp"
 #include "oops/oop.inline.hpp"
@@ -73,7 +73,7 @@ jint ParallelScavengeHeap::initialize() {
   card_table->initialize();
   CardTableBarrierSet* const barrier_set = new CardTableBarrierSet(card_table);
   barrier_set->initialize();
-  set_barrier_set(barrier_set);
+  BarrierSet::set_barrier_set(barrier_set);
 
   // Make up the generations
   // Calculate the maximum size that a generation can grow.  This
@@ -622,12 +622,12 @@ void ParallelScavengeHeap::trace_heap(GCWhen::Type when, const GCTracer* gc_trac
 ParallelScavengeHeap* ParallelScavengeHeap::heap() {
   CollectedHeap* heap = Universe::heap();
   assert(heap != NULL, "Uninitialized access to ParallelScavengeHeap::heap()");
-  assert(heap->kind() == CollectedHeap::ParallelScavengeHeap, "Not a ParallelScavengeHeap");
+  assert(heap->kind() == CollectedHeap::Parallel, "Invalid name");
   return (ParallelScavengeHeap*)heap;
 }
 
 CardTableBarrierSet* ParallelScavengeHeap::barrier_set() {
-  return barrier_set_cast<CardTableBarrierSet>(CollectedHeap::barrier_set());
+  return barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
 }
 
 PSCardTable* ParallelScavengeHeap::card_table() {

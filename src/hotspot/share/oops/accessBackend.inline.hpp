@@ -27,7 +27,8 @@
 
 #include "oops/access.hpp"
 #include "oops/accessBackend.hpp"
-#include "oops/oop.inline.hpp"
+#include "oops/compressedOops.inline.hpp"
+#include "oops/oopsHierarchy.hpp"
 
 template <DecoratorSet decorators>
 template <DecoratorSet idecorators, typename T>
@@ -35,9 +36,9 @@ inline typename EnableIf<
   AccessInternal::MustConvertCompressedOop<idecorators, T>::value, T>::type
 RawAccessBarrier<decorators>::decode_internal(typename HeapOopType<idecorators>::type value) {
   if (HasDecorator<decorators, OOP_NOT_NULL>::value) {
-    return oopDesc::decode_heap_oop_not_null(value);
+    return CompressedOops::decode_not_null(value);
   } else {
-    return oopDesc::decode_heap_oop(value);
+    return CompressedOops::decode(value);
   }
 }
 
@@ -48,9 +49,9 @@ inline typename EnableIf<
   typename HeapOopType<idecorators>::type>::type
 RawAccessBarrier<decorators>::encode_internal(T value) {
   if (HasDecorator<decorators, OOP_NOT_NULL>::value) {
-    return oopDesc::encode_heap_oop_not_null(value);
+    return CompressedOops::encode_not_null(value);
   } else {
-    return oopDesc::encode_heap_oop(value);
+    return CompressedOops::encode(value);
   }
 }
 
@@ -315,7 +316,7 @@ inline void RawAccessBarrier<decorators>::clone(oop src, oop dst, size_t size) {
                                             reinterpret_cast<jlong*>((oopDesc*)dst),
                                             align_object_size(size) / HeapWordsPerLong);
   // Clear the header
-  dst->init_mark();
+  dst->init_mark_raw();
 }
 
 #endif // SHARE_VM_RUNTIME_ACCESSBACKEND_INLINE_HPP

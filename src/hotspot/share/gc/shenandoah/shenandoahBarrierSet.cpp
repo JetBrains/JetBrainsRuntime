@@ -31,6 +31,8 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 
+ShenandoahSATBMarkQueueSet ShenandoahBarrierSet::_satb_mark_queue_set;
+
 template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
 class ShenandoahUpdateRefsForOopClosure: public ExtendedOopClosure {
 private:
@@ -41,13 +43,13 @@ private:
     if (STOREVAL_WRITE_BARRIER) {
       bool evac;
       o = _heap->evac_update_with_forwarded(p, evac);
-      if ((ALWAYS_ENQUEUE || evac) && !oopDesc::is_null(o)) {
+      if ((ALWAYS_ENQUEUE || evac) && !CompressedOops::is_null(o)) {
         ShenandoahBarrierSet::enqueue(o);
       }
     } else {
       o = _heap->maybe_update_with_forwarded(p);
     }
-    if (UPDATE_MATRIX && !oopDesc::is_null(o)) {
+    if (UPDATE_MATRIX && !CompressedOops::is_null(o)) {
       _heap->connection_matrix()->set_connected(p, o);
     }
   }
@@ -166,9 +168,9 @@ void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
       (ShenandoahConditionalSATBBarrier && _heap->is_concurrent_mark_in_progress())) {
     T* elem_ptr = dst;
     for (int i = 0; i < count; i++, elem_ptr++) {
-      T heap_oop = oopDesc::load_heap_oop(elem_ptr);
-      if (!oopDesc::is_null(heap_oop)) {
-        enqueue(oopDesc::decode_heap_oop_not_null(heap_oop));
+      T heap_oop = RawAccess<>::oop_load(elem_ptr);
+      if (!CompressedOops::is_null(heap_oop)) {
+        enqueue(CompressedOops::decode_not_null(heap_oop));
       }
     }
   }
@@ -190,12 +192,12 @@ template <class T>
 inline void ShenandoahBarrierSet::inline_write_ref_field_pre(T* field, oop new_val) {
   shenandoah_assert_not_in_cset_loc_except(field, _heap->cancelled_concgc());
   if (_heap->is_concurrent_mark_in_progress()) {
-    T heap_oop = oopDesc::load_heap_oop(field);
-    if (!oopDesc::is_null(heap_oop)) {
-      enqueue(oopDesc::decode_heap_oop(heap_oop));
+    T heap_oop = RawAccess<>::oop_load(field);
+    if (!CompressedOops::is_null(heap_oop)) {
+      enqueue(CompressedOops::decode(heap_oop));
     }
   }
-  if (UseShenandoahMatrix && ! oopDesc::is_null(new_val)) {
+  if (UseShenandoahMatrix && ! CompressedOops::is_null(new_val)) {
     ShenandoahConnectionMatrix* matrix = _heap->connection_matrix();
     matrix->set_connected(field, new_val);
   }
@@ -255,7 +257,7 @@ void ShenandoahBarrierSet::write_region(MemRegion mr) {
 }
 
 oop ShenandoahBarrierSet::read_barrier(oop src) {
-  if (ShenandoahReadBarrier) {
+  if (ShenandoahReadBarrier && _heap->has_forwarded_objects()) {
     return ShenandoahBarrierSet::resolve_forwarded(src);
   } else {
     return src;
@@ -285,7 +287,7 @@ IRT_END
 
 oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
-  if (!oopDesc::is_null(obj)) {
+  if (!CompressedOops::is_null(obj)) {
     bool evac_in_progress = _heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
     oop fwd = resolve_forwarded_not_null(obj);
     if (evac_in_progress &&
@@ -318,7 +320,7 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
   if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
     obj = write_barrier(obj);
   }
-  if (ShenandoahStoreValEnqueueBarrier && !oopDesc::is_null(obj)) {
+  if (ShenandoahStoreValEnqueueBarrier && !CompressedOops::is_null(obj)) {
     enqueue(obj);
   }
   if (ShenandoahStoreValReadBarrier) {
@@ -339,7 +341,17 @@ void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
 
 void ShenandoahBarrierSet::enqueue(oop obj) {
   shenandoah_assert_not_forwarded_if(NULL, obj, ShenandoahHeap::heap()->is_concurrent_traversal_in_progress());
-  G1BarrierSet::enqueue(obj);
+  // Nulls should have been already filtered.
+  assert(oopDesc::is_oop(obj, true), "Error");
+
+  if (!_satb_mark_queue_set.is_active()) return;
+  Thread* thr = Thread::current();
+  if (thr->is_Java_thread()) {
+    ShenandoahThreadLocalData::satb_mark_queue(thr).enqueue(obj);
+  } else {
+    MutexLockerEx x(Shared_SATB_Q_lock, Mutex::_no_safepoint_check_flag);
+    _satb_mark_queue_set.shared_satb_queue()->enqueue(obj);
+  }
 }
 
 #ifdef ASSERT
@@ -348,18 +360,29 @@ void ShenandoahBarrierSet::verify_safe_oop(oop p) {
 }
 #endif
 
+void ShenandoahBarrierSet::on_thread_create(Thread* thread) {
+  // Create thread local data
+  ShenandoahThreadLocalData::create(thread);
+}
+
+void ShenandoahBarrierSet::on_thread_destroy(Thread* thread) {
+  // Destroy thread local data
+  ShenandoahThreadLocalData::destroy(thread);
+}
+
+
 void ShenandoahBarrierSet::on_thread_attach(JavaThread* thread) {
   assert(!SafepointSynchronize::is_at_safepoint(), "We should not be at a safepoint");
-  assert(!thread->satb_mark_queue().is_active(), "SATB queue should not be active");
-  assert(thread->satb_mark_queue().is_empty(), "SATB queue should be empty");
-  if (thread->satb_mark_queue_set().is_active()) {
-    thread->satb_mark_queue().set_active(true);
+  assert(!ShenandoahThreadLocalData::satb_mark_queue(thread).is_active(), "SATB queue should not be active");
+  assert(ShenandoahThreadLocalData::satb_mark_queue(thread).is_empty(), "SATB queue should be empty");
+  if (ShenandoahBarrierSet::satb_mark_queue_set().is_active()) {
+    ShenandoahThreadLocalData::satb_mark_queue(thread).set_active(true);
   }
-  thread->set_gc_state(JavaThread::gc_state_global());
+  ShenandoahThreadLocalData::set_gc_state(thread, ShenandoahHeap::heap()->gc_state());
 }
 
 void ShenandoahBarrierSet::on_thread_detach(JavaThread* thread) {
-  thread->satb_mark_queue().flush();
+  ShenandoahThreadLocalData::satb_mark_queue(thread).flush();
   if (UseTLAB && thread->gclab().is_initialized()) {
     thread->gclab().make_parsable(true);
   }

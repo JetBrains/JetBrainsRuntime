@@ -1117,6 +1117,14 @@ class ClassHierarchyWalker {
     _signature = NULL;
     initialize(participant);
   }
+  ClassHierarchyWalker(Klass* participants[], int num_participants) {
+    _name      = NULL;
+    _signature = NULL;
+    initialize(NULL);
+    for (int i = 0; i < num_participants; ++i) {
+      add_participant(participants[i]);
+    }
+  }
 
   // This is common code for two searches:  One for concrete subtypes,
   // the other for concrete method implementations and overrides.
@@ -1222,6 +1230,24 @@ class ClassHierarchyWalker {
       // Search class hierarchy first.
       Method* m = InstanceKlass::cast(k)->find_instance_method(_name, _signature);
       if (!Dependencies::is_concrete_method(m, k)) {
+        // Check for re-abstraction of method
+        if (!k->is_interface() && m != NULL && m->is_abstract()) {
+          // Found a matching abstract method 'm' in the class hierarchy.
+          // This is fine iff 'k' is an abstract class and all concrete subtypes
+          // of 'k' override 'm' and are participates of the current search.
+          ClassHierarchyWalker wf(_participants, _num_participants);
+          Klass* w = wf.find_witness_subtype(k);
+          if (w != NULL) {
+            Method* wm = InstanceKlass::cast(w)->find_instance_method(_name, _signature);
+            if (!Dependencies::is_concrete_method(wm, w)) {
+              // Found a concrete subtype 'w' which does not override abstract method 'm'.
+              // Bail out because 'm' could be called with 'w' as receiver (leading to an
+              // AbstractMethodError) and thus the method we are looking for is not unique.
+              _found_methods[_num_participants] = m;
+              return true;
+            }
+          }
+        }
         // Check interface defaults also, if any exist.
         Array<Method*>* default_methods = InstanceKlass::cast(k)->default_methods();
         if (default_methods == NULL)
@@ -1812,18 +1838,18 @@ Klass* Dependencies::check_has_no_finalizable_subclasses(Klass* ctxk, KlassDepCh
 }
 
 Klass* Dependencies::check_call_site_target_value(oop call_site, oop method_handle, CallSiteDepChange* changes) {
-  assert(!oopDesc::is_null(call_site), "sanity");
-  assert(!oopDesc::is_null(method_handle), "sanity");
+  assert(call_site != NULL, "sanity");
+  assert(method_handle != NULL, "sanity");
   assert(call_site->is_a(SystemDictionary::CallSite_klass()),     "sanity");
 
   if (changes == NULL) {
     // Validate all CallSites
-    if (! oopDesc::equals(java_lang_invoke_CallSite::target(call_site), method_handle))
+    if (!oopDesc::equals(java_lang_invoke_CallSite::target(call_site), method_handle))
       return call_site->klass();  // assertion failed
   } else {
     // Validate the given CallSite
-    if (oopDesc::equals(call_site, changes->call_site()) && ! oopDesc::equals(java_lang_invoke_CallSite::target(call_site), changes->method_handle())) {
-      assert(! oopDesc::equals(method_handle, changes->method_handle()), "must be");
+    if (oopDesc::equals(call_site, changes->call_site()) && !oopDesc::equals(java_lang_invoke_CallSite::target(call_site), changes->method_handle())) {
+      assert(!oopDesc::equals(method_handle, changes->method_handle()), "must be");
       return call_site->klass();  // assertion failed
     }
   }

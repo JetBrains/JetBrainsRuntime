@@ -25,16 +25,33 @@
 #include "precompiled.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "oops/oop.hpp"
+#include "gc/shared/barrierSetAssembler.hpp"
+#include "runtime/thread.hpp"
+#include "utilities/macros.hpp"
 
-BarrierSet* BarrierSet::_bs = NULL;
+BarrierSet* BarrierSet::_barrier_set = NULL;
 
-bool BarrierSet::obj_equals(oop obj1, oop obj2) {
-  return oopDesc::unsafe_equals(obj1, obj2);
+void BarrierSet::set_barrier_set(BarrierSet* barrier_set) {
+  assert(_barrier_set == NULL, "Already initialized");
+  _barrier_set = barrier_set;
+
+  // The barrier set was not initialized when the this thread (the main thread)
+  // was created, so the call to BarrierSet::on_thread_create() had to be deferred
+  // until we have a barrier set. Now we have a barrier set, so we make the call.
+  _barrier_set->on_thread_create(Thread::current());
+}
+
+// Called from init.cpp
+void gc_barrier_stubs_init() {
+  BarrierSet* bs = BarrierSet::barrier_set();
+#ifndef ZERO
+  BarrierSetAssembler* bs_assembler = bs->barrier_set_assembler();
+  bs_assembler->barrier_stubs_init();
+#endif
 }
 
 #ifdef ASSERT
 void BarrierSet::verify_safe_oop(oop p) {
   // Do nothing
 }
-
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 // no precompiled headers
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "gc/shared/threadLocalAllocBuffer.inline.hpp"
 #include "interpreter/bytecodeHistogram.hpp"
 #include "interpreter/bytecodeInterpreter.hpp"
 #include "interpreter/bytecodeInterpreter.inline.hpp"
@@ -688,7 +689,7 @@ BytecodeInterpreter::run(interpreterState istate) {
             if (hash != markOopDesc::no_hash) {
               header = header->copy_set_hash(hash);
             }
-            if (Atomic::cmpxchg(header, rcvr->mark_addr(), mark) == mark) {
+            if (rcvr->cas_set_mark(header, mark) == mark) {
               if (PrintBiasedLockingStatistics)
                 (*BiasedLocking::revoked_lock_entry_count_addr())++;
             }
@@ -698,7 +699,7 @@ BytecodeInterpreter::run(interpreterState istate) {
             if (hash != markOopDesc::no_hash) {
               new_header = new_header->copy_set_hash(hash);
             }
-            if (Atomic::cmpxchg(new_header, rcvr->mark_addr(), mark) == mark) {
+            if (rcvr->cas_set_mark(new_header, mark) == mark) {
               if (PrintBiasedLockingStatistics) {
                 (* BiasedLocking::rebiased_lock_entry_count_addr())++;
               }
@@ -717,7 +718,7 @@ BytecodeInterpreter::run(interpreterState istate) {
             markOop new_header = (markOop) ((uintptr_t) header | thread_ident);
             // Debugging hint.
             DEBUG_ONLY(mon->lock()->set_displaced_header((markOop) (uintptr_t) 0xdeaddead);)
-            if (Atomic::cmpxchg(new_header, rcvr->mark_addr(), header) == header) {
+            if (rcvr->cas_set_mark(new_header, header) == header) {
               if (PrintBiasedLockingStatistics) {
                 (* BiasedLocking::anonymously_biased_lock_entry_count_addr())++;
               }
@@ -733,7 +734,7 @@ BytecodeInterpreter::run(interpreterState istate) {
           markOop displaced = rcvr->mark()->set_unlocked();
           mon->lock()->set_displaced_header(displaced);
           bool call_vm = UseHeavyMonitors;
-          if (call_vm || Atomic::cmpxchg((markOop)mon, rcvr->mark_addr(), displaced) != displaced) {
+          if (call_vm || rcvr->cas_set_mark((markOop)mon, displaced) != displaced) {
             // Is it simple recursive case?
             if (!call_vm && THREAD->is_lock_owned((address) displaced->clear_lock_bits())) {
               mon->lock()->set_displaced_header(NULL);
@@ -874,7 +875,7 @@ BytecodeInterpreter::run(interpreterState istate) {
           if (hash != markOopDesc::no_hash) {
             header = header->copy_set_hash(hash);
           }
-          if (Atomic::cmpxchg(header, lockee->mark_addr(), mark) == mark) {
+          if (lockee->cas_set_mark(header, mark) == mark) {
             if (PrintBiasedLockingStatistics) {
               (*BiasedLocking::revoked_lock_entry_count_addr())++;
             }
@@ -885,7 +886,7 @@ BytecodeInterpreter::run(interpreterState istate) {
           if (hash != markOopDesc::no_hash) {
                 new_header = new_header->copy_set_hash(hash);
           }
-          if (Atomic::cmpxchg(new_header, lockee->mark_addr(), mark) == mark) {
+          if (lockee->cas_set_mark(new_header, mark) == mark) {
             if (PrintBiasedLockingStatistics) {
               (* BiasedLocking::rebiased_lock_entry_count_addr())++;
             }
@@ -903,7 +904,7 @@ BytecodeInterpreter::run(interpreterState istate) {
           markOop new_header = (markOop) ((uintptr_t) header | thread_ident);
           // debugging hint
           DEBUG_ONLY(entry->lock()->set_displaced_header((markOop) (uintptr_t) 0xdeaddead);)
-          if (Atomic::cmpxchg(new_header, lockee->mark_addr(), header) == header) {
+          if (lockee->cas_set_mark(new_header, header) == header) {
             if (PrintBiasedLockingStatistics) {
               (* BiasedLocking::anonymously_biased_lock_entry_count_addr())++;
             }
@@ -919,7 +920,7 @@ BytecodeInterpreter::run(interpreterState istate) {
         markOop displaced = lockee->mark()->set_unlocked();
         entry->lock()->set_displaced_header(displaced);
         bool call_vm = UseHeavyMonitors;
-        if (call_vm || Atomic::cmpxchg((markOop)entry, lockee->mark_addr(), displaced) != displaced) {
+        if (call_vm || lockee->cas_set_mark((markOop)entry, displaced) != displaced) {
           // Is it simple recursive case?
           if (!call_vm && THREAD->is_lock_owned((address) displaced->clear_lock_bits())) {
             entry->lock()->set_displaced_header(NULL);
@@ -1815,7 +1816,7 @@ run:
               if (hash != markOopDesc::no_hash) {
                 header = header->copy_set_hash(hash);
               }
-              if (Atomic::cmpxchg(header, lockee->mark_addr(), mark) == mark) {
+              if (lockee->cas_set_mark(header, mark) == mark) {
                 if (PrintBiasedLockingStatistics)
                   (*BiasedLocking::revoked_lock_entry_count_addr())++;
               }
@@ -1826,7 +1827,7 @@ run:
               if (hash != markOopDesc::no_hash) {
                 new_header = new_header->copy_set_hash(hash);
               }
-              if (Atomic::cmpxchg(new_header, lockee->mark_addr(), mark) == mark) {
+              if (lockee->cas_set_mark(new_header, mark) == mark) {
                 if (PrintBiasedLockingStatistics)
                   (* BiasedLocking::rebiased_lock_entry_count_addr())++;
               }
@@ -1846,7 +1847,7 @@ run:
               markOop new_header = (markOop) ((uintptr_t) header | thread_ident);
               // debugging hint
               DEBUG_ONLY(entry->lock()->set_displaced_header((markOop) (uintptr_t) 0xdeaddead);)
-              if (Atomic::cmpxchg(new_header, lockee->mark_addr(), header) == header) {
+              if (lockee->cas_set_mark(new_header, header) == header) {
                 if (PrintBiasedLockingStatistics)
                   (* BiasedLocking::anonymously_biased_lock_entry_count_addr())++;
               }
@@ -1862,7 +1863,7 @@ run:
             markOop displaced = lockee->mark()->set_unlocked();
             entry->lock()->set_displaced_header(displaced);
             bool call_vm = UseHeavyMonitors;
-            if (call_vm || Atomic::cmpxchg((markOop)entry, lockee->mark_addr(), displaced) != displaced) {
+            if (call_vm || lockee->cas_set_mark((markOop)entry, displaced) != displaced) {
               // Is it simple recursive case?
               if (!call_vm && THREAD->is_lock_owned((address) displaced->clear_lock_bits())) {
                 entry->lock()->set_displaced_header(NULL);

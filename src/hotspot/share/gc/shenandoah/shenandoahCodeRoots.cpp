@@ -37,8 +37,8 @@ public:
 private:
   template <class T>
   inline void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (! oopDesc::is_null(o)) {
+    T o = RawAccess<>::oop_load(p);
+    if (! CompressedOops::is_null(o)) {
       _non_null_oops++;
     }
   }
@@ -65,9 +65,9 @@ private:
   template <class T>
   inline void do_oop_work(T* p) {
     if (_has_cset_oops) return;
-    T o = oopDesc::load_heap_oop(p);
-    if (! oopDesc::is_null(o)) {
-      oop obj1 = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (! CompressedOops::is_null(o)) {
+      oop obj1 = CompressedOops::decode_not_null(o);
       if (_heap->in_collection_set(obj1)) {
         _has_cset_oops = true;
       }
@@ -93,13 +93,13 @@ public:
 private:
   template <class T>
   inline void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (! oopDesc::is_null(o)) {
-      oop obj1 = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (! CompressedOops::is_null(o)) {
+      oop obj1 = CompressedOops::decode_not_null(o);
       oop obj2 = BarrierSet::barrier_set()->write_barrier(obj1);
       if (! oopDesc::unsafe_equals(obj1, obj2)) {
         assert (!ShenandoahHeap::heap()->in_collection_set(obj2), "sanity");
-        oopDesc::encode_store_heap_oop(p, obj2);
+        RawAccess<OOP_NOT_NULL>::oop_store(p, obj2);
       }
     }
   }

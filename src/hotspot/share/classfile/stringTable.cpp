@@ -29,7 +29,6 @@
 #include "classfile/stringTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
-#include "gc/shared/gcLocker.inline.hpp"
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/filemap.hpp"
@@ -41,11 +40,11 @@
 #include "runtime/atomic.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/mutexLocker.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "services/diagnosticCommand.hpp"
 #include "utilities/hashtable.inline.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_ALL_GCS
-#include "gc/g1/g1CollectedHeap.hpp"
 #include "gc/g1/g1StringDedup.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #endif

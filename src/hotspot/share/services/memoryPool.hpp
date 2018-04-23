@@ -26,6 +26,7 @@
 #define SHARE_VM_SERVICES_MEMORYPOOL_HPP
 
 #include "memory/heap.hpp"
+#include "oops/oop.hpp"
 #include "services/memoryUsage.hpp"
 #include "utilities/macros.hpp"
 

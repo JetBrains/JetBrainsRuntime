@@ -49,6 +49,7 @@
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/os.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "runtime/thread.hpp"
 #include "services/threadService.hpp"
 #include "utilities/align.hpp"
@@ -2012,9 +2013,12 @@ Klass* ClassVerifier::load_class(Symbol* name, TRAPS) {
     name, Handle(THREAD, loader), Handle(THREAD, protection_domain),
     true, THREAD);
 
-  if (log_is_enabled(Debug, class, resolve)) {
-    InstanceKlass* cur_class = InstanceKlass::cast(current_class());
-    Verifier::trace_class_resolution(kls, cur_class);
+  if (kls != NULL) {
+    current_class()->class_loader_data()->record_dependency(kls);
+    if (log_is_enabled(Debug, class, resolve)) {
+      InstanceKlass* cur_class = InstanceKlass::cast(current_class());
+      Verifier::trace_class_resolution(kls, cur_class);
+    }
   }
   return kls;
 }

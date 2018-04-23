@@ -178,14 +178,15 @@ tier1_gc = \
   :tier1_gc_1 \
   :tier1_gc_2 \
   :tier1_gc_gcold \
-  :tier1_gc_gcbasher 
+  :tier1_gc_gcbasher
 
 hotspot_not_fast_gc = \
   :hotspot_gc \
   -:tier1_gc
 
 tier1_gc_1 = \
-  gc/g1/
+  gc/g1/ \
+  -gc/g1/ihop/TestIHOPErgo.java
 
 tier1_gc_2 = \
   sanity/ExecuteInternalVMTests.java \
@@ -211,7 +212,7 @@ tier1_gc_gcbasher = \
 
 tier1_runtime = \
   runtime/ \
- -runtime/6626217/Test6626217.sh \
+ -runtime/6626217/bug_21227.java \
  -runtime/7100935 \
  -runtime/7158988/FieldMonitor.java \
  -runtime/CommandLine/OptionsValidation/TestOptionsWithRanges.java \
@@ -254,7 +255,8 @@ tier1_runtime = \
  -runtime/containers/ \
   sanity/ \
   testlibrary_tests/TestMutuallyExclusivePlatformPredicates.java \
- -:tier1_runtime_appcds_exclude
+ -:tier1_runtime_appcds_exclude \
+ -runtime/signal
 
 hotspot_cds = \
   runtime/SharedArchiveFile/ \
@@ -278,7 +280,9 @@ tier1_runtime_appcds_exclude = \
 tier1_serviceability = \
   serviceability/dcmd/compiler \
   serviceability/logging \
-  serviceability/sa
+  serviceability/sa \
+  -serviceability/sa/ClhsdbScanOops.java \
+  -serviceability/sa/TestHeapDumpForLargeArray.java
 
 tier1 = \
   :tier1_common \
@@ -295,7 +299,9 @@ hotspot_tier2_runtime = \
  -runtime/containers/ \
  -:tier1_runtime \
  -:tier1_serviceability \
- -:hotspot_tier2_runtime_platform_agnostic
+ -:hotspot_tier2_runtime_platform_agnostic \
+ -runtime/signal \
+ -runtime/NMT/MallocStressTest.java
 
 hotspot_tier2_runtime_platform_agnostic = \
   runtime/SelectionResolution \
@@ -324,4 +330,3 @@ hotspot_rest_runtime = \
   -:tier1_runtime_appcds_exclude \
   -:hotspot_nmt \
   -:hotspot_tier2_runtime_platform_agnostic
-

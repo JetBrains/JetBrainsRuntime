@@ -24,6 +24,7 @@
 #include "precompiled.hpp"
 
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
 
 ShenandoahWorkerScope::ShenandoahWorkerScope(WorkGang* workers, uint nworkers) :
@@ -59,6 +60,6 @@ AbstractGangWorker* ShenandoahWorkGang::install_worker(uint which) {
   if (_initialize_gclab) {
     worker->gclab().initialize(true);
   }
-
+  ShenandoahThreadLocalData::create(worker);
   return worker;
 }

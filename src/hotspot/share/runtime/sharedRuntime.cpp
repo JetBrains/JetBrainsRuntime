@@ -36,6 +36,7 @@
 #include "compiler/abstractCompiler.hpp"
 #include "compiler/compileBroker.hpp"
 #include "compiler/disassembler.hpp"
+#include "gc/shared/barrierSet.hpp"
 #include "gc/shared/gcLocker.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "interpreter/interpreter.hpp"
@@ -76,6 +77,9 @@
 #ifdef COMPILER1
 #include "c1/c1_Runtime1.hpp"
 #endif
+#if INCLUDE_ALL_GCS
+#include "gc/g1/g1ThreadLocalData.hpp"
+#endif // INCLUDE_ALL_GCS
 
 // Shared stub locations
 RuntimeStub*        SharedRuntime::_wrong_method_blob;
@@ -215,12 +219,16 @@ JRT_LEAF(void, SharedRuntime::g1_wb_pre(oopDesc* orig, JavaThread *thread))
   }
   assert(oopDesc::is_oop(orig, true /* ignore mark word */), "Error");
   // store the original value that was in the field reference
-  thread->satb_mark_queue().enqueue(orig);
+  if (UseG1GC) {
+    G1ThreadLocalData::satb_mark_queue(thread).enqueue(orig);
+  } else {
+    ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue(orig);
+  }
 JRT_END
 
 // G1 write-barrier post: executed after a pointer store.
 JRT_LEAF(void, SharedRuntime::g1_wb_post(void* card_addr, JavaThread* thread))
-  thread->dirty_card_queue().enqueue(card_addr);
+  G1ThreadLocalData::dirty_card_queue(thread).enqueue(card_addr);
 JRT_END
 
 // Shenandoah clone barrier: makes sure that references point to to-space
@@ -3169,6 +3177,6 @@ void SharedRuntime::on_slowpath_allocation_exit(JavaThread* thread) {
   oop new_obj = thread->vm_result();
   if (new_obj == NULL) return;
 
-  BarrierSet *bs = Universe::heap()->barrier_set();
+  BarrierSet *bs = BarrierSet::barrier_set();
   bs->on_slowpath_allocation_exit(thread, new_obj);
 }

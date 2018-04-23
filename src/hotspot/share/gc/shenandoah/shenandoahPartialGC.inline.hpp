@@ -29,9 +29,9 @@
 
 template <class T, bool UPDATE_MATRIX>
 void ShenandoahPartialGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     if (_heap->in_collection_set(obj)) {
       oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (oopDesc::unsafe_equals(obj, forw)) {

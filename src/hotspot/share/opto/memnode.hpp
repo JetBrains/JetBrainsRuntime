@@ -25,6 +25,9 @@
 #ifndef SHARE_VM_OPTO_MEMNODE_HPP
 #define SHARE_VM_OPTO_MEMNODE_HPP
 
+#ifdef INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#endif
 #include "opto/multnode.hpp"
 #include "opto/node.hpp"
 #include "opto/opcodes.hpp"
@@ -272,17 +275,9 @@ public:
   // Helper function to allow a raw load without control edge for some cases
   static bool is_immutable_value(Node* adr);
 #endif
-
-  virtual bool is_g1_marking_load() const {
-    const int marking_offset = in_bytes(JavaThread::satb_mark_queue_offset() + SATBMarkQueue::byte_offset_of_active());
-    return in(2)->is_AddP() && in(2)->in(2)->Opcode() == Op_ThreadLocal
-      && in(2)->in(3)->is_Con()
-      && in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == marking_offset;
-  }
-
   virtual bool is_shenandoah_state_load() const {
     if (!UseShenandoahGC) return false;
-    const int state_offset = in_bytes(JavaThread::gc_state_offset());
+    const int state_offset = in_bytes(ShenandoahThreadLocalData::gc_state_offset());
     return in(2)->is_AddP() && in(2)->in(2)->Opcode() == Op_ThreadLocal
       && in(2)->in(3)->is_Con()
       && in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == state_offset;

@@ -28,11 +28,11 @@
  * @key stress
  * @requires vm.gc.Shenandoah
  * @summary Stress the Shenandoah GC full GC by allocating objects of different lifetimes concurrently with System.gc().
- * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:+UseShenandoahGC TestSystemGCWithShenandoah
- * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m                                                      -XX:+UseShenandoahGC TestSystemGCWithShenandoah
+ * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:+UseShenandoahGC TestSystemGCWithShenandoah 270
+ * @run main/othervm/timeout=300 -Xlog:gc*=info -Xmx512m                                                      -XX:+UseShenandoahGC TestSystemGCWithShenandoah 270
  */
 public class TestSystemGCWithShenandoah {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         TestSystemGC.main(args);
     }
 }

@@ -38,11 +38,7 @@ class MacroAssembler: public Assembler {
   friend class LIR_Assembler;
   friend class Runtime1;      // as_Address()
 
- protected:
-
-  Address as_Address(AddressLiteral adr);
-  Address as_Address(ArrayAddress adr);
-
+ public:
   // Support for VM calls
   //
   // This is the base routine called by the different versions of call_VM_leaf. The interpreter
@@ -54,6 +50,7 @@ class MacroAssembler: public Assembler {
     int     number_of_arguments        // the number of arguments to pop after the call
   );
 
+ protected:
   // This is the base routine called by the different versions of call_VM. The interpreter
   // may customize this version by overriding it for its purposes (e.g., to save/restore
   // additional registers when doing a VM call).
@@ -86,6 +83,9 @@ class MacroAssembler: public Assembler {
  // as only the interpreter handles PopFrame and ForceEarlyReturn requests.
  virtual void check_and_handle_popframe(Register java_thread);
  virtual void check_and_handle_earlyret(Register java_thread);
+
+  Address as_Address(AddressLiteral adr);
+  Address as_Address(ArrayAddress adr);
 
   // Support for NULL-checks
   //
@@ -293,47 +293,12 @@ class MacroAssembler: public Assembler {
   // thread in the default location (r15_thread on 64bit)
   void reset_last_Java_frame(bool clear_fp);
 
-  // Stores
-  void store_check(Register obj);                // store check for obj - register is destroyed afterwards
-  void store_check(Register obj, Address dst);   // same as above, dst is exact store location (reg. is destroyed)
-
-  void resolve_jobject(Register value, Register thread, Register tmp);
+  // jobjects
   void clear_jweak_tag(Register possibly_jweak);
+  void resolve_jobject(Register value, Register thread, Register tmp);
 
-#if INCLUDE_ALL_GCS
-
-  void g1_write_barrier_pre(Register obj,
-                            Register pre_val,
-                            Register thread,
-                            Register tmp,
-                            bool tosca_live,
-                            bool expand_call);
-
-  void g1_write_barrier_post(Register store_addr,
-                             Register new_val,
-                             Register thread,
-                             Register tmp,
-                             Register tmp2);
-
-  void keep_alive_barrier(Register val,
-                          Register thread,
-                          Register tmp);
-
-  void shenandoah_write_barrier_pre(Register obj,
-                                    Register pre_val,
-                                    Register thread,
-                                    Register tmp,
-                                    bool tosca_live,
-                                    bool expand_call);
-
-  void shenandoah_write_barrier_post(Register store_addr,
-                                     Register new_val,
-                                     Register thread,
-                                     Register tmp,
-                                     Register tmp2);
-
+#ifdef INCLUDE_ALL_GCS
   void shenandoah_write_barrier(Register dst);
-
 #endif // INCLUDE_ALL_GCS
 
   // C 'boolean' to Java boolean: x == 0 ? 0 : 1
@@ -353,10 +318,20 @@ class MacroAssembler: public Assembler {
   void load_klass(Register dst, Register src);
   void store_klass(Register dst, Register src);
 
-  void load_heap_oop(Register dst, Address src);
-  void load_heap_oop_not_null(Register dst, Address src);
-  void store_heap_oop(Address dst, Register src);
-  void cmp_heap_oop(Register src1, Address src2, Register tmp = noreg);
+  void resolve_for_read(DecoratorSet decorators, Register obj);
+  void resolve_for_write(DecoratorSet decorators, Register obj);
+
+  void access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
+                      Register tmp1, Register thread_tmp);
+  void access_store_at(BasicType type, DecoratorSet decorators, Address dst, Register src,
+                       Register tmp1, Register tmp2);
+
+  void load_heap_oop(Register dst, Address src, Register tmp1 = noreg,
+                     Register thread_tmp = noreg, DecoratorSet decorators = 0);
+  void load_heap_oop_not_null(Register dst, Address src, Register tmp1 = noreg,
+                              Register thread_tmp = noreg, DecoratorSet decorators = 0);
+  void store_heap_oop(Address dst, Register src, Register tmp1 = noreg,
+                      Register tmp2 = noreg, DecoratorSet decorators = 0);
 
   // Used for storing NULL. All other oop constants should be
   // stored using routines that take a jobject.
@@ -1534,6 +1509,14 @@ public:
     // 0x11 - multiply upper 64 bits [64:127]
     Assembler::vpclmulqdq(dst, nds, src, 0x11);
   }
+  void evpclmulldq(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
+    // 0x00 - multiply lower 64 bits [0:63]
+    Assembler::evpclmulqdq(dst, nds, src, 0x00, vector_len);
+  }
+  void evpclmulhdq(XMMRegister dst, XMMRegister nds, XMMRegister src, int vector_len) {
+    // 0x11 - multiply upper 64 bits [64:127]
+    Assembler::evpclmulqdq(dst, nds, src, 0x11, vector_len);
+  }
 
   // Data
 
@@ -1759,6 +1742,7 @@ public:
   // Fold 8-bit data
   void fold_8bit_crc32(Register crc, Register table, Register tmp);
   void fold_8bit_crc32(XMMRegister crc, Register table, XMMRegister xtmp, Register tmp);
+  void fold_128bit_crc32_avx512(XMMRegister xcrc, XMMRegister xK, XMMRegister xtmp, Register buf, int offset);
 
   // Compress char[] array to byte[].
   void char_array_compress(Register src, Register dst, Register len,

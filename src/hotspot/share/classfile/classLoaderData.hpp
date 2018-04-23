@@ -30,6 +30,7 @@
 #include "memory/metaspace.hpp"
 #include "memory/metaspaceCounters.hpp"
 #include "oops/oopHandle.hpp"
+#include "oops/weakHandle.hpp"
 #include "runtime/mutex.hpp"
 #include "trace/traceMacros.hpp"
 #include "utilities/growableArray.hpp"
@@ -113,7 +114,7 @@ class ClassLoaderDataGraph : public AllStatic {
   static void packages_unloading_do(void f(PackageEntry*));
   static void loaded_classes_do(KlassClosure* klass_closure);
   static void classes_unloading_do(void f(Klass* const));
-  static bool do_unloading(BoolObjectClosure* is_alive, bool clean_previous_versions);
+  static bool do_unloading(BoolObjectClosure* is_alive_closure, bool clean_previous_versions);
 
   // dictionary do
   // Iterate over all klasses in dictionary, but
@@ -154,8 +155,6 @@ class ClassLoaderDataGraph : public AllStatic {
   static void print_on(outputStream * const out) PRODUCT_RETURN;
   static void print() { print_on(tty); }
   static void verify();
-
-  static bool unload_list_contains(const void* x);
 
   // instance and array class counters
   static inline size_t num_instance_classes();
@@ -222,8 +221,9 @@ class ClassLoaderData : public CHeapObj<mtClass> {
 
   static ClassLoaderData * _the_null_class_loader_data;
 
-  oop _class_loader;          // oop used to uniquely identify a class loader
-                              // class loader or a canonical class path
+  WeakHandle<vm_class_loader_data> _holder; // The oop that determines lifetime of this class loader
+  oop _class_loader;          // The instance of java/lang/ClassLoader associated with
+                              // this ClassLoaderData
 
   ClassLoaderMetaspace * volatile _metaspace;  // Meta-space where meta-data defined by the
                                     // classes in the class loader are allocated.
@@ -289,7 +289,8 @@ class ClassLoaderData : public CHeapObj<mtClass> {
 
   void unload();
   bool keep_alive() const       { return _keep_alive > 0; }
-  oop  holder_phantom();
+
+  oop holder_phantom() const;
   void classes_do(void f(Klass*));
   void loaded_classes_do(KlassClosure* klass_closure);
   void classes_do(void f(InstanceKlass*));
@@ -311,7 +312,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   bool claimed() const { return _claimed == 1; }
   bool claim();
 
-  bool is_alive(BoolObjectClosure* is_alive_closure) const;
+  bool is_alive() const;
 
   // Accessors
   ClassLoaderMetaspace* metaspace_or_null() const { return _metaspace; }
@@ -351,7 +352,7 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   // method will allocate a Metaspace if needed.
   ClassLoaderMetaspace* metaspace_non_null();
 
-  oop class_loader() const      { return _class_loader; }
+  oop class_loader() const { return _class_loader; }
 
   // The object the GC is using to keep this ClassLoaderData alive.
   oop keep_alive_object() const;
@@ -366,6 +367,8 @@ class ClassLoaderData : public CHeapObj<mtClass> {
   // indicate their aliveness without a keep_alive_object().
   void inc_keep_alive();
   void dec_keep_alive();
+
+  void initialize_holder(Handle holder);
 
   inline unsigned int identity_hash() const { return (unsigned int)(((intptr_t)this) >> 3); }
 

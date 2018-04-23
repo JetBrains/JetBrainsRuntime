@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef CPU_X86_GC_G1_BARRIERSETASSEMBLER_X86_HPP
-#define CPU_X86_GC_G1_BARRIERSETASSEMBLER_X86_HPP
+#ifndef CPU_X86_GC_SHARED_BARRIERSETASSEMBLER_X86_HPP
+#define CPU_X86_GC_SHARED_BARRIERSETASSEMBLER_X86_HPP
 
 #include "asm/macroAssembler.hpp"
 #include "memory/allocation.hpp"
@@ -38,6 +38,19 @@ public:
                                   Register src, Register dst, Register count) {}
   virtual void arraycopy_epilogue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                   Register src, Register dst, Register count) {}
+
+  virtual void load_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
+                       Register dst, Address src, Register tmp1, Register tmp_thread);
+  virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
+                        Address dst, Register val, Register tmp1, Register tmp2);
+
+  virtual void obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2);
+  virtual void obj_equals_addr(MacroAssembler* masm, DecoratorSet decorators, Register src1, Address src2);
+
+  virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+  virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+
+  virtual void barrier_stubs_init() {}
 };
 
-#endif // CPU_X86_GC_G1_BARRIERSETASSEMBLER_X86_HPP
+#endif // CPU_X86_GC_SHARED_BARRIERSETASSEMBLER_X86_HPP

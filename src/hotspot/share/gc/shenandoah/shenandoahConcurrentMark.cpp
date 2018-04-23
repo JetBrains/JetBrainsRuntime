@@ -349,7 +349,7 @@ void ShenandoahConcurrentMark::initialize(uint workers) {
     _task_queues->register_queue(i, task_queue);
   }
 
-  JavaThread::satb_mark_queue_set().set_buffer_size(ShenandoahSATBBufferSize);
+  ShenandoahBarrierSet::satb_mark_queue_set().set_buffer_size(ShenandoahSATBBufferSize);
 
   size_t num_regions = ShenandoahHeap::heap()->num_regions();
   _liveness_local = NEW_C_HEAP_ARRAY(jushort*, workers, mtGC);
@@ -500,11 +500,11 @@ class ShenandoahSATBThreadsClosure : public ThreadClosure {
     if (thread->is_Java_thread()) {
       if (thread->claim_oops_do(true, _thread_parity)) {
         JavaThread* jt = (JavaThread*)thread;
-        jt->satb_mark_queue().apply_closure_and_empty(_satb_cl);
+        ShenandoahThreadLocalData::satb_mark_queue(jt).apply_closure_and_empty(_satb_cl);
       }
     } else if (thread->is_VM_thread()) {
       if (thread->claim_oops_do(true, _thread_parity)) {
-        JavaThread::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
+        ShenandoahBarrierSet::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
       }
     }
   }
@@ -514,7 +514,7 @@ void ShenandoahConcurrentMark::drain_satb_buffers(uint worker_id, bool remark) {
   ShenandoahObjToScanQueue* q = get_queue(worker_id);
   ShenandoahSATBBufferClosure cl(q);
 
-  SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
   while (satb_mq_set.apply_closure_to_completed_buffer(&cl));
 
   if (remark) {
@@ -924,7 +924,7 @@ void ShenandoahConcurrentMark::cancel() {
   queues->clear();
 
   // Cancel SATB buffers.
-  JavaThread::satb_mark_queue_set().abandon_partial_marking();
+  ShenandoahBarrierSet::satb_mark_queue_set().abandon_partial_marking();
 }
 
 ShenandoahObjToScanQueue* ShenandoahConcurrentMark::get_queue(uint worker_id) {

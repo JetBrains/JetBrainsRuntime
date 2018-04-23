@@ -605,7 +605,7 @@ bool ShenandoahWriteBarrierNode::is_gc_state_load(Node *n) {
   if (base->Opcode() != Op_ThreadLocal) {
     return false;
   }
-  if (off->find_intptr_t_con(-1) != in_bytes(JavaThread::gc_state_offset())) {
+  if (off->find_intptr_t_con(-1) != in_bytes(ShenandoahThreadLocalData::gc_state_offset())) {
     return false;
   }
   return true;
@@ -1037,9 +1037,8 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
             if (adr->Opcode() == Op_LoadP &&
                 adr->in(MemNode::Address)->in(AddPNode::Base)->is_top() &&
                 adr->in(MemNode::Address)->in(AddPNode::Address)->Opcode() == Op_ThreadLocal &&
-                adr->in(MemNode::Address)->in(AddPNode::Offset)->find_intptr_t_con(-1) == in_bytes(JavaThread::satb_mark_queue_offset() +
-                                                                                              SATBMarkQueue::byte_offset_of_buf())) {
-              if (trace) {tty->print_cr("G1 prebarrier");}
+                adr->in(MemNode::Address)->in(AddPNode::Offset)->find_intptr_t_con(-1) == in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset())) {
+              if (trace) {tty->print_cr("SATB prebarrier");}
               verify = false;
             }
           }
@@ -3598,7 +3597,7 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   IdealLoopTree *loop = phase->get_loop(ctrl);
   Node* thread = new ThreadLocalNode();
   phase->register_new_node(thread, ctrl);
-  Node* offset = phase->igvn().MakeConX(in_bytes(JavaThread::gc_state_offset()));
+  Node* offset = phase->igvn().MakeConX(in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   phase->set_ctrl(offset, phase->C->root());
   Node* gc_state_addr = new AddPNode(phase->C->top(), thread, offset);
   phase->register_new_node(gc_state_addr, ctrl);

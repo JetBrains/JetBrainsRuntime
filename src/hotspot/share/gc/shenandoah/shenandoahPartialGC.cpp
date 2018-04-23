@@ -77,7 +77,7 @@ public:
   void do_buffer(void** buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       oop* p = (oop*) &buffer[i];
-      oop obj = oopDesc::load_heap_oop(p);
+      oop obj = RawAccess<>::oop_load(p);
       _queue->push(obj);
     }
   }
@@ -96,11 +96,11 @@ class ShenandoahPartialSATBThreadsClosure : public ThreadClosure {
     if (thread->is_Java_thread()) {
       if (thread->claim_oops_do(true, _thread_parity)) {
         JavaThread* jt = (JavaThread*)thread;
-        jt->satb_mark_queue().apply_closure_and_empty(_satb_cl);
+        ShenandoahThreadLocalData::satb_mark_queue(jt).apply_closure_and_empty(_satb_cl);
       }
     } else if (thread->is_VM_thread()) {
       if (thread->claim_oops_do(true, _thread_parity)) {
-        JavaThread::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
+        ShenandoahBarrierSet::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
       }
     }
   }
@@ -197,7 +197,7 @@ public:
     {
       ShenandoahPartialSATBBufferClosure satb_cl(q);
       // Process remaining finished SATB buffers.
-      SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+      SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
       while (satb_mq_set.apply_closure_to_completed_buffer(&satb_cl));
       // Process remaining threads SATB buffers.
       ShenandoahPartialSATBThreadsClosure tc(&satb_cl);
@@ -417,7 +417,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
           q->pop_local(task) ||
           q->pop_overflow(task)) {
         oop obj = task.obj();
-        assert(!oopDesc::is_null(obj), "must not be null");
+        assert(!CompressedOops::is_null(obj), "must not be null");
         obj->oop_iterate(&cl);
       } else {
         assert(q->is_empty(), "Must be empty");
@@ -430,7 +430,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
   // Normal loop.
   q = queues->queue(worker_id);
   ShenandoahPartialSATBBufferClosure satb_cl(q);
-  SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
 
   int seed = 17;
 
@@ -444,7 +444,7 @@ void ShenandoahPartialGC::main_loop(uint worker_id, ParallelTaskTerminator* term
            (DO_SATB && satb_mq_set.apply_closure_to_completed_buffer(&satb_cl) && q->pop_buffer(task)) ||
            queues->steal(worker_id, &seed, task))) {
         oop obj = task.obj();
-        assert(!oopDesc::is_null(obj), "must not be null");
+        assert(!CompressedOops::is_null(obj), "must not be null");
         obj->oop_iterate(&cl);
       } else {
         ShenandoahEvacOOMScopeLeaver oom_scope_leaver;

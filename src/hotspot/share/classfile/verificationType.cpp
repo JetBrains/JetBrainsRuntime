@@ -27,6 +27,7 @@
 #include "classfile/systemDictionaryShared.hpp"
 #include "classfile/verificationType.hpp"
 #include "classfile/verifier.hpp"
+#include "logging/log.hpp"
 #include "runtime/handles.inline.hpp"
 
 VerificationType VerificationType::from_tag(u1 tag) {
@@ -49,6 +50,7 @@ bool VerificationType::resolve_and_check_assignability(InstanceKlass* klass, Sym
   Klass* this_class = SystemDictionary::resolve_or_fail(
       name, Handle(THREAD, klass->class_loader()),
       Handle(THREAD, klass->protection_domain()), true, CHECK_false);
+  klass->class_loader_data()->record_dependency(this_class);
   if (log_is_enabled(Debug, class, resolve)) {
     Verifier::trace_class_resolution(this_class, klass);
   }
@@ -66,6 +68,7 @@ bool VerificationType::resolve_and_check_assignability(InstanceKlass* klass, Sym
     Klass* from_class = SystemDictionary::resolve_or_fail(
         from_name, Handle(THREAD, klass->class_loader()),
         Handle(THREAD, klass->protection_domain()), true, CHECK_false);
+    klass->class_loader_data()->record_dependency(from_class);
     if (log_is_enabled(Debug, class, resolve)) {
       Verifier::trace_class_resolution(from_class, klass);
     }

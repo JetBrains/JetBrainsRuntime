@@ -26,6 +26,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "runtime/orderAccess.inline.hpp"
 #include "runtime/os.hpp"
 #include "runtime/thread.hpp"
@@ -43,14 +44,14 @@ void ShenandoahEvacOOMHandler::wait_for_no_evac_threads() {
   // At this point we are sure that no threads can evacuate anything. Raise
   // the thread-local oom_during_evac flag to indicate that any attempt
   // to evacuate should simply return the forwarding pointer instead (which is safe now).
-  Thread::current()->set_oom_during_evac(true);
+  ShenandoahThreadLocalData::set_oom_during_evac(Thread::current(), true);
 }
 
 void ShenandoahEvacOOMHandler::enter_evacuation() {
   jint threads_in_evac = OrderAccess::load_acquire(&_threads_in_evac);
 
-  assert(!Thread::current()->is_evac_allowed(), "sanity");
-  assert(!Thread::current()->is_oom_during_evac(), "TL oom-during-evac must not be set");
+  assert(!ShenandoahThreadLocalData::is_evac_allowed(Thread::current()), "sanity");
+  assert(!ShenandoahThreadLocalData::is_oom_during_evac(Thread::current()), "TL oom-during-evac must not be set");
 
   if ((threads_in_evac & OOM_MARKER_MASK) != 0) {
     wait_for_no_evac_threads();
@@ -61,7 +62,7 @@ void ShenandoahEvacOOMHandler::enter_evacuation() {
     jint other = Atomic::cmpxchg(threads_in_evac + 1, &_threads_in_evac, threads_in_evac);
     if (other == threads_in_evac) {
       // Success: caller may safely enter evacuation
-      DEBUG_ONLY(Thread::current()->set_evac_allowed(true));
+      DEBUG_ONLY(ShenandoahThreadLocalData::set_evac_allowed(Thread::current(), true));
       return;
     } else {
       // Failure:
@@ -77,7 +78,7 @@ void ShenandoahEvacOOMHandler::enter_evacuation() {
 }
 
 void ShenandoahEvacOOMHandler::leave_evacuation() {
-  if (!Thread::current()->is_oom_during_evac()) {
+  if (!ShenandoahThreadLocalData::is_oom_during_evac(Thread::current())) {
     assert((OrderAccess::load_acquire(&_threads_in_evac) & ~OOM_MARKER_MASK) > 0, "sanity");
     // NOTE: It's ok to simply decrement, even with mask set, because unmasked value is positive.
     Atomic::dec(&_threads_in_evac);
@@ -85,15 +86,15 @@ void ShenandoahEvacOOMHandler::leave_evacuation() {
     // If we get here, the current thread has already gone through the
     // OOM-during-evac protocol and has thus either never entered or successfully left
     // the evacuation region. Simply flip its TL oom-during-evac flag back off.
-    Thread::current()->set_oom_during_evac(false);
+    ShenandoahThreadLocalData::set_oom_during_evac(Thread::current(), false);
   }
-  DEBUG_ONLY(Thread::current()->set_evac_allowed(false));
-  assert(!Thread::current()->is_oom_during_evac(), "TL oom-during-evac must be turned off");
+  DEBUG_ONLY(ShenandoahThreadLocalData::set_evac_allowed(Thread::current(), false));
+  assert(!ShenandoahThreadLocalData::is_oom_during_evac(Thread::current()), "TL oom-during-evac must be turned off");
 }
 
 void ShenandoahEvacOOMHandler::handle_out_of_memory_during_evacuation() {
-  assert(Thread::current()->is_evac_allowed(), "sanity");
-  assert(!Thread::current()->is_oom_during_evac(), "TL oom-during-evac must not be set");
+  assert(ShenandoahThreadLocalData::is_evac_allowed(Thread::current()), "sanity");
+  assert(!ShenandoahThreadLocalData::is_oom_during_evac(Thread::current()), "TL oom-during-evac must not be set");
 
   jint threads_in_evac = OrderAccess::load_acquire(&_threads_in_evac);
   while (true) {

@@ -35,7 +35,8 @@
 #include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/gcArguments.hpp"
-#include "gc/shared/gcLocker.inline.hpp"
+#include "gc/shared/gcConfig.hpp"
+#include "gc/shared/gcLocker.hpp"
 #include "gc/shared/generation.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
 #include "gc/shared/space.hpp"
@@ -688,6 +689,8 @@ jint universe_init() {
     return status;
   }
 
+  SystemDictionary::initialize_oop_storage();
+
   Metaspace::global_initialize();
 
   // Initialize performance counters for metaspaces
@@ -745,8 +748,7 @@ jint universe_init() {
 
 CollectedHeap* Universe::create_heap() {
   assert(_collectedHeap == NULL, "Heap already created");
-  assert(GCArguments::is_initialized(), "GC must be initialized here");
-  return GCArguments::arguments()->create_heap();
+  return GCConfig::arguments()->create_heap();
 }
 
 // Choose the heap base address and oop encoding mode
@@ -765,7 +767,6 @@ jint Universe::initialize_heap() {
   }
   log_info(gc)("Using %s", _collectedHeap->name());
 
-  GCArguments::arguments()->post_heap_initialize();
   ThreadLocalAllocBuffer::set_max_size(Universe::heap()->max_tlab_size());
 
 #ifdef _LP64

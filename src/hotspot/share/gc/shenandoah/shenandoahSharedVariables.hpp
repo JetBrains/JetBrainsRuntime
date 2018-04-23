@@ -178,7 +178,7 @@ typedef struct ShenandoahSharedBitmap {
     return &value;
   }
 
-  ShenandoahSharedValue raw_value() {
+  ShenandoahSharedValue raw_value() const {
     return value;
   }
 

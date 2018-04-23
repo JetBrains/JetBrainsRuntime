@@ -47,6 +47,7 @@
 #include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/g1/g1ThreadLocalData.hpp"
 #endif
 
 
@@ -1107,7 +1108,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         StubFrame f(sasm, "g1_pre_barrier", dont_gc_arguments);
         // arg0 : previous value of memory
 
-        BarrierSet* bs = Universe::heap()->barrier_set();
+        BarrierSet* bs = BarrierSet::barrier_set();
         if (bs->kind() != BarrierSet::G1BarrierSet && bs->kind() != BarrierSet::Shenandoah) {
           __ mov(r0, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
@@ -1123,13 +1124,9 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         const Register thread = rthread;
         const Register tmp = rscratch1;
 
-        Address in_progress(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                             SATBMarkQueue::byte_offset_of_active()));
-
-        Address queue_index(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                             SATBMarkQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                        SATBMarkQueue::byte_offset_of_buf()));
+        Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
+        Address queue_index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
+        Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
 
         Label done;
         Label runtime;
@@ -1174,7 +1171,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
       {
         StubFrame f(sasm, "g1_post_barrier", dont_gc_arguments);
 
-        BarrierSet* bs = Universe::heap()->barrier_set();
+        BarrierSet* bs = BarrierSet::barrier_set();
         if (bs->kind() != BarrierSet::G1BarrierSet) {
           __ mov(r0, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), r0);
@@ -1193,10 +1190,8 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
         const Register thread = rthread;
 
-        Address queue_index(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                             DirtyCardQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                        DirtyCardQueue::byte_offset_of_buf()));
+        Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
+        Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
 
         const Register card_offset = rscratch2;
         // LR is free here, so we can use it to hold the byte_map_base.

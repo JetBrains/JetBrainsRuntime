@@ -106,7 +106,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   MemRegion _reserved;
 
  protected:
-  BarrierSet* _barrier_set;
   bool _is_gc_active;
 
   // Used for filler objects (static, but initialized in ctor).
@@ -188,11 +187,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
 
  public:
   enum Name {
-    SerialHeap,
-    ParallelScavengeHeap,
-    G1CollectedHeap,
-    ShenandoahHeap,
-    CMSHeap
+    None,
+    Serial,
+    Parallel,
+    CMS,
+    G1,
+    Shenandoah
   };
 
   static inline size_t filler_array_max_size() {
@@ -426,10 +426,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
                                                        size_t size,
                                                        Metaspace::MetadataType mdtype);
 
-  // Returns the barrier set for this heap
-  BarrierSet* barrier_set() { return _barrier_set; }
-  void set_barrier_set(BarrierSet* barrier_set);
-
   // Returns "true" iff there is a stop-world GC in progress.  (I assume
   // that it should answer "false" for the concurrent part of a concurrent
   // collector -- dld).
@@ -613,13 +609,13 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Support for PromotionFailureALot.  Return true if it's time to cause a
   // promotion failure.  The no-argument version uses
   // this->_promotion_failure_alot_count as the counter.
-  inline bool promotion_should_fail(volatile size_t* count);
-  inline bool promotion_should_fail();
+  bool promotion_should_fail(volatile size_t* count);
+  bool promotion_should_fail();
 
   // Reset the PromotionFailureALot counters.  Should be called at the end of a
   // GC in which promotion failure occurred.
-  inline void reset_promotion_should_fail(volatile size_t* count);
-  inline void reset_promotion_should_fail();
+  void reset_promotion_should_fail(volatile size_t* count);
+  void reset_promotion_should_fail();
 #endif  // #ifndef PRODUCT
 
 #ifdef ASSERT

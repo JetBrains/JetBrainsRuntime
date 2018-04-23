@@ -40,7 +40,7 @@ public:
 private:
   template <class T>
   inline void do_oop_work(T* p) {
-    oop o = oopDesc::load_decode_heap_oop(p);
+    oop o = RawAccess<>::oop_load(p);
     if (o != NULL) {
       if (ShenandoahHeap::heap()->is_in(o) && oopDesc::is_oop(o)) {
         tty->print_cr("%s "INT32_FORMAT" ("PTR_FORMAT")-> "PTR_FORMAT" (marked: %s) (%s "PTR_FORMAT")",

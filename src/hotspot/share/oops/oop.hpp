@@ -63,23 +63,21 @@ class oopDesc {
   } _metadata;
 
  public:
-  markOop  mark()      const {
-    oop p = BarrierSet::barrier_set()->read_barrier((oop) this);
-    return p->_mark;
-  }
-  markOop* mark_addr() const { return (markOop*) &_mark; }
+  inline markOop  mark()          const;
+  inline markOop  mark_raw()      const;
+  inline markOop* mark_addr_raw() const;
 
-  void set_mark(volatile markOop m) {
-    oop p = BarrierSet::barrier_set()->write_barrier(this);
-    p->_mark = m;
-  }
+  inline void set_mark(volatile markOop m);
+  inline void set_mark_raw(volatile markOop m);
 
   inline void release_set_mark(markOop m);
   inline markOop cas_set_mark(markOop new_mark, markOop old_mark);
+  inline markOop cas_set_mark_raw(markOop new_mark, markOop old_mark);
 
   // Used only to re-initialize the mark word (e.g., of promoted
   // objects during a GC) -- requires a valid klass pointer
   inline void init_mark();
+  inline void init_mark_raw();
 
   inline Klass* klass() const;
   inline Klass* klass_or_null() const volatile;
@@ -133,9 +131,6 @@ class oopDesc {
   // Need this as public for garbage collection.
   template <class T> inline T* obj_field_addr_raw(int offset) const;
 
-  inline static bool is_null(oop obj)       { return obj == NULL; }
-  inline static bool is_null(narrowOop obj) { return obj == 0; }
-
   // Standard compare function returns negative value if o1 < o2
   //                                   0              if o1 == o2
   //                                   positive value if o1 > o2
@@ -151,9 +146,7 @@ class oopDesc {
     }
   }
 
-  inline static bool equals(oop o1, oop o2) {
-    return BarrierSet::barrier_set()->obj_equals(o1, o2);
-  }
+  inline static bool equals(oop o1, oop o2) { return Access<>::equals(o1, o2); }
 
   inline static bool safe_equals(oop o1, oop o2) {
 #ifdef ASSERT
@@ -170,41 +163,6 @@ class oopDesc {
     return o1 == o2;
 #endif
   }
-
-  // Decode an oop pointer from a narrowOop if compressed.
-  // These are overloaded for oop and narrowOop as are the other functions
-  // below so that they can be called in template functions.
-  static inline oop decode_heap_oop_not_null(oop v) { return v; }
-  static inline oop decode_heap_oop_not_null(narrowOop v);
-  static inline oop decode_heap_oop(oop v) { return v; }
-  static inline oop decode_heap_oop(narrowOop v);
-
-  // Encode an oop pointer to a narrow oop. The or_null versions accept
-  // null oop pointer, others do not in order to eliminate the
-  // null checking branches.
-  static inline narrowOop encode_heap_oop_not_null(oop v);
-  static inline narrowOop encode_heap_oop(oop v);
-
-  // Load an oop out of the Java heap as is without decoding.
-  // Called by GC to check for null before decoding.
-  static inline narrowOop load_heap_oop(narrowOop* p);
-  static inline oop       load_heap_oop(oop* p);
-
-  // Load an oop out of Java heap and decode it to an uncompressed oop.
-  static inline oop load_decode_heap_oop_not_null(narrowOop* p);
-  static inline oop load_decode_heap_oop_not_null(oop* p);
-  static inline oop load_decode_heap_oop(narrowOop* p);
-  static inline oop load_decode_heap_oop(oop* p);
-
-  // Store already encoded heap oop into the heap.
-  static inline void store_heap_oop(narrowOop* p, narrowOop v);
-  static inline void store_heap_oop(oop* p, oop v);
-
-  // Encode oop if UseCompressedOops and store into the heap.
-  static inline void encode_store_heap_oop_not_null(narrowOop* p, oop v);
-  static inline void encode_store_heap_oop_not_null(oop* p, oop v);
-  static inline void encode_store_heap_oop(narrowOop* p, oop v);
-  static inline void encode_store_heap_oop(oop* p, oop v);
 
   // Access to fields in a instanceOop through these methods.
   template <DecoratorSet decorator>
@@ -299,6 +257,7 @@ class oopDesc {
   inline bool is_locked()   const;
   inline bool is_unlocked() const;
   inline bool has_bias_pattern() const;
+  inline bool has_bias_pattern_raw() const;
 
   // asserts and guarantees
   static bool is_oop(oop obj, bool ignore_mark_word = false);
@@ -373,6 +332,8 @@ class oopDesc {
   inline int oop_iterate_no_header(OopClosure* bk);
   inline int oop_iterate_no_header(OopClosure* bk, MemRegion mr);
 
+  inline static bool is_instanceof_or_null(oop obj, Klass* klass);
+
   // identity hash; returns the identity hash key (computes it if necessary)
   // NOTE with the introduction of UseBiasedLocking that identity_hash() might reach a
   // safepoint if called on a biased object. Calling code must be aware of that.
@@ -383,9 +344,9 @@ class oopDesc {
   unsigned int new_hash(juint seed);
 
   // marks are forwarded to stack when object is locked
-  inline bool    has_displaced_mark() const;
-  inline markOop displaced_mark() const;
-  inline void    set_displaced_mark(markOop m);
+  inline bool    has_displaced_mark_raw() const;
+  inline markOop displaced_mark_raw() const;
+  inline void    set_displaced_mark_raw(markOop m);
 
   static bool has_klass_gap();
 

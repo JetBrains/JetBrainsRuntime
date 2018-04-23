@@ -23,12 +23,14 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/cms/cmsCardTable.hpp"
 #include "gc/cms/compactibleFreeListSpace.hpp"
 #include "gc/cms/concurrentMarkSweepGeneration.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/cms/cmsHeap.hpp"
 #include "gc/cms/parNewGeneration.hpp"
 #include "gc/cms/vmCMSOperations.hpp"
+#include "gc/shared/genCollectedHeap.hpp"
 #include "gc/shared/genMemoryPools.hpp"
 #include "gc/shared/genOopClosures.inline.hpp"
 #include "gc/shared/strongRootsScope.hpp"
@@ -90,6 +92,10 @@ jint CMSHeap::initialize() {
   return JNI_OK;
 }
 
+CardTableRS* CMSHeap::create_rem_set(const MemRegion& reserved_region) {
+  return new CMSCardTable(reserved_region);
+}
+
 void CMSHeap::initialize_serviceability() {
   _young_manager = new GCMemoryManager("ParNew", "end of minor GC");
   _old_manager = new GCMemoryManager("ConcurrentMarkSweep", "end of major GC");
@@ -132,7 +138,7 @@ void CMSHeap::check_gen_kinds() {
 CMSHeap* CMSHeap::heap() {
   CollectedHeap* heap = Universe::heap();
   assert(heap != NULL, "Uninitialized access to CMSHeap::heap()");
-  assert(heap->kind() == CollectedHeap::CMSHeap, "Not a CMSHeap");
+  assert(heap->kind() == CollectedHeap::CMS, "Invalid name");
   return (CMSHeap*) heap;
 }
 

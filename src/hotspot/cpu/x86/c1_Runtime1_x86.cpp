@@ -45,6 +45,8 @@
 #include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#include "gc/g1/g1ThreadLocalData.hpp"
 #endif
 
 
@@ -1563,7 +1565,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         StubFrame f(sasm, "g1_pre_barrier", dont_gc_arguments);
         // arg0 : previous value of memory
 
-        BarrierSet* bs = Universe::heap()->barrier_set();
+        BarrierSet* bs = BarrierSet::barrier_set();
         if (bs->kind() != BarrierSet::G1BarrierSet && bs->kind() != BarrierSet::Shenandoah) {
           __ movptr(rax, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), rax);
@@ -1584,18 +1586,18 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
         NOT_LP64(__ get_thread(thread);)
 
-        Address queue_active(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                              SATBMarkQueue::byte_offset_of_active()));
-        Address queue_index(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                             SATBMarkQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::satb_mark_queue_offset() +
-                                        SATBMarkQueue::byte_offset_of_buf()));
+        Address queue_active(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
+                                                      : ShenandoahThreadLocalData::satb_mark_queue_active_offset()));
+        Address queue_index(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_index_offset()
+                                                     : ShenandoahThreadLocalData::satb_mark_queue_index_offset()));
+        Address buffer(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
+                                                : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset()));
 
         Label done;
         Label runtime;
 
         if (UseShenandoahGC) {
-          Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
+          Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
           __ testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
           __ jcc(Assembler::zero, done);
         } else {
@@ -1645,7 +1647,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
       {
         StubFrame f(sasm, "g1_post_barrier", dont_gc_arguments);
 
-        BarrierSet* bs = Universe::heap()->barrier_set();
+        BarrierSet* bs = BarrierSet::barrier_set();
         if (bs->kind() != BarrierSet::G1BarrierSet) {
           __ movptr(rax, (int)id);
           __ call_RT(noreg, noreg, CAST_FROM_FN_PTR(address, unimplemented_entry), rax);
@@ -1665,10 +1667,8 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
         const Register thread = NOT_LP64(rax) LP64_ONLY(r15_thread);
 
-        Address queue_index(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                             DirtyCardQueue::byte_offset_of_index()));
-        Address buffer(thread, in_bytes(JavaThread::dirty_card_queue_offset() +
-                                        DirtyCardQueue::byte_offset_of_buf()));
+        Address queue_index(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset()));
+        Address buffer(thread, in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset()));
 
         __ push(rax);
         __ push(rcx);

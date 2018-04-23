@@ -59,9 +59,9 @@ private:
 
   template <class T>
   void do_oop_work(T* p) {
-    T o = oopDesc::load_heap_oop(p);
-    if (!oopDesc::is_null(o)) {
-      oop obj = oopDesc::decode_heap_oop_not_null(o);
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
 
       // Single threaded verification can use faster non-atomic stack and bitmap
       // methods.
@@ -146,7 +146,7 @@ private:
     if (!oopDesc::unsafe_equals(obj, fwd)) {
       verify(ShenandoahAsserts::_safe_oop, obj, _heap->is_in(fwd),
              "Forwardee must be in heap");
-      verify(ShenandoahAsserts::_safe_oop, obj, !oopDesc::is_null(fwd),
+      verify(ShenandoahAsserts::_safe_oop, obj, !CompressedOops::is_null(fwd),
              "Forwardee is set");
       verify(ShenandoahAsserts::_safe_oop, obj, check_obj_alignment(fwd),
              "Forwardee must be aligned");

@@ -38,6 +38,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -49,9 +50,9 @@
 
 template <class T>
 void ShenandoahUpdateRefsClosure::do_oop_work(T* p) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     _heap->update_with_forwarded_not_null(p, obj);
   }
 }
@@ -109,7 +110,7 @@ inline oop ShenandoahHeap::update_with_forwarded_not_null(T* p, oop obj) {
   if (in_collection_set(obj)) {
     shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_concgc());
     obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
-    oopDesc::encode_store_heap_oop(p, obj);
+    RawAccess<OOP_NOT_NULL>::oop_store(p, obj);
   }
 #ifdef ASSERT
   else {
@@ -121,9 +122,9 @@ inline oop ShenandoahHeap::update_with_forwarded_not_null(T* p, oop obj) {
 
 template <class T>
 inline oop ShenandoahHeap::maybe_update_with_forwarded(T* p) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     return maybe_update_with_forwarded_not_null(p, obj);
   } else {
     return NULL;
@@ -133,9 +134,9 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded(T* p) {
 template <class T>
 inline oop ShenandoahHeap::evac_update_with_forwarded(T* p, bool &evac) {
   evac = false;
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop heap_oop = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop heap_oop = CompressedOops::decode_not_null(o);
     if (in_collection_set(heap_oop)) {
       oop forwarded_oop = ShenandoahBarrierSet::resolve_forwarded_not_null(heap_oop);
       if (oopDesc::unsafe_equals(forwarded_oop, heap_oop)) {
@@ -159,9 +160,9 @@ inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, oop* addr, oop c) 
 }
 
 inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, narrowOop* addr, oop c) {
-  narrowOop cmp = oopDesc::encode_heap_oop(c);
-  narrowOop val = oopDesc::encode_heap_oop(n);
-  return oopDesc::decode_heap_oop((narrowOop) Atomic::cmpxchg(val, addr, cmp));
+  narrowOop cmp = CompressedOops::encode(c);
+  narrowOop val = CompressedOops::encode(n);
+  return CompressedOops::decode((narrowOop) Atomic::cmpxchg(val, addr, cmp));
 }
 
 template <class T>
@@ -194,7 +195,7 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
       // which first copies the array, which potentially contains from-space refs, and only afterwards
       // updates all from-space refs to to-space refs, which leaves a short window where the new array
       // elements can be from-space.
-      // assert(oopDesc::is_null(result) ||
+      // assert(CompressedOops::is_null(result) ||
       //        oopDesc::unsafe_equals(result, ShenandoahBarrierSet::resolve_oop_static_not_null(result)),
       //       "expect not forwarded");
       return NULL;
@@ -275,7 +276,7 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
 inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated) {
   evacuated = false;
 
-  if (Thread::current()->is_oom_during_evac()) {
+  if (ShenandoahThreadLocalData::is_oom_during_evac(Thread::current())) {
     // This thread went through the OOM during evac protocol and it is safe to return
     // the forward pointer. It must not attempt to evacuate any more.
     return ShenandoahBarrierSet::resolve_forwarded(p);
@@ -290,7 +291,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
   HeapWord* filler;
 #ifdef ASSERT
 
-  assert(thread->is_evac_allowed(), "must be enclosed in ShenandoahOOMDuringEvacHandler");
+  assert(ShenandoahThreadLocalData::is_evac_allowed(thread), "must be enclosed in ShenandoahOOMDuringEvacHandler");
 
   if (ShenandoahOOMDuringEvacALot &&
       (os::random() & 1) == 0) { // Simulate OOM every ~2nd slow-path call

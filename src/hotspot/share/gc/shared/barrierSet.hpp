@@ -45,7 +45,7 @@ class MacroAssembler;
 class BarrierSet: public CHeapObj<mtGC> {
   friend class VMStructs;
 
-  static BarrierSet* _bs;
+  static BarrierSet* _barrier_set;
 
 public:
   enum Name {
@@ -54,8 +54,6 @@ public:
 #undef BARRIER_SET_DECLARE_BS_ENUM
     UnknownBS
   };
-
-  static BarrierSet* barrier_set() { return _bs; }
 
 protected:
   // Fake RTTI support.  For a derived class T to participate
@@ -110,6 +108,8 @@ public:
   // is redone until it succeeds. This can e.g. prevent allocations from the slow path
   // to be in old.
   virtual void on_slowpath_allocation_exit(JavaThread* thread, oop new_obj) {}
+  virtual void on_thread_create(Thread* thread) {}
+  virtual void on_thread_destroy(Thread* thread) {}
   virtual void on_thread_attach(JavaThread* thread) {}
   virtual void on_thread_detach(JavaThread* thread) {}
   virtual void make_parsable(JavaThread* thread) {}
@@ -118,7 +118,8 @@ public:
   // Print a description of the memory for the barrier set
   virtual void print_on(outputStream* st) const = 0;
 
-  static void set_bs(BarrierSet* bs) { _bs = bs; }
+  static BarrierSet* barrier_set() { return _barrier_set; }
+  static void set_barrier_set(BarrierSet* barrier_set);
 
   virtual oop read_barrier(oop src) {
     return src;
@@ -136,30 +137,8 @@ public:
     // Default impl does nothing.
   }
 
-  virtual bool obj_equals(oop obj1, oop obj2);
-
 #ifdef ASSERT
   virtual void verify_safe_oop(oop p);
-#endif
-
-#ifndef CC_INTERP
-  virtual void interpreter_read_barrier(MacroAssembler* masm, Register dst) {
-    // Default implementation does nothing.
-  }
-
-  virtual void interpreter_read_barrier_not_null(MacroAssembler* masm, Register dst) {
-    // Default implementation does nothing.
-  }
-
-  virtual void interpreter_write_barrier(MacroAssembler* masm, Register dst) {
-    // Default implementation does nothing.
-  }
-  virtual void interpreter_storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
-    // Default implementation does nothing.
-  }
-  virtual void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2) {
-    // Default implementation does nothing.
-  }
 #endif
 
   // The AccessBarrier of a BarrierSet subclass is called by the Access API
@@ -301,6 +280,10 @@ public:
 
     static oop resolve(oop obj) {
       return Raw::resolve(obj);
+    }
+
+    static bool equals(oop o1, oop o2) {
+      return Raw::equals(o1, o2);
     }
   };
 };

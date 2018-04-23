@@ -36,7 +36,7 @@
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/collectorCounters.hpp"
 #include "gc/shared/gcId.hpp"
-#include "gc/shared/gcLocker.inline.hpp"
+#include "gc/shared/gcLocker.hpp"
 #include "gc/shared/gcPolicyCounters.hpp"
 #include "gc/shared/gcTrace.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
@@ -110,11 +110,11 @@ jint GenCollectedHeap::initialize() {
 
   initialize_reserved_region((HeapWord*)heap_rs.base(), (HeapWord*)(heap_rs.base() + heap_rs.size()));
 
-  _rem_set = new CardTableRS(reserved_region());
+  _rem_set = create_rem_set(reserved_region());
   _rem_set->initialize();
   CardTableBarrierSet *bs = new CardTableBarrierSet(_rem_set);
   bs->initialize();
-  set_barrier_set(bs);
+  BarrierSet::set_barrier_set(bs);
 
   ReservedSpace young_rs = heap_rs.first_part(_young_gen_spec->max_size(), false, false);
   _young_gen = _young_gen_spec->init(young_rs, rem_set());
@@ -125,6 +125,10 @@ jint GenCollectedHeap::initialize() {
   clear_incremental_collection_failed();
 
   return JNI_OK;
+}
+
+CardTableRS* GenCollectedHeap::create_rem_set(const MemRegion& reserved_region) {
+  return new CardTableRS(reserved_region, false /* scan_concurrently */);
 }
 
 void GenCollectedHeap::initialize_size_policy(size_t init_eden_size,
@@ -1232,8 +1236,8 @@ void GenCollectedHeap::save_marks() {
 GenCollectedHeap* GenCollectedHeap::heap() {
   CollectedHeap* heap = Universe::heap();
   assert(heap != NULL, "Uninitialized access to GenCollectedHeap::heap()");
-  assert(heap->kind() == CollectedHeap::SerialHeap ||
-         heap->kind() == CollectedHeap::CMSHeap, "Not a GenCollectedHeap");
+  assert(heap->kind() == CollectedHeap::Serial ||
+         heap->kind() == CollectedHeap::CMS, "Invalid name");
   return (GenCollectedHeap*) heap;
 }
 

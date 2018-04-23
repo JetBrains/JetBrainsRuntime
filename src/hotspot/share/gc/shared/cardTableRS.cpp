@@ -28,6 +28,7 @@
 #include "gc/shared/generation.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "memory/allocation.inline.hpp"
+#include "oops/access.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/java.hpp"
@@ -278,36 +279,24 @@ void CardTableRS::write_ref_field_gc_par(void* field, oop new_val) {
 void CardTableRS::younger_refs_in_space_iterate(Space* sp,
                                                 OopsInGenClosure* cl,
                                                 uint n_threads) {
+  verify_used_region_at_save_marks(sp);
+
   const MemRegion urasm = sp->used_region_at_save_marks();
+  non_clean_card_iterate_possibly_parallel(sp, urasm, cl, this, n_threads);
+}
+
 #ifdef ASSERT
-  // Convert the assertion check to a warning if we are running
-  // CMS+ParNew until related bug is fixed.
+void CardTableRS::verify_used_region_at_save_marks(Space* sp) const {
   MemRegion ur    = sp->used_region();
-  assert(ur.contains(urasm) || (UseConcMarkSweepGC),
+  MemRegion urasm = sp->used_region_at_save_marks();
+
+  assert(ur.contains(urasm),
          "Did you forget to call save_marks()? "
          "[" PTR_FORMAT ", " PTR_FORMAT ") is not contained in "
          "[" PTR_FORMAT ", " PTR_FORMAT ")",
          p2i(urasm.start()), p2i(urasm.end()), p2i(ur.start()), p2i(ur.end()));
-  // In the case of CMS+ParNew, issue a warning
-  if (!ur.contains(urasm)) {
-    assert(UseConcMarkSweepGC, "Tautology: see assert above");
-    log_warning(gc)("CMS+ParNew: Did you forget to call save_marks()? "
-                    "[" PTR_FORMAT ", " PTR_FORMAT ") is not contained in "
-                    "[" PTR_FORMAT ", " PTR_FORMAT ")",
-                    p2i(urasm.start()), p2i(urasm.end()), p2i(ur.start()), p2i(ur.end()));
-    MemRegion ur2 = sp->used_region();
-    MemRegion urasm2 = sp->used_region_at_save_marks();
-    if (!ur.equals(ur2)) {
-      log_warning(gc)("CMS+ParNew: Flickering used_region()!!");
-    }
-    if (!urasm.equals(urasm2)) {
-      log_warning(gc)("CMS+ParNew: Flickering used_region_at_save_marks()!!");
-    }
-    ShouldNotReachHere();
-  }
-#endif
-  non_clean_card_iterate_possibly_parallel(sp, urasm, cl, this, n_threads);
 }
+#endif
 
 void CardTableRS::clear_into_younger(Generation* old_gen) {
   assert(GenCollectedHeap::heap()->is_old_gen(old_gen),
@@ -351,7 +340,7 @@ protected:
            "Error: jp " PTR_FORMAT " should be within "
            "[_begin, _end) = [" PTR_FORMAT "," PTR_FORMAT ")",
            p2i(jp), p2i(_begin), p2i(_end));
-    oop obj = oopDesc::load_decode_heap_oop(p);
+    oop obj = RawAccess<>::oop_load(p);
     guarantee(obj == NULL || (HeapWord*)obj >= _boundary,
               "pointer " PTR_FORMAT " at " PTR_FORMAT " on "
               "clean card crosses boundary" PTR_FORMAT,
@@ -610,8 +599,8 @@ void CardTableRS::verify() {
   CardTable::verify();
 }
 
-CardTableRS::CardTableRS(MemRegion whole_heap) :
-  CardTable(whole_heap, /* scanned concurrently */ UseConcMarkSweepGC && CMSPrecleaningEnabled),
+CardTableRS::CardTableRS(MemRegion whole_heap, bool scanned_concurrently) :
+  CardTable(whole_heap, scanned_concurrently),
   _cur_youngergen_card_val(youngergenP1_card),
   // LNC functionality
   _lowest_non_clean(NULL),
@@ -697,11 +686,7 @@ void CardTableRS::non_clean_card_iterate_possibly_parallel(
 {
   if (!mr.is_empty()) {
     if (n_threads > 0) {
-#if INCLUDE_ALL_GCS
       non_clean_card_iterate_parallel_work(sp, mr, cl, ct, n_threads);
-#else  // INCLUDE_ALL_GCS
-      fatal("Parallel gc not supported here.");
-#endif // INCLUDE_ALL_GCS
     } else {
       // clear_cl finds contiguous dirty ranges of cards to process and clear.
 
@@ -714,6 +699,12 @@ void CardTableRS::non_clean_card_iterate_possibly_parallel(
       clear_cl.do_MemRegion(mr);
     }
   }
+}
+
+void CardTableRS::non_clean_card_iterate_parallel_work(Space* sp, MemRegion mr,
+                                                       OopsInGenClosure* cl, CardTableRS* ct,
+                                                       uint n_threads) {
+  fatal("Parallel gc not supported here.");
 }
 
 bool CardTableRS::is_in_young(oop obj) const {

@@ -33,6 +33,7 @@
 #include "code/dependencyContext.hpp"
 #include "code/pcDesc.hpp"
 #include "interpreter/interpreter.hpp"
+#include "interpreter/linkResolver.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/oopFactory.hpp"
@@ -57,6 +58,7 @@
 #include "runtime/javaCalls.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/safepoint.hpp"
+#include "runtime/safepointVerifiers.hpp"
 #include "runtime/thread.inline.hpp"
 #include "runtime/vframe.inline.hpp"
 #include "utilities/align.hpp"
@@ -3506,7 +3508,7 @@ void java_lang_boxing_object::print(BasicType type, jvalue* value, outputStream*
 // Support for java_lang_ref_Reference
 
 bool java_lang_ref_Reference::is_referent_field(oop obj, ptrdiff_t offset) {
-  assert(!oopDesc::is_null(obj), "sanity");
+  assert(obj != NULL, "sanity");
   if (offset != java_lang_ref_Reference::referent_offset) {
     return false;
   }
@@ -3554,6 +3556,34 @@ void java_lang_ref_SoftReference::set_clock(jlong value) {
   InstanceKlass* ik = SystemDictionary::SoftReference_klass();
   oop base = ik->static_field_base_raw();
   base->long_field_put(static_clock_offset, value);
+}
+
+// Support for java_lang_ref_ReferenceQueue
+
+oop java_lang_ref_ReferenceQueue::NULL_queue() {
+  InstanceKlass* ik = SystemDictionary::ReferenceQueue_klass();
+  oop mirror = ik->java_mirror();
+  return mirror->obj_field(static_NULL_queue_offset);
+}
+
+oop java_lang_ref_ReferenceQueue::ENQUEUED_queue() {
+  InstanceKlass* ik = SystemDictionary::ReferenceQueue_klass();
+  oop mirror = ik->java_mirror();
+  return mirror->obj_field(static_ENQUEUED_queue_offset);
+}
+
+void java_lang_ref_ReferenceQueue::compute_offsets() {
+  InstanceKlass* k = SystemDictionary::ReferenceQueue_klass();
+  compute_offset(static_NULL_queue_offset,
+                 k,
+                 vmSymbols::referencequeue_null_name(),
+                 vmSymbols::referencequeue_signature(),
+                 true /* is_static */);
+  compute_offset(static_ENQUEUED_queue_offset,
+                 k,
+                 vmSymbols::referencequeue_enqueued_name(),
+                 vmSymbols::referencequeue_signature(),
+                 true /* is_static */);
 }
 
 // Support for java_lang_invoke_DirectMethodHandle
@@ -3840,12 +3870,12 @@ Symbol* java_lang_invoke_MethodType::as_signature(oop mt, bool intern_if_not_fou
 bool java_lang_invoke_MethodType::equals(oop mt1, oop mt2) {
   if (oopDesc::equals(mt1, mt2))
     return true;
-  if (! oopDesc::equals(rtype(mt1), rtype(mt2)))
+  if (!oopDesc::equals(rtype(mt1), rtype(mt2)))
     return false;
   if (ptype_count(mt1) != ptype_count(mt2))
     return false;
   for (int i = ptype_count(mt1) - 1; i >= 0; i--) {
-    if (! oopDesc::equals(ptype(mt1, i), ptype(mt2, i)))
+    if (!oopDesc::equals(ptype(mt1, i), ptype(mt2, i)))
       return false;
   }
   return true;
@@ -4133,7 +4163,7 @@ int java_lang_System::err_offset_in_bytes() { return static_err_offset; }
 bool java_lang_System::has_security_manager() {
   InstanceKlass* ik = SystemDictionary::System_klass();
   oop base = ik->static_field_base_raw();
-  return !oopDesc::is_null(base->obj_field(static_security_offset));
+  return base->obj_field(static_security_offset) != NULL;
 }
 
 int java_lang_Class::_klass_offset;
@@ -4193,6 +4223,8 @@ int java_lang_ref_Reference::referent_offset;
 int java_lang_ref_Reference::queue_offset;
 int java_lang_ref_Reference::next_offset;
 int java_lang_ref_Reference::discovered_offset;
+int java_lang_ref_ReferenceQueue::static_NULL_queue_offset;
+int java_lang_ref_ReferenceQueue::static_ENQUEUED_queue_offset;
 int java_lang_ref_SoftReference::timestamp_offset;
 int java_lang_ref_SoftReference::static_clock_offset;
 int java_lang_ClassLoader::parent_offset;
@@ -4437,6 +4469,7 @@ void JavaClasses::compute_offsets() {
   java_lang_StackTraceElement::compute_offsets();
   java_lang_StackFrameInfo::compute_offsets();
   java_lang_LiveStackFrameInfo::compute_offsets();
+  java_lang_ref_ReferenceQueue::compute_offsets();
 
   // generated interpreter code wants to know about the offsets we just computed:
   AbstractAssembler::update_delayed_values();

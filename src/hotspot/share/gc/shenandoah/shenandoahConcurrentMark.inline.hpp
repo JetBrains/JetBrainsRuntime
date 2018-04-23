@@ -220,7 +220,7 @@ public:
 
 inline bool ShenandoahConcurrentMark::try_draining_satb_buffer(ShenandoahObjToScanQueue *q, ShenandoahMarkTask &task) {
   ShenandoahSATBBufferClosure cl(q);
-  SATBMarkQueueSet& satb_mq_set = JavaThread::satb_mark_queue_set();
+  SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
   bool had_refs = satb_mq_set.apply_closure_to_completed_buffer(&cl);
   return had_refs && try_queue(q, task);
 }
@@ -232,9 +232,9 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
 
 template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
 inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq) {
-  T o = oopDesc::load_heap_oop(p);
-  if (! oopDesc::is_null(o)) {
-    oop obj = oopDesc::decode_heap_oop_not_null(o);
+  T o = RawAccess<>::oop_load(p);
+  if (!CompressedOops::is_null(o)) {
+    oop obj = CompressedOops::decode_not_null(o);
     switch (UPDATE_REFS) {
     case NONE:
       break;
@@ -255,7 +255,7 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
     // Note: Only when concurrently updating references can obj become NULL here.
     // It happens when a mutator thread beats us by writing another value. In that
     // case we don't need to do anything else.
-    if (UPDATE_REFS != CONCURRENT || !oopDesc::is_null(obj)) {
+    if (UPDATE_REFS != CONCURRENT || !CompressedOops::is_null(obj)) {
       shenandoah_assert_not_forwarded(p, obj);
       shenandoah_assert_not_in_cset_except(p, obj, heap->cancelled_concgc());
 

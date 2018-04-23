@@ -31,7 +31,7 @@ class CollectedHeap;
 
 class ShenandoahArguments : public GCArguments {
 public:
-  virtual void initialize_flags();
+  virtual void initialize();
 
   virtual size_t conservative_max_heap_alignment();
 
