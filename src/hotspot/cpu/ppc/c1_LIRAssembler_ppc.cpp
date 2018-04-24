@@ -487,6 +487,9 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
+void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
+  Unimplemented();
+}
 
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   Bytecodes::Code code = op->bytecode();
