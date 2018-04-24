@@ -133,6 +133,7 @@ public:
 };
 
 class G1SATBMarkQueueSet : public SATBMarkQueueSet {
+public:
   static void handle_zero_index_for_thread(JavaThread* t);
   virtual SATBMarkQueue& satb_queue_for_thread(Thread* t);
 };
