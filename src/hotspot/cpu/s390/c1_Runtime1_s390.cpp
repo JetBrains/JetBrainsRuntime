@@ -821,7 +821,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         __ bind(refill);
         save_volatile_registers(sasm);
         __ z_lgr(tmp, pre_val); // save pre_val
-        __ call_VM_leaf(CAST_FROM_FN_PTR(address, SATBMarkQueueSet::handle_zero_index_for_thread),
+        __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1SATBMarkQueueSet::handle_zero_index_for_thread),
                         Z_thread);
         __ z_lgr(pre_val, tmp); // restore pre_val
         restore_volatile_registers(sasm);
