@@ -87,7 +87,7 @@ class G1ParScanThreadState : public CHeapObj<mtGC> {
   G1ParScanThreadState(G1CollectedHeap* g1h, uint worker_id, size_t young_cset_length);
   virtual ~G1ParScanThreadState();
 
-  void set_ref_processor(ReferenceProcessor* rp) { _scanner.set_ref_processor(rp); }
+  void set_ref_discoverer(ReferenceDiscoverer* rd) { _scanner.set_ref_discoverer(rd); }
 
 #ifdef ASSERT
   bool queue_is_empty() const { return _refs->is_empty(); }
@@ -161,9 +161,10 @@ class G1ParScanThreadState : public CHeapObj<mtGC> {
   inline void do_oop_partial_array(oop* p);
 
   // This method is applied to the fields of the objects that have just been copied.
-  template <class T> inline void do_oop_evac(T* p, HeapRegion* from);
+  template <class T> inline void do_oop_evac(T* p);
 
-  template <class T> inline void deal_with_reference(T* ref_to_scan);
+  inline void deal_with_reference(oop* ref_to_scan);
+  inline void deal_with_reference(narrowOop* ref_to_scan);
 
   inline void dispatch_reference(StarTask ref);
 

@@ -105,7 +105,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   MemRegion _reserved;
 
  protected:
-  BarrierSet* _barrier_set;
   bool _is_gc_active;
 
   // Used for filler objects (static, but initialized in ctor).
@@ -417,10 +416,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
                                                        size_t size,
                                                        Metaspace::MetadataType mdtype);
 
-  // Returns the barrier set for this heap
-  BarrierSet* barrier_set() { return _barrier_set; }
-  void set_barrier_set(BarrierSet* barrier_set);
-
   // Returns "true" iff there is a stop-world GC in progress.  (I assume
   // that it should answer "false" for the concurrent part of a concurrent
   // collector -- dld).
@@ -595,6 +590,8 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual bool supports_object_pinning() const;
   virtual oop pin_object(JavaThread* thread, oop obj);
   virtual void unpin_object(JavaThread* thread, oop obj);
+
+  virtual bool is_oop(oop object) const;
 
   // Non product verification and debugging.
 #ifndef PRODUCT

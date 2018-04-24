@@ -613,16 +613,22 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, const char* gra
       //---<  some sanity checks  >---
       // Do not assert here, just check, print error message and return.
       // This is a diagnostic function. It is not supposed to tear down the VM.
-      if ((char*)h <  low_bound ) {
+      if ((char*)h <  low_bound) {
         insane = true; ast->print_cr("Sanity check: HeapBlock @%p below low bound (%p)", (char*)h, low_bound);
       }
-      if (ix_end   >= granules  ) {
+      if ((char*)h >  (low_bound + res_size)) {
+        insane = true; ast->print_cr("Sanity check: HeapBlock @%p outside reserved range (%p)", (char*)h, low_bound + res_size);
+      }
+      if ((char*)h >  (low_bound + size)) {
+        insane = true; ast->print_cr("Sanity check: HeapBlock @%p outside used range (%p)", (char*)h, low_bound + size);
+      }
+      if (ix_end   >= granules) {
         insane = true; ast->print_cr("Sanity check: end index (%d) out of bounds (" SIZE_FORMAT ")", ix_end, granules);
       }
       if (size     != heap->capacity()) {
         insane = true; ast->print_cr("Sanity check: code heap capacity has changed (" SIZE_FORMAT "K to " SIZE_FORMAT "K)", size/(size_t)K, heap->capacity()/(size_t)K);
       }
-      if (ix_beg   >  ix_end    ) {
+      if (ix_beg   >  ix_end) {
         insane = true; ast->print_cr("Sanity check: end index (%d) lower than begin index (%d)", ix_end, ix_beg);
       }
       if (insane) {
@@ -988,6 +994,11 @@ void CodeHeapState::aggregate(outputStream* out, CodeHeap* heap, const char* gra
       ast->print_cr("  deadSpace      = " SIZE_FORMAT_W(8) "k, nBlocks_dead     = %6d, %10.3f%% of capacity, %10.3f%% of max_capacity", deadSpace/(size_t)K,     nBlocks_dead,     (100.0*deadSpace)/size,     (100.0*deadSpace)/res_size);
       ast->print_cr("  stubSpace      = " SIZE_FORMAT_W(8) "k, nBlocks_stub     = %6d, %10.3f%% of capacity, %10.3f%% of max_capacity", stubSpace/(size_t)K,     nBlocks_stub,     (100.0*stubSpace)/size,     (100.0*stubSpace)/res_size);
       ast->print_cr("ZombieBlocks     = %8d. These are HeapBlocks which could not be identified as CodeBlobs.", nBlocks_zomb);
+      ast->cr();
+      ast->print_cr("Segment start          = " INTPTR_FORMAT ", used space      = " SIZE_FORMAT_W(8)"k", p2i(low_bound), size/K);
+      ast->print_cr("Segment end (used)     = " INTPTR_FORMAT ", remaining space = " SIZE_FORMAT_W(8)"k", p2i(low_bound) + size, (res_size - size)/K);
+      ast->print_cr("Segment end (reserved) = " INTPTR_FORMAT ", reserved space  = " SIZE_FORMAT_W(8)"k", p2i(low_bound) + res_size, res_size/K);
+      ast->cr();
       ast->print_cr("latest allocated compilation id = %d", latest_compilation_id);
       ast->print_cr("highest observed compilation id = %d", highest_compilation_id);
       ast->print_cr("Building TopSizeList iterations = %ld", total_iterations);
@@ -1218,14 +1229,14 @@ void CodeHeapState::print_usedSpace(outputStream* out, CodeHeap* heap) {
           blob_name = this_blob->name();
           nm        = this_blob->as_nmethod_or_null();
           //---<  blob address  >---
-          ast->print("%p", this_blob);
+          ast->print(INTPTR_FORMAT, p2i(this_blob));
           ast->fill_to(19);
           //---<  blob offset from CodeHeap begin  >---
           ast->print("(+" PTR32_FORMAT ")", (unsigned int)((char*)this_blob-low_bound));
           ast->fill_to(33);
         } else {
           //---<  block address  >---
-          ast->print("%p", TopSizeArray[i].start);
+          ast->print(INTPTR_FORMAT, p2i(TopSizeArray[i].start));
           ast->fill_to(19);
           //---<  block offset from CodeHeap begin  >---
           ast->print("(+" PTR32_FORMAT ")", (unsigned int)((char*)TopSizeArray[i].start-low_bound));
@@ -1404,7 +1415,7 @@ void CodeHeapState::print_freeSpace(outputStream* out, CodeHeap* heap) {
 
     unsigned int ix = 0;
     for (ix = 0; ix < alloc_freeBlocks-1; ix++) {
-      ast->print("%p: Len[%4d] = " HEX32_FORMAT ",", FreeArray[ix].start, ix, FreeArray[ix].len);
+      ast->print(INTPTR_FORMAT ": Len[%4d] = " HEX32_FORMAT ",", p2i(FreeArray[ix].start), ix, FreeArray[ix].len);
       ast->fill_to(38);
       ast->print("Gap[%4d..%4d]: " HEX32_FORMAT " bytes,", ix, ix+1, FreeArray[ix].gap);
       ast->fill_to(71);
@@ -1414,7 +1425,7 @@ void CodeHeapState::print_freeSpace(outputStream* out, CodeHeap* heap) {
       }
       STRINGSTREAM_FLUSH_LOCKED("\n")
     }
-    ast->print_cr("%p: Len[%4d] = " HEX32_FORMAT, FreeArray[ix].start, ix, FreeArray[ix].len);
+    ast->print_cr(INTPTR_FORMAT ": Len[%4d] = " HEX32_FORMAT, p2i(FreeArray[ix].start), ix, FreeArray[ix].len);
     STRINGSTREAM_FLUSH_LOCKED("\n\n")
   }
 
@@ -2057,7 +2068,7 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
   CodeBlob*    last_blob          = NULL;
   bool         name_in_addr_range = true;
 
-  //---<  print at least 128K per block  >---
+  //---<  print at least 128K per block (i.e. between headers)  >---
   if (granules_per_line*granule_size < 128*K) {
     granules_per_line = (unsigned int)((128*K)/granule_size);
   }
@@ -2067,7 +2078,7 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
                 "  Due to the living nature of the code heap and because the CodeCache_lock\n"
                 "  is not continuously held, the displayed name might be wrong or no name\n"
                 "  might be found at all. The likelihood for that to happen increases\n"
-                "  over time passed between analysis and print step.\n");
+                "  over time passed between aggregtion and print steps.\n");
   STRINGSTREAM_FLUSH_LOCKED("")
 
   for (unsigned int ix = 0; ix < alloc_granules; ix++) {
@@ -2078,9 +2089,10 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
       }
       name_in_addr_range = false;
 
+      size_t end_ix = (ix+granules_per_line <= alloc_granules) ? ix+granules_per_line : alloc_granules;
       ast->cr();
       ast->print_cr("--------------------------------------------------------------------");
-      ast->print_cr("Address range [%p,%p), " SIZE_FORMAT "k", low_bound+ix*granule_size, low_bound+(ix+granules_per_line)*granule_size, granules_per_line*granule_size/(size_t)K);
+      ast->print_cr("Address range [" INTPTR_FORMAT "," INTPTR_FORMAT "), " SIZE_FORMAT "k", p2i(low_bound+ix*granule_size), p2i(low_bound + end_ix*granule_size), (end_ix - ix)*granule_size/(size_t)K);
       ast->print_cr("--------------------------------------------------------------------");
       STRINGSTREAM_FLUSH_LOCKED("")
     }
@@ -2091,10 +2103,30 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
     for (unsigned int is = 0; is < granule_size; is+=(unsigned int)seg_size) {
       // heap->find_start() is safe. Only working with _segmap. Returns NULL or void*. Returned CodeBlob may be uninitialized.
       CodeBlob* this_blob = (CodeBlob *)(heap->find_start(low_bound+ix*granule_size+is));
-      bool blob_initialized = (this_blob != NULL) &&
-                              ((char*)this_blob + this_blob->header_size() == (char*)(this_blob->relocation_begin())) &&
-                              ((char*)this_blob + CodeBlob::align_code_offset(this_blob->header_size() + this_blob->relocation_size()) == (char*)(this_blob->content_begin()));
-      if (blob_initialized && (this_blob != last_blob)) {
+      bool blob_initialized = (this_blob != NULL) && (this_blob->header_size() >= 0) && (this_blob->relocation_size() >= 0) &&
+                              ((address)this_blob + this_blob->header_size() == (address)(this_blob->relocation_begin())) &&
+                              ((address)this_blob + CodeBlob::align_code_offset(this_blob->header_size() + this_blob->relocation_size()) == (address)(this_blob->content_begin())) &&
+                              is_readable_pointer((address)(this_blob->relocation_begin())) &&
+                              is_readable_pointer(this_blob->content_begin());
+      // blob could have been flushed, freed, and merged.
+      // this_blob < last_blob is an indicator for that.
+      if (blob_initialized && (this_blob > last_blob)) {
+        last_blob          = this_blob;
+
+        //---<  get type and name  >---
+        blobType       cbType = noType;
+        if (segment_granules) {
+          cbType = (blobType)StatArray[ix].type;
+        } else {
+          cbType = get_cbType(this_blob);
+        }
+        // this_blob->name() could return NULL if no name was given to CTOR. Inlined, maybe invisible on stack
+        const char* blob_name = this_blob->name();
+        if ((blob_name == NULL) || !is_readable_pointer(blob_name)) {
+          blob_name = "<unavailable>";
+        }
+
+        //---<  print table header for new print range  >---
         if (!name_in_addr_range) {
           name_in_addr_range = true;
           ast->fill_to(51);
@@ -2102,32 +2134,26 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
           ast->fill_to(61);
           ast->print_cr("%6s", "method");
           ast->print_cr("%18s %13s %17s %9s  %5s %18s  %s", "Addr(module)      ", "offset", "size", " type lvl", " temp", "blobType          ", "Name");
+          STRINGSTREAM_FLUSH_LOCKED("")
         }
 
-        //---<  Print blobTypeName as recorded during analysis  >---
-        ast->print("%p", this_blob);
+        //---<  print line prefix (address and offset from CodeHeap start)  >---
+        ast->print(INTPTR_FORMAT, p2i(this_blob));
         ast->fill_to(19);
         ast->print("(+" PTR32_FORMAT ")", (unsigned int)((char*)this_blob-low_bound));
         ast->fill_to(33);
 
-        //---<  print size, name, and signature (for nMethods)  >---
-        // this_blob->name() could return NULL if no name is given to CTOR. Inlined, maybe not visible on stack
-        const char* blob_name = this_blob->name();
-        if (blob_name == 0) {
-          blob_name = "<unavailable>";
-        }
-        // this_blob->as_nmethod_or_null() is safe. Inlined, maybe not visible on stack.
-        nmethod*           nm = this_blob->as_nmethod_or_null();
-        blobType       cbType = noType;
-        if (segment_granules) {
-          cbType = (blobType)StatArray[ix].type;
-        } else {
-          cbType = get_cbType(this_blob);
-        }
-        if ((nm != NULL) && (nm->method() != NULL)) {
+        // this_blob->as_nmethod_or_null() is safe. Inlined, maybe invisible on stack.
+        nmethod*    nm     = this_blob->as_nmethod_or_null();
+        Method*     method = (nm == NULL) ? NULL : nm->method();  // may be uninitialized, i.e. != NULL, but invalid
+        if ((nm != NULL) && (method != NULL) && (cbType != nMethod_dead) &&
+            is_readable_pointer(method) && is_readable_pointer(method->constants())) {
           ResourceMark rm;
-          //---<  nMethod size in hex  >---
+          //---<  collect all data to locals as quickly as possible  >---
           unsigned int total_size = nm->total_size();
+          int          hotness    = nm->hotness_counter();
+          bool         get_name   = (cbType == nMethod_inuse) || (cbType == nMethod_notused);
+          //---<  nMethod size in hex  >---
           ast->print(PTR32_FORMAT, total_size);
           ast->print("(" SIZE_FORMAT_W(4) "K)", total_size/K);
           //---<  compiler information  >---
@@ -2135,21 +2161,27 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
           ast->print("%5s %3d", compTypeName[StatArray[ix].compiler], StatArray[ix].level);
           //---<  method temperature  >---
           ast->fill_to(62);
-          ast->print("%5d", nm->hotness_counter());
+          ast->print("%5d", hotness);
           //---<  name and signature  >---
           ast->fill_to(62+6);
           ast->print("%s", blobTypeName[cbType]);
           ast->fill_to(82+6);
-          if (nm->is_in_use()) {
-            blob_name = nm->method()->name_and_sig_as_C_string();
-          }
-          if (nm->is_not_entrant()) {
-            blob_name = nm->method()->name_and_sig_as_C_string();
-          }
-          if (nm->is_zombie()) {
+          if (cbType == nMethod_dead) {
             ast->print("%14s", " zombie method");
           }
-          ast->print("%s", blob_name);
+
+          if (get_name) {
+            Symbol* methName  = method->name();
+            const char*   methNameS = (methName == NULL) ? NULL : methName->as_C_string();
+            methNameS = (methNameS == NULL) ? "<method name unavailable>" : methNameS;
+            Symbol* methSig   = method->signature();
+            const char*   methSigS  = (methSig  == NULL) ? NULL : methSig->as_C_string();
+            methSigS  = (methSigS  == NULL) ? "<method signature unavailable>" : methSigS;
+            ast->print("%s", methNameS);
+            ast->print("%s", methSigS);
+          } else {
+            ast->print("%s", blob_name);
+          }
         } else {
           ast->fill_to(62+6);
           ast->print("%s", blobTypeName[cbType]);
@@ -2157,12 +2189,12 @@ void CodeHeapState::print_names(outputStream* out, CodeHeap* heap) {
           ast->print("%s", blob_name);
         }
         STRINGSTREAM_FLUSH_LOCKED("\n")
+      } else if (!blob_initialized && (this_blob != last_blob) && (this_blob != NULL)) {
         last_blob          = this_blob;
-      } else if (!blob_initialized && (this_blob != NULL)) {
-        last_blob          = this_blob;
+        STRINGSTREAM_FLUSH_LOCKED("\n")
       }
     }
-    }
+    } // nBlobs > 0
   }
   STRINGSTREAM_FLUSH_LOCKED("\n\n")
 }
@@ -2287,7 +2319,7 @@ void CodeHeapState::print_line_delim(outputStream* out, outputStream* ast, char*
     ast->cr();
     assert(out == ast, "must use the same stream!");
 
-    ast->print("%p", low_bound + ix*granule_size);
+    ast->print(INTPTR_FORMAT, p2i(low_bound + ix*granule_size));
     ast->fill_to(19);
     ast->print("(+" PTR32_FORMAT "): |", (unsigned int)(ix*granule_size));
   }
@@ -2307,14 +2339,14 @@ void CodeHeapState::print_line_delim(outputStream* out, bufferedStream* ast, cha
       ast->reset();
     }
 
-    ast->print("%p", low_bound + ix*granule_size);
+    ast->print(INTPTR_FORMAT, p2i(low_bound + ix*granule_size));
     ast->fill_to(19);
     ast->print("(+" PTR32_FORMAT "): |", (unsigned int)(ix*granule_size));
   }
 }
 
 CodeHeapState::blobType CodeHeapState::get_cbType(CodeBlob* cb) {
-  if (cb != NULL ) {
+  if ((cb != NULL) && is_readable_pointer(cb)) {
     if (cb->is_runtime_stub())                return runtimeStub;
     if (cb->is_deoptimization_stub())         return deoptimizationStub;
     if (cb->is_uncommon_trap_stub())          return uncommonTrapStub;
@@ -2324,15 +2356,29 @@ CodeHeapState::blobType CodeHeapState::get_cbType(CodeBlob* cb) {
     if (cb->is_method_handles_adapter_blob()) return mh_adapterBlob;
     if (cb->is_buffer_blob())                 return bufferBlob;
 
-    if (cb->is_nmethod() ) {
-      if (((nmethod*)cb)->is_in_use())        return nMethod_inuse;
-      if (((nmethod*)cb)->is_alive() && !(((nmethod*)cb)->is_not_entrant()))   return nMethod_notused;
-      if (((nmethod*)cb)->is_alive())         return nMethod_alive;
-      if (((nmethod*)cb)->is_unloaded())      return nMethod_unloaded;
-      if (((nmethod*)cb)->is_zombie())        return nMethod_dead;
-      tty->print_cr("unhandled nmethod state");
+    nmethod*  nm = cb->as_nmethod_or_null();
+    if (nm != NULL) { // no is_readable check required, nm = (nmethod*)cb.
+      if (nm->is_zombie())        return nMethod_dead;
+      if (nm->is_unloaded())      return nMethod_unloaded;
+      if (nm->is_alive() && !(nm->is_not_entrant()))   return nMethod_notused;
+      if (nm->is_alive())         return nMethod_alive;
+      if (nm->is_in_use())        return nMethod_inuse;
       return nMethod_dead;
     }
   }
   return noType;
+}
+
+// Check if pointer can be read from (4-byte read access).
+// Helps to prove validity of a not-NULL pointer.
+// Returns true in very early stages of VM life when stub is not yet generated.
+#define SAFEFETCH_DEFAULT true
+bool CodeHeapState::is_readable_pointer(const void* p) {
+  if (!CanUseSafeFetch32()) {
+    return SAFEFETCH_DEFAULT;
+  }
+  int* const aligned = (int*) align_down((intptr_t)p, 4);
+  int cafebabe = 0xcafebabe;  // tester value 1
+  int deadbeef = 0xdeadbeef;  // tester value 2
+  return (SafeFetch32(aligned, cafebabe) != cafebabe) || (SafeFetch32(aligned, deadbeef) != deadbeef);
 }

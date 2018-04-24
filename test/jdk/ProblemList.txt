@@ -504,6 +504,8 @@ java/lang/instrument/BootClassPath/BootClassPathTest.sh         8072130 macosx-a
 java/lang/management/MemoryMXBean/Pending.java                  8158837 generic-all
 java/lang/management/MemoryMXBean/PendingAllGC.sh               8158837 generic-all
 
+java/lang/management/ThreadMXBean/ThreadMXBeanStateTest.java    8081652 generic-all
+
 ############################################################################
 
 # jdk_io
@@ -536,8 +538,6 @@ java/net/MulticastSocket/SetLoopbackMode.java                   7122846 macosx-a
 java/net/MulticastSocket/Test.java                              7145658 macosx-all
 
 java/net/DatagramSocket/SendDatagramToBadAddress.java           7143960 macosx-all
-
-java/net/httpclient/SplitResponseSSL.java                       8194151 windows-all
 
 ############################################################################
 
@@ -586,6 +586,7 @@ sun/security/tools/jarsigner/warnings/BadKeyUsageTest.java      8026393 generic-
 
 javax/net/ssl/DTLS/PacketLossRetransmission.java                8169086 macosx-x64
 javax/net/ssl/DTLS/RespondToRetransmit.java                     8169086 macosx-x64
+javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
 
 sun/security/krb5/auto/UnboundSSL.java                          8180265 windows-all
 sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
@@ -737,6 +738,8 @@ tools/jimage/JImageListTest.java                                8198405 windows-
 # jdk_jdi
 
 com/sun/jdi/RedefineImplementor.sh                              8004127 generic-all
+
+com/sun/jdi/JdbExprTest.sh                                      8185803 generic-all
 
 com/sun/jdi/JdbMethodExitTest.sh                                8171483 generic-all
 
