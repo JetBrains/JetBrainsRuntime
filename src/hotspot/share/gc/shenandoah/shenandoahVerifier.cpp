@@ -20,7 +20,8 @@
  * questions.
  *
  */
-#include "precompiled.hpp"
+
+// Deliberately avoids precompiled headers, to break name clashes and accidental dependencies
 
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"

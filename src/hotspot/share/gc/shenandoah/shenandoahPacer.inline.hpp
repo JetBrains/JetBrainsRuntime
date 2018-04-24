@@ -24,7 +24,6 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_INLINE_HPP
 
-#include "precompiled.hpp"
 #include "gc/shenandoah/shenandoahPacer.hpp"
 
 inline void ShenandoahPacer::report_mark(size_t words) {
