@@ -137,9 +137,15 @@ HelpDCmd::HelpDCmd(outputStream* output, bool heap) : DCmdWithParser(output, hea
   _dcmdparser.add_dcmd_argument(&_cmd);
 };
 
+
+static int compare_strings(const char** s1, const char** s2) {
+  return ::strcmp(*s1, *s2);
+}
+
 void HelpDCmd::execute(DCmdSource source, TRAPS) {
   if (_all.value()) {
     GrowableArray<const char*>* cmd_list = DCmdFactory::DCmd_list(source);
+    cmd_list->sort(compare_strings);
     for (int i = 0; i < cmd_list->length(); i++) {
       DCmdFactory* factory = DCmdFactory::factory(source, cmd_list->at(i),
                                                   strlen(cmd_list->at(i)));
@@ -180,6 +186,7 @@ void HelpDCmd::execute(DCmdSource source, TRAPS) {
   } else {
     output()->print_cr("The following commands are available:");
     GrowableArray<const char *>* cmd_list = DCmdFactory::DCmd_list(source);
+    cmd_list->sort(compare_strings);
     for (int i = 0; i < cmd_list->length(); i++) {
       DCmdFactory* factory = DCmdFactory::factory(source, cmd_list->at(i),
                                                   strlen(cmd_list->at(i)));
@@ -924,7 +931,7 @@ void CodeCacheDCmd::execute(DCmdSource source, TRAPS) {
 //---<  BEGIN  >--- CodeHeap State Analytics.
 CodeHeapAnalyticsDCmd::CodeHeapAnalyticsDCmd(outputStream* output, bool heap) :
                                              DCmdWithParser(output, heap),
-  _function("function", "Function to be performed (aggregate, UsedSpace, FreeSpace, MethodCount, MethodSpace, MethodAge, discard", "STRING", false, "all"),
+  _function("function", "Function to be performed (aggregate, UsedSpace, FreeSpace, MethodCount, MethodSpace, MethodAge, MethodNames, discard", "STRING", false, "all"),
   _granularity("granularity", "Detail level - smaller value -> more detail", "STRING", false, "4096") {
   _dcmdparser.add_dcmd_argument(&_function);
   _dcmdparser.add_dcmd_argument(&_granularity);

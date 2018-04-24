@@ -46,6 +46,7 @@
 #include "memory/filemap.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/metaspaceClosure.hpp"
+#include "memory/metaspaceCounters.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
@@ -689,6 +690,8 @@ jint universe_init() {
     return status;
   }
 
+  SystemDictionary::initialize_oop_storage();
+
   Metaspace::global_initialize();
 
   // Initialize performance counters for metaspaces
@@ -783,6 +786,7 @@ jint Universe::initialize_heap() {
       // Did reserve heap below 32Gb. Can use base == 0;
       Universe::set_narrow_oop_base(0);
     }
+    AOTLoader::set_narrow_oop_shift();
 
     Universe::set_narrow_ptrs_base(Universe::narrow_oop_base());
 

@@ -50,6 +50,9 @@
 #include "utilities/debug.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_ALL_GCS
+#include "gc/g1/g1ThreadLocalData.hpp"
+#endif // INCLUDE_ALL_GCS
 
 #if defined(_MSC_VER)
 #define strtoll _strtoi64
@@ -412,6 +415,34 @@ JRT_LEAF(void, JVMCIRuntime::monitorexit(JavaThread* thread, oopDesc* obj, Basic
   }
 JRT_END
 
+// Object.notify() fast path, caller does slow path
+JRT_LEAF(jboolean, JVMCIRuntime::object_notify(JavaThread *thread, oopDesc* obj))
+
+  // Very few notify/notifyAll operations find any threads on the waitset, so
+  // the dominant fast-path is to simply return.
+  // Relatedly, it's critical that notify/notifyAll be fast in order to
+  // reduce lock hold times.
+  if (!SafepointSynchronize::is_synchronizing()) {
+    if (ObjectSynchronizer::quick_notify(obj, thread, false)) {
+      return true;
+    }
+  }
+  return false; // caller must perform slow path
+
+JRT_END
+
+// Object.notifyAll() fast path, caller does slow path
+JRT_LEAF(jboolean, JVMCIRuntime::object_notifyAll(JavaThread *thread, oopDesc* obj))
+
+  if (!SafepointSynchronize::is_synchronizing() ) {
+    if (ObjectSynchronizer::quick_notify(obj, thread, true)) {
+      return true;
+    }
+  }
+  return false; // caller must perform slow path
+
+JRT_END
+
 JRT_ENTRY(void, JVMCIRuntime::throw_and_post_jvmti_exception(JavaThread* thread, const char* exception, const char* message))
   TempNewSymbol symbol = SymbolTable::new_symbol(exception, CHECK);
   SharedRuntime::throw_and_post_jvmti_exception(thread, symbol, message);
@@ -454,11 +485,15 @@ JRT_LEAF(void, JVMCIRuntime::log_object(JavaThread* thread, oopDesc* obj, bool a
 JRT_END
 
 JRT_LEAF(void, JVMCIRuntime::write_barrier_pre(JavaThread* thread, oopDesc* obj))
-  thread->satb_mark_queue().enqueue(obj);
+#if INCLUDE_ALL_GCS
+  G1ThreadLocalData::satb_mark_queue(thread).enqueue(obj);
+#endif // INCLUDE_ALL_GCS
 JRT_END
 
 JRT_LEAF(void, JVMCIRuntime::write_barrier_post(JavaThread* thread, void* card_addr))
-  thread->dirty_card_queue().enqueue(card_addr);
+#if INCLUDE_ALL_GCS
+  G1ThreadLocalData::dirty_card_queue(thread).enqueue(card_addr);
+#endif // INCLUDE_ALL_GCS
 JRT_END
 
 JRT_LEAF(jboolean, JVMCIRuntime::validate_object(JavaThread* thread, oopDesc* parent, oopDesc* child))

@@ -84,6 +84,7 @@ class SymbolPropertyTable;
 class ProtectionDomainCacheTable;
 class ProtectionDomainCacheEntry;
 class GCTimer;
+class OopStorage;
 
 // Certain classes are preloaded, such as java.lang.Object and java.lang.String.
 // They are all "well-known", in the sense that no class loader is allowed
@@ -638,6 +639,9 @@ public:
   // ProtectionDomain cache
   static ProtectionDomainCacheTable*   _pd_cache_table;
 
+  // VM weak OopStorage object.
+  static OopStorage*             _vm_weak_oop_storage;
+
 protected:
   static void validate_protection_domain(InstanceKlass* klass,
                                          Handle class_loader,
@@ -689,6 +693,9 @@ public:
     assert(m != NULL, "Unexpected NULL Method*");
     return !m->is_public() && m->method_holder() == SystemDictionary::Object_klass();
   }
+
+  static void initialize_oop_storage();
+  static OopStorage* vm_weak_oop_storage();
 
 protected:
   static InstanceKlass* find_shared_class(Symbol* class_name);

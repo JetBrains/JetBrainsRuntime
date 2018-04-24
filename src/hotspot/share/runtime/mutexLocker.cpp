@@ -48,6 +48,8 @@ Mutex*   JNIGlobalActive_lock         = NULL;
 Mutex*   JNIWeakAlloc_lock            = NULL;
 Mutex*   JNIWeakActive_lock           = NULL;
 Mutex*   JNIHandleBlockFreeList_lock  = NULL;
+Mutex*   VMWeakAlloc_lock             = NULL;
+Mutex*   VMWeakActive_lock            = NULL;
 Mutex*   ResolvedMethodTable_lock     = NULL;
 Mutex*   JmethodIdCreation_lock       = NULL;
 Mutex*   JfieldIdCreation_lock        = NULL;
@@ -179,6 +181,9 @@ void mutex_init() {
 
   def(CGC_lock                     , PaddedMonitor, special,     true,  Monitor::_safepoint_check_never);      // coordinate between fore- and background GC
   def(STS_lock                     , PaddedMonitor, leaf,        true,  Monitor::_safepoint_check_never);
+
+  def(VMWeakAlloc_lock             , PaddedMutex  , vmweak,      true,  Monitor::_safepoint_check_never);
+  def(VMWeakActive_lock            , PaddedMutex  , vmweak-1,    true,  Monitor::_safepoint_check_never);
 
   if (UseConcMarkSweepGC || UseG1GC) {
     def(FullGCCount_lock           , PaddedMonitor, leaf,        true,  Monitor::_safepoint_check_never);      // in support of ExplicitGCInvokesConcurrent

@@ -646,10 +646,10 @@ class InstanceKlass: public Klass {
     return is_anonymous() ? java_mirror() : class_loader();
   }
 
-  // Load the klass_holder as a phantom. This is useful when a weak Klass
+  // Load the klass's holder as a phantom. This is useful when a weak Klass
   // pointer has been "peeked" and then must be kept alive before it may
   // be used safely.
-  oop klass_holder_phantom();
+  oop holder_phantom() const;
 
   bool is_contended() const                {
     return (_misc_flags & _misc_is_contended) != 0;
@@ -1148,9 +1148,9 @@ public:
   void adjust_default_methods(InstanceKlass* holder, bool* trace_name_printed);
 #endif // INCLUDE_JVMTI
 
-  void clean_weak_instanceklass_links(BoolObjectClosure* is_alive);
-  void clean_implementors_list(BoolObjectClosure* is_alive);
-  void clean_method_data(BoolObjectClosure* is_alive);
+  void clean_weak_instanceklass_links();
+  void clean_implementors_list();
+  void clean_method_data();
 
   // Explicit metaspace deallocation of fields
   // For RedefineClasses and class file parsing errors, we need to deallocate
