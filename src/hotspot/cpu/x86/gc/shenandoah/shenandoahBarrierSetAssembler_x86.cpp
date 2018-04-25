@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "interpreter/interpreter.hpp"
+#include "interpreter/interp_masm.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
 
