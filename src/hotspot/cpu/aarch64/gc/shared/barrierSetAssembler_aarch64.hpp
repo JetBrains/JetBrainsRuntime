@@ -40,6 +40,9 @@ public:
   virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                         Address dst, Register val, Register tmp1, Register tmp2);
 
+  virtual void obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2);
+  virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+  virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
   virtual void barrier_stubs_init() {}
 };
 

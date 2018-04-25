@@ -28,11 +28,49 @@
 #include "gc/shared/barrierSetAssembler.hpp"
 
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
+private:
+  void satb_write_barrier_pre(MacroAssembler* masm,
+                              Register obj,
+                              Register pre_val,
+                              Register thread,
+                              Register tmp,
+                              bool tosca_live,
+                              bool expand_call);
+  void shenandoah_write_barrier_pre(MacroAssembler* masm,
+                                    Register obj,
+                                    Register pre_val,
+                                    Register thread,
+                                    Register tmp,
+                                    bool tosca_live,
+                                    bool expand_call);
+  void shenandoah_write_barrier_post(MacroAssembler* masm,
+                                     Register store_addr,
+                                     Register new_val,
+                                     Register thread,
+                                     Register tmp,
+                                     Register tmp2);
+
+  void read_barrier(MacroAssembler* masm, Register dst);
+  void read_barrier_impl(MacroAssembler* masm, Register dst);
+  void read_barrier_not_null(MacroAssembler* masm, Register dst);
+  void read_barrier_not_null_impl(MacroAssembler* masm, Register dst);
+  void write_barrier(MacroAssembler* masm, Register dst);
+  void write_barrier_impl(MacroAssembler* masm, Register dst);
+  void storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
+  void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
+
 public:
   virtual void arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, bool is_oop,
                                   Register addr, Register count, RegSet saved_regs);
   virtual void arraycopy_epilogue(MacroAssembler* masm, DecoratorSet decorators, bool is_oop,
                                   Register start, Register end, Register tmp, RegSet saved_regs);
+  virtual void load_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
+                       Register dst, Address src, Register tmp1, Register tmp_thread);
+  virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
+                        Address dst, Register val, Register tmp1, Register tmp2);
+  virtual void obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2);
+  virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+  virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
 };
 
 #endif // CPU_AARCH64_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_AARCH64_HPP

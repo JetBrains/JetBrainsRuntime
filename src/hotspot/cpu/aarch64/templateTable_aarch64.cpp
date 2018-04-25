@@ -760,7 +760,7 @@ void TemplateTable::iaload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1, Address(r0, r1, Address::uxtw(2)));
   __ ldrw(r0, Address(r1, arrayOopDesc::base_offset_in_bytes(T_INT)));
 }
@@ -773,7 +773,7 @@ void TemplateTable::laload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1, Address(r0, r1, Address::uxtw(3)));
   __ ldr(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_LONG)));
 }
@@ -786,7 +786,7 @@ void TemplateTable::faload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(2)));
   __ ldrs(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
 }
@@ -799,7 +799,7 @@ void TemplateTable::daload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(3)));
   __ ldrd(v0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
 }
@@ -812,7 +812,7 @@ void TemplateTable::aaload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   int s = (UseCompressedOops ? 2 : 3);
   __ lea(r1, Address(r0, r1, Address::uxtw(s)));
   do_oop_load(_masm,
@@ -829,7 +829,7 @@ void TemplateTable::baload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(0)));
   __ load_signed_byte(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_BYTE)));
 }
@@ -842,7 +842,7 @@ void TemplateTable::caload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_unsigned_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
@@ -860,7 +860,7 @@ void TemplateTable::fast_icaload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_unsigned_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_CHAR)));
 }
@@ -873,7 +873,7 @@ void TemplateTable::saload()
   // r0: array
   // r1: index
   index_check(r0, r1); // leaves index in r1, kills rscratch1
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   __ lea(r1,  Address(r0, r1, Address::uxtw(1)));
   __ load_signed_short(r0, Address(r1,  arrayOopDesc::base_offset_in_bytes(T_SHORT)));
 }
@@ -1068,7 +1068,7 @@ void TemplateTable::iastore() {
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
   __ strw(r0, Address(rscratch1,
                       arrayOopDesc::base_offset_in_bytes(T_INT)));
@@ -1082,7 +1082,7 @@ void TemplateTable::lastore() {
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
   __ str(r0, Address(rscratch1,
                       arrayOopDesc::base_offset_in_bytes(T_LONG)));
@@ -1096,7 +1096,7 @@ void TemplateTable::fastore() {
   // r1:  index
   // r3:  array
   index_check(r3, r1); // prefer index in r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(2)));
   __ strs(v0, Address(rscratch1,
                       arrayOopDesc::base_offset_in_bytes(T_FLOAT)));
@@ -1110,7 +1110,7 @@ void TemplateTable::dastore() {
   // r1:  index
   // r3:  array
   index_check(r3, r1); // prefer index in r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(3)));
   __ strd(v0, Address(rscratch1,
                       arrayOopDesc::base_offset_in_bytes(T_DOUBLE)));
@@ -1127,7 +1127,7 @@ void TemplateTable::aastore() {
   Address element_address(r4, arrayOopDesc::base_offset_in_bytes(T_OBJECT));
 
   index_check(r3, r2);     // kills r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(r4, Address(r3, r2, Address::uxtw(UseCompressedOops? 2 : 3)));
 
   // do array store check - check for NULL value first
@@ -1178,7 +1178,7 @@ void TemplateTable::bastore()
   // r0: value
   // r1: index
   // r3: array
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   index_check(r3, r1); // prefer index in r1
 
   // Need to check whether array is boolean or byte
@@ -1205,7 +1205,7 @@ void TemplateTable::castore()
   // r1: index
   // r3: array
   index_check(r3, r1); // prefer index in r1
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r3);
+  __ resolve_for_write(0, r3);
   __ lea(rscratch1, Address(r3, r1, Address::uxtw(1)));
   __ strh(r0, Address(rscratch1,
                       arrayOopDesc::base_offset_in_bytes(T_CHAR)));
@@ -2498,7 +2498,7 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
     // obj is on the stack
     pop_and_check_object(obj);
   }
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, obj);
+  __ resolve_for_read(OOP_NOT_NULL, obj);
 
   // 8179954: We need to make sure that the code generated for
   // volatile accesses forms a sequentially-consistent set of
@@ -2767,7 +2767,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(btos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strb(r0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_bputfield, bc, r1, true, byte_no);
@@ -2783,7 +2783,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ztos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ andw(r0, r0, 0x1);
     __ strb(r0, field);
     if (rc == may_rewrite) {
@@ -2800,7 +2800,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(atos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     // Store into the field
     do_oop_store(_masm, field, r0, IN_HEAP);
     if (rc == may_rewrite) {
@@ -2817,7 +2817,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(itos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strw(r0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_iputfield, bc, r1, true, byte_no);
@@ -2833,7 +2833,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ctos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strh(r0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_cputfield, bc, r1, true, byte_no);
@@ -2849,7 +2849,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(stos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strh(r0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_sputfield, bc, r1, true, byte_no);
@@ -2865,7 +2865,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ltos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ str(r0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_lputfield, bc, r1, true, byte_no);
@@ -2881,7 +2881,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ftos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strs(v0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_fputfield, bc, r1, true, byte_no);
@@ -2899,7 +2899,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(dtos);
     if (!is_static) pop_and_check_object(obj);
-    BarrierSet::barrier_set()->interpreter_write_barrier(_masm, obj);
+    __ resolve_for_write(0, obj);
     __ strd(v0, field);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_dputfield, bc, r1, true, byte_no);
@@ -3021,7 +3021,7 @@ void TemplateTable::fast_storefield(TosState state)
 
   // Get object from stack
   pop_and_check_object(r2);
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r2);
+  __ resolve_for_write(0, r2);
 
   // field address
   const Address field(r2, r1);
@@ -3103,7 +3103,7 @@ void TemplateTable::fast_accessfield(TosState state)
   // r0: object
   __ verify_oop(r0);
   __ null_check(r0);
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   const Address field(r0, r1);
 
   // 8179954: We need to make sure that the code generated for
@@ -3187,7 +3187,7 @@ void TemplateTable::fast_xaccess(TosState state)
   // next instruction)
   __ increment(rbcp);
   __ null_check(r0);
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(_masm, r0);
+  __ resolve_for_read(OOP_NOT_NULL, r0);
   switch (state) {
   case itos:
     __ ldrw(r0, Address(r0, r1, Address::lsl(0)));
@@ -3857,7 +3857,7 @@ void TemplateTable::monitorenter()
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r0);
+  __ resolve_for_write(0, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
@@ -3963,7 +3963,7 @@ void TemplateTable::monitorexit()
   // We need to preemptively evacuate the object, because we later compare
   // it to objects in the BasicObjectLock list, and we might get false negatives
   // if another thread evacuates the object in the meantime. See acmp.
-  BarrierSet::barrier_set()->interpreter_write_barrier(_masm, r0);
+  __ resolve_for_write(0, r0);
 
   const Address monitor_block_top(
         rfp, frame::interpreter_frame_monitor_block_top_offset * wordSize);

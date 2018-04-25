@@ -64,3 +64,17 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   default: Unimplemented();
   }
 }
+
+void BarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2) {
+  __ cmp(src1, src2);
+}
+
+
+void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op.
+}
+
+void BarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op.
+}
+

@@ -47,6 +47,7 @@
 #include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif
 
@@ -1124,15 +1125,18 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         const Register thread = rthread;
         const Register tmp = rscratch1;
 
-        Address in_progress(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset()));
-        Address queue_index(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_index_offset()));
-        Address buffer(thread, in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset()));
+        Address in_progress(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
+                                                     : ShenandoahThreadLocalData::satb_mark_queue_active_offset()));
+        Address queue_index(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_index_offset()
+                                                     : ShenandoahThreadLocalData::satb_mark_queue_index_offset()));
+        Address buffer(thread, in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
+                                                : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset()));
 
         Label done;
         Label runtime;
 
         if (UseShenandoahGC) {
-          Address gc_state(thread, in_bytes(JavaThread::gc_state_offset()));
+          Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
           __ ldrb(tmp, gc_state);
           __ tbz(tmp, ShenandoahHeap::MARKING_BITPOS, done);
         } else {

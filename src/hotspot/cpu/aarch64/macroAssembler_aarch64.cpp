@@ -2411,8 +2411,8 @@ void MacroAssembler::cmpxchg_oop_shenandoah(Register addr, Register expected,
     decode_heap_oop(result, result);
     decode_heap_oop(tmp2, tmp2);
   }
-  BarrierSet::barrier_set()->interpreter_read_barrier(this, result);
-  BarrierSet::barrier_set()->interpreter_read_barrier(this, tmp2);
+  resolve_for_read(0, result);
+  resolve_for_read(0,tmp2);
   cmp(result, tmp2);
   // Retry with expected now being the value we just loaded from addr.
   br(Assembler::EQ, retry);
@@ -3716,8 +3716,8 @@ void MacroAssembler::cmpptr(Register src1, Address src2) {
 }
 
 void MacroAssembler::cmpoop(Register src1, Register src2) {
-  cmp(src1, src2);
-  BarrierSet::barrier_set()->asm_acmp_barrier(this, src1, src2);
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->obj_equals(this, IN_HEAP, src1, src2);
 }
 
 
@@ -3734,7 +3734,7 @@ void MacroAssembler::load_klass(Register dst, Register src) {
 void MacroAssembler::resolve_oop_handle(Register result) {
   // OopHandle::resolve is an indirection.
   ldr(result, Address(result, 0));
-  BarrierSet::barrier_set()->interpreter_read_barrier_not_null(this, result);
+  resolve_for_read(OOP_NOT_NULL, result);
 }
 
 void MacroAssembler::load_mirror(Register dst, Register method) {
@@ -4048,6 +4048,16 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   movk(dst, nk & 0xffff);
 }
 
+void MacroAssembler::resolve_for_read(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_read(this, decorators, obj);
+}
+
+void MacroAssembler::resolve_for_write(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_write(this, decorators, obj);
+}
+
 void MacroAssembler::load_heap_oop(Register dst, Address src)
 {
   if (UseCompressedOops) {
@@ -4084,6 +4094,47 @@ void MacroAssembler::store_heap_oop_null(Address dst) {
   } else
     str(zr, dst);
 }
+
+#ifdef INCLUDE_ALL_GCS
+void MacroAssembler::shenandoah_write_barrier(Register dst) {
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(dst != rscratch1, "need rscratch1");
+  assert(dst != rscratch2, "need rscratch2");
+
+  Label done;
+
+  // Check for evacuation-in-progress
+  Address gc_state(rthread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+  ldrb(rscratch1, gc_state);
+
+  // The read-barrier.
+  if (ShenandoahWriteBarrierRB) {
+    ldr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
+
+  // Evac-check ...
+  mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+  tst(rscratch1, rscratch2);
+  br(Assembler::EQ, done);
+
+  RegSet to_save = RegSet::of(r0);
+  if (dst != r0) {
+    push(to_save, sp);
+    mov(r0, dst);
+  }
+
+  assert(StubRoutines::aarch64::shenandoah_wb() != NULL, "need write barrier stub");
+  far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::aarch64::shenandoah_wb())));
+
+  if (dst != r0) {
+    mov(dst, r0);
+    pop(to_save, sp);
+  }
+  block_comment("} Shenandoah write barrier");
+
+  bind(done);
+}
+#endif // INCLUDE_ALL_GCS
 
 Address MacroAssembler::allocate_metadata_address(Metadata* obj) {
   assert(oop_recorder() != NULL, "this assembler needs a Recorder");

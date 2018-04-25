@@ -838,6 +838,9 @@ public:
   void resolve_oop_handle(Register result);
   void load_mirror(Register dst, Register method);
 
+  void resolve_for_read(DecoratorSet decorators, Register obj);
+  void resolve_for_write(DecoratorSet decorators, Register obj);
+
   void load_heap_oop(Register dst, Address src);
 
   void load_heap_oop_not_null(Register dst, Address src);
