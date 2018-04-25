@@ -22,9 +22,16 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#include "interpreter/interpreter.hpp"
+#include "interpreter/interp_masm.hpp"
+#include "runtime/sharedRuntime.hpp"
+#include "runtime/thread.hpp"
 
 #define __ masm->
 
