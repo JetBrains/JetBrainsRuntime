@@ -592,17 +592,6 @@ class MacroAssembler: public Assembler {
   void verify_oop(Register reg, const char* s = "broken oop");
   void verify_oop_addr(Address addr, const char * s = "broken oop addr");
 
-  void shenandoah_in_heap_check(Register dst, Register tmp, Label& done);
-  void shenandoah_cset_check(Register dst, Register tmp, Label& done);
-
-  void shenandoah_store_addr_check(Register dst);
-  void shenandoah_store_addr_check(Address dst);
-
-  void shenandoah_store_val_check(Register dst, Register value);
-  void shenandoah_store_val_check(Address dst, Register value);
-
-  void shenandoah_lock_check(Register dst);
-
   // TODO: verify method and klass metadata (compare against vptr?)
   void _verify_method_ptr(Register reg, const char * msg, const char * file, int line) {}
   void _verify_klass_ptr(Register reg, const char * msg, const char * file, int line){}

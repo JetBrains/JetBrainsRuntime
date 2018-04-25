@@ -490,8 +490,6 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   Address klass_addr     (obj_reg, oopDesc::klass_offset_in_bytes());
   Address saved_mark_addr(lock_reg, 0);
 
-  shenandoah_store_addr_check(obj_reg);
-
   // Biased locking
   // See whether the lock is currently biased toward our thread and
   // whether the epoch is still valid
@@ -642,7 +640,6 @@ void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, La
   // a higher level. Second, if the bias was revoked while we held the
   // lock, the object could not be rebiased toward another thread, so
   // the bias bit would be clear.
-  shenandoah_store_addr_check(obj_reg); // Access mark word
   ldr(temp_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
   andr(temp_reg, temp_reg, markOopDesc::biased_lock_mask_in_place);
   cmp(temp_reg, markOopDesc::biased_lock_pattern);
@@ -2375,14 +2372,6 @@ void MacroAssembler::cmpxchg_oop_shenandoah(Register addr, Register expected,
 
   assert_different_registers(addr, expected, new_val, result, tmp2);
 
-  if (ShenandoahStoreCheck) {
-    if (is_narrow) {
-      decode_heap_oop(tmp2, new_val);
-      shenandoah_store_check(addr, tmp2);
-    } else {
-      shenandoah_store_check(addr, new_val);
-    }
-  }
   Label retry, done, fail;
 
   // CAS, using LL/SC pair.
@@ -5803,145 +5792,4 @@ void MacroAssembler::in_heap_check(Register r, Register tmp, Label &nope) {
   mov(tmp, (uintptr_t)last_region_end);
   cmp(r, tmp);
   br(Assembler::HS, nope);
-}
-
-void MacroAssembler::shenandoah_cset_check(Register obj, Register tmp1, Register tmp2, Label& done) {
-
-  // Test that oop is not in to-space.
-  lsr(tmp1, obj, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-  assert(ShenandoahHeap::in_cset_fast_test_addr() != 0, "sanity");
-  mov(tmp2, ShenandoahHeap::in_cset_fast_test_addr());
-  ldrb(tmp2, Address(tmp2, tmp1));
-  tbz(tmp2, 0, done);
-
-  // Check for cancelled GC.
-  assert(ShenandoahHeap::cancelled_concgc_addr() != 0, "sanity");
-  mov(tmp2, ShenandoahHeap::cancelled_concgc_addr());
-  ldrb(tmp2, Address(tmp2));
-  cbnz(tmp2, done);
-}
-
-void MacroAssembler::_shenandoah_store_check(Address addr, Register value, const char* msg, const char* file, int line) {
-  _shenandoah_store_check(addr.base(), value, msg, file, line);
-}
-
-void MacroAssembler::_shenandoah_store_check(Register addr, Register value, const char* msg, const char* file, int line) {
-
-  if (! UseShenandoahGC || ! ShenandoahStoreCheck) return;
-  if (addr == r31_sp || addr == sp) return; // Stack-based target
-
-  Register raddr = r8;
-  Register rval = r9;
-  Register tmp1 = r10;
-  Register tmp2 = r11;
-
-  RegSet to_save = RegSet::of(raddr, rval, tmp1, tmp2);
-
-  // Push tmp regs and flags.
-  push(to_save, sp);
-  get_nzcv(tmp1);
-  push(RegSet::of(tmp1), sp);
-
-  mov(rval, value);
-  mov(raddr, addr);
-
-  Label done;
-
-  // If not in-heap target, skip check.
-  in_heap_check(raddr, tmp1, done);
-
-  // Test that target oop is not in to-space.
-  shenandoah_cset_check(raddr, tmp1, tmp2, done);
-
-  // During evacuation and evacuation only, we can have the stores of cset-values
-  // to non-cset destinations. Everything else is covered by storeval barriers.
-  // Poll the heap directly: that would be the least performant, yet more reliable way,
-  // because it will also capture the errors in thread-local flags that may break the
-  // write barrier.
-  mov(tmp1, ShenandoahHeap::gc_state_addr());
-  ldrb(tmp1, Address(tmp1));
-  tbnz(tmp1, ShenandoahHeap::EVACUATION_BITPOS, done);
-
-  // Null-check value.
-  cbz(rval, done);
-
-  // Test that value oop is not in to-space.
-  shenandoah_cset_check(rval, tmp1, tmp2, done);
-
-  // Failure.
-  // Pop tmp regs and flags.
-  pop(RegSet::of(tmp1), sp);
-  set_nzcv(tmp1);
-  pop(to_save, sp);
-  const char* b = NULL;
-  {
-    ResourceMark rm;
-    stringStream ss;
-    ss.print("shenandoah_store_check: %s in file: %s line: %i", msg, file, line);
-    b = code_string(ss.as_string());
-  }
-  // hlt(0);
-
-  stop(b);
-
-  bind(done);
-  // Pop tmp regs and flags.
-  pop(RegSet::of(tmp1), sp);
-  set_nzcv(tmp1);
-  pop(to_save, sp);
-}
-
-void MacroAssembler::_shenandoah_store_addr_check(Address addr, const char* msg, const char* file, int line) {
-  _shenandoah_store_addr_check(addr.base(), msg, file, line);
-}
-
-void MacroAssembler::_shenandoah_store_addr_check(Register dst, const char* msg, const char* file, int line) {
-
-  if (! UseShenandoahGC || ! ShenandoahStoreCheck) return;
-  if (dst == r31_sp || dst == sp) return; // Stack-based target
-
-  Register addr = r8;
-  Register tmp1 = r9;
-  Register tmp2 = r10;
-
-  Label done;
-  RegSet to_save = RegSet::of(addr, tmp1, tmp2);
-
-  // Push tmp regs and flags.
-  push(to_save, sp);
-  get_nzcv(tmp1);
-  push(RegSet::of(tmp1), sp);
-
-  orr(addr, zr, dst);
-  // mov(addr, dst);
-
-  // Check null.
-  cbz(addr, done);
-
-  in_heap_check(addr, tmp1, done);
-
-  shenandoah_cset_check(addr, tmp1, tmp2, done);
-
-  // Fail.
-  // Pop tmp regs and flags.
-  pop(RegSet::of(tmp1), sp);
-  set_nzcv(tmp1);
-  pop(to_save, sp);
-  const char* b = NULL;
-  {
-    ResourceMark rm;
-    stringStream ss;
-    ss.print("shenandoah_store_check: %s in file: %s line: %i", msg, file, line);
-    b = code_string(ss.as_string());
-  }
-  // hlt(0);
-  stop(b);
-  // should_not_reach_here();
-
-  bind(done);
-  // Pop tmp regs and flags.
-  pop(RegSet::of(tmp1), sp);
-  set_nzcv(tmp1);
-  pop(to_save, sp);
-
 }

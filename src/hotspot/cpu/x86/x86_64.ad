@@ -2736,16 +2736,6 @@ encode %{
                    RELOC_DISP32);
   %}
 
-  enc_class shenandoah_store_check(memory mem, any_RegP src) %{
-    MacroAssembler _masm(&cbuf);
-    __ shenandoah_store_addr_check($mem$$Address);
-    __ shenandoah_store_val_check($mem$$Address, $src$$Register);
-  %}
-
-  enc_class shenandoah_store_addr_check(memory mem) %{
-    MacroAssembler _masm(&cbuf);
-    __ shenandoah_store_addr_check($mem$$Address);
-  %}
 %}
 
 
@@ -5714,7 +5704,7 @@ instruct storeB(memory mem, rRegI src)
   ins_cost(125); // XXX
   format %{ "movb    $mem, $src\t# byte" %}
   opcode(0x88);
-  ins_encode(shenandoah_store_addr_check(mem), REX_breg_mem(src, mem), OpcP, reg_mem(src, mem));
+  ins_encode(REX_breg_mem(src, mem), OpcP, reg_mem(src, mem));
   ins_pipe(ialu_mem_reg);
 %}
 
@@ -5726,7 +5716,7 @@ instruct storeC(memory mem, rRegI src)
   ins_cost(125); // XXX
   format %{ "movw    $mem, $src\t# char/short" %}
   opcode(0x89);
-  ins_encode(shenandoah_store_addr_check(mem), SizePrefix, REX_reg_mem(src, mem), OpcP, reg_mem(src, mem));
+  ins_encode(SizePrefix, REX_reg_mem(src, mem), OpcP, reg_mem(src, mem));
   ins_pipe(ialu_mem_reg);
 %}
 
@@ -5738,7 +5728,7 @@ instruct storeI(memory mem, rRegI src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# int" %}
   opcode(0x89);
-  ins_encode(shenandoah_store_addr_check(mem), REX_reg_mem(src, mem), OpcP, reg_mem(src, mem));
+  ins_encode(REX_reg_mem(src, mem), OpcP, reg_mem(src, mem));
   ins_pipe(ialu_mem_reg);
 %}
 
@@ -5750,7 +5740,7 @@ instruct storeL(memory mem, rRegL src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# long" %}
   opcode(0x89);
-  ins_encode(shenandoah_store_addr_check(mem), REX_reg_mem_wide(src, mem), OpcP, reg_mem(src, mem));
+  ins_encode(REX_reg_mem_wide(src, mem), OpcP, reg_mem(src, mem));
   ins_pipe(ialu_mem_reg); // XXX
 %}
 
@@ -5762,7 +5752,7 @@ instruct storeP(memory mem, any_RegP src)
   ins_cost(125); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   opcode(0x89);
-  ins_encode(shenandoah_store_check(mem, src), REX_reg_mem_wide(src, mem), OpcP, reg_mem(src, mem));
+  ins_encode(REX_reg_mem_wide(src, mem), OpcP, reg_mem(src, mem));
   ins_pipe(ialu_mem_reg);
 %}
 
@@ -5774,7 +5764,6 @@ instruct storeImmP0(memory mem, immP0 zero)
   ins_cost(125); // XXX
   format %{ "movq    $mem, R12\t# ptr (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movq($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5788,7 +5777,7 @@ instruct storeImmP(memory mem, immP31 src)
   ins_cost(150); // XXX
   format %{ "movq    $mem, $src\t# ptr" %}
   opcode(0xC7); /* C7 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
+  ins_encode(REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -5800,7 +5789,6 @@ instruct storeN(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5813,7 +5801,6 @@ instruct storeNKlass(memory mem, rRegN src)
   ins_cost(125); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movl($mem$$Address, $src$$Register);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5827,7 +5814,6 @@ instruct storeImmN0(memory mem, immN0 zero)
   ins_cost(125); // XXX
   format %{ "movl    $mem, R12\t# compressed ptr (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movl($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5841,7 +5827,6 @@ instruct storeImmN(memory mem, immN src)
   format %{ "movl    $mem, $src\t# compressed ptr" %}
   ins_encode %{
     address con = (address)$src$$constant;
-    __ shenandoah_store_addr_check($mem$$Address);
     if (con == NULL) {
       __ movl($mem$$Address, (int32_t)0);
     } else {
@@ -5858,7 +5843,6 @@ instruct storeImmNKlass(memory mem, immNKlass src)
   ins_cost(150); // XXX
   format %{ "movl    $mem, $src\t# compressed klass ptr" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ set_narrow_klass($mem$$Address, (Klass*)$src$$constant);
   %}
   ins_pipe(ialu_mem_imm);
@@ -5873,7 +5857,6 @@ instruct storeImmI0(memory mem, immI0 zero)
   ins_cost(125); // XXX
   format %{ "movl    $mem, R12\t# int (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movl($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5886,7 +5869,7 @@ instruct storeImmI(memory mem, immI src)
   ins_cost(150);
   format %{ "movl    $mem, $src\t# int" %}
   opcode(0xC7); /* C7 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
+  ins_encode(REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -5899,7 +5882,6 @@ instruct storeImmL0(memory mem, immL0 zero)
   ins_cost(125); // XXX
   format %{ "movq    $mem, R12\t# long (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movq($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5912,7 +5894,7 @@ instruct storeImmL(memory mem, immL32 src)
   ins_cost(150);
   format %{ "movq    $mem, $src\t# long" %}
   opcode(0xC7); /* C7 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
+  ins_encode(REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -5925,7 +5907,6 @@ instruct storeImmC0(memory mem, immI0 zero)
   ins_cost(125); // XXX
   format %{ "movw    $mem, R12\t# short/char (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movw($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5939,7 +5920,7 @@ instruct storeImmI16(memory mem, immI16 src)
   ins_cost(150);
   format %{ "movw    $mem, $src\t# short/char" %}
   opcode(0xC7); /* C7 /0 Same as 32 store immediate with prefix */
-  ins_encode(shenandoah_store_addr_check(mem), SizePrefix, REX_mem(mem), OpcP, RM_opc_mem(0x00, mem),Con16(src));
+  ins_encode(SizePrefix, REX_mem(mem), OpcP, RM_opc_mem(0x00, mem),Con16(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -5952,7 +5933,6 @@ instruct storeImmB0(memory mem, immI0 zero)
   ins_cost(125); // XXX
   format %{ "movb    $mem, R12\t# short/char (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movb($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -5965,7 +5945,7 @@ instruct storeImmB(memory mem, immI8 src)
   ins_cost(150); // XXX
   format %{ "movb    $mem, $src\t# byte" %}
   opcode(0xC6); /* C6 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con8or32(src));
+  ins_encode(REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con8or32(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -6002,7 +5982,6 @@ instruct storeF(memory mem, regF src)
   ins_cost(95); // XXX
   format %{ "movss   $mem, $src\t# float" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movflt($mem$$Address, $src$$XMMRegister);
   %}
   ins_pipe(pipe_slow); // XXX
@@ -6017,7 +5996,6 @@ instruct storeF0(memory mem, immF0 zero)
   ins_cost(25); // XXX
   format %{ "movl    $mem, R12\t# float 0. (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movl($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);
@@ -6030,7 +6008,7 @@ instruct storeF_imm(memory mem, immF src)
   ins_cost(50);
   format %{ "movl    $mem, $src\t# float" %}
   opcode(0xC7); /* C7 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con32F_as_bits(src));
+  ins_encode(REX_mem(mem), OpcP, RM_opc_mem(0x00, mem), Con32F_as_bits(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -6042,7 +6020,6 @@ instruct storeD(memory mem, regD src)
   ins_cost(95); // XXX
   format %{ "movsd   $mem, $src\t# double" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movdbl($mem$$Address, $src$$XMMRegister);
   %}
   ins_pipe(pipe_slow); // XXX
@@ -6057,7 +6034,7 @@ instruct storeD0_imm(memory mem, immD0 src)
   ins_cost(50);
   format %{ "movq    $mem, $src\t# double 0." %}
   opcode(0xC7); /* C7 /0 */
-  ins_encode(shenandoah_store_addr_check(mem), REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32F_as_bits(src));
+  ins_encode(REX_mem_wide(mem), OpcP, RM_opc_mem(0x00, mem), Con32F_as_bits(src));
   ins_pipe(ialu_mem_imm);
 %}
 
@@ -6069,7 +6046,6 @@ instruct storeD0(memory mem, immD0 zero)
   ins_cost(25); // XXX
   format %{ "movq    $mem, R12\t# double 0. (R12_heapbase==0)" %}
   ins_encode %{
-    __ shenandoah_store_addr_check($mem$$Address);
     __ movq($mem$$Address, r12);
   %}
   ins_pipe(ialu_mem_reg);

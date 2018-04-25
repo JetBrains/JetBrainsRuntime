@@ -562,7 +562,6 @@ void InterpreterMacroAssembler::remove_activation(
   lea(c_rarg1, monitor); // address of first monitor
 
   ldr(r0, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
-  shenandoah_store_addr_check(r0); // Invariant
   cbnz(r0, unlock);
 
   pop(state);
@@ -640,7 +639,6 @@ void InterpreterMacroAssembler::remove_activation(
     bind(loop);
     // check if current entry is used
     ldr(rscratch1, Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()));
-    shenandoah_store_addr_check(rscratch1); // Invariant
     cbnz(rscratch1, exception);
 
     add(c_rarg1, c_rarg1, entry_size); // otherwise advance to next entry
@@ -719,8 +717,6 @@ void InterpreterMacroAssembler::lock_object(Register lock_reg)
 
     // Load object pointer into obj_reg %c_rarg3
     ldr(obj_reg, Address(lock_reg, obj_offset));
-
-    shenandoah_store_addr_check(obj_reg);
 
     if (UseBiasedLocking) {
       biased_locking_enter(lock_reg, obj_reg, swap_reg, tmp, false, done, &slow_case);
@@ -820,8 +816,6 @@ void InterpreterMacroAssembler::unlock_object(Register lock_reg)
 
     // Load oop into obj_reg(%c_rarg3)
     ldr(obj_reg, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));
-
-    shenandoah_store_addr_check(obj_reg);
 
     // Free entry
     str(zr, Address(lock_reg, BasicObjectLock::obj_offset_in_bytes()));

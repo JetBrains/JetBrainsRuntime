@@ -640,7 +640,6 @@ void TemplateInterpreterGenerator::lock_method() {
   __ subptr(rsp, entry_size); // add space for a monitor entry
   __ movptr(monitor_block_top, rsp);  // set new monitor block top
   // store object
-  __ shenandoah_store_addr_check(rax);
   __ movptr(Address(rsp, BasicObjectLock::obj_offset_in_bytes()), rax);
   const Register lockreg = NOT_LP64(rdx) LP64_ONLY(c_rarg1);
   __ movptr(lockreg, rsp); // object address
@@ -1260,7 +1259,6 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
       __ lea(regmon, monitor); // address of first monitor
 
       __ movptr(t, Address(regmon, BasicObjectLock::obj_offset_in_bytes()));
-      __ shenandoah_store_addr_check(t); // Invariant
       __ testptr(t, t);
       __ jcc(Assembler::notZero, unlock);
 

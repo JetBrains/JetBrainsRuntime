@@ -4413,7 +4413,6 @@ void TemplateTable::monitorenter() {
     // if not used then remember entry in rmon
     __ cmovptr(Assembler::equal, rmon, rtop);   // cmov => cmovptr
     // check if current entry is for same object
-    __ shenandoah_lock_check(rtop); // Invariant
     __ cmpptr(rax, Address(rtop, BasicObjectLock::obj_offset_in_bytes()));
     // if same object then stop searching
     __ jccb(Assembler::equal, exit);
@@ -4463,7 +4462,6 @@ void TemplateTable::monitorenter() {
   __ increment(rbcp);
 
   // store object
-  __ shenandoah_store_addr_check(rax); // Invariant
   __ movptr(Address(rmon, BasicObjectLock::obj_offset_in_bytes()), rax);
   __ lock_object(rmon);
 
@@ -4506,7 +4504,6 @@ void TemplateTable::monitorexit() {
 
     __ bind(loop);
     // check if current entry is for same object
-    __ shenandoah_lock_check(rtop); // Invariant
     __ cmpptr(rax, Address(rtop, BasicObjectLock::obj_offset_in_bytes()));
     // if same object then stop searching
     __ jcc(Assembler::equal, found);

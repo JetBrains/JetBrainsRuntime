@@ -965,8 +965,6 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
 
   if (type == T_ARRAY || type == T_OBJECT) {
     __ verify_oop(src->as_register());
-    __ shenandoah_store_addr_check(as_Address(to_addr));
-    __ shenandoah_store_val_check(as_Address(to_addr), src->as_register());
 #ifdef _LP64
     if (UseCompressedOops && !wide) {
       __ movptr(compressed_src, src->as_register());
@@ -976,8 +974,6 @@ void LIR_Assembler::reg2mem(LIR_Opr src, LIR_Opr dest, BasicType type, LIR_Patch
       }
     }
 #endif
-  } else {
-    __ shenandoah_store_addr_check(to_addr->base()->as_pointer_register());
   }
 
   if (patch_code != lir_patch_none) {

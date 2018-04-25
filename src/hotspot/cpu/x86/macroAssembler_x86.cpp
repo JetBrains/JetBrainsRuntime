@@ -1110,8 +1110,6 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   Address mark_addr      (obj_reg, oopDesc::mark_offset_in_bytes());
   NOT_LP64( Address saved_mark_addr(lock_reg, 0); )
 
-  shenandoah_store_addr_check(obj_reg);
-
   if (PrintBiasedLockingStatistics && counters == NULL) {
     counters = BiasedLocking::counters();
   }
@@ -1296,7 +1294,6 @@ void MacroAssembler::biased_locking_exit(Register obj_reg, Register temp_reg, La
   // a higher level. Second, if the bias was revoked while we held the
   // lock, the object could not be rebiased toward another thread, so
   // the bias bit would be clear.
-  shenandoah_store_addr_check(obj_reg); // Access mark word
   movptr(temp_reg, Address(obj_reg, oopDesc::mark_offset_in_bytes()));
   andptr(temp_reg, markOopDesc::biased_lock_mask_in_place);
   cmpptr(temp_reg, markOopDesc::biased_lock_pattern);
@@ -1489,7 +1486,6 @@ void MacroAssembler::rtm_stack_locking(Register objReg, Register tmpReg, Registe
     movl(retry_on_abort_count_Reg, RTMRetryCount); // Retry on abort
     bind(L_rtm_retry);
   }
-  shenandoah_store_addr_check(objReg); // Access mark word
   movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));
   testptr(tmpReg, markOopDesc::monitor_value);  // inflated vs stack-locked|neutral|biased
   jcc(Assembler::notZero, IsInflated);
@@ -1566,7 +1562,6 @@ void MacroAssembler::rtm_inflated_locking(Register objReg, Register boxReg, Regi
     bind(L_noincrement);
   }
   xbegin(L_on_abort);
-  shenandoah_store_addr_check(objReg); // Access mark word
   movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));
   movptr(tmpReg, Address(tmpReg, owner_offset));
   testptr(tmpReg, tmpReg);
@@ -1712,8 +1707,6 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
     assert(cx2Reg == noreg, "");
     assert_different_registers(objReg, boxReg, tmpReg, scrReg);
   }
-
-  shenandoah_store_addr_check(objReg); // Access mark word
 
   if (counters != NULL) {
     atomic_incl(ExternalAddress((address)counters->total_entry_count_addr()), scrReg);
@@ -1976,8 +1969,6 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
 void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpReg, bool use_rtm) {
   assert(boxReg == rax, "");
   assert_different_registers(objReg, boxReg, tmpReg);
-
-  shenandoah_store_addr_check(objReg); // Access mark word
 
   if (EmitSync & 4) {
     // Disable - inhibit all inlining.  Force control through the slow-path
@@ -5920,200 +5911,6 @@ void MacroAssembler::verify_oop(Register reg, const char* s) {
   // Caller pops the arguments (oop, message) and restores rax, r10
   BLOCK_COMMENT("} verify_oop");
 }
-
-
-void MacroAssembler::shenandoah_in_heap_check(Register dst, Register tmp, Label& done) {
-  // Converts dst to biased region index
-
-  // Test that oop is not in to-space.
-  shrptr(dst, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-
-  // Check if in bounds for cset check. This implicitly checks if target is in heap.
-  // Since heap might not start at zero, we want to bias the low/high boundaries.
-  uintx bias = (uintx) ShenandoahHeap::heap()->base() >> ShenandoahHeapRegion::region_size_bytes_shift();
-  int32_t low = (int32_t) (0 + bias);
-  int32_t high = (int32_t) (ShenandoahHeap::heap()->num_regions() + bias);
-
-  cmpptr(dst, low);
-  jccb(Assembler::below, done);
-  cmpptr(dst, high);
-  jccb(Assembler::aboveEqual, done);
-}
-
-void MacroAssembler::shenandoah_cset_check(Register dst, Register tmp, Label& done) {
-  // Destroys dst
-
-  shenandoah_in_heap_check(dst, tmp, done);
-
-  movptr(tmp, (intptr_t) ShenandoahHeap::in_cset_fast_test_addr());
-  movbool(tmp, Address(tmp, dst, Address::times_1));
-  testbool(tmp);
-  jccb(Assembler::zero, done);
-
-  // Check for cancelled GC.
-  movptr(tmp, (intptr_t) ShenandoahHeap::cancelled_concgc_addr());
-  movbool(tmp, Address(tmp, 0));
-  testbool(tmp);
-  jccb(Assembler::notZero, done);
-}
-
-#ifndef _LP64
-void MacroAssembler::shenandoah_store_addr_check(Address addr) {
-  // Not implemented on 32-bit, pass.
-}
-void MacroAssembler::shenandoah_store_addr_check(Register dst) {
-  // Not implemented on 32-bit, pass.
-}
-void MacroAssembler::shenandoah_store_val_check(Register dst, Register value) {
-  // Not implemented on 32-bit, pass.
-}
-void MacroAssembler::shenandoah_store_val_check(Address dst, Register value) {
-  // Not implemented on 32-bit, pass.
-}
-void MacroAssembler::shenandoah_lock_check(Register dst) {
-  // Not implemented on 32-bit, pass.
-}
-#else
-void MacroAssembler::shenandoah_store_addr_check(Address addr) {
-  shenandoah_store_addr_check(addr.base());
-}
-
-void MacroAssembler::shenandoah_store_addr_check(Register dst) {
-  if (! UseShenandoahGC || ! ShenandoahStoreCheck) return;
-  if (dst == rsp) return; // Stack-based target
-
-  // This method temporarily destroys dst, but always pushes
-  // the original values on stack, and restores them on exit.
-
-  Register tmp = NULL;
-  if (dst != rscratch1) {
-    tmp = rscratch1;
-  } else if (dst != rscratch2) {
-    tmp = rscratch2;
-  } else {
-    guarantee(false, "able to select the temp register");
-  }
-
-  Label done;
-
-  pushf();
-  push(dst);
-  push(tmp);
-
-  // Check null.
-  testptr(dst, dst);
-  jcc(Assembler::zero, done);
-
-  shenandoah_cset_check(dst, tmp, done);
-
-  // Fail.
-  pop(tmp);
-  pop(dst);
-  popf();
-
-  // Stop, provoke SEGV.
-  // Shortest way to fail VM with RIP pointing to this check.
-  // Store dst register to clearly see what had failed.
-  lea(tmp, ExternalAddress(badAddress));
-  movptr(Address(tmp, 0), dst);
-  hlt();
-
-  bind(done);
-
-  pop(tmp);
-  pop(dst);
-  popf();
-}
-
-void MacroAssembler::shenandoah_store_val_check(Register dst, Register value) {
-  if (! UseShenandoahGC || ! ShenandoahStoreCheck) return;
-  if (dst == rsp)   return; // Stack-based target
-  if (value == rsp) return; // Stack-based value // TODO: Handle this.
-
-  // This method temporarily destroys dst and value, but always pushes
-  // the original values on stack, and restores them on exit.
-
-  Register tmp = NULL;
-  if (value != rscratch1 && dst != rscratch1) {
-    tmp = rscratch1;
-  } else if (value != rscratch2 && dst != rscratch2) {
-    tmp = rscratch2;
-  } else if (value != r9 && dst != r9) {
-    tmp = r9;
-  } else {
-    guarantee(false, "able to select the temp register");
-  }
-
-  // Push tmp regs and flags.
-  pushf();
-  push(dst);
-  push(value);
-  push(tmp);
-
-  Label done;
-
-  // During evacuation and evacuation only, we can have the stores of cset-values
-  // to non-cset destinations. Everything else is covered by storeval barriers.
-  // Poll the heap directly: that would be the least performant, yet more reliable way,
-  // because it will also capture the errors in thread-local flags that may break the
-  // write barrier.
-  movptr(tmp, (intptr_t) ShenandoahHeap::gc_state_addr());
-  testb(Address(tmp, 0), ShenandoahHeap::EVACUATION);
-  jcc(Assembler::notZero, done);
-
-  // Null-check dst.
-  testptr(dst, dst);
-  jcc(Assembler::zero, done);
-
-  // Check that dst is in heap.
-  // Rationale: we accept offheap writes to roots, because we will fix them up
-  // as needed later. Non-root offheap writes are unsafe anyway, allow them.
-  shenandoah_in_heap_check(dst, tmp, done);
-
-  // Null-check value.
-  testptr(value, value);
-  jcc(Assembler::zero, done);
-
-  // Test that value oop is not in to-space.
-  shenandoah_cset_check(value, tmp, done);
-
-  // Fail.
-  pop(tmp);
-  pop(value);
-  pop(dst);
-  popf();
-
-  // Stop, provoke SEGV.
-  // Shortest way to fail VM with RIP pointing to this check.
-  // Store value register to clearly see what had failed.
-  lea(tmp, ExternalAddress(badAddress));
-  movptr(Address(tmp, 0), value);
-  hlt();
-
-  bind(done);
-
-  // Pop tmp regs and flags.
-  pop(tmp);
-  pop(value);
-  pop(dst);
-  popf();
-}
-
-void MacroAssembler::shenandoah_store_val_check(Address addr, Register value) {
-  shenandoah_store_val_check(addr.base(), value);
-}
-
-void MacroAssembler::shenandoah_lock_check(Register dst) {
-#ifdef ASSERT
-  if (! UseShenandoahGC || ! ShenandoahStoreCheck) return;
-
-  push(r8);
-  movptr(r8, Address(dst, BasicObjectLock::obj_offset_in_bytes()));
-  shenandoah_store_addr_check(r8);
-  pop(r8);
-#endif
-}
-#endif // _LP64
 
 RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_addr,
                                                       Register tmp,
