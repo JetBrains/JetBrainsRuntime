@@ -210,7 +210,7 @@ struct ShenandoahSharedEnumFlag {
 
   void set(T v) {
     assert (v >= 0, "sanity");
-    assert (v < (1 << sizeof(ShenandoahSharedValue)), "sanity");
+    assert (v < (sizeof(ShenandoahSharedValue) * CHAR_MAX), "sanity");
     OrderAccess::release_store_fence(&value, (ShenandoahSharedValue)v);
   }
 
@@ -220,7 +220,7 @@ struct ShenandoahSharedEnumFlag {
 
   T cmpxchg(T new_value, T expected) {
     assert (new_value >= 0, "sanity");
-    assert (new_value < (1 << sizeof(ShenandoahSharedValue)), "sanity");
+    assert (new_value < (sizeof(ShenandoahSharedValue) * CHAR_MAX), "sanity");
     return (T)Atomic::cmpxchg((ShenandoahSharedValue)new_value, &value, (ShenandoahSharedValue)expected);
   }
 
