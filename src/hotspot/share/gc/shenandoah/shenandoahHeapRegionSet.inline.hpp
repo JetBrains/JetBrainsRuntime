@@ -30,9 +30,6 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 
-ShenandoahHeapRegionSetIterator::ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set) :
-        _set(set), _current_index(0), _heap(ShenandoahHeap::heap()) {}
-
 bool ShenandoahHeapRegionSet::is_in(size_t region_number) const {
   assert(region_number < _heap->num_regions(), "Sanity");
   return _set_map[region_number] == 1;

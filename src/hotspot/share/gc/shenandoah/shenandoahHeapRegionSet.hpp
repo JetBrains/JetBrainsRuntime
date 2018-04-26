@@ -39,6 +39,8 @@ private:
 public:
   ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set);
 
+  ShenandoahHeapRegionSetIterator& operator=(const ShenandoahHeapRegionSetIterator o);
+
   // MT version
   ShenandoahHeapRegion* claim_next();
 
