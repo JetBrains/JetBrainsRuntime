@@ -79,7 +79,6 @@ public class VerifyJCStressTest {
           }
         );
 
-        List<Future<?>> futures = new ArrayList<>();
         for (int c = 0; c < 10000; c++) {
           final Test[] tests = new Test[10000];
           for (int t = 0; t < tests.length; t++) {
@@ -98,12 +97,8 @@ public class VerifyJCStressTest {
             }
           });
 
-          futures.add(f1);
-          futures.add(f2);
-        }
-
-        for (Future<?> f : futures) {
-          f.get();
+          f1.get();
+          f2.get();
         }
     }
 
