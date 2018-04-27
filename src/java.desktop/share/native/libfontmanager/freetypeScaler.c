@@ -61,6 +61,17 @@
 #include "fontconfig.h"
 #endif
 
+#ifndef FC_LCD_FILTER
+#define FC_LCD_FILTER	"lcdfilter"
+#endif
+
+#ifndef FC_LCD_NONE
+#define FC_LCD_NONE	        0
+#define FC_LCD_DEFAULT	    1
+#define FC_LCD_LIGHT	    2
+#define FC_LCD_LEGACY	    3
+#endif
+
 #include "fontscaler.h"
 
 #define CHECK_EXCEPTION(env, describe)                 \
