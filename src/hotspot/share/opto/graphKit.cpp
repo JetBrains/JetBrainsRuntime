@@ -4329,16 +4329,34 @@ void GraphKit::shenandoah_write_barrier_pre(bool do_load,
                                             Node* pre_val,
                                             BasicType bt) {
 
+  IdealKit ideal(this);
+  Node* tls = __ thread();
+  Node* no_base = __ top();
+  Node* no_ctrl = NULL;
+  Node* zero  = __ ConI(0);
+  Node* offset = __ ConX(in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+  Node* gc_state_adr = __ AddP(no_base, tls, offset);
+  Node* gc_state = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+  float unlikely = PROB_UNLIKELY(0.999);
+
   // Some sanity checks
   // Note: val is unused in this routine.
 
   if (val != NULL) {
     shenandoah_update_matrix(adr, val);
+    ideal.sync_kit(this);
   }
 
-  if (ShenandoahSATBBarrier) {
-    g1_write_barrier_pre(do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
-  }
+  __ if_then(gc_state, BoolTest::ne, zero, unlikely); {
+    sync_kit(ideal);
+
+    if (ShenandoahSATBBarrier) {
+      g1_write_barrier_pre(do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
+    }
+
+    ideal.sync_kit(this);
+  } __ end_if();
+  final_sync(ideal);
 }
 
 void GraphKit::shenandoah_update_matrix(Node* adr, Node* val) {

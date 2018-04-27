@@ -551,7 +551,7 @@ public:
 
   // Return TRUE or FALSE if the loop should be unswitched -- clone
   // loop with an invariant test
-  bool policy_unswitching( PhaseIdealLoop *phase ) const;
+  bool policy_unswitching(PhaseIdealLoop *phase, bool shenandoah_opts = false) const;
 
   // Micro-benchmark spamming.  Remove empty loops.
   bool policy_do_remove_empty_loop( PhaseIdealLoop *phase );
@@ -1156,10 +1156,10 @@ public:
   // Clone loop with an invariant test (that does not exit) and
   // insert a clone of the test that selects which version to
   // execute.
-  void do_unswitching (IdealLoopTree *loop, Node_List &old_new);
+  void do_unswitching(IdealLoopTree *loop, Node_List &old_new, bool shenandoah_opts = false);
 
   // Find candidate "if" for unswitching
-  IfNode* find_unswitching_candidate(const IdealLoopTree *loop) const;
+  IfNode* find_unswitching_candidate(const IdealLoopTree *loop, bool shenandoah_opts) const;
 
   // Range Check Elimination uses this function!
   // Constrain the main loop iterations so the affine function:
@@ -1283,9 +1283,6 @@ public:
   bool identical_backtoback_ifs(Node *n);
   bool can_split_if(Node *n_ctrl);
 private:
-
-  Unique_Node_List _shenandoah_evacuation_tests;
-  Unique_Node_List _shenandoah_gc_state_loads;
 
   bool _created_loop_node;
 public:

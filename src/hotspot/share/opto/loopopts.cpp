@@ -1115,6 +1115,7 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   }
   Node* region = NULL;
   bool shenandoah_evac = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n);
+  bool shenandoah_heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(n);
   if (shenandoah_evac) {
     assert(UseShenandoahGC, "for shenandoah only");
     region = ShenandoahWriteBarrierNode::evacuation_in_progress_test_ctrl(n);
@@ -1131,6 +1132,10 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   }
   if (shenandoah_evac) {
     if (!ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom)) {
+      return false;
+    }
+  } else if (shenandoah_heap_stable) {
+    if (!ShenandoahWriteBarrierNode::is_heap_stable_test(dom)) {
       return false;
     }
   } else {

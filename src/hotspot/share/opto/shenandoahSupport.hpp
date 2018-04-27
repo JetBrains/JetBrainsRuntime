@@ -181,9 +181,12 @@ public:
 
   static bool expand(Compile* C, PhaseIterGVN& igvn, int& loop_opts_cnt);
   static bool is_gc_state_load(Node *n);
+  static bool is_heap_state_test(Node* iff, int mask);
   static bool is_evacuation_in_progress_test(Node* iff);
+  static bool is_heap_stable_test(Node* iff);
   static Node* evacuation_in_progress_test_ctrl(Node* iff);
   static bool try_common_gc_state_load(Node *n, PhaseIdealLoop *phase);
+  static bool has_safepoint_between(Node* start, Node* stop, PhaseIdealLoop *phase);
 
   static LoopNode* try_move_before_pre_loop(Node* c, Node* val_ctrl, PhaseIdealLoop* phase);
   static Node* move_above_predicates(LoopNode* cl, Node* val_ctrl, PhaseIdealLoop* phase);
@@ -200,7 +203,7 @@ public:
   Node* try_move_before_loop_helper(LoopNode* cl,  Node* val_ctrl, Node* mem, PhaseIdealLoop* phase);
   static void pin_and_expand(PhaseIdealLoop* phase);
   CallStaticJavaNode* pin_and_expand_null_check(PhaseIterGVN& igvn);
-  void pin_and_expand_move_barrier(PhaseIdealLoop* phase);
+  void pin_and_expand_move_barrier(PhaseIdealLoop* phase, Unique_Node_List& uses);
   void pin_and_expand_helper(PhaseIdealLoop* phase);
   static Node* find_raw_mem(Node* ctrl, Node* wb, const Node_List& memory_nodes, PhaseIdealLoop* phase);
   static Node* pick_phi(Node* phi1, Node* phi2, Node_Stack& phis, VectorSet& visited, PhaseIdealLoop* phase);
@@ -211,9 +214,11 @@ public:
                           Node* raw_mem_phi, Node_List& memory_nodes,
                           Unique_Node_List& uses,
                           PhaseIdealLoop* phase);
+  static void test_heap_stable(Node* ctrl, Node* raw_mem, Node*& gc_state, Node*& heap_stable,
+                               Node*& heap_not_stable, PhaseIdealLoop* phase);
   static void test_evacuation_in_progress(Node* ctrl, int alias, Node*& raw_mem, Node*& wb_mem,
-                                          IfNode*& evacuation_iff, Node*& evac_in_progress,
-                                          Node*& evac_not_in_progress, PhaseIdealLoop* phase);
+                                          Node*& evac_in_progress, Node*& evac_not_in_progress,  Node*& heap_stable,
+                                          PhaseIdealLoop* phase);
   static void evacuation_not_in_progress(Node* c, Node* v, Node* unc_ctrl, Node* raw_mem, Node* wb_mem, Node* region,
                                          Node* val_phi, Node* mem_phi, Node* raw_mem_phi, Node*& unc_region,
                                          PhaseIdealLoop* phase);
@@ -221,6 +226,12 @@ public:
                                      Node* raw_mem, Node* wb_mem, Node* region, Node* val_phi, Node* mem_phi,
                                      Node* raw_mem_phi, Node* unc_region, int alias, Unique_Node_List& uses,
                                      PhaseIdealLoop* phase);
+  static void heap_stable(Node* c, Node* val, Node* unc_ctrl, Node* raw_mem, Node* wb_mem, Node* region,
+                          Node* val_phi, Node* mem_phi, Node* raw_mem_phi, Node* unc_region, PhaseIdealLoop* phase);
+  static Node* clone_null_check(Node*& c, Node* val, Node* unc_ctrl, Node* unc_region, uint input,
+                                PhaseIdealLoop* phase);
+  static void fix_null_check(Node* dom, Node* unc, Node* unc_ctrl, Node* unc_region, Unique_Node_List& uses,
+                             PhaseIdealLoop* phase);
   static void evacuation_not_in_progress_null_check(Node*& c, Node*& val, Node* unc_ctrl, Node*& unc_region,
                                                     PhaseIdealLoop* phase);
   static void evacuation_in_progress_null_check(Node*& c, Node*& val, Node* evacuation_iff, Node* unc, Node* unc_ctrl,
@@ -231,8 +242,10 @@ public:
   static Node* ctrl_or_self(Node* n, PhaseIdealLoop* phase);
   static bool mem_is_valid(Node* m, Node* c, PhaseIdealLoop* phase);
   static void move_evacuation_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
-  static void optimize_after_expansion(const Node_List& evacuation_tests, const Node_List& gc_state_loads, Node_List &old_new, PhaseIdealLoop* phase);
-  static void merge_back_to_back_evacuation_tests(Node* n, PhaseIdealLoop* phase);
+  static void move_heap_stable_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
+
+  static void optimize_after_expansion(VectorSet &visited, Node_Stack &nstack, Node_List &old_new, PhaseIdealLoop* phase);
+  static void merge_back_to_back_tests(Node* n, PhaseIdealLoop* phase);
 };
 
 class ShenandoahWBMemProjNode : public ProjNode {

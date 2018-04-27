@@ -2831,7 +2831,8 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     ShenandoahWriteBarrierNode::pin_and_expand(this);
   } else if (mode == LoopOptsShenandoahPostExpand) {
     assert(UseShenandoahGC, "only for shenandoah");
-    ShenandoahWriteBarrierNode::optimize_after_expansion(_shenandoah_evacuation_tests, _shenandoah_gc_state_loads, worklist, this);
+    visited.Clear();
+    ShenandoahWriteBarrierNode::optimize_after_expansion(visited, nstack, worklist, this);
   }
 
   if (shenandoah_opts) {
@@ -4147,13 +4148,6 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
     case Op_ShenandoahWBMemProj:
     case Op_HasNegatives:
       pinned = false;
-    }
-
-    if (n->is_If() && ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n)) {
-      _shenandoah_evacuation_tests.push(n);
-    }
-    if (ShenandoahCommonGCStateLoads && ShenandoahWriteBarrierNode::is_gc_state_load(n)) {
-      _shenandoah_gc_state_loads.push(n);
     }
 
     if( pinned ) {
