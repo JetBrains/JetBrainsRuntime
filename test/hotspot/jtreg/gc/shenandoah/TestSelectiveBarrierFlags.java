@@ -39,11 +39,11 @@ public class TestSelectiveBarrierFlags {
 
     public static void main(String[] args) throws Exception {
         String[][] opts = {
-            new String[]{ "ShenandoahSATBBarrier", "ShenandoahConditionalSATBBarrier" },
+            new String[]{ "ShenandoahSATBBarrier" },
             new String[]{ "ShenandoahKeepAliveBarrier" },
             new String[]{ "ShenandoahWriteBarrier" },
             new String[]{ "ShenandoahReadBarrier" },
-            new String[]{ "ShenandoahStoreValWriteBarrier", "ShenandoahStoreValReadBarrier", "ShenandoahStoreValEnqueueBarrier" },
+            new String[]{ "ShenandoahStoreValReadBarrier", "ShenandoahStoreValEnqueueBarrier" },
             new String[]{ "ShenandoahCASBarrier" },
             new String[]{ "ShenandoahAcmpBarrier" },
             new String[]{ "ShenandoahCloneBarrier" },

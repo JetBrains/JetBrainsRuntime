@@ -161,14 +161,6 @@ void ShenandoahBarrierSetAssembler::shenandoah_write_barrier_pre(MacroAssembler*
                                                                  bool tosca_live,
                                                                  bool expand_call) {
 
-  if (ShenandoahConditionalSATBBarrier) {
-    Label done;
-    Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-    __ testb(gc_state, ShenandoahHeap::MARKING);
-    __ jcc(Assembler::zero, done); // Skip SATB barrier when conc-mark is not active
-    satb_write_barrier_pre(masm, obj, pre_val, thread, tmp, tosca_live, expand_call);
-    __ bind(done);
-  }
   if (ShenandoahSATBBarrier) {
     satb_write_barrier_pre(masm, obj, pre_val, thread, tmp, tosca_live, expand_call);
   }
@@ -362,14 +354,14 @@ void ShenandoahBarrierSetAssembler::write_barrier(MacroAssembler* masm, Register
 }
 
 void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
 #ifdef _LP64
   assert(dst != rscratch1, "different regs");
 
   Label done;
 
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+  __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
 
   // Now check if evacuation is in progress.
   read_barrier_not_null(masm, dst);
@@ -447,26 +439,24 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
 }
 
 void ShenandoahBarrierSetAssembler::storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
-  if (ShenandoahStoreValReadBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+  if (ShenandoahStoreValReadBarrier || ShenandoahStoreValEnqueueBarrier) {
     storeval_barrier_impl(masm, dst, tmp);
   }
 }
 
 void ShenandoahBarrierSetAssembler::storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp) {
-  assert(UseShenandoahGC && (ShenandoahStoreValReadBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahStoreValReadBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
 
   if (dst == noreg) return;
 
 #ifdef _LP64
-  if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+  if (ShenandoahStoreValEnqueueBarrier) {
     Label is_null;
     __ testptr(dst, dst);
     __ jcc(Assembler::zero, is_null);
     write_barrier_impl(masm, dst);
     __ bind(is_null);
-  }
 
-  if (ShenandoahStoreValEnqueueBarrier) {
     // The set of registers to be saved+restored is the same as in the write-barrier above.
     // Those are the commonly used registers in the interpreter.
     __ push(rbx);

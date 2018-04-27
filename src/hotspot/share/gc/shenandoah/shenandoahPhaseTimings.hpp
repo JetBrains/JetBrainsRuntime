@@ -147,49 +147,6 @@ public:
 
     final_update_refs_recycle,
 
-    init_partial_gc_gross,
-    init_partial_gc,
-    partial_gc_prepare,
-
-    // Per-thread timer block, should have "roots" counters in consistent order
-    init_partial_gc_work,
-    init_partial_gc_thread_roots,
-    init_partial_gc_code_roots,
-    init_partial_gc_string_table_roots,
-    init_partial_gc_universe_roots,
-    init_partial_gc_jni_roots,
-    init_partial_gc_jni_weak_roots,
-    init_partial_gc_synchronizer_roots,
-    init_partial_gc_flat_profiler_roots,
-    init_partial_gc_management_roots,
-    init_partial_gc_system_dict_roots,
-    init_partial_gc_cldg_roots,
-    init_partial_gc_jvmti_roots,
-    init_partial_gc_string_dedup_roots,
-    init_partial_gc_finish_queues,
-
-    final_partial_gc_gross,
-    final_partial_gc,
-
-    // Per-thread timer block, should have "roots" counters in consistent order
-    final_partial_gc_work,
-    final_partial_gc_thread_roots,
-    final_partial_gc_code_roots,
-    final_partial_gc_string_table_roots,
-    final_partial_gc_universe_roots,
-    final_partial_gc_jni_roots,
-    final_partial_gc_jni_weak_roots,
-    final_partial_gc_synchronizer_roots,
-    final_partial_gc_flat_profiler_roots,
-    final_partial_gc_management_roots,
-    final_partial_gc_system_dict_roots,
-    final_partial_gc_cldg_roots,
-    final_partial_gc_jvmti_roots,
-    final_partial_gc_string_dedup_roots,
-    final_partial_gc_finish_queues,
-
-    partial_gc_cleanup,
-
     degen_gc_gross,
     degen_gc,
 
@@ -308,7 +265,6 @@ public:
     conc_cleanup,
     conc_cleanup_recycle,
     conc_cleanup_reset_bitmaps,
-    conc_partial,
     conc_traversal,
 
     // Unclassified
@@ -320,7 +276,7 @@ public:
 
 
   // These are the subphases of GC phases (scan_roots, update_roots,
-  // init_evac, final_update_refs_roots, partial_gc_work and full_gc_roots).
+  // init_evac, final_update_refs_roots and full_gc_roots).
   // Make sure they are following this order.
   enum GCParPhases {
     ThreadRoots,

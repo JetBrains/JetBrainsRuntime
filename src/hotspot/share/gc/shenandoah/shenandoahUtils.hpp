@@ -87,8 +87,6 @@ public:
     return type == VM_Operation::VMOp_ShenandoahInitMark ||
            type == VM_Operation::VMOp_ShenandoahFinalMarkStartEvac ||
            type == VM_Operation::VMOp_ShenandoahFinalEvac ||
-           type == VM_Operation::VMOp_ShenandoahInitPartialGC ||
-           type == VM_Operation::VMOp_ShenandoahFinalPartialGC ||
            type == VM_Operation::VMOp_ShenandoahInitTraversalGC ||
            type == VM_Operation::VMOp_ShenandoahFinalTraversalGC ||
            type == VM_Operation::VMOp_ShenandoahInitUpdateRefs ||

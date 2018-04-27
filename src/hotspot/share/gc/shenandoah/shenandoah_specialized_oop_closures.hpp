@@ -34,7 +34,6 @@ class ShenandoahMarkRefsMetadataClosure;
 class ShenandoahMarkRefsMetadataDedupClosure;
 class ShenandoahUpdateHeapRefsClosure;
 class ShenandoahUpdateHeapRefsMatrixClosure;
-class ShenandoahPartialEvacuateUpdateHeapClosure;
 class ShenandoahTraversalClosure;
 class ShenandoahTraversalMetadataClosure;
 class ShenandoahTraversalDedupClosure;
@@ -49,7 +48,6 @@ class ShenandoahTraversalMetadataDedupClosure;
       f(ShenandoahUpdateHeapRefsMatrixClosure,_nv)         \
       f(ShenandoahTraversalClosure,_nv)                    \
       f(ShenandoahTraversalMetadataClosure,_nv)            \
-      f(ShenandoahPartialEvacuateUpdateHeapClosure,_nv)    \
       f(ShenandoahMarkUpdateRefsDedupClosure,_nv)          \
       f(ShenandoahMarkUpdateRefsMetadataDedupClosure,_nv)  \
       f(ShenandoahMarkRefsDedupClosure,_nv)                \

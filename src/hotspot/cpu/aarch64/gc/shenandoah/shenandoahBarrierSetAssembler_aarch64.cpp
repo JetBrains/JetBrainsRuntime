@@ -88,14 +88,6 @@ void ShenandoahBarrierSetAssembler::shenandoah_write_barrier_pre(MacroAssembler*
                                                                  Register tmp,
                                                                  bool tosca_live,
                                                                  bool expand_call) {
-  if (ShenandoahConditionalSATBBarrier) {
-    Label done;
-    Address gc_state(rthread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-    __ ldrb(tmp, gc_state);
-    __ tbz(tmp, ShenandoahHeap::MARKING_BITPOS, done);
-    satb_write_barrier_pre(masm, obj, pre_val, thread, tmp, tosca_live, expand_call);
-    __ bind(done);
-  }
   if (ShenandoahSATBBarrier) {
     satb_write_barrier_pre(masm, obj, pre_val, thread, tmp, tosca_live, expand_call);
   }
@@ -264,7 +256,7 @@ void ShenandoahBarrierSetAssembler::write_barrier(MacroAssembler* masm, Register
 }
 
 void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
   assert(dst != rscratch1, "different regs");
   assert(dst != rscratch2, "Need rscratch2");
 
@@ -277,7 +269,7 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   // Now check if evacuation is in progress.
   read_barrier_not_null(masm, dst);
 
-  __ mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+  __ mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   __ tst(rscratch1, rscratch2);
   __ br(Assembler::EQ, done);
 
@@ -306,13 +298,11 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
 }
 
 void ShenandoahBarrierSetAssembler::storeval_barrier(MacroAssembler* masm, Register dst, Register tmp) {
-  if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+  if (ShenandoahStoreValEnqueueBarrier) {
     Label is_null;
     __ cbz(dst, is_null);
     write_barrier_impl(masm, dst);
     __ bind(is_null);
-  }
-  if (ShenandoahStoreValEnqueueBarrier) {
     // Save possibly live regs.
     RegSet live_regs = RegSet::range(r0, r4) - dst;
     __ push(live_regs, sp);

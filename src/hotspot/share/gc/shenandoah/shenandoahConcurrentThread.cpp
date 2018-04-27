@@ -30,7 +30,6 @@
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
-#include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
@@ -122,15 +121,15 @@ void ShenandoahConcurrentThread::run_service() {
       cause = _explicit_gc_cause;
     } else {
       // Potential normal cycle: ask heuristics if it wants to act
-      if (policy->should_start_partial_gc()) {
-        mode = concurrent_partial;
-        cause = GCCause::_shenandoah_partial_gc;
-      } else if (policy->should_start_traversal_gc()) {
+      ShenandoahHeap::GCCycleMode traversal_mode = policy->should_start_traversal_gc();
+      if (traversal_mode != ShenandoahHeap::NONE) {
         mode = concurrent_traversal;
         cause = GCCause::_shenandoah_traversal_gc;
+        heap->set_cycle_mode(traversal_mode);
       } else if (policy->should_start_normal_gc()) {
         mode = concurrent_normal;
         cause = GCCause::_shenandoah_concurrent_gc;
+        heap->set_cycle_mode(ShenandoahHeap::MAJOR);
       }
 
       // Ask policy if this cycle wants to process references or unload classes
@@ -158,9 +157,6 @@ void ShenandoahConcurrentThread::run_service() {
     switch (mode) {
       case none:
         break;
-      case concurrent_partial:
-        service_concurrent_partial_cycle(cause);
-        break;
       case concurrent_traversal:
         service_concurrent_traversal_cycle(cause);
         break;
@@ -176,6 +172,8 @@ void ShenandoahConcurrentThread::run_service() {
       default:
         ShouldNotReachHere();
     }
+
+    heap->set_cycle_mode(ShenandoahHeap::NONE);
 
     if (gc_requested) {
       heap->set_used_at_last_gc();
@@ -242,51 +240,25 @@ void ShenandoahConcurrentThread::run_service() {
   }
 }
 
-void ShenandoahConcurrentThread::service_concurrent_partial_cycle(GCCause::Cause cause) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  ShenandoahPartialGC* partial_gc = heap->partial_gc();
-
-  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_outside_cycle)) return;
-
-  GCIdMark gc_id_mark;
-  ShenandoahGCSession session;
-
-  TraceCollectorStats tcs(heap->monitoring_support()->partial_collection_counters());
-
-  heap->vmop_entry_init_partial();
-  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
-
-  if (!partial_gc->has_work()) return;
-
-  heap->entry_partial();
-  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
-
-  heap->vmop_entry_final_partial();
-  if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_partial)) return;
-
-  heap->entry_cleanup();
-
-  heap->shenandoahPolicy()->record_success_partial();
-}
-
 void ShenandoahConcurrentThread::service_concurrent_traversal_cycle(GCCause::Cause cause) {
   GCIdMark gc_id_mark;
   ShenandoahGCSession session;
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
+  bool is_minor = heap->is_minor_gc();
+  TraceCollectorStats tcs(is_minor ? heap->monitoring_support()->partial_collection_counters()
+                                   : heap->monitoring_support()->concurrent_collection_counters());
 
   heap->vmop_entry_init_traversal();
 
   if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
 
   heap->entry_traversal();
-
   if (check_cancellation_or_degen(ShenandoahHeap::_degenerated_traversal)) return;
 
   heap->vmop_entry_final_traversal();
 
-  heap->entry_cleanup_bitmaps();
+  heap->entry_cleanup_traversal();
 
   heap->shenandoahPolicy()->record_success_concurrent();
 }

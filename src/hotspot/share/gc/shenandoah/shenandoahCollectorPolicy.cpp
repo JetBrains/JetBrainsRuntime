@@ -28,7 +28,7 @@
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
-#include "gc/shenandoah/shenandoahPartialGC.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "runtime/os.hpp"
 #include "utilities/quickSort.hpp"
 
@@ -179,16 +179,8 @@ public:
     return _update_refs_early;
   }
 
-  virtual bool should_start_partial_gc() {
-    return false;
-  }
-
-  virtual bool can_do_partial_gc() {
-    return false;
-  }
-
-  virtual bool should_start_traversal_gc() {
-    return false;
+  virtual ShenandoahHeap::GCCycleMode should_start_traversal_gc() {
+    return ShenandoahHeap::NONE;
   }
 
   virtual bool can_do_traversal_gc() {
@@ -408,12 +400,10 @@ public:
 
     // Disable known barriers by default.
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahSATBBarrier);
-    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahConditionalSATBBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahKeepAliveBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahWriteBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahReadBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahStoreValEnqueueBarrier);
-    SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahStoreValWriteBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahStoreValReadBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCASBarrier);
     SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahAcmpBarrier);
@@ -885,21 +875,134 @@ public:
   }
 };
 
-class ShenandoahPartialHeuristics : public ShenandoahAdaptiveHeuristics {
+class ShenandoahTraversalHeuristics : public ShenandoahHeuristics {
+protected:
+
+public:
+  ShenandoahTraversalHeuristics() : ShenandoahHeuristics() {
+    FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
+    FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
+    FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
+    FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, true);
+    FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
+    FLAG_SET_DEFAULT(ShenandoahBarriersForConst,       true);
+    FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
+    FLAG_SET_DEFAULT(ShenandoahAllocImplicitLive,      false);
+    FLAG_SET_DEFAULT(ShenandoahAllowMixedAllocs,       false);
+    FLAG_SET_DEFAULT(ShenandoahRecycleClearsBitmap,    true);
+
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
+
+  }
+
+  virtual bool should_start_normal_gc() const {
+    return false;
+  }
+
+  virtual bool is_experimental() {
+    return true;
+  }
+
+  virtual bool is_diagnostic() {
+    return false;
+  }
+
+  virtual bool can_do_traversal_gc() {
+    return true;
+  }
+
+  virtual const char* name() {
+    return "traversal";
+  }
+
+  virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+    // No root regions in this mode.
+    ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
+    ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
+    root_regions->clear();
+
+    ShenandoahHeapRegionSet* traversal_set = traversal_gc->traversal_set();
+    traversal_set->clear();
+    for (size_t i = 0; i < heap->num_regions(); i++) {
+      ShenandoahHeapRegion* r = heap->get_region(i);
+      assert(!collection_set->is_in(r), "must not yet be in cset");
+      if (r->is_regular() && r->used() > 0) {
+        size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
+        if (garbage_percent > ShenandoahGarbageThreshold) {
+          collection_set->add_region(r);
+        }
+      }
+      r->clear_live_data();
+      traversal_set->add_region(r);
+    }
+    collection_set->update_region_status();
+  }
+
+  virtual ShenandoahHeap::GCCycleMode should_start_traversal_gc() {
+
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+    if (heap->has_forwarded_objects()) return ShenandoahHeap::NONE;
+
+    double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
+    bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
+    if (periodic_gc) {
+      log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
+                        last_time_ms, ShenandoahGuaranteedGCInterval);
+      return ShenandoahHeap::MAJOR;
+    }
+
+    size_t capacity  = heap->capacity();
+    size_t used      = heap->used();
+    return 100 - (used * 100 / capacity) < ShenandoahFreeThreshold ? ShenandoahHeap::MAJOR : ShenandoahHeap::NONE;
+  }
+
+protected:
+  virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
+                                                     RegionData* data, size_t data_size,
+                                                     size_t free) {
+    ShouldNotReachHere();
+  }
+};
+
+class ShenandoahPartialHeuristics : public ShenandoahTraversalHeuristics {
 protected:
   size_t* _from_idxs;
 
+  bool is_minor_gc() const { return ShenandoahHeap::heap()->is_minor_gc(); }
+
+  // Utility method to remove any cset regions from root set and
+  // add all cset regions to the traversal set.
+  void filter_regions() {
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
+    size_t num_regions = heap->num_regions();
+    ShenandoahCollectionSet* collection_set = heap->collection_set();
+    ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
+    ShenandoahHeapRegionSet* traversal_set = traversal_gc->traversal_set();
+    traversal_set->clear();
+
+    for (size_t i = 0; i < num_regions; i++) {
+      ShenandoahHeapRegion* region = heap->get_region(i);
+      if (collection_set->is_in(i)) {
+        if (root_regions->is_in(i)) {
+          root_regions->remove_region(region);
+        }
+        traversal_set->add_region_check_for_duplicates(region);
+        assert(traversal_set->is_in(i), "must be in traversal set now");
+      }
+    }
+  }
+
 public:
-  ShenandoahPartialHeuristics() : ShenandoahAdaptiveHeuristics() {
+  ShenandoahPartialHeuristics() :
+    ShenandoahTraversalHeuristics() {
+
     FLAG_SET_DEFAULT(UseShenandoahMatrix, true);
 
-    // Set up special barriers for concurrent partial GC.
-    FLAG_SET_DEFAULT(ShenandoahConditionalSATBBarrier, true);
-    FLAG_SET_DEFAULT(ShenandoahSATBBarrier, false);
-    FLAG_SET_DEFAULT(ShenandoahStoreValWriteBarrier, true);
-    FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier, false);
-
-    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
     // TODO: Disable this optimization for now, as it also requires the matrix barriers.
 #ifdef COMPILER2
     FLAG_SET_DEFAULT(ArrayCopyLoadStoreMaxElem, 0);
@@ -915,15 +1018,19 @@ public:
   }
 
   bool should_start_update_refs() {
-    return true;
+    return false;
   }
 
   bool update_refs() const {
-    return true;
+    return false;
   }
 
-  bool can_do_partial_gc() {
-    return true;
+  virtual bool should_unload_classes() {
+    return ShenandoahUnloadClassesFrequency != 0;
+  }
+
+  virtual bool should_process_references() {
+    return ShenandoahRefProcFrequency != 0;
   }
 
   bool should_start_normal_gc() const {
@@ -938,9 +1045,6 @@ public:
     return true;
   }
 
-  virtual bool should_start_partial_gc() = 0;
-  virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) = 0;
-
 };
 
 class ShenandoahPartialConnectedHeuristics : public ShenandoahPartialHeuristics {
@@ -949,12 +1053,17 @@ public:
     return "connectedness";
   }
 
-  bool should_start_partial_gc() {
+  ShenandoahHeap::GCCycleMode should_start_traversal_gc() {
+    ShenandoahHeap::GCCycleMode cycle_mode = ShenandoahPartialHeuristics::should_start_traversal_gc();
+    if (cycle_mode != ShenandoahHeap::NONE) {
+      return cycle_mode;
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
     if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     size_t capacity  = heap->capacity();
@@ -963,7 +1072,7 @@ public:
 
     if (used < prev_used) {
       // Major collection must have happened, "used" data is unreliable, wait for update.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     size_t threshold = heap->capacity() * ShenandoahConnectednessPercentage / 100;
@@ -980,12 +1089,19 @@ public:
     } else {
       log_trace(gc,ergo)("%s", msg.buffer());
     }
-    return result;
+    return result ? ShenandoahHeap::MINOR : ShenandoahHeap::NONE;
   }
 
   void choose_collection_set(ShenandoahCollectionSet* collection_set) {
+    if (!is_minor_gc()) {
+      return ShenandoahPartialHeuristics::choose_collection_set(collection_set);
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
     ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
+    ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
+    root_regions->clear();
     size_t num_regions = heap->num_regions();
 
     RegionConnections* connects = get_region_connects_cache(num_regions);
@@ -993,7 +1109,6 @@ public:
 
     for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
       ShenandoahHeapRegion* region = heap->get_region(to_idx);
-      region->set_root(false);
       if (!region->is_regular()) continue;
 
       uint count = matrix->count_connected_to(to_idx, num_regions);
@@ -1029,13 +1144,11 @@ public:
         maybe_add_heap_region(region, collection_set);
         for (size_t i = 0; i < from_idx_count; i++) {
           ShenandoahHeapRegion* r = heap->get_region(_from_idxs[i]);
-          if (!r->is_root()) {
-            r->set_root(true);
-          }
+          root_regions->add_region_check_for_duplicates(r);
         }
       }
     }
-
+    filter_regions();
     collection_set->update_region_status();
   }
 };
@@ -1052,7 +1165,12 @@ public:
   }
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
+    if (!is_minor_gc()) {
+      return ShenandoahPartialHeuristics::choose_collection_set(collection_set);
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
     ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
     uint64_t alloc_seq_at_last_gc_end   = heap->alloc_seq_at_last_gc_end();
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
@@ -1076,10 +1194,8 @@ public:
     guarantee(used >= prev_used, "Invariant");
     size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), num_regions);
 
-    for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-      ShenandoahHeapRegion* region = heap->get_region(to_idx);
-      region->set_root(false);
-    }
+    ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
+    root_regions->clear();
 
     uint count = 0;
 
@@ -1099,24 +1215,28 @@ public:
 
         for (uint f = 0; f < from_idx_count; f++) {
           ShenandoahHeapRegion* r = heap->get_region(_from_idxs[f]);
-          if (!r->is_root()) {
-            r->set_root(true);
-          }
+          root_regions->add_region_check_for_duplicates(r);
         }
       }
     }
+    filter_regions();
     collection_set->update_region_status();
 
     log_info(gc,ergo)("Regions: Max: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
                       num_regions, target, ShenandoahGenerationalYoungGenPercentage, collection_set->count());
   }
 
-  bool should_start_partial_gc() {
+  ShenandoahHeap::GCCycleMode should_start_traversal_gc() {
+    ShenandoahHeap::GCCycleMode cycle_mode = ShenandoahPartialHeuristics::should_start_traversal_gc();
+    if (cycle_mode != ShenandoahHeap::NONE) {
+      return cycle_mode;
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
     if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     size_t capacity  = heap->capacity();
@@ -1125,7 +1245,7 @@ public:
 
     if (used < prev_used) {
       // Major collection must have happened, "used" data is unreliable, wait for update.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     size_t threshold = heap->capacity() * ShenandoahGenerationalYoungGenPercentage / 100;
@@ -1144,7 +1264,7 @@ public:
     } else {
       log_trace(gc,ergo)("%s", msg.buffer());
     }
-    return result;
+    return result ? ShenandoahHeap::MINOR : ShenandoahHeap::NONE;
   }
 };
 
@@ -1159,7 +1279,12 @@ public:
   }
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
+    if (!is_minor_gc()) {
+      return ShenandoahPartialHeuristics::choose_collection_set(collection_set);
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
     ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
     uint64_t alloc_seq_at_last_gc_start = heap->alloc_seq_at_last_gc_start();
 
@@ -1187,10 +1312,9 @@ public:
     guarantee(used >= prev_used, "Invariant");
     size_t target = MIN2(ShenandoahHeapRegion::required_regions(used - prev_used), sorted_count);
 
-    for (uint to_idx = 0; to_idx < num_regions; to_idx++) {
-      ShenandoahHeapRegion* region = heap->get_region(to_idx);
-      region->set_root(false);
-    }
+    ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
+    root_regions->clear();
+
     uint count = 0;
 
     for (uint i = 0; (i < sorted_count) && (count < target); i++) {
@@ -1208,24 +1332,28 @@ public:
         }
         for (uint f = 0; f < from_idx_count; f++) {
           ShenandoahHeapRegion* r = heap->get_region(_from_idxs[f]);
-          if (!r->is_root()) {
-            r->set_root(true);
-          }
+          root_regions->add_region_check_for_duplicates(r);
         }
       }
     }
+    filter_regions();
     collection_set->update_region_status();
 
     log_info(gc,ergo)("Regions: Max: " SIZE_FORMAT ", Target: " SIZE_FORMAT " (" SIZE_FORMAT "%%), In CSet: " SIZE_FORMAT,
                       num_regions, target, ShenandoahLRUOldGenPercentage, collection_set->count());
   }
 
-  bool should_start_partial_gc() {
+  ShenandoahHeap::GCCycleMode should_start_traversal_gc() {
+    ShenandoahHeap::GCCycleMode cycle_mode = ShenandoahPartialHeuristics::should_start_traversal_gc();
+    if (cycle_mode != ShenandoahHeap::NONE) {
+      return cycle_mode;
+    }
+
     ShenandoahHeap* heap = ShenandoahHeap::heap();
 
     if (heap->has_forwarded_objects()) {
       // Cannot start partial if heap is not completely updated.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     size_t capacity  = heap->capacity();
@@ -1234,7 +1362,7 @@ public:
 
     if (used < prev_used) {
       // Major collection must have happened, "used" data is unreliable, wait for update.
-      return false;
+      return ShenandoahHeap::NONE;
     }
 
     // For now don't start until we are 40% full
@@ -1254,97 +1382,14 @@ public:
     } else {
       log_trace(gc,ergo)("%s", msg.buffer());
     }
-    return result;
+    return result ? ShenandoahHeap::MINOR : ShenandoahHeap::NONE;
    }
 
 };
 
-class ShenandoahTraversalHeuristics : public ShenandoahHeuristics {
-public:
-  ShenandoahTraversalHeuristics() : ShenandoahHeuristics() {
-    FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
-    FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
-    FLAG_SET_DEFAULT(ShenandoahConditionalSATBBarrier, false);
-    FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
-    FLAG_SET_DEFAULT(ShenandoahStoreValWriteBarrier,   false);
-    FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, true);
-    FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
-    FLAG_SET_DEFAULT(ShenandoahBarriersForConst,       true);
-    FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
-    FLAG_SET_DEFAULT(ShenandoahAllocImplicitLive,      false);
-    FLAG_SET_DEFAULT(ShenandoahAllowMixedAllocs,       false);
-  }
-
-  virtual bool should_start_normal_gc() const {
-    return false;
-  }
-
-  virtual bool is_experimental() {
-    return true;
-  }
-
-  virtual bool is_diagnostic() {
-    return false;
-  }
-
-  virtual bool can_do_traversal_gc() {
-    return true;
-  }
-
-  virtual const char* name() {
-    return "traversal";
-  }
-
-  virtual void choose_collection_set(ShenandoahCollectionSet* collection_set) {
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
-    for (size_t i = 0; i < heap->num_regions(); i++) {
-      ShenandoahHeapRegion* r = heap->get_region(i);
-      assert(!r->is_root(), "must not be root region");
-      assert(!collection_set->is_in(r), "must not yet be in cset");
-      if (r->is_regular() && r->used() > 0) {
-        size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
-        if (garbage_percent > ShenandoahGarbageThreshold) {
-          collection_set->add_region(r);
-        }
-      }
-      heap->set_next_top_at_mark_start(r->bottom(), r->top());
-      heap->set_complete_top_at_mark_start(r->bottom(), r->top()); // For debugging purposes
-      r->clear_live_data();
-    }
-    collection_set->update_region_status();
-  }
-
-  virtual bool should_start_traversal_gc() {
-
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
-
-    if (heap->has_forwarded_objects()) return false;
-
-    double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
-    bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
-    if (periodic_gc) {
-      log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
-                        last_time_ms, ShenandoahGuaranteedGCInterval);
-      return true;
-    }
-
-    size_t capacity  = heap->capacity();
-    size_t used      = heap->used();
-    return 100 - (used * 100 / capacity) < ShenandoahFreeThreshold;
-  }
-
-  virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
-                                                     RegionData* data, size_t data_size,
-                                                     size_t free) {
-    ShouldNotReachHere();
-  }
-};
-
-
 ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _cycle_counter(0),
   _success_concurrent_gcs(0),
-  _success_partial_gcs(0),
   _success_degenerated_gcs(0),
   _success_full_gcs(0),
   _explicit_concurrent(0),
@@ -1362,7 +1407,6 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _tracer = new (ResourceObj::C_HEAP, mtGC) ShenandoahTracer();
 
   if (ShenandoahGCHeuristics != NULL) {
-    _minor_heuristics = NULL;
     if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
       _heuristics = new ShenandoahAggressiveHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
@@ -1374,14 +1418,11 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
     } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
       _heuristics = new ShenandoahCompactHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "connected") == 0) {
-      _heuristics = new ShenandoahAdaptiveHeuristics();
-      _minor_heuristics = new ShenandoahPartialConnectedHeuristics();
+      _heuristics = new ShenandoahPartialConnectedHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "generational") == 0) {
-      _heuristics = new ShenandoahAdaptiveHeuristics();
-      _minor_heuristics = new ShenandoahGenerationalPartialHeuristics();
+      _heuristics = new ShenandoahGenerationalPartialHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "LRU") == 0) {
-      _heuristics = new ShenandoahAdaptiveHeuristics();
-      _minor_heuristics = new ShenandoahLRUPartialHeuristics();
+      _heuristics = new ShenandoahLRUPartialHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "traversal") == 0) {
       _heuristics = new ShenandoahTraversalHeuristics();
     } else {
@@ -1398,36 +1439,12 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
               err_msg("Heuristics \"%s\" is experimental, and must be enabled via -XX:+UnlockExperimentalVMOptions.",
                       _heuristics->name()));
     }
-    if (_minor_heuristics != NULL && _minor_heuristics->is_diagnostic() && !UnlockDiagnosticVMOptions) {
-      vm_exit_during_initialization(
-              err_msg("Heuristics \"%s\" is diagnostic, and must be enabled via -XX:+UnlockDiagnosticVMOptions.",
-                      _minor_heuristics->name()));
-    }
-    if (_minor_heuristics != NULL && _minor_heuristics->is_experimental() && !UnlockExperimentalVMOptions) {
-      vm_exit_during_initialization(
-              err_msg("Heuristics \"%s\" is experimental, and must be enabled via -XX:+UnlockExperimentalVMOptions.",
-                      _minor_heuristics->name()));
-    }
 
-    if (ShenandoahConditionalSATBBarrier && ShenandoahSATBBarrier) {
-      vm_exit_during_initialization("Cannot use both ShenandoahSATBBarrier and ShenandoahConditionalSATBBarrier");
-    }
-    if (ShenandoahStoreValWriteBarrier && ShenandoahStoreValReadBarrier) {
-      vm_exit_during_initialization("Cannot use both ShenandoahStoreValWriteBarrier and ShenandoahStoreValReadBarrier");
-    }
     if (ShenandoahStoreValEnqueueBarrier && ShenandoahStoreValReadBarrier) {
       vm_exit_during_initialization("Cannot use both ShenandoahStoreValEnqueueBarrier and ShenandoahStoreValReadBarrier");
     }
-    if (ShenandoahStoreValWriteBarrier && ShenandoahStoreValEnqueueBarrier) {
-      vm_exit_during_initialization("Cannot use both ShenandoahStoreValWriteBarrier and ShenandoahStoreValEnqueueBarrier");
-    }
-    if (_minor_heuristics != NULL) {
-      log_info(gc, init)("Shenandoah heuristics: %s minor with %s major",
-                         _minor_heuristics->name(), _heuristics->name());
-    } else {
-      log_info(gc, init)("Shenandoah heuristics: %s",
-                         _heuristics->name());
-    }
+    log_info(gc, init)("Shenandoah heuristics: %s",
+                       _heuristics->name());
     _heuristics->print_thresholds();
   } else {
       ShouldNotReachHere();
@@ -1463,9 +1480,6 @@ void ShenandoahCollectorPolicy::initialize_alignments() {
 
 void ShenandoahCollectorPolicy::post_heap_initialize() {
   _heuristics->initialize();
-  if (_minor_heuristics != NULL) {
-    _minor_heuristics->initialize();
-  }
 }
 
 void ShenandoahCollectorPolicy::record_explicit_to_concurrent() {
@@ -1499,10 +1513,6 @@ void ShenandoahCollectorPolicy::record_success_concurrent() {
   _success_concurrent_gcs++;
 }
 
-void ShenandoahCollectorPolicy::record_success_partial() {
-  _success_partial_gcs++;
-}
-
 void ShenandoahCollectorPolicy::record_success_degenerated() {
   _heuristics->record_success_degenerated();
   _success_degenerated_gcs++;
@@ -1522,16 +1532,10 @@ bool ShenandoahCollectorPolicy::should_degenerate_cycle() {
 }
 
 bool ShenandoahCollectorPolicy::update_refs() {
-  if (_minor_heuristics != NULL && _minor_heuristics->update_refs()) {
-    return true;
-  }
   return _heuristics->update_refs();
 }
 
 bool ShenandoahCollectorPolicy::should_start_update_refs() {
-  if (_minor_heuristics != NULL && _minor_heuristics->should_start_update_refs()) {
-    return true;
-  }
   return _heuristics->should_start_update_refs();
 }
 
@@ -1541,10 +1545,7 @@ void ShenandoahCollectorPolicy::record_peak_occupancy() {
 
 void ShenandoahCollectorPolicy::choose_collection_set(ShenandoahCollectionSet* collection_set,
                                                       bool minor) {
-  if (minor)
-    _minor_heuristics->choose_collection_set(collection_set);
-  else
-    _heuristics->choose_collection_set(collection_set);
+  _heuristics->choose_collection_set(collection_set);
 }
 
 bool ShenandoahCollectorPolicy::should_process_references() {
@@ -1563,23 +1564,7 @@ void ShenandoahCollectorPolicy::record_phase_time(ShenandoahPhaseTimings::Phase 
   _heuristics->record_phase_time(phase, secs);
 }
 
-bool ShenandoahCollectorPolicy::should_start_partial_gc() {
-  if (_minor_heuristics != NULL) {
-    return _minor_heuristics->should_start_partial_gc();
-  } else {
-    return false; // no minor heuristics -> no partial gc
-  }
-}
-
-bool ShenandoahCollectorPolicy::can_do_partial_gc() {
-  if (_minor_heuristics != NULL) {
-    return _minor_heuristics->can_do_partial_gc();
-  } else {
-    return false; // no minor heuristics -> no partial gc
-  }
-}
-
-bool ShenandoahCollectorPolicy::should_start_traversal_gc() {
+ShenandoahHeap::GCCycleMode ShenandoahCollectorPolicy::should_start_traversal_gc() {
   return _heuristics->should_start_traversal_gc();
 }
 
@@ -1609,9 +1594,6 @@ void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
   out->print_cr("under stop-the-world pause or result in stop-the-world Full GC. Increase heap size,");
   out->print_cr("tune GC heuristics, set more aggressive pacing delay, or lower allocation rate");
   out->print_cr("to avoid Degenerated and Full GC cycles.");
-  out->cr();
-
-  out->print_cr(SIZE_FORMAT_W(5) " successful partial concurrent GCs", _success_partial_gcs);
   out->cr();
 
   out->print_cr(SIZE_FORMAT_W(5) " successful concurrent GCs",         _success_concurrent_gcs);

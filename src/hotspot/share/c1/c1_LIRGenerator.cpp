@@ -1650,44 +1650,6 @@ void LIRGenerator::G1BarrierSet_post_barrier(LIR_OprDesc* addr, LIR_OprDesc* new
 
 void LIRGenerator::Shenandoah_pre_barrier(LIR_Opr addr_opr, LIR_Opr pre_val,
                                           bool do_load, bool patch, CodeEmitInfo* info) {
-  if (ShenandoahConditionalSATBBarrier) {
-    LIR_Opr gc_state_addr = new_pointer_register();
-    __ move(LIR_OprFact::intptrConst((intptr_t) ShenandoahHeap::gc_state_addr()), gc_state_addr);
-    LIR_Opr gc_state = new_register(T_INT);
-    __ move(new LIR_Address(gc_state_addr, T_BYTE), gc_state);
-    __ logical_and(gc_state, LIR_OprFact::intConst(ShenandoahHeap::MARKING), gc_state);
-    __ cmp(lir_cond_equal, gc_state, LIR_OprFact::intConst(0));
-
-    LIR_PatchCode pre_val_patch_code = lir_patch_none;
-
-    CodeStub* slow;
-
-    if (do_load) {
-      assert(pre_val == LIR_OprFact::illegalOpr, "sanity");
-      assert(addr_opr != LIR_OprFact::illegalOpr, "sanity");
-
-      if (patch)
-        pre_val_patch_code = lir_patch_normal;
-
-      pre_val = new_register(T_OBJECT);
-
-      if (!addr_opr->is_address()) {
-        assert(addr_opr->is_register(), "must be");
-        addr_opr = LIR_OprFact::address(new LIR_Address(addr_opr, T_OBJECT));
-      }
-      slow = new G1PreBarrierStub(addr_opr, pre_val, pre_val_patch_code, info);
-    } else {
-      assert(addr_opr == LIR_OprFact::illegalOpr, "sanity");
-      assert(pre_val->is_register(), "must be");
-      assert(pre_val->type() == T_OBJECT, "must be an object");
-      assert(info == NULL, "sanity");
-
-      slow = new G1PreBarrierStub(pre_val);
-    }
-
-    __ branch(lir_cond_notEqual, T_CHAR, slow);
-    __ branch_destination(slow->continuation());
-  }
   if (ShenandoahSATBBarrier) {
     G1BarrierSet_pre_barrier(addr_opr, pre_val, do_load, patch, info);
   }
@@ -2077,7 +2039,7 @@ LIR_Opr LIRGenerator::shenandoah_write_barrier(LIR_Opr obj, CodeEmitInfo* info, 
 }
 
 LIR_Opr LIRGenerator::shenandoah_write_barrier_impl(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
   LIR_Opr result = new_register(T_OBJECT);
   __ shenandoah_wb(obj, result, info ? new CodeEmitInfo(info) : NULL, need_null_check);
   return result;
@@ -2085,7 +2047,7 @@ LIR_Opr LIRGenerator::shenandoah_write_barrier_impl(LIR_Opr obj, CodeEmitInfo* i
 
 LIR_Opr LIRGenerator::shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
   if (UseShenandoahGC) {
-    if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    if (ShenandoahStoreValEnqueueBarrier) {
       // TODO: Maybe we can simply avoid this stuff on constants?
       if (! obj->is_register()) {
         LIR_Opr result = new_register(T_OBJECT);
@@ -2093,8 +2055,6 @@ LIR_Opr LIRGenerator::shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* inf
         obj = result;
       }
       obj = shenandoah_write_barrier_impl(obj, info, need_null_check);
-    }
-    if (ShenandoahStoreValEnqueueBarrier) {
       G1BarrierSet_pre_barrier(LIR_OprFact::illegalOpr, obj, false, false, NULL);
     }
     if (ShenandoahStoreValReadBarrier) {

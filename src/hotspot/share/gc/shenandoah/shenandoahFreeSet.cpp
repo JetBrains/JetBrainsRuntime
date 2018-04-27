@@ -25,6 +25,8 @@
 #include "logging/logStream.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 
 ShenandoahFreeSet::ShenandoahFreeSet(ShenandoahHeap* heap, size_t max_regions) :
   _heap(heap),
@@ -183,7 +185,8 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, size_t wor
           // We're updating TAMS for evacuation-allocs, such that we will not
           // treat evacuated objects as implicitely live and traverse through them.
           // See top of shenandoahTraversal.cpp for an explanation.
-          _heap->set_next_top_at_mark_start(r->bottom(), r->end());
+          _heap->set_next_top_at_mark_start(r->bottom(), r->top());
+          _heap->traversal_gc()->traversal_set()->add_region_check_for_duplicates(r);
           OrderAccess::fence();
         }
         break;

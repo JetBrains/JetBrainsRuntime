@@ -26,7 +26,6 @@
 
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
-#include "gc/shenandoah/shenandoahPartialGC.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.inline.hpp"
 
 template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
@@ -44,14 +43,9 @@ inline void ShenandoahUpdateHeapRefsSuperClosure::work(T* p) {
   }
 }
 
-template <class T>
-inline void ShenandoahPartialEvacuateUpdateHeapClosure::do_oop_nv(T* p) {
-  _partial_gc->process_oop<T, true>(p, _thread, _queue);
-}
-
-template <class T, bool STRING_DEDUP, bool DEGEN>
+template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
 inline void ShenandoahTraversalSuperClosure::work(T* p) {
-  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN>(p, _thread, _queue, _dedup_queue);
+  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN, MATRIX>(p, _thread, _queue, _base_obj, _dedup_queue);
 }
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_INLINE_HPP

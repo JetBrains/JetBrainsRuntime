@@ -36,7 +36,6 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
-#include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
@@ -128,12 +127,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
         heap->set_update_refs_in_progress(false);
       }
       assert(!heap->is_update_refs_in_progress(), "sanity");
-
-      // a3. Cancel concurrent partial GC, if in progress
-      if (heap->is_concurrent_partial_in_progress()) {
-        heap->partial_gc()->reset();
-        heap->set_concurrent_partial_in_progress(false);
-      }
 
       // a3. Cancel concurrent traversal GC, if in progress
       if (heap->is_concurrent_traversal_in_progress()) {

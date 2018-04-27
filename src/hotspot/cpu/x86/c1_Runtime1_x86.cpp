@@ -1573,7 +1573,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
           break;
         }
 
-        if (bs->kind() == BarrierSet::Shenandoah && !(ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier || ShenandoahStoreValEnqueueBarrier)) {
+        if (bs->kind() == BarrierSet::Shenandoah && !(ShenandoahSATBBarrier || ShenandoahStoreValEnqueueBarrier)) {
           break;
         }
 
@@ -1598,7 +1598,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
 
         if (UseShenandoahGC) {
           Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-          __ testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+          __ testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::TRAVERSAL);
           __ jcc(Assembler::zero, done);
         } else {
           assert(UseG1GC, "Should be");

@@ -41,7 +41,6 @@ class outputStream;
 
 class ShenandoahCollectorPolicy: public CollectorPolicy {
 private:
-  size_t _success_partial_gcs;
   size_t _success_concurrent_gcs;
   size_t _success_degenerated_gcs;
   size_t _success_full_gcs;
@@ -55,7 +54,6 @@ private:
   ShenandoahSharedFlag _in_shutdown;
 
   ShenandoahHeuristics* _heuristics;
-  ShenandoahHeuristics* _minor_heuristics;
   ShenandoahTracer* _tracer;
 
   size_t _cycle_counter;
@@ -88,7 +86,6 @@ public:
 
   void record_phase_time(ShenandoahPhaseTimings::Phase phase, double secs);
 
-  void record_success_partial();
   void record_success_concurrent();
   void record_success_degenerated();
   void record_success_full();
@@ -99,9 +96,7 @@ public:
   void record_explicit_to_full();
 
   bool should_start_normal_gc();
-  bool should_start_partial_gc();
-  bool can_do_partial_gc();
-  bool should_start_traversal_gc();
+  ShenandoahHeap::GCCycleMode should_start_traversal_gc();
   bool can_do_traversal_gc();
 
   // Returns true when there should be a separate concurrent reference

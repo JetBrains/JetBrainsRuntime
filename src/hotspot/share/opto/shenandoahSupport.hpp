@@ -139,15 +139,13 @@ public:
   ShenandoahReadBarrierNode(Node* ctrl, Node* mem, Node* obj)
     : ShenandoahBarrierNode(ctrl, mem, obj, true) {
     assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier ||
-                               ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier ||
-                               ShenandoahAcmpBarrier),
+                               ShenandoahWriteBarrier || ShenandoahAcmpBarrier),
            "should be enabled");
   }
   ShenandoahReadBarrierNode(Node* ctrl, Node* mem, Node* obj, bool allow_fromspace)
     : ShenandoahBarrierNode(ctrl, mem, obj, allow_fromspace) {
     assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier ||
-                               ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier ||
-                               ShenandoahAcmpBarrier),
+                               ShenandoahWriteBarrier || ShenandoahAcmpBarrier),
            "should be enabled");
   }
 
@@ -172,7 +170,7 @@ private:
 public:
   ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj)
     : ShenandoahBarrierNode(ctrl, mem, obj, false) {
-    assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
+    assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
     C->add_shenandoah_barrier(this);
   }
 
@@ -241,7 +239,7 @@ class ShenandoahWBMemProjNode : public ProjNode {
 public:
   enum {SWBMEMPROJCON = (uint)-3};
   ShenandoahWBMemProjNode(Node *src) : ProjNode( src, SWBMEMPROJCON) {
-    assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier), "should be enabled");
+    assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
     assert(src->Opcode() == Op_ShenandoahWriteBarrier || src->is_Mach(), "epxect wb");
   }
   virtual Node* Identity(PhaseGVN* phase);

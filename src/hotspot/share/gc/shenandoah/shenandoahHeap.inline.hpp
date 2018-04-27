@@ -36,7 +36,7 @@
 #include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
@@ -132,15 +132,14 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded(T* p) {
 }
 
 template <class T>
-inline oop ShenandoahHeap::evac_update_with_forwarded(T* p, bool &evac) {
-  evac = false;
+inline oop ShenandoahHeap::evac_update_with_forwarded(T* p) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop heap_oop = CompressedOops::decode_not_null(o);
     if (in_collection_set(heap_oop)) {
       oop forwarded_oop = ShenandoahBarrierSet::resolve_forwarded_not_null(heap_oop);
       if (oopDesc::unsafe_equals(forwarded_oop, heap_oop)) {
-        forwarded_oop = evacuate_object(heap_oop, Thread::current(), evac);
+        forwarded_oop = evacuate_object(heap_oop, Thread::current());
       }
       oop prev = atomic_compare_exchange_oop(forwarded_oop, p, heap_oop);
       if (oopDesc::unsafe_equals(prev, heap_oop)) {
@@ -273,9 +272,7 @@ inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size
   }
 }
 
-inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuated) {
-  evacuated = false;
-
+inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   if (ShenandoahThreadLocalData::is_oom_during_evac(Thread::current())) {
     // This thread went through the OOM during evac protocol and it is safe to return
     // the forward pointer. It must not attempt to evacuate any more.
@@ -330,7 +327,6 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread, bool& evacuate
 
   if (oopDesc::unsafe_equals(result, p)) {
     // Successfully evacuated. Our copy is now the public one!
-    evacuated = true;
     log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT " succeeded",
                                       p2i(p), p2i(copy));
 
@@ -391,15 +387,11 @@ inline bool ShenandoahHeap::is_stable() const {
 }
 
 inline bool ShenandoahHeap::is_idle() const {
-  return _gc_state.is_unset(MARKING | EVACUATION | UPDATEREFS | PARTIAL | TRAVERSAL);
+  return _gc_state.is_unset(MARKING | EVACUATION | UPDATEREFS | TRAVERSAL);
 }
 
 inline bool ShenandoahHeap::is_concurrent_mark_in_progress() const {
   return _gc_state.is_set(MARKING);
-}
-
-inline bool ShenandoahHeap::is_concurrent_partial_in_progress() const {
-  return _gc_state.is_set(PARTIAL);
 }
 
 inline bool ShenandoahHeap::is_concurrent_traversal_in_progress() const {

@@ -310,7 +310,6 @@ void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_p
       update_code_cache = ShenandoahConcurrentEvacCodeRoots;
       break;
     case ShenandoahPhaseTimings::full_gc_roots:
-    case ShenandoahPhaseTimings::final_partial_gc_work:
       update_code_cache = true;
       break;
     default:
@@ -751,8 +750,6 @@ void ShenandoahConcurrentMark::weak_refs_work(bool full_gc) {
 
 void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
   ShenandoahHeap* sh = ShenandoahHeap::heap();
-
-  assert(!sh->is_concurrent_partial_in_progress(), "cannot process weakrefs during conc-partial yet");
 
   ReferenceProcessor* rp = sh->ref_processor();
 

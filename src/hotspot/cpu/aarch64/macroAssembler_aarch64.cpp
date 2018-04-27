@@ -4086,7 +4086,7 @@ void MacroAssembler::store_heap_oop_null(Address dst) {
 
 #ifdef INCLUDE_ALL_GCS
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
   assert(dst != rscratch1, "need rscratch1");
   assert(dst != rscratch2, "need rscratch2");
 
@@ -4102,7 +4102,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   }
 
   // Evac-check ...
-  mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+  mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   tst(rscratch1, rscratch2);
   br(Assembler::EQ, done);
 

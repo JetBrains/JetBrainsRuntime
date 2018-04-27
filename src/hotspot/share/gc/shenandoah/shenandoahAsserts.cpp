@@ -28,6 +28,8 @@
 #include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "memory/resourceArea.hpp"
 
 void ShenandoahAsserts::print_obj(ShenandoahMessageBuffer& msg, oop obj) {
@@ -44,6 +46,10 @@ void ShenandoahAsserts::print_obj(ShenandoahMessageBuffer& msg, oop obj) {
   msg.append("    %3s marked complete\n",      heap->is_marked_complete(obj) ? "" : "not");
   msg.append("    %3s marked next\n",          heap->is_marked_next(obj) ? "" : "not");
   msg.append("    %3s in collection set\n",    heap->in_collection_set(obj) ? "" : "not");
+  if (heap->traversal_gc() != NULL) {
+    msg.append("    %3s in root set\n",        heap->traversal_gc()->root_regions()->is_in((HeapWord*) obj) ? "" : "not");
+    msg.append("    %3s in traversal set\n",   heap->traversal_gc()->traversal_set()->is_in((HeapWord*) obj) ? "" : "not");
+  }
   msg.append("  region: %s", ss.as_string());
 }
 

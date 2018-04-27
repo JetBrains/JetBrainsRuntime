@@ -35,8 +35,7 @@ private:
   enum ArrayCopyStoreValMode {
     NONE,
     READ_BARRIER,
-    WRITE_BARRIER_MAYBE_ENQUEUE,
-    WRITE_BARRIER_ALWAYS_ENQUEUE
+    WRITE_BARRIER
   };
 
   static ShenandoahSATBMarkQueueSet _satb_mark_queue_set;
@@ -114,7 +113,7 @@ public:
 private:
   bool need_update_refs_barrier();
 
-  template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER, bool ALWAYS_ENQUEUE>
+  template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
   void write_ref_array_loop(HeapWord* start, size_t count);
 
   oop write_barrier_impl(oop obj);

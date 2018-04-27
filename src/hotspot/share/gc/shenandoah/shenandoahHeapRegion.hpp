@@ -221,8 +221,6 @@ private:
   size_t _gclab_allocs;
   size_t _shared_allocs;
 
-  bool _root;
-
   HeapWord* _new_top;
 
   size_t _critical_pins;
@@ -375,13 +373,6 @@ public:
 
   void set_new_top(HeapWord* new_top) { _new_top = new_top; }
   HeapWord* new_top() const { return _new_top; }
-
-  void set_root(bool r) {
-    _root = r;
-  }
-  bool is_root() const {
-    return _root;
-  }
 
   inline void adjust_alloc_metadata(ShenandoahHeap::AllocType type, size_t);
   void reset_alloc_metadata_to_shared();

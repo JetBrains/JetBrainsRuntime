@@ -304,10 +304,6 @@
   diagnostic(bool, ShenandoahSATBBarrier, true,                             \
           "Turn on/off SATB barriers in Shenandoah")                        \
                                                                             \
-  diagnostic(bool, ShenandoahConditionalSATBBarrier, false,                 \
-          "Generate additional conc-mark-in-progress checks around SATB"    \
-          " barrier")                                                       \
-                                                                            \
   diagnostic(bool, ShenandoahKeepAliveBarrier, true,                        \
           "Turn on/off keep alive barriers in Shenandoah")                  \
                                                                             \
@@ -322,12 +318,6 @@
                                                                             \
   diagnostic(bool, ShenandoahStoreValEnqueueBarrier, false,                 \
           "Turn on/off enqueuing of oops for storeval barriers")            \
-                                                                            \
-  diagnostic(bool, ShenandoahMWF, false,                                    \
-          "Turn on/off enqueuing of oops after write barriers (MWF)")       \
-                                                                            \
-  diagnostic(bool, ShenandoahStoreValWriteBarrier, false,                   \
-          "Turn on/off store val write barriers in Shenandoah")             \
                                                                             \
   diagnostic(bool, ShenandoahStoreValReadBarrier, true,                     \
           "Turn on/off store val read barriers in Shenandoah")              \
@@ -438,6 +428,9 @@
   diagnostic(bool, ShenandoahAllowMixedAllocs, true,                        \
           "Allow mixing mutator and collector allocations in a single "     \
           "region")                                                         \
+                                                                            \
+  diagnostic(bool, ShenandoahRecycleClearsBitmap, false,                    \
+          "Recycling a region also clears the marking bitmap")              \
 
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

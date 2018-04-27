@@ -107,6 +107,9 @@ class MarkBitMap : public MarkBitMapRO {
   // Clear range. For larger regions, use *_large.
   void clear_range(MemRegion mr);
   void clear_range_large(MemRegion mr);
+
+  // Copies a part of the 'other' bitmap into the corresponding part of this bitmap.
+  void copy_from(MarkBitMap* other, MemRegion mr);
 };
 
 #endif // SHARE_VM_GC_SHARED_CMBITMAP_HPP

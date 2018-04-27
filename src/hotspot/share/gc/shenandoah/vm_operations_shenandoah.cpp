@@ -28,7 +28,6 @@
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
-#include "gc/shenandoah/shenandoahPartialGC.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
@@ -71,16 +70,6 @@ void VM_ShenandoahFullGC::doit() {
 void VM_ShenandoahDegeneratedGC::doit() {
   ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::OTHER);
   ShenandoahHeap::heap()->entry_degenerated(_point);
-}
-
-void VM_ShenandoahInitPartialGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::MINOR);
-  ShenandoahHeap::heap()->entry_init_partial();
-}
-
-void VM_ShenandoahFinalPartialGC::doit() {
-  ShenandoahGCPauseMark mark(_gc_id, SvcGCMarker::MINOR);
-  ShenandoahHeap::heap()->entry_final_partial();
 }
 
 void VM_ShenandoahInitTraversalGC::doit() {

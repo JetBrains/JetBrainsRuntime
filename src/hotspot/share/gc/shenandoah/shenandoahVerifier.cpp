@@ -813,30 +813,6 @@ void ShenandoahVerifier::verify_after_degenerated() {
   );
 }
 
-void ShenandoahVerifier::verify_before_partial() {
-  verify_at_safepoint(
-          "Before Partial",
-          _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_complete,     // bitmaps might be stale, but alloc-after-mark should be well
-          _verify_matrix_conservative, // matrix is conservatively consistent
-          _verify_cset_none,           // no cset references before partial
-          _verify_liveness_disable,    // no reliable liveness data anymore
-          _verify_regions_notrash_nocset // no trash and no cset regions
-  );
-}
-
-void ShenandoahVerifier::verify_after_partial() {
-  verify_at_safepoint(
-          "After Partial",
-          _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_complete,     // bitmaps might be stale, but alloc-after-mark should be well
-          _verify_matrix_conservative, // matrix is conservatively consistent
-          _verify_cset_none,           // no cset references left after partial
-          _verify_liveness_disable,    // no reliable liveness data anymore
-          _verify_regions_nocset       // no cset regions, trash regions allowed
-  );
-}
-
 void ShenandoahVerifier::verify_before_traversal() {
   verify_at_safepoint(
           "Before Traversal",
@@ -853,7 +829,7 @@ void ShenandoahVerifier::verify_after_traversal() {
   verify_at_safepoint(
           "After Traversal",
           _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_next,         // marking should be complete in next bitmap
+          _verify_marked_disable,      // We only have partial marking info after traversal
           _verify_matrix_disable,      // matrix is conservatively consistent
           _verify_cset_none,           // no cset references left after traversal
           _verify_liveness_disable,    // liveness data is not collected for new allocations

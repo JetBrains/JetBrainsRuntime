@@ -37,8 +37,6 @@
 //       - VM_ShenandoahInitUpdateRefs: initiate update references
 //       - VM_ShenandoahFinalUpdateRefs: finish up update references
 //       - VM_ShenandoahFullGC: do full GC
-//       - VM_ShenandoahInitPartialGC: init partial GC
-//       - VM_ShenandoahFinalPartialGC: finish partial GC
 //       - VM_ShenandoahInitTraversalGC: init traversal GC
 //       - VM_ShenandoahFinalTraversalGC: finish traversal GC
 
@@ -115,22 +113,6 @@ public:
   // to work correctly.
   bool deflates_idle_monitors() { return false; }
   bool marks_nmethods() { return false; }
-};
-
-class VM_ShenandoahInitPartialGC: public VM_ShenandoahOperation {
-public:
-  VM_ShenandoahInitPartialGC() : VM_ShenandoahOperation() {};
-  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahInitPartialGC; }
-  const char* name()             const { return "Shenandoah Init Partial Collection"; }
-  virtual void doit();
-};
-
-class VM_ShenandoahFinalPartialGC: public VM_ShenandoahOperation {
-public:
-  VM_ShenandoahFinalPartialGC() : VM_ShenandoahOperation() {};
-  VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFinalPartialGC; }
-  const char* name()             const { return "Shenandoah Final Partial Collection"; }
-  virtual void doit();
 };
 
 class VM_ShenandoahInitTraversalGC: public VM_ShenandoahOperation {

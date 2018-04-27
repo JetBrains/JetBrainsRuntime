@@ -136,10 +136,8 @@ bool ShenandoahBarrierSet::arraycopy_loop_4(T* src, T* dst, size_t length, Klass
       return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, NONE>(src, dst, length, bound);
     case READ_BARRIER:
       return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, READ_BARRIER>(src, dst, length, bound);
-    case WRITE_BARRIER_MAYBE_ENQUEUE:
-      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, WRITE_BARRIER_MAYBE_ENQUEUE>(src, dst, length, bound);
-    case WRITE_BARRIER_ALWAYS_ENQUEUE:
-      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, WRITE_BARRIER_ALWAYS_ENQUEUE>(src, dst, length, bound);
+    case WRITE_BARRIER:
+      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, WRITE_BARRIER>(src, dst, length, bound);
     default:
       ShouldNotReachHere();
       return true; // happy compiler
@@ -221,25 +219,12 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
     case READ_BARRIER:
       obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       break;
-    case WRITE_BARRIER_MAYBE_ENQUEUE:
+    case WRITE_BARRIER:
       if (_heap->in_collection_set(obj)) {
         oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
         if (oopDesc::unsafe_equals(forw, obj)) {
           bool evac;
-          forw = _heap->evacuate_object(forw, thread, evac);
-          if (evac) {
-            enqueue(forw);
-          }
-        }
-        obj = forw;
-      }
-      break;
-    case WRITE_BARRIER_ALWAYS_ENQUEUE:
-      if (_heap->in_collection_set(obj)) {
-        oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
-        if (oopDesc::unsafe_equals(forw, obj)) {
-          bool evac;
-          forw = _heap->evacuate_object(forw, thread, evac);
+          forw = _heap->evacuate_object(forw, thread);
         }
         obj = forw;
       }
@@ -290,14 +275,12 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
     dst = ((T*)(void*) dst_obj) + dst_offset;
   }
 
-  bool satb = (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier) && heap->is_concurrent_mark_in_progress();
+  bool satb = ShenandoahSATBBarrier && heap->is_concurrent_mark_in_progress();
   bool checkcast = HasDecorator<decorators, ARRAYCOPY_CHECKCAST>::value;
   ArrayCopyStoreValMode storeval_mode;
   if (heap->has_forwarded_objects()) {
-    if (heap->is_concurrent_partial_in_progress()) {
-      storeval_mode = WRITE_BARRIER_MAYBE_ENQUEUE;
-    } else if (heap->is_concurrent_traversal_in_progress()) {
-      storeval_mode = WRITE_BARRIER_ALWAYS_ENQUEUE;
+    if (heap->is_concurrent_traversal_in_progress()) {
+      storeval_mode = WRITE_BARRIER;
     } else if (heap->is_concurrent_mark_in_progress() || heap->is_update_refs_in_progress()) {
       storeval_mode = READ_BARRIER;
     } else {

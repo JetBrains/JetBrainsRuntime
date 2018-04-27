@@ -42,6 +42,7 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
   shenandoah_assert_marked_next(NULL, obj);
   shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_concgc());
 
+  cl->set_base_object(obj);
   if (task->is_not_chunked()) {
     if (COUNT_LIVENESS) count_liveness(live_data, obj);
     if (obj->is_instance()) {
@@ -62,6 +63,7 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
     // Case 4: Array chunk, has sensible chunk id. Process it.
     do_chunked_array<T>(q, cl, obj, task->chunk(), task->pow());
   }
+  cl->set_base_object(NULL);
 }
 
 inline void ShenandoahConcurrentMark::count_liveness(jushort* live_data, oop obj) {

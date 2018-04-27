@@ -24,10 +24,12 @@
 #include "precompiled.hpp"
 #include "memory/allocation.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
@@ -59,7 +61,6 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start
   _gclab_allocs(0),
   _shared_allocs(0),
   _reserved(MemRegion(start, size_words)),
-  _root(false),
   _new_top(NULL),
   _seqnum_first_alloc_mutator(0),
   _seqnum_last_alloc_mutator(0),
@@ -435,7 +436,7 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
   st->print("|S %3d%%", (int) ((double) get_shared_allocs() * 100 / capacity()));
   st->print("|L %3d%%", (int) ((double) get_live_data_bytes() * 100 / capacity()));
-  if (is_root()) {
+  if (_heap->traversal_gc() != NULL && _heap->traversal_gc()->root_regions()->is_in(region_number())) {
     st->print("|R");
   } else {
     st->print("| ");
@@ -505,15 +506,26 @@ void ShenandoahHeapRegion::recycle() {
     ContiguousSpace::mangle_unused_area_complete();
   }
   clear_live_data();
-  _root = false;
 
   reset_alloc_metadata();
 
   // Reset C-TAMS pointer to ensure size-based iteration, everything
   // in that regions is going to be new objects.
-  _heap->set_complete_top_at_mark_start(bottom(), bottom());
+  if (ShenandoahRecycleClearsBitmap && !_heap->is_full_gc_in_progress()) {
+    HeapWord* r_bottom = bottom();
+    HeapWord* top = _heap->complete_top_at_mark_start(r_bottom);
+    if (top > r_bottom) {
+      _heap->complete_mark_bit_map()->clear_range_large(MemRegion(r_bottom, top));
+    }
+
+    assert(_heap->is_next_bitmap_clear_range(bottom(), end()), "must be clear");
+    _heap->set_next_top_at_mark_start(bottom(), bottom());
+  }
+
   // We can only safely reset the C-TAMS pointer if the bitmap is clear for that region.
   assert(_heap->is_complete_bitmap_clear_range(bottom(), end()), "must be clear");
+
+  _heap->set_complete_top_at_mark_start(bottom(), bottom());
 
   if (UseShenandoahMatrix) {
     _heap->connection_matrix()->clear_region(region_number());

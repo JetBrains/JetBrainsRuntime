@@ -25,6 +25,7 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHTRAVERSALGC_HPP
 
 #include "memory/allocation.hpp"
+#include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
 class Thread;
@@ -47,9 +48,19 @@ private:
   // too many atomic updates. size_t/jint is too large, jbyte is too small.
   jushort** _liveness_local;
 
+  ShenandoahHeapRegionSet* const _traversal_set;
+  ShenandoahHeapRegionSet* const _root_regions;
+
+  ShenandoahHeapRegionSetIterator _root_regions_iterator;
+
+  ShenandoahConnectionMatrix* const _matrix;
+
 public:
   ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_regions);
   ~ShenandoahTraversalGC();
+
+  ShenandoahHeapRegionSet* const traversal_set() const { return _traversal_set; }
+  ShenandoahHeapRegionSet* const root_regions()  const { return _root_regions;}
 
   void reset();
   void prepare();
@@ -57,8 +68,8 @@ public:
   void concurrent_traversal_collection();
   void final_traversal_collection();
 
-  template <class T, bool STRING_DEDUP, bool DEGEN>
-  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahStrDedupQueue* dq = NULL);
+  template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
+  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj, ShenandoahStrDedupQueue* dq = NULL);
 
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
 
@@ -70,6 +81,8 @@ public:
   void main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb);
 
 private:
+
+  void prepare_regions();
 
   template <bool DO_SATB>
   void main_loop_prework(uint w, ParallelTaskTerminator* t);

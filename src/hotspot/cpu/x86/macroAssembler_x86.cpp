@@ -5371,13 +5371,13 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 }
 #else
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
 
   Label done;
 
   // Check for evacuation-in-progress
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::PARTIAL | ShenandoahHeap::TRAVERSAL);
+  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
 
   // The read-barrier.
   if (ShenandoahWriteBarrierRB) {

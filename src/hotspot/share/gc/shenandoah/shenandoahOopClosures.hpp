@@ -47,6 +47,8 @@ public:
 
   template <class T, UpdateRefsMode UPDATE_MODE, bool STRING_DEDUP>
   void work(T *p);
+
+  inline void set_base_object(oop obj) { /* Not needed */ }
 };
 
 class ShenandoahMarkUpdateRefsClosure : public ShenandoahMarkRefsSuperClosure {
@@ -210,35 +212,18 @@ public:
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
 };
 
-class ShenandoahPartialEvacuateUpdateHeapClosure : public ExtendedOopClosure {
-private:
-  ShenandoahPartialGC* _partial_gc;
-  Thread* _thread;
-  ShenandoahObjToScanQueue* _queue;
-public:
-  ShenandoahPartialEvacuateUpdateHeapClosure(ShenandoahObjToScanQueue* q) :
-    _partial_gc(ShenandoahHeap::heap()->partial_gc()),
-    _thread(Thread::current()), _queue(q) {}
-
-  template <class T>
-  void do_oop_nv(T* p);
-
-  void do_oop(oop* p) { do_oop_nv(p); }
-  void do_oop(narrowOop* p) { do_oop_nv(p); }
-};
-
 class ShenandoahTraversalSuperClosure : public MetadataAwareOopClosure {
 private:
   ShenandoahTraversalGC* _traversal_gc;
   Thread* _thread;
   ShenandoahObjToScanQueue* _queue;
   ShenandoahStrDedupQueue*  _dedup_queue;
-
+  oop _base_obj;
 protected:
   ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
     MetadataAwareOopClosure(rp),
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _thread(Thread::current()), _queue(q), _dedup_queue(NULL) {
+    _thread(Thread::current()), _queue(q), _dedup_queue(NULL), _base_obj(NULL) {
   }
 
   ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
@@ -247,8 +232,13 @@ protected:
     _thread(Thread::current()), _queue(q), _dedup_queue(dq) {
   }
 
-  template <class T, bool STRING_DEDUP, bool DEGEN>
+  template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
   void work(T* p);
+
+public:
+  inline void set_base_object(oop obj) {
+    _base_obj = obj;
+  }
 };
 
 class ShenandoahTraversalClosure : public ShenandoahTraversalSuperClosure {
@@ -257,7 +247,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, false, false>(p); }
+  inline void do_oop_nv(T* p) { work<T, false, false, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -272,7 +262,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, false, false>(p); }
+  inline void do_oop_nv(T* p) { work<T, false, false, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -287,7 +277,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp, dq) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, true, false>(p); }
+  inline void do_oop_nv(T* p) { work<T, true, false, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -302,7 +292,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp, dq) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, true, false>(p); }
+  inline void do_oop_nv(T* p) { work<T, true, false, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -317,7 +307,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, false, true>(p); }
+  inline void do_oop_nv(T* p) { work<T, false, true, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -332,7 +322,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, false, true>(p); }
+  inline void do_oop_nv(T* p) { work<T, false, true, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -347,7 +337,7 @@ public:
     ShenandoahTraversalSuperClosure(q, rp, dq) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, true, true>(p); }
+  inline void do_oop_nv(T* p) { work<T, true, true, false>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }
@@ -362,7 +352,127 @@ public:
     ShenandoahTraversalSuperClosure(q, rp, dq) {}
 
   template <class T>
-  inline void do_oop_nv(T* p) { work<T, true, true>(p); }
+  inline void do_oop_nv(T* p) { work<T, true, true, false>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahTraversalMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, false, false, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahTraversalMetadataMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMetadataMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, false, false, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahTraversalDedupMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
+    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, true, false, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahTraversalMetadataDedupMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMetadataDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
+    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, true, false, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahTraversalDegenMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, false, true, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahTraversalMetadataDegenMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMetadataDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, false, true, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return true; }
+  virtual bool do_metadata()        { return true; }
+};
+
+class ShenandoahTraversalDedupDegenMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
+    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, true, true, true>(p); }
+
+  virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
+  virtual void do_oop(oop* p)       { do_oop_nv(p); }
+
+  inline bool do_metadata_nv()      { return false; }
+  virtual bool do_metadata()        { return false; }
+};
+
+class ShenandoahTraversalMetadataDedupDegenMatrixClosure : public ShenandoahTraversalSuperClosure {
+public:
+  ShenandoahTraversalMetadataDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
+    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+
+  template <class T>
+  inline void do_oop_nv(T* p) { work<T, true, true, true>(p); }
 
   virtual void do_oop(narrowOop* p) { do_oop_nv(p); }
   virtual void do_oop(oop* p)       { do_oop_nv(p); }

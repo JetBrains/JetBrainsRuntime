@@ -4098,7 +4098,7 @@ bool GraphKit::g1_can_remove_pre_barrier(PhaseTransform* phase, Node* adr,
 }
 
 static void g1_write_barrier_pre_helper(const GraphKit& kit, Node* adr) {
-  if (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier) && adr != NULL) {
+  if (UseShenandoahGC && ShenandoahSATBBarrier && adr != NULL) {
     Node* c = kit.control();
     Node* call = c->in(1)->in(1)->in(1)->in(0);
     assert(call->is_g1_wb_pre_call(), "g1_wb_pre call expected");
@@ -4336,39 +4336,6 @@ void GraphKit::shenandoah_write_barrier_pre(bool do_load,
     shenandoah_update_matrix(adr, val);
   }
 
-  if (ShenandoahConditionalSATBBarrier) {
-    enum { _set_path = 1, _not_set_path, PATH_LIMIT };
-    RegionNode* region = new RegionNode(PATH_LIMIT);
-    Node* prev_mem = memory(Compile::AliasIdxRaw);
-    Node* memphi    = PhiNode::make(region, prev_mem, Type::MEMORY, TypeRawPtr::BOTTOM);
-
-    Node* gc_state_addr_p = _gvn.transform(new CastX2PNode(MakeConX((intptr_t) ShenandoahHeap::gc_state_addr())));
-    Node* gc_state_addr = _gvn.transform(new AddPNode(top(), gc_state_addr_p, MakeConX(0)));
-    Node* gc_state = _gvn.transform(LoadNode::make(_gvn, control(), memory(Compile::AliasIdxRaw), gc_state_addr, TypeRawPtr::BOTTOM, TypeInt::INT, T_BYTE, MemNode::unordered));
-    Node* add_set = _gvn.transform(new AddINode(gc_state, intcon(ShenandoahHeap::MARKING)));
-    Node* cmp_set = _gvn.transform(new CmpINode(add_set, intcon(0)));
-    Node* cmp_set_bool = _gvn.transform(new BoolNode(cmp_set, BoolTest::eq));
-    IfNode* cmp_iff = create_and_map_if(control(), cmp_set_bool, PROB_MIN, COUNT_UNKNOWN);
-    Node* if_not_set = _gvn.transform(new IfTrueNode(cmp_iff));
-    Node* if_set = _gvn.transform(new IfFalseNode(cmp_iff));
-
-    // Conc-mark not in progress. Skip SATB barrier.
-    set_control(if_not_set);
-    region->init_req(_not_set_path, control());
-    memphi->init_req(_not_set_path, prev_mem);
-
-    // Conc-mark in progress. Do the SATB barrier.
-    set_control(if_set);
-    g1_write_barrier_pre(do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
-    region->init_req(_set_path, control());
-    memphi->init_req(_set_path, memory(Compile::AliasIdxRaw));
-
-    // Merge control flow and memory.
-    set_control(_gvn.transform(region));
-    record_for_igvn(region);
-    set_memory(_gvn.transform(memphi), Compile::AliasIdxRaw);
-
-  }
   if (ShenandoahSATBBarrier) {
     g1_write_barrier_pre(do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
   }
@@ -4888,10 +4855,8 @@ Node* GraphKit::shenandoah_read_barrier(Node* obj) {
 
 Node* GraphKit::shenandoah_storeval_barrier(Node* obj) {
   if (UseShenandoahGC) {
-    if (ShenandoahStoreValWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    if (ShenandoahStoreValEnqueueBarrier) {
       obj = shenandoah_write_barrier(obj);
-    }
-    if (ShenandoahStoreValEnqueueBarrier && !ShenandoahMWF) {
       shenandoah_enqueue_barrier(obj);
     }
     if (ShenandoahStoreValReadBarrier) {
@@ -4967,11 +4932,7 @@ Node* GraphKit::shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const 
 Node* GraphKit::shenandoah_write_barrier(Node* obj) {
 
   if (UseShenandoahGC && ShenandoahWriteBarrier) {
-    obj = shenandoah_write_barrier_impl(obj);
-    if (ShenandoahStoreValEnqueueBarrier && ShenandoahMWF) {
-      shenandoah_enqueue_barrier(obj);
-    }
-    return obj;
+    return shenandoah_write_barrier_impl(obj);
   } else {
     return obj;
   }

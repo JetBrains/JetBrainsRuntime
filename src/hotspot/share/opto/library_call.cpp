@@ -2316,7 +2316,7 @@ void LibraryCallKit::insert_pre_barrier(Node* base_oop, Node* offset,
   // runtime filters that guard the pre-barrier code.
   // Also add memory barrier for non volatile load from the referent field
   // to prevent commoning of loads across safepoint.
-  if (!(UseG1GC || (UseShenandoahGC && (ShenandoahSATBBarrier || ShenandoahConditionalSATBBarrier))) && !need_mem_bar)
+  if (!(UseG1GC || (UseShenandoahGC && ShenandoahSATBBarrier)) && !need_mem_bar)
     return;
 
   // Some compile time checks.

@@ -38,6 +38,7 @@ class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
+class ShenandoahFastRegionSet;
 class ShenandoahPhaseTimings;
 class ShenandoahHeap;
 class ShenandoahHeapRegion;
@@ -47,7 +48,6 @@ class ShenandoahCollectionSet;
 class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
 class ShenandoahMarkCompact;
-class ShenandoahPartialGC;
 class ShenandoahPacer;
 class ShenandoahTraversalGC;
 class ShenandoahVerifier;
@@ -179,11 +179,8 @@ public:
     // Heap is under updating: needs SVRB/SVWB barriers.
     UPDATEREFS_BITPOS = 3,
 
-    // Heap is under partial collection
-    PARTIAL_BITPOS    = 4,
-
     // Heap is under traversal collection
-    TRAVERSAL_BITPOS  = 5,
+    TRAVERSAL_BITPOS  = 4,
   };
 
   enum GCState {
@@ -192,13 +189,11 @@ public:
     MARKING       = 1 << MARKING_BITPOS,
     EVACUATION    = 1 << EVACUATION_BITPOS,
     UPDATEREFS    = 1 << UPDATEREFS_BITPOS,
-    PARTIAL       = 1 << PARTIAL_BITPOS,
     TRAVERSAL     = 1 << TRAVERSAL_BITPOS,
   };
 
   enum ShenandoahDegenPoint {
     _degenerated_unset,
-    _degenerated_partial,
     _degenerated_traversal,
     _degenerated_outside_cycle,
     _degenerated_mark,
@@ -207,12 +202,16 @@ public:
     _DEGENERATED_LIMIT,
   };
 
+  enum GCCycleMode {
+    NONE,
+    MINOR,
+    MAJOR
+  };
+
   static const char* degen_point_to_string(ShenandoahDegenPoint point) {
     switch (point) {
       case _degenerated_unset:
         return "<UNSET>";
-      case _degenerated_partial:
-        return "Partial";
       case _degenerated_traversal:
         return "Traversal";
       case _degenerated_outside_cycle:
@@ -250,7 +249,6 @@ private:
 
   ShenandoahConcurrentMark* _scm;
   ShenandoahMarkCompact* _full_gc;
-  ShenandoahPartialGC* _partial_gc;
   ShenandoahTraversalGC* _traversal_gc;
   ShenandoahVerifier*  _verifier;
   ShenandoahPacer*  _pacer;
@@ -313,6 +311,8 @@ private:
   MemoryPool* _memory_pool;
 
   ShenandoahEvacOOMHandler _oom_evac_handler;
+
+  ShenandoahSharedEnumFlag<GCCycleMode> _gc_cycle_mode;
 
 #ifdef ASSERT
   int     _heap_expansion_count;
@@ -404,7 +404,7 @@ public:
   inline bool requires_marking(const void* entry) const;
 
   template <class T>
-  inline oop evac_update_with_forwarded(T* p, bool &evac);
+  inline oop evac_update_with_forwarded(T* p);
 
   template <class T>
   inline oop maybe_update_with_forwarded(T* p);
@@ -439,7 +439,6 @@ public:
   void set_degenerated_gc_in_progress(bool in_progress);
   void set_full_gc_in_progress(bool in_progress);
   void set_full_gc_move_in_progress(bool in_progress);
-  void set_concurrent_partial_in_progress(bool in_progress);
   void set_concurrent_traversal_in_progress(bool in_progress);
   void set_has_forwarded_objects(bool cond);
 
@@ -454,7 +453,6 @@ public:
   inline bool is_degenerated_gc_in_progress() const;
   inline bool is_full_gc_in_progress() const;
   inline bool is_full_gc_move_in_progress() const;
-  inline bool is_concurrent_partial_in_progress() const;
   inline bool is_concurrent_traversal_in_progress() const;
   inline bool has_forwarded_objects() const;
   inline bool is_gc_in_progress_mask(uint mask) const;
@@ -463,6 +461,10 @@ public:
 
   bool process_references() const;
   bool unload_classes() const;
+
+  bool is_minor_gc() const;
+  bool is_major_gc() const;
+  void set_cycle_mode(GCCycleMode gc_cycle_mode);
 
   inline bool region_in_collection_set(size_t region_index) const;
 
@@ -483,9 +485,8 @@ public:
 
   // Evacuates object src. Returns the evacuated object if this thread
   // succeeded, otherwise rolls back the evacuation and returns the
-  // evacuated object by the competing thread. 'succeeded' is an out
-  // param and set to true if this thread succeeded, otherwise to false.
-  inline oop  evacuate_object(oop src, Thread* thread, bool& evacuated);
+  // evacuated object by the competing thread.
+  inline oop  evacuate_object(oop src, Thread* thread);
   inline bool cancelled_concgc() const;
   inline bool check_cancelled_concgc_and_yield(bool sts_active = true);
   inline bool try_cancel_concgc();
@@ -515,6 +516,7 @@ public:
   void handle_heap_shrinkage(double shrink_before);
 
   void reset_next_mark_bitmap();
+  void reset_next_mark_bitmap_traversal();
 
   MarkBitMap* complete_mark_bit_map();
   MarkBitMap* next_mark_bit_map();
@@ -547,7 +549,6 @@ public:
   ShenandoahMonitoringSupport* monitoring_support();
   ShenandoahConcurrentMark* concurrentMark() { return _scm; }
   ShenandoahMarkCompact* full_gc() { return _full_gc; }
-  ShenandoahPartialGC* partial_gc();
   ShenandoahTraversalGC* traversal_gc();
   ShenandoahVerifier* verifier();
   ShenandoahPacer* pacer() const;
@@ -687,8 +688,6 @@ public:
   void vmop_entry_final_evac();
   void vmop_entry_init_updaterefs();
   void vmop_entry_final_updaterefs();
-  void vmop_entry_init_partial();
-  void vmop_entry_final_partial();
   void vmop_entry_init_traversal();
   void vmop_entry_final_traversal();
   void vmop_entry_full(GCCause::Cause cause);
@@ -701,8 +700,6 @@ public:
   void entry_final_evac();
   void entry_init_updaterefs();
   void entry_final_updaterefs();
-  void entry_init_partial();
-  void entry_final_partial();
   void entry_init_traversal();
   void entry_final_traversal();
   void entry_full(GCCause::Cause cause);
@@ -714,9 +711,9 @@ public:
   void entry_preclean();
   void entry_cleanup();
   void entry_cleanup_bitmaps();
+  void entry_cleanup_traversal();
   void entry_evac();
   void entry_updaterefs();
-  void entry_partial();
   void entry_traversal();
 
 private:
@@ -726,8 +723,6 @@ private:
   void op_final_evac();
   void op_init_updaterefs();
   void op_final_updaterefs();
-  void op_init_partial();
-  void op_final_partial();
   void op_init_traversal();
   void op_final_traversal();
   void op_full(GCCause::Cause cause);
@@ -741,7 +736,7 @@ private:
   void op_evac();
   void op_updaterefs();
   void op_cleanup_bitmaps();
-  void op_partial();
+  void op_cleanup_traversal();
   void op_traversal();
 
 private:
