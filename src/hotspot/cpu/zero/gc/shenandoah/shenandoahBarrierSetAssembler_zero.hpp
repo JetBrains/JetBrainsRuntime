@@ -27,7 +27,6 @@
 #include "asm/macroAssembler.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 
-class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
-};
+class ShenandoahBarrierSetAssembler;
 
 #endif // CPU_ZERO_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_ZERO_HPP
