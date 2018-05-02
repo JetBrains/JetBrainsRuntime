@@ -383,7 +383,7 @@ private:
 public:
   ShenandoahPrepareForCompactionTask(ShenandoahHeapRegionSet** worker_slices) :
     AbstractGangTask("Shenandoah Prepare For Compaction Task"),
-    _heap(ShenandoahHeap::heap()), _heap_regions(_heap->region_iterator()), _worker_slices(worker_slices) {
+    _heap(ShenandoahHeap::heap()), _worker_slices(worker_slices) {
   }
 
   void work(uint worker_id) {
@@ -565,7 +565,7 @@ private:
 public:
   ShenandoahAdjustPointersTask() :
     AbstractGangTask("Shenandoah Adjust Pointers Task"),
-    _heap(ShenandoahHeap::heap()), _regions(_heap->region_iterator()) {
+    _heap(ShenandoahHeap::heap()) {
   }
 
   void work(uint worker_id) {
@@ -664,7 +664,7 @@ public:
   }
 
   void work(uint worker_id) {
-    ShenandoahHeapRegionSetIterator slice = _worker_slices[worker_id]->iterator();
+    ShenandoahHeapRegionSetIterator slice(_worker_slices[worker_id]);
 
     ShenandoahCompactObjectsClosure cl(worker_id);
     ShenandoahHeapRegion* r = slice.next();
@@ -807,9 +807,8 @@ private:
   ShenandoahRegionIterator _regions;
 
 public:
-  ShenandoahMCResetCompleteBitmapTask(ShenandoahRegionIterator regions) :
-    AbstractGangTask("Parallel Reset Bitmap Task"),
-    _regions(regions) {
+  ShenandoahMCResetCompleteBitmapTask() :
+    AbstractGangTask("Parallel Reset Bitmap Task") {
   }
 
   void work(uint worker_id) {
@@ -850,7 +849,7 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
 
   // Reset complete bitmap. We're about to reset the complete-top-at-mark-start pointer
   // and must ensure the bitmap is in sync.
-  ShenandoahMCResetCompleteBitmapTask task(heap->region_iterator());
+  ShenandoahMCResetCompleteBitmapTask task;
   heap->workers()->run_task(&task);
 
   // Bring regions in proper states after the collection, and set heap properties.

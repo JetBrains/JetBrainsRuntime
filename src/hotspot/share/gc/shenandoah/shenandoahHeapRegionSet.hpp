@@ -36,10 +36,14 @@ private:
   volatile jint _current_index;
   ShenandoahHeap* const _heap;
 
+  // No implicit copying: iterators should be passed by reference to capture the state,
+  // or be copied explicitly by "=" operator
+  ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSetIterator& that);
+
 public:
   ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set);
 
-  ShenandoahHeapRegionSetIterator& operator=(const ShenandoahHeapRegionSetIterator o);
+  ShenandoahHeapRegionSetIterator& operator=(const ShenandoahHeapRegionSetIterator& o);
 
   // MT version
   ShenandoahHeapRegion* claim_next();
@@ -80,8 +84,6 @@ public:
   void print_on(outputStream* out) const;
 
   void clear();
-
-  ShenandoahHeapRegionSetIterator iterator() const;
 
 private:
   jbyte* biased_map_address() const {

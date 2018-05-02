@@ -307,7 +307,7 @@ ShenandoahTraversalGC::ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_re
   _task_queues(new ShenandoahObjToScanQueueSet(heap->max_workers())),
   _traversal_set(new ShenandoahHeapRegionSet()),
   _root_regions(new ShenandoahHeapRegionSet()),
-  _root_regions_iterator(_root_regions->iterator()),
+  _root_regions_iterator(_root_regions),
   _matrix(heap->connection_matrix()) {
 
   uint num_queues = heap->max_workers();
@@ -433,7 +433,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
     _heap->pacer()->setup_for_traversal();
   }
 
-  _root_regions_iterator = _root_regions->iterator();
+  _root_regions_iterator = ShenandoahHeapRegionSetIterator(_root_regions);
 }
 
 void ShenandoahTraversalGC::main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb) {

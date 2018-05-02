@@ -33,7 +33,7 @@
 ShenandoahHeapRegionSetIterator::ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set) :
         _set(set), _current_index(0), _heap(ShenandoahHeap::heap()) {}
 
-ShenandoahHeapRegionSetIterator& ShenandoahHeapRegionSetIterator::operator=(const ShenandoahHeapRegionSetIterator o) {
+ShenandoahHeapRegionSetIterator& ShenandoahHeapRegionSetIterator::operator=(const ShenandoahHeapRegionSetIterator& o) {
   _current_index = o._current_index;
   assert(_set == o._set, "must be same");
   assert(_heap == o._heap, "must be same");
@@ -127,10 +127,6 @@ ShenandoahHeapRegion* ShenandoahHeapRegionSetIterator::next() {
   }
 
   return NULL;
-}
-
-ShenandoahHeapRegionSetIterator ShenandoahHeapRegionSet::iterator() const {
-  return ShenandoahHeapRegionSetIterator(this);
 }
 
 void ShenandoahHeapRegionSet::print_on(outputStream* out) const {

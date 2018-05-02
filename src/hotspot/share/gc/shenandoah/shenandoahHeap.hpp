@@ -58,9 +58,16 @@ class ShenandoahRegionIterator : public StackObj {
 private:
   volatile size_t _index;
   ShenandoahHeap* _heap;
+
+  // No implicit copying: iterators should be passed by reference to capture the state,
+  // or be copied explicitly by "=" operator
+  ShenandoahRegionIterator(const ShenandoahRegionIterator& that);
+
 public:
   ShenandoahRegionIterator();
   ShenandoahRegionIterator(ShenandoahHeap* heap);
+
+  ShenandoahRegionIterator& operator=(const ShenandoahRegionIterator& o);
 
   // Returns next region, or NULL if there are no more regions.
   // This is multi-thread-safe.
@@ -493,7 +500,6 @@ public:
   inline void clear_cancelled_concgc();
 
   inline ShenandoahHeapRegion* const get_region(size_t region_idx) const;
-  ShenandoahRegionIterator region_iterator() const;
   void heap_region_iterate(ShenandoahHeapRegionClosure& cl) const;
 
   ShenandoahFreeSet* free_set()             const { return _free_set; }
