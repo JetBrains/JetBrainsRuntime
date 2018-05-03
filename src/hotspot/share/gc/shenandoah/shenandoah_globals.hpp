@@ -167,7 +167,7 @@
                "Initial remaining free threshold for adaptive heuristics")  \
           range(0,100)                                                      \
                                                                             \
-  experimental(uintx, ShenandoahMinFreeThreshold, 3,                        \
+  experimental(uintx, ShenandoahMinFreeThreshold, 10,                       \
                "Minimum remaining free threshold for adaptive heuristics")  \
           range(0,100)                                                      \
                                                                             \
