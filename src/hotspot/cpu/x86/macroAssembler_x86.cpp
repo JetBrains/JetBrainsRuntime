@@ -6422,7 +6422,6 @@ void MacroAssembler::restore_cpu_control_state_after_jni() {
 void MacroAssembler::resolve_oop_handle(Register result) {
   // OopHandle::resolve is an indirection.
   movptr(result, Address(result, 0));
-  resolve_for_read(OOP_NOT_NULL, result); // TODO: Not needed.
 }
 
 void MacroAssembler::load_mirror(Register mirror, Register method) {

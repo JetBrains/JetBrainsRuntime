@@ -489,14 +489,9 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
   bool on_weak = (decorators & ON_WEAK_OOP_REF) != 0;
   bool on_phantom = (decorators & ON_PHANTOM_OOP_REF) != 0;
   bool on_reference = on_weak || on_phantom;
-  // tty->print_cr("RB src.base: %s", src.base()->name());
-  // __ verify_oop(src.base(), "broken oop before RB");
-  /*
   if (in_heap) {
     read_barrier_not_null(masm, src.base());
   }
-  */
-  // __ verify_oop(src.base(), "broken oop before RB");
   BarrierSetAssembler::load_at(masm, decorators, type, dst, src, tmp1, tmp_thread);
   if (ShenandoahKeepAliveBarrier && on_oop && on_reference) {
     const Register thread = NOT_LP64(tmp_thread) LP64_ONLY(r15_thread);
@@ -519,11 +514,9 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
 
   bool in_heap = (decorators & IN_HEAP) != 0;
   bool in_concurrent_root = (decorators & IN_CONCURRENT_ROOT) != 0;
-  /*
   if (in_heap) {
     write_barrier(masm, dst.base());
   }
-  */
   if (type == T_OBJECT || type == T_ARRAY) {
     bool needs_pre_barrier = in_heap || in_concurrent_root;
     bool needs_post_barrier = val != noreg && in_heap && UseShenandoahMatrix;

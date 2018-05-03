@@ -633,7 +633,7 @@ void TemplateInterpreterGenerator::lock_method() {
 #endif // ASSERT
 
     __ bind(done);
-    __ resolve_for_write(0, rax);
+    __ resolve_for_write(OOP_NOT_NULL, rax);
   }
 
   // add space for monitor & lock
@@ -739,7 +739,6 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
   NOT_LP64(__ push(rsi));
 
   // Load the value of the referent field.
-  __ resolve_for_read(OOP_NOT_NULL, rax);
   const Address field_address(rax, referent_offset);
   __ load_heap_oop(rax, field_address, /*tmp1*/ rbx, /*tmp_thread*/ rdx, ON_WEAK_OOP_REF);
 

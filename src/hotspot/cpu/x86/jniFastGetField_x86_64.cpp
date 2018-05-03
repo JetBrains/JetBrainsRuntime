@@ -84,19 +84,20 @@ address JNI_FastGetField::generate_fast_get_int_field0(BasicType type) {
   __ clear_jweak_tag(robj);
 
   __ movptr(robj, Address(robj, 0));             // *obj
-  __ resolve_for_read(0, robj);
   __ mov   (roffset, c_rarg2);
   __ shrptr(roffset, 2);                         // offset
 
   assert(count < LIST_CAPACITY, "LIST_CAPACITY too small");
   speculative_load_pclist[count] = __ pc();
   switch (type) {
-    case T_BOOLEAN: __ movzbl (rax, Address(robj, roffset, Address::times_1)); break;
-    case T_BYTE:    __ movsbl (rax, Address(robj, roffset, Address::times_1)); break;
-    case T_CHAR:    __ movzwl (rax, Address(robj, roffset, Address::times_1)); break;
-    case T_SHORT:   __ movswl (rax, Address(robj, roffset, Address::times_1)); break;
-    case T_INT:     __ movl   (rax, Address(robj, roffset, Address::times_1)); break;
-    case T_LONG:    __ movq   (rax, Address(robj, roffset, Address::times_1)); break;
+    case T_BOOLEAN:
+    case T_BYTE:
+    case T_CHAR:
+    case T_SHORT:
+    case T_INT:
+    case T_LONG:
+      __ access_load_at(type, IN_HEAP, rax, Address(robj, roffset, Address::times_1), noreg, noreg);
+      break;
     default:        ShouldNotReachHere();
   }
 
@@ -187,17 +188,13 @@ address JNI_FastGetField::generate_fast_get_float_field0(BasicType type) {
   __ clear_jweak_tag(robj);
 
   __ movptr(robj, Address(robj, 0));             // *obj
-  __ resolve_for_read(0, robj);
   __ mov   (roffset, c_rarg2);
   __ shrptr(roffset, 2);                         // offset
 
   assert(count < LIST_CAPACITY, "LIST_CAPACITY too small");
   speculative_load_pclist[count] = __ pc();
-  switch (type) {
-    case T_FLOAT:  __ movflt (xmm0, Address(robj, roffset, Address::times_1)); break;
-    case T_DOUBLE: __ movdbl (xmm0, Address(robj, roffset, Address::times_1)); break;
-    default:        ShouldNotReachHere();
-  }
+
+  __ access_load_at(type, IN_HEAP, noreg, Address(robj, roffset, Address::times_1), noreg, noreg);
 
   if (os::is_MP()) {
     __ lea(rcounter_addr, counter);

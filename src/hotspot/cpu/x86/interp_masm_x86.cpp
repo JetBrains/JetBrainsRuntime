@@ -507,16 +507,15 @@ void InterpreterMacroAssembler::load_resolved_reference_at_index(
   // convert from field index to resolved_references() index and from
   // word index to byte offset. Since this is a java object, it can be compressed
   Register tmp = index;  // reuse
-  shll(tmp, LogBytesPerHeapOop);
 
   get_constant_pool(result);
   // load pointer for resolved_references[] objArray
   movptr(result, Address(result, ConstantPool::cache_offset_in_bytes()));
   movptr(result, Address(result, ConstantPoolCache::resolved_references_offset_in_bytes()));
   resolve_oop_handle(result);
-  // Add in the index
-  addptr(result, tmp);
-  load_heap_oop(result, Address(result, arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
+  load_heap_oop(result, Address(result, index,
+                                UseCompressedOops ? Address::times_4 : Address::times_ptr,
+                                arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
   // The resulting oop is null if the reference is not yet resolved.
   // It is Universe::the_null_sentinel() if the reference resolved to NULL via condy.
 }
