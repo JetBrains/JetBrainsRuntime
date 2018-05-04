@@ -1117,7 +1117,7 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
           break;
         }
 
-        if (bs->kind() == BarrierSet::Shenandoah && !ShenandoahSATBBarrier) {
+        if (bs->kind() == BarrierSet::Shenandoah && !(ShenandoahSATBBarrier || ShenandoahStoreValEnqueueBarrier)) {
           break;
         }
 
@@ -1138,7 +1138,9 @@ OopMapSet* Runtime1::generate_code_for(StubID id, StubAssembler* sasm) {
         if (UseShenandoahGC) {
           Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
           __ ldrb(tmp, gc_state);
-          __ tbz(tmp, ShenandoahHeap::MARKING_BITPOS, done);
+          __ mov(rscratch2, ShenandoahHeap::MARKING | ShenandoahHeap::TRAVERSAL);
+          __ tst(tmp, rscratch2);
+          __ br(Assembler::EQ, done);
         } else {
           assert(UseG1GC, "Should be");
           // Is marking still active?
