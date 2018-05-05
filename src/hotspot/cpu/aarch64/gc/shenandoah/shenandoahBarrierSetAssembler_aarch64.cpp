@@ -328,6 +328,7 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
   bool on_reference = on_weak || on_phantom;
   BarrierSetAssembler::load_at(masm, decorators, type, dst, src, tmp1, tmp_thread);
   if (ShenandoahKeepAliveBarrier && on_oop && on_reference) {
+    __ enter();
     satb_write_barrier_pre(masm /* masm */,
                            noreg /* obj */,
                            dst /* pre_val */,
@@ -335,6 +336,7 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
                            tmp1 /* tmp */,
                            true /* tosca_live */,
                            true /* expand_call */);
+    __ leave();
   }
 }
 
