@@ -87,35 +87,27 @@ address JNI_FastGetField::generate_fast_get_int_field0(BasicType type) {
   __ andr(robj, robj, ~JNIHandles::weak_tag_mask);
 
   __ ldr(robj, Address(robj, 0));             // *obj
-  __ resolve_for_read(0, robj);
   __ lsr(roffset, c_rarg2, 2);                // offset
 
   assert(count < LIST_CAPACITY, "LIST_CAPACITY too small");
   speculative_load_pclist[count] = __ pc();   // Used by the segfault handler
-  switch (type) {
-    case T_BOOLEAN: __ ldrb    (result, Address(robj, roffset)); break;
-    case T_BYTE:    __ ldrsb   (result, Address(robj, roffset)); break;
-    case T_CHAR:    __ ldrh    (result, Address(robj, roffset)); break;
-    case T_SHORT:   __ ldrsh   (result, Address(robj, roffset)); break;
-    case T_FLOAT:   __ ldrw    (result, Address(robj, roffset)); break;
-    case T_INT:     __ ldrsw   (result, Address(robj, roffset)); break;
-    case T_DOUBLE:
-    case T_LONG:    __ ldr     (result, Address(robj, roffset)); break;
-    default:        ShouldNotReachHere();
-  }
+  __ access_load_at(type, IN_HEAP, noreg /* tos: r0/v0 */, Address(robj, roffset), noreg, noreg);
 
-  // counter_addr is address dependent on result.
-  __ eor(rcounter_addr, rcounter_addr, result);
-  __ eor(rcounter_addr, rcounter_addr, result);
+  // Ensure that field has finished loading before loading the safepoint_counter.
+  switch (type) {
+  case T_FLOAT:
+  case T_DOUBLE:
+    __ membar(MacroAssembler::LoadLoad);
+    break;
+  default:
+    // counter_addr is address dependent on result.
+    __ eor(rcounter_addr, rcounter_addr, r0);
+    __ eor(rcounter_addr, rcounter_addr, r0);
+  }
   __ ldrw(rscratch1, safepoint_counter_addr);
   __ cmpw(rcounter, rscratch1);
   __ br (Assembler::NE, slow);
 
-  switch (type) {
-    case T_FLOAT:   __ fmovs(v0, result); break;
-    case T_DOUBLE:  __ fmovd(v0, result); break;
-    default:        __ mov(r0, result);   break;
-  }
   __ ret(lr);
 
   slowcase_entry_pclist[count++] = __ pc();

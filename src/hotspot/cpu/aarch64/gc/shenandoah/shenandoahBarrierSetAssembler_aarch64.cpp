@@ -127,7 +127,7 @@ void ShenandoahBarrierSetAssembler::satb_write_barrier_pre(MacroAssembler* masm,
 
   // Do we need to load the previous value?
   if (obj != noreg) {
-    __ load_heap_oop(pre_val, Address(obj, 0));
+    __ load_heap_oop(pre_val, Address(obj, 0), noreg, noreg, AS_RAW);
   }
 
   // Is the previous value null?
@@ -326,6 +326,11 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
   bool on_weak = (decorators & ON_WEAK_OOP_REF) != 0;
   bool on_phantom = (decorators & ON_PHANTOM_OOP_REF) != 0;
   bool on_reference = on_weak || on_phantom;
+
+  if (in_heap) {
+    read_barrier_not_null(masm, src.base());
+  }
+
   BarrierSetAssembler::load_at(masm, decorators, type, dst, src, tmp1, tmp_thread);
   if (ShenandoahKeepAliveBarrier && on_oop && on_reference) {
     __ enter();
@@ -343,6 +348,10 @@ void ShenandoahBarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet d
 void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                              Address dst, Register val, Register tmp1, Register tmp2) {
   bool on_oop = type == T_OBJECT || type == T_ARRAY;
+  bool in_heap = (decorators & IN_HEAP) != 0;
+  if (in_heap) {
+    write_barrier(masm, dst.base());
+  }
   if (!on_oop) {
     BarrierSetAssembler::store_at(masm, decorators, type, dst, val, tmp1, tmp2);
     return;
@@ -366,7 +375,7 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
                                false /* expand_call */);
 
   if (val == noreg) {
-    __ store_heap_oop_null(Address(r3, 0));
+    BarrierSetAssembler::store_at(masm, decorators, type, Address(r3, 0), noreg, noreg, noreg);
   } else {
     storeval_barrier(masm, val, tmp1);
     // G1 barrier needs uncompressed oop for region cross check.
@@ -375,7 +384,7 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
       new_val = rscratch2;
       __ mov(new_val, val);
     }
-    __ store_heap_oop(Address(r3, 0), val);
+    BarrierSetAssembler::store_at(masm, decorators, type, Address(r3, 0), val, noreg, noreg);
     shenandoah_write_barrier_post(masm,
                                   r3 /* store_adr */,
                                   new_val /* new_val */,

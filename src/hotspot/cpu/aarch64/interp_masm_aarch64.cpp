@@ -267,10 +267,6 @@ void InterpreterMacroAssembler::get_method_counters(Register method,
 void InterpreterMacroAssembler::load_resolved_reference_at_index(
                                            Register result, Register index) {
   assert_different_registers(result, index);
-  // convert from field index to resolved_references() index and from
-  // word index to byte offset. Since this is a java object, it can be compressed
-  Register tmp = index;  // reuse
-  lslw(tmp, tmp, LogBytesPerHeapOop);
 
   get_constant_pool(result);
   // load pointer for resolved_references[] objArray
@@ -278,9 +274,8 @@ void InterpreterMacroAssembler::load_resolved_reference_at_index(
   ldr(result, Address(result, ConstantPoolCache::resolved_references_offset_in_bytes()));
   resolve_oop_handle(result);
   // Add in the index
-  add(result, result, tmp);
-  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->load_at(this, IN_HEAP, T_OBJECT, result, Address(result, arrayOopDesc::base_offset_in_bytes(T_OBJECT)), /*tmp1*/ noreg, /*tmp_thread*/ noreg);
+  add(index, index, arrayOopDesc::base_offset_in_bytes(T_OBJECT) >> LogBytesPerHeapOop);
+  load_heap_oop(result, Address(result, index, Address::uxtw(LogBytesPerHeapOop)));
 }
 
 void InterpreterMacroAssembler::load_resolved_klass_at_offset(

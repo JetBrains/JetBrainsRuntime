@@ -32,19 +32,42 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
 
   // LR is live.  It must be saved around calls.
 
+
+  dst = dst == noreg ? r0 : dst;
+
   bool on_heap = (decorators & IN_HEAP) != 0;
   bool on_root = (decorators & IN_ROOT) != 0;
+  bool oop_not_null = (decorators & OOP_NOT_NULL) != 0;
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
     if (on_heap) {
-      __ load_heap_oop(dst, src);
+      if (UseCompressedOops) {
+        __ ldrw(dst, src);
+        if (oop_not_null) {
+          __ decode_heap_oop_not_null(dst);
+        } else {
+          __ decode_heap_oop(dst);
+        }
+      } else {
+        __ ldr(dst, src);
+      }
     } else {
       assert(on_root, "why else?");
       __ ldr(dst, src);
     }
     break;
   }
+  case T_BOOLEAN: __ load_unsigned_byte (dst, src); break;
+  case T_BYTE:    __ load_signed_byte   (dst, src); break;
+  case T_CHAR:    __ load_unsigned_short(dst, src); break;
+  case T_SHORT:   __ load_signed_short  (dst, src); break;
+  case T_INT:     __ ldrw               (dst, src); break;
+  case T_LONG:    __ ldr                (dst, src); break;
+  case T_ADDRESS: __ ldr                (dst, src); break;
+  case T_FLOAT:   __ ldrs               (v0, src);  break;
+  case T_DOUBLE:  __ ldrd               (v0, src);  break;
+
   default: Unimplemented();
   }
 }
@@ -56,14 +79,32 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
+    val = val == noreg ? zr : val;
     if (on_heap) {
-      __ store_heap_oop(dst, val);
+      if (UseCompressedOops) {
+        assert(!dst.uses(val), "not enough registers");
+        if (val != zr) {
+          __ encode_heap_oop(val);
+        }
+        __ strw(val, dst);
+      } else {
+        __ str(val, dst);
+      }
     } else {
       assert(on_root, "why else?");
       __ str(val, dst);
     }
     break;
   }
+  case T_BOOLEAN: __ strb(val, dst); break;
+  case T_BYTE:    __ strb(val, dst); break;
+  case T_CHAR:    __ strh(val, dst); break;
+  case T_SHORT:   __ strh(val, dst); break;
+  case T_INT:     __ strw(val, dst); break;
+  case T_LONG:    __ str (val, dst); break;
+  case T_ADDRESS: __ str (val, dst); break;
+  case T_FLOAT:   __ strs(v0,  dst); break;
+  case T_DOUBLE:  __ strd(v0,  dst); break;
   default: Unimplemented();
   }
 }
