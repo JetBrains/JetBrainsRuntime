@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2015, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2013, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTTHREAD_HPP
-#define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTTHREAD_HPP
+#ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHSCHEDULERTHREAD_HPP
+#define SHARE_VM_GC_SHENANDOAH_SHENANDOAHSCHEDULERTHREAD_HPP
 
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
@@ -36,14 +36,14 @@
 // is busy driving the GC cycle.
 class ShenandoahPeriodicTask : public PeriodicTask {
 private:
-  ShenandoahConcurrentThread* _thread;
+  ShenandoahControlThread* _thread;
 public:
-  ShenandoahPeriodicTask(ShenandoahConcurrentThread* thread) :
+  ShenandoahPeriodicTask(ShenandoahControlThread* thread) :
           PeriodicTask(100), _thread(thread) {}
   virtual void task();
 };
 
-class ShenandoahConcurrentThread: public ConcurrentGCThread {
+class ShenandoahControlThread: public ConcurrentGCThread {
   friend class VMStructs;
 
 private:
@@ -91,8 +91,8 @@ private:
 
 public:
   // Constructor
-  ShenandoahConcurrentThread();
-  ~ShenandoahConcurrentThread();
+  ShenandoahControlThread();
+  ~ShenandoahControlThread();
 
   // Handle allocation failure from normal allocation.
   // Blocks until memory is available.
@@ -118,11 +118,11 @@ public:
   void prepare_for_graceful_shutdown();
   bool in_graceful_shutdown();
 
-  char* name() const { return (char*)"ShenandoahConcurrentThread";}
+  char* name() const { return (char*)"ShenandoahControlThread";}
 
   // Printing
   void print_on(outputStream* st) const;
   void print() const;
 };
 
-#endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTTHREAD_HPP
+#endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHSCHEDULERTHREAD_HPP

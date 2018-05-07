@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2013, 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -35,7 +35,7 @@
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
-#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
+#include "gc/shenandoah/shenandoahControlThread.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
@@ -308,7 +308,7 @@ jint ShenandoahHeap::initialize() {
 
   ShenandoahStringDedup::initialize();
 
-  _concurrent_gc_thread = new ShenandoahConcurrentThread();
+  _control_thread = new ShenandoahControlThread();
 
   ShenandoahCodeRoots::initialize();
 
@@ -606,7 +606,7 @@ void ShenandoahHeap::notify_alloc(size_t words, bool waste) {
   }
   increase_allocated(bytes);
   if (ShenandoahPacing) {
-    concurrent_thread()->pacing_notify_alloc(words);
+    control_thread()->pacing_notify_alloc(words);
     if (waste) {
       pacer()->claim_for_alloc(words, true);
     }
@@ -659,7 +659,7 @@ void ShenandoahHeap::handle_heap_shrinkage(double shrink_before) {
   if (count > 0) {
     log_info(gc)("Uncommitted " SIZE_FORMAT "M. Heap: " SIZE_FORMAT "M reserved, " SIZE_FORMAT "M committed, " SIZE_FORMAT "M used",
                  count * ShenandoahHeapRegion::region_size_bytes() / M, capacity() / M, committed() / M, used() / M);
-    _concurrent_gc_thread->notify_heap_changed();
+    control_thread()->notify_heap_changed();
   }
 }
 
@@ -771,7 +771,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
     while ((result == NULL) && (tries++ < ShenandoahAllocGCTries)) {
       log_debug(gc)("[" PTR_FORMAT " Failed to allocate " SIZE_FORMAT " bytes, doing GC, try %d",
                     p2i(Thread::current()), word_size * HeapWordSize, tries);
-      concurrent_thread()->handle_alloc_failure(word_size);
+      control_thread()->handle_alloc_failure(word_size);
       result = allocate_memory_under_lock(word_size, type, in_new_region);
     }
   } else {
@@ -782,7 +782,7 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
   }
 
   if (in_new_region) {
-    concurrent_thread()->notify_heap_changed();
+    control_thread()->notify_heap_changed();
   }
 
   log_develop_trace(gc, alloc)("allocate memory chunk of size "SIZE_FORMAT" at addr "PTR_FORMAT " by thread %d ",
@@ -1248,7 +1248,7 @@ bool ShenandoahHeap::card_mark_must_follow_store() const {
 }
 
 void ShenandoahHeap::collect(GCCause::Cause cause) {
-  _concurrent_gc_thread->handle_explicit_gc(cause);
+  control_thread()->handle_explicit_gc(cause);
 }
 
 void ShenandoahHeap::do_full_collection(bool clear_all_soft_refs) {
@@ -1953,13 +1953,13 @@ void ShenandoahHeap::stop() {
   // Step 1. Notify control thread that we are in shutdown.
   // Note that we cannot do that with stop(), because stop() is blocking and waits for the actual shutdown.
   // Doing stop() here would wait for the normal GC cycle to complete, never falling through to cancel below.
-  _concurrent_gc_thread->prepare_for_graceful_shutdown();
+  control_thread()->prepare_for_graceful_shutdown();
 
   // Step 2. Notify GC workers that we are cancelling GC.
   cancel_concgc(GCCause::_shenandoah_stop_vm);
 
   // Step 3. Wait until GC worker exits normally.
-  _concurrent_gc_thread->stop();
+  control_thread()->stop();
 
   // Step 4. Stop String Dedup thread if it is active
   if (ShenandoahStringDedup::is_enabled()) {

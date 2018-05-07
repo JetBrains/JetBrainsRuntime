@@ -38,6 +38,7 @@ class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
+class ShenandoahControlThread;
 class ShenandoahFastRegionSet;
 class ShenandoahPhaseTimings;
 class ShenandoahHeap;
@@ -51,7 +52,6 @@ class ShenandoahMarkCompact;
 class ShenandoahPacer;
 class ShenandoahTraversalGC;
 class ShenandoahVerifier;
-class ShenandoahConcurrentThread;
 class ShenandoahMonitoringSupport;
 
 class ShenandoahRegionIterator : public StackObj {
@@ -260,7 +260,7 @@ private:
   ShenandoahVerifier*  _verifier;
   ShenandoahPacer*  _pacer;
 
-  ShenandoahConcurrentThread* _concurrent_gc_thread;
+  ShenandoahControlThread* _control_thread;
 
   ShenandoahMonitoringSupport* _monitoring_support;
 
@@ -655,7 +655,7 @@ private:
   template<class T>
   inline void do_object_marked_complete(T* cl, oop obj);
 
-  ShenandoahConcurrentThread* concurrent_thread() { return _concurrent_gc_thread; }
+  ShenandoahControlThread* control_thread() { return _control_thread; }
 
 public:
   inline oop atomic_compare_exchange_oop(oop n, narrowOop* addr, oop c);

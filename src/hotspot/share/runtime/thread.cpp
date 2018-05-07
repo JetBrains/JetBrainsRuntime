@@ -116,7 +116,6 @@
 #include "utilities/preserveException.hpp"
 #include "utilities/vmError.hpp"
 #if INCLUDE_ALL_GCS
-#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/g1/g1ConcurrentMarkThread.inline.hpp"
 #include "gc/parallel/pcTasks.hpp"

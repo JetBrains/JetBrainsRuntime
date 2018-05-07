@@ -33,11 +33,11 @@
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
-#include "gc/shenandoah/shenandoahConcurrentThread.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
+#include "gc/shenandoah/shenandoahControlThread.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "oops/oop.inline.hpp"
@@ -305,7 +305,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 #endif
 
   if (filler == NULL) {
-    concurrent_thread()->handle_alloc_failure_evac(size_with_fwdptr);
+    control_thread()->handle_alloc_failure_evac(size_with_fwdptr);
 
     _oom_evac_handler.handle_out_of_memory_during_evacuation();
 
