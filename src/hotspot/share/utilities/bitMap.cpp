@@ -675,7 +675,6 @@ void BitMap::print_on_error(outputStream* st, const char* prefix) const {
 void BitMap::copy_from(BitMap& other, idx_t start_bit, idx_t end_bit) {
   // Copy prefix.
   while (bit_in_word(start_bit) != 0 && start_bit < end_bit) {
-    tty->print_cr("prefix: "SIZE_FORMAT, start_bit);
     at_put(start_bit, other.at(start_bit));
     start_bit++;
   }
@@ -683,7 +682,6 @@ void BitMap::copy_from(BitMap& other, idx_t start_bit, idx_t end_bit) {
   while (bit_in_word(end_bit) != 0 && end_bit > start_bit) {
     end_bit--;
     at_put(end_bit, other.at(end_bit));
-    tty->print_cr("suffix: "SIZE_FORMAT, end_bit);
   }
 
   assert(bit_in_word(start_bit) == 0, "can only handle aligned copy for now, bit: "SIZE_FORMAT, bit_in_word(start_bit));
