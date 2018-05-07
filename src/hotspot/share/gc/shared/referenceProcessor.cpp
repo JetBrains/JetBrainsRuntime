@@ -293,9 +293,12 @@ void ReferenceProcessor::enqueue_discovered_reflist(DiscoveredList& refs_list) {
     assert(java_lang_ref_Reference::next(obj) == NULL,
            "Reference not active; should not be discovered");
     // Self-loop next, so as to make Ref not active.
+#if INCLUDE_ALL_GCS
     if (UseShenandoahGC && UseShenandoahMatrix) {
       java_lang_ref_Reference::set_next(obj, obj);
-    } else {
+    }
+#endif
+    {
       java_lang_ref_Reference::set_next_raw(obj, obj);
     }
     if (! oopDesc::safe_equals(next_d, obj)) {

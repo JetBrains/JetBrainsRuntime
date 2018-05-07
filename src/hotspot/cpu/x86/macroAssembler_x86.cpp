@@ -3768,6 +3768,7 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp) {
   movl(as_Address(ArrayAddress(page, index)), tmp);
 }
 
+#if INCLUDE_ALL_GCS
 // Special Shenandoah CAS implementation that handles false negatives
 // due to concurrent evacuation.
 #ifndef _LP64
@@ -3862,7 +3863,8 @@ void MacroAssembler::cmpxchg_oop_shenandoah(Register res, Address addr, Register
     movzbl(res, res);
   }
 }
-#endif
+#endif // LP64
+#endif // INCLUDE_ALL_GCS
 
 void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, Register temp_reg) {
   if (SafepointMechanism::uses_thread_local_poll()) {
@@ -5364,7 +5366,7 @@ void MacroAssembler::resolve_jobject(Register value,
   bind(done);
 }
 
-#ifdef INCLUDE_ALL_GCS
+#if INCLUDE_ALL_GCS
 #ifndef _LP64
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
   Unimplemented();

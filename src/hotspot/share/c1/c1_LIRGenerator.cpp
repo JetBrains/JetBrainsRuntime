@@ -37,8 +37,6 @@
 #include "gc/shared/cardTable.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/stubRoutines.hpp"
@@ -48,6 +46,8 @@
 #if INCLUDE_ALL_GCS
 #include "gc/g1/g1ThreadLocalData.hpp"
 #include "gc/g1/heapRegion.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
@@ -1882,11 +1882,14 @@ void LIRGenerator::do_StoreField(StoreField* x) {
     __ null_check(obj, new CodeEmitInfo(info), /* deoptimize */ needs_patching);
   }
 
-  obj = shenandoah_write_barrier(obj, info, x->needs_null_check());
   LIR_Opr val = value.result();
+
+#if INCLUDE_ALL_GCS
+  obj = shenandoah_write_barrier(obj, info, x->needs_null_check());
   if (is_oop && UseShenandoahGC) {
     val = shenandoah_storeval_barrier(val, NULL, true);
   }
+#endif
 
   LIR_Address* address;
   if (needs_patching) {
@@ -1976,7 +1979,10 @@ void LIRGenerator::do_LoadField(LoadField* x) {
     __ null_check(obj, new CodeEmitInfo(info), /* deoptimize */ needs_patching);
   }
 
+#if INCLUDE_ALL_GCS
   obj = shenandoah_read_barrier(obj, info, x->needs_null_check() && x->explicit_null_check() != NULL);
+#endif
+
   LIR_Opr reg = rlock_result(x, field_type);
   LIR_Address* address;
   if (needs_patching) {
@@ -2006,6 +2012,7 @@ void LIRGenerator::do_LoadField(LoadField* x) {
   }
 }
 
+#if INCLUDE_ALL_GCS
 LIR_Opr LIRGenerator::shenandoah_read_barrier(LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
   if (UseShenandoahGC && ShenandoahReadBarrier) {
     return shenandoah_read_barrier_impl(obj, info, need_null_check);
@@ -2063,6 +2070,8 @@ LIR_Opr LIRGenerator::shenandoah_storeval_barrier(LIR_Opr obj, CodeEmitInfo* inf
   }
   return obj;
 }
+#endif
+
 //------------------------java.nio.Buffer.checkIndex------------------------
 
 // int java.nio.Buffer.checkIndex(int)
@@ -2080,7 +2089,10 @@ void LIRGenerator::do_NIOCheckIndex(Intrinsic* x) {
   if (GenerateRangeChecks) {
     CodeEmitInfo* info = state_for(x);
     CodeStub* stub = new RangeCheckStub(info, index.result(), true);
-    LIR_Opr buf_obj = shenandoah_read_barrier(buf.result(), info, false);
+    LIR_Opr buf_obj = buf.result();
+#if INCLUDE_ALL_GCS
+    buf_obj = shenandoah_read_barrier(buf_obj, info, false);
+#endif
     if (index.result()->is_constant()) {
       cmp_mem_int(lir_cond_belowEqual, buf_obj, java_nio_Buffer::limit_offset(), index.result()->as_jint(), info);
       __ branch(lir_cond_belowEqual, T_INT, stub);
@@ -2160,7 +2172,10 @@ void LIRGenerator::do_LoadIndexed(LoadIndexed* x) {
   }
 
   LIR_Opr ary = array.result();
+
+#if INCLUDE_ALL_GCS
   ary = shenandoah_read_barrier(ary, null_check_info, null_check_info != NULL);
+#endif
 
   // emit array address setup early so it schedules better
   LIR_Address* array_addr = emit_array_address(ary, index.result(), x->elt_type(), false);
@@ -3104,7 +3119,9 @@ void LIRGenerator::do_Base(Base* x) {
       __ load_stack_address_monitor(0, lock);
 
       CodeEmitInfo* info = new CodeEmitInfo(scope()->start()->state()->copy(ValueStack::StateBefore, SynchronizationEntryBCI), NULL, x->check_flag(Instruction::DeoptimizeOnException));
+#if INCLUDE_ALL_GCS
       obj = shenandoah_write_barrier(obj, info, false);
+#endif
       CodeStub* slow_path = new MonitorEnterStub(obj, lock, info);
 
       // receiver is guaranteed non-NULL so don't need CodeEmitInfo

@@ -771,11 +771,13 @@ class MacroAssembler: public Assembler {
 
   void cmpxchgptr(Register reg, Address adr);
 
+#if INCLUDE_ALL_GCS
   // Special Shenandoah CAS implementation that handles false negatives
   // due to concurrent evacuation.
   void cmpxchg_oop_shenandoah(Register res, Address addr, Register oldval, Register newval,
                               bool exchange,
                               Register tmp1, Register tmp2);
+#endif
 
   void locked_cmpxchgptr(Register reg, AddressLiteral adr);
 

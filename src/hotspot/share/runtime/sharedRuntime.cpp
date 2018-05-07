@@ -38,7 +38,6 @@
 #include "compiler/disassembler.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/gcLocker.inline.hpp"
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interpreterRuntime.hpp"
 #include "logging/log.hpp"
@@ -79,6 +78,7 @@
 #endif
 #if INCLUDE_ALL_GCS
 #include "gc/g1/g1ThreadLocalData.hpp"
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #endif // INCLUDE_ALL_GCS
 
 // Shared stub locations

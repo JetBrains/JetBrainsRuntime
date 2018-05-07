@@ -351,14 +351,18 @@ void LIRGenerator::do_StoreIndexed(StoreIndexed* x) {
 
   LIR_Opr ary = array.result();
 
+#if INCLUDE_ALL_GCS
   ary = shenandoah_write_barrier(ary, null_check_info, x->needs_null_check());
+#endif
 
   LIR_Opr val = value.result();
   value = NULL;
 
+#if INCLUDE_ALL_GCS
   if (obj_store && UseShenandoahGC) {
     val = shenandoah_storeval_barrier(val, NULL, true);
   }
+#endif
 
   // emit array address setup early so it schedules better
   // FIXME?  No harm in this on aarch64, and it might help
@@ -420,7 +424,9 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   // object is already locked (xhandlers expect object to be unlocked)
   CodeEmitInfo* info = state_for(x, x->state(), true);
   LIR_Opr obj_opr = obj.result();
+#if INCLUDE_ALL_GCS
   obj_opr = shenandoah_write_barrier(obj_opr, state_for(x), x->needs_null_check());
+#endif
   monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
                         x->monitor_no(), info_for_exception, info);
 }
@@ -808,7 +814,9 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
   LIR_Address* a;
 
   LIR_Opr obj_op = obj.result();
+#if INCLUDE_ALL_GCS
   obj_op = shenandoah_write_barrier(obj_op, NULL, true);
+#endif
 
   if(offset.result()->is_constant()) {
     jlong c = offset.result()->as_jlong();
@@ -844,7 +852,9 @@ void LIRGenerator::do_CompareAndSwap(Intrinsic* x, ValueType* type) {
   LIR_Opr ill = LIR_OprFact::illegalOpr;  // for convenience
 
   if (type == objectType) {
+#if INCLUDE_ALL_GCS
     val_op = shenandoah_storeval_barrier(val_op, NULL, true);
+#endif
     __ cas_obj(addr, cmp.result(), val_op, new_register(T_INT), new_register(T_INT),
                result);
   } else if (type == intType) {
@@ -943,9 +953,11 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIRItem length(x->argument_at(4), this);
 
   LIR_Opr dst_op = dst.result();
-  dst_op = shenandoah_write_barrier(dst_op, info, x->arg_needs_null_check(2));
   LIR_Opr src_op = src.result();
+#if INCLUDE_ALL_GCS
+  dst_op = shenandoah_write_barrier(dst_op, info, x->arg_needs_null_check(2));
   src_op = shenandoah_read_barrier(src_op, info, x->arg_needs_null_check(0));
+#endif
 
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
@@ -1017,9 +1029,11 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         index = tmp;
       }
 
+#if INCLUDE_ALL_GCS
       if (is_updateBytes) {
         base_op = shenandoah_read_barrier(base_op, NULL, false);
       }
+#endif
 
       if (offset) {
         LIR_Opr tmp = new_pointer_register();
@@ -1464,7 +1478,9 @@ void LIRGenerator::volatile_field_load(LIR_Address* address, LIR_Opr result,
 
 void LIRGenerator::get_Object_unsafe(LIR_Opr dst, LIR_Opr src, LIR_Opr offset,
                                      BasicType type, bool is_volatile) {
+#if INCLUDE_ALL_GCS
   src = shenandoah_read_barrier(src, NULL, true);
+#endif
   LIR_Address* addr = new LIR_Address(src, offset, type);
   __ load(addr, dst);
 }
@@ -1472,15 +1488,18 @@ void LIRGenerator::get_Object_unsafe(LIR_Opr dst, LIR_Opr src, LIR_Opr offset,
 
 void LIRGenerator::put_Object_unsafe(LIR_Opr src, LIR_Opr offset, LIR_Opr data,
                                      BasicType type, bool is_volatile) {
+#if INCLUDE_ALL_GCS
   src = shenandoah_write_barrier(src, NULL, true);
-
+#endif
   LIR_Address* addr = new LIR_Address(src, offset, type);
   bool is_obj = (type == T_ARRAY || type == T_OBJECT);
   if (is_obj) {
     // Do the pre-write barrier, if any.
     pre_barrier(LIR_OprFact::address(addr), LIR_OprFact::illegalOpr /* pre_val */,
                 true /* do_load */, false /* patch */, NULL);
+#if INCLUDE_ALL_GCS
     data = shenandoah_storeval_barrier(data, NULL, true);
+#endif
     __ move(data, addr);
     assert(src->is_register(), "must be register");
     // Seems to be a precise address
@@ -1518,10 +1537,13 @@ void LIRGenerator::do_UnsafeGetAndSetObject(UnsafeGetAndSetObject* x) {
   }
 
   LIR_Opr src_op = src.result();
+
+#if INCLUDE_ALL_GCS
   src_op = shenandoah_write_barrier(src_op, NULL, true);
   if (is_obj) {
     data = shenandoah_storeval_barrier(data, NULL, true);
   }
+#endif
 
   LIR_Address* addr;
   if (offset->is_constant()) {

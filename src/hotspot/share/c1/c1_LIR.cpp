@@ -916,6 +916,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       do_temp(opProfileType->_tmp);
       break;
     }
+#if INCLUDE_ALL_GCS
     case lir_shenandoah_wb: {
       assert(op->as_OpShenandoahWriteBarrier() != NULL, "must be");
       LIR_OpShenandoahWriteBarrier* opShenandoahWB = (LIR_OpShenandoahWriteBarrier*) op;
@@ -923,6 +924,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       do_output(opShenandoahWB->_result);
       break;
     }
+#endif
   default:
     ShouldNotReachHere();
   }
@@ -1021,9 +1023,11 @@ void LIR_OpBranch::emit_code(LIR_Assembler* masm) {
   }
 }
 
+#if INCLUDE_ALL_GCS
 void LIR_OpShenandoahWriteBarrier::emit_code(LIR_Assembler* masm) {
   masm->emit_opShenandoahWriteBarrier(this);
 }
+#endif
 
 void LIR_OpConvert::emit_code(LIR_Assembler* masm) {
   masm->emit_opConvert(this);
@@ -1751,10 +1755,12 @@ const char * LIR_Op::name() const {
   return s;
 }
 
+#if INCLUDE_ALL_GCS
 void LIR_OpShenandoahWriteBarrier::print_instr(outputStream* out) const {
   out->print("[obj: "); in_opr()->print(out); out->print("]");
   out->print("[res: "); result_opr()->print(out); out->print("]");
 }
+#endif
 
 // LIR_OpJavaCall
 void LIR_OpJavaCall::print_instr(outputStream* out) const {

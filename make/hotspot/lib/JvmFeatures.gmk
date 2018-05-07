@@ -121,7 +121,7 @@ endif
 ifneq ($(call check-jvm-feature, all-gcs), true)
   JVM_CFLAGS_FEATURES += -DINCLUDE_ALL_GCS=0
   JVM_EXCLUDE_PATTERNS += \
-      cms/ g1/ parallel/
+      cms/ g1/ parallel/ shenandoah
   JVM_EXCLUDE_FILES += \
       concurrentGCThread.cpp \
       suspendibleThreadSet.cpp \

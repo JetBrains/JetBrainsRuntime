@@ -858,7 +858,9 @@ class      LIR_OpBranch;
 class      LIR_OpConvert;
 class      LIR_OpAllocObj;
 class      LIR_OpRoundFP;
+#if INCLUDE_ALL_GCS
 class      LIR_OpShenandoahWriteBarrier;
+#endif
 class    LIR_Op2;
 class    LIR_OpDelay;
 class    LIR_Op3;
@@ -1136,7 +1138,9 @@ class LIR_Op: public CompilationResourceObj {
   virtual LIR_OpCompareAndSwap* as_OpCompareAndSwap() { return NULL; }
   virtual LIR_OpProfileCall* as_OpProfileCall() { return NULL; }
   virtual LIR_OpProfileType* as_OpProfileType() { return NULL; }
+#if INCLUDE_ALL_GCS
   virtual LIR_OpShenandoahWriteBarrier* as_OpShenandoahWriteBarrier() { return NULL; }
+#endif
 #ifdef ASSERT
   virtual LIR_OpAssert* as_OpAssert() { return NULL; }
 #endif
@@ -1451,6 +1455,7 @@ class LIR_OpBranch: public LIR_Op {
   virtual void print_instr(outputStream* out) const PRODUCT_RETURN;
 };
 
+#if INCLUDE_ALL_GCS
 class LIR_OpShenandoahWriteBarrier : public LIR_Op1 {
  friend class LIR_OpVisitState;
 
@@ -1468,6 +1473,7 @@ public:
   virtual void print_instr(outputStream* out) const PRODUCT_RETURN;
 
 };
+#endif
 
 class ConversionStub;
 
@@ -2132,7 +2138,9 @@ class LIR_List: public CompilationResourceObj {
 
   void convert(Bytecodes::Code code, LIR_Opr left, LIR_Opr dst, ConversionStub* stub = NULL/*, bool is_32bit = false*/) { append(new LIR_OpConvert(code, left, dst, stub)); }
 
+#if INCLUDE_ALL_GCS
   void shenandoah_wb(LIR_Opr obj, LIR_Opr result, CodeEmitInfo* info, bool need_null_check) { append(new LIR_OpShenandoahWriteBarrier(obj, result, info, need_null_check)); }
+#endif
 
   void logical_and (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_and,  left, right, dst)); }
   void logical_or  (LIR_Opr left, LIR_Opr right, LIR_Opr dst) { append(new LIR_Op2(lir_logic_or,   left, right, dst)); }
