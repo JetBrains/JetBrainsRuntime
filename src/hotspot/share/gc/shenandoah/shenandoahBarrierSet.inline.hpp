@@ -223,7 +223,6 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
       if (_heap->in_collection_set(obj)) {
         oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
         if (oopDesc::unsafe_equals(forw, obj)) {
-          bool evac;
           forw = _heap->evacuate_object(forw, thread);
         }
         obj = forw;

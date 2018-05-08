@@ -162,11 +162,11 @@ void ShenandoahBarrierSet::write_ref_array_post_entry(HeapWord* dst, size_t leng
 
 
 template <class T>
-void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
+void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, size_t count) {
   shenandoah_assert_not_in_cset_loc_except(dst, _heap->cancelled_concgc());
   if (ShenandoahSATBBarrier && _heap->is_concurrent_mark_in_progress()) {
     T* elem_ptr = dst;
-    for (int i = 0; i < count; i++, elem_ptr++) {
+    for (size_t i = 0; i < count; i++, elem_ptr++) {
       T heap_oop = RawAccess<>::oop_load(elem_ptr);
       if (!CompressedOops::is_null(heap_oop)) {
         enqueue(CompressedOops::decode_not_null(heap_oop));
@@ -175,13 +175,13 @@ void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, int count) {
   }
 }
 
-void ShenandoahBarrierSet::write_ref_array_pre(oop* dst, int count, bool dest_uninitialized) {
+void ShenandoahBarrierSet::write_ref_array_pre(oop* dst, size_t count, bool dest_uninitialized) {
   if (! dest_uninitialized) {
     write_ref_array_pre_work(dst, count);
   }
 }
 
-void ShenandoahBarrierSet::write_ref_array_pre(narrowOop* dst, int count, bool dest_uninitialized) {
+void ShenandoahBarrierSet::write_ref_array_pre(narrowOop* dst, size_t count, bool dest_uninitialized) {
   if (! dest_uninitialized) {
     write_ref_array_pre_work(dst, count);
   }

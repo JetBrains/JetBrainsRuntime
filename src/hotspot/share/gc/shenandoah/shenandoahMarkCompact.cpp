@@ -397,7 +397,7 @@ public:
     // Sliding compaction. Walk all regions in the slice, and compact them.
     // Remember empty regions and reuse them as needed.
     ResourceMark rm;
-    GrowableArray<ShenandoahHeapRegion*> empty_regions(_heap->num_regions());
+    GrowableArray<ShenandoahHeapRegion*> empty_regions((int)_heap->num_regions());
     ShenandoahPrepareForCompactionObjectClosure cl(empty_regions, from_region);
     while (from_region != NULL) {
       cl.set_from_region(from_region);

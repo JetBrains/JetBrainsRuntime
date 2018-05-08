@@ -65,11 +65,11 @@ public:
   void write_ref_array_work(MemRegion r);
 
   template <class T> void
-  write_ref_array_pre_work(T* dst, int count);
+  write_ref_array_pre_work(T* dst, size_t count);
 
-  void write_ref_array_pre(oop* dst, int count, bool dest_uninitialized);
+  void write_ref_array_pre(oop* dst, size_t count, bool dest_uninitialized);
 
-  void write_ref_array_pre(narrowOop* dst, int count, bool dest_uninitialized);
+  void write_ref_array_pre(narrowOop* dst, size_t count, bool dest_uninitialized);
 
 
   // We export this to make it available in cases where the static

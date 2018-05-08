@@ -21,7 +21,7 @@
  *
  */
 
-// Deliberately avoids precompiled headers, to break name clashes and accidental dependencies
+#include "precompiled.hpp"
 
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
@@ -33,6 +33,11 @@
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "memory/allocation.hpp"
+
+// Avoid name collision on verify_oop (defined in macroAssembler_arm.hpp)
+#ifdef verify_oop
+#undef verify_oop
+#endif
 
 class ShenandoahVerifyOopClosure : public ExtendedOopClosure {
 private:

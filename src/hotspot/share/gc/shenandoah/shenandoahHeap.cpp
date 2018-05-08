@@ -592,7 +592,7 @@ void ShenandoahHeap::set_used(size_t bytes) {
 
 void ShenandoahHeap::decrease_used(size_t bytes) {
   assert(used() >= bytes, "never decrease heap size by more than we've left");
-  Atomic::add(-bytes, &_used);
+  Atomic::sub(bytes, &_used);
 }
 
 void ShenandoahHeap::increase_allocated(size_t bytes) {
