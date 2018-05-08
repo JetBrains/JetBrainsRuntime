@@ -30,6 +30,7 @@
 
 class VMStructs;
 class ShenandoahHeap;
+class ShenandoahPacer;
 
 class ShenandoahHeapRegion : public ContiguousSpace {
   friend class VMStructs;
