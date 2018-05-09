@@ -36,6 +36,7 @@
 #include "gc/cms/concurrentMarkSweepGeneration.inline.hpp"
 #include "gc/cms/concurrentMarkSweepThread.hpp"
 #include "gc/cms/parNewGeneration.hpp"
+#include "gc/cms/promotionInfo.inline.hpp"
 #include "gc/cms/vmCMSOperations.hpp"
 #include "gc/serial/genMarkSweep.hpp"
 #include "gc/serial/tenuredGeneration.hpp"
@@ -54,6 +55,7 @@
 #include "gc/shared/genOopClosures.inline.hpp"
 #include "gc/shared/isGCActiveMark.hpp"
 #include "gc/shared/referencePolicy.hpp"
+#include "gc/shared/space.inline.hpp"
 #include "gc/shared/strongRootsScope.hpp"
 #include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
@@ -290,13 +292,13 @@ void CMSCollector::ref_processor_init() {
   if (_ref_processor == NULL) {
     // Allocate and initialize a reference processor
     _ref_processor =
-      new ReferenceProcessor(_span,                               // span
+      new ReferenceProcessor(&_span_based_discoverer,
                              (ParallelGCThreads > 1) && ParallelRefProcEnabled, // mt processing
-                             ParallelGCThreads,                   // mt processing degree
-                             _cmsGen->refs_discovery_is_mt(),     // mt discovery
+                             ParallelGCThreads,                      // mt processing degree
+                             _cmsGen->refs_discovery_is_mt(),        // mt discovery
                              MAX2(ConcGCThreads, ParallelGCThreads), // mt discovery degree
-                             _cmsGen->refs_discovery_is_atomic(), // discovery is not atomic
-                             &_is_alive_closure);                 // closure for liveness info
+                             _cmsGen->refs_discovery_is_atomic(),    // discovery is not atomic
+                             &_is_alive_closure);                    // closure for liveness info
     // Initialize the _ref_processor field of CMSGen
     _cmsGen->set_ref_processor(_ref_processor);
 
@@ -445,7 +447,10 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
                            CardTableRS*                   ct,
                            ConcurrentMarkSweepPolicy*     cp):
   _cmsGen(cmsGen),
+  // Adjust span to cover old (cms) gen
+  _span(cmsGen->reserved()),
   _ct(ct),
+  _span_based_discoverer(_span),
   _ref_processor(NULL),    // will be set later
   _conc_workers(NULL),     // may be set later
   _abort_preclean(false),
@@ -455,8 +460,6 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
   _modUnionTable((CardTable::card_shift - LogHeapWordSize),
                  -1 /* lock-free */, "No_lock" /* dummy */),
   _modUnionClosurePar(&_modUnionTable),
-  // Adjust my span to cover old (cms) gen
-  _span(cmsGen->reserved()),
   // Construct the is_alive_closure with _span & markBitMap
   _is_alive_closure(_span, &_markBitMap),
   _restart_addr(NULL),
@@ -601,8 +604,7 @@ CMSCollector::CMSCollector(ConcurrentMarkSweepGeneration* cmsGen,
 
   // Support for parallelizing young gen rescan
   CMSHeap* heap = CMSHeap::heap();
-  assert(heap->young_gen()->kind() == Generation::ParNew, "CMS can only be used with ParNew");
-  _young_gen = (ParNewGeneration*)heap->young_gen();
+  _young_gen = heap->young_gen();
   if (heap->supports_inline_contig_alloc()) {
     _top_addr = heap->top_addr();
     _end_addr = heap->end_addr();
@@ -769,7 +771,6 @@ void ConcurrentMarkSweepGeneration::compute_new_size_free_list() {
       log.trace("  Capacity " SIZE_FORMAT, capacity() / 1000);
       log.trace("  Desired capacity " SIZE_FORMAT, desired_capacity / 1000);
       CMSHeap* heap = CMSHeap::heap();
-      assert(heap->is_old_gen(this), "The CMS generation should always be the old generation");
       size_t young_size = heap->young_gen()->capacity();
       log.trace("  Young gen size " SIZE_FORMAT, young_size / 1000);
       log.trace("  unsafe_max_alloc_nogc " SIZE_FORMAT, unsafe_max_alloc_nogc() / 1000);
@@ -1100,7 +1101,7 @@ ConcurrentMarkSweepGeneration::
 par_oop_since_save_marks_iterate_done(int thread_num) {
   CMSParGCThreadState* ps = _par_gc_thread_states[thread_num];
   ParScanWithoutBarrierClosure* dummy_cl = NULL;
-  ps->promo.promoted_oops_iterate_nv(dummy_cl);
+  ps->promo.promoted_oops_iterate(dummy_cl);
 
   // Because card-scanning has been completed, subsequent phases
   // (e.g., reference processing) will not need to recognize which
@@ -2462,18 +2463,6 @@ bool ConcurrentMarkSweepGeneration::no_allocs_since_save_marks() {
   return cmsSpace()->no_allocs_since_save_marks();
 }
 
-#define CMS_SINCE_SAVE_MARKS_DEFN(OopClosureType, nv_suffix)    \
-                                                                \
-void ConcurrentMarkSweepGeneration::                            \
-oop_since_save_marks_iterate##nv_suffix(OopClosureType* cl) {   \
-  cl->set_generation(this);                                     \
-  cmsSpace()->oop_since_save_marks_iterate##nv_suffix(cl);      \
-  cl->reset_generation();                                       \
-  save_marks();                                                 \
-}
-
-ALL_SINCE_SAVE_MARKS_CLOSURES(CMS_SINCE_SAVE_MARKS_DEFN)
-
 void
 ConcurrentMarkSweepGeneration::oop_iterate(ExtendedOopClosure* cl) {
   if (freelistLock()->owned_by_self()) {
@@ -3744,7 +3733,6 @@ void CMSCollector::sample_eden() {
   }
 }
 
-
 size_t CMSCollector::preclean_work(bool clean_refs, bool clean_survivor) {
   assert(_collectorState == Precleaning ||
          _collectorState == AbortablePreclean, "incorrect state");
@@ -3761,7 +3749,7 @@ size_t CMSCollector::preclean_work(bool clean_refs, bool clean_survivor) {
   // referents.
   if (clean_refs) {
     CMSPrecleanRefsYieldClosure yield_cl(this);
-    assert(rp->span().equals(_span), "Spans should be equal");
+    assert(_span_based_discoverer.span().equals(_span), "Spans should be equal");
     CMSKeepAliveClosure keep_alive(this, _span, &_markBitMap,
                                    &_markStack, true /* preclean */);
     CMSDrainMarkingStackClosure complete_trace(this,
@@ -5153,7 +5141,7 @@ void CMSRefProcTaskExecutor::execute(ProcessTask& task)
   WorkGang* workers = heap->workers();
   assert(workers != NULL, "Need parallel worker threads.");
   CMSRefProcTaskProxy rp_task(task, &_collector,
-                              _collector.ref_processor()->span(),
+                              _collector.ref_processor_span(),
                               _collector.markBitMap(),
                               workers, _collector.task_queues());
   workers->run_task(&rp_task);
@@ -5174,13 +5162,13 @@ void CMSCollector::refProcessingWork() {
   HandleMark   hm;
 
   ReferenceProcessor* rp = ref_processor();
-  assert(rp->span().equals(_span), "Spans should be equal");
+  assert(_span_based_discoverer.span().equals(_span), "Spans should be equal");
   assert(!rp->enqueuing_is_done(), "Enqueuing should not be complete");
   // Process weak references.
   rp->setup_policy(false);
   verify_work_stacks_empty();
 
-  ReferenceProcessorPhaseTimes pt(_gc_timer_cm, rp->num_q());
+  ReferenceProcessorPhaseTimes pt(_gc_timer_cm, rp->num_queues());
   {
     GCTraceTime(Debug, gc, phases) t("Reference Processing", _gc_timer_cm);
 
@@ -5245,7 +5233,7 @@ void CMSCollector::refProcessingWork() {
       CodeCache::do_unloading(&_is_alive_closure, purged_class);
 
       // Prune dead klasses from subklass/sibling/implementor lists.
-      Klass::clean_weak_klass_links();
+      Klass::clean_weak_klass_links(purged_class);
     }
 
     {
@@ -5266,16 +5254,7 @@ void CMSCollector::refProcessingWork() {
   restore_preserved_marks_if_any();  // done single-threaded for now
 
   rp->set_enqueuing_is_done(true);
-  if (rp->processing_is_mt()) {
-    rp->balance_all_queues();
-    CMSRefProcTaskExecutor task_executor(*this);
-    rp->enqueue_discovered_references(&task_executor, &pt);
-  } else {
-    rp->enqueue_discovered_references(NULL, &pt);
-  }
   rp->verify_no_references_recorded();
-  pt.print_enqueue_phase();
-  assert(!rp->discovery_enabled(), "should have been disabled");
 }
 
 #ifndef PRODUCT

@@ -69,7 +69,6 @@ class FreeChunk;
 class ParNewGeneration;
 class PromotionInfo;
 class ScanMarkedObjectsAgainCarefullyClosure;
-class TenuredGeneration;
 class SerialOldTracer;
 
 // A generic CMS bit map. It's the basis for both the CMS marking bit map
@@ -617,7 +616,7 @@ class CMSCollector: public CHeapObj<mtGC> {
 
  protected:
   ConcurrentMarkSweepGeneration* _cmsGen;  // Old gen (CMS)
-  MemRegion                      _span;    // Span covering above two
+  MemRegion                      _span;    // Span covering above
   CardTableRS*                   _ct;      // Card table
 
   // CMS marking support structures
@@ -641,8 +640,9 @@ class CMSCollector: public CHeapObj<mtGC> {
   NOT_PRODUCT(ssize_t _num_par_pushes;)
 
   // ("Weak") Reference processing support.
-  ReferenceProcessor*            _ref_processor;
-  CMSIsAliveClosure              _is_alive_closure;
+  SpanSubjectToDiscoveryClosure _span_based_discoverer;
+  ReferenceProcessor*           _ref_processor;
+  CMSIsAliveClosure             _is_alive_closure;
   // Keep this textually after _markBitMap and _span; c'tor dependency.
 
   ConcurrentMarkSweepThread*     _cmsThread;   // The thread doing the work
@@ -841,6 +841,7 @@ class CMSCollector: public CHeapObj<mtGC> {
                ConcurrentMarkSweepPolicy*     cp);
   ConcurrentMarkSweepThread* cmsThread() { return _cmsThread; }
 
+  MemRegion ref_processor_span() const { return _span_based_discoverer.span(); }
   ReferenceProcessor* ref_processor() { return _ref_processor; }
   void ref_processor_init();
 
@@ -1194,12 +1195,8 @@ class ConcurrentMarkSweepGeneration: public CardGeneration {
   virtual void safe_object_iterate(ObjectClosure* cl);
   virtual void object_iterate(ObjectClosure* cl);
 
-  // Need to declare the full complement of closures, whether we'll
-  // override them or not, or get message from the compiler:
-  //   oop_since_save_marks_iterate_nv hides virtual function...
-  #define CMS_SINCE_SAVE_MARKS_DECL(OopClosureType, nv_suffix) \
-    void oop_since_save_marks_iterate##nv_suffix(OopClosureType* cl);
-  ALL_SINCE_SAVE_MARKS_CLOSURES(CMS_SINCE_SAVE_MARKS_DECL)
+  template <typename OopClosureType>
+  void oop_since_save_marks_iterate(OopClosureType* cl);
 
   // Smart allocation  XXX -- move to CFLSpace?
   void setNearLargestChunk();

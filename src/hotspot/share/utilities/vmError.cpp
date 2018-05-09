@@ -862,6 +862,13 @@ void VMError::report(outputStream* st, bool _verbose) {
        st->cr();
      }
 
+  STEP("printing metaspace information")
+
+     if (_verbose && Universe::is_fully_initialized()) {
+       st->print_cr("Metaspace:");
+       MetaspaceUtils::print_basic_report(st, 0);
+     }
+
   STEP("printing code cache information")
 
      if (_verbose && Universe::is_fully_initialized()) {
@@ -1044,6 +1051,13 @@ void VMError::print_vm_info(outputStream* st) {
     st->cr();
     st->print_cr("Polling page: " INTPTR_FORMAT, p2i(os::get_polling_page()));
     st->cr();
+  }
+
+  // STEP("printing metaspace information")
+
+  if (Universe::is_fully_initialized()) {
+    st->print_cr("Metaspace:");
+    MetaspaceUtils::print_basic_report(st, 0);
   }
 
   // STEP("printing code cache information")
@@ -1606,6 +1620,9 @@ bool VMError::check_timeout() {
 }
 
 #ifndef PRODUCT
+#if defined(__SUNPRO_CC) && __SUNPRO_CC >= 0x5140
+#pragma error_messages(off, SEC_NULL_PTR_DEREF)
+#endif
 typedef void (*voidfun_t)();
 // Crash with an authentic sigfpe
 static void crash_with_sigfpe() {

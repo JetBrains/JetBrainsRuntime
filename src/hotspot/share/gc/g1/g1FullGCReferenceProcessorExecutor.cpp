@@ -34,7 +34,7 @@
 G1FullGCReferenceProcessingExecutor::G1FullGCReferenceProcessingExecutor(G1FullCollector* collector) :
     _collector(collector),
     _reference_processor(collector->reference_processor()),
-    _old_mt_degree(_reference_processor->num_q()) {
+    _old_mt_degree(_reference_processor->num_queues()) {
   if (_reference_processor->processing_is_mt()) {
     _reference_processor->set_active_mt_degree(_collector->workers());
   }
@@ -92,7 +92,7 @@ void G1FullGCReferenceProcessingExecutor::execute(STWGCTimer* timer, G1FullGCTra
   G1FullGCMarker* marker = _collector->marker(0);
   G1IsAliveClosure is_alive(_collector->mark_bitmap());
   G1FullKeepAliveClosure keep_alive(marker);
-  ReferenceProcessorPhaseTimes pt(timer, _reference_processor->num_q());
+  ReferenceProcessorPhaseTimes pt(timer, _reference_processor->num_queues());
   AbstractRefProcTaskExecutor* executor = _reference_processor->processing_is_mt() ? this : NULL;
 
   // Process discovered references, use this executor if multi-threaded
@@ -108,8 +108,4 @@ void G1FullGCReferenceProcessingExecutor::execute(STWGCTimer* timer, G1FullGCTra
   pt.print_all_references();
 
   assert(marker->oop_stack()->is_empty(), "Should be no oops on the stack");
-
-  // Now enqueue the references.
-  _reference_processor->enqueue_discovered_references(executor, &pt);
-  pt.print_enqueue_phase();
 }
