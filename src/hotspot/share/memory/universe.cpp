@@ -32,14 +32,10 @@
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "code/dependencies.hpp"
-#include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "gc/shared/gcArguments.hpp"
 #include "gc/shared/gcConfig.hpp"
-#include "gc/shared/gcLocker.hpp"
-#include "gc/shared/generation.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
-#include "gc/shared/space.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
@@ -85,9 +81,6 @@
 #include "utilities/macros.hpp"
 #include "utilities/ostream.hpp"
 #include "utilities/preserveException.hpp"
-#if INCLUDE_CDS
-#include "classfile/sharedClassUtil.hpp"
-#endif
 
 // Known objects
 Klass* Universe::_boolArrayKlassObj                 = NULL;
@@ -318,7 +311,7 @@ void initialize_basic_type_klass(Klass* k, TRAPS) {
   } else
 #endif
   {
-    k->initialize_supers(ok, CHECK);
+    k->initialize_supers(ok, NULL, CHECK);
   }
   k->append_to_sibling_list();
 }
@@ -1098,7 +1091,7 @@ bool universe_post_init() {
 
   MemoryService::set_universe_heap(Universe::heap());
 #if INCLUDE_CDS
-  SharedClassUtil::initialize(CHECK_false);
+  MetaspaceShared::post_initialize(CHECK_false);
 #endif
   return true;
 }

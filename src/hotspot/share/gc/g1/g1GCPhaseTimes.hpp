@@ -73,7 +73,6 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
     StringDedupQueueFixup,
     StringDedupTableFixup,
     RedirtyCards,
-    PreserveCMReferents,
     YoungFreeCSet,
     NonYoungFreeCSet,
     GCParPhasesSentinel
@@ -260,10 +259,6 @@ class G1GCPhaseTimes : public CHeapObj<mtGC> {
 
   void record_weak_ref_proc_time(double ms) {
     _cur_weak_ref_proc_time_ms = ms;
-  }
-
-  void record_ref_enq_time(double ms) {
-    _cur_ref_enq_time_ms = ms;
   }
 
   void record_root_region_scan_wait_time(double time_ms) {

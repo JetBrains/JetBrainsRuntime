@@ -30,6 +30,7 @@
 #include "classfile/vmSymbols.hpp"
 #include "code/codeCache.hpp"
 #include "code/icBuffer.hpp"
+#include "gc/serial/defNewGeneration.hpp"
 #include "gc/shared/adaptiveSizePolicy.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/cardTableRS.hpp"
@@ -175,7 +176,7 @@ char* GenCollectedHeap::allocate(size_t alignment,
 void GenCollectedHeap::post_initialize() {
   CollectedHeap::post_initialize();
   ref_processing_init();
-  check_gen_kinds();
+
   DefNewGeneration* def_new_gen = (DefNewGeneration*)_young_gen;
 
   initialize_size_policy(def_new_gen->eden()->capacity(),
@@ -248,7 +249,7 @@ unsigned int GenCollectedHeap::update_full_collections_completed(unsigned int co
 //   was a full collection because a partial collection (would
 //   have) failed and is likely to fail again
 bool GenCollectedHeap::should_try_older_generation_allocation(size_t word_size) const {
-  size_t young_capacity = young_gen()->capacity_before_gc();
+  size_t young_capacity = _young_gen->capacity_before_gc();
   return    (word_size > heap_word_size(young_capacity))
          || GCLocker::is_active_and_needs_gc()
          || incremental_collection_failed();
@@ -256,12 +257,12 @@ bool GenCollectedHeap::should_try_older_generation_allocation(size_t word_size) 
 
 HeapWord* GenCollectedHeap::expand_heap_and_allocate(size_t size, bool   is_tlab) {
   HeapWord* result = NULL;
-  if (old_gen()->should_allocate(size, is_tlab)) {
-    result = old_gen()->expand_and_allocate(size, is_tlab);
+  if (_old_gen->should_allocate(size, is_tlab)) {
+    result = _old_gen->expand_and_allocate(size, is_tlab);
   }
   if (result == NULL) {
-    if (young_gen()->should_allocate(size, is_tlab)) {
-      result = young_gen()->expand_and_allocate(size, is_tlab);
+    if (_young_gen->should_allocate(size, is_tlab)) {
+      result = _young_gen->expand_and_allocate(size, is_tlab);
     }
   }
   assert(result == NULL || is_in_reserved(result), "result not in heap");
@@ -286,7 +287,7 @@ HeapWord* GenCollectedHeap::mem_allocate_work(size_t size,
     HandleMark hm; // Discard any handles allocated in each iteration.
 
     // First allocation attempt is lock-free.
-    Generation *young = young_gen();
+    Generation *young = _young_gen;
     assert(young->supports_inline_contig_alloc(),
       "Otherwise, must do alloc within heap lock");
     if (young->should_allocate(size, is_tlab)) {
@@ -516,9 +517,7 @@ void GenCollectedHeap::collect_generation(Generation* gen, bool full, size_t siz
     }
     gen->collect(full, clear_soft_refs, size, is_tlab);
     if (!rp->enqueuing_is_done()) {
-      ReferenceProcessorPhaseTimes pt(NULL, rp->num_q());
-      rp->enqueue_discovered_references(NULL, &pt);
-      pt.print_enqueue_phase();
+      rp->disable_discovery();
     } else {
       rp->set_enqueuing_is_done(false);
     }
@@ -912,23 +911,6 @@ void GenCollectedHeap::gen_process_weak_roots(OopClosure* root_closure) {
   _old_gen->ref_processor()->weak_oops_do(root_closure);
 }
 
-#define GCH_SINCE_SAVE_MARKS_ITERATE_DEFN(OopClosureType, nv_suffix)    \
-void GenCollectedHeap::                                                 \
-oop_since_save_marks_iterate(GenerationType gen,                        \
-                             OopClosureType* cur,                       \
-                             OopClosureType* older) {                   \
-  if (gen == YoungGen) {                              \
-    _young_gen->oop_since_save_marks_iterate##nv_suffix(cur);           \
-    _old_gen->oop_since_save_marks_iterate##nv_suffix(older);           \
-  } else {                                                              \
-    _old_gen->oop_since_save_marks_iterate##nv_suffix(cur);             \
-  }                                                                     \
-}
-
-ALL_SINCE_SAVE_MARKS_CLOSURES(GCH_SINCE_SAVE_MARKS_ITERATE_DEFN)
-
-#undef GCH_SINCE_SAVE_MARKS_ITERATE_DEFN
-
 bool GenCollectedHeap::no_allocs_since_save_marks() {
   return _young_gen->no_allocs_since_save_marks() &&
          _old_gen->no_allocs_since_save_marks();
@@ -1146,11 +1128,18 @@ size_t GenCollectedHeap::unsafe_max_tlab_alloc(Thread* thr) const {
   return 0;
 }
 
-HeapWord* GenCollectedHeap::allocate_new_tlab(size_t size) {
+HeapWord* GenCollectedHeap::allocate_new_tlab(size_t min_size,
+                                              size_t requested_size,
+                                              size_t* actual_size) {
   bool gc_overhead_limit_was_exceeded;
-  return mem_allocate_work(size /* size */,
-                           true /* is_tlab */,
-                           &gc_overhead_limit_was_exceeded);
+  HeapWord* result = mem_allocate_work(requested_size /* size */,
+                                       true /* is_tlab */,
+                                       &gc_overhead_limit_was_exceeded);
+  if (result != NULL) {
+    *actual_size = requested_size;
+  }
+
+  return result;
 }
 
 // Requires "*prev_ptr" to be non-NULL.  Deletes and a block of minimal size
@@ -1243,12 +1232,14 @@ GenCollectedHeap* GenCollectedHeap::heap() {
   return (GenCollectedHeap*) heap;
 }
 
+#if INCLUDE_SERIALGC
 void GenCollectedHeap::prepare_for_compaction() {
   // Start by compacting into same gen.
   CompactPoint cp(_old_gen);
   _old_gen->prepare_for_compaction(&cp);
   _young_gen->prepare_for_compaction(&cp);
 }
+#endif // INCLUDE_SERIALGC
 
 void GenCollectedHeap::verify(VerifyOption option /* ignored */) {
   log_debug(gc, verify)("%s", _old_gen->name());

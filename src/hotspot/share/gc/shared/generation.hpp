@@ -100,6 +100,7 @@ class Generation: public CHeapObj<mtGC> {
   VirtualSpace _virtual_space;
 
   // ("Weak") Reference processing support
+  SpanSubjectToDiscoveryClosure _span_based_discoverer;
   ReferenceProcessor* _ref_processor;
 
   // Performance Counters
@@ -400,6 +401,7 @@ class Generation: public CHeapObj<mtGC> {
   GCStats* gc_stats() const { return _gc_stats; }
   virtual void update_gc_stats(Generation* current_generation, bool full) {}
 
+#if INCLUDE_SERIALGC
   // Mark sweep support phase2
   virtual void prepare_for_compaction(CompactPoint* cp);
   // Mark sweep support phase3
@@ -407,6 +409,7 @@ class Generation: public CHeapObj<mtGC> {
   // Mark sweep support phase4
   virtual void compact();
   virtual void post_compact() { ShouldNotReachHere(); }
+#endif
 
   // Support for CMS's rescan. In this general form we return a pointer
   // to an abstract object that can be used, based on specific previously
@@ -438,25 +441,6 @@ class Generation: public CHeapObj<mtGC> {
   // This function is "true" iff any no allocations have occurred in the
   // generation since the last call to "save_marks".
   virtual bool no_allocs_since_save_marks() = 0;
-
-  // Apply "cl->apply" to (the addresses of) all reference fields in objects
-  // allocated in the current generation since the last call to "save_marks".
-  // If more objects are allocated in this generation as a result of applying
-  // the closure, iterates over reference fields in those objects as well.
-  // Calls "save_marks" at the end of the iteration.
-  // General signature...
-  virtual void oop_since_save_marks_iterate_v(OopsInGenClosure* cl) = 0;
-  // ...and specializations for de-virtualization.  (The general
-  // implementation of the _nv versions call the virtual version.
-  // Note that the _nv suffix is not really semantically necessary,
-  // but it avoids some not-so-useful warnings on Solaris.)
-#define Generation_SINCE_SAVE_MARKS_DECL(OopClosureType, nv_suffix)             \
-  virtual void oop_since_save_marks_iterate##nv_suffix(OopClosureType* cl) {    \
-    oop_since_save_marks_iterate_v((OopsInGenClosure*)cl);                      \
-  }
-  SPECIALIZED_SINCE_SAVE_MARKS_CLOSURES(Generation_SINCE_SAVE_MARKS_DECL)
-
-#undef Generation_SINCE_SAVE_MARKS_DECL
 
   // The "requestor" generation is performing some garbage collection
   // action for which it would be useful to have scratch space.  If

@@ -220,9 +220,11 @@ class Space: public CHeapObj<mtGC> {
   // Allocation (return NULL if full).  Enforces mutual exclusion internally.
   virtual HeapWord* par_allocate(size_t word_size) = 0;
 
+#if INCLUDE_SERIALGC
   // Mark-sweep-compact support: all spaces can update pointers to objects
   // moving as a part of compaction.
   virtual void adjust_pointers() = 0;
+#endif
 
   virtual void print() const;
   virtual void print_on(outputStream* st) const;
@@ -405,6 +407,7 @@ public:
     _next_compaction_space = csp;
   }
 
+#if INCLUDE_SERIALGC
   // MarkSweep support phase2
 
   // Start the process of compaction of the current space: compute
@@ -420,6 +423,7 @@ public:
   virtual void adjust_pointers();
   // MarkSweep support phase4
   virtual void compact();
+#endif // INCLUDE_SERIALGC
 
   // The maximum percentage of objects that can be dead in the compacted
   // live part of a compacted space ("deadwood" support.)
@@ -474,9 +478,11 @@ protected:
   // and possibly also overriding obj_size(), and adjust_obj_size().
   // These functions should avoid virtual calls whenever possible.
 
+#if INCLUDE_SERIALGC
   // Frequently calls adjust_obj_size().
   template <class SpaceType>
   static inline void scan_and_adjust_pointers(SpaceType* space);
+#endif
 
   // Frequently calls obj_size().
   template <class SpaceType>
@@ -602,15 +608,9 @@ class ContiguousSpace: public CompactibleSpace {
     _concurrent_iteration_safe_limit = new_limit;
   }
 
-
-#if INCLUDE_ALL_GCS
   // In support of parallel oop_iterate.
-  #define ContigSpace_PAR_OOP_ITERATE_DECL(OopClosureType, nv_suffix)  \
-    void par_oop_iterate(MemRegion mr, OopClosureType* blk);
-
-    ALL_PAR_OOP_ITERATE_CLOSURES(ContigSpace_PAR_OOP_ITERATE_DECL)
-  #undef ContigSpace_PAR_OOP_ITERATE_DECL
-#endif // INCLUDE_ALL_GCS
+  template <typename OopClosureType>
+  void par_oop_iterate(MemRegion mr, OopClosureType* blk);
 
   // Compaction support
   virtual void reset_after_compaction() {
@@ -633,11 +633,8 @@ class ContiguousSpace: public CompactibleSpace {
   // *are* included in the iteration.
   // Updates _saved_mark_word to point to just after the last object
   // iterated over.
-#define ContigSpace_OOP_SINCE_SAVE_MARKS_DECL(OopClosureType, nv_suffix)  \
-  void oop_since_save_marks_iterate##nv_suffix(OopClosureType* blk);
-
-  ALL_SINCE_SAVE_MARKS_CLOSURES(ContigSpace_OOP_SINCE_SAVE_MARKS_DECL)
-#undef ContigSpace_OOP_SINCE_SAVE_MARKS_DECL
+  template <typename OopClosureType>
+  void oop_since_save_marks_iterate(OopClosureType* blk);
 
   // Same as object_iterate, but starting from "mark", which is required
   // to denote the start of an object.  Objects allocated by
@@ -654,8 +651,10 @@ class ContiguousSpace: public CompactibleSpace {
   HeapWord** top_addr() { return &_top; }
   HeapWord** end_addr() { return &_end; }
 
+#if INCLUDE_SERIALGC
   // Overrides for more efficient compaction support.
   void prepare_for_compaction(CompactPoint* cp);
+#endif
 
   virtual void print_on(outputStream* st) const;
 

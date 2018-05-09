@@ -107,10 +107,17 @@ typedef int CardIdx_t;     // needs to hold [ 0..CardsPerRegion )
 // (optional) _is_alive_non_header closure in the STW
 // reference processor. It is also extensively used during
 // reference processing during STW evacuation pauses.
-class G1STWIsAliveClosure: public BoolObjectClosure {
+class G1STWIsAliveClosure : public BoolObjectClosure {
   G1CollectedHeap* _g1h;
 public:
   G1STWIsAliveClosure(G1CollectedHeap* g1h) : _g1h(g1h) {}
+  bool do_object_b(oop p);
+};
+
+class G1STWSubjectToDiscoveryClosure : public BoolObjectClosure {
+  G1CollectedHeap* _g1h;
+public:
+  G1STWSubjectToDiscoveryClosure(G1CollectedHeap* g1h) : _g1h(g1h) {}
   bool do_object_b(oop p);
 };
 
@@ -420,7 +427,9 @@ private:
   //   humongous allocation requests should go to mem_allocate() which
   //   will satisfy them with a special path.
 
-  virtual HeapWord* allocate_new_tlab(size_t word_size);
+  virtual HeapWord* allocate_new_tlab(size_t min_size,
+                                      size_t requested_size,
+                                      size_t* actual_size);
 
   virtual HeapWord* mem_allocate(size_t word_size,
                                  bool*  gc_overhead_limit_was_exceeded);
@@ -428,7 +437,9 @@ private:
   // First-level mutator allocation attempt: try to allocate out of
   // the mutator alloc region without taking the Heap_lock. This
   // should only be used for non-humongous allocations.
-  inline HeapWord* attempt_allocation(size_t word_size);
+  inline HeapWord* attempt_allocation(size_t min_word_size,
+                                      size_t desired_word_size,
+                                      size_t* actual_word_size);
 
   // Second-level mutator allocation attempt: take the Heap_lock and
   // retry the allocation attempt, potentially scheduling a GC
@@ -502,16 +513,13 @@ private:
   // allocated block, or else "NULL".
   HeapWord* expand_and_allocate(size_t word_size);
 
-  // Preserve any referents discovered by concurrent marking that have not yet been
-  // copied by the STW pause.
-  void preserve_cm_referents(G1ParScanThreadStateSet* per_thread_states);
-  // Process any reference objects discovered during
-  // an incremental evacuation pause.
+  // Process any reference objects discovered.
   void process_discovered_references(G1ParScanThreadStateSet* per_thread_states);
 
-  // Enqueue any remaining discovered references
-  // after processing.
-  void enqueue_discovered_references(G1ParScanThreadStateSet* per_thread_states);
+  // If during an initial mark pause we may install a pending list head which is not
+  // otherwise reachable ensure that it is marked in the bitmap for concurrent marking
+  // to discover.
+  void make_pending_list_reachable();
 
   // Merges the information gathered on a per-thread basis for all worker threads
   // during GC into global variables.
@@ -893,6 +901,8 @@ private:
   // the discovered lists during reference discovery.
   G1STWIsAliveClosure _is_alive_closure_stw;
 
+  G1STWSubjectToDiscoveryClosure _is_subject_to_discovery_stw;
+
   // The (concurrent marking) reference processor...
   ReferenceProcessor* _ref_processor_cm;
 
@@ -904,6 +914,7 @@ private:
   // discovery.
   G1CMIsAliveClosure _is_alive_closure_cm;
 
+  G1CMSubjectToDiscoveryClosure _is_subject_to_discovery_cm;
 public:
 
   RefToScanQueue *task_queue(uint i) const;

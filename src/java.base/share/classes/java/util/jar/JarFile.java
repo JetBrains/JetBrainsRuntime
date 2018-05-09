@@ -42,6 +42,7 @@ import java.security.CodeSigner;
 import java.security.CodeSource;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
@@ -1079,16 +1080,7 @@ class JarFile extends ZipFile {
         if (includeUnsigned) {
             return unsignedEntryNames();
         } else {
-            return new Enumeration<>() {
-
-                public boolean hasMoreElements() {
-                    return false;
-                }
-
-                public String nextElement() {
-                    throw new NoSuchElementException();
-                }
-            };
+            return Collections.emptyEnumeration();
         }
     }
 

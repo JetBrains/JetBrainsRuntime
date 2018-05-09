@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -651,10 +651,18 @@ void Canonicalizer::do_CheckCast      (CheckCast*       x) {
   if (x->klass()->is_loaded()) {
     Value obj = x->obj();
     ciType* klass = obj->exact_type();
-    if (klass == NULL) klass = obj->declared_type();
-    if (klass != NULL && klass->is_loaded() && klass->is_subtype_of(x->klass())) {
-      set_canonical(obj);
-      return;
+    if (klass == NULL) {
+      klass = obj->declared_type();
+    }
+    if (klass != NULL && klass->is_loaded()) {
+      bool is_interface = klass->is_instance_klass() &&
+                          klass->as_instance_klass()->is_interface();
+      // Interface casts can't be statically optimized away since verifier doesn't
+      // enforce interface types in bytecode.
+      if (!is_interface && klass->is_subtype_of(x->klass())) {
+        set_canonical(obj);
+        return;
+      }
     }
     // checkcast of null returns null
     if (obj->as_Constant() && obj->type()->as_ObjectType()->constant_value()->is_null_object()) {
