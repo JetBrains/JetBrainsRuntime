@@ -89,9 +89,9 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
         if (is_collector_free(idx)) {
           ShenandoahHeapRegion* r = _heap->get_region(idx);
           if (is_empty_or_trash(r)) {
+            flip_to_mutator(idx);
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
-              flip_to_mutator(idx);
               return result;
             }
           }
@@ -133,9 +133,9 @@ HeapWord* ShenandoahFreeSet::allocate_single(size_t word_size, ShenandoahHeap::A
         if (is_mutator_free(idx)) {
           ShenandoahHeapRegion* r = _heap->get_region(idx);
           if (is_empty_or_trash(r)) {
+            flip_to_gc(idx);
             HeapWord *result = try_allocate_in(r, word_size, type, in_new_region);
             if (result != NULL) {
-              flip_to_gc(idx);
               return result;
             }
           }
