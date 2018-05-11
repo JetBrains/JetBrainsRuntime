@@ -752,6 +752,8 @@ protected:
     static BOOL sm_suppressFocusAndActivation;
     static BOOL sm_restoreFocusAndActivation;
 
+    INLINE BOOL IsInMoveResizeLoop() { return m_inMoveResizeLoop; }
+
     /*
      * The function sets the focus-restore flag ON/OFF.
      * When the flag is ON, focus is restored immidiately after the proxy loses it.
@@ -848,6 +850,8 @@ private:
     // 6524352: support finer-resolution
     int m_wheelRotationAmountX;
     int m_wheelRotationAmountY;
+
+    BOOL m_inMoveResizeLoop;
 
     BOOL deadKeyActive;
 

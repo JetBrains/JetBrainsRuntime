@@ -983,8 +983,17 @@ MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
         // may diverge with Component::Reshape in this state
         return mrDoDefault;
     }
-    // set the new bounds for async update
-    ::CopyRect(&m_boundsOnDPIChange, bounds);
+    if (IsInMoveResizeLoop()) {
+        // Dragged with mouse to new screen. In this case the new bounds must be set immediately
+        // or otherwise OS will reset it back to the previous values.
+        ::SetWindowPos(GetHWnd(), NULL,
+                           bounds->left, bounds->top,
+                           bounds->right - bounds->left, bounds->bottom - bounds->top,
+                           SWP_NOZORDER | SWP_NOACTIVATE);
+    } else {
+        // DPI of this screen changed. Store the new bounds for async update.
+        ::CopyRect(&m_boundsOnDPIChange, bounds);
+    }
     return mrConsume;
 }
 

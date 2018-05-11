@@ -1577,9 +1577,11 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
                             GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
           break;
       case WM_ENTERSIZEMOVE:
+          m_inMoveResizeLoop = TRUE;
           mr = WmEnterSizeMove();
           break;
       case WM_EXITSIZEMOVE:
+          m_inMoveResizeLoop = FALSE;
           mr = WmExitSizeMove();
           break;
       // Bug #4039858 (Selecting menu item causes bogus mouse click event)
