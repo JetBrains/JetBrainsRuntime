@@ -210,8 +210,6 @@ public:
   void work(uint worker_id) {
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
-    ShenandoahObjToScanQueueSet* queues = traversal_gc->task_queues();
-    ShenandoahObjToScanQueue* q = queues->queue(worker_id);
 
     // Drain all outstanding work in queues.
     traversal_gc->main_loop(worker_id, _terminator, true);
