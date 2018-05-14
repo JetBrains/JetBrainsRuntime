@@ -341,12 +341,8 @@ class Thread: public ThreadShadow {
   volatile void* _polling_page;                 // Thread local polling page
 
   ThreadLocalAllocBuffer _tlab;                 // Thread-local eden
-  ThreadLocalAllocBuffer _gclab;                // Thread-local allocation buffer for GC (e.g. evacuation)
   jlong _allocated_bytes;                       // Cumulative number of bytes allocated on
                                                 // the Java heap
-  jlong _allocated_bytes_gclab;                 // Cumulative number of bytes allocated on
-                                                // the Java heap, in GCLABs
-
   mutable TRACE_DATA _trace_data;               // Thread-local data for tracing
 
   int   _vm_operation_started_count;            // VM_Operation support
@@ -516,22 +512,14 @@ class Thread: public ThreadShadow {
   ThreadLocalAllocBuffer& tlab()                 { return _tlab; }
   void initialize_tlab() {
     if (UseTLAB) {
-      tlab().initialize(false);
-      gclab().initialize(true);
+      tlab().initialize();
     }
   }
-
-  // Thread-Local GC Allocation Buffer (GCLAB) support
-  ThreadLocalAllocBuffer& gclab()                { return _gclab; }
 
   jlong allocated_bytes()               { return _allocated_bytes; }
   void set_allocated_bytes(jlong value) { _allocated_bytes = value; }
   void incr_allocated_bytes(jlong size) { _allocated_bytes += size; }
   inline jlong cooked_allocated_bytes();
-
-  jlong allocated_bytes_gclab()                { return _allocated_bytes_gclab; }
-  void set_allocated_bytes_gclab(jlong value)  { _allocated_bytes_gclab = value; }
-  void incr_allocated_bytes_gclab(jlong size)  { _allocated_bytes_gclab += size; }
 
   TRACE_DEFINE_THREAD_TRACE_DATA_OFFSET;
   TRACE_DATA* trace_data() const        { return &_trace_data; }
@@ -714,10 +702,6 @@ protected:
   TLAB_FIELD_OFFSET(slow_allocations)
 
 #undef TLAB_FIELD_OFFSET
-
-  static ByteSize gclab_start_offset()         { return byte_offset_of(Thread, _gclab) + ThreadLocalAllocBuffer::start_offset(); }
-  static ByteSize gclab_top_offset()           { return byte_offset_of(Thread, _gclab) + ThreadLocalAllocBuffer::top_offset(); }
-  static ByteSize gclab_end_offset()           { return byte_offset_of(Thread, _gclab) + ThreadLocalAllocBuffer::end_offset(); }
 
   static ByteSize allocated_bytes_offset()       { return byte_offset_of(Thread, _allocated_bytes); }
 

@@ -374,11 +374,13 @@ void ShenandoahBarrierSet::on_thread_attach(JavaThread* thread) {
     ShenandoahThreadLocalData::satb_mark_queue(thread).set_active(true);
   }
   ShenandoahThreadLocalData::set_gc_state(thread, ShenandoahHeap::heap()->gc_state());
+  ShenandoahThreadLocalData::initialize_gclab(thread);
 }
 
 void ShenandoahBarrierSet::on_thread_detach(JavaThread* thread) {
   ShenandoahThreadLocalData::satb_mark_queue(thread).flush();
-  if (UseTLAB && thread->gclab().is_initialized()) {
-    thread->gclab().make_parsable(true);
+  PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+  if (gclab != NULL) {
+    gclab->flush_and_retire_stats(_heap->mutator_gclab_stats());
   }
 }

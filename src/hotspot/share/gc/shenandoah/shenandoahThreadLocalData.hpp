@@ -25,6 +25,8 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHTHREADLOCALDATA_HPP
 
 #include "gc/g1/satbMarkQueue.hpp"
+#include "gc/shared/plab.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/debug.hpp"
@@ -35,11 +37,19 @@ private:
   char _gc_state;
   char _oom_during_evac;
   SATBMarkQueue  _satb_mark_queue;
+  PLAB* _gclab;
 
   ShenandoahThreadLocalData() :
     _gc_state(0),
     _oom_during_evac(0),
+    _gclab(NULL),
     _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()) {}
+
+  ~ShenandoahThreadLocalData() {
+    if (_gclab != NULL) {
+      delete _gclab;
+    }
+  }
 
   static ShenandoahThreadLocalData* data(Thread* thread) {
     assert(UseShenandoahGC, "Sanity");
@@ -77,6 +87,19 @@ public:
 
   static void set_gc_state(Thread* thread, char gc_state) {
     data(thread)->_gc_state = gc_state;
+  }
+
+  static void initialize_gclab(Thread* thread) {
+    size_t min_align_reserve = arrayOopDesc::header_size(T_INT) + BrooksPointer::word_size();
+    if (thread->is_Java_thread()) {
+      data(thread)->_gclab = new PLAB(OldPLABSize, min_align_reserve);
+    } else {
+      data(thread)->_gclab = new PLAB(YoungPLABSize, min_align_reserve);
+    }
+  }
+
+  static PLAB* gclab(Thread* thread) {
+    return data(thread)->_gclab;
   }
 
 #ifdef ASSERT

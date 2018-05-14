@@ -594,9 +594,6 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // perform cleanup tasks serially in the VMThread.
   virtual WorkGang* get_safepoint_workers() { return NULL; }
 
-  // Accumulate additional statistics from GCLABs.
-  virtual void accumulate_statistics_all_gclabs();
-
   // Support for object pinning. This is used by JNI Get*Critical()
   // and Release*Critical() family of functions. If supported, the GC
   // must guarantee that pinned objects never move.

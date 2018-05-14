@@ -637,10 +637,6 @@ uint CollectedHeap::oop_extra_words() {
   return 0;
 }
 
-void CollectedHeap::accumulate_statistics_all_gclabs() {
-  // Default implementation does nothing.
-}
-
 #ifndef CC_INTERP
 void CollectedHeap::compile_prepare_oop(MacroAssembler* masm, Register obj) {
   // Default implementation does nothing.

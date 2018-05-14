@@ -225,11 +225,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_heapdumps);
       heap->post_full_gc_dump(_gc_timer);
     }
-
-    if (UseTLAB) {
-      ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_resize_tlabs);
-      heap->resize_all_tlabs();
-    }
   }
 
 

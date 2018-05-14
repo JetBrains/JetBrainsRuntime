@@ -27,6 +27,7 @@
 #include "gc/shared/gcTimer.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
 #include "gc/shared/parallelCleaning.hpp"
+#include "gc/shared/plab.hpp"
 
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahAllocTracker.hpp"
@@ -363,6 +364,8 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _alloc_tracker(NULL),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
+  _mutator_gclab_stats(new PLABStats("Shenandoah mutator GCLAB stats", OldPLABSize, PLABWeight)),
+  _collector_gclab_stats(new PLABStats("Shenandoah collector GCLAB stats", YoungPLABSize, PLABWeight)),
   _memory_pool(NULL)
 {
   log_info(gc, init)("Parallel GC threads: "UINT32_FORMAT, ParallelGCThreads);
@@ -536,24 +539,22 @@ public:
   void do_thread(Thread* thread) {
     if (thread != NULL && (thread->is_Java_thread() || thread->is_Worker_thread() ||
                            thread->is_ConcurrentGC_thread())) {
-      thread->gclab().initialize(true);
+      ShenandoahThreadLocalData::initialize_gclab(thread);
     }
   }
 };
 
 void ShenandoahHeap::post_initialize() {
   CollectedHeap::post_initialize();
-  if (UseTLAB) {
-    MutexLocker ml(Threads_lock);
+  MutexLocker ml(Threads_lock);
 
-    ShenandoahInitGCLABClosure init_gclabs;
-    Threads::threads_do(&init_gclabs);
-    gc_threads_do(&init_gclabs);
+  ShenandoahInitGCLABClosure init_gclabs;
+  Threads::threads_do(&init_gclabs);
+  gc_threads_do(&init_gclabs);
 
-    // gclab can not be initialized early during VM startup, as it can not determinate its max_size.
-    // Now, we will let WorkGang to initialize gclab when new worker is created.
-    _workers->set_initialize_gclab();
-  }
+  // gclab can not be initialized early during VM startup, as it can not determinate its max_size.
+  // Now, we will let WorkGang to initialize gclab when new worker is created.
+  _workers->set_initialize_gclab();
 
   _scm->initialize(_max_workers);
   _full_gc->initialize(_gc_timer);
@@ -666,30 +667,28 @@ void ShenandoahHeap::handle_heap_shrinkage(double shrink_before) {
 HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) {
   // Retain tlab and allocate object in shared space if
   // the amount free in the tlab is too large to discard.
-  if (thread->gclab().free() > thread->gclab().refill_waste_limit()) {
-    thread->gclab().record_slow_allocation(size);
-    return NULL;
-  }
+  PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
 
   // Discard gclab and allocate a new one.
   // To minimize fragmentation, the last GCLAB may be smaller than the rest.
-  size_t new_gclab_size = thread->gclab().compute_size(size);
-
-  thread->gclab().clear_before_allocation();
-
-  if (new_gclab_size == 0) {
-    return NULL;
+  gclab->retire();
+  // Figure out size of new GCLAB
+  size_t new_gclab_size;
+  if (thread->is_Java_thread()) {
+    new_gclab_size = _mutator_gclab_stats->desired_plab_sz(Threads::number_of_threads());
+  } else {
+    new_gclab_size = _collector_gclab_stats->desired_plab_sz(workers()->active_workers());
   }
 
   // Allocate a new GCLAB...
-  HeapWord* obj = allocate_new_gclab(new_gclab_size);
-  if (obj == NULL) {
+  HeapWord* gclab_buf = allocate_new_gclab(new_gclab_size);
+  if (gclab_buf == NULL) {
     return NULL;
   }
 
   if (ZeroTLAB) {
     // ..and clear it.
-    Copy::zero_to_words(obj, new_gclab_size);
+    Copy::zero_to_words(gclab_buf, new_gclab_size);
   } else {
     // ...and zap just allocated object.
 #ifdef ASSERT
@@ -697,11 +696,11 @@ HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) 
     // ensure that the returned space is not considered parsable by
     // any concurrent GC thread.
     size_t hdr_size = oopDesc::header_size();
-    Copy::fill_to_words(obj + hdr_size, new_gclab_size - hdr_size, badHeapWordVal);
+    Copy::fill_to_words(gclab_buf + hdr_size, new_gclab_size - hdr_size, badHeapWordVal);
 #endif // ASSERT
   }
-  thread->gclab().fill(obj, obj + size, new_gclab_size);
-  return obj;
+  gclab->set_buf(gclab_buf, new_gclab_size);
+  return gclab->allocate(size);
 }
 
 HeapWord* ShenandoahHeap::allocate_new_tlab(size_t word_size) {
@@ -1070,20 +1069,21 @@ public:
   ShenandoahRetireTLABClosure(bool retire) : _retire(retire) {}
 
   void do_thread(Thread* thread) {
-    assert(thread->gclab().is_initialized(), "GCLAB should be initialized for %s", thread->name());
-    thread->gclab().make_parsable(_retire);
+    PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+    assert(gclab != NULL, "GCLAB should be initialized for %s", thread->name());
+    gclab->retire();
   }
 };
 
 void ShenandoahHeap::make_tlabs_parsable(bool retire_tlabs) {
   if (UseTLAB) {
     CollectedHeap::ensure_parsability(retire_tlabs);
-    ShenandoahRetireTLABClosure cl(retire_tlabs);
-    for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
-      cl.do_thread(t);
-    }
-    gc_threads_do(&cl);
   }
+  ShenandoahRetireTLABClosure cl(retire_tlabs);
+  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
+    cl.do_thread(t);
+  }
+  gc_threads_do(&cl);
 }
 
 
@@ -1195,30 +1195,16 @@ size_t ShenandoahHeap::max_tlab_size() const {
   return ShenandoahHeapRegion::max_tlab_size_bytes();
 }
 
-class ShenandoahResizeGCLABClosure : public ThreadClosure {
-public:
-  void do_thread(Thread* thread) {
-    assert(thread->gclab().is_initialized(), "GCLAB should be initialized for %s", thread->name());
-    thread->gclab().resize();
-  }
-};
-
-void ShenandoahHeap::resize_all_tlabs() {
-  CollectedHeap::resize_all_tlabs();
-
-  ShenandoahResizeGCLABClosure cl;
-  for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
-    cl.do_thread(t);
-  }
-  gc_threads_do(&cl);
-}
-
 class ShenandoahAccumulateStatisticsGCLABClosure : public ThreadClosure {
 public:
   void do_thread(Thread* thread) {
-    assert(thread->gclab().is_initialized(), "GCLAB should be initialized for %s", thread->name());
-    thread->gclab().accumulate_statistics();
-    thread->gclab().initialize_statistics();
+    ShenandoahHeap* heap = ShenandoahHeap::heap();
+    PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+    if (thread->is_Java_thread()) {
+      gclab->flush_and_retire_stats(heap->mutator_gclab_stats());
+    } else {
+      gclab->flush_and_retire_stats(heap->collector_gclab_stats());
+    }
   }
 };
 
@@ -1228,6 +1214,8 @@ void ShenandoahHeap::accumulate_statistics_all_gclabs() {
     cl.do_thread(t);
   }
   gc_threads_do(&cl);
+  _mutator_gclab_stats->adjust_desired_plab_sz();
+  _collector_gclab_stats->adjust_desired_plab_sz();
 }
 
 bool  ShenandoahHeap::can_elide_tlab_store_barriers() const {
@@ -1487,7 +1475,7 @@ void ShenandoahHeap::op_init_mark() {
 
   set_concurrent_mark_in_progress(true);
   // We need to reset all TLABs because we'd lose marks on all objects allocated in them.
-  if (UseTLAB) {
+  {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::make_parsable);
     make_tlabs_parsable(true);
   }
@@ -1567,6 +1555,7 @@ void ShenandoahHeap::op_final_mark() {
 void ShenandoahHeap::op_final_evac() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
+  accumulate_statistics_all_gclabs();
   set_evacuation_in_progress(false);
   if (ShenandoahVerify) {
     verifier()->verify_after_evacuation();
@@ -1679,6 +1668,10 @@ void ShenandoahHeap::op_final_traversal() {
 
 void ShenandoahHeap::op_full(GCCause::Cause cause) {
   full_gc()->do_it(cause);
+  if (UseTLAB) {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_resize_tlabs);
+    resize_all_tlabs();
+  }
 }
 
 void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
@@ -2292,6 +2285,7 @@ void ShenandoahHeap::op_init_updaterefs() {
     verifier()->verify_before_updaterefs();
   }
 
+  accumulate_statistics_all_gclabs();
   set_evacuation_in_progress(false);
   set_update_refs_in_progress(true);
   make_tlabs_parsable(true);

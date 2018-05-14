@@ -71,7 +71,7 @@ protected:
 public:
   // Initializes the buffer to be empty, but with the given "word_sz".
   // Must get initialized with "set_buf" for an allocation to succeed.
-  PLAB(size_t word_sz);
+  PLAB(size_t word_sz, size_t min_align_reserve = 0);
 
   static size_t size_required_for_allocation(size_t word_size) { return word_size + AlignmentReserve; }
 

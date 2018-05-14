@@ -57,9 +57,9 @@ ShenandoahPushWorkerScope::~ShenandoahPushWorkerScope() {
 
 AbstractGangWorker* ShenandoahWorkGang::install_worker(uint which) {
   AbstractGangWorker* worker = WorkGang::install_worker(which);
-  if (_initialize_gclab) {
-    worker->gclab().initialize(true);
-  }
   ShenandoahThreadLocalData::create(worker);
+  if (_initialize_gclab) {
+    ShenandoahThreadLocalData::initialize_gclab(worker);
+  }
   return worker;
 }

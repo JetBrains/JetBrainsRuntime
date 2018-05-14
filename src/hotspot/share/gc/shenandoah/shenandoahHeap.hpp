@@ -34,6 +34,7 @@
 #include "services/memoryManager.hpp"
 
 class ConcurrentGCTimer;
+class PLABStats;
 class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
@@ -321,6 +322,9 @@ private:
 
   ShenandoahSharedEnumFlag<GCCycleMode> _gc_cycle_mode;
 
+  PLABStats* _mutator_gclab_stats;
+  PLABStats* _collector_gclab_stats;
+
 #ifdef ASSERT
   int     _heap_expansion_count;
 #endif
@@ -373,8 +377,6 @@ public:
   void safe_object_iterate(ObjectClosure* cl) /* override */;
   size_t unsafe_max_tlab_alloc(Thread *thread) const /* override */;
   size_t max_tlab_size() const /* override */;
-  void resize_all_tlabs() /* override */;
-  void accumulate_statistics_all_gclabs() /* override */;
   HeapWord* tlab_post_allocation_setup(HeapWord* obj) /* override */;
   uint oop_extra_words() /* override */;
   size_t tlab_used(Thread* ignored) const /* override */;
@@ -405,6 +407,10 @@ public:
   ShenandoahCollectorPolicy *shenandoahPolicy() const { return _shenandoah_policy; }
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
   ShenandoahAllocTracker*   alloc_tracker()     const { return _alloc_tracker; }
+
+  void accumulate_statistics_all_gclabs();
+  PLABStats* mutator_gclab_stats()   const { return _mutator_gclab_stats; }
+  PLABStats* collector_gclab_stats() const { return _collector_gclab_stats; }
 
   inline ShenandoahHeapRegion* const heap_region_containing(const void* addr) const;
   inline size_t heap_region_index_containing(const void* addr) const;

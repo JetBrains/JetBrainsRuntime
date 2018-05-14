@@ -254,22 +254,19 @@ inline void ShenandoahHeap::clear_cancelled_concgc() {
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {
-  if (UseTLAB) {
-    if (!thread->gclab().is_initialized()) {
-      assert(!thread->is_Java_thread() && !thread->is_Worker_thread(),
-             "Performance: thread should have GCLAB: %s", thread->name());
-      // No GCLABs in this thread, fallback to shared allocation
-      return NULL;
-    }
-    HeapWord* obj = thread->gclab().allocate(size);
-    if (obj != NULL) {
-      return obj;
-    }
-    // Otherwise...
-    return allocate_from_gclab_slow(thread, size);
-  } else {
+  PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+  if (gclab == NULL) {
+    assert(!thread->is_Java_thread() && !thread->is_Worker_thread(),
+           "Performance: thread should have GCLAB: %s", thread->name());
+    // No GCLABs in this thread, fallback to shared allocation
     return NULL;
   }
+  HeapWord* obj = gclab->allocate(size);
+  if (obj != NULL) {
+    return obj;
+  }
+  // Otherwise...
+  return allocate_from_gclab_slow(thread, size);
 }
 
 inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
@@ -350,7 +347,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
     // have to explicitly overwrite the copy with the filler object. With that overwrite,
     // we have to keep the fwdptr initialized and pointing to our (stale) copy.
     if (alloc_from_gclab) {
-      thread->gclab().rollback(size_with_fwdptr);
+      ShenandoahThreadLocalData::gclab(thread)->undo_allocation(filler, size_with_fwdptr);
     } else {
       fill_with_object(copy, size_no_fwdptr);
     }
