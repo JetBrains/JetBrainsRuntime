@@ -86,7 +86,7 @@ void ShenandoahStaticHeuristics::choose_collection_set_from_regiondata(Shenandoa
 }
 
 const char* ShenandoahStaticHeuristics::name() {
-  return "dynamic";
+  return "static";
 }
 
 bool ShenandoahStaticHeuristics::is_diagnostic() {
