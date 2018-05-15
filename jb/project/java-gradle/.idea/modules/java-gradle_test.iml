@@ -4,7 +4,9 @@
     <output-test url="file://$MODULE_DIR$/../../out/test/classes" />
     <exclude-output />
     <content url="file://$MODULE_DIR$/../../src/test" />
-    <content url="file://$MODULE_DIR$/../../../../../jdk/test" />
+    <content url="file://$MODULE_DIR$/../../../../../jdk/test">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/test/jbu" isTestSource="true" />
+    </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="java-gradle_main" />
