@@ -90,11 +90,10 @@ public:
   }
 
   static void initialize_gclab(Thread* thread) {
-    size_t min_align_reserve = arrayOopDesc::header_size(T_INT) + BrooksPointer::word_size();
     if (thread->is_Java_thread()) {
-      data(thread)->_gclab = new PLAB(OldPLABSize, min_align_reserve);
+      data(thread)->_gclab = new PLAB(OldPLABSize);
     } else {
-      data(thread)->_gclab = new PLAB(YoungPLABSize, min_align_reserve);
+      data(thread)->_gclab = new PLAB(YoungPLABSize);
     }
   }
 

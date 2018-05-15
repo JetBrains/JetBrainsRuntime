@@ -39,14 +39,14 @@ size_t PLAB::max_size() {
   return ThreadLocalAllocBuffer::max_size();
 }
 
-PLAB::PLAB(size_t desired_plab_sz_, size_t min_align_reserve) :
+PLAB::PLAB(size_t desired_plab_sz_) :
   _word_sz(desired_plab_sz_), _bottom(NULL), _top(NULL),
   _end(NULL), _hard_end(NULL), _allocated(0), _wasted(0), _undo_wasted(0)
 {
   // ArrayOopDesc::header_size depends on command line initialization.
-  AlignmentReserve = oopDesc::header_size() > MinObjAlignment ?
-                     align_object_size(MAX2<size_t>(arrayOopDesc::header_size(T_INT), min_align_reserve)) :
-                     0;
+  int rsv_regular = oopDesc::header_size() + (int) Universe::heap()->oop_extra_words();
+  int rsv_array   = align_object_size(arrayOopDesc::header_size(T_INT) + Universe::heap()->oop_extra_words());
+  AlignmentReserve = rsv_regular > MinObjAlignment ? rsv_array : 0;
   assert(min_size() > AlignmentReserve,
          "Minimum PLAB size " SIZE_FORMAT " must be larger than alignment reserve " SIZE_FORMAT " "
          "to be able to contain objects", min_size(), AlignmentReserve);
@@ -83,7 +83,9 @@ void PLAB::retire() {
 
 size_t PLAB::retire_internal() {
   size_t result = 0;
-  if (_top + Universe::heap()->oop_extra_words() < _hard_end) {
+  if (_top < _hard_end) {
+    assert(_hard_end - _top >= oopDesc::header_size() + Universe::heap()->oop_extra_words(),
+           "better have enough space left to fill with dummy");
     HeapWord* obj = Universe::heap()->tlab_post_allocation_setup(_top);
     CollectedHeap::fill_with_object(obj, _hard_end);
     result += invalidate();
