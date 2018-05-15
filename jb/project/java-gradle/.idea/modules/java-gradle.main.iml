@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id="java-gradle:main" external.linked.project.path="$MODULE_DIR$/../.." external.root.project.path="$MODULE_DIR$/../.." external.system.id="GRADLE" external.system.module.group="" external.system.module.type="sourceSet" external.system.module.version="unspecified" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_11">
+    <output url="file://$MODULE_DIR$/../../out/production/classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../src/main" />
+    <content url="file://$MODULE_DIR$/../../../../../src">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.base/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.base/solaris/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.datatransfer/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.desktop/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.desktop/solaris/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.instrument/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.logging/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.management.rmi/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.management/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.naming/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.prefs/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.rmi/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.scripting/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.se/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.security.jgss/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.security.sasl/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.smartcardio/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.sql.rowset/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.sql/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../src/java.xml.crypto/share/classes" isTestSource="false" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
+  </component>
+</module>
