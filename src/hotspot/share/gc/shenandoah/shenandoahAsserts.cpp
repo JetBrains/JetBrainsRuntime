@@ -32,6 +32,27 @@
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "memory/resourceArea.hpp"
 
+void print_raw_memory(ShenandoahMessageBuffer &msg, void* loc) {
+  // Be extra safe. Only access data that is guaranteed to be safe:
+  // should be in heap, in known committed region, within that region.
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  if (!heap->is_in(loc)) return;
+
+  ShenandoahHeapRegion* r = heap->heap_region_containing(loc);
+  if (r != NULL && r->is_committed()) {
+
+    address start = MAX2((address) r->bottom(), (address) loc - 32);
+    address end   = MIN2((address) r->end(),    (address) loc + 128);
+    if (start >= end) return;
+
+    stringStream ss;
+    os::print_hex_dump(&ss, start, end, 4);
+    msg.append("\n");
+    msg.append("Raw heap memory:\n%s", ss.as_string());
+  }
+}
+
 void ShenandoahAsserts::print_obj(ShenandoahMessageBuffer& msg, oop obj) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   ShenandoahHeapRegion *r = heap->heap_region_containing(obj);
@@ -80,6 +101,7 @@ void ShenandoahAsserts::print_obj_safe(ShenandoahMessageBuffer& msg, void* loc) 
       stringStream ss;
       r->print_on(&ss);
       msg.append("  region: %s", ss.as_string());
+      print_raw_memory(msg, loc);
     }
   }
 }
