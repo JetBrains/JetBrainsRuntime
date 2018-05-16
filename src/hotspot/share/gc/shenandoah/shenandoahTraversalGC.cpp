@@ -556,7 +556,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   // Process outstanding queues, if any.
   q = queues->claim_next();
   while (q != NULL) {
-    if (_heap->check_cancelled_concgc_and_yield()) {
+    if (_heap->check_cancelled_gc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
       ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
       while (!terminator->offer_termination(&tt));
@@ -618,7 +618,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 }
 
 bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator) {
-  if (_heap->cancelled_concgc()) {
+  if (_heap->cancelled_gc()) {
     ShenandoahCancelledTerminatorTerminator tt;
     ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
     while (! terminator->offer_termination(&tt));
@@ -631,7 +631,7 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
   ClassLoaderDataGraph::clear_claimed_marks();
 
   ShenandoahGCPhase phase_work(ShenandoahPhaseTimings::conc_traversal);
-  if (!_heap->cancelled_concgc()) {
+  if (!_heap->cancelled_gc()) {
     uint nworkers = _heap->workers()->active_workers();
     task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {
@@ -645,7 +645,7 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
     }
   }
 
-  if (!_heap->cancelled_concgc() && ShenandoahPreclean && _heap->process_references()) {
+  if (!_heap->cancelled_gc() && ShenandoahPreclean && _heap->process_references()) {
     ShenandoahEvacOOMScope oom_evac_scope;
     preclean_weak_refs();
   }
@@ -655,7 +655,7 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
   _heap->make_tlabs_parsable(true);
 
-  if (!_heap->cancelled_concgc()) {
+  if (!_heap->cancelled_gc()) {
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::clear();
 #endif
@@ -679,16 +679,16 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 #endif
   }
 
-  if (!_heap->cancelled_concgc() && _heap->process_references()) {
+  if (!_heap->cancelled_gc() && _heap->process_references()) {
     weak_refs_work();
   }
 
-  if (!_heap->cancelled_concgc() && _heap->unload_classes()) {
+  if (!_heap->cancelled_gc() && _heap->unload_classes()) {
     _heap->unload_classes_and_cleanup_tables(false);
     fixup_roots();
   }
 
-  if (!_heap->cancelled_concgc()) {
+  if (!_heap->cancelled_gc()) {
     // Still good? We can now trash the cset, and make final verification
     {
       ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_cleanup);
@@ -735,7 +735,7 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
     assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
     _heap->set_concurrent_traversal_in_progress(false);
-    assert(!_heap->cancelled_concgc(), "must not be cancelled when getting out here");
+    assert(!_heap->cancelled_gc(), "must not be cancelled when getting out here");
   }
 }
 
@@ -807,7 +807,7 @@ private:
   ShenandoahHeap* const _heap;
 public:
   ShenandoahTraversalCancelledGCYieldClosure() : _heap(ShenandoahHeap::heap()) {};
-  virtual bool should_return() { return _heap->cancelled_concgc(); }
+  virtual bool should_return() { return _heap->cancelled_gc(); }
 };
 
 class ShenandoahTraversalPrecleanCompleteGCClosure : public VoidClosure {
@@ -944,7 +944,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
                                        &complete_gc, &yield,
                                        NULL);
   }
-  assert(!sh->cancelled_concgc() || task_queues()->is_empty(), "Should be empty");
+  assert(!sh->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
 }
 
 // Weak Reference Closures
@@ -1170,10 +1170,10 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
       }
     }
 
-    assert(!_heap->cancelled_concgc() || task_queues()->is_empty(), "Should be empty");
+    assert(!_heap->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
   }
 
-  if (_heap->cancelled_concgc()) return;
+  if (_heap->cancelled_gc()) return;
 
   {
     ShenandoahGCPhase phase(phase_enqueue);

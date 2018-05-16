@@ -504,8 +504,8 @@ void ShenandoahHeap::print_on(outputStream* st) const {
   if (is_full_gc_in_progress())              st->print("full gc, ");
   if (is_full_gc_move_in_progress())         st->print("full gc move, ");
 
-  if (cancelled_concgc()) {
-    st->print("conc gc cancelled");
+  if (cancelled_gc()) {
+    st->print("cancelled");
   } else {
     st->print("not cancelled");
   }
@@ -938,8 +938,8 @@ public:
       assert(r->has_live(), "all-garbage regions are reclaimed early");
       _sh->marked_object_iterate(r, &cl);
 
-      if (_sh->check_cancelled_concgc_and_yield()) {
-        log_develop_trace(gc, region)("Cancelled concgc while evacuating region " SIZE_FORMAT, r->region_number());
+      if (_sh->check_cancelled_gc_and_yield()) {
+        log_develop_trace(gc, region)("Cancelled GC while evacuating region " SIZE_FORMAT, r->region_number());
         break;
       }
 
@@ -1016,7 +1016,7 @@ class ShenandoahCheckCollectionSetClosure: public ShenandoahHeapRegionClosure {
 void ShenandoahHeap::prepare_for_concurrent_evacuation() {
   log_develop_trace(gc)("Thread %d started prepare_for_concurrent_evacuation", Thread::current()->osthread()->thread_id());
 
-  if (!cancelled_concgc()) {
+  if (!cancelled_gc()) {
     // Allocations might have happened before we STWed here, record peak:
     shenandoahPolicy()->record_peak_occupancy();
 
@@ -1147,13 +1147,13 @@ void ShenandoahHeap::evacuate_and_update_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::update_pointers();
 #endif
-  if (cancelled_concgc()) {
+  if (cancelled_gc()) {
     fixup_roots();
   }
 }
 
 void ShenandoahHeap::fixup_roots() {
-    assert(cancelled_concgc(), "Only after concurrent cycle failed");
+    assert(cancelled_gc(), "Only after concurrent cycle failed");
 
     // If initial evacuation has been cancelled, we need to update all references
     // after all workers have finished. Otherwise we might run into the following problem:
@@ -1515,7 +1515,7 @@ void ShenandoahHeap::op_final_mark() {
   // evacuate roots right after finishing marking, so that we don't
   // get unmarked objects in the roots.
 
-  if (! cancelled_concgc()) {
+  if (!cancelled_gc()) {
     concurrentMark()->finish_mark_from_roots();
     stop_concurrent_marking();
 
@@ -1679,14 +1679,14 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
   // GC failure via cancelled_concgc() flag. So, if we detect the failure after
   // some phase, we have to upgrade the Degenerate GC to Full GC.
 
-  clear_cancelled_concgc();
+  clear_cancelled_gc();
 
   size_t used_before = used();
 
   switch (point) {
     case _degenerated_evac:
       // Not possible to degenerate from here, upgrade to Full GC right away.
-      cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
+      cancel_gc(GCCause::_shenandoah_upgrade_to_full_gc);
       op_degenerated_fail();
       return;
 
@@ -1711,19 +1711,19 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
     case _degenerated_outside_cycle:
       if (shenandoahPolicy()->can_do_traversal_gc()) {
         // Not possible to degenerate from here, upgrade to Full GC right away.
-        cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
+        cancel_gc(GCCause::_shenandoah_upgrade_to_full_gc);
         op_degenerated_fail();
         return;
       }
       op_init_mark();
-      if (cancelled_concgc()) {
+      if (cancelled_gc()) {
         op_degenerated_fail();
         return;
       }
 
     case _degenerated_mark:
       op_final_mark();
-      if (cancelled_concgc()) {
+      if (cancelled_gc()) {
         op_degenerated_fail();
         return;
       }
@@ -1734,7 +1734,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       // and we can do evacuation. Otherwise, it would be the shortcut cycle.
       if (is_evacuation_in_progress()) {
         op_evac();
-        if (cancelled_concgc()) {
+        if (cancelled_gc()) {
           op_degenerated_fail();
           return;
         }
@@ -1744,7 +1744,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       // and we need to do update-refs. Otherwise, it would be the shortcut cycle.
       if (has_forwarded_objects()) {
         op_init_updaterefs();
-        if (cancelled_concgc()) {
+        if (cancelled_gc()) {
           op_degenerated_fail();
           return;
         }
@@ -1753,7 +1753,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
     case _degenerated_updaterefs:
       if (has_forwarded_objects()) {
         op_final_updaterefs();
-        if (cancelled_concgc()) {
+        if (cancelled_gc()) {
           op_degenerated_fail();
           return;
         }
@@ -1775,7 +1775,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
   size_t used_after = used();
   size_t difference = (used_before > used_after) ? used_before - used_after : 0;
   if (difference < ShenandoahHeapRegion::region_size_words()) {
-    cancel_concgc(GCCause::_shenandoah_upgrade_to_full_gc);
+    cancel_gc(GCCause::_shenandoah_upgrade_to_full_gc);
     op_degenerated_futile();
   }
 }
@@ -1811,7 +1811,7 @@ void ShenandoahHeap::swap_mark_bitmaps() {
 
 void ShenandoahHeap::stop_concurrent_marking() {
   assert(is_concurrent_mark_in_progress(), "How else could we get here?");
-  if (! cancelled_concgc()) {
+  if (!cancelled_gc()) {
     // If we needed to update refs, and concurrent marking has been cancelled,
     // we need to finish updating references.
     set_has_forwarded_objects(false);
@@ -1925,9 +1925,9 @@ size_t ShenandoahHeap::tlab_used(Thread* thread) const {
   return _free_set->used();
 }
 
-void ShenandoahHeap::cancel_concgc(GCCause::Cause cause) {
-  if (try_cancel_concgc()) {
-    FormatBuffer<> msg("Cancelling concurrent GC: %s", GCCause::to_string(cause));
+void ShenandoahHeap::cancel_gc(GCCause::Cause cause) {
+  if (try_cancel_gc()) {
+    FormatBuffer<> msg("Cancelling GC: %s", GCCause::to_string(cause));
     log_info(gc)("%s", msg.buffer());
     Events::log(Thread::current(), "%s", msg.buffer());
   }
@@ -1949,7 +1949,7 @@ void ShenandoahHeap::stop() {
   control_thread()->prepare_for_graceful_shutdown();
 
   // Step 2. Notify GC workers that we are cancelling GC.
-  cancel_concgc(GCCause::_shenandoah_stop_vm);
+  cancel_gc(GCCause::_shenandoah_stop_vm);
 
   // Step 3. Wait until GC worker exits normally.
   control_thread()->stop();
@@ -2105,8 +2105,8 @@ address ShenandoahHeap::in_cset_fast_test_addr() {
   return (address) heap->collection_set()->biased_map_address();
 }
 
-address ShenandoahHeap::cancelled_concgc_addr() {
-  return (address) ShenandoahHeap::heap()->_cancelled_concgc.addr_of();
+address ShenandoahHeap::cancelled_gc_addr() {
+  return (address) ShenandoahHeap::heap()->_cancelled_gc.addr_of();
 }
 
 address ShenandoahHeap::gc_state_addr() {
@@ -2260,7 +2260,7 @@ public:
           }
         }
       }
-      if (_heap->check_cancelled_concgc_and_yield(_concurrent)) {
+      if (_heap->check_cancelled_gc_and_yield(_concurrent)) {
         return;
       }
       r = _regions->next();
@@ -2313,16 +2313,16 @@ void ShenandoahHeap::op_final_updaterefs() {
     ShenandoahGCPhase final_work(ShenandoahPhaseTimings::final_update_refs_finish_work);
 
     // Finish updating references where we left off.
-    clear_cancelled_concgc();
+    clear_cancelled_gc();
     update_heap_references(false);
   }
 
-  // Clear cancelled conc GC, if set. On cancellation path, the block before would handle
+  // Clear cancelled GC, if set. On cancellation path, the block before would handle
   // everything. On degenerated paths, cancelled gc would not be set anyway.
-  if (cancelled_concgc()) {
-    clear_cancelled_concgc();
+  if (cancelled_gc()) {
+    clear_cancelled_gc();
   }
-  assert(!cancelled_concgc(), "Should have been done right before");
+  assert(!cancelled_gc(), "Should have been done right before");
 
   concurrentMark()->update_roots(ShenandoahPhaseTimings::final_update_refs_roots);
 
@@ -2803,10 +2803,10 @@ void ShenandoahHeap::entry_traversal() {
 }
 
 void ShenandoahHeap::try_inject_alloc_failure() {
-  if (ShenandoahAllocFailureALot && !cancelled_concgc() && ((os::random() % 1000) > 950)) {
+  if (ShenandoahAllocFailureALot && !cancelled_gc() && ((os::random() % 1000) > 950)) {
     _inject_alloc_failure.set();
     os::naked_short_sleep(1);
-    if (cancelled_concgc()) {
+    if (cancelled_gc()) {
       log_info(gc)("Allocation failure was successfully injected");
     }
   }

@@ -108,7 +108,7 @@ inline ShenandoahHeapRegion* const ShenandoahHeap::heap_region_containing(const 
 template <class T>
 inline oop ShenandoahHeap::update_with_forwarded_not_null(T* p, oop obj) {
   if (in_collection_set(obj)) {
-    shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_concgc());
+    shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_gc());
     obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
     RawAccess<OOP_NOT_NULL>::oop_store(p, obj);
   }
@@ -177,7 +177,7 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
     }
 
     shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress());
-    shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_concgc());
+    shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_gc());
 
     log_develop_trace(gc)("Updating old ref: "PTR_FORMAT" pointing to "PTR_FORMAT" to new ref: "PTR_FORMAT,
                           p2i(p), p2i(heap_oop), p2i(forwarded_oop));
@@ -205,16 +205,16 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
   }
 }
 
-inline bool ShenandoahHeap::cancelled_concgc() const {
-  return _cancelled_concgc.get() == CANCELLED;
+inline bool ShenandoahHeap::cancelled_gc() const {
+  return _cancelled_gc.get() == CANCELLED;
 }
 
-inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
+inline bool ShenandoahHeap::check_cancelled_gc_and_yield(bool sts_active) {
   if (! (sts_active && ShenandoahSuspendibleWorkers)) {
-    return cancelled_concgc();
+    return cancelled_gc();
   }
 
-  jbyte prev = _cancelled_concgc.cmpxchg(NOT_CANCELLED, CANCELLABLE);
+  jbyte prev = _cancelled_gc.cmpxchg(NOT_CANCELLED, CANCELLABLE);
   if (prev == CANCELLABLE || prev == NOT_CANCELLED) {
 
     if (SuspendibleThreadSet::should_yield()) {
@@ -224,7 +224,7 @@ inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
     // Back to CANCELLABLE. The thread that poked NOT_CANCELLED first gets
     // to restore to CANCELLABLE.
     if (prev == CANCELLABLE) {
-      _cancelled_concgc.set(CANCELLABLE);
+      _cancelled_gc.set(CANCELLABLE);
     }
     return false;
   } else {
@@ -232,9 +232,9 @@ inline bool ShenandoahHeap::check_cancelled_concgc_and_yield(bool sts_active) {
   }
 }
 
-inline bool ShenandoahHeap::try_cancel_concgc() {
+inline bool ShenandoahHeap::try_cancel_gc() {
   while (true) {
-    jbyte prev = _cancelled_concgc.cmpxchg(CANCELLED, CANCELLABLE);
+    jbyte prev = _cancelled_gc.cmpxchg(CANCELLED, CANCELLABLE);
     if (prev == CANCELLABLE) return true;
     else if (prev == CANCELLED) return false;
     assert(ShenandoahSuspendibleWorkers, "should not get here when not using suspendible workers");
@@ -248,8 +248,8 @@ inline bool ShenandoahHeap::try_cancel_concgc() {
   }
 }
 
-inline void ShenandoahHeap::clear_cancelled_concgc() {
-  _cancelled_concgc.set(CANCELLABLE);
+inline void ShenandoahHeap::clear_cancelled_gc() {
+  _cancelled_gc.set(CANCELLABLE);
   _oom_evac_handler.clear();
 }
 

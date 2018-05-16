@@ -363,7 +363,7 @@ void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cau
 
 bool ShenandoahControlThread::check_cancellation_or_degen(ShenandoahHeap::ShenandoahDegenPoint point) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  if (heap->cancelled_concgc()) {
+  if (heap->cancelled_gc()) {
     assert (is_alloc_failure_gc() || in_graceful_shutdown(), "Cancel GC either for alloc failure GC, or gracefully exiting");
     if (!in_graceful_shutdown()) {
       assert (_degen_point == ShenandoahHeap::_degenerated_outside_cycle,
@@ -426,7 +426,7 @@ void ShenandoahControlThread::handle_alloc_failure(size_t words) {
     log_info(gc)("Failed to allocate " SIZE_FORMAT "K", words * HeapWordSize / K);
 
     // Now that alloc failure GC is scheduled, we can abort everything else
-    heap->cancel_concgc(GCCause::_allocation_failure);
+    heap->cancel_gc(GCCause::_allocation_failure);
   }
 
   MonitorLockerEx ml(&_alloc_failure_waiters_lock);
@@ -449,7 +449,7 @@ void ShenandoahControlThread::handle_alloc_failure_evac(size_t words) {
   }
 
   // Forcefully report allocation failure
-  heap->cancel_concgc(GCCause::_shenandoah_allocation_failure_evac);
+  heap->cancel_gc(GCCause::_shenandoah_allocation_failure_evac);
 }
 
 void ShenandoahControlThread::notify_alloc_failure_waiters() {

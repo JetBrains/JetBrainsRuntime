@@ -858,7 +858,7 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
     heap->free_set()->rebuild();
   }
 
-  heap->clear_cancelled_concgc();
+  heap->clear_cancelled_gc();
 
   // Also clear the next bitmap in preparation for next marking.
   heap->reset_next_mark_bitmap();

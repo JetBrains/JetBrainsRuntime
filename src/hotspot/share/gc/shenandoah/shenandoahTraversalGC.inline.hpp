@@ -54,7 +54,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
         forw = _heap->evacuate_object(obj, thread);
       }
       // tty->print_cr("NORMAL visit: "PTR_FORMAT", obj: "PTR_FORMAT" to "PTR_FORMAT, p2i(p), p2i(obj), p2i(forw));
-      assert(! oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_concgc(), "must be evacuated");
+      assert(! oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_gc(), "must be evacuated");
       // Update reference.
       oop previous = _heap->atomic_compare_exchange_oop(forw, p, obj);
       if (UPDATE_MATRIX && !oopDesc::unsafe_equals(previous, obj)) {
@@ -64,7 +64,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
     }
 
     if (UPDATE_MATRIX && update_matrix) {
-      shenandoah_assert_not_forwarded_except(p, obj, _heap->cancelled_concgc());
+      shenandoah_assert_not_forwarded_except(p, obj, _heap->cancelled_gc());
       const void* src;
       if (!_heap->is_in_reserved(p)) {
         src = (const void*)(HeapWord*) obj;
@@ -80,7 +80,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 
-      if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj) && !_heap->cancelled_concgc()) {
+      if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj) && !_heap->cancelled_gc()) {
         assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
         assert(dq != NULL, "Dedup queue not set");
         // Only dealing with to-space string, so that we can avoid evac-oom protocol, which is costly here.

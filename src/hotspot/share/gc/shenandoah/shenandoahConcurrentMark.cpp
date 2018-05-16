@@ -408,8 +408,8 @@ void ShenandoahConcurrentMark::mark_from_roots() {
     workers->run_task(&markingTask);
   }
 
-  assert(task_queues()->is_empty() || sh->cancelled_concgc(), "Should be empty when not cancelled");
-  if (! sh->cancelled_concgc()) {
+  assert(task_queues()->is_empty() || sh->cancelled_gc(), "Should be empty when not cancelled");
+  if (!sh->cancelled_gc()) {
     TASKQUEUE_STATS_ONLY(print_taskqueue_stats());
   }
 
@@ -826,7 +826,7 @@ private:
   ShenandoahHeap* const _heap;
 public:
   ShenandoahCancelledGCYieldClosure() : _heap(ShenandoahHeap::heap()) {};
-  virtual bool should_return() { return _heap->cancelled_concgc(); }
+  virtual bool should_return() { return _heap->cancelled_gc(); }
 };
 
 class ShenandoahPrecleanCompleteGCClosure : public VoidClosure {
@@ -1023,7 +1023,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
 
   q = queues->claim_next();
   while (q != NULL) {
-    if (CANCELLABLE && heap->check_cancelled_concgc_and_yield()) {
+    if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
       while (!terminator->offer_termination(&tt));
       return;
@@ -1045,7 +1045,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
    * Normal marking loop:
    */
   while (true) {
-    if (CANCELLABLE && heap->check_cancelled_concgc_and_yield()) {
+    if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
       while (!terminator->offer_termination(&tt));
       return;
