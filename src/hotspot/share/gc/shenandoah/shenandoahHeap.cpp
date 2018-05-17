@@ -387,6 +387,11 @@ void ShenandoahHeap::initialize_heuristics() {
 
 }
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable:4355 ) // 'this' : used in base member initializer list
+#endif
+
 ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   CollectedHeap(),
   _shenandoah_policy(policy),
@@ -450,6 +455,10 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
     _safepoint_workers->initialize_workers();
   }
 }
+
+#ifdef _MSC_VER
+#pragma warning( pop )
+#endif
 
 class ShenandoahResetNextBitmapTask : public AbstractGangTask {
 private:
