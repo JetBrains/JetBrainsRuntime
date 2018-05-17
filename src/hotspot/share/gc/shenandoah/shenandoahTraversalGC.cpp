@@ -38,6 +38,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
@@ -367,7 +368,7 @@ void ShenandoahTraversalGC::prepare() {
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
 
   // Find collection set
-  _heap->shenandoahPolicy()->choose_collection_set(collection_set);
+  _heap->heuristics()->choose_collection_set(collection_set);
   prepare_regions();
 
   // Rebuild free set

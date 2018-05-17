@@ -55,6 +55,14 @@
 #include "gc/shenandoah/shenandoahCodeRoots.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
+#include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahAggressiveHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahCompactHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahPartialConnectedHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahPartialGenerationalHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahPartialLRUHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahPassiveHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
 
 #include "runtime/vmThread.hpp"
 #include "services/mallocTracker.hpp"
@@ -122,6 +130,8 @@ public:
 jint ShenandoahHeap::initialize() {
 
   BrooksPointer::initial_checks();
+
+  initialize_heuristics();
 
   size_t init_byte_size = collector_policy()->initial_heap_byte_size();
   size_t max_byte_size = collector_policy()->max_heap_byte_size();
@@ -295,7 +305,7 @@ jint ShenandoahHeap::initialize() {
     _connection_matrix = NULL;
   }
 
-  _traversal_gc = _shenandoah_policy->can_do_traversal_gc() ?
+  _traversal_gc = heuristics()->can_do_traversal_gc() ?
                 new ShenandoahTraversalGC(this, _num_regions) :
                 NULL;
 
@@ -328,6 +338,53 @@ jint ShenandoahHeap::initialize() {
                      (SafepointMechanism::uses_global_page_poll() ? "global-page poll" : "unknown"));
 
   return JNI_OK;
+}
+
+void ShenandoahHeap::initialize_heuristics() {
+  if (ShenandoahGCHeuristics != NULL) {
+    if (strcmp(ShenandoahGCHeuristics, "aggressive") == 0) {
+      _heuristics = new ShenandoahAggressiveHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "static") == 0) {
+      _heuristics = new ShenandoahStaticHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "adaptive") == 0) {
+      _heuristics = new ShenandoahAdaptiveHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "passive") == 0) {
+      _heuristics = new ShenandoahPassiveHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
+      _heuristics = new ShenandoahCompactHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "connected") == 0) {
+      _heuristics = new ShenandoahPartialConnectedHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "generational") == 0) {
+      _heuristics = new ShenandoahPartialGenerationalHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "LRU") == 0) {
+      _heuristics = new ShenandoahPartialLRUHeuristics();
+    } else if (strcmp(ShenandoahGCHeuristics, "traversal") == 0) {
+      _heuristics = new ShenandoahTraversalHeuristics();
+    } else {
+      vm_exit_during_initialization("Unknown -XX:ShenandoahGCHeuristics option");
+    }
+
+    if (_heuristics->is_diagnostic() && !UnlockDiagnosticVMOptions) {
+      vm_exit_during_initialization(
+              err_msg("Heuristics \"%s\" is diagnostic, and must be enabled via -XX:+UnlockDiagnosticVMOptions.",
+                      _heuristics->name()));
+    }
+    if (_heuristics->is_experimental() && !UnlockExperimentalVMOptions) {
+      vm_exit_during_initialization(
+              err_msg("Heuristics \"%s\" is experimental, and must be enabled via -XX:+UnlockExperimentalVMOptions.",
+                      _heuristics->name()));
+    }
+
+    if (ShenandoahStoreValEnqueueBarrier && ShenandoahStoreValReadBarrier) {
+      vm_exit_during_initialization("Cannot use both ShenandoahStoreValEnqueueBarrier and ShenandoahStoreValReadBarrier");
+    }
+    log_info(gc, init)("Shenandoah heuristics: %s",
+                       _heuristics->name());
+    _heuristics->print_thresholds();
+  } else {
+      ShouldNotReachHere();
+  }
+
 }
 
 ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
@@ -561,7 +618,7 @@ void ShenandoahHeap::post_initialize() {
 
   ref_processing_init();
 
-  _shenandoah_policy->post_heap_initialize();
+  _heuristics->initialize();
 }
 
 size_t ShenandoahHeap::used() const {
@@ -1018,7 +1075,7 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
 
   if (!cancelled_gc()) {
     // Allocations might have happened before we STWed here, record peak:
-    shenandoahPolicy()->record_peak_occupancy();
+    heuristics()->record_peak_occupancy();
 
     make_tlabs_parsable(true);
 
@@ -1047,7 +1104,7 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
       heap_region_iterate(&ccsc);
 #endif
 
-      _shenandoah_policy->choose_collection_set(_collection_set);
+      heuristics()->choose_collection_set(_collection_set);
 
       _free_set->rebuild();
     }
@@ -1505,7 +1562,7 @@ void ShenandoahHeap::op_mark() {
   concurrentMark()->mark_from_roots();
 
   // Allocations happen during concurrent mark, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_final_mark() {
@@ -1606,14 +1663,14 @@ void ShenandoahHeap::op_evac() {
   }
 
   // Allocations happen during evacuation, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_updaterefs() {
   update_heap_references(true);
 
   // Allocations happen during update-refs, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_cleanup() {
@@ -1621,7 +1678,7 @@ void ShenandoahHeap::op_cleanup() {
   free_set()->recycle_trash();
 
   // Allocations happen during cleanup, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_cleanup_bitmaps() {
@@ -1631,7 +1688,7 @@ void ShenandoahHeap::op_cleanup_bitmaps() {
   reset_next_mark_bitmap();
 
   // Allocations happen during bitmap cleanup, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_cleanup_traversal() {
@@ -1644,14 +1701,14 @@ void ShenandoahHeap::op_cleanup_traversal() {
   op_cleanup();
 
   // Allocations happen during bitmap cleanup, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_preclean() {
   concurrentMark()->preclean_weak_refs();
 
   // Allocations happen during concurrent preclean, record peak after the phase:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 }
 
 void ShenandoahHeap::op_init_traversal() {
@@ -1709,7 +1766,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       return;
 
     case _degenerated_outside_cycle:
-      if (shenandoahPolicy()->can_do_traversal_gc()) {
+      if (heuristics()->can_do_traversal_gc()) {
         // Not possible to degenerate from here, upgrade to Full GC right away.
         cancel_gc(GCCause::_shenandoah_upgrade_to_full_gc);
         op_degenerated_fail();
@@ -2327,7 +2384,7 @@ void ShenandoahHeap::op_final_updaterefs() {
   concurrentMark()->update_roots(ShenandoahPhaseTimings::final_update_refs_roots);
 
   // Allocations might have happened before we STWed here, record peak:
-  shenandoahPolicy()->record_peak_occupancy();
+  heuristics()->record_peak_occupancy();
 
   ShenandoahGCPhase final_update_refs(ShenandoahPhaseTimings::final_update_refs_recycle);
 

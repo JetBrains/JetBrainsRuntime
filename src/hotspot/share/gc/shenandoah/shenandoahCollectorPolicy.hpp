@@ -53,7 +53,6 @@ private:
 
   ShenandoahSharedFlag _in_shutdown;
 
-  ShenandoahHeuristics* _heuristics;
   ShenandoahTracer* _tracer;
 
   size_t _cycle_counter;
@@ -74,17 +73,9 @@ public:
 
   void initialize_alignments();
 
-  void post_heap_initialize();
-
-  void record_gc_start();
-  void record_gc_end();
-  ShenandoahHeuristics* heuristics() { return _heuristics;}
   // TODO: This is different from gc_end: that one encompasses one VM operation.
   // These two encompass the entire cycle.
   void record_cycle_start();
-  void record_cycle_end();
-
-  void record_phase_time(ShenandoahPhaseTimings::Phase phase, double secs);
 
   void record_success_concurrent();
   void record_success_degenerated();
@@ -95,28 +86,8 @@ public:
   void record_explicit_to_concurrent();
   void record_explicit_to_full();
 
-  bool should_start_normal_gc();
-  ShenandoahHeap::GCCycleMode should_start_traversal_gc();
-  bool can_do_traversal_gc();
-
-  // Returns true when there should be a separate concurrent reference
-  // updating phase after evacuation.
-  bool should_start_update_refs();
-  bool update_refs();
-
-  bool should_degenerate_cycle();
-
-
-  void record_peak_occupancy();
-
   void record_shutdown();
   bool is_at_shutdown();
-
-  void choose_collection_set(ShenandoahCollectionSet* collection_set,
-                             bool minor = false);
-
-  bool should_process_references();
-  bool should_unload_classes();
 
   ShenandoahTracer* tracer() {return _tracer;}
 

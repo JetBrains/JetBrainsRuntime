@@ -41,6 +41,7 @@ class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
 class ShenandoahControlThread;
 class ShenandoahFastRegionSet;
+class ShenandoahHeuristics;
 class ShenandoahPhaseTimings;
 class ShenandoahHeap;
 class ShenandoahHeapRegion;
@@ -240,6 +241,7 @@ private:
   ShenandoahSharedBitmap _gc_state;
   ShenandoahHeapLock _lock;
   ShenandoahCollectorPolicy* _shenandoah_policy;
+  ShenandoahHeuristics* _heuristics;
   SoftRefPolicy _soft_ref_policy;
   size_t _bitmap_size;
   size_t _bitmap_regions_per_slice;
@@ -405,6 +407,7 @@ public:
   static address gc_state_addr();
 
   ShenandoahCollectorPolicy *shenandoahPolicy() const { return _shenandoah_policy; }
+  ShenandoahHeuristics*     heuristics()        const { return _heuristics; }
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
   ShenandoahAllocTracker*   alloc_tracker()     const { return _alloc_tracker; }
 
@@ -648,6 +651,7 @@ public:
   }
 private:
 
+  void initialize_heuristics();
   virtual void initialize_serviceability();
 
   HeapWord* allocate_new_lab(size_t word_size, AllocType type);

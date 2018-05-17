@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 
 ShenandoahSATBMarkQueueSet ShenandoahBarrierSet::_satb_mark_queue_set;
@@ -87,7 +88,7 @@ bool ShenandoahBarrierSet::need_update_refs_barrier() {
   if (UseShenandoahMatrix || _heap->is_concurrent_traversal_in_progress()) {
     return true;
   }
-  if (_heap->shenandoahPolicy()->update_refs()) {
+  if (_heap->heuristics()->update_refs()) {
     return _heap->is_update_refs_in_progress();
   } else {
     return _heap->is_concurrent_mark_in_progress() && _heap->has_forwarded_objects();

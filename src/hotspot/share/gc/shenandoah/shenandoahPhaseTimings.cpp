@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "utilities/ostream.hpp"
 
 ShenandoahPhaseTimings::ShenandoahPhaseTimings() : _policy(NULL) {
@@ -47,7 +48,7 @@ void ShenandoahPhaseTimings::record_phase_end(Phase phase) {
   if (!_policy->is_at_shutdown()) {
     _timing_data[phase]._secs.add(elapsed);
   }
-  _policy->record_phase_time(phase, elapsed);
+  ShenandoahHeap::heap()->heuristics()->record_phase_time(phase, elapsed);
 }
 
 void ShenandoahPhaseTimings::record_phase_time(Phase phase, jint time_us) {
