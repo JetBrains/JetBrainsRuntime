@@ -295,6 +295,8 @@ private:
 
   volatile size_t _bytes_allocated_since_gc_start;
 
+  ShenandoahSharedFlag _progress_last_gc;
+
   ShenandoahSharedFlag _degenerated_gc_in_progress;
   ShenandoahSharedFlag _full_gc_in_progress;
   ShenandoahSharedFlag _full_gc_move_in_progress;
@@ -481,6 +483,8 @@ public:
   bool is_minor_gc() const;
   bool is_major_gc() const;
   void set_cycle_mode(GCCycleMode gc_cycle_mode);
+
+  bool last_gc_made_progress() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
 

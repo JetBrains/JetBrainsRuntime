@@ -112,9 +112,8 @@
           "Defaults to unload classes every 5 cycles.")                     \
                                                                             \
   experimental(uintx, ShenandoahFullGCThreshold, 3,                         \
-          "How many cycles in a row to do degenerated marking on "          \
-          "cancelled GC before triggering a full-gc"                        \
-          "Defaults to 3")                                                  \
+          "How many back-to-back Degenerated GCs to do before triggering "  \
+          "a Full GC. Defaults to 3.")                                      \
           writeable(Always)                                                 \
                                                                             \
   product_rw(uintx, ShenandoahGarbageThreshold, 60,                         \
@@ -383,11 +382,6 @@
           "Set to 0 to disable prefetching.")                               \
           range(0, 256)                                                     \
                                                                             \
-  experimental(intx, ShenandoahAllocGCTries, 5,                             \
-          "How many times to try to do GC on allocation failure."           \
-          "Set to 0 to never try, and fail instead.")                       \
-          range(0, 16)                                                      \
-                                                                            \
   experimental(bool, ShenandoahHumongousMoves, true,                        \
           "Allow moving humongous regions. This makes GC more resistant "   \
           "to external fragmentation that may otherwise fail other "        \
@@ -423,6 +417,12 @@
           "the GC cycle. Larger value makes the pacing milder at the "      \
           "beginning of the GC cycle. Lower value makes the pacing less "   \
           "uniform during the cycle.")                                      \
+          range(0, 100)                                                     \
+                                                                            \
+  experimental(uintx, ShenandoahCriticalFreeThreshold, 1,                   \
+          "Percent of heap that needs to be free after recovery cycles, "   \
+          "either Degenerated or Full GC. If this much space is not "       \
+          "available, next recovery step would triggered.")                 \
           range(0, 100)                                                     \
                                                                             \
   diagnostic(bool, ShenandoahAllowMixedAllocs, true,                        \

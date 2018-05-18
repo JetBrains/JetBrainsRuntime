@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016 Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -21,29 +21,35 @@
  *
  */
 
-/**
- * @test TestAllocSmallObjOOM
- * @summary Test allocation of small object to result OOM, but not to crash JVM
- * @modules java.base/jdk.internal.misc
- * @library /test/lib
- * @run main/othervm TestAllocSmallObjOOM
- */
+#ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHMETRICS_HPP
+#define SHARE_VM_GC_SHENANDOAH_SHENANDOAHMETRICS_HPP
 
-import jdk.test.lib.process.OutputAnalyzer;
-import jdk.test.lib.process.ProcessTools;
+#include "gc/shenandoah/shenandoahHeap.hpp"
 
+class ShenandoahMetrics {
+private:
+  ShenandoahMetrics() {}
 
-public class TestAllocSmallObjOOM {
+public:
+  static double internal_fragmentation();
+  static double external_fragmentation();
+};
 
-    public static void main(String[] args) {
-        try {
-            // Small heap size should result OOM during loading of system classes
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xmx5m",  "-XX:+UseShenandoahGC");
-            OutputAnalyzer analyzer = new OutputAnalyzer(pb.start());
-            analyzer.shouldHaveExitValue(1);
-            analyzer.shouldContain("java.lang.OutOfMemoryError: Java heap space");
-        } catch (Exception e) {
-        }
+class ShenandoahMetricsSnapshot : public StackObj {
+private:
+  ShenandoahHeap* _heap;
+  size_t _used_before, _used_after;
+  double _if_before, _if_after;
+  double _ef_before, _ef_after;
 
-    }
-}
+public:
+  ShenandoahMetricsSnapshot();
+
+  void snap_before();
+  void snap_after();
+  void print();
+
+  bool is_good_progress(const char *label);
+};
+
+#endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHMETRICS_HPP
