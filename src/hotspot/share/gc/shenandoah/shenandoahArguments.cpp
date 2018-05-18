@@ -163,6 +163,11 @@ void ShenandoahArguments::initialize() {
     }
     FLAG_SET_DEFAULT(ShenandoahUncommit, false);
   }
+
+  // If class unloading is disabled, no unloading for concurrent cycles as well.
+  if (!ClassUnloading) {
+    FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
+  }
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {

@@ -38,8 +38,11 @@ ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuri
   FLAG_SET_DEFAULT(ShenandoahRecycleClearsBitmap,    true);
 
   SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
-  SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
 
+  // Adjust class unloading settings only if globally enabled.
+  if (ClassUnloadingWithConcurrentMark) {
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
+  }
 }
 
 bool ShenandoahTraversalHeuristics::should_start_normal_gc() const {

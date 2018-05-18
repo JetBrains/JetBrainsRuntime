@@ -32,6 +32,12 @@ ShenandoahAggressiveHeuristics::ShenandoahAggressiveHeuristics() : ShenandoahHeu
 
   // Aggressive runs with max speed for allocation, to capture races against mutator
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahPacing);
+
+  // If class unloading is globally enabled, aggressive does unloading even with
+  // concurrent cycles.
+  if (ClassUnloading) {
+    SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
+  }
 }
 
 void ShenandoahAggressiveHeuristics::choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,

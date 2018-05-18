@@ -2052,6 +2052,8 @@ void ShenandoahHeap::stop() {
 }
 
 void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
+  assert(ClassUnloading || full_gc, "Class unloading should be enabled");
+
   ShenandoahPhaseTimings::Phase phase_root =
           full_gc ?
           ShenandoahPhaseTimings::full_gc_purge :
