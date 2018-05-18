@@ -178,8 +178,8 @@ public class SwingUtilities2 {
             Map<Object, Object> hints = (Map<Object, Object>) desktopHints;
             Object aaHint = hints.get(KEY_TEXT_ANTIALIASING);
             if (aaHint == null
-                    || aaHint == VALUE_TEXT_ANTIALIAS_OFF
-                    || aaHint == VALUE_TEXT_ANTIALIAS_DEFAULT) {
+                    /*|| aaHint == VALUE_TEXT_ANTIALIAS_OFF
+                    || aaHint == VALUE_TEXT_ANTIALIAS_DEFAULT*/) {
                 return;
             }
             map.put(KEY_TEXT_ANTIALIASING, aaHint);
