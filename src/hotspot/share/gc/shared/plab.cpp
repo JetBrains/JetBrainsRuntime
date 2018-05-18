@@ -84,7 +84,7 @@ void PLAB::retire() {
 size_t PLAB::retire_internal() {
   size_t result = 0;
   if (_top < _hard_end) {
-    assert(_hard_end - _top >= oopDesc::header_size() + Universe::heap()->oop_extra_words(),
+    assert(pointer_delta(_hard_end, _top) >= (size_t)(oopDesc::header_size() + Universe::heap()->oop_extra_words()),
            "better have enough space left to fill with dummy");
     HeapWord* obj = Universe::heap()->tlab_post_allocation_setup(_top);
     CollectedHeap::fill_with_object(obj, _hard_end);
