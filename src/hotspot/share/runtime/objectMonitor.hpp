@@ -59,9 +59,6 @@ class ObjectWaiter : public StackObj {
   void wait_reenter_end(ObjectMonitor *mon);
 };
 
-// forward declaration to avoid include tracing.hpp
-class EventJavaMonitorWait;
-
 // The ObjectMonitor class implements the heavyweight version of a
 // JavaMonitor. The lightweight BasicLock/stack lock version has been
 // inflated into an ObjectMonitor. This inflation is typically due to
@@ -199,6 +196,7 @@ class ObjectMonitor {
   static PerfLongVariable * _sync_MonExtant;
 
   static int Knob_ExitRelease;
+  static int Knob_InlineNotify;
   static int Knob_Verbose;
   static int Knob_VerifyInUse;
   static int Knob_VerifyMatch;
@@ -323,11 +321,6 @@ class ObjectMonitor {
   int       TrySpin(Thread * Self);
   void      ExitEpilog(Thread * Self, ObjectWaiter * Wakee);
   bool      ExitSuspendEquivalent(JavaThread * Self);
-  void      post_monitor_wait_event(EventJavaMonitorWait * event,
-                                    jlong notifier_tid,
-                                    jlong timeout,
-                                    bool timedout);
-
 };
 
 #undef TEVENT

@@ -86,7 +86,6 @@ class STWGCTimer;
 class G1NewTracer;
 class EvacuationFailedInfo;
 class nmethod;
-class Ticks;
 class WorkGang;
 class G1Allocator;
 class G1ArchiveAllocator;
@@ -1365,6 +1364,8 @@ public:
   virtual bool supports_concurrent_phase_control() const;
   virtual const char* const* concurrent_phases() const;
   virtual bool request_concurrent_phase(const char* phase);
+
+  virtual WorkGang* get_safepoint_workers() { return _workers; }
 
   // The methods below are here for convenience and dispatch the
   // appropriate method depending on value of the given VerifyOption

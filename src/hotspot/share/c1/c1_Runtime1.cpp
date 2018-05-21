@@ -43,6 +43,7 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "interpreter/bytecode.hpp"
 #include "interpreter/interpreter.hpp"
+#include "jfr/support/jfrIntrinsics.hpp"
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/oopFactory.hpp"
@@ -320,8 +321,8 @@ const char* Runtime1::name_for_address(address entry) {
   FUNCTION_CASE(entry, SharedRuntime::dtrace_method_exit);
   FUNCTION_CASE(entry, is_instance_of);
   FUNCTION_CASE(entry, trace_block_entry);
-#ifdef TRACE_HAVE_INTRINSICS
-  FUNCTION_CASE(entry, TRACE_TIME_METHOD);
+#ifdef JFR_HAVE_INTRINSICS
+  FUNCTION_CASE(entry, JFR_TIME_FUNCTION);
 #endif
   FUNCTION_CASE(entry, StubRoutines::updateBytesCRC32());
   FUNCTION_CASE(entry, StubRoutines::updateBytesCRC32C());
@@ -641,10 +642,12 @@ address Runtime1::exception_handler_for_pc(JavaThread* thread) {
 }
 
 
-JRT_ENTRY(void, Runtime1::throw_range_check_exception(JavaThread* thread, int index))
+JRT_ENTRY(void, Runtime1::throw_range_check_exception(JavaThread* thread, int index, arrayOopDesc* a))
   NOT_PRODUCT(_throw_range_check_exception_count++;)
-  char message[jintAsStringSize];
-  sprintf(message, "%d", index);
+  const int len = 35;
+  assert(len < strlen("Index %d out of bounds for length %d"), "Must allocate more space for message.");
+  char message[2 * jintAsStringSize + len];
+  sprintf(message, "Index %d out of bounds for length %d", index, a->length());
   SharedRuntime::throw_and_post_jvmti_exception(thread, vmSymbols::java_lang_ArrayIndexOutOfBoundsException(), message);
 JRT_END
 
