@@ -47,6 +47,7 @@
 #include "gc/shared/oopStorage.inline.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/interpreter.hpp"
+#include "jfr/jfrEvents.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
 #include "memory/filemap.hpp"
@@ -81,7 +82,6 @@
 #include "services/classLoadingService.hpp"
 #include "services/diagnosticCommand.hpp"
 #include "services/threadService.hpp"
-#include "trace/tracing.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_CDS
 #include "classfile/systemDictionaryShared.hpp"
@@ -149,8 +149,6 @@ void SystemDictionary::compute_java_loaders(TRAPS) {
                          CHECK);
 
   _java_platform_loader = (oop)result.get_jobject();
-
-  CDS_ONLY(SystemDictionaryShared::initialize(CHECK);)
 }
 
 ClassLoaderData* SystemDictionary::register_loader(Handle class_loader) {
@@ -623,32 +621,16 @@ InstanceKlass* SystemDictionary::handle_parallel_super_load(
   return NULL;
 }
 
-static void post_class_load_event(EventClassLoad* event,
-                                  const InstanceKlass* k,
-                                  const ClassLoaderData* init_cld) {
-#if INCLUDE_TRACE
+static void post_class_load_event(EventClassLoad* event, const InstanceKlass* k, const ClassLoaderData* init_cld) {
   assert(event != NULL, "invariant");
   assert(k != NULL, "invariant");
-  if (event->should_commit()) {
-    event->set_loadedClass(k);
-    event->set_definingClassLoader(k->class_loader_data());
-    event->set_initiatingClassLoader(init_cld);
-    event->commit();
-  }
-#endif // INCLUDE_TRACE
+  assert(event->should_commit(), "invariant");
+  event->set_loadedClass(k);
+  event->set_definingClassLoader(k->class_loader_data());
+  event->set_initiatingClassLoader(init_cld);
+  event->commit();
 }
 
-static void class_define_event(InstanceKlass* k,
-                               const ClassLoaderData* def_cld) {
-#if INCLUDE_TRACE
-  EventClassDefine event;
-  if (event.should_commit()) {
-    event.set_definedClass(k);
-    event.set_definingClassLoader(def_cld);
-    event.commit();
-  }
-#endif // INCLUDE_TRACE
-}
 
 // Be careful when modifying this code: once you have run
 // placeholders()->find_and_add(PlaceholderTable::LOAD_INSTANCE),
@@ -881,9 +863,9 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
   if (HAS_PENDING_EXCEPTION || k == NULL) {
     return NULL;
   }
-
-  post_class_load_event(&class_load_start_event, k, loader_data);
-
+  if (class_load_start_event.should_commit()) {
+    post_class_load_event(&class_load_start_event, k, loader_data);
+  }
 #ifdef ASSERT
   {
     ClassLoaderData* loader_data = k->class_loader_data();
@@ -1045,8 +1027,9 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
         assert(THREAD->is_Java_thread(), "thread->is_Java_thread()");
         JvmtiExport::post_class_load((JavaThread *) THREAD, k);
     }
-
-    post_class_load_event(&class_load_start_event, k, loader_data);
+    if (class_load_start_event.should_commit()) {
+      post_class_load_event(&class_load_start_event, k, loader_data);
+    }
   }
   assert(host_klass != NULL || NULL == cp_patches,
          "cp_patches only found with host_klass");
@@ -1558,6 +1541,15 @@ InstanceKlass* SystemDictionary::load_instance_class(Symbol* class_name, Handle 
   }
 }
 
+static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def_cld) {
+  EventClassDefine event;
+  if (event.should_commit()) {
+    event.set_definedClass(k);
+    event.set_definingClassLoader(def_cld);
+    event.commit();
+  }
+}
+
 void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
 
   HandleMark hm(THREAD);
@@ -1626,7 +1618,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, TRAPS) {
       JvmtiExport::post_class_load((JavaThread *) THREAD, k);
 
   }
-  class_define_event(k, loader_data);
+  post_class_define_event(k, loader_data);
 }
 
 // Support parallel classloading
