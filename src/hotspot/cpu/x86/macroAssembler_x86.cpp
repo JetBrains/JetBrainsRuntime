@@ -5377,15 +5377,19 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 
   Label done;
 
-  // Check for evacuation-in-progress
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
 
-  // The read-barrier.
+  // Check for heap stability
+  cmpb(gc_state, 0);
+  jccb(Assembler::zero, done);
+
+  // Heap is unstable, need to perform the read-barrier even if WB is inactive
   if (ShenandoahWriteBarrierRB) {
     movptr(dst, Address(dst, BrooksPointer::byte_offset()));
   }
 
+  // Check for evacuation-in-progress and jump to WB slow-path if needed
+  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   jccb(Assembler::zero, done);
 
   if (dst != rax) {
