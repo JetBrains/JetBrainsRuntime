@@ -165,7 +165,11 @@ void ShenandoahArguments::initialize() {
   }
 
   // If class unloading is disabled, no unloading for concurrent cycles as well.
-  if (!ClassUnloading) {
+  // If class unloading is enabled, users should opt-in for unloading during
+  // concurrent cycles.
+  if (!ClassUnloading || !FLAG_IS_CMDLINE(ClassUnloadingWithConcurrentMark)) {
+    log_info(gc)("Consider -XX:+ClassUnloadingWithConcurrentMark if large pause times "
+                 "are observed on class-unloading sensitive workloads");
     FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
   }
 }

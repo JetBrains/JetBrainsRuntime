@@ -80,7 +80,7 @@ public class TestClassUnloadingArguments {
 
     public static void testShenandoah() throws Exception {
         testWith("Shenandoah GC should have class unloading enabled",
-            true, true,
+            true, false,
             "-XX:+UseShenandoahGC");
 
         testWith("Shenandoah GC should disable everything",
@@ -88,10 +88,10 @@ public class TestClassUnloadingArguments {
             "-XX:+UseShenandoahGC",
             "-XX:-ClassUnloading");
 
-        testWith("Shenandoah GC should disable conc unload",
-            true, false,
+        testWith("Shenandoah GC should enable conc unload",
+            true, true,
             "-XX:+UseShenandoahGC",
-            "-XX:-ClassUnloadingWithConcurrentMark");
+            "-XX:+ClassUnloadingWithConcurrentMark");
 
         testWith("Shenandoah GC should not let conc unload to be enabled separately",
             false, false,
