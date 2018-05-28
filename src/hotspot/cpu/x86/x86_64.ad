@@ -11755,48 +11755,43 @@ instruct testUL_reg(rFlagsRegU cr, rRegL src, immL0 zero)
   ins_pipe(ialu_cr_reg_imm);
 %}
 
-instruct compUB_mem_imm(rFlagsReg cr, memory op1, immU8 op2)
+instruct compUB_mem_imm(rFlagsReg cr, memory mem, immU8 imm)
 %{
-  // This match is actually generic, but protect with Shenandoah flag for a while,
-  // until the fix is upstreamed.
-  predicate(UseShenandoahGC);
-  match(Set cr (CmpI (LoadUB op1) op2));
+  match(Set cr (CmpI (LoadUB mem) imm));
 
   ins_cost(125);
-  format %{ "cmpb    $op1, $op2" %}
-  ins_encode %{
-    __ cmpb($op1$$Address, $op2$$constant);
-  %}
+  format %{ "cmpb    $mem, $imm" %}
+  ins_encode %{ __ cmpb($mem$$Address, $imm$$constant); %}
   ins_pipe(ialu_cr_reg_mem);
 %}
 
-instruct compB_mem_imm(rFlagsReg cr, memory op1, immI8 op2)
+instruct compB_mem_imm(rFlagsReg cr, memory mem, immI8 imm)
 %{
-  // This match is actually generic, but protect with Shenandoah flag for a while,
-  // until the fix is upstreamed.
-  predicate(UseShenandoahGC);
-  match(Set cr (CmpI (LoadB op1) op2));
+  match(Set cr (CmpI (LoadB mem) imm));
 
   ins_cost(125);
-  format %{ "cmpb    $op1, $op2" %}
-  ins_encode %{
-    __ cmpb($op1$$Address, $op2$$constant);
-  %}
+  format %{ "cmpb    $mem, $imm" %}
+  ins_encode %{ __ cmpb($mem$$Address, $imm$$constant); %}
   ins_pipe(ialu_cr_reg_mem);
 %}
 
-instruct testUB_mem_imm(rFlagsReg cr, memory op1, immU8 op2, immI0 opZ)
+instruct testUB_mem_imm(rFlagsReg cr, memory mem, immU8 imm, immI0 zero)
 %{
-  // This match is actually generic, but protect with Shenandoah flag for a while,
-  // until the fix is upstreamed.
-  predicate(UseShenandoahGC);
-  match(Set cr (CmpI (AndI (LoadUB op1) op2) opZ));
+  match(Set cr (CmpI (AndI (LoadUB mem) imm) zero));
 
   ins_cost(125);
-  format %{ "testb   $op1, $op2" %}
-  ins_encode %{
-    __ testb($op1$$Address, $op2$$constant);
-  %}
+  format %{ "testb   $mem, $imm" %}
+  ins_encode %{ __ testb($mem$$Address, $imm$$constant); %}
+  ins_pipe(ialu_cr_reg_mem);
+%}
+
+instruct testB_mem_imm(rFlagsReg cr, memory mem, immI8 imm, immI0 zero)
+%{
+  match(Set cr (CmpI (AndI (LoadB mem) imm) zero));
+
+  ins_cost(125);
+  format %{ "testb   $mem, $imm" %}
+  ins_encode %{ __ testb($mem$$Address, $imm$$constant); %}
   ins_pipe(ialu_cr_reg_mem);
 %}
 
