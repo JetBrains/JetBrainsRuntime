@@ -154,12 +154,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       {
         ShenandoahHeapLocker lock(heap->lock());
 
-        // f. Make sure all regions are active. This is needed because we are potentially
-        // sliding the data through them
-        ShenandoahEnsureHeapActiveClosure ecl;
-        heap->heap_region_iterate(&ecl, false, false);
-
-        // g. Clear region statuses, including collection set status
+        // e. Clear region statuses, including collection set status
         ShenandoahClearRegionStatusClosure cl;
         heap->heap_region_iterate(&cl, false, false);
       }
