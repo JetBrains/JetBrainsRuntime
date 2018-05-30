@@ -50,21 +50,6 @@
 #include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/workgroup.hpp"
 
-class ShenandoahClearRegionStatusClosure: public ShenandoahHeapRegionClosure {
-private:
-  ShenandoahHeap* const _heap;
-
-public:
-  ShenandoahClearRegionStatusClosure() : _heap(ShenandoahHeap::heap()) {}
-
-  bool heap_region_do(ShenandoahHeapRegion *r) {
-    _heap->set_next_top_at_mark_start(r->bottom(), r->top());
-    r->clear_live_data();
-    r->set_concurrent_iteration_safe_limit(r->top());
-    return false;
-  }
-};
-
 class ShenandoahEnsureHeapActiveClosure: public ShenandoahHeapRegionClosure {
 private:
   ShenandoahHeap* const _heap;
@@ -150,14 +135,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       rp->disable_discovery();
       rp->abandon_partial_discovery();
       rp->verify_no_references_recorded();
-
-      {
-        ShenandoahHeapLocker lock(heap->lock());
-
-        // e. Clear region statuses, including collection set status
-        ShenandoahClearRegionStatusClosure cl;
-        heap->heap_region_iterate(&cl, false, false);
-      }
     }
 
     {
@@ -230,11 +207,32 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
   }
 }
 
+class ShenandoahPrepareForMarkClosure: public ShenandoahHeapRegionClosure {
+private:
+  ShenandoahHeap* const _heap;
+
+public:
+  ShenandoahPrepareForMarkClosure() : _heap(ShenandoahHeap::heap()) {}
+
+  bool heap_region_do(ShenandoahHeapRegion *r) {
+    _heap->set_next_top_at_mark_start(r->bottom(), r->top());
+    r->clear_live_data();
+    r->set_concurrent_iteration_safe_limit(r->top());
+    return false;
+  }
+};
+
 void ShenandoahMarkCompact::phase1_mark_heap() {
   GCTraceTime(Info, gc, phases) time("Phase 1: Mark live objects", _gc_timer);
   ShenandoahGCPhase mark_phase(ShenandoahPhaseTimings::full_gc_mark);
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  {
+    ShenandoahHeapLocker lock(heap->lock());
+    ShenandoahPrepareForMarkClosure cl;
+    heap->heap_region_iterate(&cl, false, false);
+  }
 
   ShenandoahConcurrentMark* cm = heap->concurrentMark();
 
