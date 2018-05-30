@@ -243,6 +243,9 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_copy_objects]            = "  Copy Objects";
   _phase_names[full_gc_copy_objects_regular]    = "    Regular Objects";
   _phase_names[full_gc_copy_objects_humong]     = "    Humongous Objects";
+  _phase_names[full_gc_copy_objects_reset_next]     = "    Reset Next Bitmap";
+  _phase_names[full_gc_copy_objects_reset_complete] = "    Reset Complete Bitmap";
+  _phase_names[full_gc_copy_objects_rebuild]     = "    Rebuild Region Sets";
   _phase_names[full_gc_update_str_dedup_table]  = "  Update String Dedup Table";
   _phase_names[full_gc_resize_tlabs]            = "  Resize TLABs";
 

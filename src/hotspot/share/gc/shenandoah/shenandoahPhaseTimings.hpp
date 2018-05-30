@@ -254,6 +254,9 @@ public:
     full_gc_copy_objects,
     full_gc_copy_objects_regular,
     full_gc_copy_objects_humong,
+    full_gc_copy_objects_reset_next,
+    full_gc_copy_objects_reset_complete,
+    full_gc_copy_objects_rebuild,
     full_gc_update_str_dedup_table,
     full_gc_resize_tlabs,
 

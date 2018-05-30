@@ -844,11 +844,16 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
 
   // Reset complete bitmap. We're about to reset the complete-top-at-mark-start pointer
   // and must ensure the bitmap is in sync.
-  ShenandoahMCResetCompleteBitmapTask task;
-  heap->workers()->run_task(&task);
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_reset_complete);
+    ShenandoahMCResetCompleteBitmapTask task;
+    heap->workers()->run_task(&task);
+  }
 
   // Bring regions in proper states after the collection, and set heap properties.
   {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_rebuild);
+
     ShenandoahHeapLocker lock(heap->lock());
     ShenandoahPostCompactClosure post_compact;
     heap->heap_region_iterate(&post_compact);
@@ -861,5 +866,8 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
   heap->clear_cancelled_gc();
 
   // Also clear the next bitmap in preparation for next marking.
-  heap->reset_next_mark_bitmap();
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_reset_next);
+    heap->reset_next_mark_bitmap();
+  }
 }
