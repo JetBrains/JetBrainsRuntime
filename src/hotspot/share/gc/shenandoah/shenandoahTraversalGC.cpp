@@ -568,7 +568,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
       if (q->pop_buffer(task) ||
           q->pop_local(task) ||
           q->pop_overflow(task)) {
-        conc_mark->do_task<T, true>(q, cl, live_data, &task);
+        conc_mark->do_task<T>(q, cl, live_data, &task);
       } else {
         assert(q->is_empty(), "Must be empty");
         q = queues->claim_next();
@@ -609,7 +609,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
           q->pop_overflow(task) ||
           (DO_SATB && satb_mq_set.apply_closure_to_completed_buffer(&satb_cl) && q->pop_buffer(task)) ||
           queues->steal(worker_id, &seed, task)) {
-        conc_mark->do_task<T, true>(q, cl, live_data, &task);
+        conc_mark->do_task<T>(q, cl, live_data, &task);
       } else {
         ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
         if (terminator->offer_termination()) return;

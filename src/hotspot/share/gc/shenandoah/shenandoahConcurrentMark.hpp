@@ -53,7 +53,7 @@ private:
   jushort** _liveness_local;
 
 private:
-  template <class T, bool COUNT_LIVENESS>
+  template <class T>
   inline void do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task);
 
   template <class T>
@@ -66,48 +66,31 @@ private:
   inline void count_liveness_humongous(oop obj);
 
   // Actual mark loop with closures set up
-  template <class T, bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>
+  template <class T, bool CANCELLABLE, bool DRAIN_SATB>
   void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *t);
 
-  template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>
+  template <bool CANCELLABLE, bool DRAIN_SATB>
   void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp,
                          bool class_unload, bool update_refs, bool strdedup);
 
-  // ------------------------ Currying dynamic arguments to template args ----------------------------
-
-  template <bool CANCELLABLE, bool DRAIN_SATB>
-  void mark_loop_2(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp,
-                   bool count_liveness,
-                   bool class_unload, bool update_refs, bool strdedup) {
-    if (count_liveness) {
-      mark_loop_prework<CANCELLABLE, DRAIN_SATB, true>(w, t, rp, class_unload, update_refs, strdedup);
-    } else {
-      mark_loop_prework<CANCELLABLE, DRAIN_SATB, false>(w, t, rp, class_unload, update_refs, strdedup);
-    }
-  };
-
-  template <bool CANCELLABLE>
-  void mark_loop_1(uint w, ParallelTaskTerminator* t, ReferenceProcessor* rp,
-                   bool drain_satb, bool count_liveness,
-                   bool class_unload, bool update_refs, bool strdedup) {
-    if (drain_satb) {
-      mark_loop_2<CANCELLABLE, true>(w, t, rp, count_liveness, class_unload, update_refs, strdedup);
-    } else {
-      mark_loop_2<CANCELLABLE, false>(w, t, rp, count_liveness, class_unload, update_refs, strdedup);
-    }
-  };
-
-  // ------------------------ END: Currying dynamic arguments to template args ----------------------------
 public:
   // Mark loop entry.
   // Translates dynamic arguments to template parameters with progressive currying.
   void mark_loop(uint worker_id, ParallelTaskTerminator* terminator, ReferenceProcessor *rp,
-                 bool cancellable, bool drain_satb, bool count_liveness,
-                 bool class_unload, bool update_refs, bool strdedup = false) {
+                 bool cancellable, bool drain_satb,
+                 bool class_unload, bool update_refs, bool strdedup) {
     if (cancellable) {
-      mark_loop_1<true>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs, strdedup);
+      if (drain_satb) {
+        mark_loop_prework<true, true>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      } else {
+        mark_loop_prework<true, false>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      }
     } else {
-      mark_loop_1<false>(worker_id, terminator, rp, drain_satb, count_liveness, class_unload, update_refs, strdedup);
+      if (drain_satb) {
+        mark_loop_prework<false, true>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      } else {
+        mark_loop_prework<false, false>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      }
     }
   }
 

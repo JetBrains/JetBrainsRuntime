@@ -34,7 +34,7 @@
 #include "oops/oop.inline.hpp"
 #include "runtime/prefetch.inline.hpp"
 
-template <class T, bool COUNT_LIVENESS>
+template <class T>
 void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task) {
   oop obj = task->obj();
 
@@ -44,7 +44,7 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
 
   cl->set_base_object(obj);
   if (task->is_not_chunked()) {
-    if (COUNT_LIVENESS) count_liveness(live_data, obj);
+    count_liveness(live_data, obj);
     if (obj->is_instance()) {
       // Case 1: Normal oop, process as usual.
       obj->oop_iterate(cl);

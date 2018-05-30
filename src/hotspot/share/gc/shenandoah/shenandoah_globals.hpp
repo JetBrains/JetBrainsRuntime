@@ -237,9 +237,6 @@
           "Common 2 WriteBarriers or WriteBarrier and a ReadBarrier only "  \
           "if the resulting WriteBarrier isn't executed more frequently")   \
                                                                             \
-  experimental(bool, ShenandoahNoLivenessFullGC, true,                      \
-          "Skip liveness counting for mark during full GC.")                \
-                                                                            \
   experimental(bool, ShenandoahWriteBarrierToIR, true,                      \
           "Convert write barrier to IR instead of using assembly blob")     \
                                                                             \

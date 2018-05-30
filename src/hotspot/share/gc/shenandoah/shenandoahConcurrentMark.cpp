@@ -206,7 +206,6 @@ public:
     _cm->mark_loop(worker_id, _terminator, rp,
                    true, // cancellable
                    true, // drain SATBs as we go
-                   true, // count liveness
                    _cm->unload_classes(),
                    _update_refs,
                    ShenandoahStringDedup::is_enabled()); // perform string dedup
@@ -218,15 +217,14 @@ private:
   ShenandoahConcurrentMark* _cm;
   ParallelTaskTerminator* _terminator;
   bool _update_refs;
-  bool _count_live;
   bool _unload_classes;
   bool _dedup_string;
 
 public:
-  ShenandoahFinalMarkingTask(ShenandoahConcurrentMark* cm, ParallelTaskTerminator* terminator, bool update_refs,
-    bool count_live, bool unload_classes, bool dedup_string = false) :
-    AbstractGangTask("Shenandoah Final Marking"), _cm(cm), _terminator(terminator), _update_refs(update_refs),
-    _count_live(count_live), _unload_classes(unload_classes), _dedup_string(dedup_string) {
+  ShenandoahFinalMarkingTask(ShenandoahConcurrentMark* cm, ParallelTaskTerminator* terminator,
+                             bool update_refs, bool unload_classes, bool dedup_string) :
+    AbstractGangTask("Shenandoah Final Marking"), _cm(cm), _terminator(terminator),
+    _update_refs(update_refs), _unload_classes(unload_classes), _dedup_string(dedup_string) {
   }
 
   void work(uint worker_id) {
@@ -251,7 +249,6 @@ public:
     _cm->mark_loop(worker_id, _terminator, rp,
                    false, // not cancellable
                    false, // do not drain SATBs, already drained
-                   _count_live,
                    _unload_classes,
                    _update_refs,
                    _dedup_string);
@@ -450,7 +447,6 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
     ShenandoahGCPhase phase(full_gc ?
                                ShenandoahPhaseTimings::full_gc_mark_finish_queues :
                                ShenandoahPhaseTimings::finish_queues);
-    bool count_live = !(ShenandoahNoLivenessFullGC && full_gc); // we do not need liveness data for full GC
     task_queues()->reserve(nworkers);
 
     shenandoah_assert_rp_isalive_not_installed();
@@ -459,12 +455,12 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
     StrongRootsScope scope(nworkers);
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalMarkingTask task(this, &terminator, sh->has_forwarded_objects(), count_live,
+      ShenandoahFinalMarkingTask task(this, &terminator, sh->has_forwarded_objects(),
         unload_classes(), full_gc && ShenandoahStringDedup::is_enabled());
       sh->workers()->run_task(&task);
     } else {
       ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalMarkingTask task(this, &terminator, sh->has_forwarded_objects(), count_live,
+      ShenandoahFinalMarkingTask task(this, &terminator, sh->has_forwarded_objects(),
         unload_classes(), full_gc && ShenandoahStringDedup::is_enabled());
       sh->workers()->run_task(&task);
     }
@@ -586,9 +582,9 @@ public:
     scm->mark_loop(_worker_id, _terminator, rp,
                    false, // not cancellable
                    false, // do not drain SATBs
-                   true,  // count liveness
                    scm->unload_classes(),
-                   sh->has_forwarded_objects());
+                   sh->has_forwarded_objects(),
+                   false);  // do not do strdedup
 
     if (_reset_terminator) {
       _terminator->reset_for_reuse();
@@ -843,9 +839,9 @@ public:
     scm->mark_loop(0, &terminator, rp,
                    false, // not cancellable
                    true,  // drain SATBs
-                   true,  // count liveness
                    scm->unload_classes(),
-                   sh->has_forwarded_objects());
+                   sh->has_forwarded_objects(),
+                   false); // do not do strdedup
   }
 };
 
@@ -935,17 +931,13 @@ void ShenandoahConcurrentMark::clear_queue(ShenandoahObjToScanQueue *q) {
   q->clear_buffer();
 }
 
-template <bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>
-void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator *t, ReferenceProcessor *rp, bool class_unload, bool update_refs, bool strdedup) {
+template <bool CANCELLABLE, bool DRAIN_SATB>
+void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator *t, ReferenceProcessor *rp,
+                                                 bool class_unload, bool update_refs, bool strdedup) {
   ShenandoahObjToScanQueue* q = get_queue(w);
 
-  jushort* ld;
-  if (COUNT_LIVENESS) {
-    ld = get_liveness(w);
-    Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
-  } else {
-    ld = NULL;
-  }
+  jushort* ld = get_liveness(w);
+  Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
 
   // TODO: We can clean up this if we figure out how to do templated oop closures that
   // play nice with specialized_oop_iterators.
@@ -954,19 +946,19 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkUpdateRefsMetadataDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsMetadataClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       }
     } else {
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkRefsMetadataDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsMetadataClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       }
     }
   } else {
@@ -974,34 +966,34 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkUpdateRefsDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       }
     } else {
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkRefsDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE, DRAIN_SATB, COUNT_LIVENESS>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
       }
     }
   }
-  if (COUNT_LIVENESS) {
-    for (uint i = 0; i < _heap->num_regions(); i++) {
-      ShenandoahHeapRegion* r = _heap->get_region(i);
-      jushort live = ld[i];
-      if (live > 0) {
-        r->increase_live_data_gc_words(live);
-      }
+
+
+  for (uint i = 0; i < _heap->num_regions(); i++) {
+    ShenandoahHeapRegion* r = _heap->get_region(i);
+    jushort live = ld[i];
+    if (live > 0) {
+      r->increase_live_data_gc_words(live);
     }
   }
 }
 
-template <class T, bool CANCELLABLE, bool DRAIN_SATB, bool COUNT_LIVENESS>
+template <class T, bool CANCELLABLE, bool DRAIN_SATB>
 void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *terminator) {
   int seed = 17;
   uintx stride = CANCELLABLE ? ShenandoahMarkLoopStride : 1;
@@ -1031,7 +1023,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
 
     for (uint i = 0; i < stride; i++) {
       if (try_queue(q, t)) {
-        do_task<T, COUNT_LIVENESS>(q, cl, live_data, &t);
+        do_task<T>(q, cl, live_data, &t);
       } else {
         assert(q->is_empty(), "Must be empty");
         q = queues->claim_next();
@@ -1055,7 +1047,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
       if (try_queue(q, t) ||
               (DRAIN_SATB && try_draining_satb_buffer(q, t)) ||
               queues->steal(worker_id, &seed, t)) {
-        do_task<T, COUNT_LIVENESS>(q, cl, live_data, &t);
+        do_task<T>(q, cl, live_data, &t);
       } else {
         // Need to leave the STS here otherwise it might block safepoints.
         SuspendibleThreadSetLeaver stsl(CANCELLABLE && ShenandoahSuspendibleWorkers);
