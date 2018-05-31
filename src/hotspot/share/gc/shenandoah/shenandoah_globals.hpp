@@ -211,7 +211,7 @@
           "Use this style to scan code cache:"                              \
           " 0 - sequential iterator;"                                       \
           " 1 - parallel iterator;"                                         \
-          " 2 - parallel iterator with filters;")                           \
+          " 2 - parallel iterator with cset filters;")                      \
                                                                             \
   experimental(bool, ShenandoahUncommit, true,                              \
           "Allow Shenandoah to uncommit unused memory.")                    \
