@@ -293,7 +293,7 @@ void ShenandoahNMethod::assert_alive_and_correct() {
 void ShenandoahNMethod::assert_same_oops(GrowableArray<oop*>* oops) {
   assert(_oops_count == oops->length(), "should have the same number of oop*");
   for (int c = 0; c < _oops_count; c++) {
-    assert(oopDesc::unsafe_equals(_oops[c], oops->at(c)), "should be the same oop*");
+    assert(_oops[c] == oops->at(c), "should be the same oop*");
   }
 }
 #endif
