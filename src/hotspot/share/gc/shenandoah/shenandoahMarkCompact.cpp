@@ -347,7 +347,9 @@ public:
     ShenandoahPrepareForCompactionObjectClosure cl(empty_regions, from_region);
     while (from_region != NULL) {
       cl.set_from_region(from_region);
-      _heap->marked_object_iterate(from_region, &cl);
+      if (from_region->has_live()) {
+        _heap->marked_object_iterate(from_region, &cl);
+      }
 
       // Compacted the region to somewhere else? From-region is empty then.
       if (!cl.is_compact_same_region()) {
@@ -574,7 +576,7 @@ public:
     ShenandoahAdjustPointersObjectClosure obj_cl;
     ShenandoahHeapRegion* r = _regions.next();
     while (r != NULL) {
-      if (!r->is_humongous_continuation()) {
+      if (!r->is_humongous_continuation() && r->has_live()) {
         _heap->marked_object_iterate(r, &obj_cl);
       }
       r = _regions.next();
@@ -672,7 +674,9 @@ public:
     ShenandoahHeapRegion* r = slice.next();
     while (r != NULL) {
       assert(!r->is_humongous(), "must not get humongous regions here");
-      _heap->marked_object_iterate(r, &cl);
+      if (r->has_live()) {
+        _heap->marked_object_iterate(r, &cl);
+      }
       r->set_top(r->new_top());
       r = slice.next();
     }
@@ -820,7 +824,7 @@ public:
       if (heap->is_bitmap_slice_committed(region) && !region->is_pinned()) {
         HeapWord* bottom = region->bottom();
         HeapWord* top = heap->complete_top_at_mark_start(region->bottom());
-        if (top > bottom) {
+        if (top > bottom && region->has_live()) {
           heap->complete_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
         }
         assert(heap->is_complete_bitmap_clear_range(bottom, region->end()), "must be clear");
