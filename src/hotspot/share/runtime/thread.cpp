@@ -1501,7 +1501,6 @@ void WatcherThread::print_on(outputStream* st) const {
 jlong* JavaThread::_jvmci_old_thread_counters;
 
 bool jvmci_counters_include(JavaThread* thread) {
-  oop threadObj = thread->threadObj();
   return !JVMCICountersExcludeCompiler || !thread->is_Compiler_thread();
 }
 
@@ -3364,6 +3363,11 @@ CompilerThread::CompilerThread(CompileQueue* queue,
 #ifndef PRODUCT
   _ideal_graph_printer = NULL;
 #endif
+}
+
+CompilerThread::~CompilerThread() {
+  // Delete objects which were allocated on heap.
+  delete _counters;
 }
 
 bool CompilerThread::can_call_java() const {

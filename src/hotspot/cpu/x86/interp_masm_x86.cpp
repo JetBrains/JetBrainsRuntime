@@ -502,22 +502,19 @@ void InterpreterMacroAssembler::get_cache_entry_pointer_at_bcp(Register cache,
 
 // Load object from cpool->resolved_references(index)
 void InterpreterMacroAssembler::load_resolved_reference_at_index(
-                                           Register result, Register index) {
+                                           Register result, Register index, Register tmp) {
   assert_different_registers(result, index);
   // convert from field index to resolved_references() index and from
   // word index to byte offset. Since this is a java object, it can be compressed
-  Register tmp = index;  // reuse
 
   get_constant_pool(result);
   // load pointer for resolved_references[] objArray
   movptr(result, Address(result, ConstantPool::cache_offset_in_bytes()));
   movptr(result, Address(result, ConstantPoolCache::resolved_references_offset_in_bytes()));
-  resolve_oop_handle(result);
+  resolve_oop_handle(result, tmp);
   load_heap_oop(result, Address(result, index,
                                 UseCompressedOops ? Address::times_4 : Address::times_ptr,
                                 arrayOopDesc::base_offset_in_bytes(T_OBJECT)));
-  // The resulting oop is null if the reference is not yet resolved.
-  // It is Universe::the_null_sentinel() if the reference resolved to NULL via condy.
 }
 
 // load cpool->resolved_klass_at(index)

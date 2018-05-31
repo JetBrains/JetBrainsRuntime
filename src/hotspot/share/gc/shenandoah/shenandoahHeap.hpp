@@ -35,6 +35,7 @@
 
 class ConcurrentGCTimer;
 class PLABStats;
+class ReferenceProcessor;
 class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;

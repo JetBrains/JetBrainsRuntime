@@ -3125,7 +3125,7 @@ public:
       ReferenceProcessor*             rp = _g1h->ref_processor_stw();
 
       G1ParScanThreadState*           pss = _pss->state_for_worker(worker_id);
-      pss->set_ref_processor(rp);
+      pss->set_ref_discoverer(rp);
 
       double start_strong_roots_sec = os::elapsedTime();
 
@@ -3457,13 +3457,11 @@ private:
 Monitor* G1CodeCacheUnloadingTask::_lock = new Monitor(Mutex::leaf, "Code Cache Unload lock", false, Monitor::_safepoint_check_never);
 
 class G1KlassCleaningTask : public StackObj {
-  BoolObjectClosure*                      _is_alive;
   volatile int                            _clean_klass_tree_claimed;
   ClassLoaderDataGraphKlassIteratorAtomic _klass_iterator;
 
  public:
-  G1KlassCleaningTask(BoolObjectClosure* is_alive) :
-      _is_alive(is_alive),
+  G1KlassCleaningTask() :
       _clean_klass_tree_claimed(0),
       _klass_iterator() {
   }
@@ -3490,7 +3488,7 @@ class G1KlassCleaningTask : public StackObj {
 public:
 
   void clean_klass(InstanceKlass* ik) {
-    ik->clean_weak_instanceklass_links(_is_alive);
+    ik->clean_weak_instanceklass_links();
   }
 
   void work() {
@@ -3498,7 +3496,7 @@ public:
 
     // One worker will clean the subklass/sibling klass tree.
     if (claim_clean_klass_tree_task()) {
-      Klass::clean_subklass_tree(_is_alive);
+      Klass::clean_subklass_tree();
     }
 
     // All workers will help cleaning the classes,
@@ -3510,11 +3508,10 @@ public:
 };
 
 class G1ResolvedMethodCleaningTask : public StackObj {
-  BoolObjectClosure* _is_alive;
   volatile int       _resolved_method_task_claimed;
 public:
-  G1ResolvedMethodCleaningTask(BoolObjectClosure* is_alive) :
-      _is_alive(is_alive), _resolved_method_task_claimed(0) {}
+  G1ResolvedMethodCleaningTask() :
+      _resolved_method_task_claimed(0) {}
 
   bool claim_resolved_method_task() {
     if (_resolved_method_task_claimed) {
@@ -3526,7 +3523,7 @@ public:
   // These aren't big, one thread can do it all.
   void work() {
     if (claim_resolved_method_task()) {
-      ResolvedMethodTable::unlink(_is_alive);
+      ResolvedMethodTable::unlink();
     }
   }
 };
@@ -3546,8 +3543,8 @@ public:
       AbstractGangTask("Parallel Cleaning"),
       _string_symbol_task(is_alive, true, true, G1StringDedup::is_enabled()),
       _code_cache_task(num_workers, is_alive, unloading_occurred),
-      _klass_cleaning_task(is_alive),
-      _resolved_method_cleaning_task(is_alive) {
+      _klass_cleaning_task(),
+      _resolved_method_cleaning_task() {
   }
 
   // The parallel work done by all worker threads.
@@ -3639,9 +3636,7 @@ void G1CollectedHeap::redirty_logged_cards() {
 // of referent objects that are pointed to by reference objects
 // discovered by the CM ref processor.
 class G1AlwaysAliveClosure: public BoolObjectClosure {
-  G1CollectedHeap* _g1;
 public:
-  G1AlwaysAliveClosure(G1CollectedHeap* g1) : _g1(g1) {}
   bool do_object_b(oop p) {
     if (p != NULL) {
       return true;
@@ -3653,20 +3648,20 @@ public:
 bool G1STWIsAliveClosure::do_object_b(oop p) {
   // An object is reachable if it is outside the collection set,
   // or is inside and copied.
-  return !_g1->is_in_cset(p) || p->is_forwarded();
+  return !_g1h->is_in_cset(p) || p->is_forwarded();
 }
 
 // Non Copying Keep Alive closure
 class G1KeepAliveClosure: public OopClosure {
-  G1CollectedHeap* _g1;
+  G1CollectedHeap*_g1h;
 public:
-  G1KeepAliveClosure(G1CollectedHeap* g1) : _g1(g1) {}
+  G1KeepAliveClosure(G1CollectedHeap* g1h) :_g1h(g1h) {}
   void do_oop(narrowOop* p) { guarantee(false, "Not needed"); }
   void do_oop(oop* p) {
     oop obj = *p;
     assert(obj != NULL, "the caller should have filtered out NULL values");
 
-    const InCSetState cset_state = _g1->in_cset_state(obj);
+    const InCSetState cset_state =_g1h->in_cset_state(obj);
     if (!cset_state.is_in_cset_or_humongous()) {
       return;
     }
@@ -3677,7 +3672,7 @@ public:
       assert(!obj->is_forwarded(), "invariant" );
       assert(cset_state.is_humongous(),
              "Only allowed InCSet state is IsHumongous, but is %d", cset_state.value());
-      _g1->set_humongous_is_live(obj);
+     _g1h->set_humongous_is_live(obj);
     }
   }
 };
@@ -3825,7 +3820,7 @@ public:
     G1STWIsAliveClosure is_alive(_g1h);
 
     G1ParScanThreadState*          pss = _pss->state_for_worker(worker_id);
-    pss->set_ref_processor(NULL);
+    pss->set_ref_discoverer(NULL);
 
     // Keep alive closure.
     G1CopyingKeepAliveClosure keep_alive(_g1h, pss->closures()->raw_strong_oops(), pss);
@@ -3917,11 +3912,11 @@ public:
     HandleMark   hm;
 
     G1ParScanThreadState*          pss = _pss->state_for_worker(worker_id);
-    pss->set_ref_processor(NULL);
+    pss->set_ref_discoverer(NULL);
     assert(pss->queue_is_empty(), "both queue and overflow should be empty");
 
     // Is alive closure
-    G1AlwaysAliveClosure always_alive(_g1h);
+    G1AlwaysAliveClosure always_alive;
 
     // Copying keep alive closure. Applied to referent objects that need
     // to be copied.
@@ -4023,7 +4018,7 @@ void G1CollectedHeap::process_discovered_references(G1ParScanThreadStateSet* per
 
   // Use only a single queue for this PSS.
   G1ParScanThreadState*          pss = per_thread_states->state_for_worker(0);
-  pss->set_ref_processor(NULL);
+  pss->set_ref_discoverer(NULL);
   assert(pss->queue_is_empty(), "pre-condition");
 
   // Keep alive closure.
@@ -4203,7 +4198,7 @@ void G1CollectedHeap::post_evacuate_collection_set(EvacuationInfo& evacuation_in
     WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
 
     double time_ms = (os::elapsedTime() - start) * 1000.0;
-    g1_policy()->phase_times()->record_ref_proc_time(time_ms);
+    g1_policy()->phase_times()->record_weak_ref_proc_time(time_ms);
   }
 
   if (G1StringDedup::is_enabled()) {

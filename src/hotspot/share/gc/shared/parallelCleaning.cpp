@@ -262,7 +262,7 @@ InstanceKlass* KlassCleaningTask::claim_next_klass() {
 }
 
 void KlassCleaningTask::clean_klass(InstanceKlass* ik) {
-  ik->clean_weak_instanceklass_links(_is_alive);
+  ik->clean_weak_instanceklass_links();
 }
 
 void KlassCleaningTask::work() {
@@ -270,7 +270,7 @@ void KlassCleaningTask::work() {
 
   // One worker will clean the subklass/sibling klass tree.
   if (claim_clean_klass_tree_task()) {
-    Klass::clean_subklass_tree(_is_alive);
+    Klass::clean_subklass_tree();
   }
 
   // All workers will help cleaning the classes,
@@ -290,7 +290,7 @@ bool ResolvedMethodCleaningTask::claim_resolved_method_task() {
 // These aren't big, one thread can do it all.
 void ResolvedMethodCleaningTask::work() {
   if (claim_resolved_method_task()) {
-    ResolvedMethodTable::unlink(_is_alive);
+    ResolvedMethodTable::unlink();
   }
 }
 

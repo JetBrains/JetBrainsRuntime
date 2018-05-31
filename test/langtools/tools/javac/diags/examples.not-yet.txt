@@ -73,7 +73,6 @@ compiler.misc.kindname.static
 compiler.misc.kindname.type.variable
 compiler.misc.kindname.type.variable.bound
 compiler.misc.kindname.value
-compiler.misc.incompatible.eq.lower.bounds              # cannot happen?
 compiler.misc.module.name.mismatch
 compiler.misc.module.non.zero.opens                     # bad class file
 compiler.misc.no.unique.minimal.instance.exists
@@ -151,9 +150,42 @@ compiler.misc.locn.module_path                                # fragment uninter
 compiler.misc.locn.module_source_path                         # fragment uninteresting in and of itself
 compiler.misc.locn.system_modules                             # fragment uninteresting in and of itself
 compiler.misc.locn.upgrade_module_path                        # fragment uninteresting in and of itself
+compiler.misc.inferred.do.not.conform.to.eq.bounds            # hard to generate, could probably be removed
 
 # The following are new module-related messages, that need new  examples to be created
 compiler.err.duplicate.module.on.path
 compiler.err.locn.module-info.not.allowed.on.patch.path
 compiler.misc.cant.resolve.modules
 compiler.misc.file.does.not.contain.module
+
+# these keys were in javac.properties and examples are hard to be produced for them
+# basically because in most cases the compilation ends with an exception
+compiler.err.bad.value.for.option
+compiler.err.empty.A.argument
+compiler.err.error.writing.file
+compiler.err.file.not.directory
+compiler.err.file.not.file
+compiler.err.file.not.found
+compiler.err.invalid.A.key
+compiler.err.invalid.flag
+compiler.err.invalid.profile
+compiler.err.invalid.source
+compiler.err.invalid.target
+compiler.err.no.source.files.classes
+compiler.err.no.value.for.option
+compiler.err.option.not.allowed.with.target
+compiler.err.option.too.many
+compiler.err.profile.bootclasspath.conflict
+compiler.err.release.bootclasspath.conflict
+compiler.err.repeated.value.for.patch.module
+compiler.err.req.arg
+compiler.err.sourcepath.modulesourcepath.conflict
+compiler.err.two.class.loaders.1
+compiler.err.two.class.loaders.2
+compiler.err.unmatched.quote
+compiler.err.unsupported.release.version
+compiler.warn.profile.target.conflict
+compiler.warn.source.target.conflict
+compiler.warn.target.default.source.conflict
+compiler.err.preview.not.latest
+compiler.err.preview.without.source.or.release
