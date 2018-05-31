@@ -207,7 +207,7 @@
           "Evacuate code roots concurrently, instead of during a pause. "   \
           "This requires ShenandoahBarriersForConst to be enabled.")        \
                                                                             \
-  experimental(uintx, ShenandoahCodeRootsStyle, 1,                          \
+  experimental(uintx, ShenandoahCodeRootsStyle, 2,                          \
           "Use this style to scan code cache:"                              \
           " 0 - sequential iterator;"                                       \
           " 1 - parallel iterator;"                                         \
