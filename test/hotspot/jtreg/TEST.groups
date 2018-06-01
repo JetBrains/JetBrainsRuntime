@@ -152,7 +152,8 @@ hotspot_gc_shenandoah = \
   gc/stress/gclocker/TestGCLockerWithShenandoah.java \
   gc/stress/systemgc/TestSystemGCWithShenandoah.java \
   gc/shenandoah/ \
-  serviceability/sa/TestHeapDumpForInvokeDynamic.java 
+  serviceability/sa/TestHeapDumpForInvokeDynamic.java \
+  gc/logging/TestUnifiedLoggingSwitchStress.java
 
 hotspot_fast_gc_shenandoah = \
   gc/shenandoah/options/ \
