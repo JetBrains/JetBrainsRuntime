@@ -563,6 +563,7 @@ class Parse : public GraphKit {
   void    do_lookupswitch();
   void    jump_switch_ranges(Node* a, SwitchRange* lo, SwitchRange* hi, int depth = 0);
   bool    create_jump_tables(Node* a, SwitchRange* lo, SwitchRange* hi);
+  void    linear_search_switch_ranges(Node* key_val, SwitchRange*& lo, SwitchRange*& hi);
 
   void decrement_age();
   // helper functions for methodData style profiling

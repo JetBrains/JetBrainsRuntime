@@ -490,8 +490,8 @@ public:
 class JumpNode : public PCTableNode {
   virtual uint size_of() const { return sizeof(*this); }
 public:
-  float* _probs;
-  float _fcnt;
+  float* _probs; // probability of each projection
+  float _fcnt;   // total number of times this Jump was executed
   JumpNode( Node* control, Node* switch_val, uint size, float* probs, float cnt)
     : PCTableNode(control, switch_val, size),
       _probs(probs), _fcnt(cnt) {

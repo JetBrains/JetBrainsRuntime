@@ -750,6 +750,8 @@ public:
 #endif
 };
 
+//------------------------------MachJumpNode-----------------------------------
+// Machine-specific versions of JumpNodes
 class MachJumpNode : public MachConstantNode {
 public:
   float* _probs;

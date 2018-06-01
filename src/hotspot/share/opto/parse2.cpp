@@ -212,7 +212,8 @@ Node* Parse::jump_if_join(Node* iffalse, Node* iftrue) {
   return region;
 }
 
-// target for branches that are never taken according to profiling
+// sentinel value for the target bci to mark never taken branches
+// (according to profiling)
 static const int never_reached = INT_MAX;
 
 //------------------------------helper for tableswitch-------------------------
@@ -297,7 +298,7 @@ class SwitchRange : public StackObj {
   jint _hi;                     // inclusive upper limit
   int _dest;
   int _table_index;             // index into method data table
-  float _cnt;
+  float _cnt;                   // how many times this range was hit according to profiling
 
 public:
   jint lo() const              { return _lo;   }
@@ -315,6 +316,7 @@ public:
   bool adjoinRange(jint lo, jint hi, int dest, int table_index, float cnt, bool trim_ranges) {
     assert(lo <= hi, "must be a non-empty range");
     if (lo == _hi+1 && table_index == _table_index) {
+      // see merge_ranges() comment below
       if (trim_ranges) {
         if (cnt == 0) {
           if (_cnt != 0) {
@@ -365,14 +367,28 @@ public:
   }
 };
 
-// We try to minimize the number of ranges using profiling data. When
-// ranges are created, SwitchRange::adjoinRange() only allows 2
-// adjoining ranges to merge if both were never hit or both were hit
-// to build longer unreached ranges. Here, we now merge adjoining
-// ranges with the same destination and finally set destination of
-// unreached ranges to the special value never_reached because it can
-// help minimize the number of tests that are necessary.
+// We try to minimize the number of ranges and the size of the taken
+// ones using profiling data. When ranges are created,
+// SwitchRange::adjoinRange() only allows 2 adjoining ranges to merge
+// if both were never hit or both were hit to build longer unreached
+// ranges. Here, we now merge adjoining ranges with the same
+// destination and finally set destination of unreached ranges to the
+// special value never_reached because it can help minimize the number
+// of tests that are necessary.
+//
+// For instance:
+// [0, 1] to target1 sometimes taken
+// [1, 2] to target1 never taken
+// [2, 3] to target2 never taken
+// would lead to:
+// [0, 1] to target1 sometimes taken
+// [1, 3] never taken
+//
+// (first 2 ranges to target1 are not merged)
 static void merge_ranges(SwitchRange* ranges, int& rp) {
+  if (rp == 0) {
+    return;
+  }
   int shift = 0;
   for (int j = 0; j < rp; j++) {
     SwitchRange& r1 = ranges[j-shift];
@@ -575,6 +591,169 @@ static float if_cnt(float cnt) {
   return cnt;
 }
 
+static float sum_of_cnts(SwitchRange *lo, SwitchRange *hi) {
+  float total_cnt = 0;
+  for (SwitchRange* sr = lo; sr <= hi; sr++) {
+    total_cnt += sr->cnt();
+  }
+  return total_cnt;
+}
+
+class SwitchRanges : public ResourceObj {
+public:
+  SwitchRange* _lo;
+  SwitchRange* _hi;
+  SwitchRange* _mid;
+  float _cost;
+
+  enum {
+    Start,
+    LeftDone,
+    RightDone,
+    Done
+  } _state;
+
+  SwitchRanges(SwitchRange *lo, SwitchRange *hi)
+    : _lo(lo), _hi(hi), _mid(NULL),
+      _cost(0), _state(Start) {
+  }
+
+  SwitchRanges()
+    : _lo(NULL), _hi(NULL), _mid(NULL),
+      _cost(0), _state(Start) {}
+};
+
+// Estimate cost of performing a binary search on lo..hi
+static float compute_tree_cost(SwitchRange *lo, SwitchRange *hi, float total_cnt) {
+  GrowableArray<SwitchRanges> tree;
+  SwitchRanges root(lo, hi);
+  tree.push(root);
+
+  float cost = 0;
+  do {
+    SwitchRanges& r = *tree.adr_at(tree.length()-1);
+    if (r._hi != r._lo) {
+      if (r._mid == NULL) {
+        float r_cnt = sum_of_cnts(r._lo, r._hi);
+
+        if (r_cnt == 0) {
+          tree.pop();
+          cost = 0;
+          continue;
+        }
+
+        SwitchRange* mid = NULL;
+        mid = r._lo;
+        for (float cnt = 0; ; ) {
+          assert(mid <= r._hi, "out of bounds");
+          cnt += mid->cnt();
+          if (cnt > r_cnt / 2) {
+            break;
+          }
+          mid++;
+        }
+        assert(mid <= r._hi, "out of bounds");
+        r._mid = mid;
+        r._cost = r_cnt / total_cnt;
+      }
+      r._cost += cost;
+      if (r._state < SwitchRanges::LeftDone && r._mid > r._lo) {
+        cost = 0;
+        r._state = SwitchRanges::LeftDone;
+        tree.push(SwitchRanges(r._lo, r._mid-1));
+      } else if (r._state < SwitchRanges::RightDone) {
+        cost = 0;
+        r._state = SwitchRanges::RightDone;
+        tree.push(SwitchRanges(r._mid == r._lo ? r._mid+1 : r._mid, r._hi));
+      } else {
+        tree.pop();
+        cost = r._cost;
+      }
+    } else {
+      tree.pop();
+      cost = r._cost;
+    }
+  } while (tree.length() > 0);
+
+
+  return cost;
+}
+
+// It sometimes pays off to test most common ranges before the binary search
+void Parse::linear_search_switch_ranges(Node* key_val, SwitchRange*& lo, SwitchRange*& hi) {
+  uint nr = hi - lo + 1;
+  float total_cnt = sum_of_cnts(lo, hi);
+
+  float min = compute_tree_cost(lo, hi, total_cnt);
+  float extra = 1;
+  float sub = 0;
+
+  SwitchRange* array1 = lo;
+  SwitchRange* array2 = NEW_RESOURCE_ARRAY(SwitchRange, nr);
+
+  SwitchRange* ranges = NULL;
+
+  while (nr >= 2) {
+    assert(lo == array1 || lo == array2, "one the 2 already allocated arrays");
+    ranges = (lo == array1) ? array2 : array1;
+
+    // Find highest frequency range
+    SwitchRange* candidate = lo;
+    for (SwitchRange* sr = lo+1; sr <= hi; sr++) {
+      if (sr->cnt() > candidate->cnt()) {
+        candidate = sr;
+      }
+    }
+    SwitchRange most_freq = *candidate;
+    if (most_freq.cnt() == 0) {
+      break;
+    }
+
+    // Copy remaining ranges into another array
+    int shift = 0;
+    for (uint i = 0; i < nr; i++) {
+      SwitchRange* sr = &lo[i];
+      if (sr != candidate) {
+        ranges[i-shift] = *sr;
+      } else {
+        shift++;
+        if (i > 0 && i < nr-1) {
+          SwitchRange prev = lo[i-1];
+          prev.setRange(prev.lo(), sr->hi(), prev.dest(), prev.table_index(), prev.cnt());
+          if (prev.adjoin(lo[i+1])) {
+            shift++;
+            i++;
+          }
+          ranges[i-shift] = prev;
+        }
+      }
+    }
+    nr -= shift;
+
+    // Evaluate cost of testing the most common range and performing a
+    // binary search on the other ranges
+    float cost = extra + compute_tree_cost(&ranges[0], &ranges[nr-1], total_cnt);
+    if (cost >= min) {
+      break;
+    }
+    // swap arrays
+    lo = &ranges[0];
+    hi = &ranges[nr-1];
+
+    // It pays off: emit the test for the most common range
+    assert(most_freq.cnt() > 0, "must be taken");
+    Node* val = _gvn.transform(new SubINode(key_val, _gvn.intcon(most_freq.lo())));
+    Node* cmp = _gvn.transform(new CmpUNode(val, _gvn.intcon(most_freq.hi() - most_freq.lo())));
+    Node* tst = _gvn.transform(new BoolNode(cmp, BoolTest::le));
+    IfNode* iff = create_and_map_if(control(), tst, if_prob(most_freq.cnt(), total_cnt), if_cnt(most_freq.cnt()));
+    jump_if_true_fork(iff, most_freq.dest(), most_freq.table_index(), false);
+
+    sub += most_freq.cnt() / total_cnt;
+    extra += 1 - sub;
+    min = cost;
+  }
+}
+
 //----------------------------create_jump_tables-------------------------------
 bool Parse::create_jump_tables(Node* key_val, SwitchRange* lo, SwitchRange* hi) {
   // Are jumptables enabled
@@ -609,10 +788,8 @@ bool Parse::create_jump_tables(Node* key_val, SwitchRange* lo, SwitchRange* hi) 
     default_dest = hi->dest();
   }
 
-  float total = 0;
-  for (SwitchRange* r = lo; r <= hi; r++) {
-    total += r->cnt();
-  }
+  float total = sum_of_cnts(lo, hi);
+  float cost = compute_tree_cost(lo, hi, total);
 
   // If a guard test will eliminate very sparse end ranges, then
   // it is worth the cost of an extra jump.
@@ -634,8 +811,23 @@ bool Parse::create_jump_tables(Node* key_val, SwitchRange* lo, SwitchRange* hi) 
   int num_range = hi - lo + 1;
 
   // Don't create table if: too large, too small, or too sparse.
-  if (num_cases < MinJumpTableSize || num_cases > MaxJumpTableSize)
+  if (num_cases > MaxJumpTableSize)
     return false;
+  if (UseSwitchProfiling) {
+    // MinJumpTableSize is set so with a well balanced binary tree,
+    // when the number of ranges is MinJumpTableSize, it's cheaper to
+    // go through a JumpNode that a tree of IfNodes. Average cost of a
+    // tree of IfNodes with MinJumpTableSize is
+    // log2f(MinJumpTableSize) comparisons. So if the cost computed
+    // from profile data is less than log2f(MinJumpTableSize) then
+    // going with the binary search is cheaper.
+    if (cost < log2f(MinJumpTableSize)) {
+      return false;
+    }
+  } else {
+    if (num_cases < MinJumpTableSize)
+      return false;
+  }
   if (num_cases > (MaxJumpTableSparseness * num_range))
     return false;
 
@@ -771,6 +963,8 @@ void Parse::jump_switch_ranges(Node* key_val, SwitchRange *lo, SwitchRange *hi, 
     if (hi->hi() > max_val) {
       hi->setRange(hi->lo(), max_val, hi->dest(), hi->table_index(), hi->cnt());
     }
+
+    linear_search_switch_ranges(key_val, lo, hi);
   }
 
 #ifndef PRODUCT
@@ -789,22 +983,34 @@ void Parse::jump_switch_ranges(Node* key_val, SwitchRange *lo, SwitchRange *hi, 
 
     if (create_jump_tables(key_val, lo, hi)) return;
 
+    SwitchRange* mid = NULL;
+    float total_cnt = sum_of_cnts(lo, hi);
+
     int nr = hi - lo + 1;
+    if (UseSwitchProfiling) {
+      // Don't keep the binary search tree balanced: pick up mid point
+      // that split frequencies in half.
+      float cnt = 0;
+      for (SwitchRange* sr = lo; sr <= hi; sr++) {
+        cnt += sr->cnt();
+        if (cnt >= total_cnt / 2) {
+          mid = sr;
+          break;
+        }
+      }
+    } else {
+      mid = lo + nr/2;
 
-    SwitchRange* mid = lo + nr/2;
-    // if there is an easy choice, pivot at a singleton:
-    if (nr > 3 && !mid->is_singleton() && (mid-1)->is_singleton())  mid--;
+      // if there is an easy choice, pivot at a singleton:
+      if (nr > 3 && !mid->is_singleton() && (mid-1)->is_singleton())  mid--;
 
-    assert(lo < mid && mid <= hi, "good pivot choice");
-    assert(nr != 2 || mid == hi,   "should pick higher of 2");
-    assert(nr != 3 || mid == hi-1, "should pick middle of 3");
-
-    Node *test_val = _gvn.intcon(mid->lo());
-
-    float total_cnt = 0;
-    for (SwitchRange* sr = lo; sr <= hi; sr++) {
-      total_cnt += sr->cnt();
+      assert(lo < mid && mid <= hi, "good pivot choice");
+      assert(nr != 2 || mid == hi,   "should pick higher of 2");
+      assert(nr != 3 || mid == hi-1, "should pick middle of 3");
     }
+
+
+    Node *test_val = _gvn.intcon(mid == lo ? mid->hi() : mid->lo());
 
     if (mid->is_singleton()) {
       IfNode *iff_ne = jump_if_fork_int(key_val, test_val, BoolTest::ne, 1-if_prob(mid->cnt(), total_cnt), if_cnt(mid->cnt()));
@@ -813,19 +1019,13 @@ void Parse::jump_switch_ranges(Node* key_val, SwitchRange *lo, SwitchRange *hi, 
       // Special Case:  If there are exactly three ranges, and the high
       // and low range each go to the same place, omit the "gt" test,
       // since it will not discriminate anything.
-      bool eq_test_only = (hi == lo+2 && hi->dest() == lo->dest());
-      if (eq_test_only) {
-        assert(mid == hi-1, "");
-      }
+      bool eq_test_only = (hi == lo+2 && hi->dest() == lo->dest() && mid == hi-1) || mid == lo;
 
       // if there is a higher range, test for it and process it:
       if (mid < hi && !eq_test_only) {
         // two comparisons of same values--should enable 1 test for 2 branches
         // Use BoolTest::le instead of BoolTest::gt
-        float cnt = 0;
-        for (SwitchRange* sr = lo; sr < mid; sr++) {
-          cnt += sr->cnt();
-        }
+        float cnt = sum_of_cnts(lo, mid-1);
         IfNode *iff_le  = jump_if_fork_int(key_val, test_val, BoolTest::le, if_prob(cnt, total_cnt), if_cnt(cnt));
         Node   *iftrue  = _gvn.transform( new IfTrueNode(iff_le) );
         Node   *iffalse = _gvn.transform( new IfFalseNode(iff_le) );
@@ -838,11 +1038,8 @@ void Parse::jump_switch_ranges(Node* key_val, SwitchRange *lo, SwitchRange *hi, 
 
     } else {
       // mid is a range, not a singleton, so treat mid..hi as a unit
-      float cnt = 0;
-      for (SwitchRange* sr = mid; sr <= hi; sr++) {
-        cnt += sr->cnt();
-      }
-      IfNode *iff_ge = jump_if_fork_int(key_val, test_val, BoolTest::ge, if_prob(cnt, total_cnt), if_cnt(cnt));
+      float cnt = sum_of_cnts(mid == lo ? mid+1 : mid, hi);
+      IfNode *iff_ge = jump_if_fork_int(key_val, test_val, mid == lo ? BoolTest::gt : BoolTest::ge, if_prob(cnt, total_cnt), if_cnt(cnt));
 
       // if there is a higher range, test for it and process it:
       if (mid == hi) {
@@ -852,14 +1049,22 @@ void Parse::jump_switch_ranges(Node* key_val, SwitchRange *lo, SwitchRange *hi, 
         Node *iffalse = _gvn.transform( new IfFalseNode(iff_ge) );
         { PreserveJVMState pjvms(this);
           set_control(iftrue);
-          jump_switch_ranges(key_val, mid, hi, switch_depth+1);
+          jump_switch_ranges(key_val, mid == lo ? mid+1 : mid, hi, switch_depth+1);
         }
         set_control(iffalse);
       }
     }
 
     // in any case, process the lower range
-    jump_switch_ranges(key_val, lo, mid-1, switch_depth+1);
+    if (mid == lo) {
+      if (mid->is_singleton()) {
+        jump_switch_ranges(key_val, lo+1, hi, switch_depth+1);
+      } else {
+        jump_if_always_fork(lo->dest(), lo->table_index(), trim_ranges && lo->cnt() == 0);
+      }
+    } else {
+      jump_switch_ranges(key_val, lo, mid-1, switch_depth+1);
+    }
   }
 
   // Decrease pred_count for each successor after all is done.
