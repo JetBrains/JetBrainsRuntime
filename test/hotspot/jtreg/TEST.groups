@@ -132,7 +132,15 @@ tier1_compiler_3 = \
   -compiler/loopopts/Test7052494.java \
   -compiler/runtime/Test6826736.java
 
-hotspot_gc_shenandoah = \
+tier1_gc_shenandoah = \
+  gc/shenandoah/options/ \
+  gc/shenandoah/compiler/ \
+  gc/shenandoah/mxbeans/ \
+  gc/shenandoah/TestSmallHeap.java \
+  gc/shenandoah/oom/
+
+tier2_gc_shenandoah = \
+  :tier1_gc_shenandoah \
   runtime/MemberName/MemberNameLeak.java \
   runtime/CompressedOops/UseCompressedOops.java \
   gc/TestHumongousReferenceObject.java \
@@ -155,12 +163,9 @@ hotspot_gc_shenandoah = \
   serviceability/sa/TestHeapDumpForInvokeDynamic.java \
   gc/logging/TestUnifiedLoggingSwitchStress.java
 
-hotspot_fast_gc_shenandoah = \
-  gc/shenandoah/options/ \
-  gc/shenandoah/compiler/ \
-  gc/shenandoah/mxbeans/ \
-  gc/shenandoah/TestSmallHeap.java \
-  gc/shenandoah/oom/ \
+tier3_gc_shenandoah = \
+  :tier2_gc_shenandoah \
+  gc/logging/TestUnifiedLoggingSwitchStress.java
 
 tier1_compiler_not_xcomp = \
   compiler/aot
