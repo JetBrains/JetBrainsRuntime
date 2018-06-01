@@ -411,7 +411,9 @@ void ShenandoahControlThread::service_stw_degenerated_cycle(GCCause::Cause cause
 }
 
 void ShenandoahControlThread::handle_explicit_gc(GCCause::Cause cause) {
-  assert(GCCause::is_user_requested_gc(cause) || GCCause::is_serviceability_requested_gc(cause),
+  assert(GCCause::is_user_requested_gc(cause) ||
+         GCCause::is_serviceability_requested_gc(cause) ||
+         cause == GCCause::_full_gc_alot,
          "only requested GCs here");
   if (!DisableExplicitGC) {
     _explicit_gc_cause = cause;

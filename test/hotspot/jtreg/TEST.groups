@@ -160,11 +160,11 @@ tier2_gc_shenandoah = \
   gc/stress/gclocker/TestGCLockerWithShenandoah.java \
   gc/stress/systemgc/TestSystemGCWithShenandoah.java \
   gc/shenandoah/ \
-  serviceability/sa/TestHeapDumpForInvokeDynamic.java \
-  gc/logging/TestUnifiedLoggingSwitchStress.java
+  serviceability/sa/TestHeapDumpForInvokeDynamic.java
 
 tier3_gc_shenandoah = \
   :tier2_gc_shenandoah \
+  gc/TestFullGCALot.java \
   gc/logging/TestUnifiedLoggingSwitchStress.java
 
 tier1_compiler_not_xcomp = \
