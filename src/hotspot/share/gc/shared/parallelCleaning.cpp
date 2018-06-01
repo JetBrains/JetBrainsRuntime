@@ -140,7 +140,7 @@ void CodeCacheUnloadingTask::clean_nmethod(CompiledMethod* nm) {
 }
 
 void CodeCacheUnloadingTask::clean_nmethod_postponed(CompiledMethod* nm) {
-  nm->do_unloading_parallel_postponed(_is_alive, _unloading_occurred);
+  nm->do_unloading_parallel_postponed();
 }
 
 void CodeCacheUnloadingTask::claim_nmethods(CompiledMethod** claimed_nmethods, int *num_claimed_nmethods) {

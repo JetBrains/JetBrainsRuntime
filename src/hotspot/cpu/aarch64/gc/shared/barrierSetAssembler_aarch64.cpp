@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
+#include "runtime/jniHandles.hpp"
 
 #define __ masm->
 
@@ -109,10 +110,16 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   }
 }
 
+void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Register robj, Register tmp, Label& slowpath) {
+  // If mask changes we need to ensure that the inverse is still encodable as an immediate
+  STATIC_ASSERT(JNIHandles::weak_tag_mask == 1);
+  __ andr(robj, robj, ~JNIHandles::weak_tag_mask);
+  __ ldr(robj, Address(robj, 0));             // *obj
+}
+
 void BarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2) {
   __ cmp(src1, src2);
 }
-
 
 void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   // Default to no-op.
@@ -121,4 +128,3 @@ void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet de
 void BarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   // Default to no-op.
 }
-

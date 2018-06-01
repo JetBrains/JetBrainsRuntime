@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "interpreter/interp_masm.hpp"
+#include "runtime/jniHandles.hpp"
 
 #define __ masm->
 
@@ -181,6 +182,11 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
     break;
   default: Unimplemented();
   }
+}
+
+void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Register robj, Register tmp, Label& slowpath) {
+  __ clear_jweak_tag(robj);
+  __ movptr(robj, Address(robj, 0));
 }
 
 void BarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2) {
