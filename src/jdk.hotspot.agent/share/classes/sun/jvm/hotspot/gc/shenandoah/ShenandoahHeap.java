@@ -44,7 +44,6 @@ public class ShenandoahHeap extends CollectedHeap {
     static private CIntegerField usedRegions;
     static private CIntegerField committedRegions;
     static private AddressField  regionsField;
-
     static {
         VM.registerVMInitializedObserver(new Observer() {
             public void update(Observable o, Object data) {
@@ -79,9 +78,9 @@ public class ShenandoahHeap extends CollectedHeap {
         return committedRegions.getValue(addr);
     }
     public void heapRegionIterate(sun.jvm.hotspot.gc.shared.SpaceClosure scl) {
-        ShenandoahHeapRegionSet regionSet = regions();
-        for (long index = 0; index < regionSet.activeRegions(); index ++) {
-            ShenandoahHeapRegion r = regionSet.getRegion(index);
+        int numRgns = (int)numRegions.getValue(addr);
+        for (int index = 0; index < numRgns; index ++) {
+            ShenandoahHeapRegion r = getRegion(index);
 
             // Walk live regions
             if (!r.isTrash() && !r.isUncommitted() && !r.isEmpty()) {
@@ -106,10 +105,10 @@ public class ShenandoahHeap extends CollectedHeap {
         tty.println(" region size " + ShenandoahHeapRegion.regionSizeBytes() / 1024 + " K");
     }
 
-    private ShenandoahHeapRegionSet regions() {
+    private ShenandoahHeapRegion getRegion(int index) {
         Address regsAddr = regionsField.getValue(addr);
-        return (ShenandoahHeapRegionSet) VMObjectFactory.newObject(ShenandoahHeapRegionSet.class,
-                regsAddr);
+        return (ShenandoahHeapRegion) VMObjectFactory.newObject(ShenandoahHeapRegion.class,
+                regsAddr.getAddressAt(index * VM.getVM().getAddressSize()));
     }
 
     public ShenandoahHeap(Address addr) {

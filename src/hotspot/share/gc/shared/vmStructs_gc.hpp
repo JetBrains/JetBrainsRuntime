@@ -39,6 +39,7 @@
 #include "gc/cms/vmStructs_cms.hpp"
 #include "gc/g1/vmStructs_g1.hpp"
 #include "gc/parallel/vmStructs_parallelgc.hpp"
+#include "gc/shenandoah/vmStructs_shenandoah.hpp"
 #endif
 
 #define VM_STRUCTS_GC(nonstatic_field,                                                                                               \
@@ -49,6 +50,9 @@
                                 volatile_nonstatic_field,                                                                            \
                                 static_field))                                                                                       \
   ALL_GCS_ONLY(VM_STRUCTS_G1GC(nonstatic_field,                                                                                      \
+                               volatile_nonstatic_field,                                                                             \
+                               static_field))                                                                                        \
+  ALL_GCS_ONLY(VM_STRUCTS_SHENANDOAH(nonstatic_field,                                                                                \
                                volatile_nonstatic_field,                                                                             \
                                static_field))                                                                                        \
   ALL_GCS_ONLY(VM_STRUCTS_PARALLELGC(nonstatic_field,                                                                                \
@@ -156,6 +160,9 @@
   ALL_GCS_ONLY(VM_TYPES_G1GC(declare_type,                                \
                              declare_toplevel_type,                       \
                              declare_integer_type))                       \
+  ALL_GCS_ONLY(VM_TYPES_SHENANDOAH(declare_type,                          \
+                             declare_toplevel_type,                       \
+                             declare_integer_type))                       \
   ALL_GCS_ONLY(VM_TYPES_PARALLELGC(declare_type,                          \
                                    declare_toplevel_type,                 \
                                    declare_integer_type))                 \
@@ -227,6 +234,8 @@
   ALL_GCS_ONLY(VM_INT_CONSTANTS_CMSGC(declare_constant,                     \
                                       declare_constant_with_value))         \
   ALL_GCS_ONLY(VM_INT_CONSTANTS_G1GC(declare_constant,                      \
+                                     declare_constant_with_value))          \
+  ALL_GCS_ONLY(VM_INT_CONSTANTS_SHENANDOAH(declare_constant,                \
                                      declare_constant_with_value))          \
   ALL_GCS_ONLY(VM_INT_CONSTANTS_PARALLELGC(declare_constant,                \
                                            declare_constant_with_value))    \

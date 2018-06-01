@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
+ * Copyright (c) 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -25,7 +25,6 @@
 
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
-#include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
 
 #define VM_STRUCTS_SHENANDOAH(nonstatic_field, volatile_nonstatic_field, static_field)  \
@@ -54,7 +53,6 @@
                             declare_integer_type)                             \
   declare_type(ShenandoahHeap, CollectedHeap)                                 \
   declare_type(ShenandoahHeapRegion, ContiguousSpace)                         \
-  declare_toplevel_type(ShenandoahHeapRegionSet)                              \
   declare_toplevel_type(ShenandoahHeap*)                                      \
   declare_toplevel_type(ShenandoahHeapRegion*)                                \
   declare_integer_type(ShenandoahHeapRegion::RegionState)                     \

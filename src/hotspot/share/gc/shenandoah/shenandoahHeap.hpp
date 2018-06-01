@@ -47,7 +47,6 @@ class ShenandoahPhaseTimings;
 class ShenandoahHeap;
 class ShenandoahHeapRegion;
 class ShenandoahHeapRegionClosure;
-class ShenandoahHeapRegionSet;
 class ShenandoahCollectionSet;
 class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
