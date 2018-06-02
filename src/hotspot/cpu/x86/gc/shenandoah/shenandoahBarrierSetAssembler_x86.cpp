@@ -459,20 +459,16 @@ void ShenandoahBarrierSetAssembler::storeval_barrier_impl(MacroAssembler* masm, 
 
     // The set of registers to be saved+restored is the same as in the write-barrier above.
     // Those are the commonly used registers in the interpreter.
-    __ push(rbx);
-    __ push(rcx);
-    __ push(rdx);
-    __ push(c_rarg1);
+    __ pusha();
+    // __ push_callee_saved_registers();
     __ subptr(rsp, 2 * Interpreter::stackElementSize);
     __ movdbl(Address(rsp, 0), xmm0);
 
     satb_write_barrier_pre(masm, noreg, dst, r15_thread, tmp, true, false);
     __ movdbl(xmm0, Address(rsp, 0));
     __ addptr(rsp, 2 * Interpreter::stackElementSize);
-    __ pop(c_rarg1);
-    __ pop(rdx);
-    __ pop(rcx);
-    __ pop(rbx);
+    //__ pop_callee_saved_registers();
+    __ popa();
   }
   if (ShenandoahStoreValReadBarrier) {
     read_barrier_impl(masm, dst);
@@ -615,3 +611,224 @@ void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, Decor
 void ShenandoahBarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   write_barrier(masm, obj);
 }
+
+// Special Shenandoah CAS implementation that handles false negatives
+// due to concurrent evacuation.
+#ifndef _LP64
+void MacroAssembler::cmpxchg_oop_shenandoah(MacroAssembler* masm, Register res, Address addr, Register oldval, Register newval,
+                              bool exchange,
+                              Register tmp1, Register tmp2) {
+  // Shenandoah has no 32-bit version for this.
+  Unimplemented();
+}
+#else
+void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                                                Register res, Address addr, Register oldval, Register newval,
+                                                bool exchange, bool encode, Register tmp1, Register tmp2) {
+
+  if (!ShenandoahCASBarrier) {
+    BarrierSetAssembler::cmpxchg_oop(masm, decorators, res, addr, oldval, newval, exchange, encode, tmp1, tmp2);
+    return;
+  }
+
+  assert(ShenandoahCASBarrier, "Should only be used when CAS barrier is enabled");
+  assert(oldval == rax, "must be in rax for implicit use in cmpxchg");
+
+  Label retry, done;
+
+  // Apply storeval barrier to newval.
+  if (encode) {
+    if (newval == c_rarg1 && ShenandoahStoreValEnqueueBarrier) {
+      __ mov(tmp2, newval);
+      storeval_barrier(masm, tmp2, tmp1);
+    } else {
+      storeval_barrier(masm, newval, tmp1);
+    }
+  }
+
+  if (UseCompressedOops) {
+    if (encode) {
+      __ encode_heap_oop(oldval);
+      __ mov(rscratch1, newval);
+      __ encode_heap_oop(rscratch1);
+      newval = rscratch1;
+    }
+  }
+
+  // Remember oldval for retry logic below
+  if (UseCompressedOops) {
+    __ movl(tmp1, oldval);
+  } else {
+    __ movptr(tmp1, oldval);
+  }
+
+  // Step 1. Try to CAS with given arguments. If successful, then we are done,
+  // and can safely return.
+  if (os::is_MP()) __ lock();
+  if (UseCompressedOops) {
+    __ cmpxchgl(newval, addr);
+  } else {
+    __ cmpxchgptr(newval, addr);
+  }
+  __ jcc(Assembler::equal, done, true);
+
+  // Step 2. CAS had failed. This may be a false negative.
+  //
+  // The trouble comes when we compare the to-space pointer with the from-space
+  // pointer to the same object. To resolve this, it will suffice to read both
+  // oldval and the value from memory through the read barriers -- this will give
+  // both to-space pointers. If they mismatch, then it was a legitimate failure.
+  //
+  if (UseCompressedOops) {
+    __ decode_heap_oop(tmp1);
+  }
+  __ resolve_for_read(0, tmp1);
+
+  if (UseCompressedOops) {
+    __ movl(tmp2, oldval);
+    __ decode_heap_oop(tmp2);
+  } else {
+    __ movptr(tmp2, oldval);
+  }
+  __ resolve_for_read(0, tmp2);
+
+  __ cmpptr(tmp1, tmp2);
+  __ jcc(Assembler::notEqual, done, true);
+
+  // Step 3. Try to CAS again with resolved to-space pointers.
+  //
+  // Corner case: it may happen that somebody stored the from-space pointer
+  // to memory while we were preparing for retry. Therefore, we can fail again
+  // on retry, and so need to do this in loop, always re-reading the failure
+  // witness through the read barrier.
+  __ bind(retry);
+  if (os::is_MP()) __ lock();
+  if (UseCompressedOops) {
+    __ cmpxchgl(newval, addr);
+  } else {
+    __ cmpxchgptr(newval, addr);
+  }
+  __ jcc(Assembler::equal, done, true);
+
+  if (UseCompressedOops) {
+    __ movl(tmp2, oldval);
+    __ decode_heap_oop(tmp2);
+  } else {
+    __ movptr(tmp2, oldval);
+  }
+  __ resolve_for_read(0, tmp2);
+
+  __ cmpptr(tmp1, tmp2);
+  __ jcc(Assembler::equal, retry, true);
+
+  // Step 4. If we need a boolean result out of CAS, check the flag again,
+  // and promote the result. Note that we handle the flag from both the CAS
+  // itself and from the retry loop.
+  __ bind(done);
+  if (!exchange) {
+    assert(res != NULL, "need result register");
+    __ setb(Assembler::equal, res);
+    __ movzbl(res, res);
+  }
+}
+#endif // LP64
+
+void ShenandoahBarrierSetAssembler::xchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                                             Register obj, Address addr, Register tmp) {
+  storeval_barrier(masm, obj, tmp);
+  BarrierSetAssembler::xchg_oop(masm, decorators, obj, addr, tmp);
+}
+
+#ifdef COMPILER1
+
+#undef __
+#define __ ce->masm()->
+
+void ShenandoahBarrierSetAssembler::gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub) {
+  ShenandoahBarrierSetC1* bs = (ShenandoahBarrierSetC1*)BarrierSet::barrier_set()->barrier_set_c1();
+  // At this point we know that marking is in progress.
+  // If do_load() is true then we have to emit the
+  // load of the previous value; otherwise it has already
+  // been loaded into _pre_val.
+
+  __ bind(*stub->entry());
+  assert(stub->pre_val()->is_register(), "Precondition.");
+
+  Register pre_val_reg = stub->pre_val()->as_register();
+
+  if (stub->do_load()) {
+    ce->mem2reg(stub->addr(), stub->pre_val(), T_OBJECT, stub->patch_code(), stub->info(), false /*wide*/, false /*unaligned*/);
+  }
+
+  __ cmpptr(pre_val_reg, (int32_t)NULL_WORD);
+  __ jcc(Assembler::equal, *stub->continuation());
+  ce->store_parameter(stub->pre_val()->as_register(), 0);
+  __ call(RuntimeAddress(bs->pre_barrier_c1_runtime_code_blob()->code_begin()));
+  __ jmp(*stub->continuation());
+
+}
+
+#undef __
+
+#define __ sasm->
+
+void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm) {
+  __ prologue("shenandoah_pre_barrier", false);
+  // arg0 : previous value of memory
+
+  __ push(rax);
+  __ push(rdx);
+
+  const Register pre_val = rax;
+  const Register thread = NOT_LP64(rax) LP64_ONLY(r15_thread);
+  const Register tmp = rdx;
+
+  NOT_LP64(__ get_thread(thread);)
+
+  Address queue_index(thread, in_bytes(ShenandoahThreadLocalData::satb_mark_queue_index_offset()));
+  Address buffer(thread, in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset()));
+
+  Label done;
+  Label runtime;
+
+  // Is SATB still active?
+  Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+  __ testb(gc_state, ShenandoahHeap::MARKING | ShenandoahHeap::TRAVERSAL);
+  __ jcc(Assembler::zero, done);
+
+  // Can we store original value in the thread's buffer?
+
+  __ movptr(tmp, queue_index);
+  __ testptr(tmp, tmp);
+  __ jcc(Assembler::zero, runtime);
+  __ subptr(tmp, wordSize);
+  __ movptr(queue_index, tmp);
+  __ addptr(tmp, buffer);
+
+  // prev_val (rax)
+  __ load_parameter(0, pre_val);
+  __ movptr(Address(tmp, 0), pre_val);
+  __ jmp(done);
+
+  __ bind(runtime);
+
+  __ save_live_registers_no_oop_map(3, true);
+
+  // load the pre-value
+  __ load_parameter(0, rcx);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), rcx, thread);
+
+  __ restore_live_registers(true);
+
+  __ bind(done);
+
+  __ pop(rdx);
+  __ pop(rax);
+
+  __ epilogue();
+}
+
+#undef __
+
+#endif // COMPILER1
+

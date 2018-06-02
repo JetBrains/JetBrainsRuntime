@@ -31,6 +31,9 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
+#ifdef COMPILER1
+#include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
+#endif
 
 ShenandoahSATBMarkQueueSet ShenandoahBarrierSet::_satb_mark_queue_set;
 
@@ -63,6 +66,7 @@ public:
 
 ShenandoahBarrierSet::ShenandoahBarrierSet(ShenandoahHeap* heap) :
   BarrierSet(make_barrier_set_assembler<ShenandoahBarrierSetAssembler>(),
+             make_barrier_set_c1<ShenandoahBarrierSetC1>(),
              BarrierSet::FakeRtti(BarrierSet::Shenandoah)),
   _heap(heap)
 {

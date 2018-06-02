@@ -52,6 +52,9 @@
 #ifdef COMPILER2
 #include "opto/intrinsicnode.hpp"
 #endif
+#ifdef INCLUDE_ALL_GCS
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -3769,103 +3772,16 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp) {
   movl(as_Address(ArrayAddress(page, index)), tmp);
 }
 
-#if INCLUDE_ALL_GCS
-// Special Shenandoah CAS implementation that handles false negatives
-// due to concurrent evacuation.
-#ifndef _LP64
-void MacroAssembler::cmpxchg_oop_shenandoah(Register res, Address addr, Register oldval, Register newval,
-                              bool exchange,
-                              Register tmp1, Register tmp2) {
-  // Shenandoah has no 32-bit version for this.
-  Unimplemented();
+void MacroAssembler::cmpxchg_oop(Register res, Address addr, Register cmpval, Register newval,
+                                 bool exchange, bool encode, Register tmp1, Register tmp2) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, IN_HEAP, res, addr, cmpval, newval, exchange, encode, tmp1, tmp2);
 }
-#else
-void MacroAssembler::cmpxchg_oop_shenandoah(Register res, Address addr, Register oldval, Register newval,
-                              bool exchange,
-                              Register tmp1, Register tmp2) {
-  assert(UseShenandoahGC, "Should only be used with Shenandoah");
-  assert(ShenandoahCASBarrier, "Should only be used when CAS barrier is enabled");
-  assert(oldval == rax, "must be in rax for implicit use in cmpxchg");
 
-  Label retry, done;
-
-  // Remember oldval for retry logic below
-  if (UseCompressedOops) {
-    movl(tmp1, oldval);
-  } else {
-    movptr(tmp1, oldval);
-  }
-
-  // Step 1. Try to CAS with given arguments. If successful, then we are done,
-  // and can safely return.
-  if (os::is_MP()) lock();
-  if (UseCompressedOops) {
-    cmpxchgl(newval, addr);
-  } else {
-    cmpxchgptr(newval, addr);
-  }
-  jcc(Assembler::equal, done, true);
-
-  // Step 2. CAS had failed. This may be a false negative.
-  //
-  // The trouble comes when we compare the to-space pointer with the from-space
-  // pointer to the same object. To resolve this, it will suffice to read both
-  // oldval and the value from memory through the read barriers -- this will give
-  // both to-space pointers. If they mismatch, then it was a legitimate failure.
-  //
-  if (UseCompressedOops) {
-    decode_heap_oop(tmp1);
-  }
-  resolve_for_read(0, tmp1);
-
-  if (UseCompressedOops) {
-    movl(tmp2, oldval);
-    decode_heap_oop(tmp2);
-  } else {
-    movptr(tmp2, oldval);
-  }
-  resolve_for_read(0, tmp2);
-
-  cmpptr(tmp1, tmp2);
-  jcc(Assembler::notEqual, done, true);
-
-  // Step 3. Try to CAS again with resolved to-space pointers.
-  //
-  // Corner case: it may happen that somebody stored the from-space pointer
-  // to memory while we were preparing for retry. Therefore, we can fail again
-  // on retry, and so need to do this in loop, always re-reading the failure
-  // witness through the read barrier.
-  bind(retry);
-  if (os::is_MP()) lock();
-  if (UseCompressedOops) {
-    cmpxchgl(newval, addr);
-  } else {
-    cmpxchgptr(newval, addr);
-  }
-  jcc(Assembler::equal, done, true);
-
-  if (UseCompressedOops) {
-    movl(tmp2, oldval);
-    decode_heap_oop(tmp2);
-  } else {
-    movptr(tmp2, oldval);
-  }
-  resolve_for_read(0, tmp2);
-
-  cmpptr(tmp1, tmp2);
-  jcc(Assembler::equal, retry, true);
-
-  // Step 4. If we need a boolean result out of CAS, check the flag again,
-  // and promote the result. Note that we handle the flag from both the CAS
-  // itself and from the retry loop.
-  bind(done);
-  if (!exchange) {
-    setb(Assembler::equal, res);
-    movzbl(res, res);
-  }
+void MacroAssembler::xchg_oop(Register obj, Address addr, Register tmp) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->xchg_oop(this, IN_HEAP, obj, addr, tmp);
 }
-#endif // LP64
-#endif // INCLUDE_ALL_GCS
 
 void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, Register temp_reg) {
   if (SafepointMechanism::uses_thread_local_poll()) {

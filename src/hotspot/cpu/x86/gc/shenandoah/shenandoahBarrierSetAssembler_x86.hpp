@@ -26,6 +26,12 @@
 
 #include "asm/macroAssembler.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
+#ifdef COMPILER1
+#include "c1/c1_LIRAssembler.hpp"
+#include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
+#endif
+
+class ShenandoahPreBarrierStub;
 
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 private:
@@ -64,6 +70,15 @@ private:
   void storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp);
 
 public:
+  void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
+  void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
+
+  virtual void cmpxchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                           Register res, Address addr, Register oldval, Register newval,
+                           bool exchange, bool encode, Register tmp1, Register tmp2);
+  virtual void xchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                        Register obj, Address addr, Register tmp);
+
   virtual void arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                   Register src, Register dst, Register count);
   virtual void arraycopy_epilogue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
