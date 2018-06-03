@@ -406,19 +406,12 @@ void ShenandoahConcurrentMark::mark_from_roots() {
   }
 
   assert(task_queues()->is_empty() || sh->cancelled_gc(), "Should be empty when not cancelled");
-  if (!sh->cancelled_gc()) {
-    TASKQUEUE_STATS_ONLY(print_taskqueue_stats());
-  }
-
-  TASKQUEUE_STATS_ONLY(reset_taskqueue_stats());
 }
 
 void ShenandoahConcurrentMark::finish_mark_from_roots() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
-
-  TASKQUEUE_STATS_ONLY(reset_taskqueue_stats());
 
   shared_finish_mark_from_roots(/* full_gc = */ false);
 
@@ -427,6 +420,7 @@ void ShenandoahConcurrentMark::finish_mark_from_roots() {
   }
 
   TASKQUEUE_STATS_ONLY(print_taskqueue_stats());
+  TASKQUEUE_STATS_ONLY(reset_taskqueue_stats());
 }
 
 void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
