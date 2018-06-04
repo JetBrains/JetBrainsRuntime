@@ -2395,7 +2395,7 @@ void ShenandoahHeap::op_init_updaterefs() {
   }
 
   // Reset iterator.
-  _update_refs_iterator = ShenandoahRegionIterator();
+  _update_refs_iterator.reset();
 
   if (ShenandoahPacing) {
     pacer()->setup_for_updaterefs();
@@ -2952,10 +2952,8 @@ ShenandoahRegionIterator::ShenandoahRegionIterator(ShenandoahHeap* heap) :
   _index(0),
   _heap(heap) {}
 
-ShenandoahRegionIterator& ShenandoahRegionIterator::operator=(const ShenandoahRegionIterator& o) {
-  _index = o._index;
-  assert(_heap == o._heap, "must be same");
-  return *this;
+void ShenandoahRegionIterator::reset() {
+  _index = 0;
 }
 
 bool ShenandoahRegionIterator::has_next() const {

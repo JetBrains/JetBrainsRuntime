@@ -432,7 +432,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
     _heap->pacer()->setup_for_traversal();
   }
 
-  _root_regions_iterator = ShenandoahHeapRegionSetIterator(_root_regions);
+  _root_regions_iterator.reset(_root_regions);
 }
 
 void ShenandoahTraversalGC::main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb) {
