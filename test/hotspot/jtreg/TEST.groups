@@ -169,7 +169,8 @@ tier2_gc_shenandoah = \
 tier3_gc_shenandoah = \
   :tier2_gc_shenandoah \
   gc/TestFullGCALot.java \
-  gc/logging/TestUnifiedLoggingSwitchStress.java
+  gc/logging/TestUnifiedLoggingSwitchStress.java \
+  runtime/Metaspace/DefineClass.java
 
 tier1_compiler_not_xcomp = \
   compiler/aot
