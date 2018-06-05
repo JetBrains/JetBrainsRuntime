@@ -172,6 +172,13 @@ void ShenandoahArguments::initialize() {
                  "are observed on class-unloading sensitive workloads");
     FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
   }
+
+  // JNI fast get field stuff is not currently supported by Shenandoah.
+  // It would introduce another heap memory access for reading the forwarding
+  // pointer, which would have to be guarded by the signal handler machinery.
+  // See:
+  // http://mail.openjdk.java.net/pipermail/hotspot-dev/2018-June/032763.html
+  FLAG_SET_DEFAULT(UseFastJNIAccessors, false);
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
