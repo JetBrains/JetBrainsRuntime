@@ -32,6 +32,11 @@
 #include "interpreter/interp_masm.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
+#ifdef COMPILER1
+#include "c1/c1_LIRAssembler.hpp"
+#include "c1/c1_MacroAssembler.hpp"
+#include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
+#endif
 
 #define __ masm->
 
@@ -422,3 +427,150 @@ void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, Decor
 void ShenandoahBarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   write_barrier(masm, obj);
 }
+
+void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, Register addr, Register expected, Register new_val,
+                                                bool acquire, bool release, bool weak, bool encode,
+                                                Register tmp1, Register tmp2, Register tmp3,
+                                                Register result) {
+
+  if (encode) {
+    storeval_barrier(masm, new_val, tmp3);
+  }
+
+  if (UseCompressedOops) {
+    if (encode) {
+      __ encode_heap_oop(tmp1, expected);
+      expected = tmp1;
+      __ encode_heap_oop(tmp2, new_val);
+      new_val = tmp2;
+    }
+  }
+  bool is_cae = (result != noreg);
+  bool is_narrow = UseCompressedOops;
+  Assembler::operand_size size = is_narrow ? Assembler::word : Assembler::xword;
+  if (! is_cae) result = rscratch1;
+
+  assert_different_registers(addr, expected, new_val, result, tmp3);
+
+  Label retry, done, fail;
+
+  // CAS, using LL/SC pair.
+  __ bind(retry);
+  __ load_exclusive(result, addr, size, acquire);
+  if (is_narrow) {
+    __ cmpw(result, expected);
+  } else {
+    __ cmp(result, expected);
+  }
+  __ br(Assembler::NE, fail);
+  __ store_exclusive(tmp3, new_val, addr, size, release);
+  if (weak) {
+    __ cmpw(tmp3, 0u); // If the store fails, return NE to our caller
+  } else {
+    __ cbnzw(tmp3, retry);
+  }
+  __ b(done);
+
+ __  bind(fail);
+  // Check if rb(expected)==rb(result)
+  // Shuffle registers so that we have memory value ready for next expected.
+  __ mov(tmp3, expected);
+  __ mov(expected, result);
+  if (is_narrow) {
+    __ decode_heap_oop(result, result);
+    __ decode_heap_oop(tmp3, tmp3);
+  }
+  __ resolve_for_read(0, result);
+  __ resolve_for_read(0, tmp3);
+  __ cmp(result, tmp3);
+  // Retry with expected now being the value we just loaded from addr.
+  __ br(Assembler::EQ, retry);
+  if (is_narrow && is_cae) {
+    // For cmp-and-exchange and narrow oops, we need to restore
+    // the compressed old-value. We moved it to 'expected' a few lines up.
+    __ mov(result, expected);
+  }
+  __ bind(done);
+
+}
+
+#ifdef COMPILER1
+
+#undef __
+#define __ ce->masm()->
+
+void ShenandoahBarrierSetAssembler::gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub) {
+  ShenandoahBarrierSetC1* bs = (ShenandoahBarrierSetC1*)BarrierSet::barrier_set()->barrier_set_c1();
+  // At this point we know that marking is in progress.
+  // If do_load() is true then we have to emit the
+  // load of the previous value; otherwise it has already
+  // been loaded into _pre_val.
+
+  __ bind(*stub->entry());
+
+  assert(stub->pre_val()->is_register(), "Precondition.");
+
+  Register pre_val_reg = stub->pre_val()->as_register();
+
+  if (stub->do_load()) {
+    ce->mem2reg(stub->addr(), stub->pre_val(), T_OBJECT, stub->patch_code(), stub->info(), false /*wide*/, false /*unaligned*/);
+  }
+  __ cbz(pre_val_reg, *stub->continuation());
+  ce->store_parameter(stub->pre_val()->as_register(), 0);
+  __ far_call(RuntimeAddress(bs->pre_barrier_c1_runtime_code_blob()->code_begin()));
+  __ b(*stub->continuation());
+}
+
+#undef __
+
+#define __ sasm->
+
+void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm) {
+  __ prologue("shenandoah_pre_barrier", false);
+
+  // arg0 : previous value of memory
+
+  BarrierSet* bs = BarrierSet::barrier_set();
+
+  const Register pre_val = r0;
+  const Register thread = rthread;
+  const Register tmp = rscratch1;
+
+  Address queue_index(thread, in_bytes(ShenandoahThreadLocalData::satb_mark_queue_index_offset()));
+  Address buffer(thread, in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset()));
+
+  Label done;
+  Label runtime;
+
+  // Is marking still active?
+  Address gc_state(thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+  __ ldrb(tmp, gc_state);
+  __ mov(rscratch2, ShenandoahHeap::MARKING | ShenandoahHeap::TRAVERSAL);
+  __ tst(tmp, rscratch2);
+  __ br(Assembler::EQ, done);
+
+  // Can we store original value in the thread's buffer?
+  __ ldr(tmp, queue_index);
+  __ cbz(tmp, runtime);
+
+  __ sub(tmp, tmp, wordSize);
+  __ str(tmp, queue_index);
+  __ ldr(rscratch2, buffer);
+  __ add(tmp, tmp, rscratch2);
+  __ load_parameter(0, rscratch2);
+  __ str(rscratch2, Address(tmp, 0));
+  __ b(done);
+
+  __ bind(runtime);
+  __ push_call_clobbered_registers();
+  __ load_parameter(0, pre_val);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), pre_val, thread);
+  __ pop_call_clobbered_registers();
+  __ bind(done);
+
+  __ epilogue();
+}
+
+#undef __
+
+#endif // COMPILER1

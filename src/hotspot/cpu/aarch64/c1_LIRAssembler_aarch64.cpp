@@ -1595,50 +1595,16 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
   }
   Register newval = as_reg(op->new_value());
   Register cmpval = as_reg(op->cmp_value());
-  Register res = op->result_opr()->as_register();
-
   if (op->code() == lir_cas_obj) {
     assert(op->tmp1()->is_valid(), "must be");
+    assert(op->tmp1()->is_register(), "tmp1 must be register");
     Register t1 = op->tmp1()->as_register();
-    if (UseCompressedOops) {
-#if INCLUDE_ALL_GCS
-      if (UseShenandoahGC && ShenandoahCASBarrier) {
-        __ encode_heap_oop(t1, cmpval);
-        cmpval = t1;
-        assert(op->tmp2()->is_valid(), "must be");
-        Register t2 = op->tmp2()->as_register();
-        __ encode_heap_oop(t2, newval);
-        newval = t2;
-        __ cmpxchg_oop_shenandoah(addr, cmpval, newval, Assembler::word, /*acquire*/ false, /*release*/ true, /*weak*/ false);
-        __ csetw(res, Assembler::EQ);
-      } else
-#endif
-      {
-        __ encode_heap_oop(t1, cmpval);
-        cmpval = t1;
-        __ encode_heap_oop(rscratch2, newval);
-        newval = rscratch2;
-        casw(addr, newval, cmpval);
-        __ eorw (res, r8, 1);
-      }
-    } else {
-#if INCLUDE_ALL_GCS
-      if (UseShenandoahGC && ShenandoahCASBarrier) {
-        __ cmpxchg_oop_shenandoah(addr, cmpval, newval, Assembler::xword, /*acquire*/ false, /*release*/ true, /*weak*/ false);
-        __ csetw(res, Assembler::EQ);
-      } else
-#endif
-      {
-        casl(addr, newval, cmpval);
-        __ eorw (res, r8, 1);
-      }
-    }
+    Register t2 = op->tmp2()->as_register();
+    __ cmpxchg_oop(addr, cmpval, newval, /*acquire*/ false, /*release*/ true, /*weak*/ false, true, t1, t2);
   } else if (op->code() == lir_cas_int) {
     casw(addr, newval, cmpval);
-    __ eorw (res, r8, 1);
   } else {
     casl(addr, newval, cmpval);
-    __ eorw (res, r8, 1);
   }
 }
 

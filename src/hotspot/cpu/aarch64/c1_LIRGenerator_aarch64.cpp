@@ -343,9 +343,11 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   // object is already locked (xhandlers expect object to be unlocked)
   CodeEmitInfo* info = state_for(x, x->state(), true);
   LIR_Opr obj_opr = obj.result();
-#if INCLUDE_ALL_GCS
-  obj_opr = shenandoah_write_barrier(obj_opr, state_for(x), x->needs_null_check());
-#endif
+  DecoratorSet decorators = IN_HEAP;
+  if (!x->needs_null_check()) {
+    decorators |= OOP_NOT_NULL;
+  }
+  obj_opr = access_resolve_for_write(decorators, obj_opr, state_for(x));
   monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
                         x->monitor_no(), info_for_exception, info);
 }
@@ -713,9 +715,8 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
   LIR_Opr ill = LIR_OprFact::illegalOpr;  // for convenience
   new_value.load_item();
   cmp_value.load_item();
-  LIR_Opr result = new_register(T_INT);
   if (type == T_OBJECT || type == T_ARRAY) {
-    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT), result);
+    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT));
   } else if (type == T_INT) {
     __ cas_int(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
   } else if (type == T_LONG) {
@@ -724,7 +725,9 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
     ShouldNotReachHere();
     Unimplemented();
   }
-  __ logical_xor(FrameMap::r8_opr, LIR_OprFact::intConst(1), result);
+  LIR_Opr result = new_register(T_INT);
+  __ cmove(lir_cond_equal, LIR_OprFact::intConst(1), LIR_OprFact::intConst(0),
+           result, type);
   return result;
 }
 
@@ -829,10 +832,16 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
 
   LIR_Opr dst_op = dst.result();
   LIR_Opr src_op = src.result();
-#if INCLUDE_ALL_GCS
-  dst_op = shenandoah_write_barrier(dst_op, info, x->arg_needs_null_check(2));
-  src_op = shenandoah_read_barrier(src_op, info, x->arg_needs_null_check(0));
-#endif
+  DecoratorSet decorators = IN_HEAP;
+  if (!x->arg_needs_null_check(2)) {
+    decorators |= OOP_NOT_NULL;
+  }
+  dst_op = access_resolve_for_write(decorators, dst_op, info);
+  decorators = IN_HEAP;
+  if (!x->arg_needs_null_check(0)) {
+    decorators |= OOP_NOT_NULL;
+  }
+  src_op = access_resolve_for_read(decorators, src_op, info);
 
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
@@ -904,11 +913,9 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         index = tmp;
       }
 
-#if INCLUDE_ALL_GCS
       if (is_updateBytes) {
-        base_op = shenandoah_read_barrier(base_op, NULL, false);
+        base_op = access_resolve_for_read(IN_HEAP, base_op, NULL);
       }
-#endif
 
       if (offset) {
         LIR_Opr tmp = new_pointer_register();

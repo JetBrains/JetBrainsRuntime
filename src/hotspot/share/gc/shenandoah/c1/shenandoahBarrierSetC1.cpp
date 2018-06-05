@@ -355,3 +355,4 @@ void ShenandoahBarrierSetC1::generate_c1_runtime_stubs(BufferBlob* buffer_blob) 
                                                               "shenandoah_pre_barrier_slow",
                                                               false, &pre_code_gen_cl);
 }
+

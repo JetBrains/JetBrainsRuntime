@@ -27,6 +27,11 @@
 #include "asm/macroAssembler.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 
+#ifdef COMPILER1
+class ShenandoahPreBarrierStub;
+class StubAssembler;
+#endif
+
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 private:
   void satb_write_barrier_pre(MacroAssembler* masm,
@@ -60,6 +65,11 @@ private:
   void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
 
 public:
+#ifdef COMPILER1
+  void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
+  void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
+#endif
+
   virtual void arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, bool is_oop,
                                   Register addr, Register count, RegSet saved_regs);
   virtual void arraycopy_epilogue(MacroAssembler* masm, DecoratorSet decorators, bool is_oop,
@@ -71,6 +81,11 @@ public:
   virtual void obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2);
   virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
   virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+
+  virtual void cmpxchg_oop(MacroAssembler* masm, Register addr, Register expected, Register new_val,
+                           bool acquire, bool release, bool weak, bool encode,
+                           Register tmp1, Register tmp2, Register tmp3,
+                           Register result);
 };
 
 #endif // CPU_AARCH64_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_AARCH64_HPP

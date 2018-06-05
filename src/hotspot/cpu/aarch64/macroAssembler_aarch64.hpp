@@ -1069,10 +1069,10 @@ public:
                bool acquire, bool release, bool weak,
                Register result);
 
-  void cmpxchg_oop_shenandoah(Register addr, Register expected, Register new_val,
-                              enum operand_size size,
-                              bool acquire, bool release, bool weak,
-                              Register result = noreg, Register tmp2 = rscratch2);
+  void cmpxchg_oop(Register addr, Register expected, Register new_val,
+                   bool acquire, bool release, bool weak, bool encode,
+                   Register tmp1, Register tmp2, Register tmp3 = rscratch2,
+                   Register result = noreg);
   // Calls
 
   address trampoline_call(Address entry, CodeBuffer *cbuf = NULL);

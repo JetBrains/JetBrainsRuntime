@@ -4466,8 +4466,8 @@ encode %{
     guarantee($mem$$index == -1 && $mem$$disp == 0, "impossible encoding");
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::xword, /*acquire*/ false, /*release*/ true, /*weak*/ false);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ false, /*release*/ true, /*weak*/ false, /*encode*/ false, noreg, noreg);
   %}
 
   // The only difference between aarch64_enc_cmpxchg and
@@ -4496,8 +4496,8 @@ encode %{
     guarantee($mem$$index == -1 && $mem$$disp == 0, "impossible encoding");
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::xword, /*acquire*/ true, /*release*/ true, /*weak*/ false);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ true, /*release*/ true, /*weak*/ false, /*encode*/ false, noreg, noreg);
   %}
 
   // auxiliary used for CompareAndSwapX to set result register
@@ -9875,7 +9875,7 @@ instruct compareAndSwapN_shenandoah(iRegINoSp res, indirect mem, iRegN oldval, i
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register, Assembler::word, /*acquire*/ false, /*release*/ true, /*weak*/ false);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register, /*acquire*/ false, /*release*/ true, /*weak*/ false, /*encode*/ false, noreg, noreg);
     __ cset($res$$Register, Assembler::EQ);
   %}
 
@@ -9995,7 +9995,7 @@ instruct compareAndSwapNAcq_shenandoah(iRegINoSp res, indirect mem, iRegN oldval
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register, Assembler::word, /*acquire*/ true, /*release*/ true, /*weak*/ false);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register, /*acquire*/ true, /*release*/ true, /*weak*/ false, /*encode*/ false, noreg, noreg);
     __ cset($res$$Register, Assembler::EQ);
   %}
 
@@ -10109,8 +10109,8 @@ instruct compareAndExchangeN_shenandoah(iRegNNoSp res, indirect mem, iRegN oldva
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::word, /*acquire*/ false, /*release*/ true, /*weak*/ false, $res$$Register);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ false, /*release*/ true, /*weak*/ false, /* encode*/ false, noreg, noreg, rscratch2, $res$$Register);
   %}
   ins_pipe(pipe_slow);
 %}
@@ -10142,8 +10142,8 @@ instruct compareAndExchangeP_shenandoah(iRegPNoSp res, indirect mem, iRegP oldva
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::xword, /*acquire*/ false, /*release*/ true, /*weak*/ false, $res$$Register);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ false, /*release*/ true, /*weak*/ false, /*encode*/ false, noreg, noreg, rscratch2, $res$$Register);
   %}
   ins_pipe(pipe_slow);
 %}
@@ -10248,8 +10248,8 @@ instruct weakCompareAndSwapN_shenandoah(iRegINoSp res, indirect mem, iRegN oldva
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::word, /*acquire*/ false, /*release*/ true, /*weak*/ true);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ false, /*release*/ true, /*weak*/ true, /*encode*/ false, noreg, noreg);
     __ csetw($res$$Register, Assembler::EQ);
   %}
   ins_pipe(pipe_slow);
@@ -10285,8 +10285,8 @@ instruct weakCompareAndSwapP_shenandoah(iRegINoSp res, indirect mem, iRegP oldva
   ins_encode %{
     Register tmp = $tmp$$Register;
     __ mov(tmp, $oldval$$Register); // Must not clobber oldval.
-    __ cmpxchg_oop_shenandoah($mem$$Register, tmp, $newval$$Register,
-                              Assembler::xword, /*acquire*/ false, /*release*/ true, /*weak*/ true);
+    __ cmpxchg_oop($mem$$Register, tmp, $newval$$Register,
+                   /*acquire*/ false, /*release*/ true, /*weak*/ true, /*encode*/ false, noreg, noreg);
     __ csetw($res$$Register, Assembler::EQ);
   %}
   ins_pipe(pipe_slow);

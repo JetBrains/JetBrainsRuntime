@@ -31,7 +31,9 @@
 #include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
 #endif
 
+#ifdef COMPILER1
 class ShenandoahPreBarrierStub;
+#endif
 
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 private:
@@ -70,8 +72,10 @@ private:
   void storeval_barrier_impl(MacroAssembler* masm, Register dst, Register tmp);
 
 public:
+#ifdef COMPILER1
   void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
   void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
+#endif
 
   virtual void cmpxchg_oop(MacroAssembler* masm, DecoratorSet decorators,
                            Register res, Address addr, Register oldval, Register newval,

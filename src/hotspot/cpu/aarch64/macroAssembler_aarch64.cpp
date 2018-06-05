@@ -2358,59 +2358,12 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
   }
 }
 
-void MacroAssembler::cmpxchg_oop_shenandoah(Register addr, Register expected,
-                                            Register new_val,
-                                            enum operand_size size,
-                                            bool acquire, bool release,
-                                            bool weak,
-                                            Register result, Register tmp2) {
-  assert(UseShenandoahGC, "only for shenandoah");
-  bool is_cae = (result != noreg);
-  bool is_narrow = (size == word);
-
-  if (! is_cae) result = rscratch1;
-
-  assert_different_registers(addr, expected, new_val, result, tmp2);
-
-  Label retry, done, fail;
-
-  // CAS, using LL/SC pair.
-  bind(retry);
-  load_exclusive(result, addr, size, acquire);
-  if (is_narrow) {
-    cmpw(result, expected);
-  } else {
-    cmp(result, expected);
-  }
-  br(Assembler::NE, fail);
-  store_exclusive(tmp2, new_val, addr, size, release);
-  if (weak) {
-    cmpw(tmp2, 0u); // If the store fails, return NE to our caller
-  } else {
-    cbnzw(tmp2, retry);
-  }
-  b(done);
-
-  bind(fail);
-  // Check if rb(expected)==rb(result)
-  // Shuffle registers so that we have memory value ready for next expected.
-  mov(tmp2, expected);
-  mov(expected, result);
-  if (is_narrow) {
-    decode_heap_oop(result, result);
-    decode_heap_oop(tmp2, tmp2);
-  }
-  resolve_for_read(0, result);
-  resolve_for_read(0,tmp2);
-  cmp(result, tmp2);
-  // Retry with expected now being the value we just loaded from addr.
-  br(Assembler::EQ, retry);
-  if (is_narrow && is_cae) {
-    // For cmp-and-exchange and narrow oops, we need to restore
-    // the compressed old-value. We moved it to 'expected' a few lines up.
-    mov(result, expected);
-  }
-  bind(done);
+void MacroAssembler::cmpxchg_oop(Register addr, Register expected, Register new_val,
+                                 bool acquire, bool release, bool weak, bool encode,
+                                 Register tmp1, Register tmp2,
+                                 Register tmp3, Register result) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, addr, expected, new_val, acquire, release, weak, encode, tmp1, tmp2, tmp3, result);
 }
 
 static bool different(Register a, RegisterOrConstant b, Register c) {
@@ -5159,11 +5112,14 @@ void MacroAssembler::arrays_equals(Register a1, Register a2, Register tmp3,
     BLOCK_COMMENT(comment);
   }
 #endif
+  resolve_for_write(IN_HEAP, a1);
+  resolve_for_write(IN_HEAP, a2);
+
   if (UseSimpleArrayEquals) {
     Label NEXT_WORD, SHORT, SAME, TAIL03, TAIL01, A_MIGHT_BE_NULL, A_IS_NOT_NULL;
     // if (a1==a2)
     //     return true;
-    cmpoop(a1, a2);
+    cmp(a1, a2);
     br(Assembler::EQ, SAME);
     // if (a==null || a2==null)
     //     return false;
