@@ -44,7 +44,6 @@ import jdk.javadoc.doclet.DocletEnvironment;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlConstants;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlVersion;
-import jdk.javadoc.internal.doclets.formats.html.markup.Links;
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocletException;
@@ -199,9 +198,9 @@ public class HtmlConfiguration extends BaseConfiguration {
 
     /**
      * Specifies whether or not frames should be generated.
-     * Defaults to true; can be set by --frames; can be set to false by --no-frames; last one wins.
+     * Defaults to false; can be set to true by --frames; can be set to false by --no-frames; last one wins.
      */
-    public boolean frames = true;
+    public boolean frames = false;
 
     /**
      * This is the HTML version of the generated pages.
@@ -367,7 +366,7 @@ public class HtmlConfiguration extends BaseConfiguration {
         docPaths = new DocPaths(utils, useModuleDirectories);
         setCreateOverview();
         setTopFile(docEnv);
-        workArounds.initDocLint(doclintOpts.values(), tagletManager.getCustomTagNames(),
+        workArounds.initDocLint(doclintOpts.values(), tagletManager.getAllTagletNames(),
                 Utils.toLowerCase(htmlVersion.name()));
         return true;
     }
@@ -741,6 +740,7 @@ public class HtmlConfiguration extends BaseConfiguration {
             new Option(resources, "--frames") {
                 @Override
                 public boolean process(String opt,  List<String> args) {
+                    reporter.print(WARNING, getText("doclet.Frames_specified", helpfile));
                     frames = true;
                     return true;
                 }
