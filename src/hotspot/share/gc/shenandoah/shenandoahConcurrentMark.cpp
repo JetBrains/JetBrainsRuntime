@@ -685,13 +685,6 @@ public:
   void execute(ProcessTask& task) {
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
-    // Shortcut execution if task is empty.
-    // This should be replaced with the generic ReferenceProcessor shortcut,
-    // see JDK-8181214, JDK-8043575, JDK-6938732.
-    if (task.is_empty()) {
-      return;
-    }
-
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConcurrentMark* cm = heap->concurrentMark();
     uint nworkers = _workers->active_workers();
@@ -777,7 +770,7 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
 
   ShenandoahRefProcTaskExecutor executor(workers);
 
-  ReferenceProcessorPhaseTimes pt(sh->gc_timer(), rp->num_q());
+  ReferenceProcessorPhaseTimes pt(sh->gc_timer(), rp->num_queues());
 
   {
     ShenandoahGCPhase phase(phase_process);

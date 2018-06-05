@@ -189,12 +189,13 @@ protected:
   void set_super(Klass* k)           { _super = k; }
 
   // initializes _super link, _primary_supers & _secondary_supers arrays
-  void initialize_supers(Klass* k, TRAPS);
+  void initialize_supers(Klass* k, Array<Klass*>* transitive_interfaces, TRAPS);
   void initialize_supers_impl1(Klass* k);
   void initialize_supers_impl2(Klass* k);
 
   // klass-specific helper for initializing _secondary_supers
-  virtual GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots);
+  virtual GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots,
+                                                          Array<Klass*>* transitive_interfaces);
 
   // java_super is the Java-level super type as specified by Class.getSuperClass.
   virtual Klass* java_super() const  { return NULL; }
@@ -637,9 +638,9 @@ protected:
   // Klass is considered alive.  Has already been marked as unloading.
   bool is_loader_alive() const { return !class_loader_data()->is_unloading(); }
 
-  static void clean_weak_klass_links(bool clean_alive_klasses = true);
+  static void clean_weak_klass_links(bool unloading_occurred, bool clean_alive_klasses = true);
   static void clean_subklass_tree() {
-    clean_weak_klass_links(false /* clean_alive_klasses */);
+    clean_weak_klass_links(/*unloading_occurred*/ true , /* clean_alive_klasses */ false);
   }
 
   // GC specific object visitors

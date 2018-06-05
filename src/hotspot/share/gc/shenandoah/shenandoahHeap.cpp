@@ -770,11 +770,14 @@ HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) 
   return gclab->allocate(size);
 }
 
-HeapWord* ShenandoahHeap::allocate_new_tlab(size_t word_size) {
+HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
+                                            size_t requested_size,
+                                            size_t* actual_size) {
 #ifdef ASSERT
-  log_debug(gc, alloc)("Allocate new tlab, requested size = " SIZE_FORMAT " bytes", word_size * HeapWordSize);
+  log_debug(gc, alloc)("Allocate new tlab, requested size = " SIZE_FORMAT " bytes", requested_size * HeapWordSize);
 #endif
-  return allocate_new_lab(word_size, _alloc_tlab);
+  *actual_size = requested_size;
+  return allocate_new_lab(requested_size, _alloc_tlab);
 }
 
 HeapWord* ShenandoahHeap::allocate_new_gclab(size_t word_size) {
@@ -1996,7 +1999,7 @@ void ShenandoahHeap::ref_processing_init() {
   assert(_max_workers > 0, "Sanity");
 
   _ref_processor =
-    new ReferenceProcessor(mr,    // span
+    new ReferenceProcessor(&_subject_to_discovery,  // is_subject_to_discovery
                            ParallelRefProcEnabled,  // MT processing
                            _max_workers,            // Degree of MT processing
                            true,                    // MT discovery

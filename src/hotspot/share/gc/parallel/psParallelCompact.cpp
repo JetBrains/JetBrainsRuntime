@@ -117,6 +117,7 @@ ParallelCompactData::RegionData::dc_completed = 0xcU << dc_shift;
 
 SpaceInfo PSParallelCompact::_space_info[PSParallelCompact::last_space_id];
 
+SpanSubjectToDiscoveryClosure PSParallelCompact::_span_based_discoverer;
 ReferenceProcessor* PSParallelCompact::_ref_processor = NULL;
 
 double PSParallelCompact::_dwl_mean;
@@ -843,14 +844,14 @@ bool PSParallelCompact::IsAliveClosure::do_object_b(oop p) { return mark_bitmap(
 
 void PSParallelCompact::post_initialize() {
   ParallelScavengeHeap* heap = ParallelScavengeHeap::heap();
-  MemRegion mr = heap->reserved_region();
+  _span_based_discoverer.set_span(heap->reserved_region());
   _ref_processor =
-    new ReferenceProcessor(mr,            // span
+    new ReferenceProcessor(&_span_based_discoverer,
                            ParallelRefProcEnabled && (ParallelGCThreads > 1), // mt processing
-                           ParallelGCThreads, // mt processing degree
-                           true,              // mt discovery
-                           ParallelGCThreads, // mt discovery degree
-                           true,              // atomic_discovery
+                           ParallelGCThreads,   // mt processing degree
+                           true,                // mt discovery
+                           ParallelGCThreads,   // mt discovery degree
+                           true,                // atomic_discovery
                            &_is_alive_closure); // non-header is alive closure
   _counters = new CollectorCounters("PSParallelCompact", 1);
 
@@ -1038,7 +1039,7 @@ void PSParallelCompact::post_compact()
   DerivedPointerTable::update_pointers();
 #endif
 
-  ReferenceProcessorPhaseTimes pt(&_gc_timer, ref_processor()->num_q());
+  ReferenceProcessorPhaseTimes pt(&_gc_timer, ref_processor()->num_queues());
 
   ref_processor()->enqueue_discovered_references(NULL, &pt);
 
@@ -2105,7 +2106,7 @@ void PSParallelCompact::marking_phase(ParCompactionManager* cm,
     GCTraceTime(Debug, gc, phases) tm("Reference Processing", &_gc_timer);
 
     ReferenceProcessorStats stats;
-    ReferenceProcessorPhaseTimes pt(&_gc_timer, ref_processor()->num_q());
+    ReferenceProcessorPhaseTimes pt(&_gc_timer, ref_processor()->num_queues());
     if (ref_processor()->processing_is_mt()) {
       RefProcTaskExecutor task_executor;
       stats = ref_processor()->process_discovered_references(
@@ -2139,7 +2140,7 @@ void PSParallelCompact::marking_phase(ParCompactionManager* cm,
     CodeCache::do_unloading(is_alive_closure(), purged_class);
 
     // Prune dead klasses from subklass/sibling/implementor lists.
-    Klass::clean_weak_klass_links();
+    Klass::clean_weak_klass_links(purged_class);
   }
 
   {

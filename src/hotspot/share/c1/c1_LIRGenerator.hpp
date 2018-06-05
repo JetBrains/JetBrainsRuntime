@@ -304,10 +304,13 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   LIR_Opr atomic_xchg(BasicType type, LIR_Opr addr, LIRItem& new_value);
   LIR_Opr atomic_add(BasicType type, LIR_Opr addr, LIRItem& new_value);
 
+#ifdef CARDTABLEBARRIERSET_POST_BARRIER_HELPER
+  virtual void CardTableBarrierSet_post_barrier_helper(LIR_OprDesc* addr, LIR_Const* card_table_base);
+#endif
+
   LIR_Opr access_resolve_for_read(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info);
   LIR_Opr access_resolve_for_write(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info);
 
-public:
   // specific implementations
   void array_store_check(LIR_Opr value, LIR_Opr array, CodeEmitInfo* store_check_info, ciMethod* profiled_method, int profiled_bci);
 

@@ -313,6 +313,7 @@ private:
 
   ShenandoahForwardedIsAliveClosure _forwarded_is_alive;
   ShenandoahIsAliveClosure _is_alive;
+  AlwaysTrueClosure _subject_to_discovery;
 
   ConcurrentGCTimer* _gc_timer;
 
@@ -338,7 +339,9 @@ public:
   ShenandoahHeap(ShenandoahCollectorPolicy* policy);
 
   const char* name() const /* override */;
-  HeapWord* allocate_new_tlab(size_t word_size) /* override */;
+  virtual HeapWord* allocate_new_tlab(size_t min_size,
+                                      size_t requested_size,
+                                      size_t* actual_size) /* override */;
   void print_on(outputStream* st) const /* override */;
   void print_extended_on(outputStream *st) const /* override */;
 

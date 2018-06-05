@@ -545,6 +545,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "SharedMiscDataSize",            JDK_Version::undefined(), JDK_Version::jdk(10), JDK_Version::undefined() },
   { "SharedMiscCodeSize",            JDK_Version::undefined(), JDK_Version::jdk(10), JDK_Version::undefined() },
   { "UseUTCFileTimestamp",           JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "UseAppCDS",                     JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
 
 #ifdef TEST_VERIFY_SPECIAL_JVM_FLAGS
   { "dep > obs",                    JDK_Version::jdk(9), JDK_Version::jdk(8), JDK_Version::undefined() },
@@ -3316,7 +3317,7 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
     FLAG_SET_ERGO(uintx, InitialTenuringThreshold, MaxTenuringThreshold);
   }
 
-#if !defined(COMPILER2) && !INCLUDE_JVMCI
+#if !COMPILER2_OR_JVMCI
   // Don't degrade server performance for footprint
   if (FLAG_IS_DEFAULT(UseLargePages) &&
       MaxHeapSize < LargePageHeapSizeThreshold) {
@@ -3332,7 +3333,7 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
   }
 #endif
 
-#if !defined(COMPILER2) && !INCLUDE_JVMCI
+#if !COMPILER2_OR_JVMCI
   UNSUPPORTED_OPTION(ProfileInterpreter);
   NOT_PRODUCT(UNSUPPORTED_OPTION(TraceProfileInterpreter));
 #endif
@@ -3889,14 +3890,6 @@ jint Arguments::match_special_option_and_act(const JavaVMInitArgs* args,
       vm_exit(0);
     }
 #endif
-
-    if (match_option(option, "-XX:+UseAppCDS")) {
-      JVMFlag* flag = JVMFlag::find_flag("SharedArchiveFile", 17, true, true);
-      if (flag->is_diagnostic()) {
-        flag->clear_diagnostic();
-      }
-      continue;
-    }
   }
   return JNI_OK;
 }

@@ -1956,6 +1956,11 @@ void MacroAssembler::decrement(Register reg, int value)
 void MacroAssembler::decrementw(Address dst, int value)
 {
   assert(!dst.uses(rscratch1), "invalid dst for address decrement");
+  if (dst.getMode() == Address::literal) {
+    assert(abs(value) < (1 << 12), "invalid value and address mode combination");
+    lea(rscratch2, dst);
+    dst = Address(rscratch2);
+  }
   ldrw(rscratch1, dst);
   decrementw(rscratch1, value);
   strw(rscratch1, dst);
@@ -1964,6 +1969,11 @@ void MacroAssembler::decrementw(Address dst, int value)
 void MacroAssembler::decrement(Address dst, int value)
 {
   assert(!dst.uses(rscratch1), "invalid address for decrement");
+  if (dst.getMode() == Address::literal) {
+    assert(abs(value) < (1 << 12), "invalid value and address mode combination");
+    lea(rscratch2, dst);
+    dst = Address(rscratch2);
+  }
   ldr(rscratch1, dst);
   decrement(rscratch1, value);
   str(rscratch1, dst);
@@ -1996,6 +2006,11 @@ void MacroAssembler::increment(Register reg, int value)
 void MacroAssembler::incrementw(Address dst, int value)
 {
   assert(!dst.uses(rscratch1), "invalid dst for address increment");
+  if (dst.getMode() == Address::literal) {
+    assert(abs(value) < (1 << 12), "invalid value and address mode combination");
+    lea(rscratch2, dst);
+    dst = Address(rscratch2);
+  }
   ldrw(rscratch1, dst);
   incrementw(rscratch1, value);
   strw(rscratch1, dst);
@@ -2004,6 +2019,11 @@ void MacroAssembler::incrementw(Address dst, int value)
 void MacroAssembler::increment(Address dst, int value)
 {
   assert(!dst.uses(rscratch1), "invalid dst for address increment");
+  if (dst.getMode() == Address::literal) {
+    assert(abs(value) < (1 << 12), "invalid value and address mode combination");
+    lea(rscratch2, dst);
+    dst = Address(rscratch2);
+  }
   ldr(rscratch1, dst);
   increment(rscratch1, value);
   str(rscratch1, dst);

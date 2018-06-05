@@ -1013,7 +1013,8 @@ public:
 
   // virtual operations from Klass
   bool is_leaf_class() const               { return _subklass == NULL; }
-  GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots);
+  GrowableArray<Klass*>* compute_secondary_supers(int num_extra_slots,
+                                                  Array<Klass*>* transitive_interfaces);
   bool compute_is_subtype_of(Klass* k);
   bool can_be_primary_super_slow() const;
   int oop_size(oop obj)  const             { return size_helper(); }
@@ -1149,9 +1150,11 @@ public:
 #endif // INCLUDE_JVMTI
 
   void clean_weak_instanceklass_links();
+ private:
   void clean_implementors_list();
   void clean_method_data();
 
+ public:
   // Explicit metaspace deallocation of fields
   // For RedefineClasses and class file parsing errors, we need to deallocate
   // instanceKlasses and the metadata they point to.

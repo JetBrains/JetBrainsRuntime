@@ -375,32 +375,17 @@ LIR_Address* LIRGenerator::generate_address(LIR_Opr base, LIR_Opr index,
 }
 
 
-LIR_Address* LIRGenerator::emit_array_address(LIR_Opr array_opr, LIR_Opr index_opr,
-                                              BasicType type, bool needs_card_mark) {
+LIR_Address* LIRGenerator::emit_array_address(LIR_Opr array_opr, LIR_Opr index_opr, BasicType type) {
   int base_offset = arrayOopDesc::base_offset_in_bytes(type);
   int elem_size = type2aelembytes(type);
 
   if (index_opr->is_constant()) {
     int offset = base_offset + index_opr->as_constant_ptr()->as_jint() * elem_size;
-    if (needs_card_mark) {
-      LIR_Opr base_opr = new_pointer_register();
-      add_large_constant(array_opr, offset, base_opr);
-      return new LIR_Address(base_opr, (intx)0, type);
-    } else {
-      return generate_address(array_opr, offset, type);
-    }
+    return generate_address(array_opr, offset, type);
   } else {
     assert(index_opr->is_register(), "must be");
     int scale = exact_log2(elem_size);
-    if (needs_card_mark) {
-      LIR_Opr base_opr = new_pointer_register();
-      LIR_Address* addr = make_address(base_opr, index_opr, (LIR_Address::Scale)scale, type);
-      __ add(array_opr, LIR_OprFact::intptrConst(base_offset), base_opr);
-      __ add(base_opr, LIR_OprFact::address(addr), base_opr); // add with shifted/extended register
-      return new LIR_Address(base_opr, type);
-    } else {
-      return generate_address(array_opr, index_opr, scale, base_offset, type);
-    }
+    return generate_address(array_opr, index_opr, scale, base_offset, type);
   }
 }
 
@@ -501,6 +486,9 @@ void LIRGenerator::set_card(LIR_Opr value, LIR_Address* card_addr) {
 void LIRGenerator::CardTableBarrierSet_post_barrier_helper(LIR_OprDesc* addr, LIR_Const* card_table_base) {
   assert(addr->is_register(), "must be a register at this point");
 
+  CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(BarrierSet::barrier_set());
+  CardTable* ct = ctbs->card_table();
+
   LIR_Opr tmp = FrameMap::LR_ptr_opr;
 
   // TODO-AARCH64: check performance
@@ -522,7 +510,7 @@ void LIRGenerator::CardTableBarrierSet_post_barrier_helper(LIR_OprDesc* addr, LI
   LIR_Address* card_addr = new LIR_Address(tmp, addr, (LIR_Address::Scale) -CardTable::card_shift, 0, T_BOOLEAN);
 #endif
   if (UseCondCardMark) {
-    if (UseConcMarkSweepGC) {
+    if (ct->scanned_concurrently()) {
       __ membar_storeload();
     }
     LIR_Opr cur_value = new_register(T_INT);
@@ -534,11 +522,9 @@ void LIRGenerator::CardTableBarrierSet_post_barrier_helper(LIR_OprDesc* addr, LI
     set_card(tmp, card_addr);
     __ branch_destination(L_already_dirty->label());
   } else {
-#if INCLUDE_ALL_GCS
-    if (UseConcMarkSweepGC && CMSPrecleaningEnabled) {
+    if (ct->scanned_concurrently()) {
       __ membar_storestore();
     }
-#endif
     set_card(tmp, card_addr);
   }
 }
@@ -1024,7 +1010,7 @@ LIR_Opr LIRGenerator::atomic_xchg(BasicType type, LIR_Opr addr, LIRItem& value) 
   value.load_item();
   assert(type == T_INT || is_oop LP64_ONLY( || type == T_LONG ), "unexpected type");
   LIR_Opr tmp = (UseCompressedOops && is_oop) ? new_pointer_register() : LIR_OprFact::illegalOpr;
-  __ xchg(addr_ptr, data, dst, tmp);
+  __ xchg(addr, value.result(), result, tmp);
   return result;
 }
 
@@ -1335,7 +1321,7 @@ void LIRGenerator::do_BlockBegin(BlockBegin* x) {
 void LIRGenerator::do_CheckCast(CheckCast* x) {
   LIRItem obj(x->obj(), this);
   CodeEmitInfo* patching_info = NULL;
-  if (!x->klass()->is_loaded() || (PatchALot && !x->is_incompatible_class_change_check())) {
+  if (!x->klass()->is_loaded() || (PatchALot && !x->is_incompatible_class_change_check() && !x->is_invokespecial_receiver_check())) {
     patching_info = state_for(x, x->state_before());
   }
 
