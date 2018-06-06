@@ -318,7 +318,7 @@ LIR_Opr ShenandoahBarrierSetC1::atomic_xchg_at(LIRAccess& access, LIRItem& value
                   LIR_OprFact::illegalOpr /* pre_val */);
     }
   }
-  LIR_Opr result = BarrierSetC1::atomic_xchg_at(access, value);
+  LIR_Opr result = BarrierSetC1::atomic_xchg_at_resolved(access, value);
   if (access.is_oop() && UseShenandoahMatrix) {
     post_barrier(access, access.resolved_addr(), value.result());
   }
