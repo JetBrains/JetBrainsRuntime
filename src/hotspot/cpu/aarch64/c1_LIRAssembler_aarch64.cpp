@@ -1120,7 +1120,7 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
 
   Register obj = op->in_opr()->as_register();

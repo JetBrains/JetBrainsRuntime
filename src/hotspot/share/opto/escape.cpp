@@ -39,9 +39,9 @@
 #include "opto/movenode.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/shenandoahSupport.hpp"
-#if INCLUDE_ALL_GCS
+#if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
-#endif // INCLUDE_ALL_GCS
+#endif // INCLUDE_G1GC
 
 ConnectionGraph::ConnectionGraph(Compile * C, PhaseIterGVN *igvn) :
   _nodes(C->comp_arena(), C->unique(), C->unique(), NULL),
@@ -540,6 +540,7 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
           // Pointer stores in G1 barriers looks like unsafe access.
           // Ignore such stores to be able scalar replace non-escaping
           // allocations.
+#if INCLUDE_G1GC || INCLUDE_SHENANDOAHGC
           if ((UseG1GC || UseShenandoahGC) && adr->is_AddP()) {
             Node* base = get_addp_base(adr);
             if (base->Opcode() == Op_LoadP &&
@@ -558,6 +559,7 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
               }
             }
           }
+#endif
           delayed_worklist->push(n); // Process unsafe access later.
           break;
         }

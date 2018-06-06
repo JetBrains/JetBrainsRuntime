@@ -194,7 +194,7 @@ class LIR_Assembler: public CompilationResourceObj {
   void emit_opLabel(LIR_OpLabel* op);
   void emit_arraycopy(LIR_OpArrayCopy* op);
   void emit_updatecrc32(LIR_OpUpdateCRC32* op);
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
   void emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op);
 #endif
   void emit_opConvert(LIR_OpConvert* op);

@@ -297,9 +297,9 @@ class MacroAssembler: public Assembler {
   void clear_jweak_tag(Register possibly_jweak);
   void resolve_jobject(Register value, Register thread, Register tmp);
 
-#ifdef INCLUDE_ALL_GCS
+#ifdef INCLUDE_SHENANDOAHGC
   void shenandoah_write_barrier(Register dst);
-#endif // INCLUDE_ALL_GCS
+#endif // INCLUDE_SHENANDOAHGC
 
   // C 'boolean' to Java boolean: x == 0 ? 0 : 1
   void c2bool(Register x);

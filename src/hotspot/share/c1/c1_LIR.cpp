@@ -916,7 +916,7 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
       do_temp(opProfileType->_tmp);
       break;
     }
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
     case lir_shenandoah_wb: {
       assert(op->as_OpShenandoahWriteBarrier() != NULL, "must be");
       LIR_OpShenandoahWriteBarrier* opShenandoahWB = (LIR_OpShenandoahWriteBarrier*) op;
@@ -1023,7 +1023,7 @@ void LIR_OpBranch::emit_code(LIR_Assembler* masm) {
   }
 }
 
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 void LIR_OpShenandoahWriteBarrier::emit_code(LIR_Assembler* masm) {
   masm->emit_opShenandoahWriteBarrier(this);
 }
@@ -1755,7 +1755,7 @@ const char * LIR_Op::name() const {
   return s;
 }
 
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 void LIR_OpShenandoahWriteBarrier::print_instr(outputStream* out) const {
   out->print("[obj: "); in_opr()->print(out); out->print("]");
   out->print("[res: "); result_opr()->print(out); out->print("]");

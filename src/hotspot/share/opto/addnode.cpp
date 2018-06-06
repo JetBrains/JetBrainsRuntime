@@ -31,8 +31,10 @@
 #include "opto/machnode.hpp"
 #include "opto/mulnode.hpp"
 #include "opto/phaseX.hpp"
-#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "opto/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 

@@ -794,42 +794,6 @@ public:
 
   void resolve_jobject(Register value, Register thread, Register tmp);
 
-#if INCLUDE_ALL_GCS
-
-  void g1_write_barrier_pre(Register obj,
-                            Register pre_val,
-                            Register thread,
-                            Register tmp,
-                            bool tosca_live,
-                            bool expand_call);
-
-  void g1_write_barrier_post(Register store_addr,
-                             Register new_val,
-                             Register thread,
-                             Register tmp,
-                             Register tmp2);
-
-  void shenandoah_write_barrier_pre(Register obj,
-                                    Register pre_val,
-                                    Register thread,
-                                    Register tmp,
-                                    bool tosca_live,
-                                    bool expand_call);
-
-  void shenandoah_write_barrier_post(Register store_addr,
-                                     Register new_val,
-                                     Register thread,
-                                     Register tmp,
-                                     Register tmp2);
-
-  void keep_alive_barrier(Register val,
-                          Register thread,
-                          Register tmp);
-
-  void shenandoah_write_barrier(Register dst);
-
-#endif // INCLUDE_ALL_GCS
-
   // oop manipulations
   void load_klass(Register dst, Register src);
   void store_klass(Register dst, Register src);

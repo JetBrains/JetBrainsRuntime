@@ -25,7 +25,7 @@
 #ifndef SHARE_VM_OPTO_MEMNODE_HPP
 #define SHARE_VM_OPTO_MEMNODE_HPP
 
-#ifdef INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #endif
 #include "opto/multnode.hpp"
@@ -275,6 +275,7 @@ public:
   // Helper function to allow a raw load without control edge for some cases
   static bool is_immutable_value(Node* adr);
 #endif
+#if INCLUDE_SHENANDOAHGC
   virtual bool is_shenandoah_state_load() const {
     if (!UseShenandoahGC) return false;
     const int state_offset = in_bytes(ShenandoahThreadLocalData::gc_state_offset());
@@ -282,6 +283,7 @@ public:
       && in(2)->in(3)->is_Con()
       && in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == state_offset;
   }
+#endif
 
 protected:
   const Type* load_array_final_field(const TypeKlassPtr *tkls,

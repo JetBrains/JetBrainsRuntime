@@ -52,7 +52,7 @@
 #ifdef COMPILER2
 #include "opto/intrinsicnode.hpp"
 #endif
-#ifdef INCLUDE_ALL_GCS
+#ifdef INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #endif
 
@@ -5283,7 +5283,7 @@ void MacroAssembler::resolve_jobject(Register value,
   bind(done);
 }
 
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 #ifndef _LP64
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
   Unimplemented();
@@ -5324,7 +5324,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 }
 #endif // _LP64
 
-#endif // INCLUDE_ALL_GCS
+#endif // INCLUDE_SHENANDOAHGC
 
 void MacroAssembler::subptr(Register dst, int32_t imm32) {
   LP64_ONLY(subq(dst, imm32)) NOT_LP64(subl(dst, imm32));

@@ -28,7 +28,7 @@
 #include "metaprogramming/integralConstant.hpp"
 #include "metaprogramming/primitiveConversions.hpp"
 #include "runtime/globals.hpp"
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoah_globals.hpp"
 #endif
 #include "utilities/globalDefinitions.hpp"
@@ -105,7 +105,7 @@ public:
   // General access
   oopDesc*  operator->() const        { return obj(); }
   bool operator==(const oop o) const  {
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
     if (VerifyStrictOopOperations) {
       ShouldNotReachHere();
     }
@@ -113,7 +113,7 @@ public:
     return obj() == o.obj();
   }
   bool operator==(void *p) const      {
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
     if (p != NULL && VerifyStrictOopOperations) {
       ShouldNotReachHere();
     }
@@ -121,7 +121,7 @@ public:
     return obj() == p;
   }
   bool operator!=(const volatile oop o) const  {
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
     if (VerifyStrictOopOperations) {
       ShouldNotReachHere();
     }
@@ -129,7 +129,7 @@ public:
     return obj() != o.obj();
   }
   bool operator!=(void *p) const      {
-#if INCLUDE_ALL_GCS
+#if INCLUDE_SHENANDOAHGC
     if (p != NULL && VerifyStrictOopOperations) {
       ShouldNotReachHere();
     }

@@ -27,18 +27,11 @@
 
 #include "utilities/macros.hpp"
 
-#if INCLUDE_ALL_GCS
-#define FOR_EACH_CONCRETE_INCLUDE_ALL_GC_BARRIER_SET_DO(f) \
-  f(G1BarrierSet)                                          \
-  f(Shenandoah)
-#else
-#define FOR_EACH_CONCRETE_INCLUDE_ALL_GC_BARRIER_SET_DO(f)
-#endif
-
 // Do something for each concrete barrier set part of the build.
 #define FOR_EACH_CONCRETE_BARRIER_SET_DO(f)          \
   f(CardTableBarrierSet)                             \
-  FOR_EACH_CONCRETE_INCLUDE_ALL_GC_BARRIER_SET_DO(f)
+  G1GC_ONLY(f(G1BarrierSet))                         \
+  SHENANDOAHGC_ONLY(f(Shenandoah))
 
 #define FOR_EACH_ABSTRACT_BARRIER_SET_DO(f)          \
   f(ModRef)

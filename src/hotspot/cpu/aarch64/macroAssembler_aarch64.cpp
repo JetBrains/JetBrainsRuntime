@@ -54,11 +54,6 @@
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
-#if INCLUDE_ALL_GCS
-#include "gc/g1/g1BarrierSet.hpp"
-#include "gc/g1/g1CardTable.hpp"
-#include "gc/g1/heapRegion.hpp"
-#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -4067,7 +4062,7 @@ void MacroAssembler::store_heap_oop_null(Address dst) {
   access_store_at(T_OBJECT, IN_HEAP, dst, noreg, noreg, noreg);
 }
 
-#ifdef INCLUDE_ALL_GCS
+#ifdef INCLUDE_SHENANDOAHGC
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
   assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
   assert(dst != rscratch1, "need rscratch1");
@@ -4108,7 +4103,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
 
   bind(done);
 }
-#endif // INCLUDE_ALL_GCS
+#endif // INCLUDE_SHENANDOAHGC
 
 Address MacroAssembler::allocate_metadata_address(Metadata* obj) {
   assert(oop_recorder() != NULL, "this assembler needs a Recorder");
