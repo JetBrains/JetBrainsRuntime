@@ -29,22 +29,18 @@ import java.awt.Image;
 import java.awt.PopupMenu;
 import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.desktop.*;
 import java.awt.desktop.AboutHandler;
 import java.awt.desktop.AppForegroundListener;
 import java.awt.desktop.AppHiddenListener;
-import java.awt.desktop.AppReopenedListener;
-import java.awt.desktop.OpenFilesEvent;
 import java.awt.desktop.OpenFilesHandler;
-import java.awt.desktop.OpenURIEvent;
 import java.awt.desktop.OpenURIHandler;
 import java.awt.desktop.PreferencesHandler;
-import java.awt.desktop.PrintFilesEvent;
 import java.awt.desktop.PrintFilesHandler;
 import java.awt.desktop.QuitHandler;
 import java.awt.desktop.QuitResponse;
 import java.awt.desktop.QuitStrategy;
 import java.awt.desktop.ScreenSleepListener;
-import java.awt.desktop.SystemEventListener;
 import java.awt.desktop.SystemSleepListener;
 import java.awt.desktop.UserSessionListener;
 import java.beans.Beans;
@@ -169,6 +165,10 @@ public class Application {
         eventHandler.aboutDispatcher.setHandler(aboutHandler);
     }
 
+    public void setAboutHandler(com.apple.eawt.AboutHandler handler) {
+        setAboutHandler((AboutHandler) e -> handler.handleAbout(new AppEvent.AboutEvent(e.getSource())));
+    }
+
     /**
      * Installs a handler to create the Preferences menu item in your application's app menu.
      *
@@ -182,6 +182,12 @@ public class Application {
         eventHandler.preferencesDispatcher.setHandler(preferencesHandler);
     }
 
+    public void setPreferencesHandler(com.apple.eawt.PreferencesHandler handler) {
+        setPreferencesHandler((PreferencesHandler) e -> {
+            handler.handlePreferences(new AppEvent.PreferencesEvent(e.getSource()));
+        });
+    }
+
     /**
      * Installs the handler which is notified when the application is asked to open a list of files.
      * The {@link OpenFilesHandler#openFiles(OpenFilesEvent)} notifications are only sent if the Java app is a bundled application, with a {@code CFBundleDocumentTypes} array present in it's Info.plist.
@@ -193,6 +199,11 @@ public class Application {
      */
     public void setOpenFileHandler(final OpenFilesHandler openFileHandler) {
         eventHandler.openFilesDispatcher.setHandler(openFileHandler);
+    }
+
+    public void setOpenFileHandler(com.apple.eawt.OpenFilesHandler openFileHandler) {
+        eventHandler.openFilesDispatcher.setHandler(
+                e -> openFileHandler.openFiles(new AppEvent.OpenFilesEvent(e.getFiles(), e.getSearchTerm())));
     }
 
     /**
@@ -223,6 +234,11 @@ public class Application {
         eventHandler.openURIDispatcher.setHandler(openURIHandler);
     }
 
+    public void setOpenURIHandler(com.apple.eawt.OpenURIHandler openURIHandler) {
+        eventHandler.openURIDispatcher.setHandler(
+                e -> openURIHandler.openURI(new AppEvent.OpenURIEvent(e.getURI())));
+    }
+
     /**
      * Installs the handler which determines if the application should quit.
      * The handler is passed a one-shot {@link QuitResponse} which can cancel or proceed with the quit.
@@ -234,6 +250,13 @@ public class Application {
      */
     public void setQuitHandler(final QuitHandler quitHandler) {
         eventHandler.quitDispatcher.setHandler(quitHandler);
+    }
+
+    public void setQuitHandler(com.apple.eawt.QuitHandler quitHandler) {
+        setQuitHandler(
+                (QuitHandler) (e, response) ->
+                        quitHandler.handleQuitRequestWith(
+                                new AppEvent.QuitEvent(e.getSource()), new com.apple.eawt.QuitResponse(response)));
     }
 
     /**
