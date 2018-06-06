@@ -65,6 +65,7 @@
 #include "gc/shenandoah/heuristics/shenandoahPassiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
 
+#include "memory/metaspace.hpp"
 #include "runtime/vmThread.hpp"
 #include "services/mallocTracker.hpp"
 
@@ -582,6 +583,9 @@ void ShenandoahHeap::print_on(outputStream* st) const {
   st->print_cr(" - [" PTR_FORMAT ", " PTR_FORMAT ") ",
                p2i(reserved_region().start()),
                p2i(reserved_region().end()));
+
+  st->cr();
+  MetaspaceUtils::print_on(st);
 
   if (UseShenandoahMatrix) {
     st->print_cr("Matrix:");
