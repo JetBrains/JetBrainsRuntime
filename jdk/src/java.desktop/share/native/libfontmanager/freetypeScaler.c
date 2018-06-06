@@ -73,7 +73,7 @@
 #define  FTFixedToFloat(x) ((x) / (float)(ftFixed1))
 #define  FT26Dot6ToFloat(x)  ((x) / ((float) (1<<6)))
 #define  FT26Dot6ToDouble(x)  ((x) / ((double) (1<<6)))
-#define  ROUND(x) ((int) ((x<0) ? (x-0.5) : (x+0.5)))
+#define  ROUND(x) ((int) (x+0.5))
 #define  DEFAULT_DPI 72
 #define  MAX_DPI 1024
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
