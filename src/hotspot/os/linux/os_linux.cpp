@@ -425,18 +425,6 @@ extern "C" void breakpoint() {
 debug_only(static bool signal_sets_initialized = false);
 static sigset_t unblocked_sigs, vm_sigs;
 
-bool os::Linux::is_sig_ignored(int sig) {
-  struct sigaction oact;
-  sigaction(sig, (struct sigaction*)NULL, &oact);
-  void* ohlr = oact.sa_sigaction ? CAST_FROM_FN_PTR(void*,  oact.sa_sigaction)
-                                 : CAST_FROM_FN_PTR(void*,  oact.sa_handler);
-  if (ohlr == CAST_FROM_FN_PTR(void*, SIG_IGN)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void os::Linux::signal_sets_init() {
   // Should also have an assertion stating we are still single-threaded.
   assert(!signal_sets_initialized, "Already initialized");
@@ -464,13 +452,13 @@ void os::Linux::signal_sets_init() {
   sigaddset(&unblocked_sigs, SR_signum);
 
   if (!ReduceSignalUsage) {
-    if (!os::Linux::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN1_SIGNAL);
     }
-    if (!os::Linux::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN2_SIGNAL);
     }
-    if (!os::Linux::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN3_SIGNAL);
     }
   }
@@ -2892,6 +2880,10 @@ void os::Linux::sched_getcpu_init() {
     set_sched_getcpu(CAST_TO_FN_PTR(sched_getcpu_func_t,
                                     (void*)&sched_getcpu_syscall));
   }
+
+  if (sched_getcpu() == -1) {
+    vm_exit_during_initialization("getcpu(2) system call not supported by kernel");
+  }
 }
 
 // Something to do with the numa-aware allocator needs these symbols
@@ -5247,6 +5239,12 @@ int os::active_processor_count() {
   }
 
   return active_cpus;
+}
+
+uint os::processor_id() {
+  const int id = Linux::sched_getcpu();
+  assert(id >= 0 && id < _processor_count, "Invalid processor id");
+  return (uint)id;
 }
 
 void os::set_native_thread_name(const char *name) {

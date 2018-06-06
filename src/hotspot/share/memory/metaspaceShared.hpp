@@ -113,6 +113,9 @@ class MetaspaceShared : AllStatic {
   static oop archive_heap_object(oop obj, Thread* THREAD);
   static void archive_klass_objects(Thread* THREAD);
 #endif
+
+  static bool is_archive_object(oop p) NOT_CDS_JAVA_HEAP_RETURN_(false);
+
   static bool is_heap_object_archiving_allowed() {
     CDS_JAVA_HEAP_ONLY(return (UseG1GC && UseCompressedOops && UseCompressedClassPointers);)
     NOT_CDS_JAVA_HEAP(return false;)
@@ -147,6 +150,7 @@ class MetaspaceShared : AllStatic {
   }
   static void initialize_dumptime_shared_and_meta_spaces() NOT_CDS_RETURN;
   static void initialize_runtime_shared_and_meta_spaces() NOT_CDS_RETURN;
+  static void post_initialize(TRAPS) NOT_CDS_RETURN;
 
   // Delta of this object from the bottom of the archive.
   static uintx object_delta(void* obj) {
@@ -250,5 +254,8 @@ class MetaspaceShared : AllStatic {
   static void relocate_klass_ptr(oop o);
 
   static Klass* get_relocated_klass(Klass *k);
+
+private:
+  static void read_extra_data(const char* filename, TRAPS) NOT_CDS_RETURN;
 };
 #endif // SHARE_VM_MEMORY_METASPACESHARED_HPP

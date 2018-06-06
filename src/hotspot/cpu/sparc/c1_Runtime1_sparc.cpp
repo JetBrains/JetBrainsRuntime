@@ -236,12 +236,12 @@ void C1_MacroAssembler::restore_live_registers(bool restore_fpu_registers) {
 #define __ sasm->
 
 static OopMap* save_live_registers(StubAssembler* sasm, bool save_fpu_registers = true) {
-  sasm->save_live_registers_no_oop_map(save_fpu_registers);
+  __ save_live_registers_no_oop_map(save_fpu_registers);
   return generate_oop_map(sasm, save_fpu_registers);
 }
 
 static void restore_live_registers(StubAssembler* sasm, bool restore_fpu_registers = true) {
-  sasm->restore_live_registers(restore_fpu_registers);
+  __ restore_live_registers(restore_fpu_registers);
 }
 
 
@@ -302,7 +302,7 @@ OopMapSet* Runtime1::generate_exception_throw(StubAssembler* sasm, address targe
   if (!has_argument) {
     call_offset = __ call_RT(noreg, noreg, target);
   } else {
-    call_offset = __ call_RT(noreg, noreg, target, G4);
+    call_offset = __ call_RT(noreg, noreg, target, G4, G5);
   }
   OopMapSet* oop_maps = new OopMapSet();
   oop_maps->add_gc_map(call_offset, oop_map);

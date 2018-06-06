@@ -414,10 +414,37 @@ bool PhaseIdealLoop::is_counted_loop(Node* x, IdealLoopTree*& loop) {
   Node* trunc1 = NULL;
   Node* trunc2 = NULL;
   const TypeInt* iv_trunc_t = NULL;
+  Node* orig_incr = incr;
   if (!(incr = CountedLoopNode::match_incr_with_optional_truncation(incr, &trunc1, &trunc2, &iv_trunc_t))) {
     return false; // Funny increment opcode
   }
   assert(incr->Opcode() == Op_AddI, "wrong increment code");
+
+  const TypeInt* limit_t = gvn->type(limit)->is_int();
+  if (trunc1 != NULL) {
+    // When there is a truncation, we must be sure that after the truncation
+    // the trip counter will end up higher than the limit, otherwise we are looking
+    // at an endless loop. Can happen with range checks.
+
+    // Example:
+    // int i = 0;
+    // while (true)
+    //    sum + = array[i];
+    //    i++;
+    //    i = i && 0x7fff;
+    //  }
+    //
+    // If the array is shorter than 0x8000 this exits through a AIOOB
+    //  - Counted loop transformation is ok
+    // If the array is longer then this is an endless loop
+    //  - No transformation can be done.
+
+    const TypeInt* incr_t = gvn->type(orig_incr)->is_int();
+    if (limit_t->_hi > incr_t->_hi) {
+      // if the limit can have a higher value than the increment (before the phi)
+      return false;
+    }
+  }
 
   // Get merge point
   Node *xphi = incr->in(1);
@@ -500,7 +527,6 @@ bool PhaseIdealLoop::is_counted_loop(Node* x, IdealLoopTree*& loop) {
   }
 
   const TypeInt* init_t = gvn->type(init_trip)->is_int();
-  const TypeInt* limit_t = gvn->type(limit)->is_int();
 
   if (stride_con > 0) {
     jlong init_p = (jlong)init_t->_lo + stride_con;
@@ -2631,9 +2657,6 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   int old_progress = C->major_progress();
   uint orig_worklist_size = _igvn._worklist.size();
 
-  // Reset major-progress flag for the driver's heuristics
-  C->clear_major_progress();
-
 #ifndef PRODUCT
   // Capture for later assert
   uint unique = C->unique();
@@ -2704,11 +2727,16 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   if( !_verify_me && !_verify_only && _ltree_root->_child ) {
     C->print_method(PHASE_BEFORE_BEAUTIFY_LOOPS, 3);
     if( _ltree_root->_child->beautify_loops( this ) ) {
+      // IdealLoopTree::split_outer_loop may produce phi-nodes with a single in edge.
+      // Transform them away.
+      _igvn.optimize();
+
       // Re-build loop tree!
       _ltree_root->_child = NULL;
       _nodes.clear();
       reallocate_preorders();
       build_loop_tree();
+
       // Check for bailout, and return
       if (C->failing()) {
         return;
@@ -2719,6 +2747,9 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
       C->print_method(PHASE_AFTER_BEAUTIFY_LOOPS, 3);
     }
   }
+
+  // Reset major-progress flag for the driver's heuristics
+  C->clear_major_progress();
 
   // Build Dominators for elision of NULL checks & loop finding.
   // Since nodes do not have a slot for immediate dominator, make
@@ -3252,10 +3283,16 @@ void PhaseIdealLoop::set_idom(Node* d, Node* n, uint dom_depth) {
 void PhaseIdealLoop::recompute_dom_depth() {
   uint no_depth_marker = C->unique();
   uint i;
-  // Initialize depth to "no depth yet"
+  // Initialize depth to "no depth yet" and realize all lazy updates
   for (i = 0; i < _idom_size; i++) {
+    // Only indices with a _dom_depth has a Node* or NULL (otherwise uninitalized).
     if (_dom_depth[i] > 0 && _idom[i] != NULL) {
-     _dom_depth[i] = no_depth_marker;
+      _dom_depth[i] = no_depth_marker;
+
+      // heal _idom if it has a fwd mapping in _nodes
+      if (_idom[i]->in(0) == NULL) {
+        idom(i);
+      }
     }
   }
   if (_dom_stk == NULL) {

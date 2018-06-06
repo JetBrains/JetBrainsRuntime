@@ -31,7 +31,6 @@
 #include "classfile/compactHashtable.inline.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/javaClasses.hpp"
-#include "classfile/sharedClassUtil.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/systemDictionaryShared.hpp"
@@ -61,20 +60,6 @@ objArrayOop SystemDictionaryShared::_shared_protection_domains  =  NULL;
 objArrayOop SystemDictionaryShared::_shared_jar_urls            =  NULL;
 objArrayOop SystemDictionaryShared::_shared_jar_manifests       =  NULL;
 
-static Mutex* SharedDictionary_lock = NULL;
-
-void SystemDictionaryShared::initialize(TRAPS) {
-  if (_java_system_loader != NULL) {
-    SharedDictionary_lock = new Mutex(Mutex::leaf, "SharedDictionary_lock", true);
-
-    // These classes need to be initialized before calling get_shared_jar_manifest(), etc.
-    SystemDictionary::ByteArrayInputStream_klass()->initialize(CHECK);
-    SystemDictionary::File_klass()->initialize(CHECK);
-    SystemDictionary::Jar_Manifest_klass()->initialize(CHECK);
-    SystemDictionary::CodeSource_klass()->initialize(CHECK);
-  }
-}
-
 oop SystemDictionaryShared::shared_protection_domain(int index) {
   return _shared_protection_domains->obj_at(index);
 }
@@ -89,43 +74,30 @@ oop SystemDictionaryShared::shared_jar_manifest(int index) {
 
 
 Handle SystemDictionaryShared::get_shared_jar_manifest(int shared_path_index, TRAPS) {
-  Handle empty;
   Handle manifest ;
   if (shared_jar_manifest(shared_path_index) == NULL) {
-    SharedClassPathEntryExt* ent = (SharedClassPathEntryExt*)FileMapInfo::shared_path(shared_path_index);
+    SharedClassPathEntry* ent = FileMapInfo::shared_path(shared_path_index);
     long size = ent->manifest_size();
     if (size <= 0) {
-      return empty; // No manifest - return NULL handle
+      return Handle();
     }
 
     // ByteArrayInputStream bais = new ByteArrayInputStream(buf);
-    InstanceKlass* bais_klass = SystemDictionary::ByteArrayInputStream_klass();
-    Handle bais = bais_klass->allocate_instance_handle(CHECK_(empty));
-    {
-      const char* src = ent->manifest();
-      assert(src != NULL, "No Manifest data");
-      typeArrayOop buf = oopFactory::new_byteArray(size, CHECK_(empty));
-      typeArrayHandle bufhandle(THREAD, buf);
-      char* dst = (char*)(buf->byte_at_addr(0));
-      memcpy(dst, src, (size_t)size);
+    const char* src = ent->manifest();
+    assert(src != NULL, "No Manifest data");
+    typeArrayOop buf = oopFactory::new_byteArray(size, CHECK_NH);
+    typeArrayHandle bufhandle(THREAD, buf);
+    char* dst = (char*)(buf->byte_at_addr(0));
+    memcpy(dst, src, (size_t)size);
 
-      JavaValue result(T_VOID);
-      JavaCalls::call_special(&result, bais, bais_klass,
-                              vmSymbols::object_initializer_name(),
-                              vmSymbols::byte_array_void_signature(),
-                              bufhandle, CHECK_(empty));
-    }
+    Handle bais = JavaCalls::construct_new_instance(SystemDictionary::ByteArrayInputStream_klass(),
+                      vmSymbols::byte_array_void_signature(),
+                      bufhandle, CHECK_NH);
 
     // manifest = new Manifest(bais)
-    InstanceKlass* manifest_klass = SystemDictionary::Jar_Manifest_klass();
-    manifest = manifest_klass->allocate_instance_handle(CHECK_(empty));
-    {
-      JavaValue result(T_VOID);
-      JavaCalls::call_special(&result, manifest, manifest_klass,
-                              vmSymbols::object_initializer_name(),
-                              vmSymbols::input_stream_void_signature(),
-                              bais, CHECK_(empty));
-    }
+    manifest = JavaCalls::construct_new_instance(SystemDictionary::Jar_Manifest_klass(),
+                      vmSymbols::input_stream_void_signature(),
+                      bais, CHECK_NH);
     atomic_set_shared_jar_manifest(shared_path_index, manifest());
   }
 
@@ -142,10 +114,10 @@ Handle SystemDictionaryShared::get_shared_jar_url(int shared_path_index, TRAPS) 
     Handle path_string = java_lang_String::create_from_str(path, CHECK_(url_h));
     Klass* classLoaders_klass =
         SystemDictionary::jdk_internal_loader_ClassLoaders_klass();
-        JavaCalls::call_static(&result, classLoaders_klass,
-                               vmSymbols::toFileURL_name(),
-                               vmSymbols::toFileURL_signature(),
-                               path_string, CHECK_(url_h));
+    JavaCalls::call_static(&result, classLoaders_klass,
+                           vmSymbols::toFileURL_name(),
+                           vmSymbols::toFileURL_signature(),
+                           path_string, CHECK_(url_h));
 
     atomic_set_shared_jar_url(shared_path_index, (oop)result.get_jobject());
   }
@@ -175,7 +147,7 @@ void SystemDictionaryShared::define_shared_package(Symbol*  class_name,
                                                    Handle manifest,
                                                    Handle url,
                                                    TRAPS) {
-  assert(class_loader == _java_system_loader, "unexpected class loader");
+  assert(SystemDictionary::is_system_class_loader(class_loader()), "unexpected class loader");
   // get_package_name() returns a NULL handle if the class is in unnamed package
   Handle pkgname_string = get_package_name(class_name, CHECK);
   if (pkgname_string.not_null()) {
@@ -229,13 +201,9 @@ void SystemDictionaryShared::define_shared_package(Symbol* class_name,
 Handle SystemDictionaryShared::get_protection_domain_from_classloader(Handle class_loader,
                                                                       Handle url, TRAPS) {
   // CodeSource cs = new CodeSource(url, null);
-  InstanceKlass* cs_klass = SystemDictionary::CodeSource_klass();
-  Handle cs = cs_klass->allocate_instance_handle(CHECK_NH);
-  JavaValue void_result(T_VOID);
-  JavaCalls::call_special(&void_result, cs, cs_klass,
-                          vmSymbols::object_initializer_name(),
-                          vmSymbols::url_code_signer_array_void_signature(),
-                          url, Handle(), CHECK_NH);
+  Handle cs = JavaCalls::construct_new_instance(SystemDictionary::CodeSource_klass(),
+                  vmSymbols::url_code_signer_array_void_signature(),
+                  url, Handle(), CHECK_NH);
 
   // protection_domain = SecureClassLoader.getProtectionDomain(cs);
   Klass* secureClassLoader_klass = SystemDictionary::SecureClassLoader_klass();
@@ -279,7 +247,7 @@ Handle SystemDictionaryShared::get_shared_protection_domain(Handle class_loader,
       JavaValue result(T_OBJECT);
       Klass* classLoaders_klass =
         SystemDictionary::jdk_internal_loader_ClassLoaders_klass();
-        JavaCalls::call_static(&result, classLoaders_klass, vmSymbols::toFileURL_name(),
+      JavaCalls::call_static(&result, classLoaders_klass, vmSymbols::toFileURL_name(),
                                vmSymbols::toFileURL_signature(),
                                url_string, CHECK_(protection_domain));
       Handle url = Handle(THREAD, (oop)result.get_jobject());
@@ -303,8 +271,7 @@ Handle SystemDictionaryShared::init_security_info(Handle class_loader, InstanceK
   if (ik != NULL) {
     int index = ik->shared_classpath_index();
     assert(index >= 0, "Sanity");
-    SharedClassPathEntryExt* ent =
-            (SharedClassPathEntryExt*)FileMapInfo::shared_path(index);
+    SharedClassPathEntry* ent = FileMapInfo::shared_path(index);
     Symbol* class_name = ik->name();
 
     if (ent->is_modules_image()) {
@@ -476,41 +443,38 @@ bool SystemDictionaryShared::is_shared_class_visible_for_classloader(
 //   [1] JVM_FindLoadedClass
 //   [2] java.lang.ClassLoader.findLoadedClass0()
 //   [3] java.lang.ClassLoader.findLoadedClass()
-//   [4] java.lang.ClassLoader.loadClass()
-//   [5] jdk.internal.loader.ClassLoaders$AppClassLoader_klass.loadClass()
+//   [4] jdk.internal.loader.BuiltinClassLoader.loadClassOrNull()
+//   [5] jdk.internal.loader.BuiltinClassLoader.loadClass()
+//   [6] jdk.internal.loader.ClassLoaders$AppClassLoader.loadClass(), or
+//       jdk.internal.loader.ClassLoaders$PlatformClassLoader.loadClass()
 //
-// Because AppCDS supports only the PlatformClassLoader and AppClassLoader, we make the following
-// assumptions (based on the JDK 8.0 source code):
+// AppCDS supports fast class loading for these 2 built-in class loaders:
+//    jdk.internal.loader.ClassLoaders$PlatformClassLoader
+//    jdk.internal.loader.ClassLoaders$AppClassLoader
+// with the following assumptions (based on the JDK core library source code):
 //
-// [a] these two loaders use the default implementation of
-//     ClassLoader.loadClass(String name, boolean resolve), which
-// [b] calls findLoadedClass(name), immediately followed by parent.loadClass(),
-//     immediately followed by findClass(name).
-// [c] If the requested class is a shared class of the current class loader, parent.loadClass()
-//     always returns null, and
-// [d] if AppCDS is not enabled, the class would be loaded by findClass() by decoding it from a
-//     JAR file and then parsed.
+// [a] these two loaders use the BuiltinClassLoader.loadClassOrNull() to
+//     load the named class.
+// [b] BuiltinClassLoader.loadClassOrNull() first calls findLoadedClass(name).
+// [c] At this point, if we can find the named class inside the
+//     shared_dictionary, we can perform further checks (see
+//     is_shared_class_visible_for_classloader() to ensure that this class
+//     was loaded by the same class loader during dump time.
 //
 // Given these assumptions, we intercept the findLoadedClass() call to invoke
 // SystemDictionaryShared::find_or_load_shared_class() to load the shared class from
-// the archive. The reasons are:
-//
-// + Because AppCDS is a commercial feature, we want to hide the implementation. There
-//   is currently no easy way to hide Java code, so we did it with native code.
-// + Start-up is improved because we avoid decoding the JAR file, and avoid delegating
-//   to the parent (since we know the parent will not find this class).
+// the archive for the 2 built-in class loaders. This way,
+// we can improve start-up because we avoid decoding the classfile,
+// and avoid delegating to the parent loader.
 //
 // NOTE: there's a lot of assumption about the Java code. If any of that change, this
 // needs to be redesigned.
-//
-// An alternative is to modify the Java code of AppClassLoader.loadClass().
-//
+
 InstanceKlass* SystemDictionaryShared::find_or_load_shared_class(
                  Symbol* name, Handle class_loader, TRAPS) {
   InstanceKlass* k = NULL;
   if (UseSharedSpaces) {
-    FileMapHeaderExt* header = (FileMapHeaderExt*)FileMapInfo::current_info()->header();
-    if (!header->has_platform_or_app_classes()) {
+    if (!FileMapInfo::current_info()->header()->has_platform_or_app_classes()) {
       return NULL;
     }
 

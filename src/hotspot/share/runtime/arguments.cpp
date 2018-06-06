@@ -61,6 +61,9 @@
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciRuntime.hpp"
 #endif
+#if INCLUDE_JFR
+#include "jfr/jfr.hpp"
+#endif
 
 // Note: This is a special bug reporting site for the JVM
 #ifdef VENDOR_URL_VM_BUG
@@ -263,6 +266,20 @@ static bool match_option(const JavaVMOption* option, const char** names, const c
   }
   return false;
 }
+
+#if INCLUDE_JFR
+// return true on failure
+static bool match_jfr_option(const JavaVMOption** option) {
+  assert((*option)->optionString != NULL, "invariant");
+  char* tail = NULL;
+  if (match_option(*option, "-XX:StartFlightRecording", (const char**)&tail)) {
+    return Jfr::on_start_flight_recording_option(option, tail);
+  } else if (match_option(*option, "-XX:FlightRecorderOptions", (const char**)&tail)) {
+    return Jfr::on_flight_recorder_option(option, tail);
+  }
+  return false;
+}
+#endif
 
 static void logOption(const char* opt) {
   if (PrintVMOptions) {
@@ -518,6 +535,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "PrintSafepointStatisticsTimeout", JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "PrintSafepointStatisticsCount",JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "AggressiveOpts",               JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
+  { "AllowNonVirtualCalls",         JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
 
   // --- Deprecated alias flags (see also aliased_jvm_flags) - sorted by obsolete_in then expired_in:
   { "DefaultMaxRAMFraction",        JDK_Version::jdk(8),  JDK_Version::undefined(), JDK_Version::undefined() },
@@ -526,9 +544,6 @@ static SpecialFlag const special_jvm_flags[] = {
   { "UnsyncloadClass",              JDK_Version::jdk(10), JDK_Version::jdk(11), JDK_Version::jdk(12) },
 
   // -------------- Obsolete Flags - sorted by expired_in --------------
-  { "ConvertSleepToYield",           JDK_Version::jdk(9),      JDK_Version::jdk(10), JDK_Version::jdk(11) },
-  { "ConvertYieldToSleep",           JDK_Version::jdk(9),      JDK_Version::jdk(10), JDK_Version::jdk(11) },
-  { "MinSleepInterval",              JDK_Version::jdk(9),      JDK_Version::jdk(10), JDK_Version::jdk(11) },
   { "CheckAssertionStatusDirectives",JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "PrintMallocFree",               JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "PrintMalloc",                   JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
@@ -546,6 +561,9 @@ static SpecialFlag const special_jvm_flags[] = {
   { "SharedMiscCodeSize",            JDK_Version::undefined(), JDK_Version::jdk(10), JDK_Version::undefined() },
   { "UseUTCFileTimestamp",           JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "UseAppCDS",                     JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "InlineNotify",                  JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "EnableTracing",                 JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "UseLockedTracing",              JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
 
 #ifdef TEST_VERIFY_SPECIAL_JVM_FLAGS
   { "dep > obs",                    JDK_Version::jdk(9), JDK_Version::jdk(8), JDK_Version::undefined() },
@@ -1605,9 +1623,9 @@ intx Arguments::scaled_freq_log(intx freq_log, double scale) {
 }
 
 void Arguments::set_tiered_flags() {
-  // With tiered, set default policy to AdvancedThresholdPolicy, which is 3.
+  // With tiered, set default policy to SimpleThresholdPolicy, which is 2.
   if (FLAG_IS_DEFAULT(CompilationPolicyChoice)) {
-    FLAG_SET_DEFAULT(CompilationPolicyChoice, 3);
+    FLAG_SET_DEFAULT(CompilationPolicyChoice, 2);
   }
   if (CompilationPolicyChoice < 2) {
     vm_exit_during_initialization(
@@ -3160,6 +3178,10 @@ jint Arguments::parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_m
           "ManagementServer is not supported in this VM.\n");
         return JNI_ERR;
 #endif // INCLUDE_MANAGEMENT
+#if INCLUDE_JFR
+    } else if (match_jfr_option(&option)) {
+      return JNI_EINVAL;
+#endif
     } else if (match_option(option, "-XX:", &tail)) { // -XX:xxxx
       // Skip -XX:Flags= and -XX:VMOptionsFile= since those cases have
       // already been handled

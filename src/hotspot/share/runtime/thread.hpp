@@ -44,14 +44,16 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/threadLocalStorage.hpp"
 #include "runtime/unhandledOops.hpp"
-#include "trace/traceBackend.hpp"
-#include "trace/traceMacros.hpp"
 #include "utilities/align.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/macros.hpp"
 #ifdef ZERO
 # include "stack_zero.hpp"
 #endif
+#if INCLUDE_JFR
+#include "jfr/support/jfrThreadExtension.hpp"
+#endif
+
 
 class SafeThreadsListPtr;
 class ThreadSafepointState;
@@ -336,7 +338,8 @@ class Thread: public ThreadShadow {
   ThreadLocalAllocBuffer _tlab;                 // Thread-local eden
   jlong _allocated_bytes;                       // Cumulative number of bytes allocated on
                                                 // the Java heap
-  mutable TRACE_DATA _trace_data;               // Thread-local data for tracing
+
+  JFR_ONLY(DEFINE_THREAD_LOCAL_FIELD_JFR;)      // Thread-local data for jfr
 
   int   _vm_operation_started_count;            // VM_Operation support
   int   _vm_operation_completed_count;          // VM_Operation support
@@ -514,8 +517,8 @@ class Thread: public ThreadShadow {
   void incr_allocated_bytes(jlong size) { _allocated_bytes += size; }
   inline jlong cooked_allocated_bytes();
 
-  TRACE_DEFINE_THREAD_TRACE_DATA_OFFSET;
-  TRACE_DATA* trace_data() const        { return &_trace_data; }
+  JFR_ONLY(DEFINE_THREAD_LOCAL_ACCESSOR_JFR;)
+
   bool is_trace_suspend()               { return (_suspend_flags & _trace_flag) != 0; }
 
   // VM operation support
@@ -696,6 +699,8 @@ protected:
 #undef TLAB_FIELD_OFFSET
 
   static ByteSize allocated_bytes_offset()       { return byte_offset_of(Thread, _allocated_bytes); }
+
+  JFR_ONLY(DEFINE_THREAD_LOCAL_OFFSET_JFR;)
 
  public:
   volatile intptr_t _Stalled;
@@ -2103,6 +2108,8 @@ class Threads: AllStatic {
   static void add(JavaThread* p, bool force_daemon = false);
   static void remove(JavaThread* p);
   static void non_java_threads_do(ThreadClosure* tc);
+  static void java_threads_do(ThreadClosure* tc);
+  static void java_threads_and_vm_thread_do(ThreadClosure* tc);
   static void threads_do(ThreadClosure* tc);
   static void possibly_parallel_threads_do(bool is_par, ThreadClosure* tc);
 
@@ -2141,10 +2148,6 @@ class Threads: AllStatic {
   static void oops_do(OopClosure* f, CodeBlobClosure* cf);
   // This version may be called by sequential or parallel code.
   static void possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl = NULL, ThreadClosure* thread_cl = NULL);
-  // This creates a list of GCTasks, one per thread.
-  static void create_thread_roots_tasks(GCTaskQueue* q);
-  // This creates a list of GCTasks, one per thread, for marking objects.
-  static void create_thread_roots_marking_tasks(GCTaskQueue* q);
 
   // Apply "f->do_oop" to roots in all threads that
   // are part of compiled frames

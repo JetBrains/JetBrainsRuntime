@@ -101,16 +101,16 @@ address TemplateInterpreterGenerator::generate_StackOverflowError_handler() {
   return entry;
 }
 
-address TemplateInterpreterGenerator::generate_ArrayIndexOutOfBounds_handler(
-        const char* name) {
+address TemplateInterpreterGenerator::generate_ArrayIndexOutOfBounds_handler() {
   address entry = __ pc();
-  // expression stack must be empty before entering the VM if an
-  // exception happened
+  // The expression stack must be empty before entering the VM if an
+  // exception happened.
   __ empty_expression_stack();
-  // setup parameters
-  // ??? convention: expect aberrant index in register ebx
+
+  // Setup parameters.
+  // ??? convention: expect aberrant index in register ebx/rbx.
+  // Pass array to create more detailed exceptions.
   Register rarg = NOT_LP64(rax) LP64_ONLY(c_rarg1);
-  __ lea(rarg, ExternalAddress((address)name));
   __ call_VM(noreg,
              CAST_FROM_FN_PTR(address,
                               InterpreterRuntime::
@@ -973,7 +973,7 @@ address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
     __ testl(t, JVM_ACC_STATIC);
     __ jcc(Assembler::zero, L);
     // get mirror
-    __ load_mirror(t, method);
+    __ load_mirror(t, method, rax);
     // copy mirror into activation frame
     __ movptr(Address(rbp, frame::interpreter_frame_oop_temp_offset * wordSize),
             t);

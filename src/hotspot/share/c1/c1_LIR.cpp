@@ -926,10 +926,13 @@ void LIR_OpVisitState::visit(LIR_Op* op) {
     }
 #endif
   default:
-    ShouldNotReachHere();
+    op->visit(this);
   }
 }
 
+void LIR_Op::visit(LIR_OpVisitState* state) {
+  ShouldNotReachHere();
+}
 
 void LIR_OpVisitState::do_stub(CodeStub* stub) {
   if (stub != NULL) {

@@ -72,7 +72,6 @@
 #include "utilities/hashtable.inline.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_CDS
-#include "classfile/sharedClassUtil.hpp"
 #include "classfile/sharedPathsMiscInfo.hpp"
 #endif
 
@@ -660,7 +659,7 @@ void* ClassLoader::get_shared_paths_misc_info() {
 }
 
 bool ClassLoader::check_shared_paths_misc_info(void *buf, int size) {
-  SharedPathsMiscInfo* checker = SharedClassUtil::allocate_shared_paths_misc_info((char*)buf, size);
+  SharedPathsMiscInfo* checker = new SharedPathsMiscInfo((char*)buf, size);
   bool result = checker->check();
   delete checker;
   return result;
@@ -1406,8 +1405,6 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                          name->utf8_length());
   assert(file_name != NULL, "invariant");
 
-  ClassLoaderExt::Context context(class_name, file_name, THREAD);
-
   // Lookup stream for parsing .class file
   ClassFileStream* stream = NULL;
   s2 classpath_index = 0;
@@ -1480,7 +1477,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
     return NULL;
   }
 
-  stream->set_verify(context.should_verify(classpath_index));
+  stream->set_verify(ClassLoaderExt::should_verify(classpath_index));
 
   ClassLoaderData* loader_data = ClassLoaderData::the_null_class_loader_data();
   Handle protection_domain;
@@ -1555,56 +1552,63 @@ void ClassLoader::record_result(InstanceKlass* ik, const ClassFileStream* stream
   PackageEntry* pkg_entry = ik->package();
 
   if (FileMapInfo::get_number_of_shared_paths() > 0) {
-    char* canonical_path = NEW_RESOURCE_ARRAY(char, JVM_MAXPATHLEN);
+    char* canonical_path_table_entry = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, char, JVM_MAXPATHLEN);
 
     // save the path from the file: protocol or the module name from the jrt: protocol
     // if no protocol prefix is found, path is the same as stream->source()
     char* path = skip_uri_protocol(src);
+    char* canonical_class_src_path = NEW_RESOURCE_ARRAY_IN_THREAD(THREAD, char, JVM_MAXPATHLEN);
+    if (!get_canonical_path(path, canonical_class_src_path, JVM_MAXPATHLEN)) {
+      tty->print_cr("Bad pathname %s. CDS dump aborted.", path);
+      vm_exit(1);
+    }
     for (int i = 0; i < FileMapInfo::get_number_of_shared_paths(); i++) {
       SharedClassPathEntry* ent = FileMapInfo::shared_path(i);
-      if (get_canonical_path(ent->name(), canonical_path, JVM_MAXPATHLEN)) {
-        // If the path (from the class stream source) is the same as the shared
-        // class or module path, then we have a match.
-        if (strcmp(canonical_path, os::native_path((char*)path)) == 0) {
-          // NULL pkg_entry and pkg_entry in an unnamed module implies the class
-          // is from the -cp or boot loader append path which consists of -Xbootclasspath/a
-          // and jvmti appended entries.
-          if ((pkg_entry == NULL) || (pkg_entry->in_unnamed_module())) {
-            // Ensure the index is within the -cp range before assigning
-            // to the classpath_index.
-            if (SystemDictionary::is_system_class_loader(loader) &&
-                (i >= ClassLoaderExt::app_class_paths_start_index()) &&
-                (i < ClassLoaderExt::app_module_paths_start_index())) {
+      if (!get_canonical_path(ent->name(), canonical_path_table_entry, JVM_MAXPATHLEN)) {
+        tty->print_cr("Bad pathname %s. CDS dump aborted.", ent->name());
+        vm_exit(1);
+      }
+      // If the path (from the class stream source) is the same as the shared
+      // class or module path, then we have a match.
+      if (strcmp(canonical_path_table_entry, canonical_class_src_path) == 0) {
+        // NULL pkg_entry and pkg_entry in an unnamed module implies the class
+        // is from the -cp or boot loader append path which consists of -Xbootclasspath/a
+        // and jvmti appended entries.
+        if ((pkg_entry == NULL) || (pkg_entry->in_unnamed_module())) {
+          // Ensure the index is within the -cp range before assigning
+          // to the classpath_index.
+          if (SystemDictionary::is_system_class_loader(loader) &&
+              (i >= ClassLoaderExt::app_class_paths_start_index()) &&
+              (i < ClassLoaderExt::app_module_paths_start_index())) {
+            classpath_index = i;
+            break;
+          } else {
+            if ((i >= 1) &&
+                (i < ClassLoaderExt::app_class_paths_start_index())) {
+              // The class must be from boot loader append path which consists of
+              // -Xbootclasspath/a and jvmti appended entries.
+              assert(loader == NULL, "sanity");
               classpath_index = i;
               break;
-            } else {
-              if ((i >= 1) &&
-                  (i < ClassLoaderExt::app_class_paths_start_index())) {
-                // The class must be from boot loader append path which consists of
-                // -Xbootclasspath/a and jvmti appended entries.
-                assert(loader == NULL, "sanity");
-                classpath_index = i;
-                break;
-              }
             }
-          } else {
-            // A class from a named module from the --module-path. Ensure the index is
-            // within the --module-path range before assigning to the classpath_index.
-            if ((pkg_entry != NULL) && !(pkg_entry->in_unnamed_module()) && (i > 0)) {
-              if (i >= ClassLoaderExt::app_module_paths_start_index() &&
-                  i < FileMapInfo::get_number_of_shared_paths()) {
-                classpath_index = i;
-                break;
-              }
+          }
+        } else {
+          // A class from a named module from the --module-path. Ensure the index is
+          // within the --module-path range before assigning to the classpath_index.
+          if ((pkg_entry != NULL) && !(pkg_entry->in_unnamed_module()) && (i > 0)) {
+            if (i >= ClassLoaderExt::app_module_paths_start_index() &&
+                i < FileMapInfo::get_number_of_shared_paths()) {
+              classpath_index = i;
+              break;
             }
           }
         }
-        // for index 0 and the stream->source() is the modules image or has the jrt: protocol.
-        // The class must be from the runtime modules image.
-        if (i == 0 && (is_modules_image(src) || string_starts_with(src, "jrt:"))) {
-          classpath_index = i;
-          break;
-        }
+      }
+      // for index 0 and the stream->source() is the modules image or has the jrt: protocol.
+      // The class must be from the runtime modules image.
+      if (i == 0 && (is_modules_image(src) || string_starts_with(src, "jrt:"))) {
+        classpath_index = i;
+        break;
       }
     }
 
@@ -1628,8 +1632,7 @@ void ClassLoader::record_result(InstanceKlass* ik, const ClassFileStream* stream
                                                          ik->name()->utf8_length());
   assert(file_name != NULL, "invariant");
 
-  ClassLoaderExt::Context context(class_name, file_name, CATCH);
-  context.record_result(ik->name(), classpath_index, ik, THREAD);
+  ClassLoaderExt::record_result(classpath_index, ik, THREAD);
 }
 #endif // INCLUDE_CDS
 
@@ -1699,7 +1702,7 @@ void ClassLoader::initialize() {
 #if INCLUDE_CDS
   // initialize search path
   if (DumpSharedSpaces) {
-    _shared_paths_misc_info = SharedClassUtil::allocate_shared_paths_misc_info();
+    _shared_paths_misc_info = new SharedPathsMiscInfo();
   }
 #endif
   setup_bootstrap_search_path();

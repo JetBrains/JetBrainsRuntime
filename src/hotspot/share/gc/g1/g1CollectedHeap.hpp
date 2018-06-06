@@ -86,7 +86,6 @@ class STWGCTimer;
 class G1NewTracer;
 class EvacuationFailedInfo;
 class nmethod;
-class Ticks;
 class WorkGang;
 class G1Allocator;
 class G1ArchiveAllocator;
@@ -513,13 +512,13 @@ private:
   // allocated block, or else "NULL".
   HeapWord* expand_and_allocate(size_t word_size);
 
-  // Process any reference objects discovered during
-  // an incremental evacuation pause.
+  // Process any reference objects discovered.
   void process_discovered_references(G1ParScanThreadStateSet* per_thread_states);
 
-  // Enqueue any remaining discovered references
-  // after processing.
-  void enqueue_discovered_references(G1ParScanThreadStateSet* per_thread_states);
+  // If during an initial mark pause we may install a pending list head which is not
+  // otherwise reachable ensure that it is marked in the bitmap for concurrent marking
+  // to discover.
+  void make_pending_list_reachable();
 
   // Merges the information gathered on a per-thread basis for all worker threads
   // during GC into global variables.
@@ -1340,6 +1339,9 @@ public:
   void redirty_logged_cards();
   // Verification
 
+  // Deduplicate the string
+  virtual void deduplicate_string(oop str);
+
   // Perform any cleanup actions necessary before allowing a verification.
   virtual void prepare_for_verify();
 
@@ -1364,6 +1366,8 @@ public:
   virtual bool supports_concurrent_phase_control() const;
   virtual const char* const* concurrent_phases() const;
   virtual bool request_concurrent_phase(const char* phase);
+
+  virtual WorkGang* get_safepoint_workers() { return _workers; }
 
   // The methods below are here for convenience and dispatch the
   // appropriate method depending on value of the given VerifyOption

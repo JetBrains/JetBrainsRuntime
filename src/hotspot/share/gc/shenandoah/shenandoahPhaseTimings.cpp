@@ -136,7 +136,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[finish_queues]                   = "  Finish Queues";
   _phase_names[weakrefs]                        = "  Weak References";
   _phase_names[weakrefs_process]                = "    Process";
-  _phase_names[weakrefs_enqueue]                = "    Enqueue";
   _phase_names[purge]                           = "  System Purge";
   _phase_names[purge_class_unload]              = "    Unload Classes";
   _phase_names[purge_par]                       = "    Parallel Cleanup";
@@ -225,7 +224,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_mark_finish_queues]      = "    Finish Queues";
   _phase_names[full_gc_weakrefs]                = "    Weak References";
   _phase_names[full_gc_weakrefs_process]        = "      Process";
-  _phase_names[full_gc_weakrefs_enqueue]        = "      Enqueue";
   _phase_names[full_gc_purge]                   = "    System Purge";
   _phase_names[full_gc_purge_class_unload]      = "      Unload Classes";
   _phase_names[full_gc_purge_par]               = "    Parallel Cleanup";

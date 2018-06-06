@@ -946,20 +946,6 @@ class java_lang_ref_SoftReference: public java_lang_ref_Reference {
   static void serialize(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
-// Interface to java.lang.ref.ReferenceQueue objects
-
-class java_lang_ref_ReferenceQueue: public AllStatic {
-public:
-  static int static_NULL_queue_offset;
-  static int static_ENQUEUED_queue_offset;
-
-  // Accessors
-  static oop NULL_queue();
-  static oop ENQUEUED_queue();
-
-  static void compute_offsets();
-};
-
 // Interface to java.lang.invoke.MethodHandle objects
 
 class MethodHandleEntry;
@@ -1321,6 +1307,12 @@ class java_lang_ClassLoader : AllStatic {
   // Debugging
   friend class JavaClasses;
   friend class ClassFileParser; // access to number_of_fake_fields
+
+  // Describe ClassLoader for exceptions, tracing ...
+  // Prints "<name>" (instance of <classname>, child of "<name>" <classname>).
+  // If a classloader has no name, it prints <unnamed> instead. The output
+  // for well known loaders (system/platform) is abbreviated.
+  static const char* describe_external(const oop loader);
 };
 
 

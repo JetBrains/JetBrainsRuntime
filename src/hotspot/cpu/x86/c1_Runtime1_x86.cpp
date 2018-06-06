@@ -411,7 +411,7 @@ static OopMap* generate_oop_map(StubAssembler* sasm, int num_rt_args,
 
 #define __ this->
 
-void C1_MacroAssembler::save_live_registers_no_oop_map(int num_rt_args, bool save_fpu_registers) {
+void C1_MacroAssembler::save_live_registers_no_oop_map(bool save_fpu_registers) {
   __ block_comment("save_live_registers");
 
   __ pusha();         // integer registers
@@ -551,23 +551,11 @@ void C1_MacroAssembler::restore_live_registers(bool restore_fpu_registers) {
   __ popa();
 }
 
-#undef __
-#define __ sasm->
 
-static OopMap* save_live_registers(StubAssembler* sasm, int num_rt_args,
-                                   bool save_fpu_registers = true) {
-  sasm->save_live_registers_no_oop_map(num_rt_args, save_fpu_registers);
-  return generate_oop_map(sasm, num_rt_args, save_fpu_registers);
-}
-
-static void restore_live_registers(StubAssembler* sasm, bool restore_fpu_registers = true) {
-  sasm->restore_live_registers(restore_fpu_registers);
-}
-
-static void restore_live_registers_except_rax(StubAssembler* sasm, bool restore_fpu_registers = true) {
+void C1_MacroAssembler::restore_live_registers_except_rax(bool restore_fpu_registers) {
   __ block_comment("restore_live_registers_except_rax");
 
-  restore_fpu(sasm, restore_fpu_registers);
+  restore_fpu(this, restore_fpu_registers);
 
 #ifdef _LP64
   __ movptr(r15, Address(rsp, 0));
@@ -600,32 +588,52 @@ static void restore_live_registers_except_rax(StubAssembler* sasm, bool restore_
 #endif // _LP64
 }
 
+#undef __
+#define __ sasm->
+
+static OopMap* save_live_registers(StubAssembler* sasm, int num_rt_args,
+                                   bool save_fpu_registers = true) {
+  __ save_live_registers_no_oop_map(save_fpu_registers);
+  return generate_oop_map(sasm, num_rt_args, save_fpu_registers);
+}
+
+static void restore_live_registers(StubAssembler* sasm, bool restore_fpu_registers = true) {
+  __ restore_live_registers(restore_fpu_registers);
+}
+
+static void restore_live_registers_except_rax(StubAssembler* sasm, bool restore_fpu_registers = true) {
+  sasm->restore_live_registers_except_rax(restore_fpu_registers);
+}
+
 
 void Runtime1::initialize_pd() {
   // nothing to do
 }
 
 
-// target: the entry point of the method that creates and posts the exception oop
-// has_argument: true if the exception needs an argument (passed on stack because registers must be preserved)
-
+// Target: the entry point of the method that creates and posts the exception oop.
+// has_argument: true if the exception needs arguments (passed on the stack because
+//               registers must be preserved).
 OopMapSet* Runtime1::generate_exception_throw(StubAssembler* sasm, address target, bool has_argument) {
-  // preserve all registers
-  int num_rt_args = has_argument ? 2 : 1;
+  // Preserve all registers.
+  int num_rt_args = has_argument ? (2 + 1) : 1;
   OopMap* oop_map = save_live_registers(sasm, num_rt_args);
 
-  // now all registers are saved and can be used freely
-  // verify that no old value is used accidentally
+  // Now all registers are saved and can be used freely.
+  // Verify that no old value is used accidentally.
   __ invalidate_registers(true, true, true, true, true, true);
 
-  // registers used by this stub
+  // Registers used by this stub.
   const Register temp_reg = rbx;
 
-  // load argument for exception that is passed as an argument into the stub
+  // Load arguments for exception that are passed as arguments into the stub.
   if (has_argument) {
 #ifdef _LP64
     __ movptr(c_rarg1, Address(rbp, 2*BytesPerWord));
+    __ movptr(c_rarg2, Address(rbp, 3*BytesPerWord));
 #else
+    __ movptr(temp_reg, Address(rbp, 3*BytesPerWord));
+    __ push(temp_reg);
     __ movptr(temp_reg, Address(rbp, 2*BytesPerWord));
     __ push(temp_reg);
 #endif // _LP64

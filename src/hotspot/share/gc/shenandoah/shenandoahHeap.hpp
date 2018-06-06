@@ -406,6 +406,8 @@ public:
   oop pin_object(JavaThread* thread, oop obj);
   void unpin_object(JavaThread* thread, oop obj);
 
+  virtual void deduplicate_string(oop str);
+
   static ShenandoahHeap* heap();
   static ShenandoahHeap* heap_no_check();
   static address in_cset_fast_test_addr();

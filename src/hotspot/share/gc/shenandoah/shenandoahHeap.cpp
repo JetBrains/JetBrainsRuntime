@@ -2993,3 +2993,11 @@ void ShenandoahHeap::set_cycle_mode(GCCycleMode gc_cycle_mode) {
 char ShenandoahHeap::gc_state() const {
   return _gc_state.raw_value();
 }
+
+void ShenandoahHeap::deduplicate_string(oop str) {
+  assert(java_lang_String::is_instance(str), "invariant");
+
+  if (ShenandoahStringDedup::is_enabled()) {
+    ShenandoahStringDedup::deduplicate(str);
+  }
+}

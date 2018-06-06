@@ -26,7 +26,6 @@
 #define SHARE_VM_CLASSFILE_SYSTEMDICTIONARY_HPP
 
 #include "classfile/classLoader.hpp"
-#include "classfile/systemDictionary_ext.hpp"
 #include "jvmci/systemDictionary_jvmci.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/symbol.hpp"
@@ -136,7 +135,6 @@ class OopStorage;
   do_klass(FinalReference_klass,                        java_lang_ref_FinalReference,              Pre                 ) \
   do_klass(PhantomReference_klass,                      java_lang_ref_PhantomReference,            Pre                 ) \
   do_klass(Finalizer_klass,                             java_lang_ref_Finalizer,                   Pre                 ) \
-  do_klass(ReferenceQueue_klass,                        java_lang_ref_ReferenceQueue,              Pre                 ) \
                                                                                                                          \
   do_klass(Thread_klass,                                java_lang_Thread,                          Pre                 ) \
   do_klass(ThreadGroup_klass,                           java_lang_ThreadGroup,                     Pre                 ) \
@@ -183,13 +181,12 @@ class OopStorage;
                                                                                                                          \
   /* support for CDS */                                                                                                  \
   do_klass(ByteArrayInputStream_klass,                  java_io_ByteArrayInputStream,              Pre                 ) \
-  do_klass(File_klass,                                  java_io_File,                              Pre                 ) \
   do_klass(URL_klass,                                   java_net_URL,                              Pre                 ) \
   do_klass(Jar_Manifest_klass,                          java_util_jar_Manifest,                    Pre                 ) \
+  do_klass(jdk_internal_loader_ClassLoaders_klass,      jdk_internal_loader_ClassLoaders,          Pre                 ) \
   do_klass(jdk_internal_loader_ClassLoaders_AppClassLoader_klass,      jdk_internal_loader_ClassLoaders_AppClassLoader,       Pre ) \
   do_klass(jdk_internal_loader_ClassLoaders_PlatformClassLoader_klass, jdk_internal_loader_ClassLoaders_PlatformClassLoader,  Pre ) \
   do_klass(CodeSource_klass,                            java_security_CodeSource,                  Pre                 ) \
-  do_klass(ParseUtil_klass,                             sun_net_www_ParseUtil,                     Pre                 ) \
                                                                                                                          \
   do_klass(StackTraceElement_klass,                     java_lang_StackTraceElement,               Opt                 ) \
                                                                                                                          \
@@ -212,8 +209,6 @@ class OopStorage;
   do_klass(Integer_klass,                               java_lang_Integer,                         Pre                 ) \
   do_klass(Long_klass,                                  java_lang_Long,                            Pre                 ) \
                                                                                                                          \
-  /* Extensions */                                                                                                       \
-  WK_KLASSES_DO_EXT(do_klass)                                                                                            \
   /* JVMCI classes. These are loaded on-demand. */                                                                       \
   JVMCI_WK_KLASSES_DO(do_klass)                                                                                          \
                                                                                                                          \
@@ -223,7 +218,6 @@ class OopStorage;
 class SystemDictionary : AllStatic {
   friend class VMStructs;
   friend class SystemDictionaryHandles;
-  friend class SharedClassUtil;
 
  public:
   enum WKID {
@@ -747,6 +741,7 @@ protected:
   // table of box klasses (int_klass, etc.)
   static InstanceKlass* _box_klasses[T_VOID+1];
 
+private:
   static oop  _java_system_loader;
   static oop  _java_platform_loader;
 

@@ -291,6 +291,12 @@ void os::Solaris::initialize_system_info() {
                                      (julong)sysconf(_SC_PAGESIZE);
 }
 
+uint os::processor_id() {
+  const processorid_t id = ::getcpuid();
+  assert(id >= 0 && id < _processor_count, "Invalid processor id");
+  return (uint)id;
+}
+
 int os::active_processor_count() {
   // User has overridden the number of active processors
   if (ActiveProcessorCount > 0) {
@@ -1026,18 +1032,6 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
 debug_only(static bool signal_sets_initialized = false);
 static sigset_t unblocked_sigs, vm_sigs;
 
-bool os::Solaris::is_sig_ignored(int sig) {
-  struct sigaction oact;
-  sigaction(sig, (struct sigaction*)NULL, &oact);
-  void* ohlr = oact.sa_sigaction ? CAST_FROM_FN_PTR(void*,  oact.sa_sigaction)
-                                 : CAST_FROM_FN_PTR(void*,  oact.sa_handler);
-  if (ohlr == CAST_FROM_FN_PTR(void*, SIG_IGN)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void os::Solaris::signal_sets_init() {
   // Should also have an assertion stating we are still single-threaded.
   assert(!signal_sets_initialized, "Already initialized");
@@ -1062,13 +1056,13 @@ void os::Solaris::signal_sets_init() {
   sigaddset(&unblocked_sigs, ASYNC_SIGNAL);
 
   if (!ReduceSignalUsage) {
-    if (!os::Solaris::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN1_SIGNAL);
     }
-    if (!os::Solaris::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN2_SIGNAL);
     }
-    if (!os::Solaris::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
+    if (!os::Posix::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
       sigaddset(&unblocked_sigs, SHUTDOWN3_SIGNAL);
     }
   }

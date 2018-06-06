@@ -622,18 +622,6 @@ extern "C" void breakpoint() {
 debug_only(static bool signal_sets_initialized = false);
 static sigset_t unblocked_sigs, vm_sigs;
 
-bool os::Aix::is_sig_ignored(int sig) {
-  struct sigaction oact;
-  sigaction(sig, (struct sigaction*)NULL, &oact);
-  void* ohlr = oact.sa_sigaction ? CAST_FROM_FN_PTR(void*, oact.sa_sigaction)
-    : CAST_FROM_FN_PTR(void*, oact.sa_handler);
-  if (ohlr == CAST_FROM_FN_PTR(void*, SIG_IGN)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 void os::Aix::signal_sets_init() {
   // Should also have an assertion stating we are still single-threaded.
   assert(!signal_sets_initialized, "Already initialized");
@@ -659,13 +647,13 @@ void os::Aix::signal_sets_init() {
   sigaddset(&unblocked_sigs, SR_signum);
 
   if (!ReduceSignalUsage) {
-   if (!os::Aix::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
+   if (!os::Posix::is_sig_ignored(SHUTDOWN1_SIGNAL)) {
      sigaddset(&unblocked_sigs, SHUTDOWN1_SIGNAL);
    }
-   if (!os::Aix::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
+   if (!os::Posix::is_sig_ignored(SHUTDOWN2_SIGNAL)) {
      sigaddset(&unblocked_sigs, SHUTDOWN2_SIGNAL);
    }
-   if (!os::Aix::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
+   if (!os::Posix::is_sig_ignored(SHUTDOWN3_SIGNAL)) {
      sigaddset(&unblocked_sigs, SHUTDOWN3_SIGNAL);
    }
   }
@@ -1377,6 +1365,21 @@ void os::get_summary_os_info(char* buf, size_t buflen) {
   snprintf(buf, buflen, "%s %s", name.release, name.version);
 }
 
+int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *param) {
+  // Not yet implemented.
+  return 0;
+}
+
+void os::print_os_info_brief(outputStream* st) {
+  uint32_t ver = os::Aix::os_version();
+  st->print_cr("AIX kernel version %u.%u.%u.%u",
+               (ver >> 24) & 0xFF, (ver >> 16) & 0xFF, (ver >> 8) & 0xFF, ver & 0xFF);
+
+  os::Posix::print_uname_info(st);
+
+  // Linux uses print_libversion_info(st); here.
+}
+
 void os::print_os_info(outputStream* st) {
   st->print("OS:");
 
@@ -1459,6 +1462,7 @@ void os::print_memory_info(outputStream* st) {
   const char* const aixthread_guardpages = ::getenv("AIXTHREAD_GUARDPAGES");
   st->print_cr("  AIXTHREAD_GUARDPAGES=%s.",
       aixthread_guardpages ? aixthread_guardpages : "<unset>");
+  st->cr();
 
   os::Aix::meminfo_t mi;
   if (os::Aix::get_meminfo(&mi)) {
@@ -1479,6 +1483,16 @@ void os::print_memory_info(outputStream* st) {
         mi.pgsp_total ? (100.0f * (mi.pgsp_total - mi.pgsp_free) / mi.pgsp_total) : -1.0f);
     }
   }
+  st->cr();
+
+  // Print program break.
+  st->print_cr("Program break at VM startup: " PTR_FORMAT ".", p2i(g_brk_at_startup));
+  address brk_now = (address)::sbrk(0);
+  if (brk_now != (address)-1) {
+    st->print_cr("Program break now          : " PTR_FORMAT " (distance: " SIZE_FORMAT "k).",
+                 p2i(brk_now), (size_t)((brk_now - g_brk_at_startup) / K));
+  }
+  st->print_cr("MaxExpectedDataSegmentSize    : " SIZE_FORMAT "k.", MaxExpectedDataSegmentSize / K);
   st->cr();
 
   // Print segments allocated with os::reserve_memory.

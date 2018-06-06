@@ -200,8 +200,7 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
                          Register           tmp3,
                          DecoratorSet       decorators) {
   assert_different_registers(tmp1, tmp2, tmp3, val, addr.base());
-  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->store_at(_masm, decorators, T_OBJECT, addr, val, tmp1, tmp2, tmp3);
+  __ store_heap_oop(val, addr, tmp1, tmp2, tmp3, decorators);
 }
 
 static void do_oop_load(InterpreterMacroAssembler* _masm,
@@ -212,8 +211,7 @@ static void do_oop_load(InterpreterMacroAssembler* _masm,
                         DecoratorSet decorators) {
   assert_different_registers(addr.base(), tmp1, tmp2);
   assert_different_registers(dst, tmp1, tmp2);
-  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->load_at(_masm, decorators, T_OBJECT, addr, dst, tmp1, tmp2);
+  __ load_heap_oop(dst, addr, tmp1, tmp2, decorators);
 }
 
 Address TemplateTable::at_bcp(int offset) {
@@ -784,7 +782,7 @@ void TemplateTable::index_check(Register array, Register index, unsigned int shi
   __ z_cl(index, Address(array, arrayOopDesc::length_offset_in_bytes()));
   __ z_brl(index_ok);
   __ lgr_if_needed(Z_ARG3, index); // See generate_ArrayIndexOutOfBounds_handler().
-  // Give back the array to create more detailed exceptions.
+  // Pass the array to create more detailed exceptions.
   __ lgr_if_needed(Z_ARG2, array); // See generate_ArrayIndexOutOfBounds_handler().
   __ load_absolute_address(Z_R1_scratch,
                            Interpreter::_throw_ArrayIndexOutOfBoundsException_entry);

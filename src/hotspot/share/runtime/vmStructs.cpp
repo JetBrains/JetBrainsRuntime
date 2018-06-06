@@ -107,9 +107,6 @@
 # include "jvmci/vmStructs_jvmci.hpp"
 #endif
 
-#if INCLUDE_TRACE
-#include "runtime/vmStructs_trace.hpp"
-#endif
 
 #ifdef COMPILER2
 #include "opto/addnode.hpp"
@@ -2813,10 +2810,6 @@ VMStructEntry VMStructs::localHotSpotVMStructs[] = {
              GENERATE_C1_UNCHECKED_STATIC_VM_STRUCT_ENTRY,
              GENERATE_C2_UNCHECKED_STATIC_VM_STRUCT_ENTRY)
 
-#if INCLUDE_TRACE
-  VM_STRUCTS_TRACE(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
-                   GENERATE_STATIC_VM_STRUCT_ENTRY)
-#endif
 
   VM_STRUCTS_OS(GENERATE_NONSTATIC_VM_STRUCT_ENTRY,
                 GENERATE_STATIC_VM_STRUCT_ENTRY,
@@ -2863,10 +2856,6 @@ VMTypeEntry VMStructs::localHotSpotVMTypes[] = {
            GENERATE_C2_VM_TYPE_ENTRY,
            GENERATE_C2_TOPLEVEL_VM_TYPE_ENTRY)
 
-#if INCLUDE_TRACE
-  VM_TYPES_TRACE(GENERATE_VM_TYPE_ENTRY,
-              GENERATE_TOPLEVEL_VM_TYPE_ENTRY)
-#endif
 
   VM_TYPES_OS(GENERATE_VM_TYPE_ENTRY,
               GENERATE_TOPLEVEL_VM_TYPE_ENTRY,
@@ -2910,10 +2899,6 @@ VMIntConstantEntry VMStructs::localHotSpotVMIntConstants[] = {
                    GENERATE_C1_VM_INT_CONSTANT_ENTRY,
                    GENERATE_C2_VM_INT_CONSTANT_ENTRY,
                    GENERATE_C2_PREPROCESSOR_VM_INT_CONSTANT_ENTRY)
-
-#if INCLUDE_TRACE
-  VM_INT_CONSTANTS_TRACE(GENERATE_VM_INT_CONSTANT_ENTRY)
-#endif
 
   VM_INT_CONSTANTS_OS(GENERATE_VM_INT_CONSTANT_ENTRY,
                       GENERATE_PREPROCESSOR_VM_INT_CONSTANT_ENTRY,
@@ -2988,10 +2973,6 @@ VMStructs::init() {
              CHECK_NO_OP,
              CHECK_NO_OP);
 
-#if INCLUDE_TRACE
-  VM_STRUCTS_TRACE(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
-                   CHECK_STATIC_VM_STRUCT_ENTRY);
-#endif
 
   VM_STRUCTS_CPU(CHECK_NONSTATIC_VM_STRUCT_ENTRY,
                  CHECK_STATIC_VM_STRUCT_ENTRY,
@@ -3020,10 +3001,6 @@ VMStructs::init() {
            CHECK_C2_VM_TYPE_ENTRY,
            CHECK_C2_TOPLEVEL_VM_TYPE_ENTRY);
 
-#if INCLUDE_TRACE
-  VM_TYPES_TRACE(CHECK_VM_TYPE_ENTRY,
-              CHECK_SINGLE_ARG_VM_TYPE_NO_OP);
-#endif
 
   VM_TYPES_CPU(CHECK_VM_TYPE_ENTRY,
                CHECK_SINGLE_ARG_VM_TYPE_NO_OP,
@@ -3080,11 +3057,6 @@ VMStructs::init() {
                         ENSURE_C2_FIELD_TYPE_PRESENT,
                         CHECK_NO_OP,
                         CHECK_NO_OP));
-
-#if INCLUDE_TRACE
-  debug_only(VM_STRUCTS_TRACE(ENSURE_FIELD_TYPE_PRESENT,
-                           ENSURE_FIELD_TYPE_PRESENT));
-#endif
 
   debug_only(VM_STRUCTS_CPU(ENSURE_FIELD_TYPE_PRESENT,
                             ENSURE_FIELD_TYPE_PRESENT,

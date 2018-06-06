@@ -40,6 +40,8 @@
 #include "interpreter/interpreter.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/oopMapCache.hpp"
+#include "jfr/jfrEvents.hpp"
+#include "jfr/support/jfrThreadId.hpp"
 #include "jvmtifiles/jvmtiEnv.hpp"
 #include "logging/log.hpp"
 #include "logging/logConfiguration.hpp"
@@ -103,9 +105,6 @@
 #include "services/management.hpp"
 #include "services/memTracker.hpp"
 #include "services/threadService.hpp"
-#include "trace/traceMacros.hpp"
-#include "trace/tracing.hpp"
-#include "trace/tracingExport.hpp"
 #include "utilities/align.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/defaultStream.hpp"
@@ -114,9 +113,6 @@
 #include "utilities/macros.hpp"
 #include "utilities/preserveException.hpp"
 #include "utilities/vmError.hpp"
-#if INCLUDE_PARALLELGC
-#include "gc/parallel/pcTasks.hpp"
-#endif
 #if INCLUDE_JVMCI
 #include "jvmci/jvmciCompiler.hpp"
 #include "jvmci/jvmciRuntime.hpp"
@@ -131,6 +127,9 @@
 #endif
 #if INCLUDE_RTM_OPT
 #include "runtime/rtmLocking.hpp"
+#endif
+#if INCLUDE_JFR
+#include "jfr/jfr.hpp"
 #endif
 
 // Initialization after module runtime initialization
@@ -368,7 +367,7 @@ void Thread::record_stack_base_and_size() {
 
 
 Thread::~Thread() {
-  EVENT_THREAD_DESTRUCT(this);
+  JFR_ONLY(Jfr::on_thread_destruct(this);)
 
   // Notify the barrier set that a thread is being destroyed. Note that a barrier
   // set might not be available if we encountered errors during bootstrapping.
@@ -376,6 +375,7 @@ Thread::~Thread() {
   if (barrier_set != NULL) {
     barrier_set->on_thread_destroy(this);
   }
+
 
   // stack_base can be NULL if the thread is never started or exited before
   // record_stack_base_and_size called. Although, we would like to ensure
@@ -1476,7 +1476,6 @@ bool jvmci_counters_include(JavaThread* thread) {
 
 void JavaThread::collect_counters(typeArrayOop array) {
   if (JVMCICounterSize > 0) {
-    MutexLocker tl(Threads_lock);
     JavaThreadIteratorWithHandle jtiwh;
     for (int i = 0; i < array->length(); i++) {
       array->long_at_put(i, _jvmci_old_thread_counters[i]);
@@ -1748,7 +1747,7 @@ void JavaThread::run() {
 
   EventThreadStart event;
   if (event.should_commit()) {
-    event.set_thread(THREAD_TRACE_ID(this));
+    event.set_thread(JFR_THREAD_ID(this));
     event.commit();
   }
 
@@ -1855,12 +1854,12 @@ void JavaThread::exit(bool destroy_vm, ExitType exit_type) {
     // from java_lang_Thread object
     EventThreadEnd event;
     if (event.should_commit()) {
-      event.set_thread(THREAD_TRACE_ID(this));
+      event.set_thread(JFR_THREAD_ID(this));
       event.commit();
     }
 
     // Call after last event on thread
-    EVENT_THREAD_EXIT(this);
+    JFR_ONLY(Jfr::on_thread_exit(this);)
 
     // Call Thread.exit(). We try 3 times in case we got another Thread.stop during
     // the execution of the method. If that is not enough, then we don't really care. Thread.stop
@@ -2217,11 +2216,8 @@ void JavaThread::handle_special_runtime_exit_condition(bool check_asyncs) {
   if (check_asyncs) {
     check_and_handle_async_exceptions();
   }
-#if INCLUDE_TRACE
-  if (is_trace_suspend()) {
-    TRACE_SUSPEND_THREAD(this);
-  }
-#endif
+
+  JFR_ONLY(SUSPEND_THREAD_CONDITIONAL(this);)
 }
 
 void JavaThread::send_thread_stop(oop java_throwable)  {
@@ -2443,11 +2439,8 @@ void JavaThread::check_safepoint_and_suspend_for_native_trans(JavaThread *thread
       fatal("missed deoptimization!");
     }
   }
-#if INCLUDE_TRACE
-  if (thread->is_trace_suspend()) {
-    TRACE_SUSPEND_THREAD(thread);
-  }
-#endif
+
+  JFR_ONLY(SUSPEND_THREAD_CONDITIONAL(thread);)
 }
 
 // Slow path when the native==>VM/Java barriers detect a safepoint is in
@@ -3432,23 +3425,36 @@ void Threads::non_java_threads_do(ThreadClosure* tc) {
     tc->do_thread(wt);
   }
 
-#if INCLUDE_TRACE
-  Thread* sampler_thread = TracingExport::sampler_thread_acquire();
+#if INCLUDE_JFR
+  Thread* sampler_thread = Jfr::sampler_thread();
   if (sampler_thread != NULL) {
     tc->do_thread(sampler_thread);
   }
+
 #endif
 
   // If CompilerThreads ever become non-JavaThreads, add them here
 }
 
-// All JavaThreads + all non-JavaThreads (i.e., every thread in the system).
-void Threads::threads_do(ThreadClosure* tc) {
+// All JavaThreads
+void Threads::java_threads_do(ThreadClosure* tc) {
   assert_locked_or_safepoint(Threads_lock);
   // ALL_JAVA_THREADS iterates through all JavaThreads.
   ALL_JAVA_THREADS(p) {
     tc->do_thread(p);
   }
+}
+
+void Threads::java_threads_and_vm_thread_do(ThreadClosure* tc) {
+  assert_locked_or_safepoint(Threads_lock);
+  java_threads_do(tc);
+  tc->do_thread(VMThread::vm_thread());
+}
+
+// All JavaThreads + all non-JavaThreads (i.e., every thread in the system).
+void Threads::threads_do(ThreadClosure* tc) {
+  assert_locked_or_safepoint(Threads_lock);
+  java_threads_do(tc);
   non_java_threads_do(tc);
 }
 
@@ -3733,9 +3739,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     return status;
   }
 
-  if (TRACE_INITIALIZE() != JNI_OK) {
-    vm_exit_during_initialization("Failed to initialize tracing backend");
-  }
+  JFR_ONLY(Jfr::on_vm_init();)
 
   // Should be done after the heap is fully created
   main_thread->cache_global_variables();
@@ -3906,9 +3910,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Notify JVMTI agents that VM initialization is complete - nop if no agents.
   JvmtiExport::post_vm_initialized();
 
-  if (TRACE_START() != JNI_OK) {
-    vm_exit_during_initialization("Failed to start tracing backend.");
-  }
+  JFR_ONLY(Jfr::on_vm_start();)
 
 #if INCLUDE_MANAGEMENT
   Management::initialize(THREAD);
@@ -4480,24 +4482,6 @@ void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClos
   ParallelOopsDoThreadClosure tc(f, cf, nmethods_cl, thread_cl);
   possibly_parallel_threads_do(is_par, &tc);
 }
-
-#if INCLUDE_PARALLELGC
-// Used by ParallelScavenge
-void Threads::create_thread_roots_tasks(GCTaskQueue* q) {
-  ALL_JAVA_THREADS(p) {
-    q->enqueue(new ThreadRootsTask(p));
-  }
-  q->enqueue(new ThreadRootsTask(VMThread::vm_thread()));
-}
-
-// Used by Parallel Old
-void Threads::create_thread_roots_marking_tasks(GCTaskQueue* q) {
-  ALL_JAVA_THREADS(p) {
-    q->enqueue(new ThreadRootsMarkingTask(p));
-  }
-  q->enqueue(new ThreadRootsMarkingTask(VMThread::vm_thread()));
-}
-#endif // INCLUDE_PARALLELGC
 
 void Threads::nmethods_do(CodeBlobClosure* cf) {
   ALL_JAVA_THREADS(p) {

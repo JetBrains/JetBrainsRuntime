@@ -4041,14 +4041,12 @@ void MacroAssembler::access_store_at(BasicType type, DecoratorSet decorators,
 }
 
 void MacroAssembler::load_heap_oop(Register dst, Address src, Register tmp1,
-                                   Register thread_tmp, DecoratorSet decorators)
-{
+                                   Register thread_tmp, DecoratorSet decorators) {
   access_load_at(T_OBJECT, IN_HEAP | decorators, dst, src, tmp1, thread_tmp);
 }
 
 void MacroAssembler::load_heap_oop_not_null(Register dst, Address src, Register tmp1,
-                                            Register thread_tmp, DecoratorSet decorators)
-{
+                                            Register thread_tmp, DecoratorSet decorators) {
   access_load_at(T_OBJECT, IN_HEAP | OOP_NOT_NULL | decorators, dst, src, tmp1, thread_tmp);
 }
 

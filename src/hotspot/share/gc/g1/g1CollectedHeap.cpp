@@ -2164,6 +2164,14 @@ jlong G1CollectedHeap::millis_since_last_gc() {
   return ret_val;
 }
 
+void G1CollectedHeap::deduplicate_string(oop str) {
+  assert(java_lang_String::is_instance(str), "invariant");
+
+  if (G1StringDedup::is_enabled()) {
+    G1StringDedup::deduplicate(str);
+  }
+}
+
 void G1CollectedHeap::prepare_for_verify() {
   _verifier->prepare_for_verify();
 }
@@ -3783,7 +3791,6 @@ public:
 
   // Executes the given task using concurrent marking worker threads.
   virtual void execute(ProcessTask& task);
-  virtual void execute(EnqueueTask& task);
 };
 
 // Gang task for possibly parallel reference processing
@@ -3848,38 +3855,8 @@ void G1STWRefProcTaskExecutor::execute(ProcessTask& proc_task) {
   _workers->run_task(&proc_task_proxy);
 }
 
-// Gang task for parallel reference enqueueing.
-
-class G1STWRefEnqueueTaskProxy: public AbstractGangTask {
-  typedef AbstractRefProcTaskExecutor::EnqueueTask EnqueueTask;
-  EnqueueTask& _enq_task;
-
-public:
-  G1STWRefEnqueueTaskProxy(EnqueueTask& enq_task) :
-    AbstractGangTask("Enqueue reference objects in parallel"),
-    _enq_task(enq_task)
-  { }
-
-  virtual void work(uint worker_id) {
-    _enq_task.work(worker_id);
-  }
-};
-
-// Driver routine for parallel reference enqueueing.
-// Creates an instance of the ref enqueueing gang
-// task and has the worker threads execute it.
-
-void G1STWRefProcTaskExecutor::execute(EnqueueTask& enq_task) {
-  assert(_workers != NULL, "Need parallel worker threads.");
-
-  G1STWRefEnqueueTaskProxy enq_task_proxy(enq_task);
-
-  _workers->run_task(&enq_task_proxy);
-}
-
 // End of weak reference support closures
 
-// Weak Reference processing during an evacuation pause (part 1).
 void G1CollectedHeap::process_discovered_references(G1ParScanThreadStateSet* per_thread_states) {
   double ref_proc_start = os::elapsedTime();
 
@@ -3939,42 +3916,15 @@ void G1CollectedHeap::process_discovered_references(G1ParScanThreadStateSet* per
   // We have completed copying any necessary live referent objects.
   assert(pss->queue_is_empty(), "both queue and overflow should be empty");
 
+  make_pending_list_reachable();
+
+  rp->verify_no_references_recorded();
+
   double ref_proc_time = os::elapsedTime() - ref_proc_start;
   g1_policy()->phase_times()->record_ref_proc_time(ref_proc_time * 1000.0);
 }
 
-// Weak Reference processing during an evacuation pause (part 2).
-void G1CollectedHeap::enqueue_discovered_references(G1ParScanThreadStateSet* per_thread_states) {
-  double ref_enq_start = os::elapsedTime();
-
-  ReferenceProcessor* rp = _ref_processor_stw;
-  assert(!rp->discovery_enabled(), "should have been disabled as part of processing");
-
-  ReferenceProcessorPhaseTimes* pt = g1_policy()->phase_times()->ref_phase_times();
-
-  // Now enqueue any remaining on the discovered lists on to
-  // the pending list.
-  if (!rp->processing_is_mt()) {
-    // Serial reference processing...
-    rp->enqueue_discovered_references(NULL, pt);
-  } else {
-    // Parallel reference enqueueing
-
-    uint n_workers = workers()->active_workers();
-
-    assert(n_workers <= rp->max_num_queues(),
-           "Mismatch between the number of GC workers %u and the maximum number of Reference process queues %u",
-           n_workers,  rp->max_num_queues());
-
-    G1STWRefProcTaskExecutor par_task_executor(this, per_thread_states, workers(), _task_queues, n_workers);
-    rp->enqueue_discovered_references(&par_task_executor, pt);
-  }
-
-  rp->verify_no_references_recorded();
-  assert(!rp->discovery_enabled(), "should have been disabled");
-
-  // If during an initial mark pause we install a pending list head which is not otherwise reachable
-  // ensure that it is marked in the bitmap for concurrent marking to discover.
+void G1CollectedHeap::make_pending_list_reachable() {
   if (collector_state()->in_initial_mark_gc()) {
     oop pll_head = Universe::reference_pending_list();
     if (pll_head != NULL) {
@@ -3982,14 +3932,6 @@ void G1CollectedHeap::enqueue_discovered_references(G1ParScanThreadStateSet* per
       _cm->mark_in_next_bitmap(0 /* worker_id */, pll_head);
     }
   }
-
-  // FIXME
-  // CM's reference processing also cleans up the string and symbol tables.
-  // Should we do that here also? We could, but it is a serial operation
-  // and could significantly increase the pause time.
-
-  double ref_enq_time = os::elapsedTime() - ref_enq_start;
-  g1_policy()->phase_times()->record_ref_enq_time(ref_enq_time * 1000.0);
 }
 
 void G1CollectedHeap::merge_per_thread_state_info(G1ParScanThreadStateSet* per_thread_states) {
@@ -4069,7 +4011,11 @@ void G1CollectedHeap::post_evacuate_collection_set(EvacuationInfo& evacuation_in
   // objects (and their reachable sub-graphs) that were
   // not copied during the pause.
   process_discovered_references(per_thread_states);
-  enqueue_discovered_references(per_thread_states);
+
+  // FIXME
+  // CM's reference processing also cleans up the string and symbol tables.
+  // Should we do that here also? We could, but it is a serial operation
+  // and could significantly increase the pause time.
 
   G1STWIsAliveClosure is_alive(this);
   G1KeepAliveClosure keep_alive(this);

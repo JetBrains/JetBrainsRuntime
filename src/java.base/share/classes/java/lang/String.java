@@ -2599,40 +2599,158 @@ public final class String
     }
 
     /**
-     * Returns a string whose value is this string, with any leading and trailing
-     * whitespace removed.
+     * Returns a string whose value is this string, with all leading
+     * and trailing space removed, where space is defined
+     * as any character whose codepoint is less than or equal to
+     * {@code 'U+0020'} (the space character).
      * <p>
      * If this {@code String} object represents an empty character
      * sequence, or the first and last characters of character sequence
      * represented by this {@code String} object both have codes
-     * greater than {@code '\u005Cu0020'} (the space character), then a
+     * that are not space (as defined above), then a
      * reference to this {@code String} object is returned.
      * <p>
-     * Otherwise, if there is no character with a code greater than
-     * {@code '\u005Cu0020'} in the string, then a
-     * {@code String} object representing an empty string is
-     * returned.
+     * Otherwise, if all characters in this string are space (as
+     * defined above), then a  {@code String} object representing an
+     * empty string is returned.
      * <p>
      * Otherwise, let <i>k</i> be the index of the first character in the
-     * string whose code is greater than {@code '\u005Cu0020'}, and let
+     * string whose code is not a space (as defined above) and let
      * <i>m</i> be the index of the last character in the string whose code
-     * is greater than {@code '\u005Cu0020'}. A {@code String}
+     * is not a space (as defined above). A {@code String}
      * object is returned, representing the substring of this string that
      * begins with the character at index <i>k</i> and ends with the
      * character at index <i>m</i>-that is, the result of
      * {@code this.substring(k, m + 1)}.
      * <p>
-     * This method may be used to trim whitespace (as defined above) from
+     * This method may be used to trim space (as defined above) from
      * the beginning and end of a string.
      *
-     * @return  A string whose value is this string, with any leading and trailing white
-     *          space removed, or this string if it has no leading or
-     *          trailing white space.
+     * @return  a string whose value is this string, with all leading
+     *          and trailing space removed, or this string if it
+     *          has no leading or trailing space.
      */
     public String trim() {
         String ret = isLatin1() ? StringLatin1.trim(value)
                                 : StringUTF16.trim(value);
         return ret == null ? this : ret;
+    }
+
+    /**
+     * Returns a string whose value is this string, with all leading
+     * and trailing {@link Character#isWhitespace(int) white space}
+     * removed.
+     * <p>
+     * If this {@code String} object represents an empty string,
+     * or if all code points in this string are
+     * {@link Character#isWhitespace(int) white space}, then an empty string
+     * is returned.
+     * <p>
+     * Otherwise, returns a substring of this string beginning with the first
+     * code point that is not a {@link Character#isWhitespace(int) white space}
+     * up to and including the last code point that is not a
+     * {@link Character#isWhitespace(int) white space}.
+     * <p>
+     * This method may be used to strip
+     * {@link Character#isWhitespace(int) white space} from
+     * the beginning and end of a string.
+     *
+     * @return  a string whose value is this string, with all leading
+     *          and trailing white space removed
+     *
+     * @see Character#isWhitespace(int)
+     *
+     * @since 11
+     */
+    public String strip() {
+        String ret = isLatin1() ? StringLatin1.strip(value)
+                                : StringUTF16.strip(value);
+        return ret == null ? this : ret;
+    }
+
+    /**
+     * Returns a string whose value is this string, with all leading
+     * {@link Character#isWhitespace(int) white space} removed.
+     * <p>
+     * If this {@code String} object represents an empty string,
+     * or if all code points in this string are
+     * {@link Character#isWhitespace(int) white space}, then an empty string
+     * is returned.
+     * <p>
+     * Otherwise, returns a substring of this string beginning with the first
+     * code point that is not a {@link Character#isWhitespace(int) white space}
+     * up to to and including the last code point of this string.
+     * <p>
+     * This method may be used to trim
+     * {@link Character#isWhitespace(int) white space} from
+     * the beginning of a string.
+     *
+     * @return  a string whose value is this string, with all leading white
+     *          space removed
+     *
+     * @see Character#isWhitespace(int)
+     *
+     * @since 11
+     */
+    public String stripLeading() {
+        String ret = isLatin1() ? StringLatin1.stripLeading(value)
+                                : StringUTF16.stripLeading(value);
+        return ret == null ? this : ret;
+    }
+
+    /**
+     * Returns a string whose value is this string, with all trailing
+     * {@link Character#isWhitespace(int) white space} removed.
+     * <p>
+     * If this {@code String} object represents an empty string,
+     * or if all characters in this string are
+     * {@link Character#isWhitespace(int) white space}, then an empty string
+     * is returned.
+     * <p>
+     * Otherwise, returns a substring of this string beginning with the first
+     * code point of this string up to and including the last code point
+     * that is not a {@link Character#isWhitespace(int) white space}.
+     * <p>
+     * This method may be used to trim
+     * {@link Character#isWhitespace(int) white space} from
+     * the end of a string.
+     *
+     * @return  a string whose value is this string, with all trailing white
+     *          space removed
+     *
+     * @see Character#isWhitespace(int)
+     *
+     * @since 11
+     */
+    public String stripTrailing() {
+        String ret = isLatin1() ? StringLatin1.stripTrailing(value)
+                                : StringUTF16.stripTrailing(value);
+        return ret == null ? this : ret;
+    }
+
+    /**
+     * Returns {@code true} if the string is empty or contains only
+     * {@link Character#isWhitespace(int) white space} codepoints,
+     * otherwise {@code false}.
+     *
+     * @return {@code true} if the string is empty or contains only
+     *         {@link Character#isWhitespace(int) white space} codepoints,
+     *         otherwise {@code false}
+     *
+     * @see Character#isWhitespace(int)
+     *
+     * @since 11
+     */
+    public boolean isBlank() {
+        return indexOfNonWhitespace() == length();
+    }
+
+    private int indexOfNonWhitespace() {
+        if (isLatin1()) {
+            return StringLatin1.indexOfNonWhitespace(value);
+        } else {
+            return StringUTF16.indexOfNonWhitespace(value);
+        }
     }
 
     /**

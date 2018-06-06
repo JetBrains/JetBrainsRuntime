@@ -147,15 +147,14 @@ static void do_oop_store(InterpreterMacroAssembler* _masm,
                          Register val,
                          DecoratorSet decorators) {
   assert(val == noreg || val == r0, "parameter is just for looks");
-  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->store_at(_masm, decorators, T_OBJECT, dst, val, /*tmp1*/ r10, /*tmp2*/ r1);
+  __ store_heap_oop(dst, val, r10, r1, decorators);
 }
 
 static void do_oop_load(InterpreterMacroAssembler* _masm,
                         Address src,
                         Register dst,
                         DecoratorSet decorators) {
-  __ access_load_at(T_OBJECT, decorators, dst, src, /*tmp1*/ r10, /*tmp_thread*/ r1);
+  __ load_heap_oop(dst, src, r10, r1, decorators);
 }
 
 Address TemplateTable::at_bcp(int offset) {
@@ -406,7 +405,7 @@ void TemplateTable::fast_aldc(bool wide)
   __ bind(resolved);
 
   { // Check for the null sentinel.
-    // If we just called the VM, that already did the mapping for us,
+    // If we just called the VM, it already did the mapping for us,
     // but it's harmless to retry.
     Label notNull;
 
@@ -746,6 +745,8 @@ void TemplateTable::index_check(Register array, Register index)
   }
   Label ok;
   __ br(Assembler::LO, ok);
+    // ??? convention: move array into r3 for exception message
+  __ mov(r3, array);
   __ mov(rscratch1, Interpreter::_throw_ArrayIndexOutOfBoundsException_entry);
   __ br(rscratch1);
   __ bind(ok);

@@ -33,6 +33,7 @@
 
 extern Mutex*   Patching_lock;                   // a lock used to guard code patching of compiled code
 extern Monitor* SystemDictionary_lock;           // a lock on the system dictionary
+extern Mutex*   SharedDictionary_lock;           // a lock on the CDS shared dictionary
 extern Mutex*   Module_lock;                     // a lock on module and package related data structures
 extern Mutex*   CompiledIC_lock;                 // a lock used to guard compiled IC patching and access
 extern Mutex*   InlineCacheBuffer_lock;          // a lock used to guard the InlineCacheBuffer
@@ -128,7 +129,7 @@ extern Monitor* Service_lock;                    // a lock used for service thre
 extern Monitor* PeriodicTask_lock;               // protects the periodic task structure
 extern Monitor* RedefineClasses_lock;            // locks classes from parallel redefinition
 
-#if INCLUDE_TRACE
+#if INCLUDE_JFR
 extern Mutex*   JfrStacktrace_lock;              // used to guard access to the JFR stacktrace table
 extern Monitor* JfrMsg_lock;                     // protects JFR messaging
 extern Mutex*   JfrBuffer_lock;                  // protects JFR buffer operations

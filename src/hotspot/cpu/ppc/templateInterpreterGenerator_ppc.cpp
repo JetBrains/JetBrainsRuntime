@@ -524,11 +524,8 @@ address TemplateInterpreterGenerator::generate_Reference_get_entry(void) {
   __ cmpdi(CCR0, R3_RET, 0);
   __ beq(CCR0, slow_path);
 
-  // Load the value of the referent field.
-  BarrierSetAssembler *bs = BarrierSet::barrier_set()->barrier_set_assembler();
-  bs->load_at(_masm, IN_HEAP | ON_WEAK_OOP_REF, T_OBJECT,
-                    R3_RET, referent_offset, R3_RET,
-                    /* non-volatile temp */ R31, R11_scratch1, true);
+  __ load_heap_oop(R3_RET, referent_offset, R3_RET,
+                   /* non-volatile temp */ R31, R11_scratch1, true, ON_WEAK_OOP_REF);
 
   // Generate the G1 pre-barrier code to log the value of
   // the referent field in an SATB buffer. Note with
@@ -564,13 +561,13 @@ address TemplateInterpreterGenerator::generate_StackOverflowError_handler() {
   return entry;
 }
 
-address TemplateInterpreterGenerator::generate_ArrayIndexOutOfBounds_handler(const char* name) {
+address TemplateInterpreterGenerator::generate_ArrayIndexOutOfBounds_handler() {
   address entry = __ pc();
   __ empty_expression_stack();
-  __ load_const_optimized(R4_ARG2, (address) name);
+  // R4_ARG2 already contains the array.
   // Index is in R17_tos.
   __ mr(R5_ARG3, R17_tos);
-  __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_ArrayIndexOutOfBoundsException));
+  __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_ArrayIndexOutOfBoundsException), R4_ARG2, R5_ARG3);
   return entry;
 }
 

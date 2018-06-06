@@ -770,7 +770,7 @@ static void initialize_static_field(fieldDescriptor* fd, Handle mirror, TRAPS) {
         {
           assert(fd->signature() == vmSymbols::string_signature(),
                  "just checking");
-          if (DumpSharedSpaces && oopDesc::is_archive_object(mirror())) {
+          if (DumpSharedSpaces && MetaspaceShared::is_archive_object(mirror())) {
             // Archive the String field and update the pointer.
             oop s = mirror()->obj_field(fd->offset());
             oop archived_s = StringTable::create_archived_string(s, CHECK);
@@ -811,7 +811,7 @@ void java_lang_Class::fixup_mirror(Klass* k, TRAPS) {
     if (MetaspaceShared::open_archive_heap_region_mapped()) {
       oop m = k->archived_java_mirror();
       assert(m != NULL, "archived mirror is NULL");
-      assert(oopDesc::is_archive_object(m), "must be archived mirror object");
+      assert(MetaspaceShared::is_archive_object(m), "must be archived mirror object");
       Handle m_h(THREAD, m);
       // restore_archived_mirror() clears the klass' _has_raw_archived_mirror flag
       restore_archived_mirror(k, m_h, Handle(), Handle(), Handle(), CHECK);
@@ -3558,34 +3558,6 @@ void java_lang_ref_SoftReference::set_clock(jlong value) {
   base->long_field_put(static_clock_offset, value);
 }
 
-// Support for java_lang_ref_ReferenceQueue
-
-oop java_lang_ref_ReferenceQueue::NULL_queue() {
-  InstanceKlass* ik = SystemDictionary::ReferenceQueue_klass();
-  oop mirror = ik->java_mirror();
-  return mirror->obj_field(static_NULL_queue_offset);
-}
-
-oop java_lang_ref_ReferenceQueue::ENQUEUED_queue() {
-  InstanceKlass* ik = SystemDictionary::ReferenceQueue_klass();
-  oop mirror = ik->java_mirror();
-  return mirror->obj_field(static_ENQUEUED_queue_offset);
-}
-
-void java_lang_ref_ReferenceQueue::compute_offsets() {
-  InstanceKlass* k = SystemDictionary::ReferenceQueue_klass();
-  compute_offset(static_NULL_queue_offset,
-                 k,
-                 vmSymbols::referencequeue_null_name(),
-                 vmSymbols::referencequeue_signature(),
-                 true /* is_static */);
-  compute_offset(static_ENQUEUED_queue_offset,
-                 k,
-                 vmSymbols::referencequeue_enqueued_name(),
-                 vmSymbols::referencequeue_signature(),
-                 true /* is_static */);
-}
-
 // Support for java_lang_invoke_DirectMethodHandle
 
 int java_lang_invoke_DirectMethodHandle::_member_offset;
@@ -4136,6 +4108,48 @@ oop java_lang_ClassLoader::unnamedModule(oop loader) {
   return loader->obj_field(unnamedModule_offset);
 }
 
+// Caller needs ResourceMark.
+const char* java_lang_ClassLoader::describe_external(const oop loader) {
+  if (loader == NULL) {
+    return "<bootstrap>";
+  }
+
+  bool well_known_loader = SystemDictionary::is_system_class_loader(loader) ||
+                           SystemDictionary::is_platform_class_loader(loader);
+
+  const char* name = NULL;
+  oop nameOop = java_lang_ClassLoader::name(loader);
+  if (nameOop != NULL) {
+    name = java_lang_String::as_utf8_string(nameOop);
+  }
+  if (name == NULL) {
+    // Use placeholder for missing name to have fixed message format.
+    name = "<unnamed>";
+  }
+
+  stringStream ss;
+  ss.print("\"%s\" (instance of %s", name, loader->klass()->external_name());
+  if (!well_known_loader) {
+    const char* parentName = NULL;
+    oop pl = java_lang_ClassLoader::parent(loader);
+    if (pl != NULL) {
+      oop parentNameOop = java_lang_ClassLoader::name(pl);
+      if (parentNameOop != NULL) {
+        parentName = java_lang_String::as_utf8_string(parentNameOop);
+      }
+      if (parentName == NULL) {
+        parentName = "<unnamed>";
+      }
+      ss.print(", child of \"%s\" %s", parentName, pl->klass()->external_name());
+    } else {
+      ss.print(", child of <bootstrap>");
+    }
+  }
+  ss.print(")");
+
+  return ss.as_string();
+}
+
 // Support for java_lang_System
 //
 #define SYSTEM_FIELDS_DO(macro) \
@@ -4223,8 +4237,6 @@ int java_lang_ref_Reference::referent_offset;
 int java_lang_ref_Reference::queue_offset;
 int java_lang_ref_Reference::next_offset;
 int java_lang_ref_Reference::discovered_offset;
-int java_lang_ref_ReferenceQueue::static_NULL_queue_offset;
-int java_lang_ref_ReferenceQueue::static_ENQUEUED_queue_offset;
 int java_lang_ref_SoftReference::timestamp_offset;
 int java_lang_ref_SoftReference::static_clock_offset;
 int java_lang_ClassLoader::parent_offset;
@@ -4469,7 +4481,6 @@ void JavaClasses::compute_offsets() {
   java_lang_StackTraceElement::compute_offsets();
   java_lang_StackFrameInfo::compute_offsets();
   java_lang_LiveStackFrameInfo::compute_offsets();
-  java_lang_ref_ReferenceQueue::compute_offsets();
 
   // generated interpreter code wants to know about the offsets we just computed:
   AbstractAssembler::update_delayed_values();

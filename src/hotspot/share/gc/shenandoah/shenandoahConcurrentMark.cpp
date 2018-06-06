@@ -653,23 +653,6 @@ public:
   }
 };
 
-class ShenandoahRefEnqueueTaskProxy : public AbstractGangTask {
-
-private:
-  AbstractRefProcTaskExecutor::EnqueueTask& _enqueue_task;
-
-public:
-
-  ShenandoahRefEnqueueTaskProxy(AbstractRefProcTaskExecutor::EnqueueTask& enqueue_task) :
-    AbstractGangTask("Enqueue reference objects in parallel"),
-    _enqueue_task(enqueue_task) {
-  }
-
-  void work(uint worker_id) {
-    _enqueue_task.work(worker_id);
-  }
-};
-
 class ShenandoahRefProcTaskExecutor : public AbstractRefProcTaskExecutor {
 
 private:
@@ -698,11 +681,6 @@ public:
       ShenandoahRefProcTaskProxy proc_task_proxy(task, &terminator);
       _workers->run_task(&proc_task_proxy);
     }
-  }
-
-  void execute(EnqueueTask& task) {
-    ShenandoahRefEnqueueTaskProxy enqueue_task_proxy(task);
-    _workers->run_task(&enqueue_task_proxy);
   }
 };
 
@@ -740,11 +718,6 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
           full_gc ?
           ShenandoahPhaseTimings::full_gc_weakrefs_process :
           ShenandoahPhaseTimings::weakrefs_process;
-
-  ShenandoahPhaseTimings::Phase phase_enqueue =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_weakrefs_enqueue :
-          ShenandoahPhaseTimings::weakrefs_enqueue;
 
   shenandoah_assert_rp_isalive_not_installed();
   ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
@@ -795,12 +768,6 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
     pt.print_all_references();
 
     assert(task_queues()->is_empty(), "Should be empty");
-  }
-
-  {
-    ShenandoahGCPhase phase(phase_enqueue);
-    rp->enqueue_discovered_references(&executor, &pt);
-    pt.print_enqueue_phase();
   }
 }
 

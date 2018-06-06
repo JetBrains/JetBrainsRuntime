@@ -809,7 +809,7 @@ public:
                       Register tmp1, Register tmp_thread);
 
   void access_store_at(BasicType type, DecoratorSet decorators, Address dst, Register src,
-                      Register tmp1, Register tmp_thread);
+                       Register tmp1, Register tmp_thread);
 
   void load_heap_oop(Register dst, Address src, Register tmp1 = noreg,
                      Register thread_tmp = noreg, DecoratorSet decorators = 0);
