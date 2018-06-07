@@ -43,7 +43,7 @@
 #include "opto/narrowptrnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "utilities/align.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/vmError.hpp"

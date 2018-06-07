@@ -29,7 +29,7 @@
 #include "opto/loopnode.hpp"
 #include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 
 //================= Loop Unswitching =====================
 //

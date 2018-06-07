@@ -40,7 +40,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "utilities/vmError.hpp"
 

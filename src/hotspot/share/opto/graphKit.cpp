@@ -26,14 +26,7 @@
 #include "ci/ciUtilities.hpp"
 #include "compiler/compileLog.hpp"
 #include "gc/shared/barrierSet.hpp"
-#include "gc/shared/cardTable.hpp"
-#include "gc/shared/cardTableBarrierSet.hpp"
-#include "gc/shared/collectedHeap.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
-#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "interpreter/interpreter.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
@@ -48,21 +41,17 @@
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
-#if INCLUDE_G1GC
-#include "gc/g1/g1CardTable.hpp"
-#include "gc/g1/g1ThreadLocalData.hpp"
-#include "gc/g1/heapRegion.hpp"
-#endif // INCLUDE_G1GC
 
 //----------------------------GraphKit-----------------------------------------
 // Main utility constructor.
 GraphKit::GraphKit(JVMState* jvms)
   : Phase(Phase::Parser),
     _env(C->env()),
-    _gvn(*C->initial_gvn())
+    _gvn(*C->initial_gvn()),
+    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2())
 {
   _exceptions = jvms->map()->next_exception();
   if (_exceptions != NULL)  jvms->map()->set_next_exception(NULL);
@@ -73,7 +62,8 @@ GraphKit::GraphKit(JVMState* jvms)
 GraphKit::GraphKit()
   : Phase(Phase::Parser),
     _env(C->env()),
-    _gvn(*C->initial_gvn())
+    _gvn(*C->initial_gvn()),
+    _barrier_set(BarrierSet::barrier_set()->barrier_set_c2())
 {
   _exceptions = NULL;
   set_map(NULL);
@@ -608,7 +598,7 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason, Node* arg) {
       const TypeInstPtr* ex_con  = TypeInstPtr::make(ex_obj);
       Node*              ex_node = _gvn.transform(ConNode::make(ex_con));
 
-      ex_node = shenandoah_write_barrier(ex_node);
+      ex_node = access_resolve_for_write(ex_node);
 
       // Clear the detail message of the preallocated exception object.
       // Weblogic sometimes mutates the detail message of exceptions
@@ -618,8 +608,7 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason, Node* arg) {
 
       Node *adr = basic_plus_adr(ex_node, ex_node, offset);
       const TypeOopPtr* val_type = TypeOopPtr::make_from_klass(env()->String_klass());
-      // Conservatively release stores of object references.
-      Node *store = store_oop_to_object(control(), ex_node, adr, adr_typ, null(), val_type, T_OBJECT, MemNode::release);
+      Node *store = access_store_at(control(), ex_node, adr, adr_typ, null(), val_type, T_OBJECT, IN_HEAP);
 
       add_exception_state(make_exception_state(ex_node));
       return;
@@ -1558,189 +1547,149 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   return st;
 }
 
-
-void GraphKit::pre_barrier(bool do_load,
-                           Node* ctl,
-                           Node* obj,
-                           Node* adr,
-                           uint  adr_idx,
-                           Node* val,
-                           const TypeOopPtr* val_type,
-                           Node* pre_val,
-                           BasicType bt) {
-
-  BarrierSet* bs = BarrierSet::barrier_set();
-  set_control(ctl);
-  switch (bs->kind()) {
-
-#if INCLUDE_G1GC
-    case BarrierSet::G1BarrierSet:
-      g1_write_barrier_pre(do_load, obj, adr, adr_idx, val, val_type, pre_val, bt);
-      break;
-#endif
-#if INCLUDE_SHENANDOAHGC
-    case BarrierSet::Shenandoah:
-      shenandoah_write_barrier_pre(do_load, obj, adr, adr_idx, val, val_type, pre_val, bt);
-      break;
-#endif
-
-    case BarrierSet::CardTableBarrierSet:
-      break;
-
-    default      :
-      ShouldNotReachHere();
-
-  }
-}
-
-bool GraphKit::can_move_pre_barrier() const {
-  BarrierSet* bs = BarrierSet::barrier_set();
-  switch (bs->kind()) {
-
-#if INCLUDE_G1GC
-    case BarrierSet::G1BarrierSet:
-    case BarrierSet::Shenandoah:
-      return true; // Can move it if no safepoint
-#endif
-
-    case BarrierSet::CardTableBarrierSet:
-      return true; // There is no pre-barrier
-
-    default      :
-      ShouldNotReachHere();
-  }
-  return false;
-}
-
-void GraphKit::post_barrier(Node* ctl,
-                            Node* store,
-                            Node* obj,
-                            Node* adr,
-                            uint  adr_idx,
-                            Node* val,
-                            BasicType bt,
-                            bool use_precise) {
-  BarrierSet* bs = BarrierSet::barrier_set();
-  set_control(ctl);
-  switch (bs->kind()) {
-#if INCLUDE_G1GC
-    case BarrierSet::G1BarrierSet:
-      g1_write_barrier_post(store, obj, adr, adr_idx, val, bt, use_precise);
-      break;
-#endif
-
-    case BarrierSet::CardTableBarrierSet:
-      write_barrier_post(store, obj, adr, adr_idx, val, use_precise);
-      break;
-
-    case BarrierSet::Shenandoah:
-      break;
-
-    default      :
-      ShouldNotReachHere();
-
-  }
-}
-
-void GraphKit::keep_alive_barrier(Node* ctl, Node* obj) {
-  BarrierSet* bs = BarrierSet::barrier_set();
-  switch (bs->kind()) {
-    case BarrierSet::G1BarrierSet:
-      pre_barrier(false /* do_load */,
-                  ctl,
-                  NULL /* obj */,
-                  NULL /* adr */,
-                  max_juint /* alias_idx */,
-                  NULL /* val */,
-                  NULL /* val_type */,
-                  obj /* pre_val */,
-                  T_OBJECT);
-      break;
-    case BarrierSet::Shenandoah:
-      if (ShenandoahKeepAliveBarrier) {
-        pre_barrier(false /* do_load */,
-                    ctl,
-                    NULL /* obj */,
-                    NULL /* adr */,
-                    max_juint /* alias_idx */,
-                    NULL /* val */,
-                    NULL /* val_type */,
-                    obj /* pre_val */,
-                    T_OBJECT);
-      }
-      break;
-    case BarrierSet::CardTableBarrierSet:
-      break;
-    default      :
-      ShouldNotReachHere();
-
-  }
-}
-
-Node* GraphKit::store_oop(Node* ctl,
-                          Node* obj,
-                          Node* adr,
-                          const TypePtr* adr_type,
-                          Node* val,
-                          const TypeOopPtr* val_type,
-                          BasicType bt,
-                          bool use_precise,
-                          MemNode::MemOrd mo,
-                          bool mismatched) {
+Node* GraphKit::access_store_at(Node* ctl,
+                                Node* obj,
+                                Node* adr,
+                                const TypePtr* adr_type,
+                                Node* val,
+                                const Type* val_type,
+                                BasicType bt,
+                                DecoratorSet decorators) {
   // Transformation of a value which could be NULL pointer (CastPP #NULL)
   // could be delayed during Parse (for example, in adjust_map_after_if()).
   // Execute transformation here to avoid barrier generation in such case.
-  if (_gvn.type(val) == TypePtr::NULL_PTR)
+  if (_gvn.type(val) == TypePtr::NULL_PTR) {
     val = _gvn.makecon(TypePtr::NULL_PTR);
+  }
 
   set_control(ctl);
-  if (stopped()) return top(); // Dead path ?
+  if (stopped()) {
+    return top(); // Dead path ?
+  }
 
-  assert(bt == T_OBJECT, "sanity");
   assert(val != NULL, "not dead path");
-  uint adr_idx = C->get_alias_index(adr_type);
-  assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
 
-  val = shenandoah_storeval_barrier(val);
-
-  pre_barrier(true /* do_load */,
-              control(), obj, adr, adr_idx, val, val_type,
-              NULL /* pre_val */,
-              bt);
-
-  Node* store = store_to_memory(control(), adr, val, bt, adr_idx, mo, mismatched);
-  post_barrier(control(), store, obj, adr, adr_idx, val, bt, use_precise);
-  return store;
+  C2AccessValuePtr addr(adr, adr_type);
+  C2AccessValue value(val, val_type);
+  C2Access access(this, decorators | C2_WRITE_ACCESS, bt, obj, addr);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::store_at(access, value);
+  } else {
+    return _barrier_set->store_at(access, value);
+  }
 }
 
-// Could be an array or object we don't know at compile time (unsafe ref.)
-Node* GraphKit::store_oop_to_unknown(Node* ctl,
-                             Node* obj,   // containing obj
-                             Node* adr,  // actual adress to store val at
-                             const TypePtr* adr_type,
-                             Node* val,
-                             BasicType bt,
-                             MemNode::MemOrd mo,
-                             bool mismatched) {
-  Compile::AliasType* at = C->alias_type(adr_type);
-  const TypeOopPtr* val_type = NULL;
-  if (adr_type->isa_instptr()) {
-    if (at->field() != NULL) {
-      // known field.  This code is a copy of the do_put_xxx logic.
-      ciField* field = at->field();
-      if (!field->type()->is_loaded()) {
-        val_type = TypeInstPtr::BOTTOM;
-      } else {
-        val_type = TypeOopPtr::make_from_klass(field->type()->as_klass());
-      }
-    }
-  } else if (adr_type->isa_aryptr()) {
-    val_type = adr_type->is_aryptr()->elem()->make_oopptr();
+Node* GraphKit::access_load_at(Node* obj,   // containing obj
+                               Node* adr,   // actual adress to store val at
+                               const TypePtr* adr_type,
+                               const Type* val_type,
+                               BasicType bt,
+                               DecoratorSet decorators) {
+  if (stopped()) {
+    return top(); // Dead path ?
   }
-  if (val_type == NULL) {
-    val_type = TypeInstPtr::BOTTOM;
+
+  C2AccessValuePtr addr(adr, adr_type);
+  C2Access access(this, decorators | C2_READ_ACCESS, bt, obj, addr);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::load_at(access, val_type);
+  } else {
+    return _barrier_set->load_at(access, val_type);
   }
-  return store_oop(ctl, obj, adr, adr_type, val, val_type, bt, true, mo, mismatched);
+}
+
+Node* GraphKit::access_atomic_cmpxchg_val_at(Node* ctl,
+                                             Node* obj,
+                                             Node* adr,
+                                             const TypePtr* adr_type,
+                                             int alias_idx,
+                                             Node* expected_val,
+                                             Node* new_val,
+                                             const Type* value_type,
+                                             BasicType bt,
+                                             DecoratorSet decorators) {
+  set_control(ctl);
+  C2AccessValuePtr addr(adr, adr_type);
+  C2AtomicAccess access(this, decorators | C2_READ_ACCESS | C2_WRITE_ACCESS,
+                        bt, obj, addr, alias_idx);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::atomic_cmpxchg_val_at(access, expected_val, new_val, value_type);
+  } else {
+    return _barrier_set->atomic_cmpxchg_val_at(access, expected_val, new_val, value_type);
+  }
+}
+
+Node* GraphKit::access_atomic_cmpxchg_bool_at(Node* ctl,
+                                              Node* obj,
+                                              Node* adr,
+                                              const TypePtr* adr_type,
+                                              int alias_idx,
+                                              Node* expected_val,
+                                              Node* new_val,
+                                              const Type* value_type,
+                                              BasicType bt,
+                                              DecoratorSet decorators) {
+  set_control(ctl);
+  C2AccessValuePtr addr(adr, adr_type);
+  C2AtomicAccess access(this, decorators | C2_READ_ACCESS | C2_WRITE_ACCESS,
+                        bt, obj, addr, alias_idx);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::atomic_cmpxchg_bool_at(access, expected_val, new_val, value_type);
+  } else {
+    return _barrier_set->atomic_cmpxchg_bool_at(access, expected_val, new_val, value_type);
+  }
+}
+
+Node* GraphKit::access_atomic_xchg_at(Node* ctl,
+                                      Node* obj,
+                                      Node* adr,
+                                      const TypePtr* adr_type,
+                                      int alias_idx,
+                                      Node* new_val,
+                                      const Type* value_type,
+                                      BasicType bt,
+                                      DecoratorSet decorators) {
+  set_control(ctl);
+  C2AccessValuePtr addr(adr, adr_type);
+  C2AtomicAccess access(this, decorators | C2_READ_ACCESS | C2_WRITE_ACCESS,
+                        bt, obj, addr, alias_idx);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::atomic_xchg_at(access, new_val, value_type);
+  } else {
+    return _barrier_set->atomic_xchg_at(access, new_val, value_type);
+  }
+}
+
+Node* GraphKit::access_atomic_add_at(Node* ctl,
+                                     Node* obj,
+                                     Node* adr,
+                                     const TypePtr* adr_type,
+                                     int alias_idx,
+                                     Node* new_val,
+                                     const Type* value_type,
+                                     BasicType bt,
+                                     DecoratorSet decorators) {
+  set_control(ctl);
+  C2AccessValuePtr addr(adr, adr_type);
+  C2AtomicAccess access(this, decorators | C2_READ_ACCESS | C2_WRITE_ACCESS, bt, obj, addr, alias_idx);
+  if (access.is_raw()) {
+    return _barrier_set->BarrierSetC2::atomic_add_at(access, new_val, value_type);
+  } else {
+    return _barrier_set->atomic_add_at(access, new_val, value_type);
+  }
+}
+
+void GraphKit::access_clone(Node* ctl, Node* src, Node* dst, Node* size, bool is_array) {
+  set_control(ctl);
+  return _barrier_set->clone(this, src, dst, size, is_array);
+}
+
+Node* GraphKit::access_resolve_for_read(Node* n) {
+  return _barrier_set->resolve_for_read(this, n);
+}
+
+Node* GraphKit::access_resolve_for_write(Node* n) {
+  return _barrier_set->resolve_for_write(this, n);
 }
 
 
@@ -3279,7 +3228,7 @@ FastLockNode* GraphKit::shared_lock(Node* obj) {
 
   assert(dead_locals_are_killed(), "should kill locals before sync. point");
 
-  obj = shenandoah_write_barrier(obj);
+  obj = access_resolve_for_write(obj);
 
   // Box the stack location
   Node* box = _gvn.transform(new BoxLockNode(next_monitor()));
@@ -3882,807 +3831,16 @@ void GraphKit::add_predicate(int nargs) {
   add_predicate_impl(Deoptimization::Reason_loop_limit_check, nargs);
 }
 
-//----------------------------- store barriers ----------------------------
-#define __ ideal.
-
-bool GraphKit::use_ReduceInitialCardMarks() {
-  BarrierSet *bs = BarrierSet::barrier_set();
-  return bs->is_a(BarrierSet::CardTableBarrierSet)
-         && barrier_set_cast<CardTableBarrierSet>(bs)->can_elide_tlab_store_barriers()
-         && ReduceInitialCardMarks;
-}
-
 void GraphKit::sync_kit(IdealKit& ideal) {
-  set_all_memory(__ merged_memory());
-  set_i_o(__ i_o());
-  set_control(__ ctrl());
+  set_all_memory(ideal.merged_memory());
+  set_i_o(ideal.i_o());
+  set_control(ideal.ctrl());
 }
 
 void GraphKit::final_sync(IdealKit& ideal) {
   // Final sync IdealKit and graphKit.
   sync_kit(ideal);
 }
-
-Node* GraphKit::byte_map_base_node() {
-  // Get base of card map
-  jbyte* card_table_base = ci_card_table_address();
-  if (card_table_base != NULL) {
-    return makecon(TypeRawPtr::make((address)card_table_base));
-  } else {
-    return null();
-  }
-}
-
-// vanilla/CMS post barrier
-// Insert a write-barrier store.  This is to let generational GC work; we have
-// to flag all oop-stores before the next GC point.
-void GraphKit::write_barrier_post(Node* oop_store,
-                                  Node* obj,
-                                  Node* adr,
-                                  uint  adr_idx,
-                                  Node* val,
-                                  bool use_precise) {
-  // No store check needed if we're storing a NULL or an old object
-  // (latter case is probably a string constant). The concurrent
-  // mark sweep garbage collector, however, needs to have all nonNull
-  // oop updates flagged via card-marks.
-  if (val != NULL && val->is_Con()) {
-    // must be either an oop or NULL
-    const Type* t = val->bottom_type();
-    if (t == TypePtr::NULL_PTR || t == Type::TOP)
-      // stores of null never (?) need barriers
-      return;
-  }
-
-  if (use_ReduceInitialCardMarks()
-      && obj == just_allocated_object(control())) {
-    // We can skip marks on a freshly-allocated object in Eden.
-    // Keep this code in sync with new_deferred_store_barrier() in runtime.cpp.
-    // That routine informs GC to take appropriate compensating steps,
-    // upon a slow-path allocation, so as to make this card-mark
-    // elision safe.
-    return;
-  }
-
-  if (!use_precise) {
-    // All card marks for a (non-array) instance are in one place:
-    adr = obj;
-  }
-  // (Else it's an array (or unknown), and we want more precise card marks.)
-  assert(adr != NULL, "");
-
-  IdealKit ideal(this, true);
-
-  // Convert the pointer to an int prior to doing math on it
-  Node* cast = __ CastPX(__ ctrl(), adr);
-
-  // Divide by card size
-  assert(BarrierSet::barrier_set()->is_a(BarrierSet::CardTableBarrierSet),
-         "Only one we handle so far.");
-  Node* card_offset = __ URShiftX( cast, __ ConI(CardTable::card_shift) );
-
-  // Combine card table base and card offset
-  Node* card_adr = __ AddP(__ top(), byte_map_base_node(), card_offset );
-
-  // Get the alias_index for raw card-mark memory
-  int adr_type = Compile::AliasIdxRaw;
-  Node*   zero = __ ConI(0); // Dirty card value
-  BasicType bt = T_BYTE;
-
-  if (UseConcMarkSweepGC && UseCondCardMark) {
-    insert_mem_bar(Op_MemBarVolatile);   // StoreLoad barrier
-    __ sync_kit(this);
-  }
-
-  if (UseCondCardMark) {
-    // The classic GC reference write barrier is typically implemented
-    // as a store into the global card mark table.  Unfortunately
-    // unconditional stores can result in false sharing and excessive
-    // coherence traffic as well as false transactional aborts.
-    // UseCondCardMark enables MP "polite" conditional card mark
-    // stores.  In theory we could relax the load from ctrl() to
-    // no_ctrl, but that doesn't buy much latitude.
-    Node* card_val = __ load( __ ctrl(), card_adr, TypeInt::BYTE, bt, adr_type);
-    __ if_then(card_val, BoolTest::ne, zero);
-  }
-
-  // Smash zero into card
-  if( !UseConcMarkSweepGC ) {
-    __ store(__ ctrl(), card_adr, zero, bt, adr_type, MemNode::unordered);
-  } else {
-    // Specialized path for CM store barrier
-    __ storeCM(__ ctrl(), card_adr, zero, oop_store, adr_idx, bt, adr_type);
-  }
-
-  if (UseCondCardMark) {
-    __ end_if();
-  }
-
-  // Final sync IdealKit and GraphKit.
-  final_sync(ideal);
-}
-
-#if INCLUDE_G1GC
-
-/*
- * Determine if the G1 pre-barrier can be removed. The pre-barrier is
- * required by SATB to make sure all objects live at the start of the
- * marking are kept alive, all reference updates need to any previous
- * reference stored before writing.
- *
- * If the previous value is NULL there is no need to save the old value.
- * References that are NULL are filtered during runtime by the barrier
- * code to avoid unnecessary queuing.
- *
- * However in the case of newly allocated objects it might be possible to
- * prove that the reference about to be overwritten is NULL during compile
- * time and avoid adding the barrier code completely.
- *
- * The compiler needs to determine that the object in which a field is about
- * to be written is newly allocated, and that no prior store to the same field
- * has happened since the allocation.
- *
- * Returns true if the pre-barrier can be removed
- */
-bool GraphKit::g1_can_remove_pre_barrier(PhaseTransform* phase, Node* adr,
-                                         BasicType bt, uint adr_idx) {
-  intptr_t offset = 0;
-  Node* base = AddPNode::Ideal_base_and_offset(adr, phase, offset);
-  AllocateNode* alloc = AllocateNode::Ideal_allocation(base, phase);
-
-  if (offset == Type::OffsetBot) {
-    return false; // cannot unalias unless there are precise offsets
-  }
-
-  if (alloc == NULL) {
-    return false; // No allocation found
-  }
-
-  intptr_t size_in_bytes = type2aelembytes(bt);
-
-  Node* mem = memory(adr_idx); // start searching here...
-
-  for (int cnt = 0; cnt < 50; cnt++) {
-
-    if (mem->is_Store()) {
-
-      Node* st_adr = mem->in(MemNode::Address);
-      intptr_t st_offset = 0;
-      Node* st_base = AddPNode::Ideal_base_and_offset(st_adr, phase, st_offset);
-
-      if (st_base == NULL) {
-        break; // inscrutable pointer
-      }
-
-      // Break we have found a store with same base and offset as ours so break
-      if (st_base == base && st_offset == offset) {
-        break;
-      }
-
-      if (st_offset != offset && st_offset != Type::OffsetBot) {
-        const int MAX_STORE = BytesPerLong;
-        if (st_offset >= offset + size_in_bytes ||
-            st_offset <= offset - MAX_STORE ||
-            st_offset <= offset - mem->as_Store()->memory_size()) {
-          // Success:  The offsets are provably independent.
-          // (You may ask, why not just test st_offset != offset and be done?
-          // The answer is that stores of different sizes can co-exist
-          // in the same sequence of RawMem effects.  We sometimes initialize
-          // a whole 'tile' of array elements with a single jint or jlong.)
-          mem = mem->in(MemNode::Memory);
-          continue; // advance through independent store memory
-        }
-      }
-
-      if (st_base != base
-          && MemNode::detect_ptr_independence(base, alloc, st_base,
-                                              AllocateNode::Ideal_allocation(st_base, phase),
-                                              phase)) {
-        // Success:  The bases are provably independent.
-        mem = mem->in(MemNode::Memory);
-        continue; // advance through independent store memory
-      }
-    } else if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
-
-      InitializeNode* st_init = mem->in(0)->as_Initialize();
-      AllocateNode* st_alloc = st_init->allocation();
-
-      // Make sure that we are looking at the same allocation site.
-      // The alloc variable is guaranteed to not be null here from earlier check.
-      if (alloc == st_alloc) {
-        // Check that the initialization is storing NULL so that no previous store
-        // has been moved up and directly write a reference
-        Node* captured_store = st_init->find_captured_store(offset,
-                                                            type2aelembytes(T_OBJECT),
-                                                            phase);
-        if (captured_store == NULL || captured_store == st_init->zero_memory()) {
-          return true;
-        }
-      }
-    }
-
-    // Unless there is an explicit 'continue', we must bail out here,
-    // because 'mem' is an inscrutable memory state (e.g., a call).
-    break;
-  }
-
-  return false;
-}
-
-static void g1_write_barrier_pre_helper(const GraphKit& kit, Node* adr) {
-  if (UseShenandoahGC && ShenandoahSATBBarrier && adr != NULL) {
-    Node* c = kit.control();
-    Node* call = c->in(1)->in(1)->in(1)->in(0);
-    assert(call->is_g1_wb_pre_call(), "g1_wb_pre call expected");
-    call->add_req(adr);
-  }
-}
-
-// G1 pre/post barriers
-void GraphKit::g1_write_barrier_pre(bool do_load,
-                                    Node* obj,
-                                    Node* adr,
-                                    uint alias_idx,
-                                    Node* val,
-                                    const TypeOopPtr* val_type,
-                                    Node* pre_val,
-                                    BasicType bt) {
-
-  // Some sanity checks
-  // Note: val is unused in this routine.
-
-  if (do_load) {
-    // We need to generate the load of the previous value
-    assert(obj != NULL, "must have a base");
-    assert(adr != NULL, "where are loading from?");
-    assert(pre_val == NULL, "loaded already?");
-    assert(val_type != NULL, "need a type");
-
-    if (use_ReduceInitialCardMarks()
-        && g1_can_remove_pre_barrier(&_gvn, adr, bt, alias_idx)) {
-      return;
-    }
-
-  } else {
-    // In this case both val_type and alias_idx are unused.
-    assert(pre_val != NULL, "must be loaded already");
-    // Nothing to be done if pre_val is null.
-    if (pre_val->bottom_type() == TypePtr::NULL_PTR) return;
-    assert(pre_val->bottom_type()->basic_type() == T_OBJECT, "or we shouldn't be here");
-  }
-  assert(bt == T_OBJECT, "or we shouldn't be here");
-
-  IdealKit ideal(this, true);
-
-  Node* tls = __ thread(); // ThreadLocalStorage
-
-  Node* no_ctrl = NULL;
-  Node* no_base = __ top();
-  Node* zero  = __ ConI(0);
-  Node* zeroX = __ ConX(0);
-
-  float likely  = PROB_LIKELY(0.999);
-  float unlikely  = PROB_UNLIKELY(0.999);
-
-  BasicType active_type = in_bytes(SATBMarkQueue::byte_width_of_active()) == 4 ? T_INT : T_BYTE;
-  assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 4 || in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "flag width");
-
-  // Offsets into the thread
-  const int marking_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
-                                              : ShenandoahThreadLocalData::satb_mark_queue_active_offset());
-  const int index_offset   = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_index_offset()
-                                              : ShenandoahThreadLocalData::satb_mark_queue_index_offset());
-  const int buffer_offset  = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
-                                              : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
-
-  // Now the actual pointers into the thread
-  Node* marking_adr = __ AddP(no_base, tls, __ ConX(marking_offset));
-  Node* buffer_adr  = __ AddP(no_base, tls, __ ConX(buffer_offset));
-  Node* index_adr   = __ AddP(no_base, tls, __ ConX(index_offset));
-
-  // Now some of the values
-  Node* marking;
-  if (UseShenandoahGC) {
-    Node* gc_state = __ AddP(no_base, tls, __ ConX(in_bytes(ShenandoahThreadLocalData::gc_state_offset())));
-    Node* ld = __ load(__ ctrl(), gc_state, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
-    marking = __ AndI(ld, __ ConI(ShenandoahHeap::MARKING));
-    assert(ShenandoahWriteBarrierNode::is_gc_state_load(ld), "Should match the shape");
-  } else {
-    assert(UseG1GC, "should be");
-    marking = __ load(__ ctrl(), marking_adr, TypeInt::INT, active_type, Compile::AliasIdxRaw);
-  }
-
-  // if (!marking)
-  __ if_then(marking, BoolTest::ne, zero, unlikely); {
-    BasicType index_bt = TypeX_X->basic_type();
-    assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
-    Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
-
-    if (do_load) {
-      // load original value
-      // alias_idx correct??
-      pre_val = __ load(__ ctrl(), adr, val_type, bt, alias_idx);
-    }
-
-    // if (pre_val != NULL)
-    __ if_then(pre_val, BoolTest::ne, null()); {
-      Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-
-      // is the queue for this thread full?
-      __ if_then(index, BoolTest::ne, zeroX, likely); {
-
-        // decrement the index
-        Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-
-        // Now get the buffer location we will log the previous value into and store it
-        Node *log_addr = __ AddP(no_base, buffer, next_index);
-        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
-        // update the index
-        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
-
-      } __ else_(); {
-
-        // logging buffer is full, call the runtime
-        const TypeFunc *tf = OptoRuntime::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
-      } __ end_if();  // (!index)
-    } __ end_if();  // (pre_val != NULL)
-  } __ end_if();  // (!marking)
-
-  // Final sync IdealKit and GraphKit.
-  final_sync(ideal);
-  g1_write_barrier_pre_helper(*this, adr);
-}
-
-void GraphKit::shenandoah_enqueue_barrier(Node* pre_val) {
-
-  // Some sanity checks
-  assert(pre_val != NULL, "must be loaded already");
-  // Nothing to be done if pre_val is null.
-  if (pre_val->bottom_type()->higher_equal(TypePtr::NULL_PTR)) return;
-  assert(pre_val->bottom_type()->basic_type() == T_OBJECT, "or we shouldn't be here");
-
-  IdealKit ideal(this, true);
-
-  Node* tls = __ thread(); // ThreadLocalStorage
-
-  Node* no_base = __ top();
-  Node* zero  = __ ConI(0);
-  Node* zeroX = __ ConX(0);
-
-  float likely  = PROB_LIKELY(0.999);
-  float unlikely  = PROB_UNLIKELY(0.999);
-
-  // Offsets into the thread
-  const int gc_state_offset = in_bytes(ShenandoahThreadLocalData::gc_state_offset());
-  const int index_offset    = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_index_offset());
-  const int buffer_offset   = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
-
-  // Now the actual pointers into the thread
-  Node* gc_state_adr = __ AddP(no_base, tls, __ ConX(gc_state_offset));
-  Node* buffer_adr   = __ AddP(no_base, tls, __ ConX(buffer_offset));
-  Node* index_adr    = __ AddP(no_base, tls, __ ConX(index_offset));
-
-  const Type* obj_type = pre_val->bottom_type();
-  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
-    // dunno if it's NULL or not.
-  // if (pre_val != NULL)
-  __ if_then(pre_val, BoolTest::ne, null()); {
-
-    // Now some of the values
-    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
-    // if (!marking)
-    __ if_then(marking, BoolTest::ne, zero, unlikely); {
-      BasicType index_bt = TypeX_X->basic_type();
-      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
-      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
-
-      // is the queue for this thread full?
-      __ if_then(index, BoolTest::ne, zeroX, likely); {
-
-        // decrement the index
-        Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-
-        // Now get the buffer location we will log the previous value into and store it
-        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-        Node *log_addr = __ AddP(no_base, buffer, next_index);
-        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
-        // update the index
-        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
-
-      } __ else_(); {
-        // logging buffer is full, call the runtime
-        const TypeFunc *tf = OptoRuntime::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
-      } __ end_if();  // (!index)
-    } __ end_if();  // (!marking)
-  } __ end_if();  // (pre_val != NULL)
-  } else {
-    // We know it is not null.
-    // Now some of the values
-    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BOOL, T_BOOLEAN, Compile::AliasIdxRaw);
-
-    // if (!marking)
-    __ if_then(marking, BoolTest::ne, zero, unlikely); {
-      BasicType index_bt = TypeX_X->basic_type();
-      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
-      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
-
-      // is the queue for this thread full?
-      __ if_then(index, BoolTest::ne, zeroX, likely); {
-
-        // decrement the index
-        Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-
-        // Now get the buffer location we will log the previous value into and store it
-        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-        Node *log_addr = __ AddP(no_base, buffer, next_index);
-        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
-        // update the index
-        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
-
-      } __ else_(); {
-        // logging buffer is full, call the runtime
-        const TypeFunc *tf = OptoRuntime::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
-      } __ end_if();  // (!index)
-    } __ end_if();  // (!marking)
-  }
-  // Final sync IdealKit and GraphKit.
-  final_sync(ideal);
-}
-
-void GraphKit::shenandoah_write_barrier_pre(bool do_load,
-                                            Node* obj,
-                                            Node* adr,
-                                            uint alias_idx,
-                                            Node* val,
-                                            const TypeOopPtr* val_type,
-                                            Node* pre_val,
-                                            BasicType bt) {
-
-  IdealKit ideal(this);
-  Node* tls = __ thread();
-  Node* no_base = __ top();
-  Node* no_ctrl = NULL;
-  Node* zero  = __ ConI(0);
-  Node* offset = __ ConX(in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  Node* gc_state_adr = __ AddP(no_base, tls, offset);
-  Node* gc_state = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
-  float unlikely = PROB_UNLIKELY(0.999);
-
-  // Some sanity checks
-  // Note: val is unused in this routine.
-
-  if (val != NULL) {
-    shenandoah_update_matrix(adr, val);
-    ideal.sync_kit(this);
-  }
-
-  __ if_then(gc_state, BoolTest::ne, zero, unlikely); {
-    sync_kit(ideal);
-
-    if (ShenandoahSATBBarrier) {
-      g1_write_barrier_pre(do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
-    }
-
-    ideal.sync_kit(this);
-  } __ end_if();
-  final_sync(ideal);
-}
-
-void GraphKit::shenandoah_update_matrix(Node* adr, Node* val) {
-  if (!UseShenandoahMatrix) {
-    return;
-  }
-
-  assert(val != NULL, "checked before");
-  if (adr == NULL) {
-    return; // Nothing to do
-  }
-  assert(adr != NULL, "must not happen");
-  if (val->bottom_type()->higher_equal(TypePtr::NULL_PTR)) {
-    // Nothing to do.
-    return;
-  }
-
-  ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-
-  enum { _set_path = 1, _already_set_path, _val_null_path, PATH_LIMIT };
-  RegionNode* region = new RegionNode(PATH_LIMIT);
-  Node* prev_mem = memory(Compile::AliasIdxRaw);
-  Node* memphi    = PhiNode::make(region, prev_mem, Type::MEMORY, TypeRawPtr::BOTTOM);
-  Node* null_ctrl = top();
-  Node* not_null_val = null_check_oop(val, &null_ctrl);
-
-  // Null path: nothing to do.
-  region->init_req(_val_null_path, null_ctrl);
-  memphi->init_req(_val_null_path, prev_mem);
-
-  // Not null path. Update the matrix.
-
-  // This uses a fast calculation for the matrix address. For a description,
-  // see src/share/vm/gc/shenandoah/shenandoahConnectionMatrix.inline.hpp,
-  // ShenandoahConnectionMatrix::compute_address(const void* from, const void* to).
-  address heap_base = ShenandoahHeap::heap()->base();
-  jint stride = matrix->stride_jint();
-  jint rs = ShenandoahHeapRegion::region_size_bytes_shift_jint();
-
-  guarantee(stride < ShenandoahHeapRegion::region_size_bytes_jint(), "sanity");
-  guarantee(is_aligned(heap_base, ShenandoahHeapRegion::region_size_bytes()), "sanity");
-
-  Node* magic_con = MakeConX((jlong) matrix->matrix_addr() - ((jlong) heap_base >> rs) * (stride + 1));
-
-  // Compute addr part
-  Node* adr_idx = _gvn.transform(new CastP2XNode(control(), adr));
-  adr_idx = _gvn.transform(new URShiftXNode(adr_idx, intcon(rs)));
-
-  // Compute new_val part
-  Node* val_idx = _gvn.transform(new CastP2XNode(control(), not_null_val));
-  val_idx = _gvn.transform(new URShiftXNode(val_idx, intcon(rs)));
-  val_idx = _gvn.transform(new MulXNode(val_idx, MakeConX(stride)));
-
-  // Add everything up
-  adr_idx = _gvn.transform(new AddXNode(adr_idx, val_idx));
-  adr_idx = _gvn.transform(new CastX2PNode(adr_idx));
-  Node* matrix_adr = _gvn.transform(new AddPNode(top(), adr_idx, magic_con));
-
-  // Load current value
-  const TypePtr* adr_type = TypeRawPtr::BOTTOM;
-  Node* current = _gvn.transform(LoadNode::make(_gvn, control(), memory(Compile::AliasIdxRaw),
-                                                matrix_adr, adr_type, TypeInt::INT, T_BYTE, MemNode::unordered));
-
-  // Check if already set
-  Node* cmp_set = _gvn.transform(new CmpINode(current, intcon(0)));
-  Node* cmp_set_bool = _gvn.transform(new BoolNode(cmp_set, BoolTest::eq));
-  IfNode* cmp_iff = create_and_map_if(control(), cmp_set_bool, PROB_MIN, COUNT_UNKNOWN);
-
-  Node* if_not_set = _gvn.transform(new IfTrueNode(cmp_iff));
-  Node* if_set = _gvn.transform(new IfFalseNode(cmp_iff));
-
-  // Already set, exit
-  set_control(if_set);
-  region->init_req(_already_set_path, control());
-  memphi->init_req(_already_set_path, prev_mem);
-
-  // Not set: do the store, and finish up
-  set_control(if_not_set);
-  Node* store = _gvn.transform(StoreNode::make(_gvn, control(), memory(Compile::AliasIdxRaw),
-                                               matrix_adr, adr_type, intcon(1), T_BYTE, MemNode::unordered));
-  region->init_req(_set_path, control());
-  memphi->init_req(_set_path, store);
-
-  // Merge control flows and memory.
-  set_control(_gvn.transform(region));
-  record_for_igvn(region);
-  set_memory(_gvn.transform(memphi), Compile::AliasIdxRaw);
-}
-
-/*
- * G1 similar to any GC with a Young Generation requires a way to keep track of
- * references from Old Generation to Young Generation to make sure all live
- * objects are found. G1 also requires to keep track of object references
- * between different regions to enable evacuation of old regions, which is done
- * as part of mixed collections. References are tracked in remembered sets and
- * is continuously updated as reference are written to with the help of the
- * post-barrier.
- *
- * To reduce the number of updates to the remembered set the post-barrier
- * filters updates to fields in objects located in the Young Generation,
- * the same region as the reference, when the NULL is being written or
- * if the card is already marked as dirty by an earlier write.
- *
- * Under certain circumstances it is possible to avoid generating the
- * post-barrier completely if it is possible during compile time to prove
- * the object is newly allocated and that no safepoint exists between the
- * allocation and the store.
- *
- * In the case of slow allocation the allocation code must handle the barrier
- * as part of the allocation in the case the allocated object is not located
- * in the nursery, this would happen for humongous objects. This is similar to
- * how CMS is required to handle this case, see the comments for the method
- * CardTableBarrierSet::on_allocation_slowpath_exit and OptoRuntime::new_deferred_store_barrier.
- * A deferred card mark is required for these objects and handled in the above
- * mentioned methods.
- *
- * Returns true if the post barrier can be removed
- */
-bool GraphKit::g1_can_remove_post_barrier(PhaseTransform* phase, Node* store,
-                                          Node* adr) {
-  intptr_t      offset = 0;
-  Node*         base   = AddPNode::Ideal_base_and_offset(adr, phase, offset);
-  AllocateNode* alloc  = AllocateNode::Ideal_allocation(base, phase);
-
-  if (offset == Type::OffsetBot) {
-    return false; // cannot unalias unless there are precise offsets
-  }
-
-  if (alloc == NULL) {
-     return false; // No allocation found
-  }
-
-  // Start search from Store node
-  Node* mem = store->in(MemNode::Control);
-  if (mem->is_Proj() && mem->in(0)->is_Initialize()) {
-
-    InitializeNode* st_init = mem->in(0)->as_Initialize();
-    AllocateNode*  st_alloc = st_init->allocation();
-
-    // Make sure we are looking at the same allocation
-    if (alloc == st_alloc) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-//
-// Update the card table and add card address to the queue
-//
-void GraphKit::g1_mark_card(IdealKit& ideal,
-                            Node* card_adr,
-                            Node* oop_store,
-                            uint oop_alias_idx,
-                            Node* index,
-                            Node* index_adr,
-                            Node* buffer,
-                            const TypeFunc* tf) {
-
-  Node* zero  = __ ConI(0);
-  Node* zeroX = __ ConX(0);
-  Node* no_base = __ top();
-  BasicType card_bt = T_BYTE;
-  // Smash zero into card. MUST BE ORDERED WRT TO STORE
-  __ storeCM(__ ctrl(), card_adr, zero, oop_store, oop_alias_idx, card_bt, Compile::AliasIdxRaw);
-
-  //  Now do the queue work
-  __ if_then(index, BoolTest::ne, zeroX); {
-
-    Node* next_index = _gvn.transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-    Node* log_addr = __ AddP(no_base, buffer, next_index);
-
-    // Order, see storeCM.
-    __ store(__ ctrl(), log_addr, card_adr, T_ADDRESS, Compile::AliasIdxRaw, MemNode::unordered);
-    __ store(__ ctrl(), index_adr, next_index, TypeX_X->basic_type(), Compile::AliasIdxRaw, MemNode::unordered);
-
-  } __ else_(); {
-    __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_post), "g1_wb_post", card_adr, __ thread());
-  } __ end_if();
-
-}
-
-void GraphKit::g1_write_barrier_post(Node* oop_store,
-                                     Node* obj,
-                                     Node* adr,
-                                     uint alias_idx,
-                                     Node* val,
-                                     BasicType bt,
-                                     bool use_precise) {
-  // If we are writing a NULL then we need no post barrier
-
-  if (val != NULL && val->is_Con() && val->bottom_type() == TypePtr::NULL_PTR) {
-    // Must be NULL
-    const Type* t = val->bottom_type();
-    assert(t == Type::TOP || t == TypePtr::NULL_PTR, "must be NULL");
-    // No post barrier if writing NULLx
-    return;
-  }
-
-  if (use_ReduceInitialCardMarks() && obj == just_allocated_object(control())) {
-    // We can skip marks on a freshly-allocated object in Eden.
-    // Keep this code in sync with new_deferred_store_barrier() in runtime.cpp.
-    // That routine informs GC to take appropriate compensating steps,
-    // upon a slow-path allocation, so as to make this card-mark
-    // elision safe.
-    return;
-  }
-
-  if (use_ReduceInitialCardMarks()
-      && g1_can_remove_post_barrier(&_gvn, oop_store, adr)) {
-    return;
-  }
-
-  if (!use_precise) {
-    // All card marks for a (non-array) instance are in one place:
-    adr = obj;
-  }
-  // (Else it's an array (or unknown), and we want more precise card marks.)
-  assert(adr != NULL, "");
-
-  IdealKit ideal(this, true);
-
-  Node* tls = __ thread(); // ThreadLocalStorage
-
-  Node* no_base = __ top();
-  float likely  = PROB_LIKELY(0.999);
-  float unlikely  = PROB_UNLIKELY(0.999);
-  Node* young_card = __ ConI((jint)G1CardTable::g1_young_card_val());
-  Node* dirty_card = __ ConI((jint)CardTable::dirty_card_val());
-  Node* zeroX = __ ConX(0);
-
-  // Get the alias_index for raw card-mark memory
-  const TypePtr* card_type = TypeRawPtr::BOTTOM;
-
-  const TypeFunc *tf = OptoRuntime::g1_wb_post_Type();
-
-  // Offsets into the thread
-  const int index_offset  = in_bytes(G1ThreadLocalData::dirty_card_queue_index_offset());
-  const int buffer_offset = in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset());
-
-  // Pointers into the thread
-
-  Node* buffer_adr = __ AddP(no_base, tls, __ ConX(buffer_offset));
-  Node* index_adr =  __ AddP(no_base, tls, __ ConX(index_offset));
-
-  // Now some values
-  // Use ctrl to avoid hoisting these values past a safepoint, which could
-  // potentially reset these fields in the JavaThread.
-  Node* index  = __ load(__ ctrl(), index_adr, TypeX_X, TypeX_X->basic_type(), Compile::AliasIdxRaw);
-  Node* buffer = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-
-  // Convert the store obj pointer to an int prior to doing math on it
-  // Must use ctrl to prevent "integerized oop" existing across safepoint
-  Node* cast =  __ CastPX(__ ctrl(), adr);
-
-  // Divide pointer by card size
-  Node* card_offset = __ URShiftX( cast, __ ConI(CardTable::card_shift) );
-
-  // Combine card table base and card offset
-  Node* card_adr = __ AddP(no_base, byte_map_base_node(), card_offset );
-
-  // If we know the value being stored does it cross regions?
-
-  if (val != NULL) {
-    // Does the store cause us to cross regions?
-
-    // Should be able to do an unsigned compare of region_size instead of
-    // and extra shift. Do we have an unsigned compare??
-    // Node* region_size = __ ConI(1 << HeapRegion::LogOfHRGrainBytes);
-    Node* xor_res =  __ URShiftX ( __ XorX( cast,  __ CastPX(__ ctrl(), val)), __ ConI(HeapRegion::LogOfHRGrainBytes));
-
-    // if (xor_res == 0) same region so skip
-    __ if_then(xor_res, BoolTest::ne, zeroX); {
-
-      // No barrier if we are storing a NULL
-      __ if_then(val, BoolTest::ne, null(), unlikely); {
-
-        // Ok must mark the card if not already dirty
-
-        // load the original value of the card
-        Node* card_val = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
-
-        __ if_then(card_val, BoolTest::ne, young_card); {
-          sync_kit(ideal);
-          // Use Op_MemBarVolatile to achieve the effect of a StoreLoad barrier.
-          insert_mem_bar(Op_MemBarVolatile, oop_store);
-          __ sync_kit(this);
-
-          Node* card_val_reload = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
-          __ if_then(card_val_reload, BoolTest::ne, dirty_card); {
-            g1_mark_card(ideal, card_adr, oop_store, alias_idx, index, index_adr, buffer, tf);
-          } __ end_if();
-        } __ end_if();
-      } __ end_if();
-    } __ end_if();
-  } else {
-    // The Object.clone() intrinsic uses this path if !ReduceInitialCardMarks.
-    // We don't need a barrier here if the destination is a newly allocated object
-    // in Eden. Otherwise, GC verification breaks because we assume that cards in Eden
-    // are set to 'g1_young_gen' (see G1CardTable::verify_g1_young_region()).
-    assert(!use_ReduceInitialCardMarks(), "can only happen with card marking");
-    Node* card_val = __ load(__ ctrl(), card_adr, TypeInt::INT, T_BYTE, Compile::AliasIdxRaw);
-    __ if_then(card_val, BoolTest::ne, young_card); {
-      g1_mark_card(ideal, card_adr, oop_store, alias_idx, index, index_adr, buffer, tf);
-    } __ end_if();
-  }
-
-  // Final sync IdealKit and GraphKit.
-  final_sync(ideal);
-}
-#undef __
-
-#endif // INCLUDE_G1GC
 
 Node* GraphKit::load_String_length(Node* ctrl, Node* str) {
   Node* len = load_array_length(load_String_value(ctrl, str));
@@ -4699,14 +3857,13 @@ Node* GraphKit::load_String_value(Node* ctrl, Node* str) {
   const TypeAryPtr* value_type = TypeAryPtr::make(TypePtr::NotNull,
                                                   TypeAry::make(TypeInt::BYTE, TypeInt::POS),
                                                   ciTypeArrayKlass::make(T_BYTE), true, 0);
-  int value_field_idx = C->get_alias_index(value_field_type);
-
   if (!ShenandoahOptimizeInstanceFinals) {
-    str = shenandoah_read_barrier(str);
+    str = access_resolve_for_read(str);
   }
 
-  Node* load = make_load(ctrl, basic_plus_adr(str, str, value_offset),
-                         value_type, T_OBJECT, value_field_idx, MemNode::unordered);
+  Node* p = basic_plus_adr(str, str, value_offset);
+  Node* load = access_load_at(str, p, value_field_type, value_type, T_OBJECT,
+                              IN_HEAP | C2_CONTROL_DEPENDENT_LOAD);
   // String.value field is known to be @Stable.
   if (UseImplicitStableValues) {
     load = cast_array_to_stable(load, value_type);
@@ -4725,7 +3882,7 @@ Node* GraphKit::load_String_coder(Node* ctrl, Node* str) {
   int coder_field_idx = C->get_alias_index(coder_field_type);
 
   if (!ShenandoahOptimizeInstanceFinals) {
-    str = shenandoah_read_barrier(str);
+    str = access_resolve_for_read(str);
   }
 
   return make_load(ctrl, basic_plus_adr(str, str, coder_offset),
@@ -4738,10 +3895,10 @@ void GraphKit::store_String_value(Node* ctrl, Node* str, Node* value) {
                                                      false, NULL, 0);
   const TypePtr* value_field_type = string_type->add_offset(value_offset);
 
-  str = shenandoah_write_barrier(str);
+  str = access_resolve_for_write(str);
 
-  store_oop_to_object(control(), str,  basic_plus_adr(str, value_offset), value_field_type,
-      value, TypeAryPtr::BYTES, T_OBJECT, MemNode::unordered);
+  access_store_at(ctrl, str,  basic_plus_adr(str, value_offset), value_field_type,
+                  value, TypeAryPtr::BYTES, T_OBJECT, IN_HEAP);
 }
 
 void GraphKit::store_String_coder(Node* ctrl, Node* str, Node* value) {
@@ -4749,7 +3906,7 @@ void GraphKit::store_String_coder(Node* ctrl, Node* str, Node* value) {
   const TypeInstPtr* string_type = TypeInstPtr::make(TypePtr::NotNull, C->env()->String_klass(),
                                                      false, NULL, 0);
 
-  str = shenandoah_write_barrier(str);
+  str = access_resolve_for_write(str);
 
   const TypePtr* coder_field_type = string_type->add_offset(coder_offset);
   int coder_field_idx = C->get_alias_index(coder_field_type);
@@ -4806,8 +3963,8 @@ void GraphKit::inflate_string(Node* src, Node* dst, const TypeAryPtr* dst_type, 
 
 void GraphKit::inflate_string_slow(Node* src, Node* dst, Node* start, Node* count) {
 
-  src = shenandoah_read_barrier(src);
-  dst = shenandoah_write_barrier(dst);
+  src = access_resolve_for_read(src);
+  dst = access_resolve_for_write(dst);
 
   /**
    * int i_char = start;
@@ -4874,140 +4031,4 @@ Node* GraphKit::cast_array_to_stable(Node* ary, const TypeAryPtr* ary_type) {
   // Reify the property as a CastPP node in Ideal graph to comply with monotonicity
   // assumption of CCP analysis.
   return _gvn.transform(new CastPPNode(ary, ary_type->cast_to_stable(true)));
-}
-
-Node* GraphKit::shenandoah_read_barrier(Node* obj) {
-  if (UseShenandoahGC && ShenandoahReadBarrier) {
-    return shenandoah_read_barrier_impl(obj, false, true, true);
-  } else {
-    return obj;
-  }
-}
-
-Node* GraphKit::shenandoah_storeval_barrier(Node* obj) {
-  if (UseShenandoahGC) {
-    if (ShenandoahStoreValEnqueueBarrier) {
-      obj = shenandoah_write_barrier(obj);
-      shenandoah_enqueue_barrier(obj);
-    }
-    if (ShenandoahStoreValReadBarrier) {
-      obj = shenandoah_read_barrier_impl(obj, true, false, false);
-    }
-  }
-  return obj;
-}
-
-Node* GraphKit::shenandoah_read_barrier_acmp(Node* obj) {
-  return shenandoah_read_barrier_impl(obj, true, true, false);
-}
-
-Node* GraphKit::shenandoah_read_barrier_impl(Node* obj, bool use_ctrl, bool use_mem, bool allow_fromspace) {
-
-  const Type* obj_type = obj->bottom_type();
-  if (obj_type->higher_equal(TypePtr::NULL_PTR)) {
-    return obj;
-  }
-  const TypePtr* adr_type = ShenandoahBarrierNode::brooks_pointer_type(obj_type);
-  Node* mem = use_mem ? memory(adr_type) : immutable_memory();
-
-  if (! ShenandoahBarrierNode::needs_barrier(&_gvn, NULL, obj, mem, allow_fromspace)) {
-    // We know it is null, no barrier needed.
-    return obj;
-  }
-
-
-  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
-
-    // We don't know if it's null or not. Need null-check.
-    enum { _not_null_path = 1, _null_path, PATH_LIMIT };
-    RegionNode* region = new RegionNode(PATH_LIMIT);
-    Node*       phi    = new PhiNode(region, obj_type);
-    Node* null_ctrl = top();
-    Node* not_null_obj = null_check_oop(obj, &null_ctrl);
-
-    region->init_req(_null_path, null_ctrl);
-    phi   ->init_req(_null_path, zerocon(T_OBJECT));
-
-    Node* ctrl = use_ctrl ? control() : NULL;
-    ShenandoahReadBarrierNode* rb = new ShenandoahReadBarrierNode(ctrl, mem, not_null_obj, allow_fromspace);
-    Node* n = _gvn.transform(rb);
-
-    region->init_req(_not_null_path, control());
-    phi   ->init_req(_not_null_path, n);
-
-    set_control(_gvn.transform(region));
-    record_for_igvn(region);
-    return _gvn.transform(phi);
-
-  } else {
-    // We know it is not null. Simple barrier is sufficient.
-    Node* ctrl = use_ctrl ? control() : NULL;
-    ShenandoahReadBarrierNode* rb = new ShenandoahReadBarrierNode(ctrl, mem, obj, allow_fromspace);
-    Node* n = _gvn.transform(rb);
-    record_for_igvn(n);
-    return n;
-  }
-}
-
-Node* GraphKit::shenandoah_write_barrier_helper(GraphKit& kit, Node* obj, const TypePtr* adr_type) {
-  ShenandoahWriteBarrierNode* wb = new ShenandoahWriteBarrierNode(kit.C, kit.control(), kit.memory(adr_type), obj);
-  Node* n = kit.gvn().transform(wb);
-  if (n == wb) { // New barrier needs memory projection.
-    Node* proj = kit.gvn().transform(new ShenandoahWBMemProjNode(n));
-    kit.set_memory(proj, adr_type);
-  }
-
-  return n;
-}
-
-Node* GraphKit::shenandoah_write_barrier(Node* obj) {
-
-  if (UseShenandoahGC && ShenandoahWriteBarrier) {
-    return shenandoah_write_barrier_impl(obj);
-  } else {
-    return obj;
-  }
-}
-
-Node* GraphKit::shenandoah_write_barrier_impl(Node* obj) {
-  if (! ShenandoahBarrierNode::needs_barrier(&_gvn, NULL, obj, NULL, true)) {
-    return obj;
-  }
-  const Type* obj_type = obj->bottom_type();
-  const TypePtr* adr_type = ShenandoahBarrierNode::brooks_pointer_type(obj_type);
-  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
-    // We don't know if it's null or not. Need null-check.
-    enum { _not_null_path = 1, _null_path, PATH_LIMIT };
-    RegionNode* region = new RegionNode(PATH_LIMIT);
-    Node*       phi    = new PhiNode(region, obj_type);
-    Node*    memphi    = PhiNode::make(region, memory(adr_type), Type::MEMORY, C->alias_type(adr_type)->adr_type());
-
-    Node* prev_mem = memory(adr_type);
-    Node* null_ctrl = top();
-    Node* not_null_obj = null_check_oop(obj, &null_ctrl);
-
-    region->init_req(_null_path, null_ctrl);
-    phi   ->init_req(_null_path, zerocon(T_OBJECT));
-    memphi->init_req(_null_path, prev_mem);
-
-    Node* n = shenandoah_write_barrier_helper(*this, not_null_obj, adr_type);
-
-    region->init_req(_not_null_path, control());
-    phi   ->init_req(_not_null_path, n);
-    memphi->init_req(_not_null_path, memory(adr_type));
-
-    set_control(_gvn.transform(region));
-    record_for_igvn(region);
-    set_memory(_gvn.transform(memphi), adr_type);
-
-    Node* res_val = _gvn.transform(phi);
-    // replace_in_map(obj, res_val);
-    return res_val;
-  } else {
-    // We know it is not null. Simple barrier is sufficient.
-    Node* n = shenandoah_write_barrier_helper(*this, obj, adr_type);
-    // replace_in_map(obj, n);
-    record_for_igvn(n);
-    return n;
-  }
 }

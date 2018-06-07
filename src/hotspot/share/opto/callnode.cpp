@@ -40,7 +40,8 @@
 #include "opto/regmask.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/g1/c2/g1BarrierSetC2.hpp"
 
 // Portions of code courtesy of Clifford Click
 
@@ -1084,7 +1085,7 @@ void CallLeafNode::dump_spec(outputStream *st) const {
 
 Node *CallLeafNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   if (is_g1_wb_pre_call()) {
-    uint cnt = OptoRuntime::g1_wb_pre_Type()->domain()->cnt();
+    uint cnt = G1BarrierSetC2::g1_wb_pre_Type()->domain()->cnt();
     if (req() > cnt) {
       Node* addp = in(cnt);
       if (has_only_g1_wb_pre_uses(addp)) {

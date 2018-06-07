@@ -36,7 +36,7 @@
 #include "opto/regmask.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/type.hpp"
 #include "opto/vectornode.hpp"
 #include "runtime/os.hpp"

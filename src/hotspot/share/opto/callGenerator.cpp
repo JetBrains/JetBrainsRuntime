@@ -38,9 +38,9 @@
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 
 // Utility function.
 const TypeFunc* CallGenerator::tf() const {

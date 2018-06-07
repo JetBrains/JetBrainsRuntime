@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
@@ -37,7 +39,7 @@
 #include "opto/movenode.hpp"
 #include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 
 //=============================================================================

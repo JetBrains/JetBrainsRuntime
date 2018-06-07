@@ -26,6 +26,8 @@
 #include "ci/bcEscapeAnalyzer.hpp"
 #include "compiler/compileLog.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "libadt/vectset.hpp"
 #include "memory/allocation.hpp"
 #include "memory/resourceArea.hpp"
@@ -38,7 +40,6 @@
 #include "opto/phaseX.hpp"
 #include "opto/movenode.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif // INCLUDE_G1GC
@@ -995,12 +996,9 @@ void ConnectionGraph::process_call_arguments(CallNode *call) {
                                        arg_has_oops && (i > TypeFunc::Parms);
 #ifdef ASSERT
           if (!(is_arraycopy ||
+                BarrierSet::barrier_set()->barrier_set_c2()->is_gc_barrier_node(call) ||
                 (call->as_CallLeaf()->_name != NULL &&
-                 (strcmp(call->as_CallLeaf()->_name, "g1_wb_pre")  == 0 ||
-                  strcmp(call->as_CallLeaf()->_name, "g1_wb_post") == 0 ||
-                  strcmp(call->as_CallLeaf()->_name, "shenandoah_clone_barrier")  == 0 ||
-                  strcmp(call->as_CallLeaf()->_name, "shenandoah_cas_obj")  == 0 ||
-                  strcmp(call->as_CallLeaf()->_name, "updateBytesCRC32") == 0 ||
+                 (strcmp(call->as_CallLeaf()->_name, "updateBytesCRC32") == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "updateBytesCRC32C") == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "updateBytesAdler32") == 0 ||
                   strcmp(call->as_CallLeaf()->_name, "aescrypt_encryptBlock") == 0 ||
@@ -3309,9 +3307,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
             (op == Op_StrCompressedCopy || op == Op_StrInflatedCopy)) {
           // They overwrite memory edge corresponding to destination array,
           memnode_worklist.append_if_missing(use);
-        } else if (!(op == Op_StoreCM ||
-              (op == Op_CallLeaf && use->as_CallLeaf()->_name != NULL &&
-               strcmp(use->as_CallLeaf()->_name, "g1_wb_pre") == 0) ||
+        } else if (!(BarrierSet::barrier_set()->barrier_set_c2()->is_gc_barrier_node(use) ||
               op == Op_AryEq || op == Op_StrComp || op == Op_HasNegatives ||
               op == Op_StrCompressedCopy || op == Op_StrInflatedCopy ||
               op == Op_StrEquals || op == Op_StrIndexOf || op == Op_StrIndexOfChar)) {

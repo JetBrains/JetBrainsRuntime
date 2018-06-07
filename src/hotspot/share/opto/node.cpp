@@ -23,6 +23,8 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "libadt/vectset.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
@@ -37,6 +39,7 @@
 #include "opto/regmask.hpp"
 #include "opto/type.hpp"
 #include "utilities/copy.hpp"
+#include "utilities/macros.hpp"
 
 class RegMask;
 // #include "phase.hpp"
@@ -499,10 +502,8 @@ Node *Node::clone() const {
     C->add_macro_node(n);
   if (is_expensive())
     C->add_expensive_node(n);
-
-  if (Opcode() == Op_ShenandoahWriteBarrier) {
-    C->add_shenandoah_barrier((ShenandoahWriteBarrierNode*)n);
-  }
+  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+  bs->register_potential_barrier_node(n);
   // If the cloned node is a range check dependent CastII, add it to the list.
   CastIINode* cast = n->isa_CastII();
   if (cast != NULL && cast->has_range_check()) {
@@ -615,9 +616,6 @@ void Node::destruct() {
   if (is_expensive()) {
     compile->remove_expensive_node(this);
   }
-  if (Opcode() == Op_ShenandoahWriteBarrier) {
-    compile->remove_shenandoah_barrier((ShenandoahWriteBarrierNode*)this);
-  }
   CastIINode* cast = isa_CastII();
   if (cast != NULL && cast->has_range_check()) {
     compile->remove_range_check_cast(cast);
@@ -629,6 +627,8 @@ void Node::destruct() {
   if (is_SafePoint()) {
     as_SafePoint()->delete_replaced_nodes();
   }
+  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+  bs->unregister_potential_barrier_node(this);
 #ifdef ASSERT
   // We will not actually delete the storage, but we'll make the node unusable.
   *(address*)this = badAddress;  // smash the C++ vtbl, probably
@@ -1363,9 +1363,6 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
       if (dead->is_expensive()) {
         igvn->C->remove_expensive_node(dead);
       }
-      if (dead->Opcode() == Op_ShenandoahWriteBarrier) {
-        igvn->C->remove_shenandoah_barrier((ShenandoahWriteBarrierNode*)dead);
-      }
       CastIINode* cast = dead->isa_CastII();
       if (cast != NULL && cast->has_range_check()) {
         igvn->C->remove_range_check_cast(cast);
@@ -1373,6 +1370,8 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
       if (dead->Opcode() == Op_Opaque4) {
         igvn->C->remove_range_check_cast(dead);
       }
+      BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+      bs->unregister_potential_barrier_node(dead);
       igvn->C->record_dead_node(dead->_idx);
       // Kill all inputs to the dead guy
       for (uint i=0; i < dead->req(); i++) {
@@ -1393,6 +1392,8 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
             igvn->add_users_to_worklist( n );
           } else if (n->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(n)) {
             igvn->add_users_to_worklist(n);
+          } else {
+            BarrierSet::barrier_set()->barrier_set_c2()->enqueue_useful_gc_barrier(igvn->_worklist, n);
           }
         }
       }

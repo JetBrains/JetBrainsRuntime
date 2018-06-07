@@ -26,7 +26,7 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "opto/machnode.hpp"
 #include "opto/regalloc.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "utilities/vmError.hpp"
 
 //=============================================================================

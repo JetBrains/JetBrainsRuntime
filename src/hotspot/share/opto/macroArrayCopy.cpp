@@ -30,7 +30,7 @@
 #include "opto/macro.hpp"
 #include "opto/runtime.hpp"
 #include "utilities/align.hpp"
-
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 
 void PhaseMacroExpand::insert_mem_bar(Node** ctrl, Node** mem, int opcode, Node* precedent) {
   MemBarNode* mb = MemBarNode::make(C, opcode, Compile::AliasIdxBot, precedent);
@@ -550,9 +550,9 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     }
     // At this point we know we do not need type checks on oop stores.
 
-    // Let's see if we need card marks:
-    if (alloc != NULL && GraphKit::use_ReduceInitialCardMarks() && ! UseShenandoahGC) {
-      // If we do not need card marks, copy using the jint or jlong stub.
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    if (alloc != NULL && !bs->array_copy_requires_gc_barriers(copy_type)) {
+      // If we do not need gc barriers, copy using the jint or jlong stub.
       copy_type = LP64_ONLY(UseCompressedOops ? T_INT : T_LONG) NOT_LP64(T_INT);
       assert(type2aelembytes(basic_elem_type) == type2aelembytes(copy_type),
              "sizes agree");
@@ -1090,7 +1090,7 @@ Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
   Node* m = new ProjNode(call, TypeFunc::Memory);
   transform_later(m);
   assert(dest->is_AddP(), "bad input");
-  call = make_leaf_call(c, m, OptoRuntime::shenandoah_clone_barrier_Type(), CAST_FROM_FN_PTR(address, SharedRuntime::shenandoah_clone_barrier), "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
+  call = make_leaf_call(c, m, ShenandoahBarrierSetC2::shenandoah_clone_barrier_Type(), CAST_FROM_FN_PTR(address, SharedRuntime::shenandoah_clone_barrier), "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
   transform_later(call);
   return call;
 }

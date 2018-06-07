@@ -32,7 +32,7 @@
 #include "opto/idealKit.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/stringopts.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
@@ -1213,7 +1213,7 @@ Node* PhaseStringOpts::int_stringSize(GraphKit& kit, Node* arg) {
     kit.set_control(loop);
     Node* sizeTable = fetch_static_field(kit, size_table_field);
 
-    sizeTable = kit.shenandoah_read_barrier(sizeTable);
+    sizeTable = kit.access_resolve_for_read(sizeTable);
 
     Node* value = kit.load_array_element(NULL, sizeTable, index, TypeAryPtr::INTS);
     C->record_for_igvn(value);
@@ -1551,7 +1551,7 @@ void PhaseStringOpts::copy_constant_string(GraphKit& kit, IdealKit& ideal, ciTyp
 Node* PhaseStringOpts::copy_string(GraphKit& kit, Node* str, Node* dst_array, Node* dst_coder, Node* start) {
   Node* src_array = kit.load_String_value(kit.control(), str);
 
-  src_array = kit.shenandoah_read_barrier(src_array);
+  src_array = kit.access_resolve_for_read(src_array);
 
   IdealKit ideal(&kit, true, true);
   IdealVariable count(ideal); __ declarations_done();

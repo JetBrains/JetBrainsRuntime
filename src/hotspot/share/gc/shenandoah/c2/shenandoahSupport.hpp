@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef SHARE_VM_OPTO_SHENANDOAH_SUPPORT_HPP
-#define SHARE_VM_OPTO_SHENANDOAH_SUPPORT_HPP
+#ifndef SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP
+#define SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP
 
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "memory/allocation.hpp"
@@ -168,11 +168,7 @@ private:
   static bool fix_mem_phis_helper(Node* c, Node* mem, Node* mem_ctrl, Node* rep_ctrl, int alias, VectorSet& controls, GrowableArray<Node*>& phis, PhaseIdealLoop* phase);
 
 public:
-  ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj)
-    : ShenandoahBarrierNode(ctrl, mem, obj, false) {
-    assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
-    C->add_shenandoah_barrier(this);
-  }
+  ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj);
 
   virtual int Opcode() const;
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
@@ -276,4 +272,4 @@ public:
 #endif
 };
 
-#endif // SHARE_VM_OPTO_SHENANDOAH_SUPPORT_HPP
+#endif // SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP

@@ -34,7 +34,7 @@
 #include "opto/mulnode.hpp"
 #include "opto/opcodes.hpp"
 #include "opto/phaseX.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
 

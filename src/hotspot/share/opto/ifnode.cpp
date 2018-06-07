@@ -35,7 +35,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 
 // Portions of code courtesy of Clifford Click

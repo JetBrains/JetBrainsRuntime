@@ -132,7 +132,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/regalloc.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
 #endif // COMPILER2

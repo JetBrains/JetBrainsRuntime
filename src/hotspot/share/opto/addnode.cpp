@@ -33,7 +33,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/subnode.hpp"
 #if INCLUDE_SHENANDOAHGC
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
 // Portions of code courtesy of Clifford Click

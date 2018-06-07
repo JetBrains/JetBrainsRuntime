@@ -748,6 +748,8 @@ private:
 
 public:
 
+  PhaseIterGVN &igvn() const { return _igvn; }
+
   static bool is_canonical_loop_entry(CountedLoopNode* cl);
 
   bool has_node( Node* n ) const {
@@ -801,7 +803,6 @@ public:
     }
   }
 
-private:
   Node *get_ctrl_no_update_helper(Node *i) const {
     assert(has_ctrl(i), "should be control, not loop");
     return (Node*)(((intptr_t)_nodes[i->_idx]) & ~1);
@@ -834,7 +835,6 @@ private:
   // the 'old_node' with 'new_node'.  Kill old-node.  Add a reference
   // from old_node to new_node to support the lazy update.  Reference
   // replaces loop reference, since that is not needed for dead node.
-public:
   void lazy_update(Node *old_node, Node *new_node) {
     assert(old_node != new_node, "no cycles please");
     // Re-use the side array slot for this node to provide the
@@ -868,6 +868,7 @@ private:
   uint *_dom_depth;              // Used for fast LCA test
   GrowableArray<uint>* _dom_stk; // For recomputation of dom depth
 
+public:
   Node* idom_no_update(Node* d) const {
     return idom_no_update(d->_idx);
   }
@@ -883,7 +884,6 @@ private:
     return n;
   }
 
-public:
   Node *idom(Node* d) const {
     return idom(d->_idx);
   }
@@ -900,8 +900,6 @@ public:
     return _dom_depth[d->_idx];
   }
   void set_idom(Node* d, Node* n, uint dom_depth);
-
-private:
   // Locally compute IDOM using dom_lca call
   Node *compute_idom( Node *region ) const;
   // Recompute dom_depth
@@ -926,7 +924,6 @@ private:
   // build the loop tree and perform any requested optimizations
   void build_and_optimize(LoopOptsMode mode);
 
-public:
   // Dominators for the sea of nodes
   void Dominators();
   Node *dom_lca( Node *n1, Node *n2 ) const {
@@ -982,6 +979,8 @@ public:
     assert(!has_ctrl(n), "");
     return (IdealLoopTree*)_nodes[n->_idx];
   }
+
+  IdealLoopTree *ltree_root() const { return _ltree_root; }
 
   // Is 'n' a (nested) member of 'loop'?
   int is_member( const IdealLoopTree *loop, Node *n ) const {
@@ -1319,7 +1318,6 @@ public:
   void rpo( Node *start, Node_Stack &stk, VectorSet &visited, Node_List &rpo_list ) const;
 
   PhaseIterGVN& igvn() { return _igvn; }
-  IdealLoopTree* ltree_root() const { return _ltree_root; }
 };
 
 // This kit may be used for making of a reserved copy of a loop before this loop

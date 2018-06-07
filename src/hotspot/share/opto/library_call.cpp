@@ -50,7 +50,7 @@
 #include "opto/parse.hpp"
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "prims/nativeLookup.hpp"
 #include "prims/unsafe.hpp"
@@ -245,12 +245,9 @@ class LibraryCallKit : public GraphKit {
   // This returns Type::AnyPtr, RawPtr, or OopPtr.
   int classify_unsafe_addr(Node* &base, Node* &offset, BasicType type);
   Node* make_unsafe_address(Node*& base, Node* offset, bool is_store, BasicType type = T_ILLEGAL, bool can_cast = false);
-  // Helper for inline_unsafe_access.
-  // Generates the guards that check whether the result of
-  // Unsafe.getObject should be recorded in an SATB log buffer.
-  void insert_pre_barrier(Node* base_oop, Node* offset, Node* pre_val, bool need_mem_bar);
 
   typedef enum { Relaxed, Opaque, Volatile, Acquire, Release } AccessKind;
+  DecoratorSet mo_decorator_for_access_kind(AccessKind kind);
   bool inline_unsafe_access(bool is_store, BasicType type, AccessKind kind, bool is_unaligned);
   static bool klass_needs_init_guard(Node* kls);
   bool inline_unsafe_allocate();
@@ -270,7 +267,7 @@ class LibraryCallKit : public GraphKit {
   bool inline_array_copyOf(bool is_copyOfRange);
   bool inline_array_equals(StrIntrinsicNode::ArgEnc ae);
   bool inline_preconditions_checkIndex();
-  void copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array, bool card_mark);
+  void copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array);
   bool inline_native_clone(bool is_virtual);
   bool inline_native_Reflection_getCallerClass();
   // Helper function for inlining native object hash method
@@ -286,8 +283,6 @@ class LibraryCallKit : public GraphKit {
                                       uint new_idx);
 
   typedef enum { LS_get_add, LS_get_set, LS_cmp_swap, LS_cmp_swap_weak, LS_cmp_exchange } LoadStoreKind;
-  MemNode::MemOrd access_kind_to_memord_LS(AccessKind access_kind, bool is_store);
-  MemNode::MemOrd access_kind_to_memord(AccessKind access_kind);
   bool inline_unsafe_load_store(BasicType type,  LoadStoreKind kind, AccessKind access_kind);
   bool inline_unsafe_fence(vmIntrinsics::ID id);
   bool inline_onspinwait();
@@ -1105,8 +1100,8 @@ bool LibraryCallKit::inline_string_compareTo(StrIntrinsicNode::ArgEnc ae) {
   arg1 = must_be_not_null(arg1, true);
   arg2 = must_be_not_null(arg2, true);
 
-  arg1 = shenandoah_read_barrier(arg1);
-  arg2 = shenandoah_read_barrier(arg2);
+  arg1 = access_resolve_for_read(arg1);
+  arg2 = access_resolve_for_read(arg2);
 
   // Get start addr and length of first argument
   Node* arg1_start  = array_element_address(arg1, intcon(0), T_BYTE);
@@ -1135,8 +1130,8 @@ bool LibraryCallKit::inline_string_equals(StrIntrinsicNode::ArgEnc ae) {
     arg1 = must_be_not_null(arg1, true);
     arg2 = must_be_not_null(arg2, true);
 
-    arg1 = shenandoah_read_barrier(arg1);
-    arg2 = shenandoah_read_barrier(arg2);
+    arg1 = access_resolve_for_read(arg1);
+    arg2 = access_resolve_for_read(arg2);
 
    // Get start addr and length of first argument
     Node* arg1_start  = array_element_address(arg1, intcon(0), T_BYTE);
@@ -1178,8 +1173,8 @@ bool LibraryCallKit::inline_array_equals(StrIntrinsicNode::ArgEnc ae) {
   Node* arg1 = argument(0);
   Node* arg2 = argument(1);
 
-  arg1 = shenandoah_read_barrier(arg1);
-  arg2 = shenandoah_read_barrier(arg2);
+  arg1 = access_resolve_for_read(arg1);
+  arg2 = access_resolve_for_read(arg2);
 
   const TypeAryPtr* mtype = (ae == StrIntrinsicNode::UU) ? TypeAryPtr::CHARS : TypeAryPtr::BYTES;
   set_result(_gvn.transform(new AryEqNode(control(), memory(mtype), arg1, arg2, ae)));
@@ -1208,7 +1203,7 @@ bool LibraryCallKit::inline_hasNegatives() {
     return true;
   }
 
-  ba = shenandoah_read_barrier(ba);
+  ba = access_resolve_for_read(ba);
 
   Node* ba_start = array_element_address(ba, offset, T_BYTE);
   Node* result = new HasNegativesNode(control(), memory(TypeAryPtr::BYTES), ba_start, len);
@@ -1280,8 +1275,8 @@ bool LibraryCallKit::inline_string_indexOf(StrIntrinsicNode::ArgEnc ae) {
   src = must_be_not_null(src, true);
   tgt = must_be_not_null(tgt, true);
 
-  src = shenandoah_read_barrier(src);
-  tgt = shenandoah_read_barrier(tgt);
+  src = access_resolve_for_read(src);
+  tgt = access_resolve_for_read(tgt);
 
   // Get start addr and length of source string
   Node* src_start = array_element_address(src, intcon(0), T_BYTE);
@@ -1330,8 +1325,8 @@ bool LibraryCallKit::inline_string_indexOfI(StrIntrinsicNode::ArgEnc ae) {
   src = must_be_not_null(src, true);
   tgt = must_be_not_null(tgt, true);
 
-  src = shenandoah_read_barrier(src);
-  tgt = shenandoah_read_barrier(tgt);
+  src = access_resolve_for_read(src);
+  tgt = access_resolve_for_read(tgt);
 
   // Multiply byte array index by 2 if String is UTF16 encoded
   Node* src_offset = (ae == StrIntrinsicNode::LL) ? from_index : _gvn.transform(new LShiftINode(from_index, intcon(1)));
@@ -1419,7 +1414,7 @@ bool LibraryCallKit::inline_string_indexOfChar() {
   Node* max         = argument(3);
 
   src = must_be_not_null(src, true);
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
 
   Node* src_offset = _gvn.transform(new LShiftINode(from_index, intcon(1)));
   Node* src_start = array_element_address(src, src_offset, T_BYTE);
@@ -1510,8 +1505,8 @@ bool LibraryCallKit::inline_string_copy(bool compress) {
     return true;
   }
 
-  src = shenandoah_read_barrier(src);
-  dst = shenandoah_write_barrier(dst);
+  src = access_resolve_for_read(src);
+  dst = access_resolve_for_write(dst);
 
   Node* src_start = array_element_address(src, src_offset, src_elem);
   Node* dst_start = array_element_address(dst, dst_offset, dst_elem);
@@ -1603,7 +1598,7 @@ bool LibraryCallKit::inline_string_toBytesU() {
     AllocateArrayNode* alloc = tightly_coupled_allocation(newcopy, NULL);
 
     // Calculate starting addresses.
-    value = shenandoah_read_barrier(value);
+    value = access_resolve_for_read(value);
 
     Node* src_start = array_element_address(value, offset, T_CHAR);
     Node* dst_start = basic_plus_adr(newcopy, arrayOopDesc::base_offset_in_bytes(T_BYTE));
@@ -1689,8 +1684,8 @@ bool LibraryCallKit::inline_string_getCharsU() {
 
   if (!stopped()) {
 
-    src = shenandoah_read_barrier(src);
-    dst = shenandoah_write_barrier(dst);
+    src = access_resolve_for_read(src);
+    dst = access_resolve_for_write(dst);
 
     // Calculate starting addresses.
     Node* src_start = array_element_address(src, src_begin, T_BYTE);
@@ -1762,9 +1757,9 @@ bool LibraryCallKit::inline_string_char_access(bool is_store) {
   value = must_be_not_null(value, true);
 
   if (is_store) {
-    value = shenandoah_write_barrier(value);
+    value = access_resolve_for_write(value);
   } else {
-    value = shenandoah_read_barrier(value);
+    value = access_resolve_for_read(value);
   }
 
   Node* adr = array_element_address(value, index, T_CHAR);
@@ -2224,9 +2219,9 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
         if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
           if (is_store) {
-            new_base = shenandoah_write_barrier(base);
+            new_base = access_resolve_for_write(base);
           } else {
-            new_base = shenandoah_read_barrier(base);
+            new_base = access_resolve_for_read(base);
           }
         }
         return basic_plus_adr(new_base, offset);
@@ -2246,9 +2241,9 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
     if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
       if (is_store) {
-        new_base = shenandoah_write_barrier(base);
+        new_base = access_resolve_for_write(base);
       } else {
-        new_base = shenandoah_read_barrier(base);
+        new_base = access_resolve_for_read(base);
       }
     }
     Node* raw = _gvn.transform(new CheckCastPPNode(control(), new_base, TypeRawPtr::BOTTOM));
@@ -2263,9 +2258,9 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
     if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
       if (is_store) {
-        new_base = shenandoah_write_barrier(base);
+        new_base = access_resolve_for_write(base);
       } else {
-        new_base = shenandoah_read_barrier(base);
+        new_base = access_resolve_for_read(base);
       }
     }
     return basic_plus_adr(new_base, offset);
@@ -2308,106 +2303,6 @@ bool LibraryCallKit::inline_number_methods(vmIntrinsics::ID id) {
 
 //----------------------------inline_unsafe_access----------------------------
 
-// Helper that guards and inserts a pre-barrier.
-void LibraryCallKit::insert_pre_barrier(Node* base_oop, Node* offset,
-                                        Node* pre_val, bool need_mem_bar) {
-  // We could be accessing the referent field of a reference object. If so, when G1
-  // is enabled, we need to log the value in the referent field in an SATB buffer.
-  // This routine performs some compile time filters and generates suitable
-  // runtime filters that guard the pre-barrier code.
-  // Also add memory barrier for non volatile load from the referent field
-  // to prevent commoning of loads across safepoint.
-  if (!(UseG1GC || (UseShenandoahGC && ShenandoahSATBBarrier)) && !need_mem_bar)
-    return;
-
-  // Some compile time checks.
-
-  // If offset is a constant, is it java_lang_ref_Reference::_reference_offset?
-  const TypeX* otype = offset->find_intptr_t_type();
-  if (otype != NULL && otype->is_con() &&
-      otype->get_con() != java_lang_ref_Reference::referent_offset) {
-    // Constant offset but not the reference_offset so just return
-    return;
-  }
-
-  // We only need to generate the runtime guards for instances.
-  const TypeOopPtr* btype = base_oop->bottom_type()->isa_oopptr();
-  if (btype != NULL) {
-    if (btype->isa_aryptr()) {
-      // Array type so nothing to do
-      return;
-    }
-
-    const TypeInstPtr* itype = btype->isa_instptr();
-    if (itype != NULL) {
-      // Can the klass of base_oop be statically determined to be
-      // _not_ a sub-class of Reference and _not_ Object?
-      ciKlass* klass = itype->klass();
-      if ( klass->is_loaded() &&
-          !klass->is_subtype_of(env()->Reference_klass()) &&
-          !env()->Object_klass()->is_subtype_of(klass)) {
-        return;
-      }
-    }
-  }
-
-  // The compile time filters did not reject base_oop/offset so
-  // we need to generate the following runtime filters
-  //
-  // if (offset == java_lang_ref_Reference::_reference_offset) {
-  //   if (instance_of(base, java.lang.ref.Reference)) {
-  //     pre_barrier(_, pre_val, ...);
-  //   }
-  // }
-
-  float likely   = PROB_LIKELY(  0.999);
-  float unlikely = PROB_UNLIKELY(0.999);
-
-  IdealKit ideal(this);
-#define __ ideal.
-
-  Node* referent_off = __ ConX(java_lang_ref_Reference::referent_offset);
-
-  __ if_then(offset, BoolTest::eq, referent_off, unlikely); {
-      // Update graphKit memory and control from IdealKit.
-      sync_kit(ideal);
-
-      Node* ref_klass_con = makecon(TypeKlassPtr::make(env()->Reference_klass()));
-      Node* is_instof = gen_instanceof(base_oop, ref_klass_con);
-
-      // Update IdealKit memory and control from graphKit.
-      __ sync_kit(this);
-
-      Node* one = __ ConI(1);
-      // is_instof == 0 if base_oop == NULL
-      __ if_then(is_instof, BoolTest::eq, one, unlikely); {
-
-        // Update graphKit from IdeakKit.
-        sync_kit(ideal);
-
-        // Use the pre-barrier to record the value in the referent field
-        pre_barrier(false /* do_load */,
-                    __ ctrl(),
-                    NULL /* obj */, NULL /* adr */, max_juint /* alias_idx */, NULL /* val */, NULL /* val_type */,
-                    pre_val /* pre_val */,
-                    T_OBJECT);
-        if (need_mem_bar) {
-          // Add memory barrier to prevent commoning reads from this field
-          // across safepoint since GC can change its value.
-          insert_mem_bar(Op_MemBarCPUOrder);
-        }
-        // Update IdealKit from graphKit.
-        __ sync_kit(this);
-
-      } __ end_if(); // _ref_type != ref_none
-  } __ end_if(); // offset == referent_offset
-
-  // Final sync IdealKit and GraphKit.
-  final_sync(ideal);
-#undef __
-}
-
-
 const TypeOopPtr* LibraryCallKit::sharpen_unsafe_type(Compile::AliasType* alias_type, const TypePtr *adr_type) {
   // Attempt to infer a sharper value type from the offset and base type.
   ciKlass* sharpened_klass = NULL;
@@ -2446,11 +2341,38 @@ const TypeOopPtr* LibraryCallKit::sharpen_unsafe_type(Compile::AliasType* alias_
   return NULL;
 }
 
+DecoratorSet LibraryCallKit::mo_decorator_for_access_kind(AccessKind kind) {
+  switch (kind) {
+      case Relaxed:
+        return MO_UNORDERED;
+      case Opaque:
+        return MO_RELAXED;
+      case Acquire:
+        return MO_ACQUIRE;
+      case Release:
+        return MO_RELEASE;
+      case Volatile:
+        return MO_SEQ_CST;
+      default:
+        ShouldNotReachHere();
+        return 0;
+  }
+}
+
 bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, const AccessKind kind, const bool unaligned) {
   if (callee()->is_static())  return false;  // caller must have the capability!
+  DecoratorSet decorators = C2_UNSAFE_ACCESS;
   guarantee(!is_store || kind != Acquire, "Acquire accesses can be produced only for loads");
   guarantee( is_store || kind != Release, "Release accesses can be produced only for stores");
   assert(type != T_OBJECT || !unaligned, "unaligned access not supported with object type");
+
+  if (type == T_OBJECT || type == T_ARRAY) {
+    decorators |= ON_UNKNOWN_OOP_REF;
+  }
+
+  if (unaligned) {
+    decorators |= C2_UNALIGNED;
+  }
 
 #ifndef PRODUCT
   {
@@ -2509,6 +2431,10 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   // Can base be NULL? Otherwise, always on-heap access.
   bool can_access_non_heap = TypePtr::NULL_PTR->higher_equal(_gvn.type(heap_base_oop));
 
+  if (!can_access_non_heap) {
+    decorators |= IN_HEAP;
+  }
+
   val = is_store ? argument(4) : NULL;
 
   const TypePtr *adr_type = _gvn.type(adr)->isa_ptr();
@@ -2558,60 +2484,15 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
 
   assert(!mismatched || alias_type->adr_type()->is_oopptr(), "off-heap access can't be mismatched");
 
+  if (mismatched) {
+    decorators |= C2_MISMATCHED;
+  }
+
   // First guess at the value type.
   const Type *value_type = Type::get_const_basic_type(type);
 
-  // We will need memory barriers unless we can determine a unique
-  // alias category for this reference.  (Note:  If for some reason
-  // the barriers get omitted and the unsafe reference begins to "pollute"
-  // the alias analysis of the rest of the graph, either Compile::can_alias
-  // or Compile::must_alias will throw a diagnostic assert.)
-  bool need_mem_bar = false;
-  switch (kind) {
-      case Relaxed:
-          need_mem_bar = (mismatched && !adr_type->isa_aryptr()) || can_access_non_heap;
-          break;
-      case Opaque:
-          // Opaque uses CPUOrder membars for protection against code movement.
-      case Acquire:
-      case Release:
-      case Volatile:
-          need_mem_bar = true;
-          break;
-      default:
-          ShouldNotReachHere();
-  }
-
-  // Some accesses require access atomicity for all types, notably longs and doubles.
-  // When AlwaysAtomicAccesses is enabled, all accesses are atomic.
-  bool requires_atomic_access = false;
-  switch (kind) {
-      case Relaxed:
-          requires_atomic_access = AlwaysAtomicAccesses;
-          break;
-      case Opaque:
-          // Opaque accesses are atomic.
-      case Acquire:
-      case Release:
-      case Volatile:
-          requires_atomic_access = true;
-          break;
-      default:
-          ShouldNotReachHere();
-  }
-
   // Figure out the memory ordering.
-  // Acquire/Release/Volatile accesses require marking the loads/stores with MemOrd
-  MemNode::MemOrd mo = access_kind_to_memord_LS(kind, is_store);
-
-  // If we are reading the value of the referent field of a Reference
-  // object (either by using Unsafe directly or through reflection)
-  // then, if G1 is enabled, we need to record the referent in an
-  // SATB log buffer using the pre-barrier mechanism.
-  // Also we need to add memory barrier to prevent commoning reads
-  // from this field across safepoint since GC can change its value.
-  bool need_read_barrier = !is_store &&
-                           offset != top() && heap_base_oop != top();
+  decorators |= mo_decorator_for_access_kind(kind);
 
   if (!is_store && type == T_OBJECT) {
     const TypeOopPtr* tjp = sharpen_unsafe_type(alias_type, adr_type);
@@ -2629,39 +2510,6 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
   // and it is not possible to fully distinguish unintended nulls
   // from intended ones in this API.
 
-  // We need to emit leading and trailing CPU membars (see below) in
-  // addition to memory membars for special access modes. This is a little
-  // too strong, but avoids the need to insert per-alias-type
-  // volatile membars (for stores; compare Parse::do_put_xxx), which
-  // we cannot do effectively here because we probably only have a
-  // rough approximation of type.
-
-  switch(kind) {
-    case Relaxed:
-    case Opaque:
-    case Acquire:
-      break;
-    case Release:
-    case Volatile:
-      if (is_store) {
-        insert_mem_bar(Op_MemBarRelease);
-      } else {
-        if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
-          insert_mem_bar(Op_MemBarVolatile);
-        }
-      }
-      break;
-    default:
-      ShouldNotReachHere();
-  }
-
-  // Memory barrier to prevent normal and 'unsafe' accesses from
-  // bypassing each other.  Happens after null checks, so the
-  // exception paths do not take memory state from the memory barrier,
-  // so there's no problems making a strong assert about mixing users
-  // of safe & unsafe memory.
-  if (need_mem_bar) insert_mem_bar(Op_MemBarCPUOrder);
-
   if (!is_store) {
     Node* p = NULL;
     // Try to constant fold a load from a constant field
@@ -2670,37 +2518,17 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
       // final or stable field
       p = make_constant_from_field(field, heap_base_oop);
     }
-    if (p == NULL) {
-      // To be valid, unsafe loads may depend on other conditions than
-      // the one that guards them: pin the Load node
-      LoadNode::ControlDependency dep = LoadNode::Pinned;
-      Node* ctrl = control();
-      // non volatile loads may be able to float
-      if (!need_mem_bar && adr_type->isa_instptr()) {
-        assert(adr_type->meet(TypePtr::NULL_PTR) != adr_type->remove_speculative(), "should be not null");
-        intptr_t offset = Type::OffsetBot;
-        AddPNode::Ideal_base_and_offset(adr, &_gvn, offset);
-        if (offset >= 0) {
-          int s = Klass::layout_helper_size_in_bytes(adr_type->isa_instptr()->klass()->layout_helper());
-          if (offset < s) {
-            // Guaranteed to be a valid access, no need to pin it
-            dep = LoadNode::DependsOnlyOnTest;
-            ctrl = NULL;
-          }
-        }
-      }
-      p = make_load(ctrl, adr, value_type, type, adr_type, mo, dep, requires_atomic_access, unaligned, mismatched);
-      // load value
-      switch (type) {
-      case T_BOOLEAN:
-      {
-        // Normalize the value returned by getBoolean in the following cases
-        if (mismatched ||
-            heap_base_oop == top() ||                            // - heap_base_oop is NULL or
-            (can_access_non_heap && alias_type->field() == NULL) // - heap_base_oop is potentially NULL
-                                                                 //   and the unsafe access is made to large offset
-                                                                 //   (i.e., larger than the maximum offset necessary for any
-                                                                 //   field access)
+
+    if (p == NULL) { // Could not constant fold the load
+      p = access_load_at(heap_base_oop, adr, adr_type, value_type, type, decorators);
+      // Normalize the value returned by getBoolean in the following cases
+      if (type == T_BOOLEAN &&
+          (mismatched ||
+           heap_base_oop == top() ||                  // - heap_base_oop is NULL or
+           (can_access_non_heap && field == NULL))    // - heap_base_oop is potentially NULL
+                                                      //   and the unsafe access is made to large offset
+                                                      //   (i.e., larger than the maximum offset necessary for any
+                                                      //   field access)
             ) {
           IdealKit ideal = IdealKit(this);
 #define __ ideal.
@@ -2713,32 +2541,11 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
           final_sync(ideal);
           p = __ value(normalized_result);
 #undef __
-        }
       }
-      case T_CHAR:
-      case T_BYTE:
-      case T_SHORT:
-      case T_INT:
-      case T_LONG:
-      case T_FLOAT:
-      case T_DOUBLE:
-        break;
-      case T_OBJECT:
-        if (need_read_barrier) {
-          // We do not require a mem bar inside pre_barrier if need_mem_bar
-          // is set: the barriers would be emitted by us.
-          insert_pre_barrier(heap_base_oop, offset, p, !need_mem_bar);
-        }
-        break;
-      case T_ADDRESS:
-        // Cast to an int type.
-        p = _gvn.transform(new CastP2XNode(NULL, p));
-        p = ConvX2UL(p);
-        break;
-      default:
-        fatal("unexpected type %d: %s", type, type2name(type));
-        break;
-      }
+    }
+    if (type == T_ADDRESS) {
+      p = gvn().transform(new CastP2XNode(NULL, p));
+      p = ConvX2UL(p);
     }
     // The load node has the control of the preceding MemBarCPUOrder.  All
     // following nodes will have the control of the MemBarCPUOrder inserted at
@@ -2746,47 +2553,13 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
     // point is fine.
     set_result(p);
   } else {
-    // place effect of store into memory
-    switch (type) {
-    case T_DOUBLE:
-      val = dstore_rounding(val);
-      break;
-    case T_ADDRESS:
+    if (bt == T_ADDRESS) {
       // Repackage the long as a pointer.
       val = ConvL2X(val);
-      val = _gvn.transform(new CastX2PNode(val));
-      break;
-    default:
-      break;
+      val = gvn().transform(new CastX2PNode(val));
     }
-
-    if (type == T_OBJECT) {
-      store_oop_to_unknown(control(), heap_base_oop, adr, adr_type, val, type, mo, mismatched);
-    } else {
-      store_to_memory(control(), adr, val, type, adr_type, mo, requires_atomic_access, unaligned, mismatched);
-    }
+    access_store_at(control(), heap_base_oop, adr, adr_type, val, value_type, type, decorators);
   }
-
-  switch(kind) {
-    case Relaxed:
-    case Opaque:
-    case Release:
-      break;
-    case Acquire:
-    case Volatile:
-      if (!is_store) {
-        insert_mem_bar(Op_MemBarAcquire);
-      } else {
-        if (!support_IRIW_for_not_multiple_copy_atomic_cpu) {
-          insert_mem_bar(Op_MemBarVolatile);
-        }
-      }
-      break;
-    default:
-      ShouldNotReachHere();
-  }
-
-  if (need_mem_bar) insert_mem_bar(Op_MemBarCPUOrder);
 
   return true;
 }
@@ -2851,6 +2624,9 @@ bool LibraryCallKit::inline_unsafe_load_store(const BasicType type, const LoadSt
   // the correspondences clearer. - dl
 
   if (callee()->is_static())  return false;  // caller must have the capability!
+
+  DecoratorSet decorators = C2_UNSAFE_ACCESS;
+  decorators |= mo_decorator_for_access_kind(access_kind);
 
 #ifndef PRODUCT
   BasicType rtype;
@@ -2983,318 +2759,52 @@ bool LibraryCallKit::inline_unsafe_load_store(const BasicType type, const LoadSt
 
   int alias_idx = C->get_alias_index(adr_type);
 
-  // Memory-model-wise, a LoadStore acts like a little synchronized
-  // block, so needs barriers on each side.  These don't translate
-  // into actual barriers on most machines, but we still need rest of
-  // compiler to respect ordering.
+  if (type == T_OBJECT || type == T_ARRAY) {
+    decorators |= IN_HEAP | ON_UNKNOWN_OOP_REF;
 
-  switch (access_kind) {
-    case Relaxed:
-    case Acquire:
-      break;
-    case Release:
-      insert_mem_bar(Op_MemBarRelease);
-      break;
-    case Volatile:
-      if (support_IRIW_for_not_multiple_copy_atomic_cpu) {
-        insert_mem_bar(Op_MemBarVolatile);
-      } else {
-        insert_mem_bar(Op_MemBarRelease);
-      }
-      break;
-    default:
-      ShouldNotReachHere();
-  }
-  insert_mem_bar(Op_MemBarCPUOrder);
-
-  // Figure out the memory ordering.
-  MemNode::MemOrd mo = access_kind_to_memord(access_kind);
-
-  // 4984716: MemBars must be inserted before this
-  //          memory node in order to avoid a false
-  //          dependency which will confuse the scheduler.
-  Node *mem = memory(alias_idx);
-
-  // For now, we handle only those cases that actually exist: ints,
-  // longs, and Object. Adding others should be straightforward.
-  Node* load_store = NULL;
-  switch(type) {
-  case T_BYTE:
-    switch(kind) {
-      case LS_get_add:
-        load_store = _gvn.transform(new GetAndAddBNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_get_set:
-        load_store = _gvn.transform(new GetAndSetBNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_cmp_swap_weak:
-        load_store = _gvn.transform(new WeakCompareAndSwapBNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_swap:
-        load_store = _gvn.transform(new CompareAndSwapBNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_exchange:
-        load_store = _gvn.transform(new CompareAndExchangeBNode(control(), mem, adr, newval, oldval, adr_type, mo));
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-    break;
-  case T_SHORT:
-    switch(kind) {
-      case LS_get_add:
-        load_store = _gvn.transform(new GetAndAddSNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_get_set:
-        load_store = _gvn.transform(new GetAndSetSNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_cmp_swap_weak:
-        load_store = _gvn.transform(new WeakCompareAndSwapSNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_swap:
-        load_store = _gvn.transform(new CompareAndSwapSNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_exchange:
-        load_store = _gvn.transform(new CompareAndExchangeSNode(control(), mem, adr, newval, oldval, adr_type, mo));
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-    break;
-  case T_INT:
-    switch(kind) {
-      case LS_get_add:
-        load_store = _gvn.transform(new GetAndAddINode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_get_set:
-        load_store = _gvn.transform(new GetAndSetINode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_cmp_swap_weak:
-        load_store = _gvn.transform(new WeakCompareAndSwapINode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_swap:
-        load_store = _gvn.transform(new CompareAndSwapINode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_exchange:
-        load_store = _gvn.transform(new CompareAndExchangeINode(control(), mem, adr, newval, oldval, adr_type, mo));
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-    break;
-  case T_LONG:
-    switch(kind) {
-      case LS_get_add:
-        load_store = _gvn.transform(new GetAndAddLNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_get_set:
-        load_store = _gvn.transform(new GetAndSetLNode(control(), mem, adr, newval, adr_type));
-        break;
-      case LS_cmp_swap_weak:
-        load_store = _gvn.transform(new WeakCompareAndSwapLNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_swap:
-        load_store = _gvn.transform(new CompareAndSwapLNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_exchange:
-        load_store = _gvn.transform(new CompareAndExchangeLNode(control(), mem, adr, newval, oldval, adr_type, mo));
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-    break;
-  case T_OBJECT:
     // Transformation of a value which could be NULL pointer (CastPP #NULL)
     // could be delayed during Parse (for example, in adjust_map_after_if()).
     // Execute transformation here to avoid barrier generation in such case.
     if (_gvn.type(newval) == TypePtr::NULL_PTR)
       newval = _gvn.makecon(TypePtr::NULL_PTR);
 
-    newval = shenandoah_storeval_barrier(newval);
-
-    // Reference stores need a store barrier.
-    switch(kind) {
-      case LS_get_set: {
-        // If pre-barrier must execute before the oop store, old value will require do_load here.
-        if (!can_move_pre_barrier()) {
-          pre_barrier(true /* do_load*/,
-                      control(), base, adr, alias_idx, newval, value_type->make_oopptr(),
-                      NULL /* pre_val*/,
-                      T_OBJECT);
-        } // Else move pre_barrier to use load_store value, see below.
-        break;
-      }
-      case LS_cmp_swap_weak:
-      case LS_cmp_swap:
-      case LS_cmp_exchange: {
-        // Same as for newval above:
-        if (_gvn.type(oldval) == TypePtr::NULL_PTR) {
-          oldval = _gvn.makecon(TypePtr::NULL_PTR);
-        }
-        // The only known value which might get overwritten is oldval.
-        pre_barrier(false /* do_load */,
-                    control(), NULL, adr, max_juint, newval, NULL,
-                    oldval /* pre_val */,
-                    T_OBJECT);
-        break;
-      }
-      default:
-        ShouldNotReachHere();
-    }
-
-#ifdef _LP64
-    if (adr->bottom_type()->is_ptr_to_narrowoop()) {
-      Node *newval_enc = _gvn.transform(new EncodePNode(newval, newval->bottom_type()->make_narrowoop()));
-
-      switch(kind) {
-        case LS_get_set:
-          load_store = _gvn.transform(new GetAndSetNNode(control(), mem, adr, newval_enc, adr_type, value_type->make_narrowoop()));
-          break;
-        case LS_cmp_swap_weak: {
-          Node *oldval_enc = _gvn.transform(new EncodePNode(oldval, oldval->bottom_type()->make_narrowoop()));
-          load_store = _gvn.transform(new WeakCompareAndSwapNNode(control(), mem, adr, newval_enc, oldval_enc, mo));
-          break;
-        }
-        case LS_cmp_swap: {
-          Node *oldval_enc = _gvn.transform(new EncodePNode(oldval, oldval->bottom_type()->make_narrowoop()));
-          load_store = _gvn.transform(new CompareAndSwapNNode(control(), mem, adr, newval_enc, oldval_enc, mo));
-          break;
-        }
-        case LS_cmp_exchange: {
-          Node *oldval_enc = _gvn.transform(new EncodePNode(oldval, oldval->bottom_type()->make_narrowoop()));
-          load_store = _gvn.transform(new CompareAndExchangeNNode(control(), mem, adr, newval_enc, oldval_enc, adr_type, value_type->make_narrowoop(), mo));
-          break;
-        }
-        default:
-          ShouldNotReachHere();
-      }
-    } else
-#endif
-    switch (kind) {
-      case LS_get_set:
-        load_store = _gvn.transform(new GetAndSetPNode(control(), mem, adr, newval, adr_type, value_type->is_oopptr()));
-        break;
-      case LS_cmp_swap_weak:
-        load_store = _gvn.transform(new WeakCompareAndSwapPNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_swap:
-        load_store = _gvn.transform(new CompareAndSwapPNode(control(), mem, adr, newval, oldval, mo));
-        break;
-      case LS_cmp_exchange:
-        load_store = _gvn.transform(new CompareAndExchangePNode(control(), mem, adr, newval, oldval, adr_type, value_type->is_oopptr(), mo));
-        break;
-      default:
-        ShouldNotReachHere();
-    }
-
-    // Emit the post barrier only when the actual store happened. This makes sense
-    // to check only for LS_cmp_* that can fail to set the value.
-    // LS_cmp_exchange does not produce any branches by default, so there is no
-    // boolean result to piggyback on. TODO: When we merge CompareAndSwap with
-    // CompareAndExchange and move branches here, it would make sense to conditionalize
-    // post_barriers for LS_cmp_exchange as well.
-    //
-    // CAS success path is marked more likely since we anticipate this is a performance
-    // critical path, while CAS failure path can use the penalty for going through unlikely
-    // path as backoff. Which is still better than doing a store barrier there.
-    switch (kind) {
-      case LS_get_set:
-      case LS_cmp_exchange: {
-        post_barrier(control(), load_store, base, adr, alias_idx, newval, T_OBJECT, true);
-        break;
-      }
-      case LS_cmp_swap_weak:
-      case LS_cmp_swap: {
-        IdealKit ideal(this);
-        ideal.if_then(load_store, BoolTest::ne, ideal.ConI(0), PROB_STATIC_FREQUENT); {
-          sync_kit(ideal);
-          post_barrier(ideal.ctrl(), load_store, base, adr, alias_idx, newval, T_OBJECT, true);
-          ideal.sync_kit(this);
-        } ideal.end_if();
-        final_sync(ideal);
-        break;
-      }
-      default:
-        ShouldNotReachHere();
-    }
-    break;
-  default:
-    fatal("unexpected type %d: %s", type, type2name(type));
-    break;
-  }
-
-  // SCMemProjNodes represent the memory state of a LoadStore. Their
-  // main role is to prevent LoadStore nodes from being optimized away
-  // when their results aren't used.
-  Node* proj = _gvn.transform(new SCMemProjNode(load_store));
-  set_memory(proj, alias_idx);
-
-  // Add the trailing membar surrounding the access
-  insert_mem_bar(Op_MemBarCPUOrder);
-
-  if (type == T_OBJECT && (kind == LS_get_set || kind == LS_cmp_exchange)) {
-#ifdef _LP64
-    if (adr->bottom_type()->is_ptr_to_narrowoop()) {
-      load_store = _gvn.transform(new DecodeNNode(load_store, load_store->get_ptr_type()));
-    }
-#endif
-    if (can_move_pre_barrier() && kind == LS_get_set) {
-      // Don't need to load pre_val. The old value is returned by load_store.
-      // The pre_barrier can execute after the xchg as long as no safepoint
-      // gets inserted between them.
-      pre_barrier(false /* do_load */,
-                  control(), base, adr, alias_idx, newval, value_type->make_oopptr(),
-                  load_store /* pre_val */,
-                  T_OBJECT);
+    if (oldval != NULL && _gvn.type(oldval) == TypePtr::NULL_PTR) {
+      // Refine the value to a null constant, when it is known to be null
+      oldval = _gvn.makecon(TypePtr::NULL_PTR);
     }
   }
 
-  switch (access_kind) {
-    case Relaxed:
-    case Release:
-      break; // do nothing
-    case Acquire:
-    case Volatile:
-      insert_mem_bar(Op_MemBarAcquire);
-      // !support_IRIW_for_not_multiple_copy_atomic_cpu handled in platform code
+  Node* result = NULL;
+  switch (kind) {
+    case LS_cmp_exchange: {
+      result = access_atomic_cmpxchg_val_at(control(), base, adr, adr_type, alias_idx,
+                                            oldval, newval, value_type, type, decorators);
       break;
+    }
+    case LS_cmp_swap_weak:
+      decorators |= C2_WEAK_CMPXCHG;
+    case LS_cmp_swap: {
+      result = access_atomic_cmpxchg_bool_at(control(), base, adr, adr_type, alias_idx,
+                                             oldval, newval, value_type, type, decorators);
+      break;
+    }
+    case LS_get_set: {
+      result = access_atomic_xchg_at(control(), base, adr, adr_type, alias_idx,
+                                     newval, value_type, type, decorators);
+      break;
+    }
+    case LS_get_add: {
+      result = access_atomic_add_at(control(), base, adr, adr_type, alias_idx,
+                                    newval, value_type, type, decorators);
+      break;
+    }
     default:
       ShouldNotReachHere();
   }
 
-  assert(type2size[load_store->bottom_type()->basic_type()] == type2size[rtype], "result type should match");
-  set_result(load_store);
+  assert(type2size[result->bottom_type()->basic_type()] == type2size[rtype], "result type should match");
+  set_result(result);
   return true;
-}
-
-MemNode::MemOrd LibraryCallKit::access_kind_to_memord_LS(AccessKind kind, bool is_store) {
-  MemNode::MemOrd mo = MemNode::unset;
-  switch(kind) {
-    case Opaque:
-    case Relaxed:  mo = MemNode::unordered; break;
-    case Acquire:  mo = MemNode::acquire;   break;
-    case Release:  mo = MemNode::release;   break;
-    case Volatile: mo = is_store ? MemNode::release : MemNode::acquire; break;
-    default:
-      ShouldNotReachHere();
-  }
-  guarantee(mo != MemNode::unset, "Should select memory ordering");
-  return mo;
-}
-
-MemNode::MemOrd LibraryCallKit::access_kind_to_memord(AccessKind kind) {
-  MemNode::MemOrd mo = MemNode::unset;
-  switch(kind) {
-    case Opaque:
-    case Relaxed:  mo = MemNode::unordered; break;
-    case Acquire:  mo = MemNode::acquire;   break;
-    case Release:  mo = MemNode::release;   break;
-    case Volatile: mo = MemNode::seqcst;    break;
-    default:
-      ShouldNotReachHere();
-  }
-  guarantee(mo != MemNode::unset, "Should select memory ordering");
-  return mo;
 }
 
 bool LibraryCallKit::inline_unsafe_fence(vmIntrinsics::ID id) {
@@ -3502,8 +3012,8 @@ bool LibraryCallKit::inline_native_isInterrupted() {
   Node* tls_ptr = NULL;
   Node* cur_thr = generate_current_thread(tls_ptr);
 
-  cur_thr = shenandoah_write_barrier(cur_thr);
-  rec_thr = shenandoah_write_barrier(rec_thr);
+  cur_thr = access_resolve_for_write(cur_thr);
+  rec_thr = access_resolve_for_write(rec_thr);
   Node* cmp_thr = _gvn.transform(new CmpPNode(cur_thr, rec_thr));
   Node* bol_thr = _gvn.transform(new BoolNode(cmp_thr, BoolTest::ne));
 
@@ -3940,8 +3450,8 @@ bool LibraryCallKit::inline_native_subtype_check() {
     klasses[which_arg] = _gvn.transform(kls);
   }
 
-  args[0] = shenandoah_write_barrier(args[0]);
-  args[1] = shenandoah_write_barrier(args[1]);
+  args[0] = access_resolve_for_write(args[0]);
+  args[1] = access_resolve_for_write(args[1]);
 
   // Having loaded both klasses, test each for null.
   bool never_see_null = !too_many_traps(Deoptimization::Reason_null_check);
@@ -4234,7 +3744,7 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
       Node* orig_tail = _gvn.transform(new SubINode(orig_length, start));
       Node* moved = generate_min_max(vmIntrinsics::_min, orig_tail, length);
 
-      original = shenandoah_read_barrier(original);
+      original = access_resolve_for_read(original);
 
       // Generate a direct call to the right arraycopy function(s).
       // We know the copy is disjoint but we might not know if the
@@ -4750,12 +4260,12 @@ bool LibraryCallKit::inline_unsafe_copyMemory() {
 
 //------------------------clone_coping-----------------------------------
 // Helper function for inline_native_clone.
-void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array, bool card_mark) {
+void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, bool is_array) {
   assert(obj_size != NULL, "");
   Node* raw_obj = alloc_obj->in(1);
   assert(alloc_obj->is_CheckCastPP() && raw_obj->is_Proj() && raw_obj->in(0)->is_Allocate(), "");
 
-  obj = shenandoah_read_barrier(obj);
+  obj = access_resolve_for_read(obj);
 
   AllocateNode* alloc = NULL;
   if (ReduceBulkZeroing) {
@@ -4772,66 +4282,9 @@ void LibraryCallKit::copy_to_clone(Node* obj, Node* alloc_obj, Node* obj_size, b
 
   // Copy the fastest available way.
   // TODO: generate fields copies for small objects instead.
-  Node* src  = obj;
-  Node* dest = alloc_obj;
   Node* size = _gvn.transform(obj_size);
 
-  // Exclude the header but include array length to copy by 8 bytes words.
-  // Can't use base_offset_in_bytes(bt) since basic type is unknown.
-  int base_off = is_array ? arrayOopDesc::length_offset_in_bytes() :
-                            instanceOopDesc::base_offset_in_bytes();
-  // base_off:
-  // 8  - 32-bit VM
-  // 12 - 64-bit VM, compressed klass
-  // 16 - 64-bit VM, normal klass
-  if (base_off % BytesPerLong != 0) {
-    assert(UseCompressedClassPointers, "");
-    if (is_array) {
-      // Exclude length to copy by 8 bytes words.
-      base_off += sizeof(int);
-    } else {
-      // Include klass to copy by 8 bytes words.
-      base_off = instanceOopDesc::klass_offset_in_bytes();
-    }
-    assert(base_off % BytesPerLong == 0, "expect 8 bytes alignment");
-  }
-  src  = basic_plus_adr(src,  base_off);
-  dest = basic_plus_adr(dest, base_off);
-
-  // Compute the length also, if needed:
-  Node* countx = size;
-  countx = _gvn.transform(new SubXNode(countx, MakeConX(base_off)));
-  countx = _gvn.transform(new URShiftXNode(countx, intcon(LogBytesPerLong) ));
-
-  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
-
-  ArrayCopyNode* ac = ArrayCopyNode::make(this, false, src, NULL, dest, NULL, countx, false, false);
-  ac->set_clonebasic();
-  Node* n = _gvn.transform(ac);
-  if (n == ac) {
-    set_predefined_output_for_runtime_call(ac, ac->in(TypeFunc::Memory), raw_adr_type);
-  } else {
-    set_all_memory(n);
-  }
-
-  // If necessary, emit some card marks afterwards.  (Non-arrays only.)
-  if (card_mark) {
-    assert(!is_array, "");
-    // Put in store barrier for any and all oops we are sticking
-    // into this object.  (We could avoid this if we could prove
-    // that the object type contains no oop fields at all.)
-    Node* no_particular_value = NULL;
-    Node* no_particular_field = NULL;
-    int raw_adr_idx = Compile::AliasIdxRaw;
-    post_barrier(control(),
-                 memory(raw_adr_type),
-                 alloc_obj,
-                 no_particular_field,
-                 raw_adr_idx,
-                 no_particular_value,
-                 T_OBJECT,
-                 false);
-  }
+  access_clone(control(), obj, alloc_obj, size, is_array);
 
   // Do not let reads from the cloned object float above the arraycopy.
   if (alloc != NULL) {
@@ -4921,9 +4374,6 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
     PhiNode*    result_mem = new PhiNode(result_reg, Type::MEMORY, TypePtr::BOTTOM);
     record_for_igvn(result_reg);
 
-    const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
-    int raw_adr_idx = Compile::AliasIdxRaw;
-
     Node* array_ctl = generate_array_guard(obj_klass, (RegionNode*)NULL);
     if (array_ctl != NULL) {
       // It's an array.
@@ -4933,15 +4383,16 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       Node* obj_size  = NULL;
       Node* alloc_obj = new_array(obj_klass, obj_length, 0, &obj_size);  // no arguments to push
 
-      if (!use_ReduceInitialCardMarks()) {
+      BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+      if (bs->array_copy_requires_gc_barriers(T_OBJECT)) {
         // If it is an oop array, it requires very special treatment,
-        // because card marking is required on each card of the array.
+        // because gc barriers are required when accessing the array.
         Node* is_obja = generate_objArray_guard(obj_klass, (RegionNode*)NULL);
         if (is_obja != NULL) {
           PreserveJVMState pjvms2(this);
           set_control(is_obja);
 
-          obj = shenandoah_read_barrier(obj);
+          obj = access_resolve_for_read(obj);
 
           // Generate a direct call to the right arraycopy function(s).
           Node* alloc = tightly_coupled_allocation(alloc_obj, NULL);
@@ -4958,7 +4409,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           result_mem ->set_req(_objArray_path, reset_memory());
         }
       }
-      // Otherwise, there are no card marks to worry about.
+      // Otherwise, there are no barriers to worry about.
       // (We can dispense with card marks if we know the allocation
       //  comes out of eden (TLAB)...  In fact, ReduceInitialCardMarks
       //  causes the non-eden paths to take compensating steps to
@@ -4967,7 +4418,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       //  the object.)
 
       if (!stopped()) {
-        copy_to_clone(obj, alloc_obj, obj_size, true, false);
+        copy_to_clone(obj, alloc_obj, obj_size, true);
 
         // Present the results of the copy.
         result_reg->init_req(_array_path, control());
@@ -5013,7 +4464,7 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
       // exception state between multiple Object.clone versions (reexecute=true vs reexecute=false).
       Node* alloc_obj = new_instance(obj_klass, NULL, &obj_size, /*deoptimize_on_exception=*/true);
 
-      copy_to_clone(obj, alloc_obj, obj_size, false, !use_ReduceInitialCardMarks());
+      copy_to_clone(obj, alloc_obj, obj_size, false);
 
       // Present the results of the slow call.
       result_reg->init_req(_instance_path, control());
@@ -5419,8 +4870,8 @@ bool LibraryCallKit::inline_arraycopy() {
     return true;
   }
 
-  Node* new_src = shenandoah_read_barrier(src);
-  Node* new_dest = shenandoah_write_barrier(dest);
+  Node* new_src = access_resolve_for_read(src);
+  Node* new_dest = access_resolve_for_write(dest);
 
   ArrayCopyNode* ac = ArrayCopyNode::make(this, true, new_src, src_offset, new_dest, dest_offset, length, alloc != NULL, negative_length_guard_generated,
                                           // Create LoadRange and LoadKlass nodes for use during macro expansion here
@@ -5538,8 +4989,8 @@ bool LibraryCallKit::inline_encodeISOArray() {
   src = must_be_not_null(src, true);
   dst = must_be_not_null(dst, true);
 
-  src = shenandoah_read_barrier(src);
-  dst = shenandoah_write_barrier(dst);
+  src = access_resolve_for_read(src);
+  dst = access_resolve_for_write(dst);
 
   const Type* src_type = src->Value(&_gvn);
   const Type* dst_type = dst->Value(&_gvn);
@@ -5594,10 +5045,10 @@ bool LibraryCallKit::inline_multiplyToLen() {
   Node* z    = argument(4);
 
   x = must_be_not_null(x, true);
-  x = shenandoah_read_barrier(x);
+  x = access_resolve_for_read(x);
   y = must_be_not_null(y, true);
-  y = shenandoah_read_barrier(y);
-  z = shenandoah_write_barrier(z);
+  y = access_resolve_for_read(y);
+  z = access_resolve_for_write(z);
 
   const Type* x_type = x->Value(&_gvn);
   const Type* y_type = y->Value(&_gvn);
@@ -5705,9 +5156,9 @@ bool LibraryCallKit::inline_squareToLen() {
   Node* zlen = argument(3);
 
   x = must_be_not_null(x, true);
-  x = shenandoah_read_barrier(x);
+  x = access_resolve_for_read(x);
   z = must_be_not_null(z, true);
-  z = shenandoah_write_barrier(z);
+  z = access_resolve_for_write(z);
 
   const Type* x_type = x->Value(&_gvn);
   const Type* z_type = z->Value(&_gvn);
@@ -5756,9 +5207,9 @@ bool LibraryCallKit::inline_mulAdd() {
   Node* len      = argument(3);
   Node* k        = argument(4);
 
-  in = shenandoah_read_barrier(in);
+  in = access_resolve_for_read(in);
   out = must_be_not_null(out, true);
-  out = shenandoah_write_barrier(out);
+  out = access_resolve_for_write(out);
 
   const Type* out_type = out->Value(&_gvn);
   const Type* in_type = in->Value(&_gvn);
@@ -5809,10 +5260,10 @@ bool LibraryCallKit::inline_montgomeryMultiply() {
   Node* inv  = argument(4);
   Node* m    = argument(6);
 
-  a = shenandoah_read_barrier(a);
-  b = shenandoah_read_barrier(b);
-  n = shenandoah_read_barrier(n);
-  m = shenandoah_write_barrier(m);
+  a = access_resolve_for_read(a);
+  b = access_resolve_for_read(b);
+  n = access_resolve_for_read(n);
+  m = access_resolve_for_write(m);
 
   const Type* a_type = a->Value(&_gvn);
   const TypeAryPtr* top_a = a_type->isa_aryptr();
@@ -5873,9 +5324,9 @@ bool LibraryCallKit::inline_montgomerySquare() {
   Node* inv  = argument(3);
   Node* m    = argument(5);
 
-  a = shenandoah_read_barrier(a);
-  n = shenandoah_read_barrier(n);
-  m = shenandoah_write_barrier(m);
+  a = access_resolve_for_read(a);
+  n = access_resolve_for_read(n);
+  m = access_resolve_for_write(m);
 
   const Type* a_type = a->Value(&_gvn);
   const TypeAryPtr* top_a = a_type->isa_aryptr();
@@ -6022,7 +5473,7 @@ bool LibraryCallKit::inline_updateBytesCRC32() {
 
   // 'src_start' points to src array + scaled offset
   src = must_be_not_null(src, true);
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, offset, src_elem);
 
   // We assume that range check is done by caller.
@@ -6111,14 +5562,14 @@ bool LibraryCallKit::inline_updateBytesCRC32C() {
   }
 
   // 'src_start' points to src array + scaled offset
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   src = must_be_not_null(src, true);
   Node* src_start = array_element_address(src, offset, src_elem);
 
   // static final int[] byteTable in class CRC32C
   Node* table = get_table_from_crc32c_class(callee()->holder());
   table = must_be_not_null(table, true);
-  table = shenandoah_read_barrier(table);
+  table = access_resolve_for_read(table);
   Node* table_start = array_element_address(table, intcon(0), T_INT);
 
   // We assume that range check is done by caller.
@@ -6163,7 +5614,7 @@ bool LibraryCallKit::inline_updateDirectByteBufferCRC32C() {
   // static final int[] byteTable in class CRC32C
   Node* table = get_table_from_crc32c_class(callee()->holder());
   table = must_be_not_null(table, true);
-  table = shenandoah_read_barrier(table);
+  table = access_resolve_for_read(table);
   Node* table_start = array_element_address(table, intcon(0), T_INT);
 
   // Call the stub.
@@ -6207,7 +5658,7 @@ bool LibraryCallKit::inline_updateBytesAdler32() {
   }
 
   // 'src_start' points to src array + scaled offset
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, offset, src_elem);
 
   // We assume that range check is done by caller.
@@ -6270,17 +5721,23 @@ bool LibraryCallKit::inline_reference_get() {
   Node* reference_obj = null_check_receiver();
   if (stopped()) return true;
 
+  const TypeInstPtr* tinst = _gvn.type(reference_obj)->isa_instptr();
+  assert(tinst != NULL, "obj is null");
+  assert(tinst->klass()->is_loaded(), "obj is not loaded");
+  ciInstanceKlass* referenceKlass = tinst->klass()->as_instance_klass();
+  ciField* field = referenceKlass->get_field_by_name(ciSymbol::make("referent"),
+                                                     ciSymbol::make("Ljava/lang/Object;"),
+                                                     false);
+  assert (field != NULL, "undefined field");
+
   Node* adr = basic_plus_adr(reference_obj, reference_obj, referent_offset);
+  const TypePtr* adr_type = C->alias_type(field)->adr_type();
 
   ciInstanceKlass* klass = env()->Object_klass();
   const TypeOopPtr* object_type = TypeOopPtr::make_from_klass(klass);
 
-  Node* no_ctrl = NULL;
-  Node* result = make_load(no_ctrl, adr, object_type, T_OBJECT, MemNode::unordered);
-
-  // Use the pre-barrier to record the value in the referent field
-  keep_alive_barrier(control(), result);
-
+  DecoratorSet decorators = IN_HEAP | ON_WEAK_OOP_REF;
+  Node* result = access_load_at(reference_obj, adr, adr_type, object_type, T_OBJECT, decorators);
   // Add memory barrier to prevent commoning reads from this field
   // across safepoint since GC can change its value.
   insert_mem_bar(Op_MemBarCPUOrder);
@@ -6319,7 +5776,7 @@ Node * LibraryCallKit::load_field_from_object(Node * fromObj, const char * field
       (ShenandoahOptimizeStableFinals   && field->is_stable())) {
     // Skip the barrier for special fields
   } else {
-    fromObj = shenandoah_read_barrier(fromObj);
+    fromObj = access_resolve_for_read(fromObj);
   }
 
   // Next code  copied from Parse::do_get_xxx():
@@ -6341,20 +5798,13 @@ Node * LibraryCallKit::load_field_from_object(Node * fromObj, const char * field
     type = Type::get_const_basic_type(bt);
   }
 
-  if (support_IRIW_for_not_multiple_copy_atomic_cpu && is_vol) {
-    insert_mem_bar(Op_MemBarVolatile);   // StoreLoad barrier
-  }
-  // Build the load.
-  MemNode::MemOrd mo = is_vol ? MemNode::acquire : MemNode::unordered;
-  Node* loadedField = make_load(NULL, adr, type, bt, adr_type, mo, LoadNode::DependsOnlyOnTest, is_vol);
-  // If reference is volatile, prevent following memory ops from
-  // floating up past the volatile read.  Also prevents commoning
-  // another volatile read.
+  DecoratorSet decorators = IN_HEAP;
+
   if (is_vol) {
-    // Memory barrier includes bogus read of value to force load BEFORE membar
-    insert_mem_bar(Op_MemBarAcquire, loadedField);
+    decorators |= MO_SEQ_CST;
   }
-  return loadedField;
+
+  return access_load_at(fromObj, adr, adr_type, type, bt, decorators);
 }
 
 Node * LibraryCallKit::field_address_from_object(Node * fromObj, const char * fieldName, const char * fieldTypeString,
@@ -6419,9 +5869,9 @@ bool LibraryCallKit::inline_aescrypt_Block(vmIntrinsics::ID id) {
 
   // Resolve src and dest arrays for ShenandoahGC.
   src = must_be_not_null(src, true);
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   dest = must_be_not_null(dest, true);
-  dest = shenandoah_write_barrier(dest);
+  dest = access_resolve_for_write(dest);
 
   // (1) src and dest are arrays.
   const Type* src_type = src->Value(&_gvn);
@@ -6498,8 +5948,8 @@ bool LibraryCallKit::inline_cipherBlockChaining_AESCrypt(vmIntrinsics::ID id) {
   // barrier. This one should optimize away.
   src = must_be_not_null(src, false);
   dest = must_be_not_null(dest, false);
-  src = shenandoah_read_barrier(src);
-  dest = shenandoah_write_barrier(dest);
+  src = access_resolve_for_read(src);
+  dest = access_resolve_for_write(dest);
 
   // (1) src and dest are arrays.
   const Type* src_type = src->Value(&_gvn);
@@ -6546,7 +5996,7 @@ bool LibraryCallKit::inline_cipherBlockChaining_AESCrypt(vmIntrinsics::ID id) {
   // similarly, get the start address of the r vector
   Node* objRvec = load_field_from_object(cipherBlockChaining_object, "r", "[B", /*is_exact*/ false);
 
-  objRvec = shenandoah_write_barrier(objRvec);
+  objRvec = access_resolve_for_write(objRvec);
 
   if (objRvec == NULL) return false;
   Node* r_start = array_element_address(objRvec, intcon(0), T_BYTE);
@@ -6605,9 +6055,9 @@ bool LibraryCallKit::inline_counterMode_AESCrypt(vmIntrinsics::ID id) {
   assert(top_src != NULL && top_src->klass() != NULL &&
          top_dest != NULL && top_dest->klass() != NULL, "args are strange");
 
-  src = shenandoah_read_barrier(src);
-  dest = shenandoah_write_barrier(dest);
-  counterMode_object = shenandoah_write_barrier(counterMode_object);
+  src = access_resolve_for_read(src);
+  dest = access_resolve_for_write(dest);
+  counterMode_object = access_resolve_for_write(counterMode_object);
 
   // checks are the responsibility of the caller
   Node* src_start = src;
@@ -6641,12 +6091,12 @@ bool LibraryCallKit::inline_counterMode_AESCrypt(vmIntrinsics::ID id) {
   // similarly, get the start address of the r vector
   Node* obj_counter = load_field_from_object(counterMode_object, "counter", "[B", /*is_exact*/ false);
   if (obj_counter == NULL) return false;
-  obj_counter = shenandoah_write_barrier(obj_counter);
+  obj_counter = access_resolve_for_write(obj_counter);
   Node* cnt_start = array_element_address(obj_counter, intcon(0), T_BYTE);
 
   Node* saved_encCounter = load_field_from_object(counterMode_object, "encryptedCounter", "[B", /*is_exact*/ false);
   if (saved_encCounter == NULL) return false;
-  saved_encCounter = shenandoah_write_barrier(saved_encCounter);
+  saved_encCounter = access_resolve_for_write(saved_encCounter);
   Node* saved_encCounter_start = array_element_address(saved_encCounter, intcon(0), T_BYTE);
   Node* used = field_address_from_object(counterMode_object, "used", "I", /*is_exact*/ false);
 
@@ -6686,7 +6136,7 @@ Node * LibraryCallKit::get_key_start_from_aescrypt_object(Node *aescrypt_object)
   assert (objAESCryptKey != NULL, "wrong version of com.sun.crypto.provider.AESCrypt");
   if (objAESCryptKey == NULL) return (Node *) NULL;
 
-  objAESCryptKey = shenandoah_read_barrier(objAESCryptKey);
+  objAESCryptKey = access_resolve_for_read(objAESCryptKey);
 
   // now have the array, need to get the start address of the K array
   Node* k_start = array_element_address(objAESCryptKey, intcon(0), T_INT);
@@ -6699,7 +6149,7 @@ Node * LibraryCallKit::get_original_key_start_from_aescrypt_object(Node *aescryp
   assert (objAESCryptKey != NULL, "wrong version of com.sun.crypto.provider.AESCrypt");
   if (objAESCryptKey == NULL) return (Node *) NULL;
 
-  objAESCryptKey = shenandoah_read_barrier(objAESCryptKey);
+  objAESCryptKey = access_resolve_for_read(objAESCryptKey);
 
   // now have the array, need to get the start address of the lastKey array
   Node* original_k_start = array_element_address(objAESCryptKey, intcon(0), T_BYTE);
@@ -6746,8 +6196,8 @@ Node* LibraryCallKit::inline_cipherBlockChaining_AESCrypt_predicate(bool decrypt
   // inline_cipherBlockChaining_AESCrypt itself
   src = must_be_not_null(src, true);
   dest = must_be_not_null(dest, true);
-  src = shenandoah_write_barrier(src);
-  dest = shenandoah_write_barrier(dest);
+  src = access_resolve_for_write(src);
+  dest = access_resolve_for_write(dest);
 
   ciInstanceKlass* instklass_AESCrypt = klass_AESCrypt->as_instance_klass();
 
@@ -6837,9 +6287,9 @@ bool LibraryCallKit::inline_ghash_processBlocks() {
   subkeyH = must_be_not_null(subkeyH, true);
   data = must_be_not_null(data, true);
 
-  state = shenandoah_write_barrier(state);
-  subkeyH = shenandoah_read_barrier(subkeyH);
-  data = shenandoah_read_barrier(data);
+  state = access_resolve_for_write(state);
+  subkeyH = access_resolve_for_read(subkeyH);
+  data = access_resolve_for_read(data);
 
   Node* state_start  = array_element_address(state, intcon(0), T_LONG);
   assert(state_start, "state is NULL");
@@ -6886,7 +6336,7 @@ bool LibraryCallKit::inline_sha_implCompress(vmIntrinsics::ID id) {
   }
   // 'src_start' points to src array + offset
   src = must_be_not_null(src, true);
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, ofs, src_elem);
   Node* state = NULL;
   address stubAddr;
@@ -6954,7 +6404,7 @@ bool LibraryCallKit::inline_digestBase_implCompressMB(int predicate) {
   }
   // 'src_start' points to src array + offset
   src = must_be_not_null(src, false);
-  src = shenandoah_read_barrier(src);
+  src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, ofs, src_elem);
 
   const char* klass_SHA_name = NULL;
@@ -7036,7 +6486,7 @@ Node * LibraryCallKit::get_state_from_sha_object(Node *sha_object) {
   assert (sha_state != NULL, "wrong version of sun.security.provider.SHA/SHA2");
   if (sha_state == NULL) return (Node *) NULL;
 
-  sha_state = shenandoah_write_barrier(sha_state);
+  sha_state = access_resolve_for_write(sha_state);
 
   // now have the array, need to get the start address of the state array
   Node* state = array_element_address(sha_state, intcon(0), T_INT);
@@ -7049,7 +6499,7 @@ Node * LibraryCallKit::get_state_from_sha5_object(Node *sha_object) {
   assert (sha_state != NULL, "wrong version of sun.security.provider.SHA5");
   if (sha_state == NULL) return (Node *) NULL;
 
-  sha_state = shenandoah_write_barrier(sha_state);
+  sha_state = access_resolve_for_write(sha_state);
 
   // now have the array, need to get the start address of the state array
   Node* state = array_element_address(sha_state, intcon(0), T_LONG);

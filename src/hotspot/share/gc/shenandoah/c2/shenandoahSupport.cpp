@@ -33,7 +33,8 @@
 #include "opto/phaseX.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "opto/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "opto/subnode.hpp"
 
 Node* ShenandoahBarrierNode::skip_through_barrier(Node* n) {
@@ -262,8 +263,9 @@ void ShenandoahBarrierNode::do_cmpp_if(GraphKit& kit, Node*& taken_branch, Node*
     mb = kit.insert_mem_bar(Op_MemBarAcquire);
   }
 
-  a = kit.shenandoah_read_barrier_acmp(a);
-  b = kit.shenandoah_read_barrier_acmp(b);
+  ShenandoahBarrierSetC2* bs = (ShenandoahBarrierSetC2*) BarrierSet::barrier_set()->barrier_set_c2();
+  a = bs->shenandoah_read_barrier_acmp(&kit, a);
+  b = bs->shenandoah_read_barrier_acmp(&kit, b);
 
   Node* cmp2 = kit.gvn().transform(new CmpPNode(a, b));
   Node* bol2 = bol->clone();
@@ -489,6 +491,12 @@ Node* ShenandoahReadBarrierNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   return NULL;
 }
 
+ShenandoahWriteBarrierNode::ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj)
+  : ShenandoahBarrierNode(ctrl, mem, obj, false) {
+  assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
+  ShenandoahBarrierSetC2::bsc2()->state()->add_shenandoah_barrier(this);
+}
+
 Node* ShenandoahWriteBarrierNode::Identity(PhaseGVN* phase) {
   assert(in(0) != NULL, "should have control");
   PhaseIterGVN* igvn = phase->is_IterGVN();
@@ -537,7 +545,7 @@ Node* ShenandoahWriteBarrierNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 
 bool ShenandoahWriteBarrierNode::expand(Compile* C, PhaseIterGVN& igvn, int& loop_opts_cnt) {
   if (UseShenandoahGC && ShenandoahWriteBarrierToIR) {
-    if (C->shenandoah_barriers_count() > 0) {
+    if (ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count() > 0) {
       bool attempt_more_loopopts = ShenandoahLoopOptsAfterExpansion;
       C->clear_major_progress();
       PhaseIdealLoop ideal_loop(igvn, LoopOptsShenandoahExpand);
@@ -3968,7 +3976,7 @@ void ShenandoahWriteBarrierNode::evacuation_in_progress(Node* c, Node* val, Node
   mm->set_memory_at(Compile::AliasIdxRaw, raw_mem);
   phase->register_new_node(mm, c);
 
-  Node* call = new CallLeafNoFPNode(OptoRuntime::shenandoah_write_barrier_Type(), StubRoutines::shenandoah_wb_C(), "shenandoah_write_barrier", TypeRawPtr::BOTTOM);
+  Node* call = new CallLeafNoFPNode(ShenandoahBarrierSetC2::shenandoah_write_barrier_Type(), StubRoutines::shenandoah_wb_C(), "shenandoah_write_barrier", TypeRawPtr::BOTTOM);
   call->init_req(TypeFunc::Control, c);
   call->init_req(TypeFunc::I_O, phase->C->top());
   call->init_req(TypeFunc::Memory, mm);
@@ -4003,8 +4011,8 @@ void ShenandoahWriteBarrierNode::pin_and_expand(PhaseIdealLoop* phase) {
   // Let's try to common write barriers again
   for (;;) {
     bool progress = false;
-    for (int i = phase->C->shenandoah_barriers_count(); i > 0; i--) {
-      ShenandoahBarrierNode* wb = phase->C->shenandoah_barrier(i-1);
+    for (int i = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count(); i > 0; i--) {
+      ShenandoahBarrierNode* wb = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barrier(i-1);
       Node* ctrl = phase->get_ctrl(wb);
       if (wb->try_common(ctrl, phase) != NULL) {
         progress = true;
@@ -4016,8 +4024,8 @@ void ShenandoahWriteBarrierNode::pin_and_expand(PhaseIdealLoop* phase) {
   }
 
   Unique_Node_List uses;
-  for (int i = 0; i < phase->C->shenandoah_barriers_count(); i++) {
-    ShenandoahWriteBarrierNode* wb = phase->C->shenandoah_barrier(i);
+  for (int i = 0; i < ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count(); i++) {
+    ShenandoahWriteBarrierNode* wb = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barrier(i);
     Node* ctrl = phase->get_ctrl(wb);
 
     Node* val = wb->in(ValueIn);
@@ -4039,9 +4047,9 @@ void ShenandoahWriteBarrierNode::pin_and_expand(PhaseIdealLoop* phase) {
   }
 
   Unique_Node_List uses_to_ignore;
-  for (int i = phase->C->shenandoah_barriers_count(); i > 0; i--) {
-    int cnt = phase->C->shenandoah_barriers_count();
-    ShenandoahWriteBarrierNode* wb = phase->C->shenandoah_barrier(i-1);
+  for (int i = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count(); i > 0; i--) {
+    int cnt = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count();
+    ShenandoahWriteBarrierNode* wb = ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barrier(i-1);
 
     uint last = phase->C->unique();
     Node* ctrl = phase->get_ctrl(wb);
@@ -4205,10 +4213,10 @@ void ShenandoahWriteBarrierNode::pin_and_expand(PhaseIdealLoop* phase) {
     // collected in memory_nodes to fix the memory graph. Update that
     // memory state as we go.
     fix_raw_mem(ctrl,region, init_raw_mem, raw_mem_for_ctrl, raw_mem_phi, memory_nodes, uses, phase);
-    assert(phase->C->shenandoah_barriers_count() == cnt - 1, "not replaced");
+    assert(ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count() == cnt - 1, "not replaced");
   }
 
-  assert(phase->C->shenandoah_barriers_count() == 0, "all write barrier nodes should have been replaced");
+  assert(ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count() == 0, "all write barrier nodes should have been replaced");
 }
 
 void ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase) {
