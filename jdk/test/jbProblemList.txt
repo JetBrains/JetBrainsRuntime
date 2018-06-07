@@ -115,6 +115,10 @@
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html                  8169106 windows-all,macosx-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 windows-all,macosx-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 windows-all,macosx-all
+java/awt/Choice/GetSizeTest/GetSizeTest.java                                        JRE-837 windows-all,macosx-all
+java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all
+java/awt/Choice/ItemStateChangeTest/ItemStateChangeTest.java                        JRE-840 windows-all,macosx-all
+java/awt/Choice/PopupPosTest/PopupPosTest.html                                      8192930,8197811 windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java                        8047703 generic-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                  8047703 generic-all
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8192929 windows-all,macosx-all
@@ -506,7 +510,7 @@ java/awt/Paint/PaintNativeOnUpdate.java                                         
 java/awt/PopupMenu/PopupMenuLocation.java                                           JRE-828 macosx-all,windows-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 generic-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                           8132299 generic-all
-java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java                            JRE-829 windows-all
+java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java                            8204315 windows-all
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java               JRE-830 macosx-all,windows-all
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java             8196018 macosx-all,windows-all
@@ -522,11 +526,11 @@ java/awt/TrayIcon/ActionCommand/ActionCommand.java                              
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java                              8197575 windows-all
 java/awt/TrayIcon/ModalityTest/ModalityTest.java                                    8197575 windows-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java                            8197575 windows-all
-java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java          8197575,JRE-835 macosx-all,windows-all
-java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java            8197575,JRE-835 macosx-all,windows-all
-java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java                            8197575,JRE-835 macosx-all,windows-all
-java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java                          8197575,JRE-835 macosx-all,windows-all
-java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java                              8197575,JRE-835 macosx-all,windows-all
+java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java          8197575,8204320 macosx-all,windows-all
+java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java            8197575,8204320 macosx-all,windows-all
+java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java                            8197575,8204320 macosx-all,windows-all
+java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java                          8197575,8204320 macosx-all,windows-all
+java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java                              8197575,8204320 macosx-all,windows-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                      6847593 generic-all
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java                          8169530 macosx-all,windows-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java                  8142536 generic-all
@@ -903,3 +907,5 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java       
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java    JRE-801 macosx-all,windows-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java JRE-804 macosx-all,windows-all
 javax/swing/reliability/TaskUndJFrameProperties.java                                JRE-805 macosx-all,windows-all
+
+jdk/modules/incubator/ImageModules.java                                             8175022 windows-all
