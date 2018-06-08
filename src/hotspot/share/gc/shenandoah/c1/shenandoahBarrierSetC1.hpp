@@ -101,7 +101,7 @@ private:
   LIR_Opr read_barrier_impl(LIRAccess& access, LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
   LIR_Opr write_barrier_impl(LIRAccess& access, LIR_Opr obj, CodeEmitInfo* info, bool need_null_check);
 
-
+  LIR_Opr ensure_in_register(LIRAccess& access, LIR_Opr obj);
 public:
   CodeBlob* pre_barrier_c1_runtime_code_blob() { return _pre_barrier_c1_runtime_code_blob; }
 

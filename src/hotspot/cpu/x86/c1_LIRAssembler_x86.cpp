@@ -3985,6 +3985,7 @@ void LIR_Assembler::atomic_op(LIR_Code code, LIR_Opr src, LIR_Opr data, LIR_Opr 
   } else if (data->is_oop()) {
     assert (code == lir_xchg, "xadd for oops");
     Register obj = data->as_register();
+    assert (tmp->is_register(), "should be register");
     __ xchg_oop(obj, as_Address(src->as_address_ptr()), tmp->as_register());
   } else if (data->type() == T_LONG) {
 #ifdef _LP64

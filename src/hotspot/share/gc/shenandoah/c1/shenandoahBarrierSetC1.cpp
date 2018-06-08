@@ -117,15 +117,7 @@ void ShenandoahBarrierSetC1::post_barrier(LIRAccess& access, LIR_OprDesc* addr, 
   if (new_val->is_constant() &&
       new_val->as_constant_ptr()->as_jobject() == NULL) return;
 
-  if (!new_val->is_register()) {
-    LIR_Opr new_val_reg = gen->new_register(T_OBJECT);
-    if (new_val->is_constant()) {
-      __ move(new_val, new_val_reg);
-    } else {
-      __ leal(new_val, new_val_reg);
-    }
-    new_val = new_val_reg;
-  }
+  new_val = ensure_in_register(access, new_val);
   assert(new_val->is_register(), "must be a register at this point");
 
   if (addr->is_address()) {
@@ -219,20 +211,32 @@ LIR_Opr ShenandoahBarrierSetC1::write_barrier_impl(LIRAccess& access, LIR_Opr ob
   assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
   LIRGenerator* gen = access.gen();
   LIR_Opr result = gen->new_register(T_OBJECT);
+
+  obj = ensure_in_register(access, obj);
+  assert(obj->is_register(), "must be a register at this point");
+
   __ shenandoah_wb(obj, result, info ? new CodeEmitInfo(info) : NULL, need_null_check);
   return result;
+}
+
+LIR_Opr ShenandoahBarrierSetC1::ensure_in_register(LIRAccess& access, LIR_Opr obj) {
+  if (!obj->is_register()) {
+    LIRGenerator* gen = access.gen();
+    LIR_Opr obj_reg = gen->new_register(T_OBJECT);
+    if (obj->is_constant()) {
+      __ move(obj, obj_reg);
+    } else {
+      __ leal(obj, obj_reg);
+    }
+    obj = obj_reg;
+  }
+  return obj;
 }
 
 LIR_Opr ShenandoahBarrierSetC1::storeval_barrier(LIRAccess& access, LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
   LIRGenerator* gen = access.gen();
   if (UseShenandoahGC) {
     if (ShenandoahStoreValEnqueueBarrier) {
-      // TODO: Maybe we can simply avoid this stuff on constants?
-      if (! obj->is_register()) {
-        LIR_Opr result = gen->new_register(T_OBJECT);
-        __ move(obj, result);
-        obj = result;
-      }
       obj = write_barrier_impl(access, obj, info, need_null_check);
       pre_barrier(access, LIR_OprFact::illegalOpr, obj);
     }
@@ -318,7 +322,7 @@ LIR_Opr ShenandoahBarrierSetC1::atomic_xchg_at(LIRAccess& access, LIRItem& value
                   LIR_OprFact::illegalOpr /* pre_val */);
     }
   }
-  LIR_Opr result = BarrierSetC1::atomic_xchg_at(access, value);
+  LIR_Opr result = BarrierSetC1::atomic_xchg_at_resolved(access, value);
   if (access.is_oop() && UseShenandoahMatrix) {
     post_barrier(access, access.resolved_addr(), value.result());
   }

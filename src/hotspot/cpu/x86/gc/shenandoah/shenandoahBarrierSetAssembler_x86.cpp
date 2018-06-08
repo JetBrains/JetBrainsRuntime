@@ -32,6 +32,12 @@
 #include "interpreter/interp_masm.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/thread.hpp"
+#include "utilities/macros.hpp"
+#ifdef COMPILER1
+#include "c1/c1_LIRAssembler.hpp"
+#include "c1/c1_MacroAssembler.hpp"
+#include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
+#endif
 
 #define __ masm->
 
