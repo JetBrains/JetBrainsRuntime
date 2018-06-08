@@ -879,18 +879,21 @@ HeapWord* ShenandoahHeap::allocate_memory_under_lock(size_t word_size, AllocType
   return _free_set->allocate(word_size, type, in_new_region);
 }
 
+HeapWord* ShenandoahHeap::obj_allocate_raw(Klass* klass, size_t size,
+                                           bool* gc_overhead_limit_was_exceeded, TRAPS) {
+  size += BrooksPointer::word_size();
+  HeapWord* result = CollectedHeap::obj_allocate_raw(klass, size, gc_overhead_limit_was_exceeded, THREAD);
+  if (result != NULL) {
+    result += BrooksPointer::word_size();
+    BrooksPointer::initialize(oop(result));
+    assert(! in_collection_set(result), "never allocate in targetted region");
+  }
+  return result;
+}
+
 HeapWord*  ShenandoahHeap::mem_allocate(size_t size,
                                         bool*  gc_overhead_limit_was_exceeded) {
-  HeapWord* filler = allocate_memory(size + BrooksPointer::word_size(), _alloc_shared);
-  HeapWord* result = filler + BrooksPointer::word_size();
-  if (filler != NULL) {
-    BrooksPointer::initialize(oop(result));
-
-    assert(! in_collection_set(result), "never allocate in targetted region");
-    return result;
-  } else {
-    return NULL;
-  }
+  return  allocate_memory(size, _alloc_shared);
 }
 
 class ShenandoahEvacuateUpdateRootsClosure: public ExtendedOopClosure {
@@ -2115,8 +2118,7 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
   // Unload classes and purge SystemDictionary.
   {
     ShenandoahGCPhase phase(phase_unload);
-    purged_class = SystemDictionary::do_unloading(is_alive,
-                                                  gc_timer(),
+    purged_class = SystemDictionary::do_unloading(gc_timer(),
                                                   full_gc /* do_cleaning*/ );
   }
 

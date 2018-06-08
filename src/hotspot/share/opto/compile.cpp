@@ -33,7 +33,7 @@
 #include "compiler/compileLog.hpp"
 #include "compiler/disassembler.hpp"
 #include "compiler/oopMap.hpp"
-#include "gc/g1/c2/g1BarrierSetC2.hpp"
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
@@ -390,7 +390,7 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
     if (n->outcnt() == 1 && n->has_special_unique_user()) {
       record_for_igvn(n->unique_out());
     }
-    if (n->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(n)) {
+    if (n->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(n)) {
       for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
         record_for_igvn(n->fast_out(i));
       }
@@ -2449,6 +2449,8 @@ void Compile::Code_Gen() {
     return;
   }
 
+  print_method(PHASE_MATCHING, 2);
+
   // Build a proper-looking CFG
   PhaseCFG cfg(node_arena(), root(), matcher);
   _cfg = &cfg;
@@ -2821,12 +2823,12 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_CallLeafNoFP: {
     assert (n->is_Call(), "");
     CallNode *call = n->as_Call();
-    if (UseShenandoahGC && call->is_g1_wb_pre_call()) {
-      uint cnt = G1BarrierSetC2::g1_wb_pre_Type()->domain()->cnt();
+    if (UseShenandoahGC && call->is_shenandoah_wb_pre_call()) {
+      uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
       if (call->req() > cnt) {
         assert(call->req() == cnt+1, "only one extra input");
         Node* addp = call->in(cnt);
-        assert(!CallLeafNode::has_only_g1_wb_pre_uses(addp), "useless address computation?");
+        assert(!CallLeafNode::has_only_shenandoah_wb_pre_uses(addp), "useless address computation?");
         call->del_req(cnt);
       }
     }
@@ -4719,8 +4721,8 @@ void Compile::shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn) 
   igvn->replace_node(p2x, C->top());
 }
 
-void Compile::shenandoah_eliminate_g1_wb_pre(Node* call, PhaseIterGVN* igvn) {
-  assert(UseShenandoahGC && call->is_g1_wb_pre_call(), "");
+void Compile::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) {
+  assert(UseShenandoahGC && call->is_shenandoah_wb_pre_call(), "");
   Node* c = call->as_Call()->proj_out(TypeFunc::Control);
   c = c->unique_ctrl_out();
   assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");

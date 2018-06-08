@@ -69,6 +69,7 @@
 #include "gc/shared/gcTraceTime.inline.hpp"
 #include "gc/shared/generationSpec.hpp"
 #include "gc/shared/isGCActiveMark.hpp"
+#include "gc/shared/oopStorageParState.hpp"
 #include "gc/shared/preservedMarks.inline.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shared/referenceProcessor.inline.hpp"
@@ -86,7 +87,7 @@
 #include "runtime/flags/flagSetting.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/init.hpp"
-#include "runtime/orderAccess.inline.hpp"
+#include "runtime/orderAccess.hpp"
 #include "runtime/threadSMR.hpp"
 #include "runtime/vmThread.hpp"
 #include "utilities/align.hpp"
@@ -1611,6 +1612,9 @@ jint G1CollectedHeap::initialize() {
   const uint max_region_idx = (1U << (sizeof(RegionIdx_t)*BitsPerByte-1)) - 1;
   guarantee((max_regions() - 1) <= max_region_idx, "too many regions");
 
+  // The G1FromCardCache reserves card with value 0 as "invalid", so the heap must not
+  // start within the first card.
+  guarantee(g1_rs.base() >= (char*)G1CardTable::card_size, "Java heap must not start within the first card.");
   // Also create a G1 rem set.
   _g1_rem_set = new G1RemSet(this, _card_table, _hot_card_cache);
   _g1_rem_set->initialize(max_capacity(), max_regions());
@@ -3215,6 +3219,7 @@ class G1StringAndSymbolCleaningTask : public AbstractGangTask {
 private:
   BoolObjectClosure* _is_alive;
   G1StringDedupUnlinkOrOopsDoClosure _dedup_closure;
+  OopStorage::ParState<false /* concurrent */, false /* const */> _par_state_string;
 
   int _initial_string_table_size;
   int _initial_symbol_table_size;
@@ -3234,24 +3239,19 @@ public:
     AbstractGangTask("String/Symbol Unlinking"),
     _is_alive(is_alive),
     _dedup_closure(is_alive, NULL, false),
+    _par_state_string(StringTable::weak_storage()),
     _process_strings(process_strings), _strings_processed(0), _strings_removed(0),
     _process_symbols(process_symbols), _symbols_processed(0), _symbols_removed(0),
     _process_string_dedup(process_string_dedup) {
 
-    _initial_string_table_size = StringTable::the_table()->table_size();
+    _initial_string_table_size = (int) StringTable::the_table()->table_size();
     _initial_symbol_table_size = SymbolTable::the_table()->table_size();
-    if (process_strings) {
-      StringTable::clear_parallel_claimed_index();
-    }
     if (process_symbols) {
       SymbolTable::clear_parallel_claimed_index();
     }
   }
 
   ~G1StringAndSymbolCleaningTask() {
-    guarantee(!_process_strings || StringTable::parallel_claimed_index() >= _initial_string_table_size,
-              "claim value %d after unlink less than initial string table size %d",
-              StringTable::parallel_claimed_index(), _initial_string_table_size);
     guarantee(!_process_symbols || SymbolTable::parallel_claimed_index() >= _initial_symbol_table_size,
               "claim value %d after unlink less than initial symbol table size %d",
               SymbolTable::parallel_claimed_index(), _initial_symbol_table_size);
@@ -3270,7 +3270,7 @@ public:
     int symbols_processed = 0;
     int symbols_removed = 0;
     if (_process_strings) {
-      StringTable::possibly_parallel_unlink(_is_alive, &strings_processed, &strings_removed);
+      StringTable::possibly_parallel_unlink(&_par_state_string, _is_alive, &strings_processed, &strings_removed);
       Atomic::add(strings_processed, &_strings_processed);
       Atomic::add(strings_removed, &_strings_removed);
     }
@@ -3352,7 +3352,7 @@ private:
       add_to_postponed_list(nm);
     }
 
-    // Mark that this thread has been cleaned/unloaded.
+    // Mark that this nmethod has been cleaned/unloaded.
     // After this call, it will be safe to ask if this nmethod was unloaded or not.
     nm->set_unloading_clock(CompiledMethod::global_unloading_clock());
   }

@@ -1379,7 +1379,7 @@ void PhaseIterGVN::remove_globally_dead_node( Node *dead ) {
             } else if (dead->Opcode() == Op_ShenandoahWBMemProj) {
               assert(i == 0 && in->Opcode() == Op_ShenandoahWriteBarrier, "broken graph");
               _worklist.push(in);
-            } else if (in->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(in)) {
+            } else if (in->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(in)) {
               add_users_to_worklist(in);
             } else {
               BarrierSet::barrier_set()->barrier_set_c2()->enqueue_useful_gc_barrier(_worklist, in);
@@ -2093,7 +2093,7 @@ void Node::set_req_X( uint i, Node *n, PhaseIterGVN *igvn ) {
     default:
       break;
     }
-    if (old->Opcode() == Op_AddP && CallLeafNode::has_only_g1_wb_pre_uses(old)) {
+    if (old->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(old)) {
       igvn->add_users_to_worklist(old);
     }
   }

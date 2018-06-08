@@ -60,6 +60,7 @@ public:
   static void write_ref_array_pre_oop_entry(oop* dst, size_t length);
   static void write_ref_array_pre_narrow_oop_entry(narrowOop* dst, size_t length);
   static void write_ref_array_post_entry(HeapWord* dst, size_t length);
+  static void write_ref_field_pre_entry(oopDesc* orig, JavaThread *thread);
 
   void write_ref_array(HeapWord* start, size_t count);
   void write_ref_array_work(MemRegion r);
@@ -208,14 +209,16 @@ public:
     }
 
     template <typename T>
-    static bool arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length);
+    static void arraycopy_in_heap(arrayOop src_obj, size_t src_offset_in_bytes, T* src_raw,
+                                  arrayOop dst_obj, size_t dst_offset_in_bytes, T* dst_raw,
+                                  size_t length);
 
     // Heap oop accesses. These accessors get resolved when
     // IN_HEAP is set (e.g. when using the HeapAccess API), it is
     // an oop_* overload, and the barrier strength is AS_NORMAL.
     template <typename T>
     static oop oop_load_in_heap(T* addr) {
-      ShouldNotReachHere();
+      // ShouldNotReachHere();
       oop value = Raw::template oop_load<oop>(addr);
       keep_alive_if_weak(decorators, value);
       return value;
@@ -260,7 +263,9 @@ public:
     }
 
     template <typename T>
-    static bool oop_arraycopy_in_heap(arrayOop src_obj, arrayOop dst_obj, T* src, T* dst, size_t length);
+    static bool oop_arraycopy_in_heap(arrayOop src_obj, size_t src_offset_in_bytes, T* src_raw,
+                                      arrayOop dst_obj, size_t dst_offset_in_bytes, T* dst_raw,
+                                      size_t length);
 
     // Clone barrier support
     static void clone_in_heap(oop src, oop dst, size_t size);

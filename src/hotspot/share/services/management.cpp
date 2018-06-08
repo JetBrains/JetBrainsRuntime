@@ -337,26 +337,17 @@ static void initialize_ThreadInfo_constructor_arguments(JavaCallArguments* args,
 // Helper function to construct a ThreadInfo object
 instanceOop Management::create_thread_info_instance(ThreadSnapshot* snapshot, TRAPS) {
   InstanceKlass* ik = Management::java_lang_management_ThreadInfo_klass(CHECK_NULL);
-
-  JavaValue result(T_VOID);
   JavaCallArguments args(14);
-
-  // First allocate a ThreadObj object and
-  // push the receiver as the first argument
-  Handle element = ik->allocate_instance_handle(CHECK_NULL);
-  args.push_oop(element);
 
   // initialize the arguments for the ThreadInfo constructor
   initialize_ThreadInfo_constructor_arguments(&args, snapshot, CHECK_NULL);
 
   // Call ThreadInfo constructor with no locked monitors and synchronizers
-  JavaCalls::call_special(&result,
+  Handle element = JavaCalls::construct_new_instance(
                           ik,
-                          vmSymbols::object_initializer_name(),
                           vmSymbols::java_lang_management_ThreadInfo_constructor_signature(),
                           &args,
                           CHECK_NULL);
-
   return (instanceOop) element();
 }
 
@@ -366,14 +357,7 @@ instanceOop Management::create_thread_info_instance(ThreadSnapshot* snapshot,
                                                     objArrayHandle synchronizers_array,
                                                     TRAPS) {
   InstanceKlass* ik = Management::java_lang_management_ThreadInfo_klass(CHECK_NULL);
-
-  JavaValue result(T_VOID);
   JavaCallArguments args(17);
-
-  // First allocate a ThreadObj object and
-  // push the receiver as the first argument
-  Handle element = ik->allocate_instance_handle(CHECK_NULL);
-  args.push_oop(element);
 
   // initialize the arguments for the ThreadInfo constructor
   initialize_ThreadInfo_constructor_arguments(&args, snapshot, CHECK_NULL);
@@ -384,13 +368,11 @@ instanceOop Management::create_thread_info_instance(ThreadSnapshot* snapshot,
   args.push_oop(synchronizers_array);
 
   // Call ThreadInfo constructor with locked monitors and synchronizers
-  JavaCalls::call_special(&result,
+  Handle element = JavaCalls::construct_new_instance(
                           ik,
-                          vmSymbols::object_initializer_name(),
                           vmSymbols::java_lang_management_ThreadInfo_with_locks_constructor_signature(),
                           &args,
                           CHECK_NULL);
-
   return (instanceOop) element();
 }
 
@@ -1099,9 +1081,6 @@ JVM_ENTRY(jint, jmm_GetThreadInfo(JNIEnv *env, jlongArray ids, jint maxDepth, jo
                "The length of the given ThreadInfo array does not match the length of the given array of thread IDs", -1);
   }
 
-  // make sure the AbstractOwnableSynchronizer klass is loaded before taking thread snapshots
-  java_util_concurrent_locks_AbstractOwnableSynchronizer::initialize(CHECK_0);
-
   // Must use ThreadDumpResult to store the ThreadSnapshot.
   // GC may occur after the thread snapshots are taken but before
   // this function returns. The threadObj and other oops kept
@@ -1171,9 +1150,6 @@ JVM_END
 JVM_ENTRY(jobjectArray, jmm_DumpThreads(JNIEnv *env, jlongArray thread_ids, jboolean locked_monitors,
                                         jboolean locked_synchronizers, jint maxDepth))
   ResourceMark rm(THREAD);
-
-  // make sure the AbstractOwnableSynchronizer klass is loaded before taking thread snapshots
-  java_util_concurrent_locks_AbstractOwnableSynchronizer::initialize(CHECK_NULL);
 
   typeArrayOop ta = typeArrayOop(JNIHandles::resolve(thread_ids));
   int num_threads = (ta != NULL ? ta->length() : 0);

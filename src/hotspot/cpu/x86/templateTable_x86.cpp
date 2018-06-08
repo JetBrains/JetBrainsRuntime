@@ -1107,7 +1107,7 @@ void TemplateTable::dastore() {
   __ access_store_at(T_DOUBLE, IN_HEAP | IN_HEAP_ARRAY,
                      Address(rdx, rbx, Address::times_8,
                              arrayOopDesc::base_offset_in_bytes(T_DOUBLE)),
-                     noreg /* ftos */, noreg, noreg);
+                     noreg /* dtos */, noreg, noreg);
 }
 
 void TemplateTable::aastore() {
@@ -2970,7 +2970,6 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
   // ftos
 
   __ access_load_at(T_FLOAT, IN_HEAP, noreg /* ftos */, field, noreg, noreg);
-  __ load_float(field);
   __ push(ftos);
   // Rewrite bytecode to be faster
   if (!is_static && rc == may_rewrite) {
@@ -2984,7 +2983,7 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
   __ jcc(Assembler::notEqual, notDouble);
 #endif
   // dtos
-  __ access_load_at(T_DOUBLE, IN_HEAP, noreg /* ftos */, field, noreg, noreg);
+  __ access_load_at(T_DOUBLE, IN_HEAP, noreg /* dtos */, field, noreg, noreg);
   __ push(dtos);
   // Rewrite bytecode to be faster
   if (!is_static && rc == may_rewrite) {
@@ -3262,8 +3261,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
 
     __ pop(ltos);  // overwrites rdx
     if (!is_static) pop_and_check_object(obj);
-
-    __ access_store_at(T_LONG, IN_HEAP | MO_RELAXED, field, noreg /* ltos */, noreg, noreg);
+    __ access_store_at(T_LONG, IN_HEAP, field, noreg /* ltos */, noreg, noreg);
     // Don't rewrite to _fast_lputfield for potential volatile case.
     __ jmp(notVolatile);
   }
@@ -3294,7 +3292,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(dtos);
     if (!is_static) pop_and_check_object(obj);
-    __ access_store_at(T_DOUBLE, IN_HEAP, field, noreg /* ftos */, noreg, noreg);
+    __ access_store_at(T_DOUBLE, IN_HEAP, field, noreg /* dtos */, noreg, noreg);
     if (!is_static && rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_dputfield, bc, rbx, true, byte_no);
     }
@@ -3451,7 +3449,7 @@ void TemplateTable::fast_storefield(TosState state) {
     __ access_store_at(T_FLOAT, IN_HEAP, field, noreg /* ftos*/, noreg, noreg);
     break;
   case Bytecodes::_fast_dputfield:
-    __ access_store_at(T_DOUBLE, IN_HEAP, field, noreg /* ftos*/, noreg, noreg);
+    __ access_store_at(T_DOUBLE, IN_HEAP, field, noreg /* dtos*/, noreg, noreg);
     break;
   default:
     ShouldNotReachHere();
@@ -3539,7 +3537,7 @@ void TemplateTable::fast_accessfield(TosState state) {
     __ access_load_at(T_FLOAT, IN_HEAP, noreg /* ftos */, field, noreg, noreg);
     break;
   case Bytecodes::_fast_dgetfield:
-    __ access_load_at(T_DOUBLE, IN_HEAP, noreg /* ftos */, field, noreg, noreg);
+    __ access_load_at(T_DOUBLE, IN_HEAP, noreg /* dtos */, field, noreg, noreg);
     break;
   default:
     ShouldNotReachHere();

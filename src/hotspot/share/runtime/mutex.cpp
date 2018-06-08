@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 #include "runtime/atomic.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/mutex.hpp"
-#include "runtime/orderAccess.inline.hpp"
+#include "runtime/orderAccess.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/thread.inline.hpp"
@@ -681,7 +681,6 @@ bool Monitor::notify() {
   assert(_owner == Thread::current(), "invariant");
   assert(ILocked(), "invariant");
   if (_WaitSet == NULL) return true;
-  NotifyCount++;
 
   // Transfer one thread from the WaitSet to the EntryList or cxq.
   // Currently we just unlink the head of the WaitSet and prepend to the cxq.
@@ -904,7 +903,7 @@ void Monitor::lock(Thread * Self) {
   }
 #endif // CHECK_UNHANDLED_OOPS
 
-  debug_only(check_prelock_state(Self));
+  debug_only(check_prelock_state(Self, StrictSafepointChecks));
   assert(_owner != Self, "invariant");
   assert(_OnDeck != Self->_MutexEvent, "invariant");
 
@@ -972,7 +971,7 @@ void Monitor::lock_without_safepoint_check() {
 
 bool Monitor::try_lock() {
   Thread * const Self = Thread::current();
-  debug_only(check_prelock_state(Self));
+  debug_only(check_prelock_state(Self, false));
   // assert(!thread->is_inside_signal_handler(), "don't lock inside signal handler");
 
   // Special case, where all Java threads are stopped.
@@ -1382,10 +1381,10 @@ void Monitor::set_owner_implementation(Thread *new_owner) {
 
 
 // Factored out common sanity checks for locking mutex'es. Used by lock() and try_lock()
-void Monitor::check_prelock_state(Thread *thread) {
-  assert((!thread->is_Java_thread() || ((JavaThread *)thread)->thread_state() == _thread_in_vm)
-         || rank() == Mutex::special, "wrong thread state for using locks");
-  if (StrictSafepointChecks) {
+void Monitor::check_prelock_state(Thread *thread, bool safepoint_check) {
+  if (safepoint_check) {
+    assert((!thread->is_Java_thread() || ((JavaThread *)thread)->thread_state() == _thread_in_vm)
+           || rank() == Mutex::special, "wrong thread state for using locks");
     if (thread->is_VM_thread() && !allow_vm_block()) {
       fatal("VM thread using lock %s (not allowed to block on)", name());
     }

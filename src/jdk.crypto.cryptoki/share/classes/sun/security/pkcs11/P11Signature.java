@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 
 import java.security.*;
 import java.security.interfaces.*;
+import java.security.spec.AlgorithmParameterSpec;
 import sun.nio.ch.DirectBuffer;
 
 import sun.security.util.*;
@@ -282,47 +283,51 @@ final class P11Signature extends SignatureSpi {
             session = token.killSession(session);
             return;
         }
-        // "cancel" operation by finishing it
-        // XXX make sure all this always works correctly
-        if (mode == M_SIGN) {
-            try {
-                if (type == T_UPDATE) {
-                    token.p11.C_SignFinal(session.id(), 0);
-                } else {
-                    byte[] digest;
-                    if (type == T_DIGEST) {
-                        digest = md.digest();
-                    } else { // T_RAW
-                        digest = buffer;
+        try {
+            // "cancel" operation by finishing it
+            // XXX make sure all this always works correctly
+            if (mode == M_SIGN) {
+                try {
+                    if (type == T_UPDATE) {
+                        token.p11.C_SignFinal(session.id(), 0);
+                    } else {
+                        byte[] digest;
+                        if (type == T_DIGEST) {
+                            digest = md.digest();
+                        } else { // T_RAW
+                            digest = buffer;
+                        }
+                        token.p11.C_Sign(session.id(), digest);
                     }
-                    token.p11.C_Sign(session.id(), digest);
+                } catch (PKCS11Exception e) {
+                    throw new ProviderException("cancel failed", e);
                 }
-            } catch (PKCS11Exception e) {
-                throw new ProviderException("cancel failed", e);
-            }
-        } else { // M_VERIFY
-            try {
-                byte[] signature;
-                if (keyAlgorithm.equals("DSA")) {
-                    signature = new byte[40];
-                } else {
-                    signature = new byte[(p11Key.length() + 7) >> 3];
-                }
-                if (type == T_UPDATE) {
-                    token.p11.C_VerifyFinal(session.id(), signature);
-                } else {
-                    byte[] digest;
-                    if (type == T_DIGEST) {
-                        digest = md.digest();
-                    } else { // T_RAW
-                        digest = buffer;
+            } else { // M_VERIFY
+                try {
+                    byte[] signature;
+                    if (keyAlgorithm.equals("DSA")) {
+                        signature = new byte[40];
+                    } else {
+                        signature = new byte[(p11Key.length() + 7) >> 3];
                     }
-                    token.p11.C_Verify(session.id(), digest, signature);
+                    if (type == T_UPDATE) {
+                        token.p11.C_VerifyFinal(session.id(), signature);
+                    } else {
+                        byte[] digest;
+                        if (type == T_DIGEST) {
+                            digest = md.digest();
+                        } else { // T_RAW
+                            digest = buffer;
+                        }
+                        token.p11.C_Verify(session.id(), digest, signature);
+                    }
+                } catch (PKCS11Exception e) {
+                    // will fail since the signature is incorrect
+                    // XXX check error code
                 }
-            } catch (PKCS11Exception e) {
-                // will fail since the signature is incorrect
-                // XXX check error code
             }
+        } finally {
+            session = token.releaseSession(session);
         }
     }
 
@@ -341,6 +346,8 @@ final class P11Signature extends SignatureSpi {
             }
             initialized = true;
         } catch (PKCS11Exception e) {
+            // release session when initialization failed
+            session = token.releaseSession(session);
             throw new ProviderException("Initialization failed", e);
         }
         if (bytesProcessed != 0) {
@@ -434,6 +441,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected void engineInitVerify(PublicKey publicKey)
             throws InvalidKeyException {
         if (publicKey == null) {
@@ -450,6 +458,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected void engineInitSign(PrivateKey privateKey)
             throws InvalidKeyException {
         if (privateKey == null) {
@@ -466,6 +475,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected void engineUpdate(byte b) throws SignatureException {
         ensureInitialized();
         switch (type) {
@@ -490,6 +500,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected void engineUpdate(byte[] b, int ofs, int len)
             throws SignatureException {
         ensureInitialized();
@@ -506,6 +517,8 @@ final class P11Signature extends SignatureSpi {
                 }
                 bytesProcessed += len;
             } catch (PKCS11Exception e) {
+                initialized = false;
+                session = token.releaseSession(session);
                 throw new ProviderException(e);
             }
             break;
@@ -527,6 +540,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected void engineUpdate(ByteBuffer byteBuffer) {
         ensureInitialized();
         int len = byteBuffer.remaining();
@@ -553,6 +567,8 @@ final class P11Signature extends SignatureSpi {
                 bytesProcessed += len;
                 byteBuffer.position(ofs + len);
             } catch (PKCS11Exception e) {
+                initialized = false;
+                session = token.releaseSession(session);
                 throw new ProviderException("Update failed", e);
             }
             break;
@@ -574,6 +590,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected byte[] engineSign() throws SignatureException {
         ensureInitialized();
         try {
@@ -633,6 +650,7 @@ final class P11Signature extends SignatureSpi {
     }
 
     // see JCA spec
+    @Override
     protected boolean engineVerify(byte[] signature) throws SignatureException {
         ensureInitialized();
         try {
@@ -824,15 +842,32 @@ final class P11Signature extends SignatureSpi {
 
     // see JCA spec
     @SuppressWarnings("deprecation")
+    @Override
     protected void engineSetParameter(String param, Object value)
             throws InvalidParameterException {
         throw new UnsupportedOperationException("setParameter() not supported");
     }
 
     // see JCA spec
+    @Override
+    protected void engineSetParameter(AlgorithmParameterSpec params)
+            throws InvalidAlgorithmParameterException {
+        if (params != null) {
+            throw new InvalidAlgorithmParameterException("No parameter accepted");
+        }
+    }
+
+    // see JCA spec
     @SuppressWarnings("deprecation")
+    @Override
     protected Object engineGetParameter(String param)
             throws InvalidParameterException {
         throw new UnsupportedOperationException("getParameter() not supported");
+    }
+
+    // see JCA spec
+    @Override
+    protected AlgorithmParameters engineGetParameters() {
+        return null;
     }
 }

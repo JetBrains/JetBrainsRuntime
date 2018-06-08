@@ -47,6 +47,7 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
   _process_strong_tasks(new SubTasksDone(SHENANDOAH_RP_PS_NumElements)),
   _srs(n_workers),
   _phase(phase),
+  _par_state_string(StringTable::weak_storage()),
   _coderoots_all_iterator(ShenandoahCodeRoots::iterator()),
   _om_iterator(ObjectSynchronizer::parallel_iterator()),
   _threads_nmethods_cl(NULL)
@@ -83,7 +84,7 @@ void ShenandoahRootProcessor::process_all_roots_slow(OopClosure* oops) {
   JNIHandles::oops_do(oops);
   WeakProcessor::oops_do(oops);
   ObjectSynchronizer::oops_do(oops);
-  SystemDictionary::roots_oops_do(oops, oops);
+  SystemDictionary::oops_do(oops);
   StringTable::oops_do(oops);
 
   if (ShenandoahStringDedup::is_enabled()) {
@@ -179,7 +180,7 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
   }
   if (!_process_strong_tasks->is_task_claimed(SHENANDOAH_RP_PS_SystemDictionary_oops_do)) {
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::SystemDictionaryRoots, worker_id);
-    SystemDictionary::roots_oops_do(strong_roots, weak_roots);
+    SystemDictionary::oops_do(strong_roots);
   }
   if (jni_weak_roots != NULL) {
     if (!_process_strong_tasks->is_task_claimed(SHENANDOAH_RP_PS_JNIHandles_weak_oops_do)) {
@@ -208,7 +209,7 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
   // from the StringTable are the individual tasks.
   if (weak_roots != NULL) {
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::StringTableRoots, worker_id);
-    StringTable::possibly_parallel_oops_do(weak_roots);
+    StringTable::possibly_parallel_oops_do(&_par_state_string, weak_roots);
   }
 }
 

@@ -169,6 +169,16 @@ void ShenandoahBarrierSet::write_ref_array_post_entry(HeapWord* dst, size_t leng
   bs->ShenandoahBarrierSet::write_ref_array(dst, length);
 }
 
+// Shenandoah pre write barrier slowpath
+JRT_LEAF(void, ShenandoahBarrierSet::write_ref_field_pre_entry(oopDesc* orig, JavaThread *thread))
+  if (orig == NULL) {
+    assert(false, "should be optimized out");
+    return;
+  }
+  assert(oopDesc::is_oop(orig, true /* ignore mark word */), "Error");
+  // store the original value that was in the field reference
+  ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue(orig);
+JRT_END
 
 template <class T>
 void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, size_t count) {

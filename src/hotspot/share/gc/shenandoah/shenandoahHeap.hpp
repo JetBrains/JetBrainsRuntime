@@ -359,6 +359,8 @@ public:
   size_t initial_capacity() const /* override */;
   bool is_in(const void* p) const /* override */;
   bool is_scavengable(oop obj) /* override */;
+  virtual HeapWord* obj_allocate_raw(Klass* klass, size_t size,
+                                     bool* gc_overhead_limit_was_exceeded, TRAPS) /*override*/;
   HeapWord* mem_allocate(size_t size, bool* what) /* override */;
   bool can_elide_tlab_store_barriers() const /* override */;
   oop new_store_pre_barrier(JavaThread* thread, oop new_obj) /* override */;

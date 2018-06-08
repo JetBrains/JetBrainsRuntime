@@ -112,6 +112,7 @@
   template(RotateGCLog)                           \
   template(WhiteBoxOperation)                     \
   template(ClassLoaderStatsOperation)             \
+  template(ClassLoaderHierarchyOperation)         \
   template(DumpHashtable)                         \
   template(DumpTouchedMethods)                    \
   template(MarkActiveNMethods)                    \
@@ -450,7 +451,6 @@ class VM_FindDeadlocks: public VM_Operation {
   DeadlockCycle* result()      { return _deadlocks; };
   VMOp_Type type() const       { return VMOp_FindDeadlocks; }
   void doit();
-  bool doit_prologue();
 };
 
 class ThreadDumpResult;

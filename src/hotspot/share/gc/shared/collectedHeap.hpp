@@ -142,8 +142,18 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual void resize_all_tlabs();
 
   // Allocate from the current thread's TLAB, with broken-out slow path.
-  inline static HeapWord* allocate_from_tlab(Klass* klass, Thread* thread, size_t size);
-  static HeapWord* allocate_from_tlab_slow(Klass* klass, Thread* thread, size_t size);
+  inline static HeapWord* allocate_from_tlab(Klass* klass, size_t size, TRAPS);
+  static HeapWord* allocate_from_tlab_slow(Klass* klass, size_t size, TRAPS);
+
+  inline static HeapWord* allocate_outside_tlab(Klass* klass, size_t size,
+                                                bool* gc_overhead_limit_was_exceeded, TRAPS);
+
+  // Raw memory allocation facilities
+  // The obj and array allocate methods are covers for these methods.
+  // mem_allocate() should never be
+  // called to allocate TLABs, only individual objects.
+  virtual HeapWord* mem_allocate(size_t size,
+                                 bool* gc_overhead_limit_was_exceeded) = 0;
 
   // Allocate an uninitialized block of the given size, or returns NULL if
   // this is impossible.
@@ -319,12 +329,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual void compile_prepare_oop(MacroAssembler* masm, Register obj);
 #endif
 
-  // Raw memory allocation facilities
-  // The obj and array allocate methods are covers for these methods.
-  // mem_allocate() should never be
-  // called to allocate TLABs, only individual objects.
-  virtual HeapWord* mem_allocate(size_t size,
-                                 bool* gc_overhead_limit_was_exceeded) = 0;
+  // Raw memory allocation. This may or may not use TLAB allocations to satisfy the
+  // allocation. A GC implementation may override this function to satisfy the allocation
+  // in any way. But the default is to try a TLAB allocation, and otherwise perform
+  // mem_allocate.
+  virtual HeapWord* obj_allocate_raw(Klass* klass, size_t size,
+                                     bool* gc_overhead_limit_was_exceeded, TRAPS);
 
   // Utilities for turning raw memory into filler objects.
   //

@@ -30,6 +30,7 @@
 class StringSymbolTableUnlinkTask : public AbstractGangTask {
 private:
   BoolObjectClosure* _is_alive;
+  OopStorage::ParState<false /* concurrent */, false /* const */> _par_state_string;
   int _initial_string_table_size;
   int _initial_symbol_table_size;
 

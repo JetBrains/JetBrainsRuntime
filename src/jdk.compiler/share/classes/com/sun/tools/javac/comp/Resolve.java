@@ -1978,7 +1978,7 @@ public class Resolve {
             ClassSymbol c = finder.loadClass(env.toplevel.modle, name);
             return isAccessible(env, c) ? c : new AccessError(env, null, c);
         } catch (ClassFinder.BadClassFile err) {
-            throw err;
+            return new BadClassFileError(err);
         } catch (CompletionFailure ex) {
             Symbol candidate = recoveryLoadClass.loadClass(env, name);
 
@@ -2302,6 +2302,10 @@ public class Resolve {
 
         if (!env.tree.hasTag(IMPORT)) {
             sym = findGlobalType(env, env.toplevel.namedImportScope, name, namedImportScopeRecovery);
+            if (sym.exists()) return sym;
+            else bestSoFar = bestOf(bestSoFar, sym);
+
+            sym = findGlobalType(env, env.toplevel.toplevelScope, name, noRecovery);
             if (sym.exists()) return sym;
             else bestSoFar = bestOf(bestSoFar, sym);
 
@@ -2648,6 +2652,7 @@ public class Resolve {
                 } else if (allowMethodHandles) {
                     MethodSymbol msym = (MethodSymbol)sym;
                     if ((msym.flags() & SIGNATURE_POLYMORPHIC) != 0) {
+                        env.info.pendingResolutionPhase = BASIC;
                         return findPolymorphicSignatureInstance(env, sym, argtypes);
                     }
                 }
@@ -2668,6 +2673,11 @@ public class Resolve {
                                             List<Type> argtypes) {
         Type mtype = infer.instantiatePolymorphicSignatureInstance(env,
                 (MethodSymbol)spMethod, currentResolutionContext, argtypes);
+        return findPolymorphicSignatureInstance(spMethod, mtype);
+    }
+
+    Symbol findPolymorphicSignatureInstance(final Symbol spMethod,
+                                            Type mtype) {
         for (Symbol sym : polymorphicSignatureScope.getSymbolsByName(spMethod.name)) {
             // Check that there is already a method symbol for the method
             // type and owner
@@ -2935,6 +2945,7 @@ public class Resolve {
                                   Name name,
                                   List<Type> argtypes,
                                   List<Type> typeargtypes,
+                                  Type descriptor,
                                   MethodCheck methodCheck,
                                   InferenceContext inferenceContext,
                                   ReferenceChooser referenceChooser) {
@@ -2971,6 +2982,15 @@ public class Resolve {
         env.info.pendingResolutionPhase = bestRes == unboundRes ?
                 unboundEnv.info.pendingResolutionPhase :
                 boundEnv.info.pendingResolutionPhase;
+
+        if (!res.fst.kind.isResolutionError()) {
+            //handle sigpoly method references
+            MethodSymbol msym = (MethodSymbol)res.fst;
+            if ((msym.flags() & SIGNATURE_POLYMORPHIC) != 0) {
+                env.info.pendingResolutionPhase = BASIC;
+                res = new Pair<>(findPolymorphicSignatureInstance(msym, descriptor), res.snd);
+            }
+        }
 
         return res;
     }
@@ -4477,6 +4497,27 @@ public class Resolve {
            return diags.create(dkind, log.currentSource(), pos,
                 "cant.access.inner.cls.constr", site.tsym.name, argtypes, site.getEnclosingType());
         }
+    }
+
+    class BadClassFileError extends InvalidSymbolError {
+
+        private final CompletionFailure ex;
+
+        public BadClassFileError(CompletionFailure ex) {
+            super(HIDDEN, ex.sym, "BadClassFileError");
+            this.name = sym.name;
+            this.ex = ex;
+        }
+
+        @Override
+        JCDiagnostic getDiagnostic(DiagnosticType dkind, DiagnosticPosition pos, Symbol location, Type site, Name name, List<Type> argtypes, List<Type> typeargtypes) {
+            JCDiagnostic d = diags.create(dkind, log.currentSource(), pos,
+                "cant.access", ex.sym, ex.getDetailValue());
+
+            d.setFlag(DiagnosticFlag.NON_DEFERRABLE);
+            return d;
+        }
+
     }
 
     /**

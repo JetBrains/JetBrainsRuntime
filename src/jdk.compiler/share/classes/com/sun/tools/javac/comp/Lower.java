@@ -32,6 +32,7 @@ import com.sun.tools.javac.code.Kinds.KindSelector;
 import com.sun.tools.javac.code.Scope.WriteableScope;
 import com.sun.tools.javac.jvm.*;
 import com.sun.tools.javac.main.Option.PkgInfo;
+import com.sun.tools.javac.resources.CompilerProperties.Fragments;
 import com.sun.tools.javac.tree.*;
 import com.sun.tools.javac.util.*;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
@@ -721,14 +722,14 @@ public class Lower extends TreeTranslator {
 
         @Override
         public void visitMethodDef(JCMethodDecl that) {
-            chk.checkConflicts(that.pos(), that.sym, currentClass);
+            checkConflicts(that.pos(), that.sym, currentClass);
             super.visitMethodDef(that);
         }
 
         @Override
         public void visitVarDef(JCVariableDecl that) {
             if (that.sym.owner.kind == TYP) {
-                chk.checkConflicts(that.pos(), that.sym, currentClass);
+                checkConflicts(that.pos(), that.sym, currentClass);
             }
             super.visitVarDef(that);
         }
@@ -742,6 +743,30 @@ public class Lower extends TreeTranslator {
             }
             finally {
                 currentClass = prevCurrentClass;
+            }
+        }
+
+        void checkConflicts(DiagnosticPosition pos, Symbol sym, TypeSymbol c) {
+            for (Type ct = c.type; ct != Type.noType ; ct = types.supertype(ct)) {
+                for (Symbol sym2 : ct.tsym.members().getSymbolsByName(sym.name, NON_RECURSIVE)) {
+                    // VM allows methods and variables with differing types
+                    if (sym.kind == sym2.kind &&
+                        types.isSameType(types.erasure(sym.type), types.erasure(sym2.type)) &&
+                        sym != sym2 &&
+                        (sym.flags() & Flags.SYNTHETIC) != (sym2.flags() & Flags.SYNTHETIC) &&
+                        (sym.flags() & BRIDGE) == 0 && (sym2.flags() & BRIDGE) == 0) {
+                        syntheticError(pos, (sym2.flags() & SYNTHETIC) == 0 ? sym2 : sym);
+                        return;
+                    }
+                }
+            }
+        }
+
+        /** Report a conflict between a user symbol and a synthetic symbol.
+         */
+        private void syntheticError(DiagnosticPosition pos, Symbol sym) {
+            if (!sym.type.isErroneous()) {
+                log.error(pos, Errors.CannotGenerateClass(sym.location(), Fragments.SyntheticNameConflict(sym, sym.location())));
             }
         }
     };
@@ -1232,15 +1257,19 @@ public class Lower extends TreeTranslator {
     ClassSymbol accessConstructorTag() {
         ClassSymbol topClass = currentClass.outermostClass();
         ModuleSymbol topModle = topClass.packge().modle;
-        Name flatname = names.fromString("" + topClass.getQualifiedName() +
-                                         target.syntheticNameChar() +
-                                         "1");
-        ClassSymbol ctag = chk.getCompiled(topModle, flatname);
-        if (ctag == null)
-            ctag = makeEmptyClass(STATIC | SYNTHETIC, topClass).sym;
-        // keep a record of all tags, to verify that all are generated as required
-        accessConstrTags = accessConstrTags.prepend(ctag);
-        return ctag;
+        for (int i = 1; ; i++) {
+            Name flatname = names.fromString("" + topClass.getQualifiedName() +
+                                            target.syntheticNameChar() +
+                                            i);
+            ClassSymbol ctag = chk.getCompiled(topModle, flatname);
+            if (ctag == null)
+                ctag = makeEmptyClass(STATIC | SYNTHETIC, topClass).sym;
+            else if (!ctag.isAnonymous())
+                continue;
+            // keep a record of all tags, to verify that all are generated as required
+            accessConstrTags = accessConstrTags.prepend(ctag);
+            return ctag;
+        }
     }
 
     /** Add all required access methods for a private symbol to enclosing class.

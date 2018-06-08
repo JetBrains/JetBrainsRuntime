@@ -182,11 +182,6 @@ class SharedRuntime: AllStatic {
   static address raw_exception_handler_for_return_address(JavaThread* thread, address return_address);
   static address exception_handler_for_return_address(JavaThread* thread, address return_address);
 
-#if INCLUDE_G1GC || INCLUDE_SHENANDOAHGC
-  // G1 write barriers
-  static void g1_wb_pre(oopDesc* orig, JavaThread *thread);
-  static void g1_wb_post(void* card_addr, JavaThread* thread);
-#endif // INCLUDE_G1GC
 #if INCLUDE_SHENANDOAHGC
   static void shenandoah_clone_barrier(oopDesc* obj);
 #endif // INCLUDE_SHENANDOAHGC

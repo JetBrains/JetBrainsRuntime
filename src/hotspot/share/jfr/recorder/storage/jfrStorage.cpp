@@ -38,7 +38,7 @@
 #include "jfr/writers/jfrNativeEventWriter.hpp"
 #include "logging/log.hpp"
 #include "runtime/mutexLocker.hpp"
-#include "runtime/orderAccess.inline.hpp"
+#include "runtime/orderAccess.hpp"
 #include "runtime/os.inline.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/thread.hpp"
@@ -332,6 +332,7 @@ static bool full_buffer_registration(BufferPtr buffer, JfrStorageAgeMspace* age_
   assert(age_node->acquired_by_self(), "invariant");
   assert(age_node != NULL, "invariant");
   age_node->set_retired_buffer(buffer);
+  control.increment_full();
   return insert_full_age_node(age_node, age_mspace, thread);
 }
 
@@ -631,6 +632,7 @@ template <typename Processor>
 static void process_age_list(Processor& processor, JfrStorageAgeMspace* age_mspace, JfrAgeNode* head, size_t count) {
   assert(age_mspace != NULL, "invariant");
   assert(head != NULL, "invariant");
+  assert(count > 0, "invariant");
   JfrAgeNode* node = head;
   JfrAgeNode* last = NULL;
   while (node != NULL) {
@@ -669,7 +671,7 @@ static size_t process_full(Processor& processor, JfrStorageControl& control, Jfr
     return 0;
   }
   size_t count;
-  JfrAgeNode* head;;
+  JfrAgeNode* head;
   {
     // fetch age list
     MutexLockerEx buffer_lock(JfrBuffer_lock, Mutex::_no_safepoint_check_flag);
@@ -678,6 +680,7 @@ static size_t process_full(Processor& processor, JfrStorageControl& control, Jfr
     control.reset_full();
   }
   assert(head != NULL, "invariant");
+  assert(count > 0, "invariant");
   process_age_list(processor, age_mspace, head, count);
   return count;
 }

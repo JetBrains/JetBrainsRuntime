@@ -638,6 +638,8 @@ public:
   }
 
   void work(uint worker_id) {
+    ResourceMark rm;
+    HandleMark hm;
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahCMDrainMarkingStackClosure complete_gc(worker_id, _terminator);

@@ -169,7 +169,7 @@ class os: AllStatic {
 
   // File names are case-insensitive on windows only
   // Override me as needed
-  static int    file_name_strcmp(const char* s1, const char* s2);
+  static int    file_name_strncmp(const char* s1, const char* s2, size_t num);
 
   // unset environment variable
   static bool unsetenv(const char* name);
@@ -790,8 +790,7 @@ class os: AllStatic {
   static struct hostent* get_host_by_name(char* name);
 
   // Support for signals (see JVM_RaiseSignal, JVM_RegisterSignal)
-  static void  signal_init(TRAPS);
-  static void  signal_init_pd();
+  static void  initialize_jdk_signal_support(TRAPS);
   static void  signal_notify(int signal_number);
   static void* signal(int signal_number, void* handler);
   static void  signal_raise(int signal_number);

@@ -180,6 +180,9 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
     assert(val == noreg, "only tos");
     __ store_double(dst);
     break;
+  case T_ADDRESS:
+    __ movptr(dst, val);
+    break;
   default: Unimplemented();
   }
 }

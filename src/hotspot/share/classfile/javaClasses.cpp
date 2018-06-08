@@ -311,7 +311,8 @@ Handle java_lang_String::create_from_str(const char* utf8_str, TRAPS) {
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
     if (!has_multibyte) {
-      strncpy((char*)buffer->byte_at_addr(0), utf8_str, length);
+      const jbyte* src = reinterpret_cast<const jbyte*>(utf8_str);
+      ArrayAccess<>::arraycopy_from_native(src, value(h_obj()), typeArrayOopDesc::element_offset<jbyte>(0), length);
     } else if (is_latin1) {
       UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
     } else {
@@ -358,7 +359,8 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
   if (length > 0) {
     typeArrayOop buffer = value(h_obj());
     if (!has_multibyte) {
-      strncpy((char*) buffer->byte_at_addr(0), utf8_str, length);
+      const jbyte* src = reinterpret_cast<const jbyte*>(utf8_str);
+      ArrayAccess<>::arraycopy_from_native(src, value(h_obj()), typeArrayOopDesc::element_offset<jbyte>(0), length);
     } else if (is_latin1) {
       UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
     } else {
@@ -3251,17 +3253,9 @@ int java_lang_Module::_module_entry_offset = -1;
 
 Handle java_lang_Module::create(Handle loader, Handle module_name, TRAPS) {
   assert(Universe::is_fully_initialized(), "Need to find another solution to the reflection problem");
-
-  Symbol* name = vmSymbols::java_lang_Module();
-  Klass* k = SystemDictionary::resolve_or_fail(name, true, CHECK_NH);
-  InstanceKlass* ik = InstanceKlass::cast(k);
-  Handle jlmh = ik->allocate_instance_handle(CHECK_NH);
-  JavaValue result(T_VOID);
-  JavaCalls::call_special(&result, jlmh, ik,
-                          vmSymbols::object_initializer_name(),
+  return JavaCalls::construct_new_instance(SystemDictionary::Module_klass(),
                           vmSymbols::java_lang_module_init_signature(),
                           loader, module_name, CHECK_NH);
-  return jlmh;
 }
 
 #define MODULE_FIELDS_DO(macro) \
@@ -4265,7 +4259,7 @@ int java_lang_AssertionStatusDirectives::packages_offset;
 int java_lang_AssertionStatusDirectives::packageEnabled_offset;
 int java_lang_AssertionStatusDirectives::deflt_offset;
 int java_nio_Buffer::_limit_offset;
-int java_util_concurrent_locks_AbstractOwnableSynchronizer::_owner_offset = 0;
+int java_util_concurrent_locks_AbstractOwnableSynchronizer::_owner_offset;
 int reflect_ConstantPool::_oop_offset;
 int reflect_UnsafeStaticFieldAccessorImpl::_base_offset;
 
@@ -4407,13 +4401,12 @@ void java_nio_Buffer::serialize(SerializeClosure* f) {
 }
 #endif
 
-void java_util_concurrent_locks_AbstractOwnableSynchronizer::initialize(TRAPS) {
-  if (_owner_offset != 0) return;
+#define AOS_FIELDS_DO(macro) \
+  macro(_owner_offset, k, "exclusiveOwnerThread", thread_signature, false)
 
-  SystemDictionary::load_abstract_ownable_synchronizer_klass(CHECK);
-  InstanceKlass* k = SystemDictionary::abstract_ownable_synchronizer_klass();
-  compute_offset(_owner_offset, k,
-                 "exclusiveOwnerThread", vmSymbols::thread_signature());
+void java_util_concurrent_locks_AbstractOwnableSynchronizer::compute_offsets() {
+  InstanceKlass* k = SystemDictionary::java_util_concurrent_locks_AbstractOwnableSynchronizer_klass();
+  AOS_FIELDS_DO(FIELD_COMPUTE_OFFSET);
 }
 
 oop java_util_concurrent_locks_AbstractOwnableSynchronizer::get_owner_threadObj(oop obj) {
@@ -4481,6 +4474,7 @@ void JavaClasses::compute_offsets() {
   java_lang_StackTraceElement::compute_offsets();
   java_lang_StackFrameInfo::compute_offsets();
   java_lang_LiveStackFrameInfo::compute_offsets();
+  java_util_concurrent_locks_AbstractOwnableSynchronizer::compute_offsets();
 
   // generated interpreter code wants to know about the offsets we just computed:
   AbstractAssembler::update_delayed_values();

@@ -553,6 +553,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "CheckEndorsedAndExtDirs",       JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "DeferThrSuspendLoopCount",      JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "DeferPollingPageLoopCount",     JDK_Version::jdk(10),     JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "TraceScavenge",                 JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "PermSize",                      JDK_Version::undefined(), JDK_Version::jdk(8),  JDK_Version::undefined() },
   { "MaxPermSize",                   JDK_Version::undefined(), JDK_Version::jdk(8),  JDK_Version::undefined() },
   { "SharedReadWriteSize",           JDK_Version::undefined(), JDK_Version::jdk(10), JDK_Version::undefined() },
@@ -3365,16 +3366,16 @@ jint Arguments::finalize_vm_init_args(bool patch_mod_javabase) {
   UNSUPPORTED_OPTION(TieredCompilation);
 #endif
 
+  if (!check_vm_args_consistency()) {
+    return JNI_ERR;
+  }
+
 #if INCLUDE_JVMCI
   if (EnableJVMCI &&
       !create_numbered_property("jdk.module.addmods", "jdk.internal.vm.ci", addmods_count++)) {
     return JNI_ENOMEM;
   }
 #endif
-
-  if (!check_vm_args_consistency()) {
-    return JNI_ERR;
-  }
 
 #if INCLUDE_JVMCI
   if (UseJVMCICompiler) {
@@ -4444,6 +4445,18 @@ void Arguments::PropertyList_unique_add(SystemProperty** plist, const char* k, c
   }
 
   PropertyList_add(plist, k, v, writeable == WriteableProperty, internal == InternalProperty);
+}
+
+// Update existing property with new value.
+void Arguments::PropertyList_update_value(SystemProperty* plist, const char* k, const char* v) {
+  SystemProperty* prop;
+  for (prop = plist; prop != NULL; prop = prop->next()) {
+    if (strcmp(k, prop->key()) == 0) {
+        prop->set_value(v);
+        return;
+    }
+  }
+  assert(false, "invalid property");
 }
 
 // Copies src into buf, replacing "%%" with "%" and "%p" with pid

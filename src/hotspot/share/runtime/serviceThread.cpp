@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
  */
 
 #include "precompiled.hpp"
+#include "classfile/stringTable.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/serviceThread.hpp"
@@ -39,19 +40,13 @@ ServiceThread* ServiceThread::_instance = NULL;
 void ServiceThread::initialize() {
   EXCEPTION_MARK;
 
-  InstanceKlass* klass = SystemDictionary::Thread_klass();
-  instanceHandle thread_oop = klass->allocate_instance_handle(CHECK);
-
   const char* name = "Service Thread";
-
   Handle string = java_lang_String::create_from_str(name, CHECK);
 
   // Initialize thread_oop to put it into the system threadGroup
   Handle thread_group (THREAD, Universe::system_thread_group());
-  JavaValue result(T_VOID);
-  JavaCalls::call_special(&result, thread_oop,
-                          klass,
-                          vmSymbols::object_initializer_name(),
+  Handle thread_oop = JavaCalls::construct_new_instance(
+                          SystemDictionary::Thread_klass(),
                           vmSymbols::threadgroup_string_void_signature(),
                           thread_group,
                           string,
@@ -88,6 +83,7 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
     bool has_gc_notification_event = false;
     bool has_dcmd_notification_event = false;
     bool acs_notify = false;
+    bool stringtable_work = false;
     JvmtiDeferredEvent jvmti_event;
     {
       // Need state transition ThreadBlockInVM so that this thread
@@ -104,7 +100,8 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
       while (!(sensors_changed = LowMemoryDetector::has_pending_requests()) &&
              !(has_jvmti_events = JvmtiDeferredEventQueue::has_events()) &&
               !(has_gc_notification_event = GCNotifier::has_event()) &&
-              !(has_dcmd_notification_event = DCmdFactory::has_pending_jmx_notification())) {
+              !(has_dcmd_notification_event = DCmdFactory::has_pending_jmx_notification()) &&
+              !(stringtable_work = StringTable::has_work())) {
         // wait until one of the sensors has pending requests, or there is a
         // pending JVMTI event or JMX GC notification to post
         Service_lock->wait(Mutex::_no_safepoint_check_flag);
@@ -113,6 +110,10 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
       if (has_jvmti_events) {
         jvmti_event = JvmtiDeferredEventQueue::dequeue();
       }
+    }
+
+    if (stringtable_work) {
+      StringTable::do_concurrent_work(jt);
     }
 
     if (has_jvmti_events) {

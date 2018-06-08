@@ -21,7 +21,6 @@
  *
  */
 
-#include "gc/g1/c2/g1BarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/graphKit.hpp"
@@ -461,8 +460,8 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
       } __ else_(); {
 
         // logging buffer is full, call the runtime
-        const TypeFunc *tf = G1BarrierSetC2::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
+        const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (pre_val != NULL)
   } __ end_if();  // (!marking)
@@ -473,7 +472,7 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
   if (ShenandoahSATBBarrier && adr != NULL) {
     Node* c = kit->control();
     Node* call = c->in(1)->in(1)->in(1)->in(0);
-    assert(call->is_g1_wb_pre_call(), "g1_wb_pre call expected");
+    assert(call->is_shenandoah_wb_pre_call(), "g1_wb_pre call expected");
     call->add_req(adr);
   }
 }
@@ -576,8 +575,8 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
 
       } __ else_(); {
         // logging buffer is full, call the runtime
-        const TypeFunc *tf = G1BarrierSetC2::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
+        const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (!marking)
   } __ end_if();  // (pre_val != NULL)
@@ -607,8 +606,8 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
 
       } __ else_(); {
         // logging buffer is full, call the runtime
-        const TypeFunc *tf = G1BarrierSetC2::g1_wb_pre_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), "g1_wb_pre", pre_val, tls);
+        const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (!marking)
   }
@@ -711,6 +710,19 @@ void ShenandoahBarrierSetC2::insert_pre_barrier(GraphKit* kit, Node* base_oop, N
 }
 
 #undef __
+
+const TypeFunc* ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type() {
+  const Type **fields = TypeTuple::fields(2);
+  fields[TypeFunc::Parms+0] = TypeInstPtr::NOTNULL; // original field value
+  fields[TypeFunc::Parms+1] = TypeRawPtr::NOTNULL; // thread
+  const TypeTuple *domain = TypeTuple::make(TypeFunc::Parms+2, fields);
+
+  // create result type (range)
+  fields = TypeTuple::fields(0);
+  const TypeTuple *range = TypeTuple::make(TypeFunc::Parms+0, fields);
+
+  return TypeFunc::make(domain, range);
+}
 
 const TypeFunc* ShenandoahBarrierSetC2::shenandoah_clone_barrier_Type() {
   const Type **fields = TypeTuple::fields(1);

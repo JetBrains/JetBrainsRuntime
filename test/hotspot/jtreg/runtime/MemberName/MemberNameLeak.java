@@ -26,12 +26,16 @@
  * @bug 8174749
  * @summary MemberNameTable should reuse entries
  * @library /test/lib
- * @run main MemberNameLeak
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI -Xbootclasspath/a:. MemberNameLeak
  */
 
 import java.lang.invoke.*;
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+
+import sun.hotspot.code.Compiler;
 
 public class MemberNameLeak {
     static class Leak {
@@ -70,7 +74,9 @@ public class MemberNameLeak {
         test("-XX:+UseG1GC");
         test("-XX:+UseParallelGC");
         test("-XX:+UseSerialGC");
-        test("-XX:+UseConcMarkSweepGC");
-        test("-XX:+UseShenandoahGC");
+        if (!Compiler.isGraalEnabled()) { // Graal does not support CMS
+            test("-XX:+UseConcMarkSweepGC");
+            test("-XX:+UseShenandoahGC");
+        }
     }
 }

@@ -80,8 +80,8 @@ protected:
   void insert_pre_barrier(GraphKit* kit, Node* base_oop, Node* offset, Node* pre_val, bool need_mem_bar) const;
 
 public:
-  static const TypeFunc* g1_wb_pre_Type();
-  static const TypeFunc* g1_wb_post_Type();
+  static const TypeFunc* write_ref_field_pre_entry_Type();
+  static const TypeFunc* write_ref_field_post_entry_Type();
 
   virtual Node* load_at_resolved(C2Access& access, const Type* val_type) const;
 

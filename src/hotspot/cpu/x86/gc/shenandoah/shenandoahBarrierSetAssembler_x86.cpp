@@ -267,9 +267,9 @@ void ShenandoahBarrierSetAssembler::satb_write_barrier_pre(MacroAssembler* masm,
     __ push(thread);
     __ push(pre_val);
 #endif
-    __ MacroAssembler::call_VM_leaf_base(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), 2);
+    __ MacroAssembler::call_VM_leaf_base(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), 2);
   } else {
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), pre_val, thread);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), pre_val, thread);
   }
 
   NOT_LP64( __ pop(thread); )
@@ -822,7 +822,7 @@ void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAss
 
   // load the pre-value
   __ load_parameter(0, rcx);
-  __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::g1_wb_pre), rcx, thread);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), rcx, thread);
 
   __ restore_live_registers(true);
 
