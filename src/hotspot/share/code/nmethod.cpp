@@ -1557,7 +1557,7 @@ void nmethod::metadata_do(void f(Metadata*)) {
 
   // Visit the metadata section
   for (Metadata** p = metadata_begin(); p < metadata_end(); p++) {
-    if (oopDesc::unsafe_equals(*p, (oop) Universe::non_oop_word()) || *p == NULL)  continue;  // skip non-oops
+    if (*p == Universe::non_oop_word() || *p == NULL)  continue;  // skip non-oops
     Metadata* md = *p;
     f(md);
   }
