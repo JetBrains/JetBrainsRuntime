@@ -63,7 +63,7 @@ private:
     T o = RawAccess<>::oop_load(p);
     if (! CompressedOops::is_null(o)) {
       oop obj1 = CompressedOops::decode_not_null(o);
-      oop obj2 = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(obj1);
+      oop obj2 = ShenandoahBarrierSet::barrier_set()->write_barrier(obj1);
       if (! oopDesc::unsafe_equals(obj1, obj2)) {
         assert (!ShenandoahHeap::heap()->in_collection_set(obj2), "sanity");
         RawAccess<OOP_NOT_NULL>::oop_store(p, obj2);

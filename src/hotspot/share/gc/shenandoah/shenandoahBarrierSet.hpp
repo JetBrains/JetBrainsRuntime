@@ -46,6 +46,10 @@ public:
 
   ShenandoahBarrierSet(ShenandoahHeap* heap);
 
+  inline static ShenandoahBarrierSet* barrier_set() {
+    return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  }
+
   static SATBMarkQueueSet& satb_mark_queue_set() {
     return _satb_mark_queue_set;
   }
@@ -124,7 +128,7 @@ private:
     const bool on_strong_oop_ref = (decorators & ON_STRONG_OOP_REF) != 0;
     const bool peek              = (decorators & AS_NO_KEEPALIVE) != 0;
     if (!peek && !on_strong_oop_ref && value != NULL) {
-      ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->keep_alive_barrier(value);
+      ShenandoahBarrierSet::barrier_set()->keep_alive_barrier(value);
     }
   }
 
@@ -168,7 +172,7 @@ public:
 
     template <typename T>
     static T load_in_heap_at(oop base, ptrdiff_t offset) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(base);
+      base = ShenandoahBarrierSet::barrier_set()->read_barrier(base);
       return Raw::template load_at<T>(base, offset);
     }
 
@@ -180,7 +184,7 @@ public:
 
     template <typename T>
     static void store_in_heap_at(oop base, ptrdiff_t offset, T value) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
       Raw::store_at(base, offset, value);
     }
 
@@ -192,7 +196,7 @@ public:
 
     template <typename T>
     static T atomic_cmpxchg_in_heap_at(T new_value, oop base, ptrdiff_t offset, T compare_value) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
       return Raw::oop_atomic_cmpxchg_at(new_value, base, offset, compare_value);
     }
 
@@ -204,7 +208,7 @@ public:
 
     template <typename T>
     static T atomic_xchg_in_heap_at(T new_value, oop base, ptrdiff_t offset) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
       return Raw::atomic_xchg_at(new_value, base, offset);
     }
 
@@ -225,7 +229,7 @@ public:
     }
 
     static oop oop_load_in_heap_at(oop base, ptrdiff_t offset) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(base);
+      base = ShenandoahBarrierSet::barrier_set()->read_barrier(base);
       oop value = Raw::template oop_load_at<oop>(base, offset);
       keep_alive_if_weak(AccessBarrierSupport::resolve_possibly_unknown_oop_ref_strength<decorators>(base, offset), value);
       return value;
@@ -233,13 +237,13 @@ public:
 
     template <typename T>
     static void oop_store_in_heap(T* addr, oop value) {
-      ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_ref_field_pre_work(addr, value);
+      ShenandoahBarrierSet::barrier_set()->write_ref_field_pre_work(addr, value);
       Raw::oop_store(addr, value);
     }
 
     static void oop_store_in_heap_at(oop base, ptrdiff_t offset, oop value) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
-      value = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->storeval_barrier(value);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
+      value = ShenandoahBarrierSet::barrier_set()->storeval_barrier(value);
 
       oop_store_in_heap(AccessInternal::oop_field_addr<decorators>(base, offset), value);
     }
@@ -248,8 +252,8 @@ public:
     static oop oop_atomic_cmpxchg_in_heap(oop new_value, T* addr, oop compare_value);
 
     static oop oop_atomic_cmpxchg_in_heap_at(oop new_value, oop base, ptrdiff_t offset, oop compare_value) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
-      new_value = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->storeval_barrier(new_value);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
+      new_value = ShenandoahBarrierSet::barrier_set()->storeval_barrier(new_value);
       return oop_atomic_cmpxchg_in_heap(new_value, AccessInternal::oop_field_addr<decorators>(base, offset), compare_value);
     }
 
@@ -257,8 +261,8 @@ public:
     static oop oop_atomic_xchg_in_heap(oop new_value, T* addr);
 
     static oop oop_atomic_xchg_in_heap_at(oop new_value, oop base, ptrdiff_t offset) {
-      base = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(base);
-      new_value = ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->storeval_barrier(new_value);
+      base = ShenandoahBarrierSet::barrier_set()->write_barrier(base);
+      new_value = ShenandoahBarrierSet::barrier_set()->storeval_barrier(new_value);
       return oop_atomic_xchg_in_heap(new_value, AccessInternal::oop_field_addr<decorators>(base, offset));
     }
 
@@ -279,11 +283,11 @@ public:
     }
 
     static oop resolve(oop obj) {
-      return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set())->write_barrier(obj);
+      return ShenandoahBarrierSet::barrier_set()->write_barrier(obj);
     }
 
     static bool equals(oop o1, oop o2) {
-      return barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set())->obj_equals(o1, o2);
+      return ShenandoahBarrierSet::barrier_set()->obj_equals(o1, o2);
     }
 
   };

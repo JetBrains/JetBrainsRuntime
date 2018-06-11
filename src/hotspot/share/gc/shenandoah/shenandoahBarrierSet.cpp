@@ -155,17 +155,17 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
 }
 
 void ShenandoahBarrierSet::write_ref_array_pre_oop_entry(oop* dst, size_t length) {
-  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
   bs->write_ref_array_pre(dst, length, false);
 }
 
 void ShenandoahBarrierSet::write_ref_array_pre_narrow_oop_entry(narrowOop* dst, size_t length) {
-  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
   bs->write_ref_array_pre(dst, length, false);
 }
 
 void ShenandoahBarrierSet::write_ref_array_post_entry(HeapWord* dst, size_t length) {
-  ShenandoahBarrierSet *bs = barrier_set_cast<ShenandoahBarrierSet>(BarrierSet::barrier_set());
+  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
   bs->ShenandoahBarrierSet::write_ref_array(dst, length);
 }
 
@@ -296,12 +296,12 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
 }
 
 JRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_JRT(oopDesc* src))
-  oop result = ((ShenandoahBarrierSet*)BarrierSet::barrier_set())->write_barrier(src);
+  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
   return (oopDesc*) result;
 JRT_END
 
 IRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_IRT(oopDesc* src))
-  oop result = ((ShenandoahBarrierSet*)BarrierSet::barrier_set())->write_barrier(src);
+  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
   return (oopDesc*) result;
 IRT_END
 

@@ -86,10 +86,10 @@ void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_
                                                                                      arrayOop dst_obj, size_t dst_offset_in_bytes, T* dst_raw,
                                                                                      size_t length) {
   if (!CompressedOops::is_null(src_obj)) {
-    src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
+    src_obj = arrayOop(ShenandoahBarrierSet::barrier_set()->read_barrier(src_obj));
   }
   if (!CompressedOops::is_null(dst_obj)) {
-    dst_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst_obj));
+    dst_obj = arrayOop(ShenandoahBarrierSet::barrier_set()->write_barrier(dst_obj));
   }
   Raw::arraycopy(src_obj, src_offset_in_bytes, src_raw, dst_obj, dst_offset_in_bytes, dst_raw, length);
 }
@@ -244,10 +244,10 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
 // Clone barrier support
 template <DecoratorSet decorators, typename BarrierSetT>
 void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::clone_in_heap(oop src, oop dst, size_t size) {
-  src = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src));
-  dst = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst));
+  src = arrayOop(ShenandoahBarrierSet::barrier_set()->read_barrier(src));
+  dst = arrayOop(ShenandoahBarrierSet::barrier_set()->write_barrier(dst));
   Raw::clone(src, dst, size);
-  ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_region(MemRegion((HeapWord*) dst, size));
+  ShenandoahBarrierSet::barrier_set()->write_region(MemRegion((HeapWord*) dst, size));
 }
 
 
@@ -258,10 +258,10 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
                                                                                          size_t length) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   if (!CompressedOops::is_null(src_obj)) {
-    src_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->read_barrier(src_obj));
+    src_obj = arrayOop(ShenandoahBarrierSet::barrier_set()->read_barrier(src_obj));
   }
   if (!CompressedOops::is_null(dst_obj)) {
-    dst_obj = arrayOop(((ShenandoahBarrierSet*) BarrierSet::barrier_set())->write_barrier(dst_obj));
+    dst_obj = arrayOop(ShenandoahBarrierSet::barrier_set()->write_barrier(dst_obj));
   }
 
   bool satb = ShenandoahSATBBarrier && heap->is_concurrent_mark_in_progress();
@@ -290,7 +290,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
   dst_raw = arrayOopDesc::obj_offset_to_raw(dst_obj, dst_offset_in_bytes, dst_raw);
 
   Klass* bound = objArrayOop(dst_obj)->element_klass();
-  ShenandoahBarrierSet* bs = (ShenandoahBarrierSet*) BarrierSet::barrier_set();
+  ShenandoahBarrierSet* bs = ShenandoahBarrierSet::barrier_set();
   return bs->arraycopy_loop_1(src_raw, dst_raw, length, bound, checkcast, satb, UseShenandoahMatrix, storeval_mode);
 }
 
