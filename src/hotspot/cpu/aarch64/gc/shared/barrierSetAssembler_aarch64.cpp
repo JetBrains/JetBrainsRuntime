@@ -67,7 +67,6 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
   case T_ADDRESS: __ ldr                (dst, src); break;
   case T_FLOAT:   __ ldrs               (v0, src);  break;
   case T_DOUBLE:  __ ldrd               (v0, src);  break;
-
   default: Unimplemented();
   }
 }
@@ -96,7 +95,10 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
     }
     break;
   }
-  case T_BOOLEAN: __ strb(val, dst); break;
+  case T_BOOLEAN:
+    __ andw(val, val, 0x1);  // boolean is true if LSB is 1
+    __ strb(val, dst);
+    break;
   case T_BYTE:    __ strb(val, dst); break;
   case T_CHAR:    __ strh(val, dst); break;
   case T_SHORT:   __ strh(val, dst); break;

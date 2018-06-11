@@ -2758,8 +2758,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     __ pop(ztos);
     if (!is_static) pop_and_check_object(obj);
-    __ andw(r0, r0, 0x1);
-    __ access_store_at(T_BYTE, IN_HEAP, field, r0, noreg, noreg);
+    __ access_store_at(T_BOOLEAN, IN_HEAP, field, r0, noreg, noreg);
     if (rc == may_rewrite) {
       patch_bytecode(Bytecodes::_fast_zputfield, bc, r1, true, byte_no);
     }
@@ -3004,13 +3003,14 @@ void TemplateTable::fast_storefield(TosState state)
     __ access_store_at(T_INT, IN_HEAP, field, r0, noreg, noreg);
     break;
   case Bytecodes::_fast_zputfield:
-    __ andw(r0, r0, 0x1);  // boolean is true if LSB is 1
-    // fall through to bputfield
+    __ access_store_at(T_BOOLEAN, IN_HEAP, field, r0, noreg, noreg);
+    break;
   case Bytecodes::_fast_bputfield:
     __ access_store_at(T_BYTE, IN_HEAP, field, r0, noreg, noreg);
     break;
   case Bytecodes::_fast_sputfield:
-    // fall through
+    __ access_store_at(T_SHORT, IN_HEAP, field, r0, noreg, noreg);
+    break;
   case Bytecodes::_fast_cputfield:
     __ access_store_at(T_CHAR, IN_HEAP, field, r0, noreg, noreg);
     break;
