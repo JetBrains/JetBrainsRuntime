@@ -54,41 +54,45 @@ void ShenandoahAdaptiveHeuristics::choose_collection_set_from_regiondata(Shenand
   //
   //   2. We should not get cset too low so that free threshold would not be met right
   //      after the cycle. Otherwise we get back-to-back cycles for no reason if heap is
-  //      too fragmented. In non-overloaded non-fragmented heap min_cset would be around zero.
+  //      too fragmented. In non-overloaded non-fragmented heap min_garbage would be around zero.
   //
   // Therefore, we start by sorting the regions by garbage. Then we unconditionally add the best candidates
-  // before we meet min_cset. Then we add all candidates that fit with a garbage threshold before
+  // before we meet min_garbage. Then we add all candidates that fit with a garbage threshold before
   // we hit max_cset. When max_cset is hit, we terminate the cset selection. Note that in this scheme,
-  // ShenandoahGarbageThreshold is the soft threshold which would be ignored until min_cset is hit.
+  // ShenandoahGarbageThreshold is the soft threshold which would be ignored until min_garbage is hit.
 
   size_t free_target = MIN2<size_t>(_free_threshold + MaxNormalStep, 100) * ShenandoahHeap::heap()->capacity() / 100;
-  size_t min_cset = free_target > actual_free ? (free_target - actual_free) : 0;
-  size_t max_cset = actual_free * 3 / 4;
-  min_cset = MIN2(min_cset, max_cset);
+  size_t min_garbage = free_target > actual_free ? (free_target - actual_free) : 0;
+  size_t max_cset    = actual_free * 3 / 4;
 
   log_info(gc, ergo)("Adaptive CSet Selection. Target Free: " SIZE_FORMAT "M, Actual Free: "
-                     SIZE_FORMAT "M, Target CSet: [" SIZE_FORMAT "M, " SIZE_FORMAT "M]",
-                     free_target / M, actual_free / M, min_cset / M, max_cset / M);
+                     SIZE_FORMAT "M, Max CSet: " SIZE_FORMAT "M, Min Garbage: " SIZE_FORMAT "M",
+                     free_target / M, actual_free / M, max_cset / M, min_garbage / M);
 
   // Better select garbage-first regions
   QuickSort::sort<RegionData>(data, (int)size, compare_by_garbage, false);
 
-  size_t live_cset = 0;
+  size_t cur_cset = 0;
+  size_t cur_garbage = 0;
   _bytes_in_cset = 0;
+
   for (size_t idx = 0; idx < size; idx++) {
     ShenandoahHeapRegion* r = data[idx]._region;
 
-    size_t new_cset = live_cset + r->get_live_data_bytes();
+    size_t new_cset    = cur_cset + r->get_live_data_bytes();
+    size_t new_garbage = cur_garbage + r->garbage();
 
-    if (new_cset < min_cset) {
+    if (new_garbage < min_garbage) {
       cset->add_region(r);
       _bytes_in_cset += r->used();
-      live_cset = new_cset;
+      cur_cset = new_cset;
+      cur_garbage = new_garbage;
     } else if (new_cset <= max_cset) {
       if (r->garbage() > garbage_threshold) {
         cset->add_region(r);
         _bytes_in_cset += r->used();
-        live_cset = new_cset;
+        cur_cset = new_cset;
+        cur_garbage = new_garbage;
       }
     } else {
       break;
