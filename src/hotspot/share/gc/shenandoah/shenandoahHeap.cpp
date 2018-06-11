@@ -282,6 +282,7 @@ jint ShenandoahHeap::initialize() {
     // For NUMA, it is important to pre-touch the storage under bitmaps with worker threads,
     // before initialize() below zeroes it with initializing thread. For any given region,
     // we touch the region and the corresponding bitmaps from the same thread.
+    ShenandoahWorkerScope scope(workers(), _max_workers);
 
     log_info(gc, heap)("Parallel pretouch " SIZE_FORMAT " regions with " SIZE_FORMAT " byte pages",
                        _num_regions, page_size);
