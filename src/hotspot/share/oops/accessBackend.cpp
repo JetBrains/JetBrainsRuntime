@@ -104,12 +104,6 @@ namespace AccessInternal {
                                 reinterpret_cast<HeapWord*>(dst), length);
   }
 
-  // TODO: Upstream this change to fix the Access API for primitive arraycopy.
-  template<>
-  void arraycopy_conjoint<char>(char* src, char* dst, size_t length) {
-    Copy::conjoint_jbytes(src, dst, length);
-  }
-
   template<>
   void arraycopy_conjoint<jboolean>(jboolean* src, jboolean* dst, size_t length) {
     Copy::conjoint_jbytes(reinterpret_cast<jbyte*>(src), reinterpret_cast<jbyte*>(dst), length);

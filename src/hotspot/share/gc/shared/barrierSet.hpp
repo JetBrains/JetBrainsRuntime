@@ -30,7 +30,6 @@
 #include "oops/access.hpp"
 #include "oops/accessBackend.hpp"
 #include "oops/oopsHierarchy.hpp"
-#include "asm/register.hpp"
 #include "utilities/fakeRttiSupport.hpp"
 #include "utilities/macros.hpp"
 
@@ -41,8 +40,6 @@ class JavaThread;
 
 // This class provides the interface between a barrier implementation and
 // the rest of the system.
-
-class MacroAssembler;
 
 class BarrierSet: public CHeapObj<mtGC> {
   friend class VMStructs;
@@ -140,13 +137,6 @@ public:
   static BarrierSet* barrier_set() { return _barrier_set; }
   static void set_barrier_set(BarrierSet* barrier_set);
 
-  virtual oop read_barrier(oop src) {
-    return src;
-  }
-  virtual oop write_barrier(oop src) {
-    return src;
-  }
-
   BarrierSetAssembler* barrier_set_assembler() {
     assert(_barrier_set_assembler != NULL, "should be set");
     return _barrier_set_assembler;
@@ -160,10 +150,6 @@ public:
   BarrierSetC2* barrier_set_c2() {
     assert(_barrier_set_c2 != NULL, "should be set");
     return _barrier_set_c2;
-  }
-
-  virtual void keep_alive_barrier(oop obj) {
-    // Default impl does nothing.
   }
 
 #ifdef ASSERT

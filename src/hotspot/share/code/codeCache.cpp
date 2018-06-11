@@ -1718,7 +1718,6 @@ void CodeCache::print_names(outputStream *out) {
     CodeHeapState::print_names(out, (*heap));
   }
 }
-
 //---<  END  >--- CodeHeap State Analytics.
 
 ParallelCodeCacheIterator::ParallelCodeCacheIterator(GrowableArray<CodeHeap*>* heaps) {

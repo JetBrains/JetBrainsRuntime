@@ -1759,6 +1759,7 @@ void LIRGenerator::do_LoadField(LoadField* x) {
                  info ? new CodeEmitInfo(info) : NULL, info);
 }
 
+
 //------------------------java.nio.Buffer.checkIndex------------------------
 
 // int java.nio.Buffer.checkIndex(int)

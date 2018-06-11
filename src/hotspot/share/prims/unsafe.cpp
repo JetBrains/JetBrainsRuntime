@@ -396,7 +396,6 @@ UNSAFE_ENTRY(void, Unsafe_SetMemory0(JNIEnv *env, jobject unsafe, jobject obj, j
   size_t sz = (size_t)size;
 
   oop base = JNIHandles::resolve(obj);
-  base = BarrierSet::barrier_set()->write_barrier(base);
   void* p = index_oop_from_field_offset_long(base, offset);
 
   Copy::fill_to_memory_atomic(p, sz, value);
@@ -407,9 +406,6 @@ UNSAFE_ENTRY(void, Unsafe_CopyMemory0(JNIEnv *env, jobject unsafe, jobject srcOb
 
   oop srcp = JNIHandles::resolve(srcObj);
   oop dstp = JNIHandles::resolve(dstObj);
-
-  srcp = BarrierSet::barrier_set()->read_barrier(srcp);
-  dstp = BarrierSet::barrier_set()->write_barrier(dstp);
 
   void* src = index_oop_from_field_offset_long(srcp, srcOffset);
   void* dst = index_oop_from_field_offset_long(dstp, dstOffset);

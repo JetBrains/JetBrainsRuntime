@@ -288,7 +288,6 @@ void ObjArrayKlass::copy_array(arrayOop s, int src_pos, arrayOop d,
   if (length==0) {
     return;
   }
-
   if (UseCompressedOops) {
     size_t src_offset = (size_t) objArrayOopDesc::obj_at_offset<narrowOop>(src_pos);
     size_t dst_offset = (size_t) objArrayOopDesc::obj_at_offset<narrowOop>(dst_pos);

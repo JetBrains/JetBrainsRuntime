@@ -51,7 +51,7 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
     compare_value = expected;
     res = Raw::oop_atomic_cmpxchg(new_value, addr, compare_value);
     expected = res;
-  } while ((! oopDesc::unsafe_equals(compare_value, expected)) && oopDesc::unsafe_equals(BarrierSet::barrier_set()->read_barrier(compare_value), BarrierSet::barrier_set()->read_barrier(expected)));
+  } while ((! oopDesc::unsafe_equals(compare_value, expected)) && oopDesc::unsafe_equals(resolve_forwarded(compare_value), resolve_forwarded(expected)));
   if (oopDesc::unsafe_equals(expected, compare_value)) {
     if (ShenandoahSATBBarrier && !CompressedOops::is_null(compare_value)) {
       ShenandoahBarrierSet::enqueue(compare_value);

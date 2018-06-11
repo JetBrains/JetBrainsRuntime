@@ -1136,6 +1136,7 @@ void TemplateTable::aastore() {
   // Generate subtype check.  Blows rcx, rdi
   // Superklass in rax.  Subklass in rbx.
   __ gen_subtype_check(rbx, ok_is_subtype);
+
   // Come here on failure
   // object is at TOS
   __ jump(ExternalAddress(Interpreter::_throw_ArrayStoreException_entry));
@@ -2959,7 +2960,6 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
     // save that information and this code is faster than the test.
   __ access_load_at(T_LONG, IN_HEAP | MO_RELAXED, noreg /* ltos */, field, noreg, noreg);
   __ push(ltos);
-
   // Rewrite bytecode to be faster
   LP64_ONLY(if (!is_static && rc == may_rewrite) patch_bytecode(Bytecodes::_fast_lgetfield, bc, rbx));
   __ jmp(Done);
@@ -3427,7 +3427,7 @@ void TemplateTable::fast_storefield(TosState state) {
 #ifdef _LP64
     __ access_store_at(T_LONG, IN_HEAP, field, noreg /* ltos */, noreg, noreg);
 #else
-    __ stop("should not be rewritten");
+  __ stop("should not be rewritten");
 #endif
     break;
   case Bytecodes::_fast_iputfield:

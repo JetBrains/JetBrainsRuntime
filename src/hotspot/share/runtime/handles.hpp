@@ -25,7 +25,6 @@
 #ifndef SHARE_VM_RUNTIME_HANDLES_HPP
 #define SHARE_VM_RUNTIME_HANDLES_HPP
 
-#include "gc/shared/barrierSet.hpp"
 #include "memory/arena.hpp"
 #include "oops/oop.hpp"
 #include "oops/oopsHierarchy.hpp"

@@ -2475,6 +2475,7 @@ void TemplateTable::getfield_or_static(int byte_no, bool is_static, RewriteContr
     // obj is on the stack
     pop_and_check_object(obj);
   }
+
   // 8179954: We need to make sure that the code generated for
   // volatile accesses forms a sequentially-consistent set of
   // operations when combined with STLR and LDAR.  Without a leading

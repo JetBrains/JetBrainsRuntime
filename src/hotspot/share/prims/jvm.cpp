@@ -3361,6 +3361,7 @@ JVM_ENTRY_NO_ENV(void*, JVM_LoadLibrary(const char* name))
       Exceptions::new_exception(thread,
                                 vmSymbols::java_lang_UnsatisfiedLinkError(),
                                 msg, Exceptions::unsafe_to_utf8);
+
     THROW_HANDLE_0(h_exception);
   }
   return load_result;

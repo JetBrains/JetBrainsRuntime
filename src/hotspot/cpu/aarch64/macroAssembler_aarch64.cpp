@@ -5763,21 +5763,3 @@ void MacroAssembler::get_thread(Register dst) {
 
   pop(saved_regs, sp);
 }
-
-// Shenandoah requires that all objects are evacuated before being
-// written to, and that fromspace pointers are not written into
-// objects during concurrent marking.  These methods check for that.
-
-void MacroAssembler::in_heap_check(Register r, Register tmp, Label &nope) {
-  ShenandoahHeap* h = ShenandoahHeap::heap();
-
-  HeapWord* heap_base = (HeapWord*) h->base();
-  HeapWord* last_region_end = heap_base + ShenandoahHeapRegion::region_size_words_jint() * h->num_regions();
-
-  mov(tmp, (uintptr_t) heap_base);
-  cmp(r, tmp);
-  br(Assembler::LO, nope);
-  mov(tmp, (uintptr_t)last_region_end);
-  cmp(r, tmp);
-  br(Assembler::HS, nope);
-}

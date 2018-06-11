@@ -151,7 +151,6 @@ class aarch64 {
     _completed = true;
   }
 
-
 private:
   static juint    _crc_table[];
 

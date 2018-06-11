@@ -79,7 +79,6 @@ protected:
   // Unsafe.getObject should be recorded in an SATB log buffer.
   void insert_pre_barrier(GraphKit* kit, Node* base_oop, Node* offset, Node* pre_val, bool need_mem_bar) const;
 
-public:
   static const TypeFunc* write_ref_field_pre_entry_Type();
   static const TypeFunc* write_ref_field_post_entry_Type();
 

@@ -1272,10 +1272,6 @@ public:
                       Register tmp1, Register tmp2,
                       Register tmp3, Register tmp4,
                       int int_cnt1, Register result, int ae);
-
-  void in_heap_check(Register r, Register tmp, Label &nope);
-
-public:
   void string_indexof_char(Register str1, Register cnt1,
                            Register ch, Register result,
                            Register tmp1, Register tmp2, Register tmp3);

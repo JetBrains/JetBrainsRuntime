@@ -160,7 +160,7 @@ bool ShenandoahStrDedupTable::deduplicate(oop java_string) {
 
   // Enqueue the reference to make sure it is kept alive. Concurrent mark might
   // otherwise declare it dead if there are no other strong references to this object.
-  BarrierSet::barrier_set()->keep_alive_barrier(existing_value);
+  ((ShenandoahBarrierSet*) BarrierSet::barrier_set())->keep_alive_barrier(existing_value);
 
   // Existing value found, deduplicate string
   java_lang_String::set_value(java_string, typeArrayOop(existing_value));

@@ -309,14 +309,13 @@ Handle java_lang_String::create_from_str(const char* utf8_str, TRAPS) {
 
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
-    typeArrayOop buffer = value(h_obj());
     if (!has_multibyte) {
       const jbyte* src = reinterpret_cast<const jbyte*>(utf8_str);
       ArrayAccess<>::arraycopy_from_native(src, value(h_obj()), typeArrayOopDesc::element_offset<jbyte>(0), length);
     } else if (is_latin1) {
-      UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, value(h_obj())->byte_at_addr(0), length);
     } else {
-      UTF8::convert_to_unicode(utf8_str, buffer->char_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, value(h_obj())->char_at_addr(0), length);
     }
   }
 
@@ -357,14 +356,13 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
 
   Handle h_obj = basic_create(length, is_latin1, CHECK_NH);
   if (length > 0) {
-    typeArrayOop buffer = value(h_obj());
     if (!has_multibyte) {
       const jbyte* src = reinterpret_cast<const jbyte*>(utf8_str);
       ArrayAccess<>::arraycopy_from_native(src, value(h_obj()), typeArrayOopDesc::element_offset<jbyte>(0), length);
     } else if (is_latin1) {
-      UTF8::convert_to_unicode(utf8_str, buffer->byte_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, value(h_obj())->byte_at_addr(0), length);
     } else {
-      UTF8::convert_to_unicode(utf8_str, buffer->char_at_addr(0), length);
+      UTF8::convert_to_unicode(utf8_str, value(h_obj())->char_at_addr(0), length);
     }
   }
 

@@ -25,7 +25,6 @@
 #ifndef SHARE_VM_OOPS_TYPEARRAYOOP_HPP
 #define SHARE_VM_OOPS_TYPEARRAYOOP_HPP
 
-#include "gc/shared/barrierSet.hpp"
 #include "oops/arrayOop.hpp"
 #include "oops/typeArrayKlass.hpp"
 

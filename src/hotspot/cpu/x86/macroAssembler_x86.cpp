@@ -5835,6 +5835,7 @@ void MacroAssembler::verify_oop(Register reg, const char* s) {
   BLOCK_COMMENT("} verify_oop");
 }
 
+
 RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_addr,
                                                       Register tmp,
                                                       int offset) {
