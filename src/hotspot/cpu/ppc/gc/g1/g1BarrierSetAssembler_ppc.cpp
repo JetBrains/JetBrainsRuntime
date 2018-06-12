@@ -458,7 +458,7 @@ void G1BarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAssembler* 
   __ mflr(R0);
   __ std(R0, _abi(lr), R1_SP);
   __ push_frame_reg_args(nbytes_save, R0); // dummy frame for C call
-  __ call_VM_leaf(CAST_FROM_FN_PTR(address, SATBMarkQueueSet::handle_zero_index_for_thread), R16_thread);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1SATBMarkQueueSet::handle_zero_index_for_thread), R16_thread);
   __ pop_frame();
   __ ld(R0, _abi(lr), R1_SP);
   __ mtlr(R0);
