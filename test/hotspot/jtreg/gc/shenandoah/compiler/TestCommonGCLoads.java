@@ -27,21 +27,21 @@
  * @requires vm.flavor == "server"
  * @run main/othervm -XX:-BackgroundCompilation -XX:-UseOnStackReplacement -XX:-TieredCompilation -XX:+UseShenandoahGC
  *                   -XX:+UnlockExperimentalVMOptions -XX:-ShenandoahCommonGCStateLoads
- *                   TestExpandedWBLostNullCheckDep
+ *                   TestCommonGCLoads
  * @run main/othervm -XX:-BackgroundCompilation -XX:-UseOnStackReplacement -XX:-TieredCompilation -XX:+UseShenandoahGC
  *                   -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahCommonGCStateLoads
- *                   TestExpandedWBLostNullCheckDep
+ *                   TestCommonGCLoads
  */
 
 public class TestCommonGCLoads {
 
-    Object d = new Object();
+    static Object d = new Object();
 
-    Target t1 = new Target();
-    Target t2 = new Target();
-    Target t3 = new Target();
-    Target t4 = new Target();
-    Target t5 = new Target();
+    static Target t1 = new Target();
+    static Target t2 = new Target();
+    static Target t3 = new Target();
+    static Target t4 = new Target();
+    static Target t5 = new Target();
 
     static void test() {
         t1.field = d;
@@ -55,5 +55,9 @@ public class TestCommonGCLoads {
         for (int i = 0; i < 100_000; i++) {
             test();
         }
+    }
+
+    static class Target {
+        Object field;
     }
 }
