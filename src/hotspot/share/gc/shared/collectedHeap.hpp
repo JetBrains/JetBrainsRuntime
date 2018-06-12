@@ -90,6 +90,7 @@ class GCHeapLog : public EventLogBase<GCMessage> {
 //   G1CollectedHeap
 //   ShenandoahHeap
 //   ParallelScavengeHeap
+//   ZCollectedHeap
 //
 class CollectedHeap : public CHeapObj<mtInternal> {
   friend class VMStructs;
@@ -208,6 +209,8 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     Parallel,
     CMS,
     G1,
+    Epsilon,
+    Z,
     Shenandoah
   };
 
@@ -215,9 +218,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     return _filler_array_max_size;
   }
 
-  virtual Name kind() const = 0;
-
   virtual HeapWord* tlab_post_allocation_setup(HeapWord* obj);
+
+  virtual Name kind() const = 0;
 
   virtual const char* name() const = 0;
 

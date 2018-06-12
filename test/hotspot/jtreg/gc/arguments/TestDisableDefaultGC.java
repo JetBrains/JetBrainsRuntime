@@ -44,6 +44,8 @@ public class TestDisableDefaultGC {
                                                                   "-XX:-UseG1GC",
                                                                   "-XX:-UseConcMarkSweepGC",
                                                                   "-XX:-UseShenandoahGC",
+                                                                  "-XX:+UnlockExperimentalVMOptions",
+                                                                  "-XX:-UseZGC",
                                                                   "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldMatch("Garbage collector not selected");

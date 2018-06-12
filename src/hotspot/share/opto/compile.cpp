@@ -79,6 +79,9 @@
 #if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif // INCLUDE_G1GC
+#if INCLUDE_ZGC
+#include "gc/z/c2/zBarrierSetC2.hpp"
+#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
@@ -2196,6 +2199,11 @@ void Compile::Optimize() {
 
 #endif
 
+#ifdef ASSERT
+  BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+  bs->verify_gc_barriers(true);
+#endif
+
   ResourceMark rm;
   int          loop_opts_cnt;
 
@@ -2360,6 +2368,12 @@ void Compile::Optimize() {
     return;
   }
 
+#if INCLUDE_ZGC
+  if (UseZGC) {
+    ZBarrierSetC2::find_dominating_barriers(igvn);
+  }
+#endif
+
   if (failing())  return;
 
   // Ensure that major progress is now clear
@@ -2386,6 +2400,7 @@ void Compile::Optimize() {
   {
     TracePhase tp("macroExpand", &timers[_t_macroExpand]);
     PhaseMacroExpand  mex(igvn);
+    print_method(PHASE_BEFORE_MACRO_EXPANSION, 2);
     if (mex.expand_macro_nodes()) {
       assert(failing(), "must bail out w/ explicit message");
       return;
@@ -2935,6 +2950,10 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_LoadL_unaligned:
   case Op_LoadPLocked:
   case Op_LoadP:
+#if INCLUDE_ZGC
+  case Op_LoadBarrierSlowReg:
+  case Op_LoadBarrierWeakSlowReg:
+#endif
   case Op_LoadN:
   case Op_LoadRange:
   case Op_LoadS: {

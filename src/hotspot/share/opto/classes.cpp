@@ -48,6 +48,9 @@
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_ZGC
+#include "gc/z/c2/zBarrierSetC2.hpp"
+#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
@@ -60,3 +63,4 @@ int Node::Opcode() const { return Op_Node; }
 #define optionalmacro(x)
 #include "classes.hpp"
 #undef macro
+#undef optionalmacro

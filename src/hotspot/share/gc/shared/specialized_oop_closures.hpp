@@ -35,6 +35,9 @@
 #if INCLUDE_SERIALGC
 #include "gc/serial/serial_specialized_oop_closures.hpp"
 #endif
+#if INCLUDE_ZGC
+#include "gc/z/z_specialized_oop_closures.hpp"
+#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoah_specialized_oop_closures.hpp"
 #endif
@@ -66,11 +69,12 @@ class OopsInGenClosure;
   SERIALGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_S(f))        \
      CMSGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_P(f))
 
-#define SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_2(f)                   \
-    SERIALGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_MS(f))       \
-       CMSGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_CMS(f))      \
-        G1GC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_G1(f))       \
-        G1GC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_G1FULL(f))   \
+#define SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_2(f)                 \
+  SERIALGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_MS(f))       \
+     CMSGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_CMS(f))      \
+      G1GC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_G1(f))       \
+      G1GC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_G1FULL(f))   \
+       ZGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_Z(f))        \
 SHENANDOAHGC_ONLY(SPECIALIZED_OOP_OOP_ITERATE_CLOSURES_SHENANDOAH(f))
 
 // We separate these out, because sometime the general one has

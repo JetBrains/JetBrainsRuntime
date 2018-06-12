@@ -30,8 +30,14 @@
 #include "gc/shared/modRefBarrierSet.inline.hpp"
 #include "gc/shared/cardTableBarrierSet.inline.hpp"
 
+#if INCLUDE_EPSILONGC
+#include "gc/epsilon/epsilonBarrierSet.hpp"
+#endif
 #if INCLUDE_G1GC
-#include "gc/g1/g1BarrierSet.inline.hpp" // G1 support
+#include "gc/g1/g1BarrierSet.inline.hpp"
+#endif
+#if INCLUDE_ZGC
+#include "gc/z/zBarrierSet.inline.hpp"
 #endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp" // Shenandoah support

@@ -37,6 +37,9 @@
 #if INCLUDE_CMSGC
 #include "gc/cms/vmStructs_cms.hpp"
 #endif
+#if INCLUDE_EPSILONGC
+#include "gc/epsilon/vmStructs_epsilon.hpp"
+#endif
 #if INCLUDE_G1GC
 #include "gc/g1/vmStructs_g1.hpp"
 #endif
@@ -46,6 +49,9 @@
 #if INCLUDE_SERIALGC
 #include "gc/serial/defNewGeneration.hpp"
 #include "gc/serial/vmStructs_serial.hpp"
+#endif
+#if INCLUDE_ZGC
+#include "gc/z/vmStructs_z.hpp"
 #endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/vmStructs_shenandoah.hpp"
@@ -58,6 +64,9 @@
   CMSGC_ONLY(VM_STRUCTS_CMSGC(nonstatic_field,                                                                                       \
                               volatile_nonstatic_field,                                                                              \
                               static_field))                                                                                         \
+  EPSILONGC_ONLY(VM_STRUCTS_EPSILONGC(nonstatic_field,                                                                               \
+                                      volatile_nonstatic_field,                                                                      \
+                                      static_field))                                                                                 \
   G1GC_ONLY(VM_STRUCTS_G1GC(nonstatic_field,                                                                                         \
                             volatile_nonstatic_field,                                                                                \
                             static_field))                                                                                           \
@@ -70,6 +79,10 @@
   SERIALGC_ONLY(VM_STRUCTS_SERIALGC(nonstatic_field,                                                                                 \
                                     volatile_nonstatic_field,                                                                        \
                                     static_field))                                                                                   \
+  ZGC_ONLY(VM_STRUCTS_ZGC(nonstatic_field,                                                                                           \
+                          volatile_nonstatic_field,                                                                                  \
+                          static_field))                                                                                             \
+                                                                                                                                     \
   /**********************************************************************************/                                               \
   /* Generation and Space hierarchies                                               */                                               \
   /**********************************************************************************/                                               \
@@ -159,6 +172,9 @@
   CMSGC_ONLY(VM_TYPES_CMSGC(declare_type,                                 \
                             declare_toplevel_type,                        \
                             declare_integer_type))                        \
+  EPSILONGC_ONLY(VM_TYPES_EPSILONGC(declare_type,                         \
+                                    declare_toplevel_type,                \
+                                    declare_integer_type))                \
   G1GC_ONLY(VM_TYPES_G1GC(declare_type,                                   \
                           declare_toplevel_type,                          \
                           declare_integer_type))                          \
@@ -171,6 +187,10 @@
   SERIALGC_ONLY(VM_TYPES_SERIALGC(declare_type,                           \
                                   declare_toplevel_type,                  \
                                   declare_integer_type))                  \
+  ZGC_ONLY(VM_TYPES_ZGC(declare_type,                                     \
+                        declare_toplevel_type,                            \
+                        declare_integer_type))                            \
+                                                                          \
   /******************************************/                            \
   /* Generation and space hierarchies       */                            \
   /* (needed for run-time type information) */                            \
@@ -234,6 +254,8 @@
                             declare_constant_with_value)                    \
   CMSGC_ONLY(VM_INT_CONSTANTS_CMSGC(declare_constant,                       \
                                     declare_constant_with_value))           \
+  EPSILONGC_ONLY(VM_INT_CONSTANTS_EPSILONGC(declare_constant,               \
+                                            declare_constant_with_value))   \
   G1GC_ONLY(VM_INT_CONSTANTS_G1GC(declare_constant,                         \
                                   declare_constant_with_value))             \
   SHENANDOAHGC_ONLY(VM_INT_CONSTANTS_SHENANDOAH(declare_constant,           \
@@ -242,6 +264,8 @@
                                               declare_constant_with_value)) \
   SERIALGC_ONLY(VM_INT_CONSTANTS_SERIALGC(declare_constant,                 \
                                           declare_constant_with_value))     \
+  ZGC_ONLY(VM_INT_CONSTANTS_ZGC(declare_constant,                           \
+                                declare_constant_with_value))               \
                                                                             \
   /********************************************/                            \
   /* Generation and Space Hierarchy Constants */                            \
@@ -285,5 +309,7 @@
   declare_constant(Generation::LogOfGenGrain)                               \
   declare_constant(Generation::GenGrain)                                    \
 
+#define VM_LONG_CONSTANTS_GC(declare_constant)                              \
+  ZGC_ONLY(VM_LONG_CONSTANTS_ZGC(declare_constant))
 
 #endif // SHARE_GC_SHARED_VMSTRUCTS_GC_HPP

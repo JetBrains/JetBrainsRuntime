@@ -49,3 +49,4 @@ const char *NodeClassNames[] = {
   "_last_class_name",
 };
 #undef macro
+#undef optionalmacro

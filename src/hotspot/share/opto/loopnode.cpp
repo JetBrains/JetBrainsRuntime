@@ -25,6 +25,8 @@
 #include "precompiled.hpp"
 #include "ci/ciMethodData.hpp"
 #include "compiler/compileLog.hpp"
+#include "gc/shared/barrierSet.hpp"
+#include "gc/shared/c2/barrierSetC2.hpp"
 #include "libadt/vectset.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
@@ -217,7 +219,8 @@ Node *PhaseIdealLoop::get_early_ctrl_for_expensive(Node *n, Node* earliest) {
         if (nb_ctl_proj > 1) {
           break;
         }
-        assert(parent_ctl->is_Start() || parent_ctl->is_MemBar() || parent_ctl->is_Call(), "unexpected node");
+        assert(parent_ctl->is_Start() || parent_ctl->is_MemBar() || parent_ctl->is_Call() ||
+               BarrierSet::barrier_set()->barrier_set_c2()->is_gc_barrier_node(parent_ctl), "unexpected node");
         assert(idom(ctl) == parent_ctl, "strange");
         next = idom(parent_ctl);
       }
@@ -2649,7 +2652,7 @@ bool PhaseIdealLoop::process_expensive_nodes() {
 //----------------------------build_and_optimize-------------------------------
 // Create a PhaseLoop.  Build the ideal Loop tree.  Map each Ideal Node to
 // its corresponding LoopNode.  If 'optimize' is true, do some loop cleanups.
-void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
+void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode, bool last_round) {
   bool do_split_ifs = (mode == LoopOptsDefault);
   bool skip_loop_opts = (mode == LoopOptsNone) ;
   bool shenandoah_opts = (mode == LoopOptsShenandoahExpand ||
@@ -2916,8 +2919,11 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   // that require basic-block info (like cloning through Phi's)
   if( SplitIfBlocks && do_split_ifs ) {
     visited.Clear();
-    split_if_with_blocks( visited, nstack );
+    split_if_with_blocks( visited, nstack, last_round );
     NOT_PRODUCT( if( VerifyLoopOptimizations ) verify(); );
+    if (last_round) {
+      C->set_major_progress();
+    }
   }
 
   if (!C->major_progress() && do_expensive_nodes && process_expensive_nodes()) {
@@ -4171,6 +4177,8 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
     case Op_LoadL:
     case Op_LoadS:
     case Op_LoadP:
+    case Op_LoadBarrierSlowReg:
+    case Op_LoadBarrierWeakSlowReg:
     case Op_LoadN:
     case Op_LoadRange:
     case Op_LoadD_unaligned:

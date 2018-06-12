@@ -922,7 +922,7 @@ public:
   }
 
   // build the loop tree and perform any requested optimizations
-  void build_and_optimize(LoopOptsMode mode);
+  void build_and_optimize(LoopOptsMode mode, bool last_round = false);
 
   // Dominators for the sea of nodes
   void Dominators();
@@ -932,13 +932,13 @@ public:
   Node *dom_lca_internal( Node *n1, Node *n2 ) const;
 
   // Compute the Ideal Node to Loop mapping
-  PhaseIdealLoop( PhaseIterGVN &igvn, LoopOptsMode mode) :
+  PhaseIdealLoop( PhaseIterGVN &igvn, LoopOptsMode mode, bool last_round = false) :
     PhaseTransform(Ideal_Loop),
     _igvn(igvn),
     _dom_lca_tags(arena()), // Thread::resource_area
     _verify_me(NULL),
     _verify_only(false) {
-    build_and_optimize(mode);
+      build_and_optimize(mode, last_round);
   }
 
   // Verify that verify_me made the same decisions as a fresh run.
@@ -1246,9 +1246,9 @@ public:
 
   // Check for aggressive application of 'split-if' optimization,
   // using basic block level info.
-  void  split_if_with_blocks     ( VectorSet &visited, Node_Stack &nstack );
+  void  split_if_with_blocks     ( VectorSet &visited, Node_Stack &nstack, bool last_round );
   Node *split_if_with_blocks_pre ( Node *n );
-  void  split_if_with_blocks_post( Node *n );
+  void  split_if_with_blocks_post( Node *n, bool last_round );
   Node *has_local_phi_input( Node *n );
   // Mark an IfNode as being dominated by a prior test,
   // without actually altering the CFG (and hence IDOM info).

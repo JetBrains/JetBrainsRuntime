@@ -188,6 +188,14 @@ macro(LoadP)
 macro(LoadN)
 macro(LoadRange)
 macro(LoadS)
+#if INCLUDE_ZGC
+#define zgcmacro(x) macro(x)
+#else
+#define zgcmacro(x) optionalmacro(x)
+#endif
+zgcmacro(LoadBarrier)
+zgcmacro(LoadBarrierSlowReg)
+zgcmacro(LoadBarrierWeakSlowReg)
 macro(Lock)
 macro(Loop)
 macro(LoopLimit)

@@ -35,6 +35,8 @@ public class CollectedHeapName {
   public static final CollectedHeapName PARALLEL = new CollectedHeapName("Parallel");
   public static final CollectedHeapName CMS = new CollectedHeapName("CMS");
   public static final CollectedHeapName G1 = new CollectedHeapName("G1");
+  public static final CollectedHeapName EPSILON = new CollectedHeapName("Epsilon");
+  public static final CollectedHeapName Z = new CollectedHeapName("Z");
   public static final CollectedHeapName SHENANDOAH_HEAP = new CollectedHeapName("Shenandoah");
 
   public String toString() {

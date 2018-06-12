@@ -51,6 +51,9 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #endif
+#if INCLUDE_ZGC
+#include "gc/z/zThreadLocalData.hpp"
+#endif
 
 // Declaration and definition of StubGenerator (no .hpp file).
 // For a more detailed description of the stub routine structure
@@ -1124,6 +1127,15 @@ class StubGenerator: public StubCodeGenerator {
     // make sure object is 'reasonable'
     __ testptr(rax, rax);
     __ jcc(Assembler::zero, exit); // if obj is NULL it is OK
+
+#if INCLUDE_ZGC
+    if (UseZGC) {
+      // Check if metadata bits indicate a bad oop
+      __ testptr(rax, Address(r15_thread, ZThreadLocalData::address_bad_mask_offset()));
+      __ jcc(Assembler::notZero, error);
+    }
+#endif
+
     // Check if the oop is in the right area of memory
     __ movptr(c_rarg2, rax);
     __ movptr(c_rarg3, (intptr_t) Universe::verify_oop_mask());

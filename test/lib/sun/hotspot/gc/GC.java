@@ -37,7 +37,9 @@ public enum GC {
     Parallel(2),
     ConcMarkSweep(3),
     G1(4),
-    Shenandoah(5);
+    Epsilon(5),
+    Z(6),
+    Shenandoah(7);
 
     private static final WhiteBox WB = WhiteBox.getWhiteBox();
 

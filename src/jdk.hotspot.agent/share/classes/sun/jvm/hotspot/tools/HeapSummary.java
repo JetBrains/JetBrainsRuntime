@@ -25,13 +25,14 @@
 package sun.jvm.hotspot.tools;
 
 import java.util.*;
-
+import sun.jvm.hotspot.gc.epsilon.*;
 import sun.jvm.hotspot.gc.g1.*;
 import sun.jvm.hotspot.gc.parallel.*;
 import sun.jvm.hotspot.gc.serial.*;
 import sun.jvm.hotspot.gc.shenandoah.ShenandoahHeap;
 import sun.jvm.hotspot.gc.shenandoah.ShenandoahHeapRegion;
 import sun.jvm.hotspot.gc.shared.*;
+import sun.jvm.hotspot.gc.z.*;
 import sun.jvm.hotspot.debugger.JVMDebugger;
 import sun.jvm.hotspot.memory.*;
 import sun.jvm.hotspot.oops.*;
@@ -139,6 +140,12 @@ public class HeapSummary extends Tool {
          printValMB("capacity  = ", num_regions * ShenandoahHeapRegion.regionSizeBytes());
          printValMB("used      = ", sh.used());
          printValMB("committed = ", sh.committed());
+      } else if (heap instanceof EpsilonHeap) {
+         EpsilonHeap eh = (EpsilonHeap) heap;
+         printSpace(eh.space());
+      } else if (heap instanceof ZCollectedHeap) {
+         ZCollectedHeap zheap = (ZCollectedHeap) heap;
+         zheap.printOn(System.out);
       } else {
          throw new RuntimeException("unknown CollectedHeap type : " + heap.getClass());
       }
@@ -171,6 +178,20 @@ public class HeapSummary extends Tool {
        l = getFlagValue("UseG1GC", flagMap);
        if (l == 1L) {
            System.out.print("Garbage-First (G1) GC ");
+           l = getFlagValue("ParallelGCThreads", flagMap);
+           System.out.println("with " + l + " thread(s)");
+           return;
+       }
+
+       l = getFlagValue("UseEpsilonGC", flagMap);
+       if (l == 1L) {
+           System.out.println("Epsilon (no-op) GC");
+           return;
+       }
+
+       l = getFlagValue("UseZGC", flagMap);
+       if (l == 1L) {
+           System.out.print("ZGC ");
            l = getFlagValue("ParallelGCThreads", flagMap);
            System.out.println("with " + l + " thread(s)");
            return;

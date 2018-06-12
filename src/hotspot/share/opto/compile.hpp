@@ -54,6 +54,7 @@ class CloneMap;
 class ConnectionGraph;
 class InlineTree;
 class Int_Array;
+class LoadBarrierNode;
 class Matcher;
 class MachConstantNode;
 class MachConstantBaseNode;
@@ -417,6 +418,7 @@ class Compile : public Phase {
 
   // Compilation environment.
   Arena                 _comp_arena;            // Arena with lifetime equivalent to Compile
+  void*                 _barrier_set_state;     // Potential GC barrier state for Compile
   ciEnv*                _env;                   // CI interface
   DirectiveSet*         _directive;             // Compiler directive
   CompileLog*           _log;                   // from CompilerThread
@@ -431,9 +433,6 @@ class Compile : public Phase {
 #ifndef PRODUCT
   IdealGraphPrinter*    _printer;
 #endif
-
-  // For GC
-  void*                 _barrier_set_state;
 
   // Node management
   uint                  _unique;                // Counter for unique Node indices

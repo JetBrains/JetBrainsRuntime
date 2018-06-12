@@ -46,6 +46,8 @@ requires.properties= \
     vm.gc.Parallel \
     vm.gc.ConcMarkSweep \
     vm.gc.Shenandoah \
+    vm.gc.Epsilon \
+    vm.gc.Z \
     vm.jvmci \
     vm.emulatedClient \
     vm.cpu.features \
