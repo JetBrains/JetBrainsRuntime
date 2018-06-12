@@ -27,6 +27,7 @@
 #define CPU_AARCH64_VM_MACROASSEMBLER_AARCH64_HPP
 
 #include "asm/assembler.hpp"
+#include "utilities/macros.hpp"
 
 // MacroAssembler extends Assembler by frequently used macros.
 //
@@ -793,6 +794,10 @@ public:
   void store_check(Register obj, Address dst);   // same as above, dst is exact store location (reg. is destroyed)
 
   void resolve_jobject(Register value, Register thread, Register tmp);
+
+#if INCLUDE_SHENANDOAHGC
+  void shenandoah_write_barrier(Register dst);
+#endif
 
   // oop manipulations
   void load_klass(Register dst, Register src);
