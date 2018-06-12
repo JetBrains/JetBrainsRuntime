@@ -31,10 +31,6 @@
 #include "gc/shenandoah/c1/shenandoahBarrierSetC1.hpp"
 #endif
 
-#ifdef COMPILER1
-class ShenandoahPreBarrierStub;
-#endif
-
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 private:
   void satb_write_barrier_pre(MacroAssembler* masm,
