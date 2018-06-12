@@ -28,7 +28,6 @@
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "compiler/compileLog.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "libadt/dict.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
@@ -40,6 +39,10 @@
 #include "opto/node.hpp"
 #include "opto/opcodes.hpp"
 #include "opto/type.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -2965,8 +2968,10 @@ TypeOopPtr::TypeOopPtr(TYPES t, PTR ptr, ciKlass* k, bool xk, ciObject* o, int o
   if (_offset != 0) {
     if (_offset == oopDesc::klass_offset_in_bytes()) {
       _is_ptr_to_narrowklass = UseCompressedClassPointers;
+#if INCLUDE_SHENANDOAHGC
     } else if (_offset == BrooksPointer::byte_offset()) {
       // Shenandoah doesn't support compressed forwarding pointers
+#endif
     } else if (klass() == NULL) {
       // Array with unknown body type
       assert(this->isa_aryptr(), "only arrays without klass");

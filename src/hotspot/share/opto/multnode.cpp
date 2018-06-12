@@ -31,9 +31,12 @@
 #include "opto/opcodes.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/type.hpp"
 #include "utilities/vmError.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //=============================================================================
 //------------------------------MultiNode--------------------------------------
@@ -150,7 +153,9 @@ void ProjNode::check_con() const {
   if (n->is_Mach())    return;  // mach. projs. are not type-safe
   if (n->is_Start())   return;  // alas, starts can have mach. projs. also
   if (_con == SCMemProjNode::SCMEMPROJCON ) return;
+#if INCLUDE_SHENANDOAHGC
   if (_con == ShenandoahWBMemProjNode::SWBMEMPROJCON ) return;
+#endif
   const Type* t = n->bottom_type();
   if (t == Type::TOP)  return;  // multi is dead
   assert(_con < t->is_tuple()->cnt(), "ProjNode::_con must be in range");

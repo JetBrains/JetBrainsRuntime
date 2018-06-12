@@ -37,8 +37,11 @@
 #include "opto/loopnode.hpp"
 #include "opto/mulnode.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/superword.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //=============================================================================
 //------------------------------is_loop_iv-------------------------------------
@@ -2852,6 +2855,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   }
 #endif
 
+#if INCLUDE_SHENANDOAHGC
   if (mode == LoopOptsShenandoahExpand) {
     assert(UseShenandoahGC, "only for shenandoah");
     ShenandoahWriteBarrierNode::pin_and_expand(this);
@@ -2868,6 +2872,7 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     }
     return;
   }
+#endif
 
   if (skip_loop_opts) {
     // restore major progress flag
@@ -4175,8 +4180,10 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
     case Op_StrIndexOf:
     case Op_StrIndexOfChar:
     case Op_AryEq:
+#if INCLUDE_SHENANDOAHGC
     case Op_ShenandoahReadBarrier:
     case Op_ShenandoahWriteBarrier:
+#endif
     case Op_ShenandoahWBMemProj:
     case Op_HasNegatives:
       pinned = false;

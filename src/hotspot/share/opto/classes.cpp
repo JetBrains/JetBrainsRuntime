@@ -45,14 +45,18 @@
 #include "opto/node.hpp"
 #include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // ----------------------------------------------------------------------------
 // Build a table of virtual functions to map from Nodes to dense integer
 // opcode names.
 int Node::Opcode() const { return Op_Node; }
 #define macro(x) int x##Node::Opcode() const { return Op_##x; }
+#define optionalmacro(x)
 #include "classes.hpp"
 #undef macro

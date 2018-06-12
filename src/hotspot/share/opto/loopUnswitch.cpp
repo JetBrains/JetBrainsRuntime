@@ -29,7 +29,10 @@
 #include "opto/loopnode.hpp"
 #include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //================= Loop Unswitching =====================
 //
@@ -100,7 +103,9 @@ IfNode* PhaseIdealLoop::find_unswitching_candidate(const IdealLoopTree *loop, bo
             // then found reason to unswitch.
             if (loop->is_invariant(bol) && !loop->is_loop_exit(iff)) {
               unswitch_iff = iff;
-            } else if (shenandoah_opts &&
+            }
+#if INCLUDE_SHENANDOAHGC
+            else if (shenandoah_opts &&
                        (ShenandoahWriteBarrierNode::is_heap_stable_test(iff) ||
                         ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(iff)) &&
                        (loop_has_sfpts == -1 || loop_has_sfpts == 0)) {
@@ -122,6 +127,7 @@ IfNode* PhaseIdealLoop::find_unswitching_candidate(const IdealLoopTree *loop, bo
                 unswitch_iff = iff;
               }
             }
+#endif
           }
         }
       }
@@ -141,11 +147,15 @@ void PhaseIdealLoop::do_unswitching(IdealLoopTree *loop, Node_List &old_new, boo
   LoopNode *head = loop->_head->as_Loop();
 
   IfNode* unswitch_iff = find_unswitching_candidate((const IdealLoopTree *)loop, shenandoah_opts);
+
+#if INCLUDE_SHENANDOAHGC
   if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(unswitch_iff)) {
     ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(unswitch_iff, this);
   } else if (ShenandoahWriteBarrierNode::is_heap_stable_test(unswitch_iff)) {
     ShenandoahWriteBarrierNode::move_heap_stable_test_out_of_loop(unswitch_iff, this);
   }
+#endif
+
   assert(unswitch_iff != NULL, "should be at least one");
 
 #ifndef PRODUCT

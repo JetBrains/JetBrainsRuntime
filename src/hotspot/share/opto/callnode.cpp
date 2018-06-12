@@ -40,8 +40,11 @@
 #include "opto/regmask.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -1084,6 +1087,7 @@ void CallLeafNode::dump_spec(outputStream *st) const {
 #endif
 
 Node *CallLeafNode::Ideal(PhaseGVN *phase, bool can_reshape) {
+#if INCLUDE_SHENANDOAHGC
   if (is_shenandoah_wb_pre_call()) {
     uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
     if (req() > cnt) {
@@ -1097,10 +1101,12 @@ Node *CallLeafNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       }
     }
   }
+#endif
 
   return CallNode::Ideal(phase, can_reshape);
 }
 
+#if INCLUDE_SHENANDOAHGC
 bool CallLeafNode::has_only_shenandoah_wb_pre_uses(Node* n) {
   for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
     Node* u = n->fast_out(i);
@@ -1110,6 +1116,7 @@ bool CallLeafNode::has_only_shenandoah_wb_pre_uses(Node* n) {
   }
   return n->outcnt() > 0;
 }
+#endif
 
 //=============================================================================
 

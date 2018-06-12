@@ -28,7 +28,6 @@
 #include "gc/g1/g1ThreadLocalData.hpp"
 #include "gc/g1/satbMarkQueue.hpp"
 #include "gc/shared/collectedHeap.hpp"
-#include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "memory/allocation.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -36,6 +35,10 @@
 #include "runtime/thread.hpp"
 #include "runtime/threadSMR.hpp"
 #include "runtime/vmThread.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#endif
 
 SATBMarkQueue::SATBMarkQueue(SATBMarkQueueSet* qset, bool permanent) :
   // SATB queues are only active during marking cycles. We create
@@ -95,8 +98,10 @@ inline bool retain_entry(const void* entry, HeapType* heap) {
 void SATBMarkQueue::filter() {
   if (UseG1GC) {
     filter_impl<G1CollectedHeap>();
+#if INCLUDE_SHENANDOAHGC
   } else if (UseShenandoahGC) {
     filter_impl<ShenandoahHeap>();
+#endif
   } else {
     ShouldNotReachHere();
   }

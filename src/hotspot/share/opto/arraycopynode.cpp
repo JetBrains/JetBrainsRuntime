@@ -30,8 +30,10 @@
 #include "opto/castnode.hpp"
 #include "opto/graphKit.hpp"
 #include "runtime/sharedRuntime.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 ArrayCopyNode::ArrayCopyNode(Compile* C, bool alloc_tightly_coupled, bool has_negative_length_guard)
   : CallNode(arraycopy_type(), NULL, TypeRawPtr::BOTTOM),
@@ -150,6 +152,7 @@ int ArrayCopyNode::get_count(PhaseGVN *phase) const {
   return get_length_if_constant(phase);
 }
 
+#if INCLUDE_SHENANDOAHGC
 Node* ArrayCopyNode::shenandoah_add_storeval_barrier(PhaseGVN *phase, bool can_reshape, Node* v, Node*& ctl) {
   RegionNode* region = new RegionNode(3);
   const Type* v_t = phase->type(v);
@@ -178,6 +181,7 @@ Node* ArrayCopyNode::shenandoah_add_storeval_barrier(PhaseGVN *phase, bool can_r
   ctl = phase->transform(region);
   return phase->transform(phi);
 }
+#endif
 
 Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int count) {
   if (!is_clonebasic()) {
@@ -213,9 +217,11 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
   ciInstanceKlass* ik = inst_src->klass()->as_instance_klass();
   assert(ik->nof_nonstatic_fields() <= ArrayCopyLoadStoreMaxElem, "too many fields");
 
+#if INCLUDE_SHENANDOAHGC
   if (UseShenandoahGC && UseShenandoahMatrix && ik->has_object_fields()) {
     return NodeSentinel;
   }
+#endif
 
   for (int i = 0; i < count; i++) {
     ciField* field = ik->nonstatic_field_at(i);
@@ -240,9 +246,11 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
 
     Node* v = LoadNode::make(*phase, ctl, mem->memory_at(fieldidx), next_src, adr_type, type, bt, MemNode::unordered);
     v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && ShenandoahWriteBarrier && bt == T_OBJECT) {
       v = shenandoah_add_storeval_barrier(phase, can_reshape, v, ctl);
     }
+#endif
     Node* s = StoreNode::make(*phase, ctl, mem->memory_at(fieldidx), next_dest, adr_type, v, bt, MemNode::unordered);
     s = phase->transform(s);
     mem->set_memory_at(fieldidx, s);
@@ -345,9 +353,11 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
     BasicType elem = ary_src->klass()->as_array_klass()->element_type()->basic_type();
     if (elem == T_ARRAY)  elem = T_OBJECT;
 
+#if INCLUDE_SHENANDOAHGC
     if (elem == T_OBJECT && (UseShenandoahGC && UseShenandoahMatrix)) {
       return false;
     }
+#endif
 
     int diff = arrayOopDesc::base_offset_in_bytes(elem) - phase->type(src->in(AddPNode::Offset))->is_intptr_t()->get_con();
     assert(diff >= 0, "clone should not start after 1st array element");
@@ -412,9 +422,11 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
     if (count > 0) {
       Node* v = LoadNode::make(*phase, forward_ctl, start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
       if (UseShenandoahGC && ShenandoahWriteBarrier && copy_type == T_OBJECT) {
         v = shenandoah_add_storeval_barrier(phase, can_reshape, v, forward_ctl);
       }
+#endif
       mem = StoreNode::make(*phase, forward_ctl, mem, adr_dest, atp_dest, v, copy_type, MemNode::unordered);
       mem = phase->transform(mem);
       for (int i = 1; i < count; i++) {
@@ -423,9 +435,11 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
         v = LoadNode::make(*phase, forward_ctl, mem, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
+#if INCLUDE_SHENANDOAHGC
         if (UseShenandoahGC && ShenandoahWriteBarrier && copy_type == T_OBJECT) {
           v = shenandoah_add_storeval_barrier(phase, can_reshape, v, forward_ctl);
         }
+#endif
         mem = StoreNode::make(*phase, forward_ctl,mem,next_dest,atp_dest,v, copy_type, MemNode::unordered);
         mem = phase->transform(mem);
       }

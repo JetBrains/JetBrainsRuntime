@@ -51,14 +51,16 @@
 #include "opto/parse.hpp"
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "prims/nativeLookup.hpp"
 #include "prims/unsafe.hpp"
 #include "runtime/objectMonitor.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "utilities/macros.hpp"
-
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 class LibraryIntrinsic : public InlineCallGenerator {
   // Extend the set of intrinsics known to the runtime:
@@ -2217,6 +2219,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
         base = null_check_oop(base, &null_ctl, true, true, true);
         assert(null_ctl->is_top(), "no null control here");
         Node* new_base = base;
+#if INCLUDE_SHENANDOAHGC
         if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
           if (is_store) {
@@ -2225,6 +2228,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
             new_base = access_resolve_for_read(base);
           }
         }
+#endif
         return basic_plus_adr(new_base, offset);
       } else if (_gvn.type(base)->speculative_always_null() &&
                  !too_many_traps(Deoptimization::Reason_speculate_null_assert)) {
@@ -2239,6 +2243,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
     // We don't know if it's an on heap or off heap access. Fall back
     // to raw memory access.
     Node* new_base = base;
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
       if (is_store) {
@@ -2247,6 +2252,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
         new_base = access_resolve_for_read(base);
       }
     }
+#endif
     Node* raw = _gvn.transform(new CheckCastPPNode(control(), new_base, TypeRawPtr::BOTTOM));
     return basic_plus_adr(top(), raw, offset);
   } else {
@@ -2256,6 +2262,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
       base = must_be_not_null(base, true);
     }
     Node* new_base = base;
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC &&
             ((ShenandoahWriteBarrier && is_store) || (ShenandoahReadBarrier && !is_store))) {
       if (is_store) {
@@ -2264,6 +2271,7 @@ inline Node* LibraryCallKit::make_unsafe_address(Node*& base, Node* offset, bool
         new_base = access_resolve_for_read(base);
       }
     }
+#endif
     return basic_plus_adr(new_base, offset);
   }
 }
@@ -2440,6 +2448,7 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
 
   const TypePtr *adr_type = _gvn.type(adr)->isa_ptr();
 
+#if INCLUDE_SHENANDOAHGC
   if (UseShenandoahGC && adr->is_AddP() &&
       adr->in(AddPNode::Base) == adr->in(AddPNode::Address)) {
     Node* base = ShenandoahBarrierNode::skip_through_barrier(adr->in(AddPNode::Base));
@@ -2451,6 +2460,7 @@ bool LibraryCallKit::inline_unsafe_access(bool is_store, const BasicType type, c
       adr_type = base_t->add_offset(adr_type->is_instptr()->offset());
     }
   }
+#endif
 
   // Try to categorize the address.
   Compile::AliasType* alias_type = C->alias_type(adr_type);
@@ -4906,7 +4916,9 @@ LibraryCallKit::tightly_coupled_allocation(Node* ptr,
   if (stopped())             return NULL;  // no fast path
   if (C->AliasLevel() == 0)  return NULL;  // no MergeMems around
 
+#if INCLUDE_SHENANDOAHGC
   ptr = ShenandoahBarrierNode::skip_through_barrier(ptr);
+#endif
 
   AllocateArrayNode* alloc = AllocateArrayNode::Ideal_array_allocation(ptr, &_gvn);
   if (alloc == NULL)  return NULL;
@@ -5772,6 +5784,7 @@ Node * LibraryCallKit::load_field_from_object(Node * fromObj, const char * field
     fromObj = makecon(tip);
   }
 
+#if INCLUDE_SHENANDOAHGC
   if ((ShenandoahOptimizeStaticFinals   && field->is_static()  && field->is_final()) ||
       (ShenandoahOptimizeInstanceFinals && !field->is_static() && field->is_final()) ||
       (ShenandoahOptimizeStableFinals   && field->is_stable())) {
@@ -5779,6 +5792,7 @@ Node * LibraryCallKit::load_field_from_object(Node * fromObj, const char * field
   } else {
     fromObj = access_resolve_for_read(fromObj);
   }
+#endif
 
   // Next code  copied from Parse::do_get_xxx():
 
@@ -6602,7 +6616,9 @@ bool LibraryCallKit::inline_profileBoolean() {
   Node* counts = argument(1);
   const TypeAryPtr* ary = NULL;
   ciArray* aobj = NULL;
+#if INCLUDE_SHENANDOAHGC
   assert(!(ShenandoahBarrierNode::skip_through_barrier(counts)->is_Con() && !counts->is_Con()), "barrier prevents optimization");
+#endif
   if (counts->is_Con()
       && (ary = counts->bottom_type()->isa_aryptr()) != NULL
       && (aobj = ary->const_oop()->as_array()) != NULL

@@ -24,7 +24,6 @@
 
 #include "precompiled.hpp"
 #include "ci/ciTypeFlow.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "opto/addnode.hpp"
@@ -35,8 +34,12 @@
 #include "opto/phaseX.hpp"
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -1454,8 +1457,10 @@ Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     } else {
       dist = 4;               // Do not bother for random pointer tests
     }
+#if INCLUDE_SHENANDOAHGC
   } else if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this)) {
     dist = 16;
+#endif
   } else {
     dist = 4;                 // Limit for random junky scans
   }
@@ -1545,10 +1550,12 @@ Node* IfNode::search_identical(int dist) {
   Node* dom = in(0);
   Node* prev_dom = this;
   int op = Opcode();
+#if INCLUDE_SHENANDOAHGC
   bool evac_in_progress = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this);
+#endif
   // Search up the dominator tree for an If with an identical test
   while (dom->Opcode() != op    ||  // Not same opcode?
-         (dom->in(1) != in(1) && (!evac_in_progress || !ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom->as_If()))) ||  // Not same input 1?
+         (dom->in(1) != in(1) SHENANDOAHGC_ONLY(&& (!evac_in_progress || !ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom->as_If())))) ||  // Not same input 1?
          prev_dom->in(0) != dom) {  // One path of test does not dominate?
     if (dist < 0) return NULL;
 
@@ -1708,7 +1715,7 @@ bool IfNode::is_g1_marking_if(PhaseTransform *phase) const {
   return false;
 }
 
-
+#if INCLUDE_SHENANDOAHGC
 bool IfNode::is_shenandoah_marking_if(PhaseTransform *phase) const {
   if (!UseShenandoahGC) {
     return false;
@@ -1731,6 +1738,7 @@ bool IfNode::is_shenandoah_marking_if(PhaseTransform *phase) const {
 
   return false;
 }
+#endif
 
 
 Node* RangeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {

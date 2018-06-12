@@ -41,9 +41,12 @@
 #include "opto/parse.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //----------------------------GraphKit-----------------------------------------
 // Main utility constructor.
@@ -3726,8 +3729,10 @@ AllocateNode* AllocateNode::Ideal_allocation(Node* ptr, PhaseTransform* phase) {
     return NULL;
   }
 
+#if INCLUDE_SHENANDOAHGC
   // Attempt to see through Shenandoah barriers.
   ptr = ShenandoahBarrierNode::skip_through_barrier(ptr);
+#endif
 
   if (ptr->is_CheckCastPP()) { // strip only one raw-to-oop cast
     ptr = ptr->in(1);
@@ -3857,9 +3862,12 @@ Node* GraphKit::load_String_value(Node* ctrl, Node* str) {
   const TypeAryPtr* value_type = TypeAryPtr::make(TypePtr::NotNull,
                                                   TypeAry::make(TypeInt::BYTE, TypeInt::POS),
                                                   ciTypeArrayKlass::make(T_BYTE), true, 0);
+
+#if INCLUDE_SHENANDOAHGC
   if (!ShenandoahOptimizeInstanceFinals) {
     str = access_resolve_for_read(str);
   }
+#endif
 
   Node* p = basic_plus_adr(str, str, value_offset);
   Node* load = access_load_at(str, p, value_field_type, value_type, T_OBJECT,
@@ -3881,9 +3889,11 @@ Node* GraphKit::load_String_coder(Node* ctrl, Node* str) {
   const TypePtr* coder_field_type = string_type->add_offset(coder_offset);
   int coder_field_idx = C->get_alias_index(coder_field_type);
 
+#if INCLUDE_SHENANDOAHGC
   if (!ShenandoahOptimizeInstanceFinals) {
     str = access_resolve_for_read(str);
   }
+#endif
 
   return make_load(ctrl, basic_plus_adr(str, str, coder_offset),
                    TypeInt::BYTE, T_BYTE, coder_field_idx, MemNode::unordered);

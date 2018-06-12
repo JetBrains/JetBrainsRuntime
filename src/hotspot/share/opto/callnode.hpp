@@ -799,10 +799,12 @@ public:
   }
   virtual int   Opcode() const;
   virtual bool        guaranteed_safepoint()  { return false; }
-  virtual bool is_shenandoah_wb_pre_call() const { return entry_point() == CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry); }
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
 
+#if INCLUDE_SHENANDOAHGC
+  virtual bool is_shenandoah_wb_pre_call() const { return entry_point() == CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry); }
   static bool has_only_shenandoah_wb_pre_uses(Node* n);
+#endif
 
 #ifndef PRODUCT
   virtual void  dump_spec(outputStream *st) const;

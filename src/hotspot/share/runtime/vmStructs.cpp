@@ -132,9 +132,11 @@
 #include "opto/phaseX.hpp"
 #include "opto/regalloc.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 #endif // COMPILER2
 
 // Note: the cross-product of (c1, c2, product, nonproduct, ...),
@@ -1868,10 +1870,6 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_c2_type(OverflowAddLNode, OverflowLNode)                        \
   declare_c2_type(OverflowSubLNode, OverflowLNode)                        \
   declare_c2_type(OverflowMulLNode, OverflowLNode)                        \
-  declare_c2_type(ShenandoahBarrierNode, TypeNode)                        \
-  declare_c2_type(ShenandoahReadBarrierNode, ShenandoahBarrierNode)       \
-  declare_c2_type(ShenandoahWriteBarrierNode, ShenandoahBarrierNode)      \
-  declare_c2_type(ShenandoahWBMemProjNode, ProjNode)                      \
   declare_c2_type(FmaDNode, Node)                                         \
   declare_c2_type(FmaFNode, Node)                                         \
                                                                           \

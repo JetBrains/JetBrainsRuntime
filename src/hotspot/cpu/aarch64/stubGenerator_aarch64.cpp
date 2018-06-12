@@ -26,10 +26,6 @@
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
 #include "asm/macroAssembler.inline.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "interpreter/interpreter.hpp"
@@ -46,8 +42,15 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/align.hpp"
+#include "utilities/macros.hpp"
 #ifdef COMPILER2
 #include "opto/runtime.hpp"
+#endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #endif
 
 #ifdef BUILTIN_SIM
@@ -550,6 +553,7 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
+#if INCLUDE_SHENANDOAHGC
   // Shenandoah write barrier.
   //
   // Input:
@@ -601,6 +605,7 @@ class StubGenerator: public StubCodeGenerator {
 
     return start;
   }
+#endif
 
   // Non-destructive plausibility checks for oops
   //
@@ -5160,10 +5165,12 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_montgomerySquare = g.generate_multiply();
     }
 
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier)) {
       StubRoutines::aarch64::_shenandoah_wb = generate_shenandoah_wb(false, true);
       StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
     }
+#endif
 
 #ifndef BUILTIN_SIM
     // generate GHASH intrinsics code

@@ -34,9 +34,12 @@
 #include "opto/mulnode.hpp"
 #include "opto/opcodes.hpp"
 #include "opto/phaseX.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -108,6 +111,7 @@ const Type* SubNode::Value(PhaseGVN* phase) const {
   }
   Node* in1 = in(1);
   Node* in2 = in(2);
+#if INCLUDE_SHENANDOAHGC
   if (Opcode() == Op_CmpP) {
     Node* n = ShenandoahBarrierNode::skip_through_barrier(in1);
     if (!n->is_top()) {
@@ -118,6 +122,7 @@ const Type* SubNode::Value(PhaseGVN* phase) const {
       in2 = n;
     }
   }
+#endif
   const Type* t1 = phase->type(in1);
   const Type* t2 = phase->type(in2);
   return sub(t1,t2);            // Local flavor of type subtraction
@@ -919,6 +924,7 @@ static inline Node* isa_java_mirror_load(PhaseGVN* phase, Node* n) {
       return isa_java_mirror_load_helper(phase, n);
     }
   } else {
+#if INCLUDE_SHENANDOAHGC
     if (n->is_ShenandoahBarrier() &&
                n->in(ShenandoahBarrierNode::ValueIn)->Opcode() == Op_LoadP) {
       // When Shenandoah is enabled acmp is compiled as:
@@ -935,6 +941,7 @@ static inline Node* isa_java_mirror_load(PhaseGVN* phase, Node* n) {
       // Recognize that pattern here for the second comparison
       return isa_java_mirror_load_helper(phase, n->in(ShenandoahBarrierNode::ValueIn));
     }
+#endif
   }
 
   return NULL;
@@ -964,6 +971,7 @@ static inline Node* isa_const_java_mirror(PhaseGVN* phase, Node* n) {
   return phase->makecon(TypeKlassPtr::make(mirror_type->as_klass()));
 }
 
+#if INCLUDE_SHENANDOAHGC
 bool CmpPNode::shenandoah_optimize_java_mirror_cmp(PhaseGVN *phase, bool can_reshape) {
   assert(UseShenandoahGC, "shenandoah only");
   if (in(1)->is_ShenandoahBarrier()) {
@@ -1014,6 +1022,7 @@ bool CmpPNode::shenandoah_optimize_java_mirror_cmp(PhaseGVN *phase, bool can_res
   }
   return false;
 }
+#endif
 
 //------------------------------Ideal------------------------------------------
 // Normalize comparisons between Java mirror loads to compare the klass instead.
@@ -1023,6 +1032,7 @@ bool CmpPNode::shenandoah_optimize_java_mirror_cmp(PhaseGVN *phase, bool can_res
 // checking to see an unknown klass subtypes a known klass with no subtypes;
 // this only happens on an exact match.  We can shorten this test by 1 load.
 Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+#if INCLUDE_SHENANDOAHGC
   if (UseShenandoahGC) {
     Node* in1 = in(1);
     Node* in2 = in(2);
@@ -1051,6 +1061,7 @@ Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
       return this;
     }
   }
+#endif
 
   // Normalize comparisons between Java mirrors into comparisons of the low-
   // level klass, where a dependent load could be shortened.
@@ -1070,7 +1081,7 @@ Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
     Node* conk2 = isa_const_java_mirror(phase, in(2));
 
     if (k1 && (k2 || conk2)) {
-      if (!UseShenandoahGC || shenandoah_optimize_java_mirror_cmp(phase, can_reshape)) {
+      if (!UseShenandoahGC SHENANDOAHGC_ONLY(|| shenandoah_optimize_java_mirror_cmp(phase, can_reshape))) {
         Node* lhs = k1;
         Node* rhs = (k2 != NULL) ? k2 : conk2;
         this->set_req(1, lhs);

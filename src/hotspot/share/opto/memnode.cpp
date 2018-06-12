@@ -25,7 +25,6 @@
 #include "precompiled.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "compiler/compileLog.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/objArrayKlass.hpp"
@@ -43,10 +42,14 @@
 #include "opto/narrowptrnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "utilities/align.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/vmError.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -914,8 +917,10 @@ Node* LoadNode::can_see_arraycopy_value(Node* st, PhaseGVN* phase) const {
       assert(ld_alloc != NULL, "need an alloc");
       assert(addp->is_AddP(), "address must be addp");
       assert(ac->in(ArrayCopyNode::Dest)->is_AddP(), "dest must be an address");
+#if INCLUDE_SHENANDOAHGC
       assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Base)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Base)), "strange pattern");
       assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Address)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Address)), "strange pattern");
+#endif
       addp->set_req(AddPNode::Base, src->in(AddPNode::Base));
       addp->set_req(AddPNode::Address, src->in(AddPNode::Address));
     } else {
@@ -1071,7 +1076,9 @@ Node* MemNode::can_see_stored_value(Node* st, PhaseTransform* phase) const {
         (tp != NULL) && tp->is_ptr_to_boxed_value()) {
       intptr_t ignore = 0;
       Node* base = AddPNode::Ideal_base_and_offset(ld_adr, phase, ignore);
+#if INCLUDE_SHENANDOAHGC
       base = ShenandoahBarrierNode::skip_through_barrier(base);
+#endif
       if (base != NULL && base->is_Proj() &&
           base->as_Proj()->_con == TypeFunc::Parms &&
           base->in(0)->is_CallStaticJava() &&
@@ -1121,6 +1128,8 @@ Node* LoadNode::Identity(PhaseGVN* phase) {
       if (!phase->type(value)->higher_equal(phase->type(this)))
         return this;
     }
+
+#if INCLUDE_SHENANDOAHGC
     PhaseIterGVN* igvn = phase->is_IterGVN();
     if (UseShenandoahGC &&
         igvn != NULL &&
@@ -1154,6 +1163,7 @@ Node* LoadNode::Identity(PhaseGVN* phase) {
         return value_no_barrier;
       }
     }
+#endif
 
     return value;
   }
@@ -1255,7 +1265,10 @@ Node* LoadNode::eliminate_autobox(PhaseGVN* phase) {
       return NULL; // Complex address
     }
     AddPNode* address = base->in(Address)->as_AddP();
-    Node* cache_base = ShenandoahBarrierNode::skip_through_barrier(address->in(AddPNode::Base));
+    Node* cache_base = address->in(AddPNode::Base);
+#if INCLUDE_SHENANDOAHGC
+    cache_base = ShenandoahBarrierNode::skip_through_barrier(cache_base);
+#endif
     if ((cache_base != NULL) && cache_base->is_DecodeN()) {
       // Get ConP node which is static 'cache' field.
       cache_base = cache_base->in(1);
@@ -1716,18 +1729,22 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     // as to alignment, which will therefore produce the smallest
     // possible base offset.
     const int min_base_off = arrayOopDesc::base_offset_in_bytes(T_BYTE);
-    const bool off_beyond_header = (off != BrooksPointer::byte_offset() || !UseShenandoahGC) && ((uint)off >= (uint)min_base_off);
+    const bool off_beyond_header = SHENANDOAHGC_ONLY((off != BrooksPointer::byte_offset() || !UseShenandoahGC) &&)
+                                    ((uint)off >= (uint)min_base_off);
 
     // Try to constant-fold a stable array element.
     if (FoldStableValues && !is_mismatched_access() && ary->is_stable()) {
       // Make sure the reference is not into the header and the offset is constant
       ciObject* aobj = NULL;
+#if INCLUDE_SHENANDOAHGC
       if (UseShenandoahGC && adr->is_AddP() && !adr->in(AddPNode::Base)->is_top()) {
         Node* base = ShenandoahBarrierNode::skip_through_barrier(adr->in(AddPNode::Base));
         if (!base->is_top()) {
           aobj = phase->type(base)->is_aryptr()->const_oop();
         }
-      } else {
+      } else
+#endif
+      {
         aobj = ary->const_oop();
       }
       if (aobj != NULL && off_beyond_header && adr->is_AddP() && off != Type::OffsetBot) {
@@ -1800,6 +1817,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     // Optimize loads from constant fields.
     const TypeInstPtr* tinst = tp->is_instptr();
     ciObject* const_oop = NULL;
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && adr->is_AddP() && !adr->in(AddPNode::Base)->is_top()) {
       Node* base = ShenandoahBarrierNode::skip_through_barrier(adr->in(AddPNode::Base));
       if (!base->is_top()) {
@@ -1808,7 +1826,9 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
           const_oop = base_t->is_instptr()->const_oop();
         }
       }
-    } else {
+    } else
+#endif
+    {
       const_oop = tinst->const_oop();
     }
     if (!is_mismatched_access() && off != Type::OffsetBot && const_oop != NULL && const_oop->is_instance()) {

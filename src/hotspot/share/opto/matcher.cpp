@@ -36,12 +36,15 @@
 #include "opto/regmask.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/type.hpp"
 #include "opto/vectornode.hpp"
 #include "runtime/os.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "utilities/align.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 OptoReg::Name OptoReg::c_frame_pointer;
 
@@ -2154,6 +2157,7 @@ void Matcher::find_shared( Node *n ) {
       case Op_SafePoint:
         mem_op = true;
         break;
+#if INCLUDE_SHENANDOAHGC
       case Op_ShenandoahReadBarrier:
         if (n->in(ShenandoahBarrierNode::ValueIn)->is_DecodeNarrowPtr()) {
           set_shared(n->in(ShenandoahBarrierNode::ValueIn)->in(1));
@@ -2162,6 +2166,7 @@ void Matcher::find_shared( Node *n ) {
         mem_op = true;
         set_shared(n);
         break;
+#endif
       default:
         if( n->is_Store() ) {
           // Do match stores, despite no ideal reg

@@ -31,7 +31,10 @@
 #include "opto/macro.hpp"
 #include "opto/runtime.hpp"
 #include "utilities/align.hpp"
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 void PhaseMacroExpand::insert_mem_bar(Node** ctrl, Node** mem, int opcode, Node* precedent) {
   MemBarNode* mb = MemBarNode::make(C, opcode, Compile::AliasIdxBot, precedent);
@@ -1083,6 +1086,7 @@ void PhaseMacroExpand::generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** 
   finish_arraycopy_call(call, ctrl, mem, adr_type);
 }
 
+#if INCLUDE_SHENANDOAHGC
 Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
   assert (UseShenandoahGC && ShenandoahCloneBarrier, "Should be enabled");
   const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
@@ -1095,6 +1099,7 @@ Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
   transform_later(call);
   return call;
 }
+#endif
 
 void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   Node* ctrl = ac->in(TypeFunc::Control);
@@ -1120,6 +1125,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     Node* call = make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
     transform_later(call);
 
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && ShenandoahCloneBarrier) {
       const TypeOopPtr* src_type = _igvn.type(src)->is_oopptr();
       if (src_type->isa_instptr() != NULL) {
@@ -1144,6 +1150,7 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
         call = shenandoah_call_clone_barrier(call, dest);
       }
     }
+#endif
 
     _igvn.replace_node(ac, call);
     return;

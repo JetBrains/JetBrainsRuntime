@@ -33,8 +33,6 @@
 #include "compiler/compileLog.hpp"
 #include "compiler/disassembler.hpp"
 #include "compiler/oopMap.hpp"
-#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "memory/resourceArea.hpp"
@@ -67,7 +65,6 @@
 #include "opto/phaseX.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/stringopts.hpp"
 #include "opto/type.hpp"
 #include "opto/vectornode.hpp"
@@ -78,9 +75,15 @@
 #include "runtime/timer.hpp"
 #include "utilities/align.hpp"
 #include "utilities/copy.hpp"
+#include "utilities/macros.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif // INCLUDE_G1GC
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
+#endif
 
 
 // -------------------- Compile::mach_constant_base_node -----------------------
@@ -390,11 +393,13 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
     if (n->outcnt() == 1 && n->has_special_unique_user()) {
       record_for_igvn(n->unique_out());
     }
+#if INCLUDE_SHENANDOAHGC
     if (n->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(n)) {
       for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
         record_for_igvn(n->fast_out(i));
       }
     }
+#endif
   }
   // Remove useless macro and predicate opaq nodes
   for (int i = C->macro_count()-1; i >= 0; i--) {
@@ -1528,7 +1533,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
       if (!is_known_inst) { // Do it only for non-instance types
         tj = to = TypeInstPtr::make(TypePtr::BotPTR, env()->Object_klass(), false, NULL, offset);
       }
-    } else if ((offset != BrooksPointer::byte_offset() || !UseShenandoahGC) && (offset < 0 || offset >= k->size_helper() * wordSize)) {
+    } else if (SHENANDOAHGC_ONLY((offset != BrooksPointer::byte_offset() || !UseShenandoahGC) &&) (offset < 0 || offset >= k->size_helper() * wordSize)) {
       // Static fields are in the space above the normal instance
       // fields in the java.lang.Class instance.
       if (to->klass() != ciEnv::current()->Class_klass()) {
@@ -2389,10 +2394,12 @@ void Compile::Optimize() {
 
   print_method(PHASE_BEFORE_BARRIER_EXPAND, 2);
 
+#if INCLUDE_SHENANDOAHGC
   if (!ShenandoahWriteBarrierNode::expand(this, igvn, loop_opts_cnt)) {
     assert(failing(), "must bail out w/ explicit message");
     return;
   }
+#endif
 
   if (opaque4_count() > 0) {
     C->remove_opaque4_nodes(igvn);
@@ -2823,6 +2830,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_CallLeafNoFP: {
     assert (n->is_Call(), "");
     CallNode *call = n->as_Call();
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && call->is_shenandoah_wb_pre_call()) {
       uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
       if (call->req() > cnt) {
@@ -2832,6 +2840,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
         call->del_req(cnt);
       }
     }
+#endif
     // Count call sites where the FP mode bit would have to be flipped.
     // Do not count uncommon runtime calls:
     // uncommon_trap, _complete_monitor_locking, _complete_monitor_unlocking,
@@ -3366,11 +3375,13 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
       n->set_req(MemBarNode::Precedent, top());
     }
     break;
+#if INCLUDE_SHENANDOAHGC
   case Op_ShenandoahReadBarrier:
     break;
   case Op_ShenandoahWriteBarrier:
     assert(!ShenandoahWriteBarrierToIR, "should have been expanded already");
     break;
+#endif
   case Op_RangeCheck: {
     RangeCheckNode* rc = n->as_RangeCheck();
     Node* iff = new IfNode(rc->in(0), rc->in(1), rc->_prob, rc->_fcnt);
@@ -3807,8 +3818,15 @@ void Compile::verify_barriers() {
 #if INCLUDE_G1GC || INCLUDE_SHENANDOAHGC
   if (UseG1GC || UseShenandoahGC) {
     // Verify G1 pre-barriers
+
+#if INCLUDE_G1GC && INCLUDE_SHENANDOAHGC
     const int marking_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_active_offset()
                                                 : ShenandoahThreadLocalData::satb_mark_queue_active_offset());
+#elif INCLUDE_G1GC
+    const int marking_offset = in_bytes(G1ThreadLocalData::satb_mark_queue_active_offset());
+#else
+    const int marking_offset = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_active_offset());
+#endif
 
     ResourceArea *area = Thread::current()->resource_area();
     Unique_Node_List visited(area);
@@ -4699,6 +4717,7 @@ void CloneMap::dump(node_idx_t key) const {
   }
 }
 
+#if INCLUDE_SHENANDOAHGC
 void Compile::shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn) {
   assert(UseShenandoahGC && p2x->Opcode() == Op_CastP2X, "");
   ResourceMark rm;
@@ -4741,3 +4760,4 @@ void Compile::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) {
   igvn->rehash_node_delayed(call);
   call->del_req(call->req()-1);
 }
+#endif

@@ -26,8 +26,11 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "opto/machnode.hpp"
 #include "opto/regalloc.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "utilities/vmError.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //=============================================================================
 // Return the value requested
@@ -330,7 +333,10 @@ const class TypePtr *MachNode::adr_type() const {
   Node *base = get_base_and_disp(offset, adr_type);
 
   if( adr_type != TYPE_PTR_SENTINAL ) {
-    return ShenandoahBarrierNode::fix_addp_type(adr_type, base);      // get_base_and_disp has the answer
+#if INCLUDE_SHENANDOAHGC
+    adr_type = ShenandoahBarrierNode::fix_addp_type(adr_type, base);
+#endif
+    return adr_type; // get_base_and_disp has the answer
   }
 
   // Direct addressing modes have no base node, simply an indirect
@@ -382,7 +388,11 @@ const class TypePtr *MachNode::adr_type() const {
   }
   assert(tp->base() != Type::AnyPtr, "not a bare pointer");
 
-  return ShenandoahBarrierNode::fix_addp_type(tp->add_offset(offset), base);
+  const TypePtr* r = tp->add_offset(offset);
+#if INCLUDE_SHENANDOAHGC
+  r = ShenandoahBarrierNode::fix_addp_type(r, base);
+#endif
+  return r;
 }
 
 

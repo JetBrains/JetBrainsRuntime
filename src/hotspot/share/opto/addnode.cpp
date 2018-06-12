@@ -32,6 +32,7 @@
 #include "opto/mulnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
@@ -658,7 +659,12 @@ const Type *AddPNode::bottom_type() const {
   if (tx->is_con()) {   // Left input is an add of a constant?
     txoffset = tx->get_con();
   }
-  return ShenandoahBarrierNode::fix_addp_type(tp->add_offset(txoffset), in(Base));
+
+  const TypePtr* r = tp->add_offset(txoffset);
+#if INCLUDE_SHENANDOAHGC
+  r = ShenandoahBarrierNode::fix_addp_type(r, in(Base));
+#endif
+  return r;
 }
 
 //------------------------------Value------------------------------------------
@@ -678,7 +684,12 @@ const Type* AddPNode::Value(PhaseGVN* phase) const {
   if (p2->is_con()) {   // Left input is an add of a constant?
     p2offset = p2->get_con();
   }
-  return ShenandoahBarrierNode::fix_addp_type(p1->add_offset(p2offset), in(Base));
+
+  const TypePtr* r = p1->add_offset(p2offset);
+#if INCLUDE_SHENANDOAHGC
+  r = ShenandoahBarrierNode::fix_addp_type(r, in(Base));
+#endif
+  return r;
 }
 
 //------------------------Ideal_base_and_offset--------------------------------

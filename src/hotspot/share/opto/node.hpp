@@ -140,6 +140,8 @@ class RootNode;
 class SafePointNode;
 class SafePointScalarObjectNode;
 class ShenandoahBarrierNode;
+class ShenandoahWriteBarrierNode;
+class ShenandoahReadBarrierNode;
 class StartNode;
 class State;
 class StoreNode;

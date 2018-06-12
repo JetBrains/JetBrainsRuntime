@@ -39,8 +39,11 @@
 #include "opto/movenode.hpp"
 #include "opto/opaquenode.hpp"
 #include "opto/rootnode.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //=============================================================================
 //------------------------------split_thru_phi---------------------------------
@@ -220,6 +223,7 @@ Node *PhaseIdealLoop::split_thru_phi( Node *n, Node *region, int policy ) {
  * phi and generate a new memory phi for it.
  */
 void PhaseIdealLoop::split_mem_thru_phi(Node* n, Node* r, Node* phi) {
+#if INCLUDE_SHENANDOAHGC
   if (n->Opcode() == Op_ShenandoahWriteBarrier) {
     if (n->has_out_with(Op_ShenandoahWBMemProj)) {
       Node* old_mem_phi = n->in(ShenandoahBarrierNode::Memory);
@@ -249,6 +253,7 @@ void PhaseIdealLoop::split_mem_thru_phi(Node* n, Node* r, Node* phi) {
     }
     assert(! n->has_out_with(Op_ShenandoahWBMemProj), "no more memory outs");
   }
+#endif
 }
 
 //------------------------------dominated_by------------------------------------
@@ -957,6 +962,7 @@ Node *PhaseIdealLoop::split_if_with_blocks_pre( Node *n ) {
     return n;
   }
 
+#if INCLUDE_SHENANDOAHGC
   if (n->Opcode() == Op_ShenandoahWriteBarrier) {
     ((ShenandoahWriteBarrierNode*)n)->try_move_before_loop(n_ctrl, this);
   }
@@ -971,6 +977,7 @@ Node *PhaseIdealLoop::split_if_with_blocks_pre( Node *n ) {
   if (n->Opcode() == Op_ShenandoahReadBarrier) {
     ((ShenandoahReadBarrierNode*)n)->try_move(n_ctrl, this);
   }
+#endif
 
   // Attempt to remix address expressions for loop invariants
   Node *m = remix_address_expressions( n );
@@ -1115,15 +1122,16 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   if (!n->is_If() || n->is_CountedLoopEnd()) {
     return false;
   }
-  Node* region = NULL;
+  Node* region = n->in(0);
+
+#if INCLUDE_SHENANDOAHGC
   bool shenandoah_evac = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n);
   bool shenandoah_heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(n);
   if (shenandoah_evac) {
     assert(UseShenandoahGC, "for shenandoah only");
     region = ShenandoahWriteBarrierNode::evacuation_in_progress_test_ctrl(n);
-  } else {
-    region = n->in(0);
   }
+#endif
 
   if (!region->is_Region()) {
     return false;
@@ -1132,6 +1140,8 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   if (!dom->is_If()) {
     return false;
   }
+
+#if INCLUDE_SHENANDOAHGC
   if (shenandoah_evac) {
     if (!ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom)) {
       return false;
@@ -1140,7 +1150,9 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
     if (!ShenandoahWriteBarrierNode::is_heap_stable_test(dom)) {
       return false;
     }
-  } else {
+  } else
+#endif
+  {
     if (dom->in(1) != n->in(1)) {
       return false;
     }

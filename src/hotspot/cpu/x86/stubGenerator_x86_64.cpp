@@ -25,10 +25,6 @@
 #include "precompiled.hpp"
 #include "asm/macroAssembler.hpp"
 #include "asm/macroAssembler.inline.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "ci/ciUtilities.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
@@ -45,8 +41,15 @@
 #include "runtime/stubCodeGenerator.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
+#include "utilities/macros.hpp"
 #ifdef COMPILER2
 #include "opto/runtime.hpp"
+#endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #endif
 
 // Declaration and definition of StubGenerator (no .hpp file).
@@ -802,6 +805,7 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
+#if INCLUDE_SHENANDOAHGC
   address generate_shenandoah_wb(bool c_abi, bool do_cset_test) {
     StubCodeMark mark(this, "StubRoutines", "shenandoah_wb");
     address start = __ pc();
@@ -890,6 +894,7 @@ class StubGenerator: public StubCodeGenerator {
 
     return start;
   }
+#endif
 
   address generate_f2i_fixup() {
     StubCodeMark mark(this, "StubRoutines", "f2i_fixup");
@@ -5137,10 +5142,13 @@ class StubGenerator: public StubCodeGenerator {
                                                 throw_NullPointerException_at_call));
 
     // entry points that are platform specific
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier)) {
          StubRoutines::x86::_shenandoah_wb = generate_shenandoah_wb(false, true);
          StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
     }
+#endif
+
     StubRoutines::x86::_f2i_fixup = generate_f2i_fixup();
     StubRoutines::x86::_f2l_fixup = generate_f2l_fixup();
     StubRoutines::x86::_d2i_fixup = generate_d2i_fixup();

@@ -22,6 +22,8 @@
  *
  */
 
+#include "utilities/macros.hpp"
+
 // The giant table of Node classes.
 // One entry per class, sorted by class name.
 
@@ -254,9 +256,14 @@ macro(RoundDouble)
 macro(RoundFloat)
 macro(SafePoint)
 macro(SafePointScalarObject)
-macro(ShenandoahReadBarrier)
-macro(ShenandoahWriteBarrier)
-macro(ShenandoahWBMemProj)
+#if INCLUDE_SHENANDOAHGC
+#define shmacro(x) macro(x)
+#else
+#define shmacro(x) optionalmacro(x)
+#endif
+shmacro(ShenandoahReadBarrier)
+shmacro(ShenandoahWriteBarrier)
+shmacro(ShenandoahWBMemProj)
 macro(SCMemProj)
 macro(SqrtD)
 macro(SqrtF)

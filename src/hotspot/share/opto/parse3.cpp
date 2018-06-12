@@ -171,6 +171,7 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   int offset = field->offset_in_bytes();
   const TypePtr* adr_type = C->alias_type(field)->adr_type();
 
+#if INCLUDE_SHENANDOAHGC
   // Insert read barrier for Shenandoah.
   if ((ShenandoahOptimizeStaticFinals   && field->is_static()  && field->is_final()) ||
       (ShenandoahOptimizeInstanceFinals && !field->is_static() && field->is_final()) ||
@@ -179,6 +180,7 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
   } else {
     obj = access_resolve_for_read(obj);
   }
+#endif
 
   Node *adr = basic_plus_adr(obj, obj, offset);
 
@@ -216,6 +218,7 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
 
   Node* ld = access_load_at(obj, adr, adr_type, type, bt, decorators);
 
+#if INCLUDE_SHENANDOAHGC
   // Only enabled for Shenandoah. Can this be useful in general?
   if (UseShenandoahGC && ShenandoahOptimizeStableFinals && UseImplicitStableValues) {
     if (field->holder()->name() == ciSymbol::java_lang_String() &&
@@ -226,6 +229,8 @@ void Parse::do_get_xxx(Node* obj, ciField* field, bool is_field) {
       ld = cast_array_to_stable(ld, value_type);
     }
   }
+#endif
+
   // Adjust Java stack
   if (type2size[bt] == 1)
     push(ld);

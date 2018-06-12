@@ -1166,7 +1166,9 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
       push_ready_nodes(n, m, block, ready_cnt, worklist, max_idx, 1);
     }
 
+#if INCLUDE_SHENANDOAHGC
     replace_uses_with_shenandoah_barrier(n, block, worklist, ready_cnt, max_idx, phi_cnt);
+#endif
   }
 
   if( phi_cnt != block->end_idx() ) {

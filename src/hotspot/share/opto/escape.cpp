@@ -25,8 +25,6 @@
 #include "precompiled.hpp"
 #include "ci/bcEscapeAnalyzer.hpp"
 #include "compiler/compileLog.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "gc/shared/c2/barrierSetC2.hpp"
 #include "libadt/vectset.hpp"
 #include "memory/allocation.hpp"
@@ -40,9 +38,14 @@
 #include "opto/phaseX.hpp"
 #include "opto/movenode.hpp"
 #include "opto/rootnode.hpp"
+#include "utilities/macros.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif // INCLUDE_G1GC
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 ConnectionGraph::ConnectionGraph(Compile * C, PhaseIterGVN *igvn) :
   _nodes(C->comp_arena(), C->unique(), C->unique(), NULL),
@@ -550,8 +553,15 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
               Node* tls = get_addp_base(adr);
               if (tls->Opcode() == Op_ThreadLocal) {
                 int offs = (int)igvn->find_intptr_t_con(adr->in(AddPNode::Offset), Type::OffsetBot);
-                if (offs == in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
-                                             : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset())) {
+#if INCLUDE_G1GC && INCLUDE_SHENANDOAHGC
+                const int buf_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
+                                                        : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
+#elif INCLUDE_G1GC
+                const int buf_offset = in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset());
+#else
+                const int buf_offset = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
+#endif
+                if (offs == buf_offset) {
                   break; // G1 pre barrier previous oop value store.
                 }
                 if (offs == in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset())) {
@@ -588,12 +598,14 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       add_java_object(n, PointsToNode::ArgEscape);
       break;
     }
+#if INCLUDE_SHENANDOAHGC
     case Op_ShenandoahReadBarrier:
     case Op_ShenandoahWriteBarrier:
       // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
       // It doesn't escape.
       add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), delayed_worklist);
       break;
+#endif
     default:
       ; // Do nothing for nodes not related to EA.
   }
@@ -797,12 +809,14 @@ void ConnectionGraph::add_final_edges(Node *n) {
       }
       break;
     }
+#if INCLUDE_SHENANDOAHGC
     case Op_ShenandoahReadBarrier:
     case Op_ShenandoahWriteBarrier:
       // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
       // It doesn't escape.
       add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), NULL);
       break;
+#endif
     default: {
       // This method should be called only for EA specific nodes which may
       // miss some edges when they were created.
@@ -2095,9 +2109,11 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
     } else if (adr_type->isa_aryptr()) {
       if (offset == arrayOopDesc::length_offset_in_bytes()) {
         // Ignore array length load.
+#if INCLUDE_SHENANDOAHGC
       } else if (UseShenandoahGC && ShenandoahReadBarrier && offset == BrooksPointer::byte_offset()) {
         // Shenandoah read barrier.
         bt = T_ARRAY;
+#endif
       } else if (find_second_addp(n, n->in(AddPNode::Base)) != NULL) {
         // Ignore first AddP.
       } else {

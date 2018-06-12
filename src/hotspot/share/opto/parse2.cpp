@@ -42,9 +42,12 @@
 #include "opto/opaquenode.hpp"
 #include "opto/parse.hpp"
 #include "opto/runtime.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 #ifndef PRODUCT
 extern int explicit_null_checks_inserted,
@@ -1616,7 +1619,9 @@ void Parse::do_if(BoolTest::mask btest, Node* c) {
   Node* taken_memory = NULL;
   Node* untaken_memory = NULL;
 
+#if INCLUDE_SHENANDOAHGC
   ShenandoahBarrierNode::do_cmpp_if(*this, taken_branch, untaken_branch, taken_memory, untaken_memory);
+#endif
 
   // Branch is taken:
   { PreserveJVMState pjvms(this);
@@ -2746,10 +2751,12 @@ void Parse::do_one_bytecode() {
     maybe_add_safepoint(iter().get_dest());
     a = pop();
     b = pop();
+#if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC && ShenandoahAcmpBarrier && ShenandoahVerifyOptoBarriers) {
       a = access_resolve_for_write(a);
       b = access_resolve_for_write(b);
     }
+#endif
     c = _gvn.transform( new CmpPNode(b, a) );
     c = optimize_cmp_with_klass(c);
     do_if(btest, c);
