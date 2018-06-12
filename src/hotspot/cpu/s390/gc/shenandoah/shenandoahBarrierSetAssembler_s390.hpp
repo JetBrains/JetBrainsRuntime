@@ -27,6 +27,11 @@
 #include "asm/macroAssembler.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 
+#ifdef COMPILER1
+class ShenandoahPreBarrierStub;
+class StubAssembler;
+#endif
+
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 public:
   virtual void arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
@@ -52,6 +57,16 @@ public:
   virtual void resolve_jobject(MacroAssembler* masm, Register value, Register tmp1, Register tmp2) {
     Unimplemented();
   }
+
+#ifdef COMPILER1
+  void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub) {
+    Unimplemented();
+  }
+
+  void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm) {
+    Unimplemented();
+  }
+#endif
 };
 
 #endif // CPU_S390_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_S390_HPP
