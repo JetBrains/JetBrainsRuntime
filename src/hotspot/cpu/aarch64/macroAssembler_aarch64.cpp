@@ -4067,7 +4067,7 @@ void MacroAssembler::store_heap_oop_null(Address dst) {
   access_store_at(T_OBJECT, IN_HEAP, dst, noreg, noreg, noreg);
 }
 
-#ifdef INCLUDE_SHENANDOAHGC
+#if INCLUDE_SHENANDOAHGC
 void MacroAssembler::shenandoah_write_barrier(Register dst) {
   assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
   assert(dst != rscratch1, "need rscratch1");

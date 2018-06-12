@@ -52,7 +52,7 @@
 #ifdef COMPILER2
 #include "opto/intrinsicnode.hpp"
 #endif
-#ifdef INCLUDE_SHENANDOAHGC
+#if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #endif
 
