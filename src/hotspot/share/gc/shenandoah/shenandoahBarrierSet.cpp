@@ -38,6 +38,9 @@
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #endif
 
+class ShenandoahBarrierSetC1;
+class ShenandoahBarrierSetC2;
+
 ShenandoahSATBMarkQueueSet ShenandoahBarrierSet::_satb_mark_queue_set;
 
 template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
