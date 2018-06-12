@@ -495,6 +495,8 @@ void ShenandoahBarrierSetC2::shenandoah_write_barrier_pre(GraphKit* kit,
   Node* offset = __ ConX(in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   Node* gc_state_adr = __ AddP(no_base, tls, offset);
   Node* gc_state = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+  assert(ShenandoahWriteBarrierNode::is_gc_state_load(gc_state), "Should match the shape");
+
   float unlikely = PROB_UNLIKELY(0.999);
 
   // Some sanity checks
@@ -554,6 +556,8 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
 
     // Now some of the values
     Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+    assert(ShenandoahWriteBarrierNode::is_gc_state_load(marking), "Should match the shape");
+
     // if (!marking)
     __ if_then(marking, BoolTest::ne, zero, unlikely); {
       BasicType index_bt = TypeX_X->basic_type();
@@ -583,7 +587,8 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
   } else {
     // We know it is not null.
     // Now some of the values
-    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BOOL, T_BOOLEAN, Compile::AliasIdxRaw);
+    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
+    assert(ShenandoahWriteBarrierNode::is_gc_state_load(marking), "Should match the shape");
 
     // if (!marking)
     __ if_then(marking, BoolTest::ne, zero, unlikely); {

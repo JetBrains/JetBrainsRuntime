@@ -630,7 +630,7 @@ bool ShenandoahWriteBarrierNode::is_gc_state_load(Node *n) {
   if (!UseShenandoahGC) {
     return false;
   }
-  if (n->Opcode() != Op_LoadUB && n->Opcode() != Op_LoadB) {
+  if (n->Opcode() != Op_LoadB) {
     return false;
   }
   Node* addp = n->in(MemNode::Address);
@@ -3734,7 +3734,7 @@ void ShenandoahWriteBarrierNode::test_heap_stable(Node* ctrl, Node* raw_mem, Nod
   const TypePtr* gc_state_adr_type = NULL; // debug-mode-only argument
   debug_only(gc_state_adr_type = phase->C->get_adr_type(gc_state_idx));
 
-  gc_state = new LoadUBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
+  gc_state = new LoadBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
   phase->register_new_node(gc_state, ctrl);
 
   Node* heap_stable_cmp = new CmpINode(gc_state, phase->igvn().zerocon(T_INT));
@@ -3774,7 +3774,7 @@ void ShenandoahWriteBarrierNode::test_evacuation_in_progress(Node* ctrl, int ali
   const TypePtr* gc_state_adr_type = NULL; // debug-mode-only argument
   debug_only(gc_state_adr_type = phase->C->get_adr_type(gc_state_idx));
 
-  Node* gc_state = new LoadUBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
+  Node* gc_state = new LoadBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
   phase->register_new_node(gc_state, ctrl);
 
   Node* evacuation_in_progress = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL));
