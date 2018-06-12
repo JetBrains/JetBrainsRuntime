@@ -33,6 +33,7 @@
 #include "code/nativeInst.hpp"
 #include "code/vtableStubs.hpp"
 #include "gc/shared/gcLocker.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
 #include "memory/resourceArea.hpp"
