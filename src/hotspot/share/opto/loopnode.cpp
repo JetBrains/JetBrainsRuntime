@@ -2652,8 +2652,8 @@ bool PhaseIdealLoop::process_expensive_nodes() {
 //----------------------------build_and_optimize-------------------------------
 // Create a PhaseLoop.  Build the ideal Loop tree.  Map each Ideal Node to
 // its corresponding LoopNode.  If 'optimize' is true, do some loop cleanups.
-void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode, bool last_round) {
-  bool do_split_ifs = (mode == LoopOptsDefault);
+void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
+  bool do_split_ifs = (mode == LoopOptsDefault || mode == LoopOptsZgcLastRound);
   bool skip_loop_opts = (mode == LoopOptsNone) ;
   bool shenandoah_opts = (mode == LoopOptsShenandoahExpand ||
                           mode == LoopOptsShenandoahPostExpand);
@@ -2919,9 +2919,9 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode, bool last_round) {
   // that require basic-block info (like cloning through Phi's)
   if( SplitIfBlocks && do_split_ifs ) {
     visited.Clear();
-    split_if_with_blocks( visited, nstack, last_round );
+    split_if_with_blocks( visited, nstack, mode == LoopOptsZgcLastRound );
     NOT_PRODUCT( if( VerifyLoopOptimizations ) verify(); );
-    if (last_round) {
+    if (mode == LoopOptsZgcLastRound) {
       C->set_major_progress();
     }
   }

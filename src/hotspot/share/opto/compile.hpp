@@ -98,6 +98,7 @@ enum LoopOptsMode {
   LoopOptsShenandoahExpand = 3,
   LoopOptsShenandoahPostExpand = 4,
   LoopOptsVerify = 5,
+  LoopOptsZgcLastRound = 6,
 };
 
 typedef unsigned int node_idx_t;
