@@ -1177,7 +1177,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // the prototype header is no longer biased and we have to revoke
   // the bias on this object.
   testptr(header_reg, markOopDesc::biased_lock_mask_in_place);
-  jccb_if_possible(Assembler::notZero, try_revoke_bias);
+  jccb(Assembler::notZero, try_revoke_bias);
 
   // Biasing is still enabled for this data type. See whether the
   // epoch of the current bias is still valid, meaning that the epoch
@@ -1189,7 +1189,7 @@ int MacroAssembler::biased_locking_enter(Register lock_reg,
   // otherwise the manipulations it performs on the mark word are
   // illegal.
   testptr(header_reg, markOopDesc::epoch_mask_in_place);
-  jccb_if_possible(Assembler::notZero, try_rebias);
+  jccb(Assembler::notZero, try_rebias);
 
   // The epoch of the current bias is still valid but we know nothing
   // about the owner; it might be set or it might be clear. Try to
@@ -1761,7 +1761,7 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
 
     movptr(tmpReg, Address(objReg, oopDesc::mark_offset_in_bytes()));          // [FETCH]
     testptr(tmpReg, markOopDesc::monitor_value); // inflated vs stack-locked|neutral|biased
-    jccb_if_possible(Assembler::notZero, IsInflated);
+    jccb(Assembler::notZero, IsInflated);
 
     // Attempt stack-locking ...
     orptr (tmpReg, markOopDesc::unlocked_value);
@@ -1838,7 +1838,7 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
          // Test-And-CAS instead of CAS
          movptr(tmpReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));   // rax, = m->_owner
          testptr(tmpReg, tmpReg);                   // Locked ?
-         jccb_if_possible(Assembler::notZero, DONE_LABEL);
+         jccb  (Assembler::notZero, DONE_LABEL);
        }
 
        // Appears unlocked - try to swing _owner from null to non-null.
@@ -1856,7 +1856,7 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
        movptr(Address(scrReg, 0), 3);          // box->_displaced_header = 3
        // If we weren't able to swing _owner from NULL to the BasicLock
        // then take the slow path.
-       jccb_if_possible(Assembler::notZero, DONE_LABEL);
+       jccb  (Assembler::notZero, DONE_LABEL);
        // update _owner from BasicLock to thread
        get_thread (scrReg);                    // beware: clobbers ICCs
        movptr(Address(boxReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), scrReg);
@@ -1886,7 +1886,7 @@ void MacroAssembler::fast_lock(Register objReg, Register boxReg, Register tmpReg
          // Can suffer RTS->RTO upgrades on shared or cold $ lines
          movptr(tmpReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)));   // rax, = m->_owner
          testptr(tmpReg, tmpReg);                   // Locked ?
-         jccb_if_possible(Assembler::notZero, DONE_LABEL);
+         jccb  (Assembler::notZero, DONE_LABEL);
        }
 
        // Appears unlocked - try to swing _owner from null to non-null.
@@ -2015,7 +2015,7 @@ void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpR
       testptr(boxReg, boxReg);
       jccb(Assembler::notZero, L_regular_inflated_unlock);
       xend();
-      jmpb_if_possible(DONE_LABEL);
+      jmpb(DONE_LABEL);
       bind(L_regular_inflated_unlock);
     }
 #endif
@@ -2059,17 +2059,17 @@ void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpR
        orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(recursions)));
        orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(EntryList)));
        orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(cxq)));
-       jccb_if_possible(Assembler::notZero, DONE_LABEL);
+       jccb  (Assembler::notZero, DONE_LABEL);
        movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), NULL_WORD);
-       jmpb_if_possible(DONE_LABEL);
+       jmpb  (DONE_LABEL);
     } else {
        orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(recursions)));
-       jccb_if_possible(Assembler::notZero, DONE_LABEL);
+       jccb  (Assembler::notZero, DONE_LABEL);
        movptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(EntryList)));
        orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(cxq)));
        jccb  (Assembler::notZero, CheckSucc);
        movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), NULL_WORD);
-       jmpb_if_possible(DONE_LABEL);
+       jmpb  (DONE_LABEL);
     }
 
     // The Following code fragment (EmitSync & 65536) improves the performance of
@@ -2139,11 +2139,11 @@ void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpR
 
        bind  (LGoSlowPath);
        orptr(boxReg, 1);                      // set ICC.ZF=0 to indicate failure
-       jmpb_if_possible(DONE_LABEL);
+       jmpb  (DONE_LABEL);
 
        bind  (LSuccess);
        xorptr(boxReg, boxReg);                 // set ICC.ZF=1 to indicate success
-       jmpb_if_possible(DONE_LABEL);
+       jmpb  (DONE_LABEL);
     }
 
     bind (Stacked);
@@ -2181,12 +2181,12 @@ void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpR
       xorptr(boxReg, boxReg);
     }
     orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(recursions)));
-    jccb_if_possible(Assembler::notZero, DONE_LABEL);
+    jccb  (Assembler::notZero, DONE_LABEL);
     movptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(cxq)));
     orptr(boxReg, Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(EntryList)));
     jccb  (Assembler::notZero, CheckSucc);
     movptr(Address(tmpReg, OM_OFFSET_NO_MONITOR_VALUE_TAG(owner)), (int32_t)NULL_WORD);
-    jmpb_if_possible(DONE_LABEL);
+    jmpb  (DONE_LABEL);
 
     if ((EmitSync & 65536) == 0) {
       // Try to avoid passing control into the slow_path ...
@@ -2243,11 +2243,11 @@ void MacroAssembler::fast_unlock(Register objReg, Register boxReg, Register tmpR
 
       bind  (LGoSlowPath);
       orl   (boxReg, 1);                      // set ICC.ZF=0 to indicate failure
-      jmpb_if_possible(DONE_LABEL);
+      jmpb  (DONE_LABEL);
 
       bind  (LSuccess);
       testl (boxReg, 0);                      // set ICC.ZF=1 to indicate success
-      jmpb_if_possible  (DONE_LABEL);
+      jmpb  (DONE_LABEL);
     }
 
     bind  (Stacked);
