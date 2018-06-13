@@ -86,11 +86,6 @@ ShenandoahHeuristics::ShenandoahHeuristics() :
   if (!ClassUnloadingWithConcurrentMark) {
     FLAG_SET_DEFAULT(ShenandoahUnloadClassesFrequency, 0);
   }
-
-  if (UseAOT) {
-    warning("Shenandoah does not support AOT at this moment");
-    FLAG_SET_DEFAULT(UseAOT, false);
-  }
 }
 
 ShenandoahHeuristics::~ShenandoahHeuristics() {
