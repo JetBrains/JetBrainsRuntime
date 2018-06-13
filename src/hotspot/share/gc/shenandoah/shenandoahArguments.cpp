@@ -173,6 +173,14 @@ void ShenandoahArguments::initialize() {
     FLAG_SET_DEFAULT(ClassUnloadingWithConcurrentMark, false);
   }
 
+  // AOT is not supported yet
+  if (UseAOT) {
+    if (!FLAG_IS_DEFAULT(UseAOT)) {
+      warning("Shenandoah does not support AOT at this moment, disabling UseAOT");
+    }
+    FLAG_SET_DEFAULT(UseAOT, false);
+  }
+
   // JNI fast get field stuff is not currently supported by Shenandoah.
   // It would introduce another heap memory access for reading the forwarding
   // pointer, which would have to be guarded by the signal handler machinery.
