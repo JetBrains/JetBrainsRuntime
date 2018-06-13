@@ -977,7 +977,7 @@ ShenandoahBarrierSetC2State* ShenandoahBarrierSetC2::state() const {
 bool ShenandoahBarrierSetC2::expand_macro_nodes(PhaseMacroExpand* macro) const { return false; }
 void ShenandoahBarrierSetC2::verify_gc_barriers(bool post_parse) const {
 #ifdef ASSERT
-  if (ShenandoahVerifyOptoBarriers) {
+  if (ShenandoahVerifyOptoBarriers && !post_parse) {
     ShenandoahBarrierNode::verify(Compile::current()->root());
   }
 #endif
