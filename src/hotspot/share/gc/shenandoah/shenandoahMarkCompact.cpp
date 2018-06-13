@@ -113,9 +113,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
     }
 
     {
-      if (UseTLAB) {
-        heap->make_tlabs_parsable(true);
-      }
+      heap->make_parsable(true);
 
       CodeCache::gc_prologue();
 

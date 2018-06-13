@@ -91,7 +91,7 @@ void ShenandoahPrinter::print_all_refs(const char* prefix) {
   tty->print_cr("printing all references in the heap");
   tty->print_cr("root references:");
 
-  _heap->make_tlabs_parsable(false);
+  _heap->make_parsable(false);
 
   ShenandoahPrintAllRefsOopClosure cl(prefix);
   _heap->roots_iterate(&cl);

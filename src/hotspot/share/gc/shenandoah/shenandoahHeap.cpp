@@ -1104,7 +1104,7 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
     // Allocations might have happened before we STWed here, record peak:
     heuristics()->record_peak_occupancy();
 
-    make_tlabs_parsable(true);
+    make_parsable(true);
 
     if (ShenandoahVerify) {
       verifier()->verify_after_concmark();
@@ -1159,7 +1159,7 @@ public:
   }
 };
 
-void ShenandoahHeap::make_tlabs_parsable(bool retire_tlabs) {
+void ShenandoahHeap::make_parsable(bool retire_tlabs) {
   if (UseTLAB) {
     CollectedHeap::ensure_parsability(retire_tlabs);
   }
@@ -1363,7 +1363,7 @@ jlong ShenandoahHeap::millis_since_last_gc() {
 
 void ShenandoahHeap::prepare_for_verify() {
   if (SafepointSynchronize::is_at_safepoint() || ! UseTLAB) {
-    make_tlabs_parsable(false);
+    make_parsable(false);
   }
 }
 
@@ -1561,7 +1561,7 @@ void ShenandoahHeap::op_init_mark() {
   // We need to reset all TLABs because we'd lose marks on all objects allocated in them.
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::make_parsable);
-    make_tlabs_parsable(true);
+    make_parsable(true);
   }
 
   {
@@ -2395,7 +2395,7 @@ void ShenandoahHeap::op_init_updaterefs() {
   accumulate_statistics_all_gclabs();
   set_evacuation_in_progress(false);
   set_update_refs_in_progress(true);
-  make_tlabs_parsable(true);
+  make_parsable(true);
   if (UseShenandoahMatrix) {
     connection_matrix()->clear_all();
   }

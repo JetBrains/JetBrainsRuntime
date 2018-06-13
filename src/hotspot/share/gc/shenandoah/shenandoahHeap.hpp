@@ -703,7 +703,7 @@ public:
 
   void set_used_at_last_gc() {_used_at_last_gc = used();}
 
-  void make_tlabs_parsable(bool retire_tlabs) /* override */;
+  void make_parsable(bool retire_tlabs);
 
   GCMemoryManager* cycle_memory_manager() { return &_cycle_memory_manager; }
   GCMemoryManager* stw_memory_manager()   { return &_stw_memory_manager; }

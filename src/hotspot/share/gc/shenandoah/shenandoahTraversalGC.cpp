@@ -360,7 +360,7 @@ void ShenandoahTraversalGC::prepare() {
   _heap->collection_set()->clear();
   assert(_heap->collection_set()->count() == 0, "collection set not clear");
 
-  _heap->make_tlabs_parsable(true);
+  _heap->make_parsable(true);
 
   assert(_heap->is_next_bitmap_clear(), "need clean mark bitmap");
 
@@ -654,7 +654,7 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
 
 void ShenandoahTraversalGC::final_traversal_collection() {
 
-  _heap->make_tlabs_parsable(true);
+  _heap->make_parsable(true);
 
   if (!_heap->cancelled_gc()) {
 #if defined(COMPILER2) || INCLUDE_JVMCI

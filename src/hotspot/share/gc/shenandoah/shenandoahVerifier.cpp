@@ -632,7 +632,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   }
 
   OrderAccess::fence();
-  _heap->make_tlabs_parsable(false);
+  _heap->make_parsable(false);
 
   // Allocate temporary bitmap for storing marking wavefront:
   MemRegion mr = MemRegion(_verification_bit_map->startWord(), _verification_bit_map->endWord());
