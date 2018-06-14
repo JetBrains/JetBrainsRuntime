@@ -211,7 +211,7 @@ Node* Parse::array_addressing(BasicType type, int vals, bool is_store, const Typ
   if (is_store) {
     ary = access_resolve_for_write(ary);
   } else {
-    ary = access_resolve_for_write(ary);
+    ary = access_resolve_for_read(ary);
   }
 
   // Make array address computation control dependent to prevent it
