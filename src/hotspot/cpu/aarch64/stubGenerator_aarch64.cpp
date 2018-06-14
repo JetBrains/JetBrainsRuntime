@@ -48,9 +48,9 @@
 #endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahRuntime.hpp"
 #endif
 
 #ifdef BUILTIN_SIM
@@ -590,7 +590,7 @@ class StubGenerator: public StubCodeGenerator {
       __ push_call_clobbered_fp_registers();
     }
 
-    __ mov(lr, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_barrier_JRT));
+    __ mov(lr, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_JRT));
     __ blrt(lr, 1, 0, MacroAssembler::ret_type_integral);
     if (!c_abi) {
       __ mov(rscratch1, obj);

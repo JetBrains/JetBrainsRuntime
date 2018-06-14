@@ -23,10 +23,10 @@
 
 #include "precompiled.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/interp_masm.hpp"
@@ -61,9 +61,9 @@ void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, Dec
         __ mov(c_rarg1, count);
       }
       if (UseCompressedOops) {
-        __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_array_pre_narrow_oop_entry), 2);
+        __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_array_pre_narrow_oop_entry), 2);
       } else {
-        __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_array_pre_oop_entry), 2);
+        __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_array_pre_oop_entry), 2);
       }
       __ pop(saved_regs, sp);
     }
@@ -81,7 +81,7 @@ void ShenandoahBarrierSetAssembler::arraycopy_epilogue(MacroAssembler* masm, Dec
     __ lsr(scratch, scratch, LogBytesPerHeapOop);  // convert to element count
     __ mov(c_rarg0, start);
     __ mov(c_rarg1, scratch);
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_array_post_entry), 2);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_array_post_entry), 2);
     __ pop(saved_regs, sp);
   }
 }
@@ -177,9 +177,9 @@ void ShenandoahBarrierSetAssembler::satb_write_barrier_pre(MacroAssembler* masm,
 
   if (expand_call) {
     assert(pre_val != c_rarg1, "smashed arg");
-    __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), pre_val, thread);
+    __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), pre_val, thread);
   } else {
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), pre_val, thread);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), pre_val, thread);
   }
 
   __ pop(saved, sp);
@@ -290,7 +290,7 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   __ strd(v0, __ pre(sp, 2 * -wordSize));
 
   // Call into runtime
-  __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_barrier_IRT), dst);
+  __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_IRT), dst);
 
   // Move result into dst reg.
   __ mov(dst, r0);
@@ -564,7 +564,7 @@ void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAss
   __ bind(runtime);
   __ push_call_clobbered_registers();
   __ load_parameter(0, pre_val);
-  __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), pre_val, thread);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), pre_val, thread);
   __ pop_call_clobbered_registers();
   __ bind(done);
 

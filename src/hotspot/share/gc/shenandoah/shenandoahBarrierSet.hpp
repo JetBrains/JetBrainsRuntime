@@ -61,11 +61,6 @@ public:
   bool is_aligned(HeapWord* hw);
   void resize_covered_region(MemRegion mr);
 
-  static void write_ref_array_pre_oop_entry(oop* dst, size_t length);
-  static void write_ref_array_pre_narrow_oop_entry(narrowOop* dst, size_t length);
-  static void write_ref_array_post_entry(HeapWord* dst, size_t length);
-  static void write_ref_field_pre_entry(oopDesc* orig, JavaThread *thread);
-
   void write_ref_array(HeapWord* start, size_t count);
   void write_ref_array_work(MemRegion r);
 
@@ -100,8 +95,6 @@ public:
   static inline oop resolve_forwarded(oop p);
 
   virtual oop write_barrier(oop obj);
-  static oopDesc* write_barrier_IRT(oopDesc* src);
-  static oopDesc* write_barrier_JRT(oopDesc* src);
 
   virtual oop storeval_barrier(oop obj);
 

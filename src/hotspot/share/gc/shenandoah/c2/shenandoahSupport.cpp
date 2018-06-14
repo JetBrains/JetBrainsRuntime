@@ -1238,7 +1238,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
         if (!ShenandoahBarrierNode::verify_helper(n->in(TypeFunc::Parms), phis, visited, ShenandoahStore, trace, barriers_used)) {
           report_verify_failure("Shenandoah verification: _fill should have barriers", n);
         }
-      } else if (!strcmp(call->_name, "g1_wb_pre")) {
+      } else if (!strcmp(call->_name, "shenandoah_wb_pre")) {
         // skip
       } else {
         const int calls_len = sizeof(calls) / sizeof(calls[0]);
@@ -1393,7 +1393,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
       // intrinsic or support might be needed in AddPNode::Ideal() to
       // avoid a NULL+offset input.
       if (!(n->is_Phi() ||
-            (n->is_SafePoint() && (!n->is_CallRuntime() || !strcmp(n->as_Call()->_name, "g1_wb_pre") || !strcmp(n->as_Call()->_name, "unsafe_arraycopy"))) ||
+            (n->is_SafePoint() && (!n->is_CallRuntime() || !strcmp(n->as_Call()->_name, "shenandoah_wb_pre") || !strcmp(n->as_Call()->_name, "unsafe_arraycopy"))) ||
             n->Opcode() == Op_CmpP ||
             n->Opcode() == Op_CmpN ||
             (n->Opcode() == Op_StoreP && i == StoreNode::ValueIn) ||

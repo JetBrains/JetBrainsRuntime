@@ -34,6 +34,7 @@
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shenandoah/shenandoahRuntime.hpp"
 #endif
 
 void PhaseMacroExpand::insert_mem_bar(Node** ctrl, Node** mem, int opcode, Node* precedent) {
@@ -1095,7 +1096,9 @@ Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
   Node* m = new ProjNode(call, TypeFunc::Memory);
   transform_later(m);
   assert(dest->is_AddP(), "bad input");
-  call = make_leaf_call(c, m, ShenandoahBarrierSetC2::shenandoah_clone_barrier_Type(), CAST_FROM_FN_PTR(address, SharedRuntime::shenandoah_clone_barrier), "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
+  call = make_leaf_call(c, m, ShenandoahBarrierSetC2::shenandoah_clone_barrier_Type(),
+                        CAST_FROM_FN_PTR(address, ShenandoahRuntime::shenandoah_clone_barrier),
+                        "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
   transform_later(call);
   return call;
 }

@@ -21,6 +21,7 @@
  *
  */
 
+#include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "opto/graphKit.hpp"
@@ -461,7 +462,7 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
 
         // logging buffer is full, call the runtime
         const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), "shenandoah_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (pre_val != NULL)
   } __ end_if();  // (!marking)
@@ -472,7 +473,7 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
   if (ShenandoahSATBBarrier && adr != NULL) {
     Node* c = kit->control();
     Node* call = c->in(1)->in(1)->in(1)->in(0);
-    assert(call->is_shenandoah_wb_pre_call(), "g1_wb_pre call expected");
+    assert(call->is_shenandoah_wb_pre_call(), "shenandoah_wb_pre call expected");
     call->add_req(adr);
   }
 }
@@ -580,7 +581,7 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
       } __ else_(); {
         // logging buffer is full, call the runtime
         const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), "shenandoah_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (!marking)
   } __ end_if();  // (pre_val != NULL)
@@ -612,7 +613,7 @@ void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre
       } __ else_(); {
         // logging buffer is full, call the runtime
         const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahBarrierSet::write_ref_field_pre_entry), "g1_wb_pre", pre_val, tls);
+        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), "shenandoah_wb_pre", pre_val, tls);
       } __ end_if();  // (!index)
     } __ end_if();  // (!marking)
   }
@@ -924,7 +925,7 @@ bool ShenandoahBarrierSetC2::is_gc_barrier_node(Node* node) const {
 
   return strcmp(call->_name, "shenandoah_clone_barrier") == 0 ||
          strcmp(call->_name, "shenandoah_cas_obj") == 0 ||
-         strcmp(call->_name, "g1_wb_pre") == 0;
+         strcmp(call->_name, "shenandoah_wb_pre") == 0;
 }
 
 Node* ShenandoahBarrierSetC2::step_over_gc_barrier(Node* c) const {

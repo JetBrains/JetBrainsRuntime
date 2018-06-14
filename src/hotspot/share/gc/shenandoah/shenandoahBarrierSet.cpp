@@ -157,32 +157,6 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   }
 }
 
-void ShenandoahBarrierSet::write_ref_array_pre_oop_entry(oop* dst, size_t length) {
-  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
-  bs->write_ref_array_pre(dst, length, false);
-}
-
-void ShenandoahBarrierSet::write_ref_array_pre_narrow_oop_entry(narrowOop* dst, size_t length) {
-  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
-  bs->write_ref_array_pre(dst, length, false);
-}
-
-void ShenandoahBarrierSet::write_ref_array_post_entry(HeapWord* dst, size_t length) {
-  ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
-  bs->ShenandoahBarrierSet::write_ref_array(dst, length);
-}
-
-// Shenandoah pre write barrier slowpath
-JRT_LEAF(void, ShenandoahBarrierSet::write_ref_field_pre_entry(oopDesc* orig, JavaThread *thread))
-  if (orig == NULL) {
-    assert(false, "should be optimized out");
-    return;
-  }
-  assert(oopDesc::is_oop(orig, true /* ignore mark word */), "Error");
-  // store the original value that was in the field reference
-  ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue(orig);
-JRT_END
-
 template <class T>
 void ShenandoahBarrierSet::write_ref_array_pre_work(T* dst, size_t count) {
   shenandoah_assert_not_in_cset_loc_except(dst, _heap->cancelled_gc());
@@ -297,16 +271,6 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
   }
   return eq;
 }
-
-JRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_JRT(oopDesc* src))
-  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
-  return (oopDesc*) result;
-JRT_END
-
-IRT_LEAF(oopDesc*, ShenandoahBarrierSet::write_barrier_IRT(oopDesc* src))
-  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
-  return (oopDesc*) result;
-IRT_END
 
 oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");

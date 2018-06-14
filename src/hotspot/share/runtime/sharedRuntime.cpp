@@ -76,9 +76,6 @@
 #ifdef COMPILER1
 #include "c1/c1_Runtime1.hpp"
 #endif
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/shenandoahBarrierSet.hpp"
-#endif // INCLUDE_SHENANDOAHGC
 
 // Shared stub locations
 RuntimeStub*        SharedRuntime::_wrong_method_blob;
@@ -208,13 +205,6 @@ void SharedRuntime::print_ic_miss_histogram() {
 }
 #endif // PRODUCT
 
-#if INCLUDE_SHENANDOAHGC
-// Shenandoah clone barrier: makes sure that references point to to-space
-// in cloned objects.
-JRT_LEAF(void, SharedRuntime::shenandoah_clone_barrier(oopDesc* obj))
-  ShenandoahBarrierSet::barrier_set()->write_region(MemRegion((HeapWord*) obj, obj->size()));
-JRT_END
-#endif
 
 JRT_LEAF(jlong, SharedRuntime::lmul(jlong y, jlong x))
   return x * y;

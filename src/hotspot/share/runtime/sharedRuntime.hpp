@@ -182,10 +182,6 @@ class SharedRuntime: AllStatic {
   static address raw_exception_handler_for_return_address(JavaThread* thread, address return_address);
   static address exception_handler_for_return_address(JavaThread* thread, address return_address);
 
-#if INCLUDE_SHENANDOAHGC
-  static void shenandoah_clone_barrier(oopDesc* obj);
-#endif // INCLUDE_SHENANDOAHGC
-
   // exception handling and implicit exceptions
   static address compute_compiled_exc_handler(CompiledMethod* nm, address ret_pc, Handle& exception,
                                               bool force_unwind, bool top_frame_only, bool& recursive_exception_occurred);
