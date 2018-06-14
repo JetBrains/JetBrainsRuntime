@@ -24,6 +24,9 @@
 #include "precompiled.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahRuntime.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
+#include "oops/oop.inline.hpp"
 
 void ShenandoahRuntime::write_ref_array_pre_oop_entry(oop* dst, size_t length) {
   ShenandoahBarrierSet *bs = ShenandoahBarrierSet::barrier_set();
