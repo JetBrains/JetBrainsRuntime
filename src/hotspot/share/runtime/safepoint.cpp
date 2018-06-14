@@ -24,6 +24,7 @@
 
 #include "precompiled.hpp"
 #include "classfile/classLoaderData.hpp"
+#include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "code/codeCache.hpp"
@@ -689,6 +690,19 @@ public:
         EventSafepointCleanupTask event;
         TraceTime timer(name, TRACETIME_LOG(Info, safepoint, cleanup));
         SymbolTable::rehash_table();
+        if (event.should_commit()) {
+          post_safepoint_cleanup_task_event(&event, name);
+        }
+      }
+    }
+
+    if (!_subtasks.is_task_claimed(SafepointSynchronize::SAFEPOINT_CLEANUP_STRING_TABLE_REHASH)) {
+      // Workaround upstream bug in StringTable rehashing, see JDK-8205006.
+      if (StringTable::needs_rehashing() && !UseShenandoahGC) {
+        const char* name = "rehashing string table";
+        EventSafepointCleanupTask event;
+        TraceTime timer(name, TRACETIME_LOG(Info, safepoint, cleanup));
+        StringTable::rehash_table();
         if (event.should_commit()) {
           post_safepoint_cleanup_task_event(&event, name);
         }
