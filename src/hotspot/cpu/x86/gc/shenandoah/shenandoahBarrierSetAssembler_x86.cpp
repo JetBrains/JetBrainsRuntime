@@ -948,7 +948,7 @@ address ShenandoahBarrierSetAssembler::generate_shenandoah_wb(StubCodeGenerator*
 
 void ShenandoahBarrierSetAssembler::barrier_stubs_init() {
   if (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
-    int stub_code_size = 1536;
+    int stub_code_size = 4096;
     ResourceMark rm;
     BufferBlob* bb = BufferBlob::create("shenandoah_barrier_stubs", stub_code_size);
     CodeBuffer buf(bb);
