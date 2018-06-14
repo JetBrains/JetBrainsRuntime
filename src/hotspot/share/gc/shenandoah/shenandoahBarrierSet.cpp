@@ -305,9 +305,6 @@ oop ShenandoahBarrierSet::storeval_barrier(oop obj) {
       enqueue(obj);
     }
   }
-  if (ShenandoahStoreValEnqueueBarrier && !CompressedOops::is_null(obj)) {
-    enqueue(obj);
-  }
   if (ShenandoahStoreValReadBarrier) {
     obj = resolve_forwarded(obj);
   }
