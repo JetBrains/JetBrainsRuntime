@@ -781,8 +781,13 @@ HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
 #ifdef ASSERT
   log_debug(gc, alloc)("Allocate new tlab, requested size = " SIZE_FORMAT " bytes", requested_size * HeapWordSize);
 #endif
-  *actual_size = requested_size;
-  return allocate_new_lab(requested_size, _alloc_tlab);
+  HeapWord* addr = allocate_new_lab(requested_size, _alloc_tlab);
+  if (addr != NULL) {
+    *actual_size = requested_size;
+  } else {
+    *actual_size = 0;
+  }
+  return addr;
 }
 
 HeapWord* ShenandoahHeap::allocate_new_gclab(size_t word_size) {
