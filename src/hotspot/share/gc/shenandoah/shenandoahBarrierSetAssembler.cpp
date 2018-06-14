@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2003, 2013, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ * Copyright (c) 2018, Red Hat, Inc. and/or its affiliates.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -23,22 +22,13 @@
  */
 
 #include "precompiled.hpp"
-#include "runtime/deoptimization.hpp"
-#include "runtime/frame.inline.hpp"
-#include "runtime/stubRoutines.hpp"
-#include "runtime/thread.inline.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 
-// Implementation of the platform-specific part of StubRoutines - for
-// a description of how to extend it, see the stubRoutines.hpp file.
+bool ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(address call) {
+  if (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    return call == _shenandoah_wb_C;
+  } else {
+    return false;
+  }
+}
 
-address StubRoutines::x86::_get_previous_fp_entry = NULL;
-address StubRoutines::x86::_get_previous_sp_entry = NULL;
-
-address StubRoutines::x86::_f2i_fixup = NULL;
-address StubRoutines::x86::_f2l_fixup = NULL;
-address StubRoutines::x86::_d2i_fixup = NULL;
-address StubRoutines::x86::_d2l_fixup = NULL;
-address StubRoutines::x86::_float_sign_mask = NULL;
-address StubRoutines::x86::_float_sign_flip = NULL;
-address StubRoutines::x86::_double_sign_mask = NULL;
-address StubRoutines::x86::_double_sign_flip = NULL;

@@ -33,6 +33,10 @@
 
 class ShenandoahBarrierSetAssembler: public BarrierSetAssembler {
 private:
+
+  static address _shenandoah_wb;
+  static address _shenandoah_wb_C;
+
   void satb_write_barrier_pre(MacroAssembler* masm,
                               Register obj,
                               Register pre_val,
@@ -63,7 +67,14 @@ private:
   void storeval_barrier(MacroAssembler* masm, Register dst, Register tmp);
   void asm_acmp_barrier(MacroAssembler* masm, Register op1, Register op2);
 
+  address generate_shenandoah_wb(StubCodeGenerator* cgen, bool c_abi, bool do_cset_test);
+
 public:
+  static address shenandoah_wb();
+  static address shenandoah_wb_C();
+
+  static bool is_shenandoah_wb_C_call(address call);
+
 #ifdef COMPILER1
   void gen_pre_barrier_stub(LIR_Assembler* ce, ShenandoahPreBarrierStub* stub);
   void generate_c1_pre_barrier_runtime_stub(StubAssembler* sasm);
@@ -85,6 +96,8 @@ public:
                            bool acquire, bool release, bool weak, bool encode,
                            Register tmp1, Register tmp2, Register tmp3,
                            Register result);
+
+  virtual void barrier_stubs_init();
 };
 
 #endif // CPU_AARCH64_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_AARCH64_HPP

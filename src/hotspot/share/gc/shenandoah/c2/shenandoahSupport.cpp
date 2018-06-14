@@ -33,6 +33,7 @@
 #include "opto/phaseX.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/runtime.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "opto/subnode.hpp"
@@ -2532,12 +2533,12 @@ const TypePtr* ShenandoahBarrierNode::fix_addp_type(const TypePtr* res, Node* ba
             } else {
               if (n->is_Proj()) {
                 if (n->in(0)->Opcode() == Op_CallLeafNoFP) {
-                  if (n->in(0)->as_Call()->entry_point() != StubRoutines::shenandoah_wb_C()) {
+                  if (!ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(n->in(0)->as_Call()->entry_point())) {
                     const_oop = NULL;
                     break;
                   }
                 } else if (n->in(0)->is_MachCallLeaf()) {
-                  if (n->in(0)->as_MachCall()->entry_point() != StubRoutines::shenandoah_wb_C()) {
+                  if (!ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(n->in(0)->as_MachCall()->entry_point())) {
                     const_oop = NULL;
                     break;
                   }
@@ -3976,7 +3977,7 @@ void ShenandoahWriteBarrierNode::evacuation_in_progress(Node* c, Node* val, Node
   mm->set_memory_at(Compile::AliasIdxRaw, raw_mem);
   phase->register_new_node(mm, c);
 
-  Node* call = new CallLeafNoFPNode(ShenandoahBarrierSetC2::shenandoah_write_barrier_Type(), StubRoutines::shenandoah_wb_C(), "shenandoah_write_barrier", TypeRawPtr::BOTTOM);
+  Node* call = new CallLeafNoFPNode(ShenandoahBarrierSetC2::shenandoah_write_barrier_Type(), ShenandoahBarrierSetAssembler::shenandoah_wb_C(), "shenandoah_write_barrier", TypeRawPtr::BOTTOM);
   call->init_req(TypeFunc::Control, c);
   call->init_req(TypeFunc::I_O, phase->C->top());
   call->init_req(TypeFunc::Memory, mm);
@@ -4390,7 +4391,8 @@ void ShenandoahBarrierNode::verify_raw_mem(RootNode* root) {
   nodes.push(root);
   for (uint next = 0; next < nodes.size(); next++) {
     Node *n  = nodes.at(next);
-    if (n->Opcode() == Op_CallLeafNoFP && n->as_Call()->_entry_point == StubRoutines::shenandoah_wb_C()) {
+    if (n->Opcode() == Op_CallLeafNoFP &&
+        ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(n->as_Call()->entry_point())) {
       controls.push(n);
       if (trace) { tty->print("XXXXXX verifying"); n->dump(); }
       for (uint next2 = 0; next2 < controls.size(); next2++) {

@@ -5313,8 +5313,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
     xchgptr(dst, rax); // Move obj into rax and save rax into obj.
   }
 
-  assert(StubRoutines::x86::shenandoah_wb() != NULL, "need write barrier stub");
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::x86::shenandoah_wb())));
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
 
   if (dst != rax) {
     xchgptr(rax, dst); // Swap back obj with rax.

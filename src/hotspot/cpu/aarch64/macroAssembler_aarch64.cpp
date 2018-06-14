@@ -37,6 +37,7 @@
 #include "compiler/disassembler.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
@@ -4095,8 +4096,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
     mov(r0, dst);
   }
 
-  assert(StubRoutines::aarch64::shenandoah_wb() != NULL, "need write barrier stub");
-  far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, StubRoutines::aarch64::shenandoah_wb())));
+  far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
 
   if (dst != r0) {
     mov(dst, r0);

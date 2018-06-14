@@ -25,6 +25,7 @@
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
@@ -40,6 +41,9 @@
 #endif
 
 #define __ masm->
+
+address ShenandoahBarrierSetAssembler::_shenandoah_wb = NULL;
+address ShenandoahBarrierSetAssembler::_shenandoah_wb_C = NULL;
 
 void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                                        Register src, Register dst, Register count) {
@@ -838,3 +842,118 @@ void ShenandoahBarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAss
 
 #endif // COMPILER1
 
+address ShenandoahBarrierSetAssembler::shenandoah_wb() {
+  assert(_shenandoah_wb != NULL, "need write barrier stub");
+  return _shenandoah_wb;
+}
+
+address ShenandoahBarrierSetAssembler::shenandoah_wb_C() {
+  assert(_shenandoah_wb_C != NULL, "need write barrier stub");
+  return _shenandoah_wb_C;
+}
+
+#define __ cgen->assembler()->
+
+address ShenandoahBarrierSetAssembler::generate_shenandoah_wb(StubCodeGenerator* cgen, bool c_abi, bool do_cset_test) {
+  __ align(CodeEntryAlignment);
+  StubCodeMark mark(cgen, "StubRoutines", "shenandoah_wb");
+  address start = __ pc();
+
+  Label not_done;
+
+  // We use RDI, which also serves as argument register for slow call.
+  // RAX always holds the src object ptr, except after the slow call and
+  // the cmpxchg, then it holds the result.
+  // R8 and RCX are used as temporary registers.
+  if (!c_abi) {
+    __ push(rdi);
+    __ push(r8);
+  }
+
+  // Check for object beeing in the collection set.
+  // TODO: Can we use only 1 register here?
+  // The source object arrives here in rax.
+  // live: rax
+  // live: rdi
+  if (!c_abi) {
+    __ mov(rdi, rax);
+  } else {
+    if (rax != c_rarg0) {
+      __ mov(rax, c_rarg0);
+    }
+  }
+  if (do_cset_test) {
+    __ shrptr(rdi, ShenandoahHeapRegion::region_size_bytes_shift_jint());
+    // live: r8
+    __ movptr(r8, (intptr_t) ShenandoahHeap::in_cset_fast_test_addr());
+    __ movbool(r8, Address(r8, rdi, Address::times_1));
+    // unlive: rdi
+    __ testbool(r8);
+    // unlive: r8
+    __ jccb(Assembler::notZero, not_done);
+
+    if (!c_abi) {
+      __ pop(r8);
+      __ pop(rdi);
+    }
+    __ ret(0);
+
+    __ bind(not_done);
+  }
+
+  if (!c_abi) {
+    __ push(rcx);
+  }
+
+  if (!c_abi) {
+    __ push(rdx);
+    __ push(rdi);
+    __ push(rsi);
+    __ push(r8);
+    __ push(r9);
+    __ push(r10);
+    __ push(r11);
+    __ push(r12);
+    __ push(r13);
+    __ push(r14);
+    __ push(r15);
+  }
+  __ save_vector_registers();
+  __ movptr(rdi, rax);
+  __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_JRT), rdi);
+  __ restore_vector_registers();
+  if (!c_abi) {
+    __ pop(r15);
+    __ pop(r14);
+    __ pop(r13);
+    __ pop(r12);
+    __ pop(r11);
+    __ pop(r10);
+    __ pop(r9);
+    __ pop(r8);
+    __ pop(rsi);
+    __ pop(rdi);
+    __ pop(rdx);
+
+    __ pop(rcx);
+    __ pop(r8);
+    __ pop(rdi);
+  }
+  __ ret(0);
+
+  return start;
+}
+
+#undef __
+
+void ShenandoahBarrierSetAssembler::barrier_stubs_init() {
+  if (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier) {
+    int stub_code_size = 1536;
+    ResourceMark rm;
+    BufferBlob* bb = BufferBlob::create("shenandoah_barrier_stubs", stub_code_size);
+    CodeBuffer buf(bb);
+    StubCodeGenerator cgen(&buf);
+    _shenandoah_wb = generate_shenandoah_wb(&cgen, false, true);
+    _shenandoah_wb_C = generate_shenandoah_wb(&cgen, true, !ShenandoahWriteBarrierCsetTestInIR);
+  }
+}

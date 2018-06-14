@@ -42,15 +42,8 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/align.hpp"
-#include "utilities/macros.hpp"
 #ifdef COMPILER2
 #include "opto/runtime.hpp"
-#endif
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
-#include "gc/shenandoah/shenandoahRuntime.hpp"
 #endif
 
 #ifdef BUILTIN_SIM
@@ -552,60 +545,6 @@ class StubGenerator: public StubCodeGenerator {
 
     return start;
   }
-
-#if INCLUDE_SHENANDOAHGC
-  // Shenandoah write barrier.
-  //
-  // Input:
-  //   r0: OOP to evacuate.  Not null.
-  //
-  // Output:
-  //   r0: Pointer to evacuated OOP.
-  //
-  // Trash rscratch1, rscratch2.  Preserve everything else.
-
-  address generate_shenandoah_wb(bool c_abi, bool do_cset_test) {
-    StubCodeMark mark(this, "StubRoutines", "shenandoah_wb");
-
-    __ align(6);
-    address start = __ pc();
-
-    if (do_cset_test) {
-      Label work;
-      __ mov(rscratch2, ShenandoahHeap::in_cset_fast_test_addr());
-      __ lsr(rscratch1, r0, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-      __ ldrb(rscratch2, Address(rscratch2, rscratch1));
-      __ tbnz(rscratch2, 0, work);
-      __ ret(lr);
-      __ bind(work);
-    }
-
-    Register obj = r0;
-
-    __ enter(); // required for proper stackwalking of RuntimeStub frame
-
-    if (!c_abi) {
-      __ push_call_clobbered_registers();
-    } else {
-      __ push_call_clobbered_fp_registers();
-    }
-
-    __ mov(lr, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_JRT));
-    __ blrt(lr, 1, 0, MacroAssembler::ret_type_integral);
-    if (!c_abi) {
-      __ mov(rscratch1, obj);
-      __ pop_call_clobbered_registers();
-      __ mov(obj, rscratch1);
-    } else {
-      __ pop_call_clobbered_fp_registers();
-    }
-
-    __ leave(); // required for proper stackwalking of RuntimeStub frame
-    __ ret(lr);
-
-    return start;
-  }
-#endif
 
   // Non-destructive plausibility checks for oops
   //
@@ -5164,13 +5103,6 @@ class StubGenerator: public StubCodeGenerator {
       // because it's faster for the sizes of modulus we care about.
       StubRoutines::_montgomerySquare = g.generate_multiply();
     }
-
-#if INCLUDE_SHENANDOAHGC
-    if (UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier)) {
-      StubRoutines::aarch64::_shenandoah_wb = generate_shenandoah_wb(false, true);
-      StubRoutines::_shenandoah_wb_C = generate_shenandoah_wb(true, !ShenandoahWriteBarrierCsetTestInIR);
-    }
-#endif
 
 #ifndef BUILTIN_SIM
     // generate GHASH intrinsics code
