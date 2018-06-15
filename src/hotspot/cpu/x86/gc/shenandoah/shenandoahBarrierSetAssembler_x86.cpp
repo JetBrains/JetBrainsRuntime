@@ -859,6 +859,7 @@ address ShenandoahBarrierSetAssembler::generate_shenandoah_wb(StubCodeGenerator*
   StubCodeMark mark(cgen, "StubRoutines", "shenandoah_wb");
   address start = __ pc();
 
+#ifdef _LP64
   Label not_done;
 
   // We use RDI, which also serves as argument register for slow call.
@@ -940,7 +941,9 @@ address ShenandoahBarrierSetAssembler::generate_shenandoah_wb(StubCodeGenerator*
     __ pop(rdi);
   }
   __ ret(0);
-
+#else
+  ShouldNotReachHere();
+#endif
   return start;
 }
 
