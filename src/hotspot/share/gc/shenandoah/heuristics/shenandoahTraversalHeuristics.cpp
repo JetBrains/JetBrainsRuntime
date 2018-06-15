@@ -83,9 +83,9 @@ void ShenandoahTraversalHeuristics::choose_collection_set(ShenandoahCollectionSe
       if (garbage_percent > ShenandoahGarbageThreshold) {
         collection_set->add_region(r);
       }
-      traversal_set->add_region(r);
     }
     r->clear_live_data();
+    traversal_set->add_region(r);
   }
   collection_set->update_region_status();
 }
