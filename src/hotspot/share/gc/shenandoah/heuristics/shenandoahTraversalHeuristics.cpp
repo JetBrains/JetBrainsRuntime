@@ -43,6 +43,11 @@ ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuri
   if (ClassUnloadingWithConcurrentMark) {
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
   }
+
+  // TODO: Disable this optimization for now, as it also requires the enqueue barriers there.
+#ifdef COMPILER2
+  FLAG_SET_DEFAULT(ArrayCopyLoadStoreMaxElem, 0);
+#endif
 }
 
 bool ShenandoahTraversalHeuristics::should_start_normal_gc() const {
