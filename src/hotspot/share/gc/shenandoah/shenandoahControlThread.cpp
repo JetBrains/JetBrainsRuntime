@@ -446,7 +446,6 @@ void ShenandoahControlThread::handle_alloc_failure(size_t words) {
   while (is_alloc_failure_gc()) {
     ml.wait();
   }
-  assert(!is_alloc_failure_gc(), "expect alloc failure GC to have completed");
 }
 
 void ShenandoahControlThread::handle_alloc_failure_evac(size_t words) {
