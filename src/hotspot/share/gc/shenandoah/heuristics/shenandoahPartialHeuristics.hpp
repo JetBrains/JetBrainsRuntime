@@ -45,8 +45,6 @@ public:
 
   bool should_start_update_refs();
 
-  bool update_refs() const;
-
   virtual bool should_unload_classes();
 
   virtual bool should_process_references();

@@ -30,6 +30,13 @@
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 
+bool ShenandoahBarrierSet::need_update_refs_barrier() {
+  return UseShenandoahMatrix ||
+         _heap->is_update_refs_in_progress() ||
+         _heap->is_concurrent_traversal_in_progress() ||
+         (_heap->is_concurrent_mark_in_progress() && _heap->has_forwarded_objects());
+}
+
 inline oop ShenandoahBarrierSet::resolve_forwarded_not_null(oop p) {
   return BrooksPointer::forwardee(p);
 }

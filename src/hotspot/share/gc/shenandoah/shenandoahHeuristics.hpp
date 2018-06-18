@@ -120,8 +120,6 @@ public:
 
   virtual bool should_start_update_refs();
 
-  virtual bool update_refs() const;
-
   virtual ShenandoahHeap::GCCycleMode should_start_traversal_gc();
 
   virtual bool can_do_traversal_gc();

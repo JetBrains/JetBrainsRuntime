@@ -75,10 +75,6 @@ bool ShenandoahPartialHeuristics::should_start_update_refs() {
   return false;
 }
 
-bool ShenandoahPartialHeuristics::update_refs() const {
-  return false;
-}
-
 bool ShenandoahPartialHeuristics::should_unload_classes() {
   return ShenandoahUnloadClassesFrequency != 0;
 }

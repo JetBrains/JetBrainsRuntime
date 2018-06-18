@@ -109,7 +109,7 @@ public:
   static void enqueue(oop obj);
 
 private:
-  bool need_update_refs_barrier();
+  inline bool need_update_refs_barrier();
 
   template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
   void write_ref_array_loop(HeapWord* start, size_t count);

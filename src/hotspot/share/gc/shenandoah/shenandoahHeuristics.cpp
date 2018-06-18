@@ -249,10 +249,6 @@ bool ShenandoahHeuristics::should_start_update_refs() {
   return _update_refs_early;
 }
 
-bool ShenandoahHeuristics::update_refs() const {
-  return _update_refs_early;
-}
-
 ShenandoahHeap::GCCycleMode ShenandoahHeuristics::should_start_traversal_gc() {
   return ShenandoahHeap::NONE;
 }
