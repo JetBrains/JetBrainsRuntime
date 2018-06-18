@@ -126,7 +126,6 @@ public:
   ShenandoahObjToScanQueue* get_queue(uint worker_id);
   void clear_queue(ShenandoahObjToScanQueue *q);
 
-  inline bool try_draining_satb_buffer(ShenandoahObjToScanQueue *q, ShenandoahMarkTask &task);
   void drain_satb_buffers(uint worker_id, bool remark = false);
   ShenandoahObjToScanQueueSet* task_queues() { return _task_queues;}
 

@@ -595,7 +595,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 
   // Normal loop.
   q = queues->queue(worker_id);
-  ShenandoahTraversalSATBBufferClosure satb_cl(q);
+
+  ShenandoahTraversalSATBBufferClosure drain_satb(q);
   SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
 
   int seed = 17;
@@ -603,17 +604,29 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   while (true) {
     if (check_and_handle_cancelled_gc(terminator)) return;
 
+    if (DO_SATB) {
+      while (satb_mq_set.completed_buffers_num() > 0) {
+        satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
+      }
+    }
+
+    uint work = 0;
     for (uint i = 0; i < stride; i++) {
       if (q->pop_buffer(task) ||
           q->pop_local(task) ||
           q->pop_overflow(task) ||
-          (DO_SATB && satb_mq_set.apply_closure_to_completed_buffer(&satb_cl) && q->pop_buffer(task)) ||
           queues->steal(worker_id, &seed, task)) {
         conc_mark->do_task<T>(q, cl, live_data, &task);
+        work++;
       } else {
-        ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
-        if (terminator->offer_termination()) return;
+        break;
       }
+    }
+
+    if (work == 0) {
+      // No more work, try to terminate
+      ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+      if (terminator->offer_termination()) return;
     }
   }
 }
