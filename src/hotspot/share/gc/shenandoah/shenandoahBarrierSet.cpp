@@ -114,7 +114,6 @@ template <class T, bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
 void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
   assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
   ShenandoahUpdateRefsForOopClosure<UPDATE_MATRIX, STOREVAL_WRITE_BARRIER> cl;
-  ShenandoahEvacOOMScope oom_evac_scope;
   T* dst = (T*) start;
   for (size_t i = 0; i < count; i++) {
     cl.do_oop(dst++);
@@ -126,32 +125,33 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (!ShenandoahCloneBarrier) return;
   if (!need_update_refs_barrier()) return;
 
-  if (UseShenandoahMatrix) {
-    if (_heap->is_concurrent_traversal_in_progress()) {
+  if (_heap->is_concurrent_traversal_in_progress()) {
+    ShenandoahEvacOOMScope oom_evac_scope;
+    if (UseShenandoahMatrix) {
       if (UseCompressedOops) {
-        write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ true>(start, count);
+        write_ref_array_loop<narrowOop, /* matrix = */ true,  /* wb = */ true>(start, count);
       } else {
-        write_ref_array_loop<oop,       /* matrix = */ true, /* wb = */ true>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ true,  /* wb = */ true>(start, count);
       }
     } else {
       if (UseCompressedOops) {
-        write_ref_array_loop<narrowOop, /* matrix = */ true, /* wb = */ false>(start, count);
+        write_ref_array_loop<narrowOop, /* matrix = */ false, /* wb = */ true>(start, count);
       } else {
-        write_ref_array_loop<oop,       /* matrix = */ true, /* wb = */ false>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ false, /* wb = */ true>(start, count);
       }
     }
   } else {
-    if (_heap->is_concurrent_traversal_in_progress()) {
+    if (UseShenandoahMatrix) {
       if (UseCompressedOops) {
-        write_ref_array_loop<narrowOop,   /* matrix = */ false, /* wb = */ true>(start, count);
+        write_ref_array_loop<narrowOop, /* matrix = */ true,  /* wb = */ false>(start, count);
       } else {
-        write_ref_array_loop<oop,         /* matrix = */ false, /* wb = */ true>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ true,  /* wb = */ false>(start, count);
       }
     } else {
       if (UseCompressedOops) {
-        write_ref_array_loop<narrowOop,   /* matrix = */ false, /* wb = */ false>(start, count);
+        write_ref_array_loop<narrowOop, /* matrix = */ false, /* wb = */ false>(start, count);
       } else {
-        write_ref_array_loop<oop,         /* matrix = */ false, /* wb = */ false>(start, count);
+        write_ref_array_loop<oop,       /* matrix = */ false, /* wb = */ false>(start, count);
       }
     }
   }
@@ -227,23 +227,23 @@ void ShenandoahBarrierSet::write_region(MemRegion mr) {
   // it would be NULL in any case. But we *are* interested in any oop*
   // that potentially need to be updated.
 
-  ShenandoahEvacOOMScope oom_evac_scope;
   oop obj = oop(mr.start());
   assert(oopDesc::is_oop(obj), "must be an oop");
-  if (UseShenandoahMatrix) {
-    if (_heap->is_concurrent_traversal_in_progress()) {
-      ShenandoahUpdateRefsForOopClosure<true, true> cl;
+  if (_heap->is_concurrent_traversal_in_progress()) {
+    ShenandoahEvacOOMScope oom_evac_scope;
+    if (UseShenandoahMatrix) {
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ true,  /* wb = */ true> cl;
       obj->oop_iterate(&cl);
     } else {
-      ShenandoahUpdateRefsForOopClosure<true, false> cl;
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ false, /* wb = */ true> cl;
       obj->oop_iterate(&cl);
     }
   } else {
-    if (_heap->is_concurrent_traversal_in_progress()) {
-      ShenandoahUpdateRefsForOopClosure<false, true> cl;
+    if (UseShenandoahMatrix) {
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ true,  /* wb = */ false> cl;
       obj->oop_iterate(&cl);
     } else {
-      ShenandoahUpdateRefsForOopClosure<false, false> cl;
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ false, /* wb = */ false> cl;
       obj->oop_iterate(&cl);
     }
   }
