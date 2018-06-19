@@ -422,6 +422,11 @@
           "available, next recovery step would triggered.")                 \
           range(0, 100)                                                     \
                                                                             \
+  experimental(uintx, ShenandoahSATBBufferMaxEnqueueSkips, 50,              \
+          "Maximal number of times the SATB buffer is skipped from enqueue "\
+          "after compaction.")                                              \
+          range(0, 10000)                                                   \
+                                                                            \
   diagnostic(bool, ShenandoahAllowMixedAllocs, true,                        \
           "Allow mixing mutator and collector allocations in a single "     \
           "region")                                                         \
