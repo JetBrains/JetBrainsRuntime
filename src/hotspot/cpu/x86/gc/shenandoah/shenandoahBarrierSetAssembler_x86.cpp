@@ -474,11 +474,8 @@ void ShenandoahBarrierSetAssembler::storeval_barrier_impl(MacroAssembler* masm, 
     // __ push_callee_saved_registers();
     __ subptr(rsp, 2 * Interpreter::stackElementSize);
     __ movdbl(Address(rsp, 0), xmm0);
-    if (dst != c_rarg0) {
-      __ mov(c_rarg0, dst);
-    }
 
-    satb_write_barrier_pre(masm, noreg, c_rarg0, r15_thread, tmp, true, false);
+    satb_write_barrier_pre(masm, noreg, dst, r15_thread, tmp, true, false);
     __ movdbl(xmm0, Address(rsp, 0));
     __ addptr(rsp, 2 * Interpreter::stackElementSize);
     //__ pop_callee_saved_registers();
