@@ -81,7 +81,7 @@ public:
   jushort* get_liveness(uint worker_id);
   void flush_liveness(uint worker_id);
 
-  void main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb);
+  void main_loop(uint worker_id, ParallelTaskTerminator* terminator);
 
   void push_arraycopy(HeapWord* start, size_t count);
 
@@ -89,10 +89,7 @@ private:
 
   void prepare_regions();
 
-  template <bool DO_SATB>
-  void main_loop_prework(uint w, ParallelTaskTerminator* t);
-
-  template <class T, bool DO_SATB>
+  template <class T>
   void main_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator* terminator);
 
   void preclean_weak_refs();

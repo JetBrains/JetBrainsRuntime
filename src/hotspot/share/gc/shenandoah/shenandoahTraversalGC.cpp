@@ -213,7 +213,7 @@ public:
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
 
     // Drain all outstanding work in queues.
-    traversal_gc->main_loop(worker_id, _terminator, true);
+    traversal_gc->main_loop(worker_id, _terminator);
   }
 };
 
@@ -243,7 +243,7 @@ public:
       rp = _heap->ref_processor();
     }
 
-    // Step 1: Drain outstanding SATB queues.
+    // Step 0: Drain outstanding SATB queues.
     // NOTE: we piggy-back draining of remaining thread SATB buffers on the final root scan below.
     ShenandoahTraversalSATBBufferClosure satb_cl(q);
     {
@@ -283,7 +283,7 @@ public:
       ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::FinishQueues, worker_id);
 
       // Step 3: Finally drain all outstanding work in queues.
-      traversal_gc->main_loop(worker_id, _terminator, false);
+      traversal_gc->main_loop(worker_id, _terminator);
     }
 
   }
@@ -435,16 +435,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
   _root_regions_iterator.reset(_root_regions);
 }
 
-void ShenandoahTraversalGC::main_loop(uint worker_id, ParallelTaskTerminator* terminator, bool do_satb) {
-  if (do_satb) {
-    main_loop_prework<true>(worker_id, terminator);
-  } else {
-    main_loop_prework<false>(worker_id, terminator);
-  }
-}
-
-template <bool DO_SATB>
-void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t) {
+void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
   ShenandoahObjToScanQueue* q = task_queues()->queue(w);
 
   // Initialize live data.
@@ -461,19 +452,19 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalMetadataDedupMatrixClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalMetadataDedupMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDedupMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataMatrixClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalMetadataMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataMatrixClosure>(&cl, ld, w, t);
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalDedupMatrixClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalDedupMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDedupMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMatrixClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMatrixClosure>(&cl, ld, w, t);
         }
       }
     } else {
@@ -481,19 +472,19 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalMetadataDedupDegenMatrixClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalMetadataDedupDegenMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDedupDegenMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataDegenMatrixClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalMetadataDegenMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDegenMatrixClosure>(&cl, ld, w, t);
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalDedupDegenMatrixClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalDedupDegenMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDedupDegenMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalDegenMatrixClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalDegenMatrixClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDegenMatrixClosure>(&cl, ld, w, t);
         }
       }
     }
@@ -503,19 +494,19 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalMetadataDedupClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalMetadataDedupClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDedupClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalMetadataClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataClosure>(&cl, ld, w, t);
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalDedupClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalDedupClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDedupClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalClosure>(&cl, ld, w, t);
         }
       }
     } else {
@@ -523,19 +514,19 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalMetadataDedupDegenClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalMetadataDedupDegenClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDedupDegenClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataDegenClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalMetadataDegenClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalMetadataDegenClosure>(&cl, ld, w, t);
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
           ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
           ShenandoahTraversalDedupDegenClosure cl(q, rp, dq);
-          main_loop_work<ShenandoahTraversalDedupDegenClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDedupDegenClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalDegenClosure cl(q, rp);
-          main_loop_work<ShenandoahTraversalDegenClosure, DO_SATB>(&cl, ld, w, t);
+          main_loop_work<ShenandoahTraversalDegenClosure>(&cl, ld, w, t);
         }
       }
     }
@@ -544,7 +535,7 @@ void ShenandoahTraversalGC::main_loop_prework(uint w, ParallelTaskTerminator* t)
 
 }
 
-template <class T, bool DO_SATB>
+template <class T>
 void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator* terminator) {
   ShenandoahObjToScanQueueSet* queues = task_queues();
   ShenandoahObjToScanQueue* q = queues->queue(worker_id);
@@ -604,10 +595,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   while (true) {
     if (check_and_handle_cancelled_gc(terminator)) return;
 
-    if (DO_SATB) {
-      while (satb_mq_set.completed_buffers_num() > 0) {
-        satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
-      }
+    while (satb_mq_set.completed_buffers_num() > 0) {
+      satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
     }
 
     if (_arraycopy_task_queue.length() > 0) {
@@ -840,7 +829,7 @@ public:
     assert(sh->process_references(), "why else would we be here?");
     ParallelTaskTerminator terminator(1, traversal_gc->task_queues());
     shenandoah_assert_rp_isalive_installed();
-    traversal_gc->main_loop((uint) 0, &terminator, false);
+    traversal_gc->main_loop((uint) 0, &terminator);
   }
 };
 
@@ -990,7 +979,7 @@ public:
     assert(sh->process_references(), "why else would we be here?");
     shenandoah_assert_rp_isalive_installed();
 
-    traversal_gc->main_loop(_worker_id, _terminator, false);
+    traversal_gc->main_loop(_worker_id, _terminator);
 
     if (_reset_terminator) {
       _terminator->reset_for_reuse();

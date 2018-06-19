@@ -205,10 +205,32 @@ public:
     _cm->concurrent_scan_code_roots(worker_id, rp, _update_refs);
     _cm->mark_loop(worker_id, _terminator, rp,
                    true, // cancellable
-                   true, // drain SATBs as we go
                    _cm->unload_classes(),
                    _update_refs,
                    ShenandoahStringDedup::is_enabled()); // perform string dedup
+  }
+};
+
+class ShenandoahSATBThreadsClosure : public ThreadClosure {
+  ShenandoahSATBBufferClosure* _satb_cl;
+  int _thread_parity;
+
+ public:
+  ShenandoahSATBThreadsClosure(ShenandoahSATBBufferClosure* satb_cl) :
+    _satb_cl(satb_cl),
+    _thread_parity(Threads::thread_claim_parity()) {}
+
+  void do_thread(Thread* thread) {
+    if (thread->is_Java_thread()) {
+      if (thread->claim_oops_do(true, _thread_parity)) {
+        JavaThread* jt = (JavaThread*)thread;
+        ShenandoahThreadLocalData::satb_mark_queue(jt).apply_closure_and_empty(_satb_cl);
+      }
+    } else if (thread->is_VM_thread()) {
+      if (thread->claim_oops_do(true, _thread_parity)) {
+        ShenandoahBarrierSet::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
+      }
+    }
   }
 };
 
@@ -233,7 +255,14 @@ public:
     // it requires a StrongRootsScope around the task, we need to claim the
     // threads, and performance-wise it doesn't really matter. Adds about 1ms to
     // full-gc.
-    _cm->drain_satb_buffers(worker_id, true);
+    {
+      ShenandoahObjToScanQueue* q = _cm->get_queue(worker_id);
+      ShenandoahSATBBufferClosure cl(q);
+      SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
+      while (satb_mq_set.apply_closure_to_completed_buffer(&cl));
+      ShenandoahSATBThreadsClosure tc(&cl);
+      Threads::threads_do(&tc);
+    }
 
     ReferenceProcessor* rp;
     if (_cm->process_references()) {
@@ -248,7 +277,6 @@ public:
     _cm->concurrent_scan_code_roots(worker_id, rp, _update_refs);
     _cm->mark_loop(worker_id, _terminator, rp,
                    false, // not cancellable
-                   false, // do not drain SATBs, already drained
                    _unload_classes,
                    _update_refs,
                    _dedup_string);
@@ -476,42 +504,6 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
 
 }
 
-class ShenandoahSATBThreadsClosure : public ThreadClosure {
-  ShenandoahSATBBufferClosure* _satb_cl;
-  int _thread_parity;
-
- public:
-  ShenandoahSATBThreadsClosure(ShenandoahSATBBufferClosure* satb_cl) :
-    _satb_cl(satb_cl),
-    _thread_parity(Threads::thread_claim_parity()) {}
-
-  void do_thread(Thread* thread) {
-    if (thread->is_Java_thread()) {
-      if (thread->claim_oops_do(true, _thread_parity)) {
-        JavaThread* jt = (JavaThread*)thread;
-        ShenandoahThreadLocalData::satb_mark_queue(jt).apply_closure_and_empty(_satb_cl);
-      }
-    } else if (thread->is_VM_thread()) {
-      if (thread->claim_oops_do(true, _thread_parity)) {
-        ShenandoahBarrierSet::satb_mark_queue_set().shared_satb_queue()->apply_closure_and_empty(_satb_cl);
-      }
-    }
-  }
-};
-
-void ShenandoahConcurrentMark::drain_satb_buffers(uint worker_id, bool remark) {
-  ShenandoahObjToScanQueue* q = get_queue(worker_id);
-  ShenandoahSATBBufferClosure cl(q);
-
-  SATBMarkQueueSet& satb_mq_set = ShenandoahBarrierSet::satb_mark_queue_set();
-  while (satb_mq_set.apply_closure_to_completed_buffer(&cl));
-
-  if (remark) {
-    ShenandoahSATBThreadsClosure tc(&cl);
-    Threads::threads_do(&tc);
-  }
-}
-
 #if TASKQUEUE_STATS
 void ShenandoahConcurrentMark::print_taskqueue_stats_hdr(outputStream* const st) {
   st->print_raw_cr("GC Task Stats");
@@ -575,7 +567,6 @@ public:
 
     scm->mark_loop(_worker_id, _terminator, rp,
                    false, // not cancellable
-                   false, // do not drain SATBs
                    scm->unload_classes(),
                    sh->has_forwarded_objects(),
                    false);  // do not do strdedup
@@ -801,7 +792,6 @@ public:
 
     scm->mark_loop(0, &terminator, rp,
                    false, // not cancellable
-                   true,  // drain SATBs
                    scm->unload_classes(),
                    sh->has_forwarded_objects(),
                    false); // do not do strdedup
@@ -894,7 +884,7 @@ void ShenandoahConcurrentMark::clear_queue(ShenandoahObjToScanQueue *q) {
   q->clear_buffer();
 }
 
-template <bool CANCELLABLE, bool DRAIN_SATB>
+template <bool CANCELLABLE>
 void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator *t, ReferenceProcessor *rp,
                                                  bool class_unload, bool update_refs, bool strdedup) {
   ShenandoahObjToScanQueue* q = get_queue(w);
@@ -909,19 +899,19 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkUpdateRefsMetadataDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsMetadataClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsMetadataClosure, CANCELLABLE>(&cl, ld, w, t);
       }
     } else {
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkRefsMetadataDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsMetadataClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsMetadataClosure, CANCELLABLE>(&cl, ld, w, t);
       }
     }
   } else {
@@ -929,19 +919,19 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkUpdateRefsDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkUpdateRefsClosure, CANCELLABLE>(&cl, ld, w, t);
       }
     } else {
       if (strdedup) {
         ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
         ShenandoahMarkRefsDedupClosure cl(q, dq, rp);
-        mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsClosure cl(q, rp);
-        mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE, DRAIN_SATB>(&cl, ld, w, t);
+        mark_loop_work<ShenandoahMarkRefsClosure, CANCELLABLE>(&cl, ld, w, t);
       }
     }
   }
@@ -956,7 +946,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
   }
 }
 
-template <class T, bool CANCELLABLE, bool DRAIN_SATB>
+template <class T, bool CANCELLABLE>
 void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *terminator) {
   int seed = 17;
   uintx stride = CANCELLABLE ? ShenandoahMarkLoopStride : 1;
@@ -1009,10 +999,8 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
       return;
     }
 
-    if (DRAIN_SATB) {
-      while (satb_mq_set.completed_buffers_num() > 0) {
-        satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
-      }
+    while (satb_mq_set.completed_buffers_num() > 0) {
+      satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
     }
 
     uint work = 0;
