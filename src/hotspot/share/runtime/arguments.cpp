@@ -1266,9 +1266,13 @@ bool Arguments::process_argument(const char* arg,
     char stripped_argname[BUFLEN+1]; // +1 for '\0'
     jio_snprintf(stripped_argname, arg_len+1, "%s", argname); // +1 for '\0'
     if (is_obsolete_flag(stripped_argname, &since)) {
-      char version[256];
-      since.to_string(version, sizeof(version));
-      warning("Ignoring option %s; support was removed in %s", stripped_argname, version);
+      if (strcmp(stripped_argname, "UseAppCDS") != 0) {
+        char version[256];
+        since.to_string(version, sizeof(version));
+        warning("Ignoring option %s; support was removed in %s", stripped_argname, version);
+      } else {
+        warning("Ignoring obsolete option UseAppCDS; AppCDS is automatically enabled");
+      }
       return true;
     }
 #ifndef PRODUCT
@@ -4445,6 +4449,18 @@ void Arguments::PropertyList_unique_add(SystemProperty** plist, const char* k, c
   }
 
   PropertyList_add(plist, k, v, writeable == WriteableProperty, internal == InternalProperty);
+}
+
+// Update existing property with new value.
+void Arguments::PropertyList_update_value(SystemProperty* plist, const char* k, const char* v) {
+  SystemProperty* prop;
+  for (prop = plist; prop != NULL; prop = prop->next()) {
+    if (strcmp(k, prop->key()) == 0) {
+        prop->set_value(v);
+        return;
+    }
+  }
+  assert(false, "invalid property");
 }
 
 // Copies src into buf, replacing "%%" with "%" and "%p" with pid

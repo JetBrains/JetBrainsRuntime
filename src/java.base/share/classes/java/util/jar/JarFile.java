@@ -93,10 +93,14 @@ import java.util.zip.ZipFile;
  * argument.  This assures that classes compatible with the major
  * version of the running JVM are loaded from multi-release jar files.
  *
- * <p>If the verify flag is on when opening a signed jar file, the content of
- * the file is verified against its signature embedded inside the file. Please
- * note that the verification process does not include validating the signer's
- * certificate. A caller should inspect the return value of
+ * <p> If the {@code verify} flag is on when opening a signed jar file, the content
+ * of the jar entry is verified against the signature embedded inside the manifest
+ * that is associated with its {@link JarEntry#getRealName() path name}. For a
+ * multi-release jar file, the content of a versioned entry is verfieid against
+ * its own signature and {@link JarEntry#getCodeSigners()} returns its own signers.
+ *
+ * Please note that the verification process does not include validating the
+ * signer's certificate. A caller should inspect the return value of
  * {@link JarEntry#getCodeSigners()} to further determine if the signature
  * can be trusted.
  *
