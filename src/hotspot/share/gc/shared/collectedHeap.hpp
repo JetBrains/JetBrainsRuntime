@@ -89,6 +89,7 @@ class GCHeapLog : public EventLogBase<GCMessage> {
 //     CMSHeap
 //   G1CollectedHeap
 //   ParallelScavengeHeap
+//   ZCollectedHeap
 //
 class CollectedHeap : public CHeapObj<mtInternal> {
   friend class VMStructs;
@@ -143,6 +144,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // Allocate from the current thread's TLAB, with broken-out slow path.
   inline static HeapWord* allocate_from_tlab(Klass* klass, size_t size, TRAPS);
   static HeapWord* allocate_from_tlab_slow(Klass* klass, size_t size, TRAPS);
+
+  inline static HeapWord* allocate_outside_tlab(Klass* klass, size_t size,
+                                                bool* gc_overhead_limit_was_exceeded, TRAPS);
 
   // Raw memory allocation facilities
   // The obj and array allocate methods are covers for these methods.
@@ -203,7 +207,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     Serial,
     Parallel,
     CMS,
-    G1
+    G1,
+    Epsilon,
+    Z
   };
 
   static inline size_t filler_array_max_size() {

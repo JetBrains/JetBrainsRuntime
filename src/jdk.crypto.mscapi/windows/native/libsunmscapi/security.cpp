@@ -37,7 +37,13 @@
 #include <wincrypt.h>
 #include <stdio.h>
 #include <memory>
-
+#include "sun_security_mscapi_Key.h"
+#include "sun_security_mscapi_KeyStore.h"
+#include "sun_security_mscapi_PRNG.h"
+#include "sun_security_mscapi_RSACipher.h"
+#include "sun_security_mscapi_RSAKeyPairGenerator.h"
+#include "sun_security_mscapi_RSAPublicKey.h"
+#include "sun_security_mscapi_RSASignature.h"
 
 #define OID_EKU_ANY         "2.5.29.37.0"
 
@@ -1316,7 +1322,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_removeCertificate
  * Signature: (Ljava/lang/String;)V
  */
 JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_destroyKeyContainer
-  (JNIEnv *env, jclass clazz, jstring keyContainerName)
+  (JNIEnv *env, jobject clazz, jstring keyContainerName)
 {
     HCRYPTPROV hCryptProv = NULL;
     const char* pszKeyContainerName = NULL;
@@ -1438,7 +1444,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSACipher_encryptDecrypt
  * Signature: (J)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyBlob
-    (JNIEnv *env, jclass clazz, jlong hCryptKey) {
+    (JNIEnv *env, jobject clazz, jlong hCryptKey) {
 
     jbyteArray blob = NULL;
     DWORD dwBlobLen;
@@ -1489,7 +1495,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyB
  * Signature: ([B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getExponent
-    (JNIEnv *env, jclass clazz, jbyteArray jKeyBlob) {
+    (JNIEnv *env, jobject clazz, jbyteArray jKeyBlob) {
 
     jbyteArray exponent = NULL;
     jbyte*     exponentBytes = NULL;
@@ -1545,7 +1551,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getExponent
  * Signature: ([B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getModulus
-    (JNIEnv *env, jclass clazz, jbyteArray jKeyBlob) {
+    (JNIEnv *env, jobject clazz, jbyteArray jKeyBlob) {
 
     jbyteArray modulus = NULL;
     jbyte*     modulusBytes = NULL;
@@ -1818,7 +1824,7 @@ jbyteArray generateKeyBlob(
  * Signature: (I[B[B[B[B[B[B[B[B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_KeyStore_generatePrivateKeyBlob
-    (JNIEnv *env, jclass clazz,
+    (JNIEnv *env, jobject clazz,
         jint jKeyBitLength,
         jbyteArray jModulus,
         jbyteArray jPublicExponent,
@@ -1855,7 +1861,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_generatePubli
  * Signature: ([BLjava/lang/String;I)Lsun/security/mscapi/RSAPrivateKey;
  */
 JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
-    (JNIEnv *env, jclass clazz, jbyteArray keyBlob, jstring keyContainerName,
+    (JNIEnv *env, jobject clazz, jbyteArray keyBlob, jstring keyContainerName,
      jint keySize)
 {
     HCRYPTPROV hCryptProv = NULL;
