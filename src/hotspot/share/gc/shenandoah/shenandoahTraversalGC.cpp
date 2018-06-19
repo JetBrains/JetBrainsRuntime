@@ -610,6 +610,10 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
       }
     }
 
+    if (_arraycopy_task_queue.length() > 0) {
+      process_arraycopy_task(cl);
+    }
+
     uint work = 0;
     for (uint i = 0; i < stride; i++) {
       if (q->pop_buffer(task) ||
@@ -623,7 +627,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
       }
     }
 
-    if (work == 0) {
+    if (work == 0 &&
+        _arraycopy_task_queue.length() == 0) {
       // No more work, try to terminate
       ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
       if (terminator->offer_termination()) return;
@@ -707,6 +712,8 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     {
       ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_cleanup);
       ShenandoahHeapLocker lock(_heap->lock());
+
+      assert(_arraycopy_task_queue.length() == 0, "arraycopy tasks must be done");
 
       // Trash everything
       // Clear immediate garbage regions.
@@ -806,6 +813,7 @@ void ShenandoahTraversalGC::fixup_roots() {
 
 void ShenandoahTraversalGC::reset() {
   _task_queues->clear();
+  _arraycopy_task_queue.clear();
 }
 
 ShenandoahObjToScanQueueSet* ShenandoahTraversalGC::task_queues() {
@@ -1156,4 +1164,36 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
 
     assert(!_heap->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
   }
+}
+
+void ShenandoahTraversalGC::push_arraycopy(HeapWord* start, size_t count) {
+  _arraycopy_task_queue.push(start, count);
+}
+
+template <class T>
+bool ShenandoahTraversalGC::process_arraycopy_task(T* cl) {
+  ShenandoahArrayCopyTask task = _arraycopy_task_queue.pop();
+  if (task.start() == NULL) {
+    return false;
+  }
+  if (task.count() == 0) {
+    // Handle clone.
+    oop obj = oop(task.start());
+    obj->oop_iterate(cl);
+  } else {
+    HeapWord* array = task.start();
+    size_t count = task.count();
+    if (UseCompressedOops) {
+      narrowOop* p = reinterpret_cast<narrowOop*>(array);
+      for (size_t i = 0; i < count; i++) {
+        cl->do_oop(p++);
+      }
+    } else {
+      oop* p = reinterpret_cast<oop*>(array);
+      for (size_t i = 0; i < count; i++) {
+        cl->do_oop(p++);
+      }
+    }
+  }
+  return true;
 }
