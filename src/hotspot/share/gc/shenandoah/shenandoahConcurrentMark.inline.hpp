@@ -96,10 +96,12 @@ inline void ShenandoahConcurrentMark::count_liveness(jushort* live_data, oop obj
 inline void ShenandoahConcurrentMark::count_liveness_humongous(oop obj) {
   shenandoah_assert_in_correct_region(NULL, obj);
   size_t region_idx = _heap->heap_region_index_containing(obj);
-  int size = obj->size() + BrooksPointer::word_size();
+  size_t size = obj->size() + BrooksPointer::word_size();
   size_t num_regions = ShenandoahHeapRegion::required_regions(size * HeapWordSize);
+
   for (size_t i = region_idx; i < region_idx + num_regions; i++) {
     ShenandoahHeapRegion* chain_reg = _heap->get_region(i);
+    assert(chain_reg->is_humongous(), "Expecting a humongous region");
     chain_reg->increase_live_data_gc_words(chain_reg->used() >> LogHeapWordSize);
   }
 }
