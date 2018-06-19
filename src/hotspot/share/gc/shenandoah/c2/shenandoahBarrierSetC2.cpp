@@ -21,6 +21,8 @@
  *
  */
 
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
@@ -931,6 +933,11 @@ bool ShenandoahBarrierSetC2::is_gc_barrier_node(Node* node) const {
 Node* ShenandoahBarrierSetC2::step_over_gc_barrier(Node* c) const {
   // Currently not needed.
   return c;
+}
+
+bool ShenandoahBarrierSetC2::array_copy_requires_gc_barriers(BasicType type) const {
+  bool is_oop = type == T_OBJECT || type == T_ARRAY;
+  return is_oop && UseShenandoahMatrix;
 }
 
 // Support for macro expanded GC barriers

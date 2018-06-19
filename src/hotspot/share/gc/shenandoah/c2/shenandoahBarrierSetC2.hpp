@@ -111,7 +111,7 @@ public:
   virtual Node* resolve_for_write(GraphKit* kit, Node* n) const;
 
   // These are general helper methods used by C2
-  virtual bool array_copy_requires_gc_barriers(BasicType type) const { return true /*UseShenandoahMatrix || !ReduceInitialCardMarks*/; }
+  virtual bool array_copy_requires_gc_barriers(BasicType type) const;
 
   // Support for GC barriers emitted during parsing
   virtual bool is_gc_barrier_node(Node* node) const;
