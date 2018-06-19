@@ -106,7 +106,7 @@ public:
   virtual void verify_safe_oop(oop p);
 #endif
 
-  static void enqueue(oop obj);
+  void enqueue(oop obj);
 
 private:
   inline bool need_update_refs_barrier();

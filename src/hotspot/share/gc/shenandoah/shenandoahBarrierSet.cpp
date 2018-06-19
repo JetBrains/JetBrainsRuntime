@@ -47,13 +47,15 @@ template <bool UPDATE_MATRIX, bool STOREVAL_WRITE_BARRIER>
 class ShenandoahUpdateRefsForOopClosure: public ExtendedOopClosure {
 private:
   ShenandoahHeap* _heap;
+  ShenandoahBarrierSet* _bs;
+
   template <class T>
   inline void do_oop_work(T* p) {
     oop o;
     if (STOREVAL_WRITE_BARRIER) {
       o = _heap->evac_update_with_forwarded(p);
       if (!CompressedOops::is_null(o)) {
-        ShenandoahBarrierSet::enqueue(o);
+        _bs->enqueue(o);
       }
     } else {
       o = _heap->maybe_update_with_forwarded(p);
@@ -63,7 +65,7 @@ private:
     }
   }
 public:
-  ShenandoahUpdateRefsForOopClosure() : _heap(ShenandoahHeap::heap()) {
+  ShenandoahUpdateRefsForOopClosure() : _heap(ShenandoahHeap::heap()), _bs(ShenandoahBarrierSet::barrier_set()) {
     assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");
   }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -312,6 +314,12 @@ void ShenandoahBarrierSet::enqueue(oop obj) {
   assert(oopDesc::is_oop(obj, true), "Error");
 
   if (!_satb_mark_queue_set.is_active()) return;
+
+  // Filter marked objects before hitting the SATB queues. The same predicate would
+  // be used by SATBMQ::filter to eliminate already marked objects downstream, but
+  // filtering here helps to avoid wasteful SATB queueing work to begin with.
+  if (!_heap->requires_marking(obj)) return;
+
   Thread* thr = Thread::current();
   if (thr->is_Java_thread()) {
     ShenandoahThreadLocalData::satb_mark_queue(thr).enqueue(obj);

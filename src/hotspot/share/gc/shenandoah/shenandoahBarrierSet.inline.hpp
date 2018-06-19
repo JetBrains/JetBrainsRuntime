@@ -61,7 +61,7 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
   } while ((! oopDesc::unsafe_equals(compare_value, expected)) && oopDesc::unsafe_equals(resolve_forwarded(compare_value), resolve_forwarded(expected)));
   if (oopDesc::unsafe_equals(expected, compare_value)) {
     if (ShenandoahSATBBarrier && !CompressedOops::is_null(compare_value)) {
-      ShenandoahBarrierSet::enqueue(compare_value);
+      ShenandoahBarrierSet::barrier_set()->enqueue(compare_value);
     }
     if (UseShenandoahMatrix && !CompressedOops::is_null(new_value)) {
       ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
@@ -77,7 +77,7 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
   oop previous = Raw::oop_atomic_xchg(new_value, addr);
   if (ShenandoahSATBBarrier) {
     if (!CompressedOops::is_null(previous)) {
-      ShenandoahBarrierSet::enqueue(previous);
+      ShenandoahBarrierSet::barrier_set()->enqueue(previous);
     }
   }
   if (UseShenandoahMatrix && !CompressedOops::is_null(new_value)) {
