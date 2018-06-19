@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "interpreter/interpreter.hpp"
@@ -48,7 +49,7 @@ void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, Dec
                                                        Register addr, Register count, RegSet saved_regs) {
   if (is_oop) {
     bool dest_uninitialized = (decorators & AS_DEST_NOT_INITIALIZED) != 0;
-    if (!dest_uninitialized) {
+    if (!dest_uninitialized && !ShenandoahHeap::heap()->heuristics()->can_do_traversal_gc()) {
       __ push(saved_regs, sp);
       if (count == c_rarg0) {
         if (addr == c_rarg1) {
