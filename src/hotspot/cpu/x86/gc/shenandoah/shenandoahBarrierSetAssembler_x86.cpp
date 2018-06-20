@@ -259,22 +259,30 @@ void ShenandoahBarrierSetAssembler::satb_write_barrier_pre(MacroAssembler* masm,
 
   NOT_LP64( __ push(thread); )
 
+#ifdef _LP64
+  // We move pre_val into c_rarg0 early, in order to avoid smashing it, should
+  // pre_val be c_rarg1 (where the call prologue would copy thread argument).
+  // Note: this should not accidentally smash thread, because thread is always r15.
+  assert(thread != c_rarg0, "smashed arg");
+  if (c_rarg0 != pre_val) {
+    __ mov(c_rarg0, pre_val);
+  }
+#endif
+
   if (expand_call) {
     LP64_ONLY( assert(pre_val != c_rarg1, "smashed arg"); )
 #ifdef _LP64
     if (c_rarg1 != thread) {
       __ mov(c_rarg1, thread);
     }
-    if (c_rarg0 != pre_val) {
-      __ mov(c_rarg0, pre_val);
-    }
+    // Already moved pre_val into c_rarg0 above
 #else
     __ push(thread);
     __ push(pre_val);
 #endif
     __ MacroAssembler::call_VM_leaf_base(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), 2);
   } else {
-    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), pre_val, thread);
+    __ call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), LP64_ONLY(c_rarg0) NOT_LP64(pre_val), thread);
   }
 
   NOT_LP64( __ pop(thread); )
