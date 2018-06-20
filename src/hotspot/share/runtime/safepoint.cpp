@@ -697,8 +697,7 @@ public:
     }
 
     if (!_subtasks.is_task_claimed(SafepointSynchronize::SAFEPOINT_CLEANUP_STRING_TABLE_REHASH)) {
-      // Workaround upstream bug in StringTable rehashing, see JDK-8205006.
-      if (StringTable::needs_rehashing() && !UseShenandoahGC) {
+      if (StringTable::needs_rehashing()) {
         const char* name = "rehashing string table";
         EventSafepointCleanupTask event;
         TraceTime timer(name, TRACETIME_LOG(Info, safepoint, cleanup));
