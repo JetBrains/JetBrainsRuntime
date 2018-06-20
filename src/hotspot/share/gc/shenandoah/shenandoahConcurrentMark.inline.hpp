@@ -214,10 +214,19 @@ public:
   {
   }
 
-  void do_buffer(void** buffer, size_t size) {
+  void do_buffer(void **buffer, size_t size) {
+    if (_heap->has_forwarded_objects()) {
+      do_buffer_impl<RESOLVE>(buffer, size);
+    } else {
+      do_buffer_impl<NONE>(buffer, size);
+    }
+  }
+
+  template<UpdateRefsMode UPDATE_REFS>
+  void do_buffer_impl(void **buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
-      oop* p = (oop*) &buffer[i];
-      ShenandoahConcurrentMark::mark_through_ref<oop, RESOLVE>(p, _heap, _queue);
+      oop *p = (oop *) &buffer[i];
+      ShenandoahConcurrentMark::mark_through_ref<oop, UPDATE_REFS>(p, _heap, _queue);
     }
   }
 };
