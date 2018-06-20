@@ -1489,6 +1489,10 @@ void ShenandoahHeap::object_iterate(ObjectClosure* cl) {
     return;
   }
 
+  // Reset bitmap
+  MemRegion mr = MemRegion(_aux_bit_map.startWord(), _aux_bit_map.endWord());
+  _aux_bit_map.clear_range_large(mr);
+
   Stack<oop,mtGC> oop_stack;
 
   // First, we process all GC roots. This populates the work stack with initial objects.

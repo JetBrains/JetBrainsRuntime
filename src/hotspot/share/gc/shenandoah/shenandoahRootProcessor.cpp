@@ -34,6 +34,7 @@
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
+#include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "memory/allocation.inline.hpp"
@@ -53,9 +54,12 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
   _threads_nmethods_cl(NULL)
 {
   heap->phase_timings()->record_workers_start(_phase);
-  VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-  if (op == NULL || !op->_safepoint_cleanup_done) {
-    _threads_nmethods_cl = NMethodSweeper::prepare_mark_active_nmethods();
+
+  if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
+    VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
+    if (op == NULL || !op->_safepoint_cleanup_done) {
+      _threads_nmethods_cl = NMethodSweeper::prepare_mark_active_nmethods();
+    }
   }
 
   if (ShenandoahStringDedup::is_enabled()) {
@@ -66,9 +70,12 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
 ShenandoahRootProcessor::~ShenandoahRootProcessor() {
   delete _process_strong_tasks;
   ShenandoahHeap::heap()->phase_timings()->record_workers_end(_phase);
-  VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-  if (op != NULL) {
-    op->_safepoint_cleanup_done = true;
+
+  if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
+    VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
+    if (op != NULL) {
+      op->_safepoint_cleanup_done = true;
+    }
   }
 }
 
