@@ -43,18 +43,18 @@ private:
     oop o = RawAccess<>::oop_load(p);
     if (o != NULL) {
       if (ShenandoahHeap::heap()->is_in(o) && oopDesc::is_oop(o)) {
-        tty->print_cr("%s "INT32_FORMAT" ("PTR_FORMAT")-> "PTR_FORMAT" (marked: %s) (%s "PTR_FORMAT")",
+        tty->print_cr("%s " INT32_FORMAT " (" PTR_FORMAT ")-> " PTR_FORMAT " (marked: %s) (%s " PTR_FORMAT ")",
                       _prefix, _index,
                       p2i(p), p2i(o),
                       BOOL_TO_STR(ShenandoahHeap::heap()->is_marked_complete(o)),
                       o->klass()->internal_name(), p2i(o->klass()));
       } else {
-        tty->print_cr("%s "INT32_FORMAT" ("PTR_FORMAT" dirty -> "PTR_FORMAT" (not in heap, possibly corrupted or dirty)",
+        tty->print_cr("%s " INT32_FORMAT " (" PTR_FORMAT " dirty -> " PTR_FORMAT " (not in heap, possibly corrupted or dirty)",
                       _prefix, _index,
                       p2i(p), p2i(o));
       }
     } else {
-      tty->print_cr("%s "INT32_FORMAT" ("PTR_FORMAT") -> "PTR_FORMAT, _prefix, _index, p2i(p), p2i((HeapWord*) o));
+      tty->print_cr("%s " INT32_FORMAT " (" PTR_FORMAT ") -> " PTR_FORMAT, _prefix, _index, p2i(p), p2i((HeapWord*) o));
     }
     _index++;
   }
@@ -77,7 +77,7 @@ public:
 
   void do_object(oop p) {
     if (ShenandoahHeap::heap()->is_in(p)) {
-      tty->print_cr("%s object "PTR_FORMAT" (marked: %s) (%s "PTR_FORMAT") refers to:",
+      tty->print_cr("%s object " PTR_FORMAT " (marked: %s) (%s " PTR_FORMAT ") refers to:",
                     _prefix, p2i(p),
                     BOOL_TO_STR(ShenandoahHeap::heap()->is_marked_complete(p)),
                     p->klass()->internal_name(), p2i(p->klass()));

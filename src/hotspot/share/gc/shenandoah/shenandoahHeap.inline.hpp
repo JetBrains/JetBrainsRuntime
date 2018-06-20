@@ -47,6 +47,7 @@
 #include "runtime/prefetch.inline.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/copy.hpp"
+#include "utilities/globalDefinitions.hpp"
 
 template <class T>
 void ShenandoahUpdateRefsClosure::do_oop_work(T* p) {
@@ -179,7 +180,7 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
     shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress());
     shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_gc());
 
-    log_develop_trace(gc)("Updating old ref: "PTR_FORMAT" pointing to "PTR_FORMAT" to new ref: "PTR_FORMAT,
+    log_develop_trace(gc)("Updating old ref: " PTR_FORMAT " pointing to " PTR_FORMAT " to new ref: " PTR_FORMAT,
                           p2i(p), p2i(heap_oop), p2i(forwarded_oop));
 
     // If this fails, another thread wrote to p before us, it will be logged in SATB and the

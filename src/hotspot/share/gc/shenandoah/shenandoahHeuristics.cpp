@@ -213,11 +213,11 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
     collection_set->update_region_status();
 
     size_t cset_percent = total_garbage == 0 ? 0 : (collection_set->garbage() * 100 / total_garbage);
-    log_info(gc, ergo)("Collectable Garbage: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT"M CSet, "SIZE_FORMAT" CSet regions",
+    log_info(gc, ergo)("Collectable Garbage: " SIZE_FORMAT "M (" SIZE_FORMAT "%% of total), " SIZE_FORMAT "M CSet, " SIZE_FORMAT " CSet regions",
                        collection_set->garbage() / M, cset_percent, collection_set->live_data() / M, collection_set->count());
   }
 
-  log_info(gc, ergo)("Immediate Garbage: "SIZE_FORMAT"M ("SIZE_FORMAT"%% of total), "SIZE_FORMAT" regions",
+  log_info(gc, ergo)("Immediate Garbage: " SIZE_FORMAT "M (" SIZE_FORMAT "%% of total), " SIZE_FORMAT " regions",
                      immediate_garbage / M, immediate_percent, immediate_regions);
 }
 

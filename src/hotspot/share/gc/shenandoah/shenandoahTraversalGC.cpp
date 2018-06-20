@@ -374,7 +374,7 @@ void ShenandoahTraversalGC::prepare() {
   // Rebuild free set
   free_set->rebuild();
 
-  log_info(gc,ergo)("Got "SIZE_FORMAT" collection set regions and "SIZE_FORMAT" root set regions", collection_set->count(), _root_regions->count());
+  log_info(gc,ergo)("Got " SIZE_FORMAT " collection set regions and " SIZE_FORMAT " root set regions", collection_set->count(), _root_regions->count());
 }
 
 void ShenandoahTraversalGC::init_traversal_collection() {

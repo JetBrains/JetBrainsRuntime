@@ -677,11 +677,11 @@ void ShenandoahHeapRegion::setup_heap_region_size(size_t initial_heap_size, size
   assert (MaxTLABSizeBytes > MinTLABSize, "should be larger");
 
   log_info(gc, heap)("Heap region size: " SIZE_FORMAT "M", RegionSizeBytes / M);
-  log_info(gc, init)("Region size in bytes: "SIZE_FORMAT, RegionSizeBytes);
-  log_info(gc, init)("Region size byte shift: "SIZE_FORMAT, RegionSizeBytesShift);
-  log_info(gc, init)("Humongous threshold in bytes: "SIZE_FORMAT, HumongousThresholdBytes);
-  log_info(gc, init)("Max TLAB size in bytes: "SIZE_FORMAT, MaxTLABSizeBytes);
-  log_info(gc, init)("Number of regions: "SIZE_FORMAT, max_heap_size / RegionSizeBytes);
+  log_info(gc, init)("Region size in bytes: " SIZE_FORMAT, RegionSizeBytes);
+  log_info(gc, init)("Region size byte shift: " SIZE_FORMAT, RegionSizeBytesShift);
+  log_info(gc, init)("Humongous threshold in bytes: " SIZE_FORMAT, HumongousThresholdBytes);
+  log_info(gc, init)("Max TLAB size in bytes: " SIZE_FORMAT, MaxTLABSizeBytes);
+  log_info(gc, init)("Number of regions: " SIZE_FORMAT, max_heap_size / RegionSizeBytes);
 }
 
 CompactibleSpace* ShenandoahHeapRegion::next_compaction_space() const {

@@ -35,7 +35,7 @@ ShenandoahStaticHeuristics::ShenandoahStaticHeuristics() : ShenandoahHeuristics(
 }
 
 void ShenandoahStaticHeuristics::print_thresholds() {
-  log_info(gc, init)("Shenandoah heuristics thresholds: allocation "SIZE_FORMAT", free "SIZE_FORMAT", garbage "SIZE_FORMAT,
+  log_info(gc, init)("Shenandoah heuristics thresholds: allocation " SIZE_FORMAT ", free " SIZE_FORMAT ", garbage " SIZE_FORMAT,
                      ShenandoahAllocationThreshold,
                      ShenandoahFreeThreshold,
                      ShenandoahGarbageThreshold);
