@@ -42,6 +42,11 @@ ObjectSampler* LeakProfiler::_object_sampler = NULL;
 
 static volatile jbyte suspended = 0;
 bool LeakProfiler::start(jint sample_count) {
+   if (UseShenandoahGC) {
+    log_warning(jfr)("LeakProfiler is currently not supported in combination with Shenandoah GC");
+    return false;
+  }
+
   if (_object_sampler != NULL) {
     // already started
     return true;
