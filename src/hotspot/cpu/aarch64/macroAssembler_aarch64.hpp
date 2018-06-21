@@ -1000,7 +1000,7 @@ public:
   void addptr(const Address &dst, int32_t src);
   void cmpptr(Register src1, Address src2);
 
-  void cmpoop(Register src1, Register src2);
+  void cmpoop(Register obj1, Register obj2);
 
   // Various forms of CAS
 

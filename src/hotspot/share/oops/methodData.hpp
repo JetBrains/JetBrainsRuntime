@@ -139,11 +139,7 @@ public:
     //
     // The trap_state is collected only if ProfileTraps is true.
     trap_bits = 1+31,  // 31: enough to distinguish [0..Reason_RECORDED_LIMIT].
-    // trap_shift = BitsPerInt - trap_bits,
     trap_mask = right_n_bits(trap_bits),
-    // trap_mask_in_place = (trap_mask << trap_shift),
-    // flag_limit = trap_shift,
-    // flag_mask = right_n_bits(flag_limit),
     first_flag = 0
   };
 
@@ -1860,7 +1856,15 @@ protected:
   enum {
     speculative_trap_method,
 #ifndef _LP64
-    speculative_trap_padding,
+    // The size of the area for traps is a multiple of the header
+    // size, 2 cells on 32 bits. Packed at the end of this area are
+    // argument info entries (with tag
+    // DataLayout::arg_info_data_tag). The logic in
+    // MethodData::bci_to_extra_data() that guarantees traps don't
+    // overflow over argument info entries assumes the size of a
+    // SpeculativeTrapData is twice the header size. On 32 bits, a
+    // SpeculativeTrapData must be 4 cells.
+    padding,
 #endif
     speculative_trap_cell_count
   };

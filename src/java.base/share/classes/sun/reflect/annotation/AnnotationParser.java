@@ -26,10 +26,11 @@
 package sun.reflect.annotation;
 
 import java.lang.annotation.*;
-import java.util.*;
-import java.nio.ByteBuffer;
-import java.nio.BufferUnderflowException;
 import java.lang.reflect.*;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.function.Supplier;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import jdk.internal.reflect.ConstantPool;
@@ -714,40 +715,16 @@ public class AnnotationParser {
                                           ByteBuffer buf,
                                           ConstantPool constPool,
                                           Class<?> container) {
-        Object[] result = new Class<?>[length];
-        boolean typeMismatch = false;
-        int tag = 0;
-
-        for (int i = 0; i < length; i++) {
-            tag = buf.get();
-            if (tag == 'c') {
-                result[i] = parseClassValue(buf, constPool, container);
-            } else {
-                skipMemberValue(tag, buf);
-                typeMismatch = true;
-            }
-        }
-        return typeMismatch ? exceptionProxy(tag) : result;
+        return parseArrayElements(new Class<?>[length],
+                buf, 'c', () -> parseClassValue(buf, constPool, container));
     }
 
     private static Object parseEnumArray(int length, Class<? extends Enum<?>> enumType,
                                          ByteBuffer buf,
                                          ConstantPool constPool,
                                          Class<?> container) {
-        Object[] result = (Object[]) Array.newInstance(enumType, length);
-        boolean typeMismatch = false;
-        int tag = 0;
-
-        for (int i = 0; i < length; i++) {
-            tag = buf.get();
-            if (tag == 'e') {
-                result[i] = parseEnumValue(enumType, buf, constPool, container);
-            } else {
-                skipMemberValue(tag, buf);
-                typeMismatch = true;
-            }
-        }
-        return typeMismatch ? exceptionProxy(tag) : result;
+        return parseArrayElements((Object[]) Array.newInstance(enumType, length),
+                buf, 'e', () -> parseEnumValue(enumType, buf, constPool, container));
     }
 
     private static Object parseAnnotationArray(int length,
@@ -755,20 +732,30 @@ public class AnnotationParser {
                                                ByteBuffer buf,
                                                ConstantPool constPool,
                                                Class<?> container) {
-        Object[] result = (Object[]) Array.newInstance(annotationType, length);
-        boolean typeMismatch = false;
-        int tag = 0;
+        return parseArrayElements((Object[]) Array.newInstance(annotationType, length),
+                buf, '@', () -> parseAnnotation(buf, constPool, container, true));
+    }
 
-        for (int i = 0; i < length; i++) {
-            tag = buf.get();
-            if (tag == '@') {
-                result[i] = parseAnnotation(buf, constPool, container, true);
+    private static Object parseArrayElements(Object[] result,
+                                             ByteBuffer buf,
+                                             int expectedTag,
+                                             Supplier<Object> parseElement) {
+        Object exceptionProxy = null;
+        for (int i = 0; i < result.length; i++) {
+            int tag = buf.get();
+            if (tag == expectedTag) {
+                Object value = parseElement.get();
+                if (value instanceof ExceptionProxy) {
+                    if (exceptionProxy == null) exceptionProxy = (ExceptionProxy) value;
+                } else {
+                    result[i] = value;
+                }
             } else {
                 skipMemberValue(tag, buf);
-                typeMismatch = true;
+                if (exceptionProxy == null) exceptionProxy = exceptionProxy(tag);
             }
         }
-        return typeMismatch ? exceptionProxy(tag) : result;
+        return (exceptionProxy != null) ? exceptionProxy : result;
     }
 
     /**

@@ -405,7 +405,7 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
 
 }
 
-void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register op1, Register op2) {
+void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register op1, Register op2) {
   __ cmp(op1, op2);
   if (ShenandoahAcmpBarrier) {
     Label done;

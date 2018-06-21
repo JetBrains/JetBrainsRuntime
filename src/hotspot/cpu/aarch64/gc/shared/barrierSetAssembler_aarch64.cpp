@@ -34,14 +34,13 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
   // LR is live.  It must be saved around calls.
 
   dst = dst == noreg ? r0 : dst;
-
-  bool on_heap = (decorators & IN_HEAP) != 0;
-  bool on_root = (decorators & IN_ROOT) != 0;
+  bool in_heap = (decorators & IN_HEAP) != 0;
+  bool in_native = (decorators & IN_NATIVE) != 0;
   bool oop_not_null = (decorators & OOP_NOT_NULL) != 0;
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
-    if (on_heap) {
+    if (in_heap) {
       if (UseCompressedOops) {
         __ ldrw(dst, src);
         if (oop_not_null) {
@@ -53,7 +52,7 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
         __ ldr(dst, src);
       }
     } else {
-      assert(on_root, "why else?");
+      assert(in_native, "why else?");
       __ ldr(dst, src);
     }
     break;
@@ -73,13 +72,13 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
 
 void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                    Address dst, Register val, Register tmp1, Register tmp2) {
-  bool on_heap = (decorators & IN_HEAP) != 0;
-  bool on_root = (decorators & IN_ROOT) != 0;
+  bool in_heap = (decorators & IN_HEAP) != 0;
+  bool in_native = (decorators & IN_NATIVE) != 0;
   switch (type) {
   case T_OBJECT:
   case T_ARRAY: {
     val = val == noreg ? zr : val;
-    if (on_heap) {
+    if (in_heap) {
       if (UseCompressedOops) {
         assert(!dst.uses(val), "not enough registers");
         if (val != zr) {
@@ -90,7 +89,7 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
         __ str(val, dst);
       }
     } else {
-      assert(on_root, "why else?");
+      assert(in_native, "why else?");
       __ str(val, dst);
     }
     break;
@@ -109,6 +108,11 @@ void BarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet decorators
   case T_DOUBLE:  __ strd(v0,  dst); break;
   default: Unimplemented();
   }
+}
+
+void BarrierSetAssembler::obj_equals(MacroAssembler* masm,
+                                     Register obj1, Register obj2) {
+  __ cmp(obj1, obj2);
 }
 
 void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Register jni_env,

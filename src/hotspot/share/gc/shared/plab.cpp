@@ -86,16 +86,14 @@ size_t PLAB::retire_internal() {
   if (_top < _hard_end) {
     assert(pointer_delta(_hard_end, _top) >= (size_t)(oopDesc::header_size() + Universe::heap()->oop_extra_words()),
            "better have enough space left to fill with dummy");
-    HeapWord* obj = Universe::heap()->tlab_post_allocation_setup(_top);
-    CollectedHeap::fill_with_object(obj, _hard_end);
+    Universe::heap()->fill_with_dummy_object(_top, _hard_end, true);
     result += invalidate();
   }
   return result;
 }
 
 void PLAB::add_undo_waste(HeapWord* obj, size_t word_sz) {
-  HeapWord* head_obj = Universe::heap()->tlab_post_allocation_setup(obj);
-  CollectedHeap::fill_with_object(head_obj, word_sz - (head_obj - obj));
+  Universe::heap()->fill_with_dummy_object(obj, obj + word_sz, true);
   _undo_wasted += word_sz;
 }
 

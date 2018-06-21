@@ -26,6 +26,7 @@
 #include "gc/shared/gcTimer.hpp"
 #include "gc/shared/parallelCleaning.hpp"
 #include "gc/shared/referenceProcessor.hpp"
+#include "gc/shared/referenceProcessorPhaseTimes.hpp"
 #include "gc/shared/strongRootsScope.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
@@ -658,15 +659,8 @@ public:
   }
 
   // Executes a task using worker threads.
-  void execute(ProcessTask& task) {
+  void execute(ProcessTask& task, uint ergo_workers) {
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
-
-    // Shortcut execution if task is empty.
-    // This should be replaced with the generic ReferenceProcessor shortcut,
-    // see JDK-8181214, JDK-8043575, JDK-6938732.
-    if (task.is_empty()) {
-      return;
-    }
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConcurrentMark* cm = heap->concurrentMark();

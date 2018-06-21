@@ -184,18 +184,16 @@ const DecoratorSet ON_DECORATOR_MASK  = ON_STRONG_OOP_REF | ON_WEAK_OOP_REF |
 //   be omitted if this decorator is not set.
 // * IN_HEAP_ARRAY: The access is performed on a heap allocated array. This is sometimes a special case
 //   for some GCs, and implies that it is an IN_HEAP.
-// * IN_ROOT: The access is performed in an off-heap data structure pointing into the Java heap.
+// * IN_NATIVE: The access is performed in an off-heap data structure pointing into the Java heap.
 // * IN_CONCURRENT_ROOT: The access is performed in an off-heap data structure pointing into the Java heap,
 //   but is notably not scanned during safepoints. This is sometimes a special case for some GCs and
-//   implies that it is also an IN_ROOT.
+//   implies that it is also an IN_NATIVE.
 const DecoratorSet IN_HEAP            = UCONST64(1) << 20;
 const DecoratorSet IN_HEAP_ARRAY      = UCONST64(1) << 21;
-const DecoratorSet IN_ROOT            = UCONST64(1) << 22;
+const DecoratorSet IN_NATIVE          = UCONST64(1) << 22;
 const DecoratorSet IN_CONCURRENT_ROOT = UCONST64(1) << 23;
-const DecoratorSet IN_ARCHIVE_ROOT    = UCONST64(1) << 24;
 const DecoratorSet IN_DECORATOR_MASK  = IN_HEAP | IN_HEAP_ARRAY |
-                                        IN_ROOT | IN_CONCURRENT_ROOT |
-                                        IN_ARCHIVE_ROOT;
+                                        IN_NATIVE | IN_CONCURRENT_ROOT;
 
 // == Value Decorators ==
 // * OOP_NOT_NULL: This property can make certain barriers faster such as compressing oops.
@@ -244,10 +242,8 @@ namespace AccessInternal {
     static const DecoratorSet heap_array_is_in_heap = barrier_strength_default |
       ((IN_HEAP_ARRAY & barrier_strength_default) != 0 ? IN_HEAP : INTERNAL_EMPTY);
     static const DecoratorSet conc_root_is_root = heap_array_is_in_heap |
-      ((IN_CONCURRENT_ROOT & heap_array_is_in_heap) != 0 ? IN_ROOT : INTERNAL_EMPTY);
-    static const DecoratorSet archive_root_is_root = conc_root_is_root |
-      ((IN_ARCHIVE_ROOT & conc_root_is_root) != 0 ? IN_ROOT : INTERNAL_EMPTY);
-    static const DecoratorSet value = archive_root_is_root | BT_BUILDTIME_DECORATORS;
+      ((IN_CONCURRENT_ROOT & heap_array_is_in_heap) != 0 ? IN_NATIVE : INTERNAL_EMPTY);
+    static const DecoratorSet value = conc_root_is_root | BT_BUILDTIME_DECORATORS;
   };
 
   // This function implements the above DecoratorFixup rules, but without meta
@@ -267,10 +263,8 @@ namespace AccessInternal {
     DecoratorSet heap_array_is_in_heap = barrier_strength_default |
       ((IN_HEAP_ARRAY & barrier_strength_default) != 0 ? IN_HEAP : INTERNAL_EMPTY);
     DecoratorSet conc_root_is_root = heap_array_is_in_heap |
-      ((IN_CONCURRENT_ROOT & heap_array_is_in_heap) != 0 ? IN_ROOT : INTERNAL_EMPTY);
-    DecoratorSet archive_root_is_root = conc_root_is_root |
-      ((IN_ARCHIVE_ROOT & conc_root_is_root) != 0 ? IN_ROOT : INTERNAL_EMPTY);
-    DecoratorSet value = archive_root_is_root | BT_BUILDTIME_DECORATORS;
+      ((IN_CONCURRENT_ROOT & heap_array_is_in_heap) != 0 ? IN_NATIVE : INTERNAL_EMPTY);
+    DecoratorSet value = conc_root_is_root | BT_BUILDTIME_DECORATORS;
     return value;
   }
 }

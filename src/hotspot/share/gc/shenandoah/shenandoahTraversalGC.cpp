@@ -25,6 +25,8 @@
 
 #include "gc/shared/gcTraceTime.inline.hpp"
 #include "gc/shared/markBitMap.inline.hpp"
+#include "gc/shared/referenceProcessor.hpp"
+#include "gc/shared/referenceProcessorPhaseTimes.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
@@ -1061,7 +1063,7 @@ public:
   }
 
   // Executes a task using worker threads.
-  void execute(ProcessTask& task) {
+  void execute(ProcessTask& task, uint ergo_workers) {
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();

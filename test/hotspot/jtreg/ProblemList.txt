@@ -52,7 +52,7 @@ compiler/types/correctness/OffTest.java 8066173 generic-all
 compiler/c2/Test8007294.java 8192992 generic-all
 
 applications/ctw/modules/java_desktop.java 8189604 windows-all
-applications/ctw/modules/java_desktop_2.java 8189604 windows-all
+applications/ctw/modules/java_desktop_2.java 8189604,8204842 generic-all
 applications/ctw/modules/jdk_jconsole.java 8189604 windows-all
 
 #############################################################################
@@ -171,9 +171,6 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java 8013267 generic-all
 
 vmTestbase/nsk/jdb/exclude/exclude001/exclude001.java 8197938 windows-all
-
-vmTestbase/heapdump/JMapHeapCore/TestDescription.java 8023376,8001227,8051445 generic-all
-vmTestbase/heapdump/JMapMetaspaceCore/TestDescription.java 8023376,8001227,8051445 generic-all
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 

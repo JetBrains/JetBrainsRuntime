@@ -47,6 +47,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.nio.channels.Channel;
 import java.nio.channels.spi.SelectorProvider;
+import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -607,8 +608,9 @@ public final class System {
      * <tr><th scope="row">{@code java.home}</th>
      *     <td>Java installation directory</td></tr>
      * <tr><th scope="row">{@code java.vm.specification.version}</th>
-     *     <td>Java Virtual Machine specification version which may be
-     *     interpreted as a {@link Runtime.Version}</td></tr>
+     *     <td>Java Virtual Machine specification version, whose value is the
+     *     {@linkplain Runtime.Version#feature feature} element of the
+     *     {@linkplain Runtime#version() runtime version}</td></tr>
      * <tr><th scope="row">{@code java.vm.specification.vendor}</th>
      *     <td>Java Virtual Machine specification vendor</td></tr>
      * <tr><th scope="row">{@code java.vm.specification.name}</th>
@@ -621,8 +623,9 @@ public final class System {
      * <tr><th scope="row">{@code java.vm.name}</th>
      *     <td>Java Virtual Machine implementation name</td></tr>
      * <tr><th scope="row">{@code java.specification.version}</th>
-     *     <td>Java Runtime Environment specification version which may be
-     *     interpreted as a {@link Runtime.Version}</td></tr>
+     *     <td>Java Runtime Environment specification version, whose value is
+     *     the {@linkplain Runtime.Version#feature feature} element of the
+     *     {@linkplain Runtime#version() runtime version}</td></tr>
      * <tr><th scope="row">{@code java.specification.vendor}</th>
      *     <td>Java Runtime Environment specification  vendor</td></tr>
      * <tr><th scope="row">{@code java.specification.name}</th>
@@ -2148,6 +2151,14 @@ public final class System {
             }
             public Stream<ModuleLayer> layers(ClassLoader loader) {
                 return ModuleLayer.layers(loader);
+            }
+
+            public String newStringNoRepl(byte[] bytes, Charset cs) {
+                return StringCoding.newStringNoRepl(bytes, cs);
+            }
+
+            public byte[] getBytesNoRepl(String s, Charset cs) {
+                return StringCoding.getBytesNoRepl(s, cs);
             }
 
             public String newStringUTF8NoRepl(byte[] bytes, int off, int len) {

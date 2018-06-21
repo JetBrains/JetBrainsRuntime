@@ -362,6 +362,7 @@ public:
   virtual HeapWord* obj_allocate_raw(Klass* klass, size_t size,
                                      bool* gc_overhead_limit_was_exceeded, TRAPS) /*override*/;
   HeapWord* mem_allocate(size_t size, bool* what) /* override */;
+  virtual void fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap);
   bool can_elide_tlab_store_barriers() const /* override */;
   oop new_store_pre_barrier(JavaThread* thread, oop new_obj) /* override */;
   bool can_elide_initializing_store_barrier(oop new_obj) /* override */;
@@ -387,7 +388,6 @@ public:
   void safe_object_iterate(ObjectClosure* cl) /* override */;
   size_t unsafe_max_tlab_alloc(Thread *thread) const /* override */;
   size_t max_tlab_size() const /* override */;
-  HeapWord* tlab_post_allocation_setup(HeapWord* obj) /* override */;
   uint oop_extra_words() /* override */;
   size_t tlab_used(Thread* ignored) const /* override */;
   void stop() /* override */;
@@ -662,6 +662,8 @@ public:
     }
   }
 private:
+
+  HeapWord* tlab_post_allocation_setup(HeapWord* obj);
 
   void initialize_heuristics();
   virtual void initialize_serviceability();

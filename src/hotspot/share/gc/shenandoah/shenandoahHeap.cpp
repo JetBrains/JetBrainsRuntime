@@ -897,9 +897,14 @@ HeapWord* ShenandoahHeap::obj_allocate_raw(Klass* klass, size_t size,
   return result;
 }
 
-HeapWord*  ShenandoahHeap::mem_allocate(size_t size,
+HeapWord* ShenandoahHeap::mem_allocate(size_t size,
                                         bool*  gc_overhead_limit_was_exceeded) {
   return  allocate_memory(size, _alloc_shared);
+}
+
+void ShenandoahHeap::fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap) {
+  HeapWord* obj = tlab_post_allocation_setup(start);
+  CollectedHeap::fill_with_object(obj, end);
 }
 
 class ShenandoahEvacuateUpdateRootsClosure: public ExtendedOopClosure {

@@ -593,7 +593,7 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
   }
 }
 
-void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register op1, Register op2) {
+void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register op1, Register op2) {
   __ cmpptr(op1, op2);
   if (ShenandoahAcmpBarrier) {
     Label done;
@@ -605,7 +605,7 @@ void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSe
   }
 }
 
-void ShenandoahBarrierSetAssembler::obj_equals_addr(MacroAssembler* masm, DecoratorSet decorators, Register src1, Address src2) {
+void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register src1, Address src2) {
   __ cmpptr(src1, src2);
   if (ShenandoahAcmpBarrier) {
     Label done;
