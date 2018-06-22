@@ -1175,9 +1175,6 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     if (ac->_dest_type != TypeOopPtr::BOTTOM) {
       adr_type = ac->_dest_type->add_offset(Type::OffsetBot)->is_ptr();
     }
-    if (ac->_src_type != ac->_dest_type) {
-      adr_type = TypeRawPtr::BOTTOM;
-    }
     generate_arraycopy(ac, alloc, &ctrl, merge_mem, &io,
                        adr_type, T_OBJECT,
                        src, src_offset, dest, dest_offset, length,

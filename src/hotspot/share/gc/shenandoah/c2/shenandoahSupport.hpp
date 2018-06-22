@@ -45,6 +45,7 @@ private:
     ShenandoahLoad,
     ShenandoahStore,
     ShenandoahValue,
+    ShenandoahOopStore,
     ShenandoahNone,
   };
 
@@ -167,6 +168,7 @@ public:
   ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj);
 
   virtual int Opcode() const;
+  virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
   virtual Node* Identity(PhaseGVN* phase);
   virtual bool depends_only_on_test() const { return false; }
@@ -197,9 +199,9 @@ public:
   static void follow_barrier_uses(Node* n, Node* ctrl, Unique_Node_List& uses, PhaseIdealLoop* phase);
   static void test_heap_stable(Node* ctrl, Node* raw_mem, Node*& gc_state, Node*& heap_stable,
                                Node*& heap_not_stable, PhaseIdealLoop* phase);
-  static void test_evacuation_in_progress(Node* ctrl, Node*& raw_mem,
+  static void test_evacuation_in_progress(Node* ctrl, Node* val, Node*& raw_mem,
                                           Node*& evac_in_progress, Node*& evac_not_in_progress,
-                                          Node*& heap_stable,
+                                          Node*& heap_stable, Node*& null_val,
                                           PhaseIdealLoop* phase);
   static void evacuation_not_in_progress(Node* c, Node* v, Node* unc_ctrl, Node* raw_mem, Node* wb_mem, Node* region,
                                          Node* val_phi, Node* mem_phi, Node* raw_mem_phi, Node*& unc_region,
@@ -257,6 +259,24 @@ public:
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {};
 #endif
+};
+
+class ShenandoahEnqueueBarrierNode : public Node {
+public:
+  ShenandoahEnqueueBarrierNode(Node* val) : Node(NULL, val) {
+  }
+
+  const Type *bottom_type() const;
+  const Type* Value(PhaseGVN* phase) const;
+  Node* Identity(PhaseGVN* phase);
+
+  int Opcode() const;
+
+private:
+  enum { Needed, NotNeeded, MaybeNeeded };
+
+  static int needed(Node* n);
+  static Node* next(Node* n);
 };
 
 class MemoryGraphFixer : public ResourceObj {

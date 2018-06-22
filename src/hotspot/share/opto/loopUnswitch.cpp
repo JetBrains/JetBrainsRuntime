@@ -176,7 +176,7 @@ void PhaseIdealLoop::do_unswitching(IdealLoopTree *loop, Node_List &old_new, boo
   Node* uniqc = proj_true->unique_ctrl_out();
   Node* entry = head->skip_strip_mined()->in(LoopNode::EntryControl);
   Node* predicate = find_predicate(entry);
-  if (predicate != NULL && UseLoopPredicate) {
+  if (predicate != NULL && (UseLoopPredicate || UseProfiledLoopPredicate)) {
     // We may have two predicates, find first.
     entry = find_predicate(entry->in(0)->in(0));
     if (entry != NULL) predicate = entry;
