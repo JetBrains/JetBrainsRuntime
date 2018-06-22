@@ -34,7 +34,7 @@
 #include "opto/node.hpp"
 
 class PhaseGVN;
-
+class MemoryGraphFixer;
 
 class ShenandoahBarrierNode : public TypeNode {
 private:
@@ -110,8 +110,6 @@ public:
   virtual void dump_spec(outputStream *st) const;
 #endif
 
-  Node* try_common(Node *n_ctrl, PhaseIdealLoop* phase);
-
   // protected:
   static Node* dom_mem(Node* mem, Node*& mem_ctrl, Node* n, Node* rep_ctrl, int alias, PhaseIdealLoop* phase);
   static Node* dom_mem(Node* mem, Node* ctrl, int alias, Node*& mem_ctrl, PhaseIdealLoop* phase);
@@ -164,8 +162,6 @@ private:
 };
 
 class ShenandoahWriteBarrierNode : public ShenandoahBarrierNode {
-private:
-  static bool fix_mem_phis_helper(Node* c, Node* mem, Node* mem_ctrl, Node* rep_ctrl, int alias, VectorSet& controls, GrowableArray<Node*>& phis, PhaseIdealLoop* phase);
 
 public:
   ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj);
@@ -186,34 +182,24 @@ public:
 
   static LoopNode* try_move_before_pre_loop(Node* c, Node* val_ctrl, PhaseIdealLoop* phase);
   static Node* move_above_predicates(LoopNode* cl, Node* val_ctrl, PhaseIdealLoop* phase);
-  static bool fix_mem_phis(Node* mem, Node* mem_ctrl, Node* rep_ctrl, int alias, PhaseIdealLoop* phase);
   static bool should_process_phi(Node* phi, int alias, Compile* C);
-  static void fix_memory_uses(Node* mem, Node* replacement, Node* rep_proj, Node* rep_ctrl, int alias, PhaseIdealLoop* phase);
-  static MergeMemNode* allocate_merge_mem(Node* mem, int alias, Node* rep_proj, Node* rep_ctrl, PhaseIdealLoop* phase);
-  static MergeMemNode* clone_merge_mem(Node* u, Node* mem, int alias, Node* rep_proj, Node* rep_ctrl, DUIterator& i, PhaseIdealLoop* phase);
 #ifdef ASSERT
   static bool memory_dominates_all_paths(Node* mem, Node* rep_ctrl, int alias, PhaseIdealLoop* phase);
   static void memory_dominates_all_paths_helper(Node* c, Node* rep_ctrl, Unique_Node_List& controls, PhaseIdealLoop* phase);
 #endif
-  Node* try_move_before_loop(Node *n_ctrl, PhaseIdealLoop* phase);
-  Node* try_move_before_loop_helper(LoopNode* cl,  Node* val_ctrl, Node* mem, PhaseIdealLoop* phase);
+  void try_move_before_loop(GrowableArray<MemoryGraphFixer*>& memory_graph_fixers, PhaseIdealLoop* phase, bool include_lsm, Unique_Node_List& uses);
+  void try_move_before_loop_helper(LoopNode* cl, Node* val_ctrl, GrowableArray<MemoryGraphFixer*>& memory_graph_fixers, PhaseIdealLoop* phase, bool include_lsm, Unique_Node_List& uses);
   static void pin_and_expand(PhaseIdealLoop* phase);
   CallStaticJavaNode* pin_and_expand_null_check(PhaseIterGVN& igvn);
-  void pin_and_expand_move_barrier(PhaseIdealLoop* phase, Unique_Node_List& uses);
+  void pin_and_expand_move_barrier(PhaseIdealLoop* phase, GrowableArray<MemoryGraphFixer*>& memory_graph_fixers, Unique_Node_List& uses);
   void pin_and_expand_helper(PhaseIdealLoop* phase);
-  static Node* find_raw_mem(Node* ctrl, Node* wb, const Node_List& memory_nodes, PhaseIdealLoop* phase);
-  static Node* pick_phi(Node* phi1, Node* phi2, Node_Stack& phis, VectorSet& visited, PhaseIdealLoop* phase);
   static Node* find_bottom_mem(Node* ctrl, PhaseIdealLoop* phase);
   static void follow_barrier_uses(Node* n, Node* ctrl, Unique_Node_List& uses, PhaseIdealLoop* phase);
-  static void collect_memory_nodes(int alias, Node_List& memory_nodes, PhaseIdealLoop* phase);
-  static void fix_raw_mem(Node* ctrl, Node* region, Node* raw_mem, Node* raw_mem_for_ctrl,
-                          Node* raw_mem_phi, Node_List& memory_nodes,
-                          Unique_Node_List& uses,
-                          PhaseIdealLoop* phase);
   static void test_heap_stable(Node* ctrl, Node* raw_mem, Node*& gc_state, Node*& heap_stable,
                                Node*& heap_not_stable, PhaseIdealLoop* phase);
-  static void test_evacuation_in_progress(Node* ctrl, int alias, Node*& raw_mem, Node*& wb_mem,
-                                          Node*& evac_in_progress, Node*& evac_not_in_progress,  Node*& heap_stable,
+  static void test_evacuation_in_progress(Node* ctrl, Node*& raw_mem,
+                                          Node*& evac_in_progress, Node*& evac_not_in_progress,
+                                          Node*& heap_stable,
                                           PhaseIdealLoop* phase);
   static void evacuation_not_in_progress(Node* c, Node* v, Node* unc_ctrl, Node* raw_mem, Node* wb_mem, Node* region,
                                          Node* val_phi, Node* mem_phi, Node* raw_mem_phi, Node*& unc_region,
@@ -234,14 +220,15 @@ public:
                                                 Node* unc_region, Unique_Node_List& uses, PhaseIdealLoop* phase);
   static void in_cset_fast_test(Node*& c, Node* rbtrue, Node* raw_mem, Node* wb_mem, Node* region, Node* val_phi,
                                 Node* mem_phi, Node* raw_mem_phi, PhaseIdealLoop* phase);
-  static Node* get_ctrl(Node* n, PhaseIdealLoop* phase);
-  static Node* ctrl_or_self(Node* n, PhaseIdealLoop* phase);
-  static bool mem_is_valid(Node* m, Node* c, PhaseIdealLoop* phase);
   static void move_evacuation_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
   static void move_heap_stable_test_out_of_loop(IfNode* iff, PhaseIdealLoop* phase);
 
   static void optimize_after_expansion(VectorSet &visited, Node_Stack &nstack, Node_List &old_new, PhaseIdealLoop* phase);
   static void merge_back_to_back_tests(Node* n, PhaseIdealLoop* phase);
+  static void fix_ctrl(Node* barrier, Node* region, const MemoryGraphFixer& fixer, Unique_Node_List& uses, Unique_Node_List& uses_to_ignore, uint last, PhaseIdealLoop* phase);
+
+  static void optimize_before_expansion(PhaseIdealLoop* phase, GrowableArray<MemoryGraphFixer*> memory_graph_fixers, bool include_lsm);
+  Node* would_subsume(ShenandoahBarrierNode* other, PhaseIdealLoop* phase);
 };
 
 class ShenandoahWBMemProjNode : public ProjNode {
@@ -270,6 +257,35 @@ public:
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const {};
 #endif
+};
+
+class MemoryGraphFixer : public ResourceObj {
+private:
+  Node_List _memory_nodes;
+  int _alias;
+  PhaseIdealLoop* _phase;
+  bool _include_lsm;
+  void collect_memory_nodes();
+  Node* get_ctrl(Node* n) const;
+  Node* ctrl_or_self(Node* n) const;
+  bool mem_is_valid(Node* m, Node* c) const;
+  MergeMemNode* allocate_merge_mem(Node* mem, Node* rep_proj, Node* rep_ctrl) const;
+  MergeMemNode* clone_merge_mem(Node* u, Node* mem, Node* rep_proj, Node* rep_ctrl, DUIterator& i) const;
+  void fix_memory_uses(Node* mem, Node* replacement, Node* rep_proj, Node* rep_ctrl) const;
+  bool should_process_phi(Node* phi) const;
+  bool has_mem_phi(Node* region) const;
+
+public:
+  MemoryGraphFixer(int alias, bool include_lsm, PhaseIdealLoop* phase) :
+    _alias(alias), _include_lsm(include_lsm), _phase(phase) {
+    assert(_alias != Compile::AliasIdxBot, "unsupported");
+    collect_memory_nodes();
+  }
+
+  Node* find_mem(Node* ctrl, Node* n) const;
+  void fix_mem(Node* ctrl, Node* region, Node* mem, Node* mem_for_ctrl, Node* mem_phi, Unique_Node_List& uses);
+  int alias() const { return _alias; }
+  void remove(Node* n);
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP

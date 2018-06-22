@@ -2892,6 +2892,13 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     return;
   }
 
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    GrowableArray<MemoryGraphFixer*> memory_graph_fixers;
+    ShenandoahWriteBarrierNode::optimize_before_expansion(this, memory_graph_fixers, false);
+  }
+#endif
+
   if (ReassociateInvariants) {
     // Reassociate invariants and prep for split_thru_phi
     for (LoopTreeIterator iter(_ltree_root); !iter.done(); iter.next()) {
