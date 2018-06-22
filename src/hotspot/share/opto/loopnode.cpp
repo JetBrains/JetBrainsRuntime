@@ -1306,13 +1306,14 @@ SafePointNode* CountedLoopNode::outer_safepoint() const {
 }
 
 Node* CountedLoopNode::skip_predicates_from_entry(Node* ctrl) {
-  while (ctrl != NULL && ctrl->is_Proj() && ctrl->in(0)->is_If() &&
-         ctrl->in(0)->as_If()->proj_out(1-ctrl->as_Proj()->_con)->outcnt() == 1 &&
-         ctrl->in(0)->as_If()->proj_out(1-ctrl->as_Proj()->_con)->unique_out()->Opcode() == Op_Halt) {
-    ctrl = ctrl->in(0)->in(0);
+    while (ctrl != NULL && ctrl->is_Proj() && ctrl->in(0)->is_If() &&
+           ctrl->in(0)->as_If()->proj_out(1-ctrl->as_Proj()->_con)->outcnt() == 1 &&
+           ctrl->in(0)->as_If()->proj_out(1-ctrl->as_Proj()->_con)->unique_out()->Opcode() == Op_Halt) {
+      ctrl = ctrl->in(0)->in(0);
+    }
+
+    return ctrl;
   }
-  return ctrl;
-}
 
 Node* CountedLoopNode::skip_predicates() {
   if (is_main_loop()) {
@@ -2428,6 +2429,7 @@ void IdealLoopTree::dump_head( ) const {
     entry = PhaseIdealLoop::find_predicate_insertion_point(entry, Deoptimization::Reason_predicate);
     if (entry != NULL) {
       tty->print(" predicated");
+      entry = PhaseIdealLoop::skip_loop_predicates(entry);
     }
   }
   if (UseProfiledLoopPredicate) {
@@ -2541,11 +2543,18 @@ void PhaseIdealLoop::collect_potentially_useful_predicates(
     if (predicate_proj != NULL ) { // right pattern that can be used by loop predication
       assert(entry->in(0)->in(1)->in(1)->Opcode() == Op_Opaque1, "must be");
       useful_predicates.push(entry->in(0)->in(1)->in(1)); // good one
-      entry = entry->in(0)->in(0);
+      entry = skip_loop_predicates(entry);
     }
     predicate_proj = find_predicate(entry); // Predicate
     if (predicate_proj != NULL ) {
       useful_predicates.push(entry->in(0)->in(1)->in(1)); // good one
+      entry = skip_loop_predicates(entry);
+    }
+    if (UseProfiledLoopPredicate) {
+      predicate_proj = find_predicate(entry); // Predicate
+      if (predicate_proj != NULL ) {
+        useful_predicates.push(entry->in(0)->in(1)->in(1)); // good one
+      }
     }
   }
 
@@ -4281,9 +4290,17 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
     if (ctrl_out && ctrl_out->is_CountedLoop() &&
         least == ctrl_out->in(LoopNode::EntryControl)) {
       Node* new_ctrl = least;
+      // Move the node above predicates so a following pass of loop
+      // predication doesn't hoist a predicate that depends on it
+      // above that node.
       if (find_predicate_insertion_point(new_ctrl, Deoptimization::Reason_loop_limit_check) != NULL) {
         new_ctrl = new_ctrl->in(0)->in(0);
         assert(is_dominator(early, new_ctrl), "least != early so we can move up the dominator tree");
+      }
+      if (find_predicate_insertion_point(new_ctrl, Deoptimization::Reason_profile_predicate) != NULL) {
+        Node* c = new_ctrl->in(0)->in(0);
+        assert(is_dominator(early, c), "least != early so we can move up the dominator tree");
+        new_ctrl = c;
       }
       if (find_predicate_insertion_point(new_ctrl, Deoptimization::Reason_predicate) != NULL) {
         Node* c = new_ctrl->in(0)->in(0);

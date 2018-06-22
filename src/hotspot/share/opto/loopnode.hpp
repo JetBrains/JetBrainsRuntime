@@ -38,6 +38,7 @@ class IdealLoopTree;
 class LoopNode;
 class Node;
 class OuterStripMinedLoopEndNode;
+class PathFrequency;
 class PhaseIdealLoop;
 class CountedLoopReserveKit;
 class VectorSet;
@@ -87,17 +88,17 @@ public:
   // Names for edge indices
   enum { Self=0, EntryControl, LoopBackControl };
 
-  uint is_inner_loop() const { return _loop_flags & InnerLoop; }
+  bool is_inner_loop() const { return _loop_flags & InnerLoop; }
   void set_inner_loop() { _loop_flags |= InnerLoop; }
 
-  uint range_checks_present() const { return _loop_flags & HasRangeChecks; }
-  uint is_multiversioned() const { return _loop_flags & IsMultiversioned; }
-  uint is_vectorized_loop() const { return _loop_flags & VectorizedLoop; }
-  uint is_partial_peel_loop() const { return _loop_flags & PartialPeelLoop; }
+  bool range_checks_present() const { return _loop_flags & HasRangeChecks; }
+  bool is_multiversioned() const { return _loop_flags & IsMultiversioned; }
+  bool is_vectorized_loop() const { return _loop_flags & VectorizedLoop; }
+  bool is_partial_peel_loop() const { return _loop_flags & PartialPeelLoop; }
   void set_partial_peel_loop() { _loop_flags |= PartialPeelLoop; }
-  uint partial_peel_has_failed() const { return _loop_flags & PartialPeelFailed; }
-  uint is_strip_mined() const { return _loop_flags & StripMined; }
-  uint is_profile_trip_failed() const { return _loop_flags & ProfileTripFailed; }
+  bool partial_peel_has_failed() const { return _loop_flags & PartialPeelFailed; }
+  bool is_strip_mined() const { return _loop_flags & StripMined; }
+  bool is_profile_trip_failed() const { return _loop_flags & ProfileTripFailed; }
 
   void mark_partial_peel_failed() { _loop_flags |= PartialPeelFailed; }
   void mark_has_reductions() { _loop_flags |= HasReductions; }
@@ -253,16 +254,16 @@ public:
 
   // A 'main' loop that is ONLY unrolled or peeled, never RCE'd or
   // Aligned, may be missing it's pre-loop.
-  uint is_normal_loop   () const { return (_loop_flags&PreMainPostFlagsMask) == Normal; }
-  uint is_pre_loop      () const { return (_loop_flags&PreMainPostFlagsMask) == Pre;    }
-  uint is_main_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Main;   }
-  uint is_post_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Post;   }
-  uint is_reduction_loop() const { return (_loop_flags&HasReductions) == HasReductions; }
-  uint was_slp_analyzed () const { return (_loop_flags&WasSlpAnalyzed) == WasSlpAnalyzed; }
-  uint has_passed_slp   () const { return (_loop_flags&PassedSlpAnalysis) == PassedSlpAnalysis; }
-  uint do_unroll_only      () const { return (_loop_flags&DoUnrollOnly) == DoUnrollOnly; }
-  uint is_main_no_pre_loop() const { return _loop_flags & MainHasNoPreLoop; }
-  uint has_atomic_post_loop  () const { return (_loop_flags & HasAtomicPostLoop) == HasAtomicPostLoop; }
+  bool is_normal_loop   () const { return (_loop_flags&PreMainPostFlagsMask) == Normal; }
+  bool is_pre_loop      () const { return (_loop_flags&PreMainPostFlagsMask) == Pre;    }
+  bool is_main_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Main;   }
+  bool is_post_loop     () const { return (_loop_flags&PreMainPostFlagsMask) == Post;   }
+  bool is_reduction_loop() const { return (_loop_flags&HasReductions) == HasReductions; }
+  bool was_slp_analyzed () const { return (_loop_flags&WasSlpAnalyzed) == WasSlpAnalyzed; }
+  bool has_passed_slp   () const { return (_loop_flags&PassedSlpAnalysis) == PassedSlpAnalysis; }
+  bool do_unroll_only      () const { return (_loop_flags&DoUnrollOnly) == DoUnrollOnly; }
+  bool is_main_no_pre_loop() const { return _loop_flags & MainHasNoPreLoop; }
+  bool has_atomic_post_loop  () const { return (_loop_flags & HasAtomicPostLoop) == HasAtomicPostLoop; }
   void set_main_no_pre_loop() { _loop_flags |= MainHasNoPreLoop; }
 
   int main_idx() const { return _main_idx; }
@@ -595,7 +596,7 @@ public:
 
   // Compute loop trip count from profile data
   float compute_profile_trip_cnt_helper(Node* n);
-  void compute_profile_trip_cnt(PhaseIdealLoop *phase);
+  void compute_profile_trip_cnt( PhaseIdealLoop *phase );
 
   // Reassociate invariant expressions.
   void reassociate_invariants(PhaseIdealLoop *phase);
@@ -739,12 +740,10 @@ private:
   }
 
   Node* cast_incr_before_loop(Node* incr, Node* ctrl, Node* loop);
-  void duplicate_predicates_helper(Node* entry, Node* predicate, Node* min_taken,
-                                   Node* castii, IdealLoopTree* outer_loop, LoopNode* outer_main_head,
-                                   uint dd_main_head);
-  void duplicate_predicates(CountedLoopNode* pre_head, Node *min_taken, Node* castii,
-                            IdealLoopTree* outer_loop, LoopNode* outer_main_head,
-                            uint dd_main_head);
+  void duplicate_predicates_helper(Node* predicate, Node* castii, IdealLoopTree* outer_loop,
+                                   LoopNode* outer_main_head, uint dd_main_head);
+  void duplicate_predicates(CountedLoopNode* pre_head, Node* castii, IdealLoopTree* outer_loop,
+                            LoopNode* outer_main_head, uint dd_main_head);
 
 public:
 
@@ -1102,9 +1101,9 @@ public:
                                     CountedLoopNode *cl, ConNode* zero, Invariance& invar,
                                     Deoptimization::DeoptReason reason);
   bool loop_predication_should_follow_branches(IdealLoopTree *loop, ProjNode *predicate_proj, float& loop_trip_cnt);
-  void loop_predication_follow_branches(Node *current_proj, IdealLoopTree *loop, float loop_trip_cnt,
-                                        Node_Stack& stack, GrowableArray<float>& freqs_stack,
-                                        GrowableArray<float>& freqs, Node_List& if_proj_list);
+  void loop_predication_follow_branches(Node *c, IdealLoopTree *loop, float loop_trip_cnt,
+                                        PathFrequency& pf, Node_Stack& stack, VectorSet& seen,
+                                        Node_List& if_proj_list);
   ProjNode* insert_skeleton_predicate(IfNode* iff, IdealLoopTree *loop,
                                       ProjNode* proj, ProjNode *predicate_proj,
                                       ProjNode* upper_bound_proj,

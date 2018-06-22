@@ -320,20 +320,32 @@ Node* PhaseIdealLoop::clone_loop_predicates(Node* old_entry, Node* new_entry,
   if (limit_check_proj != NULL) {
     entry = entry->in(0)->in(0);
   }
+  ProjNode* profile_predicate_proj = NULL;
   ProjNode* predicate_proj = NULL;
-  Deoptimization::DeoptReason reason = Deoptimization::Reason_none;
   if (UseProfiledLoopPredicate) {
-    predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
-    reason = Deoptimization::Reason_profile_predicate;
+    profile_predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
+    if (profile_predicate_proj != NULL) {
+      entry = skip_loop_predicates(entry);
+    }
   }
-  if (predicate_proj == NULL && UseLoopPredicate) {
+  if (UseLoopPredicate) {
     predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_predicate);
-    reason = Deoptimization::Reason_predicate;
   }
   if (predicate_proj != NULL) { // right pattern that can be used by loop predication
     // clone predicate
     new_entry = clone_predicate(predicate_proj, new_entry,
-                                reason,
+                                Deoptimization::Reason_predicate,
+                                loop_phase, igvn);
+    assert(new_entry != NULL && new_entry->is_Proj(), "IfTrue or IfFalse after clone predicate");
+    if (TraceLoopPredicate) {
+      tty->print("Loop Predicate cloned: ");
+      debug_only( new_entry->in(0)->dump(); );
+    }
+  }
+  if (profile_predicate_proj != NULL) { // right pattern that can be used by loop predication
+    // clone predicate
+    new_entry = clone_predicate(profile_predicate_proj, new_entry,
+                                Deoptimization::Reason_profile_predicate,
                                 loop_phase, igvn);
     assert(new_entry != NULL && new_entry->is_Proj(), "IfTrue or IfFalse after clone predicate");
     if (TraceLoopPredicate) {
@@ -360,17 +372,17 @@ Node* PhaseIdealLoop::clone_loop_predicates(Node* old_entry, Node* new_entry,
 //--------------------------skip_loop_predicates------------------------------
 // Skip related predicates.
 Node* PhaseIdealLoop::skip_loop_predicates(Node* entry) {
-      IfNode* iff = entry->in(0)->as_If();
-      ProjNode* uncommon_proj = iff->proj_out(1 - entry->as_Proj()->_con);
-      Node* rgn = uncommon_proj->unique_ctrl_out();
-      assert(rgn->is_Region() || rgn->is_Call(), "must be a region or call uct");
-      entry = entry->in(0)->in(0);
-      while (entry != NULL && entry->is_Proj() && entry->in(0)->is_If()) {
-        uncommon_proj = entry->in(0)->as_If()->proj_out(1 - entry->as_Proj()->_con);
-        if (uncommon_proj->unique_ctrl_out() != rgn)
-          break;
-        entry = entry->in(0)->in(0);
-      }
+  IfNode* iff = entry->in(0)->as_If();
+  ProjNode* uncommon_proj = iff->proj_out(1 - entry->as_Proj()->_con);
+  Node* rgn = uncommon_proj->unique_ctrl_out();
+  assert(rgn->is_Region() || rgn->is_Call(), "must be a region or call uct");
+  entry = entry->in(0)->in(0);
+  while (entry != NULL && entry->is_Proj() && entry->in(0)->is_If()) {
+    uncommon_proj = entry->in(0)->as_If()->proj_out(1 - entry->as_Proj()->_con);
+    if (uncommon_proj->unique_ctrl_out() != rgn)
+      break;
+    entry = entry->in(0)->in(0);
+  }
   return entry;
 }
 
@@ -797,7 +809,7 @@ bool PhaseIdealLoop::loop_predication_should_follow_branches(IdealLoopTree *loop
     return false;
   }
 
-  if (predicate_proj->is_uncommon_trap_if_pattern(Deoptimization::Reason_profile_predicate) == NULL) {
+  if (predicate_proj == NULL) {
     return false;
   }
 
@@ -839,174 +851,226 @@ bool PhaseIdealLoop::loop_predication_should_follow_branches(IdealLoopTree *loop
   return follow_branches;
 }
 
-void PhaseIdealLoop::loop_predication_follow_branches(Node *current_proj, IdealLoopTree *loop, float loop_trip_cnt,
-                                                      Node_Stack& stack, GrowableArray<float>& freqs_stack,
-                                                      GrowableArray<float>& freqs, Node_List& if_proj_list) {
-  fesetround(FE_TOWARDZERO);
-  LoopNode* head = loop->_head->as_Loop();
-  // post order traversal of control flow nodes to estimate branch
-  // frequencies from profiling
-  Node* c = current_proj;
-  do {
-    if (c == head || freqs.at_grow(c->_idx, -1) >= 0) {
-      float f = c == head ? 1 : freqs.at(c->_idx);
-      Node* prev = c;
-      while (stack.size() > 0 && prev == c) {
-        Node* n = stack.node();
-        if (!n->is_Region()) {
-          if (get_loop(n) != get_loop(n->in(0))) {
-            // Found an inner loop: compute frequency of reaching this
-            // exit from the loop head by looking at the number of
-            // times each loop exit was taken
-            IdealLoopTree* inner_loop = get_loop(n->in(0));
-            LoopNode* inner_head = inner_loop->_head->as_Loop();
-            assert(get_loop(n) == loop, "only 1 inner loop");
-            if (inner_head->is_OuterStripMinedLoop()) {
-              inner_head->verify_strip_mined(1);
-              if (n->in(0) == inner_head->in(LoopNode::LoopBackControl)->in(0)) {
-                n = n->in(0)->in(0)->in(0);
+// Compute probability of reaching some CFG node from a fixed
+// dominating CFG node
+class PathFrequency {
+private:
+  Node* _dom; // frequencies are computed relative to this node
+  Node_Stack _stack;
+  GrowableArray<float> _freqs_stack; // keep track of intermediate result at regions
+  GrowableArray<float> _freqs; // cache frequencies
+  PhaseIdealLoop* _phase;
+
+public:
+  PathFrequency(Node* dom, PhaseIdealLoop* phase)
+    : _dom(dom), _stack(0), _phase(phase) {
+  }
+
+  float to(Node* n) {
+    // post order walk on the CFG graph from n to _dom
+    fesetround(FE_TOWARDZERO); // make sure rounding doesn't push frequency above 1
+    IdealLoopTree* loop = _phase->get_loop(_dom);
+    Node* c = n;
+    for (;;) {
+      assert(_phase->get_loop(c) == loop, "have to be in the same loop");
+      if (c == _dom || _freqs.at_grow(c->_idx, -1) >= 0) {
+        float f = c == _dom ? 1 : _freqs.at(c->_idx);
+        Node* prev = c;
+        while (_stack.size() > 0 && prev == c) {
+          Node* n = _stack.node();
+          if (!n->is_Region()) {
+            if (_phase->get_loop(n) != _phase->get_loop(n->in(0))) {
+              // Found an inner loop: compute frequency of reaching this
+              // exit from the loop head by looking at the number of
+              // times each loop exit was taken
+              IdealLoopTree* inner_loop = _phase->get_loop(n->in(0));
+              LoopNode* inner_head = inner_loop->_head->as_Loop();
+              assert(_phase->get_loop(n) == loop, "only 1 inner loop");
+              if (inner_head->is_OuterStripMinedLoop()) {
+                inner_head->verify_strip_mined(1);
+                if (n->in(0) == inner_head->in(LoopNode::LoopBackControl)->in(0)) {
+                  n = n->in(0)->in(0)->in(0);
+                }
+                inner_loop = inner_loop->_child;
+                inner_head = inner_loop->_head->as_Loop();
+                inner_head->verify_strip_mined(1);
               }
-              inner_loop = inner_loop->_child;
-              inner_head = inner_loop->_head->as_Loop();
-              inner_head->verify_strip_mined(1);
-            }
-            fesetround(FE_UPWARD);
-            float loop_exit_cnt = 0.0f;
-            for (uint i = 0; i < inner_loop->_body.size(); i++) {
-              Node *n = inner_loop->_body[i];
-              float c = inner_loop->compute_profile_trip_cnt_helper(n);
-              loop_exit_cnt += c;
-            }
-            fesetround(FE_TOWARDZERO);
-            float c = -1;
-            if (n->in(0)->is_If()) {
-              IfNode* iff = n->in(0)->as_If();
-              float p = n->in(0)->as_If()->_prob;
-              if (n->Opcode() == Op_IfFalse) {
-                p = 1 - p;
+              fesetround(FE_UPWARD);  // make sure rounding doesn't push frequency above 1
+              float loop_exit_cnt = 0.0f;
+              for (uint i = 0; i < inner_loop->_body.size(); i++) {
+                Node *n = inner_loop->_body[i];
+                float c = inner_loop->compute_profile_trip_cnt_helper(n);
+                loop_exit_cnt += c;
               }
-              if (p > PROB_MIN) {
-                c = p * iff->_fcnt;
+              fesetround(FE_TOWARDZERO);
+              float cnt = -1;
+              if (n->in(0)->is_If()) {
+                IfNode* iff = n->in(0)->as_If();
+                float p = n->in(0)->as_If()->_prob;
+                if (n->Opcode() == Op_IfFalse) {
+                  p = 1 - p;
+                }
+                if (p > PROB_MIN) {
+                  cnt = p * iff->_fcnt;
+                } else {
+                  cnt = 0;
+                }
               } else {
-                c = 0;
+                assert(n->in(0)->is_Jump(), "unsupported node kind");
+                JumpNode* jmp = n->in(0)->as_Jump();
+                float p = n->in(0)->as_Jump()->_probs[n->as_JumpProj()->_con];
+                cnt = p * jmp->_fcnt;
               }
+              float this_exit_f = cnt > 0 ? cnt / loop_exit_cnt : 0;
+              assert(this_exit_f <= 1 && this_exit_f >= 0, "Incorrect frequency");
+              f = f * this_exit_f;
+              assert(f <= 1 && f >= 0, "Incorrect frequency");
             } else {
-              assert(n->in(0)->is_Jump(), "unsupported node kind");
-              JumpNode* jmp = n->in(0)->as_Jump();
-              float p = n->in(0)->as_Jump()->_probs[n->as_JumpProj()->_con];
-              c = p * jmp->_fcnt;
-            }
-            float this_exit_f = c > 0 ? c / loop_exit_cnt : 0;
-            assert(this_exit_f <= 1 && this_exit_f >= 0, "Incorrect frequency");
-            f = f * this_exit_f;
-            assert(f <= 1 && f >= 0, "Incorrect frequency");
-          } else {
-            float p = -1;
-            if (n->in(0)->is_If()) {
-              p = n->in(0)->as_If()->_prob;
-              if (n->Opcode() == Op_IfFalse) {
-                p = 1 - p;
+              float p = -1;
+              if (n->in(0)->is_If()) {
+                p = n->in(0)->as_If()->_prob;
+                if (n->Opcode() == Op_IfFalse) {
+                  p = 1 - p;
+                }
+              } else {
+                assert(n->in(0)->is_Jump(), "unsupported node kind");
+                p = n->in(0)->as_Jump()->_probs[n->as_JumpProj()->_con];
               }
-            } else {
-              assert(n->in(0)->is_Jump(), "unsupported node kind");
-              p = n->in(0)->as_Jump()->_probs[n->as_JumpProj()->_con];
+              f = f * p;
+              assert(f <= 1 && f >= 0, "Incorrect frequency");
             }
-            f = f * p;
+            _freqs.at_put_grow(n->_idx, (float)f, -1);
+            _stack.pop();
+          } else {
+            float prev_f = _freqs_stack.pop();
+            float new_f = f;
+            f = new_f + prev_f;
             assert(f <= 1 && f >= 0, "Incorrect frequency");
-          }
-          freqs.at_put_grow(n->_idx, (float)f, -1);
-          // Only consider for predication if profiling tells us
-          // moving it before the loop wouldn't cause it to be
-          // executed more often
-          if (loop == get_loop(n) &&
-              n->as_Proj()->is_uncommon_trap_if_pattern(Deoptimization::Reason_none) &&
-              f * loop_trip_cnt >= 1) {
-            assert(!if_proj_list.contains(n), "node processed multiple times");
-            if_proj_list.push(n);
-          }
-          stack.pop();
-          n = stack.node();
-        } else {
-          float prev_f = freqs_stack.pop();
-          float new_f = f;
-          f = new_f + prev_f;
-          assert(f <= 1 && f >= 0, "Incorrect frequency");
-          uint i = stack.index();
-          if (i < n->req()) {
-            c = n->in(i);
-            stack.set_index(i+1);
-            freqs_stack.push(f);
-          } else {
-            freqs.at_put_grow(n->_idx, f, -1);
-            stack.pop();
+            uint i = _stack.index();
+            if (i < n->req()) {
+              c = n->in(i);
+              _stack.set_index(i+1);
+              _freqs_stack.push(f);
+            } else {
+              _freqs.at_put_grow(n->_idx, f, -1);
+              _stack.pop();
+            }
           }
         }
-      }
-    } else if (c->is_Loop()) {
-      c = c->in(LoopNode::EntryControl);
-    } else if (c->is_Region()) {
-      freqs_stack.push(0);
-      stack.push(c, 2);
-      c = c->in(1);
-    } else {
-      if (c->is_IfProj()) {
-        IfNode* iff = c->in(0)->as_If();
-        if (iff->_prob == PROB_UNKNOWN) {
-          freqs.at_put_grow(c->_idx, 0, -1);
-          continue;
-        } else if (get_loop(c) != get_loop(iff)) {
-          if (iff->_fcnt == COUNT_UNKNOWN) {
-            freqs.at_put_grow(c->_idx, 0, -1);
-            continue;
-          } else {
-            // skip over loop
-            stack.push(c, 1);
-            c = get_loop(c->in(0))->_head->in(LoopNode::EntryControl);
-          }
-        } else {
-          stack.push(c, 1);
-          c = iff;
+        if (_stack.size() == 0) {
+          fesetround(FE_TONEAREST);
+          assert(f >= 0 && f <= 1, "should have been computed");
+          return f;
         }
-      } else if (c->is_JumpProj()) {
-        JumpNode* jmp = c->in(0)->as_Jump();
-        if (get_loop(c) != get_loop(jmp)) {
-          if (jmp->_fcnt == COUNT_UNKNOWN) {
-            freqs.at_put_grow(c->_idx, 0, -1);
-            continue;
-          } else {
-            // skip over loop
-            stack.push(c, 1);
-            c = get_loop(c->in(0))->_head->in(LoopNode::EntryControl);
-          }
-        } else {
-          stack.push(c, 1);
-          c = jmp;
-        }
-      } else if (c->Opcode() == Op_CatchProj &&
-                 c->in(0)->Opcode() == Op_Catch &&
-                 c->in(0)->in(0)->is_Proj() &&
-                 c->in(0)->in(0)->in(0)->is_Call()) {
-        uint con = c->as_Proj()->_con;
-        if (con == CatchProjNode::fall_through_index) {
-          Node* call = c->in(0)->in(0)->in(0)->in(0);
-          if (get_loop(call) != get_loop(c)) {
-            freqs.at_put_grow(c->_idx, 0, -1);
-            continue;
-          }
-          c = call;
-        } else {
-          assert(con >= CatchProjNode::catch_all_index, "what else?");
-          freqs.at_put_grow(c->_idx, 0, -1);
-          continue;
-        }
-      } else if (c->unique_ctrl_out() == NULL && !c->is_If() && !c->is_Jump()) {
+      } else if (c->is_Loop()) {
         ShouldNotReachHere();
+        c = c->in(LoopNode::EntryControl);
+      } else if (c->is_Region()) {
+        _freqs_stack.push(0);
+        _stack.push(c, 2);
+        c = c->in(1);
       } else {
-        c = c->in(0);
+        if (c->is_IfProj()) {
+          IfNode* iff = c->in(0)->as_If();
+          if (iff->_prob == PROB_UNKNOWN) {
+            // assume never taken
+            _freqs.at_put_grow(c->_idx, 0, -1);
+          } else if (_phase->get_loop(c) != _phase->get_loop(iff)) {
+            if (iff->_fcnt == COUNT_UNKNOWN) {
+              // assume never taken
+              _freqs.at_put_grow(c->_idx, 0, -1);
+            } else {
+              // skip over loop
+              _stack.push(c, 1);
+              c = _phase->get_loop(c->in(0))->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
+            }
+          } else {
+            _stack.push(c, 1);
+            c = iff;
+          }
+        } else if (c->is_JumpProj()) {
+          JumpNode* jmp = c->in(0)->as_Jump();
+          if (_phase->get_loop(c) != _phase->get_loop(jmp)) {
+            if (jmp->_fcnt == COUNT_UNKNOWN) {
+              // assume never taken
+              _freqs.at_put_grow(c->_idx, 0, -1);
+            } else {
+              // skip over loop
+              _stack.push(c, 1);
+              c = _phase->get_loop(c->in(0))->_head->as_Loop()->skip_strip_mined()->in(LoopNode::EntryControl);
+            }
+          } else {
+            _stack.push(c, 1);
+            c = jmp;
+          }
+        } else if (c->Opcode() == Op_CatchProj &&
+                   c->in(0)->Opcode() == Op_Catch &&
+                   c->in(0)->in(0)->is_Proj() &&
+                   c->in(0)->in(0)->in(0)->is_Call()) {
+          // assume exceptions are never thrown
+          uint con = c->as_Proj()->_con;
+          if (con == CatchProjNode::fall_through_index) {
+            Node* call = c->in(0)->in(0)->in(0)->in(0);
+            if (_phase->get_loop(call) != _phase->get_loop(c)) {
+              _freqs.at_put_grow(c->_idx, 0, -1);
+            } else {
+              c = call;
+            }
+          } else {
+            assert(con >= CatchProjNode::catch_all_index, "what else?");
+            _freqs.at_put_grow(c->_idx, 0, -1);
+          }
+        } else if (c->unique_ctrl_out() == NULL && !c->is_If() && !c->is_Jump()) {
+          ShouldNotReachHere();
+        } else {
+          c = c->in(0);
+        }
       }
     }
+    ShouldNotReachHere();
+    return -1;
+  }
+};
+
+void PhaseIdealLoop::loop_predication_follow_branches(Node *n, IdealLoopTree *loop, float loop_trip_cnt,
+                                                      PathFrequency& pf, Node_Stack& stack, VectorSet& seen,
+                                                      Node_List& if_proj_list) {
+  assert(n->is_Region(), "start from a region");
+  Node* tail = loop->tail();
+  stack.push(n, 1);
+  do {
+    Node* c = stack.node();
+    assert(c->is_Region() || c->is_IfProj(), "only region here");
+    uint i = stack.index();
+
+    if (i < c->req()) {
+      stack.set_index(i+1);
+      Node* in = c->in(i);
+      while (!is_dominator(in, tail) && !seen.test_set(in->_idx)) {
+        IdealLoopTree* in_loop = get_loop(in);
+        if (in_loop != loop) {
+          in = in_loop->_head->in(LoopNode::EntryControl);
+        } else if (in->is_Region()) {
+          stack.push(in, 1);
+          break;
+        } else if (in->is_IfProj() &&
+                   in->as_Proj()->is_uncommon_trap_if_pattern(Deoptimization::Reason_none)) {
+          if (pf.to(in) * loop_trip_cnt >= 1) {
+            stack.push(in, 1);
+          }
+          in = in->in(0);
+        } else {
+          in = in->in(0);
+        }
+      }
+    } else {
+      if (c->is_IfProj()) {
+        if_proj_list.push(c);
+      }
+      stack.pop();
+    }
+
   } while (stack.size() > 0);
-  fesetround(FE_TONEAREST);
 }
 
 
@@ -1201,21 +1265,32 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
   }
 
   Node* entry = head->skip_strip_mined()->in(LoopNode::EntryControl);
+  ProjNode *loop_limit_proj = NULL;
   ProjNode *predicate_proj = NULL;
+  ProjNode *profile_predicate_proj = NULL;
   // Loop limit check predicate should be near the loop.
-  predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_loop_limit_check);
-  if (predicate_proj != NULL)
-    entry = predicate_proj->in(0)->in(0);
-  Deoptimization::DeoptReason reason = Deoptimization::Reason_none;
-  if (UseProfiledLoopPredicate) {
-    predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
-    reason = Deoptimization::Reason_profile_predicate;
+  loop_limit_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_loop_limit_check);
+  if (loop_limit_proj != NULL) {
+    entry = loop_limit_proj->in(0)->in(0);
   }
-  if (predicate_proj == NULL) {
-    predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_predicate);
-    reason = Deoptimization::Reason_predicate;
+  bool has_profile_predicates = false;
+  profile_predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
+  if (profile_predicate_proj != NULL) {
+    Node* n = skip_loop_predicates(entry);
+    // Check if predicates were already added to the profile predicate
+    // block
+    if (n != entry->in(0)->in(0)) {
+      has_profile_predicates = true;
+    }
+    entry = n;
   }
-  if (!predicate_proj) {
+  predicate_proj = find_predicate_insertion_point(entry, Deoptimization::Reason_predicate);
+
+  float loop_trip_cnt = -1;
+  bool follow_branches = loop_predication_should_follow_branches(loop, profile_predicate_proj, loop_trip_cnt);
+  assert(!follow_branches || loop_trip_cnt >= 0, "negative trip count?");
+
+  if (predicate_proj == NULL && !follow_branches) {
 #ifndef PRODUCT
     if (TraceLoopPredicate) {
       tty->print("missing predicate:");
@@ -1234,11 +1309,9 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
   // Create list of if-projs such that a newer proj dominates all older
   // projs in the list, and they all dominate loop->tail()
   Node_List if_proj_list(area);
+  Node_List regions(area);
   Node *current_proj = loop->tail(); //start from tail
 
-  float loop_trip_cnt = -1;
-  bool follow_branches = loop_predication_should_follow_branches(loop, predicate_proj, loop_trip_cnt);
-  assert(!follow_branches || loop_trip_cnt >= 0, "negative trip count?");
 
   Node_List controls(area);
   while (current_proj != head) {
@@ -1248,62 +1321,79 @@ bool PhaseIdealLoop::loop_predication_impl(IdealLoopTree *loop) {
          current_proj->in(0)->Opcode() == Op_RangeCheck)) { // is a if projection ?
       if_proj_list.push(current_proj);
     }
-    if (follow_branches && current_proj->Opcode() == Op_Region) {
-      if_proj_list.push(current_proj);
+    if (follow_branches &&
+        current_proj->Opcode() == Op_Region &&
+        loop == get_loop(current_proj)) {
+      regions.push(current_proj);
     }
     current_proj = idom(current_proj);
   }
 
-  Node_List if_proj_list_freq(area);
-  // start from the dominating region so we don't push the same
-  // projection twice: we would go from the region to the loop head to
-  // have accurate frequencies so process the same dominating regions
-  // multiple times if we didn't cache already computed frequencies.
-  if (follow_branches) {
-    Node_Stack stack(0);
-    GrowableArray<float> freqs_stack; // push intermediate result of frequency computation for a region
-    GrowableArray<float> freqs(2, 0, -1); // cache already computed frequencies
-    while (if_proj_list.size() > 0) {
-      Node* c = if_proj_list.pop();
-      loop_predication_follow_branches(c, loop, loop_trip_cnt, stack, freqs_stack,
-                                       freqs, if_proj_list_freq);
-    }
-  }
-
   bool hoisted = false; // true if at least one proj is promoted
 
-  for (uint i = 0; i < if_proj_list_freq.size(); i++) {
-    ProjNode* proj = if_proj_list_freq.at(i)->as_Proj();
-    hoisted = loop_predication_impl_helper(loop, proj, predicate_proj, cl, zero, invar, Deoptimization::Reason_profile_predicate) | hoisted;
+  if (!has_profile_predicates) {
+    while (if_proj_list.size() > 0) {
+      Node* n = if_proj_list.pop();
+
+      ProjNode* proj = n->as_Proj();
+      IfNode*   iff  = proj->in(0)->as_If();
+
+      CallStaticJavaNode* call = proj->is_uncommon_trap_if_pattern(Deoptimization::Reason_none);
+      if (call == NULL) {
+        if (loop->is_loop_exit(iff)) {
+          // stop processing the remaining projs in the list because the execution of them
+          // depends on the condition of "iff" (iff->in(1)).
+          break;
+        } else {
+          // Both arms are inside the loop. There are two cases:
+          // (1) there is one backward branch. In this case, any remaining proj
+          //     in the if_proj list post-dominates "iff". So, the condition of "iff"
+          //     does not determine the execution the remining projs directly, and we
+          //     can safely continue.
+          // (2) both arms are forwarded, i.e. a diamond shape. In this case, "proj"
+          //     does not dominate loop->tail(), so it can not be in the if_proj list.
+          continue;
+        }
+      }
+      Deoptimization::DeoptReason reason = Deoptimization::trap_request_reason(call->uncommon_trap_request());
+      if (reason == Deoptimization::Reason_predicate) {
+        break;
+      }
+
+      if (predicate_proj != NULL) {
+        hoisted = loop_predication_impl_helper(loop, proj, predicate_proj, cl, zero, invar, Deoptimization::Reason_predicate) | hoisted;
+      }
+    } // end while
   }
 
-  // anything not processed using profiling frequencies?
-  while (if_proj_list.size() > 0) {
-    assert(!follow_branches, "only projs here");
-    Node* n = if_proj_list.pop();
+  Node_List if_proj_list_freq(area);
+  if (follow_branches) {
+    PathFrequency pf(loop->_head, this);
 
-    ProjNode* proj = n->as_Proj();
-    IfNode*   iff  = proj->in(0)->as_If();
-
-    if (!proj->is_uncommon_trap_if_pattern(Deoptimization::Reason_none)) {
-      if (loop->is_loop_exit(iff)) {
-        // stop processing the remaining projs in the list because the execution of them
-        // depends on the condition of "iff" (iff->in(1)).
-        break;
-      } else {
-        // Both arms are inside the loop. There are two cases:
-        // (1) there is one backward branch. In this case, any remaining proj
-        //     in the if_proj list post-dominates "iff". So, the condition of "iff"
-        //     does not determine the execution the remining projs directly, and we
-        //     can safely continue.
-        // (2) both arms are forwarded, i.e. a diamond shape. In this case, "proj"
-        //     does not dominate loop->tail(), so it can not be in the if_proj list.
-        continue;
+    // Some projections were skipped by regular predicates because of
+    // an early loop exit. Try them with profile data.
+    while (if_proj_list.size() > 0) {
+      Node* proj = if_proj_list.pop();
+      float f = pf.to(proj);
+      if (proj->as_Proj()->is_uncommon_trap_if_pattern(Deoptimization::Reason_none) &&
+          f * loop_trip_cnt >= 1) {
+        hoisted = loop_predication_impl_helper(loop, proj->as_Proj(), profile_predicate_proj, cl, zero, invar, Deoptimization::Reason_profile_predicate) | hoisted;
       }
     }
 
-    hoisted = loop_predication_impl_helper(loop, proj, predicate_proj, cl, zero, invar, reason) | hoisted;
-  } // end while
+    // And look into all branches
+    Node_Stack stack(0);
+    VectorSet seen(Thread::current()->resource_area());
+    while (regions.size() > 0) {
+      Node* c = regions.pop();
+      loop_predication_follow_branches(c, loop, loop_trip_cnt, pf, stack, seen, if_proj_list_freq);
+    }
+
+    for (uint i = 0; i < if_proj_list_freq.size(); i++) {
+      ProjNode* proj = if_proj_list_freq.at(i)->as_Proj();
+      hoisted = loop_predication_impl_helper(loop, proj, profile_predicate_proj, cl, zero, invar, Deoptimization::Reason_profile_predicate) | hoisted;
+    }
+  }
 
 #ifndef PRODUCT
   // report that the loop predication has been actually performed

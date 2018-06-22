@@ -617,6 +617,7 @@ void PhaseIdealLoop::do_peeling( IdealLoopTree *loop, Node_List &old_new ) {
     }
   }
 
+
   // Step 4: Correct dom-depth info.  Set to loop-head depth.
   int dd = dom_depth(head);
   set_idom(head, head->in(1), dd);
@@ -1064,22 +1065,22 @@ Node* PhaseIdealLoop::cast_incr_before_loop(Node* incr, Node* ctrl, Node* loop) 
 // the control paths must die too but the range checks were removed by
 // predication. The range checks that we add here guarantee that they
 // do.
-void PhaseIdealLoop::duplicate_predicates_helper(Node* entry, Node* predicate, Node* min_taken,
-                                                 Node* castii, IdealLoopTree* outer_loop, LoopNode* outer_main_head,
-                                                 uint dd_main_head) {
+void PhaseIdealLoop::duplicate_predicates_helper(Node* predicate, Node* castii, IdealLoopTree* outer_loop,
+                                                 LoopNode* outer_main_head, uint dd_main_head) {
   if (predicate != NULL) {
-    IfNode* iff = entry->in(0)->as_If();
-    ProjNode* uncommon_proj = iff->proj_out(1 - entry->as_Proj()->_con);
+    IfNode* iff = predicate->in(0)->as_If();
+    ProjNode* uncommon_proj = iff->proj_out(1 - predicate->as_Proj()->_con);
     Node* rgn = uncommon_proj->unique_ctrl_out();
     assert(rgn->is_Region() || rgn->is_Call(), "must be a region or call uct");
     assert(iff->in(1)->in(1)->Opcode() == Op_Opaque1, "unexpected predicate shape");
-    entry = entry->in(0)->in(0);
-    Node* prev_proj = min_taken;
-    while (entry != NULL && entry->is_Proj() && entry->in(0)->is_If()) {
-      uncommon_proj = entry->in(0)->as_If()->proj_out(1 - entry->as_Proj()->_con);
+    predicate = predicate->in(0)->in(0);
+    Node* current_proj = outer_main_head->in(LoopNode::EntryControl);
+    Node* prev_proj = current_proj;
+    while (predicate != NULL && predicate->is_Proj() && predicate->in(0)->is_If()) {
+      uncommon_proj = predicate->in(0)->as_If()->proj_out(1 - predicate->as_Proj()->_con);
       if (uncommon_proj->unique_ctrl_out() != rgn)
         break;
-      iff = entry->in(0)->as_If();
+      iff = predicate->in(0)->as_If();
       if (iff->in(1)->Opcode() == Op_Opaque4) {
         Node_Stack to_clone(2);
         to_clone.push(iff->in(1), 1);
@@ -1116,7 +1117,7 @@ void PhaseIdealLoop::duplicate_predicates_helper(Node* entry, Node* predicate, N
               n = n->clone();
             }
             n->set_req(i, castii);
-            register_new_node(n, min_taken);
+            register_new_node(n, current_proj);
             to_clone.set_node(n);
           }
           for (;;) {
@@ -1136,7 +1137,7 @@ void PhaseIdealLoop::duplicate_predicates_helper(Node* entry, Node* predicate, N
             if (cur->_idx >= current) {
               if (next->_idx < current) {
                 next = next->clone();
-                register_new_node(next, min_taken);
+                register_new_node(next, current_proj);
                 to_clone.set_node(next);
               }
               assert(next->in(j) != cur, "input should have been cloned");
@@ -1146,7 +1147,7 @@ void PhaseIdealLoop::duplicate_predicates_helper(Node* entry, Node* predicate, N
         } while (result == NULL);
         assert(result->_idx >= current, "new node expected");
 
-        Node* proj = entry->clone();
+        Node* proj = predicate->clone();
         Node* other_proj = uncommon_proj->clone();
         Node* new_iff = iff->clone();
         new_iff->set_req(1, result);
@@ -1167,16 +1168,17 @@ void PhaseIdealLoop::duplicate_predicates_helper(Node* entry, Node* predicate, N
 
         prev_proj = proj;
       }
-      entry = entry->in(0)->in(0);
+      predicate = predicate->in(0)->in(0);
     }
-    _igvn.replace_input_of(outer_main_head, LoopNode::EntryControl, prev_proj);
-    set_idom(outer_main_head, prev_proj, dd_main_head);
+    if (prev_proj != current_proj) {
+      _igvn.replace_input_of(outer_main_head, LoopNode::EntryControl, prev_proj);
+      set_idom(outer_main_head, prev_proj, dd_main_head);
+    }
   }
 }
 
-void PhaseIdealLoop::duplicate_predicates(CountedLoopNode* pre_head, Node* min_taken, Node* castii,
-                                          IdealLoopTree* outer_loop, LoopNode* outer_main_head,
-                                          uint dd_main_head) {
+void PhaseIdealLoop::duplicate_predicates(CountedLoopNode* pre_head, Node* castii, IdealLoopTree* outer_loop,
+                                          LoopNode* outer_main_head, uint dd_main_head) {
   if (UseLoopPredicate) {
     Node* entry = pre_head->in(LoopNode::EntryControl);
     Node* predicate = NULL;
@@ -1184,14 +1186,18 @@ void PhaseIdealLoop::duplicate_predicates(CountedLoopNode* pre_head, Node* min_t
     if (predicate != NULL) {
       entry = entry->in(0)->in(0);
     }
+    Node* profile_predicate = NULL;
     if (UseProfiledLoopPredicate) {
-      predicate = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
-      duplicate_predicates_helper(entry, predicate, min_taken, castii, outer_loop, outer_main_head, dd_main_head);
+      profile_predicate = find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate);
+      if (profile_predicate != NULL) {
+        entry = skip_loop_predicates(entry);
+      }
     }
     predicate = find_predicate_insertion_point(entry, Deoptimization::Reason_predicate);
-    duplicate_predicates_helper(entry, predicate, min_taken, castii, outer_loop, outer_main_head, dd_main_head);
+    duplicate_predicates_helper(predicate, castii, outer_loop, outer_main_head, dd_main_head);
+    duplicate_predicates_helper(profile_predicate, castii, outer_loop, outer_main_head, dd_main_head);
   }
- }
+}
 
 //------------------------------insert_pre_post_loops--------------------------
 // Insert pre and post loops.  If peel_only is set, the pre-loop can not have
@@ -1336,7 +1342,7 @@ void PhaseIdealLoop::insert_pre_post_loops( IdealLoopTree *loop, Node_List &old_
   // CastII for the main loop:
   Node* castii = cast_incr_before_loop( pre_incr, min_taken, main_head );
   assert(castii != NULL, "no castII inserted");
-  duplicate_predicates(pre_head, min_taken, castii, outer_loop, outer_main_head, dd_main_head);
+  duplicate_predicates(pre_head, castii, outer_loop, outer_main_head, dd_main_head);
 
   // Step B4: Shorten the pre-loop to run only 1 iteration (for now).
   // RCE and alignment may change this later.

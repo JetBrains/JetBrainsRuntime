@@ -874,7 +874,7 @@ class GraphKit : public Phase {
 
   // Insert a loop predicate into the graph
   void add_predicate(int nargs = 0);
-  bool add_predicate_impl(Deoptimization::DeoptReason reason, int nargs);
+  void add_predicate_impl(Deoptimization::DeoptReason reason, int nargs);
 
   Node* make_constant_from_field(ciField* field, Node* obj);
 
