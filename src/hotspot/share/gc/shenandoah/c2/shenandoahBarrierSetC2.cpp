@@ -70,7 +70,7 @@ Node* ShenandoahBarrierSetC2::shenandoah_read_barrier(GraphKit* kit, Node* obj) 
 Node* ShenandoahBarrierSetC2::shenandoah_storeval_barrier(GraphKit* kit, Node* obj) const {
   if (ShenandoahStoreValEnqueueBarrier) {
     obj = shenandoah_write_barrier(kit, obj);
-    shenandoah_enqueue_barrier(kit, obj);
+    obj = shenandoah_enqueue_barrier(kit, obj);
   }
   if (ShenandoahStoreValReadBarrier) {
     obj = shenandoah_read_barrier_impl(kit, obj, true, false, false);
@@ -154,41 +154,9 @@ Node* ShenandoahBarrierSetC2::shenandoah_write_barrier_impl(GraphKit* kit, Node*
   }
   const Type* obj_type = obj->bottom_type();
   const TypePtr* adr_type = ShenandoahBarrierNode::brooks_pointer_type(obj_type);
-  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
-    // We don't know if it's null or not. Need null-check.
-    enum { _not_null_path = 1, _null_path, PATH_LIMIT };
-    RegionNode* region = new RegionNode(PATH_LIMIT);
-    Node*       phi    = new PhiNode(region, obj_type);
-    Node*    memphi    = PhiNode::make(region, __ memory(adr_type), Type::MEMORY, __ C->alias_type(adr_type)->adr_type());
-
-    Node* prev_mem = __ memory(adr_type);
-    Node* null_ctrl = __ top();
-    Node* not_null_obj = __ null_check_oop(obj, &null_ctrl);
-
-    region->init_req(_null_path, null_ctrl);
-    phi   ->init_req(_null_path, __ zerocon(T_OBJECT));
-    memphi->init_req(_null_path, prev_mem);
-
-    Node* n = shenandoah_write_barrier_helper(kit, not_null_obj, adr_type);
-
-    region->init_req(_not_null_path, __ control());
-    phi   ->init_req(_not_null_path, n);
-    memphi->init_req(_not_null_path, __ memory(adr_type));
-
-    __ set_control(__ gvn().transform(region));
-    __ record_for_igvn(region);
-    __ set_memory(__ gvn().transform(memphi), adr_type);
-
-    Node* res_val = __ gvn().transform(phi);
-    // replace_in_map(obj, res_val);
-    return res_val;
-  } else {
-    // We know it is not null. Simple barrier is sufficient.
-    Node* n = shenandoah_write_barrier_helper(kit, obj, adr_type);
-    // replace_in_map(obj, n);
-    __ record_for_igvn(n);
-    return n;
-  }
+  Node* n = shenandoah_write_barrier_helper(kit, obj, adr_type);
+  __ record_for_igvn(n);
+  return n;
 }
 
 void ShenandoahBarrierSetC2::shenandoah_update_matrix(GraphKit* kit, Node* adr, Node* val) const {
@@ -522,105 +490,8 @@ void ShenandoahBarrierSetC2::shenandoah_write_barrier_pre(GraphKit* kit,
   kit->final_sync(ideal);
 }
 
-void ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre_val) const {
-
-  // Some sanity checks
-  assert(pre_val != NULL, "must be loaded already");
-  // Nothing to be done if pre_val is null.
-  if (pre_val->bottom_type()->higher_equal(TypePtr::NULL_PTR)) return;
-  assert(pre_val->bottom_type()->basic_type() == T_OBJECT, "or we shouldn't be here");
-
-  IdealKit ideal(kit, true);
-
-  Node* tls = __ thread(); // ThreadLocalStorage
-
-  Node* no_base = __ top();
-  Node* zero  = __ ConI(0);
-  Node* zeroX = __ ConX(0);
-
-  float likely  = PROB_LIKELY(0.999);
-  float unlikely  = PROB_UNLIKELY(0.999);
-
-  // Offsets into the thread
-  const int gc_state_offset = in_bytes(ShenandoahThreadLocalData::gc_state_offset());
-  const int index_offset    = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_index_offset());
-  const int buffer_offset   = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
-
-  // Now the actual pointers into the thread
-  Node* gc_state_adr = __ AddP(no_base, tls, __ ConX(gc_state_offset));
-  Node* buffer_adr   = __ AddP(no_base, tls, __ ConX(buffer_offset));
-  Node* index_adr    = __ AddP(no_base, tls, __ ConX(index_offset));
-
-  const Type* obj_type = pre_val->bottom_type();
-  if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
-    // dunno if it's NULL or not.
-  // if (pre_val != NULL)
-  __ if_then(pre_val, BoolTest::ne, kit->null()); {
-
-    // Now some of the values
-    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
-    assert(ShenandoahWriteBarrierNode::is_gc_state_load(marking), "Should match the shape");
-
-    // if (!marking)
-    __ if_then(marking, BoolTest::ne, zero, unlikely); {
-      BasicType index_bt = TypeX_X->basic_type();
-      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
-      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
-
-      // is the queue for this thread full?
-      __ if_then(index, BoolTest::ne, zeroX, likely); {
-
-        // decrement the index
-        Node* next_index = kit->gvn().transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-
-        // Now get the buffer location we will log the previous value into and store it
-        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-        Node *log_addr = __ AddP(no_base, buffer, next_index);
-        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
-        // update the index
-        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
-
-      } __ else_(); {
-        // logging buffer is full, call the runtime
-        const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), "shenandoah_wb_pre", pre_val, tls);
-      } __ end_if();  // (!index)
-    } __ end_if();  // (!marking)
-  } __ end_if();  // (pre_val != NULL)
-  } else {
-    // We know it is not null.
-    // Now some of the values
-    Node* marking = __ load(__ ctrl(), gc_state_adr, TypeInt::BYTE, T_BYTE, Compile::AliasIdxRaw);
-    assert(ShenandoahWriteBarrierNode::is_gc_state_load(marking), "Should match the shape");
-
-    // if (!marking)
-    __ if_then(marking, BoolTest::ne, zero, unlikely); {
-      BasicType index_bt = TypeX_X->basic_type();
-      assert(sizeof(size_t) == type2aelembytes(index_bt), "Loading G1 SATBMarkQueue::_index with wrong size.");
-      Node* index   = __ load(__ ctrl(), index_adr, TypeX_X, index_bt, Compile::AliasIdxRaw);
-
-      // is the queue for this thread full?
-      __ if_then(index, BoolTest::ne, zeroX, likely); {
-
-        // decrement the index
-        Node* next_index = kit->gvn().transform(new SubXNode(index, __ ConX(sizeof(intptr_t))));
-
-        // Now get the buffer location we will log the previous value into and store it
-        Node* buffer  = __ load(__ ctrl(), buffer_adr, TypeRawPtr::NOTNULL, T_ADDRESS, Compile::AliasIdxRaw);
-        Node *log_addr = __ AddP(no_base, buffer, next_index);
-        __ store(__ ctrl(), log_addr, pre_val, T_OBJECT, Compile::AliasIdxRaw, MemNode::unordered);
-        // update the index
-        __ store(__ ctrl(), index_adr, next_index, index_bt, Compile::AliasIdxRaw, MemNode::unordered);
-
-      } __ else_(); {
-        // logging buffer is full, call the runtime
-        const TypeFunc *tf = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type();
-        __ make_leaf_call(tf, CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry), "shenandoah_wb_pre", pre_val, tls);
-      } __ end_if();  // (!index)
-    } __ end_if();  // (!marking)
-  }
-  // Final sync IdealKit and GraphKit.
-  kit->final_sync(ideal);
+Node* ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre_val) const {
+  return kit->gvn().transform(new ShenandoahEnqueueBarrierNode(pre_val));
 }
 
 // Helper that guards and inserts a pre-barrier.

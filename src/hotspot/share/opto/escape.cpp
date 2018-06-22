@@ -619,6 +619,9 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       // It doesn't escape.
       add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), delayed_worklist);
       break;
+    case Op_ShenandoahEnqueueBarrier:
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(1), delayed_worklist);
+      break;
 #endif
     default:
       ; // Do nothing for nodes not related to EA.
@@ -841,6 +844,9 @@ void ConnectionGraph::add_final_edges(Node *n) {
       // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
       // It doesn't escape.
       add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), NULL);
+      break;
+    case Op_ShenandoahEnqueueBarrier:
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(1), NULL);
       break;
 #endif
     default: {

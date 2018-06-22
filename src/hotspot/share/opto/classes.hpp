@@ -269,6 +269,7 @@ macro(SafePointScalarObject)
 #else
 #define shmacro(x) optionalmacro(x)
 #endif
+shmacro(ShenandoahEnqueueBarrier)
 shmacro(ShenandoahReadBarrier)
 shmacro(ShenandoahWriteBarrier)
 shmacro(ShenandoahWBMemProj)

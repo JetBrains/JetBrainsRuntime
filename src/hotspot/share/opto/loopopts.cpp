@@ -966,17 +966,6 @@ Node *PhaseIdealLoop::split_if_with_blocks_pre( Node *n ) {
   }
 
 #if INCLUDE_SHENANDOAHGC
-  if (n->Opcode() == Op_ShenandoahWriteBarrier) {
-    ((ShenandoahWriteBarrierNode*)n)->try_move_before_loop(n_ctrl, this);
-  }
-
-  if (n->is_ShenandoahBarrier()) {
-    res = n->as_ShenandoahBarrier()->try_common(n_ctrl, this);
-    if (res != NULL) {
-      return res;
-    }
-  }
-
   if (n->Opcode() == Op_ShenandoahReadBarrier) {
     ((ShenandoahReadBarrierNode*)n)->try_move(n_ctrl, this);
   }

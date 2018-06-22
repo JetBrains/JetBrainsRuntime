@@ -949,10 +949,10 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
         assert(found_sfpt, "no node in loop that's not input to safepoint");
       }
     }
-    CountedLoopEndNode* cle = inner_out->in(0)->as_CountedLoopEnd();
-    assert(cle == inner->loopexit_or_null(), "mismatch");
     bool has_skeleton = outer_le->in(1)->bottom_type()->singleton() && outer_le->in(1)->bottom_type()->is_int()->get_con() == 0;
     if (has_skeleton) {
+      CountedLoopEndNode* cle = inner_out->in(0)->as_CountedLoopEnd();
+      assert(cle == inner->loopexit_or_null(), "mismatch");
       assert(expect_skeleton == 1 || expect_skeleton == -1, "unexpected skeleton node");
       assert(outer->outcnt() == 2, "only phis");
     } else {
@@ -968,12 +968,30 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
         Node* u = outer->fast_out(i);
         assert(u == outer || u == inner || u->is_Phi(), "nothing between inner and outer loop");
       }
+      Node* c = inner_out;
       uint stores = 0;
-      for (DUIterator_Fast imax, i = inner_out->fast_outs(imax); i < imax; i++) {
-        Node* u = inner_out->fast_out(i);
-        if (u->is_Store()) {
-          stores++;
+      for (;;) {
+        for (DUIterator_Fast imax, i = c->fast_outs(imax); i < imax; i++) {
+          Node* u = c->fast_out(i);
+          if (u->is_Store()) {
+            stores++;
+          }
         }
+        if (c->in(0)->is_CountedLoopEnd()) {
+          break;
+        }
+        assert(UseShenandoahGC, "only for shenandoah barriers");
+        assert(c->is_Region() && c->req() == 3, "region that ends barrier");
+        uint j = 1;
+        uint req = c->req();
+        for (; j < req; j++) {
+          Node* in = c->in(j);
+          if (in->is_IfProj() && ShenandoahWriteBarrierNode::is_heap_stable_test(in->in(0))) {
+            c = in->in(0)->in(0);
+            break;
+          }
+        }
+        assert(j < req, "should have found heap stable test");
       }
       assert(outer->outcnt() >= phis + 2 && outer->outcnt() <= phis + 2 + stores + 1, "only phis");
     }
@@ -2891,6 +2909,13 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
     }
     return;
   }
+
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    GrowableArray<MemoryGraphFixer*> memory_graph_fixers;
+    ShenandoahWriteBarrierNode::optimize_before_expansion(this, memory_graph_fixers, false);
+  }
+#endif
 
   if (ReassociateInvariants) {
     // Reassociate invariants and prep for split_thru_phi
