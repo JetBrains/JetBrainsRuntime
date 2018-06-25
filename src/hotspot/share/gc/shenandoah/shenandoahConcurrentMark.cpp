@@ -664,6 +664,9 @@ public:
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConcurrentMark* cm = heap->concurrentMark();
+    ShenandoahPushWorkerScope scope(_workers,
+                                    ergo_workers,
+                                    /* do_check = */ false);
     uint nworkers = _workers->active_workers();
     cm->task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {

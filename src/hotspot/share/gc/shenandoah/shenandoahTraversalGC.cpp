@@ -1068,6 +1068,9 @@ public:
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
+    ShenandoahPushWorkerScope scope(_workers,
+                                    ergo_workers,
+                                    /* do_check = */ false);
     uint nworkers = _workers->active_workers();
     traversal_gc->task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {
