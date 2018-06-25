@@ -23,9 +23,13 @@
 
 #include "precompiled.hpp"
 #include "gc/shenandoah/heuristics/shenandoahTraversalHeuristics.hpp"
+#include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 
-ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuristics() {
+ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuristics(),
+  _free_threshold(ShenandoahInitFreeThreshold),
+  _peak_occupancy(0)
+ {
   FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
   FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
@@ -91,23 +95,99 @@ void ShenandoahTraversalHeuristics::choose_collection_set(ShenandoahCollectionSe
   collection_set->update_region_status();
 }
 
-ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversal_gc() {
-
+void ShenandoahTraversalHeuristics::handle_cycle_success() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
+  size_t capacity = heap->capacity();
 
-  if (heap->has_forwarded_objects()) return ShenandoahHeap::NONE;
+  size_t current_threshold = (capacity - _peak_occupancy) * 100 / capacity;
+  size_t min_threshold = ShenandoahMinFreeThreshold;
+  intx step = min_threshold - current_threshold;
+  step = MAX2(step, (intx) -MaxNormalStep);
+  step = MIN2(step, (intx) MaxNormalStep);
+
+  log_info(gc, ergo)("Capacity: " SIZE_FORMAT "M, Peak Occupancy: " SIZE_FORMAT
+                     "M, Lowest Free: " SIZE_FORMAT "M, Free Threshold: " UINTX_FORMAT "M",
+                     capacity / M, _peak_occupancy / M,
+                     (capacity - _peak_occupancy) / M, ShenandoahMinFreeThreshold * capacity / 100 / M);
+
+  if (step > 0) {
+    // Pessimize
+    adjust_free_threshold(step);
+  } else if (step < 0) {
+    // Optimize, if enough happy cycles happened
+    if (_successful_cycles_in_a_row > ShenandoahHappyCyclesThreshold &&
+        _free_threshold > 0) {
+      adjust_free_threshold(step);
+      _successful_cycles_in_a_row = 0;
+    }
+  } else {
+    // do nothing
+  }
+  _peak_occupancy = 0;
+}
+
+void ShenandoahTraversalHeuristics::adjust_free_threshold(intx adj) {
+  intx new_value = adj + _free_threshold;
+  uintx new_threshold = (uintx)MAX2<intx>(new_value, 0);
+  new_threshold = MAX2(new_threshold, ShenandoahMinFreeThreshold);
+  new_threshold = MIN2(new_threshold, ShenandoahMaxFreeThreshold);
+  if (new_threshold != _free_threshold) {
+    _free_threshold = new_threshold;
+    log_info(gc,ergo)("Adjusting free threshold to: " UINTX_FORMAT "%% (" SIZE_FORMAT "M)",
+                      _free_threshold, _free_threshold * ShenandoahHeap::heap()->capacity() / 100 / M);
+  }
+}
+
+void ShenandoahTraversalHeuristics::record_success_concurrent() {
+  ShenandoahHeuristics::record_success_concurrent();
+  handle_cycle_success();
+}
+
+void ShenandoahTraversalHeuristics::record_success_degenerated() {
+  ShenandoahHeuristics::record_success_degenerated();
+  adjust_free_threshold(DegeneratedGC_Hit);
+}
+
+void ShenandoahTraversalHeuristics::record_success_full() {
+  ShenandoahHeuristics::record_success_full();
+  adjust_free_threshold(AllocFailure_Hit);
+}
+
+void ShenandoahTraversalHeuristics::record_explicit_gc() {
+  ShenandoahHeuristics::record_explicit_gc();
+  adjust_free_threshold(UserRequested_Hit);
+}
+
+void ShenandoahTraversalHeuristics::record_peak_occupancy() {
+  _peak_occupancy = MAX2(_peak_occupancy, ShenandoahHeap::heap()->used());
+}
+
+ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversal_gc() {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  assert(!heap->has_forwarded_objects(), "no forwarded objects here");
+  size_t capacity = heap->capacity();
+  size_t available = heap->free_set()->available();
 
   double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
   bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
-  if (periodic_gc) {
+  size_t threshold_available = (capacity * _free_threshold) / 100;
+  size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
+  size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
+
+  if (available < threshold_available &&
+      bytes_allocated > threshold_bytes_allocated) {
+    log_info(gc,ergo)("Concurrent traversal triggered. Free: " SIZE_FORMAT "M, Free Threshold: " SIZE_FORMAT
+                      "M; Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
+                      available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
+    // Need to check that an appropriate number of regions have
+    // been allocated since last concurrent mark too.
+    return ShenandoahHeap::MAJOR;
+  } else if (periodic_gc) {
     log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
                       last_time_ms, ShenandoahGuaranteedGCInterval);
     return ShenandoahHeap::MAJOR;
   }
-
-  size_t capacity  = heap->capacity();
-  size_t used      = heap->used();
-  return 100 - (used * 100 / capacity) < ShenandoahFreeThreshold ? ShenandoahHeap::MAJOR : ShenandoahHeap::NONE;
+  return ShenandoahHeap::NONE;
 }
 
 void ShenandoahTraversalHeuristics::choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,
