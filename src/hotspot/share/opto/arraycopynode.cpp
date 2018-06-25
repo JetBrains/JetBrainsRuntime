@@ -318,7 +318,7 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
     }
 
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-    if (dest_elem == T_OBJECT && bs->array_copy_requires_gc_barriers(T_OBJECT) && !ShenandoahStoreValEnqueueBarrier) {
+    if (dest_elem == T_OBJECT && bs->array_copy_requires_gc_barriers(T_OBJECT) SHENANDOAHGC_ONLY(&& !ShenandoahStoreValEnqueueBarrier)) {
       // It's an object array copy but we can't emit the card marking
       // that is needed
       return false;
@@ -492,7 +492,7 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
     Node *start_mem_dest = mm->memory_at(alias_idx_dest);
     Node* mem = start_mem_dest;
 
-    assert(copy_type != T_OBJECT || ShenandoahStoreValEnqueueBarrier, "only tightly coupled allocations for object arrays");
+    assert(copy_type != T_OBJECT SHENANDOAHGC_ONLY(|| ShenandoahStoreValEnqueueBarrier), "only tightly coupled allocations for object arrays");
 
     if (count > 0) {
       for (int i = count-1; i >= 1; i--) {

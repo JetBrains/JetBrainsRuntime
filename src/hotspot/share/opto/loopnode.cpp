@@ -980,6 +980,7 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
         if (c->in(0)->is_CountedLoopEnd()) {
           break;
         }
+#if INCLUDE_SHENANDOAHGC
         assert(UseShenandoahGC, "only for shenandoah barriers");
         assert(c->is_Region() && c->req() == 3, "region that ends barrier");
         uint j = 1;
@@ -992,6 +993,7 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
           }
         }
         assert(j < req, "should have found heap stable test");
+#endif
       }
       assert(outer->outcnt() >= phis + 2 && outer->outcnt() <= phis + 2 + stores + 1, "only phis");
     }
