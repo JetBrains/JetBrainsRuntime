@@ -123,10 +123,6 @@ void BarrierSetAssembler::try_resolve_jobject_in_native(MacroAssembler* masm, Re
   __ ldr(obj, Address(obj, 0));             // *obj
 }
 
-void BarrierSetAssembler::obj_equals(MacroAssembler* masm, DecoratorSet decorators, Register src1, Register src2) {
-  __ cmp(src1, src2);
-}
-
 void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   // Default to no-op.
 }
