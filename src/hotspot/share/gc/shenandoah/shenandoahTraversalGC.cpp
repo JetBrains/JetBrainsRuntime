@@ -957,7 +957,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
                                        &complete_gc, &yield,
                                        NULL);
   }
-  assert(!sh->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
+  assert(sh->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
 }
 
 // Weak Reference Closures
