@@ -2821,7 +2821,7 @@ void ShenandoahWriteBarrierNode::in_cset_fast_test(Node*& c, Node* rbtrue, Node*
     uint in_cset_fast_test_idx = Compile::AliasIdxRaw;
     const TypePtr* in_cset_fast_test_adr_type = NULL; // debug-mode-only argument
     debug_only(in_cset_fast_test_adr_type = phase->C->get_adr_type(in_cset_fast_test_idx));
-    Node* in_cset_fast_test_load = new LoadUBNode(c, raw_mem, in_cset_fast_test_adr, in_cset_fast_test_adr_type, TypeInt::BOOL, MemNode::unordered);
+    Node* in_cset_fast_test_load = new LoadBNode(c, raw_mem, in_cset_fast_test_adr, in_cset_fast_test_adr_type, TypeInt::BYTE, MemNode::unordered);
     phase->register_new_node(in_cset_fast_test_load, c);
     Node* in_cset_fast_test_cmp = new CmpINode(in_cset_fast_test_load, phase->igvn().zerocon(T_INT));
     phase->register_new_node(in_cset_fast_test_cmp, c);
