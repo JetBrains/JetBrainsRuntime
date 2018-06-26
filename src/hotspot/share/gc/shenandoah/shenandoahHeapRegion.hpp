@@ -208,6 +208,7 @@ private:
   static size_t HumongousThresholdBytes;
   static size_t HumongousThresholdWords;
   static size_t MaxTLABSizeBytes;
+  static size_t MaxTLABSizeWords;
 
   // Global alloaction counter, increased for each allocation
   // under Shenandoah heap lock
@@ -313,6 +314,10 @@ public:
 
   inline static size_t max_tlab_size_bytes() {
     return ShenandoahHeapRegion::MaxTLABSizeBytes;
+  }
+
+  inline static size_t max_tlab_size_words() {
+    return ShenandoahHeapRegion::MaxTLABSizeWords;
   }
 
   static uint64_t seqnum_current_alloc() {

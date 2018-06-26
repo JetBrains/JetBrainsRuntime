@@ -1282,11 +1282,13 @@ bool ShenandoahHeap::supports_tlab_allocation() const {
 }
 
 size_t  ShenandoahHeap::unsafe_max_tlab_alloc(Thread *thread) const {
-  return MIN2(_free_set->unsafe_peek_free(), max_tlab_size());
+  // Returns size in bytes
+  return MIN2(_free_set->unsafe_peek_free(), ShenandoahHeapRegion::max_tlab_size_bytes());
 }
 
 size_t ShenandoahHeap::max_tlab_size() const {
-  return ShenandoahHeapRegion::max_tlab_size_bytes();
+  // Returns size in words
+  return ShenandoahHeapRegion::max_tlab_size_words();
 }
 
 class ShenandoahAccumulateStatisticsGCLABClosure : public ThreadClosure {

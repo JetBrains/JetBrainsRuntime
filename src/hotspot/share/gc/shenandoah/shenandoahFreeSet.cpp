@@ -537,8 +537,8 @@ HeapWord* ShenandoahFreeSet::allocate(size_t word_size, ShenandoahHeap::AllocTyp
       case ShenandoahHeap::_alloc_gclab:
       case ShenandoahHeap::_alloc_tlab:
         in_new_region = false;
-        log_warning(gc)("Trying to allocate TLAB larger than the humongous threshold: " SIZE_FORMAT " > " SIZE_FORMAT,
-                        word_size, ShenandoahHeapRegion::humongous_threshold_words());
+        assert(false, "Trying to allocate TLAB larger than the humongous threshold: " SIZE_FORMAT " > " SIZE_FORMAT,
+                      word_size, ShenandoahHeapRegion::humongous_threshold_words());
         return NULL;
       default:
         ShouldNotReachHere();
