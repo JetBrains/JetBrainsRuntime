@@ -33,9 +33,11 @@ class ShenandoahHeapRegion;
 class ShenandoahCollectionSet : public CHeapObj<mtGC> {
   friend class ShenandoahHeap;
 private:
-  jbyte*                _cset_map;
-  jbyte*                _biased_cset_map;
-  size_t                _map_size;
+  size_t const          _map_size;
+  size_t const          _region_size_bytes_shift;
+  jbyte* const          _cset_map;
+  // Bias cset map's base address for fast test if an oop is in cset
+  jbyte* const          _biased_cset_map;
 
   ShenandoahHeap* const _heap;
 

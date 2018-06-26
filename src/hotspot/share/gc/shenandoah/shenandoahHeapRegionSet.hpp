@@ -58,7 +58,9 @@ class ShenandoahHeapRegionSet : public CHeapObj<mtGC> {
 private:
   ShenandoahHeap* const _heap;
   size_t const          _map_size;
+  size_t const          _region_size_bytes_shift;
   jbyte* const          _set_map;
+  // Bias set map's base address for fast test if an oop is in set
   jbyte* const          _biased_set_map;
   size_t                _region_count;
 

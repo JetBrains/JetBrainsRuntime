@@ -40,7 +40,7 @@ bool ShenandoahCollectionSet::is_in(ShenandoahHeapRegion* r) const {
 
 bool ShenandoahCollectionSet::is_in(HeapWord* p) const {
   assert(_heap->is_in(p), "Must be in the heap");
-  uintx index = ((uintx) p) >> ShenandoahHeapRegion::region_size_bytes_shift();
+  uintx index = ((uintx) p) >> _region_size_bytes_shift;
   // no need to subtract the bottom of the heap from p,
   // _biased_cset_map is biased
   return _biased_cset_map[index] == 1;
