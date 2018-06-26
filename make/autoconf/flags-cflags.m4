@@ -232,7 +232,7 @@ AC_DEFUN([FLAGS_SETUP_OPTIMIZATION],
       C_O_FLAG_NORM="-xO2 -Wu,-O2~yz"
     elif test "x$OPENJDK_TARGET_CPU_ARCH" = "xsparc"; then
       C_O_FLAG_HIGHEST="-xO4 -Wc,-Qrm-s -Wc,-Qiselect-T0 \
-          -xprefetch=auto,explicit -xchip=ultra $CC_HIGHEST"
+          -xprefetch=auto,explicit $CC_HIGHEST"
       C_O_FLAG_HI="-xO4 -Wc,-Qrm-s -Wc,-Qiselect-T0"
       C_O_FLAG_NORM="-xO2 -Wc,-Qrm-s -Wc,-Qiselect-T0"
     fi
@@ -549,6 +549,7 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_HELPER],
   elif test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     WARNING_CFLAGS="-W3"
     WARNING_CFLAGS_JDK="-wd4800"
+    WARNING_CFLAGS_JVM="-wd4800"
   fi
 
   # Set some additional per-OS defines.
@@ -573,22 +574,24 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_HELPER],
     # '-qpic' defaults to 'qpic=small'. This means that the compiler generates only
     # one instruction for accessing the TOC. If the TOC grows larger than 64K, the linker
     # will have to patch this single instruction with a call to some out-of-order code which
-    # does the load from the TOC. This is of course slow. But in that case we also would have
+    # does the load from the TOC. This is of course slower, and we also would have
     # to use '-bbigtoc' for linking anyway so we could also change the PICFLAG to 'qpic=large'.
     # With 'qpic=large' the compiler will by default generate a two-instruction sequence which
     # can be patched directly by the linker and does not require a jump to out-of-order code.
-    # Another alternative instead of using 'qpic=large -bbigtoc' may be to use '-qminimaltoc'
-    # instead. This creates a distinct TOC for every compilation unit (and thus requires two
-    # loads for accessing a global variable). But there are rumors that this may be seen as a
-    # 'performance feature' because of improved code locality of the symbols used in a
-    # compilation unit.
-    PICFLAG="-qpic"
+    #
+    # Since large TOC causes perf. overhead, only pay it where we must. Currently this is
+    # for all libjvm variants (both gtest and normal) but no other binaries. So, build
+    # libjvm with -qpic=large and link with -bbigtoc.
+    JVM_PICFLAG="-qpic=large"
+    JDK_PICFLAG="-qpic"
   elif test "x$TOOLCHAIN_TYPE" = xmicrosoft; then
     PICFLAG=""
   fi
 
-  JVM_PICFLAG="$PICFLAG"
-  JDK_PICFLAG="$PICFLAG"
+  if test "x$TOOLCHAIN_TYPE" != xxlc; then
+    JVM_PICFLAG="$PICFLAG"
+    JDK_PICFLAG="$PICFLAG"
+  fi
 
   if test "x$OPENJDK_TARGET_OS" = xmacosx; then
     # Linking is different on MacOSX

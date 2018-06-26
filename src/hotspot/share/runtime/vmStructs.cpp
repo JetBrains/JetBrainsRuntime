@@ -291,6 +291,7 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   nonstatic_field(DataLayout,                  _header._struct._tag,                          u1)                                    \
   nonstatic_field(DataLayout,                  _header._struct._flags,                        u1)                                    \
   nonstatic_field(DataLayout,                  _header._struct._bci,                          u2)                                    \
+  nonstatic_field(DataLayout,                  _header._struct._traps,                        u4)                                    \
   nonstatic_field(DataLayout,                  _cells[0],                                     intptr_t)                              \
   nonstatic_field(MethodCounters,              _nmethod_age,                                  int)                                   \
   nonstatic_field(MethodCounters,              _interpreter_invocation_limit,                 int)                                   \
@@ -1116,11 +1117,11 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   /* FileMapInfo fields (CDS archive related) */                                                                                     \
   /********************************************/                                                                                     \
                                                                                                                                      \
-  nonstatic_field(FileMapInfo,                 _header,                                       FileMapInfo::FileMapHeader*)           \
-     static_field(FileMapInfo,                 _current_info,                                 FileMapInfo*)                          \
-  nonstatic_field(FileMapInfo::FileMapHeader,  _space[0],                                     FileMapInfo::FileMapHeader::space_info)\
-  nonstatic_field(FileMapInfo::FileMapHeader::space_info, _addr._base,                        char*)                                 \
-  nonstatic_field(FileMapInfo::FileMapHeader::space_info, _used,                              size_t)                                \
+  CDS_ONLY(nonstatic_field(FileMapInfo,                            _header,                   FileMapInfo::FileMapHeader*))          \
+  CDS_ONLY(   static_field(FileMapInfo,                            _current_info,             FileMapInfo*))                         \
+  CDS_ONLY(nonstatic_field(FileMapInfo::FileMapHeader,             _space[0],                 FileMapInfo::FileMapHeader::space_info))\
+  CDS_ONLY(nonstatic_field(FileMapInfo::FileMapHeader::space_info, _addr._base,               char*))                                \
+  CDS_ONLY(nonstatic_field(FileMapInfo::FileMapHeader::space_info, _used,                     size_t))                               \
                                                                                                                                      \
   /******************/                                                                                                               \
   /* VMError fields */                                                                                                               \
@@ -2380,6 +2381,7 @@ typedef PaddedEnd<ObjectMonitor>              PaddedObjectMonitor;
   declare_constant(Deoptimization::Reason_array_check)                    \
   declare_constant(Deoptimization::Reason_intrinsic)                      \
   declare_constant(Deoptimization::Reason_bimorphic)                      \
+  declare_constant(Deoptimization::Reason_profile_predicate)              \
   declare_constant(Deoptimization::Reason_unloaded)                       \
   declare_constant(Deoptimization::Reason_uninitialized)                  \
   declare_constant(Deoptimization::Reason_unreached)                      \

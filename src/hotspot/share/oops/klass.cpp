@@ -142,7 +142,10 @@ void Klass::check_valid_for_instantiation(bool throwError, TRAPS) {
 
 
 void Klass::copy_array(arrayOop s, int src_pos, arrayOop d, int dst_pos, int length, TRAPS) {
-  THROW(vmSymbols::java_lang_ArrayStoreException());
+  ResourceMark rm(THREAD);
+  assert(s != NULL, "Throw NPE!");
+  THROW_MSG(vmSymbols::java_lang_ArrayStoreException(),
+            err_msg("arraycopy: source type %s is not an array", s->klass()->external_name()));
 }
 
 
@@ -809,10 +812,10 @@ const char* Klass::class_loader_and_module_name() const {
       module_name = module->name()->as_C_string();
       msglen += strlen(module_name);
       // Use version if exists and is not a jdk module
-      if (module->is_non_jdk_module() && module->version() != NULL) {
+      if (module->should_show_version()) {
         has_version = true;
         version = module->version()->as_C_string();
-        msglen += strlen("@") + strlen(version);
+        msglen += strlen(version) + 1; // +1 for "@"
       }
     }
   } else {

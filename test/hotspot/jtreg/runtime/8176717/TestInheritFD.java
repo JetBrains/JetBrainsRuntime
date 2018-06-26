@@ -1,15 +1,3 @@
-import static java.io.File.createTempFile;
-import static java.lang.Long.parseLong;
-import static java.lang.System.getProperty;
-import static java.lang.management.ManagementFactory.getOperatingSystemMXBean;
-import static java.nio.file.Files.readAllBytes;
-import static jdk.test.lib.process.ProcessTools.createJavaProcessBuilder;
-
-import java.io.File;
-import java.io.IOException;
-
-import com.sun.management.UnixOperatingSystemMXBean;
-
 /*
  * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -32,6 +20,26 @@ import com.sun.management.UnixOperatingSystemMXBean;
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+import static java.io.File.createTempFile;
+import static java.lang.Long.parseLong;
+import static java.lang.System.getProperty;
+import static java.nio.file.Files.readAllBytes;
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static jdk.test.lib.process.ProcessTools.createJavaProcessBuilder;
+import static jdk.test.lib.Platform.isWindows;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Collection;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 /*
  * @test TestInheritFD
@@ -57,8 +65,7 @@ import com.sun.management.UnixOperatingSystemMXBean;
  * The third VM communicates the success to rename the file by printing "CLOSED
  * FD". The first VM checks that the string was printed by the third VM.
  *
- * On unix like systems, UnixOperatingSystemMXBean is used to check open file
- * descriptors.
+ * On unix like systems "lsof" or "pfiles" is used.
  */
 
 public class TestInheritFD {
@@ -66,11 +73,18 @@ public class TestInheritFD {
     public static final String LEAKS_FD = "VM RESULT => LEAKS FD";
     public static final String RETAINS_FD = "VM RESULT => RETAINS FD";
     public static final String EXIT = "VM RESULT => VM EXIT";
+    public static final String LOG_SUFFIX = ".strangelogsuffixthatcanbecheckedfor";
 
     // first VM
     public static void main(String[] args) throws Exception {
-        String logPath = createTempFile("logging", ".log").getName();
+        String logPath = createTempFile("logging", LOG_SUFFIX).getName();
         File commFile = createTempFile("communication", ".txt");
+
+        if (!isWindows() && !lsofCommand().isPresent()) {
+            System.out.println("Could not find lsof like command");
+            System.out.println("Exit test case as successful though it could not verify anything");
+            return;
+        }
 
         ProcessBuilder pb = createJavaProcessBuilder(
             "-Xlog:gc:\"" + logPath + "\"",
@@ -103,46 +117,92 @@ public class TestInheritFD {
                 "-Dtest.jdk=" + getProperty("test.jdk"),
                 VMShouldNotInheritFileDescriptors.class.getName(),
                 args[0],
-                "" + ProcessHandle.current().pid(),
-                "" + (supportsUnixMXBean()?+unixNrFD():-1));
+                "" + ProcessHandle.current().pid());
             pb.inheritIO(); // in future, redirect information from third VM to first VM
             pb.start();
+
+            if (!isWindows()) {
+                System.out.println("(Second VM) Open file descriptors:\n" + outputContainingFilenames().stream().collect(joining("\n")));
+            }
         }
     }
 
     static class VMShouldNotInheritFileDescriptors {
         // third VM
         public static void main(String[] args) throws InterruptedException {
-            File logFile = new File(args[0]);
-            long parentPid = parseLong(args[1]);
-            long parentFDCount = parseLong(args[2]);
+            try {
+                File logFile = new File(args[0]);
+                long parentPid = parseLong(args[1]);
+                fakeLeakyJVM(false); // for debugging of test case
 
-            if(supportsUnixMXBean()){
-                long thisFDCount = unixNrFD();
-                System.out.println("This VM FD-count (" + thisFDCount + ") should be strictly less than parent VM FD-count (" + parentFDCount + ") as log file should have been closed");
-                System.out.println(thisFDCount<parentFDCount?RETAINS_FD:LEAKS_FD);
-            } else if (getProperty("os.name").toLowerCase().contains("win")) {
-                windows(logFile, parentPid);
-            } else {
-                System.out.println(LEAKS_FD); // default fail on unknown configuration
+                if (isWindows()) {
+                    windows(logFile, parentPid);
+                } else {
+                    Collection<String> output = outputContainingFilenames();
+                    System.out.println("(Third VM) Open file descriptors:\n" + output.stream().collect(joining("\n")));
+                    System.out.println(findOpenLogFile(output) ? LEAKS_FD : RETAINS_FD);
+                }
+            } catch (Exception e) {
+                System.out.println(e.toString());
+            } finally {
+                System.out.println(EXIT);
             }
-            System.out.println(EXIT);
         }
     }
 
-    static boolean supportsUnixMXBean() {
-        return getOperatingSystemMXBean() instanceof UnixOperatingSystemMXBean;
+    // for debugging of test case
+    @SuppressWarnings("resource")
+    static void fakeLeakyJVM(boolean fake) {
+        if (fake) {
+            try {
+                new FileOutputStream("fakeLeakyJVM" + LOG_SUFFIX, false);
+            } catch (FileNotFoundException e) {
+            }
+        }
     }
 
-    static long unixNrFD() {
-        UnixOperatingSystemMXBean osBean = (UnixOperatingSystemMXBean) getOperatingSystemMXBean();
-        return osBean.getOpenFileDescriptorCount();
+    static Stream<String> run(String... args){
+        try {
+            return new BufferedReader(new InputStreamReader(new ProcessBuilder(args).start().getInputStream())).lines();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static Optional<String[]> lsofCommandCache = stream(new String[][]{
+            {"/usr/bin/lsof", "-p"},
+            {"/usr/sbin/lsof", "-p"},
+            {"/bin/lsof", "-p"},
+            {"/sbin/lsof", "-p"},
+            {"/usr/local/bin/lsof", "-p"},
+            {"/usr/bin/pfiles", "-F"}}) // Solaris
+        .filter(args -> new File(args[0]).exists())
+        .findFirst();
+
+    static Optional<String[]> lsofCommand() {
+        return lsofCommandCache;
+    }
+
+    static Collection<String> outputContainingFilenames() {
+        long pid = ProcessHandle.current().pid();
+
+        String[] command = lsofCommand().orElseThrow(() -> new RuntimeException("lsof like command not found"));
+        System.out.println("using command: " + command[0] + " " + command[1]);
+        return run(command[0], command[1], "" + pid).collect(toList());
+    }
+
+    static boolean findOpenLogFile(Collection<String> fileNames) {
+        return fileNames.stream()
+            .filter(fileName -> fileName.contains(LOG_SUFFIX))
+            .findAny()
+            .isPresent();
     }
 
     static void windows(File f, long parentPid) throws InterruptedException {
         System.out.println("waiting for pid: " + parentPid);
         ProcessHandle.of(parentPid).ifPresent(handle -> handle.onExit().join());
         System.out.println("trying to rename file to the same name: " + f);
-        System.out.println(f.renameTo(f)?RETAINS_FD:LEAKS_FD); // this parts communicates a closed file descriptor by printing "CLOSED FD"
+        System.out.println(f.renameTo(f) ? RETAINS_FD : LEAKS_FD); // this parts communicates a closed file descriptor by printing "VM RESULT => RETAINS FD"
     }
 }
+
