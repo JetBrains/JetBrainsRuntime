@@ -866,10 +866,6 @@ public:
   void zero_memory(Register addr, Register len, Register t1);
   void verify_tlab();
 
-  void incr_allocated_bytes(Register thread,
-                            Register var_size_in_bytes, int con_size_in_bytes,
-                            Register t1 = noreg);
-
   // interface method calling
   void lookup_interface_method(Register recv_klass,
                                Register intf_klass,
@@ -978,6 +974,8 @@ public:
 
   void addptr(const Address &dst, int32_t src);
   void cmpptr(Register src1, Address src2);
+
+  void cmpoop(Register obj1, Register obj2);
 
   // Various forms of CAS
 

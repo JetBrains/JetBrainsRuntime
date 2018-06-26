@@ -804,7 +804,6 @@ javax/swing/JEditorPane/8195095/ImageViewTest.java 8202656 windows-all
 javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java 8202663 windows-all
 javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java 202880 linux-all
 javax/swing/dnd/8139050/NativeErrorsInTableDnD.java 8202765  macosx-all,linux-all
-javax/swing/plaf/nimbus/8057791/bug8057791.java 8202877 macosx-all
 javax/swing/Popup/TaskbarPositionTest.java 8065097 macosx-all,linux-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java 8023814 linux-all,solaris-all
 
@@ -853,8 +852,6 @@ com/sun/jdi/NashornPopFrameTest.java                            8187143 generic-
 
 # jdk_util
 
-java/util/Map/InPlaceOpsCollisions.java                         8203387 generic-all
-
 ############################################################################
 
 # jdk_instrument
@@ -891,4 +888,3 @@ com/sun/jdi/RedefineCrossEvent.java                             8194308    gener
 jdk/jfr/event/io/TestInstrumentation.java                       8202142    generic-all
 jdk/jfr/event/sampling/TestNative.java                          8202142    generic-all
 jdk/jfr/event/os/TestSystemProcess.java                         8202835    linux-all
-jdk/jfr/event/runtime/TestBiasedLockRevocationEvents.java       8203237    generic-all

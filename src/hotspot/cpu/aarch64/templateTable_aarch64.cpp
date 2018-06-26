@@ -2027,7 +2027,7 @@ void TemplateTable::if_acmp(Condition cc)
   // assume branch is more often taken than not (loops use backward branches)
   Label not_taken;
   __ pop_ptr(r1);
-  __ cmp(r1, r0);
+  __ cmpoop(r1, r0);
   __ br(j_not(cc), not_taken);
   branch(false, false);
   __ bind(not_taken);
@@ -3562,7 +3562,6 @@ void TemplateTable::_new() {
     // r3: instance size in bytes
     if (allow_shared_alloc) {
       __ eden_allocate(r0, r3, 0, r10, slow_case);
-      __ incr_allocated_bytes(rthread, r3, 0, rscratch1);
     }
   }
 
