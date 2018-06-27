@@ -1060,6 +1060,29 @@ static bool merge_point_too_heavy(Compile* C, Node* region) {
   }
 }
 
+static bool merge_point_safe_helper(Node* m) {
+  if (m->is_FastLock()) {
+    return false;
+  }
+#ifdef _LP64
+  if (m->Opcode() == Op_ConvI2L) {
+    return false;
+  }
+  if (m->is_CastII() && m->isa_CastII()->has_range_check()) {
+    return false;
+  }
+#endif
+  if (m->is_ShenandoahBarrier()) {
+    for (DUIterator_Fast imax, i = m->fast_outs(imax); i < imax; i++) {
+      Node* n = m->fast_out(i);
+      if (!merge_point_safe_helper(n)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 static bool merge_point_safe(Node* region) {
   // 4799512: Stop split_if_with_blocks from splitting a block with a ConvI2LNode
   // having a PhiNode input. This sidesteps the dangerous case where the split
@@ -1076,15 +1099,9 @@ static bool merge_point_safe(Node* region) {
     if (n->is_Phi()) {
       for (DUIterator_Fast jmax, j = n->fast_outs(jmax); j < jmax; j++) {
         Node* m = n->fast_out(j);
-        if (m->is_FastLock())
-          return false;
-#ifdef _LP64
-        if (m->Opcode() == Op_ConvI2L)
-          return false;
-        if (m->is_CastII() && m->isa_CastII()->has_range_check()) {
+        if (!merge_point_safe_helper(m)) {
           return false;
         }
-#endif
       }
     }
   }
@@ -1456,7 +1473,7 @@ void PhaseIdealLoop::split_if_with_blocks_post(Node *n, bool last_round) {
             // to fold a StoreP and an AddP together (as part of an
             // address expression) and the AddP and StoreP have
             // different controls.
-            if (!x->is_Load() && !x->is_DecodeNarrowPtr() && !x->is_ShenandoahBarrier()) _igvn._worklist.yank(x);
+            if (!x->is_Load() && !x->is_DecodeNarrowPtr() && !x->is_ShenandoahBarrier() && !x->is_MergeMem()) _igvn._worklist.yank(x);
           }
           _igvn.remove_dead_node(n);
         }

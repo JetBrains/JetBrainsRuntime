@@ -517,21 +517,6 @@ ShenandoahWriteBarrierNode::ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, N
 }
 
 
-const Type* ShenandoahWriteBarrierNode::Value(PhaseGVN* phase) const {
-  // Either input is TOP ==> the result is TOP
-  const Type *t1 = phase->type(in(Memory));
-  if (t1 == Type::TOP) return Type::TOP;
-  const Type *t2 = phase->type(in(ValueIn));
-  if( t2 == Type::TOP ) return Type::TOP;
-
-  if (t2 == TypePtr::NULL_PTR) {
-    return _type;
-  }
-
-  const Type* type = t2->is_oopptr()->cast_to_nonconst();
-  return type;
-}
-
 Node* ShenandoahWriteBarrierNode::Identity(PhaseGVN* phase) {
   assert(in(0) != NULL, "should have control");
   PhaseIterGVN* igvn = phase->is_IterGVN();
@@ -924,6 +909,10 @@ const Type* ShenandoahBarrierNode::Value(PhaseGVN* phase) const {
   if (t1 == Type::TOP) return Type::TOP;
   const Type *t2 = phase->type(in(ValueIn));
   if( t2 == Type::TOP ) return Type::TOP;
+
+  if (t2 == TypePtr::NULL_PTR) {
+    return _type;
+  }
 
   const Type* type = t2->is_oopptr()->cast_to_nonconst();
   return type;

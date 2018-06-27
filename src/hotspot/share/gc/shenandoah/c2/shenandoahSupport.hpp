@@ -168,7 +168,6 @@ public:
   ShenandoahWriteBarrierNode(Compile* C, Node* ctrl, Node* mem, Node* obj);
 
   virtual int Opcode() const;
-  virtual const Type* Value(PhaseGVN* phase) const;
   virtual Node *Ideal(PhaseGVN *phase, bool can_reshape);
   virtual Node* Identity(PhaseGVN* phase);
   virtual bool depends_only_on_test() const { return false; }
