@@ -306,9 +306,9 @@ void ShenandoahTraversalGC::flush_liveness(uint worker_id) {
 ShenandoahTraversalGC::ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_regions) :
   _heap(heap),
   _task_queues(new ShenandoahObjToScanQueueSet(heap->max_workers())),
-  _traversal_set(new ShenandoahHeapRegionSet()),
-  _root_regions(new ShenandoahHeapRegionSet()),
-  _root_regions_iterator(_root_regions),
+  _traversal_set(ShenandoahHeapRegionSet()),
+  _root_regions(ShenandoahHeapRegionSet()),
+  _root_regions_iterator(&_root_regions),
   _matrix(heap->connection_matrix()) {
 
   uint num_queues = heap->max_workers();
@@ -337,7 +337,7 @@ void ShenandoahTraversalGC::prepare_regions() {
   for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = heap->get_region(i);
     if (heap->is_bitmap_slice_committed(region)) {
-      if (_traversal_set->is_in(i)) {
+      if (_traversal_set.is_in(i)) {
         heap->set_next_top_at_mark_start(region->bottom(), region->top());
         region->clear_live_data();
         assert(heap->is_next_bitmap_clear_range(region->bottom(), region->end()), "bitmap for traversal regions must be cleared");
@@ -345,7 +345,7 @@ void ShenandoahTraversalGC::prepare_regions() {
         // Everything outside the traversal set is always considered live.
         heap->set_next_top_at_mark_start(region->bottom(), region->bottom());
       }
-      if (_root_regions->is_in(i)) {
+      if (_root_regions.is_in(i)) {
         assert(!region->in_collection_set(), "roots must not overlap with cset");
         matrix->clear_region_outbound(i);
         // Since root region can be allocated at, we should bound the scans
@@ -376,7 +376,7 @@ void ShenandoahTraversalGC::prepare() {
   // Rebuild free set
   free_set->rebuild();
 
-  log_info(gc,ergo)("Got " SIZE_FORMAT " collection set regions and " SIZE_FORMAT " root set regions", collection_set->count(), _root_regions->count());
+  log_info(gc,ergo)("Got " SIZE_FORMAT " collection set regions and " SIZE_FORMAT " root set regions", collection_set->count(), _root_regions.count());
 }
 
 void ShenandoahTraversalGC::init_traversal_collection() {
@@ -434,7 +434,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
     _heap->pacer()->setup_for_traversal();
   }
 
-  _root_regions_iterator.reset(_root_regions);
+  _root_regions_iterator.reset(&_root_regions);
 }
 
 void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {

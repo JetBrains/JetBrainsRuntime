@@ -30,14 +30,13 @@
 #include "gc/shenandoah/shenandoahArrayCopyTaskQueue.hpp"
 
 class Thread;
-class ShenandoahHeapRegionSet;
 class ShenandoahHeap;
 class ShenandoahStrDedupQueue;
 
 class ShenandoahTraversalGC : public CHeapObj<mtGC> {
 private:
-  ShenandoahHeap* _heap;
-  ShenandoahObjToScanQueueSet* _task_queues;
+  ShenandoahHeap* const _heap;
+  ShenandoahObjToScanQueueSet* const _task_queues;
 
   // Used for buffering per-region liveness data.
   // Needed since ShenandoahHeapRegion uses atomics to update liveness.
@@ -49,8 +48,8 @@ private:
   // too many atomic updates. size_t/jint is too large, jbyte is too small.
   jushort** _liveness_local;
 
-  ShenandoahHeapRegionSet* const _traversal_set;
-  ShenandoahHeapRegionSet* const _root_regions;
+  ShenandoahHeapRegionSet _traversal_set;
+  ShenandoahHeapRegionSet _root_regions;
 
   ShenandoahHeapRegionSetIterator _root_regions_iterator;
 
@@ -62,8 +61,8 @@ public:
   ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_regions);
   ~ShenandoahTraversalGC();
 
-  ShenandoahHeapRegionSet* const traversal_set() const { return _traversal_set; }
-  ShenandoahHeapRegionSet* const root_regions()  const { return _root_regions;}
+  ShenandoahHeapRegionSet* traversal_set() { return &_traversal_set; }
+  ShenandoahHeapRegionSet* root_regions()  { return &_root_regions;}
 
   void reset();
   void prepare();

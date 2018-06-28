@@ -76,7 +76,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       }
     }
 
-    if (_traversal_set->is_in((HeapWord*) obj) && !_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
+    if (_traversal_set.is_in((HeapWord*) obj) && !_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 
