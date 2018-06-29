@@ -25,6 +25,7 @@
 #ifndef SHARE_VM_OOPS_OOP_HPP
 #define SHARE_VM_OOPS_OOP_HPP
 
+#include "gc/shared/barrierSet.hpp"
 #include "memory/iterator.hpp"
 #include "memory/memRegion.hpp"
 #include "oops/access.hpp"
@@ -46,7 +47,6 @@ class OopClosure;
 class ScanClosure;
 class FastScanClosure;
 class FilteringClosure;
-class BarrierSet;
 class CMSIsAliveClosure;
 
 class PSPromotionManager;
@@ -153,6 +153,22 @@ class oopDesc {
   }
 
   inline static bool equals(oop o1, oop o2) { return Access<>::equals(o1, o2); }
+
+  inline static bool safe_equals(oop o1, oop o2) {
+#ifdef ASSERT
+    BarrierSet::barrier_set()->verify_safe_oop(o1);
+    BarrierSet::barrier_set()->verify_safe_oop(o2);
+#endif
+    return unsafe_equals(o1, o2);
+  }
+
+  inline static bool unsafe_equals(oop o1, oop o2) {
+#ifdef CHECK_UNHANDLED_OOPS
+    return o1.obj() == o2.obj();
+#else
+    return o1 == o2;
+#endif
+  }
 
   // Access to fields in a instanceOop through these methods.
   template <DecoratorSet decorator>

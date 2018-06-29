@@ -45,6 +45,10 @@
 #if INCLUDE_ZGC
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 ConnectionGraph::ConnectionGraph(Compile * C, PhaseIterGVN *igvn) :
   _nodes(C->comp_arena(), C->unique(), C->unique(), NULL),
@@ -554,8 +558,8 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
           // Pointer stores in G1 barriers looks like unsafe access.
           // Ignore such stores to be able scalar replace non-escaping
           // allocations.
-#if INCLUDE_G1GC
-          if (UseG1GC && adr->is_AddP()) {
+#if INCLUDE_G1GC || INCLUDE_SHENANDOAHGC
+          if ((UseG1GC || UseShenandoahGC) && adr->is_AddP()) {
             Node* base = get_addp_base(adr);
             if (base->Opcode() == Op_LoadP &&
                 base->in(MemNode::Address)->is_AddP()) {
@@ -563,7 +567,15 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
               Node* tls = get_addp_base(adr);
               if (tls->Opcode() == Op_ThreadLocal) {
                 int offs = (int)igvn->find_intptr_t_con(adr->in(AddPNode::Offset), Type::OffsetBot);
-                if (offs == in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset())) {
+#if INCLUDE_G1GC && INCLUDE_SHENANDOAHGC
+                const int buf_offset = in_bytes(UseG1GC ? G1ThreadLocalData::satb_mark_queue_buffer_offset()
+                                                        : ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
+#elif INCLUDE_G1GC
+                const int buf_offset = in_bytes(G1ThreadLocalData::satb_mark_queue_buffer_offset());
+#else
+                const int buf_offset = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
+#endif
+                if (offs == buf_offset) {
                   break; // G1 pre barrier previous oop value store.
                 }
                 if (offs == in_bytes(G1ThreadLocalData::dirty_card_queue_buffer_offset())) {
@@ -600,6 +612,17 @@ void ConnectionGraph::add_node_to_connection_graph(Node *n, Unique_Node_List *de
       add_java_object(n, PointsToNode::ArgEscape);
       break;
     }
+#if INCLUDE_SHENANDOAHGC
+    case Op_ShenandoahReadBarrier:
+    case Op_ShenandoahWriteBarrier:
+      // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
+      // It doesn't escape.
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), delayed_worklist);
+      break;
+    case Op_ShenandoahEnqueueBarrier:
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(1), delayed_worklist);
+      break;
+#endif
     default:
       ; // Do nothing for nodes not related to EA.
   }
@@ -815,6 +838,17 @@ void ConnectionGraph::add_final_edges(Node *n) {
       }
       break;
     }
+#if INCLUDE_SHENANDOAHGC
+    case Op_ShenandoahReadBarrier:
+    case Op_ShenandoahWriteBarrier:
+      // Barriers 'pass through' its arguments. I.e. what goes in, comes out.
+      // It doesn't escape.
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(ShenandoahBarrierNode::ValueIn), NULL);
+      break;
+    case Op_ShenandoahEnqueueBarrier:
+      add_local_var_and_edge(n, PointsToNode::NoEscape, n->in(1), NULL);
+      break;
+#endif
     default: {
       // This method should be called only for EA specific nodes which may
       // miss some edges when they were created.
@@ -2108,6 +2142,11 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
     } else if (adr_type->isa_aryptr()) {
       if (offset == arrayOopDesc::length_offset_in_bytes()) {
         // Ignore array length load.
+#if INCLUDE_SHENANDOAHGC
+      } else if (UseShenandoahGC && ShenandoahReadBarrier && offset == BrooksPointer::byte_offset()) {
+        // Shenandoah read barrier.
+        bt = T_ARRAY;
+#endif
       } else if (find_second_addp(n, n->in(AddPNode::Base)) != NULL) {
         // Ignore first AddP.
       } else {
@@ -2359,7 +2398,8 @@ Node* ConnectionGraph::get_addp_base(Node *addp) {
       assert(opcode == Op_ConP || opcode == Op_ThreadLocal ||
              opcode == Op_CastX2P || uncast_base->is_DecodeNarrowPtr() ||
              (uncast_base->is_Mem() && (uncast_base->bottom_type()->isa_rawptr() != NULL)) ||
-             (uncast_base->is_Proj() && uncast_base->in(0)->is_Allocate()), "sanity");
+             (uncast_base->is_Proj() && uncast_base->in(0)->is_Allocate()) ||
+             uncast_base->is_ShenandoahBarrier(), "sanity");
     }
   }
   return base;
@@ -3092,6 +3132,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
                n->is_CheckCastPP() ||
                n->is_EncodeP() ||
                n->is_DecodeN() ||
+               n->is_ShenandoahBarrier() ||
                (n->is_ConstraintCast() && n->Opcode() == Op_CastPP)) {
       if (visited.test_set(n->_idx)) {
         assert(n->is_Phi(), "loops only through Phi's");
@@ -3162,6 +3203,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
                  use->is_CheckCastPP() ||
                  use->is_EncodeNarrowPtr() ||
                  use->is_DecodeNarrowPtr() ||
+                 use->is_ShenandoahBarrier() ||
                  (use->is_ConstraintCast() && use->Opcode() == Op_CastPP)) {
         alloc_worklist.append_if_missing(use);
 #ifdef ASSERT
@@ -3192,6 +3234,7 @@ void ConnectionGraph::split_unique_types(GrowableArray<Node *>  &alloc_worklist,
               op == Op_FastLock || op == Op_AryEq || op == Op_StrComp || op == Op_HasNegatives ||
               op == Op_StrCompressedCopy || op == Op_StrInflatedCopy ||
               op == Op_StrEquals || op == Op_StrIndexOf || op == Op_StrIndexOfChar ||
+              op == Op_ShenandoahWBMemProj ||
               BarrierSet::barrier_set()->barrier_set_c2()->is_gc_barrier_node(use))) {
           n->dump();
           use->dump();

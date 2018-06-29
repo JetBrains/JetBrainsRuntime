@@ -1443,6 +1443,29 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
+#if INCLUDE_SHENANDOAHGC
+void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
+  Label done;
+  Register obj = op->in_opr()->as_register();
+  Register res = op->result_opr()->as_register();
+
+  if (res != obj) {
+    __ mov(res, obj);
+  }
+
+  // Check for null.
+  if (op->need_null_check()) {
+    __ testptr(res, res);
+    __ jcc(Assembler::zero, done);
+  }
+
+  __ shenandoah_write_barrier(res);
+
+  __ bind(done);
+
+}
+#endif
+
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
   LIR_Opr dest = op->result_opr();
@@ -1926,24 +1949,9 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
     assert(newval != addr, "new value and addr must be in different registers");
 
     if ( op->code() == lir_cas_obj) {
-#ifdef _LP64
-      if (UseCompressedOops) {
-        __ encode_heap_oop(cmpval);
-        __ mov(rscratch1, newval);
-        __ encode_heap_oop(rscratch1);
-        if (os::is_MP()) {
-          __ lock();
-        }
-        // cmpval (rax) is implicitly used by this instruction
-        __ cmpxchgl(rscratch1, Address(addr, 0));
-      } else
-#endif
-      {
-        if (os::is_MP()) {
-          __ lock();
-        }
-        __ cmpxchgptr(newval, Address(addr, 0));
-      }
+      Register tmp1 = op->tmp1()->as_register();
+      Register tmp2 = op->tmp2()->as_register();
+      __ cmpxchg_oop(NULL, Address(addr, 0), cmpval, newval, true, true, tmp1, tmp2);
     } else {
       assert(op->code() == lir_cas_int, "lir_cas_int expected");
       if (os::is_MP()) {
@@ -3981,17 +3989,8 @@ void LIR_Assembler::atomic_op(LIR_Code code, LIR_Opr src, LIR_Opr data, LIR_Opr 
   } else if (data->is_oop()) {
     assert (code == lir_xchg, "xadd for oops");
     Register obj = data->as_register();
-#ifdef _LP64
-    if (UseCompressedOops) {
-      __ encode_heap_oop(obj);
-      __ xchgl(obj, as_Address(src->as_address_ptr()));
-      __ decode_heap_oop(obj);
-    } else {
-      __ xchgptr(obj, as_Address(src->as_address_ptr()));
-    }
-#else
-    __ xchgl(obj, as_Address(src->as_address_ptr()));
-#endif
+    assert (tmp->is_register(), "should be register");
+    __ xchg_oop(obj, as_Address(src->as_address_ptr()), tmp->as_register());
   } else if (data->type() == T_LONG) {
 #ifdef _LP64
     assert(data->as_register_lo() == data->as_register_hi(), "should be a single register");

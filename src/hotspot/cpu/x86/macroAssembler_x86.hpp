@@ -297,6 +297,10 @@ class MacroAssembler: public Assembler {
   void clear_jweak_tag(Register possibly_jweak);
   void resolve_jobject(Register value, Register thread, Register tmp);
 
+#if INCLUDE_SHENANDOAHGC
+  void shenandoah_write_barrier(Register dst);
+#endif
+
   // C 'boolean' to Java boolean: x == 0 ? 0 : 1
   void c2bool(Register x);
 
@@ -313,6 +317,9 @@ class MacroAssembler: public Assembler {
   // oop manipulations
   void load_klass(Register dst, Register src);
   void store_klass(Register dst, Register src);
+
+  void resolve_for_read(DecoratorSet decorators, Register obj);
+  void resolve_for_write(DecoratorSet decorators, Register obj);
 
   void access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
                       Register tmp1, Register thread_tmp);
@@ -763,6 +770,11 @@ class MacroAssembler: public Assembler {
   void cmp64(Register src1, AddressLiteral src);
 
   void cmpxchgptr(Register reg, Address adr);
+
+  void cmpxchg_oop(Register res, Address addr, Register oldval, Register newval,
+                   bool exchange, bool encode, Register tmp1, Register tmp2);
+
+  void xchg_oop(Register obj, Address addr, Register tmp);
 
   void locked_cmpxchgptr(Register reg, AddressLiteral adr);
 
@@ -1739,6 +1751,9 @@ public:
   void byte_array_inflate(Register src, Register dst, Register len,
                           XMMRegister tmp1, Register tmp2);
 
+
+  void save_vector_registers();
+  void restore_vector_registers();
 };
 
 /**

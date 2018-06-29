@@ -88,6 +88,7 @@ class GCHeapLog : public EventLogBase<GCMessage> {
 //     SerialHeap
 //     CMSHeap
 //   G1CollectedHeap
+//   ShenandoahHeap
 //   ParallelScavengeHeap
 //   ZCollectedHeap
 //
@@ -178,12 +179,15 @@ class CollectedHeap : public CHeapObj<mtInternal> {
     CMS,
     G1,
     Epsilon,
-    Z
+    Z,
+    Shenandoah
   };
 
   static inline size_t filler_array_max_size() {
     return _filler_array_max_size;
   }
+
+  virtual HeapWord* tlab_post_allocation_setup(HeapWord* obj);
 
   virtual Name kind() const = 0;
 
@@ -288,6 +292,12 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   virtual oop obj_allocate(Klass* klass, int size, TRAPS);
   virtual oop array_allocate(Klass* klass, int size, int length, bool do_zero, TRAPS);
   virtual oop class_allocate(Klass* klass, int size, TRAPS);
+
+  virtual uint oop_extra_words();
+
+#ifndef CC_INTERP
+  virtual void compile_prepare_oop(MacroAssembler* masm, Register obj);
+#endif
 
   // Utilities for turning raw memory into filler objects.
   //

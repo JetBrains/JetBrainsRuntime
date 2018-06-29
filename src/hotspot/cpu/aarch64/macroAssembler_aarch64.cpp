@@ -35,6 +35,12 @@
 #include "gc/shared/cardTableBarrierSet.hpp"
 #include "interpreter/interpreter.hpp"
 #include "compiler/disassembler.hpp"
+#include "gc/shared/collectedHeap.hpp"
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "memory/resourceArea.hpp"
 #include "nativeInst_aarch64.hpp"
 #include "oops/accessDecorators.hpp"
@@ -2135,8 +2141,12 @@ void MacroAssembler::resolve_jobject(Register value, Register thread, Register t
 void MacroAssembler::stop(const char* msg) {
   address ip = pc();
   pusha();
-  mov(c_rarg0, (address)msg);
-  mov(c_rarg1, (address)ip);
+  // We use movptr rather than mov here because we need code size not
+  // to depend on the pointer value of msg otherwise C2 can observe
+  // the same node with different sizes when emitted in a scratch
+  // buffer and later when emitted for good.
+  movptr(c_rarg0, (uintptr_t)msg);
+  movptr(c_rarg1, (uintptr_t)ip);
   mov(c_rarg2, sp);
   mov(c_rarg3, CAST_FROM_FN_PTR(address, MacroAssembler::debug64));
   // call(c_rarg3);
@@ -2367,6 +2377,14 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
   }
 }
 
+void MacroAssembler::cmpxchg_oop(Register addr, Register expected, Register new_val,
+                                 bool acquire, bool release, bool weak, bool encode,
+                                 Register tmp1, Register tmp2,
+                                 Register tmp3, Register result) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, addr, expected, new_val, acquire, release, weak, encode, tmp1, tmp2, tmp3, result);
+}
+
 static bool different(Register a, RegisterOrConstant b, Register c) {
   if (b.is_constant())
     return a != c;
@@ -2550,9 +2568,8 @@ void MacroAssembler::c_stub_prolog(int gp_arg_count, int fp_arg_count, int ret_t
 }
 #endif
 
-void MacroAssembler::push_call_clobbered_registers() {
+void MacroAssembler::push_call_clobbered_fp_registers() {
   int step = 4 * wordSize;
-  push(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
   sub(sp, sp, step);
   mov(rscratch1, -step);
   // Push v0-v7, v16-v31.
@@ -2565,13 +2582,21 @@ void MacroAssembler::push_call_clobbered_registers() {
       as_FloatRegister(3), T1D, Address(sp));
 }
 
-void MacroAssembler::pop_call_clobbered_registers() {
+void MacroAssembler::pop_call_clobbered_fp_registers() {
   for (int i = 0; i < 32; i += 4) {
     if (i <= v7->encoding() || i >= v16->encoding())
       ld1(as_FloatRegister(i), as_FloatRegister(i+1), as_FloatRegister(i+2),
           as_FloatRegister(i+3), T1D, Address(post(sp, 4 * wordSize)));
   }
+}
 
+void MacroAssembler::push_call_clobbered_registers() {
+  push(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
+  push_call_clobbered_fp_registers();
+}
+
+void MacroAssembler::pop_call_clobbered_registers() {
+  pop_call_clobbered_fp_registers();
   pop(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
 }
 
@@ -3956,6 +3981,16 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   movk(dst, nk & 0xffff);
 }
 
+void MacroAssembler::resolve_for_read(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_read(this, decorators, obj);
+}
+
+void MacroAssembler::resolve_for_write(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_write(this, decorators, obj);
+}
+
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators,
                                     Register dst, Address src,
                                     Register tmp1, Register thread_tmp) {
@@ -4001,6 +4036,48 @@ void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,
 void MacroAssembler::store_heap_oop_null(Address dst) {
   access_store_at(T_OBJECT, IN_HEAP, dst, noreg, noreg, noreg);
 }
+
+#if INCLUDE_SHENANDOAHGC
+void MacroAssembler::shenandoah_write_barrier(Register dst) {
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(dst != rscratch1, "need rscratch1");
+  assert(dst != rscratch2, "need rscratch2");
+
+  Label done;
+
+  Address gc_state(rthread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+  ldrb(rscratch1, gc_state);
+
+  // Check for heap stability
+  cbz(rscratch1, done);
+
+  // Heap is unstable, need to perform the read-barrier even if WB is inactive
+  if (ShenandoahWriteBarrierRB) {
+    ldr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
+
+  // Check for evacuation-in-progress and jump to WB slow-path if needed
+  mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
+  tst(rscratch1, rscratch2);
+  br(Assembler::EQ, done);
+
+  RegSet to_save = RegSet::of(r0);
+  if (dst != r0) {
+    push(to_save, sp);
+    mov(r0, dst);
+  }
+
+  far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
+
+  if (dst != r0) {
+    mov(dst, r0);
+    pop(to_save, sp);
+  }
+  block_comment("} Shenandoah write barrier");
+
+  bind(done);
+}
+#endif // INCLUDE_SHENANDOAHGC
 
 Address MacroAssembler::allocate_metadata_address(Metadata* obj) {
   assert(oop_recorder() != NULL, "this assembler needs a Recorder");

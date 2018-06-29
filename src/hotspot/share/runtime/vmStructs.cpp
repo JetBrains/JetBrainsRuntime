@@ -134,6 +134,9 @@
 #include "opto/rootnode.hpp"
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 #endif // COMPILER2
 
 // Note: the cross-product of (c1, c2, product, nonproduct, ...),

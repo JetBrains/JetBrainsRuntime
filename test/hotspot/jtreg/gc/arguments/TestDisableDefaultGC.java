@@ -43,6 +43,7 @@ public class TestDisableDefaultGC {
                                                                   "-XX:-UseParallelGC",
                                                                   "-XX:-UseG1GC",
                                                                   "-XX:-UseConcMarkSweepGC",
+                                                                  "-XX:-UseShenandoahGC",
                                                                   "-XX:+UnlockExperimentalVMOptions",
                                                                   "-XX:-UseZGC",
                                                                   "-version");

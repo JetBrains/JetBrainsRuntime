@@ -35,6 +35,10 @@
 #include "opto/stringopts.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 #define __ kit.
 
@@ -1212,6 +1216,8 @@ Node* PhaseStringOpts::int_stringSize(GraphKit& kit, Node* arg) {
     kit.set_control(loop);
     Node* sizeTable = fetch_static_field(kit, size_table_field);
 
+    sizeTable = kit.access_resolve_for_read(sizeTable);
+
     Node* value = kit.load_array_element(NULL, sizeTable, index, TypeAryPtr::INTS);
     C->record_for_igvn(value);
     Node* limit = __ CmpI(phi, value);
@@ -1548,8 +1554,14 @@ void PhaseStringOpts::copy_constant_string(GraphKit& kit, IdealKit& ideal, ciTyp
 Node* PhaseStringOpts::copy_string(GraphKit& kit, Node* str, Node* dst_array, Node* dst_coder, Node* start) {
   Node* src_array = kit.load_String_value(kit.control(), str);
 
+  src_array = kit.access_resolve_for_read(src_array);
+
   IdealKit ideal(&kit, true, true);
   IdealVariable count(ideal); __ declarations_done();
+
+#if INCLUDE_SHENANDOAHGC
+  assert(!(ShenandoahBarrierNode::skip_through_barrier(str)->is_Con() && !str->is_Con()), "barrier prevents optimization");
+#endif
 
   if (str->is_Con()) {
     // Constant source string
@@ -1827,6 +1839,11 @@ void PhaseStringOpts::replace_string_concat(StringConcat* sc) {
           count = kit.load_String_length(NULL, arg);
           arg_coder = kit.load_String_coder(NULL, arg);
         }
+
+#if INCLUDE_SHENANDOAHGC
+        assert(!(ShenandoahBarrierNode::skip_through_barrier(arg)->is_Con() && !arg->is_Con()), "barrier prevents optimization");
+#endif
+
         if (arg->is_Con()) {
           // Constant string. Get constant coder and length.
           jbyte const_coder = get_constant_coder(kit, arg);

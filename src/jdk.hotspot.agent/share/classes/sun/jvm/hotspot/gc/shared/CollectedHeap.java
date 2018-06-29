@@ -75,8 +75,17 @@ public abstract class CollectedHeap extends VMObject {
 
   public abstract CollectedHeapName kind();
 
+  public int oop_extra_words() {
+    return 0;
+  }
+
   public String oopAddressDescription(OopHandle handle) {
       return handle.toString();
+  }
+
+  // offset of the first oop from region's bottom
+  public int oop_region_offset_words() {
+    return 0;
   }
 
   public OopHandle oop_load_at(OopHandle handle, long offset) {

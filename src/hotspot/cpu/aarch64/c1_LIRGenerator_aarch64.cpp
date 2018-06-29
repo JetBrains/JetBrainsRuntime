@@ -343,7 +343,13 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   // this CodeEmitInfo must not have the xhandlers because here the
   // object is already locked (xhandlers expect object to be unlocked)
   CodeEmitInfo* info = state_for(x, x->state(), true);
-  monitor_enter(obj.result(), lock, syncTempOpr(), scratch,
+  LIR_Opr obj_opr = obj.result();
+  DecoratorSet decorators = IN_HEAP;
+  if (!x->needs_null_check()) {
+    decorators |= OOP_NOT_NULL;
+  }
+  obj_opr = access_resolve_for_write(decorators, obj_opr, state_for(x));
+  monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
                         x->monitor_no(), info_for_exception, info);
 }
 
@@ -710,9 +716,8 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
   LIR_Opr ill = LIR_OprFact::illegalOpr;  // for convenience
   new_value.load_item();
   cmp_value.load_item();
-  LIR_Opr result = new_register(T_INT);
   if (type == T_OBJECT || type == T_ARRAY) {
-    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT), result);
+    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT));
   } else if (type == T_INT) {
     __ cas_int(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
   } else if (type == T_LONG) {
@@ -721,7 +726,9 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
     ShouldNotReachHere();
     Unimplemented();
   }
-  __ logical_xor(FrameMap::r8_opr, LIR_OprFact::intConst(1), result);
+  LIR_Opr result = new_register(T_INT);
+  __ cmove(lir_cond_equal, LIR_OprFact::intConst(1), LIR_OprFact::intConst(0),
+           result, type);
   return result;
 }
 
@@ -871,6 +878,19 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIRItem dst_pos(x->argument_at(3), this);
   LIRItem length(x->argument_at(4), this);
 
+  LIR_Opr dst_op = dst.result();
+  LIR_Opr src_op = src.result();
+  DecoratorSet decorators = IN_HEAP;
+  if (!x->arg_needs_null_check(2)) {
+    decorators |= OOP_NOT_NULL;
+  }
+  dst_op = access_resolve_for_write(decorators, dst_op, info);
+  decorators = IN_HEAP;
+  if (!x->arg_needs_null_check(0)) {
+    decorators |= OOP_NOT_NULL;
+  }
+  src_op = access_resolve_for_read(decorators, src_op, info);
+
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
   // call)
@@ -883,9 +903,9 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   // of the C convention we can process the java args trivially into C
   // args without worry of overwriting during the xfer
 
-  src.load_item_force     (FrameMap::as_oop_opr(j_rarg0));
+  src_op = force_opr_to(src_op, FrameMap::as_oop_opr(j_rarg0));
   src_pos.load_item_force (FrameMap::as_opr(j_rarg1));
-  dst.load_item_force     (FrameMap::as_oop_opr(j_rarg2));
+  dst_op = force_opr_to(dst_op, FrameMap::as_oop_opr(j_rarg2));
   dst_pos.load_item_force (FrameMap::as_opr(j_rarg3));
   length.load_item_force  (FrameMap::as_opr(j_rarg4));
 
@@ -897,7 +917,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   ciArrayKlass* expected_type;
   arraycopy_helper(x, &flags, &expected_type);
 
-  __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
+  __ arraycopy(src_op, src_pos.result(), dst_op, dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
 }
 
 void LIRGenerator::do_update_CRC32(Intrinsic* x) {
@@ -939,6 +959,10 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         LIR_Opr tmp = new_register(T_LONG);
         __ convert(Bytecodes::_i2l, index, tmp);
         index = tmp;
+      }
+
+      if (is_updateBytes) {
+        base_op = access_resolve_for_read(IN_HEAP, base_op, NULL);
       }
 
       if (offset) {

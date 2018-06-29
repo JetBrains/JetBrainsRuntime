@@ -39,6 +39,10 @@
 #include "opto/node.hpp"
 #include "opto/opcodes.hpp"
 #include "opto/type.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -2964,6 +2968,10 @@ TypeOopPtr::TypeOopPtr(TYPES t, PTR ptr, ciKlass* k, bool xk, ciObject* o, int o
   if (_offset != 0) {
     if (_offset == oopDesc::klass_offset_in_bytes()) {
       _is_ptr_to_narrowklass = UseCompressedClassPointers;
+#if INCLUDE_SHENANDOAHGC
+    } else if (_offset == BrooksPointer::byte_offset()) {
+      // Shenandoah doesn't support compressed forwarding pointers
+#endif
     } else if (klass() == NULL) {
       // Array with unknown body type
       assert(this->isa_aryptr(), "only arrays without klass");
@@ -2989,7 +2997,8 @@ TypeOopPtr::TypeOopPtr(TYPES t, PTR ptr, ciKlass* k, bool xk, ciObject* o, int o
           assert(this->isa_instptr(), "must be an instance ptr.");
           _is_ptr_to_narrowoop = false;
         } else if (klass() == ciEnv::current()->Class_klass() &&
-                   _offset >= InstanceMirrorKlass::offset_of_static_fields()) {
+                   _offset >= InstanceMirrorKlass::offset_of_static_fields() &&
+                   !UseShenandoahGC) {
           // Static fields
           assert(o != NULL, "must be constant");
           ciInstanceKlass* k = o->as_instance()->java_lang_Class_klass()->as_instance_klass();
@@ -3042,6 +3051,10 @@ const Type *TypeOopPtr::cast_to_ptr_type(PTR ptr) const {
 const TypeOopPtr *TypeOopPtr::cast_to_instance_id(int instance_id) const {
   // There are no instances of a general oop.
   // Return self unchanged.
+  return this;
+}
+
+const TypeOopPtr *TypeOopPtr::cast_to_nonconst() const {
   return this;
 }
 
@@ -3545,6 +3558,15 @@ const Type *TypeInstPtr::cast_to_exactness(bool klass_is_exact) const {
 const TypeOopPtr *TypeInstPtr::cast_to_instance_id(int instance_id) const {
   if( instance_id == _instance_id ) return this;
   return make(_ptr, klass(), _klass_is_exact, const_oop(), _offset, instance_id, _speculative, _inline_depth);
+}
+
+const TypeOopPtr *TypeInstPtr::cast_to_nonconst() const {
+  if (const_oop() == NULL) return this;
+  return make(NotNull, klass(), _klass_is_exact, NULL, _offset, _instance_id, _speculative, _inline_depth);
+}
+
+const TypeInstPtr *TypeInstPtr::cast_to_const(ciObject* const_oop) const {
+  return make(Constant, klass(), _klass_is_exact, const_oop, _offset, _instance_id, _speculative, _inline_depth);
 }
 
 //------------------------------xmeet_unloaded---------------------------------
@@ -4073,6 +4095,12 @@ const TypeOopPtr *TypeAryPtr::cast_to_instance_id(int instance_id) const {
   if( instance_id == _instance_id ) return this;
   return make(_ptr, const_oop(), _ary, klass(), _klass_is_exact, _offset, instance_id, _speculative, _inline_depth);
 }
+
+const TypeOopPtr *TypeAryPtr::cast_to_nonconst() const {
+  if (const_oop() == NULL) return this;
+  return make(NotNull, NULL, _ary, klass(), _klass_is_exact, _offset, _instance_id, _speculative, _inline_depth);
+}
+
 
 //-----------------------------narrow_size_type-------------------------------
 // Local cache for arrayOopDesc::max_array_length(etype),

@@ -34,13 +34,13 @@
 // These fascilities are used for allocating, and initializing newly allocated objects.
 
 class MemAllocator: StackObj {
+protected:
   class Allocation;
 
-protected:
   CollectedHeap* const _heap;
   Thread* const        _thread;
   Klass* const         _klass;
-  const size_t         _word_size;
+  size_t         _word_size;
 
 private:
   // Allocate from the current thread's TLAB, with broken-out slow path.
@@ -67,14 +67,14 @@ protected:
   // allocation. A GC implementation may override this function to satisfy the allocation
   // in any way. But the default is to try a TLAB allocation, and otherwise perform
   // mem_allocate.
-  virtual HeapWord* mem_allocate(Allocation& allocation) const;
+  virtual HeapWord* mem_allocate(Allocation& allocation);
 
   virtual MemRegion obj_memory_range(oop obj) const {
     return MemRegion((HeapWord*)obj, _word_size);
   }
 
 public:
-  oop allocate() const;
+  oop allocate();
   virtual oop initialize(HeapWord* mem) const = 0;
 };
 

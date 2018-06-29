@@ -35,6 +35,7 @@
 #include "memory/universe.hpp"
 #include "oops/accessDecorators.hpp"
 #include "oops/klass.inline.hpp"
+#include "oops/oop.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
@@ -50,6 +51,9 @@
 #include "crc32c.h"
 #ifdef COMPILER2
 #include "opto/intrinsicnode.hpp"
+#endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #endif
 
 #ifdef PRODUCT
@@ -3753,6 +3757,17 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp) {
   movl(as_Address(ArrayAddress(page, index)), tmp);
 }
 
+void MacroAssembler::cmpxchg_oop(Register res, Address addr, Register cmpval, Register newval,
+                                 bool exchange, bool encode, Register tmp1, Register tmp2) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, IN_HEAP, res, addr, cmpval, newval, exchange, encode, tmp1, tmp2);
+}
+
+void MacroAssembler::xchg_oop(Register obj, Address addr, Register tmp) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->xchg_oop(this, IN_HEAP, obj, addr, tmp);
+}
+
 void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, Register temp_reg) {
   if (SafepointMechanism::uses_thread_local_poll()) {
 #ifdef _LP64
@@ -5252,6 +5267,48 @@ void MacroAssembler::resolve_jobject(Register value,
   bind(done);
 }
 
+#if INCLUDE_SHENANDOAHGC
+#ifndef _LP64
+void MacroAssembler::shenandoah_write_barrier(Register dst) {
+  Unimplemented();
+}
+#else
+void MacroAssembler::shenandoah_write_barrier(Register dst) {
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+
+  Label done;
+
+  Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
+
+  // Check for heap stability
+  cmpb(gc_state, 0);
+  jccb(Assembler::zero, done);
+
+  // Heap is unstable, need to perform the read-barrier even if WB is inactive
+  if (ShenandoahWriteBarrierRB) {
+    movptr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
+
+  // Check for evacuation-in-progress and jump to WB slow-path if needed
+  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
+  jccb(Assembler::zero, done);
+
+  if (dst != rax) {
+    xchgptr(dst, rax); // Move obj into rax and save rax into obj.
+  }
+
+  call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
+
+  if (dst != rax) {
+    xchgptr(rax, dst); // Swap back obj with rax.
+  }
+
+  bind(done);
+}
+#endif // _LP64
+
+#endif // INCLUDE_SHENANDOAHGC
+
 void MacroAssembler::subptr(Register dst, int32_t imm32) {
   LP64_ONLY(subq(dst, imm32)) NOT_LP64(subl(dst, imm32));
 }
@@ -6261,6 +6318,16 @@ void MacroAssembler::store_klass(Register dst, Register src) {
   } else
 #endif
     movptr(Address(dst, oopDesc::klass_offset_in_bytes()), src);
+}
+
+void MacroAssembler::resolve_for_read(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_read(this, decorators, obj);
+}
+
+void MacroAssembler::resolve_for_write(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_write(this, decorators, obj);
 }
 
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
@@ -11008,3 +11075,105 @@ void MacroAssembler::get_thread(Register thread) {
 }
 
 #endif
+
+void MacroAssembler::save_vector_registers() {
+  int num_xmm_regs = LP64_ONLY(16) NOT_LP64(8);
+  if (UseAVX > 2) {
+    num_xmm_regs = LP64_ONLY(32) NOT_LP64(8);
+  }
+
+  if (UseSSE == 1)  {
+    subptr(rsp, sizeof(jdouble)*8);
+    for (int n = 0; n < 8; n++) {
+      movflt(Address(rsp, n*sizeof(jdouble)), as_XMMRegister(n));
+    }
+  } else if (UseSSE >= 2)  {
+    if (UseAVX > 2) {
+      push(rbx);
+      movl(rbx, 0xffff);
+      kmovwl(k1, rbx);
+      pop(rbx);
+    }
+#ifdef COMPILER2
+    if (MaxVectorSize > 16) {
+      if(UseAVX > 2) {
+        // Save upper half of ZMM registers
+        subptr(rsp, 32*num_xmm_regs);
+        for (int n = 0; n < num_xmm_regs; n++) {
+          vextractf64x4_high(Address(rsp, n*32), as_XMMRegister(n));
+        }
+      }
+      assert(UseAVX > 0, "256 bit vectors are supported only with AVX");
+      // Save upper half of YMM registers
+      subptr(rsp, 16*num_xmm_regs);
+      for (int n = 0; n < num_xmm_regs; n++) {
+        vextractf128_high(Address(rsp, n*16), as_XMMRegister(n));
+      }
+    }
+#endif
+    // Save whole 128bit (16 bytes) XMM registers
+    subptr(rsp, 16*num_xmm_regs);
+#ifdef _LP64
+    if (VM_Version::supports_evex()) {
+      for (int n = 0; n < num_xmm_regs; n++) {
+        vextractf32x4(Address(rsp, n*16), as_XMMRegister(n), 0);
+      }
+    } else {
+      for (int n = 0; n < num_xmm_regs; n++) {
+        movdqu(Address(rsp, n*16), as_XMMRegister(n));
+      }
+    }
+#else
+    for (int n = 0; n < num_xmm_regs; n++) {
+      movdqu(Address(rsp, n*16), as_XMMRegister(n));
+    }
+#endif
+  }
+}
+
+void MacroAssembler::restore_vector_registers() {
+  int num_xmm_regs = LP64_ONLY(16) NOT_LP64(8);
+  if (UseAVX > 2) {
+    num_xmm_regs = LP64_ONLY(32) NOT_LP64(8);
+  }
+  if (UseSSE == 1)  {
+    for (int n = 0; n < 8; n++) {
+      movflt(as_XMMRegister(n), Address(rsp, n*sizeof(jdouble)));
+    }
+    addptr(rsp, sizeof(jdouble)*8);
+  } else if (UseSSE >= 2)  {
+    // Restore whole 128bit (16 bytes) XMM registers
+#ifdef _LP64
+  if (VM_Version::supports_evex()) {
+    for (int n = 0; n < num_xmm_regs; n++) {
+      vinsertf32x4(as_XMMRegister(n), as_XMMRegister(n), Address(rsp, n*16), 0);
+    }
+  } else {
+    for (int n = 0; n < num_xmm_regs; n++) {
+      movdqu(as_XMMRegister(n), Address(rsp, n*16));
+    }
+  }
+#else
+  for (int n = 0; n < num_xmm_regs; n++) {
+    movdqu(as_XMMRegister(n), Address(rsp, n*16));
+  }
+#endif
+    addptr(rsp, 16*num_xmm_regs);
+
+#ifdef COMPILER2
+    if (MaxVectorSize > 16) {
+      // Restore upper half of YMM registers.
+      for (int n = 0; n < num_xmm_regs; n++) {
+        vinsertf128_high(as_XMMRegister(n), Address(rsp, n*16));
+      }
+      addptr(rsp, 16*num_xmm_regs);
+      if(UseAVX > 2) {
+        for (int n = 0; n < num_xmm_regs; n++) {
+          vinsertf64x4_high(as_XMMRegister(n), Address(rsp, n*32));
+        }
+        addptr(rsp, 32*num_xmm_regs);
+      }
+    }
+#endif
+  }
+}

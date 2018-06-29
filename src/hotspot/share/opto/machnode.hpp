@@ -311,7 +311,7 @@ public:
   // This method is free to ignore stack slots if that helps.
   #define TYPE_PTR_SENTINAL  ((const TypePtr*)-1)
   // Passing TYPE_PTR_SENTINAL as adr_type asks for computation of the adr_type if possible
-  const Node* get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const;
+  Node* get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const;
 
   // Helper for get_base_and_disp: find the base and index input nodes.
   // Returns the MachOper as determined by memory_operand(), for use, if
@@ -998,6 +998,19 @@ public:
 class MachHaltNode : public MachReturnNode {
 public:
   virtual JVMState* jvms() const;
+};
+
+class MachMemBarNode : public MachNode {
+  virtual uint size_of() const; // Size is bigger
+public:
+  const TypePtr* _adr_type;     // memory effects of call or return
+  MachMemBarNode() : MachNode() {
+    init_class_id(Class_MachMemBar);
+    _adr_type = TypePtr::BOTTOM; // the default: all of memory
+  }
+
+  void set_adr_type(const TypePtr* atp) { _adr_type = atp; }
+  virtual const TypePtr *adr_type() const;
 };
 
 

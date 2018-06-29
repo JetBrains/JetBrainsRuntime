@@ -74,6 +74,7 @@ class PhaseCCP;
 class PhaseCCP_DCE;
 class RootNode;
 class relocInfo;
+class ShenandoahWriteBarrierNode;
 class Scope;
 class StartNode;
 class SafePointNode;
@@ -89,6 +90,16 @@ class nmethod;
 class WarmCallInfo;
 class Node_Stack;
 struct Final_Reshape_Counts;
+
+enum LoopOptsMode {
+  LoopOptsDefault = 0,
+  LoopOptsNone = 1,
+  LoopOptsSkipSplitIf = 2,
+  LoopOptsShenandoahExpand = 3,
+  LoopOptsShenandoahPostExpand = 4,
+  LoopOptsVerify = 5,
+  LoopOptsZgcLastRound = 6,
+};
 
 typedef unsigned int node_idx_t;
 class NodeCloneInfo {
@@ -423,7 +434,6 @@ class Compile : public Phase {
 #ifndef PRODUCT
   IdealGraphPrinter*    _printer;
 #endif
-
 
   // Node management
   uint                  _unique;                // Counter for unique Node indices
@@ -1079,6 +1089,7 @@ class Compile : public Phase {
   void inline_incrementally(PhaseIterGVN& igvn);
   void inline_string_calls(bool parse_time);
   void inline_boxing_calls(PhaseIterGVN& igvn);
+  bool optimize_loops(int& loop_opts_cnt, PhaseIterGVN& igvn, LoopOptsMode mode);
 
   // Matching, CFG layout, allocation, code generation
   PhaseCFG*         cfg()                       { return _cfg; }
@@ -1353,6 +1364,12 @@ class Compile : public Phase {
   // supporting clone_map
   CloneMap&     clone_map();
   void          set_clone_map(Dict* d);
+
+#if INCLUDE_SHENANDOAHGC
+  void shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn);
+  void shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn);
+#endif
+
 };
 
 #endif // SHARE_VM_OPTO_COMPILE_HPP

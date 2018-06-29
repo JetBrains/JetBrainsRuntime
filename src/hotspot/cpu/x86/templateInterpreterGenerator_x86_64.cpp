@@ -256,6 +256,7 @@ address TemplateInterpreterGenerator::generate_CRC32_updateBytes_entry(AbstractI
       __ movl(crc,   Address(rsp, 5*wordSize)); // Initial CRC
     } else {
       __ movptr(buf, Address(rsp, 3*wordSize)); // byte[] array
+      __ resolve_for_read(IS_NOT_NULL, buf);
       __ addptr(buf, arrayOopDesc::base_offset_in_bytes(T_BYTE)); // + header size
       __ movl2ptr(off, Address(rsp, 2*wordSize)); // offset
       __ addq(buf, off); // + offset
@@ -311,6 +312,7 @@ address TemplateInterpreterGenerator::generate_CRC32C_updateBytes_entry(Abstract
       //    "When calculating operand stack length, values of type long and double have length two."
     } else {
       __ movptr(buf, Address(rsp, 3 * wordSize)); // byte[] array
+      __ resolve_for_read(IS_NOT_NULL, buf);
       __ addptr(buf, arrayOopDesc::base_offset_in_bytes(T_BYTE)); // + header size
       __ movl2ptr(off, Address(rsp, 2 * wordSize)); // offset
       __ addq(buf, off); // + offset

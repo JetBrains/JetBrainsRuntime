@@ -49,6 +49,10 @@
 #if INCLUDE_ZGC
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -923,8 +927,11 @@ Node* LoadNode::can_see_arraycopy_value(Node* st, PhaseGVN* phase) const {
     if (ac->as_ArrayCopy()->is_clonebasic()) {
       assert(ld_alloc != NULL, "need an alloc");
       assert(addp->is_AddP(), "address must be addp");
-      assert(addp->in(AddPNode::Base) == ac->in(ArrayCopyNode::Dest)->in(AddPNode::Base), "strange pattern");
-      assert(addp->in(AddPNode::Address) == ac->in(ArrayCopyNode::Dest)->in(AddPNode::Address), "strange pattern");
+      assert(ac->in(ArrayCopyNode::Dest)->is_AddP(), "dest must be an address");
+#if INCLUDE_SHENANDOAHGC
+      assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Base)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Base)), "strange pattern");
+      assert(ShenandoahBarrierNode::skip_through_barrier(addp->in(AddPNode::Address)) == ShenandoahBarrierNode::skip_through_barrier(ac->in(ArrayCopyNode::Dest)->in(AddPNode::Address)), "strange pattern");
+#endif
       addp->set_req(AddPNode::Base, src->in(AddPNode::Base));
       addp->set_req(AddPNode::Address, src->in(AddPNode::Address));
     } else {
@@ -1080,6 +1087,9 @@ Node* MemNode::can_see_stored_value(Node* st, PhaseTransform* phase) const {
         (tp != NULL) && tp->is_ptr_to_boxed_value()) {
       intptr_t ignore = 0;
       Node* base = AddPNode::Ideal_base_and_offset(ld_adr, phase, ignore);
+#if INCLUDE_SHENANDOAHGC
+      base = ShenandoahBarrierNode::skip_through_barrier(base);
+#endif
       if (base != NULL && base->is_Proj() &&
           base->as_Proj()->_con == TypeFunc::Parms &&
           base->in(0)->is_CallStaticJava() &&
@@ -1129,8 +1139,43 @@ Node* LoadNode::Identity(PhaseGVN* phase) {
       if (!phase->type(value)->higher_equal(phase->type(this)))
         return this;
     }
+
+#if INCLUDE_SHENANDOAHGC
+    PhaseIterGVN* igvn = phase->is_IterGVN();
+    if (UseShenandoahGC &&
+        igvn != NULL &&
+        value->is_Phi() &&
+        value->req() > 2 &&
+        value->in(1) != NULL &&
+        value->in(1)->is_ShenandoahBarrier()) {
+      if (igvn->_worklist.member(value) ||
+          igvn->_worklist.member(value->in(0)) ||
+          (value->in(0)->in(1) != NULL &&
+           value->in(0)->in(1)->is_IfProj() &&
+           (igvn->_worklist.member(value->in(0)->in(1)) ||
+            (value->in(0)->in(1)->in(0) != NULL &&
+             igvn->_worklist.member(value->in(0)->in(1)->in(0)))))) {
+        igvn->_worklist.push(this);
+        return this;
+      }
+    }
     // (This works even when value is a Con, but LoadNode::Value
     // usually runs first, producing the singleton type of the Con.)
+    if (UseShenandoahGC) {
+      Node* value_no_barrier = ShenandoahBarrierNode::skip_through_barrier(value->Opcode() == Op_EncodeP ? value->in(1) : value);
+      if (value->Opcode() == Op_EncodeP) {
+        if (value_no_barrier != value->in(1)) {
+          Node* encode = value->clone();
+          encode->set_req(1, value_no_barrier);
+          encode = phase->transform(encode);
+          return encode;
+        }
+      } else {
+        return value_no_barrier;
+      }
+    }
+#endif
+
     return value;
   }
 
@@ -1232,6 +1277,9 @@ Node* LoadNode::eliminate_autobox(PhaseGVN* phase) {
     }
     AddPNode* address = base->in(Address)->as_AddP();
     Node* cache_base = address->in(AddPNode::Base);
+#if INCLUDE_SHENANDOAHGC
+    cache_base = ShenandoahBarrierNode::skip_through_barrier(cache_base);
+#endif
     if ((cache_base != NULL) && cache_base->is_DecodeN()) {
       // Get ConP node which is static 'cache' field.
       cache_base = cache_base->in(1);
@@ -1692,12 +1740,24 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     // as to alignment, which will therefore produce the smallest
     // possible base offset.
     const int min_base_off = arrayOopDesc::base_offset_in_bytes(T_BYTE);
-    const bool off_beyond_header = ((uint)off >= (uint)min_base_off);
+    const bool off_beyond_header = SHENANDOAHGC_ONLY((off != BrooksPointer::byte_offset() || !UseShenandoahGC) &&)
+                                    ((uint)off >= (uint)min_base_off);
 
     // Try to constant-fold a stable array element.
     if (FoldStableValues && !is_mismatched_access() && ary->is_stable()) {
       // Make sure the reference is not into the header and the offset is constant
-      ciObject* aobj = ary->const_oop();
+      ciObject* aobj = NULL;
+#if INCLUDE_SHENANDOAHGC
+      if (UseShenandoahGC && adr->is_AddP() && !adr->in(AddPNode::Base)->is_top()) {
+        Node* base = ShenandoahBarrierNode::skip_through_barrier(adr->in(AddPNode::Base));
+        if (!base->is_top()) {
+          aobj = phase->type(base)->is_aryptr()->const_oop();
+        }
+      } else
+#endif
+      {
+        aobj = ary->const_oop();
+      }
       if (aobj != NULL && off_beyond_header && adr->is_AddP() && off != Type::OffsetBot) {
         int stable_dimension = (ary->stable_dimension() > 0 ? ary->stable_dimension() - 1 : 0);
         const Type* con_type = Type::make_constant_from_array_element(aobj->as_array(), off,
@@ -1767,7 +1827,21 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
 
     // Optimize loads from constant fields.
     const TypeInstPtr* tinst = tp->is_instptr();
-    ciObject* const_oop = tinst->const_oop();
+    ciObject* const_oop = NULL;
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && adr->is_AddP() && !adr->in(AddPNode::Base)->is_top()) {
+      Node* base = ShenandoahBarrierNode::skip_through_barrier(adr->in(AddPNode::Base));
+      if (!base->is_top()) {
+        const TypePtr* base_t = phase->type(base)->is_ptr();
+        if (base_t != TypePtr::NULL_PTR) {
+          const_oop = base_t->is_instptr()->const_oop();
+        }
+      }
+    } else
+#endif
+    {
+      const_oop = tinst->const_oop();
+    }
     if (!is_mismatched_access() && off != Type::OffsetBot && const_oop != NULL && const_oop->is_instance()) {
       const Type* con_type = Type::make_constant_from_field(const_oop->as_instance(), off, is_unsigned(), memory_type());
       if (con_type != NULL) {

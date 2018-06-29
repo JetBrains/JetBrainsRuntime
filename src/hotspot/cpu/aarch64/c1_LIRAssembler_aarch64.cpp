@@ -1121,7 +1121,32 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
+#if INCLUDE_SHENANDOAHGC
+void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
 
+  Register obj = op->in_opr()->as_register();
+  Register res = op->result_opr()->as_register();
+
+  Label done;
+
+  __ block_comment("Shenandoah write barrier {");
+
+  if (res != obj) {
+    __ mov(res, obj);
+  }
+  // Check for null.
+  if (op->need_null_check()) {
+    __ cbz(res, done);
+  }
+
+  __ shenandoah_write_barrier(res);
+
+  __ bind(done);
+
+  __ block_comment("} Shenandoah write barrier");
+
+}
+#endif
 
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
@@ -1569,20 +1594,12 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
   }
   Register newval = as_reg(op->new_value());
   Register cmpval = as_reg(op->cmp_value());
-  Label succeed, fail, around;
-
   if (op->code() == lir_cas_obj) {
-    if (UseCompressedOops) {
-      Register t1 = op->tmp1()->as_register();
-      assert(op->tmp1()->is_valid(), "must be");
-      __ encode_heap_oop(t1, cmpval);
-      cmpval = t1;
-      __ encode_heap_oop(rscratch2, newval);
-      newval = rscratch2;
-      casw(addr, newval, cmpval);
-    } else {
-      casl(addr, newval, cmpval);
-    }
+    assert(op->tmp1()->is_valid(), "must be");
+    assert(op->tmp1()->is_register(), "tmp1 must be register");
+    Register t1 = op->tmp1()->as_register();
+    Register t2 = op->tmp2()->as_register();
+    __ cmpxchg_oop(addr, cmpval, newval, /*acquire*/ false, /*release*/ true, /*weak*/ false, true, t1, t2);
   } else if (op->code() == lir_cas_int) {
     casw(addr, newval, cmpval);
   } else {
@@ -1886,6 +1903,8 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
       return;
     }
     if (opr2->is_double_cpu()) {
+      guarantee(opr2->type() != T_OBJECT && opr2->type() != T_ARRAY, "need acmp barrier?");
+      guarantee(opr1->type() != T_OBJECT && opr1->type() != T_ARRAY, "need acmp barrier?");
       // cpu register - cpu register
       Register reg2 = opr2->as_register_lo();
       __ cmp(reg1, reg2);
@@ -1916,6 +1935,12 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
         ShouldNotReachHere();
         imm = 0;  // unreachable
         break;
+      }
+
+      if (opr2->type() == T_OBJECT || opr2->type() == T_ARRAY) {
+        jobject2reg(opr2->as_constant_ptr()->as_jobject(), rscratch1);
+        __ cmpoop(reg1, rscratch1);
+        return;
       }
 
       if (Assembler::operand_valid_for_add_sub_immediate(imm)) {

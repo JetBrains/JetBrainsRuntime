@@ -447,7 +447,7 @@ void TemplateTable::fast_aldc(bool wide) {
     Label notNull;
     ExternalAddress null_sentinel((address)Universe::the_null_sentinel_addr());
     __ movptr(tmp, null_sentinel);
-    __ cmpptr(tmp, result);
+    __ cmpoop(tmp, result);
     __ jccb(Assembler::notEqual, notNull);
     __ xorptr(result, result);  // NULL object reference
     __ bind(notNull);
@@ -4355,6 +4355,8 @@ void TemplateTable::monitorenter() {
   // check for NULL object
   __ null_check(rax);
 
+  __ resolve_for_write(IS_NOT_NULL, rax);
+
   const Address monitor_block_top(
         rbp, frame::interpreter_frame_monitor_block_top_offset * wordSize);
   const Address monitor_block_bot(
@@ -4451,6 +4453,8 @@ void TemplateTable::monitorexit() {
 
   // check for NULL object
   __ null_check(rax);
+
+  __ resolve_for_write(IS_NOT_NULL, rax);
 
   const Address monitor_block_top(
         rbp, frame::interpreter_frame_monitor_block_top_offset * wordSize);

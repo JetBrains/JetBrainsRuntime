@@ -56,6 +56,7 @@ import jdk.test.lib.hprof.model.Snapshot;
  *          jdk.hotspot.agent/sun.jvm.hotspot.oops
  *          jdk.hotspot.agent/sun.jvm.hotspot.debugger
  * @run main/othervm TestHeapDumpForInvokeDynamic
+ * @run main/othervm -XX:+UseShenandoahGC TestHeapDumpForInvokeDynamic
  */
 
 public class TestHeapDumpForInvokeDynamic {

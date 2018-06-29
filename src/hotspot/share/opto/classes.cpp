@@ -51,6 +51,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // ----------------------------------------------------------------------------
 // Build a table of virtual functions to map from Nodes to dense integer

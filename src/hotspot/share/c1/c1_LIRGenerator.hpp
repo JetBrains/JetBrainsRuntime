@@ -235,6 +235,8 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   LIR_Opr round_item(LIR_Opr opr);
   LIR_Opr force_to_spill(LIR_Opr value, BasicType t);
 
+  LIR_Opr force_opr_to(LIR_Opr op, LIR_Opr reg);
+
   PhiResolverState& resolver_state() { return _resolver_state; }
 
   void  move_to_phi(PhiResolver* resolver, Value cur_val, Value sux_val);
@@ -306,6 +308,9 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
 #ifdef CARDTABLEBARRIERSET_POST_BARRIER_HELPER
   virtual void CardTableBarrierSet_post_barrier_helper(LIR_OprDesc* addr, LIR_Const* card_table_base);
 #endif
+
+  LIR_Opr access_resolve_for_read(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info);
+  LIR_Opr access_resolve_for_write(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info);
 
   // specific implementations
   void array_store_check(LIR_Opr value, LIR_Opr array, CodeEmitInfo* store_check_info, ciMethod* profiled_method, int profiled_bci);

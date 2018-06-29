@@ -39,6 +39,7 @@ PtrQueue::PtrQueue(PtrQueueSet* qset, bool permanent, bool active) :
   _index(0),
   _capacity_in_bytes(0),
   _buf(NULL),
+  _enqueue_skips(0),
   _lock(NULL)
 {}
 

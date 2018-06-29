@@ -48,6 +48,8 @@ import java.util.Random;
  *
  * @run main/othervm -Xmx256M -Xms256M
  *                   gc.logging.TestUnifiedLoggingSwitchStress 60
+ * @run main/othervm -Xmx256M -Xms256M -XX:+UseShenandoahGC
+ *                   gc.logging.TestUnifiedLoggingSwitchStress 60
  */
 
 class MemoryStresser implements Runnable {

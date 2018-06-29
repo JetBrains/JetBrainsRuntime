@@ -42,6 +42,11 @@
 #include "opto/runtime.hpp"
 #include "opto/subnode.hpp"
 #include "utilities/vmError.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
+
 
 // Portions of code courtesy of Clifford Click
 
@@ -613,6 +618,9 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
             in = n->in(1);               // replaced by unique input
             if( n->as_Phi()->is_unsafe_data_reference(in) )
               in = phase->C->top();      // replaced by top
+          }
+          if (n->outcnt() == 0) {
+            in = phase->C->top();
           }
           igvn->replace_node(n, in);
         }
@@ -1305,8 +1313,12 @@ static Node *is_x2logic( PhaseGVN *phase, PhiNode *phi, int true_path ) {
     flipped = 1-flipped;
   } else return NULL;
 
-  // Build int->bool conversion
-  Node *n = new Conv2BNode( cmp->in(1) );
+  // Build int->bool concfgversion
+  Node *in1 = cmp->in(1);
+#if INCLUDE_SHENANDOAHGC
+  in1 = ShenandoahBarrierNode::skip_through_barrier(in1);
+#endif
+  Node *n = new Conv2BNode(in1);
   if( flipped )
     n = new XorINode( phase->transform(n), phase->intcon(1) );
 
@@ -1672,7 +1684,12 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
         if (can_reshape && igvn != NULL) {
           igvn->_worklist.push(r);
         }
-        set_req(j, top);        // Nuke it down
+        // Nuke it down
+        if (can_reshape) {
+          set_req_X(j, top, igvn);
+        } else {
+          set_req(j, top);
+        }
         progress = this;        // Record progress
       }
     }

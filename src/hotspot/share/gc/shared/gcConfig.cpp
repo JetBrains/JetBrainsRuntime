@@ -40,6 +40,9 @@
 #if INCLUDE_PARALLELGC
 #include "gc/parallel/parallelArguments.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahArguments.hpp"
+#endif
 #if INCLUDE_SERIALGC
 #include "gc/serial/serialArguments.hpp"
 #endif
@@ -63,6 +66,7 @@ struct SupportedGC {
 PARALLELGC_ONLY(static ParallelArguments parallelArguments;)
   SERIALGC_ONLY(static SerialArguments   serialArguments;)
        ZGC_ONLY(static ZArguments        zArguments;)
+SHENANDOAHGC_ONLY(static ShenandoahArguments shenandoahArguments;)
 
 // Table of supported GCs, for translating between command
 // line flag, CollectedHeap::Name and GCArguments instance.
@@ -72,6 +76,7 @@ static const SupportedGC SupportedGCs[] = {
         G1GC_ONLY_ARG(SupportedGC(UseG1GC,            CollectedHeap::G1,       g1Arguments,       "g1 gc"))
   PARALLELGC_ONLY_ARG(SupportedGC(UseParallelGC,      CollectedHeap::Parallel, parallelArguments, "parallel gc"))
   PARALLELGC_ONLY_ARG(SupportedGC(UseParallelOldGC,   CollectedHeap::Parallel, parallelArguments, "parallel gc"))
+SHENANDOAHGC_ONLY_ARG(SupportedGC(UseShenandoahGC,    CollectedHeap::Shenandoah, shenandoahArguments, "shenandoah gc"))
     SERIALGC_ONLY_ARG(SupportedGC(UseSerialGC,        CollectedHeap::Serial,   serialArguments,   "serial gc"))
          ZGC_ONLY_ARG(SupportedGC(UseZGC,             CollectedHeap::Z,        zArguments,        "z gc"))
 };

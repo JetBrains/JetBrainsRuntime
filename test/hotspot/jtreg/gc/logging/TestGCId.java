@@ -41,6 +41,7 @@ public class TestGCId {
     testGCId("UseG1GC");
     testGCId("UseConcMarkSweepGC");
     testGCId("UseSerialGC");
+    testGCId("UseShenandoahGC");
   }
 
   private static void verifyContainsGCIDs(OutputAnalyzer output) {

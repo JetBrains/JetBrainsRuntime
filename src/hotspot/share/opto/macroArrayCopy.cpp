@@ -31,7 +31,11 @@
 #include "opto/macro.hpp"
 #include "opto/runtime.hpp"
 #include "utilities/align.hpp"
-
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shenandoah/shenandoahRuntime.hpp"
+#endif
 
 void PhaseMacroExpand::insert_mem_bar(Node** ctrl, Node** mem, int opcode, Node* precedent) {
   MemBarNode* mb = MemBarNode::make(C, opcode, Compile::AliasIdxBot, precedent);
@@ -552,7 +556,7 @@ Node* PhaseMacroExpand::generate_arraycopy(ArrayCopyNode *ac, AllocateArrayNode*
     // At this point we know we do not need type checks on oop stores.
 
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-    if (alloc != NULL && !bs->array_copy_requires_gc_barriers(copy_type)) {
+    if (alloc != NULL && !bs->array_copy_requires_gc_barriers(copy_type) && !UseShenandoahGC) {
       // If we do not need gc barriers, copy using the jint or jlong stub.
       copy_type = LP64_ONLY(UseCompressedOops ? T_INT : T_LONG) NOT_LP64(T_INT);
       assert(type2aelembytes(basic_elem_type) == type2aelembytes(copy_type),
@@ -1083,6 +1087,23 @@ void PhaseMacroExpand::generate_unchecked_arraycopy(Node** ctrl, MergeMemNode** 
   finish_arraycopy_call(call, ctrl, mem, adr_type);
 }
 
+#if INCLUDE_SHENANDOAHGC
+Node* PhaseMacroExpand::shenandoah_call_clone_barrier(Node* call, Node* dest) {
+  assert (UseShenandoahGC && ShenandoahCloneBarrier, "Should be enabled");
+  const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
+  Node* c = new ProjNode(call,TypeFunc::Control);
+  transform_later(c);
+  Node* m = new ProjNode(call, TypeFunc::Memory);
+  transform_later(m);
+  assert(dest->is_AddP(), "bad input");
+  call = make_leaf_call(c, m, ShenandoahBarrierSetC2::shenandoah_clone_barrier_Type(),
+                        CAST_FROM_FN_PTR(address, ShenandoahRuntime::shenandoah_clone_barrier),
+                        "shenandoah_clone_barrier", raw_adr_type, dest->in(AddPNode::Base));
+  transform_later(call);
+  return call;
+}
+#endif
+
 void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   Node* ctrl = ac->in(TypeFunc::Control);
   Node* io = ac->in(TypeFunc::I_O);
@@ -1107,6 +1128,33 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     Node* call = make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
     transform_later(call);
 
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && ShenandoahCloneBarrier) {
+      const TypeOopPtr* src_type = _igvn.type(src)->is_oopptr();
+      if (src_type->isa_instptr() != NULL) {
+        ciInstanceKlass* ik = src_type->klass()->as_instance_klass();
+        if ((src_type->klass_is_exact() || (!ik->is_interface() && !ik->has_subklass())) && !ik->has_injected_fields()) {
+          if (ik->has_object_fields()) {
+            call = shenandoah_call_clone_barrier(call, dest);
+          } else {
+            if (!src_type->klass_is_exact()) {
+              C->dependencies()->assert_leaf_type(ik);
+            }
+          }
+        } else {
+          call = shenandoah_call_clone_barrier(call, dest);
+        }
+      } else if (src_type->isa_aryptr()) {
+        BasicType src_elem  = src_type->klass()->as_array_klass()->element_type()->basic_type();
+        if (src_elem == T_OBJECT || src_elem == T_ARRAY) {
+          call = shenandoah_call_clone_barrier(call, dest);
+        }
+      } else {
+        call = shenandoah_call_clone_barrier(call, dest);
+      }
+    }
+#endif
+
     _igvn.replace_node(ac, call);
     return;
   } else if (ac->is_copyof() || ac->is_copyofrange() || ac->is_cloneoop()) {
@@ -1126,9 +1174,6 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
     const TypePtr* adr_type = _igvn.type(dest)->is_oopptr()->add_offset(Type::OffsetBot);
     if (ac->_dest_type != TypeOopPtr::BOTTOM) {
       adr_type = ac->_dest_type->add_offset(Type::OffsetBot)->is_ptr();
-    }
-    if (ac->_src_type != ac->_dest_type) {
-      adr_type = TypeRawPtr::BOTTOM;
     }
     generate_arraycopy(ac, alloc, &ctrl, merge_mem, &io,
                        adr_type, T_OBJECT,

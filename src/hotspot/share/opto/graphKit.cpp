@@ -43,6 +43,10 @@
 #include "opto/runtime.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //----------------------------GraphKit-----------------------------------------
 // Main utility constructor.
@@ -596,6 +600,8 @@ void GraphKit::builtin_throw(Deoptimization::DeoptReason reason, Node* arg) {
                        Deoptimization::trap_reason_name(reason));
       const TypeInstPtr* ex_con  = TypeInstPtr::make(ex_obj);
       Node*              ex_node = _gvn.transform(ConNode::make(ex_con));
+
+      ex_node = access_resolve_for_write(ex_node);
 
       // Clear the detail message of the preallocated exception object.
       // Weblogic sometimes mutates the detail message of exceptions
@@ -1680,6 +1686,15 @@ void GraphKit::access_clone(Node* ctl, Node* src, Node* dst, Node* size, bool is
   set_control(ctl);
   return _barrier_set->clone(this, src, dst, size, is_array);
 }
+
+Node* GraphKit::access_resolve_for_read(Node* n) {
+  return _barrier_set->resolve_for_read(this, n);
+}
+
+Node* GraphKit::access_resolve_for_write(Node* n) {
+  return _barrier_set->resolve_for_write(this, n);
+}
+
 
 //-------------------------array_element_address-------------------------
 Node* GraphKit::array_element_address(Node* ary, Node* idx, BasicType elembt,
@@ -3216,6 +3231,8 @@ FastLockNode* GraphKit::shared_lock(Node* obj) {
 
   assert(dead_locals_are_killed(), "should kill locals before sync. point");
 
+  obj = access_resolve_for_write(obj);
+
   // Box the stack location
   Node* box = _gvn.transform(new BoxLockNode(next_monitor()));
   Node* mem = reset_memory();
@@ -3711,6 +3728,12 @@ AllocateNode* AllocateNode::Ideal_allocation(Node* ptr, PhaseTransform* phase) {
   if (ptr == NULL) {     // reduce dumb test in callers
     return NULL;
   }
+
+#if INCLUDE_SHENANDOAHGC
+  // Attempt to see through Shenandoah barriers.
+  ptr = ShenandoahBarrierNode::skip_through_barrier(ptr);
+#endif
+
   if (ptr->is_CheckCastPP()) { // strip only one raw-to-oop cast
     ptr = ptr->in(1);
     if (ptr == NULL) return NULL;
@@ -3837,6 +3860,13 @@ Node* GraphKit::load_String_value(Node* ctrl, Node* str) {
   const TypeAryPtr* value_type = TypeAryPtr::make(TypePtr::NotNull,
                                                   TypeAry::make(TypeInt::BYTE, TypeInt::POS),
                                                   ciTypeArrayKlass::make(T_BYTE), true, 0);
+
+#if INCLUDE_SHENANDOAHGC
+  if (!ShenandoahOptimizeInstanceFinals) {
+    str = access_resolve_for_read(str);
+  }
+#endif
+
   Node* p = basic_plus_adr(str, str, value_offset);
   Node* load = access_load_at(str, p, value_field_type, value_type, T_OBJECT,
                               IN_HEAP | C2_CONTROL_DEPENDENT_LOAD);
@@ -3856,6 +3886,13 @@ Node* GraphKit::load_String_coder(Node* ctrl, Node* str) {
                                                      false, NULL, 0);
   const TypePtr* coder_field_type = string_type->add_offset(coder_offset);
   int coder_field_idx = C->get_alias_index(coder_field_type);
+
+#if INCLUDE_SHENANDOAHGC
+  if (!ShenandoahOptimizeInstanceFinals) {
+    str = access_resolve_for_read(str);
+  }
+#endif
+
   return make_load(ctrl, basic_plus_adr(str, str, coder_offset),
                    TypeInt::BYTE, T_BYTE, coder_field_idx, MemNode::unordered);
 }
@@ -3865,6 +3902,9 @@ void GraphKit::store_String_value(Node* ctrl, Node* str, Node* value) {
   const TypeInstPtr* string_type = TypeInstPtr::make(TypePtr::NotNull, C->env()->String_klass(),
                                                      false, NULL, 0);
   const TypePtr* value_field_type = string_type->add_offset(value_offset);
+
+  str = access_resolve_for_write(str);
+
   access_store_at(ctrl, str,  basic_plus_adr(str, value_offset), value_field_type,
                   value, TypeAryPtr::BYTES, T_OBJECT, IN_HEAP);
 }
@@ -3873,9 +3913,12 @@ void GraphKit::store_String_coder(Node* ctrl, Node* str, Node* value) {
   int coder_offset = java_lang_String::coder_offset_in_bytes();
   const TypeInstPtr* string_type = TypeInstPtr::make(TypePtr::NotNull, C->env()->String_klass(),
                                                      false, NULL, 0);
+
+  str = access_resolve_for_write(str);
+
   const TypePtr* coder_field_type = string_type->add_offset(coder_offset);
   int coder_field_idx = C->get_alias_index(coder_field_type);
-  store_to_memory(ctrl, basic_plus_adr(str, coder_offset),
+  store_to_memory(control(), basic_plus_adr(str, coder_offset),
                   value, T_BYTE, coder_field_idx, MemNode::unordered);
 }
 
@@ -3927,6 +3970,10 @@ void GraphKit::inflate_string(Node* src, Node* dst, const TypeAryPtr* dst_type, 
 }
 
 void GraphKit::inflate_string_slow(Node* src, Node* dst, Node* start, Node* count) {
+
+  src = access_resolve_for_read(src);
+  dst = access_resolve_for_write(dst);
+
   /**
    * int i_char = start;
    * for (int i_byte = 0; i_byte < count; i_byte++) {

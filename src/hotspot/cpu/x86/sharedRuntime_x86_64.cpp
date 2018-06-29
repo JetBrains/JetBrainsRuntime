@@ -33,6 +33,7 @@
 #include "code/nativeInst.hpp"
 #include "code/vtableStubs.hpp"
 #include "gc/shared/gcLocker.hpp"
+#include "gc/shared/collectedHeap.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
 #include "memory/resourceArea.hpp"
@@ -1434,6 +1435,100 @@ static void save_or_restore_arguments(MacroAssembler* masm,
   }
 }
 
+// Pin incoming array argument of java critical method
+static void pin_critical_native_array(MacroAssembler* masm,
+                                      VMRegPair reg,
+                                      int& pinned_slot) {
+  __ block_comment("pin_critical_native_array {");
+  Register tmp_reg = rax;
+
+  Label is_null;
+  VMRegPair tmp;
+  VMRegPair in_reg = reg;
+  bool on_stack = false;
+
+  tmp.set_ptr(tmp_reg->as_VMReg());
+  if (reg.first()->is_stack()) {
+    // Load the arg up from the stack
+    move_ptr(masm, reg, tmp);
+    reg = tmp;
+    on_stack = true;
+  } else {
+    __ movptr(rax, reg.first()->as_Register());
+  }
+  __ testptr(reg.first()->as_Register(), reg.first()->as_Register());
+  __ jccb(Assembler::equal, is_null);
+
+  __ push(c_rarg0);
+  __ push(c_rarg1);
+  __ push(c_rarg2);
+  __ push(c_rarg3);
+#ifdef _WIN64
+  // caller-saved registers on Windows
+  __ push(r10);
+  __ push(r11);
+#else
+  __ push(c_rarg4);
+  __ push(c_rarg5);
+#endif
+
+  if (reg.first()->as_Register() != c_rarg1) {
+    __ movptr(c_rarg1, reg.first()->as_Register());
+  }
+  __ movptr(c_rarg0, r15_thread);
+  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::pin_object)));
+
+#ifdef _WIN64
+  __ pop(r11);
+  __ pop(r10);
+#else
+  __ pop(c_rarg5);
+  __ pop(c_rarg4);
+#endif
+  __ pop(c_rarg3);
+  __ pop(c_rarg2);
+  __ pop(c_rarg1);
+  __ pop(c_rarg0);
+
+  if (on_stack) {
+    __ movptr(Address(rbp, reg2offset_in(in_reg.first())), rax);
+    __ bind(is_null);
+  } else {
+    __ movptr(reg.first()->as_Register(), rax);
+
+    // save on stack for unpinning later
+    __ bind(is_null);
+    assert(reg.first()->is_Register(), "Must be a register");
+    int offset = pinned_slot * VMRegImpl::stack_slot_size;
+    pinned_slot += VMRegImpl::slots_per_word;
+    __ movq(Address(rsp, offset), rax);
+  }
+  __ block_comment("} pin_critical_native_array");
+}
+
+// Unpin array argument of java critical method
+static void unpin_critical_native_array(MacroAssembler* masm,
+                                        VMRegPair reg,
+                                        int& pinned_slot) {
+  __ block_comment("unpin_critical_native_array {");
+  Label is_null;
+
+  if (reg.first()->is_stack()) {
+    __ movptr(c_rarg1, Address(rbp, reg2offset_in(reg.first())));
+  } else {
+    int offset = pinned_slot * VMRegImpl::stack_slot_size;
+    pinned_slot += VMRegImpl::slots_per_word;
+    __ movq(c_rarg1, Address(rsp, offset));
+  }
+  __ testptr(c_rarg1, c_rarg1);
+  __ jccb(Assembler::equal, is_null);
+
+  __ movptr(c_rarg0, r15_thread);
+  __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, SharedRuntime::unpin_object)));
+
+  __ bind(is_null);
+  __ block_comment("} unpin_critical_native_array");
+}
 
 // Check GCLocker::needs_gc and enter the runtime if it's true.  This
 // keeps a new JNI critical region from starting until a GC has been
@@ -2129,7 +2224,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
   const Register oop_handle_reg = r14;
 
-  if (is_critical_native) {
+  if (is_critical_native && !Universe::heap()->supports_object_pinning()) {
     check_needs_gc_for_critical_native(masm, stack_slots, total_c_args, total_in_args,
                                        oop_handle_offset, oop_maps, in_regs, in_sig_bt);
   }
@@ -2186,6 +2281,11 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   // the incoming and outgoing registers are offset upwards and for
   // critical natives they are offset down.
   GrowableArray<int> arg_order(2 * total_in_args);
+  // Inbound arguments that need to be pinned for critical natives
+  GrowableArray<int> pinned_args(total_in_args);
+  // Current stack slot for storing register based array argument
+  int pinned_slot = oop_handle_offset;
+
   VMRegPair tmp_vmreg;
   tmp_vmreg.set2(rbx->as_VMReg());
 
@@ -2233,6 +2333,12 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     switch (in_sig_bt[i]) {
       case T_ARRAY:
         if (is_critical_native) {
+          // pin before unpack
+          if (Universe::heap()->supports_object_pinning()) {
+            assert(pinned_slot <= stack_slots, "overflow");
+            pin_critical_native_array(masm, in_regs[i], pinned_slot);
+            pinned_args.append(i);
+          }
           unpack_array_argument(masm, in_regs[i], in_elem_bt[i], out_regs[c_arg + 1], out_regs[c_arg]);
           c_arg++;
 #ifdef ASSERT
@@ -2369,6 +2475,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Load the oop from the handle
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
 
+    __ resolve_for_write(IS_NOT_NULL, obj_reg);
     if (UseBiasedLocking) {
       __ biased_locking_enter(lock_reg, obj_reg, swap_reg, rscratch1, false, lock_done, &slow_path_lock);
     }
@@ -2433,7 +2540,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   // Unpack native results.
   switch (ret_type) {
   case T_BOOLEAN: __ c2bool(rax);            break;
-  case T_CHAR   : __ movzwl(rax, rax);      break;
+  case T_CHAR   : __ movzwl(rax, rax);       break;
   case T_BYTE   : __ sign_extend_byte (rax); break;
   case T_SHORT  : __ sign_extend_short(rax); break;
   case T_INT    : /* nothing to do */        break;
@@ -2447,6 +2554,19 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   case T_VOID: break;
   case T_LONG: break;
   default       : ShouldNotReachHere();
+  }
+
+  // unpin pinned arguments
+  pinned_slot = oop_handle_offset;
+  if (pinned_args.length() > 0) {
+    // save return value that may be overwritten otherwise.
+    save_native_result(masm, ret_type, stack_slots);
+    for (int index = 0; index < pinned_args.length(); index ++) {
+      int i = pinned_args.at(index);
+      assert(pinned_slot <= stack_slots, "overflow");
+      unpin_critical_native_array(masm, in_regs[i], pinned_slot);
+    }
+    restore_native_result(masm, ret_type, stack_slots);
   }
 
   // Switch thread to "native transition" state before reading the synchronization state.
@@ -2536,6 +2656,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
 
     // Get locked oop from the handle we passed to jni
     __ movptr(obj_reg, Address(oop_handle_reg, 0));
+    __ resolve_for_write(IS_NOT_NULL, obj_reg);
 
     Label done;
 

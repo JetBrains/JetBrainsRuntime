@@ -90,6 +90,7 @@ class PtrQueue {
 protected:
   // The buffer.
   void** _buf;
+  size_t _enqueue_skips;
 
   size_t index() const {
     return byte_index_to_index(_index);

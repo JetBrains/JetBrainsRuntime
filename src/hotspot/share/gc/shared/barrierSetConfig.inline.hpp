@@ -39,5 +39,8 @@
 #if INCLUDE_ZGC
 #include "gc/z/zBarrierSet.inline.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahBarrierSet.inline.hpp" // Shenandoah support
+#endif
 
 #endif // SHARE_VM_GC_SHARED_BARRIERSETCONFIG_INLINE_HPP

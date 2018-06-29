@@ -35,6 +35,7 @@ void BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorators,
 
   // LR is live.  It must be saved around calls.
 
+  dst = dst == noreg ? r0 : dst;
   bool in_heap = (decorators & IN_HEAP) != 0;
   bool in_native = (decorators & IN_NATIVE) != 0;
   bool is_not_null = (decorators & IS_NOT_NULL) != 0;
@@ -229,3 +230,29 @@ void BarrierSetAssembler::incr_allocated_bytes(MacroAssembler* masm,
   __ str(t1, Address(rthread, in_bytes(JavaThread::allocated_bytes_offset())));
 }
 
+void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op.
+}
+
+void BarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op.
+}
+
+void BarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, Register addr, Register expected, Register new_val,
+                                      bool acquire, bool release, bool weak, bool encode,
+                                      Register tmp1, Register tmp2, Register tmp3,
+                                      Register result) {
+  if (UseCompressedOops) {
+    if (encode) {
+      __ encode_heap_oop(tmp1, expected);
+      expected = tmp1;
+      __ encode_heap_oop(tmp3, new_val);
+      new_val = tmp3;
+    }
+    __ cmpxchg(addr, expected, new_val, Assembler::word, /* acquire*/ true, /* release*/ true, /* weak*/ false, rscratch1);
+    __ membar(__ AnyAny);
+  } else {
+    __ cmpxchg(addr, expected, new_val, Assembler::xword, /* acquire*/ true, /* release*/ true, /* weak*/ false, rscratch1);
+    __ membar(__ AnyAny);
+  }
+}

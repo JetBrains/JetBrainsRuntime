@@ -35,6 +35,11 @@
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -1452,6 +1457,10 @@ Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     } else {
       dist = 4;               // Do not bother for random pointer tests
     }
+#if INCLUDE_SHENANDOAHGC
+  } else if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this)) {
+    dist = 16;
+#endif
   } else {
     dist = 4;                 // Limit for random junky scans
   }
@@ -1490,7 +1499,9 @@ Node* IfNode::dominated_by(Node* prev_dom, PhaseIterGVN *igvn) {
   // be skipped. For example, range check predicate has two checks
   // for lower and upper bounds.
   ProjNode* unc_proj = proj_out(1 - prev_dom->as_Proj()->_con)->as_Proj();
-  if (unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_predicate) != NULL) {
+  if (unc_proj != NULL &&
+      (unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_predicate) != NULL ||
+       unc_proj->is_uncommon_trap_proj(Deoptimization::Reason_profile_predicate) != NULL)) {
     prev_dom = idom;
   }
 
@@ -1539,10 +1550,12 @@ Node* IfNode::search_identical(int dist) {
   Node* dom = in(0);
   Node* prev_dom = this;
   int op = Opcode();
+#if INCLUDE_SHENANDOAHGC
+  bool evac_in_progress = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this);
+#endif
   // Search up the dominator tree for an If with an identical test
   while (dom->Opcode() != op    ||  // Not same opcode?
-         dom->in(1)    != in(1) ||  // Not same input 1?
-         (req() == 3 && dom->in(2) != in(2)) || // Not same input 2?
+         (dom->in(1) != in(1) SHENANDOAHGC_ONLY(&& (!evac_in_progress || !ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom->as_If())))) ||  // Not same input 1?
          prev_dom->in(0) != dom) {  // One path of test does not dominate?
     if (dist < 0) return NULL;
 
@@ -1685,6 +1698,48 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   // Progress
   return iff;
 }
+
+bool IfNode::is_g1_marking_if(PhaseTransform *phase) const {
+  if (Opcode() != Op_If) {
+    return false;
+  }
+
+  Node* bol = in(1);
+  assert(bol->is_Bool(), "");
+  Node* cmpx = bol->in(1);
+  if (bol->as_Bool()->_test._test == BoolTest::ne &&
+      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
+      cmpx->in(1)->is_g1_marking_load()) {
+    return true;
+  }
+  return false;
+}
+
+#if INCLUDE_SHENANDOAHGC
+bool IfNode::is_shenandoah_marking_if(PhaseTransform *phase) const {
+  if (!UseShenandoahGC) {
+    return false;
+  }
+
+  if (Opcode() != Op_If) {
+    return false;
+  }
+
+  Node* bol = in(1);
+  assert(bol->is_Bool(), "");
+  Node* cmpx = bol->in(1);
+  if (bol->as_Bool()->_test._test == BoolTest::ne &&
+      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
+      cmpx->in(1)->in(1)->is_shenandoah_state_load() &&
+      cmpx->in(1)->in(2)->is_Con() &&
+      cmpx->in(1)->in(2) == phase->intcon(ShenandoahHeap::MARKING)) {
+    return true;
+  }
+
+  return false;
+}
+#endif
+
 
 Node* RangeCheckNode::Ideal(PhaseGVN *phase, bool can_reshape) {
   Node* res = Ideal_common(phase, can_reshape);

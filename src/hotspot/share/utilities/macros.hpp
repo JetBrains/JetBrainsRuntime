@@ -185,6 +185,24 @@
 #define NOT_G1GC_RETURN_(code) { return code; }
 #endif // INCLUDE_G1GC
 
+#ifndef INCLUDE_SHENANDOAHGC
+#define INCLUDE_SHENANDOAHGC 1
+#endif // INCLUDE_SHENANDOAHGC
+
+#if INCLUDE_SHENANDOAHGC
+#define SHENANDOAHGC_ONLY(x) x
+#define SHENANDOAHGC_ONLY_ARG(arg) arg,
+#define NOT_SHENANDOAHGC(x)
+#define NOT_SHENANDOAHGC_RETURN        /* next token must be ; */
+#define NOT_SHENANDOAHGC_RETURN_(code) /* next token must be ; */
+#else
+#define SHENANDOAHGC_ONLY(x)
+#define SHENANDOAHGC_ONLY_ARG(arg)
+#define NOT_SHENANDOAHGC(x) x
+#define NOT_SHENANDOAHGC_RETURN        {}
+#define NOT_SHENANDOAHGC_RETURN_(code) { return code; }
+#endif // INCLUDE_SHENANDOAHGC
+
 #ifndef INCLUDE_PARALLELGC
 #define INCLUDE_PARALLELGC 1
 #endif // INCLUDE_PARALLELGC

@@ -53,6 +53,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/vmStructs_z.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/vmStructs_shenandoah.hpp"
+#endif
 
 #define VM_STRUCTS_GC(nonstatic_field,                                                                                               \
                       volatile_nonstatic_field,                                                                                      \
@@ -67,6 +70,9 @@
   G1GC_ONLY(VM_STRUCTS_G1GC(nonstatic_field,                                                                                         \
                             volatile_nonstatic_field,                                                                                \
                             static_field))                                                                                           \
+  SHENANDOAHGC_ONLY(VM_STRUCTS_SHENANDOAH(nonstatic_field,                                                                           \
+                               volatile_nonstatic_field,                                                                             \
+                               static_field))                                                                                        \
   PARALLELGC_ONLY(VM_STRUCTS_PARALLELGC(nonstatic_field,                                                                             \
                                         volatile_nonstatic_field,                                                                    \
                                         static_field))                                                                               \
@@ -172,6 +178,9 @@
   G1GC_ONLY(VM_TYPES_G1GC(declare_type,                                   \
                           declare_toplevel_type,                          \
                           declare_integer_type))                          \
+  SHENANDOAHGC_ONLY(VM_TYPES_SHENANDOAH(declare_type,                     \
+                             declare_toplevel_type,                       \
+                             declare_integer_type))                       \
   PARALLELGC_ONLY(VM_TYPES_PARALLELGC(declare_type,                       \
                                       declare_toplevel_type,              \
                                       declare_integer_type))              \
@@ -249,6 +258,8 @@
                                             declare_constant_with_value))   \
   G1GC_ONLY(VM_INT_CONSTANTS_G1GC(declare_constant,                         \
                                   declare_constant_with_value))             \
+  SHENANDOAHGC_ONLY(VM_INT_CONSTANTS_SHENANDOAH(declare_constant,           \
+                                     declare_constant_with_value))          \
   PARALLELGC_ONLY(VM_INT_CONSTANTS_PARALLELGC(declare_constant,             \
                                               declare_constant_with_value)) \
   SERIALGC_ONLY(VM_INT_CONSTANTS_SERIALGC(declare_constant,                 \

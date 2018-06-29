@@ -264,6 +264,15 @@ macro(RoundDouble)
 macro(RoundFloat)
 macro(SafePoint)
 macro(SafePointScalarObject)
+#if INCLUDE_SHENANDOAHGC
+#define shmacro(x) macro(x)
+#else
+#define shmacro(x) optionalmacro(x)
+#endif
+shmacro(ShenandoahEnqueueBarrier)
+shmacro(ShenandoahReadBarrier)
+shmacro(ShenandoahWriteBarrier)
+shmacro(ShenandoahWBMemProj)
 macro(SCMemProj)
 macro(SqrtD)
 macro(SqrtF)

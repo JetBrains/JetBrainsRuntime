@@ -27,6 +27,7 @@
 #define CPU_AARCH64_VM_MACROASSEMBLER_AARCH64_HPP
 
 #include "asm/assembler.hpp"
+#include "utilities/macros.hpp"
 
 // MacroAssembler extends Assembler by frequently used macros.
 //
@@ -455,6 +456,8 @@ public:
   // 64 bits of each vector register.
   void push_call_clobbered_registers();
   void pop_call_clobbered_registers();
+  void push_call_clobbered_fp_registers();
+  void pop_call_clobbered_fp_registers();
 
   // now mov instructions for loading absolute addresses and 32 or
   // 64 bit integers
@@ -546,6 +549,17 @@ public:
   inline void clear_fpsr()
   {
     msr(0b011, 0b0100, 0b0100, 0b001, zr);
+  }
+
+  // Macro instructions for accessing and updating the condition flags
+  inline void get_nzcv(Register reg)
+  {
+    mrs(0b011, 0b0100, 0b0010, 0b000, reg);
+  }
+
+  inline void set_nzcv(Register reg)
+  {
+    msr(0b011, 0b0100, 0b0010, 0b000, reg);
   }
 
   // DCZID_EL0: op1 == 011
@@ -781,6 +795,10 @@ public:
 
   void resolve_jobject(Register value, Register thread, Register tmp);
 
+#if INCLUDE_SHENANDOAHGC
+  void shenandoah_write_barrier(Register dst);
+#endif
+
   // oop manipulations
   void load_klass(Register dst, Register src);
   void store_klass(Register dst, Register src);
@@ -788,6 +806,9 @@ public:
 
   void resolve_oop_handle(Register result, Register tmp = r5);
   void load_mirror(Register dst, Register method, Register tmp = r5);
+
+  void resolve_for_read(DecoratorSet decorators, Register obj);
+  void resolve_for_write(DecoratorSet decorators, Register obj);
 
   void access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
                       Register tmp1, Register tmp_thread);
@@ -1013,6 +1034,10 @@ public:
                bool acquire, bool release, bool weak,
                Register result);
 
+  void cmpxchg_oop(Register addr, Register expected, Register new_val,
+                   bool acquire, bool release, bool weak, bool encode,
+                   Register tmp1, Register tmp2, Register tmp3 = rscratch2,
+                   Register result = noreg);
   // Calls
 
   address trampoline_call(Address entry, CodeBuffer *cbuf = NULL);

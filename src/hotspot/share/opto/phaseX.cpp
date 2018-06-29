@@ -39,6 +39,9 @@
 #include "opto/regalloc.hpp"
 #include "opto/rootnode.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#endif
 
 //=============================================================================
 #define NODE_HASH_MINIMUM_SIZE    255
@@ -1375,6 +1378,13 @@ void PhaseIterGVN::remove_globally_dead_node( Node *dead ) {
                 }
                 assert(!(i < imax), "sanity");
               }
+            } else if (dead->Opcode() == Op_ShenandoahWBMemProj) {
+              assert(i == 0 && in->Opcode() == Op_ShenandoahWriteBarrier, "broken graph");
+              _worklist.push(in);
+#if INCLUDE_SHENANDOAHGC
+            } else if (in->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(in)) {
+              add_users_to_worklist(in);
+#endif
             } else {
               BarrierSet::barrier_set()->barrier_set_c2()->enqueue_useful_gc_barrier(_worklist, in);
             }
@@ -1652,6 +1662,13 @@ void PhaseIterGVN::add_users_to_worklist( Node *n ) {
         }
       }
     }
+
+    if (use->is_ShenandoahBarrier()) {
+      Node* cmp = use->find_out_with(Op_CmpP);
+      if (cmp != NULL) {
+        _worklist.push(cmp);
+      }
+    }
   }
 }
 
@@ -1798,6 +1815,25 @@ void PhaseCCP::analyze() {
             const Type* ut = u->bottom_type();
             if (u->Opcode() == Op_LoadP && ut->isa_instptr() && ut != type(u)) {
               worklist.push(u);
+            }
+          }
+        }
+        if (m->is_ShenandoahBarrier()) {
+          for (DUIterator_Fast i2max, i2 = m->fast_outs(i2max); i2 < i2max; i2++) {
+            Node* p = m->fast_out(i2);
+            if (p->Opcode() == Op_CmpP) {
+              if(p->bottom_type() != type(p)) {
+                worklist.push(p);
+              }
+            } else if (p->Opcode() == Op_AddP) {
+              for (DUIterator_Fast i3max, i3 = p->fast_outs(i3max); i3 < i3max; i3++) {
+                Node* q = p->fast_out(i3);
+                if (q->is_Load()) {
+                  if(q->bottom_type() != type(q)) {
+                    worklist.push(q);
+                  }
+                }
+              }
             }
           }
         }
@@ -2061,6 +2097,11 @@ void Node::set_req_X( uint i, Node *n, PhaseIterGVN *igvn ) {
     default:
       break;
     }
+#if INCLUDE_SHENANDOAHGC
+    if (old->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(old)) {
+      igvn->add_users_to_worklist(old);
+    }
+#endif
   }
 
 }

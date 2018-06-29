@@ -44,6 +44,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/z_globals.hpp"
 #endif
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoah_globals.hpp"
+#endif
 
 #define GC_FLAGS(develop,                                                   \
                  develop_pd,                                                \
@@ -124,6 +127,22 @@
     constraint,                                                             \
     writeable))                                                             \
                                                                             \
+  SHENANDOAHGC_ONLY(GC_SHENANDOAH_FLAGS(                                    \
+    develop,                                                                \
+    develop_pd,                                                             \
+    product,                                                                \
+    product_pd,                                                             \
+    diagnostic,                                                             \
+    diagnostic_pd,                                                          \
+    experimental,                                                           \
+    notproduct,                                                             \
+    manageable,                                                             \
+    product_rw,                                                             \
+    lp64_product,                                                           \
+    range,                                                                  \
+    constraint,                                                             \
+    writeable))                                                             \
+                                                                            \
   SERIALGC_ONLY(GC_SERIAL_FLAGS(                                            \
     develop,                                                                \
     develop_pd,                                                             \
@@ -166,6 +185,9 @@
                                                                             \
   product(bool, UseG1GC, false,                                             \
           "Use the Garbage-First garbage collector")                        \
+                                                                            \
+  product(bool, UseShenandoahGC, false,                                     \
+          "Use the Shenandoah garbage collector")                           \
                                                                             \
   product(bool, UseParallelGC, false,                                       \
           "Use the Parallel Scavenge garbage collector")                    \

@@ -42,6 +42,8 @@ public class TestInitialGCThreadLogging {
     testInitialGCThreadLogging("UseG1GC", "GC Thread");
 
     testInitialGCThreadLogging("UseParallelGC", "ParGC Thread");
+
+    testInitialGCThreadLogging("UseShenandoahGC", "Shenandoah GC Thread");
   }
 
   private static void verifyDynamicNumberOfGCThreads(OutputAnalyzer output, String threadName) {

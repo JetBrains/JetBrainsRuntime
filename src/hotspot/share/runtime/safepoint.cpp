@@ -608,16 +608,26 @@ bool SafepointSynchronize::is_cleanup_needed() {
 
 class ParallelSPCleanupThreadClosure : public ThreadClosure {
 private:
+  bool _do_deflate_idle_monitors;
   CodeBlobClosure* _nmethod_cl;
   DeflateMonitorCounters* _counters;
 
 public:
   ParallelSPCleanupThreadClosure(DeflateMonitorCounters* counters) :
-    _counters(counters),
-    _nmethod_cl(NMethodSweeper::prepare_mark_active_nmethods()) {}
+    _counters(counters) {
+    VM_Operation* op = VMThread::vm_operation();
+    _do_deflate_idle_monitors = op == NULL || ! op->deflates_idle_monitors();
+    if (op == NULL || ! op->marks_nmethods()) {
+      _nmethod_cl = NMethodSweeper::prepare_mark_active_nmethods();
+    } else {
+      _nmethod_cl = NULL;
+    }
+  }
 
   void do_thread(Thread* thread) {
-    ObjectSynchronizer::deflate_thread_local_monitors(thread, _counters);
+    if (_do_deflate_idle_monitors) {
+      ObjectSynchronizer::deflate_thread_local_monitors(thread, _counters, NULL);
+    }
     if (_nmethod_cl != NULL && thread->is_Java_thread() &&
         ! thread->is_Code_cache_sweeper_thread()) {
       JavaThread* jt = (JavaThread*) thread;

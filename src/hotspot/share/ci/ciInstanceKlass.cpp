@@ -36,6 +36,10 @@
 #include "runtime/fieldDescriptor.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/jniHandles.inline.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#endif
 
 // ciInstanceKlass
 //
@@ -65,6 +69,7 @@ ciInstanceKlass::ciInstanceKlass(Klass* k) :
   _is_anonymous = ik->is_anonymous();
   _nonstatic_fields = NULL; // initialized lazily by compute_nonstatic_fields:
   _has_injected_fields = -1;
+  _has_object_fields = -1;
   _implementor = NULL; // we will fill these lazily
 
   // Ensure that the metadata wrapped by the ciMetadata is kept alive by GC.
@@ -122,6 +127,7 @@ ciInstanceKlass::ciInstanceKlass(ciSymbol* name,
   _has_nonstatic_fields = false;
   _nonstatic_fields = NULL;
   _has_injected_fields = -1;
+  _has_object_fields = -1;
   _is_anonymous = false;
   _loader = loader;
   _protection_domain = protection_domain;
@@ -199,12 +205,12 @@ ciConstantPoolCache* ciInstanceKlass::field_cache() {
 //
 ciInstanceKlass* ciInstanceKlass::get_canonical_holder(int offset) {
   #ifdef ASSERT
-  if (!(offset >= 0 && offset < layout_helper())) {
+  if (!((offset >= 0 && offset < layout_helper()) SHENANDOAHGC_ONLY(|| (UseShenandoahGC && offset == BrooksPointer::byte_offset())))) {
     tty->print("*** get_canonical_holder(%d) on ", offset);
     this->print();
     tty->print_cr(" ***");
-  };
-  assert(offset >= 0 && offset < layout_helper(), "offset must be tame");
+    fatal("offset must be tame");
+  }
   #endif
 
   if (offset < instanceOopDesc::base_offset_in_bytes()) {
@@ -554,6 +560,19 @@ void ciInstanceKlass::compute_injected_fields() {
   _has_injected_fields = has_injected_fields;
 }
 
+void ciInstanceKlass::compute_object_fields() {
+  for (int i = 0; i < nof_nonstatic_fields(); i++) {
+    ciField* f = nonstatic_field_at(i);
+    if (f->layout_type() == T_OBJECT) {
+      assert(_has_object_fields == -1 || _has_object_fields == 1, "broken concurrent initialization");
+      _has_object_fields = 1;
+      return;
+    }
+  }
+  assert(_has_object_fields == -1 || _has_object_fields == 0, "broken concurrent initialization");
+  _has_object_fields = 0;
+}
+
 // ------------------------------------------------------------------
 // ciInstanceKlass::find_method
 //
@@ -735,3 +754,27 @@ void ciInstanceKlass::dump_replay_data(outputStream* out) {
     ik->do_local_static_fields(&sffp);
   }
 }
+
+#ifdef ASSERT
+bool ciInstanceKlass::debug_final_field_at(int offset) {
+  GUARDED_VM_ENTRY(
+    InstanceKlass* ik = get_instanceKlass();
+    fieldDescriptor fd;
+    if (ik->find_field_from_offset(offset, false, &fd)) {
+      return fd.is_final();
+    }
+  );
+  return false;
+}
+
+bool ciInstanceKlass::debug_stable_field_at(int offset) {
+  GUARDED_VM_ENTRY(
+    InstanceKlass* ik = get_instanceKlass();
+    fieldDescriptor fd;
+    if (ik->find_field_from_offset(offset, false, &fd)) {
+      return fd.is_stable();
+    }
+  );
+  return false;
+}
+#endif
