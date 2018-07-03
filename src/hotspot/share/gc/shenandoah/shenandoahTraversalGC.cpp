@@ -175,6 +175,8 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
+
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahObjToScanQueueSet* queues = _heap->traversal_gc()->task_queues();
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
@@ -211,6 +213,8 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
+
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
 
@@ -232,6 +236,8 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
+
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
 

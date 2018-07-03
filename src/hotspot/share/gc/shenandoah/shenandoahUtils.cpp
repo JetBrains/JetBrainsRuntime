@@ -113,3 +113,18 @@ ShenandoahAllocTrace::~ShenandoahAllocTrace() {
     }
   }
 }
+
+ShenandoahWorkerSession::ShenandoahWorkerSession(uint worker_id) {
+  Thread* thr = Thread::current();
+  assert(ShenandoahThreadLocalData::worker_id(thr) == ShenandoahThreadLocalData::INVALID_WORKER_ID, "Already set");
+  ShenandoahThreadLocalData::set_worker_id(thr, worker_id);
+}
+
+ShenandoahWorkerSession::~ShenandoahWorkerSession() {
+#ifdef ASSERT
+  Thread* thr = Thread::current();
+  assert(ShenandoahThreadLocalData::worker_id(thr) != ShenandoahThreadLocalData::INVALID_WORKER_ID, "Must be set");
+  ShenandoahThreadLocalData::set_worker_id(thr, ShenandoahThreadLocalData::INVALID_WORKER_ID);
+#endif
+}
+

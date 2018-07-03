@@ -33,16 +33,21 @@
 #include "utilities/sizes.hpp"
 
 class ShenandoahThreadLocalData {
+public:
+  static const uint INVALID_WORKER_ID = uint(-1);
+
 private:
   char _gc_state;
   char _oom_during_evac;
   SATBMarkQueue  _satb_mark_queue;
   PLAB* _gclab;
+  uint  _worker_id;
 
   ShenandoahThreadLocalData() :
     _gc_state(0),
     _oom_during_evac(0),
     _gclab(NULL),
+    _worker_id(INVALID_WORKER_ID),
     _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()) {}
 
   ~ShenandoahThreadLocalData() {
@@ -87,6 +92,16 @@ public:
 
   static void set_gc_state(Thread* thread, char gc_state) {
     data(thread)->_gc_state = gc_state;
+  }
+
+  static void set_worker_id(Thread* thread, uint id) {
+    assert(thread->is_Worker_thread(), "Must be a worker thread");
+    data(thread)->_worker_id = id;
+  }
+
+  static uint worker_id(Thread* thread) {
+    assert(thread->is_Worker_thread(), "Must be a worker thread");
+    return data(thread)->_worker_id;
   }
 
   static void initialize_gclab(Thread* thread) {

@@ -27,6 +27,7 @@
 #include "gc/shared/isGCActiveMark.hpp"
 #include "gc/shared/vmGCOperations.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
+#include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/vmThread.hpp"
@@ -93,6 +94,19 @@ public:
            type == VM_Operation::VMOp_ShenandoahFinalUpdateRefs ||
            type == VM_Operation::VMOp_ShenandoahFullGC ||
            type == VM_Operation::VMOp_ShenandoahDegeneratedGC;
+  }
+};
+
+class ShenandoahWorkerSession : public StackObj {
+public:
+  ShenandoahWorkerSession(uint worker_id);
+  ~ShenandoahWorkerSession();
+
+  static inline uint worker_id() {
+    Thread* thr = Thread::current();
+    uint id = ShenandoahThreadLocalData::worker_id(thr);
+    assert(id != ShenandoahThreadLocalData::INVALID_WORKER_ID, "Worker session has not been created");
+    return id;
   }
 };
 

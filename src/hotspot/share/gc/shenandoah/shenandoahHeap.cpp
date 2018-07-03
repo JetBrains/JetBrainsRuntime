@@ -1072,7 +1072,7 @@ public:
   {}
 
   void work(uint worker_id) {
-
+    ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
 
@@ -1257,6 +1257,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahEvacuateUpdateRootsClosure cl;
 
@@ -1281,6 +1282,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahUpdateRefsClosure cl;
     MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
@@ -2430,6 +2432,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
     SuspendibleThreadSetJoiner stsj(_concurrent && ShenandoahSuspendibleWorkers);
     ShenandoahHeapRegion* r = _regions->next();
     while (r != NULL) {
