@@ -488,11 +488,6 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
-#if INCLUDE_SHENANDOAHGC
-void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
-  Unimplemented();
-}
-#endif
 
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   Bytecodes::Code code = op->bytecode();

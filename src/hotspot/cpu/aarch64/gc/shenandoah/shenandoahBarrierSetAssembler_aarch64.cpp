@@ -526,6 +526,26 @@ void ShenandoahBarrierSetAssembler::gen_pre_barrier_stub(LIR_Assembler* ce, Shen
   __ b(*stub->continuation());
 }
 
+void ShenandoahBarrierSetAssembler::gen_write_barrier_stub(LIR_Assembler* ce, ShenandoahWriteBarrierStub* stub) {
+
+  Register obj = stub->obj()->as_register();
+  Register res = stub->result()->as_register();
+
+  Label done;
+
+  if (res != obj) {
+    __ mov(res, obj);
+  }
+  // Check for null.
+  if (stub->needs_null_check()) {
+    __ cbz(res, done);
+  }
+
+  __ shenandoah_write_barrier(res);
+
+  __ bind(done);
+}
+
 #undef __
 
 #define __ sasm->

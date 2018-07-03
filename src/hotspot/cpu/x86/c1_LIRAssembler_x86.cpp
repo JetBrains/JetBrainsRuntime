@@ -1443,29 +1443,6 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
-#if INCLUDE_SHENANDOAHGC
-void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
-  Label done;
-  Register obj = op->in_opr()->as_register();
-  Register res = op->result_opr()->as_register();
-
-  if (res != obj) {
-    __ mov(res, obj);
-  }
-
-  // Check for null.
-  if (op->need_null_check()) {
-    __ testptr(res, res);
-    __ jcc(Assembler::zero, done);
-  }
-
-  __ shenandoah_write_barrier(res);
-
-  __ bind(done);
-
-}
-#endif
-
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
   LIR_Opr dest = op->result_opr();

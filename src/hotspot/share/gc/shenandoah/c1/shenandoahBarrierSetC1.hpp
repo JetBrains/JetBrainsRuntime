@@ -85,6 +85,38 @@ class ShenandoahPreBarrierStub: public CodeStub {
 #endif // PRODUCT
 };
 
+class ShenandoahWriteBarrierStub: public CodeStub {
+  friend class ShenandoahBarrierSetC1;
+ private:
+  LIR_Opr _obj;
+  LIR_Opr _result;
+  CodeEmitInfo* _info;
+  bool _needs_null_check;
+
+ public:
+  ShenandoahWriteBarrierStub(LIR_Opr obj, LIR_Opr result, CodeEmitInfo* info, bool needs_null_check) :
+    _obj(obj), _result(result), _info(info), _needs_null_check(needs_null_check)
+  {
+    assert(_obj->is_register(), "should be register");
+    assert(_result->is_register(), "should be register");
+  }
+
+  LIR_Opr obj() const { return _obj; }
+  LIR_Opr result() const { return _result; }
+  CodeEmitInfo* info() const { return _info; }
+  bool needs_null_check() const { return _needs_null_check; }
+
+  virtual void emit_code(LIR_Assembler* e);
+  virtual void visit(LIR_OpVisitState* visitor) {
+    visitor->do_slow_case();
+    visitor->do_input(_obj);
+    visitor->do_temp(_result);
+  }
+#ifndef PRODUCT
+  virtual void print_name(outputStream* out) const { out->print("G1PreBarrierStub"); }
+#endif // PRODUCT
+};
+
 class ShenandoahBarrierSetC1 : public BarrierSetC1 {
 private:
   CodeBlob* _pre_barrier_c1_runtime_code_blob;

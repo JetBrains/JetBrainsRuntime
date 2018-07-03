@@ -41,7 +41,6 @@
 #include "runtime/safepointMechanism.inline.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "vmreg_s390.inline.hpp"
-#include "utilities/macros.hpp"
 
 #define __ _masm->
 
@@ -380,11 +379,6 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
   }
 }
 
-#if INCLUDE_SHENANDOAHGC
-void LIR_Assembler::emit_opShenandoahWriteBarrier(LIR_OpShenandoahWriteBarrier* op) {
-  Unimplemented();
-}
-#endif
 
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
