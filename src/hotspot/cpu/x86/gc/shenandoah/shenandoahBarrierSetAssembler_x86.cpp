@@ -706,12 +706,7 @@ void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, DecoratorS
 
   // Apply storeval barrier to newval.
   if (encode) {
-    if (newval == c_rarg1 && ShenandoahStoreValEnqueueBarrier) {
-      __ mov(tmp2, newval);
-      storeval_barrier(masm, tmp2, tmp1);
-    } else {
-      storeval_barrier(masm, newval, tmp1);
-    }
+    storeval_barrier(masm, newval, tmp1);
   }
 
   if (UseCompressedOops) {
