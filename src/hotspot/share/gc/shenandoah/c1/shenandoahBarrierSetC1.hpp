@@ -81,7 +81,7 @@ class ShenandoahPreBarrierStub: public CodeStub {
     }
   }
 #ifndef PRODUCT
-  virtual void print_name(outputStream* out) const { out->print("G1PreBarrierStub"); }
+  virtual void print_name(outputStream* out) const { out->print("ShenandoahPreBarrierStub"); }
 #endif // PRODUCT
 };
 
@@ -113,7 +113,7 @@ class ShenandoahWriteBarrierStub: public CodeStub {
     visitor->do_temp(_result);
   }
 #ifndef PRODUCT
-  virtual void print_name(outputStream* out) const { out->print("G1PreBarrierStub"); }
+  virtual void print_name(outputStream* out) const { out->print("ShenandoahWritePreBarrierStub"); }
 #endif // PRODUCT
 };
 
