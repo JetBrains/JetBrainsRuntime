@@ -186,11 +186,10 @@ void MethodHandles::jump_to_lambda_form(MacroAssembler* _masm,
                         Address(temp2, ConstMethod::size_of_parameters_offset()),
                         sizeof(u2), /*is_signed*/ false);
     // assert(sizeof(u2) == sizeof(Method::_size_of_parameters), "");
-    __ movptr(temp2, __ argument_address(temp2, -1));
     Label L;
-    __ cmpoop(recv, temp2);
+    __ cmpoop(recv, __ argument_address(temp2, -1));
     __ jcc(Assembler::equal, L);
-    __ movptr(rax, temp2);
+    __ movptr(rax, __ argument_address(temp2, -1));
     __ STOP("receiver not on stack");
     __ BIND(L);
   }
@@ -440,6 +439,8 @@ void MethodHandles::generate_method_handle_dispatch(MacroAssembler* _masm,
       if (VerifyMethodHandles) {
         verify_ref_kind(_masm, JVM_REF_invokeInterface, member_reg, temp3);
       }
+
+      BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
 
       Register temp3_intf = temp3;
       __ load_heap_oop(temp3_intf, member_clazz);
