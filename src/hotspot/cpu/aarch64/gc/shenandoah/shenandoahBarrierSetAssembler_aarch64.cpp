@@ -48,7 +48,7 @@ address ShenandoahBarrierSetAssembler::_shenandoah_wb_C = NULL;
 void ShenandoahBarrierSetAssembler::arraycopy_prologue(MacroAssembler* masm, DecoratorSet decorators, bool is_oop,
                                                        Register addr, Register count, RegSet saved_regs) {
   if (is_oop) {
-    bool dest_uninitialized = (decorators & AS_DEST_NOT_INITIALIZED) != 0;
+    bool dest_uninitialized = (decorators & IS_DEST_UNINITIALIZED) != 0;
     if (!dest_uninitialized && !ShenandoahHeap::heap()->heuristics()->can_do_traversal_gc()) {
       __ push(saved_regs, sp);
       if (count == c_rarg0) {
@@ -421,7 +421,7 @@ void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register op
 }
 
 void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
-  bool oop_not_null = (decorators & OOP_NOT_NULL) != 0;
+  bool oop_not_null = (decorators & IS_NOT_NULL) != 0;
   if (oop_not_null) {
     read_barrier_not_null(masm, obj);
   } else {

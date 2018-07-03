@@ -346,7 +346,7 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   LIR_Opr obj_opr = obj.result();
   DecoratorSet decorators = IN_HEAP;
   if (!x->needs_null_check()) {
-    decorators |= OOP_NOT_NULL;
+    decorators |= IS_NOT_NULL;
   }
   obj_opr = access_resolve_for_write(decorators, obj_opr, state_for(x));
   monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
@@ -882,12 +882,12 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIR_Opr src_op = src.result();
   DecoratorSet decorators = IN_HEAP;
   if (!x->arg_needs_null_check(2)) {
-    decorators |= OOP_NOT_NULL;
+    decorators |= IS_NOT_NULL;
   }
   dst_op = access_resolve_for_write(decorators, dst_op, info);
   decorators = IN_HEAP;
   if (!x->arg_needs_null_check(0)) {
-    decorators |= OOP_NOT_NULL;
+    decorators |= IS_NOT_NULL;
   }
   src_op = access_resolve_for_read(decorators, src_op, info);
 
