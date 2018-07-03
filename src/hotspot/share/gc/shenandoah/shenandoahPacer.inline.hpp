@@ -28,6 +28,7 @@
 
 inline void ShenandoahPacer::report_mark(size_t words) {
   report_internal(words);
+  report_progress_internal(words);
 }
 
 inline void ShenandoahPacer::report_evac(size_t words) {
@@ -50,6 +51,12 @@ inline void ShenandoahPacer::report_internal(size_t words) {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
   STATIC_ASSERT(sizeof(size_t) <= sizeof(intptr_t));
   Atomic::add((intptr_t)words, &_budget);
+}
+
+inline void ShenandoahPacer::report_progress_internal(size_t words) {
+  assert(ShenandoahPacing, "Only be here when pacing is enabled");
+  STATIC_ASSERT(sizeof(size_t) <= sizeof(intptr_t));
+  Atomic::add((intptr_t)words, &_progress);
 }
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_INLINE_HPP

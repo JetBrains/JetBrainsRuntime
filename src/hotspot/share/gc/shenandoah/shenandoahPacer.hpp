@@ -29,6 +29,9 @@
 
 class ShenandoahHeap;
 
+#define PACING_PROGRESS_UNINIT (-1)
+#define PACING_PROGRESS_ZERO   ( 0)
+
 /**
  * ShenandoahPacer provides allocation pacing mechanism.
  *
@@ -42,9 +45,15 @@ private:
   volatile double _tax_rate;
   BinaryMagnitudeSeq _delays;
 
+  volatile intptr_t _progress;
+  TruncatedSeq* _progress_history;
+
 public:
   ShenandoahPacer(ShenandoahHeap* heap) :
-          _heap(heap), _budget(0), _tax_rate(1) {}
+          _heap(heap), _budget(0), _tax_rate(1),
+          _progress(PACING_PROGRESS_UNINIT),
+          _progress_history(new TruncatedSeq(5)) {
+  }
 
   void setup_for_idle();
   void setup_for_mark();
@@ -67,7 +76,11 @@ public:
 
 private:
   inline void report_internal(size_t words);
+  inline void report_progress_internal(size_t words);
+
   void restart_with(size_t non_taxable_bytes, double tax_rate);
+
+  size_t update_and_get_progress_history();
 };
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_HPP

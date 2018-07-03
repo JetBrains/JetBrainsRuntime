@@ -54,6 +54,7 @@ void ShenandoahCollectionSet::add_region(ShenandoahHeapRegion* r) {
   _region_count ++;
   _garbage += r->garbage();
   _live_data += r->get_live_data_bytes();
+  _used += r->used();
 }
 
 bool ShenandoahCollectionSet::add_region_check_for_duplicates(ShenandoahHeapRegion* r) {
@@ -96,6 +97,7 @@ void ShenandoahCollectionSet::clear() {
 
   _garbage = 0;
   _live_data = 0;
+  _used = 0;
 
   _region_count = 0;
   _current_index = 0;

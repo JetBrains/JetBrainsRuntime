@@ -1096,13 +1096,13 @@ public:
       assert(r->has_live(), "all-garbage regions are reclaimed early");
       _sh->marked_object_iterate(r, &cl);
 
+      if (ShenandoahPacing) {
+        _sh->pacer()->report_evac(r->used() >> LogHeapWordSize);
+      }
+
       if (_sh->check_cancelled_gc_and_yield()) {
         log_develop_trace(gc, region)("Cancelled GC while evacuating region " SIZE_FORMAT, r->region_number());
         break;
-      }
-
-      if (ShenandoahPacing) {
-        _sh->pacer()->report_evac(r->get_live_data_words());
       }
     }
   }
@@ -2442,10 +2442,12 @@ public:
       } else {
         if (r->is_active()) {
           _heap->marked_object_oop_safe_iterate(r, &cl);
-          if (ShenandoahPacing) {
-            _heap->pacer()->report_updaterefs(r->get_live_data_words());
-          }
         }
+      }
+      if (ShenandoahPacing) {
+        HeapWord* top_at_start_ur = r->concurrent_iteration_safe_limit();
+        assert (top_at_start_ur >= r->bottom(), "sanity");
+        _heap->pacer()->report_updaterefs(pointer_delta(top_at_start_ur, r->bottom()));
       }
       if (_heap->check_cancelled_gc_and_yield(_concurrent)) {
         return;

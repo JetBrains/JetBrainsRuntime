@@ -35,12 +35,18 @@
  * relative performances of the each stage in the concurrent cycle, and so we have to
  * make some assumptions.
  *
- * We assume, for pessimistic reasons, that the entire heap is full of alive objects,
- * and it will be evacuated fully. Therefore, we count live objects visited by all three
- * stages against the heap used at the beginning of the collection. That means if there
- * are dead objects, they would not be accounted for in this budget, and that would mean
- * allocation would be pacified excessively. But that *also* means the collection cycle
- * would finish earlier than pacer expects.
+ * For concurrent mark, there is no clear notion of progress. The moderately accurate
+ * and easy to get metric is the amount of live objects the mark had encountered. But,
+ * that does directly correlate with the used heap, because the heap might be fully
+ * dead or fully alive. We cannot assume either of the extremes: we would either allow
+ * application to run out of memory if we assume heap is fully dead but it is not, and,
+ * conversely, we would pacify application excessively if we assume heap is fully alive
+ * but it is not. So we need to guesstimate the particular expected value for heap liveness.
+ * The best way to do this is apparently recording the past history.
+ *
+ * For concurrent evac and update-refs, we are walking the heap per-region, and so the
+ * notion of progress is clear: we get reported the "used" size from the processed regions
+ * and use the global heap-used as the baseline.
  *
  * The allocatable space when GC is running is "free" at the start of cycle, but the
  * accounted budget is based on "used". So, we need to adjust the tax knowing that.
@@ -53,43 +59,50 @@
 void ShenandoahPacer::setup_for_mark() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
-  size_t used = _heap->used();
+  size_t live = update_and_get_progress_history();
   size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * used / taxable; // base tax for available free space
+  double tax = 1.0 * live / taxable; // base tax for available free space
   tax *= 3;                          // mark is phase 1 of 3, claim 1/3 of free for it
-  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
   tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Mark. Used: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Mark. Expected Live: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
-                     used / M, free / M, non_taxable / M, tax);
+                     live / M, free / M, non_taxable / M, tax);
 }
 
 void ShenandoahPacer::setup_for_evac() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
-  size_t cset = _heap->collection_set()->live_data();
+  size_t used = _heap->collection_set()->used();
+  size_t live = _heap->collection_set()->live_data();
   size_t free = _heap->free_set()->available();
+
+  // Evacuation allocates, bypassing the pacing. Discount that from free space available.
+  if (free > live) {
+    free -= live;
+  } else {
+    free = ShenandoahHeapRegion::region_size_bytes() * 10;
+  }
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * cset / taxable; // base tax for available free space
+  double tax = 1.0 * used / taxable; // base tax for available free space
   tax *= 2;                          // evac is phase 2 of 3, claim 1/2 of remaining free
-  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax = MAX2<double>(1, tax);        // never allocate more than GC processes during the phase
   tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Evacuation. CSet: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Evacuation. Used CSet: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
-                     cset / M, free / M, non_taxable / M, tax);
+                     used / M, free / M, non_taxable / M, tax);
 }
 
 void ShenandoahPacer::setup_for_updaterefs() {
@@ -103,40 +116,39 @@ void ShenandoahPacer::setup_for_updaterefs() {
 
   double tax = 1.0 * used / taxable; // base tax for available free space
   tax *= 1;                          // update-refs is phase 3 of 3, claim the remaining free
-  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
+  tax = MAX2<double>(1, tax);        // never allocate more than GC processes during the phase
   tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Update-Refs. Used: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Update Refs. Used: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
                      used / M, free / M, non_taxable / M, tax);
 }
 
 /*
- * Traversal walks the entire heap once, and therefore we can track "used" as our base, and
- * pessimistically expect entire heap is "live" and fully evacuated. See the discussion for
- * normal concurent cycle above.
+ * Traversal walks the entire heap once, and therefore we have to make assumptions about its
+ * liveness, like concurrent mark does.
  */
 
 void ShenandoahPacer::setup_for_traversal() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
-  size_t used = _heap->used();
+  size_t live = update_and_get_progress_history();
   size_t free = _heap->free_set()->available();
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
 
-  double tax = 1.0 * used / taxable; // base tax for available free space
+  double tax = 1.0 * live / taxable; // base tax for available free space
   tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
   tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Traversal. Used: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Traversal. Expected Live: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
-                     used / M, free / M, non_taxable / M, tax);
+                     live / M, free / M, non_taxable / M, tax);
 }
 
 /*
@@ -183,6 +195,19 @@ void ShenandoahPacer::setup_for_idle() {
 
   log_info(gc, ergo)("Pacer for Idle. Initial: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
                      initial / M, tax);
+}
+
+size_t ShenandoahPacer::update_and_get_progress_history() {
+  if (_progress == -1) {
+    // First initialization, report some prior
+    Atomic::store((intptr_t)PACING_PROGRESS_ZERO, &_progress);
+    return (size_t) (_heap->capacity() * 0.1);
+  } else {
+    // Record history, and reply historical data
+    _progress_history->add(_progress);
+    Atomic::store((intptr_t)PACING_PROGRESS_ZERO, &_progress);
+    return (size_t) (_progress_history->avg() * HeapWordSize);
+  }
 }
 
 void ShenandoahPacer::restart_with(size_t non_taxable_bytes, double tax_rate) {
