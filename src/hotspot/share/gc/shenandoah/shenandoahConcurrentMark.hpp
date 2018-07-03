@@ -99,7 +99,7 @@ public:
   static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q);
 
   template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
-  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq = NULL);
+  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q);
 
   void mark_from_roots();
 

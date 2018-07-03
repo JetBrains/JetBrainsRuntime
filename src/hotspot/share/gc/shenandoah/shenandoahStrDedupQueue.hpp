@@ -29,129 +29,86 @@
 #include "oops/oop.hpp"
 #include "runtime/mutex.hpp"
 
-template <size_t SIZE>
-class ShenandoahStrDedupChunkedList : public CHeapObj<mtGC> {
+template <uint buffer_size>
+class ShenandoahOopBuffer : public CHeapObj<mtGC> {
 private:
-  oop                                   _oops[SIZE];
-  ShenandoahStrDedupChunkedList<SIZE>*  _next;
-  uint                                  _index;
+  oop   _buf[buffer_size];
+  uint  _index;
+  ShenandoahOopBuffer<buffer_size>* _next;
 
 public:
-  ShenandoahStrDedupChunkedList() : _next(NULL), _index(0) { }
+  ShenandoahOopBuffer();
 
-  inline bool is_full() const  { return _index == SIZE; }
-  inline bool is_empty() const { return _index == 0; }
-  inline void push(oop obj)    { assert(!is_full(), "List is full");  _oops[_index ++] = obj; }
-  inline oop  pop()            { assert(!is_empty(), "List is empty"); return _oops[--_index]; }
-  inline size_t size() const   { return _index; }
-  inline void reset() {
-    _index = 0;
-    _next = NULL;
-  }
+  bool is_full()  const;
+  bool is_empty() const;
+  uint size()     const;
 
-  void set_next(ShenandoahStrDedupChunkedList<SIZE>* q) { _next = q; }
-  ShenandoahStrDedupChunkedList<SIZE>* next() const { return _next; }
+  void push(oop obj);
+  oop pop();
 
-  void oops_do(OopClosure* cl) {
-    assert(cl != NULL, "null closure");
-    for (uint index = 0; index < size(); index ++) {
-      cl->do_oop(&_oops[index]);
-    }
-  }
-};
+  void reset();
 
-class ShenandoahStrDedupQueueSet;
+  void set_next(ShenandoahOopBuffer<buffer_size>* next);
+  ShenandoahOopBuffer<buffer_size>* next() const;
 
-typedef ShenandoahStrDedupChunkedList<64> QueueChunkedList;
-
-
-class ShenandoahStrDedupQueue : public CHeapObj<mtGC> {
-private:
-  ShenandoahStrDedupQueueSet* _queue_set;
-  QueueChunkedList*           _current_list;
-  uint                        _queue_num;
-
-public:
-  ShenandoahStrDedupQueue(ShenandoahStrDedupQueueSet* queue_set, uint num);
-  ~ShenandoahStrDedupQueue();
-
-  uint queue_num() const { return _queue_num; }
-  inline void push(oop java_string);
+  void unlink_or_oops_do(StringDedupUnlinkOrOopsDoClosure* cl);
   void oops_do(OopClosure* cl);
 };
 
-class ShenandoahStrDedupThread;
+typedef ShenandoahOopBuffer<64> ShenandoahQueueBuffer;
 
-class ShenandoahStrDedupQueueSet : public CHeapObj<mtGC> {
-  friend class ShenandoahStrDedupQueue;
-  friend class ShenandoahStrDedupThread;
+// Muti-producer and single consumer queue set
+class ShenandoahStrDedupQueue : public StringDedupQueue {
+private:
+  ShenandoahQueueBuffer** _producer_queues;
+  ShenandoahQueueBuffer*  _consumer_queue;
+  size_t                  _num_producer_queue;
+
+  // The queue is used for producers to publish completed buffers
+  ShenandoahQueueBuffer* _published_queues;
+
+  // Cached free buffers
+  ShenandoahQueueBuffer* _free_list;
+  size_t                 _num_free_buffer;
+  const size_t           _max_free_buffer;
+
+  bool                   _cancel;
+
+  // statistics
+  size_t                 _total_buffers;
 
 private:
-  ShenandoahStrDedupQueue**     _local_queues;
-  uint                          _num_queues;
-  QueueChunkedList* volatile *  _outgoing_work_list;
-
-  QueueChunkedList*   _free_list;
-  uint                _num_free_queues;
-
-  Monitor*            _lock;
-
-  bool                _terminated;
-
-  volatile size_t     _claimed;
+  ~ShenandoahStrDedupQueue();
 
 public:
-  ShenandoahStrDedupQueueSet(uint n);
-  ~ShenandoahStrDedupQueueSet();
+  ShenandoahStrDedupQueue();
 
-  uint num_queues() const { return _num_queues; }
+  void wait_impl();
+  void cancel_wait_impl();
 
-  ShenandoahStrDedupQueue* queue_at(size_t index) {
-    assert(index < num_queues(), "Index out of bound");
-    return _local_queues[index];
-  }
+  void push_impl(uint worker_id, oop string_oop);
+  oop  pop_impl();
 
-  void clear_claimed() { _claimed = 0; }
-  void parallel_cleanup();
-  void parallel_oops_do(OopClosure* cl);
 
-  // For verification only
-  void oops_do_slow(OopClosure* cl);
+  void unlink_or_oops_do_impl(StringDedupUnlinkOrOopsDoClosure* cl, size_t queue);
 
-  void terminate();
-  bool has_terminated() {
-    return _terminated;
-  }
+  void print_statistics_impl();
+  void verify_impl();
+
+protected:
+  size_t num_queues() const { return (_num_producer_queue + 2); }
 
 private:
-  void release_chunked_list(QueueChunkedList* l);
+  ShenandoahQueueBuffer* new_buffer();
 
-  QueueChunkedList* allocate_chunked_list();
-  QueueChunkedList* allocate_no_lock();
+  void release_free_list();
+  void release_buffers(ShenandoahQueueBuffer* list);
 
-  // Atomic publish and retrieve outgoing work list.
-  // We don't have ABA problem, since there is only one dedup thread.
-  QueueChunkedList* push_and_get_atomic(QueueChunkedList* q, uint queue_num);
-  QueueChunkedList* remove_work_list_atomic(uint queue_num);
+  ShenandoahQueueBuffer* queue_at(size_t queue_id) const;
 
-  Monitor* lock() const { return _lock; }
+  void set_producer_buffer(ShenandoahQueueBuffer* buf, size_t queue_id);
 
-  size_t claim();
-};
-
-
-class ShenandoahStrDedupQueueCleanupClosure : public OopClosure {
-private:
-  ShenandoahHeap*   _heap;
-
-  template <class T>
-  inline void do_oop_work(T* p);
-public:
-  ShenandoahStrDedupQueueCleanupClosure() : _heap(ShenandoahHeap::heap()) {
-  }
-
-  inline void do_oop(oop* p)        { do_oop_work(p); }
-  inline void do_oop(narrowOop* p)  { do_oop_work(p); }
+  void verify(ShenandoahQueueBuffer* head);
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUPQUEUE_HPP

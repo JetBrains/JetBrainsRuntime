@@ -31,8 +31,6 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
-#include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
-#include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
@@ -63,12 +61,16 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
   }
 
   if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahStringDedup::clear_claimed();
+    StringDedup::gc_prologue(false);
   }
 }
 
 ShenandoahRootProcessor::~ShenandoahRootProcessor() {
   delete _process_strong_tasks;
+  if (ShenandoahStringDedup::is_enabled()) {
+    StringDedup::gc_epilogue();
+  }
+
   ShenandoahHeap::heap()->phase_timings()->record_workers_end(_phase);
 
   if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
@@ -197,8 +199,7 @@ void ShenandoahRootProcessor::process_vm_roots(OopClosure* strong_roots,
   }
 
   if (ShenandoahStringDedup::is_enabled() && weak_roots != NULL) {
-    ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::StringDedupRoots, worker_id);
-    ShenandoahStringDedup::parallel_oops_do(weak_roots);
+    ShenandoahStringDedup::parallel_oops_do(weak_roots, worker_id);
   }
 
   {

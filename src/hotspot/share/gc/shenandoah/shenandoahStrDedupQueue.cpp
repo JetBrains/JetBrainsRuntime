@@ -23,172 +23,202 @@
 
 #include "precompiled.hpp"
 
+#include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
-#include "runtime/atomic.hpp"
+#include "logging/log.hpp"
+#include "runtime/mutex.hpp"
 
-ShenandoahStrDedupQueue::ShenandoahStrDedupQueue(ShenandoahStrDedupQueueSet* queue_set, uint num) :
-  _queue_set(queue_set), _current_list(NULL), _queue_num(num) {
-  assert(num < _queue_set->num_queues(), "Not valid queue number");
+ShenandoahStrDedupQueue::ShenandoahStrDedupQueue() :
+  _consumer_queue(NULL), _free_list(NULL), _published_queues(NULL), _cancel(false),
+  _num_producer_queue(ShenandoahHeap::heap()->max_workers()), _num_free_buffer(0),
+  _max_free_buffer(ShenandoahHeap::heap()->max_workers() * 2),
+  _total_buffers(0) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+  _producer_queues = NEW_C_HEAP_ARRAY(ShenandoahQueueBuffer*, _num_producer_queue, mtGC);
+  for (size_t index = 0; index < _num_producer_queue; index ++) {
+    _producer_queues[index] = NULL;
+  }
 }
 
 ShenandoahStrDedupQueue::~ShenandoahStrDedupQueue() {
-  if (_current_list != NULL) {
-    delete _current_list;
+  MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+  for (size_t index = 0; index < num_queues(); index ++) {
+    release_buffers(queue_at(index));
+  }
+
+  release_buffers(_free_list);
+  FREE_C_HEAP_ARRAY(ShenandoahQueueBuffer*, _producer_queues);
+}
+
+void ShenandoahStrDedupQueue::wait_impl() {
+  MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+  while (_consumer_queue == NULL && !_cancel) {
+    ml.wait(Mutex::_no_safepoint_check_flag);
+    _consumer_queue = _published_queues;
+    _published_queues = NULL;
   }
 }
 
-void ShenandoahStrDedupQueue::oops_do(OopClosure* cl) {
-  if (_current_list != NULL) {
-    _current_list->oops_do(cl);
+void ShenandoahStrDedupQueue::cancel_wait_impl() {
+  MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+  _cancel = true;
+  ml.notify();
+}
+
+void ShenandoahStrDedupQueue::unlink_or_oops_do_impl(StringDedupUnlinkOrOopsDoClosure* cl, size_t queue) {
+  ShenandoahQueueBuffer* q = queue_at(queue);
+  while (q != NULL) {
+    q->unlink_or_oops_do(cl);
+    q = q->next();
   }
 }
 
-ShenandoahStrDedupQueueSet::ShenandoahStrDedupQueueSet(uint n) :
-  _num_queues(n), _free_list(NULL), _num_free_queues(0), _terminated(false), _claimed(0) {
-  _lock = new Monitor(Mutex::access, "ShenandoahStrDedupQueueLock", false, Monitor::_safepoint_check_never);
-
-  _local_queues = NEW_C_HEAP_ARRAY(ShenandoahStrDedupQueue*, num_queues(), mtGC);
-  _outgoing_work_list = NEW_C_HEAP_ARRAY(QueueChunkedList*, num_queues(), mtGC);
-
-  for (uint index = 0; index < num_queues(); index ++) {
-    _local_queues[index] = new ShenandoahStrDedupQueue(this, index);
-    _outgoing_work_list[index] = NULL;
+ShenandoahQueueBuffer* ShenandoahStrDedupQueue::queue_at(size_t queue_id) const {
+  assert(queue_id <= num_queues(), "Invalid queue id");
+  if (queue_id < _num_producer_queue) {
+    return _producer_queues[queue_id];
+  } else if (queue_id == _num_producer_queue) {
+    return _consumer_queue;
+  } else {
+    assert(queue_id == _num_producer_queue + 1, "Must be");
+    return _published_queues;
   }
 }
 
-ShenandoahStrDedupQueueSet::~ShenandoahStrDedupQueueSet() {
-  QueueChunkedList* q;
-  QueueChunkedList* tmp;
+void ShenandoahStrDedupQueue::set_producer_buffer(ShenandoahQueueBuffer* buf, size_t queue_id) {
+  assert(queue_id < _num_producer_queue, "Not a producer queue id");
+  _producer_queues[queue_id] = buf;
+}
 
-  for (uint index = 0; index < num_queues(); index ++) {
-    if (_local_queues[index] != NULL) {
-      delete _local_queues[index];
+void ShenandoahStrDedupQueue::push_impl(uint worker_id, oop string_oop) {
+  assert(worker_id < _num_producer_queue, "Invalid queue id. Can only push to producer queue");
+  assert(ShenandoahStringDedup::is_candidate(string_oop), "Not a candidate");
+
+  ShenandoahQueueBuffer* buf = queue_at((size_t)worker_id);
+
+  if (buf == NULL) {
+    MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+    buf = new_buffer();
+    set_producer_buffer(buf, worker_id);
+  } else if (buf->is_full()) {
+    MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+    buf->set_next(_published_queues);
+    _published_queues = buf;
+    buf = new_buffer();
+    set_producer_buffer(buf, worker_id);
+    ml.notify();
+  }
+
+  assert(!buf->is_full(), "Sanity");
+  buf->push(string_oop);
+}
+
+oop ShenandoahStrDedupQueue::pop_impl() {
+  if (_consumer_queue == NULL) {
+    MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+    _consumer_queue = _published_queues;
+    _published_queues = NULL;
+  }
+
+  // there is nothing
+  if (_consumer_queue == NULL) {
+    return NULL;
+  }
+
+  assert(!_consumer_queue->is_empty(), "Should not be empty");
+  oop obj = _consumer_queue->pop();
+  if (_consumer_queue->is_empty()) {
+    ShenandoahQueueBuffer* buf = _consumer_queue;
+    _consumer_queue = _consumer_queue->next();
+    buf->set_next(NULL);
+    {
+      MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+      release_buffers(buf);
     }
+  }
 
-    q = _outgoing_work_list[index];
-    while (q != NULL) {
-      tmp = q;
-      q = q->next();
+  assert(obj == NULL || ShenandoahStringDedup::is_candidate(obj), "Must be a candidate");
+  return obj;
+}
+
+ShenandoahQueueBuffer* ShenandoahStrDedupQueue::new_buffer() {
+  assert_lock_strong(StringDedupQueue_lock);
+  if (_free_list != NULL) {
+    assert(_num_free_buffer > 0, "Sanity");
+    ShenandoahQueueBuffer* buf = _free_list;
+    _free_list = _free_list->next();
+    _num_free_buffer --;
+    buf->reset();
+    return buf;
+  } else {
+    assert(_num_free_buffer == 0, "Sanity");
+    _total_buffers ++;
+    return new ShenandoahQueueBuffer;
+  }
+}
+
+void ShenandoahStrDedupQueue::release_buffers(ShenandoahQueueBuffer* list) {
+  assert_lock_strong(StringDedupQueue_lock);
+  while (list != NULL) {
+    ShenandoahQueueBuffer* tmp = list;
+    list = list->next();
+    if (_num_free_buffer < _max_free_buffer) {
+      tmp->set_next(_free_list);
+      _free_list = tmp;
+      _num_free_buffer ++;
+    } else {
+      _total_buffers --;
       delete tmp;
     }
   }
+}
 
-  q = _free_list;
-  while (q != NULL) {
-    tmp = q;
-    q = tmp->next();
-    delete tmp;
+void ShenandoahStrDedupQueue::print_statistics_impl() {
+  Log(gc, stringdedup) log;
+  log.debug("  Queue:");
+  log.debug("    Total buffers: " SIZE_FORMAT " (" SIZE_FORMAT " K). " SIZE_FORMAT " buffers are on free list",
+    _total_buffers, (_total_buffers * sizeof(ShenandoahQueueBuffer) / K), _num_free_buffer);
+}
+
+
+class VerifyQueueClosure : public OopClosure {
+private:
+  ShenandoahHeap* _heap;
+public:
+  VerifyQueueClosure();
+
+  void do_oop(oop* o);
+  void do_oop(narrowOop* o) {
+    ShouldNotCallThis();
   }
+};
 
-  FREE_C_HEAP_ARRAY(ShenandoahStrDedupQueue*, _local_queues);
-  FREE_C_HEAP_ARRAY(QueueChunkedList*, _outgoing_work_list);
-
-  delete _lock;
+VerifyQueueClosure::VerifyQueueClosure() :
+  _heap(ShenandoahHeap::heap()) {
 }
 
-
-size_t ShenandoahStrDedupQueueSet::claim() {
-  size_t index = Atomic::add(size_t(1), &_claimed) - 1;
-  return index;
-}
-
-void ShenandoahStrDedupQueueSet::parallel_oops_do(OopClosure* cl) {
-  assert(cl != NULL, "No closure");
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
-  size_t claimed_index;
-  while ((claimed_index = claim()) < num_queues()) {
-    queue_at(claimed_index)->oops_do(cl);
-    QueueChunkedList* head = _outgoing_work_list[claimed_index];
-    while (head != NULL) {
-      head->oops_do(cl);
-      head = head->next();
-    }
+void VerifyQueueClosure::do_oop(oop* o) {
+  if (*o != NULL) {
+    assert(!_heap->is_in((void*)o), "off heap location");
+    oop obj = *o;
+    assert(_heap->is_in(obj), "Object must be on the heap");
+    assert(java_lang_String::is_instance(obj), "Object must be a String");
   }
 }
 
-void ShenandoahStrDedupQueueSet::oops_do_slow(OopClosure* cl) {
-  assert(cl != NULL, "No closure");
-  assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
+void ShenandoahStrDedupQueue::verify_impl() {
+  VerifyQueueClosure vcl;
   for (size_t index = 0; index < num_queues(); index ++) {
-    queue_at(index)->oops_do(cl);
-    QueueChunkedList* head = _outgoing_work_list[index];
-    while (head != NULL) {
-      head->oops_do(cl);
-      head = head->next();
+    ShenandoahQueueBuffer* buf = queue_at(index);
+    while (buf != NULL) {
+      buf->oops_do(&vcl);
+      buf = buf->next();
     }
   }
 }
 
-void ShenandoahStrDedupQueueSet::terminate() {
-  MonitorLockerEx locker(_lock, Mutex::_no_safepoint_check_flag);
-  _terminated = true;
-  locker.notify_all();
-}
 
-void ShenandoahStrDedupQueueSet::release_chunked_list(QueueChunkedList* q) {
-  assert(q != NULL, "null queue");
-  MutexLockerEx locker(lock(), Mutex::_no_safepoint_check_flag);
-  if (_num_free_queues >= 2 * num_queues()) {
-    delete q;
-  } else {
-    q->set_next(_free_list);
-    _free_list = q;
-    _num_free_queues ++;
-  }
-}
 
-QueueChunkedList* ShenandoahStrDedupQueueSet::allocate_no_lock() {
-  assert_lock_strong(lock());
-
-  if (_free_list != NULL) {
-    QueueChunkedList* q = _free_list;
-    _free_list = _free_list->next();
-    _num_free_queues --;
-    q->reset();
-    return q;
-  } else {
-    return new QueueChunkedList();
-  }
-}
-
-QueueChunkedList* ShenandoahStrDedupQueueSet::allocate_chunked_list() {
-  MutexLockerEx locker(_lock, Mutex::_no_safepoint_check_flag);
-  return allocate_no_lock();
-}
-
-QueueChunkedList* ShenandoahStrDedupQueueSet::push_and_get_atomic(QueueChunkedList* q, uint queue_num) {
-  QueueChunkedList* head = _outgoing_work_list[queue_num];
-  QueueChunkedList* result;
-  q->set_next(head);
-  while ((result = Atomic::cmpxchg(q, &_outgoing_work_list[queue_num], head)) != head) {
-    head = result;
-    q->set_next(head);
-  }
-
-  {
-    MutexLockerEx locker(lock(), Mutex::_no_safepoint_check_flag);
-    q = allocate_no_lock();
-    lock()->notify();
-  }
-  return q;
-}
-
-QueueChunkedList* ShenandoahStrDedupQueueSet::remove_work_list_atomic(uint queue_num) {
-  assert(queue_num < num_queues(), "Invalid queue number");
-
-  QueueChunkedList* list = _outgoing_work_list[queue_num];
-  QueueChunkedList* result;
-  while ((result = Atomic::cmpxchg((QueueChunkedList*)NULL, &_outgoing_work_list[queue_num], list)) != list) {
-    list = result;
-  }
-
-  return list;
-}
-
-void ShenandoahStrDedupQueueSet::parallel_cleanup() {
-  ShenandoahStrDedupQueueCleanupClosure cl;
-  parallel_oops_do(&cl);
-}

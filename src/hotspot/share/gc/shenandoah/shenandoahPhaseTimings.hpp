@@ -59,7 +59,8 @@ public:
     scan_system_dictionary_roots,
     scan_cldg_roots,
     scan_jvmti_roots,
-    scan_string_dedup_roots,
+    scan_string_dedup_table_roots,
+    scan_string_dedup_queue_roots,
     scan_finish_queues,
 
     resize_tlabs,
@@ -81,7 +82,8 @@ public:
     update_system_dictionary_roots,
     update_cldg_roots,
     update_jvmti_roots,
-    update_string_dedup_roots,
+    update_string_dedup_table_roots,
+    update_string_dedup_queue_roots,
     update_finish_queues,
 
     finish_queues,
@@ -95,8 +97,8 @@ public:
     purge_par_rmt,
     purge_par_classes,
     purge_par_sync,
-    purge_par_string_dedup,
     purge_cldg,
+    purge_string_dedup,
     prepare_evac,
     recycle_regions,
 
@@ -114,7 +116,8 @@ public:
     evac_system_dictionary_roots,
     evac_cldg_roots,
     evac_jvmti_roots,
-    evac_string_dedup_roots,
+    evac_string_dedup_table_roots,
+    evac_string_dedup_queue_roots,
     evac_finish_queues,
 
     final_evac_gross,
@@ -141,7 +144,8 @@ public:
     final_update_refs_system_dict_roots,
     final_update_refs_cldg_roots,
     final_update_refs_jvmti_roots,
-    final_update_refs_string_dedup_roots,
+    final_update_refs_string_dedup_table_roots,
+    final_update_refs_string_dedup_queue_roots,
     final_update_refs_finish_queues,
 
     final_update_refs_recycle,
@@ -167,7 +171,8 @@ public:
     init_traversal_gc_system_dict_roots,
     init_traversal_gc_cldg_roots,
     init_traversal_gc_jvmti_roots,
-    init_traversal_gc_string_dedup_roots,
+    init_traversal_gc_string_dedup_table_roots,
+    init_traversal_gc_string_dedup_queue_roots,
     init_traversal_gc_finish_queues,
 
     final_traversal_gc_gross,
@@ -187,7 +192,8 @@ public:
     final_traversal_gc_system_dict_roots,
     final_traversal_gc_cldg_roots,
     final_traversal_gc_jvmti_roots,
-    final_traversal_gc_string_dedup_roots,
+    final_traversal_gc_string_dedup_table_roots,
+    final_traversal_gc_string_dedup_queue_roots,
     final_traversal_gc_finish_queues,
 
     // Per-thread timer block, should have "roots" counters in consistent order
@@ -204,7 +210,8 @@ public:
     final_traversal_update_system_dict_roots,
     final_traversal_update_cldg_roots,
     final_traversal_update_jvmti_roots,
-    final_traversal_update_string_dedup_roots,
+    final_traversal_update_string_dedup_table_roots,
+    final_traversal_update_string_dedup_queue_roots,
     final_traversal_update_finish_queues,
 
     traversal_gc_cleanup,
@@ -228,7 +235,8 @@ public:
     full_gc_system_dictionary_roots,
     full_gc_cldg_roots,
     full_gc_jvmti_roots,
-    full_gc_string_dedup_roots,
+    full_gc_string_dedup_table_roots,
+    full_gc_string_dedup_queue_roots,
     full_gc_finish_queues,
 
     full_gc_mark,
@@ -244,7 +252,7 @@ public:
     full_gc_purge_par_classes,
     full_gc_purge_par_sync,
     full_gc_purge_cldg,
-    full_gc_purge_par_string_dedup,
+    full_gc_purge_string_dedup,
     full_gc_calculate_addresses,
     full_gc_calculate_addresses_regular,
     full_gc_calculate_addresses_humong,
@@ -255,7 +263,6 @@ public:
     full_gc_copy_objects_reset_next,
     full_gc_copy_objects_reset_complete,
     full_gc_copy_objects_rebuild,
-    full_gc_update_str_dedup_table,
     full_gc_resize_tlabs,
 
     // Longer concurrent phases at the end
@@ -292,7 +299,8 @@ public:
     SystemDictionaryRoots,
     CLDGRoots,
     JVMTIRoots,
-    StringDedupRoots,
+    StringDedupTableRoots,
+    StringDedupQueueRoots,
     FinishQueues,
     GCParPhasesSentinel
   };
@@ -343,9 +351,9 @@ public:
   // record the time a phase took in seconds
   void record_time_secs(ShenandoahPhaseTimings::GCParPhases phase, uint worker_i, double secs);
 
-  double average(uint i);
+  double average(uint i) const;
   void reset(uint i);
-  void print();
+  void print() const;
 };
 
 class ShenandoahWorkerTimingsTracker : public StackObj {

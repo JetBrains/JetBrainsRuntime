@@ -45,7 +45,6 @@
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
-#include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
@@ -458,8 +457,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
     if (!_heap->is_degenerated_gc_in_progress()) {
       if (_heap->unload_classes()) {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalMetadataDedupMatrixClosure cl(q, rp, dq);
+          ShenandoahTraversalMetadataDedupMatrixClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalMetadataDedupMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataMatrixClosure cl(q, rp);
@@ -467,8 +465,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalDedupMatrixClosure cl(q, rp, dq);
+          ShenandoahTraversalDedupMatrixClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalDedupMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMatrixClosure cl(q, rp);
@@ -478,8 +475,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
     } else {
       if (_heap->unload_classes()) {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalMetadataDedupDegenMatrixClosure cl(q, rp, dq);
+          ShenandoahTraversalMetadataDedupDegenMatrixClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalMetadataDedupDegenMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataDegenMatrixClosure cl(q, rp);
@@ -487,8 +483,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalDedupDegenMatrixClosure cl(q, rp, dq);
+          ShenandoahTraversalDedupDegenMatrixClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalDedupDegenMatrixClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalDegenMatrixClosure cl(q, rp);
@@ -500,8 +495,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
     if (!_heap->is_degenerated_gc_in_progress()) {
       if (_heap->unload_classes()) {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalMetadataDedupClosure cl(q, rp, dq);
+          ShenandoahTraversalMetadataDedupClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalMetadataDedupClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataClosure cl(q, rp);
@@ -509,8 +503,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalDedupClosure cl(q, rp, dq);
+          ShenandoahTraversalDedupClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalDedupClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalClosure cl(q, rp);
@@ -520,8 +513,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
     } else {
       if (_heap->unload_classes()) {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalMetadataDedupDegenClosure cl(q, rp, dq);
+          ShenandoahTraversalMetadataDedupDegenClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalMetadataDedupDegenClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalMetadataDegenClosure cl(q, rp);
@@ -529,8 +521,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
         }
       } else {
         if (ShenandoahStringDedup::is_enabled()) {
-          ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-          ShenandoahTraversalDedupDegenClosure cl(q, rp, dq);
+          ShenandoahTraversalDedupDegenClosure cl(q, rp);
           main_loop_work<ShenandoahTraversalDedupDegenClosure>(&cl, ld, w, t);
         } else {
           ShenandoahTraversalDegenClosure cl(q, rp);

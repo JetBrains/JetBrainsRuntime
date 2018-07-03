@@ -71,15 +71,6 @@ public:
 ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
   MetadataVisitingOopIterateClosure(rp),
   _queue(q),
-  _dedup_queue(NULL),
-  _heap(ShenandoahHeap::heap())
-{ }
-
-
-ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-  MetadataVisitingOopIterateClosure(rp),
-  _queue(q),
-  _dedup_queue(dq),
   _heap(ShenandoahHeap::heap())
 { }
 
@@ -254,6 +245,7 @@ public:
   }
 
   void work(uint worker_id) {
+    ShenandoahWorkerSession worker_session(worker_id);
     // First drain remaining SATB buffers.
     // Notice that this is not strictly necessary for mark-compact. But since
     // it requires a StrongRootsScope around the task, we need to claim the
@@ -897,8 +889,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
   if (class_unload) {
     if (update_refs) {
       if (strdedup) {
-        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-        ShenandoahMarkUpdateRefsMetadataDedupClosure cl(q, dq, rp);
+        ShenandoahMarkUpdateRefsMetadataDedupClosure cl(q, rp);
         mark_loop_work<ShenandoahMarkUpdateRefsMetadataDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsMetadataClosure cl(q, rp);
@@ -906,8 +897,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       }
     } else {
       if (strdedup) {
-        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-        ShenandoahMarkRefsMetadataDedupClosure cl(q, dq, rp);
+        ShenandoahMarkRefsMetadataDedupClosure cl(q, rp);
         mark_loop_work<ShenandoahMarkRefsMetadataDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsMetadataClosure cl(q, rp);
@@ -917,8 +907,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
   } else {
     if (update_refs) {
       if (strdedup) {
-        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-        ShenandoahMarkUpdateRefsDedupClosure cl(q, dq, rp);
+        ShenandoahMarkUpdateRefsDedupClosure cl(q, rp);
         mark_loop_work<ShenandoahMarkUpdateRefsDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkUpdateRefsClosure cl(q, rp);
@@ -926,8 +915,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
       }
     } else {
       if (strdedup) {
-        ShenandoahStrDedupQueue* dq = ShenandoahStringDedup::queue(w);
-        ShenandoahMarkRefsDedupClosure cl(q, dq, rp);
+        ShenandoahMarkRefsDedupClosure cl(q, rp);
         mark_loop_work<ShenandoahMarkRefsDedupClosure, CANCELLABLE>(&cl, ld, w, t);
       } else {
         ShenandoahMarkRefsClosure cl(q, rp);
@@ -1044,3 +1032,4 @@ void ShenandoahConcurrentMark::clear_claim_codecache() {
 jushort* ShenandoahConcurrentMark::get_liveness(uint worker_id) {
   return _liveness_local[worker_id];
 }
+

@@ -27,27 +27,71 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 
-void ShenandoahStrDedupQueue::push(oop java_string) {
-  if (_current_list == NULL) {
-    _current_list = _queue_set->allocate_chunked_list();
-  } else if (_current_list->is_full()) {
-    _current_list = _queue_set->push_and_get_atomic(_current_list, queue_num());
-  }
-
-  assert(_current_list != NULL && !_current_list->is_full(), "Sanity");
-  _current_list->push(java_string);
+template <uint buffer_size>
+ShenandoahOopBuffer<buffer_size>::ShenandoahOopBuffer() : _next(NULL), _index(0) {
 }
 
+template <uint buffer_size>
+bool ShenandoahOopBuffer<buffer_size>::is_full() const {
+  return _index >= buffer_size;
+}
 
-template <class T>
-void ShenandoahStrDedupQueueCleanupClosure::do_oop_work(T* p) {
-  T o = RawAccess<>::oop_load(p);
-  if (!CompressedOops::is_null(o)) {
-    oop obj = CompressedOops::decode_not_null(o);
-    assert(_heap->is_in(obj), "Must be in the heap");
-    if (!_heap->is_marked_next(obj)) {
-      RawAccess<IS_NOT_NULL>::oop_store(p, oop());
+template <uint buffer_size>
+bool ShenandoahOopBuffer<buffer_size>::is_empty() const {
+  return _index == 0;
+}
+
+template <uint buffer_size>
+uint ShenandoahOopBuffer<buffer_size>::size() const {
+  return _index;
+}
+
+template <uint buffer_size>
+void ShenandoahOopBuffer<buffer_size>::push(oop obj) {
+  assert(!is_full(),  "Buffer is full");
+  _buf[_index ++] = obj;
+}
+
+template <uint buffer_size>
+oop ShenandoahOopBuffer<buffer_size>::pop() {
+  assert(!is_empty(), "Buffer is empty");
+  return _buf[--_index];
+}
+
+template <uint buffer_size>
+void ShenandoahOopBuffer<buffer_size>::set_next(ShenandoahOopBuffer<buffer_size>* next) {
+  _next = next;
+}
+
+template <uint buffer_size>
+ShenandoahOopBuffer<buffer_size>* ShenandoahOopBuffer<buffer_size>::next() const {
+  return _next;
+}
+
+template <uint buffer_size>
+void ShenandoahOopBuffer<buffer_size>::reset() {
+  _index = 0;
+  _next = NULL;
+}
+
+template <uint buffer_size>
+void ShenandoahOopBuffer<buffer_size>::unlink_or_oops_do(StringDedupUnlinkOrOopsDoClosure* cl) {
+  for (uint index = 0; index < size(); index ++) {
+    oop* obj_addr = &_buf[index];
+    if (*obj_addr != NULL) {
+      if (cl->is_alive(*obj_addr)) {
+        cl->keep_alive(obj_addr);
+      } else {
+        *obj_addr = NULL;
+      }
     }
+  }
+}
+
+template <uint buffer_size>
+void ShenandoahOopBuffer<buffer_size>::oops_do(OopClosure* cl) {
+  for (uint index = 0; index < size(); index ++) {
+    cl->do_oop(&_buf[index]);
   }
 }
 

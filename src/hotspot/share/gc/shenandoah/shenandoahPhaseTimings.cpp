@@ -144,7 +144,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[purge_par_rmt]                   = "      Resolved Methods";
   _phase_names[purge_par_classes]               = "      Clean Classes";
   _phase_names[purge_par_sync]                  = "      Synchronization";
-  _phase_names[purge_par_string_dedup]          = "    String Dedup";
+  _phase_names[purge_string_dedup]              = "    String Dedup";
   _phase_names[purge_cldg]                      = "    CLDG";
   _phase_names[prepare_evac]                    = "  Prepare Evacuation";
 
@@ -161,7 +161,8 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[scan_system_dictionary_roots]    = "    S: System Dict Roots";
   _phase_names[scan_cldg_roots]                 = "    S: CLDG Roots";
   _phase_names[scan_jvmti_roots]                = "    S: JVMTI Roots";
-  _phase_names[scan_string_dedup_roots]         = "    S: String Dedup Roots";
+  _phase_names[scan_string_dedup_table_roots]   = "    S: Dedup Table Roots";
+  _phase_names[scan_string_dedup_queue_roots]   = "    S: Dedup Queue Roots";
   _phase_names[scan_finish_queues]              = "    S: Finish Queues";
 
   _phase_names[update_roots]                    = "  Update Roots";
@@ -177,7 +178,8 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[update_system_dictionary_roots]  = "    U: System Dict Roots";
   _phase_names[update_cldg_roots]               = "    U: CLDG Roots";
   _phase_names[update_jvmti_roots]              = "    U: JVMTI Roots";
-  _phase_names[update_string_dedup_roots]       = "    U: String Dedup Roots";
+  _phase_names[update_string_dedup_table_roots] = "    U: Dedup Table Roots";
+  _phase_names[update_string_dedup_queue_roots] = "    U: Dedup Queue Roots";
   _phase_names[update_finish_queues]            = "    U: Finish Queues";
 
   _phase_names[init_evac]                       = "  Initial Evacuation";
@@ -193,7 +195,8 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[evac_system_dictionary_roots]    = "    E: System Dict Roots";
   _phase_names[evac_cldg_roots]                 = "    E: CLDG Roots";
   _phase_names[evac_jvmti_roots]                = "    E: JVMTI Roots";
-  _phase_names[evac_string_dedup_roots]         = "    E: String Dedup Roots";
+  _phase_names[evac_string_dedup_table_roots]   = "    E: String Dedup Table Roots";
+  _phase_names[evac_string_dedup_queue_roots]   = "    E: String Dedup Queue Roots";
   _phase_names[evac_finish_queues]              = "    E: Finish Queues";
 
   _phase_names[recycle_regions]                 = "  Recycle regions";
@@ -218,7 +221,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_system_dictionary_roots] = "    F: System Dict Roots";
   _phase_names[full_gc_cldg_roots]              = "    F: CLDG Roots";
   _phase_names[full_gc_jvmti_roots]             = "    F: JVMTI Roots";
-  _phase_names[full_gc_string_dedup_roots]      = "    F: String Dedup Roots";
+  _phase_names[full_gc_string_dedup_table_roots]
+                                                = "    F: Dedup Table Roots";
+  _phase_names[full_gc_string_dedup_queue_roots]
+                                                = "    F: Dedup Queue Roots";
   _phase_names[full_gc_finish_queues]           = "    F: Finish Queues";
   _phase_names[full_gc_mark]                    = "  Mark";
   _phase_names[full_gc_mark_finish_queues]      = "    Finish Queues";
@@ -232,8 +238,9 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_purge_par_rmt]           = "      Resolved Methods";
   _phase_names[full_gc_purge_par_classes]       = "      Clean Classes";
   _phase_names[full_gc_purge_par_sync]          = "      Synchronization";
-  _phase_names[full_gc_purge_cldg]              = "      CLDG";
-  _phase_names[full_gc_purge_par_string_dedup]      = "    Purge String Dedup";
+  _phase_names[full_gc_purge_cldg]              = "    CLDG";
+  _phase_names[full_gc_purge_string_dedup]
+                                                = "    String Dedup";
   _phase_names[full_gc_calculate_addresses]     = "  Calculate Addresses";
   _phase_names[full_gc_calculate_addresses_regular] = "    Regular Objects";
   _phase_names[full_gc_calculate_addresses_humong]  = "    Humongous Objects";
@@ -244,7 +251,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_copy_objects_reset_next]     = "    Reset Next Bitmap";
   _phase_names[full_gc_copy_objects_reset_complete] = "    Reset Complete Bitmap";
   _phase_names[full_gc_copy_objects_rebuild]     = "    Rebuild Region Sets";
-  _phase_names[full_gc_update_str_dedup_table]  = "  Update String Dedup Table";
   _phase_names[full_gc_resize_tlabs]            = "  Resize TLABs";
 
   _phase_names[init_traversal_gc_gross]           = "Pause Init Traversal (G)";
@@ -263,7 +269,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[init_traversal_gc_system_dict_roots]   = "    TI: System Dict Roots";
   _phase_names[init_traversal_gc_cldg_roots]          = "    TI: CLDG Roots";
   _phase_names[init_traversal_gc_jvmti_roots]         = "    TI: JVMTI Roots";
-  _phase_names[init_traversal_gc_string_dedup_roots]  = "    TI: String Dedup Roots";
+  _phase_names[init_traversal_gc_string_dedup_table_roots]
+                                                      = "    TI: Dedup Table Roots";
+  _phase_names[init_traversal_gc_string_dedup_queue_roots]
+                                                      = "    TI: Dedup Queue Roots";
   _phase_names[init_traversal_gc_finish_queues]       = "    TI: Finish Queues";
   _phase_names[final_traversal_gc_gross]          = "Pause Final Traversal (G)";
   _phase_names[final_traversal_gc]                = "Pause Final Traversal (N)";
@@ -280,7 +289,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_traversal_gc_system_dict_roots]   = "    TF: System Dict Roots";
   _phase_names[final_traversal_gc_cldg_roots]          = "    TF: CLDG Roots";
   _phase_names[final_traversal_gc_jvmti_roots]         = "    TF: JVMTI Roots";
-  _phase_names[final_traversal_gc_string_dedup_roots]  = "    TF: String Dedup Roots";
+  _phase_names[final_traversal_gc_string_dedup_table_roots]
+                                                       = "    TF: Dedup Table Roots";
+  _phase_names[final_traversal_gc_string_dedup_queue_roots]
+                                                       = "    TF: Dedup Queue Roots";
   _phase_names[final_traversal_gc_finish_queues]       = "    TF: Finish Queues";
   _phase_names[final_traversal_update_roots]           = "  Update Roots";
   _phase_names[final_traversal_update_thread_roots]        = "    TU: Thread Roots";
@@ -295,7 +307,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_traversal_update_system_dict_roots]   = "    TU: System Dict Roots";
   _phase_names[final_traversal_update_cldg_roots]          = "    TU: CLDG Roots";
   _phase_names[final_traversal_update_jvmti_roots]         = "    TU: JVMTI Roots";
-  _phase_names[final_traversal_update_string_dedup_roots]  = "    TU: String Dedup Roots";
+  _phase_names[final_traversal_update_string_dedup_table_roots]
+                                                           = "    TU: Dedup Table Roots";
+  _phase_names[final_traversal_update_string_dedup_queue_roots]
+                                                           = "    TU: Dedup Queue Roots";
   _phase_names[final_traversal_update_finish_queues]       = "    TU: Finish Queues";
 
   _phase_names[traversal_gc_cleanup]              = "  Cleanup";
@@ -331,7 +346,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_update_refs_system_dict_roots]    = "    UR: System Dict Roots";
   _phase_names[final_update_refs_cldg_roots]           = "    UR: CLDG Roots";
   _phase_names[final_update_refs_jvmti_roots]          = "    UR: JVMTI Roots";
-  _phase_names[final_update_refs_string_dedup_roots]   = "    UR: String Dedup Roots";
+  _phase_names[final_update_refs_string_dedup_table_roots]
+                                                       = "    UR: Dedup Table Roots";
+  _phase_names[final_update_refs_string_dedup_queue_roots]
+                                                       = "    UR: Dedup Queue Roots";
   _phase_names[final_update_refs_finish_queues]        = "    UR: Finish Queues";
   _phase_names[final_update_refs_recycle]              = "  Recycle";
 }
@@ -354,7 +372,8 @@ ShenandoahWorkerTimings::ShenandoahWorkerTimings(uint max_gc_threads) :
   _gc_par_phases[ShenandoahPhaseTimings::SystemDictionaryRoots]   = new WorkerDataArray<double>(max_gc_threads, "SystemDictionary Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::CLDGRoots]               = new WorkerDataArray<double>(max_gc_threads, "CLDG Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::JVMTIRoots]              = new WorkerDataArray<double>(max_gc_threads, "JVMTI Roots (ms):");
-  _gc_par_phases[ShenandoahPhaseTimings::StringDedupRoots]        = new WorkerDataArray<double>(max_gc_threads, "String Dedup Roots (ms):");
+  _gc_par_phases[ShenandoahPhaseTimings::StringDedupTableRoots]   = new WorkerDataArray<double>(max_gc_threads, "String Dedup Table Roots (ms):");
+  _gc_par_phases[ShenandoahPhaseTimings::StringDedupQueueRoots]   = new WorkerDataArray<double>(max_gc_threads, "String Dedup Queue Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::FinishQueues]            = new WorkerDataArray<double>(max_gc_threads, "Finish Queues (ms):");
 }
 
@@ -363,14 +382,15 @@ void ShenandoahWorkerTimings::record_time_secs(ShenandoahPhaseTimings::GCParPhas
   _gc_par_phases[phase]->set(worker_i, secs);
 }
 
-double ShenandoahWorkerTimings::average(uint i) {
+double ShenandoahWorkerTimings::average(uint i) const {
   return _gc_par_phases[i]->average();
 }
+
 void ShenandoahWorkerTimings::reset(uint i) {
   _gc_par_phases[i]->reset();
 }
 
-void ShenandoahWorkerTimings::print() {
+void ShenandoahWorkerTimings::print() const {
   for (uint i = 0; i < ShenandoahPhaseTimings::GCParPhasesSentinel; i++) {
     _gc_par_phases[i]->print_summary_on(tty);
   }

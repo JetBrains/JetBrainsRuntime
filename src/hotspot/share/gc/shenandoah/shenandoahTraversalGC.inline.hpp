@@ -36,7 +36,7 @@
 #include "oops/oop.inline.hpp"
 
 template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
-void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj, ShenandoahStrDedupQueue* dq) {
+void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -82,10 +82,9 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
 
       if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj) && !_heap->cancelled_gc()) {
         assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
-        assert(dq != NULL, "Dedup queue not set");
         // Only dealing with to-space string, so that we can avoid evac-oom protocol, which is costly here.
         assert(!_heap->in_collection_set(obj), "Must be in to-space");
-        ShenandoahStringDedup::enqueue_candidate(obj, dq);
+        ShenandoahStringDedup::enqueue_candidate(obj);
       }
     }
   }

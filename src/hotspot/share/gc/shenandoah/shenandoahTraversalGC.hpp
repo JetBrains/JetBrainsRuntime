@@ -71,7 +71,7 @@ public:
   void final_traversal_collection();
 
   template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
-  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj, ShenandoahStrDedupQueue* dq = NULL);
+  inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj);
 
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
 

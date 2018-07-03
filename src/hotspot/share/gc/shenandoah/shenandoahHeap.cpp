@@ -2224,14 +2224,13 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
   }
 
   if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahPhaseTimings::Phase phase_par_string_dedup =
+    ShenandoahPhaseTimings::Phase phase_purge_dedup =
             full_gc ?
-            ShenandoahPhaseTimings::full_gc_purge_par_string_dedup :
-            ShenandoahPhaseTimings::purge_par_string_dedup;
-    ShenandoahGCPhase phase(phase_par_string_dedup);
+            ShenandoahPhaseTimings::full_gc_purge_string_dedup :
+            ShenandoahPhaseTimings::purge_string_dedup;
+    ShenandoahGCPhase phase(phase_purge_dedup);
     ShenandoahStringDedup::parallel_cleanup();
   }
-
 
   {
     ShenandoahGCPhase phase(phase_cldg);

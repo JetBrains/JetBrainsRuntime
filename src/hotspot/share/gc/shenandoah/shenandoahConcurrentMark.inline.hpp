@@ -233,11 +233,11 @@ public:
 
 template<class T, UpdateRefsMode UPDATE_REFS>
 inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q) {
-  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, heap, q, NULL);
+  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, heap, q);
 }
 
 template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
-inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq) {
+inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -271,8 +271,7 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
 
         if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj)) {
           assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
-          assert(dq != NULL, "Dedup queue not set");
-          ShenandoahStringDedup::enqueue_candidate(obj, dq);
+          ShenandoahStringDedup::enqueue_candidate(obj);
         }
       }
 

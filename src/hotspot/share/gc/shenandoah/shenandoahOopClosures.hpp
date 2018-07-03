@@ -39,7 +39,6 @@ enum UpdateRefsMode {
 class ShenandoahMarkRefsSuperClosure : public MetadataVisitingOopIterateClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
-  ShenandoahStrDedupQueue*  _dedup_queue;
   ShenandoahHeap* _heap;
 
 protected:
@@ -48,7 +47,6 @@ protected:
 
 public:
   ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp);
-  ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp);
 
   inline void set_base_object(oop obj) { /* Not needed */ }
 };
@@ -73,8 +71,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, CONCURRENT, true /* string dedup */>(p); }
 
 public:
-  ShenandoahMarkUpdateRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-          ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+  ShenandoahMarkUpdateRefsDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+          ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -101,8 +99,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, CONCURRENT, true /* string dedup */>(p); }
 
 public:
-  ShenandoahMarkUpdateRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-  ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+  ShenandoahMarkUpdateRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+  ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -129,8 +127,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, NONE, true /* string dedup */>(p); }
 
 public:
-  ShenandoahMarkRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+  ShenandoahMarkRefsDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -157,8 +155,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, RESOLVE, true /* string dedup */>(p); }
 
 public:
-  ShenandoahMarkResolveRefsDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+  ShenandoahMarkResolveRefsDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -185,8 +183,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, NONE, true /* string dedup */>(p); }
 
 public:
-  ShenandoahMarkRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ShenandoahStrDedupQueue* dq, ReferenceProcessor* rp) :
-    ShenandoahMarkRefsSuperClosure(q, dq, rp) {};
+  ShenandoahMarkRefsMetadataDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahMarkRefsSuperClosure(q, rp) {};
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -231,19 +229,12 @@ private:
   ShenandoahTraversalGC* _traversal_gc;
   Thread* _thread;
   ShenandoahObjToScanQueue* _queue;
-  ShenandoahStrDedupQueue*  _dedup_queue;
   oop _base_obj;
 protected:
   ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
     MetadataVisitingOopIterateClosure(rp),
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _thread(Thread::current()), _queue(q), _dedup_queue(NULL), _base_obj(NULL) {
-  }
-
-  ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    MetadataVisitingOopIterateClosure(rp),
-    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _thread(Thread::current()), _queue(q), _dedup_queue(dq) {
+    _thread(Thread::current()), _queue(q), _base_obj(NULL) {
   }
 
   template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
@@ -291,8 +282,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, false, false>(p); }
 
 public:
-  ShenandoahTraversalDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -306,8 +297,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, false, false>(p); }
 
 public:
-  ShenandoahTraversalMetadataDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalMetadataDedupClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -351,8 +342,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, true, false>(p); }
 
 public:
-  ShenandoahTraversalDedupDegenClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalDedupDegenClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -366,8 +357,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, true, false>(p); }
 
 public:
-  ShenandoahTraversalMetadataDedupDegenClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalMetadataDedupDegenClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -411,8 +402,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, false, true>(p); }
 
 public:
-  ShenandoahTraversalDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -426,8 +417,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, false, true>(p); }
 
 public:
-  ShenandoahTraversalMetadataDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalMetadataDedupMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -471,8 +462,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, true, true>(p); }
 
 public:
-  ShenandoahTraversalDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
@@ -486,8 +477,8 @@ private:
   inline void do_oop_work(T* p)     { work<T, true, true, true>(p); }
 
 public:
-  ShenandoahTraversalMetadataDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp, ShenandoahStrDedupQueue* dq) :
-    ShenandoahTraversalSuperClosure(q, rp, dq) {}
+  ShenandoahTraversalMetadataDedupDegenMatrixClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
+    ShenandoahTraversalSuperClosure(q, rp) {}
 
   virtual void do_oop(narrowOop* p) { do_oop_work(p); }
   virtual void do_oop(oop* p)       { do_oop_work(p); }
