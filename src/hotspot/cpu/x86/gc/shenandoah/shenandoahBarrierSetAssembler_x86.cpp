@@ -593,6 +593,19 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
   }
 }
 
+#ifndef _LP64
+void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm,
+                                               Address obj1, jobject obj2) {
+  Unimplemented();
+}
+
+void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm,
+                                               Register obj1, jobject obj2) {
+  Unimplemented();
+}
+#endif
+
+
 void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register op1, Register op2) {
   __ cmpptr(op1, op2);
   if (ShenandoahAcmpBarrier) {

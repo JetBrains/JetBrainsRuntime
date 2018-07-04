@@ -100,6 +100,13 @@ public:
   virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                         Address dst, Register val, Register tmp1, Register tmp2);
 
+#ifndef _LP64
+  virtual void obj_equals(MacroAssembler* masm,
+                          Address obj1, jobject obj2);
+  virtual void obj_equals(MacroAssembler* masm,
+                          Register obj1, jobject obj2);
+#endif
+
   virtual void obj_equals(MacroAssembler* masm, Register src1, Register src2);
   virtual void obj_equals(MacroAssembler* masm, Register src1, Address src2);
 
