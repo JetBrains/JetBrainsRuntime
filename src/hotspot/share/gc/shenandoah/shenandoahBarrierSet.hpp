@@ -165,7 +165,7 @@ public:
 
     template <typename T>
     static T load_in_heap_at(oop base, ptrdiff_t offset) {
-      base = ShenandoahBarrierSet::barrier_set()->read_barrier(base);
+      base = ShenandoahBarrierSet::resolve_forwarded(base);
       return Raw::template load_at<T>(base, offset);
     }
 
@@ -222,7 +222,7 @@ public:
     }
 
     static oop oop_load_in_heap_at(oop base, ptrdiff_t offset) {
-      base = ShenandoahBarrierSet::barrier_set()->read_barrier(base);
+      base = ShenandoahBarrierSet::resolve_forwarded(base);
       oop value = Raw::template oop_load_at<oop>(base, offset);
       keep_alive_if_weak(AccessBarrierSupport::resolve_possibly_unknown_oop_ref_strength<decorators>(base, offset), value);
       return value;
