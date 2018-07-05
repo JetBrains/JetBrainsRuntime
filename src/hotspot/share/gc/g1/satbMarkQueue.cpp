@@ -170,18 +170,17 @@ bool SATBMarkQueue::should_enqueue_buffer() {
 
 #if INCLUDE_SHENANDOAHGC
   if (UseShenandoahGC) {
-    if (!should_enqueue && cap != index()) {
-      // Non-empty buffer is compacted, and we decided not to enqueue it.
-      // Shenandoah still wants to know about leftover work in that buffer eventually.
-      // This avoid dealing with these leftovers during the final-mark, after the buffers
-      // are drained completely.
-      // TODO: This can be extended to handle G1 too
-      if (_enqueue_skips++ > ShenandoahSATBBufferMaxEnqueueSkips) {
-        _enqueue_skips = 0;
+    Thread* t = Thread::current();
+    if (ShenandoahThreadLocalData::is_force_satb_flush(t)) {
+      if (!should_enqueue && cap != index()) {
+        // Non-empty buffer is compacted, and we decided not to enqueue it.
+        // Shenandoah still wants to know about leftover work in that buffer eventually.
+        // This avoid dealing with these leftovers during the final-mark, after the buffers
+        // are drained completely.
+        // TODO: This can be extended to handle G1 too
         should_enqueue = true;
       }
-    } else {
-      _enqueue_skips = 0;
+      ShenandoahThreadLocalData::set_force_satb_flush(t, false);
     }
   }
 #endif

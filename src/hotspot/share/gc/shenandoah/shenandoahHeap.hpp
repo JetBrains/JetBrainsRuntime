@@ -489,6 +489,8 @@ public:
   bool process_references() const;
   bool unload_classes() const;
 
+  void force_satb_flush_all_threads();
+
   bool is_minor_gc() const;
   bool is_major_gc() const;
   void set_cycle_mode(GCCycleMode gc_cycle_mode);
