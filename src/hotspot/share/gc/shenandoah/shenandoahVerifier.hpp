@@ -143,6 +143,17 @@ public:
     _verify_regions_notrash_nocset,
   } VerifyRegions;
 
+  typedef enum {
+    // Disable gc-state verification
+    _verify_gcstate_disable,
+
+    // Nothing is in progress, no forwarded objects
+    _verify_gcstate_stable,
+
+    // Nothing is in progress, some objects are forwarded
+    _verify_gcstate_forwarded,
+  } VerifyGCState;
+
   struct VerifyOptions {
     VerifyForwarded     _verify_forwarded;
     VerifyMarked        _verify_marked;
@@ -150,16 +161,19 @@ public:
     VerifyCollectionSet _verify_cset;
     VerifyLiveness      _verify_liveness;
     VerifyRegions       _verify_regions;
+    VerifyGCState       _verify_gcstate;
 
     VerifyOptions(VerifyForwarded verify_forwarded,
                   VerifyMarked verify_marked,
                   VerifyMatrix verify_matrix,
                   VerifyCollectionSet verify_collection_set,
                   VerifyLiveness verify_liveness,
-                  VerifyRegions verify_regions) :
+                  VerifyRegions verify_regions,
+                  VerifyGCState verify_gcstate) :
             _verify_forwarded(verify_forwarded), _verify_marked(verify_marked),
             _verify_matrix(verify_matrix), _verify_cset(verify_collection_set),
-            _verify_liveness(verify_liveness), _verify_regions(verify_regions) {}
+            _verify_liveness(verify_liveness), _verify_regions(verify_regions),
+            _verify_gcstate(verify_gcstate) {}
   };
 
 private:
@@ -169,7 +183,8 @@ private:
                            VerifyMatrix matrix,
                            VerifyCollectionSet cset,
                            VerifyLiveness liveness,
-                           VerifyRegions regions);
+                           VerifyRegions regions,
+                           VerifyGCState gcstate);
 
 public:
   ShenandoahVerifier(ShenandoahHeap* heap, MarkBitMap* verification_bitmap) :

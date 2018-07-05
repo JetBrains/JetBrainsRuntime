@@ -2486,12 +2486,13 @@ void ShenandoahHeap::update_heap_references(bool concurrent) {
 void ShenandoahHeap::op_init_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
+  accumulate_statistics_all_gclabs();
+  set_evacuation_in_progress(false);
+
   if (ShenandoahVerify) {
     verifier()->verify_before_updaterefs();
   }
 
-  accumulate_statistics_all_gclabs();
-  set_evacuation_in_progress(false);
   set_update_refs_in_progress(true);
   make_parsable(true);
   if (UseShenandoahMatrix) {
@@ -2538,6 +2539,7 @@ void ShenandoahHeap::op_final_updaterefs() {
 
   trash_cset_regions();
   set_has_forwarded_objects(false);
+  set_update_refs_in_progress(false);
 
   if (ShenandoahVerify) {
     verifier()->verify_after_updaterefs();
@@ -2547,8 +2549,6 @@ void ShenandoahHeap::op_final_updaterefs() {
     ShenandoahHeapLocker locker(lock());
     _free_set->rebuild();
   }
-
-  set_update_refs_in_progress(false);
 }
 
 void ShenandoahHeap::set_alloc_seq_gc_start() {

@@ -738,13 +738,13 @@ void ShenandoahTraversalGC::final_traversal_collection() {
       reset();
     }
 
-    if (ShenandoahVerify) {
-      _heap->verifier()->verify_after_traversal();
-    }
-
     assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
     _heap->set_concurrent_traversal_in_progress(false);
     assert(!_heap->cancelled_gc(), "must not be cancelled when getting out here");
+
+    if (ShenandoahVerify) {
+      _heap->verifier()->verify_after_traversal();
+    }
   }
 }
 

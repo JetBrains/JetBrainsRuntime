@@ -96,6 +96,10 @@ public:
     data(thread)->_gc_state = gc_state;
   }
 
+  static char gc_state(Thread* thread) {
+    return data(thread)->_gc_state;
+  }
+
   static void set_worker_id(Thread* thread, uint id) {
     assert(thread->is_Worker_thread(), "Must be a worker thread");
     data(thread)->_worker_id = id;
