@@ -714,10 +714,8 @@ bool ShenandoahHeap::is_scavengable(oop p) {
   return true;
 }
 
-void ShenandoahHeap::handle_heap_shrinkage(double shrink_before) {
-  if (!ShenandoahUncommit) {
-    return;
-  }
+void ShenandoahHeap::op_uncommit(double shrink_before) {
+  assert (ShenandoahUncommit, "should be enabled");
 
   ShenandoahHeapLocker locker(lock());
 
@@ -735,6 +733,9 @@ void ShenandoahHeap::handle_heap_shrinkage(double shrink_before) {
                  count * ShenandoahHeapRegion::region_size_bytes() / M, capacity() / M, committed() / M, used() / M);
     control_thread()->notify_heap_changed();
   }
+
+  // Allocations happen during uncommits, record peak after the phase:
+  heuristics()->record_peak_occupancy();
 }
 
 HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) {
@@ -3033,6 +3034,16 @@ void ShenandoahHeap::entry_traversal() {
 
   try_inject_alloc_failure();
   op_traversal();
+}
+
+void ShenandoahHeap::entry_uncommit(double shrink_before) {
+  static const char *msg = "Concurrent uncommit";
+  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
+  EventMark em("%s", msg);
+
+  ShenandoahGCPhase phase(ShenandoahPhaseTimings::conc_uncommit);
+
+  op_uncommit(shrink_before);
 }
 
 void ShenandoahHeap::try_inject_alloc_failure() {

@@ -191,9 +191,6 @@ void ShenandoahControlThread::run_service() {
       // If this was the explicit GC cycle, notify waiters about it
       if (explicit_gc_requested) {
         notify_explicit_gc_waiters();
-
-        // Explicit GC tries to uncommit everything
-        heap->handle_heap_shrinkage(os::elapsedTime());
       }
 
       // If this was the allocation failure GC cycle, notify waiters about it
@@ -226,9 +223,13 @@ void ShenandoahControlThread::run_service() {
 
     double current = os::elapsedTime();
 
-    // Try to uncommit stale regions
-    if (current - last_shrink_time > shrink_period) {
-      heap->handle_heap_shrinkage(current - (ShenandoahUncommitDelay / 1000.0));
+    if (ShenandoahUncommit && (current - last_shrink_time > shrink_period)) {
+      // Try to uncommit enough stale regions. Explicit GC tries to uncommit everything.
+      // Regular paths uncommit only occasionally.
+      double shrink_before = explicit_gc_requested ?
+                             current :
+                             current - (ShenandoahUncommitDelay / 1000.0);
+      service_uncommit(shrink_before);
       last_shrink_time = current;
     }
 
@@ -413,6 +414,27 @@ void ShenandoahControlThread::service_stw_degenerated_cycle(GCCause::Cause cause
 
   heap->heuristics()->record_success_degenerated();
   heap->shenandoahPolicy()->record_success_degenerated();
+}
+
+void ShenandoahControlThread::service_uncommit(double shrink_before) {
+  ShenandoahHeap* heap = ShenandoahHeap::heap();
+
+  // Scan through the heap and determine if there is work to do. This avoids taking
+  // heap lock if there is no work available, avoids spamming logs with superfluous
+  // logging messages, and minimises the amount of work while locks are taken.
+
+  bool has_work = false;
+  for (size_t i = 0; i < heap->num_regions(); i++) {
+    ShenandoahHeapRegion *r = heap->get_region(i);
+    if (r->is_empty_committed() && (r->empty_time() < shrink_before)) {
+      has_work = true;
+      break;
+    }
+  }
+
+  if (has_work) {
+    heap->entry_uncommit(shrink_before);
+  }
 }
 
 void ShenandoahControlThread::handle_explicit_gc(GCCause::Cause cause) {

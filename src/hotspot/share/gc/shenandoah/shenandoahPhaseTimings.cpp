@@ -326,6 +326,8 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[conc_other]                      = "Concurrent Other";
   _phase_names[conc_traversal]                  = "Concurrent Traversal";
 
+  _phase_names[conc_uncommit]                   = "Concurrent Uncommit";
+
   _phase_names[init_update_refs_gross]          = "Pause Init  Update Refs (G)";
   _phase_names[init_update_refs]                = "Pause Init  Update Refs (N)";
   _phase_names[conc_update_refs]                = "Concurrent Update Refs";

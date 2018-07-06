@@ -543,8 +543,6 @@ public:
 
   void notify_alloc(size_t words, bool waste);
 
-  void handle_heap_shrinkage(double shrink_before);
-
   void reset_next_mark_bitmap();
   void reset_next_mark_bitmap_traversal();
 
@@ -748,6 +746,7 @@ public:
   void entry_evac();
   void entry_updaterefs();
   void entry_traversal();
+  void entry_uncommit(double shrink_before);
 
 private:
   // Actual work for the phases
@@ -771,6 +770,7 @@ private:
   void op_cleanup_bitmaps();
   void op_cleanup_traversal();
   void op_traversal();
+  void op_uncommit(double shrink_before);
 
 private:
   void try_inject_alloc_failure();

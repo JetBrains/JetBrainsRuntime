@@ -275,6 +275,8 @@ public:
     conc_cleanup_reset_bitmaps,
     conc_traversal,
 
+    conc_uncommit,
+
     // Unclassified
     pause_other,
     conc_other,
