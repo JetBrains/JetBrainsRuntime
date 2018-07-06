@@ -717,15 +717,17 @@ bool ShenandoahHeap::is_scavengable(oop p) {
 void ShenandoahHeap::op_uncommit(double shrink_before) {
   assert (ShenandoahUncommit, "should be enabled");
 
-  ShenandoahHeapLocker locker(lock());
-
   size_t count = 0;
   for (size_t i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* r = get_region(i);
     if (r->is_empty_committed() && (r->empty_time() < shrink_before)) {
-      r->make_uncommitted();
-      count++;
+      ShenandoahHeapLocker locker(lock());
+      if (r->is_empty_committed()) {
+        r->make_uncommitted();
+        count++;
+      }
     }
+    SpinPause(); // allow allocators to take the lock
   }
 
   if (count > 0) {
