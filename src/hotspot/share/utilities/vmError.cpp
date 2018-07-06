@@ -1385,9 +1385,24 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
         os::infinite_sleep();
       } else {
         // Crash or assert during error reporting. Lets continue reporting with the next step.
-        jio_snprintf(buffer, sizeof(buffer),
-           "[error occurred during error reporting (%s), id 0x%x]",
-                   _current_step_info, _id);
+        stringStream ss(buffer, sizeof(buffer));
+        // Note: this string does get parsed by a number of jtreg tests,
+        // see hotspot/jtreg/runtime/ErrorHandling.
+        ss.print("[error occurred during error reporting (%s), id 0x%x",
+                   _current_step_info, id);
+        char signal_name[64];
+        if (os::exception_name(id, signal_name, sizeof(signal_name))) {
+          ss.print(", %s (0x%x) at pc=" PTR_FORMAT, signal_name, id, p2i(pc));
+        } else {
+          if (should_report_bug(id)) {
+            ss.print(", Internal Error (%s:%d)",
+              filename == NULL ? "??" : filename, lineno);
+          } else {
+            ss.print(", Out of Memory Error (%s:%d)",
+              filename == NULL ? "??" : filename, lineno);
+          }
+        }
+        ss.print("]");
         st->print_raw_cr(buffer);
         st->cr();
       }
@@ -1698,6 +1713,13 @@ void VMError::controlled_crash(int how) {
   // Case 15 is tested by test/hotspot/jtreg/runtime/ErrorHandling/SecondaryErrorTest.java.
   // Case 16 is tested by test/hotspot/jtreg/runtime/ErrorHandling/ThreadsListHandleInErrorHandlingTest.java.
   // Case 17 is tested by test/hotspot/jtreg/runtime/ErrorHandling/NestedThreadsListHandleInErrorHandlingTest.java.
+
+  // We grab Threads_lock to keep ThreadsSMRSupport::print_info_on()
+  // from racing with Threads::add() or Threads::remove() as we
+  // generate the hs_err_pid file. This makes our ErrorHandling tests
+  // more stable.
+  MutexLockerEx ml(Threads_lock->owned_by_self() ? NULL : Threads_lock, Mutex::_no_safepoint_check_flag);
+
   switch (how) {
     case  1: vmassert(str == NULL, "expected null"); break;
     case  2: vmassert(num == 1023 && *str == 'X',

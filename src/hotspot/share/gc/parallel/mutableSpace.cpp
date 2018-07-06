@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "gc/parallel/mutableSpace.hpp"
 #include "gc/shared/spaceDecorator.hpp"
+#include "memory/iterator.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/safepoint.hpp"
@@ -214,12 +215,12 @@ bool MutableSpace::cas_deallocate(HeapWord *obj, size_t size) {
   return Atomic::cmpxchg(obj, top_addr(), expected_top) == expected_top;
 }
 
-void MutableSpace::oop_iterate_no_header(OopClosure* cl) {
+void MutableSpace::oop_iterate(OopIterateClosure* cl) {
   HeapWord* obj_addr = bottom();
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
   while (obj_addr < t) {
-    obj_addr += oop(obj_addr)->oop_iterate_no_header(cl);
+    obj_addr += oop(obj_addr)->oop_iterate_size(cl);
   }
 }
 

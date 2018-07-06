@@ -79,9 +79,29 @@ gc/parallel/TestPrintGCDetailsVerbose.java                      8200186   macosx
 
 compiler/jvmci/compilerToVM/ReprofileTest.java                  8201333   generic-all
 
-compiler/tiered/TieredLevelsTest.java                           8202124   generic-all
-compiler/tiered/NonTieredLevelsTest.java                        8202124   generic-all
-compiler/intrinsics/mathexact/sanity/SubtractExactLongTest.java 8202124   generic-all
+compiler/tiered/LevelTransitionTest.java                         8202124   generic-all
+compiler/tiered/TieredLevelsTest.java                            8202124   generic-all
+compiler/tiered/NonTieredLevelsTest.java                         8202124   generic-all
+compiler/intrinsics/mathexact/sanity/IncrementExactIntTest.java  8202124   generic-all
+compiler/intrinsics/mathexact/sanity/NegateExactIntTest.java     8202124   generic-all
+compiler/intrinsics/mathexact/sanity/AddExactLongTest.java       8202124   generic-all
+compiler/intrinsics/mathexact/sanity/SubtractExactLongTest.java  8202124   generic-all
+compiler/intrinsics/mathexact/sanity/AddExactIntTest.java        8202124   generic-all
+compiler/intrinsics/mathexact/sanity/NegateExactLongTest.java    8202124   generic-all
+compiler/intrinsics/mathexact/sanity/DecrementExactLongTest.java 8202124   generic-all
+compiler/intrinsics/mathexact/sanity/DecrementExactIntTest.java  8202124   generic-all
+compiler/intrinsics/mathexact/sanity/IncrementExactLongTest.java 8202124   generic-all
+compiler/intrinsics/mathexact/sanity/SubtractExactIntTest.java   8202124   generic-all
+compiler/intrinsics/mathexact/sanity/MultiplyExactLongTest.java  8202124   generic-all
+compiler/intrinsics/mathexact/sanity/MultiplyExactIntTest.java   8202124   generic-all
+compiler/whitebox/DeoptimizeAllTest.java                         8202124   generic-all
+compiler/whitebox/DeoptimizeMethodTest.java                      8202124   generic-all
+compiler/whitebox/ForceNMethodSweepTest.java                     8202124   generic-all
+compiler/whitebox/GetNMethodTest.java                            8202124   generic-all
+compiler/whitebox/IsMethodCompilableTest.java                    8202124   generic-all
+compiler/whitebox/LockCompilationTest.java                       8202124   generic-all
+compiler/whitebox/SetDontInlineMethodTest.java                   8202124   generic-all
+compiler/whitebox/SetForceInlineMethodTest.java                  8202124   generic-all
 
 compiler/jvmci/meta/StableFieldTest.java                        CODETOOLS-7902162   generic-all
 compiler/jvmci/jdk.vm.ci.hotspot.test/src/jdk/vm/ci/hotspot/test/HotSpotConstantReflectionProviderTest.java   CODETOOLS-7902162   generic-all
@@ -133,8 +153,6 @@ vmTestbase/nsk/jvmti/PopFrame/popframe009/TestDescription.java                  
 vmTestbase/nsk/jvmti/ForceEarlyReturn/ForceEarlyReturn001/TestDescription.java     8195674   generic-all
 vmTestbase/nsk/jvmti/ForceEarlyReturn/ForceEarlyReturn002/TestDescription.java     8195674   generic-all
 
-vmTestbase/nsk/jvmti/AttachOnDemand/attach024/TestDescription.java                 8195630   generic-all
-
 vmTestbase/nsk/jvmti/unit/FollowReferences/followref003/TestDescription.java       8202342   generic-all
 
 vmTestbase/nsk/jvmti/scenarios/hotswap/HS102/hs102t002/TestDescription.java        8204506   macosx-all
@@ -151,3 +169,19 @@ compiler/stable/TestStableObject.java                            8204347   gener
 compiler/stable/TestStableShort.java                             8204347   generic-all
 compiler/stable/TestStableUByte.java                             8204347   generic-all
 compiler/stable/TestStableUShort.java                            8204347   generic-all
+
+# Graal unit tests
+org.graalvm.compiler.core.test.CheckGraalInvariants                              8205081
+org.graalvm.compiler.core.test.inlining.PolymorphicInliningTest                  8205081
+org.graalvm.compiler.core.test.OptionsVerifierTest                               8205081
+org.graalvm.compiler.core.test.ProfilingInfoTest                                 8205081
+org.graalvm.compiler.hotspot.test.CompilationWrapperTest                         8205081
+org.graalvm.compiler.hotspot.test.HsErrLogTest                                   8205081
+org.graalvm.compiler.hotspot.test.OptionsInFileTest                              8205081
+org.graalvm.compiler.replacements.test.classfile.ClassfileBytecodeProviderTest   8205081
+org.graalvm.compiler.replacements.test.classfile.RedefineIntrinsicTest           8205081
+
+org.graalvm.compiler.core.test.deopt.CompiledMethodTest          8202955
+org.graalvm.compiler.core.test.CountedLoopTest                   8199885
+org.graalvm.compiler.debug.test.DebugContextTest                 8203504
+org.graalvm.compiler.core.test.VerifyDebugUsageTest              8205078

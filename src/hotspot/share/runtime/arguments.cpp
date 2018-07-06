@@ -488,7 +488,7 @@ void Arguments::init_version_specific_system_properties() {
  *
  * Recommended approach for removing options:
  *
- * To remove options commonly used by customers (e.g. product, commercial -XX options), use
+ * To remove options commonly used by customers (e.g. product -XX options), use
  * the 3-step model adding major release numbers to the deprecate, obsolete and expire columns.
  *
  * To remove internal options (e.g. diagnostic, experimental, develop options), use
@@ -540,6 +540,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "PrintSafepointStatisticsCount",JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "AggressiveOpts",               JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
   { "AllowNonVirtualCalls",         JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
+  { "UnlinkSymbolsALot",            JDK_Version::jdk(11), JDK_Version::jdk(12), JDK_Version::jdk(13) },
 
   // --- Deprecated alias flags (see also aliased_jvm_flags) - sorted by obsolete_in then expired_in:
   { "DefaultMaxRAMFraction",        JDK_Version::jdk(8),  JDK_Version::undefined(), JDK_Version::undefined() },
@@ -569,6 +570,9 @@ static SpecialFlag const special_jvm_flags[] = {
   { "InlineNotify",                  JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "EnableTracing",                 JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
   { "UseLockedTracing",              JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "NativeMonitorTimeout",          JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "NativeMonitorSpinLimit",        JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
+  { "NativeMonitorFlags",            JDK_Version::undefined(), JDK_Version::jdk(11), JDK_Version::jdk(12) },
 
 #ifdef TEST_VERIFY_SPECIAL_JVM_FLAGS
   { "dep > obs",                    JDK_Version::jdk(9), JDK_Version::jdk(8), JDK_Version::undefined() },
@@ -3896,12 +3900,12 @@ jint Arguments::apply_ergo() {
   jint result = set_ergonomics_flags();
   if (result != JNI_OK) return result;
 
-  set_shared_spaces_flags();
-
   // Set heap size based on available physical memory
   set_heap_size();
 
   GCConfig::arguments()->initialize();
+
+  set_shared_spaces_flags();
 
   // Initialize Metaspace flags and alignments
   Metaspace::ergo_initialize();

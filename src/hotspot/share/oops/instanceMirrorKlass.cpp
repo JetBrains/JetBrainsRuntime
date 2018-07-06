@@ -26,7 +26,6 @@
 #include "classfile/javaClasses.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
-#include "gc/shared/specialized_oop_closures.hpp"
 #include "memory/iterator.inline.hpp"
 #include "memory/oopFactory.hpp"
 #include "oops/instanceKlass.hpp"
@@ -53,7 +52,7 @@ instanceOop InstanceMirrorKlass::allocate_instance(Klass* k, TRAPS) {
 
   // Since mirrors can be variable sized because of the static fields, store
   // the size in the mirror itself.
-  return (instanceOop)CollectedHeap::class_allocate(this, size, CHECK_NULL);
+  return (instanceOop)Universe::heap()->class_allocate(this, size, CHECK_NULL);
 }
 
 int InstanceMirrorKlass::oop_size(oop obj) const {

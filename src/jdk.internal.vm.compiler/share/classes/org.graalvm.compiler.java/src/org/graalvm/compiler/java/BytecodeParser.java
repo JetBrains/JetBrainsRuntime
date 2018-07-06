@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.java;
 
 import static java.lang.String.format;
@@ -255,7 +257,8 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringP
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins;
 import static org.graalvm.compiler.java.BytecodeParserOptions.UseGuardedIntrinsics;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
@@ -1379,7 +1382,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
         FixedNode trueSuccessor = passingOnTrue ? passingSuccessor : exception;
         FixedNode falseSuccessor = passingOnTrue ? exception : passingSuccessor;
-        append(new IfNode(condition, trueSuccessor, falseSuccessor, SLOW_PATH_PROBABILITY));
+        append(new IfNode(condition, trueSuccessor, falseSuccessor, passingOnTrue ? LUDICROUSLY_FAST_PATH_PROBABILITY : LUDICROUSLY_SLOW_PATH_PROBABILITY));
         lastInstr = passingSuccessor;
 
         exception.setStateAfter(createFrameState(bci(), exception));
@@ -1661,6 +1664,8 @@ public class BytecodeParser implements GraphBuilderContext {
 
         if (initialInvokeKind == InvokeKind.Special && !targetMethod.isConstructor()) {
             emitCheckForInvokeSuperSpecial(args);
+        } else if (initialInvokeKind == InvokeKind.Interface && targetMethod.isPrivate()) {
+            emitCheckForDeclaringClassChange(targetMethod.getDeclaringClass(), args);
         }
 
         InlineInfo inlineInfo = null;
@@ -1745,6 +1750,25 @@ public class BytecodeParser implements GraphBuilderContext {
             invoke.setUseForInlining(false);
         }
         return invoke;
+    }
+
+    /**
+     * Checks that the class of the receiver of an {@link Bytecodes#INVOKEINTERFACE} invocation of a
+     * private method is assignable to the interface that declared the method. If not, then
+     * deoptimize so that the interpreter can throw an {@link IllegalAccessError}.
+     *
+     * This is a check not performed by the verifier and so must be performed at runtime.
+     *
+     * @param declaringClass interface declaring the callee
+     * @param args arguments to an {@link Bytecodes#INVOKEINTERFACE} call to a private method
+     *            declared in a interface
+     */
+    private void emitCheckForDeclaringClassChange(ResolvedJavaType declaringClass, ValueNode[] args) {
+        ValueNode receiver = args[0];
+        TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), declaringClass);
+        LogicNode condition = genUnique(createInstanceOf(checkedType, receiver, null));
+        FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
+        args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
     }
 
     /**
@@ -2677,7 +2701,9 @@ public class BytecodeParser implements GraphBuilderContext {
     private <T extends ValueNode> void updateLastInstruction(T v) {
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
-            lastInstr.setNext(fixedNode);
+            if (lastInstr != null) {
+                lastInstr.setNext(fixedNode);
+            }
             if (fixedNode instanceof FixedWithNextNode) {
                 FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) fixedNode;
                 assert fixedWithNextNode.next() == null : "cannot append instruction to instruction which isn't end";
@@ -3579,7 +3605,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     @Override
     public void setStateAfter(StateSplit sideEffect) {
-        assert sideEffect.hasSideEffect();
+        assert sideEffect.hasSideEffect() || sideEffect instanceof AbstractMergeNode;
         FrameState stateAfter = createFrameState(stream.nextBCI(), sideEffect);
         sideEffect.setStateAfter(stateAfter);
     }
@@ -4581,9 +4607,9 @@ public class BytecodeParser implements GraphBuilderContext {
     private double clampProbability(double probability) {
         if (!optimisticOpts.removeNeverExecutedCode(getOptions())) {
             if (probability == 0) {
-                return 0.0000001;
+                return LUDICROUSLY_SLOW_PATH_PROBABILITY;
             } else if (probability == 1) {
-                return 0.999999;
+                return LUDICROUSLY_FAST_PATH_PROBABILITY;
             }
         }
         return probability;

@@ -37,6 +37,7 @@
 #include "gc/g1/g1StringDedup.hpp"
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
+#include "memory/iterator.inline.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/compressedOops.inline.hpp"
@@ -61,7 +62,7 @@ public:
 
   bool failures() { return _failures; }
 
-  template <class T> void do_oop_nv(T* p) {
+  template <class T> void do_oop_work(T* p) {
     T heap_oop = RawAccess<>::oop_load(p);
     if (!CompressedOops::is_null(heap_oop)) {
       oop obj = CompressedOops::decode_not_null(heap_oop);
@@ -76,8 +77,8 @@ public:
     }
   }
 
-  void do_oop(oop* p)       { do_oop_nv(p); }
-  void do_oop(narrowOop* p) { do_oop_nv(p); }
+  void do_oop(oop* p)       { do_oop_work(p); }
+  void do_oop(narrowOop* p) { do_oop_work(p); }
 };
 
 class G1VerifyCodeRootOopClosure: public OopClosure {
@@ -179,7 +180,7 @@ class VerifyCLDClosure: public CLDClosure {
   }
 };
 
-class VerifyLivenessOopClosure: public OopClosure {
+class VerifyLivenessOopClosure: public BasicOopIterateClosure {
   G1CollectedHeap* _g1h;
   VerifyOption _vo;
 public:
@@ -225,7 +226,7 @@ public:
         guarantee(!_g1h->is_obj_dead(o), "Full GC marking and concurrent mark mismatch");
       }
 
-      o->oop_iterate_no_header(&isLive);
+      o->oop_iterate(&isLive);
       if (!_hr->obj_allocated_since_prev_marking(o)) {
         size_t obj_size = o->size();    // Make sure we don't overflow
         _live_bytes += (obj_size * HeapWordSize);
@@ -235,7 +236,7 @@ public:
   size_t live_bytes() { return _live_bytes; }
 };
 
-class VerifyArchiveOopClosure: public OopClosure {
+class VerifyArchiveOopClosure: public BasicOopIterateClosure {
   HeapRegion* _hr;
 public:
   VerifyArchiveOopClosure(HeapRegion *hr)
@@ -268,7 +269,7 @@ public:
   void do_object(oop o) {
     VerifyArchiveOopClosure checkOop(_hr);
     assert(o != NULL, "Should not be here for NULL oops");
-    o->oop_iterate_no_header(&checkOop);
+    o->oop_iterate(&checkOop);
   }
 };
 

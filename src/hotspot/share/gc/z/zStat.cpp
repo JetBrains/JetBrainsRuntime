@@ -482,7 +482,7 @@ ZStatCounterData ZStatUnsampledCounter::collect_and_reset() const {
 }
 
 //
-// Stat MMU (Mimimum Mutator Utilization)
+// Stat MMU (Minimum Mutator Utilization)
 //
 ZStatMMUPause::ZStatMMUPause() :
     _start(0.0),
@@ -560,9 +560,8 @@ void ZStatMMU::register_pause(const Ticks& start, const Ticks& end) {
 }
 
 void ZStatMMU::print() {
-  log_info(gc, mmu)(
-     "MMU: 2ms/%.1f%%, 5ms/%.1f%%, 10ms/%.1f%%, 20ms/%.1f%%, 50ms/%.1f%%, 100ms/%.1f%%",
-     _mmu_2ms, _mmu_5ms, _mmu_10ms, _mmu_20ms, _mmu_50ms, _mmu_100ms);
+  log_info(gc, mmu)("MMU: 2ms/%.1f%%, 5ms/%.1f%%, 10ms/%.1f%%, 20ms/%.1f%%, 50ms/%.1f%%, 100ms/%.1f%%",
+                    _mmu_2ms, _mmu_5ms, _mmu_10ms, _mmu_20ms, _mmu_50ms, _mmu_100ms);
 }
 
 //
@@ -623,7 +622,7 @@ void ZStatPhaseCycle::register_start(const Ticks& start) const {
 }
 
 #define ZUSED_FMT                       SIZE_FORMAT "M(%.0lf%%)"
-#define ZUSED_ARGS(size, max_capacity)  ((size) / M), (percent_of<size_t>(size, max_capacity))
+#define ZUSED_ARGS(size, max_capacity)  ((size) / M), (percent_of(size, max_capacity))
 
 void ZStatPhaseCycle::register_end(const Ticks& start, const Ticks& end) const {
   timer()->register_gc_end(end);
@@ -641,6 +640,7 @@ void ZStatPhaseCycle::register_end(const Ticks& start, const Ticks& end) const {
   ZStatMark::print();
   ZStatRelocation::print();
   ZStatNMethods::print();
+  ZStatMetaspace::print();
   ZStatReferences::print();
   ZStatHeap::print();
 
@@ -1129,6 +1129,19 @@ void ZStatNMethods::print() {
 }
 
 //
+// Stat metaspace
+//
+void ZStatMetaspace::print() {
+  log_info(gc, metaspace)("Metaspace: "
+                          SIZE_FORMAT "M used, " SIZE_FORMAT "M capacity, "
+                          SIZE_FORMAT "M committed, " SIZE_FORMAT "M reserved",
+                          MetaspaceUtils::used_bytes() / M,
+                          MetaspaceUtils::capacity_bytes() / M,
+                          MetaspaceUtils::committed_bytes() / M,
+                          MetaspaceUtils::reserved_bytes() / M);
+}
+
+//
 // Stat references
 //
 ZStatReferences::ZCount ZStatReferences::_soft;
@@ -1187,7 +1200,7 @@ ZStatHeap::ZAtRelocateEnd ZStatHeap::_at_relocate_end;
 
 #define ZSIZE_NA               "%9s", "-"
 #define ZSIZE_ARGS(size)       SIZE_FORMAT_W(8) "M (%.0lf%%)", \
-                               ((size) / M), (percent_of<size_t>(size, _at_initialize.max_capacity))
+                               ((size) / M), (percent_of(size, _at_initialize.max_capacity))
 
 size_t ZStatHeap::available(size_t used) {
   return _at_initialize.max_capacity - used;

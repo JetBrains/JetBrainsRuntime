@@ -29,6 +29,7 @@
 #include "gc/shared/generation.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/iterator.inline.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -329,7 +330,7 @@ void CardTableRS::invalidate_or_clear(Generation* old_gen) {
 }
 
 
-class VerifyCleanCardClosure: public OopClosure {
+class VerifyCleanCardClosure: public BasicOopIterateClosure {
 private:
   HeapWord* _boundary;
   HeapWord* _begin;
@@ -429,7 +430,7 @@ void CardTableRS::verify_space(Space* s, HeapWord* gen_boundary) {
         VerifyCleanCardClosure verify_blk(gen_boundary, begin, end);
         for (HeapWord* cur = start_block; cur < end; cur += s->block_size(cur)) {
           if (s->block_is_obj(cur) && s->obj_is_alive(cur)) {
-            oop(cur)->oop_iterate_no_header(&verify_blk, mr);
+            oop(cur)->oop_iterate(&verify_blk, mr);
           }
         }
       }

@@ -77,6 +77,7 @@ import java.util.function.BiPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import sun.nio.ch.FileChannelImpl;
 import sun.nio.fs.AbstractFileSystemProvider;
 
 /**
@@ -410,8 +411,13 @@ public final class Files {
     public static SeekableByteChannel newByteChannel(Path path, OpenOption... options)
         throws IOException
     {
-        Set<OpenOption> set = new HashSet<>(options.length);
-        Collections.addAll(set, options);
+        Set<OpenOption> set;
+        if (options.length == 0) {
+            set = Collections.emptySet();
+        } else {
+            set = new HashSet<>();
+            Collections.addAll(set, options);
+        }
         return newByteChannel(path, set);
     }
 
@@ -599,6 +605,9 @@ public final class Files {
 
     // -- Creation and deletion --
 
+    private static final Set<OpenOption> DEFAULT_CREATE_OPTIONS =
+        Set.of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+
     /**
      * Creates a new and empty file, failing if the file already exists. The
      * check for the existence of the file and the creation of the new file if
@@ -635,9 +644,7 @@ public final class Files {
     public static Path createFile(Path path, FileAttribute<?>... attrs)
         throws IOException
     {
-        EnumSet<StandardOpenOption> options =
-            EnumSet.<StandardOpenOption>of(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-        newByteChannel(path, options, attrs).close();
+        newByteChannel(path, DEFAULT_CREATE_OPTIONS, attrs).close();
         return path;
     }
 
@@ -3197,10 +3204,11 @@ public final class Files {
     public static byte[] readAllBytes(Path path) throws IOException {
         try (SeekableByteChannel sbc = Files.newByteChannel(path);
              InputStream in = Channels.newInputStream(sbc)) {
+            if (sbc instanceof FileChannelImpl)
+                ((FileChannelImpl) sbc).setUninterruptible();
             long size = sbc.size();
-            if (size > (long)MAX_BUFFER_SIZE)
+            if (size > (long) MAX_BUFFER_SIZE)
                 throw new OutOfMemoryError("Required array size too large");
-
             return read(in, (int)size);
         }
     }
@@ -3273,11 +3281,7 @@ public final class Files {
         Objects.requireNonNull(cs);
 
         byte[] ba = readAllBytes(path);
-        try {
-            return JLA.newStringNoRepl(ba, cs);
-        } catch (IllegalArgumentException e) {
-            throw new IOException(e);
-        }
+        return JLA.newStringNoRepl(ba, cs);
     }
 
     /**
@@ -3628,12 +3632,8 @@ public final class Files {
         Objects.requireNonNull(csq);
         Objects.requireNonNull(cs);
 
-        try {
-            byte[] bytes = JLA.getBytesNoRepl(String.valueOf(csq), cs);
-            write(path, bytes, options);
-        } catch (IllegalArgumentException e) {
-            throw new IOException(e);
-        }
+        byte[] bytes = JLA.getBytesNoRepl(String.valueOf(csq), cs);
+        write(path, bytes, options);
 
         return path;
     }

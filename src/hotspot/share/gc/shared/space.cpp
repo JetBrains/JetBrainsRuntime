@@ -32,6 +32,7 @@
 #include "gc/shared/space.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "gc/shared/spaceDecorator.hpp"
+#include "memory/iterator.inline.hpp"
 #include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/atomic.hpp"
@@ -132,8 +133,7 @@ void DirtyCardToOopClosure::do_MemRegion(MemRegion mr) {
          "Only ones we deal with for now.");
 
   assert(_precision != CardTable::ObjHeadPreciseArray ||
-         _cl->idempotent() || _last_bottom == NULL ||
-         top <= _last_bottom,
+         _last_bottom == NULL || top <= _last_bottom,
          "Not decreasing");
   NOT_PRODUCT(_last_bottom = mr.start());
 
@@ -171,17 +171,10 @@ void DirtyCardToOopClosure::do_MemRegion(MemRegion mr) {
     walk_mem_region(extended_mr, bottom_obj, top);
   }
 
-  // An idempotent closure might be applied in any order, so we don't
-  // record a _min_done for it.
-  if (!_cl->idempotent()) {
-    _min_done = bottom;
-  } else {
-    assert(_min_done == _last_explicit_min_done,
-           "Don't update _min_done for idempotent cl");
-  }
+  _min_done = bottom;
 }
 
-DirtyCardToOopClosure* Space::new_dcto_cl(ExtendedOopClosure* cl,
+DirtyCardToOopClosure* Space::new_dcto_cl(OopIterateClosure* cl,
                                           CardTable::PrecisionStyle precision,
                                           HeapWord* boundary,
                                           bool parallel) {
@@ -257,11 +250,11 @@ void ContiguousSpaceDCTOC::walk_mem_region_with_cl(MemRegion mr,        \
 // (There are only two of these, rather than N, because the split is due
 // only to the introduction of the FilteringClosure, a local part of the
 // impl of this abstraction.)
-ContiguousSpaceDCTOC__walk_mem_region_with_cl_DEFN(ExtendedOopClosure)
+ContiguousSpaceDCTOC__walk_mem_region_with_cl_DEFN(OopIterateClosure)
 ContiguousSpaceDCTOC__walk_mem_region_with_cl_DEFN(FilteringClosure)
 
 DirtyCardToOopClosure*
-ContiguousSpace::new_dcto_cl(ExtendedOopClosure* cl,
+ContiguousSpace::new_dcto_cl(OopIterateClosure* cl,
                              CardTable::PrecisionStyle precision,
                              HeapWord* boundary,
                              bool parallel) {
@@ -480,7 +473,7 @@ void ContiguousSpace::verify() const {
   }
 }
 
-void Space::oop_iterate(ExtendedOopClosure* blk) {
+void Space::oop_iterate(OopIterateClosure* blk) {
   ObjectToOopClosure blk2(blk);
   object_iterate(&blk2);
 }
@@ -490,7 +483,7 @@ bool Space::obj_is_alive(const HeapWord* p) const {
   return true;
 }
 
-void ContiguousSpace::oop_iterate(ExtendedOopClosure* blk) {
+void ContiguousSpace::oop_iterate(OopIterateClosure* blk) {
   if (is_empty()) return;
   HeapWord* obj_addr = bottom();
   HeapWord* t = top();

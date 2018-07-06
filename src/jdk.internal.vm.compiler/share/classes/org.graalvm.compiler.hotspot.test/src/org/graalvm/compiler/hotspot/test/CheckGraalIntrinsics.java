@@ -20,6 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.hotspot.test;
 
 import java.lang.reflect.Method;
@@ -49,6 +51,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -368,6 +371,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (isJDK11OrHigher()) {
             // Relevant for Java flight recorder
             add(toBeInvestigated,
+                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V",
                             "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
         }
 
@@ -397,16 +401,19 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {
+                if (!(arch instanceof AArch64)) {
+                    add(toBeInvestigated,
+                                    "java/lang/StringLatin1.compareTo([B[B)I",
+                                    "java/lang/StringLatin1.compareToUTF16([B[B)I",
+                                    "java/lang/StringUTF16.compareTo([B[B)I",
+                                    "java/lang/StringUTF16.compareToLatin1([B[B)I",
+                                    "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
+                                    "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
+                                    "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
+                                    "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
+                                    "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+                }
                 add(toBeInvestigated,
-                                "java/lang/StringLatin1.compareTo([B[B)I",
-                                "java/lang/StringLatin1.compareToUTF16([B[B)I",
-                                "java/lang/StringUTF16.compareTo([B[B)I",
-                                "java/lang/StringUTF16.compareToLatin1([B[B)I",
-                                "jdk/internal/misc/Unsafe.getAndAddInt(Ljava/lang/Object;JI)I",
-                                "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
-                                "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
-                                "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
-                                "jdk/internal/misc/Unsafe.getAndSetObject(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
                                 "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
                                 "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",

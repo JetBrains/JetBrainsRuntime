@@ -3570,6 +3570,15 @@ void MacroAssembler::vmovdqu(XMMRegister dst, AddressLiteral src) {
   }
 }
 
+void MacroAssembler::evmovdquq(XMMRegister dst, AddressLiteral src, int vector_len, Register rscratch) {
+  if (reachable(src)) {
+    Assembler::evmovdquq(dst, as_Address(src), vector_len);
+  } else {
+    lea(rscratch, src);
+    Assembler::evmovdquq(dst, Address(rscratch, 0), vector_len);
+  }
+}
+
 void MacroAssembler::movdqa(XMMRegister dst, AddressLiteral src) {
   if (reachable(src)) {
     Assembler::movdqa(dst, as_Address(src));
@@ -5238,8 +5247,7 @@ void MacroAssembler::resolve_jobject(Register value,
   jmp(done);
   bind(not_weak);
   // Resolve (untagged) jobject.
-  access_load_at(T_OBJECT, IN_CONCURRENT_ROOT,
-                 value, Address(value, 0), tmp, thread);
+  access_load_at(T_OBJECT, IN_NATIVE, value, Address(value, 0), tmp, thread);
   verify_oop(value);
   bind(done);
 }
@@ -6216,7 +6224,7 @@ void MacroAssembler::resolve_oop_handle(Register result, Register tmp) {
   // Only 64 bit platforms support GCs that require a tmp register
   // Only IN_HEAP loads require a thread_tmp register
   // OopHandle::resolve is an indirection like jobject.
-  access_load_at(T_OBJECT, IN_CONCURRENT_ROOT,
+  access_load_at(T_OBJECT, IN_NATIVE,
                  result, Address(result, 0), tmp, /*tmp_thread*/noreg);
 }
 
@@ -6287,7 +6295,7 @@ void MacroAssembler::load_heap_oop(Register dst, Address src, Register tmp1,
 // Doesn't do verfication, generates fixed size code
 void MacroAssembler::load_heap_oop_not_null(Register dst, Address src, Register tmp1,
                                             Register thread_tmp, DecoratorSet decorators) {
-  access_load_at(T_OBJECT, IN_HEAP | OOP_NOT_NULL | decorators, dst, src, tmp1, thread_tmp);
+  access_load_at(T_OBJECT, IN_HEAP | IS_NOT_NULL | decorators, dst, src, tmp1, thread_tmp);
 }
 
 void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,

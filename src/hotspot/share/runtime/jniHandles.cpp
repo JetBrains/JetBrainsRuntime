@@ -109,7 +109,7 @@ jobject JNIHandles::make_global(Handle obj, AllocFailType alloc_failmode) {
     // Return NULL on allocation failure.
     if (ptr != NULL) {
       assert(*ptr == NULL, "invariant");
-      NativeAccess<IN_CONCURRENT_ROOT>::oop_store(ptr, obj());
+      NativeAccess<>::oop_store(ptr, obj());
       res = reinterpret_cast<jobject>(ptr);
     } else {
       report_handle_allocation_failure(alloc_failmode, "global");
@@ -175,7 +175,7 @@ void JNIHandles::destroy_global(jobject handle) {
   if (handle != NULL) {
     assert(!is_jweak(handle), "wrong method for detroying jweak");
     oop* oop_ptr = jobject_ptr(handle);
-    NativeAccess<IN_CONCURRENT_ROOT>::oop_store(oop_ptr, (oop)NULL);
+    NativeAccess<>::oop_store(oop_ptr, (oop)NULL);
     global_handles()->release(oop_ptr);
   }
 }
@@ -517,7 +517,7 @@ jobject JNIHandleBlock::allocate_handle(oop obj) {
   // Try last block
   if (_last->_top < block_size_in_oops) {
     oop* handle = &(_last->_handles)[_last->_top++];
-    NativeAccess<AS_DEST_NOT_INITIALIZED>::oop_store(handle, obj);
+    NativeAccess<IS_DEST_UNINITIALIZED>::oop_store(handle, obj);
     return (jobject) handle;
   }
 
@@ -525,7 +525,7 @@ jobject JNIHandleBlock::allocate_handle(oop obj) {
   if (_free_list != NULL) {
     oop* handle = _free_list;
     _free_list = (oop*) *_free_list;
-    NativeAccess<AS_DEST_NOT_INITIALIZED>::oop_store(handle, obj);
+    NativeAccess<IS_DEST_UNINITIALIZED>::oop_store(handle, obj);
     return (jobject) handle;
   }
   // Check if unused block follow last

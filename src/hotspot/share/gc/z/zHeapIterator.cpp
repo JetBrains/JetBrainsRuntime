@@ -28,6 +28,7 @@
 #include "gc/z/zHeapIterator.hpp"
 #include "gc/z/zOop.inline.hpp"
 #include "gc/z/zRootsIterator.hpp"
+#include "memory/iterator.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "utilities/stack.inline.hpp"
@@ -73,31 +74,37 @@ public:
   }
 };
 
-class ZHeapIteratorPushOopClosure : public ExtendedOopClosure {
+class ZHeapIteratorPushOopClosure : public BasicOopIterateClosure {
 private:
   ZHeapIterator* const _iter;
   const oop            _base;
+  const bool           _visit_referents;
 
 public:
   ZHeapIteratorPushOopClosure(ZHeapIterator* iter, oop base) :
       _iter(iter),
-      _base(base) {}
+      _base(base),
+      _visit_referents(iter->visit_referents()) {}
 
-  void do_oop_nv(oop* p) {
-    const oop obj = HeapAccess<ON_UNKNOWN_OOP_REF>::oop_load_at(_base, _base->field_offset(p));
-    _iter->push(obj);
+  oop load_oop(oop* p) {
+    if (_visit_referents) {
+      return HeapAccess<ON_UNKNOWN_OOP_REF>::oop_load_at(_base, _base->field_offset(p));
+    } else {
+      return HeapAccess<>::oop_load(p);
+    }
   }
 
-  void do_oop_nv(narrowOop* p) {
-    ShouldNotReachHere();
+  virtual ReferenceIterationMode reference_iteration_mode() {
+    return _visit_referents ? DO_FIELDS : DO_FIELDS_EXCEPT_REFERENT;
   }
 
   virtual void do_oop(oop* p) {
-    do_oop_nv(p);
+    const oop obj = load_oop(p);
+    _iter->push(obj);
   }
 
   virtual void do_oop(narrowOop* p) {
-    do_oop_nv(p);
+    ShouldNotReachHere();
   }
 
 #ifdef ASSERT
@@ -107,9 +114,10 @@ public:
 #endif
 };
 
-ZHeapIterator::ZHeapIterator() :
+ZHeapIterator::ZHeapIterator(bool visit_referents) :
     _visit_stack(),
-    _visit_map() {}
+    _visit_map(),
+    _visit_referents(visit_referents) {}
 
 ZHeapIterator::~ZHeapIterator() {
   ZVisitMapIterator iter(&_visit_map);
@@ -170,12 +178,16 @@ void ZHeapIterator::drain(ObjectClosure* cl) {
   }
 }
 
+bool ZHeapIterator::visit_referents() const {
+  return _visit_referents;
+}
+
 void ZHeapIterator::objects_do(ObjectClosure* cl) {
   ZHeapIteratorRootOopClosure root_cl(this, cl);
   ZRootsIterator roots;
 
   // Follow roots. Note that we also visit the JVMTI weak tag map
-  // as if they where strong roots to make sure we visit all tagged
+  // as if they were strong roots to make sure we visit all tagged
   // objects, even those that might now have become unreachable.
   // If we didn't do this the user would have expected to see
   // ObjectFree events for unreachable objects in the tag map.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,6 +95,7 @@ import toolbox.Task.OutputKind;
 public class AnnotationProcessing extends ModuleTestBase {
 
     public static void main(String... args) throws Exception {
+        System.out.println(System.getProperties());
         new AnnotationProcessing().runTests();
     }
 
@@ -568,7 +569,7 @@ public class AnnotationProcessing extends ModuleTestBase {
                             "--module-source-path", moduleSrc.toString());
                 assertFileExists(classes, "m1x", "api1", "Impl.class");
 
-                Files.delete(m1.resolve("test").resolve("Test.java"));
+                tb.deleteFiles(m1.resolve("test").resolve("Test.java"));
 
                 //resource class output:
                 runCompiler(base,
@@ -623,7 +624,7 @@ public class AnnotationProcessing extends ModuleTestBase {
             assertFileExists(classes, "m1x", pack, "Pass.class");
             assertFileNotExists(classes, "m2x", pack, "Pass.class");
 
-            Files.delete(m1.resolve("test").resolve("Test.java"));
+            tb.deleteFiles(m1.resolve("test").resolve("Test.java"));
 
             runCompiler(base,
                         moduleSrc,
@@ -842,7 +843,7 @@ public class AnnotationProcessing extends ModuleTestBase {
                                 options);
                     assertFileExists(classes, modulePath, "impl", "Impl.class");
 
-                    Files.delete(m1.resolve("test").resolve("Test.java"));
+                    tb.deleteFiles(m1.resolve("test").resolve("Test.java"));
 
                     //resource class output:
                     runCompiler(base,
@@ -869,7 +870,7 @@ public class AnnotationProcessing extends ModuleTestBase {
                     "expectFilerException(() -> filer.getResource(StandardLocation.SOURCE_PATH, \"m1x/impl\", \"resource\"))",
                     "-sourcepath", m1.toString());
 
-        Files.delete(m1.resolve("impl").resolve("resource"));
+        tb.deleteFiles(m1.resolve("impl").resolve("resource"));
 
         //can read resources from the system module path if module name given:
         runCompiler(base,
@@ -930,7 +931,7 @@ public class AnnotationProcessing extends ModuleTestBase {
                         "-sourcepath", m1.toString());
         }
 
-        Files.delete(m1.resolve("module-info.java"));
+        tb.deleteFiles(m1.resolve("module-info.java"));
         tb.writeJavaFiles(m1,
                           "package test; class Test { }");
 
