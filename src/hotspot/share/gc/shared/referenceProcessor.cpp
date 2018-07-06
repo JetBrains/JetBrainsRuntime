@@ -284,7 +284,7 @@ void DiscoveredListIterator::remove() {
 
   // First _prev_next ref actually points into DiscoveredList (gross).
   oop new_next;
-  if (oopDesc::safe_equals(_next_discovered, _current_discovered)) {
+  if (oopDesc::unsafe_equals(_next_discovered, _current_discovered)) {
     // At the end of the list, we should make _prev point to itself.
     // If _ref is the first ref, then _prev_next will be in the DiscoveredList,
     // and _prev will be NULL.
@@ -474,7 +474,7 @@ void
 ReferenceProcessor::clear_discovered_references(DiscoveredList& refs_list) {
   oop obj = NULL;
   oop next = refs_list.head();
-  while (! oopDesc::safe_equals(next, obj)) {
+  while (! oopDesc::unsafe_equals(next, obj)) {
     obj = next;
     next = java_lang_ref_Reference::discovered(obj);
     java_lang_ref_Reference::set_discovered_raw(obj, NULL);
@@ -746,7 +746,7 @@ void ReferenceProcessor::balance_queues(DiscoveredList ref_lists[])
         ref_lists[to_idx].inc_length(refs_to_move);
 
         // Remove the chain from the from list.
-        if (oopDesc::safe_equals(move_tail, new_head)) {
+        if (oopDesc::unsafe_equals(move_tail, new_head)) {
           // We found the end of the from list.
           ref_lists[from_idx].set_head(NULL);
         } else {
@@ -1101,7 +1101,6 @@ bool ReferenceProcessor::discover_reference(oop obj, ReferenceType rt) {
   if (!_discovering_refs || !RegisterReferences) {
     return false;
   }
-  DEBUG_ONLY(BarrierSet::barrier_set()->verify_safe_oop(obj);)
 
   if ((rt == REF_FINAL) && (java_lang_ref_Reference::next(obj) != NULL)) {
     // Don't rediscover non-active FinalReferences.

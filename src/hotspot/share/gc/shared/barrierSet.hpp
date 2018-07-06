@@ -152,10 +152,6 @@ public:
     return _barrier_set_c2;
   }
 
-#ifdef ASSERT
-  virtual void verify_safe_oop(oop p);
-#endif
-
   // The AccessBarrier of a BarrierSet subclass is called by the Access API
   // (cf. oops/access.hpp) to perform decorated accesses. GC implementations
   // may override these default access operations by declaring an

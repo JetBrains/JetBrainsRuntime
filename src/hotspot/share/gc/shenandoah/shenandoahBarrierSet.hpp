@@ -102,10 +102,6 @@ public:
 
   bool obj_equals(oop obj1, oop obj2);
 
-#ifdef ASSERT
-  virtual void verify_safe_oop(oop p);
-#endif
-
   void enqueue(oop obj);
 
 private:

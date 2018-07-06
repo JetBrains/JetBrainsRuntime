@@ -342,12 +342,6 @@ void ShenandoahBarrierSet::enqueue(oop obj) {
   }
 }
 
-#ifdef ASSERT
-void ShenandoahBarrierSet::verify_safe_oop(oop p) {
-  shenandoah_assert_not_in_cset_except(NULL, p, (p == NULL) || ShenandoahHeap::heap()->cancelled_gc());
-}
-#endif
-
 void ShenandoahBarrierSet::on_thread_create(Thread* thread) {
   // Create thread local data
   ShenandoahThreadLocalData::create(thread);

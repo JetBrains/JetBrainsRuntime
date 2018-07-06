@@ -24,7 +24,6 @@
 
 #include "precompiled.hpp"
 #include "gc/shared/barrierSet.hpp"
-#include "oops/oop.hpp"
 #include "gc/shared/barrierSetAssembler.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/macros.hpp"
@@ -49,9 +48,3 @@ void gc_barrier_stubs_init() {
   bs_assembler->barrier_stubs_init();
 #endif
 }
-
-#ifdef ASSERT
-void BarrierSet::verify_safe_oop(oop p) {
-  // Do nothing
-}
-#endif
