@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -118,10 +118,6 @@ final class SSLSessionImpl extends ExtendedSSLSession {
     private Principal peerPrincipal;
     private Principal localPrincipal;
 
-    // The endpoint identification algorithm used to check certificates
-    // in this session.
-    private final String              endpointIdentificationAlgorithm;
-
     /*
      * Is the session currently re-established with a session-resumption
      * abbreviated initial handshake?
@@ -153,7 +149,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      */
     private SSLSessionImpl() {
         this(ProtocolVersion.NONE, CipherSuite.C_NULL, null,
-            new SessionId(false, null), null, -1, false, null);
+            new SessionId(false, null), null, -1, false);
     }
 
     /*
@@ -164,10 +160,10 @@ final class SSLSessionImpl extends ExtendedSSLSession {
     SSLSessionImpl(ProtocolVersion protocolVersion, CipherSuite cipherSuite,
             Collection<SignatureAndHashAlgorithm> algorithms,
             SecureRandom generator, String host, int port,
-            boolean useExtendedMasterSecret, String endpointIdAlgorithm) {
+            boolean useExtendedMasterSecret) {
         this(protocolVersion, cipherSuite, algorithms,
              new SessionId(defaultRejoinable, generator), host, port,
-             useExtendedMasterSecret, endpointIdAlgorithm);
+             useExtendedMasterSecret);
     }
 
     /*
@@ -176,8 +172,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
     SSLSessionImpl(ProtocolVersion protocolVersion, CipherSuite cipherSuite,
             Collection<SignatureAndHashAlgorithm> algorithms,
             SessionId id, String host, int port,
-            boolean useExtendedMasterSecret,
-            String endpointIdAlgorithm){
+            boolean useExtendedMasterSecret) {
         this.protocolVersion = protocolVersion;
         sessionId = id;
         peerCerts = null;
@@ -192,7 +187,6 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         negotiatedMaxFragLen = -1;
         statusResponses = null;
         this.useExtendedMasterSecret = useExtendedMasterSecret;
-        this.endpointIdentificationAlgorithm = endpointIdAlgorithm;
 
         if (debug != null && Debug.isOn("session")) {
             System.out.println("%% Initialized:  " + this);
@@ -269,10 +263,6 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      */
     void setLocalPrincipal(Principal principal) {
         localPrincipal = principal;
-    }
-
-    String getEndpointIdentificationAlgorithm() {
-        return this.endpointIdentificationAlgorithm;
     }
 
     /**
