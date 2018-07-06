@@ -242,6 +242,7 @@ module java.base {
     exports sun.nio.ch to
         java.management,
         jdk.crypto.cryptoki,
+        jdk.net,
         jdk.sctp,
         jdk.unsupported;
     exports sun.nio.cs to
@@ -359,7 +360,6 @@ module java.base {
     // JDK-internal service types
 
     uses jdk.internal.logger.DefaultLoggerFinder;
-    uses sun.security.ssl.ClientKeyExchangeService;
     uses sun.text.spi.JavaTimeDateTimePatternProvider;
     uses sun.util.spi.CalendarProvider;
     uses sun.util.locale.provider.LocaleDataMetaInfo;

@@ -1265,10 +1265,10 @@ int  java_lang_Class::oop_size(oop java_class) {
   return size;
 }
 
-void java_lang_Class::set_oop_size(oop java_class, int size) {
+void java_lang_Class::set_oop_size(HeapWord* java_class, int size) {
   assert(_oop_size_offset != 0, "must be set");
   assert(size > 0, "Oop size must be greater than zero, not %d", size);
-  java_class->int_field_put(_oop_size_offset, size);
+  *(int*)(((char*)java_class) + _oop_size_offset) = size;
 }
 
 int  java_lang_Class::static_oop_field_count(oop java_class) {
@@ -4424,6 +4424,12 @@ oop java_util_concurrent_locks_AbstractOwnableSynchronizer::get_owner_threadObj(
   assert(_owner_offset != 0, "Must be initialized");
   return obj->obj_field(_owner_offset);
 }
+
+#if INCLUDE_CDS
+void java_util_concurrent_locks_AbstractOwnableSynchronizer::serialize(SerializeClosure* f) {
+  AOS_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+}
+#endif
 
 static int member_offset(int hardcoded_offset) {
   return (hardcoded_offset * heapOopSize) + instanceOopDesc::base_offset_in_bytes();

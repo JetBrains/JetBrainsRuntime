@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
+
 package org.graalvm.compiler.debug.test;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
@@ -78,15 +82,15 @@ public class VersionsTest {
     }
 
     @Test
-    public void emptyProperties() {
-        Path root = Paths.get("file:/");
+    public void emptyProperties() throws URISyntaxException {
+        Path root = Paths.get(new URI("file:/"));
         Versions v = new Versions(root);
         assertEmpty(v.withVersions(null));
     }
 
     @Test
-    public void emptyWithNullProperties() {
-        Path root = Paths.get("file:/");
+    public void emptyWithNullProperties() throws URISyntaxException {
+        Path root = Paths.get(new URI("file:/"));
         Versions v = new Versions(root);
         assertEmpty(v.withVersions(null));
     }

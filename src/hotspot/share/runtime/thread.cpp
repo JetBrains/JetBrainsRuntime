@@ -93,6 +93,7 @@
 #include "runtime/thread.inline.hpp"
 #include "runtime/threadCritical.hpp"
 #include "runtime/threadSMR.inline.hpp"
+#include "runtime/threadStatisticalInfo.hpp"
 #include "runtime/timer.hpp"
 #include "runtime/timerTrace.hpp"
 #include "runtime/vframe.inline.hpp"
@@ -869,13 +870,29 @@ void Thread::metadata_handles_do(void f(Metadata*)) {
   }
 }
 
-void Thread::print_on(outputStream* st) const {
+void Thread::print_on(outputStream* st, bool print_extended_info) const {
   // get_priority assumes osthread initialized
   if (osthread() != NULL) {
     int os_prio;
     if (os::get_native_priority(this, &os_prio) == OS_OK) {
       st->print("os_prio=%d ", os_prio);
     }
+
+    st->print("cpu=%.2fms ",
+              os::thread_cpu_time(const_cast<Thread*>(this), true) / 1000000.0
+              );
+    st->print("elapsed=%.2fs ",
+              _statistical_info.getElapsedTime() / 1000.0
+              );
+    if (is_Java_thread() && (PrintExtendedThreadInfo || print_extended_info)) {
+      size_t allocated_bytes = (size_t) const_cast<Thread*>(this)->cooked_allocated_bytes();
+      st->print("allocated=" SIZE_FORMAT "%s ",
+                byte_size_in_proper_unit(allocated_bytes),
+                proper_unit_for_byte_size(allocated_bytes)
+                );
+      st->print("defined_classes=" INT64_FORMAT " ", _statistical_info.getDefineClassCount());
+    }
+
     st->print("tid=" INTPTR_FORMAT " ", p2i(this));
     osthread()->print_on(st);
   }
@@ -1484,7 +1501,7 @@ void JavaThread::initialize() {
 #if INCLUDE_JVMCI
   _pending_monitorenter = false;
   _pending_deoptimization = -1;
-  _pending_failed_speculation = NULL;
+  _pending_failed_speculation = 0;
   _pending_transfer_to_interpreter = false;
   _adjusting_comp_level = false;
   _jvmci._alternate_call_target = NULL;
@@ -2753,8 +2770,6 @@ void JavaThread::oops_do(OopClosure* f, CodeBlobClosure* cf) {
   // Traverse the GCHandles
   Thread::oops_do(f, cf);
 
-  JVMCI_ONLY(f->do_oop((oop*)&_pending_failed_speculation);)
-
   assert((!has_last_Java_frame() && java_call_counter() == 0) ||
          (has_last_Java_frame() && java_call_counter() > 0), "wrong java_sp info!");
 
@@ -2871,7 +2886,7 @@ void JavaThread::print_thread_state() const {
 #endif // PRODUCT
 
 // Called by Threads::print() for VM_PrintThreads operation
-void JavaThread::print_on(outputStream *st) const {
+void JavaThread::print_on(outputStream *st, bool print_extended_info) const {
   st->print_raw("\"");
   st->print_raw(get_thread_name());
   st->print_raw("\" ");
@@ -2881,7 +2896,7 @@ void JavaThread::print_on(outputStream *st) const {
     if (java_lang_Thread::is_daemon(thread_oop))  st->print("daemon ");
     st->print("prio=%d ", java_lang_Thread::priority(thread_oop));
   }
-  Thread::print_on(st);
+  Thread::print_on(st, print_extended_info);
   // print guess for valid stack memory region (assume 4K pages); helps lock debugging
   st->print_cr("[" INTPTR_FORMAT "]", (intptr_t)last_Java_sp() & ~right_n_bits(12));
   if (thread_oop != NULL) {
@@ -3283,6 +3298,11 @@ CompilerThread::CompilerThread(CompileQueue* queue,
 }
 
 CompilerThread::~CompilerThread() {
+  // Free buffer blob, if allocated
+  if (get_buffer_blob() != NULL) {
+    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    CodeCache::free(get_buffer_blob());
+  }
   // Delete objects which were allocated on heap.
   delete _counters;
 }
@@ -4531,7 +4551,8 @@ JavaThread *Threads::owning_thread_from_monitor_owner(ThreadsList * t_list,
 
 // Threads::print_on() is called at safepoint by VM_PrintThreads operation.
 void Threads::print_on(outputStream* st, bool print_stacks,
-                       bool internal_format, bool print_concurrent_locks) {
+                       bool internal_format, bool print_concurrent_locks,
+                       bool print_extended_info) {
   char buf[32];
   st->print_raw_cr(os::local_time_string(buf, sizeof(buf)));
 
@@ -4554,7 +4575,7 @@ void Threads::print_on(outputStream* st, bool print_stacks,
 
   ALL_JAVA_THREADS(p) {
     ResourceMark rm;
-    p->print_on(st);
+    p->print_on(st, print_extended_info);
     if (print_stacks) {
       if (internal_format) {
         p->trace_stack();

@@ -378,7 +378,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "linux-x64": {
             target_os: "linux",
             target_cpu: "x64",
-            dependencies: ["devkit", "autoconf", "graphviz", "pandoc"],
+            dependencies: ["devkit", "autoconf", "graphviz", "pandoc", "graalunit_lib"],
             configure_args: concat(common.configure_args_64bit,
                 "--enable-full-docs", "--with-zlib=system"),
             default_make_targets: ["docs-bundles"],
@@ -396,7 +396,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "macosx-x64": {
             target_os: "macosx",
             target_cpu: "x64",
-            dependencies: ["devkit", "autoconf"],
+            dependencies: ["devkit", "autoconf", "graalunit_lib"],
             configure_args: concat(common.configure_args_64bit, "--with-zlib=system",
                 "--with-macosx-version-max=10.9.0"),
         },
@@ -420,7 +420,7 @@ var getJibProfilesProfiles = function (input, common, data) {
         "windows-x64": {
             target_os: "windows",
             target_cpu: "x64",
-            dependencies: ["devkit", "autoconf"],
+            dependencies: ["devkit", "autoconf", "graalunit_lib"],
             configure_args: concat(common.configure_args_64bit),
         },
 
@@ -523,17 +523,6 @@ var getJibProfilesProfiles = function (input, common, data) {
             profiles[maketestName] = concatObjects(profiles[name], testmakeBase);
             profiles[maketestName].default_make_targets = [ "test-make" ];
         });
-    // Generate cmp-baseline profiles for each main profile. This profile does
-    // a compare build run with no changes to verify that the compare script
-    // has a clean baseline
-    common.main_profile_names.forEach(function (name) {
-        var cmpBaselineName = name + "-cmp-baseline";
-        profiles[cmpBaselineName] = clone(profiles[name]);
-        // Only compare the images target. This should pressumably be expanded
-        // to include more build targets when possible.
-        profiles[cmpBaselineName].default_make_targets = [ "images" ];
-        profiles[cmpBaselineName].make_args = [ "COMPARE_BUILD=CONF=" ];
-    });
 
     // Profiles for building the zero jvm variant. These are used for verification
     // in JPRT.
@@ -727,6 +716,22 @@ var getJibProfilesProfiles = function (input, common, data) {
         profiles[debugName] = concatObjects(profiles[debugName], configureArgs);
     });
 
+    // Generate cmp-baseline profiles for each main profile and their
+    // corresponding debug profile. This profile does a compare build run with no
+    // changes to verify that the compare script has a clean baseline
+    common.main_profile_names.forEach(function (name) {
+        [ "", common.open_suffix ].forEach(function (suffix) {
+            var cmpBaselineName = name + suffix + "-cmp-baseline";
+            profiles[cmpBaselineName] = clone(profiles[name + suffix]);
+            // Only compare the images target. This should pressumably be expanded
+            // to include more build targets when possible.
+            profiles[cmpBaselineName].default_make_targets = [ "images" ];
+            profiles[cmpBaselineName].make_args = [ "COMPARE_BUILD=CONF=" ];
+            // Do not inherit artifact definitions from base profile
+            delete profiles[cmpBaselineName].artifacts;
+        });
+    });
+
     // Profiles used to run tests. Used in JPRT and Mach 5.
     var testOnlyProfiles = {
         "run-test-jprt": {
@@ -832,7 +837,7 @@ var getJibProfilesDependencies = function (input, common) {
 
     var devkit_platform_revisions = {
         linux_x64: "gcc7.3.0-OEL6.4+1.0",
-        macosx_x64: "Xcode6.3-MacOSX10.9+1.0",
+        macosx_x64: "Xcode9.4-MacOSX10.13+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
         windows_x64: "VS2017-15.5.5+1.0",
@@ -967,6 +972,14 @@ var getJibProfilesDependencies = function (input, common) {
             configure_args: "",
         },
 
+        graalunit_lib: {
+            organization: common.organization,
+            ext: "zip",
+            revision: "619_Apr_12_2018",
+            module: "graalunit-lib",
+            configure_args: "--with-graalunit-lib=" + input.get("graalunit_lib", "install_path"),
+            environment_name: "GRAALUNIT_LIB"
+        },
     };
 
     // Need to add a value for the Visual Studio tools variable to make

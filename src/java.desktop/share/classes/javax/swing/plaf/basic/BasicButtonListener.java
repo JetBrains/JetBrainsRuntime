@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package javax.swing.plaf.basic;
 
 import sun.swing.DefaultLookup;
+import sun.swing.SwingUtilities2;
 import sun.swing.UIAction;
 import java.awt.*;
 import java.awt.event.*;
@@ -74,9 +75,8 @@ public class BasicButtonListener implements MouseListener, MouseMotionListener,
         else if(prop == AbstractButton.CONTENT_AREA_FILLED_CHANGED_PROPERTY) {
             checkOpacity((AbstractButton) e.getSource() );
         }
-        else if(prop == AbstractButton.TEXT_CHANGED_PROPERTY ||
-                "font" == prop || "foreground" == prop ||
-                "ancestor" == prop || "graphicsConfiguration" == prop) {
+        else if(prop == AbstractButton.TEXT_CHANGED_PROPERTY || "font" == prop
+                || "foreground" == prop || SwingUtilities2.isScaleChanged(e)) {
             AbstractButton b = (AbstractButton) e.getSource();
             BasicHTML.updateRenderer(b, b.getText());
         }
@@ -156,7 +156,16 @@ public class BasicButtonListener implements MouseListener, MouseMotionListener,
             map.clear();
             map.put(KeyStroke.getKeyStroke(m, BasicLookAndFeel.getFocusAcceleratorKeyMask(), false),
                     "pressed");
+            map.put(KeyStroke.getKeyStroke(m, SwingUtilities2.setAltGraphMask
+                            (BasicLookAndFeel.getFocusAcceleratorKeyMask()),
+                    false),
+                    "pressed");
+
             map.put(KeyStroke.getKeyStroke(m, BasicLookAndFeel.getFocusAcceleratorKeyMask(), true),
+                    "released");
+            map.put(KeyStroke.getKeyStroke(m,
+                    SwingUtilities2.setAltGraphMask
+                            (BasicLookAndFeel.getFocusAcceleratorKeyMask()), true),
                     "released");
             map.put(KeyStroke.getKeyStroke(m, 0, true), "released");
         }

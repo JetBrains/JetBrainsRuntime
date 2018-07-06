@@ -36,6 +36,9 @@ import java.util.StringJoiner;
 import jdk.jfr.EventType;
 import jdk.jfr.Recording;
 import jdk.jfr.SettingDescriptor;
+import jdk.jfr.internal.LogLevel;
+import jdk.jfr.internal.LogTag;
+import jdk.jfr.internal.Logger;
 
 /**
  * JFR.check - invoked from native
@@ -59,13 +62,17 @@ final class DCmdCheck extends AbstractDCmd {
         return getResult();
     }
 
-    private void executeInternal(String recordingText, Boolean verbose) throws DCmdException {
+    private void executeInternal(String name, Boolean verbose) throws DCmdException {
+        if (LogTag.JFR_DCMD.shouldLog(LogLevel.DEBUG)) {
+            Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdCheck: name=" + name + ", verbose=" + verbose);
+        }
+
         if (verbose == null) {
             verbose = Boolean.FALSE;
         }
 
-        if (recordingText != null) {
-            printRecording(findRecording(recordingText), verbose);
+        if (name != null) {
+            printRecording(findRecording(name), verbose);
             return;
         }
 
@@ -73,7 +80,7 @@ final class DCmdCheck extends AbstractDCmd {
         if (!verbose && recordings.isEmpty()) {
             println("No available recordings.");
             println();
-            println("Use JFR.start to start a recording.");
+            println("Use jcmd " + getPid() + " JFR.start to start a recording.");
             return;
         }
         boolean first = true;

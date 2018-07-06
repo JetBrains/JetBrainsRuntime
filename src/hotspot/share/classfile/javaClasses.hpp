@@ -270,7 +270,7 @@ class java_lang_Class : AllStatic {
   static oop module(oop java_class);
 
   static int oop_size(oop java_class);
-  static void set_oop_size(oop java_class, int size);
+  static void set_oop_size(HeapWord* java_class, int size);
   static int static_oop_field_count(oop java_class);
   static void set_static_oop_field_count(oop java_class, int size);
 
@@ -1488,6 +1488,7 @@ class java_util_concurrent_locks_AbstractOwnableSynchronizer : AllStatic {
  public:
   static void compute_offsets();
   static oop  get_owner_threadObj(oop obj);
+  static void serialize(SerializeClosure* f) NOT_CDS_RETURN;
 };
 
 // Use to declare fields that need to be injected into Java classes

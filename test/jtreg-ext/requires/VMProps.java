@@ -73,6 +73,12 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.debug", vmDebug());
         map.put("vm.jvmci", vmJvmci());
         map.put("vm.emulatedClient", vmEmulatedClient());
+        // vm.hasSA is "true" if the VM contains the serviceability agent
+        // and jhsdb.
+        map.put("vm.hasSA", vmHasSA());
+        // vm.hasSAandCanAttach is "true" if the VM contains the serviceability agent
+        // and jhsdb and it can attach to the VM.
+        map.put("vm.hasSAandCanAttach", vmHasSAandCanAttach());
         map.put("vm.cpu.features", cpuFeatures());
         map.put("vm.rtm.cpu", vmRTMCPU());
         map.put("vm.rtm.os", vmRTMOS());
@@ -176,16 +182,13 @@ public class VMProps implements Callable<Map<String, String>> {
      * @return "true" if Flight Recorder is enabled, "false" if is disabled.
      */
     protected String vmFlightRecorder() {
-        Boolean isUnlockedCommercialFatures = WB.getBooleanVMFlag("UnlockCommercialFeatures");
         Boolean isFlightRecorder = WB.getBooleanVMFlag("FlightRecorder");
         String startFROptions = WB.getStringVMFlag("StartFlightRecording");
-        if (isUnlockedCommercialFatures != null && isUnlockedCommercialFatures) {
-            if (isFlightRecorder != null && isFlightRecorder) {
-                return "true";
-            }
-            if (startFROptions != null && !startFROptions.isEmpty()) {
-                return "true";
-            }
+        if (isFlightRecorder != null && isFlightRecorder) {
+            return "true";
+        }
+        if (startFROptions != null && !startFROptions.isEmpty()) {
+            return "true";
         }
         return "false";
     }
@@ -248,17 +251,40 @@ public class VMProps implements Callable<Map<String, String>> {
      * @param flagName - flag name
      */
     private void vmOptFinalFlag(Map<String, String> map, String flagName) {
-        String value = WB.getBooleanVMFlag(flagName) ? "true" : "false";
+        String value = String.valueOf(WB.getBooleanVMFlag(flagName));
         map.put("vm.opt.final." + flagName, value);
     }
 
     /**
      * Selected sets of final flags.
-     * @param map -property-value pairs
+     * @param map - property-value pairs
      */
     protected void vmOptFinalFlags(Map<String, String> map) {
         vmOptFinalFlag(map, "ClassUnloading");
         vmOptFinalFlag(map, "UseCompressedOops");
+        vmOptFinalFlag(map, "EnableJVMCI");
+    }
+
+    /**
+     * @return "true" if VM has a serviceability agent.
+     */
+    protected String vmHasSA() {
+        return "" + Platform.hasSA();
+    }
+
+    /**
+     * @return "true" if VM has a serviceability agent and it can
+     * attach to the VM.
+     */
+    protected String vmHasSAandCanAttach() {
+        try {
+            return "" + Platform.shouldSAAttach();
+        } catch (IOException e) {
+            System.out.println("Checking whether SA can attach to the VM failed.");
+            e.printStackTrace();
+            // Run the tests anyways.
+            return "true";
+        }
     }
 
     /**

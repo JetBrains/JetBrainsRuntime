@@ -1832,9 +1832,9 @@ class StubGenerator: public StubCodeGenerator {
     setup_arg_regs(); // from => rdi, to => rsi, count => rdx
                       // r9 and r10 may be used to save non-volatile registers
 
-    DecoratorSet decorators = IN_HEAP | IN_HEAP_ARRAY | ARRAYCOPY_DISJOINT;
+    DecoratorSet decorators = IN_HEAP | IS_ARRAY | ARRAYCOPY_DISJOINT;
     if (dest_uninitialized) {
-      decorators |= AS_DEST_NOT_INITIALIZED;
+      decorators |= IS_DEST_UNINITIALIZED;
     }
     if (aligned) {
       decorators |= ARRAYCOPY_ALIGNED;
@@ -1926,9 +1926,9 @@ class StubGenerator: public StubCodeGenerator {
     setup_arg_regs(); // from => rdi, to => rsi, count => rdx
                       // r9 and r10 may be used to save non-volatile registers
 
-    DecoratorSet decorators = IN_HEAP | IN_HEAP_ARRAY;
+    DecoratorSet decorators = IN_HEAP | IS_ARRAY;
     if (dest_uninitialized) {
-      decorators |= AS_DEST_NOT_INITIALIZED;
+      decorators |= IS_DEST_UNINITIALIZED;
     }
     if (aligned) {
       decorators |= ARRAYCOPY_ALIGNED;
@@ -2030,9 +2030,9 @@ class StubGenerator: public StubCodeGenerator {
                       // r9 and r10 may be used to save non-volatile registers
     // 'from', 'to' and 'qword_count' are now valid
 
-    DecoratorSet decorators = IN_HEAP | IN_HEAP_ARRAY | ARRAYCOPY_DISJOINT;
+    DecoratorSet decorators = IN_HEAP | IS_ARRAY | ARRAYCOPY_DISJOINT;
     if (dest_uninitialized) {
-      decorators |= AS_DEST_NOT_INITIALIZED;
+      decorators |= IS_DEST_UNINITIALIZED;
     }
     if (aligned) {
       decorators |= ARRAYCOPY_ALIGNED;
@@ -2123,9 +2123,9 @@ class StubGenerator: public StubCodeGenerator {
                       // r9 and r10 may be used to save non-volatile registers
     // 'from', 'to' and 'qword_count' are now valid
 
-    DecoratorSet decorators = IN_HEAP | IN_HEAP_ARRAY | ARRAYCOPY_DISJOINT;
+    DecoratorSet decorators = IN_HEAP | IS_ARRAY | ARRAYCOPY_DISJOINT;
     if (dest_uninitialized) {
-      decorators |= AS_DEST_NOT_INITIALIZED;
+      decorators |= IS_DEST_UNINITIALIZED;
     }
     if (aligned) {
       decorators |= ARRAYCOPY_ALIGNED;
@@ -2306,9 +2306,9 @@ class StubGenerator: public StubCodeGenerator {
     Address from_element_addr(end_from, count, TIMES_OOP, 0);
     Address   to_element_addr(end_to,   count, TIMES_OOP, 0);
 
-    DecoratorSet decorators = IN_HEAP | IN_HEAP_ARRAY | ARRAYCOPY_CHECKCAST;
+    DecoratorSet decorators = IN_HEAP | IS_ARRAY | ARRAYCOPY_CHECKCAST;
     if (dest_uninitialized) {
-      decorators |= AS_DEST_NOT_INITIALIZED;
+      decorators |= IS_DEST_UNINITIALIZED;
     }
 
     BasicType type = T_OBJECT;
@@ -4084,6 +4084,312 @@ class StubGenerator: public StubCodeGenerator {
     return start;
   }
 
+void roundDec(XMMRegister xmm_reg) {
+  __ vaesdec(xmm1, xmm1, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm2, xmm2, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm3, xmm3, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm4, xmm4, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm5, xmm5, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm6, xmm6, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm7, xmm7, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdec(xmm8, xmm8, xmm_reg, Assembler::AVX_512bit);
+}
+
+void roundDeclast(XMMRegister xmm_reg) {
+  __ vaesdeclast(xmm1, xmm1, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm2, xmm2, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm3, xmm3, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm4, xmm4, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm5, xmm5, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm6, xmm6, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm7, xmm7, xmm_reg, Assembler::AVX_512bit);
+  __ vaesdeclast(xmm8, xmm8, xmm_reg, Assembler::AVX_512bit);
+}
+
+  void ev_load_key(XMMRegister xmmdst, Register key, int offset, XMMRegister xmm_shuf_mask = NULL) {
+    __ movdqu(xmmdst, Address(key, offset));
+    if (xmm_shuf_mask != NULL) {
+      __ pshufb(xmmdst, xmm_shuf_mask);
+    } else {
+      __ pshufb(xmmdst, ExternalAddress(StubRoutines::x86::key_shuffle_mask_addr()));
+    }
+    __ evshufi64x2(xmmdst, xmmdst, xmmdst, 0x0, Assembler::AVX_512bit);
+
+  }
+
+address generate_cipherBlockChaining_decryptVectorAESCrypt() {
+    assert(VM_Version::supports_vaes(), "need AES instructions and misaligned SSE support");
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "cipherBlockChaining_decryptAESCrypt");
+    address start = __ pc();
+
+    const Register from = c_rarg0;  // source array address
+    const Register to = c_rarg1;  // destination array address
+    const Register key = c_rarg2;  // key array address
+    const Register rvec = c_rarg3;  // r byte array initialized from initvector array address
+    // and left with the results of the last encryption block
+#ifndef _WIN64
+    const Register len_reg = c_rarg4;  // src len (must be multiple of blocksize 16)
+#else
+    const Address  len_mem(rbp, 6 * wordSize);  // length is on stack on Win64
+    const Register len_reg = r11;      // pick the volatile windows register
+#endif
+
+    Label Loop, Loop1, L_128, L_256, L_192, KEY_192, KEY_256, Loop2, Lcbc_dec_rem_loop,
+          Lcbc_dec_rem_last, Lcbc_dec_ret, Lcbc_dec_rem, Lcbc_exit;
+
+    __ enter();
+
+#ifdef _WIN64
+  // on win64, fill len_reg from stack position
+    __ movl(len_reg, len_mem);
+#else
+    __ push(len_reg); // Save
+#endif
+    __ push(rbx);
+    __ vzeroupper();
+
+    // Temporary variable declaration for swapping key bytes
+    const XMMRegister xmm_key_shuf_mask = xmm1;
+    __ movdqu(xmm_key_shuf_mask, ExternalAddress(StubRoutines::x86::key_shuffle_mask_addr()));
+
+    // Calculate number of rounds from key size: 44 for 10-rounds, 52 for 12-rounds, 60 for 14-rounds
+    const Register rounds = rbx;
+    __ movl(rounds, Address(key, arrayOopDesc::length_offset_in_bytes() - arrayOopDesc::base_offset_in_bytes(T_INT)));
+
+    const XMMRegister IV = xmm0;
+    // Load IV and broadcast value to 512-bits
+    __ evbroadcasti64x2(IV, Address(rvec, 0), Assembler::AVX_512bit);
+
+    // Temporary variables for storing round keys
+    const XMMRegister RK0 = xmm30;
+    const XMMRegister RK1 = xmm9;
+    const XMMRegister RK2 = xmm18;
+    const XMMRegister RK3 = xmm19;
+    const XMMRegister RK4 = xmm20;
+    const XMMRegister RK5 = xmm21;
+    const XMMRegister RK6 = xmm22;
+    const XMMRegister RK7 = xmm23;
+    const XMMRegister RK8 = xmm24;
+    const XMMRegister RK9 = xmm25;
+    const XMMRegister RK10 = xmm26;
+
+     // Load and shuffle key
+    // the java expanded key ordering is rotated one position from what we want
+    // so we start from 1*16 here and hit 0*16 last
+    ev_load_key(RK1, key, 1 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK2, key, 2 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK3, key, 3 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK4, key, 4 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK5, key, 5 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK6, key, 6 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK7, key, 7 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK8, key, 8 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK9, key, 9 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK10, key, 10 * 16, xmm_key_shuf_mask);
+    ev_load_key(RK0, key, 0*16, xmm_key_shuf_mask);
+
+    // Variables for storing source cipher text
+    const XMMRegister S0 = xmm10;
+    const XMMRegister S1 = xmm11;
+    const XMMRegister S2 = xmm12;
+    const XMMRegister S3 = xmm13;
+    const XMMRegister S4 = xmm14;
+    const XMMRegister S5 = xmm15;
+    const XMMRegister S6 = xmm16;
+    const XMMRegister S7 = xmm17;
+
+    // Variables for storing decrypted text
+    const XMMRegister B0 = xmm1;
+    const XMMRegister B1 = xmm2;
+    const XMMRegister B2 = xmm3;
+    const XMMRegister B3 = xmm4;
+    const XMMRegister B4 = xmm5;
+    const XMMRegister B5 = xmm6;
+    const XMMRegister B6 = xmm7;
+    const XMMRegister B7 = xmm8;
+
+    __ cmpl(rounds, 44);
+    __ jcc(Assembler::greater, KEY_192);
+    __ jmp(Loop);
+
+    __ BIND(KEY_192);
+    const XMMRegister RK11 = xmm27;
+    const XMMRegister RK12 = xmm28;
+    ev_load_key(RK11, key, 11*16, xmm_key_shuf_mask);
+    ev_load_key(RK12, key, 12*16, xmm_key_shuf_mask);
+
+    __ cmpl(rounds, 52);
+    __ jcc(Assembler::greater, KEY_256);
+    __ jmp(Loop);
+
+    __ BIND(KEY_256);
+    const XMMRegister RK13 = xmm29;
+    const XMMRegister RK14 = xmm31;
+    ev_load_key(RK13, key, 13*16, xmm_key_shuf_mask);
+    ev_load_key(RK14, key, 14*16, xmm_key_shuf_mask);
+
+    __ BIND(Loop);
+    __ cmpl(len_reg, 512);
+    __ jcc(Assembler::below, Lcbc_dec_rem);
+    __ BIND(Loop1);
+    __ subl(len_reg, 512);
+    __ evmovdquq(S0, Address(from, 0 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S1, Address(from, 1 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S2, Address(from, 2 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S3, Address(from, 3 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S4, Address(from, 4 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S5, Address(from, 5 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S6, Address(from, 6 * 64), Assembler::AVX_512bit);
+    __ evmovdquq(S7, Address(from, 7 * 64), Assembler::AVX_512bit);
+    __ leaq(from, Address(from, 8 * 64));
+
+    __ evpxorq(B0, S0, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B1, S1, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B2, S2, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B3, S3, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B4, S4, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B5, S5, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B6, S6, RK1, Assembler::AVX_512bit);
+    __ evpxorq(B7, S7, RK1, Assembler::AVX_512bit);
+
+    __ evalignq(IV, S0, IV, 0x06);
+    __ evalignq(S0, S1, S0, 0x06);
+    __ evalignq(S1, S2, S1, 0x06);
+    __ evalignq(S2, S3, S2, 0x06);
+    __ evalignq(S3, S4, S3, 0x06);
+    __ evalignq(S4, S5, S4, 0x06);
+    __ evalignq(S5, S6, S5, 0x06);
+    __ evalignq(S6, S7, S6, 0x06);
+
+    roundDec(RK2);
+    roundDec(RK3);
+    roundDec(RK4);
+    roundDec(RK5);
+    roundDec(RK6);
+    roundDec(RK7);
+    roundDec(RK8);
+    roundDec(RK9);
+    roundDec(RK10);
+
+    __ cmpl(rounds, 44);
+    __ jcc(Assembler::belowEqual, L_128);
+    roundDec(RK11);
+    roundDec(RK12);
+
+    __ cmpl(rounds, 52);
+    __ jcc(Assembler::belowEqual, L_192);
+    roundDec(RK13);
+    roundDec(RK14);
+
+    __ BIND(L_256);
+    roundDeclast(RK0);
+    __ jmp(Loop2);
+
+    __ BIND(L_128);
+    roundDeclast(RK0);
+    __ jmp(Loop2);
+
+    __ BIND(L_192);
+    roundDeclast(RK0);
+
+    __ BIND(Loop2);
+    __ evpxorq(B0, B0, IV, Assembler::AVX_512bit);
+    __ evpxorq(B1, B1, S0, Assembler::AVX_512bit);
+    __ evpxorq(B2, B2, S1, Assembler::AVX_512bit);
+    __ evpxorq(B3, B3, S2, Assembler::AVX_512bit);
+    __ evpxorq(B4, B4, S3, Assembler::AVX_512bit);
+    __ evpxorq(B5, B5, S4, Assembler::AVX_512bit);
+    __ evpxorq(B6, B6, S5, Assembler::AVX_512bit);
+    __ evpxorq(B7, B7, S6, Assembler::AVX_512bit);
+    __ evmovdquq(IV, S7, Assembler::AVX_512bit);
+
+    __ evmovdquq(Address(to, 0 * 64), B0, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 1 * 64), B1, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 2 * 64), B2, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 3 * 64), B3, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 4 * 64), B4, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 5 * 64), B5, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 6 * 64), B6, Assembler::AVX_512bit);
+    __ evmovdquq(Address(to, 7 * 64), B7, Assembler::AVX_512bit);
+    __ leaq(to, Address(to, 8 * 64));
+    __ jmp(Loop);
+
+    __ BIND(Lcbc_dec_rem);
+    __ evshufi64x2(IV, IV, IV, 0x03, Assembler::AVX_512bit);
+
+    __ BIND(Lcbc_dec_rem_loop);
+    __ subl(len_reg, 16);
+    __ jcc(Assembler::carrySet, Lcbc_dec_ret);
+
+    __ movdqu(S0, Address(from, 0));
+    __ evpxorq(B0, S0, RK1, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK2, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK3, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK4, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK5, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK6, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK7, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK8, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK9, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK10, Assembler::AVX_512bit);
+    __ cmpl(rounds, 44);
+    __ jcc(Assembler::belowEqual, Lcbc_dec_rem_last);
+
+    __ vaesdec(B0, B0, RK11, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK12, Assembler::AVX_512bit);
+    __ cmpl(rounds, 52);
+    __ jcc(Assembler::belowEqual, Lcbc_dec_rem_last);
+
+    __ vaesdec(B0, B0, RK13, Assembler::AVX_512bit);
+    __ vaesdec(B0, B0, RK14, Assembler::AVX_512bit);
+
+    __ BIND(Lcbc_dec_rem_last);
+    __ vaesdeclast(B0, B0, RK0, Assembler::AVX_512bit);
+
+    __ evpxorq(B0, B0, IV, Assembler::AVX_512bit);
+    __ evmovdquq(IV, S0, Assembler::AVX_512bit);
+    __ movdqu(Address(to, 0), B0);
+    __ leaq(from, Address(from, 16));
+    __ leaq(to, Address(to, 16));
+    __ jmp(Lcbc_dec_rem_loop);
+
+    __ BIND(Lcbc_dec_ret);
+    __ movdqu(Address(rvec, 0), IV);
+
+    // Zero out the round keys
+    __ evpxorq(RK0, RK0, RK0, Assembler::AVX_512bit);
+    __ evpxorq(RK1, RK1, RK1, Assembler::AVX_512bit);
+    __ evpxorq(RK2, RK2, RK2, Assembler::AVX_512bit);
+    __ evpxorq(RK3, RK3, RK3, Assembler::AVX_512bit);
+    __ evpxorq(RK4, RK4, RK4, Assembler::AVX_512bit);
+    __ evpxorq(RK5, RK5, RK5, Assembler::AVX_512bit);
+    __ evpxorq(RK6, RK6, RK6, Assembler::AVX_512bit);
+    __ evpxorq(RK7, RK7, RK7, Assembler::AVX_512bit);
+    __ evpxorq(RK8, RK8, RK8, Assembler::AVX_512bit);
+    __ evpxorq(RK9, RK9, RK9, Assembler::AVX_512bit);
+    __ evpxorq(RK10, RK10, RK10, Assembler::AVX_512bit);
+    __ cmpl(rounds, 44);
+    __ jcc(Assembler::belowEqual, Lcbc_exit);
+    __ evpxorq(RK11, RK11, RK11, Assembler::AVX_512bit);
+    __ evpxorq(RK12, RK12, RK12, Assembler::AVX_512bit);
+    __ cmpl(rounds, 52);
+    __ jcc(Assembler::belowEqual, Lcbc_exit);
+    __ evpxorq(RK13, RK13, RK13, Assembler::AVX_512bit);
+    __ evpxorq(RK14, RK14, RK14, Assembler::AVX_512bit);
+
+    __ BIND(Lcbc_exit);
+    __ pop(rbx);
+#ifdef _WIN64
+    __ movl(rax, len_mem);
+#else
+    __ pop(rax); // return length
+#endif
+    __ leave(); // required for proper stackwalking of RuntimeStub frame
+    __ ret(0);
+    return start;
+}
+
   // byte swap x86 long
   address generate_ghash_long_swap_mask() {
     __ align(CodeEntryAlignment);
@@ -4236,6 +4542,408 @@ class StubGenerator: public StubCodeGenerator {
     __ BIND(L_exit);
     __ pshufb(xmm_temp6, xmm_temp10);          // Byte swap 16-byte result
     __ movdqu(Address(state, 0), xmm_temp6);   // store the result
+    __ leave();
+    __ ret(0);
+    return start;
+  }
+
+  //base64 character set
+  address base64_charset_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "base64_charset");
+    address start = __ pc();
+    __ emit_data64(0x0000004200000041, relocInfo::none);
+    __ emit_data64(0x0000004400000043, relocInfo::none);
+    __ emit_data64(0x0000004600000045, relocInfo::none);
+    __ emit_data64(0x0000004800000047, relocInfo::none);
+    __ emit_data64(0x0000004a00000049, relocInfo::none);
+    __ emit_data64(0x0000004c0000004b, relocInfo::none);
+    __ emit_data64(0x0000004e0000004d, relocInfo::none);
+    __ emit_data64(0x000000500000004f, relocInfo::none);
+    __ emit_data64(0x0000005200000051, relocInfo::none);
+    __ emit_data64(0x0000005400000053, relocInfo::none);
+    __ emit_data64(0x0000005600000055, relocInfo::none);
+    __ emit_data64(0x0000005800000057, relocInfo::none);
+    __ emit_data64(0x0000005a00000059, relocInfo::none);
+    __ emit_data64(0x0000006200000061, relocInfo::none);
+    __ emit_data64(0x0000006400000063, relocInfo::none);
+    __ emit_data64(0x0000006600000065, relocInfo::none);
+    __ emit_data64(0x0000006800000067, relocInfo::none);
+    __ emit_data64(0x0000006a00000069, relocInfo::none);
+    __ emit_data64(0x0000006c0000006b, relocInfo::none);
+    __ emit_data64(0x0000006e0000006d, relocInfo::none);
+    __ emit_data64(0x000000700000006f, relocInfo::none);
+    __ emit_data64(0x0000007200000071, relocInfo::none);
+    __ emit_data64(0x0000007400000073, relocInfo::none);
+    __ emit_data64(0x0000007600000075, relocInfo::none);
+    __ emit_data64(0x0000007800000077, relocInfo::none);
+    __ emit_data64(0x0000007a00000079, relocInfo::none);
+    __ emit_data64(0x0000003100000030, relocInfo::none);
+    __ emit_data64(0x0000003300000032, relocInfo::none);
+    __ emit_data64(0x0000003500000034, relocInfo::none);
+    __ emit_data64(0x0000003700000036, relocInfo::none);
+    __ emit_data64(0x0000003900000038, relocInfo::none);
+    __ emit_data64(0x0000002f0000002b, relocInfo::none);
+    return start;
+  }
+
+  //base64 url character set
+  address base64url_charset_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "base64url_charset");
+    address start = __ pc();
+    __ emit_data64(0x0000004200000041, relocInfo::none);
+    __ emit_data64(0x0000004400000043, relocInfo::none);
+    __ emit_data64(0x0000004600000045, relocInfo::none);
+    __ emit_data64(0x0000004800000047, relocInfo::none);
+    __ emit_data64(0x0000004a00000049, relocInfo::none);
+    __ emit_data64(0x0000004c0000004b, relocInfo::none);
+    __ emit_data64(0x0000004e0000004d, relocInfo::none);
+    __ emit_data64(0x000000500000004f, relocInfo::none);
+    __ emit_data64(0x0000005200000051, relocInfo::none);
+    __ emit_data64(0x0000005400000053, relocInfo::none);
+    __ emit_data64(0x0000005600000055, relocInfo::none);
+    __ emit_data64(0x0000005800000057, relocInfo::none);
+    __ emit_data64(0x0000005a00000059, relocInfo::none);
+    __ emit_data64(0x0000006200000061, relocInfo::none);
+    __ emit_data64(0x0000006400000063, relocInfo::none);
+    __ emit_data64(0x0000006600000065, relocInfo::none);
+    __ emit_data64(0x0000006800000067, relocInfo::none);
+    __ emit_data64(0x0000006a00000069, relocInfo::none);
+    __ emit_data64(0x0000006c0000006b, relocInfo::none);
+    __ emit_data64(0x0000006e0000006d, relocInfo::none);
+    __ emit_data64(0x000000700000006f, relocInfo::none);
+    __ emit_data64(0x0000007200000071, relocInfo::none);
+    __ emit_data64(0x0000007400000073, relocInfo::none);
+    __ emit_data64(0x0000007600000075, relocInfo::none);
+    __ emit_data64(0x0000007800000077, relocInfo::none);
+    __ emit_data64(0x0000007a00000079, relocInfo::none);
+    __ emit_data64(0x0000003100000030, relocInfo::none);
+    __ emit_data64(0x0000003300000032, relocInfo::none);
+    __ emit_data64(0x0000003500000034, relocInfo::none);
+    __ emit_data64(0x0000003700000036, relocInfo::none);
+    __ emit_data64(0x0000003900000038, relocInfo::none);
+    __ emit_data64(0x0000005f0000002d, relocInfo::none);
+
+    return start;
+  }
+
+  address base64_bswap_mask_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "bswap_mask_base64");
+    address start = __ pc();
+    __ emit_data64(0x0504038002010080, relocInfo::none);
+    __ emit_data64(0x0b0a098008070680, relocInfo::none);
+    __ emit_data64(0x0908078006050480, relocInfo::none);
+    __ emit_data64(0x0f0e0d800c0b0a80, relocInfo::none);
+    __ emit_data64(0x0605048003020180, relocInfo::none);
+    __ emit_data64(0x0c0b0a8009080780, relocInfo::none);
+    __ emit_data64(0x0504038002010080, relocInfo::none);
+    __ emit_data64(0x0b0a098008070680, relocInfo::none);
+
+    return start;
+  }
+
+  address base64_right_shift_mask_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "right_shift_mask");
+    address start = __ pc();
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+    __ emit_data64(0x0006000400020000, relocInfo::none);
+
+    return start;
+  }
+
+  address base64_left_shift_mask_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "left_shift_mask");
+    address start = __ pc();
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+    __ emit_data64(0x0000000200040000, relocInfo::none);
+
+    return start;
+  }
+
+  address base64_and_mask_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "and_mask");
+    address start = __ pc();
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    __ emit_data64(0x3f003f003f000000, relocInfo::none);
+    return start;
+  }
+
+  address base64_gather_mask_addr() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "gather_mask");
+    address start = __ pc();
+    __ emit_data64(0xffffffffffffffff, relocInfo::none);
+    return start;
+  }
+
+// Code for generating Base64 encoding.
+// Intrinsic function prototype in Base64.java:
+// private void encodeBlock(byte[] src, int sp, int sl, byte[] dst, int dp, boolean isURL) {
+  address generate_base64_encodeBlock() {
+    __ align(CodeEntryAlignment);
+    StubCodeMark mark(this, "StubRoutines", "implEncode");
+    address start = __ pc();
+    __ enter();
+
+    // Save callee-saved registers before using them
+    __ push(r12);
+    __ push(r13);
+    __ push(r14);
+    __ push(r15);
+    __ push(rbx);
+
+    // arguments
+    const Register source = c_rarg0; // Source Array
+    const Register start_offset = c_rarg1; // start offset
+    const Register end_offset = c_rarg2; // end offset
+    const Register dest = c_rarg3; // destination array
+
+#ifndef _WIN64
+    const Register dp = c_rarg4;  // Position for writing to dest array
+    const Register isURL = c_rarg5;// Base64 or URL character set
+#else
+    const Address  dp_mem(rbp, 6 * wordSize);  // length is on stack on Win64
+    const Address isURL_mem(rbp, 7 * wordSize);
+    const Register isURL = r10;      // pick the volatile windows register
+    const Register dp = r12;
+    __ movl(dp, dp_mem);
+    __ movl(isURL, isURL_mem);
+#endif
+
+    const Register length = r14;
+    Label L_process80, L_process32, L_process3, L_exit, L_processdata;
+
+    // calculate length from offsets
+    __ movl(length, end_offset);
+    __ subl(length, start_offset);
+    __ cmpl(length, 0);
+    __ jcc(Assembler::lessEqual, L_exit);
+
+    // Save k1 value in rbx
+    __ kmovql(rbx, k1);
+    __ lea(r11, ExternalAddress(StubRoutines::x86::base64_charset_addr()));
+    // check if base64 charset(isURL=0) or base64 url charset(isURL=1) needs to be loaded
+    __ cmpl(isURL, 0);
+    __ jcc(Assembler::equal, L_processdata);
+    __ lea(r11, ExternalAddress(StubRoutines::x86::base64url_charset_addr()));
+
+    // load masks required for encoding data
+    __ BIND(L_processdata);
+    __ movdqu(xmm16, ExternalAddress(StubRoutines::x86::base64_gather_mask_addr()));
+    // Set 64 bits of K register.
+    __ evpcmpeqb(k1, xmm16, xmm16, Assembler::AVX_512bit);
+    __ evmovdquq(xmm12, ExternalAddress(StubRoutines::x86::base64_bswap_mask_addr()), Assembler::AVX_256bit, r13);
+    __ evmovdquq(xmm13, ExternalAddress(StubRoutines::x86::base64_right_shift_mask_addr()), Assembler::AVX_512bit, r13);
+    __ evmovdquq(xmm14, ExternalAddress(StubRoutines::x86::base64_left_shift_mask_addr()), Assembler::AVX_512bit, r13);
+    __ evmovdquq(xmm15, ExternalAddress(StubRoutines::x86::base64_and_mask_addr()), Assembler::AVX_512bit, r13);
+
+    // Vector Base64 implementation, producing 96 bytes of encoded data
+    __ BIND(L_process80);
+    __ cmpl(length, 80);
+    __ jcc(Assembler::below, L_process32);
+    __ evmovdquq(xmm0, Address(source, start_offset, Address::times_1, 0), Assembler::AVX_256bit);
+    __ evmovdquq(xmm1, Address(source, start_offset, Address::times_1, 24), Assembler::AVX_256bit);
+    __ evmovdquq(xmm2, Address(source, start_offset, Address::times_1, 48), Assembler::AVX_256bit);
+
+    //permute the input data in such a manner that we have continuity of the source
+    __ vpermq(xmm3, xmm0, 148, Assembler::AVX_256bit);
+    __ vpermq(xmm4, xmm1, 148, Assembler::AVX_256bit);
+    __ vpermq(xmm5, xmm2, 148, Assembler::AVX_256bit);
+
+    //shuffle input and group 3 bytes of data and to it add 0 as the 4th byte.
+    //we can deal with 12 bytes at a time in a 128 bit register
+    __ vpshufb(xmm3, xmm3, xmm12, Assembler::AVX_256bit);
+    __ vpshufb(xmm4, xmm4, xmm12, Assembler::AVX_256bit);
+    __ vpshufb(xmm5, xmm5, xmm12, Assembler::AVX_256bit);
+
+    //convert byte to word. Each 128 bit register will have 6 bytes for processing
+    __ vpmovzxbw(xmm3, xmm3, Assembler::AVX_512bit);
+    __ vpmovzxbw(xmm4, xmm4, Assembler::AVX_512bit);
+    __ vpmovzxbw(xmm5, xmm5, Assembler::AVX_512bit);
+
+    // Extract bits in the following pattern 6, 4+2, 2+4, 6 to convert 3, 8 bit numbers to 4, 6 bit numbers
+    __ evpsrlvw(xmm0, xmm3, xmm13,  Assembler::AVX_512bit);
+    __ evpsrlvw(xmm1, xmm4, xmm13, Assembler::AVX_512bit);
+    __ evpsrlvw(xmm2, xmm5, xmm13, Assembler::AVX_512bit);
+
+    __ evpsllvw(xmm3, xmm3, xmm14, Assembler::AVX_512bit);
+    __ evpsllvw(xmm4, xmm4, xmm14, Assembler::AVX_512bit);
+    __ evpsllvw(xmm5, xmm5, xmm14, Assembler::AVX_512bit);
+
+    __ vpsrlq(xmm0, xmm0, 8, Assembler::AVX_512bit);
+    __ vpsrlq(xmm1, xmm1, 8, Assembler::AVX_512bit);
+    __ vpsrlq(xmm2, xmm2, 8, Assembler::AVX_512bit);
+
+    __ vpsllq(xmm3, xmm3, 8, Assembler::AVX_512bit);
+    __ vpsllq(xmm4, xmm4, 8, Assembler::AVX_512bit);
+    __ vpsllq(xmm5, xmm5, 8, Assembler::AVX_512bit);
+
+    __ vpandq(xmm3, xmm3, xmm15, Assembler::AVX_512bit);
+    __ vpandq(xmm4, xmm4, xmm15, Assembler::AVX_512bit);
+    __ vpandq(xmm5, xmm5, xmm15, Assembler::AVX_512bit);
+
+    // Get the final 4*6 bits base64 encoding
+    __ vporq(xmm3, xmm3, xmm0, Assembler::AVX_512bit);
+    __ vporq(xmm4, xmm4, xmm1, Assembler::AVX_512bit);
+    __ vporq(xmm5, xmm5, xmm2, Assembler::AVX_512bit);
+
+    // Shift
+    __ vpsrlq(xmm3, xmm3, 8, Assembler::AVX_512bit);
+    __ vpsrlq(xmm4, xmm4, 8, Assembler::AVX_512bit);
+    __ vpsrlq(xmm5, xmm5, 8, Assembler::AVX_512bit);
+
+    // look up 6 bits in the base64 character set to fetch the encoding
+    // we are converting word to dword as gather instructions need dword indices for looking up encoding
+    __ vextracti64x4(xmm6, xmm3, 0);
+    __ vpmovzxwd(xmm0, xmm6, Assembler::AVX_512bit);
+    __ vextracti64x4(xmm6, xmm3, 1);
+    __ vpmovzxwd(xmm1, xmm6, Assembler::AVX_512bit);
+
+    __ vextracti64x4(xmm6, xmm4, 0);
+    __ vpmovzxwd(xmm2, xmm6, Assembler::AVX_512bit);
+    __ vextracti64x4(xmm6, xmm4, 1);
+    __ vpmovzxwd(xmm3, xmm6, Assembler::AVX_512bit);
+
+    __ vextracti64x4(xmm4, xmm5, 0);
+    __ vpmovzxwd(xmm6, xmm4, Assembler::AVX_512bit);
+
+    __ vextracti64x4(xmm4, xmm5, 1);
+    __ vpmovzxwd(xmm7, xmm4, Assembler::AVX_512bit);
+
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm4, k2, Address(r11, xmm0, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm5, k2, Address(r11, xmm1, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm8, k2, Address(r11, xmm2, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm9, k2, Address(r11, xmm3, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm10, k2, Address(r11, xmm6, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm11, k2, Address(r11, xmm7, Address::times_4, 0), Assembler::AVX_512bit);
+
+    //Down convert dword to byte. Final output is 16*6 = 96 bytes long
+    __ evpmovdb(Address(dest, dp, Address::times_1, 0), xmm4, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 16), xmm5, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 32), xmm8, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 48), xmm9, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 64), xmm10, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 80), xmm11, Assembler::AVX_512bit);
+
+    __ addq(dest, 96);
+    __ addq(source, 72);
+    __ subq(length, 72);
+    __ jmp(L_process80);
+
+    // Vector Base64 implementation generating 32 bytes of encoded data
+    __ BIND(L_process32);
+    __ cmpl(length, 32);
+    __ jcc(Assembler::below, L_process3);
+    __ evmovdquq(xmm0, Address(source, start_offset), Assembler::AVX_256bit);
+    __ vpermq(xmm0, xmm0, 148, Assembler::AVX_256bit);
+    __ vpshufb(xmm6, xmm0, xmm12, Assembler::AVX_256bit);
+    __ vpmovzxbw(xmm6, xmm6, Assembler::AVX_512bit);
+    __ evpsrlvw(xmm2, xmm6, xmm13, Assembler::AVX_512bit);
+    __ evpsllvw(xmm3, xmm6, xmm14, Assembler::AVX_512bit);
+
+    __ vpsrlq(xmm2, xmm2, 8, Assembler::AVX_512bit);
+    __ vpsllq(xmm3, xmm3, 8, Assembler::AVX_512bit);
+    __ vpandq(xmm3, xmm3, xmm15, Assembler::AVX_512bit);
+    __ vporq(xmm1, xmm2, xmm3, Assembler::AVX_512bit);
+    __ vpsrlq(xmm1, xmm1, 8, Assembler::AVX_512bit);
+    __ vextracti64x4(xmm9, xmm1, 0);
+    __ vpmovzxwd(xmm6, xmm9, Assembler::AVX_512bit);
+    __ vextracti64x4(xmm9, xmm1, 1);
+    __ vpmovzxwd(xmm5, xmm9,  Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm8, k2, Address(r11, xmm6, Address::times_4, 0), Assembler::AVX_512bit);
+    __ kmovql(k2, k1);
+    __ evpgatherdd(xmm10, k2, Address(r11, xmm5, Address::times_4, 0), Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 0), xmm8, Assembler::AVX_512bit);
+    __ evpmovdb(Address(dest, dp, Address::times_1, 16), xmm10, Assembler::AVX_512bit);
+    __ subq(length, 24);
+    __ addq(dest, 32);
+    __ addq(source, 24);
+    __ jmp(L_process32);
+
+    // Scalar data processing takes 3 bytes at a time and produces 4 bytes of encoded data
+    /* This code corresponds to the scalar version of the following snippet in Base64.java
+    ** int bits = (src[sp0++] & 0xff) << 16 |(src[sp0++] & 0xff) << 8 |(src[sp0++] & 0xff);
+    ** dst[dp0++] = (byte)base64[(bits >> > 18) & 0x3f];
+    ** dst[dp0++] = (byte)base64[(bits >> > 12) & 0x3f];
+    ** dst[dp0++] = (byte)base64[(bits >> > 6) & 0x3f];
+    ** dst[dp0++] = (byte)base64[bits & 0x3f];*/
+    __ BIND(L_process3);
+    __ cmpl(length, 3);
+    __ jcc(Assembler::below, L_exit);
+    // Read 1 byte at a time
+    __ movzbl(rax, Address(source, start_offset));
+    __ shll(rax, 0x10);
+    __ movl(r15, rax);
+    __ movzbl(rax, Address(source, start_offset, Address::times_1, 1));
+    __ shll(rax, 0x8);
+    __ movzwl(rax, rax);
+    __ orl(r15, rax);
+    __ movzbl(rax, Address(source, start_offset, Address::times_1, 2));
+    __ orl(rax, r15);
+    // Save 3 bytes read in r15
+    __ movl(r15, rax);
+    __ shrl(rax, 0x12);
+    __ andl(rax, 0x3f);
+    // rax contains the index, r11 contains base64 lookup table
+    __ movb(rax, Address(r11, rax, Address::times_4));
+    // Write the encoded byte to destination
+    __ movb(Address(dest, dp, Address::times_1, 0), rax);
+    __ movl(rax, r15);
+    __ shrl(rax, 0xc);
+    __ andl(rax, 0x3f);
+    __ movb(rax, Address(r11, rax, Address::times_4));
+    __ movb(Address(dest, dp, Address::times_1, 1), rax);
+    __ movl(rax, r15);
+    __ shrl(rax, 0x6);
+    __ andl(rax, 0x3f);
+    __ movb(rax, Address(r11, rax, Address::times_4));
+    __ movb(Address(dest, dp, Address::times_1, 2), rax);
+    __ movl(rax, r15);
+    __ andl(rax, 0x3f);
+    __ movb(rax, Address(r11, rax, Address::times_4));
+    __ movb(Address(dest, dp, Address::times_1, 3), rax);
+    __ subl(length, 3);
+    __ addq(dest, 4);
+    __ addq(source, 3);
+    __ jmp(L_process3);
+    __ BIND(L_exit);
+    // restore k1 register value
+    __ kmovql(k1, rbx);
+    __ pop(rbx);
+    __ pop(r15);
+    __ pop(r14);
+    __ pop(r13);
+    __ pop(r12);
     __ leave();
     __ ret(0);
     return start;
@@ -5078,7 +5786,11 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
       StubRoutines::_aescrypt_decryptBlock = generate_aescrypt_decryptBlock();
       StubRoutines::_cipherBlockChaining_encryptAESCrypt = generate_cipherBlockChaining_encryptAESCrypt();
-      StubRoutines::_cipherBlockChaining_decryptAESCrypt = generate_cipherBlockChaining_decryptAESCrypt_Parallel();
+      if (VM_Version::supports_vaes() &&  VM_Version::supports_avx512vl() && VM_Version::supports_avx512dq() ) {
+        StubRoutines::_cipherBlockChaining_decryptAESCrypt = generate_cipherBlockChaining_decryptVectorAESCrypt();
+      } else {
+        StubRoutines::_cipherBlockChaining_decryptAESCrypt = generate_cipherBlockChaining_decryptAESCrypt_Parallel();
+      }
     }
     if (UseAESCTRIntrinsics){
       StubRoutines::x86::_counter_shuffle_mask_addr = generate_counter_shuffle_mask();
@@ -5116,6 +5828,17 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::x86::_ghash_long_swap_mask_addr = generate_ghash_long_swap_mask();
       StubRoutines::x86::_ghash_byte_swap_mask_addr = generate_ghash_byte_swap_mask();
       StubRoutines::_ghash_processBlocks = generate_ghash_processBlocks();
+    }
+
+    if (UseBASE64Intrinsics) {
+      StubRoutines::x86::_and_mask = base64_and_mask_addr();
+      StubRoutines::x86::_bswap_mask = base64_bswap_mask_addr();
+      StubRoutines::x86::_base64_charset = base64_charset_addr();
+      StubRoutines::x86::_url_charset = base64url_charset_addr();
+      StubRoutines::x86::_gather_mask = base64_gather_mask_addr();
+      StubRoutines::x86::_left_shift_mask = base64_left_shift_mask_addr();
+      StubRoutines::x86::_right_shift_mask = base64_right_shift_mask_addr();
+      StubRoutines::_base64_encodeBlock = generate_base64_encodeBlock();
     }
 
     // Safefetch stubs.

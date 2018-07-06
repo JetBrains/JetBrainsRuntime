@@ -43,7 +43,7 @@
 
 void G1BarrierSetAssembler::gen_write_ref_array_pre_barrier(MacroAssembler* masm, DecoratorSet decorators,
                                                             Register addr, Register count) {
-  bool dest_uninitialized = (decorators & AS_DEST_NOT_INITIALIZED) != 0;
+  bool dest_uninitialized = (decorators & IS_DEST_UNINITIALIZED) != 0;
 
   if (!dest_uninitialized) {
     Register thread = NOT_LP64(rax) LP64_ONLY(r15_thread);
@@ -349,9 +349,10 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
 void G1BarrierSetAssembler::oop_store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                          Address dst, Register val, Register tmp1, Register tmp2) {
   bool in_heap = (decorators & IN_HEAP) != 0;
-  bool in_concurrent_root = (decorators & IN_CONCURRENT_ROOT) != 0;
+  bool as_normal = (decorators & AS_NORMAL) != 0;
+  assert((decorators & IS_DEST_UNINITIALIZED) == 0, "unsupported");
 
-  bool needs_pre_barrier = in_heap || in_concurrent_root;
+  bool needs_pre_barrier = as_normal;
   bool needs_post_barrier = val != noreg && in_heap;
 
   Register tmp3 = LP64_ONLY(r8) NOT_LP64(rsi);

@@ -577,6 +577,7 @@
   <Event name="OldObjectSample" category="Java Application" label="Old Object Sample" description="A potential memory leak" stackTrace="true" thread="true"
     startTime="false" cutoff="true">
     <Field type="Ticks" name="allocationTime" label="Allocation Time" />
+    <Field type="ulong" contentType="bytes" name="lastKnownHeapUsage" label="Last Known Heap Usage" />
     <Field type="OldObject" name="object" label="Object" />
     <Field type="int" name="arrayElements" label="Array Elements" description="If the object is an array, the number of elements, or -1 if it is not an array" />
     <Field type="OldObjectGcRoot" name="root" label="GC Root" />
@@ -654,6 +655,12 @@
 
   <Event name="ThreadContextSwitchRate" category="Operating System, Processor" label="Thread Context Switch Rate" period="everyChunk">
     <Field type="float" name="switchRate" label="Switch Rate" description="Number of context switches per second" />
+  </Event>
+
+  <Event name="NetworkUtilization" category="Operating System, Network" label="Network Utilization" period="everyChunk">
+    <Field type="NetworkInterfaceName" name="networkInterface" label="Network Interface" description="Network Interface Name"/>
+    <Field type="long" contentType="bytes" name="readRate" label="Read Rate" description="Number of incoming bytes per second"/>
+    <Field type="long" contentType="bytes" name="writeRate" label="Write Rate" description="Number of outgoing bytes per second"/>
   </Event>
 
   <Event name="JavaThreadStatistics" category="Java Application, Statistics" label="Java Thread Statistics" period="everyChunk">
@@ -916,6 +923,10 @@
 
   <Type name="ZStatisticsSamplerType" label="Z Statistics Sampler">
     <Field type="string" name="sampler" label="Sampler" />
+  </Type>
+
+  <Type name="NetworkInterfaceName" label="Network Interface">
+    <Field type="string" name="networkInterface" label="Network Interface" description="Network Interface Name" />
   </Type>
 
   <Type name="Thread" label="Thread">

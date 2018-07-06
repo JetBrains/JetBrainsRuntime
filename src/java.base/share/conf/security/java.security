@@ -800,6 +800,40 @@ jdk.tls.legacyAlgorithms= \
 #       FFFFFFFF FFFFFFFF, 2}
 
 #
+# TLS key limits on symmetric cryptographic algorithms
+#
+# This security property sets limits on algorithms key usage in TLS 1.3.
+# When the amount of data encrypted exceeds the algorithm value listed below,
+# a KeyUpdate message will trigger a key change.  This is for symmetric ciphers
+# with TLS 1.3 only.
+#
+# The syntax for the property is described below:
+#   KeyLimits:
+#       " KeyLimit { , KeyLimit } "
+#
+#   WeakKeyLimit:
+#       AlgorithmName Action Length
+#
+#   AlgorithmName:
+#       A full algorithm transformation.
+#
+#   Action:
+#       KeyUpdate
+#
+#   Length:
+#       The amount of encrypted data in a session before the Action occurs
+#       This value may be an integer value in bytes, or as a power of two, 2^29.
+#
+#   KeyUpdate:
+#       The TLS 1.3 KeyUpdate handshake process begins when the Length amount
+#       is fulfilled.
+#
+# Note: This property is currently used by OpenJDK's JSSE implementation. It
+# is not guaranteed to be examined and used by other implementations.
+#
+jdk.tls.keyLimits=AES/GCM/NoPadding KeyUpdate 2^37
+
+#
 # Cryptographic Jurisdiction Policy defaults
 #
 # Import and export control rules on cryptographic software vary from
@@ -993,10 +1027,10 @@ jdk.xml.dsig.secureValidationPolicy=\
 #
 # An IOR type check filter, if configured, is used by an ORB during
 # an ORB::string_to_object invocation to check the veracity of the type encoded
-# in the ior string. 
+# in the ior string.
 #
 # The filter pattern consists of a semi-colon separated list of class names.
-# The configured list contains the binary class names of the IDL interface types 
+# The configured list contains the binary class names of the IDL interface types
 # corresponding to the IDL stub class to be instantiated.
 # As such, a filter specifies a list of IDL stub classes that will be
 # allowed by an ORB when an ORB::string_to_object is invoked.
@@ -1025,3 +1059,16 @@ jdk.xml.dsig.secureValidationPolicy=\
 # and javax.crypto.spec.SecretKeySpec and rejects all the others.
 jceks.key.serialFilter = java.base/java.lang.Enum;java.base/java.security.KeyRep;\
   java.base/java.security.KeyRep$Type;java.base/javax.crypto.spec.SecretKeySpec;!*
+
+#
+# Enhanced exception message text
+#
+# By default, socket exception messages do not include potentially sensitive
+# information such as hostnames or port numbers. This property may be set to one
+# or more values, separated by commas, and with no white-space. Each value
+# represents a category of enhanced information. Currently, the only category defined
+# is "hostInfo" which enables more detailed information in the IOExceptions
+# thrown by java.net.Socket and also the socket types in the java.nio.channels package.
+# The setting in this file can be overridden by a system property of the same name
+# and with the same syntax and possible values.
+#jdk.net.includeInExceptions=hostInfo

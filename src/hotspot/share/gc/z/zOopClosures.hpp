@@ -26,11 +26,8 @@
 
 #include "memory/iterator.hpp"
 
-class ZLoadBarrierOopClosure : public ExtendedOopClosure {
+class ZLoadBarrierOopClosure : public BasicOopIterateClosure {
 public:
-  void do_oop_nv(oop* p);
-  void do_oop_nv(narrowOop* p);
-
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);
 
@@ -54,12 +51,9 @@ public:
 };
 
 template <bool finalizable>
-class ZMarkBarrierOopClosure : public ExtendedOopClosure {
+class ZMarkBarrierOopClosure : public BasicOopIterateClosure {
 public:
   ZMarkBarrierOopClosure();
-
-  void do_oop_nv(oop* p);
-  void do_oop_nv(narrowOop* p);
 
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);
@@ -88,12 +82,9 @@ public:
   virtual void do_oop(narrowOop* p);
 };
 
-class ZVerifyHeapOopClosure : public ExtendedOopClosure {
-private:
-  const oop _base;
-
+class ZVerifyHeapOopClosure : public BasicOopIterateClosure {
 public:
-  ZVerifyHeapOopClosure(oop base);
+  virtual ReferenceIterationMode reference_iteration_mode();
 
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);
@@ -108,6 +99,8 @@ public:
 
 class ZVerifyRootOopClosure : public OopClosure {
 public:
+  ZVerifyRootOopClosure();
+
   virtual void do_oop(oop* p);
   virtual void do_oop(narrowOop* p);
 };

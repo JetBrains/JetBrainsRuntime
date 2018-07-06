@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
 
 public class ResolvedJavaTypeResolveConcreteMethodTest {
     public final MetaAccessProvider metaAccess;
@@ -62,6 +63,7 @@ public class ResolvedJavaTypeResolveConcreteMethodTest {
     }
 
     protected static class B extends A implements I {
+        @Override
         public void i() {
         }
 
@@ -76,6 +78,7 @@ public class ResolvedJavaTypeResolveConcreteMethodTest {
     }
 
     protected static class C extends B {
+        @Override
         public void d() {
         }
     }
@@ -117,8 +120,9 @@ public class ResolvedJavaTypeResolveConcreteMethodTest {
         ResolvedJavaType c = getType(C.class);
         ResolvedJavaMethod priv = getMethod(a, "priv");
 
-        assertNull(a.resolveConcreteMethod(priv, c));
-        assertNull(b.resolveConcreteMethod(priv, c));
+        // nestmates have access to private methods
+        assertNotNull(a.resolveConcreteMethod(priv, c));
+        assertNotNull(b.resolveConcreteMethod(priv, c));
     }
 
     @Test

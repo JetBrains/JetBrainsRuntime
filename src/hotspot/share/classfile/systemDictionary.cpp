@@ -245,10 +245,6 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name,
 // Forwards to resolve_instance_class_or_null
 
 Klass* SystemDictionary::resolve_or_null(Symbol* class_name, Handle class_loader, Handle protection_domain, TRAPS) {
-  assert(THREAD->can_call_java(),
-         "can not load classes with compiler thread: class=%s, classloader=%s",
-         class_name->as_C_string(),
-         class_loader.is_null() ? "null" : class_loader->klass()->name()->as_C_string());
   if (FieldType::is_array(class_name)) {
     return resolve_array_class_or_null(class_name, class_loader, protection_domain, THREAD);
   } else if (FieldType::is_obj(class_name)) {
@@ -692,6 +688,10 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
   PlaceholderEntry* placeholder;
   Symbol* superclassname = NULL;
 
+  assert(THREAD->can_call_java(),
+         "can not load classes with compiler thread: class=%s, classloader=%s",
+         name->as_C_string(),
+         class_loader.is_null() ? "null" : class_loader->klass()->name()->as_C_string());
   {
     MutexLocker mu(SystemDictionary_lock, THREAD);
     InstanceKlass* check = find_class(d_hash, name, dictionary);
@@ -2709,11 +2709,11 @@ Handle SystemDictionary::link_method_handle_constant(Klass* caller,
   java_lang_invoke_MemberName::set_flags(mname(), MethodHandles::ref_kind_to_flags(ref_kind));
 
   if (ref_kind == JVM_REF_invokeVirtual &&
-      callee->name() == vmSymbols::java_lang_invoke_MethodHandle() &&
-      (name == vmSymbols::invoke_name() || name == vmSymbols::invokeExact_name())) {
-    // Skip resolution for j.l.i.MethodHandle.invoke()/invokeExact().
-    // They are public signature polymorphic methods, but require appendix argument
-    // which MemberName resolution doesn't handle. There's special logic on JDK side to handle them
+      MethodHandles::is_signature_polymorphic_public_name(callee, name)) {
+    // Skip resolution for public signature polymorphic methods such as
+    // j.l.i.MethodHandle.invoke()/invokeExact() and those on VarHandle
+    // They require appendix argument which MemberName resolution doesn't handle.
+    // There's special logic on JDK side to handle them
     // (see MethodHandles.linkMethodHandleConstant() and MethodHandles.findVirtualForMH()).
   } else {
     MethodHandles::resolve_MemberName(mname, caller, /*speculative_resolve*/false, CHECK_(empty));

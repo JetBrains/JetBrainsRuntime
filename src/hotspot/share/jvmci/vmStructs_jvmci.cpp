@@ -176,7 +176,7 @@
   volatile_nonstatic_field(JavaThread,         _is_method_handle_return,                      int)                                   \
   nonstatic_field(JavaThread,                  _osthread,                                     OSThread*)                             \
   nonstatic_field(JavaThread,                  _pending_deoptimization,                       int)                                   \
-  nonstatic_field(JavaThread,                  _pending_failed_speculation,                   oop)                                   \
+  nonstatic_field(JavaThread,                  _pending_failed_speculation,                   long)                                  \
   nonstatic_field(JavaThread,                  _pending_transfer_to_interpreter,              bool)                                  \
   nonstatic_field(JavaThread,                  _jvmci_counters,                               jlong*)                                \
   nonstatic_field(JavaThread,                  _reserved_stack_activation,                    address)                               \
@@ -299,6 +299,7 @@
   static_field(StubRoutines,                _cipherBlockChaining_encryptAESCrypt,             address)                               \
   static_field(StubRoutines,                _cipherBlockChaining_decryptAESCrypt,             address)                               \
   static_field(StubRoutines,                _counterMode_AESCrypt,                            address)                               \
+  static_field(StubRoutines,                _base64_encodeBlock,                              address)                               \
   static_field(StubRoutines,                _ghash_processBlocks,                             address)                               \
   static_field(StubRoutines,                _sha1_implCompress,                               address)                               \
   static_field(StubRoutines,                _sha1_implCompressMB,                             address)                               \

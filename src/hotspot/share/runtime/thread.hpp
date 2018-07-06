@@ -44,6 +44,7 @@
 #include "runtime/stubRoutines.hpp"
 #include "runtime/threadHeapSampler.hpp"
 #include "runtime/threadLocalStorage.hpp"
+#include "runtime/threadStatisticalInfo.hpp"
 #include "runtime/unhandledOops.hpp"
 #include "utilities/align.hpp"
 #include "utilities/exceptions.hpp"
@@ -341,6 +342,8 @@ class Thread: public ThreadShadow {
                                                 // the Java heap
   ThreadHeapSampler _heap_sampler;              // For use when sampling the memory.
 
+  ThreadStatisticalInfo _statistical_info;      // Statistics about the thread
+
   JFR_ONLY(DEFINE_THREAD_LOCAL_FIELD_JFR;)      // Thread-local data for jfr
 
   int   _vm_operation_started_count;            // VM_Operation support
@@ -521,6 +524,8 @@ class Thread: public ThreadShadow {
 
   ThreadHeapSampler& heap_sampler()     { return _heap_sampler; }
 
+  ThreadStatisticalInfo& statistical_info() { return _statistical_info; }
+
   JFR_ONLY(DEFINE_THREAD_LOCAL_ACCESSOR_JFR;)
 
   bool is_trace_suspend()               { return (_suspend_flags & _trace_flag) != 0; }
@@ -638,7 +643,8 @@ protected:
   void    set_lgrp_id(int value) { _lgrp_id = value; }
 
   // Printing
-  virtual void print_on(outputStream* st) const;
+  void print_on(outputStream* st, bool print_extended_info) const;
+  virtual void print_on(outputStream* st) const { print_on(st, false); }
   void print() const { print_on(tty); }
   virtual void print_on_error(outputStream* st, char* buf, int buflen) const;
   void print_value_on(outputStream* st) const;
@@ -1011,9 +1017,9 @@ class JavaThread: public Thread {
   // Guard for re-entrant call to JVMCIRuntime::adjust_comp_level
   bool      _adjusting_comp_level;
 
-  // An object that JVMCI compiled code can use to further describe and
+  // An id of a speculation that JVMCI compiled code can use to further describe and
   // uniquely identify the  speculative optimization guarded by the uncommon trap
-  oop       _pending_failed_speculation;
+  long       _pending_failed_speculation;
 
   // These fields are mutually exclusive in terms of live ranges.
   union {
@@ -1201,6 +1207,7 @@ class JavaThread: public Thread {
   bool do_not_unlock_if_synchronized()             { return _do_not_unlock_if_synchronized; }
   void set_do_not_unlock_if_synchronized(bool val) { _do_not_unlock_if_synchronized = val; }
 
+  inline void set_polling_page_release(void* poll_value);
   inline void set_polling_page(void* poll_value);
   inline volatile void* get_polling_page();
 
@@ -1420,13 +1427,13 @@ class JavaThread: public Thread {
 
 #if INCLUDE_JVMCI
   int  pending_deoptimization() const             { return _pending_deoptimization; }
-  oop  pending_failed_speculation() const         { return _pending_failed_speculation; }
+  long  pending_failed_speculation() const         { return _pending_failed_speculation; }
   bool adjusting_comp_level() const               { return _adjusting_comp_level; }
   void set_adjusting_comp_level(bool b)           { _adjusting_comp_level = b; }
   bool has_pending_monitorenter() const           { return _pending_monitorenter; }
   void set_pending_monitorenter(bool b)           { _pending_monitorenter = b; }
   void set_pending_deoptimization(int reason)     { _pending_deoptimization = reason; }
-  void set_pending_failed_speculation(oop failed_speculation) { _pending_failed_speculation = failed_speculation; }
+  void set_pending_failed_speculation(long failed_speculation) { _pending_failed_speculation = failed_speculation; }
   void set_pending_transfer_to_interpreter(bool b) { _pending_transfer_to_interpreter = b; }
   void set_jvmci_alternate_call_target(address a) { assert(_jvmci._alternate_call_target == NULL, "must be"); _jvmci._alternate_call_target = a; }
   void set_jvmci_implicit_exception_pc(address a) { assert(_jvmci._implicit_exception_pc == NULL, "must be"); _jvmci._implicit_exception_pc = a; }
@@ -1759,7 +1766,8 @@ class JavaThread: public Thread {
 
   // Misc. operations
   char* name() const { return (char*)get_thread_name(); }
-  void print_on(outputStream* st) const;
+  void print_on(outputStream* st, bool print_extended_info) const;
+  void print_on(outputStream* st) const { print_on(st, false); }
   void print_value();
   void print_thread_state_on(outputStream*) const      PRODUCT_RETURN;
   void print_thread_state() const                      PRODUCT_RETURN;
@@ -2173,10 +2181,10 @@ class Threads: AllStatic {
 
   // Verification
   static void verify();
-  static void print_on(outputStream* st, bool print_stacks, bool internal_format, bool print_concurrent_locks);
+  static void print_on(outputStream* st, bool print_stacks, bool internal_format, bool print_concurrent_locks, bool print_extended_info);
   static void print(bool print_stacks, bool internal_format) {
     // this function is only used by debug.cpp
-    print_on(tty, print_stacks, internal_format, false /* no concurrent lock printed */);
+    print_on(tty, print_stacks, internal_format, false /* no concurrent lock printed */, false /* simple format */);
   }
   static void print_on_error(outputStream* st, Thread* current, char* buf, int buflen);
   static void print_on_error(Thread* this_thread, outputStream* st, Thread* current, char* buf,

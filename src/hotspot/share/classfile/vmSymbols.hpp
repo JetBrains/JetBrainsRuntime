@@ -142,6 +142,8 @@
   /* class file format tags */                                                                    \
   template(tag_source_file,                           "SourceFile")                               \
   template(tag_inner_classes,                         "InnerClasses")                             \
+  template(tag_nest_members,                          "NestMembers")                              \
+  template(tag_nest_host,                             "NestHost")                                 \
   template(tag_constant_value,                        "ConstantValue")                            \
   template(tag_code,                                  "Code")                                     \
   template(tag_exceptions,                            "Exceptions")                               \
@@ -1014,6 +1016,12 @@
   do_intrinsic(_digestBase_implCompressMB, sun_security_provider_digestbase, implCompressMB_name, implCompressMB_signature, F_R)   \
    do_name(     implCompressMB_name,                               "implCompressMultiBlock0")                           \
    do_signature(implCompressMB_signature,                          "([BII)I")                                           \
+                                                                                                                        \
+   /* support for java.util.Base64.Encoder*/                                                                            \
+  do_class(java_util_Base64_Encoder, "java/util/Base64$Encoder")                                                        \
+  do_intrinsic(_base64_encodeBlock, java_util_Base64_Encoder, encodeBlock_name, encodeBlock_signature, F_R)             \
+  do_name(encodeBlock_name, "encodeBlock")                                                                              \
+  do_signature(encodeBlock_signature, "([BII[BIZ)V")                                                                    \
                                                                                                                         \
   /* support for com.sun.crypto.provider.GHASH */                                                                       \
   do_class(com_sun_crypto_provider_ghash, "com/sun/crypto/provider/GHASH")                                              \

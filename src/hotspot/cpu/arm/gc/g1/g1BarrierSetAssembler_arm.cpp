@@ -53,7 +53,7 @@
 
 void G1BarrierSetAssembler::gen_write_ref_array_pre_barrier(MacroAssembler* masm, DecoratorSet decorators,
                                                             Register addr, Register count, int callee_saved_regs) {
-  bool dest_uninitialized = (decorators & AS_DEST_NOT_INITIALIZED) != 0;
+  bool dest_uninitialized = (decorators & IS_DEST_UNINITIALIZED) != 0;
   if (!dest_uninitialized) {
     assert( addr->encoding() < callee_saved_regs, "addr must be saved");
     assert(count->encoding() < callee_saved_regs, "count must be saved");
@@ -321,9 +321,10 @@ void G1BarrierSetAssembler::load_at(MacroAssembler* masm, DecoratorSet decorator
 void G1BarrierSetAssembler::oop_store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                                          Address obj, Register new_val, Register tmp1, Register tmp2, Register tmp3, bool is_null) {
   bool in_heap = (decorators & IN_HEAP) != 0;
-  bool in_concurrent_root = (decorators & IN_CONCURRENT_ROOT) != 0;
+  bool as_normal = (decorators & AS_NORMAL) != 0;
+  assert((decorators & IS_DEST_UNINITIALIZED) == 0, "unsupported");
 
-  bool needs_pre_barrier = in_heap || in_concurrent_root;
+  bool needs_pre_barrier = as_normal;
   bool needs_post_barrier = (new_val != noreg) && in_heap;
 
   // flatten object address if needed
@@ -360,7 +361,7 @@ void G1BarrierSetAssembler::oop_store_at(MacroAssembler* masm, DecoratorSet deco
       g1_write_barrier_post(masm, store_addr, new_val, tmp1, tmp2, tmp3);
     }
   }
-};
+}
 
 #ifdef COMPILER1
 
