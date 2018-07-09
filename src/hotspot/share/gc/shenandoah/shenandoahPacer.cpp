@@ -141,7 +141,6 @@ void ShenandoahPacer::setup_for_traversal() {
   size_t taxable = free - non_taxable;
 
   double tax = 1.0 * live / taxable; // base tax for available free space
-  tax = MAX2<double>(1, tax);        // never allocate more than GC collects during the cycle
   tax *= 1.1;                        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
