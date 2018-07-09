@@ -419,15 +419,8 @@ void ShenandoahTraversalGC::init_traversal_collection() {
       task_queues()->reserve(nworkers);
       ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::init_traversal_gc_work);
 
-      if (UseShenandoahOWST) {
-        ShenandoahTaskTerminator terminator(nworkers, task_queues());
-        ShenandoahInitTraversalCollectionTask traversal_task(&rp);
-        _heap->workers()->run_task(&traversal_task);
-      } else {
-        ParallelTaskTerminator terminator(nworkers, task_queues());
-        ShenandoahInitTraversalCollectionTask traversal_task(&rp);
-        _heap->workers()->run_task(&traversal_task);
-      }
+      ShenandoahInitTraversalCollectionTask traversal_task(&rp);
+      _heap->workers()->run_task(&traversal_task);
     }
 
 #if defined(COMPILER2) || INCLUDE_JVMCI
@@ -643,12 +636,12 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
     task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahConcurrentTraversalCollectionTask traversal_task(&terminator);
-      _heap->workers()->run_task(&traversal_task);
+      ShenandoahConcurrentTraversalCollectionTask task(&terminator);
+      _heap->workers()->run_task(&task);
     } else {
       ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahConcurrentTraversalCollectionTask traversal_task(&terminator);
-      _heap->workers()->run_task(&traversal_task);
+      ShenandoahConcurrentTraversalCollectionTask task(&terminator);
+      _heap->workers()->run_task(&task);
     }
   }
 
@@ -674,12 +667,12 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::final_traversal_gc_work);
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalTraversalCollectionTask traversal_task(&rp, &terminator);
-      _heap->workers()->run_task(&traversal_task);
+      ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
+      _heap->workers()->run_task(&task);
     } else {
       ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalTraversalCollectionTask traversal_task(&rp, &terminator);
-      _heap->workers()->run_task(&traversal_task);
+      ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
+      _heap->workers()->run_task(&task);
     }
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::update_pointers();

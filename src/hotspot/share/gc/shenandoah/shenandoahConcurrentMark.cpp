@@ -421,12 +421,12 @@ void ShenandoahConcurrentMark::mark_from_roots() {
 
   if (UseShenandoahOWST) {
     ShenandoahTaskTerminator terminator(nworkers, task_queues());
-    ShenandoahConcurrentMarkingTask markingTask = ShenandoahConcurrentMarkingTask(this, &terminator, update_refs);
-    workers->run_task(&markingTask);
+    ShenandoahConcurrentMarkingTask task(this, &terminator, update_refs);
+    workers->run_task(&task);
   } else {
     ParallelTaskTerminator terminator(nworkers, task_queues());
-    ShenandoahConcurrentMarkingTask markingTask = ShenandoahConcurrentMarkingTask(this, &terminator, update_refs);
-    workers->run_task(&markingTask);
+    ShenandoahConcurrentMarkingTask task(this, &terminator, update_refs);
+    workers->run_task(&task);
   }
 
   assert(task_queues()->is_empty() || sh->cancelled_gc(), "Should be empty when not cancelled");
