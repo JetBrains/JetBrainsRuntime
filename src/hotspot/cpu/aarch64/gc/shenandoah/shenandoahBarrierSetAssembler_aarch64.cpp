@@ -274,11 +274,16 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
 
   Address gc_state(rthread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   __ ldrb(rscratch1, gc_state);
-  __ membar(Assembler::LoadLoad);
 
-  // Now check if evacuation is in progress.
-  read_barrier_not_null(masm, dst);
+  // Check for heap stability
+  __ cbz(rscratch1, done);
 
+  // Heap is unstable, need to perform the read-barrier even if WB is inactive
+  if (ShenandoahWriteBarrierRB) {
+    __ ldr(dst, Address(dst, BrooksPointer::byte_offset()));
+  }
+
+  // Check for evacuation-in-progress and jump to WB slow-path if needed
   __ mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   __ tst(rscratch1, rscratch2);
   __ br(Assembler::EQ, done);
