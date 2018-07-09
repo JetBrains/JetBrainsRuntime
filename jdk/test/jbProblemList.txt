@@ -127,6 +127,7 @@ java/awt/Component/GetScreenLocTest/GetScreenLocTest.java                       
 java/awt/Component/NativeInLightShow/NativeInLightShow.java                         8202932 windows-all,macosx-all
 java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java                 8165863 macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8171909 windows-all,macosx-all
+java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                    8197808,7054586 windows-all,macosx-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindWrongSelectionOnMouseOverowAlwaysOnTop.java 7054586,8197808 windows-all,macosx-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         6990210 generic-all
@@ -174,6 +175,7 @@ java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.html               
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java 8169099 generic-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096 macosx-all,windows-all
+java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786 macosx-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java                                   8169111 macosx-all,windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java                       8169472 windows-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                       8160767 windows-all,linux-all
@@ -240,6 +242,7 @@ java/awt/Mixing/AWT_Mixing/JTextFieldInGlassPaneOverlapping.java                
 java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java                               8158801 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java                 8158801 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java                            8158801 windows-all,macosx-all
+java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java                                8049405 generic-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                   JRE-822 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java                             8048171 macosx-all,windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                 8158801 windows-all,macosx-all
@@ -520,6 +523,7 @@ java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java                        
 java/awt/Robot/MultiScreenRobotPosition/MultiScreenRobotPosition.java               JRE-830 macosx-all,windows-all
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java             8196018 macosx-all,windows-all
+java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8061235 macosx-all
 java/awt/TextArea/Mixing/TextAreaMixing.java                                        8203918 macosx-all,linux-all,windows-all
 java/awt/TextArea/OverScrollTest/OverScrollTest.java                                JRE-831 windows-all
 java/awt/TextArea/ScrollbarIntersectionTest/ScrollbarIntersectionTest.java          JRE-832 macosx-all,windows-all
@@ -583,6 +587,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.html       
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           JRE-811 macosx-all,windows-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                     8169475 macosx-all,windows-all
 java/awt/font/TextLayout/CombiningPerf.java                                         8192931,7043170 generic-all
+java/awt/font/TextLayout/OSXLigatureTest.java                                       JRE-865 macosx-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150,8203918 macosx-all,linux-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.html                                    8202934 macosx-all,windows-all
@@ -615,6 +620,7 @@ com/sun/awt/Translucency/WindowOpacity.java                                     
 javax/swing/AbstractButton/6711682/bug6711682.java                                  8060765 macosx-all,windows-all
 javax/swing/Action/8133039/bug8133039.java                                          8060765 macosx-all,windows-all
 javax/swing/JButton/PressedButtonRightClickTest.java                                8203906 macosx-all,windows-all
+javax/swing/JButton/8151303/PressedIconTest.java                                    8167352 macosx-all
 javax/swing/JColorChooser/Test6541987.java                                          8143021 generic-all
 javax/swing/JColorChooser/Test7194184.java                                          8194126 generic-all
 javax/swing/JColorChooser/Test8051548.java                                          8197552 macosx-all,windows-all
@@ -642,6 +648,7 @@ javax/swing/JFileChooser/8062561/bug8062561.java                                
 javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.java 8196095,8152332 macosx-all,windows-all
 javax/swing/JFrame/8016356/bug8016356.java                                          8169955 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                           8193942 macosx-all,windows-all
+javax/swing/JInternalFrame/5066752/bug5066752.java                                  JRE-867 macosx-all,windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                   8203918 macosx-all,windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 macosx-all,windows-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
