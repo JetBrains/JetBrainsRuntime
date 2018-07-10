@@ -380,11 +380,13 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   Label done;
 
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
+  __ testb(gc_state, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
+  __ jcc(Assembler::zero, done);
 
-  // Now check if evacuation is in progress.
+  // Heap is unstable, need to perform the read-barrier even if WB is inactive
   read_barrier_not_null(masm, dst);
 
+  __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   __ jcc(Assembler::zero, done);
   __ push(rscratch1);
   __ push(rscratch2);

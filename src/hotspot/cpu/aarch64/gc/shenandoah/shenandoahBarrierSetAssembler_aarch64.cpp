@@ -276,7 +276,9 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   __ ldrb(rscratch1, gc_state);
 
   // Check for heap stability
-  __ cbz(rscratch1, done);
+  __ mov(rscratch2, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
+  __ tst(rscratch1, rscratch2);
+  __ br(Assembler::EQ, done);
 
   // Heap is unstable, need to perform the read-barrier even if WB is inactive
   if (ShenandoahWriteBarrierRB) {

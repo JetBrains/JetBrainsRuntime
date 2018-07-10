@@ -5281,7 +5281,7 @@ void MacroAssembler::shenandoah_write_barrier(Register dst) {
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
 
   // Check for heap stability
-  cmpb(gc_state, 0);
+  testb(gc_state, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   jccb(Assembler::zero, done);
 
   // Heap is unstable, need to perform the read-barrier even if WB is inactive
