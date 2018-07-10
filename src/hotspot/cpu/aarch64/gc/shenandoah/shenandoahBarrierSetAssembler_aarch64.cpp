@@ -576,6 +576,8 @@ void ShenandoahBarrierSetAssembler::gen_write_barrier_stub(LIR_Assembler* ce, Sh
 
   Label done;
 
+  __ bind(*stub->entry());
+
   if (res != obj) {
     __ mov(res, obj);
   }
@@ -587,6 +589,7 @@ void ShenandoahBarrierSetAssembler::gen_write_barrier_stub(LIR_Assembler* ce, Sh
   __ shenandoah_write_barrier(res);
 
   __ bind(done);
+  __ b(*stub->continuation());
 }
 
 #undef __
