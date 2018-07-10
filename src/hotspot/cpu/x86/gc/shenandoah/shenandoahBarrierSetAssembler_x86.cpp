@@ -373,85 +373,31 @@ void ShenandoahBarrierSetAssembler::write_barrier(MacroAssembler* masm, Register
 }
 
 void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
 #ifdef _LP64
-  assert(dst != rscratch1, "different regs");
-
   Label done;
 
   Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
   __ testb(gc_state, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  __ jcc(Assembler::zero, done);
+  __ jccb(Assembler::zero, done);
 
   // Heap is unstable, need to perform the read-barrier even if WB is inactive
-  read_barrier_not_null(masm, dst);
+  if (ShenandoahWriteBarrierRB) {
+    read_barrier_not_null(masm, dst);
+  }
 
   __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  __ jcc(Assembler::zero, done);
-  __ push(rscratch1);
-  __ push(rscratch2);
+  __ jccb(Assembler::zero, done);
 
-  __ movptr(rscratch1, dst);
-  __ shrptr(rscratch1, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-  __ movptr(rscratch2, (intptr_t) ShenandoahHeap::in_cset_fast_test_addr());
-  __ movbool(rscratch2, Address(rscratch2, rscratch1, Address::times_1));
-  __ testb(rscratch2, 0x1);
+   if (dst != rax) {
+     __ xchgptr(dst, rax); // Move obj into rax and save rax into obj.
+   }
 
-  __ pop(rscratch2);
-  __ pop(rscratch1);
+   __ call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
 
-  __ jcc(Assembler::zero, done);
-
-  __ push(rscratch1);
-
-  // Save possibly live regs.
-  if (dst != rax) {
-    __ push(rax);
-  }
-  if (dst != rbx) {
-    __ push(rbx);
-  }
-  if (dst != rcx) {
-    __ push(rcx);
-  }
-  if (dst != rdx) {
-    __ push(rdx);
-  }
-  if (dst != c_rarg1) {
-    __ push(c_rarg1);
-  }
-
-  __ subptr(rsp, 2 * Interpreter::stackElementSize);
-  __ movdbl(Address(rsp, 0), xmm0);
-
-  // Call into runtime
-  __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_IRT), dst);
-  __ mov(rscratch1, rax);
-
-  // Restore possibly live regs.
-  __ movdbl(xmm0, Address(rsp, 0));
-  __ addptr(rsp, 2 * Interpreter::stackElementSize);
-
-  if (dst != c_rarg1) {
-    __ pop(c_rarg1);
-  }
-  if (dst != rdx) {
-    __ pop(rdx);
-  }
-  if (dst != rcx) {
-    __ pop(rcx);
-  }
-  if (dst != rbx) {
-    __ pop(rbx);
-  }
-  if (dst != rax) {
-    __ pop(rax);
-  }
-
-  // Move result into dst reg.
-  __ mov(dst, rscratch1);
-
-  __ pop(rscratch1);
+   if (dst != rax) {
+     __ xchgptr(rax, dst); // Swap back obj with rax.
+   }
 
   __ bind(done);
 #else
@@ -863,7 +809,7 @@ void ShenandoahBarrierSetAssembler::gen_write_barrier_stub(LIR_Assembler* ce, Sh
     __ jcc(Assembler::zero, done);
   }
 
-  __ shenandoah_write_barrier(res);
+  write_barrier(ce->masm(), res);
 
   __ bind(done);
   __ jmp(*stub->continuation());

@@ -266,9 +266,9 @@ void ShenandoahBarrierSetAssembler::write_barrier(MacroAssembler* masm, Register
 }
 
 void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "should be enabled");
-  assert(dst != rscratch1, "different regs");
-  assert(dst != rscratch2, "Need rscratch2");
+  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
+  assert(dst != rscratch1, "need rscratch1");
+  assert(dst != rscratch2, "need rscratch2");
 
   Label done;
 
@@ -290,26 +290,18 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   __ tst(rscratch1, rscratch2);
   __ br(Assembler::EQ, done);
 
-  __ lsr(rscratch1, dst, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-  __ mov(rscratch2,  ShenandoahHeap::in_cset_fast_test_addr());
-  __ ldrb(rscratch2, Address(rscratch2, rscratch1));
-  __ tst(rscratch2, 0x1);
-  __ br(Assembler::EQ, done);
+  RegSet to_save = RegSet::of(r0);
+  if (dst != r0) {
+    __ push(to_save, sp);
+    __ mov(r0, dst);
+  }
 
-  // Save possibly live regs.
-  RegSet live_regs = RegSet::range(r0, r4) - dst;
-  __ push(live_regs, sp);
-  __ strd(v0, __ pre(sp, 2 * -wordSize));
+  __ far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
 
-  // Call into runtime
-  __ super_call_VM_leaf(CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_barrier_IRT), dst);
-
-  // Move result into dst reg.
-  __ mov(dst, r0);
-
-  // Restore possibly live regs.
-  __ ldrd(v0, __ post(sp, 2 * wordSize));
-  __ pop(live_regs, sp);
+  if (dst != r0) {
+    __ mov(dst, r0);
+    __ pop(to_save, sp);
+  }
 
   __ bind(done);
 }
@@ -586,7 +578,7 @@ void ShenandoahBarrierSetAssembler::gen_write_barrier_stub(LIR_Assembler* ce, Sh
     __ cbz(res, done);
   }
 
-  __ shenandoah_write_barrier(res);
+  write_barrier(ce->masm(), res);
 
   __ bind(done);
   __ b(*stub->continuation());

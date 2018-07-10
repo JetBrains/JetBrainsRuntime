@@ -52,9 +52,6 @@
 #ifdef COMPILER2
 #include "opto/intrinsicnode.hpp"
 #endif
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
-#endif
 
 #ifdef PRODUCT
 #define BLOCK_COMMENT(str) /* nothing */
@@ -5266,48 +5263,6 @@ void MacroAssembler::resolve_jobject(Register value,
   verify_oop(value);
   bind(done);
 }
-
-#if INCLUDE_SHENANDOAHGC
-#ifndef _LP64
-void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  Unimplemented();
-}
-#else
-void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
-
-  Label done;
-
-  Address gc_state(r15_thread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-
-  // Check for heap stability
-  testb(gc_state, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  jccb(Assembler::zero, done);
-
-  // Heap is unstable, need to perform the read-barrier even if WB is inactive
-  if (ShenandoahWriteBarrierRB) {
-    movptr(dst, Address(dst, BrooksPointer::byte_offset()));
-  }
-
-  // Check for evacuation-in-progress and jump to WB slow-path if needed
-  testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  jccb(Assembler::zero, done);
-
-  if (dst != rax) {
-    xchgptr(dst, rax); // Move obj into rax and save rax into obj.
-  }
-
-  call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
-
-  if (dst != rax) {
-    xchgptr(rax, dst); // Swap back obj with rax.
-  }
-
-  bind(done);
-}
-#endif // _LP64
-
-#endif // INCLUDE_SHENANDOAHGC
 
 void MacroAssembler::subptr(Register dst, int32_t imm32) {
   LP64_ONLY(subq(dst, imm32)) NOT_LP64(subl(dst, imm32));

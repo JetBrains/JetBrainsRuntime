@@ -36,11 +36,6 @@
 #include "interpreter/interpreter.hpp"
 #include "compiler/disassembler.hpp"
 #include "gc/shared/collectedHeap.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeap.inline.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "memory/resourceArea.hpp"
 #include "nativeInst_aarch64.hpp"
 #include "oops/accessDecorators.hpp"
@@ -4036,50 +4031,6 @@ void MacroAssembler::store_heap_oop(Address dst, Register src, Register tmp1,
 void MacroAssembler::store_heap_oop_null(Address dst) {
   access_store_at(T_OBJECT, IN_HEAP, dst, noreg, noreg, noreg);
 }
-
-#if INCLUDE_SHENANDOAHGC
-void MacroAssembler::shenandoah_write_barrier(Register dst) {
-  assert(UseShenandoahGC && (ShenandoahWriteBarrier || ShenandoahStoreValEnqueueBarrier), "Should be enabled");
-  assert(dst != rscratch1, "need rscratch1");
-  assert(dst != rscratch2, "need rscratch2");
-
-  Label done;
-
-  Address gc_state(rthread, in_bytes(ShenandoahThreadLocalData::gc_state_offset()));
-  ldrb(rscratch1, gc_state);
-
-  // Check for heap stability
-  mov(rscratch2, ShenandoahHeap::HAS_FORWARDED | ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  tst(rscratch1, rscratch2);
-  br(Assembler::EQ, done);
-
-  // Heap is unstable, need to perform the read-barrier even if WB is inactive
-  if (ShenandoahWriteBarrierRB) {
-    ldr(dst, Address(dst, BrooksPointer::byte_offset()));
-  }
-
-  // Check for evacuation-in-progress and jump to WB slow-path if needed
-  mov(rscratch2, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
-  tst(rscratch1, rscratch2);
-  br(Assembler::EQ, done);
-
-  RegSet to_save = RegSet::of(r0);
-  if (dst != r0) {
-    push(to_save, sp);
-    mov(r0, dst);
-  }
-
-  far_call(RuntimeAddress(CAST_FROM_FN_PTR(address, ShenandoahBarrierSetAssembler::shenandoah_wb())));
-
-  if (dst != r0) {
-    mov(dst, r0);
-    pop(to_save, sp);
-  }
-  block_comment("} Shenandoah write barrier");
-
-  bind(done);
-}
-#endif // INCLUDE_SHENANDOAHGC
 
 Address MacroAssembler::allocate_metadata_address(Metadata* obj) {
   assert(oop_recorder() != NULL, "this assembler needs a Recorder");

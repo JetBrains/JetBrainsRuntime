@@ -59,11 +59,6 @@ JRT_LEAF(oopDesc*, ShenandoahRuntime::write_barrier_JRT(oopDesc* src))
   return (oopDesc*) result;
 JRT_END
 
-IRT_LEAF(oopDesc*, ShenandoahRuntime::write_barrier_IRT(oopDesc* src))
-  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
-  return (oopDesc*) result;
-IRT_END
-
 // Shenandoah clone barrier: makes sure that references point to to-space
 // in cloned objects.
 JRT_LEAF(void, ShenandoahRuntime::shenandoah_clone_barrier(oopDesc* obj))
