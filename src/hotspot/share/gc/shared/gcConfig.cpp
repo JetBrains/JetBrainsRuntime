@@ -102,6 +102,7 @@ void GCConfig::fail_if_unsupported_gc_is_selected() {
   NOT_PARALLELGC(FAIL_IF_SELECTED(UseParallelOldGC,   true));
   NOT_SERIALGC(  FAIL_IF_SELECTED(UseSerialGC,        true));
   NOT_SERIALGC(  FAIL_IF_SELECTED(UseParallelOldGC,   false));
+  NOT_SHENANDOAHGC(FAIL_IF_SELECTED(UseShenandoahGC,  true));
   NOT_ZGC(       FAIL_IF_SELECTED(UseZGC,             true));
 }
 
