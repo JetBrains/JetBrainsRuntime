@@ -224,11 +224,19 @@ LIR_Opr ShenandoahBarrierSetC1::write_barrier_impl(LIRAccess& access, LIR_Opr ob
   // Read and check the gc-state-flag.
   LIR_Opr flag_val = gen->new_register(T_INT);
   __ load(active_flag_addr, flag_val);
-  __ logical_and(flag_val,
-                 LIR_OprFact::intConst(ShenandoahHeap::HAS_FORWARDED |
+  LIR_Opr mask = LIR_OprFact::intConst(ShenandoahHeap::HAS_FORWARDED |
                                        ShenandoahHeap::EVACUATION |
-                                       ShenandoahHeap::TRAVERSAL),
-                 flag_val);
+                                       ShenandoahHeap::TRAVERSAL);
+  LIR_Opr mask_reg = gen->new_register(T_INT);
+  __ move(mask, mask_reg);
+
+  if (TwoOperandLIRForm) {
+    __ logical_and(flag_val, mask_reg, flag_val);
+  } else {
+    LIR_Opr masked_flag = gen->new_register(T_INT);
+    __ logical_and(flag_val, mask_reg, masked_flag);
+    flag_val = masked_flag;
+  }
   __ cmp(lir_cond_notEqual, flag_val, LIR_OprFact::intConst(0));
 
   CodeStub* slow = new ShenandoahWriteBarrierStub(obj, result, info ? new CodeEmitInfo(info) : NULL, need_null_check);
