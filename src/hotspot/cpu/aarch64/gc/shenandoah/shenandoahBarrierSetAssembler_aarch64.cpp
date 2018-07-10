@@ -427,6 +427,42 @@ void ShenandoahBarrierSetAssembler::obj_equals(MacroAssembler* masm, Register op
   }
 }
 
+void ShenandoahBarrierSetAssembler::tlab_allocate(MacroAssembler* masm, Register obj,
+                                                  Register var_size_in_bytes,
+                                                  int con_size_in_bytes,
+                                                  Register t1,
+                                                  Register t2,
+                                                  Label& slow_case) {
+
+  assert_different_registers(obj, t2);
+  assert_different_registers(obj, var_size_in_bytes);
+  Register end = t2;
+
+  int oop_extra_words = Universe::heap()->oop_extra_words();
+
+  __ ldr(obj, Address(rthread, JavaThread::tlab_top_offset()));
+  if (var_size_in_bytes == noreg) {
+    __ lea(end, Address(obj, (int) (con_size_in_bytes + BrooksPointer::byte_size())));
+  } else {
+    __ add(var_size_in_bytes, var_size_in_bytes, BrooksPointer::byte_size());
+    __ lea(end, Address(obj, var_size_in_bytes));
+  }
+  __ ldr(rscratch1, Address(rthread, JavaThread::tlab_end_offset()));
+  __ cmp(end, rscratch1);
+  __ br(Assembler::HI, slow_case);
+
+  // update the tlab top pointer
+  __ str(end, Address(rthread, JavaThread::tlab_top_offset()));
+
+  __ add(obj, obj, BrooksPointer::byte_size());
+  __ str(obj, Address(obj, BrooksPointer::byte_offset()));
+
+  // recover var_size_in_bytes if necessary
+  if (var_size_in_bytes == end) {
+    __ sub(var_size_in_bytes, var_size_in_bytes, obj);
+  }
+}
+
 void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
   bool oop_not_null = (decorators & IS_NOT_NULL) != 0;
   if (oop_not_null) {

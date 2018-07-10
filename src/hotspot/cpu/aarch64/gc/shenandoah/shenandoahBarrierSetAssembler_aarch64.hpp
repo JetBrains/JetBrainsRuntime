@@ -90,6 +90,13 @@ public:
   virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                         Address dst, Register val, Register tmp1, Register tmp2);
   virtual void obj_equals(MacroAssembler* masm, Register src1, Register src2);
+  virtual void tlab_allocate(MacroAssembler* masm, Register obj,
+                             Register var_size_in_bytes,
+                             int con_size_in_bytes,
+                             Register t1,
+                             Register t2,
+                             Label& slow_case);
+
   virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
   virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
 
