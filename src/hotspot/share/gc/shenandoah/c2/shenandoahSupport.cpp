@@ -567,7 +567,7 @@ Node* ShenandoahWriteBarrierNode::Ideal(PhaseGVN *phase, bool can_reshape) {
 }
 
 bool ShenandoahWriteBarrierNode::expand(Compile* C, PhaseIterGVN& igvn, int& loop_opts_cnt) {
-  if (UseShenandoahGC && ShenandoahWriteBarrierToIR) {
+  if (UseShenandoahGC) {
     if (ShenandoahBarrierSetC2::bsc2()->state()->shenandoah_barriers_count() > 0 || (!ShenandoahWriteBarrier && ShenandoahStoreValEnqueueBarrier)) {
       bool attempt_more_loopopts = ShenandoahLoopOptsAfterExpansion;
       C->clear_major_progress();

@@ -6664,26 +6664,6 @@ instruct shenandoahRBNarrowShift(rRegP dst, rRegN src) %{
   ins_pipe(ialu_reg_mem);
 %}
 
-instruct shenandoahWB(rRegP dst, rRegP src, rFlagsReg cr) %{
-  match(Set dst (ShenandoahWriteBarrier src));
-  effect(DEF dst, USE src, KILL cr);
-  ins_cost(300); // XXX
-  format %{ "shenandoah_wb $dst,$src" %}
-  ins_encode %{
-#if INCLUDE_SHENANDOAHGC
-    Register s = $src$$Register;
-    Register d = $dst$$Register;
-    // We need that first read barrier in order to trigger a SEGV/NPE on incoming NULL.
-    // Also, it brings s into d in preparation for the call to shenandoah_write_barrier().
-    __ movptr(d, Address(s, BrooksPointer::byte_offset()));
-    __ shenandoah_write_barrier(d);
-#else
-    ShouldNotReachHere();
-#endif
-  %}
-  ins_pipe(pipe_slow);
-%}
-
 // Convert oop pointer into compressed form
 instruct encodeHeapOop(rRegN dst, rRegP src, rFlagsReg cr) %{
   predicate(n->bottom_type()->make_ptr()->ptr() != TypePtr::NotNull);

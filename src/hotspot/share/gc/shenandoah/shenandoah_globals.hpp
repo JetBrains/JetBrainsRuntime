@@ -237,9 +237,6 @@
           "Common 2 WriteBarriers or WriteBarrier and a ReadBarrier only "  \
           "if the resulting WriteBarrier isn't executed more frequently")   \
                                                                             \
-  experimental(bool, ShenandoahWriteBarrierToIR, true,                      \
-          "Convert write barrier to IR instead of using assembly blob")     \
-                                                                            \
   experimental(bool, ShenandoahWriteBarrierCsetTestInIR, true,              \
           "Perform cset test in IR rather than in the stub")                \
                                                                             \

@@ -3400,7 +3400,7 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
   case Op_ShenandoahReadBarrier:
     break;
   case Op_ShenandoahWriteBarrier:
-    assert(!ShenandoahWriteBarrierToIR, "should have been expanded already");
+    assert(false, "should have been expanded already");
     break;
 #endif
   case Op_RangeCheck: {
