@@ -300,10 +300,20 @@ void ShenandoahPacer::print_on(outputStream* out) const {
   out->print_cr("Actual pacing delays histogram:");
   out->cr();
 
-  out->print_cr("%10s - %10s %12s", "From", "To", "Count");
+  out->print_cr("%10s - %10s  %12s%12s", "From", "To", "Count", "Sum");
+
+  size_t total_count = 0;
+  size_t total_sum = 0;
   for (int c = _delays.min_level(); c <= _delays.max_level(); c++) {
-    out->print("%7d ms - %7d ms:", (c == 0) ? 0 : 1 << (c - 1), 1 << c);
-    out->print_cr(SIZE_FORMAT_W(12), _delays.level(c));
+    int l = (c == 0) ? 0 : 1 << (c - 1);
+    int r = 1 << c;
+    size_t count = _delays.level(c);
+    size_t sum   = count * (r - l) / 2;
+    total_count += count;
+    total_sum   += sum;
+
+    out->print_cr("%7d ms - %7d ms: " SIZE_FORMAT_W(12) SIZE_FORMAT_W(12) " ms", l, r, count, sum);
   }
+  out->print_cr("%23s: " SIZE_FORMAT_W(12) SIZE_FORMAT_W(12) " ms", "Total", total_count, total_sum);
   out->cr();
 }
