@@ -463,7 +463,8 @@ void ShenandoahControlThread::handle_alloc_failure(size_t words) {
 
   if (try_set_alloc_failure_gc()) {
     // Only report the first allocation failure
-    log_info(gc)("Failed to allocate " SIZE_FORMAT "K", words * HeapWordSize / K);
+    log_info(gc)("Failed to allocate " SIZE_FORMAT "%s",
+                 byte_size_in_proper_unit(words * HeapWordSize), proper_unit_for_byte_size(words * HeapWordSize));
 
     // Now that alloc failure GC is scheduled, we can abort everything else
     heap->cancel_gc(GCCause::_allocation_failure);
@@ -484,7 +485,8 @@ void ShenandoahControlThread::handle_alloc_failure_evac(size_t words) {
 
   if (try_set_alloc_failure_gc()) {
     // Only report the first allocation failure
-    log_info(gc)("Failed to allocate " SIZE_FORMAT "K for evacuation", words * HeapWordSize / K);
+    log_info(gc)("Failed to allocate " SIZE_FORMAT "%s for evacuation",
+                 byte_size_in_proper_unit(words * HeapWordSize), proper_unit_for_byte_size(words * HeapWordSize));
   }
 
   // Forcefully report allocation failure
