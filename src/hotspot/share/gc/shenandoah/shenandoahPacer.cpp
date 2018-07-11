@@ -242,21 +242,33 @@ void ShenandoahPacer::pace_for_alloc(size_t words) {
     return;
   }
 
-  size_t max_wait_ms = ShenandoahPacingMaxDelay;
+  size_t max = ShenandoahPacingMaxDelay;
   double start = os::elapsedTime();
+
+  size_t total = 0;
+  size_t cur = 0;
 
   while (true) {
     // We could instead assist GC, but this would suffice for now.
     // This code should also participate in safepointing.
-    os::sleep(Thread::current(), 1, true);
+    // Perform the exponential backoff, limited by max.
+
+    cur = cur * 2;
+    if (total + cur > max) {
+      cur = (max > total) ? (max - total) : 0;
+    }
+    cur = MAX2<size_t>(1, cur);
+
+    os::sleep(Thread::current(), cur, true);
 
     double end = os::elapsedTime();
-    size_t ms = (size_t)((end - start) * 1000);
-    if (ms > max_wait_ms) {
+    total = (size_t)((end - start) * 1000);
+
+    if (total > max) {
       // Spent local time budget to wait for enough GC progress.
       // Breaking out and allocating anyway, which may mean we outpace GC,
       // and start Degenerated GC cycle.
-      _delays.add(ms);
+      _delays.add(total);
 
       // Forcefully claim the budget: it may go negative at this point, and
       // GC should replenish for this and subsequent allocations
@@ -266,7 +278,7 @@ void ShenandoahPacer::pace_for_alloc(size_t words) {
 
     if (claim_for_alloc(words, false)) {
       // Acquired enough permit, nice. Can allocate now.
-      _delays.add(ms);
+      _delays.add(total);
       break;
     }
   }
