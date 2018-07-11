@@ -465,7 +465,15 @@ void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, Decor
 }
 
 void ShenandoahBarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
-  write_barrier(masm, obj);
+  bool oop_not_null = (decorators & IS_NOT_NULL) != 0;
+  if (oop_not_null) {
+    write_barrier(masm, obj);
+  } else {
+    Label is_null;
+    __ cbz(obj, is_null);
+    write_barrier(masm, obj);
+    __ bind(is_null);
+  }
 }
 
 void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, Register addr, Register expected, Register new_val,

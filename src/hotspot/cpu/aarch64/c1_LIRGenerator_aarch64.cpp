@@ -343,13 +343,7 @@ void LIRGenerator::do_MonitorEnter(MonitorEnter* x) {
   // this CodeEmitInfo must not have the xhandlers because here the
   // object is already locked (xhandlers expect object to be unlocked)
   CodeEmitInfo* info = state_for(x, x->state(), true);
-  LIR_Opr obj_opr = obj.result();
-  DecoratorSet decorators = IN_HEAP;
-  if (!x->needs_null_check()) {
-    decorators |= IS_NOT_NULL;
-  }
-  obj_opr = access_resolve_for_write(decorators, obj_opr, state_for(x));
-  monitor_enter(obj_opr, lock, syncTempOpr(), scratch,
+  monitor_enter(obj.result(), lock, syncTempOpr(), scratch,
                         x->monitor_no(), info_for_exception, info);
 }
 
@@ -878,19 +872,6 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   LIRItem dst_pos(x->argument_at(3), this);
   LIRItem length(x->argument_at(4), this);
 
-  LIR_Opr dst_op = dst.result();
-  LIR_Opr src_op = src.result();
-  DecoratorSet decorators = IN_HEAP;
-  if (!x->arg_needs_null_check(2)) {
-    decorators |= IS_NOT_NULL;
-  }
-  dst_op = access_resolve_for_write(decorators, dst_op, info);
-  decorators = IN_HEAP;
-  if (!x->arg_needs_null_check(0)) {
-    decorators |= IS_NOT_NULL;
-  }
-  src_op = access_resolve_for_read(decorators, src_op, info);
-
   // operands for arraycopy must use fixed registers, otherwise
   // LinearScan will fail allocation (because arraycopy always needs a
   // call)
@@ -903,9 +884,9 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   // of the C convention we can process the java args trivially into C
   // args without worry of overwriting during the xfer
 
-  src_op = force_opr_to(src_op, FrameMap::as_oop_opr(j_rarg0));
+  src.load_item_force     (FrameMap::as_oop_opr(j_rarg0));
   src_pos.load_item_force (FrameMap::as_opr(j_rarg1));
-  dst_op = force_opr_to(dst_op, FrameMap::as_oop_opr(j_rarg2));
+  dst.load_item_force     (FrameMap::as_oop_opr(j_rarg2));
   dst_pos.load_item_force (FrameMap::as_opr(j_rarg3));
   length.load_item_force  (FrameMap::as_opr(j_rarg4));
 
@@ -917,7 +898,7 @@ void LIRGenerator::do_ArrayCopy(Intrinsic* x) {
   ciArrayKlass* expected_type;
   arraycopy_helper(x, &flags, &expected_type);
 
-  __ arraycopy(src_op, src_pos.result(), dst_op, dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
+  __ arraycopy(src.result(), src_pos.result(), dst.result(), dst_pos.result(), length.result(), tmp, expected_type, flags, info); // does add_safepoint
 }
 
 void LIRGenerator::do_update_CRC32(Intrinsic* x) {

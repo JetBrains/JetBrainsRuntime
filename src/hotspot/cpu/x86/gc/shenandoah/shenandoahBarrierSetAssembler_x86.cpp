@@ -638,7 +638,16 @@ void ShenandoahBarrierSetAssembler::resolve_for_read(MacroAssembler* masm, Decor
 }
 
 void ShenandoahBarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
-  write_barrier(masm, obj);
+  bool oop_not_null = (decorators & IS_NOT_NULL) != 0;
+  if (oop_not_null) {
+    write_barrier(masm, obj);
+  } else {
+    Label done;
+    __ testptr(obj, obj);
+    __ jcc(Assembler::zero, done);
+    write_barrier(masm, obj);
+    __ bind(done);
+  }
 }
 
 // Special Shenandoah CAS implementation that handles false negatives

@@ -235,8 +235,6 @@ class LIRGenerator: public InstructionVisitor, public BlockClosure {
   LIR_Opr round_item(LIR_Opr opr);
   LIR_Opr force_to_spill(LIR_Opr value, BasicType t);
 
-  LIR_Opr force_opr_to(LIR_Opr op, LIR_Opr reg);
-
   PhiResolverState& resolver_state() { return _resolver_state; }
 
   void  move_to_phi(PhiResolver* resolver, Value cur_val, Value sux_val);

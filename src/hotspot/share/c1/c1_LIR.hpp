@@ -923,7 +923,6 @@ enum LIR_Code {
       , lir_pack64
       , lir_unpack64
       , lir_unwind
-      , lir_shenandoah_wb
   , end_op1
   , begin_op2
       , lir_cmp
@@ -1449,6 +1448,7 @@ class LIR_OpBranch: public LIR_Op {
   virtual LIR_OpBranch* as_OpBranch() { return this; }
   virtual void print_instr(outputStream* out) const PRODUCT_RETURN;
 };
+
 
 class ConversionStub;
 
