@@ -1851,6 +1851,12 @@ source %{
   // caller. In that case an extra Region and AliasIdxBot Phi may be
   // introduced before the MergeMem
   //
+  // Shenandoah includes a pre barrier between the leading membar and
+  // the volatile object store/cas but its effect on the memory
+  // subgraph between the leading and trailing barriers doesn't
+  // require special predicates: the predicates for the default case
+  // work unmodified.
+  //
   // So, the upshot is that in all cases the subgraph will include a
   // *normal* memory subgraph betwen the leading membar and its child
   // membar: either a normal volatile put graph including a releasing
@@ -2026,7 +2032,8 @@ source %{
     }
 
     // must have a merge if we also have st
-    if (st && (!mm || (UseShenandoahGC && mm2))) {
+    // can only have a second merge if UseShenandoahGC
+    if (st && (!mm || (!UseShenandoahGC && mm2))) {
       return NULL;
     }
 
@@ -2049,12 +2056,23 @@ source %{
     // ensure the feed node feeds the existing mergemem;
     for (DUIterator_Fast imax, i = feed->fast_outs(imax); i < imax; i++) {
       x = feed->fast_out(i);
-      if (x == mm) {
+      if (x == mm || (UseShenandoahGC && x == mm2)) {
         break;
       }
     }
+
     if (x != mm) {
-      return NULL;
+      if (!UseShenandoahGC) {
+        // mm was our only chance
+        return NULL;
+      } else if (x != mm2) {
+        // mm2 was our only other chance
+        return NULL;
+      } else {
+        // mm2 is the merge fed by the store
+        // search from there for the membar
+        mm = mm2;
+      }
     }
 
     MemBarNode *mbar = NULL;
@@ -9710,14 +9728,14 @@ instruct compareAndSwapP(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval
 %}
 instruct compareAndSwapP_shenandoah(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, iRegPNoSp tmp, rFlagsReg cr) %{
 
-  predicate(UseShenandoahGC && ShenandoahCASBarrier);
+  predicate(UseShenandoahGC && ShenandoahCASBarrier && n->in(3)->in(1)->bottom_type() != TypePtr::NULL_PTR);
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
-  ins_cost(3 * VOLATILE_REF_COST);
+  ins_cost(2 * VOLATILE_REF_COST);
 
   effect(TEMP tmp, KILL cr);
 
   format %{
-    "cmpxchg_oop_shenandoah $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
+    "cmpxchg_shenandoah_oop $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
     "cset $res, EQ\t# $res <-- (EQ ? 1 : 0)"
   %}
 
@@ -9729,7 +9747,7 @@ instruct compareAndSwapP_shenandoah(iRegINoSp res, indirect mem, iRegP oldval, i
 
 instruct compareAndSwapN(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegNNoSp newval, rFlagsReg cr) %{
 
-  predicate(!UseShenandoahGC || !ShenandoahCASBarrier);
+  predicate(!UseShenandoahGC || !ShenandoahCASBarrier || n->in(3)->in(1)->bottom_type() == TypeNarrowOop::NULL_PTR);
   match(Set res (CompareAndSwapN mem (Binary oldval newval)));
   ins_cost(2 * VOLATILE_REF_COST);
 
@@ -9748,14 +9766,14 @@ instruct compareAndSwapN(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegNNoS
 
 instruct compareAndSwapN_shenandoah(iRegINoSp res, indirect mem, iRegN oldval, iRegN newval, iRegNNoSp tmp, rFlagsReg cr) %{
 
-  predicate(UseShenandoahGC && ShenandoahCASBarrier);
+  predicate(UseShenandoahGC && ShenandoahCASBarrier && n->in(3)->in(1)->bottom_type() != TypeNarrowOop::NULL_PTR);
   match(Set res (CompareAndSwapN mem (Binary oldval newval)));
-  ins_cost(3 * VOLATILE_REF_COST);
+  ins_cost(2 * VOLATILE_REF_COST);
 
   effect(TEMP tmp, KILL cr);
 
   format %{
-    "cmpxchg_narrow_oop_shenandoah $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
+    "cmpxchgw_shenandoah_narrow_oop $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
     "cset $res, EQ\t# $res <-- (EQ ? 1 : 0)"
   %}
 
@@ -9830,14 +9848,14 @@ instruct compareAndSwapPAcq(iRegINoSp res, indirect mem, iRegP oldval, iRegP new
 
 instruct compareAndSwapPAcq_shenandoah(iRegINoSp res, indirect mem, iRegP oldval, iRegP newval, iRegPNoSp tmp, rFlagsReg cr) %{
 
-  predicate(needs_acquiring_load_exclusive(n) && UseShenandoahGC && ShenandoahCASBarrier);
+  predicate(needs_acquiring_load_exclusive(n) && UseShenandoahGC && ShenandoahCASBarrier && n->in(3)->in(1)->bottom_type() != TypePtr::NULL_PTR);
   match(Set res (CompareAndSwapP mem (Binary oldval newval)));
-  ins_cost(2 * VOLATILE_REF_COST);
+  ins_cost(VOLATILE_REF_COST);
 
   effect(TEMP tmp, KILL cr);
 
   format %{
-    "cmpxchg_acq_oop_shenandoah $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
+    "cmpxchg_acq_shenandoah_oop $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
     "cset $res, EQ\t# $res <-- (EQ ? 1 : 0)"
   %}
 
@@ -9849,7 +9867,7 @@ instruct compareAndSwapPAcq_shenandoah(iRegINoSp res, indirect mem, iRegP oldval
 
 instruct compareAndSwapNAcq(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegNNoSp newval, rFlagsReg cr) %{
 
-  predicate(needs_acquiring_load_exclusive(n) && (!UseShenandoahGC || !ShenandoahCASBarrier));
+  predicate(needs_acquiring_load_exclusive(n) && (!UseShenandoahGC || !ShenandoahCASBarrier|| n->in(3)->in(1)->bottom_type() == TypeNarrowOop::NULL_PTR));
   match(Set res (CompareAndSwapN mem (Binary oldval newval)));
   ins_cost(VOLATILE_REF_COST);
 
@@ -9868,14 +9886,14 @@ instruct compareAndSwapNAcq(iRegINoSp res, indirect mem, iRegNNoSp oldval, iRegN
 
 instruct compareAndSwapNAcq_shenandoah(iRegINoSp res, indirect mem, iRegN oldval, iRegN newval, iRegNNoSp tmp, rFlagsReg cr) %{
 
-  predicate(needs_acquiring_load_exclusive(n) && UseShenandoahGC && ShenandoahCASBarrier);
+  predicate(needs_acquiring_load_exclusive(n) && UseShenandoahGC && ShenandoahCASBarrier && n->in(3)->in(1)->bottom_type() != TypeNarrowOop::NULL_PTR);
   match(Set res (CompareAndSwapN mem (Binary oldval newval)));
-  ins_cost(3 * VOLATILE_REF_COST);
+  ins_cost(VOLATILE_REF_COST);
 
   effect(TEMP tmp, KILL cr);
 
  format %{
-    "cmpxchg_narrow_oop_shenandoah $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
+    "cmpxchgw_acq_shenandoah_narrow_oop $mem, $oldval, $newval\t# (ptr) if $mem == $oldval then $mem <-- $newval with temp $tmp"
     "cset $res, EQ\t# $res <-- (EQ ? 1 : 0)"
  %}
 
