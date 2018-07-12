@@ -409,6 +409,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
   {
     ShenandoahGCPhase phase_work(ShenandoahPhaseTimings::init_traversal_gc_work);
     assert(_task_queues->is_empty(), "queues must be empty before traversal GC");
+    TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
 
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::clear();
@@ -612,6 +613,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
         _arraycopy_task_queue.length() == 0) {
       // No more work, try to terminate
       ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+      ShenandoahTerminationTimingsTracker term_tracker(worker_id);
       if (terminator->offer_termination()) return;
     }
   }
@@ -634,6 +636,8 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
   if (!_heap->cancelled_gc()) {
     uint nworkers = _heap->workers()->active_workers();
     task_queues()->reserve(nworkers);
+    ShenandoahTerminationTracker tracker(ShenandoahPhaseTimings::conc_traversal_termination);
+
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
       ShenandoahConcurrentTraversalCollectionTask task(&terminator);
@@ -665,6 +669,8 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
     // Finish traversal
     ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::final_traversal_gc_work);
+    ShenandoahTerminationTracker term(ShenandoahPhaseTimings::final_traversal_gc_termination);
+
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, task_queues());
       ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
@@ -677,6 +683,10 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::update_pointers();
 #endif
+
+    assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
+    TASKQUEUE_STATS_ONLY(_task_queues->print_taskqueue_stats());
+    TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
   }
 
   if (!_heap->cancelled_gc() && _heap->process_references()) {
@@ -1110,6 +1120,7 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
 
   {
     ShenandoahGCPhase phase(phase_process);
+    ShenandoahTerminationTracker termination(ShenandoahPhaseTimings::weakrefs_termination);
 
     ShenandoahForwardedIsAliveClosure is_alive;
     if (UseShenandoahMatrix) {

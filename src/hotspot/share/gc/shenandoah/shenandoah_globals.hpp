@@ -433,6 +433,8 @@
   diagnostic(size_t, ShenandoahEnqueueArrayCopyThreshold, 32,               \
           "Arrays and objects are enqueued instead of processed in-place"   \
           "when their size exceed this threshold")                          \
-
+                                                                            \
+  diagnostic(bool, ShenandoahTerminationTrace, false,                       \
+          "Tracing task termination timings")                               \
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

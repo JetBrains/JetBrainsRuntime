@@ -31,7 +31,9 @@
 #include "utilities/ostream.hpp"
 
 ShenandoahPhaseTimings::ShenandoahPhaseTimings() : _policy(NULL) {
-  _worker_times = new ShenandoahWorkerTimings(MAX2(ConcGCThreads, ParallelGCThreads));
+  uint max_workers = MAX2(ConcGCThreads, ParallelGCThreads);
+  _worker_times = new ShenandoahWorkerTimings(max_workers);
+  _termination_times = new ShenandoahTerminationTimings(max_workers);
   _policy = ShenandoahHeap::heap()->shenandoahPolicy();
   assert(_policy != NULL, "Can not be NULL");
   init_phase_names();
@@ -134,8 +136,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[clear_liveness]                  = "  Clear Liveness";
   _phase_names[resize_tlabs]                    = "  Resize TLABs";
   _phase_names[finish_queues]                   = "  Finish Queues";
+  _phase_names[termination]                     = "    Termination";
   _phase_names[weakrefs]                        = "  Weak References";
   _phase_names[weakrefs_process]                = "    Process";
+  _phase_names[weakrefs_termination]            = "      Termination";
   _phase_names[purge]                           = "  System Purge";
   _phase_names[purge_class_unload]              = "    Unload Classes";
   _phase_names[purge_par]                       = "    Parallel Cleanup";
@@ -228,8 +232,10 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_finish_queues]           = "    F: Finish Queues";
   _phase_names[full_gc_mark]                    = "  Mark";
   _phase_names[full_gc_mark_finish_queues]      = "    Finish Queues";
+  _phase_names[full_gc_mark_termination]        = "      Termination";
   _phase_names[full_gc_weakrefs]                = "    Weak References";
   _phase_names[full_gc_weakrefs_process]        = "      Process";
+  _phase_names[full_gc_weakrefs_termination]    = "        Termination";
   _phase_names[full_gc_purge]                   = "    System Purge";
   _phase_names[full_gc_purge_class_unload]      = "      Unload Classes";
   _phase_names[full_gc_purge_par]               = "    Parallel Cleanup";
@@ -294,6 +300,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_traversal_gc_string_dedup_queue_roots]
                                                        = "    TF: Dedup Queue Roots";
   _phase_names[final_traversal_gc_finish_queues]       = "    TF: Finish Queues";
+  _phase_names[final_traversal_gc_termination]         = "    TF:   Termination";
   _phase_names[final_traversal_update_roots]           = "  Update Roots";
   _phase_names[final_traversal_update_thread_roots]        = "    TU: Thread Roots";
   _phase_names[final_traversal_update_code_roots]          = "    TU: Code Cache Roots";
@@ -318,6 +325,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[pause_other]                     = "Pause Other";
 
   _phase_names[conc_mark]                       = "Concurrent Marking";
+  _phase_names[conc_termination]                = "  Termination";
   _phase_names[conc_preclean]                   = "Concurrent Precleaning";
   _phase_names[conc_evac]                       = "Concurrent Evacuation";
   _phase_names[conc_cleanup]                    = "Concurrent Cleanup";
@@ -325,6 +333,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[conc_cleanup_reset_bitmaps]      = "  Reset Bitmaps";
   _phase_names[conc_other]                      = "Concurrent Other";
   _phase_names[conc_traversal]                  = "Concurrent Traversal";
+  _phase_names[conc_traversal_termination]      = "  Termination";
 
   _phase_names[conc_uncommit]                   = "Concurrent Uncommit";
 
@@ -410,4 +419,63 @@ ShenandoahWorkerTimingsTracker::~ShenandoahWorkerTimingsTracker() {
   if (_worker_times != NULL) {
     _worker_times->record_time_secs(_phase, _worker_id, os::elapsedTime() - _start_time);
   }
+}
+
+ShenandoahTerminationTimings::ShenandoahTerminationTimings(uint max_gc_threads) {
+  _gc_termination_phase = new WorkerDataArray<double>(max_gc_threads, "Task Termination (ms):");
+}
+
+void ShenandoahTerminationTimings::record_time_secs(uint worker_id, double secs) {
+  if (_gc_termination_phase->get(worker_id) == WorkerDataArray<double>::uninitialized()) {
+    _gc_termination_phase->set(worker_id, secs);
+  } else {
+    // worker may re-enter termination phase
+    _gc_termination_phase->add(worker_id, secs);
+  }
+}
+
+void ShenandoahTerminationTimings::print() const {
+  _gc_termination_phase->print_summary_on(tty);
+}
+
+ShenandoahTerminationTimingsTracker::ShenandoahTerminationTimingsTracker(uint worker_id) :
+  _worker_id(worker_id)  {
+  if (ShenandoahTerminationTrace) {
+    _start_time = os::elapsedTime();
+  }
+}
+
+ShenandoahTerminationTimingsTracker::~ShenandoahTerminationTimingsTracker() {
+  if (ShenandoahTerminationTrace) {
+    ShenandoahHeap::heap()->phase_timings()->termination_times()->record_time_secs(_worker_id, os::elapsedTime() - _start_time);
+  }
+}
+
+ShenandoahPhaseTimings::Phase ShenandoahTerminationTracker::currentPhase = ShenandoahPhaseTimings::_num_phases;
+
+ShenandoahTerminationTracker::ShenandoahTerminationTracker(ShenandoahPhaseTimings::Phase phase) : _phase(phase) {
+  assert(currentPhase == ShenandoahPhaseTimings::_num_phases, "Should be invalid");
+  assert(phase == ShenandoahPhaseTimings::termination ||
+         phase == ShenandoahPhaseTimings::final_traversal_gc_termination ||
+         phase == ShenandoahPhaseTimings::full_gc_mark_termination ||
+         phase == ShenandoahPhaseTimings::conc_termination ||
+         phase == ShenandoahPhaseTimings::conc_traversal_termination ||
+         phase == ShenandoahPhaseTimings::weakrefs_termination ||
+         phase == ShenandoahPhaseTimings::full_gc_weakrefs_termination,
+         "Only these phases");
+
+  assert(Thread::current()->is_VM_thread() || Thread::current()->is_ConcurrentGC_thread(),
+    "Called from wrong thread");
+
+  currentPhase = phase;
+  ShenandoahHeap::heap()->phase_timings()->termination_times()->reset();
+}
+
+ShenandoahTerminationTracker::~ShenandoahTerminationTracker() {
+  assert(_phase == currentPhase, "Can not change phase");
+  ShenandoahPhaseTimings* phase_times = ShenandoahHeap::heap()->phase_timings();
+
+  double t = phase_times->termination_times()->average();
+  phase_times->record_phase_time(_phase, t * 1000 * 1000);
+  debug_only(currentPhase = ShenandoahPhaseTimings::_num_phases;)
 }
