@@ -47,7 +47,9 @@ import java.awt.event.FocusEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.AffineTransform;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.DataBufferInt;
@@ -64,7 +66,6 @@ import sun.awt.SunToolkit;
 import sun.awt.Win32GraphicsConfig;
 import sun.awt.Win32GraphicsDevice;
 import sun.awt.Win32GraphicsEnvironment;
-import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.pipe.Region;
 
 import sun.java2d.SunGraphics2D;
@@ -114,6 +115,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      * WindowStateEvent is posted to the EventQueue.
      */
     private WindowListener windowListener;
+    private MouseMotionListener mouseMotionListener;
+    private MouseListener mouseListener;
     private float scaleX;
     private float scaleY;
 
@@ -402,7 +405,55 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                         break;
                 }
             }
+        } else if (event instanceof MouseEvent) {
+            MouseListener _mouseListener = mouseListener;
+            if (_mouseListener != null) {
+                switch (event.getID()) {
+                    case MouseEvent.MOUSE_CLICKED:
+                        _mouseListener.mouseClicked((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_PRESSED:
+                        _mouseListener.mousePressed((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_RELEASED:
+                        _mouseListener.mouseReleased((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_ENTERED:
+                        _mouseListener.mouseEntered((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_EXITED:
+                        _mouseListener.mouseExited((MouseEvent) event);
+                        break;
+                }
+            }
+            MouseMotionListener _mouseMotionListener = mouseMotionListener;
+            if (_mouseMotionListener != null) {
+                switch (event.getID()) {
+                    case MouseEvent.MOUSE_DRAGGED:
+                        _mouseMotionListener.mouseDragged((MouseEvent)event);
+                        break;
+                    case MouseEvent.MOUSE_MOVED:
+                        _mouseMotionListener.mouseMoved((MouseEvent)event);
+                        break;
+                }
+            }
         }
+    }
+
+    synchronized void addMouseListener(MouseListener l) {
+        mouseListener = AWTEventMulticaster.add(mouseListener, l);
+    }
+
+    synchronized void removeMouseListener(MouseListener l) {
+        mouseListener = AWTEventMulticaster.remove(mouseListener, l);
+    }
+
+    synchronized void addMouseMotionListener(MouseMotionListener l) {
+        mouseMotionListener = AWTEventMulticaster.add(mouseMotionListener, l);
+    }
+
+    synchronized void removeMouseMotionListener(MouseMotionListener l) {
+        mouseMotionListener = AWTEventMulticaster.remove(mouseMotionListener, l);
     }
 
     synchronized void addWindowListener(WindowListener l) {
