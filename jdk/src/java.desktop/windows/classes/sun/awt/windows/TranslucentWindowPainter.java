@@ -191,17 +191,29 @@ abstract class TranslucentWindowPainter {
                 backBuffer.getHeight(null) != h ||
                 !checkScaleValid(backBuffer))
             {
+                Image oldBackBuffer = backBuffer;
                 flush();
                 // [tav] BufferedImage is not hidpi-aware, create a VolatileImage backed by a hidpi-aware BufImgSurfaceData
 //                backBuffer = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB_PRE);
                 GraphicsConfiguration gc = peer.getGraphicsConfiguration();
                 try {
                     backBuffer = gc.createCompatibleVolatileImage(w, h, new ImageCapabilities(false), TRANSLUCENT);
+                    paintOld(oldBackBuffer, backBuffer);
                 } catch (AWTException e) {
                     e.printStackTrace();
                 }
             }
             return clear ? clearImage(backBuffer) : backBuffer;
+        }
+
+        protected void paintOld(Image oldImage, Image newImage) {
+            if (oldImage != null) {
+                clearImage(newImage);
+                Graphics2D g = (Graphics2D)newImage.getGraphics();
+                g.setComposite(AlphaComposite.Src);
+                g.setColor(new Color(0, 0, 0, 0));
+                g.drawImage(oldImage, 0, 0, null);
+            }
         }
 
         @Override
@@ -272,6 +284,7 @@ abstract class TranslucentWindowPainter {
                 viBB.validate(gc) == IMAGE_INCOMPATIBLE ||
                 !checkScaleValid(viBB))
             {
+                Image oldViBB = viBB;
                 flush();
 
                 if (gc instanceof AccelGraphicsConfig) {
@@ -283,6 +296,7 @@ abstract class TranslucentWindowPainter {
                 if (viBB == null) {
                     viBB = gc.createCompatibleVolatileImage(w, h, TRANSLUCENT);
                 }
+                paintOld(oldViBB, viBB);
                 viBB.validate(gc);
             }
 
