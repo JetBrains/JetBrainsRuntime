@@ -89,6 +89,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      * WindowStateEvent is posted to the EventQueue.
      */
     private WindowListener windowListener;
+    private MouseMotionListener mouseMotionListener;
+    private MouseListener mouseListener;
     private float scaleX;
     private float scaleY;
 
@@ -377,7 +379,55 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                         break;
                 }
             }
+        } else if (event instanceof MouseEvent) {
+            MouseListener _mouseListener = mouseListener;
+            if (_mouseListener != null) {
+                switch (event.getID()) {
+                    case MouseEvent.MOUSE_CLICKED:
+                        _mouseListener.mouseClicked((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_PRESSED:
+                        _mouseListener.mousePressed((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_RELEASED:
+                        _mouseListener.mouseReleased((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_ENTERED:
+                        _mouseListener.mouseEntered((MouseEvent) event);
+                        break;
+                    case MouseEvent.MOUSE_EXITED:
+                        _mouseListener.mouseExited((MouseEvent) event);
+                        break;
+                }
+            }
+            MouseMotionListener _mouseMotionListener = mouseMotionListener;
+            if (_mouseMotionListener != null) {
+                switch (event.getID()) {
+                    case MouseEvent.MOUSE_DRAGGED:
+                        _mouseMotionListener.mouseDragged((MouseEvent)event);
+                        break;
+                    case MouseEvent.MOUSE_MOVED:
+                        _mouseMotionListener.mouseMoved((MouseEvent)event);
+                        break;
+                }
+            }
         }
+    }
+
+    synchronized void addMouseListener(MouseListener l) {
+        mouseListener = AWTEventMulticaster.add(mouseListener, l);
+    }
+
+    synchronized void removeMouseListener(MouseListener l) {
+        mouseListener = AWTEventMulticaster.remove(mouseListener, l);
+    }
+
+    synchronized void addMouseMotionListener(MouseMotionListener l) {
+        mouseMotionListener = AWTEventMulticaster.add(mouseMotionListener, l);
+    }
+
+    synchronized void removeMouseMotionListener(MouseMotionListener l) {
+        mouseMotionListener = AWTEventMulticaster.remove(mouseMotionListener, l);
     }
 
     synchronized void addWindowListener(WindowListener l) {
