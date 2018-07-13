@@ -195,23 +195,13 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
     // Record actual allocation size
     req.set_actual_size(size);
 
-    switch (req.type()) {
-      case ShenandoahHeap::_alloc_gclab:
-      case ShenandoahHeap::_alloc_shared_gc:
-        if (_heap->is_concurrent_traversal_in_progress()) {
-          // We're updating TAMS for evacuation-allocs, such that we will not
-          // treat evacuated objects as implicitely live and traverse through them.
-          // See top of shenandoahTraversal.cpp for an explanation.
-          _heap->set_next_top_at_mark_start(r->bottom(), r->top());
-          _heap->traversal_gc()->traversal_set()->add_region_check_for_duplicates(r);
-          OrderAccess::fence();
-        }
-        break;
-      case ShenandoahHeap::_alloc_tlab:
-      case ShenandoahHeap::_alloc_shared:
-        break;
-      default:
-        ShouldNotReachHere();
+    if (req.is_gc_alloc() && _heap->is_concurrent_traversal_in_progress()) {
+      // Traversal needs to traverse through GC allocs. Adjust TAMS to the new top
+      // so that these allocations appear below TAMS, and thus get traversed.
+      // See top of shenandoahTraversal.cpp for an explanation.
+      _heap->set_next_top_at_mark_start(r->bottom(), r->top());
+      _heap->traversal_gc()->traversal_set()->add_region_check_for_duplicates(r);
+      OrderAccess::fence();
     }
   }
 
