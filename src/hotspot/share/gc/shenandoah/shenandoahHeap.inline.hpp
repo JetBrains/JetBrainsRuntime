@@ -295,7 +295,8 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 #endif
     filler = allocate_from_gclab(thread, size_with_fwdptr);
     if (filler == NULL) {
-      filler = allocate_memory(size_with_fwdptr, _alloc_shared_gc);
+      ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_shared_gc(size_with_fwdptr);
+      filler = allocate_memory(req);
       alloc_from_gclab = false;
     }
 #ifdef ASSERT

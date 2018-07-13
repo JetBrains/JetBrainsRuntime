@@ -785,32 +785,19 @@ HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
 #ifdef ASSERT
   log_debug(gc, alloc)("Allocate new tlab, requested size = " SIZE_FORMAT " bytes", requested_size * HeapWordSize);
 #endif
-  HeapWord* addr = allocate_new_lab(requested_size, _alloc_tlab);
-  if (addr != NULL) {
-    *actual_size = requested_size;
-  } else {
-    *actual_size = 0;
-  }
-  return addr;
+  ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_tlab(min_size, requested_size);
+  HeapWord* res = allocate_memory(req);
+  *actual_size = req.actual_size();
+  return res;
 }
 
 HeapWord* ShenandoahHeap::allocate_new_gclab(size_t word_size) {
 #ifdef ASSERT
   log_debug(gc, alloc)("Allocate new gclab, requested size = " SIZE_FORMAT " bytes", word_size * HeapWordSize);
 #endif
-  return allocate_new_lab(word_size, _alloc_gclab);
-}
-
-HeapWord* ShenandoahHeap::allocate_new_lab(size_t word_size, AllocType type) {
-  HeapWord* result = allocate_memory(word_size, type);
-
-  if (result != NULL) {
-    assert(! in_collection_set(result), "Never allocate in collection set");
-
-    log_develop_trace(gc, tlab)("allocating new tlab of size " SIZE_FORMAT " at addr " PTR_FORMAT, word_size, p2i(result));
-
-  }
-  return result;
+  // TODO: Elastic GCLABs
+  ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_gclab(word_size);
+  return allocate_memory(req);
 }
 
 ShenandoahHeap* ShenandoahHeap::heap() {
@@ -825,19 +812,19 @@ ShenandoahHeap* ShenandoahHeap::heap_no_check() {
   return (ShenandoahHeap*) heap;
 }
 
-HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
-  ShenandoahAllocTrace trace_alloc(word_size, type);
+HeapWord* ShenandoahHeap::allocate_memory(ShenandoahAllocationRequest& req) {
+  ShenandoahAllocTrace trace_alloc(req.size(), req.type());
 
   bool in_new_region = false;
   HeapWord* result = NULL;
 
-  if (type == _alloc_tlab || type == _alloc_shared) {
+  if (req.is_mutator_alloc()) {
     if (ShenandoahPacing) {
-      pacer()->pace_for_alloc(word_size);
+      pacer()->pace_for_alloc(req.size());
     }
 
     if (!ShenandoahAllocFailureALot || !should_inject_alloc_failure()) {
-      result = allocate_memory_under_lock(word_size, type, in_new_region);
+      result = allocate_memory_under_lock(req, in_new_region);
     }
 
     // Allocation failed, block until control thread reacted, then retry allocation.
@@ -854,19 +841,19 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
 
     while (result == NULL && last_gc_made_progress()) {
       tries++;
-      control_thread()->handle_alloc_failure(word_size);
-      result = allocate_memory_under_lock(word_size, type, in_new_region);
+      control_thread()->handle_alloc_failure(req.size());
+      result = allocate_memory_under_lock(req, in_new_region);
     }
 
     while (result == NULL && tries <= ShenandoahFullGCThreshold) {
       tries++;
-      control_thread()->handle_alloc_failure(word_size);
-      result = allocate_memory_under_lock(word_size, type, in_new_region);
+      control_thread()->handle_alloc_failure(req.size());
+      result = allocate_memory_under_lock(req, in_new_region);
     }
 
   } else {
-    assert(type == _alloc_gclab || type == _alloc_shared_gc, "Can only accept these types here");
-    result = allocate_memory_under_lock(word_size, type, in_new_region);
+    assert(req.is_gc_alloc(), "Can only accept GC allocs here");
+    result = allocate_memory_under_lock(req, in_new_region);
     // Do not call handle_alloc_failure() here, because we cannot block.
     // The allocation failure would be handled by the WB slowpath with handle_alloc_failure_evac().
   }
@@ -876,17 +863,15 @@ HeapWord* ShenandoahHeap::allocate_memory(size_t word_size, AllocType type) {
   }
 
   if (result != NULL) {
-    log_develop_trace(gc, alloc)("allocate memory chunk of size " SIZE_FORMAT " at addr " PTR_FORMAT " by thread %d ",
-                                 word_size, p2i(result), Thread::current()->osthread()->thread_id());
-    notify_alloc(word_size, false);
+    notify_alloc(req.actual_size(), false);
   }
 
   return result;
 }
 
-HeapWord* ShenandoahHeap::allocate_memory_under_lock(size_t word_size, AllocType type, bool& in_new_region) {
+HeapWord* ShenandoahHeap::allocate_memory_under_lock(ShenandoahAllocationRequest& req, bool& in_new_region) {
   ShenandoahHeapLocker locker(lock());
-  return _free_set->allocate(word_size, type, in_new_region);
+  return _free_set->allocate(req, in_new_region);
 }
 
 class ShenandoahObjAllocator : public ObjAllocator {
@@ -966,7 +951,8 @@ oop ShenandoahHeap::class_allocate(Klass* klass, int size, TRAPS) {
 
 HeapWord* ShenandoahHeap::mem_allocate(size_t size,
                                         bool*  gc_overhead_limit_was_exceeded) {
-  return  allocate_memory(size, _alloc_shared);
+  ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_shared(size);
+  return allocate_memory(req);
 }
 
 void ShenandoahHeap::fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap) {
