@@ -438,7 +438,7 @@ void ShenandoahFreeSet::rebuild() {
 
 void ShenandoahFreeSet::log_status() {
   log_info(gc, ergo)("Free: " SIZE_FORMAT "M, Regions: " SIZE_FORMAT " mutator, " SIZE_FORMAT " collector",
-                     capacity() / M, mutator_count(), collector_count());
+                     available() / M, mutator_count(), collector_count());
 }
 
 void ShenandoahFreeSet::log_status_verbose() {
