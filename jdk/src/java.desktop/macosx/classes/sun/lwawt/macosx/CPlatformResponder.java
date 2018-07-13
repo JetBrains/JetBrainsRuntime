@@ -77,12 +77,12 @@ final class CPlatformResponder {
 
         boolean dragged = jeventType == MouseEvent.MOUSE_DRAGGED;
         if (dragged  // ignore dragged event that does not change any location
-                && lastDraggedAbsoluteX == absoluteX && lastDraggedRelativeX == x
-                && lastDraggedAbsoluteY == absoluteY && lastDraggedRelativeY == y) return;
+                && lastDraggedAbsoluteX == absX && lastDraggedRelativeX == x
+                && lastDraggedAbsoluteY == absY && lastDraggedRelativeY == y) return;
 
         if (dragged || jeventType == MouseEvent.MOUSE_PRESSED) {
-            lastDraggedAbsoluteX = absoluteX;
-            lastDraggedAbsoluteY = absoluteY;
+            lastDraggedAbsoluteX = absX;
+            lastDraggedAbsoluteY = absY;
             lastDraggedRelativeX = x;
             lastDraggedRelativeY = y;
         }
