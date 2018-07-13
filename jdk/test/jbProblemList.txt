@@ -185,7 +185,7 @@ java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                         
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                           JRE-815 macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java                                  JRE-815 macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java                                     JRE-816 macosx-all,windows-all
-java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           8204215 windows-all
+java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           8204215 macosx-all,windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java                       8144030 macosx-all,windows-all,linux-all
 java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java JRE-871 macosx-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java                                   8169470 generic-all
