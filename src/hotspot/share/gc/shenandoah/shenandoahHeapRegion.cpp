@@ -592,9 +592,10 @@ void ShenandoahHeapRegion::setup_heap_region_size(size_t initial_heap_size, size
                       ShenandoahMinRegionSize/K, ShenandoahMaxRegionSize/K);
       vm_exit_during_initialization("Invalid -XX:ShenandoahMinRegionSize or -XX:ShenandoahMaxRegionSize", message);
     }
-    size_t average_heap_size = (initial_heap_size + max_heap_size) / 2;
-    region_size = MAX2(average_heap_size / ShenandoahTargetNumRegions,
-                       ShenandoahMinRegionSize);
+
+    // We rapidly expand to max_heap_size in most scenarios, so that is the measure
+    // for usual heap sizes. Do not depend on initial_heap_size here.
+    region_size = max_heap_size / ShenandoahTargetNumRegions;
 
     // Now make sure that we don't go over or under our limits.
     region_size = MAX2(ShenandoahMinRegionSize, region_size);
