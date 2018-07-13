@@ -291,9 +291,6 @@
               "adjustment. Lower values make adjustments faster, at the "   \
               "expense of higher perf overhead. Time is in milliseconds.")  \
                                                                             \
-  diagnostic(bool, ShenandoahAllocImplicitLive, true,                       \
-              "Treat (non-evac) allocations implicitely live")              \
-                                                                            \
   diagnostic(bool, ShenandoahSATBBarrier, true,                             \
           "Turn on/off SATB barriers in Shenandoah")                        \
                                                                             \

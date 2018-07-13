@@ -150,6 +150,7 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[purge_par_sync]                  = "      Synchronization";
   _phase_names[purge_string_dedup]              = "    String Dedup";
   _phase_names[purge_cldg]                      = "    CLDG";
+  _phase_names[complete_liveness]               = "  Complete Liveness";
   _phase_names[prepare_evac]                    = "  Prepare Evacuation";
 
   _phase_names[scan_roots]                      = "  Scan Roots";

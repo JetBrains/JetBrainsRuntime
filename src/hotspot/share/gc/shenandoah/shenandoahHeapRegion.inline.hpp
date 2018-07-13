@@ -88,9 +88,6 @@ inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahHeap::AllocTyp
 }
 
 inline void ShenandoahHeapRegion::increase_live_data_alloc_words(size_t s) {
-  if (!ShenandoahAllocImplicitLive) {
-    return;
-  }
   internal_increase_live_data(s);
 }
 

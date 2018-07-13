@@ -1703,6 +1703,23 @@ void ShenandoahHeap::op_final_mark() {
     stop_concurrent_marking();
 
     {
+      ShenandoahGCPhase phase(ShenandoahPhaseTimings::complete_liveness);
+
+      // All allocations past TAMS are implicitly live, adjust the region data.
+      // Bitmaps/TAMS are swapped at this point, so we need to poll complete bitmap.
+      for (size_t i = 0; i < num_regions(); i++) {
+        ShenandoahHeapRegion* r = get_region(i);
+        if (!r->is_active()) continue;
+
+        HeapWord* tams = complete_top_at_mark_start(r->bottom());
+        HeapWord* top = r->top();
+        if (top > tams) {
+          r->increase_live_data_alloc_words(pointer_delta(top, tams));
+        }
+      }
+    }
+
+    {
       ShenandoahGCPhase prepare_evac(ShenandoahPhaseTimings::prepare_evac);
       prepare_for_concurrent_evacuation();
     }

@@ -102,6 +102,7 @@ public:
     purge_par_sync,
     purge_cldg,
     purge_string_dedup,
+    complete_liveness,
     prepare_evac,
     recycle_regions,
 
