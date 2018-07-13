@@ -100,7 +100,7 @@ void ShenandoahPacer::setup_for_evac() {
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Evacuation. Used CSet: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Evacuation. Used CSet: " SIZE_FORMAT "M, Avail: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
                      used / M, free / M, non_taxable / M, tax);
 }
