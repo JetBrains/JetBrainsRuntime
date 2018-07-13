@@ -436,5 +436,8 @@
                                                                             \
   diagnostic(bool, ShenandoahTerminationTrace, false,                       \
           "Tracing task termination timings")                               \
+                                                                            \
+  diagnostic(bool, ShenandoahElasticTLAB, true,                             \
+          "Use Elastic TLABs with Shenandoah")                              \
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAH_GLOBALS_HPP

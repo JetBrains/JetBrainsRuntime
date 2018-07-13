@@ -787,7 +787,11 @@ HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
 #endif
   ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_tlab(min_size, requested_size);
   HeapWord* res = allocate_memory(req);
-  *actual_size = req.actual_size();
+  if (res != NULL) {
+    *actual_size = req.actual_size();
+  } else {
+    *actual_size = 0;
+  }
   return res;
 }
 
@@ -863,7 +867,14 @@ HeapWord* ShenandoahHeap::allocate_memory(ShenandoahAllocationRequest& req) {
   }
 
   if (result != NULL) {
-    notify_alloc(req.actual_size(), false);
+    size_t requested = req.size();
+    size_t actual = req.actual_size();
+
+    assert (req.type() == _alloc_tlab || (requested == actual),
+            "Only TLAB allocations are elastic: %s, requested = " SIZE_FORMAT ", actual = " SIZE_FORMAT,
+            alloc_type_to_string(req.type()), requested, actual);
+
+    notify_alloc(actual, false);
   }
 
   return result;

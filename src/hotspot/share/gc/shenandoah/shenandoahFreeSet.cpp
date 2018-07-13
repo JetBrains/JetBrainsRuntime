@@ -171,8 +171,21 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
 
   in_new_region = r->is_empty();
 
+  HeapWord* result = NULL;
   size_t size = req.size();
-  HeapWord* result = r->allocate(size, req.type());
+
+  if (ShenandoahElasticTLAB && req.type() == ShenandoahHeap::_alloc_tlab) {
+    size_t free = align_down(r->free() >> LogHeapWordSize, MinObjAlignment);
+    if (size > free) {
+      size = free;
+    }
+    if (size >= req.min_size()) {
+      result = r->allocate(size, req.type());
+      assert (result != NULL, "Allocation must succeed: free " SIZE_FORMAT ", actual " SIZE_FORMAT, free, size);
+    }
+  } else {
+    result = r->allocate(size, req.type());
+  }
 
   if (result != NULL) {
     // Allocation successful, bump live data stats:
