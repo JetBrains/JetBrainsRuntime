@@ -685,8 +685,8 @@ public:
       return ShenandoahAllocationRequest(min_size, requested_size, ShenandoahHeap::_alloc_tlab);
     }
 
-    static inline ShenandoahAllocationRequest for_gclab(size_t requested_size) {
-      return ShenandoahAllocationRequest(0, requested_size, ShenandoahHeap::_alloc_gclab);
+    static inline ShenandoahAllocationRequest for_gclab(size_t min_size, size_t requested_size) {
+      return ShenandoahAllocationRequest(min_size, requested_size, ShenandoahHeap::_alloc_gclab);
     }
 
     static inline ShenandoahAllocationRequest for_shared_gc(size_t requested_size) {
@@ -706,7 +706,7 @@ public:
     }
 
     inline size_t min_size() {
-      assert (_alloc_type == ShenandoahHeap::_alloc_tlab, "Only access for TLAB allocs");
+      assert (is_lab_alloc(), "Only access for LAB allocs");
       return _min_size;
     }
 
@@ -750,6 +750,20 @@ public:
           return false;
       }
     }
+
+    inline bool is_lab_alloc() {
+      switch (_alloc_type) {
+        case _alloc_tlab:
+        case _alloc_gclab:
+          return true;
+        case _alloc_shared:
+        case _alloc_shared_gc:
+          return false;
+        default:
+          ShouldNotReachHere();
+          return false;
+      }
+    }
   };
 
 private:
@@ -764,7 +778,7 @@ private:
   // Shenandoah functionality.
   inline HeapWord* allocate_from_gclab(Thread* thread, size_t size);
   HeapWord* allocate_from_gclab_slow(Thread* thread, size_t size);
-  HeapWord* allocate_new_gclab(size_t word_size);
+  HeapWord* allocate_new_gclab(size_t min_size, size_t word_size, size_t* actual_size);
 
   template<class T>
   inline void do_object_marked_complete(T* cl, oop obj);

@@ -174,7 +174,7 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
   HeapWord* result = NULL;
   size_t size = req.size();
 
-  if (ShenandoahElasticTLAB && req.type() == ShenandoahHeap::_alloc_tlab) {
+  if (ShenandoahElasticTLAB && req.is_lab_alloc()) {
     size_t free = align_down(r->free() >> LogHeapWordSize, MinObjAlignment);
     if (size > free) {
       size = free;
