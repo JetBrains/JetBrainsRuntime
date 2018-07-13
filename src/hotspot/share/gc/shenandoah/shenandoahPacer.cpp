@@ -214,6 +214,7 @@ void ShenandoahPacer::restart_with(size_t non_taxable_bytes, double tax_rate) {
   STATIC_ASSERT(sizeof(size_t) <= sizeof(intptr_t));
   Atomic::xchg((intptr_t)initial, &_budget);
   Atomic::store(tax_rate, &_tax_rate);
+  Atomic::inc(&_epoch);
 }
 
 bool ShenandoahPacer::claim_for_alloc(size_t words, bool force) {
@@ -232,6 +233,22 @@ bool ShenandoahPacer::claim_for_alloc(size_t words, bool force) {
     new_val = cur - tax;
   } while (Atomic::cmpxchg(new_val, &_budget, cur) != cur);
   return true;
+}
+
+void ShenandoahPacer::unpace_for_alloc(intptr_t epoch, size_t words) {
+  assert(ShenandoahPacing, "Only be here when pacing is enabled");
+
+  if (_epoch != epoch) {
+    // Stale ticket, no need to unpace.
+    return;
+  }
+
+  intptr_t tax = MAX2<intptr_t>(1, words * Atomic::load(&_tax_rate));
+  Atomic::add(tax, &_budget);
+}
+
+intptr_t ShenandoahPacer::epoch() {
+  return Atomic::load(&_epoch);
 }
 
 void ShenandoahPacer::pace_for_alloc(size_t words) {

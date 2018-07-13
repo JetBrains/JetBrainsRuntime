@@ -819,12 +819,14 @@ ShenandoahHeap* ShenandoahHeap::heap_no_check() {
 HeapWord* ShenandoahHeap::allocate_memory(ShenandoahAllocationRequest& req) {
   ShenandoahAllocTrace trace_alloc(req.size(), req.type());
 
+  intptr_t pacer_epoch = 0;
   bool in_new_region = false;
   HeapWord* result = NULL;
 
   if (req.is_mutator_alloc()) {
     if (ShenandoahPacing) {
       pacer()->pace_for_alloc(req.size());
+      pacer_epoch = pacer()->epoch();
     }
 
     if (!ShenandoahAllocFailureALot || !should_inject_alloc_failure()) {
@@ -875,6 +877,13 @@ HeapWord* ShenandoahHeap::allocate_memory(ShenandoahAllocationRequest& req) {
             alloc_type_to_string(req.type()), requested, actual);
 
     notify_alloc(actual, false);
+
+    // If we requested more than we were granted, give the rest back to pacer.
+    // This only matters if we are in the same pacing epoch: do not try to unpace
+    // over the budget for the other phase.
+    if (ShenandoahPacing && (pacer_epoch > 0) && (requested > actual)) {
+      pacer()->unpace_for_alloc(pacer_epoch, requested - actual);
+    }
   }
 
   return result;

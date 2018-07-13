@@ -47,10 +47,12 @@ private:
 
   volatile intptr_t _progress;
   TruncatedSeq* _progress_history;
+  volatile intptr_t _epoch;
 
 public:
   ShenandoahPacer(ShenandoahHeap* heap) :
           _heap(heap), _budget(0), _tax_rate(1),
+          _epoch(0),
           _progress(PACING_PROGRESS_UNINIT),
           _progress_history(new TruncatedSeq(5)) {
   }
@@ -71,6 +73,9 @@ public:
 
   bool claim_for_alloc(size_t words, bool force);
   void pace_for_alloc(size_t words);
+  void unpace_for_alloc(intptr_t epoch, size_t words);
+
+  intptr_t epoch();
 
   void print_on(outputStream* out) const;
 
