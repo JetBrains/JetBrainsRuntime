@@ -46,6 +46,10 @@ final class CPlatformResponder {
     private int lastKeyPressCode = KeyEvent.VK_UNDEFINED;
     private final DeltaAccumulator deltaAccumulatorX = new DeltaAccumulator();
     private final DeltaAccumulator deltaAccumulatorY = new DeltaAccumulator();
+    private int lastDraggedAbsoluteX;
+    private int lastDraggedAbsoluteY;
+    private int lastDraggedRelativeX;
+    private int lastDraggedRelativeY;
 
     CPlatformResponder(final PlatformEventNotifier eventNotifier,
                        final boolean isNpapiCallback) {
@@ -66,6 +70,18 @@ final class CPlatformResponder {
 
         int jeventType = isNpapiCallback ? NSEvent.npToJavaEventType(eventType) :
                                            NSEvent.nsToJavaEventType(eventType);
+
+        boolean dragged = jeventType == MouseEvent.MOUSE_DRAGGED;
+        if (dragged  // ignore dragged event that does not change any location
+                && lastDraggedAbsoluteX == absX && lastDraggedRelativeX == x
+                && lastDraggedAbsoluteY == absY && lastDraggedRelativeY == y) return;
+
+        if (dragged || jeventType == MouseEvent.MOUSE_PRESSED) {
+            lastDraggedAbsoluteX = absX;
+            lastDraggedAbsoluteY = absY;
+            lastDraggedRelativeX = x;
+            lastDraggedRelativeY = y;
+        }
 
         int jbuttonNumber = MouseEvent.NOBUTTON;
         int jclickCount = 0;
