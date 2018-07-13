@@ -402,7 +402,11 @@ static BOOL shouldUsePressAndHold() {
                                   deltaX,
                                   [AWTToolkit scrollStateWithEvent: event]);
     CHECK_NULL(jEvent);
-    
+
+    // ATTENTION!!! [todo] @Denis_Fokin,
+    // when you're cherry-picking "OC-14409 Appcode spends 100% CPU while doing nothing, in deliverMouseEvent"
+    // please apply my fix 5863e26 JRE-422 to avoid leaking jEvent.
+
     static JNF_CLASS_CACHE(jc_PlatformView, "sun/lwawt/macosx/CPlatformView");
     static JNF_MEMBER_CACHE(jm_deliverMouseEvent, jc_PlatformView, "deliverMouseEvent", "(Lsun/lwawt/macosx/NSEvent;)V");
     jobject jlocal = (*env)->NewLocalRef(env, m_cPlatformView);
