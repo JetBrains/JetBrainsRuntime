@@ -489,8 +489,6 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
   }
 
   assert(task_queues()->is_empty(), "Should be empty");
-  TASKQUEUE_STATS_ONLY(task_queues()->print_taskqueue_stats());
-  TASKQUEUE_STATS_ONLY(task_queues()->reset_taskqueue_stats());
 
   // When we're done marking everything, we process weak references.
   if (process_references()) {
@@ -501,6 +499,10 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
   if (unload_classes()) {
     sh->unload_classes_and_cleanup_tables(full_gc);
   }
+
+  assert(task_queues()->is_empty(), "Should be empty");
+  TASKQUEUE_STATS_ONLY(task_queues()->print_taskqueue_stats());
+  TASKQUEUE_STATS_ONLY(task_queues()->reset_taskqueue_stats());
 }
 
 // Weak Reference Closures
