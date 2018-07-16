@@ -4163,48 +4163,6 @@ oop java_lang_ClassLoader::unnamedModule(oop loader) {
   return loader->obj_field(unnamedModule_offset);
 }
 
-// Caller needs ResourceMark.
-const char* java_lang_ClassLoader::describe_external(const oop loader) {
-  ClassLoaderData *cld = ClassLoaderData::class_loader_data(loader);
-  const char* name = cld->loader_name_and_id();
-
-  // bootstrap loader
-  if (loader == NULL) {
-    return name;
-  }
-
-  bool well_known_loader = SystemDictionary::is_system_class_loader(loader) ||
-                           SystemDictionary::is_platform_class_loader(loader);
-
-  stringStream ss;
-  ss.print("%s (instance of %s", name, loader->klass()->external_name());
-  if (!well_known_loader) {
-    oop pl = java_lang_ClassLoader::parent(loader);
-    const char* parentName = "";
-    ClassLoaderData *parent_cld = ClassLoaderData::class_loader_data_or_null(pl);
-    // The parent loader's ClassLoaderData could be null if it is
-    // a delegating class loader that has never defined a class.
-    // In this case the loader's name must be obtained via the parent loader's oop.
-    if (parent_cld == NULL) {
-      oop cl_name_and_id = java_lang_ClassLoader::nameAndId(pl);
-      if (cl_name_and_id != NULL) {
-        parentName = java_lang_String::as_utf8_string(cl_name_and_id);
-      }
-    } else {
-      parentName = parent_cld->loader_name_and_id();
-    }
-    if (pl != NULL) {
-      ss.print(", child of %s %s", parentName, pl->klass()->external_name());
-    } else {
-      // bootstrap loader
-      ss.print(", child of %s", parentName);
-    }
-  }
-  ss.print(")");
-
-  return ss.as_string();
-}
-
 // Support for java_lang_System
 //
 #define SYSTEM_FIELDS_DO(macro) \
