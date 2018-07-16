@@ -756,12 +756,18 @@ HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) 
     new_gclab_size = _collector_gclab_stats->desired_plab_sz(workers()->active_workers());
   }
 
+  // Allocated object should fit in new GCLAB, and new_gclab_size should be larger than min
+  size_t min_size = MAX2(size, PLAB::min_size());
+  new_gclab_size = MAX2(new_gclab_size, min_size);
+
   // Allocate a new GCLAB...
   size_t actual_size = 0;
-  HeapWord* gclab_buf = allocate_new_gclab(PLAB::min_size(), new_gclab_size, &actual_size);
+  HeapWord* gclab_buf = allocate_new_gclab(min_size, new_gclab_size, &actual_size);
   if (gclab_buf == NULL) {
     return NULL;
   }
+
+  assert (size <= actual_size, "allocation should fit");
 
   if (ZeroTLAB) {
     // ..and clear it.
