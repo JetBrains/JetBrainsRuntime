@@ -45,8 +45,9 @@ public class Test {
     // Check that all names have external formatting ('.' and not '/' in package names).
     // Check for name and parent of class loader. Type should be mentioned as 'class'.
     static String expectedErrorMessage_part1 = "loader 'DuplicateParentLE_Test_Loader' @";
-    static String expectedErrorMessage_part2 = " (instance of PreemptingChildClassLoader, child of ParentClassLoader @";
-    static String expectedErrorMessage_part3 = " ParentClassLoader) attempted duplicate class definition for test.Foo";
+    static String expectedErrorMessage_part2 = " attempted duplicate class definition for test.Foo. (test.Foo is in unnamed module of loader 'DuplicateParentLE_Test_Loader' @";
+    static String expectedErrorMessage_part3 = ", parent loader ParentClassLoader @";
+
 
     // Test that the error message is correct when a loader constraint error is
     // detected during vtable creation.
