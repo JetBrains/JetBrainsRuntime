@@ -498,36 +498,35 @@ void ShenandoahHeap::reset_next_mark_bitmap() {
 
 class ShenandoahResetNextBitmapTraversalTask : public AbstractGangTask {
 private:
-  ShenandoahRegionIterator _regions;
+  ShenandoahHeapRegionSetIterator& _regions;
 
 public:
-  ShenandoahResetNextBitmapTraversalTask() :
-    AbstractGangTask("Parallel Reset Bitmap Task for Traversal") {}
+  ShenandoahResetNextBitmapTraversalTask(ShenandoahHeapRegionSetIterator& regions) :
+    AbstractGangTask("Parallel Reset Bitmap Task for Traversal"),
+    _regions(regions) {}
 
   void work(uint worker_id) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
-    ShenandoahHeapRegionSet* traversal_set = heap->traversal_gc()->traversal_set();
-    ShenandoahHeapRegion* region = _regions.next();
+    ShenandoahHeapRegion* region = _regions.claim_next();
     while (region != NULL) {
-      if (heap->is_bitmap_slice_committed(region)) {
-        if (traversal_set->is_in(region) && !region->is_trash()) {
-          ShenandoahHeapLocker locker(heap->lock());
-          HeapWord* bottom = region->bottom();
-          HeapWord* top = heap->next_top_at_mark_start(bottom);
-          assert(top <= region->top(),
-                 "TAMS must smaller/equals than top: TAMS: "PTR_FORMAT", top: "PTR_FORMAT,
-                 p2i(top), p2i(region->top()));
-          if (top > bottom) {
-            heap->complete_mark_bit_map()->copy_from(heap->next_mark_bit_map(), MemRegion(bottom, top));
-            heap->set_complete_top_at_mark_start(bottom, top);
-            heap->next_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
-            heap->set_next_top_at_mark_start(bottom, bottom);
-          }
+      if (!region->is_trash()) {
+        assert(!region->is_empty_uncommitted(), "sanity");
+        assert(heap->is_bitmap_slice_committed(region), "sanity");
+        HeapWord* bottom = region->bottom();
+        HeapWord* top = heap->next_top_at_mark_start(bottom);
+        assert(top <= region->top(),
+               "TAMS must smaller/equals than top: TAMS: "PTR_FORMAT", top: "PTR_FORMAT,
+               p2i(top), p2i(region->top()));
+        if (top > bottom) {
+          heap->complete_mark_bit_map()->copy_from(heap->next_mark_bit_map(), MemRegion(bottom, top));
+          heap->set_complete_top_at_mark_start(bottom, top);
+          heap->next_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
+          heap->set_next_top_at_mark_start(bottom, bottom);
         }
         assert(heap->is_next_bitmap_clear_range(region->bottom(), region->end()),
                "need clear next bitmap");
       }
-      region = _regions.next();
+      region = _regions.claim_next();
     }
   }
 };
@@ -535,7 +534,9 @@ public:
 void ShenandoahHeap::reset_next_mark_bitmap_traversal() {
   assert_gc_workers(_workers->active_workers());
 
-  ShenandoahResetNextBitmapTraversalTask task;
+  ShenandoahHeapRegionSet* regions = traversal_gc()->traversal_set();
+  ShenandoahHeapRegionSetIterator iter(regions);
+  ShenandoahResetNextBitmapTraversalTask task(iter);
   _workers->run_task(&task);
 }
 
