@@ -170,7 +170,7 @@ final class Win32ShellFolder2 extends ShellFolder {
     }
 
     // Known Folder data
-    static class KnownFolderDefinition {
+    static final class KnownFolderDefinition {
         String guid;
         int category;
         String name;
@@ -187,7 +187,10 @@ final class Win32ShellFolder2 extends ShellFolder {
         String ftidType;
         String path;
         String saveLocation;
-        static final List<KnownFolderDefinition> libraries = getLibraries();
+    }
+
+    static final class KnownLibraries {
+        static final List<KnownFolderDefinition> INSTANCE = getLibraries();
     }
 
     static class FolderDisposer implements sun.java2d.DisposerRecord {
@@ -625,7 +628,7 @@ final class Win32ShellFolder2 extends ShellFolder {
         // this is a temp fix until java.io starts support Libraries
         if( path != null && path.startsWith("::{") &&
                 path.toLowerCase().endsWith(".library-ms")) {
-            for (KnownFolderDefinition kf : KnownFolderDefinition.libraries) {
+            for (KnownFolderDefinition kf : KnownLibraries.INSTANCE) {
                 if (path.toLowerCase().endsWith(
                         "\\" + kf.relativePath.toLowerCase()) &&
                         path.toUpperCase().startsWith(
