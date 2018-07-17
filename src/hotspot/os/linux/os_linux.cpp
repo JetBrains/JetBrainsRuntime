@@ -2108,7 +2108,9 @@ void os::get_summary_os_info(char* buf, size_t buflen) {
   // special case for debian
   if (file_exists("/etc/debian_version")) {
     strncpy(buf, "Debian ", buflen);
-    parse_os_info(&buf[7], buflen-7, "/etc/debian_version");
+    if (buflen > 7) {
+      parse_os_info(&buf[7], buflen-7, "/etc/debian_version");
+    }
   } else {
     strncpy(buf, "Linux", buflen);
   }
@@ -2820,8 +2822,8 @@ int os::numa_get_group_id() {
 }
 
 int os::Linux::get_existing_num_nodes() {
-  size_t node;
-  size_t highest_node_number = Linux::numa_max_node();
+  int node;
+  int highest_node_number = Linux::numa_max_node();
   int num_nodes = 0;
 
   // Get the total number of nodes in the system including nodes without memory.
@@ -2834,14 +2836,14 @@ int os::Linux::get_existing_num_nodes() {
 }
 
 size_t os::numa_get_leaf_groups(int *ids, size_t size) {
-  size_t highest_node_number = Linux::numa_max_node();
+  int highest_node_number = Linux::numa_max_node();
   size_t i = 0;
 
-  // Map all node ids in which is possible to allocate memory. Also nodes are
+  // Map all node ids in which it is possible to allocate memory. Also nodes are
   // not always consecutively available, i.e. available from 0 to the highest
   // node number.
-  for (size_t node = 0; node <= highest_node_number; node++) {
-    if (Linux::isnode_in_configured_nodes(node)) {
+  for (int node = 0; node <= highest_node_number; node++) {
+    if (Linux::isnode_in_configured_nodes((unsigned int)node)) {
       ids[i++] = node;
     }
   }
@@ -5572,14 +5574,18 @@ bool os::pd_unmap_memory(char* addr, size_t bytes) {
 
 static jlong slow_thread_cpu_time(Thread *thread, bool user_sys_cpu_time);
 
-static clockid_t thread_cpu_clockid(Thread* thread) {
-  pthread_t tid = thread->osthread()->pthread_id();
-  clockid_t clockid;
-
-  // Get thread clockid
-  int rc = os::Linux::pthread_getcpuclockid(tid, &clockid);
-  assert(rc == 0, "pthread_getcpuclockid is expected to return 0 code");
-  return clockid;
+static jlong fast_cpu_time(Thread *thread) {
+    clockid_t clockid;
+    int rc = os::Linux::pthread_getcpuclockid(thread->osthread()->pthread_id(),
+                                              &clockid);
+    if (rc == 0) {
+      return os::Linux::fast_thread_cpu_time(clockid);
+    } else {
+      // It's possible to encounter a terminated native thread that failed
+      // to detach itself from the VM - which should result in ESRCH.
+      assert_status(rc == ESRCH, rc, "pthread_getcpuclockid failed");
+      return -1;
+    }
 }
 
 // current_thread_cpu_time(bool) and thread_cpu_time(Thread*, bool)
@@ -5601,7 +5607,7 @@ jlong os::current_thread_cpu_time() {
 jlong os::thread_cpu_time(Thread* thread) {
   // consistent with what current_thread_cpu_time() returns
   if (os::Linux::supports_fast_thread_cpu_time()) {
-    return os::Linux::fast_thread_cpu_time(thread_cpu_clockid(thread));
+    return fast_cpu_time(thread);
   } else {
     return slow_thread_cpu_time(thread, true /* user + sys */);
   }
@@ -5617,7 +5623,7 @@ jlong os::current_thread_cpu_time(bool user_sys_cpu_time) {
 
 jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
   if (user_sys_cpu_time && os::Linux::supports_fast_thread_cpu_time()) {
-    return os::Linux::fast_thread_cpu_time(thread_cpu_clockid(thread));
+    return fast_cpu_time(thread);
   } else {
     return slow_thread_cpu_time(thread, user_sys_cpu_time);
   }
