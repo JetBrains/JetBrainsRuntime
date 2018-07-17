@@ -176,8 +176,8 @@ public:
     virtual MsgRouting WmMove(int x, int y);
     virtual MsgRouting WmSize(UINT type, int w, int h);
     virtual MsgRouting WmSizing();
-    virtual MsgRouting WmEnterSizeMove();
-    virtual MsgRouting WmExitSizeMove();
+    /*virtual MsgRouting WmEnterSizeMove();
+    virtual MsgRouting WmExitSizeMove();*/
     virtual MsgRouting WmPaint(HDC hDC);
     virtual MsgRouting WmSettingChange(UINT wFlag, LPCTSTR pszSection);
     virtual MsgRouting WmNcCalcSize(BOOL fCalcValidRects,
@@ -401,14 +401,14 @@ protected:
 private:
     int m_screenNum;
 
-    typedef struct {
+    /*typedef struct {
         jint screen;
         jfloat scaleX;
         jfloat scaleY;
     } ScaleRec;
 
     BOOL m_winSizeMove;
-    ScaleRec prevScaleRec;
+    ScaleRec prevScaleRec;*/
 
     void InitOwner(AwtWindow *owner);
     /*void CheckWindowDPIChange();

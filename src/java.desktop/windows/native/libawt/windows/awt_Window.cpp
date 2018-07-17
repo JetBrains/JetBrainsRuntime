@@ -245,10 +245,10 @@ AwtWindow::AwtWindow() {
     m_alwaysOnTop = false;
 
     fullScreenExclusiveModeState = FALSE;
-    m_winSizeMove = FALSE;
+    /*m_winSizeMove = FALSE;
     prevScaleRec.screen = -1;
     prevScaleRec.scaleX = -1.0f;
-    prevScaleRec.scaleY = -1.0f;
+    prevScaleRec.scaleY = -1.0f;*/
     m_overriddenHwnd = NULL;
 }
 
@@ -1900,7 +1900,7 @@ MsgRouting AwtWindow::WmSizing()
     return mrDoDefault;
 }
 
-MsgRouting AwtWindow::WmEnterSizeMove()
+/*MsgRouting AwtWindow::WmEnterSizeMove()
 {
     m_winSizeMove = TRUE;
     return mrDoDefault;
@@ -1911,7 +1911,7 @@ MsgRouting AwtWindow::WmExitSizeMove()
     m_winSizeMove = FALSE;
     CheckWindowDPIChange();
     return mrDoDefault;
-}
+}*/
 
 /*
  * Override AwtComponent's size handling to first update the

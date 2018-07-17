@@ -871,8 +871,8 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         }
     }
 
-    native void windowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
-                                int newScreen, float newScaleX, float newScaleY);
+    /*native void windowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
+                                int newScreen, float newScaleX, float newScaleY);*/
 
     /*
      * The method maps the list of the active windows to the window's AppContext,
