@@ -970,11 +970,11 @@ AwtComponent::SetWindowPos(HWND wnd, HWND after,
 }
 
 void AwtComponent::Reshape(int x, int y, int w, int h) {
-    ReshapeNoScale(ScaleUpX(x), ScaleUpY(y), ScaleUpX(w), ScaleUpY(h));
+/*    ReshapeNoScale(ScaleUpX(x), ScaleUpY(y), ScaleUpX(w), ScaleUpY(h));
 }
 
 void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
-{
+{*/
 #if defined(DEBUG)
     RECT        rc;
     ::GetWindowRect(GetHWnd(), &rc);

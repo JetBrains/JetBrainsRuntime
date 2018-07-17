@@ -249,7 +249,7 @@ public:
     static void _RepositionSecurityWarning(void* param);
     static void _SetFullScreenExclusiveModeState(void* param);
     static void _GetNativeWindowSize(void* param);
-    static void _WindowDPIChange(void* param);
+//    static void _WindowDPIChange(void* param);
     static void _OverrideHandle(void *param);
 
     inline static BOOL IsResizing() {
@@ -411,9 +411,9 @@ private:
     ScaleRec prevScaleRec;
 
     void InitOwner(AwtWindow *owner);
-    void CheckWindowDPIChange();
+    /*void CheckWindowDPIChange();
     void WindowDPIChange(int prevScreen, float prevScaleX, float prevScaleY,
-                         int newScreen, float scaleX, float scaleY);
+                         int newScreen, float scaleX, float scaleY); */
 
     Type m_windowType;
     void InitType(JNIEnv *env, jobject peer);

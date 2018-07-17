@@ -581,10 +581,10 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
         AWTAccessor.getComponentAccessor().
             setGraphicsConfiguration((Component)target, winGraphicsConfig);
 
-        checkDPIChange(oldDev, newDev);
+//        checkDPIChange(oldDev, newDev);
     }
 
-    private void checkDPIChange(Win32GraphicsDevice oldDev,
+    /*private void checkDPIChange(Win32GraphicsDevice oldDev,
                                 Win32GraphicsDevice newDev) {
         float newScaleX = newDev.getDefaultScaleX();
         float newScaleY = newDev.getDefaultScaleY();
@@ -595,7 +595,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             scaleX = newScaleX;
             scaleY = newScaleY;
         }
-    }
+    }*/
 
     /**
      * From the DisplayChangedListener interface.
