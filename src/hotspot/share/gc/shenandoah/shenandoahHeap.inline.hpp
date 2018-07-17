@@ -255,6 +255,8 @@ inline void ShenandoahHeap::clear_cancelled_gc() {
 }
 
 inline HeapWord* ShenandoahHeap::allocate_from_gclab(Thread* thread, size_t size) {
+  assert(UseTLAB, "TLABs should be enabled");
+
   PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
   if (gclab == NULL) {
     assert(!thread->is_Java_thread() && !thread->is_Worker_thread(),
@@ -283,7 +285,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   assert(!heap_region_containing(p)->is_humongous(), "never evacuate humongous objects");
 
   bool alloc_from_gclab = true;
-  HeapWord* filler;
+  HeapWord* filler = NULL;
 #ifdef ASSERT
 
   assert(ShenandoahThreadLocalData::is_evac_allowed(thread), "must be enclosed in ShenandoahOOMDuringEvacHandler");
@@ -293,7 +295,9 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
         filler = NULL;
   } else {
 #endif
-    filler = allocate_from_gclab(thread, size_with_fwdptr);
+    if (UseTLAB) {
+      filler = allocate_from_gclab(thread, size_with_fwdptr);
+    }
     if (filler == NULL) {
       ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_shared_gc(size_with_fwdptr);
       filler = allocate_memory(req);
