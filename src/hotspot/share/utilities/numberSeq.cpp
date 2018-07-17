@@ -359,6 +359,7 @@ BinaryMagnitudeSeq::BinaryMagnitudeSeq() {
   for (int c = 0; c < BitsPerSize_t; c++) {
     _mags[c] = 0;
   }
+  _sum = 0;
 }
 
 BinaryMagnitudeSeq::~BinaryMagnitudeSeq() {
@@ -366,6 +367,8 @@ BinaryMagnitudeSeq::~BinaryMagnitudeSeq() {
 }
 
 void BinaryMagnitudeSeq::add(size_t val) {
+  Atomic::add(val, &_sum);
+
   int mag = log2_intptr(val) + 1;
 
   // Defensively saturate for product bits:
@@ -396,6 +399,10 @@ size_t BinaryMagnitudeSeq::num() const {
     r += _mags[c];
   }
   return r;
+}
+
+size_t BinaryMagnitudeSeq::sum() const {
+  return _sum;
 }
 
 int BinaryMagnitudeSeq::min_level() const {

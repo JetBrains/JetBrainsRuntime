@@ -134,6 +134,7 @@ public:
 // is not needed, it is preferred over HdrSeq.
 class BinaryMagnitudeSeq {
 private:
+  size_t  _sum;
   size_t* _mags;
 
 public:
@@ -143,6 +144,7 @@ public:
   void add(size_t val);
   size_t num() const;
   size_t level(int level) const;
+  size_t sum() const;
   int min_level() const;
   int max_level() const;
 };
