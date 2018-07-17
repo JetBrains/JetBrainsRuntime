@@ -67,8 +67,6 @@ gc/g1/plab/TestPLABResize.java                                  8191048   generi
 
 gc/TestNUMAPageSize.java                                        8194949   generic-all
 
-runtime/ReservedStack/ReservedStackTestCompiler.java            8181855   generic-all
-
 serviceability/jvmti/GetModulesInfo/JvmtiGetAllModulesTest.java 8195156   generic-all
 
 compiler/compilercontrol/directives/LogTest.java                8181753   generic-all
@@ -95,6 +93,7 @@ compiler/intrinsics/mathexact/sanity/SubtractExactIntTest.java   8202124   gener
 compiler/intrinsics/mathexact/sanity/MultiplyExactLongTest.java  8202124   generic-all
 compiler/intrinsics/mathexact/sanity/MultiplyExactIntTest.java   8202124   generic-all
 compiler/whitebox/DeoptimizeAllTest.java                         8202124   generic-all
+compiler/whitebox/DeoptimizeFramesTest.java                      8202124   generic-all
 compiler/whitebox/DeoptimizeMethodTest.java                      8202124   generic-all
 compiler/whitebox/ForceNMethodSweepTest.java                     8202124   generic-all
 compiler/whitebox/GetNMethodTest.java                            8202124   generic-all
@@ -178,6 +177,7 @@ org.graalvm.compiler.core.test.ProfilingInfoTest                                
 org.graalvm.compiler.hotspot.test.CompilationWrapperTest                         8205081
 org.graalvm.compiler.hotspot.test.HsErrLogTest                                   8205081
 org.graalvm.compiler.hotspot.test.OptionsInFileTest                              8205081
+org.graalvm.compiler.hotspot.test.ReservedStackAccessTest                        8205081
 org.graalvm.compiler.replacements.test.classfile.ClassfileBytecodeProviderTest   8205081
 org.graalvm.compiler.replacements.test.classfile.RedefineIntrinsicTest           8205081
 
@@ -185,3 +185,5 @@ org.graalvm.compiler.core.test.deopt.CompiledMethodTest          8202955
 org.graalvm.compiler.core.test.CountedLoopTest                   8199885
 org.graalvm.compiler.debug.test.DebugContextTest                 8203504
 org.graalvm.compiler.core.test.VerifyDebugUsageTest              8205078
+
+org.graalvm.compiler.hotspot.test.GraalOSRTest                   8206947

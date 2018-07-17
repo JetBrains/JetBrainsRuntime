@@ -1179,7 +1179,9 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                         cs.reset();
                         cs.classfile = file;
                         cs.completer = initialCompleter;
-                        cs.owner.members().enter(cs); //XXX - OverwriteBetweenCompilations; syms.getClass is not sufficient anymore
+                        if (cs.owner.kind == PCK) {
+                            cs.owner.members().enter(cs); //XXX - OverwriteBetweenCompilations; syms.getClass is not sufficient anymore
+                        }
                     }
                     list = list.prepend(cs);
                 }
@@ -1268,6 +1270,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
             modules.newRound();
             types.newRound();
             annotate.newRound();
+            elementUtils.newRound();
 
             boolean foundError = false;
 

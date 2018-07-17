@@ -768,11 +768,12 @@ bool IdealLoopTree::policy_unroll(PhaseIdealLoop *phase) {
   Node *init_n = cl->init_trip();
   Node *limit_n = cl->limit();
   int stride_con = cl->stride_con();
+  if (limit_n == NULL) return false; // We will dereference it below.
+
   // Non-constant bounds.
   // Protect against over-unrolling when init or/and limit are not constant
   // (so that trip_count's init value is maxint) but iv range is known.
-  if (init_n   == NULL || !init_n->is_Con()  ||
-      limit_n  == NULL || !limit_n->is_Con()) {
+  if (init_n == NULL || !init_n->is_Con() || !limit_n->is_Con()) {
     Node* phi = cl->phi();
     if (phi != NULL) {
       assert(phi->is_Phi() && phi->in(0) == _head, "Counted loop should have iv phi.");
@@ -861,7 +862,9 @@ bool IdealLoopTree::policy_unroll(PhaseIdealLoop *phase) {
 
   // Check for being too big
   if (body_size > (uint)_local_loop_unroll_limit) {
-    if ((UseSubwordForMaxVector || xors_in_loop >= 4) && body_size < (uint)LoopUnrollLimit * 4) return true;
+    if ((cl->is_subword_loop() || xors_in_loop >= 4) && body_size < (uint)LoopUnrollLimit * 4) {
+      return true;
+    }
     // Normal case: loop too big
     return false;
   }

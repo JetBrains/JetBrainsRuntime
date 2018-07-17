@@ -683,7 +683,7 @@ Block* PhaseCFG::insert_anti_dependences(Block* LCA, Node* load, bool verify) {
     Block* store_block = get_block_for_node(store);
     assert(store_block != NULL, "unused killing projections skipped above");
 
-    if (store->is_Phi() && store->in(0)->is_Loop()) {
+    if (store->is_Phi()) {
       // Loop-phis need to raise load before input. (Other phis are treated
       // as store below.)
       //
@@ -1263,6 +1263,7 @@ void PhaseCFG::schedule_late(VectorSet &visited, Node_Stack &stack) {
         Node* use = self->fast_out(i);
         LCA = raise_LCA_above_use(LCA, use, self, this);
       }
+      guarantee(LCA != NULL, "There must be a LCA");
     }  // (Hide defs of imax, i from rest of block.)
 
     // Place temps in the block of their use.  This isn't a
