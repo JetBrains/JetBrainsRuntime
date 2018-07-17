@@ -99,14 +99,12 @@ class ShenandoahTraversalSATBBufferClosure : public SATBBufferClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahTraversalGC* _traversal_gc;
-  ShenandoahHeap* _heap;
-  ShenandoahHeapRegionSet* _traversal_set;
+  ShenandoahHeap* const _heap;
 
 public:
   ShenandoahTraversalSATBBufferClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _heap(ShenandoahHeap::heap()),
-    _traversal_set(ShenandoahHeap::heap()->traversal_gc()->traversal_set())
+    _queue(q),
+    _heap(ShenandoahHeap::heap())
  { }
 
   void do_buffer(void** buffer, size_t size) {
@@ -114,7 +112,7 @@ public:
       oop* p = (oop*) &buffer[i];
       oop obj = RawAccess<>::oop_load(p);
       shenandoah_assert_not_forwarded(p, obj);
-      if (_traversal_set->is_in((HeapWord*) obj) && !_heap->is_marked_next(obj) && _heap->mark_next(obj)) {
+      if (_heap->mark_next(obj)) {
         _queue->push(ShenandoahMarkTask(obj));
       }
     }

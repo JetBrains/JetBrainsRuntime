@@ -226,9 +226,9 @@ public:
 
 class ShenandoahTraversalSuperClosure : public MetadataVisitingOopIterateClosure {
 private:
-  ShenandoahTraversalGC* _traversal_gc;
-  Thread* _thread;
-  ShenandoahObjToScanQueue* _queue;
+  ShenandoahTraversalGC* const _traversal_gc;
+  Thread* const _thread;
+  ShenandoahObjToScanQueue* const _queue;
   oop _base_obj;
 protected:
   ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
