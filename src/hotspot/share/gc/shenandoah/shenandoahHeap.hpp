@@ -328,9 +328,6 @@ private:
 
   ShenandoahSharedEnumFlag<GCCycleMode> _gc_cycle_mode;
 
-  PLABStats* _mutator_gclab_stats;
-  PLABStats* _collector_gclab_stats;
-
 #ifdef ASSERT
   int     _heap_expansion_count;
 #endif
@@ -422,9 +419,7 @@ public:
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
   ShenandoahAllocTracker*   alloc_tracker()     const { return _alloc_tracker; }
 
-  void accumulate_statistics_all_gclabs();
-  PLABStats* mutator_gclab_stats()   const { return _mutator_gclab_stats; }
-  PLABStats* collector_gclab_stats() const { return _collector_gclab_stats; }
+  void retire_and_reset_gclabs();
 
   inline ShenandoahHeapRegion* const heap_region_containing(const void* addr) const;
   inline size_t heap_region_index_containing(const void* addr) const;

@@ -368,6 +368,6 @@ void ShenandoahBarrierSet::on_thread_detach(JavaThread* thread) {
   ShenandoahThreadLocalData::satb_mark_queue(thread).flush();
   PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
   if (gclab != NULL) {
-    gclab->flush_and_retire_stats(_heap->mutator_gclab_stats());
+    gclab->retire();
   }
 }

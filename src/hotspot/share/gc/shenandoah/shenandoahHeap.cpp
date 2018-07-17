@@ -430,8 +430,6 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _alloc_tracker(NULL),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
-  _mutator_gclab_stats(new PLABStats("Shenandoah mutator GCLAB stats", OldPLABSize, PLABWeight)),
-  _collector_gclab_stats(new PLABStats("Shenandoah collector GCLAB stats", YoungPLABSize, PLABWeight)),
   _memory_pool(NULL)
 {
   log_info(gc, init)("Parallel GC threads: " UINT32_FORMAT, ParallelGCThreads);
@@ -742,28 +740,31 @@ void ShenandoahHeap::op_uncommit(double shrink_before) {
 }
 
 HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) {
-  // Retain tlab and allocate object in shared space if
-  // the amount free in the tlab is too large to discard.
-  PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+  // New object should fit the GCLAB size
+  size_t min_size = MAX2(size, PLAB::min_size());
 
-  // Discard gclab and allocate a new one.
-  // To minimize fragmentation, the last GCLAB may be smaller than the rest.
-  gclab->retire();
-  // Figure out size of new GCLAB
-  size_t new_gclab_size;
-  if (thread->is_Java_thread()) {
-    new_gclab_size = _mutator_gclab_stats->desired_plab_sz(Threads::number_of_threads());
-  } else {
-    new_gclab_size = _collector_gclab_stats->desired_plab_sz(workers()->active_workers());
+  // Figure out size of new GCLAB, looking back at heuristics. Expand aggressively.
+  size_t new_size = ShenandoahThreadLocalData::gclab_size(thread) * 2;
+  new_size = MIN2(new_size, PLAB::max_size());
+  new_size = MAX2(new_size, PLAB::min_size());
+
+  // Record new heuristic value even if we take any shortcut. This captures
+  // the case when moderately-sized objects always take a shortcut. At some point,
+  // heuristics should catch up with them.
+  ShenandoahThreadLocalData::set_gclab_size(thread, new_size);
+
+  if (new_size < size) {
+    // New size still does not fit the object. Fall back to shared allocation.
+    // This avoids retiring perfectly good GCLABs, when we encounter a large object.
+    return NULL;
   }
 
-  // Allocated object should fit in new GCLAB, and new_gclab_size should be larger than min
-  size_t min_size = MAX2(size, PLAB::min_size());
-  new_gclab_size = MAX2(new_gclab_size, min_size);
+  // Retire current GCLAB, and allocate a new one.
+  PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
+  gclab->retire();
 
-  // Allocate a new GCLAB...
   size_t actual_size = 0;
-  HeapWord* gclab_buf = allocate_new_gclab(min_size, new_gclab_size, &actual_size);
+  HeapWord* gclab_buf = allocate_new_gclab(min_size, new_size, &actual_size);
   if (gclab_buf == NULL) {
     return NULL;
   }
@@ -1381,27 +1382,23 @@ size_t ShenandoahHeap::max_tlab_size() const {
   return ShenandoahHeapRegion::max_tlab_size_words();
 }
 
-class ShenandoahAccumulateStatisticsGCLABClosure : public ThreadClosure {
+class ShenandoahRetireAndResetGCLABClosure : public ThreadClosure {
 public:
   void do_thread(Thread* thread) {
-    ShenandoahHeap* heap = ShenandoahHeap::heap();
     PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
-    if (thread->is_Java_thread()) {
-      gclab->flush_and_retire_stats(heap->mutator_gclab_stats());
-    } else {
-      gclab->flush_and_retire_stats(heap->collector_gclab_stats());
+    gclab->retire();
+    if (ShenandoahThreadLocalData::gclab_size(thread) > 0) {
+      ShenandoahThreadLocalData::set_gclab_size(thread, 0);
     }
   }
 };
 
-void ShenandoahHeap::accumulate_statistics_all_gclabs() {
-  ShenandoahAccumulateStatisticsGCLABClosure cl;
+void ShenandoahHeap::retire_and_reset_gclabs() {
+  ShenandoahRetireAndResetGCLABClosure cl;
   for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
     cl.do_thread(t);
   }
   gc_threads_do(&cl);
-  _mutator_gclab_stats->adjust_desired_plab_sz();
-  _collector_gclab_stats->adjust_desired_plab_sz();
 }
 
 bool  ShenandoahHeap::can_elide_tlab_store_barriers() const {
@@ -1762,8 +1759,10 @@ void ShenandoahHeap::op_final_mark() {
 void ShenandoahHeap::op_final_evac() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
-  accumulate_statistics_all_gclabs();
   set_evacuation_in_progress(false);
+
+  retire_and_reset_gclabs();
+
   if (ShenandoahVerify) {
     verifier()->verify_after_evacuation();
   }
@@ -2527,8 +2526,9 @@ void ShenandoahHeap::update_heap_references(bool concurrent) {
 void ShenandoahHeap::op_init_updaterefs() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at safepoint");
 
-  accumulate_statistics_all_gclabs();
   set_evacuation_in_progress(false);
+
+  retire_and_reset_gclabs();
 
   if (ShenandoahVerify) {
     verifier()->verify_before_updaterefs();
