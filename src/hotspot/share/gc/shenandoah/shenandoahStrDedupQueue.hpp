@@ -106,6 +106,8 @@ private:
 
   ShenandoahQueueBuffer* queue_at(size_t queue_id) const;
 
+  bool pop_candidate(oop& obj);
+
   void set_producer_buffer(ShenandoahQueueBuffer* buf, size_t queue_id);
 
   void verify(ShenandoahQueueBuffer* head);

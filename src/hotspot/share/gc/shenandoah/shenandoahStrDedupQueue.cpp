@@ -24,6 +24,7 @@
 #include "precompiled.hpp"
 
 #include "gc/shared/stringdedup/stringDedup.hpp"
+#include "gc/shared/stringdedup/stringDedupThread.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.inline.hpp"
@@ -57,6 +58,7 @@ void ShenandoahStrDedupQueue::wait_impl() {
   MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
   while (_consumer_queue == NULL && !_cancel) {
     ml.wait(Mutex::_no_safepoint_check_flag);
+    assert(_consumer_queue == NULL, "Why wait?");
     _consumer_queue = _published_queues;
     _published_queues = NULL;
   }
@@ -117,32 +119,54 @@ void ShenandoahStrDedupQueue::push_impl(uint worker_id, oop string_oop) {
 }
 
 oop ShenandoahStrDedupQueue::pop_impl() {
-  if (_consumer_queue == NULL) {
-    MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
-    _consumer_queue = _published_queues;
-    _published_queues = NULL;
-  }
-
-  // there is nothing
-  if (_consumer_queue == NULL) {
-    return NULL;
-  }
-
-  assert(!_consumer_queue->is_empty(), "Should not be empty");
-  oop obj = _consumer_queue->pop();
-  if (_consumer_queue->is_empty()) {
-    ShenandoahQueueBuffer* buf = _consumer_queue;
-    _consumer_queue = _consumer_queue->next();
-    buf->set_next(NULL);
-    {
+  assert(Thread::current() == StringDedupThread::thread(), "Must be dedup thread");
+  while (true) {
+    if (_consumer_queue == NULL) {
       MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
-      release_buffers(buf);
+      _consumer_queue = _published_queues;
+      _published_queues = NULL;
     }
+
+    // there is nothing
+    if (_consumer_queue == NULL) {
+      return NULL;
+    }
+
+    oop obj = NULL;
+    if (pop_candidate(obj)) {
+      assert(ShenandoahStringDedup::is_candidate(obj), "Must be a candidate");
+      return obj;
+    }
+    assert(obj == NULL, "No more candidate");
+  }
+}
+
+bool ShenandoahStrDedupQueue::pop_candidate(oop& obj) {
+  ShenandoahQueueBuffer* to_release = NULL;
+  bool suc = true;
+  do {
+    if (_consumer_queue->is_empty()) {
+      ShenandoahQueueBuffer* buf = _consumer_queue;
+      _consumer_queue = _consumer_queue->next();
+      buf->set_next(to_release);
+      to_release = buf;
+
+      if (_consumer_queue == NULL) {
+        suc = false;
+        break;
+      }
+    }
+    obj = _consumer_queue->pop();
+  } while (obj == NULL);
+
+  if (to_release != NULL) {
+    MonitorLockerEx ml(StringDedupQueue_lock, Mutex::_no_safepoint_check_flag);
+    release_buffers(to_release);
   }
 
-  assert(obj == NULL || ShenandoahStringDedup::is_candidate(obj), "Must be a candidate");
-  return obj;
+  return suc;
 }
+
 
 ShenandoahQueueBuffer* ShenandoahStrDedupQueue::new_buffer() {
   assert_lock_strong(StringDedupQueue_lock);
