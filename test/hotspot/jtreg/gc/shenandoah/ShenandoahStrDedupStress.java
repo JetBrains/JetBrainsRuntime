@@ -29,22 +29,69 @@
  * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open
  *          java.management
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:+ShenandoahOOMDuringEvacALot ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact      -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=generational -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=LRU          -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=connected    -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact      -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats -XX:ShenandoahUpdateRefsEarly=off -XX:+ShenandoahOOMDuringEvacALot ShenandoahStrDedupStress
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -XX:+UseStringDeduplication -Xmx1g -Xlog:gc+stats                                   -XX:+ShenandoahOOMDuringEvacALot ShenandoahStrDedupStress
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -DtargetStrings=3000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=aggressive -DtargetStrings=2000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=aggressive -XX:+ShenandoahOOMDuringEvacALot -DtargetStrings=2000000
+ *                    ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=static -DtargetStrings=4000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=compact
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=passive -DtargetOverwrites=40000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=generational
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=LRU
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=traversal
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=connected
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahUpdateRefsEarly=off -DtargetStrings=3000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=compact -XX:ShenandoahUpdateRefsEarly=off -DtargetStrings=2000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=aggressive -XX:ShenandoahUpdateRefsEarly=off -DtargetStrings=2000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=static -XX:ShenandoahUpdateRefsEarly=off -DtargetOverwrites=4000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=aggressive -XX:ShenandoahUpdateRefsEarly=off -XX:+ShenandoahOOMDuringEvacALot -DtargetStrings=2000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=traversal -XX:+ShenandoahOOMDuringEvacALot
+ *                   ShenandoahStrDedupStress
  */
 
 import java.lang.reflect.*;
@@ -55,7 +102,10 @@ public class ShenandoahStrDedupStress {
   private static Field valueField;
   private static Unsafe unsafe;
 
-  private static final int UniqueStrings = 20;
+  private static long TARGET_STRINGS = Long.getLong("targetStrings", 2_500_000);
+  private static long TARGET_OVERWRITES = Long.getLong("targetOverwrites", 600_000);
+
+  private static final int UNIQUE_STRINGS = 20;
   static {
     try {
       Field field = Unsafe.class.getDeclaredField("theUnsafe");
@@ -92,8 +142,7 @@ public class ShenandoahStrDedupStress {
   private static void generateStrings(ArrayList<StringAndId> strs, int unique_strs) {
     Random rn = new Random();
     for (int u = 0; u < unique_strs; u ++) {
-      int n = rn.nextInt() % 10;
-      n = Math.max(n, 2);
+      int n = Math.abs(rn.nextInt() % 2);
       for (int index = 0; index < n; index ++) {
           strs.add(new StringAndId("Unique String " + u, u));
       }
@@ -130,23 +179,19 @@ public class ShenandoahStrDedupStress {
   public static void main(String[] args) {
     Random rn = new Random();
 
-    for(int index = 0; index < 100000; index ++) {
-      generateStrings(astrs, UniqueStrings);
+    long gen_iterations = TARGET_STRINGS * 2 / UNIQUE_STRINGS;
+
+    for(long index = 0; index < gen_iterations; index ++) {
+      generateStrings(astrs, UNIQUE_STRINGS);
     }
 
-    for (int loop = 1; loop < 10000; loop ++) {
-      for (int index = 0; index < 10000; index ++) {
-        StringAndId item = astrs.get(index);
-        int n = rn.nextInt() % UniqueStrings;
-        item.str = "Unique String " + n;
-        item.id = n;
-      }
-    }
-
-    try {
-      Thread.sleep(10000);
-    } catch (Exception e) {
-
+    for (long loop = 1; loop < TARGET_OVERWRITES; loop ++) {
+      int arr_size = astrs.size();
+      int index = Math.abs(rn.nextInt()) % arr_size;
+      StringAndId item = astrs.get(index);
+      int n = Math.abs(rn.nextInt() % UNIQUE_STRINGS);
+      item.str = "Unique String " + n;
+      item.id = n;
     }
 
     verifyDedepString(astrs);
