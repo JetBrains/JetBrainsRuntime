@@ -154,7 +154,7 @@ struct SetFullScreenExclusiveModeStateStruct {
     jboolean isFSEMState;
 };
 
-// struct for _WindowDPIChange() method
+/* // struct for _WindowDPIChange() method
 struct ScaleStruct {
     jobject window;
     jint prevScreen;
@@ -163,7 +163,7 @@ struct ScaleStruct {
     jint screen;
     jfloat scaleX;
     jfloat scaleY;
-};
+}; */
 
 /************************************************************************
  * AwtWindow fields
@@ -2192,7 +2192,7 @@ BOOL AwtWindow::CheckIfOnNewScreen() {
     return FALSE;
 }
 
-void AwtWindow::CheckWindowDPIChange() {
+/* void AwtWindow::CheckWindowDPIChange() {
 
     if (prevScaleRec.screen != -1 ) {
         float prevScaleX = prevScaleRec.scaleX;
@@ -2251,7 +2251,7 @@ void AwtWindow::WindowDPIChange(int prevScreen,
     }
 
     ReshapeNoScale(x, y, w, h);
-}
+} */
 
 BOOL AwtWindow::IsFocusableWindow() {
     /*
@@ -3282,7 +3282,7 @@ void AwtWindow::_GetNativeWindowSize(void* param) {
     env->DeleteGlobalRef(self);
 }
 
-void AwtWindow::_WindowDPIChange(void* param)
+/*void AwtWindow::_WindowDPIChange(void* param)
 {
     JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
 
@@ -3314,7 +3314,7 @@ void AwtWindow::_WindowDPIChange(void* param)
 ret:
     env->DeleteGlobalRef(self);
     delete ss;
-}
+}*/
 
 extern "C" int getSystemMetricValue(int msgType);
 extern "C" {
@@ -4018,7 +4018,7 @@ Java_sun_awt_windows_WWindowPeer_repositionSecurityWarning(JNIEnv *env,
 * Method:    windowDPIChange
 * Signature: (IFFIFF)V
 */
-JNIEXPORT void JNICALL
+/*JNIEXPORT void JNICALL
 Java_sun_awt_windows_WWindowPeer_windowDPIChange(JNIEnv *env, jobject self,
     jint prevScreen, jfloat prevScaleX, jfloat prevScaleY,
     jint screen, jfloat scaleX, jfloat scaleY)
@@ -4038,5 +4038,5 @@ Java_sun_awt_windows_WWindowPeer_windowDPIChange(JNIEnv *env, jobject self,
     // global refs and ss are deleted in _WindowDPIChange
 
     CATCH_BAD_ALLOC;
-}
+}*/
 } /* extern "C" */
