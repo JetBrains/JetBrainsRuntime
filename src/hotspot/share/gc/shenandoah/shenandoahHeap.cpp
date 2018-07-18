@@ -1269,6 +1269,13 @@ void ShenandoahHeap::make_parsable(bool retire_tlabs) {
   gc_threads_do(&cl);
 }
 
+void ShenandoahHeap::resize_tlabs() {
+  CollectedHeap::resize_all_tlabs();
+}
+
+void ShenandoahHeap::accumulate_statistics_tlabs() {
+  CollectedHeap::accumulate_statistics_all_tlabs();
+}
 
 class ShenandoahEvacuateUpdateRootsTask : public AbstractGangTask {
   ShenandoahRootEvacuator* _rp;
@@ -1663,7 +1670,7 @@ void ShenandoahHeap::op_init_mark() {
 
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::accumulate_stats);
-    accumulate_statistics_all_tlabs();
+    accumulate_statistics_tlabs();
   }
 
   set_concurrent_mark_in_progress(true);
@@ -1686,7 +1693,7 @@ void ShenandoahHeap::op_init_mark() {
 
   if (UseTLAB) {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::resize_tlabs);
-    resize_all_tlabs();
+    resize_tlabs();
   }
 
   if (ShenandoahPacing) {

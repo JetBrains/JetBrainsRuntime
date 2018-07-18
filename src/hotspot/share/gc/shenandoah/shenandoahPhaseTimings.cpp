@@ -263,6 +263,9 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[init_traversal_gc_gross]           = "Pause Init Traversal (G)";
   _phase_names[init_traversal_gc]                 = "Pause Init Traversal (N)";
   _phase_names[traversal_gc_prepare]              = "  Prepare";
+  _phase_names[traversal_gc_accumulate_stats]     = "    Accumulate Stats";
+  _phase_names[traversal_gc_make_parsable]        = "    Make Parsable";
+  _phase_names[traversal_gc_resize_tlabs]         = "    Resize TLABs";
   _phase_names[init_traversal_gc_work]            = "  Work";
   _phase_names[init_traversal_gc_thread_roots]        = "    TI: Thread Roots";
   _phase_names[init_traversal_gc_code_roots]          = "    TI: Code Cache Roots";

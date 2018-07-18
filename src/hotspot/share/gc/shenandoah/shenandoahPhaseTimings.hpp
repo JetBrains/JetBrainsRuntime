@@ -160,6 +160,9 @@ public:
     init_traversal_gc_gross,
     init_traversal_gc,
     traversal_gc_prepare,
+    traversal_gc_accumulate_stats,
+    traversal_gc_make_parsable,
+    traversal_gc_resize_tlabs,
 
     // Per-thread timer block, should have "roots" counters in consistent order
     init_traversal_gc_work,
