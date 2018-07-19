@@ -209,9 +209,12 @@ class ShenandoahSATBBufferClosure : public SATBBufferClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
+  ShenandoahMarkingContext* const _mark_context;
 public:
   ShenandoahSATBBufferClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _heap(ShenandoahHeap::heap())
+    _queue(q),
+    _heap(ShenandoahHeap::heap()),
+    _mark_context(_heap->next_marking_context())
   {
   }
 
@@ -227,18 +230,18 @@ public:
   void do_buffer_impl(void **buffer, size_t size) {
     for (size_t i = 0; i < size; ++i) {
       oop *p = (oop *) &buffer[i];
-      ShenandoahConcurrentMark::mark_through_ref<oop, UPDATE_REFS>(p, _heap, _queue);
+      ShenandoahConcurrentMark::mark_through_ref<oop, UPDATE_REFS>(p, _heap, _queue, _mark_context);
     }
   }
 };
 
 template<class T, UpdateRefsMode UPDATE_REFS>
-inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q) {
-  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, heap, q);
+inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context) {
+  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, heap, q, mark_context);
 }
 
 template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
-inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q) {
+inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -266,7 +269,7 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
       shenandoah_assert_not_forwarded(p, obj);
       shenandoah_assert_not_in_cset_except(p, obj, heap->cancelled_gc());
 
-      if (heap->next_marking_context()->mark(obj)) {
+      if (mark_context->mark(obj)) {
         bool pushed = q->push(ShenandoahMarkTask(obj));
         assert(pushed, "overflow queue should always succeed pushing");
 

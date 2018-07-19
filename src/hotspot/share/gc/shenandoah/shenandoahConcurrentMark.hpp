@@ -96,10 +96,10 @@ public:
   void clear_claim_codecache();
 
   template<class T, UpdateRefsMode UPDATE_REFS>
-  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q);
+  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context);
 
   template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
-  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q);
+  static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context);
 
   void mark_from_roots();
 

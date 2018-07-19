@@ -30,7 +30,7 @@
 
 template<class T, UpdateRefsMode UPDATE_REFS, bool STRING_DEDUP>
 inline void ShenandoahMarkRefsSuperClosure::work(T *p) {
-  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, STRING_DEDUP>(p, _heap, _queue);
+  ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, STRING_DEDUP>(p, _heap, _queue, _mark_context);
 }
 
 template <class T, bool UPDATE_MATRIX>
@@ -45,7 +45,7 @@ inline void ShenandoahUpdateHeapRefsSuperClosure::work(T* p) {
 
 template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
 inline void ShenandoahTraversalSuperClosure::work(T* p) {
-  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN, MATRIX>(p, _thread, _queue, _base_obj);
+  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN, MATRIX>(p, _thread, _queue, _mark_context, _base_obj);
 }
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_INLINE_HPP

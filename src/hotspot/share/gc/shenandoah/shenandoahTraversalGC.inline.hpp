@@ -37,7 +37,7 @@
 #include "oops/oop.inline.hpp"
 
 template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
-void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, oop base_obj) {
+void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context, oop base_obj) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -77,7 +77,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       }
     }
 
-    if (_heap->next_marking_context()->mark(obj)) {
+    if (mark_context->mark(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 

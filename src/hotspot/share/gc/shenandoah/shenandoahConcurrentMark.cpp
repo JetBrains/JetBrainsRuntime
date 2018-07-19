@@ -54,15 +54,18 @@ class ShenandoahInitMarkRootsClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
+  ShenandoahMarkingContext* const _mark_context;
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, _heap, _queue, _mark_context);
   }
 
 public:
   ShenandoahInitMarkRootsClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _heap(ShenandoahHeap::heap()) {};
+    _queue(q),
+    _heap(ShenandoahHeap::heap()),
+    _mark_context(_heap->next_marking_context()) {};
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -71,7 +74,8 @@ public:
 ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
   MetadataVisitingOopIterateClosure(rp),
   _queue(q),
-  _heap(ShenandoahHeap::heap())
+  _heap(ShenandoahHeap::heap()),
+  _mark_context(_heap->next_marking_context())
 { }
 
 
@@ -547,15 +551,18 @@ class ShenandoahCMKeepAliveClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
+  ShenandoahMarkingContext* const _mark_context;
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, NONE, false /* string dedup */>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, NONE, false /* string dedup */>(p, _heap, _queue, _mark_context);
   }
 
 public:
   ShenandoahCMKeepAliveClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _heap(ShenandoahHeap::heap()) {}
+    _queue(q),
+    _heap(ShenandoahHeap::heap()),
+    _mark_context(_heap->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -565,15 +572,18 @@ class ShenandoahCMKeepAliveUpdateClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
+  ShenandoahMarkingContext* const _mark_context;
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE, false /* string dedup */>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE, false /* string dedup */>(p, _heap, _queue, _mark_context);
   }
 
 public:
   ShenandoahCMKeepAliveUpdateClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _heap(ShenandoahHeap::heap()) {}
+    _queue(q),
+    _heap(ShenandoahHeap::heap()),
+    _mark_context(_heap->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -770,15 +780,18 @@ class ShenandoahPrecleanKeepAliveUpdateClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
   ShenandoahHeap* _heap;
+  ShenandoahMarkingContext* const _mark_context;
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT, false /* string dedup */>(p, _heap, _queue);
+    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT, false /* string dedup */>(p, _heap, _queue, _mark_context);
   }
 
 public:
   ShenandoahPrecleanKeepAliveUpdateClosure(ShenandoahObjToScanQueue* q) :
-    _queue(q), _heap(ShenandoahHeap::heap()) {}
+    _queue(q),
+    _heap(ShenandoahHeap::heap()),
+    _mark_context(_heap->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }

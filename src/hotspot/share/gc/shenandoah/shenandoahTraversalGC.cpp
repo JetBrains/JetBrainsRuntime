@@ -853,15 +853,18 @@ private:
   ShenandoahObjToScanQueue* _queue;
   Thread* _thread;
   ShenandoahTraversalGC* _traversal_gc;
+  ShenandoahMarkingContext* const _mark_context;
+
   template <class T>
   inline void do_oop_work(T* p) {
-    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, false /* matrix */>(p, _thread, _queue, NULL);
+    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, false /* matrix */>(p, _thread, _queue, _mark_context, NULL);
   }
 
 public:
   ShenandoahTraversalKeepAliveUpdateClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
-    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()) {}
+    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
+    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -872,15 +875,18 @@ private:
   ShenandoahObjToScanQueue* _queue;
   Thread* _thread;
   ShenandoahTraversalGC* _traversal_gc;
+  ShenandoahMarkingContext* const _mark_context;
+
   template <class T>
   inline void do_oop_work(T* p) {
-    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, false /* matrix */>(p, _thread, _queue, NULL);
+    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, false /* matrix */>(p, _thread, _queue, _mark_context, NULL);
   }
 
 public:
   ShenandoahTraversalKeepAliveUpdateDegenClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
-    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()) {}
+    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
+    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -891,16 +897,19 @@ private:
   ShenandoahObjToScanQueue* _queue;
   Thread* _thread;
   ShenandoahTraversalGC* _traversal_gc;
+  ShenandoahMarkingContext* const _mark_context;
+
   template <class T>
   inline void do_oop_work(T* p) {
     // TODO: Need to somehow pass base_obj here?
-    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, true /* matrix */>(p, _thread, _queue, NULL);
+    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, true /* matrix */>(p, _thread, _queue, _mark_context, NULL);
   }
 
 public:
   ShenandoahTraversalKeepAliveUpdateMatrixClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
-    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()) {}
+    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
+    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -911,16 +920,19 @@ private:
   ShenandoahObjToScanQueue* _queue;
   Thread* _thread;
   ShenandoahTraversalGC* _traversal_gc;
+  ShenandoahMarkingContext* const _mark_context;
+
   template <class T>
   inline void do_oop_work(T* p) {
     // TODO: Need to somehow pass base_obj here?
-    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, true /* matrix */>(p, _thread, _queue, NULL);
+    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, true /* matrix */>(p, _thread, _queue, _mark_context, NULL);
   }
 
 public:
   ShenandoahTraversalKeepAliveUpdateDegenMatrixClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
-    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()) {}
+    _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
+    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
