@@ -187,6 +187,15 @@ void ShenandoahArguments::initialize() {
   // See:
   // http://mail.openjdk.java.net/pipermail/hotspot-dev/2018-June/032763.html
   FLAG_SET_DEFAULT(UseFastJNIAccessors, false);
+
+  // TLAB sizing policy makes resizing decisions before each GC cycle. It averages
+  // historical data, assigning more recent data the weight according to TLABAllocationWeight.
+  // Current default is good for generational collectors that run frequent young GCs.
+  // With Shenandoah, GC cycles are much less frequent, so we need we need sizing policy
+  // to converge faster over smaller number of resizing decisions.
+  if (FLAG_IS_DEFAULT(TLABAllocationWeight)) {
+    FLAG_SET_DEFAULT(TLABAllocationWeight, 90);
+  }
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
