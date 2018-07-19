@@ -49,7 +49,7 @@ public:
                             const char *phase, const char *label,
                             const char *file, int line);
 
-  static void print_rp_failure(const char *label, BoolObjectClosure* actual, BoolObjectClosure* expected,
+  static void print_rp_failure(const char *label, BoolObjectClosure* actual,
                                const char *file, int line);
 
   static void assert_in_heap(void* interior_loc, oop obj, const char* file, int line);

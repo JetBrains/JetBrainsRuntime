@@ -415,7 +415,8 @@ void ShenandoahConcurrentMark::mark_from_roots() {
   }
 
   shenandoah_assert_rp_isalive_not_installed();
-  ReferenceProcessorIsAliveMutator fix_isalive(sh->ref_processor(), sh->is_alive_closure());
+  ShenandoahIsAliveSelector is_alive;
+  ReferenceProcessorIsAliveMutator fix_isalive(sh->ref_processor(), is_alive.is_alive_closure());
 
   task_queues()->reserve(nworkers);
 
@@ -468,7 +469,8 @@ void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
     task_queues()->reserve(nworkers);
 
     shenandoah_assert_rp_isalive_not_installed();
-    ReferenceProcessorIsAliveMutator fix_isalive(sh->ref_processor(), sh->is_alive_closure());
+    ShenandoahIsAliveSelector is_alive;
+    ReferenceProcessorIsAliveMutator fix_isalive(sh->ref_processor(), is_alive.is_alive_closure());
 
     ShenandoahTerminationTracker termination_tracker(full_gc ?
                                                      ShenandoahPhaseTimings::full_gc_mark_termination :
@@ -684,7 +686,8 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
           ShenandoahPhaseTimings::weakrefs_termination;
 
   shenandoah_assert_rp_isalive_not_installed();
-  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
+  ShenandoahIsAliveSelector is_alive;
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, is_alive.is_alive_closure());
 
   WorkGang* workers = sh->workers();
   uint nworkers = workers->active_workers();
@@ -802,7 +805,8 @@ void ShenandoahConcurrentMark::preclean_weak_refs() {
   ReferenceProcessorMTDiscoveryMutator fix_mt_discovery(rp, false);
 
   shenandoah_assert_rp_isalive_not_installed();
-  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
+  ShenandoahIsAliveSelector is_alive;
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, is_alive.is_alive_closure());
 
   // Interrupt on cancelled GC
   ShenandoahCancelledGCYieldClosure yield;

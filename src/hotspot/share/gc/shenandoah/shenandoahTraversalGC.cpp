@@ -947,7 +947,8 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   ReferenceProcessorMTDiscoveryMutator fix_mt_discovery(rp, false);
 
   shenandoah_assert_rp_isalive_not_installed();
-  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
+  ShenandoahForwardedIsAliveClosure is_alive;
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, &is_alive);
 
   // Interrupt on cancelled GC
   ShenandoahTraversalCancelledGCYieldClosure yield;
@@ -956,7 +957,6 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   assert(!sh->is_degenerated_gc_in_progress(), "must be in concurrent non-degenerated phase");
 
   ShenandoahTraversalPrecleanCompleteGCClosure complete_gc;
-  ShenandoahForwardedIsAliveClosure is_alive;
   if (UseShenandoahMatrix) {
     ShenandoahTraversalKeepAliveUpdateMatrixClosure keep_alive(task_queues()->queue(0));
     ResourceMark rm;
@@ -1106,7 +1106,8 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   ShenandoahPhaseTimings::Phase phase_process = ShenandoahPhaseTimings::weakrefs_process;
 
   shenandoah_assert_rp_isalive_not_installed();
-  ReferenceProcessorIsAliveMutator fix_isalive(rp, sh->is_alive_closure());
+  ShenandoahForwardedIsAliveClosure is_alive;
+  ReferenceProcessorIsAliveMutator fix_isalive(rp, &is_alive);
 
   WorkGang* workers = sh->workers();
   uint nworkers = workers->active_workers();
