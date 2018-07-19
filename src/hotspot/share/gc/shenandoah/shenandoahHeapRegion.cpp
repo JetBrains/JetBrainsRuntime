@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "memory/iterator.inline.hpp"
@@ -431,8 +432,8 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|BTE " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
             p2i(bottom()), p2i(top()), p2i(end()));
   st->print("|TAMS " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
-            p2i(_heap->complete_top_at_mark_start(_bottom)),
-            p2i(_heap->next_top_at_mark_start(_bottom)));
+            p2i(_heap->complete_marking_context()->top_at_mark_start(region_number())),
+            p2i(_heap->next_marking_context()->top_at_mark_start(region_number())));
   st->print("|U %3d%%", (int) ((double) used() * 100 / capacity()));
   st->print("|T %3d%%", (int) ((double) get_tlab_allocs() * 100 / capacity()));
   st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
@@ -511,23 +512,26 @@ void ShenandoahHeapRegion::recycle() {
 
   reset_alloc_metadata();
 
+  ShenandoahMarkingContext* const compl_ctx = _heap->complete_marking_context();
+  ShenandoahMarkingContext* const next_ctx = _heap->next_marking_context();
+
   // Reset C-TAMS pointer to ensure size-based iteration, everything
   // in that regions is going to be new objects.
   if (ShenandoahRecycleClearsBitmap && !_heap->is_full_gc_in_progress()) {
     HeapWord* r_bottom = bottom();
-    HeapWord* top = _heap->complete_top_at_mark_start(r_bottom);
+    HeapWord* top = compl_ctx->top_at_mark_start(region_number());
     if (top > r_bottom) {
-      _heap->complete_mark_bit_map()->clear_range_large(MemRegion(r_bottom, top));
+      compl_ctx->clear_bitmap(r_bottom, top);
     }
 
-    assert(_heap->is_next_bitmap_clear_range(bottom(), end()), "must be clear");
-    _heap->set_next_top_at_mark_start(bottom(), bottom());
+    assert(next_ctx->is_bitmap_clear_range(bottom(), end()), "must be clear");
+    next_ctx->set_top_at_mark_start(region_number(), bottom());
   }
 
   // We can only safely reset the C-TAMS pointer if the bitmap is clear for that region.
-  assert(_heap->is_complete_bitmap_clear_range(bottom(), end()), "must be clear");
+  assert(compl_ctx->is_bitmap_clear_range(bottom(), end()), "must be clear");
 
-  _heap->set_complete_top_at_mark_start(bottom(), bottom());
+  compl_ctx->set_top_at_mark_start(region_number(), bottom());
 
   if (UseShenandoahMatrix) {
     _heap->connection_matrix()->clear_region(region_number());

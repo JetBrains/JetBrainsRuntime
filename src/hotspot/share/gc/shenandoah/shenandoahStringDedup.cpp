@@ -31,6 +31,7 @@
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
@@ -105,13 +106,13 @@ void ShenandoahStringDedup::oops_do_slow(OopClosure* cl) {
 
 class ShenandoahIsMarkedNextClosure : public BoolObjectClosure {
 private:
-  ShenandoahHeap* const _heap;
+  ShenandoahMarkingContext* const _mark_context;
 
 public:
-  ShenandoahIsMarkedNextClosure() : _heap(ShenandoahHeap::heap()) { }
+  ShenandoahIsMarkedNextClosure() : _mark_context(ShenandoahHeap::heap()->next_marking_context()) { }
 
   bool do_object_b(oop obj) {
-    return _heap->is_marked_next(obj);
+    return _mark_context->is_marked(obj);
   }
 };
 

@@ -29,6 +29,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
@@ -76,7 +77,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       }
     }
 
-    if (_heap->mark_next(obj)) {
+    if (_heap->next_marking_context()->mark(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
 

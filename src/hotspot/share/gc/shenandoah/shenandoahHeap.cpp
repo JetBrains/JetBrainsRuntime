@@ -44,6 +44,7 @@
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahMemoryPool.hpp"
 #include "gc/shenandoah/shenandoahMetrics.hpp"
 #include "gc/shenandoah/shenandoahMonitoringSupport.hpp"
@@ -177,37 +178,11 @@ jint ShenandoahHeap::initialize() {
 
   _collection_set = new ShenandoahCollectionSet(this, (HeapWord*)pgc_rs.base());
 
-  _next_top_at_mark_starts_base = NEW_C_HEAP_ARRAY(HeapWord*, _num_regions, mtGC);
-  _next_top_at_mark_starts = _next_top_at_mark_starts_base -
-               ((uintx) pgc_rs.base() >> ShenandoahHeapRegion::region_size_bytes_shift());
-
-  _complete_top_at_mark_starts_base = NEW_C_HEAP_ARRAY(HeapWord*, _num_regions, mtGC);
-  _complete_top_at_mark_starts = _complete_top_at_mark_starts_base -
-               ((uintx) pgc_rs.base() >> ShenandoahHeapRegion::region_size_bytes_shift());
-
   if (ShenandoahPacing) {
     _pacer = new ShenandoahPacer(this);
     _pacer->setup_for_idle();
   } else {
     _pacer = NULL;
-  }
-
-  {
-    ShenandoahHeapLocker locker(lock());
-    for (size_t i = 0; i < _num_regions; i++) {
-      ShenandoahHeapRegion* r = new ShenandoahHeapRegion(this,
-                                                         (HeapWord*) pgc_rs.base() + reg_size_words * i,
-                                                         reg_size_words,
-                                                         i,
-                                                         i < num_committed_regions);
-
-      _complete_top_at_mark_starts_base[i] = r->bottom();
-      _next_top_at_mark_starts_base[i] = r->bottom();
-      _regions[i] = r;
-      assert(!collection_set()->is_in(i), "New region should not be in collection set");
-    }
-
-    _free_set->rebuild();
   }
 
   assert((((size_t) base()) & ShenandoahHeapRegion::region_size_bytes_mask()) == 0,
@@ -277,6 +252,27 @@ jint ShenandoahHeap::initialize() {
     _verifier = new ShenandoahVerifier(this, &_verification_bit_map);
   }
 
+  _complete_marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap0_region, _num_regions);
+  _next_marking_context = new ShenandoahMarkingContext(_heap_region, _bitmap1_region, _num_regions);
+
+  {
+    ShenandoahHeapLocker locker(lock());
+    for (size_t i = 0; i < _num_regions; i++) {
+      ShenandoahHeapRegion* r = new ShenandoahHeapRegion(this,
+                                                         (HeapWord*) pgc_rs.base() + reg_size_words * i,
+                                                         reg_size_words,
+                                                         i,
+                                                         i < num_committed_regions);
+
+      _complete_marking_context->set_top_at_mark_start(i, r->bottom());
+      _next_marking_context->set_top_at_mark_start(i, r->bottom());
+      _regions[i] = r;
+      assert(!collection_set()->is_in(i), "New region should not be in collection set");
+    }
+
+    _free_set->rebuild();
+  }
+
   if (ShenandoahAlwaysPreTouch) {
     assert (!AlwaysPreTouch, "Should have been overridden");
 
@@ -291,11 +287,6 @@ jint ShenandoahHeap::initialize() {
     _workers->run_task(&cl);
   }
 
-  _mark_bit_map0.initialize(_heap_region, _bitmap0_region);
-  _complete_mark_bit_map = &_mark_bit_map0;
-
-  _mark_bit_map1.initialize(_heap_region, _bitmap1_region);
-  _next_mark_bit_map = &_mark_bit_map1;
 
   // Reserve aux bitmap for use in object_iterate(). We don't commit it here.
   ReservedSpace aux_bitmap(_bitmap_size, bitmap_page_size);
@@ -407,12 +398,8 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _bytes_allocated_since_gc_start(0),
   _max_workers(MAX2(ConcGCThreads, ParallelGCThreads)),
   _ref_processor(NULL),
-  _next_top_at_mark_starts(NULL),
-  _next_top_at_mark_starts_base(NULL),
-  _complete_top_at_mark_starts(NULL),
-  _complete_top_at_mark_starts_base(NULL),
-  _mark_bit_map0(),
-  _mark_bit_map1(),
+  _complete_marking_context(NULL),
+  _next_marking_context(NULL),
   _aux_bit_map(),
   _connection_matrix(NULL),
   _verifier(NULL),
@@ -473,14 +460,15 @@ public:
   void work(uint worker_id) {
     ShenandoahHeapRegion* region = _regions.next();
     ShenandoahHeap* heap = ShenandoahHeap::heap();
+    ShenandoahMarkingContext* const ctx = heap->next_marking_context();
     while (region != NULL) {
       if (heap->is_bitmap_slice_committed(region)) {
         HeapWord* bottom = region->bottom();
-        HeapWord* top = heap->next_top_at_mark_start(region->bottom());
+        HeapWord* top = ctx->top_at_mark_start(region->region_number());
         if (top > bottom) {
-          heap->next_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
+          ctx->clear_bitmap(bottom, top);
         }
-        assert(heap->is_next_bitmap_clear_range(bottom, region->end()), "must be clear");
+        assert(ctx->is_bitmap_clear_range(bottom, region->end()), "must be clear");
       }
       region = _regions.next();
     }
@@ -506,22 +494,24 @@ public:
   void work(uint worker_id) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahHeapRegion* region = _regions.claim_next();
+    ShenandoahMarkingContext* const next_ctx = heap->next_marking_context();
+    ShenandoahMarkingContext* const compl_ctx = heap->complete_marking_context();
     while (region != NULL) {
       if (!region->is_trash()) {
         assert(!region->is_empty_uncommitted(), "sanity");
         assert(heap->is_bitmap_slice_committed(region), "sanity");
         HeapWord* bottom = region->bottom();
-        HeapWord* top = heap->next_top_at_mark_start(bottom);
+        HeapWord* top = next_ctx->top_at_mark_start(region->region_number());
         assert(top <= region->top(),
                "TAMS must smaller/equals than top: TAMS: "PTR_FORMAT", top: "PTR_FORMAT,
                p2i(top), p2i(region->top()));
         if (top > bottom) {
-          heap->complete_mark_bit_map()->copy_from(heap->next_mark_bit_map(), MemRegion(bottom, top));
-          heap->set_complete_top_at_mark_start(bottom, top);
-          heap->next_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
-          heap->set_next_top_at_mark_start(bottom, bottom);
+          compl_ctx->mark_bit_map()->copy_from(next_ctx->mark_bit_map(), MemRegion(bottom, top));
+          compl_ctx->set_top_at_mark_start(region->region_number(), top);
+          next_ctx->clear_bitmap(bottom, top);
+          next_ctx->set_top_at_mark_start(region->region_number(), bottom);
         }
-        assert(heap->is_next_bitmap_clear_range(region->bottom(), region->end()),
+        assert(next_ctx->is_bitmap_clear_range(region->bottom(), region->end()),
                "need clear next bitmap");
       }
       region = _regions.claim_next();
@@ -536,24 +526,6 @@ void ShenandoahHeap::reset_next_mark_bitmap_traversal() {
   ShenandoahHeapRegionSetIterator iter(regions);
   ShenandoahResetNextBitmapTraversalTask task(iter);
   _workers->run_task(&task);
-}
-
-bool ShenandoahHeap::is_next_bitmap_clear() {
-  for (size_t idx = 0; idx < _num_regions; idx++) {
-    ShenandoahHeapRegion* r = get_region(idx);
-    if (is_bitmap_slice_committed(r) && !is_next_bitmap_clear_range(r->bottom(), r->end())) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool ShenandoahHeap::is_next_bitmap_clear_range(HeapWord* start, HeapWord* end) {
-  return _next_mark_bit_map->getNextMarkedWordAddress(start, end) == end;
-}
-
-bool ShenandoahHeap::is_complete_bitmap_clear_range(HeapWord* start, HeapWord* end) {
-  return _complete_mark_bit_map->getNextMarkedWordAddress(start, end) == end;
 }
 
 void ShenandoahHeap::print_on(outputStream* st) const {
@@ -1654,7 +1626,7 @@ public:
 
   bool heap_region_do(ShenandoahHeapRegion* r) {
     r->clear_live_data();
-    sh->set_next_top_at_mark_start(r->bottom(), r->top());
+    sh->next_marking_context()->set_top_at_mark_start(r->region_number(), r->top());
     return false;
   }
 };
@@ -1662,7 +1634,7 @@ public:
 void ShenandoahHeap::op_init_mark() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
-  assert(is_next_bitmap_clear(), "need clear marking bitmap");
+  assert(next_marking_context()->is_bitmap_clear(), "need clear marking bitmap");
 
   if (ShenandoahVerify) {
     verifier()->verify_before_concmark();
@@ -1728,7 +1700,7 @@ void ShenandoahHeap::op_final_mark() {
         ShenandoahHeapRegion* r = get_region(i);
         if (!r->is_active()) continue;
 
-        HeapWord* tams = complete_top_at_mark_start(r->bottom());
+        HeapWord* tams = complete_marking_context()->top_at_mark_start(r->region_number());
         HeapWord* top = r->top();
         if (top > tams) {
           r->increase_live_data_alloc_words(pointer_delta(top, tams));
@@ -2029,20 +2001,10 @@ void ShenandoahHeap::op_degenerated_futile() {
   op_full(GCCause::_shenandoah_upgrade_to_full_gc);
 }
 
-void ShenandoahHeap::swap_mark_bitmaps() {
-  // Swap bitmaps.
-  MarkBitMap* tmp1 = _complete_mark_bit_map;
-  _complete_mark_bit_map = _next_mark_bit_map;
-  _next_mark_bit_map = tmp1;
-
-  // Swap top-at-mark-start pointers
-  HeapWord** tmp2 = _complete_top_at_mark_starts;
-  _complete_top_at_mark_starts = _next_top_at_mark_starts;
-  _next_top_at_mark_starts = tmp2;
-
-  HeapWord** tmp3 = _complete_top_at_mark_starts_base;
-  _complete_top_at_mark_starts_base = _next_top_at_mark_starts_base;
-  _next_top_at_mark_starts_base = tmp3;
+void ShenandoahHeap::swap_mark_contexts() {
+  ShenandoahMarkingContext* tmp = _complete_marking_context;
+  _complete_marking_context = _next_marking_context;
+  _next_marking_context = tmp;
 }
 
 
@@ -2052,7 +2014,7 @@ void ShenandoahHeap::stop_concurrent_marking() {
     // If we needed to update refs, and concurrent marking has been cancelled,
     // we need to finish updating references.
     set_has_forwarded_objects(false);
-    swap_mark_bitmaps();
+    swap_mark_contexts();
   }
   set_concurrent_mark_in_progress(false);
 
@@ -2130,8 +2092,8 @@ bool ShenandoahForwardedIsAliveClosure::do_object_b(oop obj) {
     return false;
   }
   obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
-  shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress())
-  return _heap->is_marked_next(obj);
+  shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_mark_in_progress() || _heap->is_concurrent_traversal_in_progress());
+  return _heap->next_marking_context()->is_marked(obj);
 }
 
 bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
@@ -2139,7 +2101,7 @@ bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
     return false;
   }
   shenandoah_assert_not_forwarded(NULL, obj);
-  return _heap->is_marked_next(obj);
+  return _heap->next_marking_context()->is_marked(obj);
 }
 
 BoolObjectClosure* ShenandoahHeap::is_alive_closure() {
@@ -2346,14 +2308,6 @@ ShenandoahMonitoringSupport* ShenandoahHeap::monitoring_support() {
   return _monitoring_support;
 }
 
-MarkBitMap* ShenandoahHeap::complete_mark_bit_map() {
-  return _complete_mark_bit_map;
-}
-
-MarkBitMap* ShenandoahHeap::next_mark_bit_map() {
-  return _next_mark_bit_map;
-}
-
 address ShenandoahHeap::in_cset_fast_test_addr() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   assert(heap->collection_set() != NULL, "Sanity");
@@ -2379,26 +2333,6 @@ void ShenandoahHeap::reset_bytes_allocated_since_gc_start() {
 ShenandoahPacer* ShenandoahHeap::pacer() const {
   assert (_pacer != NULL, "sanity");
   return _pacer;
-}
-
-void ShenandoahHeap::set_next_top_at_mark_start(HeapWord* region_base, HeapWord* addr) {
-  uintx index = ((uintx) region_base) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  _next_top_at_mark_starts[index] = addr;
-}
-
-HeapWord* ShenandoahHeap::next_top_at_mark_start(HeapWord* region_base) {
-  uintx index = ((uintx) region_base) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  return _next_top_at_mark_starts[index];
-}
-
-void ShenandoahHeap::set_complete_top_at_mark_start(HeapWord* region_base, HeapWord* addr) {
-  uintx index = ((uintx) region_base) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  _complete_top_at_mark_starts[index] = addr;
-}
-
-HeapWord* ShenandoahHeap::complete_top_at_mark_start(HeapWord* region_base) {
-  uintx index = ((uintx) region_base) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  return _complete_top_at_mark_starts[index];
 }
 
 void ShenandoahHeap::set_degenerated_gc_in_progress(bool in_progress) {
@@ -2501,12 +2435,13 @@ public:
     ShenandoahWorkerSession worker_session(worker_id);
     SuspendibleThreadSetJoiner stsj(_concurrent && ShenandoahSuspendibleWorkers);
     ShenandoahHeapRegion* r = _regions->next();
+    ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
     while (r != NULL) {
       if (_heap->in_collection_set(r)) {
         HeapWord* bottom = r->bottom();
-        HeapWord* top = _heap->complete_top_at_mark_start(r->bottom());
+        HeapWord* top = ctx->top_at_mark_start(r->region_number());
         if (top > bottom) {
-          _heap->complete_mark_bit_map()->clear_range_large(MemRegion(bottom, top));
+          ctx->clear_bitmap(bottom, top);
         }
       } else {
         if (r->is_active()) {

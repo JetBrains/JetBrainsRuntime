@@ -41,6 +41,7 @@
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
@@ -112,7 +113,7 @@ public:
       oop* p = (oop*) &buffer[i];
       oop obj = RawAccess<>::oop_load(p);
       shenandoah_assert_not_forwarded(p, obj);
-      if (_heap->mark_next(obj)) {
+      if (_heap->next_marking_context()->mark(obj)) {
         _queue->push(ShenandoahMarkTask(obj));
       }
     }
@@ -336,17 +337,17 @@ void ShenandoahTraversalGC::prepare_regions() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   size_t num_regions = heap->num_regions();
   ShenandoahConnectionMatrix* matrix = _heap->connection_matrix();
-
+  ShenandoahMarkingContext* const ctx = _heap->next_marking_context();
   for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = heap->get_region(i);
     if (heap->is_bitmap_slice_committed(region)) {
       if (_traversal_set.is_in(i)) {
-        heap->set_next_top_at_mark_start(region->bottom(), region->top());
+        ctx->set_top_at_mark_start(region->region_number(), region->top());
         region->clear_live_data();
-        assert(heap->is_next_bitmap_clear_range(region->bottom(), region->end()), "bitmap for traversal regions must be cleared");
+        assert(ctx->is_bitmap_clear_range(region->bottom(), region->end()), "bitmap for traversal regions must be cleared");
       } else {
         // Everything outside the traversal set is always considered live.
-        heap->set_next_top_at_mark_start(region->bottom(), region->bottom());
+        ctx->set_top_at_mark_start(region->region_number(), region->bottom());
       }
       if (_root_regions.is_in(i)) {
         assert(!region->in_collection_set(), "roots must not overlap with cset");
@@ -380,7 +381,7 @@ void ShenandoahTraversalGC::prepare() {
     _heap->resize_tlabs();
   }
 
-  assert(_heap->is_next_bitmap_clear(), "need clean mark bitmap");
+  assert(_heap->next_marking_context()->is_bitmap_clear(), "need clean mark bitmap");
 
   ShenandoahFreeSet* free_set = _heap->free_set();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
@@ -723,16 +724,17 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
       ShenandoahHeapRegionSet* traversal_regions = traversal_set();
       ShenandoahFreeSet* free_regions = _heap->free_set();
+      ShenandoahMarkingContext* const ctx = _heap->next_marking_context();
       free_regions->clear();
       for (size_t i = 0; i < num_regions; i++) {
         ShenandoahHeapRegion* r = _heap->get_region(i);
-        bool not_allocated = _heap->next_top_at_mark_start(r->bottom()) == r->top();
+        bool not_allocated = ctx->top_at_mark_start(r->region_number()) == r->top();
 
         bool candidate = traversal_regions->is_in(r) && !r->has_live() && not_allocated;
         if (r->is_humongous_start() && candidate) {
           // Trash humongous.
           HeapWord* humongous_obj = r->bottom() + BrooksPointer::word_size();
-          assert(!_heap->is_marked_next(oop(humongous_obj)), "must not be marked");
+          assert(!ctx->is_marked(oop(humongous_obj)), "must not be marked");
           r->make_trash();
           while (i + 1 < num_regions && _heap->get_region(i + 1)->is_humongous_continuation()) {
             i++;

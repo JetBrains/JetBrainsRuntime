@@ -28,6 +28,7 @@
 #include "memory/iterator.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahPrinter.hpp"
 
 class ShenandoahPrintAllRefsOopClosure: public BasicOopIterateClosure {
@@ -47,7 +48,7 @@ private:
         tty->print_cr("%s " INT32_FORMAT " (" PTR_FORMAT ")-> " PTR_FORMAT " (marked: %s) (%s " PTR_FORMAT ")",
                       _prefix, _index,
                       p2i(p), p2i(o),
-                      BOOL_TO_STR(ShenandoahHeap::heap()->is_marked_complete(o)),
+                      BOOL_TO_STR(ShenandoahHeap::heap()->complete_marking_context()->is_marked(o)),
                       o->klass()->internal_name(), p2i(o->klass()));
       } else {
         tty->print_cr("%s " INT32_FORMAT " (" PTR_FORMAT " dirty -> " PTR_FORMAT " (not in heap, possibly corrupted or dirty)",
@@ -80,7 +81,7 @@ public:
     if (ShenandoahHeap::heap()->is_in(p)) {
       tty->print_cr("%s object " PTR_FORMAT " (marked: %s) (%s " PTR_FORMAT ") refers to:",
                     _prefix, p2i(p),
-                    BOOL_TO_STR(ShenandoahHeap::heap()->is_marked_complete(p)),
+                    BOOL_TO_STR(ShenandoahHeap::heap()->complete_marking_context()->is_marked(p)),
                     p->klass()->internal_name(), p2i(p->klass()));
       ShenandoahPrintAllRefsOopClosure cl(_prefix);
       p->oop_iterate(&cl);

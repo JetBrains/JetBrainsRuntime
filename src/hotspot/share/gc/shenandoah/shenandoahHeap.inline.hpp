@@ -38,6 +38,7 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
 #include "gc/shenandoah/shenandoahControlThread.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "oops/oop.inline.hpp"
@@ -65,27 +66,6 @@ inline ShenandoahHeapRegion* ShenandoahRegionIterator::next() {
   size_t new_index = Atomic::add((size_t) 1, &_index);
   // get_region() provides the bounds-check and returns NULL on OOB.
   return _heap->get_region(new_index - 1);
-}
-
-/*
- * Marks the object. Returns true if the object has not been marked before and has
- * been marked by this thread. Returns false if the object has already been marked,
- * or if a competing thread succeeded in marking this object.
- */
-inline bool ShenandoahHeap::mark_next(oop obj) const {
-  shenandoah_assert_not_forwarded(NULL, obj);
-  HeapWord* addr = (HeapWord*) obj;
-  return (! allocated_after_next_mark_start(addr)) && _next_mark_bit_map->parMark(addr);
-}
-
-inline bool ShenandoahHeap::is_marked_next(oop obj) const {
-  HeapWord* addr = (HeapWord*) obj;
-  return allocated_after_next_mark_start(addr) || _next_mark_bit_map->isMarked(addr);
-}
-
-inline bool ShenandoahHeap::is_marked_complete(oop obj) const {
-  HeapWord* addr = (HeapWord*) obj;
-  return allocated_after_complete_mark_start(addr) || _complete_mark_bit_map->isMarked(addr);
 }
 
 inline bool ShenandoahHeap::has_forwarded_objects() const {
@@ -364,7 +344,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 }
 
 inline bool ShenandoahHeap::requires_marking(const void* entry) const {
-  return ! is_marked_next(oop(entry));
+  return ! _next_marking_context->is_marked(oop(entry));
 }
 
 bool ShenandoahHeap::region_in_collection_set(size_t region_index) const {
@@ -425,20 +405,6 @@ inline bool ShenandoahHeap::is_update_refs_in_progress() const {
   return _gc_state.is_set(UPDATEREFS);
 }
 
-inline bool ShenandoahHeap::allocated_after_next_mark_start(HeapWord* addr) const {
-  uintx index = ((uintx) addr) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  HeapWord* top_at_mark_start = _next_top_at_mark_starts[index];
-  bool alloc_after_mark_start = addr >= top_at_mark_start;
-  return alloc_after_mark_start;
-}
-
-inline bool ShenandoahHeap::allocated_after_complete_mark_start(HeapWord* addr) const {
-  uintx index = ((uintx) addr) >> ShenandoahHeapRegion::region_size_bytes_shift();
-  HeapWord* top_at_mark_start = _complete_top_at_mark_starts[index];
-  bool alloc_after_mark_start = addr >= top_at_mark_start;
-  return alloc_after_mark_start;
-}
-
 template<class T>
 inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, T* cl) {
   marked_object_iterate(region, cl, region->top());
@@ -454,8 +420,9 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
   assert(BrooksPointer::word_offset() < 0, "skip_delta calculation below assumes the forwarding ptr is before obj");
   assert(! region->is_humongous_continuation(), "no humongous continuation regions here");
 
-  MarkBitMap* mark_bit_map = _complete_mark_bit_map;
-  HeapWord* tams = complete_top_at_mark_start(region->bottom());
+  ShenandoahMarkingContext* const ctx = complete_marking_context();
+  MarkBitMap* mark_bit_map = ctx->mark_bit_map();
+  HeapWord* tams = ctx->top_at_mark_start(region->region_number());
 
   size_t skip_bitmap_delta = BrooksPointer::word_size() + 1;
   size_t skip_objsize_delta = BrooksPointer::word_size() /* + actual obj.size() below */;
@@ -535,7 +502,7 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
 template<class T>
 inline void ShenandoahHeap::do_object_marked_complete(T* cl, oop obj) {
   assert(oopDesc::is_oop(obj), "sanity");
-  assert(is_marked_complete(obj), "object expected to be marked");
+  assert(_complete_marking_context->is_marked(obj), "object expected to be marked");
   cl->do_object(obj);
 }
 

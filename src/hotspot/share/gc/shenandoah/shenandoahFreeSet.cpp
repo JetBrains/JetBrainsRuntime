@@ -26,6 +26,7 @@
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
+#include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 
 ShenandoahFreeSet::ShenandoahFreeSet(ShenandoahHeap* heap, size_t max_regions) :
@@ -198,7 +199,7 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
       // Traversal needs to traverse through GC allocs. Adjust TAMS to the new top
       // so that these allocations appear below TAMS, and thus get traversed.
       // See top of shenandoahTraversal.cpp for an explanation.
-      _heap->set_next_top_at_mark_start(r->bottom(), r->top());
+      _heap->next_marking_context()->set_top_at_mark_start(r->region_number(), r->top());
       _heap->traversal_gc()->traversal_set()->add_region_check_for_duplicates(r);
       OrderAccess::fence();
     }
