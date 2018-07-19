@@ -2116,7 +2116,8 @@ void ShenandoahHeap::ref_processing_init() {
                            true,                    // MT discovery
                            _max_workers,            // Degree of MT discovery
                            false,                   // Reference discovery is not atomic
-                           NULL);                   // No closure, should be installed before use
+                           NULL,                    // No closure, should be installed before use
+                           true);                   // Scale worker threads
 
   shenandoah_assert_rp_isalive_not_installed();
 }
