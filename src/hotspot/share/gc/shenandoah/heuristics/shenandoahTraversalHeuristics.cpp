@@ -169,8 +169,6 @@ ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversa
   size_t capacity = heap->capacity();
   size_t available = heap->free_set()->available();
 
-  double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
-  bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
   size_t threshold_available = (capacity * _free_threshold) / 100;
   size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
   size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
@@ -183,11 +181,10 @@ ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversa
     // Need to check that an appropriate number of regions have
     // been allocated since last concurrent mark too.
     return ShenandoahHeap::MAJOR;
-  } else if (periodic_gc) {
-    log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
-                      last_time_ms, ShenandoahGuaranteedGCInterval);
+  } else if (ShenandoahHeuristics::should_start_normal_gc()) {
     return ShenandoahHeap::MAJOR;
   }
+
   return ShenandoahHeap::NONE;
 }
 

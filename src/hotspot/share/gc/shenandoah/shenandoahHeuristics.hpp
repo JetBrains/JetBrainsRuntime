@@ -116,7 +116,7 @@ public:
 
   virtual void print_thresholds();
 
-  virtual bool should_start_normal_gc() const = 0;
+  virtual bool should_start_normal_gc() const;
 
   virtual bool should_start_update_refs();
 

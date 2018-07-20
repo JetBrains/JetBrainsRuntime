@@ -40,8 +40,6 @@ bool ShenandoahCompactHeuristics::should_start_normal_gc() const {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   size_t available = heap->free_set()->available();
-  double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
-  bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
   size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
   size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
 
@@ -49,13 +47,8 @@ bool ShenandoahCompactHeuristics::should_start_normal_gc() const {
     log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
                       available / M, bytes_allocated / M, threshold_bytes_allocated / M);
     return true;
-  } else if (periodic_gc) {
-    log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
-                      last_time_ms, ShenandoahGuaranteedGCInterval);
-    return true;
   }
-
-  return false;
+  return ShenandoahHeuristics::should_start_normal_gc();
 }
 
 void ShenandoahCompactHeuristics::choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,

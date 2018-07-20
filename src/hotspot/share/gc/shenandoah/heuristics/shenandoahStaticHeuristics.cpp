@@ -52,9 +52,6 @@ bool ShenandoahStaticHeuristics::should_start_normal_gc() const {
   size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
   size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
 
-  double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
-  bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
-
   if (available < threshold_available &&
       bytes_allocated > threshold_bytes_allocated) {
     // Need to check that an appropriate number of regions have
@@ -63,13 +60,8 @@ bool ShenandoahStaticHeuristics::should_start_normal_gc() const {
                       "M; Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
                       available / M, threshold_available / M, bytes_allocated / M, threshold_bytes_allocated / M);
     return true;
-  } else if (periodic_gc) {
-    log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
-                      last_time_ms, ShenandoahGuaranteedGCInterval);
-    return true;
   }
-
-  return false;
+  return ShenandoahHeuristics::should_start_normal_gc();
 }
 
 void ShenandoahStaticHeuristics::choose_collection_set_from_regiondata(ShenandoahCollectionSet* cset,

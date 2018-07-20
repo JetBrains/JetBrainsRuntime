@@ -252,6 +252,16 @@ bool ShenandoahHeuristics::should_start_update_refs() {
   return _update_refs_early;
 }
 
+bool ShenandoahHeuristics::should_start_normal_gc() const {
+  double last_time_ms = (os::elapsedTime() - _last_cycle_end) * 1000;
+  bool periodic_gc = (last_time_ms > ShenandoahGuaranteedGCInterval);
+  if (periodic_gc) {
+    log_info(gc,ergo)("Periodic GC triggered. Time since last GC: %.0f ms, Guaranteed Interval: " UINTX_FORMAT " ms",
+                      last_time_ms, ShenandoahGuaranteedGCInterval);
+  }
+  return periodic_gc;
+}
+
 ShenandoahHeap::GCCycleMode ShenandoahHeuristics::should_start_traversal_gc() {
   return ShenandoahHeap::NONE;
 }
