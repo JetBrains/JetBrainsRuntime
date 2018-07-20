@@ -626,27 +626,7 @@ bool ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(Node* iff) {
 }
 
 bool ShenandoahWriteBarrierNode::is_heap_stable_test(Node* iff) {
-  if (!UseShenandoahGC) {
-    return false;
-  }
-  assert(iff->is_If(), "bad input");
-  if (iff->Opcode() != Op_If) {
-    return false;
-  }
-  Node* bol = iff->in(1);
-  if (bol == NULL || !bol->is_Bool() || bol->as_Bool()->_test._test != BoolTest::ne) {
-    return false;
-  }
-  Node* cmp = bol->in(1);
-  if (cmp->Opcode() != Op_CmpI) {
-    return false;
-  }
-  Node* in1 = cmp->in(1);
-  Node* in2 = cmp->in(2);
-  if (in2->find_int_con(-1) != 0) {
-    return false;
-  }
-  return is_gc_state_load(in1);
+  return is_heap_state_test(iff, ShenandoahHeap::HAS_FORWARDED);
 }
 
 bool ShenandoahWriteBarrierNode::is_gc_state_load(Node *n) {
@@ -2598,8 +2578,9 @@ void ShenandoahWriteBarrierNode::test_heap_stable(Node* ctrl, Node* raw_mem, Nod
 
   gc_state = new LoadBNode(ctrl, raw_mem, gc_state_addr, gc_state_adr_type, TypeInt::BYTE, MemNode::unordered);
   phase->register_new_node(gc_state, ctrl);
-
-  Node* heap_stable_cmp = new CmpINode(gc_state, phase->igvn().zerocon(T_INT));
+  Node* heap_stable_and = new AndINode(gc_state, phase->igvn().intcon(ShenandoahHeap::HAS_FORWARDED));
+  phase->register_new_node(heap_stable_and, ctrl);
+  Node* heap_stable_cmp = new CmpINode(heap_stable_and, phase->igvn().zerocon(T_INT));
   phase->register_new_node(heap_stable_cmp, ctrl);
   Node* heap_stable_test = new BoolNode(heap_stable_cmp, BoolTest::ne);
   phase->register_new_node(heap_stable_test, ctrl);
@@ -3289,7 +3270,7 @@ void ShenandoahWriteBarrierNode::move_heap_stable_test_out_of_loop(IfNode* iff, 
   Node* loop_head = loop->_head;
   Node* entry_c = loop_head->in(LoopNode::EntryControl);
 
-  Node* load = iff->in(1)->in(1)->in(1);
+  Node* load = iff->in(1)->in(1)->in(1)->in(1);
   assert(is_gc_state_load(load), "broken");
   if (!phase->is_dominator(load->in(0), entry_c)) {
     Node* mem_ctrl = NULL;
@@ -3307,9 +3288,9 @@ void ShenandoahWriteBarrierNode::merge_back_to_back_tests(Node* n, PhaseIdealLoo
     if (phase->can_split_if(n_ctrl)) {
       IfNode* dom_if = phase->idom(n_ctrl)->as_If();
       if (is_heap_stable_test(n)) {
-        Node* gc_state_load = n->in(1)->in(1)->in(1);
+        Node* gc_state_load = n->in(1)->in(1)->in(1)->in(1);
         assert(is_gc_state_load(gc_state_load), "broken");
-        Node* dom_gc_state_load = dom_if->in(1)->in(1)->in(1);
+        Node* dom_gc_state_load = dom_if->in(1)->in(1)->in(1)->in(1);
         assert(is_gc_state_load(dom_gc_state_load), "broken");
         if (gc_state_load != dom_gc_state_load) {
           phase->igvn().replace_node(gc_state_load, dom_gc_state_load);
