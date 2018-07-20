@@ -526,6 +526,7 @@ void ShenandoahHeap::reset_next_mark_bitmap_traversal() {
   ShenandoahHeapRegionSetIterator iter(regions);
   ShenandoahResetNextBitmapTraversalTask task(iter);
   _workers->run_task(&task);
+  assert(next_marking_context()->is_bitmap_clear(), "need clean mark bitmap");
 }
 
 void ShenandoahHeap::print_on(outputStream* st) const {

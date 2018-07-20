@@ -27,6 +27,7 @@
 #include "gc/shared/workgroup.hpp"
 #include "memory/allocation.hpp"
 
+class ShenandoahObjToScanQueueSet;
 
 class ShenandoahWorkerScope : public StackObj {
 private:
@@ -47,6 +48,18 @@ private:
 public:
   ShenandoahPushWorkerScope(WorkGang* workers, uint nworkers, bool do_check = true);
   ~ShenandoahPushWorkerScope();
+};
+
+class ShenandoahPushWorkerQueuesScope : StackObj {
+private:
+  uint      _n_workers;
+  uint      _old_workers;
+  WorkGang* _workers;
+  ShenandoahObjToScanQueueSet* _queues;
+
+public:
+  ShenandoahPushWorkerQueuesScope(WorkGang* workers, ShenandoahObjToScanQueueSet* queues, uint nworkers, bool do_check = true);
+  ~ShenandoahPushWorkerQueuesScope();
 };
 
 class ShenandoahWorkGang : public WorkGang {

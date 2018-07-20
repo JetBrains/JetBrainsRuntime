@@ -26,6 +26,7 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
 #include "logging/log.hpp"
 
@@ -58,6 +59,25 @@ ShenandoahPushWorkerScope::~ShenandoahPushWorkerScope() {
   assert(_workers->active_workers() == _n_workers,
     "Active workers can not be changed within this scope");
   // Restore old worker value
+  _workers->update_active_workers(_old_workers);
+}
+
+ShenandoahPushWorkerQueuesScope::ShenandoahPushWorkerQueuesScope(WorkGang* workers, ShenandoahObjToScanQueueSet* queues, uint nworkers, bool check) :
+  _workers(workers), _old_workers(workers->active_workers()),
+  _queues(queues), _n_workers(nworkers) {
+  _workers->update_active_workers(nworkers);
+  _queues->reserve(nworkers);
+  // bypass concurrent/parallel protocol check for non-regular paths, e.g. verifier, etc.
+  if (check) {
+    ShenandoahHeap::heap()->assert_gc_workers(nworkers);
+  }
+}
+
+ShenandoahPushWorkerQueuesScope::~ShenandoahPushWorkerQueuesScope() {
+  assert(_workers->active_workers() == _n_workers,
+    "Active workers can not be changed within this scope");
+  // Restore old worker value
+  _queues->reserve(_old_workers);
   _workers->update_active_workers(_old_workers);
 }
 

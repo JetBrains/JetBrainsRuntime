@@ -1093,9 +1093,10 @@ public:
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
-    ShenandoahPushWorkerScope scope(_workers,
-                                    ergo_workers,
-                                    /* do_check = */ false);
+    ShenandoahPushWorkerQueuesScope scope(_workers,
+                                          traversal_gc->task_queues(),
+                                          ergo_workers,
+                                          /* do_check = */ false);
     uint nworkers = _workers->active_workers();
     traversal_gc->task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {
@@ -1147,6 +1148,10 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   {
     ShenandoahGCPhase phase(phase_process);
     ShenandoahTerminationTracker termination(ShenandoahPhaseTimings::weakrefs_termination);
+
+    // Prepare for single-threaded mode
+    ShenandoahPushWorkerQueuesScope scope(workers, task_queues(), 1, /* do_check = */ false);
+    ShenandoahEvacOOMScope oom_scope;
 
     ShenandoahForwardedIsAliveClosure is_alive;
     if (UseShenandoahMatrix) {

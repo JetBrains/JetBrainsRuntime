@@ -638,9 +638,9 @@ public:
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConcurrentMark* cm = heap->concurrentMark();
-    ShenandoahPushWorkerScope scope(_workers,
-                                    ergo_workers,
-                                    /* do_check = */ false);
+    ShenandoahPushWorkerQueuesScope scope(_workers, cm->task_queues(),
+                                          ergo_workers,
+                                          /* do_check = */ false);
     uint nworkers = _workers->active_workers();
     cm->task_queues()->reserve(nworkers);
     if (UseShenandoahOWST) {
@@ -725,6 +725,9 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
   {
     ShenandoahGCPhase phase(phase_process);
     ShenandoahTerminationTracker phase_term(phase_process_termination);
+
+    // Prepare for single-threaded mode
+    ShenandoahPushWorkerQueuesScope scope(workers, task_queues(), 1, /* do_check = */ false);
 
     if (sh->has_forwarded_objects()) {
       ShenandoahForwardedIsAliveClosure is_alive;
@@ -942,7 +945,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
    * with this worker id, we come back to process this queue in the normal loop.
    */
   assert(queues->get_reserved() == heap->workers()->active_workers(),
-    "Need to reserve proper number of queues");
+         "Need to reserve proper number of queues: reserved: %u, active: %u", queues->get_reserved(), heap->workers()->active_workers());
 
   q = queues->claim_next();
   while (q != NULL) {
