@@ -123,7 +123,9 @@ java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java                    
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                  8047703 generic-all
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8192929 windows-all,macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.html                           8017454 windows-all,macosx-all
+java/awt/Component/DimensionEncapsulation/DimensionEncapsulation.java               8190514 windows-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java                           8203905 windows-all,macosx-all
+java/awt/Component/InsetsEncapsulation/InsetsEncapsulation.java                     8190514 windows-all
 java/awt/Component/NativeInLightShow/NativeInLightShow.java                         8202932 windows-all,macosx-all
 java/awt/Component/PaintAll/PaintAll.java                                           8169104 windows-all
 java/awt/Component/PrintAllXcheckJNI/PrintAllXcheckJNI.java                         6857809 linux-all
@@ -537,6 +539,7 @@ java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java            
 java/awt/MouseInfo/ComponentMousePositionTest.java                                  JRE-886 windows-all
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8130741,8158798 macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                 JRE-827 windows-all
+java/awt/Paint/ListRepaint.java                                                     8201307 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           JRE-828 macosx-all,windows-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 generic-all
@@ -693,17 +696,30 @@ javax/swing/JComponent/6683775/bug6683775.java                                  
 javax/swing/JComponent/7154030/bug7154030.java                                      7190978 macosx-all,windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java                                     8203912 macosx-all,windows-all
 javax/swing/JFileChooser/4524490/bug4524490.java                                    8042380 macosx-all,windows-all
-javax/swing/JFileChooser/4847375/bug4847375.java                                    8194766 windows-all
+javax/swing/JFileChooser/4847375/bug4847375.java                                    8194766,8190514 windows-all
+javax/swing/JFileChooser/6342301/bug6342301.java                                    8190514 windows-all
 javax/swing/JFileChooser/6396844/TwentyThousandTest.java                            8058231 generic-all
+javax/swing/JFileChooser/6489130/bug6489130.java                                    8190514 windows-all
+javax/swing/JFileChooser/6520101/bug6520101.java                                    8190514 windows-all
+javax/swing/JFileChooser/6688203/bug6688203.java                                    8190514 windows-all
+javax/swing/JFileChooser/6713352/bug6713352.java                                    8190514 windows-all
 javax/swing/JFileChooser/6738668/bug6738668.java                                    6962725 macosx-all,windows-all,linux-all
+javax/swing/JFileChooser/6817933/Test6817933.java                                   8190514 windows-all
+javax/swing/JFileChooser/6868611/Test6868611.java                                   8190514 windows-all
+javax/swing/JFileChooser/6945316/bug6945316.java                                    8190514 windows-all
+javax/swing/JFileChooser/7036025/bug7036025.java                                    8190514 windows-all
+javax/swing/JFileChooser/7199708/bug7199708.java                                    8190514 windows-all
 javax/swing/JFileChooser/8002077/bug8002077.java                                    8196094 macosx-all,windows-all
+javax/swing/JFileChooser/8010718/bug8010718.java                                    8190514 windows-all
+javax/swing/JFileChooser/8013442/Test8013442.java                                   8190514 windows-all
 javax/swing/JFileChooser/8021253/bug8021253.java                                    8169954 macosx-all,windows-all
 javax/swing/JFileChooser/8041694/bug8041694.java                                    8196302 macosx-all,windows-all
+javax/swing/JFileChooser/8046391/bug8046391.java                                    8190514 windows-all
 javax/swing/JFileChooser/8062561/bug8062561.java                                    8196466 macosx-all,windows-all,linux-all
 javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.java 8196095,8152332 macosx-all,windows-all
 javax/swing/JFrame/8016356/bug8016356.java                                          8169955 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                           8193942 macosx-all,windows-all
-javax/swing/JInternalFrame/5066752/bug5066752.java                                  JRE-867 macosx-all,windows-all
+javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                   8203918 macosx-all,windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 macosx-all,windows-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
@@ -787,6 +803,7 @@ javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java                        
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java                          8203917 macosx-all,windows-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java                8165213 macosx-all,windows-all
 javax/swing/plaf/synth/7158712/bug7158712.java                                      8170722 macosx-all,windows-all
+javax/swing/plaf/synth/Test6660049.java                                             8190514 windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8204068 macosx-all,windows-all
 javax/swing/plaf/windows/WindowsRootPaneUI/WrongAltProcessing/WrongAltProcessing.java 8021007,8172071 windows-all
 javax/swing/text/CSSBorder/6796710/bug6796710.java                                  8196099 macosx-all,linux-all
@@ -873,6 +890,7 @@ java/net/MulticastSocket/SetLoopbackMode.java                                   
 java/net/MulticastSocket/Test.java                                                  7145658 macosx-all
 java/net/DatagramSocket/ReuseAddressTest.java                                       8194231 generic-all
 java/net/DatagramSocket/SendDatagramToBadAddress.java                               7143960 macosx-all
+java/net/httpclient/SmokeTest.java                                                  8178699 generic-all
 
 ############################################################################
 
@@ -1081,7 +1099,7 @@ java/awt/TrayIcon/SecurityCheck/NoPermissionTest/NoPermissionTest.java          
 java/awt/TrayIcon/SecurityCheck/PermissionTest/PermissionTest.java                  JRE-862 macosx-all
 java/awt/image/mlib/MlibOpsTest.java                                                JRE-862 macosx-all
 java/awt/security/WarningWindowDisposeTest/WarningWindowDisposeCrashTest.java       JRE-862 macosx-all
-javax/print/PrintSE/PrintSE.sh                                                      JRE-862 macosx-all
+javax/print/PrintSE/PrintSE.sh                                                      JRE-862,JRE-897 macosx-all,windows-all
 javax/swing/JFileChooser/6570445/bug6570445.java                                    JRE-862 macosx-all
 javax/swing/JOptionPane/8081019/bug8081019.java                                     JRE-862 macosx-all
 javax/swing/JPopupMenu/6675802/bug6675802.java                                      JRE-862 macosx-all
