@@ -695,10 +695,6 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::update_pointers();
 #endif
-
-    assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
-    TASKQUEUE_STATS_ONLY(_task_queues->print_taskqueue_stats());
-    TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
   }
 
   if (!_heap->cancelled_gc() && _heap->process_references()) {
@@ -711,6 +707,10 @@ void ShenandoahTraversalGC::final_traversal_collection() {
   }
 
   if (!_heap->cancelled_gc()) {
+    assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
+    TASKQUEUE_STATS_ONLY(_task_queues->print_taskqueue_stats());
+    TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
+
     // Still good? We can now trash the cset, and make final verification
     {
       ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_cleanup);
