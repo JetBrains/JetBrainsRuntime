@@ -166,6 +166,7 @@ java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShow
 java/awt/Focus/DeiconifiedFrameLoosesFocus/DeiconifiedFrameLoosesFocus.html         8015886 macosx-all
 java/awt/Focus/FocusEmbeddedFrameTest/FocusEmbeddedFrameTest.java                   JRE-68  windows-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java                   8081489 macosx-all,windows-all
+java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.html                         JRE-898 macosx-all,windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java 8198619 macosx-all,windows-all,linux-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java     6849364 generic-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java       8198621 macosx-all,windows-all,linux-all
@@ -206,6 +207,7 @@ java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java                        
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469 windows-all
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 macosx-all,windows-all,linux-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468,7188711 windows-all,linux-all
+java/awt/FullScreen/SetFSWindow/FSFrame.java                                        JRE-898 windows-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                        8000171 windows-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                            8000171 windows-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                            8153299 windows-all
@@ -220,6 +222,7 @@ java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java          
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.html        8198624 generic-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.html                    8198626 windows-all,macosx-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        8159252 generic-all
+java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                      JRE-898 windows-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.html                          8169461 windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java                                      JRE-820 macosx-all,windows-all
 java/awt/List/KeyEventsTest/KeyEventsTest.html                                      8047703 generic-all
@@ -539,9 +542,12 @@ java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java            
 java/awt/MouseInfo/ComponentMousePositionTest.java                                  JRE-886 windows-all
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8130741,8158798 macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                 JRE-827 windows-all
+java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java JRE-898 windows-all
+java/awt/Paint/ExposeOnEDT.java                                                     JRE-898 windows-all
 java/awt/Paint/ListRepaint.java                                                     8201307 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           JRE-828 macosx-all,windows-all
+java/awt/PrintJob/PrinterException.java                                             JRE-898 windows-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 generic-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                           8132299 generic-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java                            8204315 windows-all
@@ -561,8 +567,10 @@ java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                         
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java                6847163 generic-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java                                  8197575 macosx-all,windows-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java                              8197575 macosx-all,windows-all
+java/awt/TrayIcon/ActionEventTest/ActionEventTest.java                              JRE-898 macosx-all
 java/awt/TrayIcon/ModalityTest/ModalityTest.java                                    8197575 macosx-all,windows-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java                            8197575 macosx-all,windows-all
+java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java                                JRE-898 windows-all
 java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java                          8196440 linux-all
 java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java          8197575,8204320 macosx-all,windows-all
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java                    8193543 linux-all
@@ -581,7 +589,7 @@ java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                        
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                              8145795 windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 generic-all
-java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           JRE-882 macosx-all,linux-all
+java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           JRE-882,JRE-898 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8013450,8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8198690 macosx-all,windows-all
@@ -590,8 +598,10 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java              
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450,8013450 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8078999 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8194129 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                        JRE-898 windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java             8194129 macosx-all,windows-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java  8170390 linux-all
+java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java                          JRE-898 macosx-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java                   8080982 generic-all
 java/awt/datatransfer/DragUnicodeBetweenJVMTest/DragUnicodeBetweenJVMTest.html      8017457 windows-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.html                  JRE-889 windows-all
@@ -611,6 +621,7 @@ java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.html                 
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.html 8041431 generic-all
 java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
+java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JRE-898 windows-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 macosx-all,windows-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 macosx-all,windows-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java            8129778 macosx-all,windows-all,linux-all
@@ -638,12 +649,15 @@ java/awt/font/TextLayout/TextLayoutBounds.java                                  
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150,8203918 macosx-all,linux-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.html                                    8202934 macosx-all,windows-all
+java/awt/hidpi/properties/HiDPIPropertiesWindowsTest.java                           JRE-898 windows-all
 java/awt/image/DrawImage/EABlitTest.java                                            8028000 windows-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java                              8056077 linux-all
 java/awt/image/DrawImage/IncorrectBounds.java                                       8169473 windows-all
 java/awt/image/DrawImage/IncorrectDestinationOffset.java                            8169951 windows-all
+java/awt/image/DrawImage/IncorrectOffset.java                                       JRE-898 windows-all
 java/awt/image/DrawImage/IncorrectSourceOffset.java                                 8196086 windows-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java                              8133102 linux-all
+java/awt/image/VolatileImage/TransparentVImage.java                                 JRE-898 windows-all
 java/awt/image/multiresolution/MenuMultiresolutionIconTest.java                     8203918 macosx-all,linux-all,windows-all
 java/awt/image/multiresolution/MultiresolutionIconTest.java                         8169187 macosx-all,windows-all,linux-all
 java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8193941,8204214 macosx-all,windows-all
@@ -741,6 +755,7 @@ javax/swing/JMenuItem/6249972/bug6249972.java                                   
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java              8172536,8203918 macosx-all
 javax/swing/JPopupMenu/4458079/bug4458079.java                                      8040917 macosx-all,linux-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                      8204072 macosx-all,windows-all
+javax/swing/JPopupMenu/4966112/bug4966112.java                                      8064915 macosx-all
 javax/swing/JPopupMenu/6217905/bug6217905.java                                      JRE-794 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java                                      8197552 macosx-all,windows-all
 javax/swing/JPopupMenu/6515446/bug6515446.java                                      8197552 macosx-all,windows-all
