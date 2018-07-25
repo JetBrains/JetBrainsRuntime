@@ -358,6 +358,10 @@ void ShenandoahTraversalGC::prepare_regions() {
         // objects under the race.
         region->set_concurrent_iteration_safe_limit(region->top());
       }
+    } else {
+      // FreeSet may contain uncommitted empty regions, once they are recommitted,
+      // their TAMS may have old values, so reset them here.
+      ctx->set_top_at_mark_start(region->region_number(), region->bottom());
     }
   }
 }
