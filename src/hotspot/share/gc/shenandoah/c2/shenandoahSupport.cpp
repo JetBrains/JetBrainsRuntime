@@ -2822,8 +2822,14 @@ void ShenandoahWriteBarrierNode::evacuation_in_progress(Node* c, Node* val, Node
   evacuation_in_progress_null_check(c, val, evacuation_iff, unc, unc_ctrl, unc_region, uses, phase);
 
   IdealLoopTree *loop = phase->get_loop(c);
-  Node* rbtrue = new ShenandoahReadBarrierNode(c, wb_mem, val);
-  phase->register_new_node(rbtrue, c);
+
+  Node* rbtrue;
+  if (ShenandoahWriteBarrierRB) {
+    rbtrue = new ShenandoahReadBarrierNode(c, wb_mem, val);
+    phase->register_new_node(rbtrue, c);
+  } else {
+    rbtrue = val;
+  }
 
   Node* in_cset_fast_test_failure = NULL;
   in_cset_fast_test(c, rbtrue, raw_mem, wb_mem, region, val_phi, mem_phi, raw_mem_phi, phase);
