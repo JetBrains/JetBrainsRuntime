@@ -2199,6 +2199,7 @@ bool PhaseMacroExpand::eliminate_locking_node(AbstractLockNode *alock) {
 
   Node* mem  = alock->in(TypeFunc::Memory);
   Node* ctrl = alock->in(TypeFunc::Control);
+  guarantee(ctrl != NULL, "missing control projection, cannot replace_node() with NULL");
 
   extract_call_projections(alock);
   // There are 2 projections from the lock.  The lock node will
@@ -2233,8 +2234,7 @@ bool PhaseMacroExpand::eliminate_locking_node(AbstractLockNode *alock) {
   }
 
   // Seach for MemBarReleaseLock node and delete it also.
-  if (alock->is_Unlock() && ctrl != NULL && ctrl->is_Proj() &&
-      ctrl->in(0)->is_MemBar()) {
+  if (alock->is_Unlock() && ctrl->is_Proj() && ctrl->in(0)->is_MemBar()) {
     MemBarNode* membar = ctrl->in(0)->as_MemBar();
     assert(membar->Opcode() == Op_MemBarReleaseLock &&
            mem->is_Proj() && membar == mem->in(0), "");

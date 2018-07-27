@@ -374,10 +374,10 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
 
   if (mem != old_mem) {
     set_req(MemNode::Memory, mem);
-    if (can_reshape && old_mem->outcnt() == 0) {
-        igvn->_worklist.push(old_mem);
+    if (can_reshape && old_mem->outcnt() == 0 && igvn != NULL) {
+      igvn->_worklist.push(old_mem);
     }
-    if (phase->type( mem ) == Type::TOP) return NodeSentinel;
+    if (phase->type(mem) == Type::TOP) return NodeSentinel;
     return this;
   }
 
@@ -829,7 +829,7 @@ Node *LoadNode::make(PhaseGVN& gvn, Node *ctl, Node *mem, Node *adr, const TypeP
     }
     break;
   default:
-    // ShouldNotReachHere(); ???
+    ShouldNotReachHere();
     break;
   }
   assert(load != NULL, "LoadNode should have been created");

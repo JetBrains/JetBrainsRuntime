@@ -436,6 +436,8 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
     Node *start_mem_src = mm->memory_at(alias_idx_src);
     Node *start_mem_dest = mm->memory_at(alias_idx_dest);
     Node* mem = start_mem_dest;
+    bool same_alias = (alias_idx_src == alias_idx_dest);
+
     if (count > 0) {
       Node* v = LoadNode::make(*phase, forward_ctl, start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
@@ -450,7 +452,7 @@ Node* ArrayCopyNode::array_copy_forward(PhaseGVN *phase,
         Node* off  = phase->MakeConX(type2aelembytes(copy_type) * i);
         Node* next_src = phase->transform(new AddPNode(base_src,adr_src,off));
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
-        v = LoadNode::make(*phase, forward_ctl, mem, next_src, atp_src, value_type, copy_type, MemNode::unordered);
+        v = LoadNode::make(*phase, forward_ctl, same_alias ? mem : start_mem_src, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
 #if INCLUDE_SHENANDOAHGC
         if (UseShenandoahGC && copy_type == T_OBJECT) {
@@ -494,13 +496,14 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
     Node* mem = start_mem_dest;
 
     assert(copy_type != T_OBJECT SHENANDOAHGC_ONLY(|| ShenandoahStoreValEnqueueBarrier), "only tightly coupled allocations for object arrays");
+    bool same_alias = (alias_idx_src == alias_idx_dest);
 
     if (count > 0) {
       for (int i = count-1; i >= 1; i--) {
         Node* off  = phase->MakeConX(type2aelembytes(copy_type) * i);
         Node* next_src = phase->transform(new AddPNode(base_src,adr_src,off));
         Node* next_dest = phase->transform(new AddPNode(base_dest,adr_dest,off));
-        Node* v = LoadNode::make(*phase, backward_ctl, mem, next_src, atp_src, value_type, copy_type, MemNode::unordered);
+        Node* v = LoadNode::make(*phase, backward_ctl, same_alias ? mem : start_mem_src, next_src, atp_src, value_type, copy_type, MemNode::unordered);
         v = phase->transform(v);
 #if INCLUDE_SHENANDOAHGC
         if (UseShenandoahGC && copy_type == T_OBJECT) {
@@ -510,7 +513,7 @@ Node* ArrayCopyNode::array_copy_backward(PhaseGVN *phase,
         mem = StoreNode::make(*phase, backward_ctl,mem,next_dest,atp_dest,v, copy_type, MemNode::unordered);
         mem = phase->transform(mem);
       }
-      Node* v = LoadNode::make(*phase, backward_ctl, mem, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
+      Node* v = LoadNode::make(*phase, backward_ctl, same_alias ? mem : start_mem_src, adr_src, atp_src, value_type, copy_type, MemNode::unordered);
       v = phase->transform(v);
 #if INCLUDE_SHENANDOAHGC
       if (UseShenandoahGC && copy_type == T_OBJECT) {
@@ -757,7 +760,8 @@ bool ArrayCopyNode::may_modify(const TypeOopPtr *t_oop, MemBarNode* mb, PhaseTra
   c = bs->step_over_gc_barrier(c);
 
   CallNode* call = NULL;
-  if (c != NULL && c->is_Region()) {
+  guarantee(c != NULL, "step_over_gc_barrier failed, there must be something to step to.");
+  if (c->is_Region()) {
     for (uint i = 1; i < c->req(); i++) {
       if (c->in(i) != NULL) {
         Node* n = c->in(i)->in(0);
