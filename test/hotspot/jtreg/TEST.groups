@@ -161,18 +161,25 @@ tier2_gc_shenandoah = \
   gc/metaspace/TestMetaspacePerfCounters.java \
   gc/metaspace/TestMetaspacePerfCounters.java \
   gc/startup_warnings/TestShenandoah.java \
+  gc/TestFullGCALot.java \
+  gc/logging/TestUnifiedLoggingSwitchStress.java \
+  runtime/Metaspace/DefineClass.java \
+  gc/shenandoah/ \
+  serviceability/sa/TestHeapDumpForInvokeDynamic.java \
+  -gc/shenandoah/ShenandoahStrDedupStress.java \
+  -gc/shenandoah/CriticalNativeStress.java
+
+shenandoah_stress = \
   gc/stress/gcold/TestGCOldWithShenandoah.java \
   gc/stress/gcbasher/TestGCBasherWithShenandoah.java \
   gc/stress/gclocker/TestGCLockerWithShenandoah.java \
   gc/stress/systemgc/TestSystemGCWithShenandoah.java \
-  gc/shenandoah/ \
-  serviceability/sa/TestHeapDumpForInvokeDynamic.java
+  gc/shenandoah/ShenandoahStrDedupStress.java \
+  gc/shenandoah/CriticalNativeStress.java
 
 tier3_gc_shenandoah = \
   :tier2_gc_shenandoah \
-  gc/TestFullGCALot.java \
-  gc/logging/TestUnifiedLoggingSwitchStress.java \
-  runtime/Metaspace/DefineClass.java
+  :shenandoah_stress
 
 tier1_compiler_not_xcomp = \
   compiler/aot
