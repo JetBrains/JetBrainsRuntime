@@ -2739,7 +2739,7 @@ public class Cipher {
 
         // Input sanity check
         if ((src == null) || (offset < 0) || (len < 0)
-                || (len > (src.length - offset))) {
+                || len > (src.length - offset)) {
             throw new IllegalArgumentException("Bad arguments");
         }
 
