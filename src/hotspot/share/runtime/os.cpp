@@ -1142,7 +1142,7 @@ void os::print_location(outputStream* st, intptr_t x, bool verbose) {
     if (Klass::is_valid((Klass*)addr)) {
       st->print_cr(INTPTR_FORMAT " is a pointer to class: ", p2i(addr));
       ((Klass*)addr)->print_on(st);
-    } else if (((const Method*)addr)->is_valid_method()) {
+    } else if (Method::is_valid_method((const Method*)addr)) {
       ((Method*)addr)->print_value_on(st);
       st->cr();
     } else {
