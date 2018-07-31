@@ -199,6 +199,7 @@ public:
   int  state_ordinal()             const { return region_state_to_ordinal(_state); }
 
 private:
+  static size_t RegionCount;
   static size_t RegionSizeBytes;
   static size_t RegionSizeWords;
   static size_t RegionSizeBytesShift;
@@ -246,7 +247,7 @@ private:
 public:
   ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start, size_t size_words, size_t index, bool committed);
 
-  static void setup_heap_region_size(size_t initial_heap_size, size_t max_heap_size);
+  static void setup_sizes(size_t initial_heap_size, size_t max_heap_size);
 
   double empty_time() {
     return _empty_time;
@@ -254,6 +255,10 @@ public:
 
   inline static size_t required_regions(size_t bytes) {
     return (bytes + ShenandoahHeapRegion::region_size_bytes() - 1) >> ShenandoahHeapRegion::region_size_bytes_shift();
+  }
+
+  inline static size_t region_count() {
+    return ShenandoahHeapRegion::RegionCount;
   }
 
   inline static size_t region_size_bytes() {

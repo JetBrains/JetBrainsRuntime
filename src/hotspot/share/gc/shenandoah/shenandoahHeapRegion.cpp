@@ -40,6 +40,7 @@
 #include "runtime/os.hpp"
 #include "runtime/safepoint.hpp"
 
+size_t ShenandoahHeapRegion::RegionCount = 0;
 size_t ShenandoahHeapRegion::RegionSizeBytes = 0;
 size_t ShenandoahHeapRegion::RegionSizeWords = 0;
 size_t ShenandoahHeapRegion::RegionSizeBytesShift = 0;
@@ -559,7 +560,7 @@ HeapWord* ShenandoahHeapRegion::block_start_const(const void* p) const {
   }
 }
 
-void ShenandoahHeapRegion::setup_heap_region_size(size_t initial_heap_size, size_t max_heap_size) {
+void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap_size) {
   // Absolute minimums we should not ever break.
   static const size_t MIN_REGION_SIZE = 256*K;
   static const size_t MIN_NUM_REGIONS = 10;
@@ -656,6 +657,10 @@ void ShenandoahHeapRegion::setup_heap_region_size(size_t initial_heap_size, size
   guarantee(RegionSizeBytesMask == 0, "we should only set it once");
   RegionSizeBytesMask = RegionSizeBytes - 1;
 
+  guarantee(RegionCount == 0, "we should only set it once");
+  RegionCount = max_heap_size / RegionSizeBytes;
+  guarantee(RegionCount >= MIN_NUM_REGIONS, "Should have at least minimum regions");
+
   guarantee(HumongousThresholdWords == 0, "we should only set it once");
   HumongousThresholdWords = RegionSizeWords * ShenandoahHumongousThreshold / 100;
   assert (HumongousThresholdWords <= RegionSizeWords, "sanity");
@@ -689,12 +694,12 @@ void ShenandoahHeapRegion::setup_heap_region_size(size_t initial_heap_size, size
   guarantee(MaxTLABSizeWords == 0, "we should only set it once");
   MaxTLABSizeWords = MaxTLABSizeBytes / HeapWordSize;
 
-  log_info(gc, heap)("Heap region size: " SIZE_FORMAT "M", RegionSizeBytes / M);
-  log_info(gc, init)("Region size in bytes: " SIZE_FORMAT, RegionSizeBytes);
-  log_info(gc, init)("Region size byte shift: " SIZE_FORMAT, RegionSizeBytesShift);
-  log_info(gc, init)("Humongous threshold in bytes: " SIZE_FORMAT, HumongousThresholdBytes);
-  log_info(gc, init)("Max TLAB size in bytes: " SIZE_FORMAT, MaxTLABSizeBytes);
-  log_info(gc, init)("Number of regions: " SIZE_FORMAT, max_heap_size / RegionSizeBytes);
+  log_info(gc, init)("Regions: " SIZE_FORMAT " x " SIZE_FORMAT "%s",
+                     RegionCount, byte_size_in_proper_unit(RegionSizeBytes), proper_unit_for_byte_size(RegionSizeBytes));
+  log_info(gc, init)("Humongous object threshold: " SIZE_FORMAT "%s",
+                     byte_size_in_proper_unit(HumongousThresholdBytes), proper_unit_for_byte_size(HumongousThresholdBytes));
+  log_info(gc, init)("Max TLAB size: " SIZE_FORMAT "%s",
+                     byte_size_in_proper_unit(MaxTLABSizeBytes), proper_unit_for_byte_size(MaxTLABSizeBytes));
 }
 
 CompactibleSpace* ShenandoahHeapRegion::next_compaction_space() const {

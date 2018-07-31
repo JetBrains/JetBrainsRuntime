@@ -160,7 +160,7 @@ jint ShenandoahHeap::initialize() {
   BarrierSet::set_barrier_set(new ShenandoahBarrierSet(this));
   ReservedSpace pgc_rs = heap_rs.first_part(max_byte_size);
 
-  _num_regions = max_byte_size / ShenandoahHeapRegion::region_size_bytes();
+  _num_regions = ShenandoahHeapRegion::region_count();
   size_t num_committed_regions = init_byte_size / ShenandoahHeapRegion::region_size_bytes();
   _initial_size = num_committed_regions * ShenandoahHeapRegion::region_size_bytes();
   _committed = _initial_size;
@@ -419,9 +419,8 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
   _memory_pool(NULL)
 {
-  log_info(gc, init)("Parallel GC threads: " UINT32_FORMAT, ParallelGCThreads);
-  log_info(gc, init)("Concurrent GC threads: " UINT32_FORMAT, ConcGCThreads);
-  log_info(gc, init)("Parallel reference processing enabled: %s", BOOL_TO_STR(ParallelRefProcEnabled));
+  log_info(gc, init)("GC threads: " UINT32_FORMAT " parallel, " UINT32_FORMAT " concurrent", ParallelGCThreads, ConcGCThreads);
+  log_info(gc, init)("Reference processing: %s", ParallelRefProcEnabled ? "parallel" : "serial");
 
   _scm = new ShenandoahConcurrentMark();
   _full_gc = new ShenandoahMarkCompact();
