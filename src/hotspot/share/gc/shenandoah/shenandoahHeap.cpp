@@ -1058,7 +1058,6 @@ class ShenandoahParallelEvacuationTask : public AbstractGangTask {
 private:
   ShenandoahHeap* const _sh;
   ShenandoahCollectionSet* const _cs;
-  ShenandoahSharedFlag _claimed_codecache;
 
 public:
   ShenandoahParallelEvacuationTask(ShenandoahHeap* sh,
@@ -1072,16 +1071,6 @@ public:
     ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
-
-    // If concurrent code cache evac is enabled, evacuate it here.
-    // Note we cannot update the roots here, because we risk non-atomic stores to the alive
-    // nmethods. The update would be handled elsewhere.
-    if (ShenandoahConcurrentEvacCodeRoots && _claimed_codecache.try_set()) {
-      ShenandoahEvacuateRootsClosure cl;
-      MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
-      CodeBlobToOopClosure blobs(&cl, !CodeBlobToOopClosure::FixRelocations);
-      CodeCache::blobs_do(&blobs);
-    }
 
     ShenandoahParallelEvacuateRegionObjectClosure cl(_sh);
     ShenandoahHeapRegion* r;
@@ -1265,12 +1254,8 @@ public:
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahEvacuateUpdateRootsClosure cl;
 
-    if (ShenandoahConcurrentEvacCodeRoots) {
-      _rp->process_evacuate_roots(&cl, NULL, worker_id);
-    } else {
-      MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
-      _rp->process_evacuate_roots(&cl, &blobsCl, worker_id);
-    }
+    MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
+    _rp->process_evacuate_roots(&cl, &blobsCl, worker_id);
   }
 };
 

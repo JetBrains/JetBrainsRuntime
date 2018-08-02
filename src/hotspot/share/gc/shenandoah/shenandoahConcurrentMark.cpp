@@ -128,7 +128,7 @@ public:
         CodeBlobToOopClosure assert_to_space(&assert_to_space_oops, !CodeBlobToOopClosure::FixRelocations);
         // If conc code cache evac is disabled, code cache should have only to-space ptrs.
         // Otherwise, it should have to-space ptrs only if mark does not update refs.
-        if (!ShenandoahConcurrentEvacCodeRoots && !heap->has_forwarded_objects()) {
+        if (!heap->has_forwarded_objects()) {
           code_blobs = &assert_to_space;
         }
 #endif
@@ -331,8 +331,7 @@ void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_p
   switch (root_phase) {
     case ShenandoahPhaseTimings::update_roots:
     case ShenandoahPhaseTimings::final_update_refs_roots:
-      // If code cache was evacuated concurrently, we need to update code cache roots.
-      update_code_cache = ShenandoahConcurrentEvacCodeRoots;
+      update_code_cache = false;
       break;
     case ShenandoahPhaseTimings::full_gc_roots:
       update_code_cache = true;

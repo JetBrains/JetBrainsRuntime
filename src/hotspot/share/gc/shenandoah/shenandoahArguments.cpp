@@ -138,25 +138,6 @@ void ShenandoahArguments::initialize() {
     FLAG_SET_DEFAULT(LogEventsBufferEntries, 250);
   }
 
-  if (ShenandoahConcurrentEvacCodeRoots) {
-    if (!ShenandoahBarriersForConst) {
-      if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {
-        warning("Concurrent code cache evacuation is enabled, enabling barriers for constants.");
-        FLAG_SET_DEFAULT(ShenandoahBarriersForConst, true);
-      } else {
-        warning("Concurrent code cache evacuation is enabled, but barriers for constants are disabled. "
-                "This may lead to surprising crashes.");
-      }
-    }
-  } else {
-    if (ShenandoahBarriersForConst) {
-      if (FLAG_IS_DEFAULT(ShenandoahBarriersForConst)) {
-        warning("Concurrent code cache evacuation is disabled, disabling barriers for constants.");
-        FLAG_SET_DEFAULT(ShenandoahBarriersForConst, false);
-      }
-    }
-  }
-
   if (ShenandoahAlwaysPreTouch) {
     if (!FLAG_IS_DEFAULT(ShenandoahUncommit)) {
       warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommit");

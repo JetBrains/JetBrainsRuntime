@@ -111,7 +111,7 @@ bool ShenandoahBarrierNode::needs_barrier_impl(PhaseGVN* phase, ShenandoahBarrie
   }
   if (type->make_oopptr() && type->make_oopptr()->const_oop() != NULL) {
     // tty->print_cr("killed barrier for constant object");
-    return ShenandoahBarriersForConst;
+    return false;
   }
 
   if (ShenandoahOptimizeStableFinals) {
@@ -952,7 +952,7 @@ bool ShenandoahBarrierNode::verify_helper(Node* in, Node_Stack& phis, VectorSet&
         assert(!in->in(AddPNode::Address)->is_top(), "no raw memory access");
         in = in->in(AddPNode::Address);
         continue;
-      } else if (in->is_Con() && !ShenandoahBarriersForConst) {
+      } else if (in->is_Con()) {
         if (trace) {tty->print("Found constant"); in->dump();}
       } else if (in->is_ShenandoahBarrier()) {
         if (t == ShenandoahOopStore) {
@@ -1136,7 +1136,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
 
         bool mark_inputs = false;
         if (in1->bottom_type() == TypePtr::NULL_PTR || in2->bottom_type() == TypePtr::NULL_PTR ||
-            ((in1->is_Con() || in2->is_Con()) && !ShenandoahBarriersForConst)) {
+            (in1->is_Con() || in2->is_Con())) {
           if (trace) {tty->print_cr("Comparison against a constant");}
           mark_inputs = true;
         } else if ((in1->is_CheckCastPP() && in1->in(1)->is_Proj() && in1->in(1)->in(0)->is_Allocate()) ||
@@ -1838,85 +1838,6 @@ Node* ShenandoahBarrierNode::dom_mem(Node* mem, Node* ctrl, int alias, Node*& me
     mem_ctrl = phase->ctrl_or_self(mem);
   }
   return mem;
-}
-
-const TypePtr* ShenandoahBarrierNode::fix_addp_type(const TypePtr* res, Node* base) {
-  if (UseShenandoahGC && ShenandoahBarriersForConst) {
-    // With barriers on constant oops, if a field being accessed is a
-    // static field, correct alias analysis requires that we look
-    // beyond the barriers (that hide the constant) to find the actual
-    // java class mirror constant.
-    const TypeInstPtr* ti = res->isa_instptr();
-    if (ti != NULL &&
-        ti->const_oop() == NULL &&
-        ti->klass() == ciEnv::current()->Class_klass() &&
-        ti->offset() >= (ti->klass()->as_instance_klass()->size_helper() * wordSize)) {
-      ResourceMark rm;
-      Unique_Node_List wq;
-      ciObject* const_oop = NULL;
-      wq.push(base);
-      for (uint i = 0; i < wq.size(); i++) {
-        Node *n = wq.at(i);
-        if (n->is_ShenandoahBarrier() ||
-            (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_ShenandoahReadBarrier)) {
-          Node* m = n->in(ShenandoahBarrierNode::ValueIn);
-          if (m != NULL) {
-            wq.push(m);
-          }
-        } else if (n->is_Phi()) {
-          for (uint j = 1; j < n->req(); j++) {
-            Node* m = n->in(j);
-            if (m != NULL) {
-              wq.push(m);
-            }
-          }
-        } else if (n->is_ConstraintCast() || (n->is_Mach() && n->as_Mach()->ideal_Opcode() == Op_CheckCastPP) ||
-                   n->Opcode() == Op_ShenandoahEnqueueBarrier || n->is_MachSpillCopy()) {
-          assert(n->Opcode() != Op_ShenandoahEnqueueBarrier, "");
-          Node* m = n->in(1);
-          if (m != NULL) {
-            wq.push(m);
-          }
-        } else {
-          const TypeInstPtr* tn = n->bottom_type()->isa_instptr();
-          if (tn != NULL) {
-            if (tn->const_oop() != NULL) {
-              if (const_oop == NULL) {
-                const_oop = tn->const_oop();
-              } else if (const_oop != tn->const_oop()) {
-                const_oop = NULL;
-                break;
-              }
-            } else {
-              if (n->is_Proj()) {
-                if (n->in(0)->Opcode() == Op_CallLeafNoFP) {
-                  if (!ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(n->in(0)->as_Call()->entry_point())) {
-                    const_oop = NULL;
-                    break;
-                  }
-                } else if (n->in(0)->is_MachCallLeaf()) {
-                  if (!ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(n->in(0)->as_MachCall()->entry_point())) {
-                    const_oop = NULL;
-                    break;
-                  }
-                }
-              } else {
-                fatal("2 different static fields being accessed with a single AddP");
-                const_oop = NULL;
-                break;
-              }
-            }
-          } else {
-            assert(n->bottom_type() == Type::TOP, "not an instance ptr?");
-          }
-        }
-      }
-      if (const_oop != NULL) {
-        res = ti->cast_to_const(const_oop);
-      }
-    }
-  }
-  return res;
 }
 
 static void disconnect_barrier_mem(Node* wb, PhaseIterGVN& igvn) {
@@ -3541,7 +3462,7 @@ int ShenandoahEnqueueBarrierNode::needed(Node* n) {
   if (n == NULL ||
       n->is_Allocate() ||
       n->bottom_type() == TypePtr::NULL_PTR ||
-      n->bottom_type()->make_oopptr() != NULL && n->bottom_type()->make_oopptr()->const_oop() != NULL && !ShenandoahBarriersForConst) {
+      n->bottom_type()->make_oopptr() != NULL && n->bottom_type()->make_oopptr()->const_oop() != NULL) {
     return NotNeeded;
   }
   if (n->is_Phi() ||
@@ -3557,7 +3478,7 @@ Node* ShenandoahEnqueueBarrierNode::next(Node* n) {
       return n;
     } else if (n->bottom_type() == TypePtr::NULL_PTR) {
       return n;
-    } else if (n->bottom_type()->make_oopptr() != NULL && n->bottom_type()->make_oopptr()->const_oop() != NULL && !ShenandoahBarriersForConst) {
+    } else if (n->bottom_type()->make_oopptr() != NULL && n->bottom_type()->make_oopptr()->const_oop() != NULL) {
       return n;
     } else if (n->is_ConstraintCast() ||
                n->Opcode() == Op_DecodeN ||

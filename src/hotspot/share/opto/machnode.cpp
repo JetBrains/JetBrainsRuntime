@@ -333,9 +333,6 @@ const class TypePtr *MachNode::adr_type() const {
   Node *base = get_base_and_disp(offset, adr_type);
 
   if( adr_type != TYPE_PTR_SENTINAL ) {
-#if INCLUDE_SHENANDOAHGC
-    adr_type = ShenandoahBarrierNode::fix_addp_type(adr_type, base);
-#endif
     return adr_type; // get_base_and_disp has the answer
   }
 
@@ -388,11 +385,7 @@ const class TypePtr *MachNode::adr_type() const {
   }
   assert(tp->base() != Type::AnyPtr, "not a bare pointer");
 
-  const TypePtr* r = tp->add_offset(offset);
-#if INCLUDE_SHENANDOAHGC
-  r = ShenandoahBarrierNode::fix_addp_type(r, base);
-#endif
-  return r;
+  return tp->add_offset(offset);
 }
 
 

@@ -203,10 +203,6 @@
   experimental(bool, ShenandoahConcurrentScanCodeRoots, true,               \
           "Scan code roots concurrently, instead of during a pause")        \
                                                                             \
-  experimental(bool, ShenandoahConcurrentEvacCodeRoots, false,              \
-          "Evacuate code roots concurrently, instead of during a pause. "   \
-          "This requires ShenandoahBarriersForConst to be enabled.")        \
-                                                                            \
   experimental(uintx, ShenandoahCodeRootsStyle, 2,                          \
           "Use this style to scan code cache:"                              \
           " 0 - sequential iterator;"                                       \
@@ -226,12 +222,6 @@
                                                                             \
   experimental(bool, ShenandoahUncommitWithIdle, false,                     \
            "Uncommit memory using MADV_DONTNEED.")                          \
-                                                                            \
-  experimental(bool, ShenandoahBarriersForConst, false,                     \
-          "Emit barriers for constant oops in generated code, improving "   \
-          "throughput. If no barriers are emitted, GC will need to "        \
-          "pre-evacuate code roots before returning from STW, adding to "   \
-          "pause time.")                                                    \
                                                                             \
   experimental(bool, ShenandoahDontIncreaseWBFreq, true,                    \
           "Common 2 WriteBarriers or WriteBarrier and a ReadBarrier only "  \

@@ -660,11 +660,7 @@ const Type *AddPNode::bottom_type() const {
     txoffset = tx->get_con();
   }
 
-  const TypePtr* r = tp->add_offset(txoffset);
-#if INCLUDE_SHENANDOAHGC
-  r = ShenandoahBarrierNode::fix_addp_type(r, in(Base));
-#endif
-  return r;
+  return tp->add_offset(txoffset);
 }
 
 //------------------------------Value------------------------------------------
@@ -685,11 +681,7 @@ const Type* AddPNode::Value(PhaseGVN* phase) const {
     p2offset = p2->get_con();
   }
 
-  const TypePtr* r = p1->add_offset(p2offset);
-#if INCLUDE_SHENANDOAHGC
-  r = ShenandoahBarrierNode::fix_addp_type(r, in(Base));
-#endif
-  return r;
+  return p1->add_offset(p2offset);
 }
 
 //------------------------Ideal_base_and_offset--------------------------------
