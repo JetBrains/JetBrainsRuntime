@@ -51,14 +51,14 @@ import java.util.Random;
 
 import compiler.whitebox.CompilerWhiteBoxTest;
 import sun.hotspot.code.Compiler;
+import jtreg.SkippedException;
 
 public class TestBase64 {
     static boolean checkOutput = Boolean.getBoolean("checkOutput");
 
     public static void main(String[] args) throws Exception {
         if (!Compiler.isIntrinsicAvailable(CompilerWhiteBoxTest.COMP_LEVEL_FULL_OPTIMIZATION, "java.util.Base64$Encoder", "encodeBlock", byte[].class, int.class, int.class, byte[].class, int.class, boolean.class)) {
-            System.out.println("Base64 intrinsic is not available");
-            return;
+            throw new SkippedException("Base64 intrinsic is not available");
         }
         int iters = (args.length > 0 ? Integer.valueOf(args[0]) : 100000);
         System.out.println(iters + " iterations");
