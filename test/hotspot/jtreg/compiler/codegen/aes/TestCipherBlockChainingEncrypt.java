@@ -47,6 +47,7 @@ import javax.crypto.spec.PBEKeySpec;
 
 import compiler.whitebox.CompilerWhiteBoxTest;
 import sun.hotspot.code.Compiler;
+import jtreg.SkippedException;
 
 public class TestCipherBlockChainingEncrypt {
     private static String algorithm = "PBEWithHmacSHA1AndAES_256";
@@ -62,8 +63,7 @@ public class TestCipherBlockChainingEncrypt {
 
     public static void main(String[] args) throws Exception {
         if (!Compiler.isIntrinsicAvailable(CompilerWhiteBoxTest.COMP_LEVEL_FULL_OPTIMIZATION, "com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", byte[].class, int.class, int.class, byte[].class, int.class)) {
-            System.out.println("Base64 intrinsic is not available");
-            return;
+            throw new SkippedException("Base64 intrinsic is not available");
         }
         for(int i=0; i<2_000; i++) {
           if (!(new TestCipherBlockChainingEncrypt().test(args))) {
