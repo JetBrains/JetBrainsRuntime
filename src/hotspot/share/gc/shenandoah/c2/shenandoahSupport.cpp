@@ -2823,15 +2823,11 @@ void ShenandoahWriteBarrierNode::evacuation_in_progress(Node* c, Node* val, Node
 
   IdealLoopTree *loop = phase->get_loop(c);
 
-  Node* rbtrue;
-  if (ShenandoahWriteBarrierRB) {
-    rbtrue = new ShenandoahReadBarrierNode(c, wb_mem, val);
-    phase->register_new_node(rbtrue, c);
-  } else {
-    rbtrue = val;
-  }
+  // Important to perform resolve here, before doing cset check, because that would
+  // capture forwarded objects we do not need to evacuate again.
+  Node* rbtrue = new ShenandoahReadBarrierNode(c, wb_mem, val);
+  phase->register_new_node(rbtrue, c);
 
-  Node* in_cset_fast_test_failure = NULL;
   in_cset_fast_test(c, rbtrue, raw_mem, wb_mem, region, val_phi, mem_phi, raw_mem_phi, phase);
 
   // The slow path stub consumes and produces raw memory in addition
