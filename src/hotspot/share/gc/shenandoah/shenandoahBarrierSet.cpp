@@ -122,22 +122,18 @@ void ShenandoahBarrierSet::write_ref_array(HeapWord* start, size_t count) {
   if (!need_update_refs_barrier()) return;
 
   if (_heap->is_concurrent_traversal_in_progress()) {
-    if (count > ShenandoahEnqueueArrayCopyThreshold) {
-      _heap->traversal_gc()->push_arraycopy(start, count);
-    } else {
-      ShenandoahEvacOOMScope oom_evac_scope;
-      if (UseShenandoahMatrix) {
-        if (UseCompressedOops) {
-          write_ref_array_loop<narrowOop, /* matrix = */ true,  /* wb = */ true>(start, count);
-        } else {
-          write_ref_array_loop<oop,       /* matrix = */ true,  /* wb = */ true>(start, count);
-        }
+    ShenandoahEvacOOMScope oom_evac_scope;
+    if (UseShenandoahMatrix) {
+      if (UseCompressedOops) {
+        write_ref_array_loop<narrowOop, /* matrix = */ true,  /* wb = */ true>(start, count);
       } else {
-        if (UseCompressedOops) {
-          write_ref_array_loop<narrowOop, /* matrix = */ false, /* wb = */ true>(start, count);
-        } else {
-          write_ref_array_loop<oop,       /* matrix = */ false, /* wb = */ true>(start, count);
-        }
+        write_ref_array_loop<oop,       /* matrix = */ true,  /* wb = */ true>(start, count);
+      }
+    } else {
+      if (UseCompressedOops) {
+        write_ref_array_loop<narrowOop, /* matrix = */ false, /* wb = */ true>(start, count);
+      } else {
+        write_ref_array_loop<oop,       /* matrix = */ false, /* wb = */ true>(start, count);
       }
     }
   } else {
@@ -230,17 +226,13 @@ void ShenandoahBarrierSet::write_region(MemRegion mr) {
   oop obj = oop(mr.start());
   assert(oopDesc::is_oop(obj), "must be an oop");
   if (_heap->is_concurrent_traversal_in_progress()) {
-    if ((size_t) obj->size() > ShenandoahEnqueueArrayCopyThreshold) {
-      _heap->traversal_gc()->push_arraycopy(mr.start(), 0);
+    ShenandoahEvacOOMScope oom_evac_scope;
+    if (UseShenandoahMatrix) {
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ true,  /* wb = */ true> cl;
+      obj->oop_iterate(&cl);
     } else {
-      ShenandoahEvacOOMScope oom_evac_scope;
-      if (UseShenandoahMatrix) {
-        ShenandoahUpdateRefsForOopClosure</* matrix = */ true,  /* wb = */ true> cl;
-        obj->oop_iterate(&cl);
-      } else {
-        ShenandoahUpdateRefsForOopClosure</* matrix = */ false, /* wb = */ true> cl;
-        obj->oop_iterate(&cl);
-      }
+      ShenandoahUpdateRefsForOopClosure</* matrix = */ false, /* wb = */ true> cl;
+      obj->oop_iterate(&cl);
     }
   } else {
     if (UseShenandoahMatrix) {

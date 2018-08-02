@@ -417,10 +417,6 @@
   diagnostic(bool, ShenandoahRecycleClearsBitmap, false,                    \
           "Recycling a region also clears the marking bitmap")              \
                                                                             \
-  diagnostic(size_t, ShenandoahEnqueueArrayCopyThreshold, 32,               \
-          "Arrays and objects are enqueued instead of processed in-place"   \
-          "when their size exceed this threshold")                          \
-                                                                            \
   diagnostic(bool, ShenandoahTerminationTrace, false,                       \
           "Tracing task termination timings")                               \
                                                                             \
