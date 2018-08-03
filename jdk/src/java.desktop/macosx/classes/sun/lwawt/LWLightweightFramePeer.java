@@ -60,7 +60,7 @@ public class LWLightweightFramePeer extends LWWindowPeer {
     }
 
     @Override
-    public boolean requestWindowFocus(FocusEvent.Cause cause) {
+    public boolean requestWindowFocus(FocusEvent.Cause cause, Runnable r,  Runnable r1) {
         if (!focusAllowedFor()) {
             return false;
         }
@@ -71,7 +71,7 @@ public class LWLightweightFramePeer extends LWWindowPeer {
         Window opposite = LWKeyboardFocusManagerPeer.getInstance().
             getCurrentFocusedWindow();
 
-        changeFocusedWindow(true, opposite);
+        changeFocusedWindow(true, opposite, () -> {});
 
         return true;
     }

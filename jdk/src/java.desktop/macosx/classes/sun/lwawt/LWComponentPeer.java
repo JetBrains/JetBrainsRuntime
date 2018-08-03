@@ -957,24 +957,17 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                     }
                 }
 
-                boolean res = parentPeer.requestWindowFocus(cause);
-                // If parent window can be made focused and has been made focused (synchronously)
-                // then we can proceed with children, otherwise we retreat
-                if (!res || !parentWindow.isFocused()) {
-                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
-                        focusLog.fine("request rejected, res= " + res + ", parentWindow.isFocused()=" +
-                                      parentWindow.isFocused());
-                    }
+                return parentPeer.requestWindowFocus(cause, () -> {
                     LWKeyboardFocusManagerPeer.removeLastFocusRequest(getTarget());
-                    return false;
-                }
+                }, () -> {
+                    KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
 
-                KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
-                Component focusOwner = kfmPeer.getCurrentFocusOwner();
-                return LWKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
+                    Component focusOwner = kfmPeer.getCurrentFocusOwner();
+                    LWKeyboardFocusManagerPeer.deliverFocus(lightweightChild,
                         getTarget(), temporary,
                         focusedWindowChangeAllowed,
                         time, cause, focusOwner);
+                });
 
             case LWKeyboardFocusManagerPeer.SNFH_SUCCESS_HANDLED:
                 return true;
