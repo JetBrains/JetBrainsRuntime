@@ -240,7 +240,7 @@ void ShenandoahBarrierSetAssembler::read_barrier(MacroAssembler* masm, Register 
 }
 
 void ShenandoahBarrierSetAssembler::read_barrier_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier || ShenandoahCASBarrier), "should be enabled");
   Label is_null;
   __ cbz(dst, is_null);
   read_barrier_not_null_impl(masm, dst);
@@ -255,7 +255,7 @@ void ShenandoahBarrierSetAssembler::read_barrier_not_null(MacroAssembler* masm, 
 
 
 void ShenandoahBarrierSetAssembler::read_barrier_not_null_impl(MacroAssembler* masm, Register dst) {
-  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier), "should be enabled");
+  assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier || ShenandoahCASBarrier), "should be enabled");
   __ ldr(dst, Address(dst, BrooksPointer::byte_offset()));
 }
 
@@ -528,8 +528,8 @@ void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, Register a
     __ decode_heap_oop(result, result);
     __ decode_heap_oop(tmp3, tmp3);
   }
-  __ resolve_for_read(0, result);
-  __ resolve_for_read(0, tmp3);
+  read_barrier_impl(masm, result);
+  read_barrier_impl(masm, tmp3);
   __ cmp(result, tmp3);
   // Retry with expected now being the value we just loaded from addr.
   __ br(Assembler::EQ, retry);
