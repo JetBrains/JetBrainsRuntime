@@ -141,9 +141,11 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env, jint di
     h = CGDisplayModeGetHeight(mode);
     w = CGDisplayModeGetWidth(mode);
     CFRelease(currentBPP);
+    uint32_t flags = CGDisplayModeGetIOFlags(mode);
+    BOOL isDisplayModeDefault = (flags & kDisplayModeDefaultFlag) ? YES : NO;
     static JNF_CLASS_CACHE(jc_DisplayMode, "java/awt/DisplayMode");
-    static JNF_CTOR_CACHE(jc_DisplayMode_ctor, jc_DisplayMode, "(IIII)V");
-    ret = JNFNewObject(env, jc_DisplayMode_ctor, w, h, bpp, refrate);
+    static JNF_CTOR_CACHE(jc_DisplayMode_ctor, jc_DisplayMode, "(IIIIZ)V");
+    ret = JNFNewObject(env, jc_DisplayMode_ctor, w, h, bpp, refrate, (jboolean)isDisplayModeDefault);
     JNF_COCOA_EXIT(env);
     return ret;
 }
