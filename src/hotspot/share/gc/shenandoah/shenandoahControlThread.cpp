@@ -223,7 +223,7 @@ void ShenandoahControlThread::run_service() {
 
     double current = os::elapsedTime();
 
-    if (ShenandoahUncommit && (current - last_shrink_time > shrink_period)) {
+    if (ShenandoahUncommit && (explicit_gc_requested || (current - last_shrink_time > shrink_period))) {
       // Try to uncommit enough stale regions. Explicit GC tries to uncommit everything.
       // Regular paths uncommit only occasionally.
       double shrink_before = explicit_gc_requested ?
