@@ -33,6 +33,7 @@ import java.util.StringTokenizer;
 import sun.awt.AWTAccessor;
 import sun.font.FontConfigManager;
 import sun.font.FontUtilities;
+import sun.java2d.SunGraphicsEnvironment;
 
 /**
  * @author Shannon Hickey
@@ -170,7 +171,7 @@ class PangoFonts {
         }
         if (value instanceof Integer) {
             dpi = ((Integer)value).intValue() / 1024;
-            if (dpi == -1) {
+            if (dpi == -1 || SunGraphicsEnvironment.isUIScaleEnabled()) {
               dpi = 96;
             }
             if (dpi < 50) { /* 50 dpi is the minimum value gnome allows */
