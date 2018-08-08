@@ -958,6 +958,10 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
                 }
 
                 return parentPeer.requestWindowFocus(cause, () -> {
+                    if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
+                        focusLog.fine("request rejected, parentWindow.isFocused() = " +
+                                parentWindow.isFocused());
+                    }
                     LWKeyboardFocusManagerPeer.removeLastFocusRequest(getTarget());
                 }, () -> {
                     KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
