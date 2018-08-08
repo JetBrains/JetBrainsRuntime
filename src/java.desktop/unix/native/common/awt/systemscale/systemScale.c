@@ -45,6 +45,7 @@ typedef void* g_variant_get_child_value(void *, unsigned long);
 typedef void  g_variant_unref(void *);
 typedef char*  g_variant_get_string(void *, unsigned long *);
 typedef int  g_variant_get_int32(void *);
+typedef unsigned g_variant_get_uint32(void *);
 typedef double  g_variant_get_double(void *);
 
 static g_settings_schema_has_key* fp_g_settings_schema_has_key;
@@ -55,6 +56,7 @@ static g_variant_n_children* fp_g_variant_n_children;
 static g_variant_get_child_value* fp_g_variant_get_child_value;
 static g_variant_get_string* fp_g_variant_get_string;
 static g_variant_get_int32* fp_g_variant_get_int32;
+static g_variant_get_uint32* fp_g_variant_get_uint32;
 static g_variant_get_double* fp_g_variant_get_double;
 static g_variant_unref* fp_g_variant_unref;
 
@@ -96,6 +98,9 @@ static void* get_schema_value(char *name, char *key) {
         CHECK_NULL_RETURN(fp_g_variant_get_int32 =
                           (g_variant_get_int32*)
                           dlsym(lib_handle, "g_variant_get_int32"), NULL);
+        CHECK_NULL_RETURN(fp_g_variant_get_uint32 =
+                          (g_variant_get_uint32*)
+                          dlsym(lib_handle, "g_variant_get_uint32"), NULL);
         CHECK_NULL_RETURN(fp_g_variant_get_double =
                           (g_variant_get_double*)
                           dlsym(lib_handle, "g_variant_get_double"), NULL);
@@ -172,6 +177,15 @@ static double getDesktopScale(char *output_name) {
                 result *= fp_g_variant_get_double(value);
                 fp_g_variant_unref(value);
             }
+        }
+    }
+
+    if (result <= 0) {
+        void *value = get_schema_value("org.gnome.desktop.interface",
+                                                         "scaling-factor");
+        if (value && fp_g_variant_is_of_type(value, "u")) {
+            result = fp_g_variant_get_uint32(value);
+            fp_g_variant_unref(value);
         }
     }
 
