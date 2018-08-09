@@ -142,7 +142,8 @@ ifeq ($(OPENJDK_TARGET_OS), aix)
 endif
 
 ifeq ($(OPENJDK_TARGET_OS), windows)
-  LIBAWT_DIRS += $(JDK_TOPDIR)/src/java.desktop/share/native/common/awt/utility
+  LIBAWT_DIRS += $(JDK_TOPDIR)/src/java.desktop/share/native/common/awt/utility \
+                 $(JDK_TOPDIR)/src/java.base/$(OPENJDK_TARGET_OS_TYPE)/native/launcher
 endif
 
 ifneq ($(filter $(OPENJDK_TARGET_OS), solaris linux macosx aix), )
