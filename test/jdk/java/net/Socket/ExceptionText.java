@@ -25,18 +25,46 @@
  * @test
  * @library /test/lib
  * @build jdk.test.lib.Utils
- * @bug 8204233
+ * @bug 8204233 8207846 8208691
  * @summary Add configurable option for enhanced socket IOException messages
- * @run main/othervm ExceptionText
- * @run main/othervm -Djdk.net.includeInExceptions= ExceptionText
- * @run main/othervm -Djdk.net.includeInExceptions=hostInfo ExceptionText
- * @run main/othervm -Djdk.net.includeInExceptions=somethingElse ExceptionText
+ * @run main/othervm
+ *       ExceptionText
+ * @run main/othervm
+ *       ExceptionText
+ *       WITHOUT_Enhanced_Text
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=
+ *       ExceptionText
+ *       WITHOUT_Enhanced_Text
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=somethingElse
+ *       ExceptionText
+ *       WITHOUT_Enhanced_Text
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=blah,blah,blah,
+ *       ExceptionText
+ *       WITHOUT_Enhanced_Text
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=hostInfo
+ *       ExceptionText
+ *       expectEnhancedText
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=foo,hostinfo,bar
+ *       ExceptionText
+ *       expectEnhancedText
+ * @run main/othervm
+ *       -Djdk.includeInExceptions=",HOSTINFO,"
+ *       ExceptionText
+ *       expectEnhancedText
  */
 
-import java.net.*;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.ClosedChannelException;
-import java.nio.channels.*;
+import java.nio.channels.SocketChannel;
+import java.security.Security;
 import java.util.concurrent.ExecutionException;
 import jdk.test.lib.Utils;
 
@@ -44,21 +72,33 @@ public class ExceptionText {
 
     enum TestTarget {SOCKET, CHANNEL, ASYNC_CHANNEL};
 
-    static boolean propEnabled() {
-        String val = System.getProperty("jdk.net.includeInExceptions");
-        if ("hostinfo".equalsIgnoreCase(val))
-            return true;
-        return false;
-    }
-
     public static void main(String args[]) throws Exception {
-        boolean prop = propEnabled();
-        test(prop);
+        if (args.length == 0) {
+            testSecProp();
+        } else {
+            String passOrFail = args[0];
+            boolean expectEnhancedText;
+            if (passOrFail.equals("expectEnhancedText")) {
+                expectEnhancedText = true;
+            } else {
+                expectEnhancedText = false;
+            }
+            test(expectEnhancedText);
+        }
     }
 
     static final InetSocketAddress dest  = Utils.refusingEndpoint();
     static final String PORT = ":" + Integer.toString(dest.getPort());
     static final String HOST = dest.getHostString();
+
+    static void testSecProp() {
+        String incInExc = Security.getProperty("jdk.includeInExceptions");
+        if (incInExc != null) {
+            throw new RuntimeException("Test failed: default value of " +
+                "jdk.includeInExceptions security property is not null: " +
+                incInExc);
+        }
+    }
 
     static void test(boolean withProperty) {
         // Socket

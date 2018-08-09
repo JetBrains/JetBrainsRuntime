@@ -297,7 +297,7 @@ class Http2Connection  {
         this.framesDecoder = new FramesDecoder(this::processFrame,
                 clientSettings.getParameter(SettingsFrame.MAX_FRAME_SIZE));
         // serverSettings will be updated by server
-        this.serverSettings = SettingsFrame.getDefaultSettings();
+        this.serverSettings = SettingsFrame.defaultRFCSettings();
         this.hpackOut = new Encoder(serverSettings.getParameter(HEADER_TABLE_SIZE));
         this.hpackIn = new Decoder(clientSettings.getParameter(HEADER_TABLE_SIZE));
         if (debugHpack.on()) {
@@ -353,7 +353,8 @@ class Http2Connection  {
 
     // Requires TLS handshake. So, is really async
     static CompletableFuture<Http2Connection> createAsync(HttpRequestImpl request,
-                                                          Http2ClientImpl h2client) {
+                                                          Http2ClientImpl h2client,
+                                                          Exchange<?> exchange) {
         assert request.secure();
         AbstractAsyncSSLConnection connection = (AbstractAsyncSSLConnection)
         HttpConnection.getConnection(request.getAddress(),
@@ -361,7 +362,12 @@ class Http2Connection  {
                                      request,
                                      HttpClient.Version.HTTP_2);
 
-        return connection.connectAsync()
+        // Expose the underlying connection to the exchange's aborter so it can
+        // be closed if a timeout occurs.
+        exchange.connectionAborter.connection(connection);
+
+        return connection.connectAsync(exchange)
+                  .thenCompose(unused -> connection.finishConnect())
                   .thenCompose(unused -> checkSSLConfig(connection))
                   .thenCompose(notused-> {
                       CompletableFuture<Http2Connection> cf = new MinimalFuture<>();
@@ -430,12 +436,12 @@ class Http2Connection  {
 
         assert numReservedClientStreams >= 0;
         assert numReservedServerStreams >= 0;
-        if (clientInitiated && numReservedClientStreams >= getMaxConcurrentClientStreams()) {
+        if (clientInitiated &&numReservedClientStreams >= maxConcurrentClientInitiatedStreams()) {
             throw new IOException("too many concurrent streams");
         } else if (clientInitiated) {
             numReservedClientStreams++;
         }
-        if (!clientInitiated && numReservedServerStreams >= getMaxConcurrentServerStreams()) {
+        if (!clientInitiated && numReservedServerStreams >= maxConcurrentServerInitiatedStreams()) {
             return false;
         } else if (!clientInitiated) {
             numReservedServerStreams++;
@@ -580,11 +586,11 @@ class Http2Connection  {
         return serverSettings.getParameter(INITIAL_WINDOW_SIZE);
     }
 
-    final int getMaxConcurrentClientStreams() {
+    final int maxConcurrentClientInitiatedStreams() {
         return serverSettings.getParameter(MAX_CONCURRENT_STREAMS);
     }
 
-    final int getMaxConcurrentServerStreams() {
+    final int maxConcurrentServerInitiatedStreams() {
         return clientSettings.getParameter(MAX_CONCURRENT_STREAMS);
     }
 
