@@ -40,8 +40,8 @@ class ZBarrierSetC2;
 
 ZBarrierSet::ZBarrierSet() :
     BarrierSet(make_barrier_set_assembler<ZBarrierSetAssembler>(),
-               make_barrier_set_c1<ZBarrierSetC1>(),
-               make_barrier_set_c2<ZBarrierSetC2>(),
+               COMPILER1_PRESENT( make_barrier_set_c1<ZBarrierSetC1>() ) NOT_COMPILER1(NULL),
+               COMPILER2_PRESENT( make_barrier_set_c2<ZBarrierSetC2>() ) NOT_COMPILER2(NULL),
                BarrierSet::FakeRtti(BarrierSet::ZBarrierSet)) {}
 
 ZBarrierSetAssembler* ZBarrierSet::assembler() {
