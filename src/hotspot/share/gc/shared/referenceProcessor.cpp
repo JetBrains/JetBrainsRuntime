@@ -1380,7 +1380,7 @@ RefProcMTDegreeAdjuster::RefProcMTDegreeAdjuster(ReferenceProcessor* rp,
 
   uint workers = ergo_proc_thread_count(ref_count, _rp->num_queues(), phase);
 
-  _rp->set_mt_processing(workers > 1);
+  _rp->set_mt_processing(workers > 1 || UseShenandoahGC);
   _rp->set_active_mt_degree(workers);
 }
 

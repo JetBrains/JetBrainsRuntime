@@ -645,11 +645,19 @@ public:
     if (UseShenandoahOWST) {
       ShenandoahTaskTerminator terminator(nworkers, cm->task_queues());
       ShenandoahRefProcTaskProxy proc_task_proxy(task, &terminator);
-      _workers->run_task(&proc_task_proxy);
+      if (nworkers == 1) {
+        proc_task_proxy.work(0);
+      } else {
+        _workers->run_task(&proc_task_proxy);
+      }
     } else {
       ParallelTaskTerminator terminator(nworkers, cm->task_queues());
       ShenandoahRefProcTaskProxy proc_task_proxy(task, &terminator);
-      _workers->run_task(&proc_task_proxy);
+      if (nworkers == 1) {
+        proc_task_proxy.work(0);
+      } else {
+        _workers->run_task(&proc_task_proxy);
+      }
     }
   }
 };
@@ -709,14 +717,6 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
 
   assert(task_queues()->is_empty(), "Should be empty");
 
-  // complete_gc and keep_alive closures instantiated here are only needed for
-  // single-threaded path in RP. They share the queue 0 for tracking work, which
-  // simplifies implementation. Since RP may decide to call complete_gc several
-  // times, we need to be able to reuse the terminator.
-  uint serial_worker_id = 0;
-  ParallelTaskTerminator terminator(1, task_queues());
-  ShenandoahCMDrainMarkingStackClosure complete_gc(serial_worker_id, &terminator, /* reset_terminator = */ true);
-
   ShenandoahRefProcTaskExecutor executor(workers);
 
   ReferenceProcessorPhaseTimes pt(sh->gc_timer(), rp->num_queues());
@@ -725,26 +725,31 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
     ShenandoahGCPhase phase(phase_process);
     ShenandoahTerminationTracker phase_term(phase_process_termination);
 
-    // Prepare for single-threaded mode
+    // We don't use single-threaded closures, because we distinguish this
+    // in the executor. Assert that we should never actually get there.
+    ShouldNotReachHereBoolObjectClosure should_not_reach_here_is_alive;
+    ShouldNotReachHereOopClosure should_not_reach_here_keep_alive;
+    ShouldNotReachHereVoidClosure should_not_reach_here_complete;
+    rp->process_discovered_references(&should_not_reach_here_is_alive,
+                                      &should_not_reach_here_keep_alive,
+                                      &should_not_reach_here_complete,
+                                      &executor, &pt);
+
+    // Closures instantiated here are only needed for the single-threaded path in WeakProcessor.
+    // They share the queue 0 for tracking work, which simplifies implementation.
+    // TODO: As soon as WeakProcessor becomes MT-capable, these closures would become
+    // unnecessary, and could be removed.
+    uint serial_worker_id = 0;
     ShenandoahPushWorkerQueuesScope scope(workers, task_queues(), 1, /* do_check = */ false);
-
+    ShenandoahForwardedIsAliveClosure is_alive;
     if (sh->has_forwarded_objects()) {
-      ShenandoahForwardedIsAliveClosure is_alive;
       ShenandoahCMKeepAliveUpdateClosure keep_alive(get_queue(serial_worker_id));
-      rp->process_discovered_references(&is_alive, &keep_alive,
-                                        &complete_gc, &executor,
-                                        &pt);
-
       WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
     } else {
-      ShenandoahIsAliveClosure is_alive;
       ShenandoahCMKeepAliveClosure keep_alive(get_queue(serial_worker_id));
-      rp->process_discovered_references(&is_alive, &keep_alive,
-                                        &complete_gc, &executor,
-                                        &pt);
-
       WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
     }
+
     pt.print_all_references();
 
     assert(task_queues()->is_empty(), "Should be empty");
