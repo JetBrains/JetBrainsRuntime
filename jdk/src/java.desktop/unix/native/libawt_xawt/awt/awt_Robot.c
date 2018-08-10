@@ -395,9 +395,10 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
         if (pixbuf) {
             int nchan = (*fp_gdk_pixbuf_get_n_channels)(pixbuf);
             int stride = (*fp_gdk_pixbuf_get_rowstride)(pixbuf);
+            int pbwidth = (*fp_gdk_pixbuf_get_width)(pixbuf);
+            int pbheight = (*fp_gdk_pixbuf_get_height)(pixbuf);
 
-            if ((*fp_gdk_pixbuf_get_width)(pixbuf) == width
-                    && (*fp_gdk_pixbuf_get_height)(pixbuf) == height
+            if (pbwidth >= width && pbheight >= height
                     && (*fp_gdk_pixbuf_get_bits_per_sample)(pixbuf) == 8
                     && (*fp_gdk_pixbuf_get_colorspace)(pixbuf) == GDK_COLORSPACE_RGB
                     && nchan >= 3
@@ -412,9 +413,12 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
                     return;
                 }
 
+                int sx = pbwidth / width;
+                int sy = pbheight / height;
+
                 for (_y = 0; _y < height; _y++) {
                     for (_x = 0; _x < width; _x++) {
-                        p = pix + _y * stride + _x * nchan;
+                        p = pix + _y * stride * sy + _x * nchan * sx;
 
                         index = (_y + dy) * jwidth + (_x + dx);
                         ary[index] = 0xff000000
