@@ -96,6 +96,8 @@ public:
 
   virtual oop write_barrier(oop obj);
 
+  oop write_barrier_mutator(oop obj);
+
   virtual oop storeval_barrier(oop obj);
 
   virtual void keep_alive_barrier(oop obj);

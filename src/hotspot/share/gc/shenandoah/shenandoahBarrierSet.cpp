@@ -268,6 +268,19 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
   return eq;
 }
 
+oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
+  assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
+  assert(_heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL), "evac should be in progress");
+  assert(_heap->in_collection_set(obj), "should be in collection set");
+
+  oop fwd = resolve_forwarded_not_null(obj);
+  if (oopDesc::unsafe_equals(obj, fwd)) {
+    ShenandoahEvacOOMScope oom_evac_scope;
+    return _heap->evacuate_object(obj, Thread::current());
+  }
+  return fwd;
+}
+
 oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
   assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
   if (!CompressedOops::is_null(obj)) {
@@ -276,8 +289,13 @@ oop ShenandoahBarrierSet::write_barrier_impl(oop obj) {
     if (evac_in_progress &&
         _heap->in_collection_set(obj) &&
         oopDesc::unsafe_equals(obj, fwd)) {
-      ShenandoahEvacOOMScope oom_evac_scope;
-      return _heap->evacuate_object(obj, Thread::current());
+      Thread *t = Thread::current();
+      if (t->is_Worker_thread()) {
+        return _heap->evacuate_object(obj, t);
+      } else {
+        ShenandoahEvacOOMScope oom_evac_scope;
+        return _heap->evacuate_object(obj, t);
+      }
     } else {
       return fwd;
     }

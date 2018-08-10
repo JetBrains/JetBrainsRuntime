@@ -55,7 +55,7 @@ JRT_LEAF(void, ShenandoahRuntime::write_ref_field_pre_entry(oopDesc* orig, JavaT
 JRT_END
 
 JRT_LEAF(oopDesc*, ShenandoahRuntime::write_barrier_JRT(oopDesc* src))
-  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier(src);
+  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier_mutator(src);
   return (oopDesc*) result;
 JRT_END
 

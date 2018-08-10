@@ -259,6 +259,8 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
     return ShenandoahBarrierSet::resolve_forwarded(p);
   }
 
+  assert(ShenandoahThreadLocalData::is_evac_allowed(thread), "must be enclosed in oom-evac scope");
+
   size_t size_no_fwdptr = (size_t) p->size();
   size_t size_with_fwdptr = size_no_fwdptr + BrooksPointer::word_size();
 
@@ -266,10 +268,8 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 
   bool alloc_from_gclab = true;
   HeapWord* filler = NULL;
+
 #ifdef ASSERT
-
-  assert(ShenandoahThreadLocalData::is_evac_allowed(thread), "must be enclosed in ShenandoahOOMDuringEvacHandler");
-
   if (ShenandoahOOMDuringEvacALot &&
       (os::random() & 1) == 0) { // Simulate OOM every ~2nd slow-path call
         filler = NULL;
