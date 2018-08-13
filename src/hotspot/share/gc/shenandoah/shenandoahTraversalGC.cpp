@@ -1191,6 +1191,6 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
 
     pt.print_all_references();
 
-    assert(!_heap->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
+    assert(task_queues()->is_empty() || _heap->cancelled_gc(), "Should be empty");
   }
 }
