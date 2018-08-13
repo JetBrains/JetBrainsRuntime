@@ -183,7 +183,6 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
     case Op_LoadD_unaligned:
     case Op_LoadL_unaligned:
     case Op_ShenandoahReadBarrier:
-    case Op_ShenandoahWriteBarrier:
       assert(mach->in(2) == val, "should be address");
       break;
     case Op_StoreB:
@@ -414,7 +413,7 @@ void PhaseCFG::implicit_null_check(Block* block, Node *proj, Node *val, int allo
   // Should be DU safe because no edge updates.
   for (DUIterator_Fast jmax, j = best->fast_outs(jmax); j < jmax; j++) {
     Node* n = best->fast_out(j);
-    if( n->is_MachProj() || n->Opcode() == Op_ShenandoahWBMemProj) {
+    if( n->is_MachProj() ) {
       get_block_for_node(n)->find_remove(n);
       block->add_inst(n);
       map_node_to_block(n, block);

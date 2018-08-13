@@ -3564,10 +3564,6 @@ const TypeOopPtr *TypeInstPtr::cast_to_nonconst() const {
   return make(NotNull, klass(), _klass_is_exact, NULL, _offset, _instance_id, _speculative, _inline_depth);
 }
 
-const TypeInstPtr *TypeInstPtr::cast_to_const(ciObject* const_oop) const {
-  return make(Constant, klass(), _klass_is_exact, const_oop, _offset, _instance_id, _speculative, _inline_depth);
-}
-
 //------------------------------xmeet_unloaded---------------------------------
 // Compute the MEET of two InstPtrs when at least one is unloaded.
 // Assume classes are different since called after check for same name/class-loader

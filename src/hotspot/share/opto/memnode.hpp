@@ -113,12 +113,6 @@ public:
 #endif
   }
 
-#ifdef ASSERT
-  void set_raw_adr_type(const TypePtr *t) {
-    _adr_type = t;
-  }
-#endif
-
   // Map a load or store opcode to its corresponding store opcode.
   // (Return -1 if unknown.)
   virtual int store_Opcode() const { return -1; }
@@ -833,9 +827,6 @@ public:
   virtual const Type *bottom_type() const { return _type; }
   virtual uint ideal_reg() const;
   virtual const class TypePtr *adr_type() const { return _adr_type; }  // returns bottom_type of address
-  void set_adr_type(const TypePtr *t) {
-    _adr_type = t;
-  }
 
   bool result_not_used() const;
 };

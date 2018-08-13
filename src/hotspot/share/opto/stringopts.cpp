@@ -1559,10 +1559,6 @@ Node* PhaseStringOpts::copy_string(GraphKit& kit, Node* str, Node* dst_array, No
   IdealKit ideal(&kit, true, true);
   IdealVariable count(ideal); __ declarations_done();
 
-#if INCLUDE_SHENANDOAHGC
-  assert(!(ShenandoahBarrierNode::skip_through_barrier(str)->is_Con() && !str->is_Con()), "barrier prevents optimization");
-#endif
-
   if (str->is_Con()) {
     // Constant source string
     ciTypeArray* src_array_type = get_constant_value(kit, str);
@@ -1839,10 +1835,6 @@ void PhaseStringOpts::replace_string_concat(StringConcat* sc) {
           count = kit.load_String_length(NULL, arg);
           arg_coder = kit.load_String_coder(NULL, arg);
         }
-
-#if INCLUDE_SHENANDOAHGC
-        assert(!(ShenandoahBarrierNode::skip_through_barrier(arg)->is_Con() && !arg->is_Con()), "barrier prevents optimization");
-#endif
 
         if (arg->is_Con()) {
           // Constant string. Get constant coder and length.

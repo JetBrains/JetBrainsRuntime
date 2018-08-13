@@ -738,7 +738,7 @@ void PhaseChaitin::add_input_to_liveout(Block* b, Node* n, IndexSet* liveout, do
   JVMState* jvms = n->jvms();
   uint debug_start = jvms ? jvms->debug_start() : 999999;
 
-  for (uint k = ((n->Opcode() == Op_SCMemProj || n->Opcode() == Op_ShenandoahWBMemProj) ? 0:1); k < n->req(); k++) {
+  for (uint k = ((n->Opcode() == Op_SCMemProj) ? 0:1); k < n->req(); k++) {
     Node* def = n->in(k);
     uint lid = _lrg_map.live_range_id(def);
     if (!lid) {

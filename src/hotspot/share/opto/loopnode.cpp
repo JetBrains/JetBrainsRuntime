@@ -4232,8 +4232,8 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
 #if INCLUDE_SHENANDOAHGC
     case Op_ShenandoahReadBarrier:
     case Op_ShenandoahWriteBarrier:
-#endif
     case Op_ShenandoahWBMemProj:
+#endif
     case Op_HasNegatives:
       pinned = false;
     }

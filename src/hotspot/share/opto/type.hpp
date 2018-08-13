@@ -1113,7 +1113,6 @@ class TypeInstPtr : public TypeOopPtr {
   virtual const TypeOopPtr *cast_to_instance_id(int instance_id) const;
 
   virtual const TypeOopPtr *cast_to_nonconst() const;
-  virtual const TypeInstPtr *cast_to_const(ciObject* const_oop) const;
 
   virtual const TypePtr *add_offset( intptr_t offset ) const;
 

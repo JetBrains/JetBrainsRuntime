@@ -32,10 +32,6 @@
 #include "opto/mulnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/subnode.hpp"
-#include "utilities/macros.hpp"
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
-#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -659,7 +655,6 @@ const Type *AddPNode::bottom_type() const {
   if (tx->is_con()) {   // Left input is an add of a constant?
     txoffset = tx->get_con();
   }
-
   return tp->add_offset(txoffset);
 }
 
@@ -680,7 +675,6 @@ const Type* AddPNode::Value(PhaseGVN* phase) const {
   if (p2->is_con()) {   // Left input is an add of a constant?
     p2offset = p2->get_con();
   }
-
   return p1->add_offset(p2offset);
 }
 

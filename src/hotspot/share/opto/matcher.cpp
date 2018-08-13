@@ -2165,7 +2165,6 @@ void Matcher::find_shared( Node *n ) {
         if (n->in(ShenandoahBarrierNode::ValueIn)->is_DecodeNarrowPtr()) {
           set_shared(n->in(ShenandoahBarrierNode::ValueIn)->in(1));
         }
-      case Op_ShenandoahWriteBarrier:
         mem_op = true;
         set_shared(n);
         break;
