@@ -329,7 +329,7 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_gdk_pixbuf_new_from_file =
                 dl_symbol("gdk_pixbuf_new_from_file");
         fp_gdk_pixbuf_get_from_drawable =
-                    dl_symbol("gdk_pixbuf_get_from_window");
+                    dl_symbol("gdk_pixbuf_get_from_drawable");
         fp_gdk_pixbuf_get_width = dl_symbol("gdk_pixbuf_get_width");
         fp_gdk_pixbuf_get_height = dl_symbol("gdk_pixbuf_get_height");
         fp_gdk_pixbuf_get_pixels = dl_symbol("gdk_pixbuf_get_pixels");
@@ -564,6 +564,16 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_g_list_append = dl_symbol("g_list_append");
         fp_g_list_free = dl_symbol("g_list_free");
         fp_g_list_free_full = dl_symbol("g_list_free_full");
+        fp_g_unlink = dl_symbol("g_unlink");
+        fp_g_variant_new = dl_symbol("g_variant_new");
+        fp_g_file_open_tmp = dl_symbol("g_file_open_tmp");
+        fp_g_dbus_connection_call_sync = dl_symbol("g_dbus_connection_call_sync");
+        fp_g_bus_get_sync = dl_symbol("g_bus_get_sync");
+        fp_g_variant_get = dl_symbol("g_variant_get");
+        fp_gdk_pixbuf_new_from_file =
+                        dl_symbol("gdk_pixbuf_new_from_file");
+        fp_gdk_get_default_root_window =
+                    dl_symbol("gdk_get_default_root_window");
     }
     /* Now we have only one kind of exceptions: NO_SYMBOL_EXCEPTION
      * Otherwise we can check the return value of setjmp method.
@@ -2914,4 +2924,20 @@ static void gtk3_init(GtkApi* gtk) {
     gtk->g_list_append = fp_g_list_append;
     gtk->g_list_free = fp_g_list_free;
     gtk->g_list_free_full = fp_g_list_free_full;
+    fprintf(stderr, "-gtk3-\n");
+    gtk->g_unlink = fp_g_unlink;
+    gtk->g_file_open_tmp = fp_g_file_open_tmp;
+    gtk->g_dbus_connection_call_sync = fp_g_dbus_connection_call_sync;
+    gtk->g_bus_get_sync = fp_g_bus_get_sync;
+    gtk->g_variant_get = fp_g_variant_get;
+    gtk->g_variant_new = fp_g_variant_new;
+    gtk->gdk_pixbuf_new_from_file = fp_gdk_pixbuf_new_from_file;
+    gtk->gdk_get_default_root_window = fp_gdk_get_default_root_window;
+    gtk->gdk_pixbuf_get_n_channels = fp_gdk_pixbuf_get_n_channels;
+    gtk->gdk_pixbuf_get_rowstride = fp_gdk_pixbuf_get_rowstride;
+    gtk->gdk_pixbuf_get_width = fp_gdk_pixbuf_get_width;
+    gtk->gdk_pixbuf_get_height = fp_gdk_pixbuf_get_height;
+    gtk->gdk_pixbuf_get_colorspace = fp_gdk_pixbuf_get_colorspace;
+    gtk->gdk_pixbuf_get_bits_per_sample = fp_gdk_pixbuf_get_bits_per_sample;
+    gtk->gdk_pixbuf_get_pixels = fp_gdk_pixbuf_get_pixels;
 }

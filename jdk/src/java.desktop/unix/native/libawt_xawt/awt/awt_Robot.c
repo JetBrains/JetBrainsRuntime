@@ -334,7 +334,7 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
 
     if (isGtkSupported) {
         GdkPixbuf *pixbuf = NULL;
-        (*fp_gdk_threads_enter)();
+        gtk->gdk_threads_enter();
 
         if (isWayland) {
             GError *error = NULL;
@@ -346,18 +346,18 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
             int status;
             FILE* f;
 
-            f = (FILE *) fp_g_file_open_tmp (NULL, &filename, &error);
+            f = (FILE *) gtk->g_file_open_tmp (NULL, &filename, &error);
             close((int) f);
             if (error == NULL) {
 
                 method_name = "ScreenshotArea";
-                method_params = fp_g_variant_new("(iiiibs)",
-                                                    x, y, width, height,
-                                                    FALSE, filename);
+                method_params = gtk->g_variant_new("(iiiibs)",
+                                                   x, y, width, height,
+                                                   FALSE, filename);
 
-                connection = fp_g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
+                connection = gtk->g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
 
-                res = fp_g_dbus_connection_call_sync(connection,
+                res = gtk->g_dbus_connection_call_sync(connection,
                                                   "org.gnome.Shell.Screenshot",
                                                   "/org/gnome/Shell/Screenshot",
                                                   "org.gnome.Shell.Screenshot",
@@ -374,72 +374,71 @@ Java_sun_awt_X11_XRobotPeer_getRGBPixelsImpl( JNIEnv *env,
                     gboolean success;
                     gchar* filename_used;
 
-                    fp_g_variant_get(res, "(bs)", &success, &filename_used);
+                    gtk->g_variant_get(res, "(bs)", &success, &filename_used);
 
                     if (success) {
-                        pixbuf = (*fp_gdk_pixbuf_new_from_file)(filename_used, &error);
+                        pixbuf = gtk->gdk_pixbuf_new_from_file(filename_used, &error);
                     }
-                    fp_g_free(filename_used);
+                    gtk->g_free(filename_used);
                 }
                 /* remove the temporary file created by the shell */
-                fp_g_unlink(filename);
-                fp_g_free(filename);
+                gtk->g_unlink(filename);
+                gtk->g_free(filename);
+            }
+
+            if (pixbuf) {
+                int nchan = gtk->gdk_pixbuf_get_n_channels(pixbuf);
+                int stride = gtk->gdk_pixbuf_get_rowstride(pixbuf);
+                int pbwidth = gtk->gdk_pixbuf_get_width(pixbuf);
+                int pbheight = gtk->gdk_pixbuf_get_height(pixbuf);
+
+                if (pbwidth >= width && pbheight >= height
+                        && gtk->gdk_pixbuf_get_bits_per_sample(pixbuf) == 8
+                        && gtk->gdk_pixbuf_get_colorspace(pixbuf) == GDK_COLORSPACE_RGB
+                        && nchan >= 3
+                        ) {
+                    guchar *p, *pix = gtk->gdk_pixbuf_get_pixels(pixbuf);
+
+                    ary = (*env)->GetPrimitiveArrayCritical(env, pixelArray, NULL);
+                    if (!ary) {
+                        gtk->g_object_unref(pixbuf);
+                        gtk->gdk_threads_leave();
+                        AWT_UNLOCK();
+                        return;
+                    }
+
+                    int sx = pbwidth / width;
+                    int sy = pbheight / height;
+
+                    for (_y = 0; _y < height; _y++) {
+                        for (_x = 0; _x < width; _x++) {
+                            p = pix + _y * stride * sy + _x * nchan * sx;
+
+                            index = (_y + dy) * jwidth + (_x + dx);
+                            ary[index] = 0xff000000
+                                            | (p[0] << 16)
+                                            | (p[1] << 8)
+                                            | (p[2]);
+
+                        }
+                    }
+                    (*env)->ReleasePrimitiveArrayCritical(env, pixelArray, ary, 0);
+                    if ((*env)->ExceptionCheck(env)) {
+                        gtk->g_object_unref(pixbuf);
+                        gtk->gdk_threads_leave();
+                        AWT_UNLOCK();
+                        return;
+                    }
+                    gtk_failed = FALSE;
+                }
+                gtk->g_object_unref(pixbuf);
             }
             gtk_failed = FALSE; // We cannot rely on X fallback on Wayland
         } else {
-            GdkWindow *root = (*fp_gdk_get_default_root_window)();
-
-            pixbuf = (*fp_gdk_pixbuf_get_from_drawable)(NULL, root, NULL,                                                   x, y, 0, 0, width, height);
+            gtk_failed = gtk->get_drawable_data(env, pixelArray, x, y, width,
+                                                height, jwidth, dx, dy, 1);
         }
-
-        if (pixbuf) {
-            int nchan = (*fp_gdk_pixbuf_get_n_channels)(pixbuf);
-            int stride = (*fp_gdk_pixbuf_get_rowstride)(pixbuf);
-            int pbwidth = (*fp_gdk_pixbuf_get_width)(pixbuf);
-            int pbheight = (*fp_gdk_pixbuf_get_height)(pixbuf);
-
-            if (pbwidth >= width && pbheight >= height
-                    && (*fp_gdk_pixbuf_get_bits_per_sample)(pixbuf) == 8
-                    && (*fp_gdk_pixbuf_get_colorspace)(pixbuf) == GDK_COLORSPACE_RGB
-                    && nchan >= 3
-                    ) {
-                guchar *p, *pix = (*fp_gdk_pixbuf_get_pixels)(pixbuf);
-
-                ary = (*env)->GetPrimitiveArrayCritical(env, pixelArray, NULL);
-                if (!ary) {
-                    (*fp_g_object_unref)(pixbuf);
-                    (*fp_gdk_threads_leave)();
-                    AWT_UNLOCK();
-                    return;
-                }
-
-                int sx = pbwidth / width;
-                int sy = pbheight / height;
-
-                for (_y = 0; _y < height; _y++) {
-                    for (_x = 0; _x < width; _x++) {
-                        p = pix + _y * stride * sy + _x * nchan * sx;
-
-                        index = (_y + dy) * jwidth + (_x + dx);
-                        ary[index] = 0xff000000
-                                        | (p[0] << 16)
-                                        | (p[1] << 8)
-                                        | (p[2]);
-
-                    }
-                }
-                (*env)->ReleasePrimitiveArrayCritical(env, pixelArray, ary, 0);
-                if ((*env)->ExceptionCheck(env)) {
-                    (*fp_g_object_unref)(pixbuf);
-                    (*fp_gdk_threads_leave)();
-                    AWT_UNLOCK();
-                    return;
-                }
-                gtk_failed = FALSE;
-            }
-            (*fp_g_object_unref)(pixbuf);
-        }
-        (*fp_gdk_threads_leave)();
+        gtk->gdk_threads_leave();
     }
 
     if (gtk_failed) {

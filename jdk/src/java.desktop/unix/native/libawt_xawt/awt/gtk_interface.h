@@ -405,7 +405,13 @@ typedef enum {
 } GConnectFlags;
 //------------------------------
 
-
+typedef void GVariant;
+typedef void GVariantType;
+typedef void GdkPixbuf;
+typedef void GDBusConnection;
+typedef void GCancellable;
+typedef void GdkDrawable;
+typedef void GdkColormap;
 typedef void GError;
 typedef void GdkScreen;
 typedef void GtkWindow;
@@ -420,6 +426,21 @@ typedef struct {
     const gchar *display_name;
     const gchar *mime_type;
 } GtkFileFilterInfo;
+
+typedef enum {
+    G_DBUS_CALL_FLAGS_NONE = 0,
+    G_DBUS_CALL_FLAGS_NO_AUTO_START = (1<<0),
+    G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION = (1<<1)
+} GDBusCallFlags;
+
+typedef enum
+{
+    G_BUS_TYPE_STARTER = -1,
+    G_BUS_TYPE_NONE = 0,
+    G_BUS_TYPE_SYSTEM  = 1,
+    G_BUS_TYPE_SESSION = 2
+} GBusType;
+
 typedef gboolean (*GtkFileFilterFunc)(const GtkFileFilterInfo *filter_info,
                                                                  gpointer data);
 typedef void (*GClosureNotify)(gpointer data, GClosure *closure);
@@ -554,6 +575,31 @@ typedef struct GtkApi {
     GList* (*g_list_append) (GList *list, gpointer data);
     void (*g_list_free) (GList *list);
     void (*g_list_free_full) (GList *list, GDestroyNotify free_func);
+    void (*g_unlink)(const gchar *filename);
+    gint (*g_file_open_tmp)(const gchar  *tmpl, gchar **name_used, GError **error);
+    GVariant *(*g_dbus_connection_call_sync)(GDBusConnection    *connection,
+                                             const gchar        *bus_name,
+                                             const gchar        *object_path,
+                                             const gchar        *interface_name,
+                                             const gchar        *method_name,
+                                             GVariant           *parameters,
+                                             const GVariantType *reply_type,
+                                             GDBusCallFlags      flags,
+                                             gint                timeout_msec,
+                                             GCancellable       *cancellable,
+                                             GError            **error);
+    GDBusConnection* (*g_bus_get_sync) (GBusType bus_type, GCancellable *cancellable, GError **error);
+    void (*g_variant_get)(GVariant *value, const gchar *format_string, ...);
+    GVariant* (*g_variant_new)(const gchar *format_string, ...);
+    GdkPixbuf *(*gdk_pixbuf_new_from_file)(const char *filename, GError **error);
+    GdkWindow *(*gdk_get_default_root_window) (void);
+    int (*gdk_pixbuf_get_n_channels)(const GdkPixbuf *pixbuf);
+    int (*gdk_pixbuf_get_rowstride)(const GdkPixbuf *pixbuf);
+    int (*gdk_pixbuf_get_width)(const GdkPixbuf *pixbuf);
+    int (*gdk_pixbuf_get_height)(const GdkPixbuf *pixbuf);
+    GdkColorspace (*gdk_pixbuf_get_colorspace)(const GdkPixbuf *pixbuf);
+    int (*gdk_pixbuf_get_bits_per_sample)(const GdkPixbuf *pixbuf);
+    guchar *(*gdk_pixbuf_get_pixels)(const GdkPixbuf *pixbuf);
 } GtkApi;
 
 gboolean gtk_load(JNIEnv *env, GtkVersion version, gboolean verbose);

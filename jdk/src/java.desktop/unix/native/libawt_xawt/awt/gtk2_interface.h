@@ -448,5 +448,21 @@ static void (*fp_g_list_free_full) (GList *list, GDestroyNotify free_func);
 
 static gboolean (*fp_gtk_show_uri)(GdkScreen *screen, const gchar *uri,
     guint32 timestamp, GError **error);
+static gint (*fp_g_file_open_tmp)(const gchar  *tmpl, gchar **name_used, GError **error);
+static GVariant* (*fp_g_variant_new)(const gchar *format_string, ...);
+static void (*fp_g_variant_get)(GVariant *value, const gchar *format_string, ...);
+static GVariant *(*fp_g_dbus_connection_call_sync)(GDBusConnection    *connection,
+                                            const gchar        *bus_name,
+                                            const gchar        *object_path,
+                                            const gchar        *interface_name,
+                                            const gchar        *method_name,
+                                            GVariant           *parameters,
+                                            const GVariantType *reply_type,
+                                            GDBusCallFlags      flags,
+                                            gint                timeout_msec,
+                                            GCancellable       *cancellable,
+                                            GError            **error);
+static GDBusConnection* (*fp_g_bus_get_sync) (GBusType bus_type, GCancellable *cancellable, GError **error);
+static void (*fp_g_unlink)(const gchar *filename);
 
 #endif /* !_GTK2_INTERFACE_H */

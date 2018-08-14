@@ -573,5 +573,22 @@ static void (*fp_gtk_arrow_set)(GtkWidget* arrow,
 static void (*fp_gtk_widget_size_request)(GtkWidget *widget,
                                           GtkRequisition *requisition);
 static GtkAdjustment* (*fp_gtk_range_get_adjustment)(GtkRange* range);
+static gint (*fp_g_file_open_tmp)(const gchar  *tmpl, gchar **name_used, GError **error);
+static GVariant* (*fp_g_variant_new)(const gchar *format_string, ...);
+static void (*fp_g_variant_get)(GVariant *value, const gchar *format_string, ...);
+static GVariant *(*fp_g_dbus_connection_call_sync)(GDBusConnection    *connection,
+                                            const gchar        *bus_name,
+                                            const gchar        *object_path,
+                                            const gchar        *interface_name,
+                                            const gchar        *method_name,
+                                            GVariant           *parameters,
+                                            const GVariantType *reply_type,
+                                            GDBusCallFlags      flags,
+                                            gint                timeout_msec,
+                                            GCancellable       *cancellable,
+                                            GError            **error);
+static GDBusConnection* (*fp_g_bus_get_sync) (GBusType bus_type, GCancellable *cancellable, GError **error);
+static GVariant* (*fp_g_variant_new)(const gchar *format_string, ...);
+static void (*fp_g_unlink)(const gchar *filename);
 
 #endif /* !_GTK3_INTERFACE_H */
