@@ -99,6 +99,10 @@
           "Run a separate concurrent reference updating phase after"        \
           "concurrent evacuation. Possible values: 'on', 'off', 'adaptive'")\
                                                                             \
+  experimental(uintx, ShenandoahEvacAssist, 10,                             \
+          "How many objects to evacuate on WB assist path. "                \
+          "Use zero to disable.")                                           \
+                                                                            \
   product(uintx, ShenandoahRefProcFrequency, 5,                             \
           "How often should (weak, soft, etc) references be processed. "    \
           "References get processed at every Nth GC cycle. "                \

@@ -276,7 +276,38 @@ oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
   oop fwd = resolve_forwarded_not_null(obj);
   if (oopDesc::unsafe_equals(obj, fwd)) {
     ShenandoahEvacOOMScope oom_evac_scope;
-    return _heap->evacuate_object(obj, Thread::current());
+
+    Thread* thread = Thread::current();
+    oop res_oop = _heap->evacuate_object(obj, thread);
+
+    // Since we are already here and paid the price of getting through runtime call adapters
+    // and acquiring oom-scope, it makes sense to try and evacuate more adjacent objects,
+    // thus amortizing the overhead. For sparsely live heaps, scan costs easily dominate
+    // total assist costs, and can introduce a lot of evacuation latency. This is why we
+    // only scan for _nearest_ N objects, regardless if they are eligible for evac or not.
+
+    size_t max = ShenandoahEvacAssist;
+    if (max > 0) {
+      // Traversal is special: it uses "next" marking context, because it coalesces evac with mark.
+      // Other code uses "complete" marking, because evac happens after the mark.
+      ShenandoahMarkingContext* ctx = _heap->is_concurrent_traversal_in_progress() ?
+                                      _heap->next_marking_context() : _heap->complete_marking_context();
+
+      ShenandoahHeapRegion* r = _heap->heap_region_containing(obj);
+      assert(r->is_cset(), "sanity");
+
+      HeapWord* cur = (HeapWord*)obj + obj->size() + BrooksPointer::word_size();
+      size_t count = 0;
+      while (cur < r->top() && (count++ < max)) {
+        oop cur_oop = oop(cur);
+        if (ctx->is_marked(cur_oop) && oopDesc::unsafe_equals(cur_oop, resolve_forwarded_not_null(cur_oop))) {
+          _heap->evacuate_object(cur_oop, thread);
+        }
+        cur = cur + cur_oop->size() + BrooksPointer::word_size();
+      }
+    }
+
+    return res_oop;
   }
   return fwd;
 }

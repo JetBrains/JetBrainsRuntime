@@ -1887,6 +1887,10 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
 
     case _degenerated_traversal:
       {
+        // Drop the collection set. Note: this leaves some already forwarded objects
+        // behind, which may be problematic, see comments for ShenandoahEvacAssist
+        // workarounds in ShenandoahTraversalHeuristics.
+
         ShenandoahHeapLocker locker(lock());
         collection_set()->clear_current_index();
         for (size_t i = 0; i < collection_set()->count(); i++) {

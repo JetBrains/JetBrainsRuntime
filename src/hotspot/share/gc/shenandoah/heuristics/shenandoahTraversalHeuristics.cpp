@@ -46,6 +46,28 @@ ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuri
     SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahUnloadClassesFrequency, 1);
   }
 
+  // Workaround the bug in degen-traversal that evac assists expose.
+  //
+  // During traversal cycle, we can evacuate some object from region R1 (CS) to R2 (R).
+  // Then degen-traversal happens, drops the cset, and finishes up the fixups.
+  // Then next cycle happens to put both R1 and R2 into CS, and then R2 evacuates to R3.
+  // It creates the double forwarding for that object: R1 (CS) -> R2 (CS) -> R3 (R).
+  //
+  // It is likely at that point that no references to R1 copy are left after the degen,
+  // so this double forwarding is not exposed. *Unless* we have evac assists, that touch
+  // the adjacent objects while evacuating live objects from R1, step on "bad" R1 copy,
+  // and fail the internal asserts when getting oop sizes to walk the heap, or touching
+  // its fwdptrs. The same thing would probably happen if we do size-based iteration
+  // somewhere else.
+  //
+  // AllocHumongousFragment test exposes it nicely, always running into degens.
+  //
+  // TODO: Fix this properly
+  // There are two alternatives: fix it in degen so that it never leaves double forwarding,
+  // or make sure we only use raw accessors in evac assist path when getting oop_size,
+  // including all exotic shapes like instanceMirrorKlass, and touching fwdptrs. The second
+  // option is partly done in jdk12, but not in earlier jdks.
+  FLAG_SET_DEFAULT(ShenandoahEvacAssist, 0);
 }
 
 bool ShenandoahTraversalHeuristics::should_start_normal_gc() const {
