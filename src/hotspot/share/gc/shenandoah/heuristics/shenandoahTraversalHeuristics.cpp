@@ -100,17 +100,17 @@ void ShenandoahTraversalHeuristics::choose_collection_set(ShenandoahCollectionSe
 
   ShenandoahHeapRegionSet* traversal_set = traversal_gc->traversal_set();
   traversal_set->clear();
+
+  size_t garbage_threshold = ShenandoahHeapRegion::region_size_bytes() / 100 * ShenandoahGarbageThreshold;
+
   for (size_t i = 0; i < heap->num_regions(); i++) {
     ShenandoahHeapRegion* r = heap->get_region(i);
     assert(!collection_set->is_in(r), "must not yet be in cset");
     if (r->used() > 0) {
-      if (r->is_regular()) {
-        size_t garbage_percent = r->garbage() * 100 / ShenandoahHeapRegion::region_size_bytes();
-        if (garbage_percent > ShenandoahGarbageThreshold) {
+      if (r->is_regular() && (r->garbage() > garbage_threshold)) {
           collection_set->add_region(r);
-        }
       }
-      traversal_set->add_region(r);
+     traversal_set->add_region(r);
     }
     r->clear_live_data();
   }

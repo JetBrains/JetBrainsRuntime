@@ -403,7 +403,11 @@ void ShenandoahTraversalGC::prepare() {
   // Rebuild free set
   free_set->rebuild();
 
-  log_info(gc,ergo)("Got " SIZE_FORMAT " collection set regions and " SIZE_FORMAT " root set regions", collection_set->count(), _root_regions.count());
+  log_info(gc, ergo)("Collectable Garbage: " SIZE_FORMAT "M, " SIZE_FORMAT "M CSet, " SIZE_FORMAT " CSet regions",
+                     collection_set->garbage() / M, collection_set->live_data() / M, collection_set->count());
+  if (_root_regions.count() > 0) {
+    log_info(gc, ergo)("Root set regions: " SIZE_FORMAT, _root_regions.count());
+  }
 }
 
 void ShenandoahTraversalGC::init_traversal_collection() {
