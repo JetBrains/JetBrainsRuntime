@@ -435,11 +435,11 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|TAMS " INTPTR_FORMAT_W(12) ", " INTPTR_FORMAT_W(12),
             p2i(_heap->complete_marking_context()->top_at_mark_start(region_number())),
             p2i(_heap->next_marking_context()->top_at_mark_start(region_number())));
-  st->print("|U %3d%%", (int) ((double) used() * 100 / capacity()));
-  st->print("|T %3d%%", (int) ((double) get_tlab_allocs() * 100 / capacity()));
-  st->print("|G %3d%%", (int) ((double) get_gclab_allocs() * 100 / capacity()));
-  st->print("|S %3d%%", (int) ((double) get_shared_allocs() * 100 / capacity()));
-  st->print("|L %3d%%", (int) ((double) get_live_data_bytes() * 100 / capacity()));
+  st->print("|U " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(used()),                proper_unit_for_byte_size(used()));
+  st->print("|T " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_tlab_allocs()),     proper_unit_for_byte_size(get_tlab_allocs()));
+  st->print("|G " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_gclab_allocs()),    proper_unit_for_byte_size(get_gclab_allocs()));
+  st->print("|S " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_shared_allocs()),   proper_unit_for_byte_size(get_shared_allocs()));
+  st->print("|L " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_live_data_bytes()), proper_unit_for_byte_size(get_live_data_bytes()));
   if (_heap->traversal_gc() != NULL && _heap->traversal_gc()->root_regions()->is_in(region_number())) {
     st->print("|R");
   } else {
