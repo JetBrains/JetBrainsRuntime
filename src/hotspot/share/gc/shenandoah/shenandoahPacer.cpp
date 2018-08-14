@@ -67,7 +67,7 @@ void ShenandoahPacer::setup_for_mark() {
 
   double tax = 1.0 * live / taxable; // base tax for available free space
   tax *= 3;                          // mark is phase 1 of 3, claim 1/3 of free for it
-  tax *= 1.1;                        // additional surcharge to help unclutter heap
+  tax *= ShenandoahPacingSurcharge;  // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -96,7 +96,7 @@ void ShenandoahPacer::setup_for_evac() {
   double tax = 1.0 * used / taxable; // base tax for available free space
   tax *= 2;                          // evac is phase 2 of 3, claim 1/2 of remaining free
   tax = MAX2<double>(1, tax);        // never allocate more than GC processes during the phase
-  tax *= 1.1;                        // additional surcharge to help unclutter heap
+  tax *= ShenandoahPacingSurcharge;  // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -117,7 +117,7 @@ void ShenandoahPacer::setup_for_updaterefs() {
   double tax = 1.0 * used / taxable; // base tax for available free space
   tax *= 1;                          // update-refs is phase 3 of 3, claim the remaining free
   tax = MAX2<double>(1, tax);        // never allocate more than GC processes during the phase
-  tax *= 1.1;                        // additional surcharge to help unclutter heap
+  tax *= ShenandoahPacingSurcharge;  // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -141,7 +141,7 @@ void ShenandoahPacer::setup_for_traversal() {
   size_t taxable = free - non_taxable;
 
   double tax = 1.0 * live / taxable; // base tax for available free space
-  tax *= 1.1;                        // additional surcharge to help unclutter heap
+  tax *= ShenandoahPacingSurcharge;  // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
@@ -166,7 +166,7 @@ void ShenandoahPacer::setup_for_partial(size_t work_words) {
 
   double tax = 1.0 * work_bytes / taxable; // base tax for available free space
   tax = MAX2<double>(1, tax);              // never allocate more than GC collects during the cycle
-  tax *= 1.1;                              // additional surcharge to help unclutter heap
+  tax *= ShenandoahPacingSurcharge;        // additional surcharge to help unclutter heap
 
   restart_with(non_taxable, tax);
 
