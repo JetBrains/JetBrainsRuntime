@@ -53,10 +53,7 @@ typedef enum
 typedef void GMainContext;
 typedef void GVfs;
 
-typedef void GdkColormap;
-typedef void GdkDrawable;
 typedef void GdkGC;
-typedef void GdkPixbuf;
 typedef void GdkPixmap;
 
 typedef void GtkFixed;

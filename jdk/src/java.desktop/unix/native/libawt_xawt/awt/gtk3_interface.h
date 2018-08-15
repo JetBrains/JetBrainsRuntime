@@ -133,12 +133,9 @@ typedef enum {
 } cairo_format_t;
 
 /* We define all structure pointers to be void* */
-typedef void GdkPixbuf;
 typedef void GMainContext;
 typedef void GVfs;
 
-typedef void GdkColormap;
-typedef void GdkDrawable;
 typedef void GdkGC;
 typedef void GdkPixmap;
 typedef void GtkStyleContext;
