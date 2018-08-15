@@ -413,7 +413,7 @@ void ShenandoahWorkerTimings::print() const {
 
 ShenandoahWorkerTimingsTracker::ShenandoahWorkerTimingsTracker(ShenandoahWorkerTimings* worker_times,
                                                                ShenandoahPhaseTimings::GCParPhases phase, uint worker_id) :
-        _worker_times(worker_times), _phase(phase), _worker_id(worker_id) {
+        _phase(phase), _worker_times(worker_times), _worker_id(worker_id) {
   if (_worker_times != NULL) {
     _start_time = os::elapsedTime();
   }

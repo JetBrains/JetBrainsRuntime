@@ -48,11 +48,12 @@ private:
   ShenandoahThreadLocalData() :
     _gc_state(0),
     _oom_during_evac(0),
+    _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()),
     _gclab(NULL),
     _gclab_size(0),
     _worker_id(INVALID_WORKER_ID),
-    _force_satb_flush(false),
-    _satb_mark_queue(&ShenandoahBarrierSet::satb_mark_queue_set()) {}
+    _force_satb_flush(false) {
+  }
 
   ~ShenandoahThreadLocalData() {
     if (_gclab != NULL) {

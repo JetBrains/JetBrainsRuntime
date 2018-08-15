@@ -31,7 +31,8 @@
 #include "logging/log.hpp"
 
 ShenandoahWorkerScope::ShenandoahWorkerScope(WorkGang* workers, uint nworkers, const char* msg) :
-  _workers(workers), _n_workers(nworkers) {
+  _n_workers(nworkers),
+  _workers(workers) {
   assert(msg != NULL, "Missing message");
   log_info(gc, task)("Using %u of %u workers for %s",
     nworkers, ShenandoahHeap::heap()->max_workers(), msg);
@@ -46,7 +47,9 @@ ShenandoahWorkerScope::~ShenandoahWorkerScope() {
 }
 
 ShenandoahPushWorkerScope::ShenandoahPushWorkerScope(WorkGang* workers, uint nworkers, bool check) :
-  _workers(workers), _old_workers(workers->active_workers()), _n_workers(nworkers) {
+  _n_workers(nworkers),
+  _old_workers(workers->active_workers()),
+  _workers(workers) {
   _workers->update_active_workers(nworkers);
 
   // bypass concurrent/parallel protocol check for non-regular paths, e.g. verifier, etc.
@@ -63,8 +66,10 @@ ShenandoahPushWorkerScope::~ShenandoahPushWorkerScope() {
 }
 
 ShenandoahPushWorkerQueuesScope::ShenandoahPushWorkerQueuesScope(WorkGang* workers, ShenandoahObjToScanQueueSet* queues, uint nworkers, bool check) :
-  _workers(workers), _old_workers(workers->active_workers()),
-  _queues(queues), _n_workers(nworkers) {
+  _n_workers(nworkers),
+  _old_workers(workers->active_workers()),
+  _workers(workers),
+  _queues(queues) {
   _workers->update_active_workers(nworkers);
   _queues->reserve(nworkers);
   // bypass concurrent/parallel protocol check for non-regular paths, e.g. verifier, etc.

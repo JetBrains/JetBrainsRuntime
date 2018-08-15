@@ -644,11 +644,12 @@ public:
 #endif
 
     ShenandoahAllocationRequest(size_t _min_size, size_t _requested_size, AllocType _alloc_type) :
-#ifdef ASSERT
-            _actual_size_set(false),
-#endif
             _min_size(_min_size), _requested_size(_requested_size),
-            _actual_size(0), _alloc_type(_alloc_type) {}
+            _actual_size(0), _alloc_type(_alloc_type)
+#ifdef ASSERT
+            , _actual_size_set(false)
+#endif
+    {}
 
   public:
     static inline ShenandoahAllocationRequest for_tlab(size_t min_size, size_t requested_size) {

@@ -283,6 +283,7 @@ private:
   int _alias;
   PhaseIdealLoop* _phase;
   bool _include_lsm;
+
   void collect_memory_nodes();
   Node* get_ctrl(Node* n) const;
   Node* ctrl_or_self(Node* n) const;
@@ -295,7 +296,7 @@ private:
 
 public:
   MemoryGraphFixer(int alias, bool include_lsm, PhaseIdealLoop* phase) :
-    _alias(alias), _include_lsm(include_lsm), _phase(phase) {
+    _alias(alias), _phase(phase), _include_lsm(include_lsm) {
     assert(_alias != Compile::AliasIdxBot, "unsupported");
     collect_memory_nodes();
   }

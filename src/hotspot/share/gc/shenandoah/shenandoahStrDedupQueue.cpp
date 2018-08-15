@@ -33,9 +33,13 @@
 #include "runtime/mutex.hpp"
 
 ShenandoahStrDedupQueue::ShenandoahStrDedupQueue() :
-  _consumer_queue(NULL), _free_list(NULL), _published_queues(NULL), _cancel(false),
-  _num_producer_queue(ShenandoahHeap::heap()->max_workers()), _num_free_buffer(0),
+  _consumer_queue(NULL),
+  _num_producer_queue(ShenandoahHeap::heap()->max_workers()),
+  _published_queues(NULL),
+  _free_list(NULL),
+  _num_free_buffer(0),
   _max_free_buffer(ShenandoahHeap::heap()->max_workers() * 2),
+  _cancel(false),
   _total_buffers(0) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   _producer_queues = NEW_C_HEAP_ARRAY(ShenandoahQueueBuffer*, _num_producer_queue, mtGC);

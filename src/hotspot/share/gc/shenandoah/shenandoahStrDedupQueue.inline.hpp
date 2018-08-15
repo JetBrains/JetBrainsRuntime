@@ -28,7 +28,8 @@
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 
 template <uint buffer_size>
-ShenandoahOopBuffer<buffer_size>::ShenandoahOopBuffer() : _next(NULL), _index(0) {
+ShenandoahOopBuffer<buffer_size>::ShenandoahOopBuffer() :
+  _index(0), _next(NULL) {
 }
 
 template <uint buffer_size>

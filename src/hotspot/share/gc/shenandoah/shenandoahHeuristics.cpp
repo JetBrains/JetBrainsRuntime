@@ -59,17 +59,17 @@ int ShenandoahHeuristics::compare_by_connects(RegionConnections a, RegionConnect
 }
 
 ShenandoahHeuristics::ShenandoahHeuristics() :
-  _bytes_in_cset(0),
-  _degenerated_cycles_in_a_row(0),
-  _successful_cycles_in_a_row(0),
+  _update_refs_early(false),
+  _update_refs_adaptive(false),
   _region_data(NULL),
   _region_data_size(0),
   _region_connects(NULL),
   _region_connects_size(0),
-  _update_refs_early(false),
-  _update_refs_adaptive(false),
-  _last_cycle_end(0)
-{
+  _degenerated_cycles_in_a_row(0),
+  _successful_cycles_in_a_row(0),
+  _bytes_in_cset(0),
+  _last_cycle_end(0) {
+
   if (strcmp(ShenandoahUpdateRefsEarly, "on") == 0 ||
       strcmp(ShenandoahUpdateRefsEarly, "true") == 0 ) {
     _update_refs_early = true;

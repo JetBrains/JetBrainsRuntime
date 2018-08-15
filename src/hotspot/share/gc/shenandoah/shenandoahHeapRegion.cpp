@@ -58,22 +58,22 @@ uint64_t ShenandoahHeapRegion::AllocSeqNum = 1;
 ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start,
                                            size_t size_words, size_t index, bool committed) :
   _heap(heap),
-  _pacer(ShenandoahPacing ? heap->pacer() : NULL),
   _region_number(index),
   _live_data(0),
+  _reserved(MemRegion(start, size_words)),
   _tlab_allocs(0),
   _gclab_allocs(0),
   _shared_allocs(0),
-  _reserved(MemRegion(start, size_words)),
   _new_top(NULL),
+  _critical_pins(0),
   _seqnum_first_alloc_mutator(0),
-  _seqnum_last_alloc_mutator(0),
   _seqnum_first_alloc_gc(0),
+  _seqnum_last_alloc_mutator(0),
   _seqnum_last_alloc_gc(0),
   _state(committed ? _empty_committed : _empty_uncommitted),
   _empty_time(os::elapsedTime()),
   _initialized(false),
-  _critical_pins(0) {
+  _pacer(ShenandoahPacing ? heap->pacer() : NULL) {
 
   ContiguousSpace::initialize(_reserved, true, committed);
 }

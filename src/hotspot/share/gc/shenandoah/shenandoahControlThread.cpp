@@ -44,10 +44,10 @@ ShenandoahControlThread::ShenandoahControlThread() :
   _alloc_failure_waiters_lock(Mutex::leaf, "ShenandoahAllocFailureGC_lock", true, Monitor::_safepoint_check_always),
   _explicit_gc_waiters_lock(Mutex::leaf, "ShenandoahExplicitGC_lock", true, Monitor::_safepoint_check_always),
   _periodic_task(this),
+  _allocs_seen(0),
   _explicit_gc_cause(GCCause::_no_cause_specified),
-  _degen_point(ShenandoahHeap::_degenerated_outside_cycle),
-  _allocs_seen(0)
-{
+  _degen_point(ShenandoahHeap::_degenerated_outside_cycle) {
+
   create_and_start();
   _periodic_task.enroll();
   _periodic_satb_flush_task.enroll();

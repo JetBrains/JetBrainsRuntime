@@ -55,8 +55,14 @@ private:
 public:
   ShenandoahVerifyOopClosure(ShenandoahVerifierStack* stack, MarkBitMap* map, ShenandoahLivenessData* ld,
                              const char* phase, ShenandoahVerifier::VerifyOptions options) :
-          _stack(stack), _heap(ShenandoahHeap::heap()), _map(map), _ld(ld), _loc(NULL), _interior_loc(NULL),
-          _phase(phase), _options(options) {};
+    _phase(phase),
+    _options(options),
+    _stack(stack),
+    _heap(ShenandoahHeap::heap()),
+    _map(map),
+    _ld(ld),
+    _interior_loc(NULL),
+    _loc(NULL) { }
 
 private:
   void check(ShenandoahAsserts::SafeLevel level, oop obj, bool test, const char* label) {
@@ -330,7 +336,9 @@ private:
   ShenandoahVerifier::VerifyRegions _regions;
 public:
   ShenandoahVerifyHeapRegionClosure(const char* phase, ShenandoahVerifier::VerifyRegions regions) :
-          _heap(ShenandoahHeap::heap()), _regions(regions), _phase(phase) {};
+    _heap(ShenandoahHeap::heap()),
+    _phase(phase),
+    _regions(regions) {};
 
   void print_failure(ShenandoahHeapRegion* r, const char* label) {
     ResourceMark rm;
@@ -449,9 +457,14 @@ public:
                                   ShenandoahRootProcessor* rp,
                                   const char* label,
                                   ShenandoahVerifier::VerifyOptions options) :
-          AbstractGangTask("Shenandoah Parallel Verifier Reachable Task"),
-          _heap(ShenandoahHeap::heap()), _rp(rp), _ld(ld), _bitmap(bitmap), _processed(0),
-          _label(label), _options(options) {};
+    AbstractGangTask("Shenandoah Parallel Verifier Reachable Task"),
+    _label(label),
+    _rp(rp),
+    _options(options),
+    _heap(ShenandoahHeap::heap()),
+    _ld(ld),
+    _bitmap(bitmap),
+    _processed(0) {};
 
   size_t processed() {
     return _processed;
@@ -506,8 +519,13 @@ public:
                                      const char* label,
                                      ShenandoahVerifier::VerifyOptions options) :
           AbstractGangTask("Shenandoah Parallel Verifier Marked Region"),
-          _heap(ShenandoahHeap::heap()), _ld(ld), _bitmap(bitmap), _claimed(0), _processed(0),
-          _label(label), _options(options) {};
+          _label(label),
+          _options(options),
+          _heap(ShenandoahHeap::heap()),
+          _bitmap(bitmap),
+          _ld(ld),
+          _claimed(0),
+          _processed(0) {};
 
   size_t processed() {
     return _processed;

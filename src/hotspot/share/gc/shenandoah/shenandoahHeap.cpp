@@ -102,10 +102,11 @@ public:
   ShenandoahPretouchTask(char* bitmap0_base, char* bitmap1_base, size_t bitmap_size,
                          size_t page_size) :
     AbstractGangTask("Shenandoah PreTouch"),
-    _bitmap0_base(bitmap0_base),
-    _bitmap1_base(bitmap1_base),
     _bitmap_size(bitmap_size),
-    _page_size(page_size) {}
+    _page_size(page_size),
+    _bitmap0_base(bitmap0_base),
+    _bitmap1_base(bitmap1_base) {
+  }
 
   virtual void work(uint worker_id) {
     ShenandoahHeapRegion* r = _regions.next();
@@ -395,36 +396,33 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _free_set(NULL),
   _collection_set(NULL),
   _update_refs_iterator(this),
-  _bytes_allocated_since_gc_start(0),
-  _max_workers(MAX2(ConcGCThreads, ParallelGCThreads)),
-  _ref_processor(NULL),
-  _complete_marking_context(NULL),
-  _next_marking_context(NULL),
-  _aux_bit_map(),
-  _connection_matrix(NULL),
+  _scm(new ShenandoahConcurrentMark()),
+  _full_gc(new ShenandoahMarkCompact()),
+  _traversal_gc(NULL),
   _verifier(NULL),
   _pacer(NULL),
-  _used_at_last_gc(0),
-  _alloc_seq_at_last_gc_start(0),
-  _alloc_seq_at_last_gc_end(0),
+  _phase_timings(NULL),
+  _alloc_tracker(NULL),
+  _max_workers(MAX2(ConcGCThreads, ParallelGCThreads)),
   _safepoint_workers(NULL),
-  _gc_cycle_mode(),
+  _used(0),
+  _complete_marking_context(NULL),
+  _next_marking_context(NULL),
+  _bytes_allocated_since_gc_start(0),
+  _ref_processor(NULL),
+  _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
+  _connection_matrix(NULL),
+  _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
+  _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
+  _memory_pool(NULL),
 #ifdef ASSERT
   _heap_expansion_count(0),
 #endif
-  _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
-  _phase_timings(NULL),
-  _alloc_tracker(NULL),
-  _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
-  _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
-  _memory_pool(NULL)
-{
+  _alloc_seq_at_last_gc_start(0),
+  _alloc_seq_at_last_gc_end(0),
+  _used_at_last_gc(0) {
   log_info(gc, init)("GC threads: " UINT32_FORMAT " parallel, " UINT32_FORMAT " concurrent", ParallelGCThreads, ConcGCThreads);
   log_info(gc, init)("Reference processing: %s", ParallelRefProcEnabled ? "parallel" : "serial");
-
-  _scm = new ShenandoahConcurrentMark();
-  _full_gc = new ShenandoahMarkCompact();
-  _used = 0;
 
   _max_workers = MAX2(_max_workers, 1U);
   _workers = new ShenandoahWorkGang("Shenandoah GC Threads", _max_workers,
@@ -1063,8 +1061,8 @@ public:
   ShenandoahParallelEvacuationTask(ShenandoahHeap* sh,
                          ShenandoahCollectionSet* cs) :
     AbstractGangTask("Parallel Evacuation Task"),
-    _cs(cs),
-    _sh(sh)
+    _sh(sh),
+    _cs(cs)
   {}
 
   void work(uint worker_id) {

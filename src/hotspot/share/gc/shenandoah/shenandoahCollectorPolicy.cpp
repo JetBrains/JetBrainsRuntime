@@ -33,16 +33,16 @@
 #include "runtime/os.hpp"
 
 ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
-  _cycle_counter(0),
   _success_concurrent_gcs(0),
   _success_degenerated_gcs(0),
   _success_full_gcs(0),
+  _alloc_failure_degenerated(0),
+  _alloc_failure_degenerated_upgrade_to_full(0),
+  _alloc_failure_full(0),
   _explicit_concurrent(0),
   _explicit_full(0),
-  _alloc_failure_degenerated(0),
-  _alloc_failure_full(0),
-  _alloc_failure_degenerated_upgrade_to_full(0)
-{
+  _cycle_counter(0) {
+
   Copy::zero_to_bytes(_degen_points, sizeof(size_t) * ShenandoahHeap::_DEGENERATED_LIMIT);
 
   ShenandoahHeapRegion::setup_sizes(initial_heap_byte_size(), max_heap_byte_size());

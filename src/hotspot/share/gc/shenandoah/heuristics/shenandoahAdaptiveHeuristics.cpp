@@ -32,9 +32,9 @@ ShenandoahAdaptiveHeuristics::ShenandoahAdaptiveHeuristics() :
   ShenandoahHeuristics(),
   _free_threshold(ShenandoahInitFreeThreshold),
   _peak_occupancy(0),
+  _cycle_gap_history(new TruncatedSeq(5)),
   _conc_mark_duration_history(new TruncatedSeq(5)),
-  _conc_uprefs_duration_history(new TruncatedSeq(5)),
-  _cycle_gap_history(new TruncatedSeq(5)) {
+  _conc_uprefs_duration_history(new TruncatedSeq(5)) {
 }
 
 ShenandoahAdaptiveHeuristics::~ShenandoahAdaptiveHeuristics() {}

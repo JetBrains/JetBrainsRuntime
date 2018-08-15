@@ -716,7 +716,7 @@ private:
   size_t _live;
 
 public:
-  ShenandoahPostCompactClosure() : _live(0), _heap(ShenandoahHeap::heap()) {
+  ShenandoahPostCompactClosure() : _heap(ShenandoahHeap::heap()), _live(0) {
     _heap->free_set()->clear();
   }
 

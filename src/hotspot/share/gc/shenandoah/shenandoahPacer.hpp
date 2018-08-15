@@ -52,9 +52,9 @@ private:
 public:
   ShenandoahPacer(ShenandoahHeap* heap) :
           _heap(heap), _budget(0), _tax_rate(1),
-          _epoch(0),
           _progress(PACING_PROGRESS_UNINIT),
-          _progress_history(new TruncatedSeq(5)) {
+          _progress_history(new TruncatedSeq(5)),
+          _epoch(0) {
   }
 
   void setup_for_idle();

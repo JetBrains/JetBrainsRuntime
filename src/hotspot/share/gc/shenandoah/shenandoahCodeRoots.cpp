@@ -154,8 +154,9 @@ void ShenandoahCodeRoots::remove_nmethod(nmethod* nm) {
 }
 
 ShenandoahCodeRootsIterator::ShenandoahCodeRootsIterator() :
-        _claimed(0), _heap(ShenandoahHeap::heap()),
-        _par_iterator(CodeCache::parallel_iterator()) {
+        _heap(ShenandoahHeap::heap()),
+        _par_iterator(CodeCache::parallel_iterator()),
+        _claimed(0) {
   switch (ShenandoahCodeRootsStyle) {
     case 0:
     case 1: {
