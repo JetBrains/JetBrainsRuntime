@@ -170,6 +170,7 @@ static double getDesktopScale(char *output_name) {
             }
             fp_g_variant_unref(value);
         }
+        /* [tav]
         if (result > 0) {
             value = get_schema_value("com.canonical.Unity.Interface",
                                                            "text-scale-factor");
@@ -177,7 +178,7 @@ static double getDesktopScale(char *output_name) {
                 result *= fp_g_variant_get_double(value);
                 fp_g_variant_unref(value);
             }
-        }
+        }*/
     }
 
     if (result <= 0) {
@@ -189,6 +190,7 @@ static double getDesktopScale(char *output_name) {
         }
     }
 
+    /* [tav]
     if (result <= 0) {
         void *value = get_schema_value("org.gnome.desktop.interface",
                                                          "text-scaling-factor");
@@ -196,7 +198,7 @@ static double getDesktopScale(char *output_name) {
             result = fp_g_variant_get_double(value);
             fp_g_variant_unref(value);
         }
-    }
+    }*/
 
     return result;
 
@@ -214,7 +216,7 @@ static int getScale(const char *name) {
     return -1;
 }
 
-double getNativeScaleFactor(char *output_name) {
+double getNativeScaleFactor(char *output_name, double default_value) {
     static int scale = -2.0;
     double native_scale = 0;
     int gdk_scale = 0;
@@ -230,10 +232,10 @@ double getNativeScaleFactor(char *output_name) {
     native_scale = getDesktopScale(output_name);
 
     if (native_scale <= 0) {
-        native_scale = 1;
+        native_scale = default_value;
     }
 
     gdk_scale = getScale("GDK_SCALE");
 
-    return gdk_scale > 0 ? native_scale * gdk_scale : native_scale;
+    return gdk_scale > 0 ? (native_scale <= 0 ? 1 : native_scale) * gdk_scale : native_scale;
 }
