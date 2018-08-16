@@ -64,6 +64,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private DisplayMode origDisplayMode;
     private boolean shutdownHookRegistered;
     private int scale;
+    private volatile boolean isNativeScaleDefault;
+    private static int globalScale; // derived from Xft.dpi
 
     public X11GraphicsDevice(int screennum) {
         this.screen = screennum;
@@ -517,9 +519,20 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return scale;
     }
 
-    public int getNativeScale() {
+    private int getNativeScale() {
         isXrandrExtensionSupported();
         return (int)Math.round(getNativeScaleFactor(screen));
+    }
+
+    public static void setGlobalScale(int scale) {
+        globalScale = scale;
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
+            if (x11gd.isNativeScaleDefault) {
+                x11gd.scale = globalScale;
+                x11gd.isNativeScaleDefault = false;
+            }
+        }
     }
 
     private int initScaleFactor() {
@@ -532,7 +545,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 return (int) debugScale;
             }
             int nativeScale = getNativeScale();
-            return nativeScale >= 1 ? nativeScale : 1;
+            if (nativeScale > 0) return nativeScale;
+            if (globalScale > 0) return globalScale;
+            isNativeScaleDefault = true;
+            return 1;
         }
 
         return 1;
