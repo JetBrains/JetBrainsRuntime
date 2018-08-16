@@ -71,6 +71,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private volatile Insets insets;
     private boolean shutdownHookRegistered;
     private int scale;
+    private volatile boolean isNativeScaleDefault;
+    private static int globalScale; // derived from Xft.dpi
 
     // Wayland clients are by design not allowed to change the resolution in Wayland.
     // XRandR in Xwayland is just an emulation, it doesn't actually change the resolution.
@@ -577,6 +579,17 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return (int)Math.round(getNativeScaleFactor(screen));
     }
 
+    public static void setGlobalScale(int scale) {
+        globalScale = scale;
+        for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
+            if (x11gd.isNativeScaleDefault) {
+                x11gd.scale = globalScale;
+                x11gd.isNativeScaleDefault = false;
+            }
+        }
+    }
+
     private int initScaleFactor() {
 
         if (SunGraphicsEnvironment.isUIScaleEnabled()) {
@@ -587,7 +600,10 @@ public final class X11GraphicsDevice extends GraphicsDevice
                 return (int) debugScale;
             }
             int nativeScale = getNativeScale();
-            return nativeScale >= 1 ? nativeScale : 1;
+            if (nativeScale > 0) return nativeScale;
+            if (globalScale > 0) return globalScale;
+            isNativeScaleDefault = true;
+            return 1;
         }
 
         return 1;
