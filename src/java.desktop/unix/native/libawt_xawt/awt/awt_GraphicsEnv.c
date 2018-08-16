@@ -2075,7 +2075,7 @@ Java_sun_awt_X11GraphicsDevice_getNativeScaleFactor
     (JNIEnv *env, jobject this, jint screen) {
     // in case of Xinerama individual screen scales are not supported
     char *name = get_output_screen_name(env, usingXinerama ? 0 : screen);
-    double scale = getNativeScaleFactor(name);
+    double scale = getNativeScaleFactor(name, -1);
     if (name) {
         free(name);
     }
