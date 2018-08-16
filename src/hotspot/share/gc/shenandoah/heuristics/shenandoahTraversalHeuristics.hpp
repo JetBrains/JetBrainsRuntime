@@ -35,6 +35,7 @@ private:
 
   uintx _free_threshold;
   size_t _peak_occupancy;
+  uint64_t _last_cset_select;
 
 protected:
   virtual void choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,

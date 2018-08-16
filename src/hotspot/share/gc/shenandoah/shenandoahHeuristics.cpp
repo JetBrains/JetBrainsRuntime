@@ -38,6 +38,14 @@ int ShenandoahHeuristics::compare_by_garbage(RegionData a, RegionData b) {
   else return 0;
 }
 
+int ShenandoahHeuristics::compare_by_garbage_then_alloc_seq_ascending(RegionData a, RegionData b) {
+  int r = compare_by_garbage(a, b);
+  if (r != 0) {
+    return r;
+  }
+  return compare_by_alloc_seq_ascending(a, b);
+}
+
 int ShenandoahHeuristics::compare_by_alloc_seq_ascending(RegionData a, RegionData b) {
   if (a._seqnum_last_alloc == b._seqnum_last_alloc)
     return 0;
