@@ -813,7 +813,7 @@ SplashGetScaledImageName(const char* jarName, const char* fileName,
 #ifndef __linux__
     return JNI_FALSE;
 #endif
-    *scaleFactor = (float)getNativeScaleFactor(NULL);
+    *scaleFactor = (float)getNativeScaleFactor(NULL, 1);
     return GetScaledImageName(fileName, scaledImgName, scaleFactor, scaledImageNameLength);
 }
 
