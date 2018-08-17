@@ -114,10 +114,11 @@ void ShenandoahCodeRoots::add_nmethod(nmethod* nm) {
         int idx = _recorded_nms->find(nm, ShenandoahNMethod::find_with_nmethod);
         if (idx != -1) {
           ShenandoahNMethod* old = _recorded_nms->at(idx);
-          _recorded_nms->delete_at(idx);
+          _recorded_nms->at_put(idx, nmr);
           delete old;
+        } else {
+          _recorded_nms->append(nmr);
         }
-        _recorded_nms->append(nmr);
       }
       break;
     }
