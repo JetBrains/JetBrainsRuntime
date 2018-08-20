@@ -54,8 +54,11 @@ public:
 };
 
 class ShenandoahNMethodOopInitializer : public OopClosure {
+private:
+  ShenandoahHeap* const _heap;
+
 public:
-  ShenandoahNMethodOopInitializer() {};
+  ShenandoahNMethodOopInitializer() : _heap(ShenandoahHeap::heap()) {};
 
 private:
   template <class T>
@@ -65,8 +68,11 @@ private:
       oop obj1 = CompressedOops::decode_not_null(o);
       oop obj2 = ShenandoahBarrierSet::barrier_set()->write_barrier(obj1);
       if (! oopDesc::unsafe_equals(obj1, obj2)) {
-        assert (!ShenandoahHeap::heap()->in_collection_set(obj2), "sanity");
+        assert (!_heap->in_collection_set(obj2), "sanity");
         RawAccess<IS_NOT_NULL>::oop_store(p, obj2);
+        if (_heap->is_concurrent_traversal_in_progress()) {
+          ShenandoahBarrierSet::barrier_set()->enqueue(obj2);
+        }
       }
     }
   }
