@@ -5,16 +5,20 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$/../../src/main" />
     <content url="file://$MODULE_DIR$/../../../../../jdk/src">
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.base/macosx/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.base/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.datatransfer/macosx/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.base/solaris/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.datatransfer/share/classes" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/macosx/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/solaris/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.desktop/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.instrument/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.logging/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management.rmi/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.management/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.naming/share/classes" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.prefs/macosx/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.prefs/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.rmi/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.scripting/share/classes" isTestSource="false" />
@@ -28,7 +32,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.transaction/share/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/src/java.xml.crypto/share/classes" isTestSource="false" />
     </content>
-    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
   </component>
 </module>

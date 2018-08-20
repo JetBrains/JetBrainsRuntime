@@ -7,8 +7,8 @@
     <content url="file://$MODULE_DIR$/../../../../../jdk/test">
       <sourceFolder url="file://$MODULE_DIR$/../../../../../jdk/test/jbu" isTestSource="true" />
     </content>
-    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
     <orderEntry type="module" module-name="java-gradle_main" />
     <orderEntry type="library" name="Gradle: junit:junit:4.12" level="project" />
     <orderEntry type="library" name="Gradle: org.hamcrest:hamcrest-library:1.3" level="project" />
