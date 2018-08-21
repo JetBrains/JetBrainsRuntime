@@ -40,14 +40,21 @@ bool ShenandoahCompactHeuristics::should_start_normal_gc() const {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   size_t available = heap->free_set()->available();
-  size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
   size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
 
-  if (available < threshold_bytes_allocated || bytes_allocated > threshold_bytes_allocated) {
-    log_info(gc,ergo)("Concurrent marking triggered. Free: " SIZE_FORMAT "M, Allocated: " SIZE_FORMAT "M, Alloc Threshold: " SIZE_FORMAT "M",
-                      available / M, bytes_allocated / M, threshold_bytes_allocated / M);
+  if (available < threshold_bytes_allocated) {
+    log_info(gc)("Trigger: Free (" SIZE_FORMAT "M) is lower than allocated recently (" SIZE_FORMAT "M)",
+                 available / M, threshold_bytes_allocated / M);
     return true;
   }
+
+  size_t bytes_allocated = heap->bytes_allocated_since_gc_start();
+  if (bytes_allocated > threshold_bytes_allocated) {
+    log_info(gc)("Trigger: Allocated since last cycle (" SIZE_FORMAT "M) is larger than allocation threshold (" SIZE_FORMAT "M)",
+                 bytes_allocated / M, threshold_bytes_allocated / M);
+    return true;
+  }
+
   return ShenandoahHeuristics::should_start_normal_gc();
 }
 

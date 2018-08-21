@@ -45,10 +45,10 @@ public class TestPeriodicGC {
 
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldHaveExitValue(0);
-        if (periodic && !output.getOutput().contains("Periodic GC")) {
+        if (periodic && !output.getOutput().contains("Trigger: Time since last GC")) {
             throw new AssertionError(msg + ": Should have periodic GC in logs");
         }
-        if (!periodic && output.getOutput().contains("Periodic GC")) {
+        if (!periodic && output.getOutput().contains("Trigger: Time since last GC")) {
             throw new AssertionError(msg + ": Should not have periodic GC in logs");
         }
     }
@@ -77,7 +77,7 @@ public class TestPeriodicGC {
         for (String h : enabled) {
             testWith("Short period with " + h,
                 true,
-                "-Xlog:gc+ergo",
+                "-Xlog:gc",
                 "-XX:+UseShenandoahGC",
                 "-XX:+UnlockDiagnosticVMOptions",
                 "-XX:+UnlockExperimentalVMOptions",
@@ -87,7 +87,7 @@ public class TestPeriodicGC {
 
             testWith("Long period with " + h,
                 false,
-                "-Xlog:gc+ergo",
+                "-Xlog:gc",
                 "-XX:+UseShenandoahGC",
                 "-XX:+UnlockDiagnosticVMOptions",
                 "-XX:+UnlockExperimentalVMOptions",
@@ -99,7 +99,7 @@ public class TestPeriodicGC {
         for (String h : disabled) {
             testWith("Short period with " + h,
                 false,
-                "-Xlog:gc+ergo",
+                "-Xlog:gc",
                 "-XX:+UseShenandoahGC",
                 "-XX:+UnlockDiagnosticVMOptions",
                 "-XX:+UnlockExperimentalVMOptions",

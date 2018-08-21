@@ -109,7 +109,6 @@ ShenandoahHeap::GCCycleMode ShenandoahPartialGenerationalHeuristics::should_star
     return ShenandoahHeap::NONE;
   }
 
-  size_t capacity  = heap->capacity();
   size_t used      = heap->used();
   size_t prev_used = heap->used_at_last_gc();
 
@@ -121,18 +120,11 @@ ShenandoahHeap::GCCycleMode ShenandoahPartialGenerationalHeuristics::should_star
   size_t threshold = heap->capacity() * ShenandoahGenerationalYoungGenPercentage / 100;
   size_t allocated = used - prev_used;
 
-  // Start the next young gc after we've allocated percentage_young of the heap.
-  bool result = allocated > threshold;
-
-  FormatBuffer<> msg("%s. Capacity: " SIZE_FORMAT "M, Used: " SIZE_FORMAT "M, Previous Used: " SIZE_FORMAT
-                     "M, Allocated: " SIZE_FORMAT "M, Threshold: " SIZE_FORMAT "M",
-                     result ? "Partial cycle triggered" : "Partial cycle skipped",
-                     capacity/M, used/M, prev_used/M, allocated/M, threshold/M);
-
-  if (result) {
-    log_info(gc,ergo)("%s", msg.buffer());
-  } else {
-    log_trace(gc,ergo)("%s", msg.buffer());
+  if (allocated > threshold) {
+    log_info(gc)("Trigger: Allocated since last cycle (" SIZE_FORMAT "M) is larger than threshold (" SIZE_FORMAT "M)",
+                 allocated / M, threshold / M);
+    return ShenandoahHeap::MINOR;
   }
-  return result ? ShenandoahHeap::MINOR : ShenandoahHeap::NONE;
+
+  return ShenandoahHeap::NONE;
 }

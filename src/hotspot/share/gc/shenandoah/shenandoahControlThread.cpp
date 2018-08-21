@@ -97,6 +97,8 @@ void ShenandoahControlThread::run_service() {
 
     if (alloc_failure_pending) {
       // Allocation failure takes precedence: we have to deal with it first thing
+      log_info(gc)("Trigger: Handle Allocation Failure");
+
       cause = GCCause::_allocation_failure;
 
       // Consume the degen point, and seed it with default value
@@ -115,6 +117,10 @@ void ShenandoahControlThread::run_service() {
 
     } else if (explicit_gc_requested) {
       // Honor explicit GC requests
+      log_info(gc)("Trigger: Explicit GC request");
+
+      cause = _explicit_gc_cause;
+
       if (ExplicitGCInvokesConcurrent) {
         heuristics->record_explicit_gc();
         policy->record_explicit_to_concurrent();
@@ -128,7 +134,6 @@ void ShenandoahControlThread::run_service() {
         policy->record_explicit_to_full();
         mode = stw_full;
       }
-      cause = _explicit_gc_cause;
     } else {
       // Potential normal cycle: ask heuristics if it wants to act
       ShenandoahHeap::GCCycleMode traversal_mode = heuristics->should_start_traversal_gc();

@@ -112,7 +112,6 @@ ShenandoahHeap::GCCycleMode ShenandoahPartialLRUHeuristics::should_start_travers
     return ShenandoahHeap::NONE;
   }
 
-  size_t capacity  = heap->capacity();
   size_t used      = heap->used();
   size_t prev_used = heap->used_at_last_gc();
 
@@ -126,17 +125,11 @@ ShenandoahHeap::GCCycleMode ShenandoahPartialLRUHeuristics::should_start_travers
   size_t threshold = heap->capacity() * ShenandoahLRUOldGenPercentage / 100;
   size_t minimum   = heap->capacity() * 0.4;
 
-  bool result = ((used > minimum) && (allocated > threshold));
-
-  FormatBuffer<> msg("%s. Capacity: " SIZE_FORMAT "M, Used: " SIZE_FORMAT "M, Previous Used: " SIZE_FORMAT
-                     "M, Allocated: " SIZE_FORMAT "M, Threshold: " SIZE_FORMAT "M, Minimum: " SIZE_FORMAT "M",
-                     result ? "Partial cycle triggered" : "Partial cycle skipped",
-                     capacity/M, used/M, prev_used/M, allocated/M, threshold/M, minimum/M);
-
-  if (result) {
-    log_info(gc,ergo)("%s", msg.buffer());
-  } else {
-    log_trace(gc,ergo)("%s", msg.buffer());
+  if (((used > minimum) && (allocated > threshold))) {
+    log_info(gc)("Trigger: Allocated since last cycle (" SIZE_FORMAT "M) is larger than threshold (" SIZE_FORMAT "M)",
+                 allocated / M, threshold / M);
+    return ShenandoahHeap::MINOR;
   }
-  return result ? ShenandoahHeap::MINOR : ShenandoahHeap::NONE;
+
+  return ShenandoahHeap::NONE;
 }
