@@ -166,16 +166,32 @@
                "to duration(marking)+duration(update-refs).")               \
           writeable(Always)                                                 \
                                                                             \
-  experimental(uintx, ShenandoahInitFreeThreshold, 30,                      \
-               "Initial remaining free threshold for adaptive heuristics")  \
+  experimental(uintx, ShenandoahInitFreeThreshold, 70,                      \
+               "Initial remaining free threshold for learning steps in "    \
+               "heuristics. In percents of total heap size.")               \
           range(0,100)                                                      \
                                                                             \
   experimental(uintx, ShenandoahMinFreeThreshold, 10,                       \
                "Minimum remaining free threshold for adaptive heuristics")  \
           range(0,100)                                                      \
                                                                             \
-  experimental(uintx, ShenandoahMaxFreeThreshold, 70,                       \
-               "Maximum remaining free threshold for adaptive heuristics")  \
+  experimental(uintx, ShenandoahLearningSteps, 5,                           \
+               "Number of GC cycles to run in order to learn application "  \
+               "and GC performance for adaptive heuristics.")               \
+          range(0,100)                                                      \
+                                                                            \
+  experimental(uintx, ShenandoahMaxCSetFactor, 25,                          \
+               "Maximum amount of free space to reserve for collection set "\
+               "allocations. Larger values make GC more aggressive, while " \
+               "leaving less headroom for application to allocate in. "     \
+               "In percents of free space available.")                      \
+          range(0,100)                                                      \
+                                                                            \
+  experimental(uintx, ShenandoahAllocSpikeFactor, 5,                        \
+               "The amount of heap space to reserve for absorbing the "     \
+               "allocation spikes. Larger value wastes more memory in "     \
+               "non-emergency cases, but provides more safety in emergency "\
+               "cases. In percents of total heap size.")                    \
           range(0,100)                                                      \
                                                                             \
   experimental(uintx, ShenandoahImmediateThreshold, 90,                     \

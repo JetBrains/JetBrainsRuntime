@@ -327,9 +327,6 @@ void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cau
   GCIdMark gc_id_mark;
   ShenandoahGCSession session;
 
-  // Capture peak occupancy right after starting the cycle
-  heap->heuristics()->record_peak_occupancy();
-
   TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
 
   // Start initial mark under STW

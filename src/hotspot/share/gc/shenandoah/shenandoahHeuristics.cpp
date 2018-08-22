@@ -76,8 +76,12 @@ ShenandoahHeuristics::ShenandoahHeuristics() :
   _degenerated_cycles_in_a_row(0),
   _successful_cycles_in_a_row(0),
   _bytes_in_cset(0),
-  _last_cycle_end(0) {
-
+  _cycle_start(0),
+  _last_cycle_end(0),
+  _gc_times_learned(0),
+  _gc_time_penalties(0),
+  _gc_time_history(new TruncatedSeq(5))
+{
   if (strcmp(ShenandoahUpdateRefsEarly, "on") == 0 ||
       strcmp(ShenandoahUpdateRefsEarly, "true") == 0 ) {
     _update_refs_early = true;
@@ -241,7 +245,7 @@ void ShenandoahHeuristics::record_gc_end() {
 }
 
 void ShenandoahHeuristics::record_cycle_start() {
-  // Do nothing
+  _cycle_start = os::elapsedTime();
 }
 
 void ShenandoahHeuristics::record_cycle_end() {
@@ -285,16 +289,23 @@ bool ShenandoahHeuristics::should_degenerate_cycle() {
 void ShenandoahHeuristics::record_success_concurrent() {
   _degenerated_cycles_in_a_row = 0;
   _successful_cycles_in_a_row++;
+
+  double duration = (os::elapsedTime() - _cycle_start);
+  _gc_time_history->add(duration);
+  _gc_times_learned++;
+  _gc_time_penalties -= MIN2<size_t>(_gc_time_penalties, Concurrent_Adjust);
 }
 
 void ShenandoahHeuristics::record_success_degenerated() {
   _degenerated_cycles_in_a_row++;
   _successful_cycles_in_a_row = 0;
+  _gc_time_penalties += Degenerated_Penalty;
 }
 
 void ShenandoahHeuristics::record_success_full() {
   _degenerated_cycles_in_a_row = 0;
   _successful_cycles_in_a_row++;
+  _gc_time_penalties += Full_Penalty;
 }
 
 void ShenandoahHeuristics::record_allocation_failure_gc() {
@@ -303,10 +314,10 @@ void ShenandoahHeuristics::record_allocation_failure_gc() {
 
 void ShenandoahHeuristics::record_explicit_gc() {
   _bytes_in_cset = 0;
-}
 
-void ShenandoahHeuristics::record_peak_occupancy() {
-  // Nothing to do by default.
+  // Assume users call System.gc() when external state changes significantly,
+  // which forces us to re-learn the GC timings and allocation rates.
+  _gc_times_learned = 0;
 }
 
 bool ShenandoahHeuristics::should_process_references() {

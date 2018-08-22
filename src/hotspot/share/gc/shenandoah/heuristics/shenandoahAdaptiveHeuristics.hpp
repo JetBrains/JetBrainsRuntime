@@ -28,16 +28,10 @@
 
 class ShenandoahAdaptiveHeuristics : public ShenandoahHeuristics {
 private:
-  static const intx MaxNormalStep = 5;      // max step towards goal under normal conditions
-  static const intx DegeneratedGC_Hit = 10; // how much to step on degenerated GC
-  static const intx AllocFailure_Hit = 20;  // how much to step on allocation failure full GC
-  static const intx UserRequested_Hit = 0;  // how much to step on user requested full GC
-
-  uintx _free_threshold;
-  size_t _peak_occupancy;
   TruncatedSeq* _cycle_gap_history;
   TruncatedSeq* _conc_mark_duration_history;
   TruncatedSeq* _conc_uprefs_duration_history;
+
 public:
   ShenandoahAdaptiveHeuristics();
 
@@ -47,23 +41,9 @@ public:
                                                      RegionData* data, size_t size,
                                                      size_t actual_free);
 
-  void handle_cycle_success();
-
   void record_cycle_start();
 
   virtual void record_phase_time(ShenandoahPhaseTimings::Phase phase, double secs);
-
-  void adjust_free_threshold(intx adj);
-
-  virtual void record_success_concurrent();
-
-  virtual void record_success_degenerated();
-
-  virtual void record_success_full();
-
-  virtual void record_explicit_gc();
-
-  virtual void record_peak_occupancy();
 
   virtual bool should_start_normal_gc() const;
 

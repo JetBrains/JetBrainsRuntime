@@ -53,11 +53,14 @@
     }                                                                       \
   } while (0)
 
-
 class ShenandoahCollectionSet;
 class ShenandoahHeapRegion;
 
 class ShenandoahHeuristics : public CHeapObj<mtGC> {
+  static const intx Concurrent_Adjust   =  1; // recover from penalties
+  static const intx Degenerated_Penalty = 10; // how much to penalize average GC duration history on Degenerated GC
+  static const intx Full_Penalty        = 20; // how much to penalize average GC duration history on Full GC
+
 protected:
   typedef struct {
     ShenandoahHeapRegion* _region;
@@ -84,7 +87,12 @@ protected:
 
   size_t _bytes_in_cset;
 
+  double _cycle_start;
   double _last_cycle_end;
+
+  size_t _gc_times_learned;
+  size_t _gc_time_penalties;
+  TruncatedSeq* _gc_time_history;
 
   static int compare_by_garbage(RegionData a, RegionData b);
   static int compare_by_garbage_then_alloc_seq_ascending(RegionData a, RegionData b);
@@ -136,8 +144,6 @@ public:
   virtual void record_allocation_failure_gc();
 
   virtual void record_explicit_gc();
-
-  virtual void record_peak_occupancy();
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set);
 
