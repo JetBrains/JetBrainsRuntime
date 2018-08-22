@@ -11,7 +11,7 @@ def test_jvm = {
         file(jbsdkhome + (OperatingSystem.current().isWindows()?"/bin/java.exe" : "/bin/java")).absolutePath
     } else {
         if (OperatingSystem.current().isMacOsX()) {
-            file('../../../build/macosx-x86_64-normal-server-release/images/j2sdk-bundle/jdk1.8.0.jdk/Contents/Home/bin/java').absolutePath
+            file('../../../build/macosx-x86_64-normal-server-release/images/jdk-bundle/jdk-9.0.1.jdk/Contents/Home/bin/java').absolutePath
         } else if (OperatingSystem.current().isLinux()) {
             file('../../../build/linux-x86_64-normal-server-release/images/jdk/bin/java').absolutePath
         } else {
@@ -72,6 +72,8 @@ test.dependsOn.clear()
 test.dependsOn tasks.compileTestJava
 
 test {
+    systemProperty "jb.java2d.metal", "true"
+    systemProperty "java.awt.graphicsenv", "sun.awt.MTLGraphicsEnvironment"
     systemProperty "testdata", file('../../../jdk/test/jbu/testdata').absolutePath
 
 //  Generate golden images for DroidFontTest and MixedTextTest
