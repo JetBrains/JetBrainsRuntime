@@ -197,7 +197,7 @@ public:
         // Need to pre-evac code roots here. Otherwise we might see from-space constants.
         ShenandoahWorkerTimings* worker_times = _heap->phase_timings()->worker_times();
         ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::CodeCacheRoots, worker_id);
-        ShenandoahAllCodeRootsIterator coderoots = ShenandoahCodeRoots::iterator();
+        ShenandoahCsetCodeRootsIterator coderoots = ShenandoahCodeRoots::cset_iterator();
         coderoots.possibly_parallel_blobs_do(&code_cl);
       } else {
         _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, NULL, worker_id);
@@ -265,28 +265,30 @@ public:
       // Process remaining threads SATB buffers below.
     }
 
-    // Step 1: Process ordinary GC roots.
+    // Step 1: Process GC roots.
+    // For oops in code roots, they are marked, evacuated, enqueued for further traversal,
+    // and the references to the oops are updated during init pause. New nmethods are handled
+    // in similar way during nmethod-register process. Therefore, we don't need to rescan code
+    // roots here.
     if (!_heap->is_degenerated_gc_in_progress()) {
       ShenandoahTraversalClosure roots_cl(q, rp);
       CLDToOopClosure cld_cl(&roots_cl);
-      MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
       ShenandoahTraversalSATBThreadsClosure tc(&satb_cl);
       if (unload_classes) {
         ShenandoahRemarkCLDClosure weak_cld_cl(&roots_cl);
-        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &weak_cld_cl, &code_cl, &tc, worker_id);
+        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &weak_cld_cl, NULL, &tc, worker_id);
       } else {
-        _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, &tc, worker_id);
+        _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, NULL, &tc, worker_id);
       }
     } else {
       ShenandoahTraversalDegenClosure roots_cl(q, rp);
       CLDToOopClosure cld_cl(&roots_cl);
-      MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
       ShenandoahTraversalSATBThreadsClosure tc(&satb_cl);
       if (unload_classes) {
         ShenandoahRemarkCLDClosure weak_cld_cl(&roots_cl);
-        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &weak_cld_cl, &code_cl, &tc, worker_id);
+        _rp->process_strong_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &weak_cld_cl, NULL, &tc, worker_id);
       } else {
-        _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, &tc, worker_id);
+        _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, NULL, &tc, worker_id);
       }
     }
 
