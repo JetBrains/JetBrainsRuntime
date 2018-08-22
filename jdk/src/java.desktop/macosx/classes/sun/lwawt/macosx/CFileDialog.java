@@ -38,7 +38,6 @@ import java.io.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import sun.awt.CausedFocusEvent.Cause;
 import sun.awt.AWTAccessor;
 import sun.java2d.pipe.Region;
 import sun.lwawt.LWWindowPeer;
@@ -62,52 +61,53 @@ class CFileDialog implements FileDialogPeer {
                         new GetBooleanAction("apple.awt.fileDialogForDirectories"));
 
                 int dialogMode = target.getMode();
-                String title = target.getTitle();
-                if (title == null) {
-                    title = " ";
-                }
+                String title = (target.getTitle() == null) ? "" : target.getTitle();
 
                 Window owner = target.getOwner();
 
-                long ownerPtr = owner == null ? 0L :((CPlatformWindow) (((LWWindowPeer)owner.getPeer())).getPlatformWindow()).getNSWindowPtr();
+                final Object peer = AWTAccessor.getComponentAccessor().getPeer(owner);
+                Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+                ((CPlatformWindow)platformWindow).execute(ownerPtr -> {
+                    String[] userFileNames = nativeRunFileDialog(
+                            ownerPtr,
+                            title,
+                            dialogMode,
+                            target.isMultipleMode(),
+                            navigateApps,
+                            chooseDirectories,
+                            target.getFilenameFilter() != null,
+                            target.getDirectory(),
+                            target.getFile());
 
-                String[] userFileNames = nativeRunFileDialog(
-                        ownerPtr,
-                        title,
-                        dialogMode,
-                        target.isMultipleMode(),
-                        navigateApps,
-                        chooseDirectories,
-                        target.getFilenameFilter() != null,
-                        target.getDirectory(),
-                        target.getFile());
+                    String directory = null;
+                    String file = null;
+                    File[] files = null;
 
-                String directory = null;
-                String file = null;
-                File[] files = null;
+                    if (userFileNames != null && userFileNames.length > 0) {
+                        // the dialog wasn't cancelled
+                        int filesNumber = userFileNames.length;
+                        files = new File[filesNumber];
+                        for (int i = 0; i < filesNumber; i++) {
+                            files[i] = new File(userFileNames[i]);
+                        }
 
-                if (userFileNames != null && userFileNames.length > 0) {
-                    // the dialog wasn't cancelled
-                    int filesNumber = userFileNames.length;
-                    files = new File[filesNumber];
-                    for (int i = 0; i < filesNumber; i++) {
-                        files[i] = new File(userFileNames[i]);
+                        directory = files[0].getParent();
+                        // make sure directory always ends in '/'
+                        if (!directory.endsWith(File.separator)) {
+                            directory = directory + File.separator;
+                        }
+
+                        file = files[0].getName(); // pick any file
                     }
 
-                    directory = files[0].getParent();
-                    // make sure directory always ends in '/'
-                    if (!directory.endsWith(File.separator)) {
-                        directory = directory + File.separator;
-                    }
+                    // store results back in component
+                    AWTAccessor.FileDialogAccessor accessor = AWTAccessor.getFileDialogAccessor();
+                    accessor.setDirectory(target, directory);
+                    accessor.setFile(target, file);
+                    accessor.setFiles(target, files);
+                });
 
-                    file = files[0].getName(); // pick any file
-                }
 
-                // store results back in component
-                AWTAccessor.FileDialogAccessor accessor = AWTAccessor.getFileDialogAccessor();
-                accessor.setDirectory(target, directory);
-                accessor.setFile(target, file);
-                accessor.setFiles(target, files);
             } finally {
                 // Java2 Dialog waits for hide to let show() return
                 target.dispose();
