@@ -217,7 +217,7 @@ HeapWord* ShenandoahFreeSet::try_allocate_in(ShenandoahHeapRegion* r, Shenandoah
     size_t waste = r->free();
     if (waste > 0) {
       increase_used(waste);
-      _heap->notify_alloc(waste, true);
+      _heap->notify_alloc_words(waste >> LogHeapWordSize, true);
     }
 
     size_t num = r->region_number();
@@ -328,7 +328,7 @@ HeapWord* ShenandoahFreeSet::allocate_contiguous(ShenandoahHeap::ShenandoahAlloc
 
   if (remainder != 0) {
     // Record this remainder as allocation waste
-    _heap->notify_alloc(ShenandoahHeapRegion::region_size_words() - remainder, true);
+    _heap->notify_alloc_words(ShenandoahHeapRegion::region_size_words() - remainder, true);
   }
 
   // Allocated at left/rightmost? Move the bounds appropriately.

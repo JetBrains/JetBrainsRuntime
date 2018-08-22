@@ -642,7 +642,7 @@ void ShenandoahHeap::increase_allocated(size_t bytes) {
   Atomic::add(bytes, &_bytes_allocated_since_gc_start);
 }
 
-void ShenandoahHeap::notify_alloc(size_t words, bool waste) {
+void ShenandoahHeap::notify_alloc_words(size_t words, bool waste) {
   size_t bytes = words * HeapWordSize;
   if (!waste) {
     increase_used(bytes);
@@ -862,7 +862,7 @@ HeapWord* ShenandoahHeap::allocate_memory(ShenandoahAllocationRequest& req) {
             "Only LAB allocations are elastic: %s, requested = " SIZE_FORMAT ", actual = " SIZE_FORMAT,
             alloc_type_to_string(req.type()), requested, actual);
 
-    notify_alloc(actual, false);
+    notify_alloc_words(actual, false);
 
     // If we requested more than we were granted, give the rest back to pacer.
     // This only matters if we are in the same pacing epoch: do not try to unpace

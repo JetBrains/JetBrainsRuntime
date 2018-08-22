@@ -514,7 +514,7 @@ public:
 
   void increase_allocated(size_t bytes);
 
-  void notify_alloc(size_t words, bool waste);
+  void notify_alloc_words(size_t words, bool waste);
 
   void reset_next_mark_bitmap();
   void reset_next_mark_bitmap_traversal();
