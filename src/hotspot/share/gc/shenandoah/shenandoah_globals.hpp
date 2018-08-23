@@ -99,7 +99,7 @@
           "Run a separate concurrent reference updating phase after"        \
           "concurrent evacuation. Possible values: 'on', 'off', 'adaptive'")\
                                                                             \
-  experimental(uintx, ShenandoahEvacAssist, 10,                             \
+  experimental(uintx, ShenandoahEvacAssist, 0,                              \
           "How many objects to evacuate on WB assist path. "                \
           "Use zero to disable.")                                           \
                                                                             \
