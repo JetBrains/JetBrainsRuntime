@@ -285,6 +285,8 @@ oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
     // thus amortizing the overhead. For sparsely live heaps, scan costs easily dominate
     // total assist costs, and can introduce a lot of evacuation latency. This is why we
     // only scan for _nearest_ N objects, regardless if they are eligible for evac or not.
+    // The scan itself should also avoid touching the non-marked objects below TAMS, because
+    // their metadata (notably, klasses) may be incorrect already.
 
     size_t max = ShenandoahEvacAssist;
     if (max > 0) {
@@ -297,10 +299,11 @@ oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
       assert(r->is_cset(), "sanity");
 
       HeapWord* cur = (HeapWord*)obj + obj->size() + BrooksPointer::word_size();
+
       size_t count = 0;
-      while (cur < r->top() && (count++ < max)) {
+      while ((cur < r->top()) && ctx->is_marked(oop(cur)) && (count++ < max)) {
         oop cur_oop = oop(cur);
-        if (ctx->is_marked(cur_oop) && oopDesc::unsafe_equals(cur_oop, resolve_forwarded_not_null(cur_oop))) {
+        if (oopDesc::unsafe_equals(cur_oop, resolve_forwarded_not_null(cur_oop))) {
           _heap->evacuate_object(cur_oop, thread);
         }
         cur = cur + cur_oop->size() + BrooksPointer::word_size();
