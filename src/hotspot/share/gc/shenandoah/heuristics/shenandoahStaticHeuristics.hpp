@@ -30,8 +30,6 @@ class ShenandoahStaticHeuristics : public ShenandoahHeuristics {
 public:
   ShenandoahStaticHeuristics();
 
-  void print_thresholds();
-
   virtual ~ShenandoahStaticHeuristics();
 
   virtual bool should_start_normal_gc() const;

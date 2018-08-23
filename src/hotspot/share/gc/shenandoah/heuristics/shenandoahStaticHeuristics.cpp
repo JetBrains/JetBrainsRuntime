@@ -34,13 +34,6 @@ ShenandoahStaticHeuristics::ShenandoahStaticHeuristics() : ShenandoahHeuristics(
   SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 1);
 }
 
-void ShenandoahStaticHeuristics::print_thresholds() {
-  log_info(gc, init)("Shenandoah heuristics thresholds: allocation " SIZE_FORMAT ", free " SIZE_FORMAT ", garbage " SIZE_FORMAT,
-                     ShenandoahAllocationThreshold,
-                     ShenandoahFreeThreshold,
-                     ShenandoahGarbageThreshold);
-}
-
 ShenandoahStaticHeuristics::~ShenandoahStaticHeuristics() {}
 
 bool ShenandoahStaticHeuristics::should_start_normal_gc() const {

@@ -256,10 +256,6 @@ void ShenandoahHeuristics::record_phase_time(ShenandoahPhaseTimings::Phase phase
   // Do nothing
 }
 
-void ShenandoahHeuristics::print_thresholds() {
-  // Do nothing
-}
-
 bool ShenandoahHeuristics::should_start_update_refs() {
   return _update_refs_early;
 }

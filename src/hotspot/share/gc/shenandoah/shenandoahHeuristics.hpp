@@ -123,8 +123,6 @@ public:
 
   virtual void record_phase_time(ShenandoahPhaseTimings::Phase phase, double secs);
 
-  virtual void print_thresholds();
-
   virtual bool should_start_normal_gc() const;
 
   virtual bool should_start_update_refs();

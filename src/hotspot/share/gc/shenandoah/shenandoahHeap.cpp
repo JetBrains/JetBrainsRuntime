@@ -376,7 +376,6 @@ void ShenandoahHeap::initialize_heuristics() {
     }
     log_info(gc, init)("Shenandoah heuristics: %s",
                        _heuristics->name());
-    _heuristics->print_thresholds();
   } else {
       ShouldNotReachHere();
   }
