@@ -219,7 +219,7 @@ void ShenandoahAsserts::assert_in_heap(void* interior_loc, oop obj, const char *
 void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* file, int line) {
   ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
 
-  // Step 1. Check that both obj and its fwdptr are in heap.
+  // Step 1. Check that obj is correct.
   // After this step, it is safe to call heap_region_containing().
   if (!heap->is_in(obj)) {
     print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
@@ -229,35 +229,38 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* 
 
   oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
 
-  if (!heap->is_in(fwd)) {
-    print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
-                  "Forwardee must point to a heap address",
-                  file, line);
-  }
+  if (!oopDesc::unsafe_equals(obj, fwd)) {
 
-  bool is_forwarded = !oopDesc::unsafe_equals(obj, fwd);
+    // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
+    // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
+    // that still points to the object itself.
+    if (heap->is_full_gc_move_in_progress()) {
+      print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                    "Non-trivial forwarding pointer during Full GC moves, probable bug.",
+                    file, line);
+    }
 
-  // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
-  // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
-  // that still points to the object itself.
+    // Step 2. Check that forwardee is correct
+    if (!heap->is_in(fwd)) {
+      print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                    "Forwardee must point to a heap address",
+                    file, line);
+    }
 
-  if (is_forwarded && heap->is_full_gc_move_in_progress()) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
-                  "Non-trivial forwarding pointer during Full GC moves, probable bug.",
-                  file, line);
-  }
+    if (obj->klass() != fwd->klass()) {
+      print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                    "Forwardee klass disagrees with object class",
+                    file, line);
+    }
 
-  // Step 2. Check that forwardee points to correct region.
-  if (is_forwarded &&
-      (heap->heap_region_index_containing(fwd) ==
-       heap->heap_region_index_containing(obj))) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
-                  "Forwardee should be self, or another region",
-                  file, line);
-  }
+    // Step 3. Check that forwardee points to correct region
+    if (heap->heap_region_index_containing(fwd) == heap->heap_region_index_containing(obj)) {
+      print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                    "Non-trivial forwardee should in another region",
+                    file, line);
+    }
 
-  // Step 3. Check for multiple forwardings
-  if (is_forwarded) {
+    // Step 4. Check for multiple forwardings
     oop fwd2 = oop(BrooksPointer::get_raw_unchecked(fwd));
     if (!oopDesc::unsafe_equals(fwd, fwd2)) {
       print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
