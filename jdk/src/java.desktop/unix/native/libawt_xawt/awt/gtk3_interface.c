@@ -329,7 +329,7 @@ GtkApi* gtk3_load(JNIEnv *env, const char* lib_name)
         fp_gdk_pixbuf_new_from_file =
                 dl_symbol("gdk_pixbuf_new_from_file");
         fp_gdk_pixbuf_get_from_drawable =
-                    dl_symbol("gdk_pixbuf_get_from_drawable");
+                    dl_symbol("gdk_pixbuf_get_from_window");
         fp_gdk_pixbuf_get_width = dl_symbol("gdk_pixbuf_get_width");
         fp_gdk_pixbuf_get_height = dl_symbol("gdk_pixbuf_get_height");
         fp_gdk_pixbuf_get_pixels = dl_symbol("gdk_pixbuf_get_pixels");
@@ -2924,7 +2924,6 @@ static void gtk3_init(GtkApi* gtk) {
     gtk->g_list_append = fp_g_list_append;
     gtk->g_list_free = fp_g_list_free;
     gtk->g_list_free_full = fp_g_list_free_full;
-    fprintf(stderr, "-gtk3-\n");
     gtk->g_unlink = fp_g_unlink;
     gtk->g_file_open_tmp = fp_g_file_open_tmp;
     gtk->g_dbus_connection_call_sync = fp_g_dbus_connection_call_sync;
