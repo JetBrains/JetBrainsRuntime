@@ -182,6 +182,7 @@ java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.html   
 java/awt/Focus/NonFocusableWindowTest/NoEventsTest.java                             8197800 windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java                    8151979 generic-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java       8169110 macosx-all,windows-all
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                     JRE-898 macosx-all,linux-all
 java/awt/Focus/RequestFocusToDisabledCompTest/RequestFocusToDisabledCompTest.java   JRE-898 macosx-all
 java/awt/Focus/ResetMostRecentFocusOwnerTest/ResetMostRecentFocusOwnerTest.java     8168294 macosx-all,windows-all,linux-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JRE-898 macosx-all,linux-all
@@ -564,6 +565,7 @@ java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRem
 java/awt/Paint/ExposeOnEDT.java                                                     JRE-898 windows-all
 java/awt/Paint/ListRepaint.java                                                     8201307 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
+java/awt/Paint/bug8024864.java                                                      8176512 generic-all
 java/awt/PopupMenu/PopupMenuLocation.java                                           JRE-828 macosx-all,windows-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             JRE-898 macosx-all,windows-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 generic-all
@@ -797,7 +799,7 @@ javax/swing/JMenuItem/4654927/bug4654927.java                                   
 javax/swing/JMenuItem/6249972/bug6249972.java                                       8197552 macosx-all,windows-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java              8172536,8203918 macosx-all
 javax/swing/JPopupMenu/4458079/bug4458079.java                                      8040917 macosx-all,windows-all,linux-all
-javax/swing/JPopupMenu/4634626/bug4634626.java                                      8204072 macosx-all,windows-all
+javax/swing/JPopupMenu/4634626/bug4634626.java                                      8204072,JRE-898 macosx-all,windows-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java                                      8064915 macosx-all
 javax/swing/JPopupMenu/6217905/bug6217905.java                                      JRE-794 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java                                      8197552 macosx-all,windows-all
@@ -1033,6 +1035,7 @@ javax/sound/sampled/Clip/bug5070081.java                                        
 javax/sound/sampled/DataLine/LongFramePosition.java                                 8055097 generic-all
 javax/sound/sampled/Clip/Drain/ClipDrain.java                                       7062792 generic-all
 javax/sound/sampled/Mixers/DisabledAssertionCrash.java                              7067310 generic-all
+javax/sound/sampled/Lines/StopStart.java                                            JRE-898 macosx-all
 
 ############################################################################
 
