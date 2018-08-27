@@ -1037,12 +1037,12 @@ javax/sound/sampled/DataLine/LongFramePosition.java                             
 javax/sound/sampled/Clip/Drain/ClipDrain.java                                       7062792 generic-all
 javax/sound/sampled/Mixers/DisabledAssertionCrash.java                              7067310 generic-all
 javax/sound/sampled/Lines/StopStart.java                                            JRE-898 macosx-all
-javax/sound/midi/Sequencer/Recording.java		                                    JRE-898 macosx-all
-javax/sound/midi/Sequencer/SeqRecordDoesNotCopy.java		                        JRE-898 macosx-all
-javax/sound/midi/Sequencer/SeqRecordsRealTimeEvents.java		                    JRE-898 macosx-all
-javax/sound/midi/Sequencer/SetTickPosition.java		    		                    JRE-898 macosx-all
-javax/sound/midi/Soundbanks/ExtraCharInSoundbank.java   		                    JRE-898 macosx-all
-javax/sound/midi/Synthesizer/bug4685396.java     	    		                    JRE-898 macosx-all
+javax/sound/midi/Sequencer/Recording.java                                           JRE-898 macosx-all
+javax/sound/midi/Sequencer/SeqRecordDoesNotCopy.java                                JRE-898 macosx-all
+javax/sound/midi/Sequencer/SeqRecordsRealTimeEvents.java                            JRE-898 macosx-all
+javax/sound/midi/Sequencer/SetTickPosition.java                                     JRE-898 macosx-all
+javax/sound/midi/Soundbanks/ExtraCharInSoundbank.java                               JRE-898 macosx-all
+javax/sound/midi/Synthesizer/bug4685396.java                                        JRE-898 macosx-all
 
 ############################################################################
 
