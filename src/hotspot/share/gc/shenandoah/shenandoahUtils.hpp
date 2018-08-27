@@ -24,6 +24,7 @@
 #ifndef SHARE_VM_GC_SHENANDOAHUTILS_HPP
 #define SHARE_VM_GC_SHENANDOAHUTILS_HPP
 
+#include "gc/shared/gcCause.hpp"
 #include "gc/shared/isGCActiveMark.hpp"
 #include "gc/shared/vmGCOperations.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
@@ -36,13 +37,16 @@
 #include "services/memoryService.hpp"
 
 class GCTimer;
+class GCTracer;
 
 class ShenandoahGCSession : public StackObj {
 private:
-  GCTimer*  _timer;
+  GCTimer*  const _timer;
+  GCTracer* const _tracer;
+
   TraceMemoryManagerStats _trace_cycle;
 public:
-  ShenandoahGCSession();
+  ShenandoahGCSession(GCCause::Cause cause);
   ~ShenandoahGCSession();
 };
 
@@ -61,6 +65,7 @@ private:
   const SvcGCMarker             _svc_gc_mark;
   const IsGCActiveMark          _is_gc_active_mark;
   TraceMemoryManagerStats       _trace_pause;
+
 public:
   ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type);
   ~ShenandoahGCPauseMark();

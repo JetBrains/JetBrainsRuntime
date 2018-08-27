@@ -23,7 +23,9 @@
 
 #include "precompiled.hpp"
 
+#include "gc/shared/gcCause.hpp"
 #include "gc/shared/gcTimer.hpp"
+#include "gc/shared/gcTrace.hpp"
 #include "gc/shenandoah/shenandoahAllocTracker.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
@@ -32,10 +34,14 @@
 #include "gc/shenandoah/shenandoahUtils.hpp"
 
 
-ShenandoahGCSession::ShenandoahGCSession() {
+ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
+  _timer(ShenandoahHeap::heap()->gc_timer()),
+  _tracer(ShenandoahHeap::heap()->tracer()) {
   ShenandoahHeap* sh = ShenandoahHeap::heap();
-  _timer = sh->gc_timer();
+
   _timer->register_gc_start();
+  _tracer->report_gc_start(cause, _timer->gc_start());
+
   sh->shenandoahPolicy()->record_cycle_start();
   sh->heuristics()->record_cycle_start();
   _trace_cycle.initialize(sh->cycle_memory_manager(), sh->gc_cause(),
@@ -53,12 +59,16 @@ ShenandoahGCSession::ShenandoahGCSession() {
 ShenandoahGCSession::~ShenandoahGCSession() {
   ShenandoahHeap::heap()->heuristics()->record_cycle_end();
   _timer->register_gc_end();
+  _tracer->report_gc_end(_timer->gc_end(), _timer->time_partitions());
 }
 
 ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type) :
   _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
   ShenandoahHeap* sh = ShenandoahHeap::heap();
 
+  // FIXME: It seems that JMC throws away level 0 events, which are the Shenandoah
+  // pause events. Create this pseudo level 0 event to push real events to level 1.
+  sh->gc_timer()->register_gc_phase_start("Shenandoah", Ticks::now());
   _trace_pause.initialize(sh->stw_memory_manager(), sh->gc_cause(),
           /* allMemoryPoolsAffected */    true,
           /* recordGCBeginTime = */       true,
@@ -75,6 +85,7 @@ ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_typ
 
 ShenandoahGCPauseMark::~ShenandoahGCPauseMark() {
   ShenandoahHeap* sh = ShenandoahHeap::heap();
+  sh->gc_timer()->register_gc_phase_end(Ticks::now());
   sh->heuristics()->record_gc_end();
 }
 

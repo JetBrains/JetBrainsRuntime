@@ -763,8 +763,6 @@ public:
 private:
   void ref_processing_init();
 
-  GCTracer* tracer();
-
 private:
   uint64_t _alloc_seq_at_last_gc_start;
   uint64_t _alloc_seq_at_last_gc_end;
@@ -787,6 +785,7 @@ public:
   GCMemoryManager* cycle_memory_manager() { return &_cycle_memory_manager; }
   GCMemoryManager* stw_memory_manager()   { return &_stw_memory_manager; }
 
+  GCTracer* tracer();
 public:
   // Entry points to STW GC operations, these cause a related safepoint, that then
   // call the entry method below
