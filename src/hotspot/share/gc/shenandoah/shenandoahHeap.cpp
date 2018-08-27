@@ -2715,13 +2715,9 @@ void ShenandoahHeap::vmop_degenerated(ShenandoahDegenPoint point) {
 void ShenandoahHeap::entry_init_mark() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_mark);
-
-  FormatBuffer<> msg("Pause Init Mark%s%s%s",
-                     has_forwarded_objects() ? " (update refs)"    : "",
-                     process_references() ?    " (process refs)"   : "",
-                     unload_classes() ?        " (unload classes)" : "");
+  const char* msg = init_mark_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
-  EventMark em("%s", msg.buffer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_init_marking(),
@@ -2733,13 +2729,9 @@ void ShenandoahHeap::entry_init_mark() {
 void ShenandoahHeap::entry_final_mark() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_mark);
-
-  FormatBuffer<> msg("Pause Final Mark%s%s%s",
-                     has_forwarded_objects() ? " (update refs)"    : "",
-                     process_references() ?    " (process refs)"   : "",
-                     unload_classes() ?        " (unload classes)" : "");
+  const char* msg = final_mark_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
-  EventMark em("%s", msg.buffer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_final_marking(),
@@ -2751,10 +2743,9 @@ void ShenandoahHeap::entry_final_mark() {
 void ShenandoahHeap::entry_final_evac() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_evac);
-
-  FormatBuffer<> msg("Pause Final Evac");
+  static const char* msg = "Pause Final Evac";
   GCTraceTime(Info, gc) time(msg, gc_timer());
-  EventMark em("%s", msg.buffer());
+  EventMark em("%s", msg);
 
   op_final_evac();
 }
@@ -2837,9 +2828,9 @@ void ShenandoahHeap::entry_degenerated(int point) {
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::degen_gc);
 
   ShenandoahDegenPoint dpoint = (ShenandoahDegenPoint)point;
-  FormatBuffer<> msg("Pause Degenerated GC (%s)", degen_point_to_string(dpoint));
+  const char* msg = degen_event_message(dpoint);
   GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
-  EventMark em("%s", msg.buffer());
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_stw_degenerated(),
@@ -2853,12 +2844,9 @@ void ShenandoahHeap::entry_degenerated(int point) {
 void ShenandoahHeap::entry_mark() {
   TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
 
-  FormatBuffer<> msg("Concurrent marking%s%s%s",
-                     has_forwarded_objects() ? " (update refs)"    : "",
-                     process_references() ?    " (process refs)"   : "",
-                     unload_classes() ?        " (unload classes)" : "");
-  GCTraceTime(Info, gc) time(msg, gc_timer(), GCCause::_no_gc, true);
-  EventMark em("%s", msg.buffer());
+  const char* msg = conc_mark_event_message();
+  GCTraceTime(Info, gc) time(msg);
+  EventMark em("%s", msg);
 
   ShenandoahWorkerScope scope(workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_conc_marking(),
@@ -3079,6 +3067,99 @@ void ShenandoahHeap::deduplicate_string(oop str) {
     ShenandoahStringDedup::deduplicate(str);
   }
 }
+
+const char* ShenandoahHeap::init_mark_event_message() const {
+  bool update_refs = has_forwarded_objects();
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (update_refs && proc_refs && unload_cls) {
+    return "Pause Init Mark (update refs) (process refs) (unload classes)";
+  } else if (update_refs && proc_refs) {
+    return "Pause Init Mark (update refs) (process refs)";
+  } else if (update_refs && unload_cls) {
+    return "Pause Init Mark (update refs) (unload classes)";
+  } else if (proc_refs && unload_cls) {
+    return "Pause Init Mark (process refs) (unload classes)";
+  } else if (update_refs) {
+    return "Pause Init Mark (update refs)";
+  } else if (proc_refs) {
+    return "Pause Init Mark (process refs)";
+  } else if (unload_cls) {
+    return "Pause Init Mark (unload classes)";
+  } else {
+    return "Pause Init Mark";
+  }
+}
+
+const char* ShenandoahHeap::final_mark_event_message() const {
+  bool update_refs = has_forwarded_objects();
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (update_refs && proc_refs && unload_cls) {
+    return "Pause Final Mark (update refs) (process refs) (unload classes)";
+  } else if (update_refs && proc_refs) {
+    return "Pause Final Mark (update refs) (process refs)";
+  } else if (update_refs && unload_cls) {
+    return "Pause Final Mark (update refs) (unload classes)";
+  } else if (proc_refs && unload_cls) {
+    return "Pause Final Mark (process refs) (unload classes)";
+  } else if (update_refs) {
+    return "Pause Final Mark (update refs)";
+  } else if (proc_refs) {
+    return "Pause Final Mark (process refs)";
+  } else if (unload_cls) {
+    return "Pause Final Mark (unload classes)";
+  } else {
+    return "Pause Final Mark";
+  }
+}
+
+const char* ShenandoahHeap::conc_mark_event_message() const {
+  bool update_refs = has_forwarded_objects();
+  bool proc_refs = process_references();
+  bool unload_cls = unload_classes();
+
+  if (update_refs && proc_refs && unload_cls) {
+    return "Concurrent marking (update refs) (process refs) (unload classes)";
+  } else if (update_refs && proc_refs) {
+    return "Concurrent marking (update refs) (process refs)";
+  } else if (update_refs && unload_cls) {
+    return "Concurrent marking (update refs) (unload classes)";
+  } else if (proc_refs && unload_cls) {
+    return "Concurrent marking (process refs) (unload classes)";
+  } else if (update_refs) {
+    return "Concurrent marking (update refs)";
+  } else if (proc_refs) {
+    return "Concurrent marking (process refs)";
+  } else if (unload_cls) {
+    return "Concurrent marking (unload classes)";
+  } else {
+    return "Concurrent marking";
+  }
+}
+
+const char* ShenandoahHeap::degen_event_message(ShenandoahDegenPoint point) const {
+  switch (point) {
+    case _degenerated_unset:
+      return "Pause Degenerated GC (<UNSET>)";
+    case _degenerated_traversal:
+      return "Pause Degenerated GC (Traversal)";
+    case _degenerated_outside_cycle:
+      return "Pause Degenerated GC (Outside of Cycle)";
+    case _degenerated_mark:
+      return "Pause Degenerated GC (Mark)";
+    case _degenerated_evac:
+      return "Pause Degenerated GC (Evacuation)";
+    case _degenerated_updaterefs:
+      return "Pause Degenerated GC (Update Refs)";
+    default:
+      ShouldNotReachHere();
+      return "ERROR";
+  }
+}
+
 
 BoolObjectClosure* ShenandoahIsAliveSelector::is_alive_closure() {
   return ShenandoahHeap::heap()->has_forwarded_objects() ? reinterpret_cast<BoolObjectClosure*>(&_fwd_alive_cl)
