@@ -54,8 +54,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       if (oopDesc::unsafe_equals(obj, forw)) {
         forw = _heap->evacuate_object(obj, thread);
       }
-      // tty->print_cr("NORMAL visit: "PTR_FORMAT", obj: "PTR_FORMAT" to "PTR_FORMAT, p2i(p), p2i(obj), p2i(forw));
-      assert(! oopDesc::unsafe_equals(obj, forw) || _heap->cancelled_gc(), "must be evacuated");
+      shenandoah_assert_forwarded_except(p, obj, _heap->cancelled_gc());
       // Update reference.
       oop previous = _heap->atomic_compare_exchange_oop(forw, p, obj);
       if (UPDATE_MATRIX && !oopDesc::unsafe_equals(previous, obj)) {
@@ -84,7 +83,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       if (STRING_DEDUP && ShenandoahStringDedup::is_candidate(obj) && !_heap->cancelled_gc()) {
         assert(ShenandoahStringDedup::is_enabled(), "Must be enabled");
         // Only dealing with to-space string, so that we can avoid evac-oom protocol, which is costly here.
-        assert(!_heap->in_collection_set(obj), "Must be in to-space");
+        shenandoah_assert_not_in_cset(p, obj);
         ShenandoahStringDedup::enqueue_candidate(obj);
       }
     }

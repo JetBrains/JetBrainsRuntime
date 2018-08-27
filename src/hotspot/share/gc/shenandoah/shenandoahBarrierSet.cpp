@@ -224,7 +224,7 @@ void ShenandoahBarrierSet::write_region(MemRegion mr) {
   // that potentially need to be updated.
 
   oop obj = oop(mr.start());
-  assert(oopDesc::is_oop(obj), "must be an oop");
+  shenandoah_assert_correct(NULL, obj);
   if (_heap->is_concurrent_traversal_in_progress()) {
     ShenandoahEvacOOMScope oom_evac_scope;
     if (UseShenandoahMatrix) {
@@ -271,7 +271,7 @@ bool ShenandoahBarrierSet::obj_equals(oop obj1, oop obj2) {
 oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
   assert(UseShenandoahGC && ShenandoahWriteBarrier, "should be enabled");
   assert(_heap->is_gc_in_progress_mask(ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL), "evac should be in progress");
-  assert(_heap->in_collection_set(obj), "should be in collection set");
+  shenandoah_assert_in_cset(NULL, obj);
 
   oop fwd = resolve_forwarded_not_null(obj);
   if (oopDesc::unsafe_equals(obj, fwd)) {
@@ -367,9 +367,6 @@ void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
 
 void ShenandoahBarrierSet::enqueue(oop obj) {
   shenandoah_assert_not_forwarded_if(NULL, obj, ShenandoahHeap::heap()->is_concurrent_traversal_in_progress());
-  // Nulls should have been already filtered.
-  assert(oopDesc::is_oop(obj, true), "Error");
-
   if (!_satb_mark_queue_set.is_active()) return;
 
   // Filter marked objects before hitting the SATB queues. The same predicate would

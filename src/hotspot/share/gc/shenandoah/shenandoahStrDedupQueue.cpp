@@ -230,9 +230,8 @@ VerifyQueueClosure::VerifyQueueClosure() :
 
 void VerifyQueueClosure::do_oop(oop* o) {
   if (*o != NULL) {
-    assert(!_heap->is_in((void*)o), "off heap location");
     oop obj = *o;
-    assert(_heap->is_in(obj), "Object must be on the heap");
+    shenandoah_assert_correct(o, obj);
     assert(java_lang_String::is_instance(obj), "Object must be a String");
   }
 }

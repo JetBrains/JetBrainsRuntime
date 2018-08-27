@@ -49,7 +49,7 @@ JRT_LEAF(void, ShenandoahRuntime::write_ref_field_pre_entry(oopDesc* orig, JavaT
     assert(false, "should be optimized out");
     return;
   }
-  assert(oopDesc::is_oop(orig, true /* ignore mark word */), "Error");
+  shenandoah_assert_correct(NULL, orig);
   // store the original value that was in the field reference
   ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue(orig);
 JRT_END

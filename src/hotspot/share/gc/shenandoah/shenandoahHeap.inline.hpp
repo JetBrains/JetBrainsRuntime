@@ -304,12 +304,7 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
 
   if (oopDesc::unsafe_equals(result, p)) {
     // Successfully evacuated. Our copy is now the public one!
-
-#ifdef ASSERT
-    assert(oopDesc::is_oop(copy_val), "expect oop");
-    assert(p->klass() == copy_val->klass(), "Should have the same class p: "PTR_FORMAT", copy: "PTR_FORMAT,
-                                              p2i(p), p2i(copy));
-#endif
+    shenandoah_assert_correct(NULL, copy_val);
     return copy_val;
   }  else {
     // Failed to evacuate. We need to deal with the object that is left behind. Since this
@@ -328,6 +323,8 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
     } else {
       fill_with_object(copy, size_no_fwdptr);
     }
+    shenandoah_assert_correct(NULL, copy_val);
+    shenandoah_assert_correct(NULL, result);
     return result;
   }
 }

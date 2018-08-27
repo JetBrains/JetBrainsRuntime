@@ -554,8 +554,7 @@ HeapWord* ShenandoahHeapRegion::block_start_const(const void* p) const {
       last = cur;
       cur += oop(cur)->size() + BrooksPointer::word_size();
     }
-    assert(oopDesc::is_oop(oop(last)),
-           PTR_FORMAT" should be an object start", p2i(last));
+    shenandoah_assert_correct(NULL, oop(last));
     return last;
   }
 }

@@ -345,6 +345,17 @@ void ShenandoahAsserts::assert_marked_next(void* interior_loc, oop obj, const ch
   }
 }
 
+void ShenandoahAsserts::assert_in_cset(void* interior_loc, oop obj, const char* file, int line) {
+  assert_correct(interior_loc, obj, file, line);
+
+  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
+  if (!heap->in_collection_set(obj)) {
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_in_cset failed",
+                  "Object should be in collection set",
+                  file, line);
+  }
+}
+
 void ShenandoahAsserts::assert_not_in_cset(void* interior_loc, oop obj, const char* file, int line) {
   assert_correct(interior_loc, obj, file, line);
 
