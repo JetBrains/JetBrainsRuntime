@@ -111,20 +111,13 @@ public:
   virtual void work(uint worker_id) {
     ShenandoahHeapRegion* r = _regions.next();
     while (r != NULL) {
-      log_trace(gc, heap)("Pretouch region " SIZE_FORMAT ": " PTR_FORMAT " -> " PTR_FORMAT,
-                          r->region_number(), p2i(r->bottom()), p2i(r->end()));
       os::pretouch_memory(r->bottom(), r->end(), _page_size);
 
       size_t start = r->region_number()       * ShenandoahHeapRegion::region_size_bytes() / MarkBitMap::heap_map_factor();
       size_t end   = (r->region_number() + 1) * ShenandoahHeapRegion::region_size_bytes() / MarkBitMap::heap_map_factor();
       assert (end <= _bitmap_size, "end is sane: " SIZE_FORMAT " < " SIZE_FORMAT, end, _bitmap_size);
 
-      log_trace(gc, heap)("Pretouch bitmap under region " SIZE_FORMAT ": " PTR_FORMAT " -> " PTR_FORMAT,
-                          r->region_number(), p2i(_bitmap0_base + start), p2i(_bitmap0_base + end));
       os::pretouch_memory(_bitmap0_base + start, _bitmap0_base + end, _page_size);
-
-      log_trace(gc, heap)("Pretouch bitmap under region " SIZE_FORMAT ": " PTR_FORMAT " -> " PTR_FORMAT,
-                          r->region_number(), p2i(_bitmap1_base + start), p2i(_bitmap1_base + end));
       os::pretouch_memory(_bitmap1_base + start, _bitmap1_base + end, _page_size);
 
       r = _regions.next();
@@ -318,16 +311,6 @@ jint ShenandoahHeap::initialize() {
   _control_thread = new ShenandoahControlThread();
 
   ShenandoahCodeRoots::initialize();
-
-  LogTarget(Trace, gc, region) lt;
-  if (lt.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt);
-    log_trace(gc, region)("All Regions");
-    print_heap_regions_on(&ls);
-    log_trace(gc, region)("Free Regions");
-    _free_set->print_on(&ls);
-  }
 
   log_info(gc, init)("Safepointing mechanism: %s",
                      SafepointMechanism::uses_thread_local_poll() ? "thread-local poll" :
@@ -757,9 +740,6 @@ HeapWord* ShenandoahHeap::allocate_from_gclab_slow(Thread* thread, size_t size) 
 HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
                                             size_t requested_size,
                                             size_t* actual_size) {
-#ifdef ASSERT
-  log_debug(gc, alloc)("Allocate new tlab, requested size = " SIZE_FORMAT " bytes", requested_size * HeapWordSize);
-#endif
   ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_tlab(min_size, requested_size);
   HeapWord* res = allocate_memory(req);
   if (res != NULL) {
@@ -773,9 +753,6 @@ HeapWord* ShenandoahHeap::allocate_new_tlab(size_t min_size,
 HeapWord* ShenandoahHeap::allocate_new_gclab(size_t min_size,
                                              size_t word_size,
                                              size_t* actual_size) {
-#ifdef ASSERT
-  log_debug(gc, alloc)("Allocate new gclab, requested size = " SIZE_FORMAT " bytes", word_size * HeapWordSize);
-#endif
   ShenandoahAllocationRequest req = ShenandoahAllocationRequest::for_gclab(min_size, word_size);
   HeapWord* res = allocate_memory(req);
   if (res != NULL) {
@@ -1069,10 +1046,6 @@ public:
     ShenandoahParallelEvacuateRegionObjectClosure cl(_sh);
     ShenandoahHeapRegion* r;
     while ((r =_cs->claim_next()) != NULL) {
-      log_develop_trace(gc, region)("Thread " INT32_FORMAT " claimed Heap Region " SIZE_FORMAT,
-                                    worker_id,
-                                    r->region_number());
-
       assert(r->has_live(), "all-garbage regions are reclaimed early");
       _sh->marked_object_iterate(r, &cl);
 
@@ -1081,7 +1054,6 @@ public:
       }
 
       if (_sh->check_cancelled_gc_and_yield()) {
-        log_develop_trace(gc, region)("Cancelled GC while evacuating region " SIZE_FORMAT, r->region_number());
         break;
       }
     }
@@ -1121,19 +1093,11 @@ void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
   size_t index = start->region_number() + required_regions - 1;
 
   assert(!start->has_live(), "liveness must be zero");
-  log_trace(gc, humongous)("Reclaiming " SIZE_FORMAT " humongous regions for object of size: " SIZE_FORMAT " words", required_regions, size);
 
   for(size_t i = 0; i < required_regions; i++) {
     // Reclaim from tail. Otherwise, assertion fails when printing region to trace log,
     // as it expects that every region belongs to a humongous region starting with a humongous start region.
     ShenandoahHeapRegion* region = get_region(index --);
-
-    LogTarget(Trace, gc, humongous) lt;
-    if (lt.is_enabled()) {
-      ResourceMark rm;
-      LogStream ls(lt);
-      region->print_on(&ls);
-    }
 
     assert(region->is_humongous(), "expect correct humongous start or continuation");
     assert(!in_collection_set(region), "Humongous region should not be in collection set");
@@ -1152,8 +1116,6 @@ class ShenandoahCheckCollectionSetClosure: public ShenandoahHeapRegionClosure {
 #endif
 
 void ShenandoahHeap::prepare_for_concurrent_evacuation() {
-  log_develop_trace(gc)("Thread %d started prepare_for_concurrent_evacuation", Thread::current()->osthread()->thread_id());
-
   if (!cancelled_gc()) {
     make_parsable(true);
 
@@ -1727,47 +1689,8 @@ void ShenandoahHeap::op_final_evac() {
 }
 
 void ShenandoahHeap::op_evac() {
-
-  LogTarget(Trace, gc, region) lt_region;
-  LogTarget(Trace, gc, cset) lt_cset;
-
-  if (lt_region.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_region);
-    ls.print_cr("All available regions:");
-    print_heap_regions_on(&ls);
-  }
-
-  if (lt_cset.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_cset);
-    ls.print_cr("Collection set (" SIZE_FORMAT " regions):", _collection_set->count());
-    _collection_set->print_on(&ls);
-
-    ls.print_cr("Free set:");
-    _free_set->print_on(&ls);
-  }
-
   ShenandoahParallelEvacuationTask task(this, _collection_set);
   workers()->run_task(&task);
-
-  if (lt_cset.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_cset);
-    ls.print_cr("After evacuation collection set (" SIZE_FORMAT " regions):",
-                _collection_set->count());
-    _collection_set->print_on(&ls);
-
-    ls.print_cr("After evacuation free set:");
-    _free_set->print_on(&ls);
-  }
-
-  if (lt_region.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt_region);
-    ls.print_cr("All regions after evacuation:");
-    print_heap_regions_on(&ls);
-  }
 }
 
 void ShenandoahHeap::op_updaterefs() {
@@ -1976,14 +1899,6 @@ void ShenandoahHeap::stop_concurrent_marking() {
     swap_mark_contexts();
   }
   set_concurrent_mark_in_progress(false);
-
-  LogTarget(Trace, gc, region) lt;
-  if (lt.is_enabled()) {
-    ResourceMark rm;
-    LogStream ls(lt);
-    ls.print_cr("Regions at stopping the concurrent mark:");
-    print_heap_regions_on(&ls);
-  }
 }
 
 void ShenandoahHeap::force_satb_flush_all_threads() {

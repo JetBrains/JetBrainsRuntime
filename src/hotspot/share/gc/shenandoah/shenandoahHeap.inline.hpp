@@ -160,9 +160,6 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
     shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress());
     shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_gc());
 
-    log_develop_trace(gc)("Updating old ref: " PTR_FORMAT " pointing to " PTR_FORMAT " to new ref: " PTR_FORMAT,
-                          p2i(p), p2i(heap_oop), p2i(forwarded_oop));
-
     // If this fails, another thread wrote to p before us, it will be logged in SATB and the
     // reference be updated later.
     oop result = atomic_compare_exchange_oop(forwarded_oop, p, heap_oop);
@@ -302,17 +299,11 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
   Copy::aligned_disjoint_words((HeapWord*) p, copy, size_no_fwdptr);
   BrooksPointer::initialize(oop(copy));
 
-  log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT,
-                                    p2i(p), p2i(copy));
-
   // Try to install the new forwarding pointer.
   oop result = BrooksPointer::try_update_forwardee(p, copy_val);
 
   if (oopDesc::unsafe_equals(result, p)) {
     // Successfully evacuated. Our copy is now the public one!
-    log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT " succeeded",
-                                      p2i(p), p2i(copy));
-
 
 #ifdef ASSERT
     assert(oopDesc::is_oop(copy_val), "expect oop");
@@ -337,8 +328,6 @@ inline oop ShenandoahHeap::evacuate_object(oop p, Thread* thread) {
     } else {
       fill_with_object(copy, size_no_fwdptr);
     }
-    log_develop_trace(gc, compaction)("Copy object: " PTR_FORMAT " -> " PTR_FORMAT " failed, use other: " PTR_FORMAT,
-                                      p2i(p), p2i(copy), p2i(result));
     return result;
   }
 }
