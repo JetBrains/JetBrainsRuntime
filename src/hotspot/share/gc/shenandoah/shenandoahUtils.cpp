@@ -26,6 +26,7 @@
 #include "gc/shared/gcCause.hpp"
 #include "gc/shared/gcTimer.hpp"
 #include "gc/shared/gcTrace.hpp"
+#include "gc/shared/gcWhen.hpp"
 #include "gc/shenandoah/shenandoahAllocTracker.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahMarkCompact.hpp"
@@ -41,6 +42,7 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
 
   _timer->register_gc_start();
   _tracer->report_gc_start(cause, _timer->gc_start());
+  sh->trace_heap(GCWhen::BeforeGC, _tracer);
 
   sh->shenandoahPolicy()->record_cycle_start();
   sh->heuristics()->record_cycle_start();
@@ -57,8 +59,10 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
 }
 
 ShenandoahGCSession::~ShenandoahGCSession() {
-  ShenandoahHeap::heap()->heuristics()->record_cycle_end();
+  ShenandoahHeap* sh = ShenandoahHeap::heap();
+  sh->heuristics()->record_cycle_end();
   _timer->register_gc_end();
+  sh->trace_heap(GCWhen::AfterGC, _tracer);
   _tracer->report_gc_end(_timer->gc_end(), _timer->time_partitions());
 }
 

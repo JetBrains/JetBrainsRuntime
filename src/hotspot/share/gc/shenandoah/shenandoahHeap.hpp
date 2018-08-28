@@ -42,6 +42,7 @@ class ShenandoahCollectorPolicy;
 class ShenandoahConnectionMatrix;
 class ShenandoahControlThread;
 class ShenandoahFastRegionSet;
+class ShenandoahGCSession;
 class ShenandoahHeuristics;
 class ShenandoahMarkingContext;
 class ShenandoahPhaseTimings;
@@ -146,6 +147,7 @@ class VMStructs;
 class ShenandoahHeap : public CollectedHeap {
   friend class ShenandoahAsserts;
   friend class VMStructs;
+  friend class ShenandoahGCSession;
 
   enum CancelState {
 
