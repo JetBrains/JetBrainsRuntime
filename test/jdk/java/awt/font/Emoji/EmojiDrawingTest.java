@@ -39,7 +39,7 @@ public class EmojiDrawingTest {
     public static void main(String[] args) throws Exception {
         BufferedImage actual = createImage();
         if (!matchesOneOfExpected(actual)) {
-            File file = File.createTempFile("emoji", ".png");
+            File file = new File( "emoji.png");
             ImageIO.write(actual, "PNG", file);
             throw new RuntimeException("Unexpected painting on image: " + file);
         }
