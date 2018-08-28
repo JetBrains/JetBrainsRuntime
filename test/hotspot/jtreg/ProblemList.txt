@@ -77,6 +77,7 @@ compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java 8183263 generic-x64
 
 # :hotspot_gc
 
+gc/epsilon/TestMemoryMXBeans.java 8206434 generic-all
 gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java 8156755 generic-all
 gc/survivorAlignment/TestPromotionToSurvivor.java 8129886 generic-all
 gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
