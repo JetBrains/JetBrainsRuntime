@@ -279,7 +279,7 @@ java/awt/Mixing/AWT_Mixing/JTextAreaInGlassPaneOverlapping.java                 
 java/awt/Mixing/AWT_Mixing/JTextAreaOverlapping.java                                8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JTextFieldInGlassPaneOverlapping.java                    8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JTextFieldOverlapping.java                               8158801 windows-all,macosx-all,linux-all
-java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java                 8158801 windows-all,macosx-all
+java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java                 8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java                            8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java                                 8049405 generic-all
 java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java                                8049405 generic-all
@@ -853,7 +853,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java          8013450 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8198667,8079254,8164811 macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8079254,8164811 macosx-all,linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.javoa JRE-898 windows-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JRE-898 windows-all
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh                                       8193546 linux-all
 javax/swing/MultiUIDefaults/4300666/bug4300666.java                                 7105119 macosx-all
 javax/swing/Popup/TaskbarPositionTest.java                                          8065097 macosx-all
@@ -961,7 +961,9 @@ java/lang/management/MemoryMXBean/PendingAllGC.sh                               
 com/sun/management/OperatingSystemMXBean/GetProcessCpuLoad.java                     8030957 aix-all
 com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java                      8030957 aix-all
 sun/management/HotspotRuntimeMBean/GetSafepointSyncTime.java                        8174734 generic-all
+sun/management/jdp/JdpOffTest.java                                                  8175542 generic-all
 sun/management/jmxremote/bootstrap/JMXInterfaceBindingTest.java                     8209004 macosx-all
+sun/management/jmxremote/bootstrap/RmiSslBootstrapTest.sh                           8152523 generic-all
 
 ############################################################################
 
@@ -994,6 +996,8 @@ java/nio/channels/AsyncCloseAndInterrupt.java                                   
 java/nio/channels/Selector/Wakeup.java                                              6963118 windows-all
 java/nio/channels/DatagramChannel/ChangingAddress.java                              7141822 macosx-all
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java                    8044365 macosx-all
+java/nio/channels/FileChannel/Size.java                                             nobug   generic-all often fails because No space left on device
+java/nio/channels/FileChannel/Transfer4GBFile.java                                  nobug   generic-all often fails because No space left on device
 java/nio/file/WatchService/Basic.java                                               7158947 solaris-all Solaris 11
 java/nio/file/WatchService/MayFlies.java                                            7158947 solaris-all Solaris 11
 java/nio/file/WatchService/LotsOfEvents.java                                        7158947 solaris-all Solaris 11
