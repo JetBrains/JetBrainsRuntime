@@ -35,11 +35,14 @@ import sun.awt.AWTAccessor;
 import sun.awt.SunToolkit;
 import sun.lwawt.LWToolkit;
 import sun.lwawt.macosx.*;
+import sun.util.logging.PlatformLogger;
 
 @SuppressWarnings("serial") // JDK implementation class
 final class ScreenMenu extends Menu
         implements ContainerListener, ComponentListener,
                    ScreenMenuPropertyHandler {
+
+    private static final PlatformLogger log = PlatformLogger.getLogger("com.apple.laf.ScreenMenu");
 
     static {
         java.security.AccessController.doPrivileged(
@@ -71,6 +74,9 @@ final class ScreenMenu extends Menu
 
     ScreenMenu(final JMenu invoker) {
         super(invoker.getText());
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Screen menu created");
+        }
         fInvoker = invoker;
 
         int count = fInvoker.getMenuComponentCount();
@@ -86,17 +92,32 @@ final class ScreenMenu extends Menu
      * way, such as the number of menu items, the text of the menuitems, icon, shortcut etc.
      */
     private static boolean needsUpdate(final Component items[], final int childHashArray[]) {
+      if (log.isLoggable(PlatformLogger.Level.INFO)) {
+          log.info("Check if update is needed");
+      }
       if (items == null || childHashArray == null) {
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+          log.info("Update is needed: items: " + items + "; childHashArray: " + childHashArray);
+        }
         return true;
       }
       if (childHashArray.length != items.length) {
+       if (log.isLoggable(PlatformLogger.Level.INFO)) {
+         log.info("Update is needed because hash array length is not equal to items length.");
+       }
        return true;
       }
       for (int i = 0; i < items.length; i++) {
           final int hashCode = getHashCode(items[i]);
           if (hashCode != childHashArray[i]) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+              log.info("Hashes do not coincide. Update is needed.");
+            }
             return true;
           }
+      }
+      if (log.isLoggable(PlatformLogger.Level.INFO)) {
+        log.info("No update is needed.");
       }
       return false;
     }
@@ -109,13 +130,19 @@ final class ScreenMenu extends Menu
         final int count = fInvoker.getMenuComponentCount();
         final Component[] items = fInvoker.getMenuComponents();
         if (needsUpdate(items, childHashArray)) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+              log.info("Remove all items from this menu, clear hash table with the items");
+            }
             removeAll();
             if (count <= 0) return;
 
             childHashArray = new int[count];
             for (int i = 0; i < count; i++) {
-                addItem(items[i]);
-                childHashArray[i] = getHashCode(items[i]);
+              if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Add item " + items[i].getName());
+              }
+              addItem(items[i]);
+              childHashArray[i] = getHashCode(items[i]);
             }
         }
     }
@@ -126,18 +153,25 @@ final class ScreenMenu extends Menu
     public void invokeOpenLater() {
         final JMenu invoker = fInvoker;
         if (invoker == null) {
-            System.err.println("invoker is null!");
+            if (log.isLoggable(PlatformLogger.Level.SEVERE)) {
+              log.severe("invoker is null");
+            }
             return;
         }
 
+        if (log.isLoggable(PlatformLogger.Level.INFO)) {
+            log.info("Open the menu later: " + invoker.getText());
+        }
+
         try {
-            LWCToolkit.invokeAndWait(new Runnable() {
-                public void run() {
-                    invoker.setSelected(true);
-                    invoker.validate();
-                    updateItems();
-                    fItemBounds = new Rectangle[invoker.getMenuComponentCount()];
+            LWCToolkit.invokeAndWait(() -> {
+                if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                    log.info("Now open the menu: " + invoker.getText());
                 }
+                invoker.setSelected(true);
+                invoker.validate();
+                updateItems();
+                fItemBounds = new Rectangle[invoker.getMenuComponentCount()];
             }, invoker);
         } catch (final Exception e) {
             System.err.println(e);
@@ -150,11 +184,21 @@ final class ScreenMenu extends Menu
      */
     public void invokeMenuClosing() {
         final JMenu invoker = fInvoker;
-        if (invoker == null) return;
+        if (invoker == null) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.severe("invoker is null");
+            }
+            return;
+        }
+
+        log.info("Close the menu later: " + invoker.getText());
 
         try {
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() {
+                    if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                        log.info("Now close the menu: " + invoker.getText());
+                    }
                     invoker.setSelected(false);
                     // Null out the tracking rectangles and the array.
                     if (fItemBounds != null) {
@@ -171,7 +215,7 @@ final class ScreenMenu extends Menu
     }
 
     /**
-     * Callback from JavaMenuUpdater.m -- called when menu item is hilighted.
+     * Callback from JavaMenuUpdater.m -- called when menu item is highlighted.
      *
      * @param inWhichItem The menu item selected by the user. -1 if mouse moves off the menu.
      * @param itemRectTop
@@ -189,12 +233,27 @@ final class ScreenMenu extends Menu
      * Callback from JavaMenuUpdater.m -- called when mouse event happens on the menu.
      */
     public void handleMouseEvent(final int kind, final int x, final int y, final int modifiers, final long when) {
-        if (kind == 0) return;
-        if (fItemBounds == null) return;
+        if (kind == 0) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Do not handle mouse event. The type is 0");
+            }
+            return;
+        }
+        if (fItemBounds == null) {
+            if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                log.info("Do not handle mouse event. The type is 0");
+            }
+            return;
+        }
+
+        log.info("Send the mouse event on the EDT");
 
         SunToolkit.executeOnEventHandlerThread(fInvoker, new Runnable() {
             @Override
             public void run() {
+                if (log.isLoggable(PlatformLogger.Level.INFO)) {
+                    log.info("Handle the mouse event on EDT");
+                }
                 Component target = null;
                 Rectangle targetRect = null;
                 for (int i = 0; i < fItemBounds.length; i++) {
@@ -219,7 +278,7 @@ final class ScreenMenu extends Menu
                                                y - fLastTargetRect.y, 0,
                                                false));
                     }
-                    // Send a mouseEntered to the current hilited item, if it
+                    // Send a mouseEntered to the current highlighted item, if it
                     // wasn't 0.
                     if (target != null) {
                         LWToolkit.postEvent(
