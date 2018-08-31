@@ -21,6 +21,7 @@
  *
  */
 
+#include "precompiled.hpp"
 #include "c1/c1_IR.hpp"
 #include "gc/g1/satbMarkQueue.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
