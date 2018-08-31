@@ -561,8 +561,7 @@ void ShenandoahHeap::print_on(outputStream* st) const {
 class ShenandoahInitGCLABClosure : public ThreadClosure {
 public:
   void do_thread(Thread* thread) {
-    if (thread != NULL && (thread->is_Java_thread() || thread->is_Worker_thread() ||
-                           thread->is_ConcurrentGC_thread())) {
+    if (thread != NULL && (thread->is_Java_thread() || thread->is_Worker_thread())) {
       ShenandoahThreadLocalData::initialize_gclab(thread);
     }
   }
@@ -574,7 +573,7 @@ void ShenandoahHeap::post_initialize() {
 
   ShenandoahInitGCLABClosure init_gclabs;
   Threads::threads_do(&init_gclabs);
-  gc_threads_do(&init_gclabs);
+  _workers->threads_do(&init_gclabs);
 
   // gclab can not be initialized early during VM startup, as it can not determinate its max_size.
   // Now, we will let WorkGang to initialize gclab when new worker is created.
@@ -1158,13 +1157,8 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
 }
 
 
-class ShenandoahRetireTLABClosure : public ThreadClosure {
-private:
-  bool _retire;
-
+class ShenandoahRetireGCLABClosure : public ThreadClosure {
 public:
-  ShenandoahRetireTLABClosure(bool retire) : _retire(retire) {}
-
   void do_thread(Thread* thread) {
     PLAB* gclab = ShenandoahThreadLocalData::gclab(thread);
     assert(gclab != NULL, "GCLAB should be initialized for %s", thread->name());
@@ -1176,11 +1170,11 @@ void ShenandoahHeap::make_parsable(bool retire_tlabs) {
   if (UseTLAB) {
     CollectedHeap::ensure_parsability(retire_tlabs);
   }
-  ShenandoahRetireTLABClosure cl(retire_tlabs);
+  ShenandoahRetireGCLABClosure cl;
   for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
     cl.do_thread(t);
   }
-  gc_threads_do(&cl);
+  workers()->threads_do(&cl);
 }
 
 void ShenandoahHeap::resize_tlabs() {
@@ -1321,7 +1315,7 @@ void ShenandoahHeap::retire_and_reset_gclabs() {
   for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
     cl.do_thread(t);
   }
-  gc_threads_do(&cl);
+  workers()->threads_do(&cl);
 }
 
 bool  ShenandoahHeap::can_elide_tlab_store_barriers() const {
