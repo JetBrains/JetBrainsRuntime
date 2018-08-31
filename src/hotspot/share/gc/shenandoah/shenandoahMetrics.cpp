@@ -148,7 +148,7 @@ bool ShenandoahMetricsSnapshot::is_good_progress(const char *label) {
   // Freed up enough? Good! Declare victory.
   size_t progress_actual   = (_used_before > _used_after) ? _used_before - _used_after : 0;
   size_t progress_expected = ShenandoahHeapRegion::region_size_bytes();
-  if (progress_actual > progress_expected) {
+  if (progress_actual >= progress_expected) {
     return true;
   }
   log_info(gc,ergo)("Not enough progress (" SIZE_FORMAT "M, need " SIZE_FORMAT "M) after %s",
