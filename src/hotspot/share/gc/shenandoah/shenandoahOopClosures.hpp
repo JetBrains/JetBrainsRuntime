@@ -48,8 +48,6 @@ protected:
 
 public:
   ShenandoahMarkRefsSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp);
-
-  inline void set_base_object(oop obj) { /* Not needed */ }
 };
 
 class ShenandoahMarkUpdateRefsClosure : public ShenandoahMarkRefsSuperClosure {
@@ -231,24 +229,18 @@ private:
   Thread* const _thread;
   ShenandoahObjToScanQueue* const _queue;
   ShenandoahMarkingContext* const _mark_context;
-  oop _base_obj;
 protected:
   ShenandoahTraversalSuperClosure(ShenandoahObjToScanQueue* q, ReferenceProcessor* rp) :
     MetadataVisitingOopIterateClosure(rp),
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
     _thread(Thread::current()),
     _queue(q),
-    _mark_context(ShenandoahHeap::heap()->next_marking_context()),
-    _base_obj(NULL) {
+    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {
   }
 
   template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
   void work(T* p);
 
-public:
-  inline void set_base_object(oop obj) {
-    _base_obj = obj;
-  }
 };
 
 class ShenandoahTraversalClosure : public ShenandoahTraversalSuperClosure {

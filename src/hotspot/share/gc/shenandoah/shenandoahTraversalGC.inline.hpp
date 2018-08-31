@@ -37,7 +37,7 @@
 #include "oops/oop.inline.hpp"
 
 template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
-void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context, oop base_obj) {
+void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context) {
   T o = RawAccess<>::oop_load(p);
   if (!CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
@@ -63,21 +63,12 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       obj = forw;
     }
 
-    if (UPDATE_MATRIX && update_matrix) {
-      shenandoah_assert_not_forwarded_except(p, obj, _heap->cancelled_gc());
-      const void* src;
-      if (!_heap->is_in_reserved(p)) {
-        src = (const void*)(HeapWord*) obj;
-      } else {
-        src = p;
-      }
-      if (src != NULL) {
-        _matrix->set_connected(src, obj);
-      }
-    }
-
     shenandoah_assert_not_forwarded(p, obj);
     shenandoah_assert_not_in_cset_except(p, obj, _heap->cancelled_gc());
+
+    if (UPDATE_MATRIX && update_matrix && _heap->is_in_reserved(p)) {
+      _matrix->set_connected(p, obj);
+    }
 
     if (mark_context->mark(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));

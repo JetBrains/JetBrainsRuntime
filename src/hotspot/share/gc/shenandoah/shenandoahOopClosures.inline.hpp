@@ -45,7 +45,7 @@ inline void ShenandoahUpdateHeapRefsSuperClosure::work(T* p) {
 
 template <class T, bool STRING_DEDUP, bool DEGEN, bool MATRIX>
 inline void ShenandoahTraversalSuperClosure::work(T* p) {
-  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN, MATRIX>(p, _thread, _queue, _mark_context, _base_obj);
+  _traversal_gc->process_oop<T, STRING_DEDUP, DEGEN, MATRIX>(p, _thread, _queue, _mark_context);
 }
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_INLINE_HPP
