@@ -76,6 +76,9 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       }
     }
 
+    shenandoah_assert_not_forwarded(p, obj);
+    shenandoah_assert_not_in_cset_except(p, obj, _heap->cancelled_gc());
+
     if (mark_context->mark(obj)) {
       bool succeeded = queue->push(ShenandoahMarkTask(obj));
       assert(succeeded, "must succeed to push to task queue");
