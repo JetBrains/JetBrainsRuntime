@@ -80,15 +80,7 @@ void ShenandoahPacer::setup_for_evac() {
   assert(ShenandoahPacing, "Only be here when pacing is enabled");
 
   size_t used = _heap->collection_set()->used();
-  size_t live = _heap->collection_set()->live_data();
   size_t free = _heap->free_set()->available();
-
-  // Evacuation allocates, bypassing the pacing. Discount that from free space available.
-  if (free > live) {
-    free -= live;
-  } else {
-    free = ShenandoahHeapRegion::region_size_bytes() * 10;
-  }
 
   size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
   size_t taxable = free - non_taxable;
@@ -100,7 +92,7 @@ void ShenandoahPacer::setup_for_evac() {
 
   restart_with(non_taxable, tax);
 
-  log_info(gc, ergo)("Pacer for Evacuation. Used CSet: " SIZE_FORMAT "M, Avail: " SIZE_FORMAT
+  log_info(gc, ergo)("Pacer for Evacuation. Used CSet: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
                      "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
                      used / M, free / M, non_taxable / M, tax);
 }

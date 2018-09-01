@@ -34,6 +34,9 @@ ShenandoahPassiveHeuristics::ShenandoahPassiveHeuristics() : ShenandoahHeuristic
   // Passive runs with max speed, reacts on allocation failure.
   FLAG_SET_DEFAULT(ShenandoahPacing, false);
 
+  // Passive does not need evacuation reserve
+  SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahEvacReserve, 0);
+
   // Disable known barriers by default.
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahSATBBarrier);
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahKeepAliveBarrier);

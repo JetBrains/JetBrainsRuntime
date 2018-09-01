@@ -33,6 +33,9 @@ ShenandoahAggressiveHeuristics::ShenandoahAggressiveHeuristics() : ShenandoahHeu
   // Aggressive runs with max speed for allocation, to capture races against mutator
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahPacing);
 
+  // Aggressive evacuates everything, so it needs as much evac space as it can get
+  SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahEvacReserveOverflow);
+
   // If class unloading is globally enabled, aggressive does unloading even with
   // concurrent cycles.
   if (ClassUnloading) {

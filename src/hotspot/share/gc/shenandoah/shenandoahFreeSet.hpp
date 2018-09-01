@@ -54,9 +54,9 @@ private:
   HeapWord* allocate_single(ShenandoahHeap::ShenandoahAllocationRequest& req, bool& in_new_region);
   HeapWord* allocate_contiguous(ShenandoahHeap::ShenandoahAllocationRequest& req);
 
-  void flip_to_mutator(size_t idx);
-  void flip_to_gc(size_t idx);
+  void flip_to_gc(ShenandoahHeapRegion* r);
 
+  void recompute_bounds();
   void adjust_bounds();
   bool touches_bounds(size_t num) const;
 

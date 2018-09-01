@@ -180,19 +180,33 @@
                "and GC performance for adaptive heuristics.")               \
           range(0,100)                                                      \
                                                                             \
-  experimental(uintx, ShenandoahMaxCSetFactor, 25,                          \
-               "Maximum amount of free space to reserve for collection set "\
-               "allocations. Larger values make GC more aggressive, while " \
-               "leaving less headroom for application to allocate in. "     \
-               "In percents of free space available.")                      \
-          range(0,100)                                                      \
-                                                                            \
   experimental(uintx, ShenandoahAllocSpikeFactor, 5,                        \
                "The amount of heap space to reserve for absorbing the "     \
                "allocation spikes. Larger value wastes more memory in "     \
                "non-emergency cases, but provides more safety in emergency "\
                "cases. In percents of total heap size.")                    \
           range(0,100)                                                      \
+                                                                            \
+  experimental(uintx, ShenandoahEvacReserve, 5,                             \
+               "Maximum amount of free space to reserve for evacuation. "   \
+               "Larger values make GC more aggressive, while leaving less " \
+               "headroom for application to allocate in. "                  \
+               "In percents of free space available.")                      \
+          range(1,100)                                                      \
+                                                                            \
+  experimental(double, ShenandoahEvacWaste, 1.2,                            \
+               "How much waste evacuations produce within the reserved "    \
+               "space. Larger values make evacuations more resilient "      \
+               "against allocation failures, at expense of smaller csets "  \
+               "on each cycle.")                                            \
+          range(1,100)                                                      \
+                                                                            \
+  experimental(bool, ShenandoahEvacReserveOverflow, false,                  \
+               "Allow evacuations to overflow the reserved space. "         \
+               "Enabling it will make evacuations more resilient when "     \
+               "evacuation reserve/waste is incorrect, at the risk that "   \
+               "application allocations run out of memory too early. "      \
+               "This is safe to enable when pacing is disabled.")           \
                                                                             \
   experimental(uintx, ShenandoahImmediateThreshold, 90,                     \
                "If mark identifies more than this much immediate garbage "  \

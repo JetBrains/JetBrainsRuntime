@@ -59,9 +59,10 @@ void ShenandoahAdaptiveHeuristics::choose_collection_set_from_regiondata(Shenand
   // we hit max_cset. When max_cset is hit, we terminate the cset selection. Note that in this scheme,
   // ShenandoahGarbageThreshold is the soft threshold which would be ignored until min_garbage is hit.
 
-  size_t free_target = ShenandoahMinFreeThreshold * ShenandoahHeap::heap()->capacity() / 100;
+  size_t capacity    = ShenandoahHeap::heap()->capacity();
+  size_t free_target = ShenandoahMinFreeThreshold * capacity / 100;
   size_t min_garbage = free_target > actual_free ? (free_target - actual_free) : 0;
-  size_t max_cset    = (size_t)(actual_free * ShenandoahMaxCSetFactor / 100);
+  size_t max_cset    = (size_t)(1.0 * ShenandoahEvacReserve * capacity / 100 / ShenandoahEvacWaste);
 
   log_info(gc, ergo)("Adaptive CSet Selection. Target Free: " SIZE_FORMAT "M, Actual Free: "
                      SIZE_FORMAT "M, Max CSet: " SIZE_FORMAT "M, Min Garbage: " SIZE_FORMAT "M",
@@ -133,17 +134,14 @@ bool ShenandoahAdaptiveHeuristics::should_start_normal_gc() const {
   }
 
   // Check if allocation headroom is still okay. This also factors in:
-  //   1. The maximum collection set we can have
-  //   2. Some space to absorb allocation spikes
-  //   3. Accumulated penalties from Degenerated and Full GC
+  //   1. Some space to absorb allocation spikes
+  //   2. Accumulated penalties from Degenerated and Full GC
 
   size_t allocation_headroom = available;
 
-  size_t cset_headroom  = ShenandoahMaxCSetFactor    * available / 100;
   size_t spike_headroom = ShenandoahAllocSpikeFactor * capacity / 100;
   size_t penalties      = _gc_time_penalties         * capacity / 100;
 
-  allocation_headroom -= MIN2(allocation_headroom, cset_headroom);
   allocation_headroom -= MIN2(allocation_headroom, spike_headroom);
   allocation_headroom -= MIN2(allocation_headroom, penalties);
 
@@ -156,8 +154,8 @@ bool ShenandoahAdaptiveHeuristics::should_start_normal_gc() const {
   if (average_gc > allocation_headroom / allocation_rate) {
     log_info(gc)("Trigger: Average GC time (%.2f ms) is above the time for allocation rate (%.2f MB/s) to deplete free headroom (" SIZE_FORMAT "M)",
                  average_gc * 1000, allocation_rate / M, allocation_headroom / M);
-    log_info(gc, ergo)("Free headroom: " SIZE_FORMAT "M (free) - " SIZE_FORMAT "M (cset) - " SIZE_FORMAT "M (spike) - " SIZE_FORMAT "M (penalties) = " SIZE_FORMAT "M",
-                       available / M, cset_headroom / M, spike_headroom / M, penalties / M, allocation_headroom / M);
+    log_info(gc, ergo)("Free headroom: " SIZE_FORMAT "M (free) - " SIZE_FORMAT "M (spike) - " SIZE_FORMAT "M (penalties) = " SIZE_FORMAT "M",
+                       available / M, spike_headroom / M, penalties / M, allocation_headroom / M);
     return true;
   }
 
