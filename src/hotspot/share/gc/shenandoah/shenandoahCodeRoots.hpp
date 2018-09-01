@@ -33,6 +33,28 @@ class ShenandoahHeap;
 class ShenandoahHeapRegion;
 class ShenandoahCodeRootsLock;
 
+class ShenandoahParallelCodeHeapIterator {
+  friend class CodeCache;
+private:
+  CodeHeap*     _heap;
+  volatile int  _claimed_idx;
+  volatile bool _finished;
+public:
+  ShenandoahParallelCodeHeapIterator(CodeHeap* heap);
+  void parallel_blobs_do(CodeBlobClosure* f);
+};
+
+class ShenandoahParallelCodeCacheIterator {
+  friend class CodeCache;
+private:
+  ShenandoahParallelCodeHeapIterator* _iters;
+  int                       _length;
+public:
+  ShenandoahParallelCodeCacheIterator(const GrowableArray<CodeHeap*>* heaps);
+  ~ShenandoahParallelCodeCacheIterator();
+  void parallel_blobs_do(CodeBlobClosure* f);
+};
+
 // ShenandoahNMethod tuple records the internal locations of oop slots within the nmethod.
 // This allows us to quickly scan the oops without doing the nmethod-internal scans, that
 // sometimes involves parsing the machine code. Note it does not record the oops themselves,
@@ -65,7 +87,7 @@ class ShenandoahCodeRootsIterator {
   friend class ShenandoahCodeRoots;
 protected:
   ShenandoahHeap* _heap;
-  ParallelCodeCacheIterator _par_iterator;
+  ShenandoahParallelCodeCacheIterator _par_iterator;
   ShenandoahSharedFlag _seq_claimed;
   volatile size_t _claimed;
 protected:
