@@ -447,15 +447,9 @@ void ShenandoahFreeSet::rebuild() {
 
   recompute_bounds();
   assert_bounds();
-  log_status();
 }
 
 void ShenandoahFreeSet::log_status() {
-  log_info(gc, ergo)("Free: " SIZE_FORMAT "M, Regions: " SIZE_FORMAT " mutator, " SIZE_FORMAT " collector",
-                     available() / M, mutator_count(), collector_count());
-}
-
-void ShenandoahFreeSet::log_status_verbose() {
   assert_heaplock_owned_by_current_thread();
 
   LogTarget(Info, gc, ergo) lt;
@@ -463,12 +457,7 @@ void ShenandoahFreeSet::log_status_verbose() {
     ResourceMark rm;
     LogStream ls(lt);
 
-    ls.print_cr("Free set: Used: " SIZE_FORMAT "M of " SIZE_FORMAT "M, Regions: " SIZE_FORMAT " mutator, " SIZE_FORMAT " collector",
-                used() / M, capacity() / M, mutator_count(), collector_count());
-
     {
-      ls.print("Free set: Mutator view: ");
-
       size_t last_idx = 0;
       size_t max = 0;
       size_t max_contig = 0;
@@ -480,7 +469,7 @@ void ShenandoahFreeSet::log_status_verbose() {
       for (size_t idx = _mutator_leftmost; idx <= _mutator_rightmost; idx++) {
         if (is_mutator_free(idx)) {
           ShenandoahHeapRegion *r = _heap->get_region(idx);
-          size_t free = r->free();
+          size_t free = alloc_capacity(r);
 
           max = MAX2(max, free);
 
@@ -501,7 +490,8 @@ void ShenandoahFreeSet::log_status_verbose() {
       size_t max_humongous = max_contig * ShenandoahHeapRegion::region_size_bytes();
       size_t free = capacity() - used();
 
-      ls.print("Max regular: " SIZE_FORMAT "K, Max humongous: " SIZE_FORMAT "K, ", max / K, max_humongous / K);
+      ls.print("Free: " SIZE_FORMAT "M (" SIZE_FORMAT " regions), Max regular: " SIZE_FORMAT "K, Max humongous: " SIZE_FORMAT "K, ",
+               total_free / M, mutator_count(), max / K, max_humongous / K);
 
       size_t frag_ext;
       if (free > 0) {
@@ -522,18 +512,20 @@ void ShenandoahFreeSet::log_status_verbose() {
     }
 
     {
-      ls.print("Free set: Collector view: ");
-
       size_t max = 0;
+      size_t total_free = 0;
+
       for (size_t idx = _collector_leftmost; idx <= _collector_rightmost; idx++) {
         if (is_collector_free(idx)) {
           ShenandoahHeapRegion *r = _heap->get_region(idx);
-          max = MAX2(max, r->free());
+          size_t free = alloc_capacity(r);
+          max = MAX2(max, free);
+          total_free += free;
         }
       }
 
-      ls.print("Max regular: " SIZE_FORMAT "K", max / K);
-      ls.cr();
+      ls.print_cr("Evacuation Reserve: " SIZE_FORMAT "M (" SIZE_FORMAT " regions), Max regular: " SIZE_FORMAT "K",
+                  total_free / M, collector_count(), max / K);
     }
   }
 }

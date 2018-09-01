@@ -81,7 +81,6 @@ public:
   void recycle_trash();
 
   void log_status();
-  void log_status_verbose();
 
   size_t capacity()  const { return _capacity; }
   size_t used()      const { return _used;     }
