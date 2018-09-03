@@ -698,6 +698,7 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
      */
     protected void modelChanged() {
         // create a view hierarchy
+        rootViewInitialized = false;
         ViewFactory f = rootView.getViewFactory();
         Document doc = editor.getDocument();
         Element elem = doc.getDefaultRootElement();
