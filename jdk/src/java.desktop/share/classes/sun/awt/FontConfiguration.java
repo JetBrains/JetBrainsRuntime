@@ -1016,8 +1016,6 @@ public abstract class FontConfiguration {
     /**
      * Returns an array of composite font descriptors for all logical font
      * faces.
-     * If the font configuration file doesn't specify Lucida Sans Regular
-     * or the given fallback font as component fonts, they are added here.
      */
     public CompositeFontDescriptor[] get2DCompositeFontInfo() {
         CompositeFontDescriptor[] result =
@@ -1084,7 +1082,6 @@ public abstract class FontConfiguration {
                     */
                 }
 
-                //"Lucida Sans Regular" is not in the list, we add it here
                 if (!sawDefaultFontFile) {
                     int len = 0;
                     if (installedFallbackFontFiles != null) {
@@ -1458,8 +1455,7 @@ public abstract class FontConfiguration {
             for (int ii = 0; ii < table_awtfontpaths.length; ii++) {
                 if (table_awtfontpaths[ii] == 0) {
                     String script = getString(table_scriptIDs[ii]);
-                    if (script.contains("lucida") ||
-                        script.contains("dingbats") ||
+                    if (script.contains("dingbats") ||
                         script.contains("symbol")) {
                         continue;
                     }
