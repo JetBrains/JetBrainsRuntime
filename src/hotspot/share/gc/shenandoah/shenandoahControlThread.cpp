@@ -152,6 +152,12 @@ void ShenandoahControlThread::run_service() {
       heap->set_unload_classes(heuristics->should_unload_classes());
     }
 
+    // Blow all soft references on this cycle, if handling allocation failure,
+    // or we are requested to do so unconditionally.
+    if (alloc_failure_pending || ShenandoahAlwaysClearSoftRefs) {
+      heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
+    }
+
     bool gc_requested = (mode != none);
     assert (!gc_requested || cause != GCCause::_last_gc_cause, "GC cause should be set");
 
@@ -214,6 +220,9 @@ void ShenandoahControlThread::run_service() {
       // to capture the state at the end of GC session.
       handle_force_counters_update();
       set_forced_counters_update(false);
+
+      // Retract forceful part of soft refs policy
+      heap->soft_ref_policy()->set_should_clear_all_soft_refs(false);
 
       // GC is over, we are at idle now
       if (ShenandoahPacing) {
@@ -465,7 +474,6 @@ void ShenandoahControlThread::handle_explicit_gc(GCCause::Cause cause) {
 void ShenandoahControlThread::handle_alloc_failure(size_t words) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
   assert(current()->is_Java_thread(), "expect Java thread here");
 
   if (try_set_alloc_failure_gc()) {
@@ -485,7 +493,6 @@ void ShenandoahControlThread::handle_alloc_failure(size_t words) {
 
 void ShenandoahControlThread::handle_alloc_failure_evac(size_t words) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  heap->soft_ref_policy()->set_should_clear_all_soft_refs(true);
 
   if (try_set_alloc_failure_gc()) {
     // Only report the first allocation failure

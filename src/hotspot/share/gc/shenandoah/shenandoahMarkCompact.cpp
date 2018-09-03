@@ -222,7 +222,7 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
   ReferenceProcessor* rp = heap->ref_processor();
   // enable ("weak") refs discovery
   rp->enable_discovery(true /*verify_no_refs*/);
-  rp->setup_policy(true); // snapshot the soft ref policy to be used in this cycle
+  rp->setup_policy(true); // forcefully purge all soft references
   rp->set_active_mt_degree(heap->workers()->active_workers());
 
   cm->update_roots(ShenandoahPhaseTimings::full_gc_roots);

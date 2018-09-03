@@ -431,7 +431,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
   if (process_refs) {
     ReferenceProcessor* rp = _heap->ref_processor();
     rp->enable_discovery(true /*verify_no_refs*/);
-    rp->setup_policy(false);
+    rp->setup_policy(_heap->soft_ref_policy()->should_clear_all_soft_refs());
   }
 
   {
@@ -1139,9 +1139,7 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   WorkGang* workers = sh->workers();
   uint nworkers = workers->active_workers();
 
-  // Setup collector policy for softref cleaning.
-  bool clear_soft_refs = sh->soft_ref_policy()->use_should_clear_all_soft_refs(true /* bogus arg*/);
-  rp->setup_policy(clear_soft_refs);
+  rp->setup_policy(sh->soft_ref_policy()->should_clear_all_soft_refs());
   rp->set_active_mt_degree(nworkers);
 
   assert(task_queues()->is_empty(), "Should be empty");

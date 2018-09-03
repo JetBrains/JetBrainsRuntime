@@ -414,7 +414,7 @@ void ShenandoahConcurrentMark::mark_from_roots() {
 
     // enable ("weak") refs discovery
     rp->enable_discovery(true /*verify_no_refs*/);
-    rp->setup_policy(sh->is_full_gc_in_progress()); // snapshot the soft ref policy to be used in this cycle
+    rp->setup_policy(sh->soft_ref_policy()->should_clear_all_soft_refs());
   }
 
   shenandoah_assert_rp_isalive_not_installed();
@@ -709,9 +709,7 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
   WorkGang* workers = sh->workers();
   uint nworkers = workers->active_workers();
 
-  // Setup collector policy for softref cleaning.
-  bool clear_soft_refs = sh->soft_ref_policy()->use_should_clear_all_soft_refs(true /* bogus arg*/);
-  rp->setup_policy(clear_soft_refs);
+  rp->setup_policy(sh->soft_ref_policy()->should_clear_all_soft_refs());
   rp->set_active_mt_degree(nworkers);
 
   assert(task_queues()->is_empty(), "Should be empty");
