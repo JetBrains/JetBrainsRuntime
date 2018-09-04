@@ -40,7 +40,7 @@ StringSymbolTableUnlinkTask::StringSymbolTableUnlinkTask(BoolObjectClosure* is_a
   _process_strings(process_strings), _strings_processed(0), _strings_removed(0),
   _process_symbols(process_symbols), _symbols_processed(0), _symbols_removed(0) {
 
-  _initial_string_table_size = StringTable::the_table()->table_size();
+  _initial_string_table_size = (int) StringTable::the_table()->table_size();
   _initial_symbol_table_size = SymbolTable::the_table()->table_size();
   if (process_symbols) {
     SymbolTable::clear_parallel_claimed_index();
