@@ -89,7 +89,7 @@ inline ShenandoahHeapRegion* const ShenandoahHeap::heap_region_containing(const 
 template <class T>
 inline oop ShenandoahHeap::update_with_forwarded_not_null(T* p, oop obj) {
   if (in_collection_set(obj)) {
-    shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_gc());
+    shenandoah_assert_forwarded_except(p, obj, is_full_gc_in_progress() || cancelled_gc() || is_degenerated_gc_in_progress());
     obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
     RawAccess<IS_NOT_NULL>::oop_store(p, obj);
   }
@@ -147,7 +147,7 @@ inline oop ShenandoahHeap::atomic_compare_exchange_oop(oop n, narrowOop* addr, o
 
 template <class T>
 inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_oop) {
-  shenandoah_assert_not_in_cset_loc_except(p, !is_in(p) || is_full_gc_in_progress());
+  shenandoah_assert_not_in_cset_loc_except(p, !is_in(p) || is_full_gc_in_progress() || is_degenerated_gc_in_progress());
   shenandoah_assert_correct(p, heap_oop);
 
   if (in_collection_set(heap_oop)) {
@@ -157,7 +157,7 @@ inline oop ShenandoahHeap::maybe_update_with_forwarded_not_null(T* p, oop heap_o
       return forwarded_oop;
     }
 
-    shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress());
+    shenandoah_assert_forwarded_except(p, heap_oop, is_full_gc_in_progress() || is_degenerated_gc_in_progress());
     shenandoah_assert_not_in_cset_except(p, forwarded_oop, cancelled_gc());
 
     // If this fails, another thread wrote to p before us, it will be logged in SATB and the

@@ -1766,16 +1766,6 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
   metrics.snap_before();
 
   switch (point) {
-    case _degenerated_evac:
-      // Not possible to degenerate from here, upgrade to Full GC right away.
-      cancel_gc(GCCause::_shenandoah_upgrade_to_full_gc);
-      op_degenerated_fail();
-      return;
-
-    // The cases below form the Duff's-like device: it describes the actual GC cycle,
-    // but enters it at different points, depending on which concurrent phase had
-    // degenerated.
-
     case _degenerated_traversal:
       {
         // Drop the collection set. Note: this leaves some already forwarded objects
@@ -1793,6 +1783,10 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
       op_final_traversal();
       op_cleanup_traversal();
       return;
+
+    // The cases below form the Duff's-like device: it describes the actual GC cycle,
+    // but enters it at different points, depending on which concurrent phase had
+    // degenerated.
 
     case _degenerated_outside_cycle:
       // We have degenerated from outside the cycle, which means something is bad with
@@ -1827,9 +1821,19 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
 
       op_cleanup();
 
+    case _degenerated_evac:
       // If heuristics thinks we should do the cycle, this flag would be set,
       // and we can do evacuation. Otherwise, it would be the shortcut cycle.
       if (is_evacuation_in_progress()) {
+
+        // Degeneration under oom-evac protocol might have left some objects in
+        // collection set un-evacuated. Restart evacuation from the beginning to
+        // capture all objects. For all the objects that are already evacuated,
+        // it would be a simple check, which is supposed to be fast. This is also
+        // safe to do even without degeneration, as CSet iterator is at beginning
+        // in preparation for evacuation anyway.
+        collection_set()->clear_current_index();
+
         op_evac();
         if (cancelled_gc()) {
           op_degenerated_fail();

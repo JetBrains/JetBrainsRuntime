@@ -295,9 +295,6 @@ void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cau
   // If second allocation failure happens during Degenerated GC cycle (for example, when GC
   // tries to evac something and no memory is available), cycle degrades to Full GC.
   //
-  // The only current exception is allocation failure in Conc Evac: it goes straight to Full GC,
-  // because we don't recover well from the case of incompletely evacuated heap in STW cycle.
-  //
   // There are also two shortcuts through the normal cycle: a) immediate garbage shortcut, when
   // heuristics says there are no regions to compact, and all the collection comes from immediately
   // reclaimable regions; b) coalesced UR shortcut, when heuristics decides to coalesce UR with the
@@ -316,15 +313,15 @@ void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cau
   //                   | (af)               | (af)            | (af)         |
   // ..................|....................|.................|..............|.......................
   //                   |                    |                 |              |
-  //                   |          /---------/                 |              |      Degenerated GC
-  //                   v          |                           v              |
-  //               STW Mark ------+---> STW Evac ----> STW Update-Refs ----->o
-  //                   |          |         |                 |              ^
-  //                   | (af)     |         | (af)            | (af)         |
-  // ..................|..........|.........|.................|..............|.......................
-  //                   |          |         |                 |              |
-  //                   |          v         v                 |              |      Full GC
-  //                   \--------->o-------->o<----------------/              |
+  //                   |                    |                 |              |      Degenerated GC
+  //                   v                    v                 v              |
+  //               STW Mark ----------> STW Evac ----> STW Update-Refs ----->o
+  //                   |                    |                 |              ^
+  //                   | (af)               | (af)            | (af)         |
+  // ..................|....................|.................|..............|.......................
+  //                   |                    |                 |              |
+  //                   |                    v                 |              |      Full GC
+  //                   \------------------->o<----------------/              |
   //                                        |                                |
   //                                        v                                |
   //                                      Full GC  --------------------------/
