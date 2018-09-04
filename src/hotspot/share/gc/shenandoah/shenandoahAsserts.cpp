@@ -227,6 +227,19 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* 
                   file, line);
   }
 
+  Klass* obj_klass = obj->klass_or_null();
+  if (obj_klass == NULL) {
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                  "Object klass pointer should not be NULL",
+                  file,line);
+  }
+
+  if (!Metaspace::contains(obj_klass)) {
+    print_failure(_safe_unknown, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
+                  "Object klass pointer must go to metaspace",
+                  file,line);
+  }
+
   oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
 
   if (!oopDesc::unsafe_equals(obj, fwd)) {
@@ -247,7 +260,7 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* 
                     file, line);
     }
 
-    if (obj->klass() != fwd->klass()) {
+    if (obj_klass != fwd->klass()) {
       print_failure(_safe_oop, obj, interior_loc, NULL, "Shenandoah assert_correct failed",
                     "Forwardee klass disagrees with object class",
                     file, line);
