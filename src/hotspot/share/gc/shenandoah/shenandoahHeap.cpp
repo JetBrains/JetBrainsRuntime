@@ -1152,8 +1152,6 @@ void ShenandoahHeap::prepare_for_concurrent_evacuation() {
       _free_set->rebuild();
     }
 
-    Universe::update_heap_info_at_gc();
-
     if (ShenandoahVerify) {
       verifier()->verify_before_evacuation();
     }

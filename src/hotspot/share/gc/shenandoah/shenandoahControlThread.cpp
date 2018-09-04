@@ -214,6 +214,11 @@ void ShenandoahControlThread::run_service() {
       {
         ShenandoahHeapLocker locker(heap->lock());
         heap->free_set()->log_status();
+
+        // Notify Universe about new heap usage. This has implications for
+        // global soft refs policy, and we better report it every time heap
+        // usage goes down.
+        Universe::update_heap_info_at_gc();
       }
 
       // Disable forced counters update, and update counters one more time
