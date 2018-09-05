@@ -48,5 +48,6 @@ public class SetMaximizedBoundsTest {
 
     private static void test() {
         testBounds = frame.getBounds();
+        frame.dispose();
     }
 }
