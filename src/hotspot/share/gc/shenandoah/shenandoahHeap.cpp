@@ -2708,7 +2708,7 @@ void ShenandoahHeap::entry_init_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc);
 
-  static const char* msg = "Pause Init Traversal";
+  const char* msg = init_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2723,7 +2723,7 @@ void ShenandoahHeap::entry_final_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc);
 
-  static const char* msg = "Pause Final Traversal";
+  const char* msg = final_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2873,7 +2873,7 @@ void ShenandoahHeap::entry_preclean() {
 }
 
 void ShenandoahHeap::entry_traversal() {
-  static const char* msg = "Concurrent traversal";
+  const char* msg = conc_traversal_event_message();
   GCTraceTime(Info, gc) time(msg, NULL, GCCause::_no_gc, true);
   EventMark em("%s", msg);
 
@@ -3063,6 +3063,30 @@ const char* ShenandoahHeap::conc_mark_event_message() const {
     return "Concurrent marking (unload classes)";
   } else {
     return "Concurrent marking";
+  }
+}
+
+const char* ShenandoahHeap::init_traversal_event_message() const {
+  if (is_minor_gc()) {
+    return "Pause Init Traversal (minor)";
+  } else {
+    return "Pause Init Traversal";
+  }
+}
+
+const char* ShenandoahHeap::final_traversal_event_message() const {
+  if (is_minor_gc()) {
+    return "Pause Final Traversal (minor)";
+  } else {
+    return "Pause Final Traversal";
+  }
+}
+
+const char* ShenandoahHeap::conc_traversal_event_message() const {
+  if (is_minor_gc()) {
+    return "Concurrent traversal (minor)";
+  } else {
+    return "Concurrent traversal";
   }
 }
 
