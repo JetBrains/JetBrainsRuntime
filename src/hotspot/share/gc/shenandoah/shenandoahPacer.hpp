@@ -61,7 +61,6 @@ public:
   void setup_for_mark();
   void setup_for_evac();
   void setup_for_updaterefs();
-  void setup_for_partial(size_t work_words);
   void setup_for_traversal();
 
   inline void report_mark(size_t words);

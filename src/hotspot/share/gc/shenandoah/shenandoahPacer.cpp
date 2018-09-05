@@ -143,31 +143,6 @@ void ShenandoahPacer::setup_for_traversal() {
 }
 
 /*
- * Partial collection walks only the part of the heap. Incoming arugment will tell us how much
- * work the heuristics is expecting us to do. We would use that as the baseline.
- */
-
-void ShenandoahPacer::setup_for_partial(size_t work_words) {
-  assert(ShenandoahPacing, "Only be here when pacing is enabled");
-
-  size_t work_bytes = work_words * HeapWordSize;
-  size_t free = _heap->free_set()->available();
-
-  size_t non_taxable = free * ShenandoahPacingCycleSlack / 100;
-  size_t taxable = free - non_taxable;
-
-  double tax = 1.0 * work_bytes / taxable; // base tax for available free space
-  tax = MAX2<double>(1, tax);              // never allocate more than GC collects during the cycle
-  tax *= ShenandoahPacingSurcharge;        // additional surcharge to help unclutter heap
-
-  restart_with(non_taxable, tax);
-
-  log_info(gc, ergo)("Pacer for Partial. Work: " SIZE_FORMAT "M, Free: " SIZE_FORMAT
-                     "M, Non-Taxable: " SIZE_FORMAT "M, Alloc Tax Rate: %.1fx",
-                     work_bytes / M, free / M, non_taxable / M, tax);
-}
-
-/*
  * In idle phase, we have to pace the application to let control thread react with GC start.
  *
  * Here, we have rendezvous with concurrent thread that adds up the budget as it acknowledges
