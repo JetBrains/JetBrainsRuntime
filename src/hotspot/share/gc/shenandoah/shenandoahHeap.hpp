@@ -563,7 +563,6 @@ public:
 
   void assert_gc_workers(uint nworker) PRODUCT_RETURN;
 
-  void do_evacuation();
   ShenandoahHeapRegion* next_compaction_region(const ShenandoahHeapRegion* r);
 
   void heap_region_iterate(ShenandoahHeapRegionClosure* blk, bool skip_cset_regions = false, bool skip_humongous_continuation = false) const;

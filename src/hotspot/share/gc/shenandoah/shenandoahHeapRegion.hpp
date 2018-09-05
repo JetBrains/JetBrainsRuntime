@@ -155,9 +155,6 @@ private:
 
   void report_illegal_transition(const char* method);
 
-  void make_idle();
-  void activate_region();
-
   bool can_idle_region() const;
 public:
   // Allowed transitions from the outside code:

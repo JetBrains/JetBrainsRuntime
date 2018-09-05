@@ -121,8 +121,6 @@ class ShenandoahBarrierSetC1 : public BarrierSetC1 {
 private:
   CodeBlob* _pre_barrier_c1_runtime_code_blob;
 
-  void keep_alive_barrier(LIR_Opr val);
-
   void pre_barrier(LIRAccess& access, LIR_Opr addr_opr, LIR_Opr pre_val);
   void post_barrier(LIRAccess& access, LIR_OprDesc* addr, LIR_OprDesc* new_val);
 
