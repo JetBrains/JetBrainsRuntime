@@ -1484,6 +1484,10 @@ void AwtFrame::_SetMaximizedBounds(void *param)
     if (::IsWindow(f->GetHWnd()))
     {
         DASSERT(!::IsBadReadPtr(f, sizeof(AwtFrame)));
+        x = f->ScaleUpAbsX(x);
+        y = f->ScaleUpAbsY(y);
+        width = f->ScaleUpX(width);
+        height = f->ScaleUpY(height);
         f->SetMaximizedBounds(x, y, width, height);
     }
 ret:
