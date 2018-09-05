@@ -153,12 +153,12 @@ private:
         if (cur >= 0) {
           if (Atomic::cmpxchg(cur + 1, loc, cur) == cur) {
             // Success!
+            assert (*loc > 0, "acquired for read");
             return;
           }
         }
         SpinPause();
       }
-      assert (*loc > 1, "acquired for read");
     }
   }
 
