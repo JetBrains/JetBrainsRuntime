@@ -25,7 +25,9 @@
  * @summary Test that garbage in the pinned region does not crash VM
  * @run main/othervm/native -XX:+UseShenandoahGC -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify                                       PinnedGarbage
  * @run main/othervm/native -XX:+UseShenandoahGC -Xmx512m -XX:+UnlockDiagnosticVMOptions                       -XX:ShenandoahGCHeuristics=aggressive PinnedGarbage
- * @run main/othervm/native -XX:+UseShenandoahGC -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    PinnedGarbage
+ *
+ * @run main/othervm/native -XX:+UseShenandoahGC -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:+ShenandoahDegeneratedGC PinnedGarbage
+ * @run main/othervm/native -XX:+UseShenandoahGC -Xmx512m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:-ShenandoahDegeneratedGC PinnedGarbage
  */
 
 import java.util.Arrays;

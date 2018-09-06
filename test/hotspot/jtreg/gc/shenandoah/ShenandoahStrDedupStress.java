@@ -50,7 +50,11 @@
  *                   ShenandoahStrDedupStress
  *
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
- *                   -XX:ShenandoahGCHeuristics=passive -DtargetOverwrites=40000000
+ *                   -XX:ShenandoahGCHeuristics=passive -XX:+ShenandoahDegeneratedGC -DtargetOverwrites=40000000
+ *                   ShenandoahStrDedupStress
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
+ *                   -XX:ShenandoahGCHeuristics=passive -XX:-ShenandoahDegeneratedGC -DtargetOverwrites=40000000
  *                   ShenandoahStrDedupStress
  *
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats

@@ -26,12 +26,14 @@
  * @summary Check that MX notifications are reported for all cycles
  *
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -Dprecise=false ChurnNotifications
- * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -Dprecise=true  ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive     -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact      -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -Dprecise=false ChurnNotifications
+ *
+ * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahDegeneratedGC -Dprecise=true  ChurnNotifications
+ * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:-ShenandoahDegeneratedGC -Dprecise=true  ChurnNotifications
  */
 
 import java.util.*;

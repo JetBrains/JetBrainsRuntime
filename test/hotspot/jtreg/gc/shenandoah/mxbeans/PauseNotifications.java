@@ -26,12 +26,14 @@
  * @summary Check that MX notifications are reported for all cycles
  *
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                          PauseNotifications
- * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive       PauseNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive      PauseNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static        PauseNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact       PauseNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive    PauseNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal     PauseNotifications
+ *
+ * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive       -XX:+ShenandoahDegeneratedGC PauseNotifications
+ * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive       -XX:-ShenandoahDegeneratedGC PauseNotifications
  */
 
 import java.util.*;

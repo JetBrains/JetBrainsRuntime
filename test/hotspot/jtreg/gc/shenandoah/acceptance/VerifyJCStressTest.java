@@ -29,7 +29,12 @@
  *          java.management
  * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations
- *                    -XX:ShenandoahGCHeuristics=passive
+ *                    -XX:ShenandoahGCHeuristics=passive -XX:+ShenandoahDegeneratedGC
+ *                    VerifyJCStressTest
+ *
+ * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations
+ *                    -XX:ShenandoahGCHeuristics=passive -XX:-ShenandoahDegeneratedGC
  *                    VerifyJCStressTest
  *
  * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions

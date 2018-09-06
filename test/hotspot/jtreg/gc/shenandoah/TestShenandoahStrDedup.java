@@ -32,8 +32,10 @@
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                         -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact      -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
+ *
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahDegeneratedGC -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
+ * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:-ShenandoahDegeneratedGC -XX:+UseStringDeduplication -Xmx256M -Xlog:gc+stats TestShenandoahStrDedup
  */
 
 import java.lang.reflect.*;

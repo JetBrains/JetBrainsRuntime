@@ -25,9 +25,11 @@
 /* @test
  * @requires (os.arch =="x86_64" | os.arch == "amd64") & (vm.bits == "64")
  * @run main/othervm/native -XX:+UseShenandoahGC -Xcomp -Xmx256M -XX:+CriticalJNINatives CriticalNativeArgs
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=passive -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
+ * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions   -XX:ShenandoahGCHeuristics=aggressive -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
+ * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal  -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
+ *
+ * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions   -XX:ShenandoahGCHeuristics=passive    -XX:+ShenandoahDegeneratedGC -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
+ * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions   -XX:ShenandoahGCHeuristics=passive    -XX:-ShenandoahDegeneratedGC -Xcomp -Xmx512M -XX:+CriticalJNINatives CriticalNativeArgs
  */
 public class CriticalNativeArgs {
   static {
