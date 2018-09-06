@@ -63,9 +63,6 @@ public class TestPeriodicGC {
            "adaptive",
            "compact",
            "static",
-           "connected",
-           "generational",
-           "LRU",
            "traversal",
         };
 

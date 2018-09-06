@@ -129,9 +129,6 @@ public class TestClassLoaderLeak {
            "traversal",
            "aggressive",
            "passive",
-           "connected",
-           "generational",
-           "LRU",
         };
 
         for (String h : heuristics) {

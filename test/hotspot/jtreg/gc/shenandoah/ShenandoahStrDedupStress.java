@@ -54,19 +54,7 @@
  *                   ShenandoahStrDedupStress
  *
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
- *                   -XX:ShenandoahGCHeuristics=generational
- *                   ShenandoahStrDedupStress
- *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
- *                   -XX:ShenandoahGCHeuristics=LRU
- *                   ShenandoahStrDedupStress
- *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
  *                   -XX:ShenandoahGCHeuristics=traversal
- *                   ShenandoahStrDedupStress
- *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
- *                   -XX:ShenandoahGCHeuristics=connected
  *                   ShenandoahStrDedupStress
  *
  * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats

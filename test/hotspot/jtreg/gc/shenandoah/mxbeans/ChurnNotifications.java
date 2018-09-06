@@ -31,9 +31,6 @@
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=static       -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact      -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive   -Dprecise=false ChurnNotifications
- * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=connected    -Dprecise=false ChurnNotifications
- * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=generational -Dprecise=false ChurnNotifications
- * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=LRU          -Dprecise=false ChurnNotifications
  * @run main/othervm -Xmx128m -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -Dprecise=false ChurnNotifications
  */
 

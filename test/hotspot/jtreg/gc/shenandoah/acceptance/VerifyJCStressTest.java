@@ -44,21 +44,6 @@
  *
  * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
  *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations -XX:+ShenandoahVerifyOptoBarriers
- *                    -XX:ShenandoahGCHeuristics=connected
- *                    VerifyJCStressTest
- *
- * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
- *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations -XX:+ShenandoahVerifyOptoBarriers
- *                    -XX:ShenandoahGCHeuristics=generational
- *                    VerifyJCStressTest
- *
- * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
- *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations -XX:+ShenandoahVerifyOptoBarriers
- *                    -XX:ShenandoahGCHeuristics=LRU
- *                    VerifyJCStressTest
- *
- * @run main/othervm  -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
- *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyStrictOopOperations -XX:+ShenandoahVerifyOptoBarriers
  *                    -XX:ShenandoahGCHeuristics=traversal
  *                    VerifyJCStressTest
  */
