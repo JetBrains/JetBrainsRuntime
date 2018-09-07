@@ -28,6 +28,7 @@
 
 #include <jni.h>
 #include "debug_trace.h"
+#include "jni_util.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -179,13 +180,13 @@ J2dTraceInit();
 
 #define J2dTracePrimitive(string) { \
         if (graphicsPrimitive_traceflags && jvm) { \
-            JNIEnv *env; \
+            void *env; \
             jstring jstr; \
             (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
-            jstr = (*env)->NewStringUTF(env, string); \
+            jstr = (*(JNIEnv*)env)->NewStringUTF(env, string); \
             JNU_CallStaticMethodByName(env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
                                        "tracePrimitive", "(Ljava/lang/Object;)V", jstr); \
-            (*env)->DeleteLocalRef(env, jstr); \
+            (*(JNIEnv*)env)->DeleteLocalRef(env, jstr); \
         } \
     }
 #ifdef __cplusplus
