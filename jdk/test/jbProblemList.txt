@@ -144,6 +144,7 @@ java/awt/EventQueue/6980209/bug6980209.java                                     
 java/awt/FileDialog/8003399/bug8003399.java                                         8197803 windows-all
 java/awt/FileDialog/8017487/bug8017487.java                                         8197806 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java                      8160558 windows-all
+java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                      7149081 macosx-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                        8194751 macosx-all,windows-all,linux-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       8198616,JRE-813 macosx-all,windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java                                         8047703 windows-all,macosx-all
@@ -683,6 +684,7 @@ java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                        
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.html                                    8202934 macosx-all,windows-all
 java/awt/hidpi/properties/HiDPIPropertiesWindowsTest.java                           JRE-898 windows-all
+java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 macosx-all
 java/awt/image/DrawImage/EABlitTest.java                                            8028000 windows-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java                              8056077 linux-all
 java/awt/image/DrawImage/IncorrectBounds.java                                       8169473 windows-all
@@ -1005,6 +1007,8 @@ java/nio/file/WatchService/LotsOfEvents.java                                    
 com/sun/nio/sctp/SctpMultiChannel/SocketOptionTests.java                            8141694 linux-all
 com/sun/nio/sctp/SctpChannel/SocketOptionTests.java                                 8141694 linux-all
 
+jdk/nio/zipfs/ZeroDate.java                                                         8186227 windows-all
+
 ############################################################################
 
 # jdk_rmi
@@ -1124,6 +1128,13 @@ org/omg/CORBA/OrbPropertiesTest.java                                            
 
 com/apple/eawt/DefaultMenuBar/DefaultMenuBarTest.java                               JRE-898 macosx-all
 com/apple/laf/ScreenMenu/ScreenMenuMemoryLeakTest.java                              8180821 macosx-all
+
+
+security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8194170 generic-all
+security/infra/java/security/cert/CertPathValidator/certification/QuoVadisCA.java   8194170 generic-all
+
+lib/security/cacerts/VerifyCACerts.java                                             8209452 generic-all
+
 
 # SunToolkit$OperationTimedOut 8072110 linux-all
 
