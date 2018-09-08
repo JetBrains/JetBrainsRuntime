@@ -9,6 +9,7 @@ import java.util.concurrent.CountDownLatch;
  * @summary Tests that Frame.setMaximizedBounds meets HiDPI.
  * @author Anton Tarasov
  * @requires (os.family == "windows")
+ * @modules java.desktop/sun.awt
  * @run main/othervm -Dsun.java2d.uiScale.enabled=true
  *                   -Dsun.java2d.uiScale=2
  *                    SetMaximizedBoundsTest
