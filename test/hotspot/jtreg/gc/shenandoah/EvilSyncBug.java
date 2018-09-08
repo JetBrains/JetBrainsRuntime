@@ -40,7 +40,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 public class EvilSyncBug {
 
-    private static final int NUM_RUNS = 200;
+    private static final int NUM_RUNS = 20;
 
     static Thread[] hooks = new MyHook[10000];
 
