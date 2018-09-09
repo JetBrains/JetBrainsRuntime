@@ -37,6 +37,10 @@ import sun.java2d.DisposerRecord;
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
+<<<<<<< HEAD
+=======
+import java.util.Locale;
+>>>>>>> 2752218... 8210384: SunLayoutEngine.isAAT() font is expensive on MacOS
 import java.util.WeakHashMap;
 
 /*
@@ -159,12 +163,39 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
         this.key = key;
     }
 
+<<<<<<< HEAD
     private long getFacePtr(Font2D font2D) {
         FaceRef ref;
         synchronized (facePtr) {
             ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
         }
         return ref.getNativePtr();
+=======
+    static WeakHashMap<Font2D, Boolean> aatInfo = new WeakHashMap<>();
+
+    private boolean isAAT(Font2D font) {
+       Boolean aatObj;
+       synchronized (aatInfo) {
+           aatObj = aatInfo.get(font);
+       }
+       if (aatObj != null) {
+          return aatObj.booleanValue();
+       }
+       boolean aat = false;
+       if (font instanceof TrueTypeFont) {
+           TrueTypeFont ttf = (TrueTypeFont)font;
+           aat =  ttf.getDirectoryEntry(TrueTypeFont.morxTag) != null ||
+                  ttf.getDirectoryEntry(TrueTypeFont.mortTag) != null;
+       } else if (font instanceof PhysicalFont) {
+           PhysicalFont pf = (PhysicalFont)font;
+           aat =  pf.getTableBytes(TrueTypeFont.morxTag) != null ||
+                  pf.getTableBytes(TrueTypeFont.mortTag) != null;
+       }
+       synchronized (aatInfo) {
+           aatInfo.put(font, Boolean.valueOf(aat));
+       }
+       return aat;
+>>>>>>> 2752218... 8210384: SunLayoutEngine.isAAT() font is expensive on MacOS
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
