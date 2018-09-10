@@ -166,7 +166,7 @@ public class DeferredAttr extends JCTree.Visitor {
                         @Override
                         public void setOverloadKind(OverloadKind overloadKind) {
                             OverloadKind previous = t.getOverloadKind();
-                            if (previous == null) {
+                            if (previous == null || previous == OverloadKind.ERROR) {
                                 t.setOverloadKind(overloadKind);
                             } else {
                                 Assert.check(previous == overloadKind);
@@ -1197,7 +1197,7 @@ public class DeferredAttr extends JCTree.Visitor {
             Type descType = types.findDescriptorType(pt);
             List<Type> freeArgVars = inferenceContext.freeVarsIn(descType.getParameterTypes());
             if (freeArgVars.nonEmpty() &&
-                    tree.getOverloadKind() == JCMemberReference.OverloadKind.OVERLOADED) {
+                    tree.getOverloadKind() != JCMemberReference.OverloadKind.UNOVERLOADED) {
                 stuckVars.addAll(freeArgVars);
                 depVars.addAll(inferenceContext.freeVarsIn(descType.getReturnType()));
             }
@@ -1262,7 +1262,7 @@ public class DeferredAttr extends JCTree.Visitor {
         @Override
         public void visitReference(JCMemberReference tree) {
             super.visitReference(tree);
-            if (tree.getOverloadKind() == JCMemberReference.OverloadKind.OVERLOADED) {
+            if (tree.getOverloadKind() != JCMemberReference.OverloadKind.UNOVERLOADED) {
                 stuck = true;
             }
         }
