@@ -433,6 +433,12 @@ void ShenandoahBarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, Register a
                                                 Register tmp1, Register tmp2, Register tmp3,
                                                 Register result) {
 
+  if (!ShenandoahCASBarrier) {
+    BarrierSetAssembler::cmpxchg_oop(masm, addr, expected, new_val, acquire, release, weak, encode,
+                                     tmp1, tmp2, tmp3, result);
+    return;
+  }
+
   if (encode) {
     storeval_barrier(masm, new_val, tmp3);
   }
