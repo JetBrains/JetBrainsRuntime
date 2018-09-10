@@ -84,6 +84,7 @@ public:
   virtual void store_at(MacroAssembler* masm, DecoratorSet decorators, BasicType type,
                         Address dst, Register val, Register tmp1, Register tmp2);
   virtual void obj_equals(MacroAssembler* masm, Register src1, Register src2);
+  virtual void resolve(MacroAssembler* masm, DecoratorSet decorators, Register obj);
   virtual void tlab_allocate(MacroAssembler* masm, Register obj,
                              Register var_size_in_bytes,
                              int con_size_in_bytes,
