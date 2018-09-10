@@ -63,7 +63,6 @@ private:
                                     BasicType bt) const;
 
   Node* shenandoah_enqueue_barrier(GraphKit* kit, Node* val) const;
-  void shenandoah_update_matrix(GraphKit* kit, Node* adr, Node* val) const;
   Node* shenandoah_read_barrier(GraphKit* kit, Node* obj) const;
   Node* shenandoah_storeval_barrier(GraphKit* kit, Node* obj) const;
   Node* shenandoah_write_barrier(GraphKit* kit, Node* obj) const;

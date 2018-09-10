@@ -87,12 +87,6 @@
           " *) compact - run GC with lower footprint target, may end up "   \
           "               doing continuous GC, evacuate lots of live "      \
           "               objects, uncommit heap aggressively;"             \
-          " *) connected - run partial cycles focusing on least connected " \
-          "               regions, along with adaptive concurrent GC;"      \
-          " *) generational - run partial cycles focusing on young regions,"\
-          "               along with adaptive concurrent GC), "             \
-          " *) LRU - run partial cycles focusing on old regions, along"     \
-          "               with adaptive concurrent GC."                     \
           "Defaults to adaptive")                                           \
                                                                             \
   experimental(ccstr, ShenandoahUpdateRefsEarly, "adaptive",                \
@@ -138,18 +132,6 @@
           "a new GC cycle is started. "                                     \
           "Applies to Shenandoah GC dynamic Heuristic mode only "           \
           "(ignored otherwise). Defauls to 0%.")                            \
-          range(0,100)                                                      \
-                                                                            \
-  product_rw(uintx, ShenandoahGenerationalYoungGenPercentage, 20,           \
-             "Percentage of the heap designated as young")                  \
-          range(0,100)                                                      \
-                                                                            \
-  product_rw(uintx, ShenandoahLRUOldGenPercentage, 20,                      \
-             "Percentage of the heap designated as old")                    \
-          range(0,100)                                                      \
-                                                                            \
-  product_rw(uintx, ShenandoahConnectednessPercentage, 20,                  \
-             "Percentage of the heap designated for connectedness")         \
           range(0,100)                                                      \
                                                                             \
   experimental(uintx, ShenandoahMergeUpdateRefsMinGap, 100,                 \
@@ -224,11 +206,6 @@
   experimental(uintx, ShenandoahHappyCyclesThreshold, 3,                    \
           "How many successful marking cycles before improving free "       \
                "threshold for adaptive heuristics")                         \
-                                                                            \
-  experimental(uintx, ShenandoahPartialInboundThreshold, 10,                \
-          "Specifies how many inbound regions a region can have maximum "   \
-          "to be considered for collection set in partial collections.")    \
-          writeable(Always)                                                 \
                                                                             \
   experimental(uintx, ShenandoahMarkLoopStride, 1000,                       \
           "How many items are processed during one marking step")           \
@@ -343,12 +320,6 @@
                                                                             \
   diagnostic(bool, ShenandoahCloneBarrier, true,                            \
           "Turn on/off clone barriers in Shenandoah")                       \
-                                                                            \
-  diagnostic(bool, UseShenandoahMatrix, false,                              \
-          "Turn on/off Shenandoah connection matrix collection")            \
-                                                                            \
-  diagnostic(bool, PrintShenandoahMatrix, false,                            \
-          "Print connection matrix after marking")                          \
                                                                             \
   diagnostic(bool, ShenandoahStoreCheck, false,                             \
           "Emit additional code that checks objects are written to only"    \

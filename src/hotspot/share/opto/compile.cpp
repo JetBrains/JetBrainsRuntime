@@ -4739,28 +4739,6 @@ void CloneMap::dump(node_idx_t key) const {
 }
 
 #if INCLUDE_SHENANDOAHGC
-void Compile::shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn) {
-  assert(UseShenandoahGC && p2x->Opcode() == Op_CastP2X, "");
-  ResourceMark rm;
-  Unique_Node_List wq;
-
-  wq.push(p2x);
-  for (uint next = 0; next < wq.size(); next++) {
-    Node *n = wq.at(next);
-    if (n->is_Store()) {
-      // do nothing
-    } else if (n->is_Load()) {
-      igvn->replace_node(n, igvn->intcon(1));
-    } else {
-      for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
-        Node* u = n->fast_out(i);
-        wq.push(u);
-      }
-    }
-  }
-  igvn->replace_node(p2x, C->top());
-}
-
 void Compile::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) {
   assert(UseShenandoahGC && call->is_shenandoah_wb_pre_call(), "");
   Node* c = call->as_Call()->proj_out(TypeFunc::Control);

@@ -51,12 +51,6 @@ private:
                                     Register tmp,
                                     bool tosca_live,
                                     bool expand_call);
-  void shenandoah_write_barrier_post(MacroAssembler* masm,
-                                     Register store_addr,
-                                     Register new_val,
-                                     Register thread,
-                                     Register tmp,
-                                     Register tmp2);
 
   void read_barrier(MacroAssembler* masm, Register dst);
   void read_barrier_impl(MacroAssembler* masm, Register dst);

@@ -43,7 +43,6 @@
  *
  * two variable counters per region, with $max_regions (see above) counters:
  * - sun.gc.shenandoah.regions.region.$i.data
- * - sun.gc.shenandoah.regions.region.$i.matrix
  * where $ is the region number from 0 <= i < $max_regions
  *
  * .data is in the following format:
@@ -57,9 +56,6 @@
  * - bits 51-57  <reserved>
  * - bits 58-63  status
  *      - bits describe the state as recorded in ShenandoahHeapRegion
- *
- * .matrix is the UU-encoded binary blob describing incoming references for the region
- *   the format is 6-bit tuples encoded in a single byte, offset by 32.
  */
 class ShenandoahHeapRegionCounters : public CHeapObj<mtGC>  {
 private:
@@ -74,15 +70,10 @@ private:
 
   static const jlong STATUS_SHIFT = 58;
 
-  static const size_t COMPACT_MATRIX_BITS = 6;
-  static const size_t COMPACT_MATRIX_OFFSET = 32;
-
   char* _name_space;
   PerfLongVariable** _regions_data;
-  PerfStringVariable** _regions_matrix;
   PerfLongVariable* _timestamp;
   PerfLongVariable* _status;
-  size_t _compact_matrix_len;
   volatile jlong _last_sample_millis;
 
 public:

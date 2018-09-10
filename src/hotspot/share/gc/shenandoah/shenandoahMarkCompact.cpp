@@ -177,12 +177,6 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
     }
   }
 
-
-  if (UseShenandoahMatrix && PrintShenandoahMatrix) {
-    LogTarget(Info, gc) lt;
-    LogStream ls(lt);
-    heap->connection_matrix()->print_on(&ls);
-  }
 }
 
 class ShenandoahPrepareForMarkClosure: public ShenandoahHeapRegionClosure {
@@ -230,12 +224,6 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
   cm->shared_finish_mark_from_roots(/* full_gc = */ true);
 
   heap->swap_mark_contexts();
-
-  if (UseShenandoahMatrix && PrintShenandoahMatrix) {
-    LogTarget(Info, gc) lt;
-    LogStream ls(lt);
-    heap->connection_matrix()->print_on(&ls);
-  }
 }
 
 class ShenandoahPrepareForCompactionObjectClosure : public ObjectClosure {
@@ -511,11 +499,9 @@ void ShenandoahMarkCompact::phase2_calculate_target_addresses(ShenandoahHeapRegi
   }
 }
 
-template<bool MATRIX>
 class ShenandoahAdjustPointersClosure : public MetadataVisitingOopIterateClosure {
 private:
   ShenandoahHeap* const _heap;
-  size_t _new_obj_offset;
   ShenandoahMarkingContext* const _ctx;
 
   template <class T>
@@ -526,41 +512,22 @@ private:
       assert(_ctx->is_marked(obj), "must be marked");
       oop forw = oop(BrooksPointer::get_raw(obj));
       RawAccess<IS_NOT_NULL>::oop_store(p, forw);
-      if (MATRIX && UseShenandoahMatrix) {
-        if (_heap->is_in_reserved(p)) {
-          assert(_heap->is_in_reserved(forw), "must be in heap");
-          assert(_new_obj_offset != SIZE_MAX, "should be set");
-          // We're moving a to a', which points to b, about to be moved to b'.
-          // We already know b' from the fwd pointer of b.
-          // In the object closure, we see a, and we know a' (by looking at its
-          // fwd ptr). We store the offset in the OopClosure, which is going
-          // to visit all of a's fields, and then, when we see each field, we
-          // subtract the offset from each field address to get the final ptr.
-          _heap->connection_matrix()->set_connected(((HeapWord*) p) - _new_obj_offset, forw);
-        }
-      }
     }
   }
 
 public:
   ShenandoahAdjustPointersClosure() :
     _heap(ShenandoahHeap::heap()),
-    _new_obj_offset(SIZE_MAX),
     _ctx(ShenandoahHeap::heap()->complete_marking_context()) {}
 
   void do_oop(oop* p)       { do_oop_work(p); }
   void do_oop(narrowOop* p) { do_oop_work(p); }
-
-  void set_new_obj_offset(size_t new_obj_offset) {
-    _new_obj_offset = new_obj_offset;
-  }
 };
 
-template<bool MATRIX>
 class ShenandoahAdjustPointersObjectClosure : public ObjectClosure {
 private:
   ShenandoahHeap* const _heap;
-  ShenandoahAdjustPointersClosure<MATRIX> _cl;
+  ShenandoahAdjustPointersClosure _cl;
 
 public:
   ShenandoahAdjustPointersObjectClosure() :
@@ -569,14 +536,10 @@ public:
   void do_object(oop p) {
     assert(_heap->complete_marking_context()->is_marked(p), "must be marked");
     HeapWord* forw = BrooksPointer::get_raw(p);
-    if (MATRIX) {
-      _cl.set_new_obj_offset(pointer_delta((HeapWord *) p, forw));
-    }
     p->oop_iterate(&_cl);
   }
 };
 
-template<bool MATRIX>
 class ShenandoahAdjustPointersTask : public AbstractGangTask {
 private:
   ShenandoahHeap*          const _heap;
@@ -589,7 +552,7 @@ public:
   }
 
   void work(uint worker_id) {
-    ShenandoahAdjustPointersObjectClosure<MATRIX> obj_cl;
+    ShenandoahAdjustPointersObjectClosure obj_cl;
     ShenandoahHeapRegion* r = _regions.next();
     while (r != NULL) {
       if (!r->is_humongous_continuation() && r->has_live()) {
@@ -600,7 +563,6 @@ public:
   }
 };
 
-template<bool MATRIX>
 class ShenandoahAdjustRootPointersTask : public AbstractGangTask {
 private:
   ShenandoahRootProcessor* _rp;
@@ -611,7 +573,7 @@ public:
     _rp(rp) {}
 
   void work(uint worker_id) {
-    ShenandoahAdjustPointersClosure<MATRIX> cl;
+    ShenandoahAdjustPointersClosure cl;
     CLDToOopClosure adjust_cld_closure(&cl, true);
     MarkingCodeBlobClosure adjust_code_closure(&cl,
                                              CodeBlobToOopClosure::FixRelocations);
@@ -628,10 +590,6 @@ void ShenandoahMarkCompact::phase3_update_references() {
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  if (UseShenandoahMatrix) {
-    heap->connection_matrix()->clear_all();
-  }
-
   WorkGang* workers = heap->workers();
   uint nworkers = workers->active_workers();
   {
@@ -639,25 +597,15 @@ void ShenandoahMarkCompact::phase3_update_references() {
     DerivedPointerTable::clear();
 #endif
     ShenandoahRootProcessor rp(heap, nworkers, ShenandoahPhaseTimings::full_gc_roots);
-    if (UseShenandoahMatrix) {
-      ShenandoahAdjustRootPointersTask<true> task(&rp);
-      workers->run_task(&task);
-    } else {
-      ShenandoahAdjustRootPointersTask<false> task(&rp);
-      workers->run_task(&task);
-    }
+    ShenandoahAdjustRootPointersTask task(&rp);
+    workers->run_task(&task);
 #if COMPILER2_OR_JVMCI
     DerivedPointerTable::update_pointers();
 #endif
   }
 
-  if (UseShenandoahMatrix) {
-    ShenandoahAdjustPointersTask<true> adjust_pointers_task;
-    workers->run_task(&adjust_pointers_task);
-  } else {
-    ShenandoahAdjustPointersTask<false> adjust_pointers_task;
-    workers->run_task(&adjust_pointers_task);
-  }
+  ShenandoahAdjustPointersTask adjust_pointers_task;
+  workers->run_task(&adjust_pointers_task);
 }
 
 class ShenandoahCompactObjectsClosure : public ObjectClosure {

@@ -1366,7 +1366,6 @@ class Compile : public Phase {
   void          set_clone_map(Dict* d);
 
 #if INCLUDE_SHENANDOAHGC
-  void shenandoah_eliminate_matrix_update(Node* p2x, PhaseIterGVN* igvn);
   void shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn);
 #endif
 

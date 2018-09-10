@@ -66,7 +66,6 @@ public:
   inline void report_mark(size_t words);
   inline void report_evac(size_t words);
   inline void report_updaterefs(size_t words);
-  inline void report_partial(size_t words);
 
   inline void report_alloc(size_t words);
 

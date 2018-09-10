@@ -26,7 +26,6 @@
 #include "gc/g1/satbMarkQueue.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
@@ -104,75 +103,6 @@ void ShenandoahBarrierSetC1::pre_barrier(LIRAccess& access, LIR_Opr addr_opr, LI
 
   __ branch(lir_cond_notEqual, T_INT, slow);
   __ branch_destination(slow->continuation());
-}
-
-void ShenandoahBarrierSetC1::post_barrier(LIRAccess& access, LIR_OprDesc* addr, LIR_OprDesc* new_val) {
-  if (! UseShenandoahMatrix) {
-    // No need for that barrier if not using matrix.
-    return;
-  }
-
-  LIRGenerator* gen = access.gen();
-
-  // If the "new_val" is a constant NULL, no barrier is necessary.
-  if (new_val->is_constant() &&
-      new_val->as_constant_ptr()->as_jobject() == NULL) return;
-
-  new_val = ensure_in_register(access, new_val);
-  assert(new_val->is_register(), "must be a register at this point");
-
-  if (addr->is_address()) {
-    LIR_Address* address = addr->as_address_ptr();
-    LIR_Opr ptr = gen->new_pointer_register();
-    if (!address->index()->is_valid() && address->disp() == 0) {
-      __ move(address->base(), ptr);
-    } else {
-      // assert(address->disp() != max_jint, "lea doesn't support patched addresses!");
-      __ leal(addr, ptr);
-    }
-    addr = ptr;
-  }
-  assert(addr->is_register(), "must be a register at this point");
-
-  LabelObj* L_done = new LabelObj();
-  __ cmp(lir_cond_equal, new_val, LIR_OprFact::oopConst(NULL_WORD));
-  __ branch(lir_cond_equal, T_OBJECT, L_done->label());
-
-  ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-
-  LIR_Opr heap_base = gen->new_pointer_register();
-  __ move(LIR_OprFact::intptrConst(ShenandoahHeap::heap()->base()), heap_base);
-
-  LIR_Opr tmp1 = gen->new_pointer_register();
-  __ move(new_val, tmp1);
-  __ sub(tmp1, heap_base, tmp1);
-  __ unsigned_shift_right(tmp1, LIR_OprFact::intConst(ShenandoahHeapRegion::region_size_bytes_shift_jint()), tmp1, LIR_OprDesc::illegalOpr());
-
-  LIR_Opr tmp2 = gen->new_pointer_register();
-  __ move(addr, tmp2);
-  __ sub(tmp2, heap_base, tmp2);
-  __ unsigned_shift_right(tmp2, LIR_OprFact::intConst(ShenandoahHeapRegion::region_size_bytes_shift_jint()), tmp2, LIR_OprDesc::illegalOpr());
-
-  LIR_Opr tmp3 = gen->new_pointer_register();
-  __ move(LIR_OprFact::longConst(matrix->stride_jint()), tmp3);
-  __ mul(tmp1, tmp3, tmp1);
-  __ add(tmp1, tmp2, tmp1);
-
-  LIR_Opr tmp4 = gen->new_pointer_register();
-  __ move(LIR_OprFact::intptrConst((intptr_t) matrix->matrix_addr()), tmp4);
-  LIR_Address* matrix_elem_addr = new LIR_Address(tmp4, tmp1, T_BYTE);
-
-  LIR_Opr tmp5 = gen->new_register(T_INT);
-  __ move(matrix_elem_addr, tmp5);
-  __ cmp(lir_cond_notEqual, tmp5, LIR_OprFact::intConst(0));
-  __ branch(lir_cond_notEqual, T_BYTE, L_done->label());
-
-  // Aarch64 cannot move constant 1. Load it into a register.
-  LIR_Opr one = gen->new_register(T_INT);
-  __ move(LIR_OprFact::intConst(1), one);
-  __ move(one, matrix_elem_addr);
-
-  __ branch_destination(L_done->label());
 }
 
 LIR_Opr ShenandoahBarrierSetC1::read_barrier(LIRAccess& access, LIR_Opr obj, CodeEmitInfo* info, bool need_null_check) {
@@ -286,10 +216,6 @@ void ShenandoahBarrierSetC1::store_at(LIRAccess& access, LIR_Opr value) {
     value = storeval_barrier(access, value, access.access_emit_info(), access.needs_null_check());
   }
   BarrierSetC1::store_at_resolved(access, value);
-
-  if (access.is_oop() && UseShenandoahMatrix) {
-    post_barrier(access, access.resolved_addr(), value);
-  }
 }
 
 void ShenandoahBarrierSetC1::load_at(LIRAccess& access, LIR_Opr result) {
@@ -333,11 +259,7 @@ LIR_Opr ShenandoahBarrierSetC1::atomic_cmpxchg_at(LIRAccess& access, LIRItem& cm
                   LIR_OprFact::illegalOpr /* pre_val */);
     }
   }
-  LIR_Opr result = atomic_cmpxchg_at_resolved(access, cmp_value, new_value);
-  if (access.is_oop() && UseShenandoahMatrix) {
-    post_barrier(access, access.resolved_addr(), new_value.result());
-  }
-  return result;
+  return atomic_cmpxchg_at_resolved(access, cmp_value, new_value);
 }
 
 LIR_Opr ShenandoahBarrierSetC1::atomic_xchg_at(LIRAccess& access, LIRItem& value) {
@@ -350,11 +272,7 @@ LIR_Opr ShenandoahBarrierSetC1::atomic_xchg_at(LIRAccess& access, LIRItem& value
                   LIR_OprFact::illegalOpr /* pre_val */);
     }
   }
-  LIR_Opr result = BarrierSetC1::atomic_xchg_at_resolved(access, value);
-  if (access.is_oop() && UseShenandoahMatrix) {
-    post_barrier(access, access.resolved_addr(), value.result());
-  }
-  return result;
+  return BarrierSetC1::atomic_xchg_at_resolved(access, value);
 }
 
 LIR_Opr ShenandoahBarrierSetC1::atomic_add_at(LIRAccess& access, LIRItem& value) {

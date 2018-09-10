@@ -47,9 +47,6 @@ public class TestHeuristicsUnlock {
         testWith("static",          Mode.PRODUCT);
         testWith("compact",         Mode.PRODUCT);
 
-        testWith("connected",       Mode.EXPERIMENTAL);
-        testWith("generational",    Mode.EXPERIMENTAL);
-        testWith("LRU",             Mode.EXPERIMENTAL);
         testWith("traversal",       Mode.EXPERIMENTAL);
 
         testWith("aggressive",      Mode.DIAGNOSTIC);

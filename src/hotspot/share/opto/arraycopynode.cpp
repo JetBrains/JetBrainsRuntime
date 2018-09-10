@@ -232,12 +232,6 @@ Node* ArrayCopyNode::try_clone_instance(PhaseGVN *phase, bool can_reshape, int c
   ciInstanceKlass* ik = inst_src->klass()->as_instance_klass();
   assert(ik->nof_nonstatic_fields() <= ArrayCopyLoadStoreMaxElem, "too many fields");
 
-#if INCLUDE_SHENANDOAHGC
-  if (UseShenandoahGC && UseShenandoahMatrix && ik->has_object_fields()) {
-    return NodeSentinel;
-  }
-#endif
-
   for (int i = 0; i < count; i++) {
     ciField* field = ik->nonstatic_field_at(i);
     int fieldidx = phase->C->alias_type(field)->index();
@@ -367,12 +361,6 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
     assert(phase->type(src->in(AddPNode::Offset))->is_intptr_t()->get_con() == phase->type(dest->in(AddPNode::Offset))->is_intptr_t()->get_con(), "same start offset?");
     BasicType elem = ary_src->klass()->as_array_klass()->element_type()->basic_type();
     if (elem == T_ARRAY)  elem = T_OBJECT;
-
-#if INCLUDE_SHENANDOAHGC
-    if (elem == T_OBJECT && (UseShenandoahGC && UseShenandoahMatrix)) {
-      return false;
-    }
-#endif
 
     int diff = arrayOopDesc::base_offset_in_bytes(elem) - phase->type(src->in(AddPNode::Offset))->is_intptr_t()->get_con();
     assert(diff >= 0, "clone should not start after 1st array element");

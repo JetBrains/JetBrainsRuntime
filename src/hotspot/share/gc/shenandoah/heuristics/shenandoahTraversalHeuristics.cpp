@@ -31,7 +31,6 @@
 ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuristics(),
   _last_cset_select(0)
  {
-  FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
   FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
   FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, true);
@@ -71,10 +70,7 @@ const char* ShenandoahTraversalHeuristics::name() {
 void ShenandoahTraversalHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  // No root regions in this mode.
   ShenandoahTraversalGC* traversal_gc = heap->traversal_gc();
-  ShenandoahHeapRegionSet* root_regions = traversal_gc->root_regions();
-  root_regions->clear();
 
   ShenandoahHeapRegionSet* traversal_set = traversal_gc->traversal_set();
   traversal_set->clear();
@@ -202,7 +198,7 @@ void ShenandoahTraversalHeuristics::choose_collection_set(ShenandoahCollectionSe
   _last_cset_select = ShenandoahHeapRegion::seqnum_current_alloc();
 }
 
-ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversal_gc() {
+bool ShenandoahTraversalHeuristics::should_start_traversal_gc() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   assert(!heap->has_forwarded_objects(), "no forwarded objects here");
 
@@ -215,7 +211,7 @@ ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversa
   if (available < min_threshold) {
     log_info(gc)("Trigger: Free (" SIZE_FORMAT "M) is below minimum threshold (" SIZE_FORMAT "M)",
                  available / M, min_threshold / M);
-    return ShenandoahHeap::MAJOR;
+    return true;
   }
 
   // Check if are need to learn a bit about the application
@@ -225,7 +221,7 @@ ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversa
     if (available < init_threshold) {
       log_info(gc)("Trigger: Learning " SIZE_FORMAT " of " SIZE_FORMAT ". Free (" SIZE_FORMAT "M) is below initial threshold (" SIZE_FORMAT "M)",
                    _gc_times_learned + 1, max_learn, available / M, init_threshold / M);
-      return ShenandoahHeap::MAJOR;
+      return true;
     }
   }
 
@@ -250,12 +246,12 @@ ShenandoahHeap::GCCycleMode ShenandoahTraversalHeuristics::should_start_traversa
                  average_gc * 1000, allocation_rate / M, allocation_headroom / M);
     log_info(gc, ergo)("Free headroom: " SIZE_FORMAT "M (free) - " SIZE_FORMAT "M (spike) - " SIZE_FORMAT "M (penalties) = " SIZE_FORMAT "M",
                        available / M, spike_headroom / M, penalties / M, allocation_headroom / M);
-    return ShenandoahHeap::MAJOR;
+    return true;
   } else if (ShenandoahHeuristics::should_start_normal_gc()) {
-    return ShenandoahHeap::MAJOR;
+    return true;
   }
 
-  return ShenandoahHeap::NONE;
+  return false;
 }
 
 void ShenandoahTraversalHeuristics::choose_collection_set_from_regiondata(ShenandoahCollectionSet* set,

@@ -63,19 +63,6 @@ ShenandoahHeapRegionCounters::ShenandoahHeapRegionCounters() :
       _regions_data[i] = PerfDataManager::create_long_variable(SUN_GC, data_name,
                                                                PerfData::U_None, CHECK);
     }
-
-    if (UseShenandoahMatrix) {
-      _regions_matrix = NEW_C_HEAP_ARRAY(PerfStringVariable*, num_regions, mtGC);
-      _compact_matrix_len = (num_regions / COMPACT_MATRIX_BITS)
-                            + ((num_regions % COMPACT_MATRIX_BITS) == 0 ? 0 : 1) // tail, if needed
-                            + 1; // terminator
-      for (uint i = 0; i < num_regions; i++) {
-        const char* reg_name = PerfDataManager::name_space(_name_space, "region", i);
-        const char* matrix_name = PerfDataManager::counter_name(reg_name, "matrix");
-        _regions_matrix[i] = PerfDataManager::create_string_variable(SUN_GC, matrix_name,
-                                                                     (int)_compact_matrix_len, "", CHECK);
-      }
-    }
   }
 }
 
@@ -118,37 +105,6 @@ void ShenandoahHeapRegionCounters::update() {
         }
       }
 
-      if (UseShenandoahMatrix) {
-        ShenandoahConnectionMatrix *matrix = heap->connection_matrix();
-        char* compact = NEW_C_HEAP_ARRAY(char, _compact_matrix_len, mtInternal);
-        for (uint i = 0; i < num_regions; i++) {
-          size_t cnt = 0;
-          int acc = 0;
-          for (uint c = 0; c < num_regions; c++) {
-            if (matrix->is_connected(c, i)) {
-              size_t shift = c % COMPACT_MATRIX_BITS;
-              acc = acc | (1 << shift);
-            }
-            if (((c + 1) % COMPACT_MATRIX_BITS) == 0) {
-              assert (cnt < _compact_matrix_len, "range check");
-              compact[cnt] = (char)(acc + COMPACT_MATRIX_OFFSET);
-              cnt++;
-              acc = 0;
-            }
-          }
-          // Put tail, if needed
-          if (_compact_matrix_len * COMPACT_MATRIX_BITS != num_regions) {
-            assert (cnt < _compact_matrix_len, "range check");
-            compact[cnt] = (char) (acc + COMPACT_MATRIX_OFFSET);
-            cnt++;
-          }
-          // Put terminator
-          assert (cnt < _compact_matrix_len, "range check");
-          compact[cnt] = 0;
-          _regions_matrix[i]->set_value(compact);
-        }
-        FREE_C_HEAP_ARRAY(char, compact);
-      }
     }
   }
 }

@@ -49,7 +49,6 @@ ShenandoahPassiveHeuristics::ShenandoahPassiveHeuristics() : ShenandoahAdaptiveH
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCASBarrier);
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahAcmpBarrier);
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCloneBarrier);
-  SHENANDOAH_ERGO_DISABLE_FLAG(UseShenandoahMatrix);
 }
 
 bool ShenandoahPassiveHeuristics::should_start_normal_gc() const {

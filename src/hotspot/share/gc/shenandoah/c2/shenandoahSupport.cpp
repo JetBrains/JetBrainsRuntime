@@ -1327,8 +1327,7 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
                || n->is_CallJava()
                || n->Opcode() == Op_Unlock
                || n->Opcode() == Op_EncodeP
-               || n->Opcode() == Op_DecodeN
-               || (n->Opcode() == Op_CastP2X && UseShenandoahMatrix)) {
+               || n->Opcode() == Op_DecodeN) {
       // nothing to do
     } else {
       static struct {

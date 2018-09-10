@@ -58,21 +58,11 @@ int ShenandoahHeuristics::compare_by_alloc_seq_descending(RegionData a, RegionDa
   return -compare_by_alloc_seq_ascending(a, b);
 }
 
-int ShenandoahHeuristics::compare_by_connects(RegionConnections a, RegionConnections b) {
-  if (a._connections == b._connections)
-    return 0;
-  else if (a._connections < b._connections)
-    return -1;
-  else return 1;
-}
-
 ShenandoahHeuristics::ShenandoahHeuristics() :
   _update_refs_early(false),
   _update_refs_adaptive(false),
   _region_data(NULL),
   _region_data_size(0),
-  _region_connects(NULL),
-  _region_connects_size(0),
   _degenerated_cycles_in_a_row(0),
   _successful_cycles_in_a_row(0),
   _bytes_in_cset(0),
@@ -105,9 +95,6 @@ ShenandoahHeuristics::~ShenandoahHeuristics() {
   if (_region_data != NULL) {
     FREE_C_HEAP_ARRAY(RegionGarbage, _region_data);
   }
-  if (_region_connects != NULL) {
-    FREE_C_HEAP_ARRAY(RegionConnections, _region_connects);
-  }
 }
 
 ShenandoahHeuristics::RegionData* ShenandoahHeuristics::get_region_data_cache(size_t num) {
@@ -122,29 +109,6 @@ ShenandoahHeuristics::RegionData* ShenandoahHeuristics::get_region_data_cache(si
     _region_data_size = num;
   }
   return res;
-}
-
-ShenandoahHeuristics::RegionConnections* ShenandoahHeuristics::get_region_connects_cache(size_t num) {
-  RegionConnections* res = _region_connects;
-  if (res == NULL) {
-    res = NEW_C_HEAP_ARRAY(RegionConnections, num, mtGC);
-    _region_connects = res;
-    _region_connects_size = num;
-  } else if (_region_connects_size < num) {
-    res = REALLOC_C_HEAP_ARRAY(RegionConnections, _region_connects, num, mtGC);
-    _region_connects = res;
-    _region_connects_size = num;
-  }
-  return res;
-}
-
-bool ShenandoahHeuristics::maybe_add_heap_region(ShenandoahHeapRegion* hr,
-                                                 ShenandoahCollectionSet* collection_set) {
-  if (hr->is_regular() && hr->has_live() && !collection_set->is_in(hr)) {
-    collection_set->add_region(hr);
-    return true;
-  }
-  return false;
 }
 
 void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collection_set) {
@@ -270,8 +234,8 @@ bool ShenandoahHeuristics::should_start_normal_gc() const {
   return periodic_gc;
 }
 
-ShenandoahHeap::GCCycleMode ShenandoahHeuristics::should_start_traversal_gc() {
-  return ShenandoahHeap::NONE;
+bool ShenandoahHeuristics::should_start_traversal_gc() {
+  return false;
 }
 
 bool ShenandoahHeuristics::can_do_traversal_gc() {

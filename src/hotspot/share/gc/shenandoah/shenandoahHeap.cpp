@@ -61,11 +61,9 @@
 #include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahAggressiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahCompactHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahPartialConnectedHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahPartialGenerationalHeuristics.hpp"
-#include "gc/shenandoah/heuristics/shenandoahPartialLRUHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahPassiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
+#include "gc/shenandoah/heuristics/shenandoahTraversalHeuristics.hpp"
 
 #include "memory/metaspace.hpp"
 #include "runtime/vmThread.hpp"
@@ -288,12 +286,6 @@ jint ShenandoahHeap::initialize() {
   _aux_bitmap_region = MemRegion((HeapWord*) aux_bitmap.base(), aux_bitmap.size() / HeapWordSize);
   _aux_bit_map.initialize(_heap_region, _aux_bitmap_region);
 
-  if (UseShenandoahMatrix) {
-    _connection_matrix = new ShenandoahConnectionMatrix(_num_regions);
-  } else {
-    _connection_matrix = NULL;
-  }
-
   _traversal_gc = heuristics()->can_do_traversal_gc() ?
                 new ShenandoahTraversalGC(this, _num_regions) :
                 NULL;
@@ -331,12 +323,6 @@ void ShenandoahHeap::initialize_heuristics() {
       _heuristics = new ShenandoahPassiveHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "compact") == 0) {
       _heuristics = new ShenandoahCompactHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "connected") == 0) {
-      _heuristics = new ShenandoahPartialConnectedHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "generational") == 0) {
-      _heuristics = new ShenandoahPartialGenerationalHeuristics();
-    } else if (strcmp(ShenandoahGCHeuristics, "LRU") == 0) {
-      _heuristics = new ShenandoahPartialLRUHeuristics();
     } else if (strcmp(ShenandoahGCHeuristics, "traversal") == 0) {
       _heuristics = new ShenandoahTraversalHeuristics();
     } else {
@@ -393,7 +379,6 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _bytes_allocated_since_gc_start(0),
   _ref_processor(NULL),
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
-  _connection_matrix(NULL),
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
   _memory_pool(NULL),
@@ -539,19 +524,6 @@ void ShenandoahHeap::print_on(outputStream* st) const {
 
   st->cr();
   MetaspaceUtils::print_on(st);
-
-  if (UseShenandoahMatrix) {
-    st->print_cr("Matrix:");
-
-    ShenandoahConnectionMatrix* matrix = connection_matrix();
-    if (matrix != NULL) {
-      st->print_cr(" - base: " PTR_FORMAT, p2i(matrix->matrix_addr()));
-      st->print_cr(" - stride: " SIZE_FORMAT, matrix->stride());
-      st->print_cr(" - magic: " PTR_FORMAT, matrix->magic_offset());
-    } else {
-      st->print_cr(" No matrix.");
-    }
-  }
 
   if (Verbose) {
     print_heap_regions_on(st);
@@ -2280,10 +2252,6 @@ void ShenandoahHeap::assert_gc_workers(uint nworkers) {
 }
 #endif
 
-ShenandoahConnectionMatrix* ShenandoahHeap::connection_matrix() const {
-  return _connection_matrix;
-}
-
 ShenandoahTraversalGC* ShenandoahHeap::traversal_gc() {
   return _traversal_gc;
 }
@@ -2341,13 +2309,8 @@ public:
 };
 
 void ShenandoahHeap::update_heap_references(bool concurrent) {
-  if (UseShenandoahMatrix) {
-    ShenandoahUpdateHeapRefsTask<ShenandoahUpdateHeapRefsMatrixClosure> task(&_update_refs_iterator, concurrent);
-    workers()->run_task(&task);
-  } else {
-    ShenandoahUpdateHeapRefsTask<ShenandoahUpdateHeapRefsClosure> task(&_update_refs_iterator, concurrent);
-    workers()->run_task(&task);
-  }
+  ShenandoahUpdateHeapRefsTask<ShenandoahUpdateHeapRefsClosure> task(&_update_refs_iterator, concurrent);
+  workers()->run_task(&task);
 }
 
 void ShenandoahHeap::op_init_updaterefs() {
@@ -2363,9 +2326,6 @@ void ShenandoahHeap::op_init_updaterefs() {
 
   set_update_refs_in_progress(true);
   make_parsable(true);
-  if (UseShenandoahMatrix) {
-    connection_matrix()->clear_all();
-  }
   for (uint i = 0; i < num_regions(); i++) {
     ShenandoahHeapRegion* r = get_region(i);
     r->set_concurrent_iteration_safe_limit(r->top());
@@ -2708,7 +2668,7 @@ void ShenandoahHeap::entry_init_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::init_traversal_gc);
 
-  const char* msg = init_traversal_event_message();
+  static const char* msg = "Pause Init Traversal";
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2723,7 +2683,7 @@ void ShenandoahHeap::entry_final_traversal() {
   ShenandoahGCPhase total_phase(ShenandoahPhaseTimings::total_pause);
   ShenandoahGCPhase phase(ShenandoahPhaseTimings::final_traversal_gc);
 
-  const char* msg = final_traversal_event_message();
+  static const char* msg = "Pause Final Traversal";
   GCTraceTime(Info, gc) time(msg, gc_timer());
   EventMark em("%s", msg);
 
@@ -2873,12 +2833,11 @@ void ShenandoahHeap::entry_preclean() {
 }
 
 void ShenandoahHeap::entry_traversal() {
-  const char* msg = conc_traversal_event_message();
+  static const char* msg = "Concurrent traversal";
   GCTraceTime(Info, gc) time(msg, NULL, GCCause::_no_gc, true);
   EventMark em("%s", msg);
 
-  TraceCollectorStats tcs(is_minor_gc() ? monitoring_support()->partial_collection_counters()
-                                        : monitoring_support()->concurrent_collection_counters());
+  TraceCollectorStats tcs(monitoring_support()->concurrent_collection_counters());
 
   ShenandoahWorkerScope scope(workers(),
                               ShenandoahWorkerPolicy::calc_workers_for_conc_traversal(),
@@ -2970,18 +2929,6 @@ void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure& cl) const 
   }
 }
 
-bool ShenandoahHeap::is_minor_gc() const {
-  return _gc_cycle_mode.get() == MINOR;
-}
-
-bool ShenandoahHeap::is_major_gc() const {
-  return _gc_cycle_mode.get() == MAJOR;
-}
-
-void ShenandoahHeap::set_cycle_mode(GCCycleMode gc_cycle_mode) {
-  _gc_cycle_mode.set(gc_cycle_mode);
-}
-
 char ShenandoahHeap::gc_state() const {
   return _gc_state.raw_value();
 }
@@ -3063,30 +3010,6 @@ const char* ShenandoahHeap::conc_mark_event_message() const {
     return "Concurrent marking (unload classes)";
   } else {
     return "Concurrent marking";
-  }
-}
-
-const char* ShenandoahHeap::init_traversal_event_message() const {
-  if (is_minor_gc()) {
-    return "Pause Init Traversal (minor)";
-  } else {
-    return "Pause Init Traversal";
-  }
-}
-
-const char* ShenandoahHeap::final_traversal_event_message() const {
-  if (is_minor_gc()) {
-    return "Pause Final Traversal (minor)";
-  } else {
-    return "Pause Final Traversal";
-  }
-}
-
-const char* ShenandoahHeap::conc_traversal_event_message() const {
-  if (is_minor_gc()) {
-    return "Concurrent traversal (minor)";
-  } else {
-    return "Concurrent traversal";
   }
 }
 

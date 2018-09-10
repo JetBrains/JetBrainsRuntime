@@ -39,7 +39,6 @@ class ReferenceProcessor;
 class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
-class ShenandoahConnectionMatrix;
 class ShenandoahControlThread;
 class ShenandoahFastRegionSet;
 class ShenandoahGCSession;
@@ -209,12 +208,6 @@ public:
     _DEGENERATED_LIMIT,
   };
 
-  enum GCCycleMode {
-    NONE,
-    MINOR,
-    MAJOR
-  };
-
   static const char* degen_point_to_string(ShenandoahDegenPoint point) {
     switch (point) {
       case _degenerated_unset:
@@ -305,16 +298,12 @@ private:
 
   ConcurrentGCTimer* _gc_timer;
 
-  ShenandoahConnectionMatrix* _connection_matrix;
-
   GCMemoryManager _stw_memory_manager;
   GCMemoryManager _cycle_memory_manager;
 
   MemoryPool* _memory_pool;
 
   ShenandoahEvacOOMHandler _oom_evac_handler;
-
-  ShenandoahSharedEnumFlag<GCCycleMode> _gc_cycle_mode;
 
 #ifdef ASSERT
   int     _heap_expansion_count;
@@ -474,10 +463,6 @@ public:
 
   void force_satb_flush_all_threads();
 
-  bool is_minor_gc() const;
-  bool is_major_gc() const;
-  void set_cycle_mode(GCCycleMode gc_cycle_mode);
-
   bool last_gc_made_progress() const;
 
   inline bool region_in_collection_set(size_t region_index) const;
@@ -503,8 +488,6 @@ public:
 
   ShenandoahFreeSet* free_set()             const { return _free_set; }
   ShenandoahCollectionSet* collection_set() const { return _collection_set; }
-
-  ShenandoahConnectionMatrix* connection_matrix() const;
 
   void increase_used(size_t bytes);
   void decrease_used(size_t bytes);
@@ -853,9 +836,6 @@ private:
   const char* init_mark_event_message() const;
   const char* final_mark_event_message() const;
   const char* conc_mark_event_message() const;
-  const char* init_traversal_event_message() const;
-  const char* final_traversal_event_message() const;
-  const char* conc_traversal_event_message() const;
   const char* degen_event_message(ShenandoahDegenPoint point) const;
 
 private:

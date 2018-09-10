@@ -39,10 +39,6 @@ inline void ShenandoahPacer::report_updaterefs(size_t words) {
   report_internal(words);
 }
 
-inline void ShenandoahPacer::report_partial(size_t words) {
-  report_internal(words);
-}
-
 inline void ShenandoahPacer::report_alloc(size_t words) {
   report_internal(words);
 }

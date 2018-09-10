@@ -50,7 +50,7 @@ public:
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set);
 
-  virtual ShenandoahHeap::GCCycleMode should_start_traversal_gc();
+  virtual bool should_start_traversal_gc();
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_HEURISTICS_SHENANDOAHTRAVERSALHEURISTICS_HPP

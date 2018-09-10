@@ -27,12 +27,10 @@
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shenandoah/brooksPointer.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 
 bool ShenandoahBarrierSet::need_update_refs_barrier() {
-  return UseShenandoahMatrix ||
-         _heap->is_update_refs_in_progress() ||
+  return _heap->is_update_refs_in_progress() ||
          _heap->is_concurrent_traversal_in_progress() ||
          (_heap->is_concurrent_mark_in_progress() && _heap->has_forwarded_objects());
 }
@@ -63,10 +61,6 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
     if (ShenandoahSATBBarrier && !CompressedOops::is_null(compare_value)) {
       ShenandoahBarrierSet::barrier_set()->enqueue(compare_value);
     }
-    if (UseShenandoahMatrix && !CompressedOops::is_null(new_value)) {
-      ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-      matrix->set_connected(addr, new_value);
-    }
   }
   return res;
 }
@@ -79,10 +73,6 @@ inline oop ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_ato
     if (!CompressedOops::is_null(previous)) {
       ShenandoahBarrierSet::barrier_set()->enqueue(previous);
     }
-  }
-  if (UseShenandoahMatrix && !CompressedOops::is_null(new_value)) {
-    ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-    matrix->set_connected(addr, new_value);
   }
   return previous;
 }
@@ -103,51 +93,41 @@ void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_
 
 template <typename T>
 bool ShenandoahBarrierSet::arraycopy_loop_1(T* src, T* dst, size_t length, Klass* bound,
-                                            bool checkcast, bool satb, bool matrix, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
+                                            bool checkcast, bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   if (checkcast) {
-    return arraycopy_loop_2<T, true>(src, dst, length, bound, satb, matrix, storeval_mode);
+    return arraycopy_loop_2<T, true>(src, dst, length, bound, satb, storeval_mode);
   } else {
-    return arraycopy_loop_2<T, false>(src, dst, length, bound, satb, matrix, storeval_mode);
+    return arraycopy_loop_2<T, false>(src, dst, length, bound, satb, storeval_mode);
   }
 }
 
 template <typename T, bool CHECKCAST>
 bool ShenandoahBarrierSet::arraycopy_loop_2(T* src, T* dst, size_t length, Klass* bound,
-                                            bool satb, bool matrix, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
+                                            bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   if (satb) {
-    return arraycopy_loop_3<T, CHECKCAST, true>(src, dst, length, bound, matrix, storeval_mode);
+    return arraycopy_loop_3<T, CHECKCAST, true>(src, dst, length, bound, storeval_mode);
   } else {
-    return arraycopy_loop_3<T, CHECKCAST, false>(src, dst, length, bound, matrix, storeval_mode);
+    return arraycopy_loop_3<T, CHECKCAST, false>(src, dst, length, bound, storeval_mode);
   }
 }
 
 template <typename T, bool CHECKCAST, bool SATB>
 bool ShenandoahBarrierSet::arraycopy_loop_3(T* src, T* dst, size_t length, Klass* bound,
-                                            bool matrix, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
-  if (matrix) {
-    return arraycopy_loop_4<T, CHECKCAST, SATB, true>(src, dst, length, bound, storeval_mode);
-  } else {
-    return arraycopy_loop_4<T, CHECKCAST, SATB, false>(src, dst, length, bound, storeval_mode);
-  }
-}
-
-template <typename T, bool CHECKCAST, bool SATB, bool MATRIX>
-bool ShenandoahBarrierSet::arraycopy_loop_4(T* src, T* dst, size_t length, Klass* bound,
                                             ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   switch (storeval_mode) {
     case NONE:
-      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, NONE>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, NONE>(src, dst, length, bound);
     case READ_BARRIER:
-      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, READ_BARRIER>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, READ_BARRIER>(src, dst, length, bound);
     case WRITE_BARRIER:
-      return arraycopy_loop<T, CHECKCAST, SATB, MATRIX, WRITE_BARRIER>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, WRITE_BARRIER>(src, dst, length, bound);
     default:
       ShouldNotReachHere();
       return true; // happy compiler
   }
 }
 
-template <typename T, bool CHECKCAST, bool SATB, bool MATRIX, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
+template <typename T, bool CHECKCAST, bool SATB, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
 bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* bound) {
   Thread* thread = Thread::current();
 
@@ -177,7 +157,7 @@ bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* 
     T* cur_dst = dst;
     T* src_end = src + length;
     for (; cur_src < src_end; cur_src++, cur_dst++) {
-      if (!arraycopy_element<T, CHECKCAST, SATB, MATRIX, STOREVAL_MODE>(cur_src, cur_dst, bound, thread)) {
+      if (!arraycopy_element<T, CHECKCAST, SATB, STOREVAL_MODE>(cur_src, cur_dst, bound, thread)) {
         return false;
       }
     }
@@ -186,7 +166,7 @@ bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* 
     T* cur_src = src + length - 1;
     T* cur_dst = dst + length - 1;
     for (; cur_src >= src; cur_src--, cur_dst--) {
-      if (!arraycopy_element<T, CHECKCAST, SATB, MATRIX, STOREVAL_MODE>(cur_src, cur_dst, bound, thread)) {
+      if (!arraycopy_element<T, CHECKCAST, SATB, STOREVAL_MODE>(cur_src, cur_dst, bound, thread)) {
         return false;
       }
     }
@@ -194,7 +174,7 @@ bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* 
   return true;
 }
 
-template <typename T, bool CHECKCAST, bool SATB, bool MATRIX, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
+template <typename T, bool CHECKCAST, bool SATB, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
 bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* bound, Thread* thread) {
   T o = RawAccess<>::oop_load(cur_src);
 
@@ -234,10 +214,6 @@ bool ShenandoahBarrierSet::arraycopy_element(T* cur_src, T* cur_dst, Klass* boun
       break;
     default:
       ShouldNotReachHere();
-    }
-
-    if (MATRIX) {
-      _heap->connection_matrix()->set_connected(cur_dst, obj);
     }
 
     RawAccess<IS_NOT_NULL>::oop_store(cur_dst, obj);
@@ -288,7 +264,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
     storeval_mode = NONE;
   }
 
-  if (!satb && !checkcast && !UseShenandoahMatrix && storeval_mode == NONE) {
+  if (!satb && !checkcast && storeval_mode == NONE) {
     // Short-circuit to bulk copy.
     return Raw::oop_arraycopy(src_obj, src_offset_in_bytes, src_raw, dst_obj, dst_offset_in_bytes, dst_raw, length);
   }
@@ -298,7 +274,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
 
   Klass* bound = objArrayOop(dst_obj)->element_klass();
   ShenandoahBarrierSet* bs = ShenandoahBarrierSet::barrier_set();
-  return bs->arraycopy_loop_1(src_raw, dst_raw, length, bound, checkcast, satb, UseShenandoahMatrix, storeval_mode);
+  return bs->arraycopy_loop_1(src_raw, dst_raw, length, bound, checkcast, satb, storeval_mode);
 }
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP

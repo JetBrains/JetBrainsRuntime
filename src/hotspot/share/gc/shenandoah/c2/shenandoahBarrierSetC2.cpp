@@ -160,93 +160,6 @@ Node* ShenandoahBarrierSetC2::shenandoah_write_barrier_impl(GraphKit* kit, Node*
   return n;
 }
 
-void ShenandoahBarrierSetC2::shenandoah_update_matrix(GraphKit* kit, Node* adr, Node* val) const {
-  if (!UseShenandoahMatrix) {
-    return;
-  }
-
-  assert(val != NULL, "checked before");
-  if (adr == NULL) {
-    return; // Nothing to do
-  }
-  assert(adr != NULL, "must not happen");
-  if (val->bottom_type()->higher_equal(TypePtr::NULL_PTR)) {
-    // Nothing to do.
-    return;
-  }
-
-  ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-
-  enum { _set_path = 1, _already_set_path, _val_null_path, PATH_LIMIT };
-  RegionNode* region = new RegionNode(PATH_LIMIT);
-  Node* prev_mem = __ memory(Compile::AliasIdxRaw);
-  Node* memphi    = PhiNode::make(region, prev_mem, Type::MEMORY, TypeRawPtr::BOTTOM);
-  Node* null_ctrl = __ top();
-  Node* not_null_val = __ null_check_oop(val, &null_ctrl);
-
-  // Null path: nothing to do.
-  region->init_req(_val_null_path, null_ctrl);
-  memphi->init_req(_val_null_path, prev_mem);
-
-  // Not null path. Update the matrix.
-
-  // This uses a fast calculation for the matrix address. For a description,
-  // see src/share/vm/gc/shenandoah/shenandoahConnectionMatrix.inline.hpp,
-  // ShenandoahConnectionMatrix::compute_address(const void* from, const void* to).
-  address heap_base = ShenandoahHeap::heap()->base();
-  jint stride = matrix->stride_jint();
-  jint rs = ShenandoahHeapRegion::region_size_bytes_shift_jint();
-
-  guarantee(stride < ShenandoahHeapRegion::region_size_bytes_jint(), "sanity");
-  guarantee(is_aligned(heap_base, ShenandoahHeapRegion::region_size_bytes()), "sanity");
-
-  Node* magic_con = __ MakeConX((jlong) matrix->matrix_addr() - ((jlong) heap_base >> rs) * (stride + 1));
-
-  // Compute addr part
-  Node* adr_idx = __ gvn().transform(new CastP2XNode(__ control(), adr));
-  adr_idx = __ gvn().transform(new URShiftXNode(adr_idx, __ intcon(rs)));
-
-  // Compute new_val part
-  Node* val_idx = __ gvn().transform(new CastP2XNode(__ control(), not_null_val));
-  val_idx = __ gvn().transform(new URShiftXNode(val_idx, __ intcon(rs)));
-  val_idx = __ gvn().transform(new MulXNode(val_idx, __ MakeConX(stride)));
-
-  // Add everything up
-  adr_idx = __ gvn().transform(new AddXNode(adr_idx, val_idx));
-  adr_idx = __ gvn().transform(new CastX2PNode(adr_idx));
-  Node* matrix_adr = __ gvn().transform(new AddPNode(__ top(), adr_idx, magic_con));
-
-  // Load current value
-  const TypePtr* adr_type = TypeRawPtr::BOTTOM;
-  Node* current = __ gvn().transform(LoadNode::make(__ gvn(), __ control(), __ memory(Compile::AliasIdxRaw),
-                                                    matrix_adr, adr_type, TypeInt::INT, T_BYTE, MemNode::unordered));
-
-  // Check if already set
-  Node* cmp_set = __ gvn().transform(new CmpINode(current, __ intcon(0)));
-  Node* cmp_set_bool = __ gvn().transform(new BoolNode(cmp_set, BoolTest::eq));
-  IfNode* cmp_iff = __ create_and_map_if(__ control(), cmp_set_bool, PROB_MIN, COUNT_UNKNOWN);
-
-  Node* if_not_set = __ gvn().transform(new IfTrueNode(cmp_iff));
-  Node* if_set = __ gvn().transform(new IfFalseNode(cmp_iff));
-
-  // Already set, exit
-  __ set_control(if_set);
-  region->init_req(_already_set_path, __ control());
-  memphi->init_req(_already_set_path, prev_mem);
-
-  // Not set: do the store, and finish up
-  __ set_control(if_not_set);
-  Node* store = __ gvn().transform(StoreNode::make(__ gvn(), __ control(), __ memory(Compile::AliasIdxRaw),
-                                                   matrix_adr, adr_type, __ intcon(1), T_BYTE, MemNode::unordered));
-  region->init_req(_set_path, __ control());
-  memphi->init_req(_set_path, store);
-
-  // Merge control flows and memory.
-  __ set_control(__ gvn().transform(region));
-  __ record_for_igvn(region);
-  __ set_memory(__ gvn().transform(memphi), Compile::AliasIdxRaw);
-}
-
 bool ShenandoahBarrierSetC2::satb_can_remove_pre_barrier(GraphKit* kit, PhaseTransform* phase, Node* adr,
                                                          BasicType bt, uint adr_idx) const {
   intptr_t offset = 0;
@@ -458,24 +371,15 @@ void ShenandoahBarrierSetC2::shenandoah_write_barrier_pre(GraphKit* kit,
                                                           const TypeOopPtr* val_type,
                                                           Node* pre_val,
                                                           BasicType bt) const {
-
-  IdealKit ideal(kit);
-
-  // Some sanity checks
-  // Note: val is unused in this routine.
-
-  if (val != NULL) {
-    shenandoah_update_matrix(kit, adr, val);
-    ideal.sync_kit(kit);
-  }
-
-  kit->sync_kit(ideal);
   if (ShenandoahSATBBarrier) {
-    satb_write_barrier_pre(kit, do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
-  }
-  ideal.sync_kit(kit);
+    IdealKit ideal(kit);
+    kit->sync_kit(ideal);
 
-  kit->final_sync(ideal);
+    satb_write_barrier_pre(kit, do_load, obj, adr, alias_idx, val, val_type, pre_val, bt);
+
+    ideal.sync_kit(kit);
+    kit->final_sync(ideal);
+  }
 }
 
 Node* ShenandoahBarrierSetC2::shenandoah_enqueue_barrier(GraphKit* kit, Node* pre_val) const {
@@ -793,8 +697,7 @@ Node* ShenandoahBarrierSetC2::step_over_gc_barrier(Node* c) const {
 }
 
 bool ShenandoahBarrierSetC2::array_copy_requires_gc_barriers(BasicType type) const {
-  bool is_oop = type == T_OBJECT || type == T_ARRAY;
-  return is_oop && UseShenandoahMatrix;
+  return false;
 }
 
 // Support for macro expanded GC barriers
@@ -811,7 +714,6 @@ void ShenandoahBarrierSetC2::unregister_potential_barrier_node(Node* node) const
 }
 
 void ShenandoahBarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node* node) const {
-  Compile::current()->shenandoah_eliminate_matrix_update(node, &macro->igvn());
 }
 
 void ShenandoahBarrierSetC2::enqueue_useful_gc_barrier(Unique_Node_List &worklist, Node* node) const {

@@ -68,21 +68,6 @@ private:
   MarkBitMap* _verification_bit_map;
 public:
   typedef enum {
-    // Disable matrix verification completely
-    _verify_matrix_disable,
-
-    // Conservative matrix verification: all connected objects should have matrix
-    // connections. The verification is conservative, because it allows matrix
-    // connection that do not have actual heap connections.
-    _verify_matrix_conservative,
-
-    // Precise matrix verification: all connected objects should have matrix connections,
-    // *and* every matrix connection should have at least a pair a connected objects.
-    // TODO: implement this, if needed
-    _verify_matrix_precise,
-  } VerifyMatrix;
-
-  typedef enum {
     // Disable marked objects verification.
     _verify_marked_disable,
 
@@ -157,7 +142,6 @@ public:
   struct VerifyOptions {
     VerifyForwarded     _verify_forwarded;
     VerifyMarked        _verify_marked;
-    VerifyMatrix        _verify_matrix;
     VerifyCollectionSet _verify_cset;
     VerifyLiveness      _verify_liveness;
     VerifyRegions       _verify_regions;
@@ -165,13 +149,12 @@ public:
 
     VerifyOptions(VerifyForwarded verify_forwarded,
                   VerifyMarked verify_marked,
-                  VerifyMatrix verify_matrix,
                   VerifyCollectionSet verify_collection_set,
                   VerifyLiveness verify_liveness,
                   VerifyRegions verify_regions,
                   VerifyGCState verify_gcstate) :
             _verify_forwarded(verify_forwarded), _verify_marked(verify_marked),
-            _verify_matrix(verify_matrix), _verify_cset(verify_collection_set),
+            _verify_cset(verify_collection_set),
             _verify_liveness(verify_liveness), _verify_regions(verify_regions),
             _verify_gcstate(verify_gcstate) {}
   };
@@ -180,7 +163,6 @@ private:
   void verify_at_safepoint(const char *label,
                            VerifyForwarded forwarded,
                            VerifyMarked marked,
-                           VerifyMatrix matrix,
                            VerifyCollectionSet cset,
                            VerifyLiveness liveness,
                            VerifyRegions regions,

@@ -25,7 +25,6 @@
 #include "memory/allocation.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
@@ -440,11 +439,6 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|G " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_gclab_allocs()),    proper_unit_for_byte_size(get_gclab_allocs()));
   st->print("|S " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_shared_allocs()),   proper_unit_for_byte_size(get_shared_allocs()));
   st->print("|L " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_live_data_bytes()), proper_unit_for_byte_size(get_live_data_bytes()));
-  if (_heap->traversal_gc() != NULL && _heap->traversal_gc()->root_regions()->is_in(region_number())) {
-    st->print("|R");
-  } else {
-    st->print("| ");
-  }
   st->print("|CP " SIZE_FORMAT_W(3), _critical_pins);
   st->print("|SN " UINT64_FORMAT_HEX_W(12) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8),
             seqnum_first_alloc_mutator(), seqnum_last_alloc_mutator(),
@@ -533,10 +527,6 @@ void ShenandoahHeapRegion::recycle() {
   assert(compl_ctx->is_bitmap_clear_range(bottom(), end()), "must be clear");
 
   compl_ctx->set_top_at_mark_start(region_number(), bottom());
-
-  if (UseShenandoahMatrix) {
-    _heap->connection_matrix()->clear_region(region_number());
-  }
 
   make_empty();
 }

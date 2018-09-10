@@ -24,7 +24,6 @@
 #include "precompiled.hpp"
 
 #include "gc/shenandoah/brooksPointer.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
@@ -72,7 +71,6 @@ void ShenandoahAsserts::print_obj(ShenandoahMessageBuffer& msg, oop obj) {
   msg.append("    %3s marked next\n",          next_ctx->is_marked(obj) ? "" : "not");
   msg.append("    %3s in collection set\n",    heap->in_collection_set(obj) ? "" : "not");
   if (heap->traversal_gc() != NULL) {
-    msg.append("    %3s in root set\n",        heap->traversal_gc()->root_regions()->is_in((HeapWord*) obj) ? "" : "not");
     msg.append("    %3s in traversal set\n",   heap->traversal_gc()->traversal_set()->is_in((HeapWord*) obj) ? "" : "not");
   }
   msg.append("  region: %s", ss.as_string());
@@ -117,7 +115,6 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
   ResourceMark rm;
 
   bool loc_in_heap = (loc != NULL && heap->is_in(loc));
-  bool interior_loc_in_heap = (interior_loc != NULL && heap->is_in(interior_loc));
 
   ShenandoahMessageBuffer msg("%s; %s\n\n", phase, label);
 
@@ -164,42 +161,6 @@ void ShenandoahAsserts::print_failure(SafeLevel level, oop obj, void* interior_l
       msg.append("Second forwardee:\n");
       print_obj_safe(msg, fwd2);
       msg.append("\n");
-    }
-  }
-
-  if (loc_in_heap && UseShenandoahMatrix && (level == _safe_all)) {
-    msg.append("Matrix connections:\n");
-
-    oop fwd_to = (oop) BrooksPointer::get_raw_unchecked(obj);
-    oop fwd_from = (oop) BrooksPointer::get_raw_unchecked(loc);
-
-    size_t from_idx = heap->heap_region_index_containing(loc);
-    size_t to_idx = heap->heap_region_index_containing(obj);
-    size_t fwd_from_idx = heap->heap_region_index_containing(fwd_from);
-    size_t fwd_to_idx = heap->heap_region_index_containing(fwd_to);
-
-    ShenandoahConnectionMatrix* matrix = heap->connection_matrix();
-    msg.append("  %35s %3s connected\n",
-               "reference and object",
-               matrix->is_connected(from_idx, to_idx) ? "" : "not");
-    msg.append("  %35s %3s connected\n",
-               "fwd(reference) and object",
-               matrix->is_connected(fwd_from_idx, to_idx) ? "" : "not");
-    msg.append("  %35s %3s connected\n",
-               "reference and fwd(object)",
-               matrix->is_connected(from_idx, fwd_to_idx) ? "" : "not");
-    msg.append("  %35s %3s connected\n",
-               "fwd(reference) and fwd(object)",
-               matrix->is_connected(fwd_from_idx, fwd_to_idx) ? "" : "not");
-
-    if (interior_loc_in_heap) {
-      size_t from_interior_idx = heap->heap_region_index_containing(interior_loc);
-      msg.append("  %35s %3s connected\n",
-                 "interior-reference and object",
-                 matrix->is_connected(from_interior_idx, to_idx) ? "" : "not");
-      msg.append("  %35s %3s connected\n",
-                 "interior-reference and fwd(object)",
-                 matrix->is_connected(from_interior_idx, fwd_to_idx) ? "" : "not");
     }
   }
 

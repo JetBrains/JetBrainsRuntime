@@ -48,18 +48,12 @@ private:
   jushort** _liveness_local;
 
   ShenandoahHeapRegionSet _traversal_set;
-  ShenandoahHeapRegionSet _root_regions;
-
-  ShenandoahHeapRegionSetIterator _root_regions_iterator;
-
-  ShenandoahConnectionMatrix* const _matrix;
 
 public:
   ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_regions);
   ~ShenandoahTraversalGC();
 
   ShenandoahHeapRegionSet* traversal_set() { return &_traversal_set; }
-  ShenandoahHeapRegionSet* root_regions()  { return &_root_regions;}
 
   void reset();
   void prepare();
@@ -67,7 +61,7 @@ public:
   void concurrent_traversal_collection();
   void final_traversal_collection();
 
-  template <class T, bool STRING_DEDUP, bool DEGEN, bool UPDATE_MATRIX>
+  template <class T, bool STRING_DEDUP, bool DEGEN>
   inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context);
 
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);

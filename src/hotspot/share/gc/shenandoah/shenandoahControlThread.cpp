@@ -136,15 +136,12 @@ void ShenandoahControlThread::run_service() {
       }
     } else {
       // Potential normal cycle: ask heuristics if it wants to act
-      ShenandoahHeap::GCCycleMode traversal_mode = heuristics->should_start_traversal_gc();
-      if (traversal_mode != ShenandoahHeap::NONE) {
+      if (heuristics->should_start_traversal_gc()) {
         mode = concurrent_traversal;
         cause = GCCause::_shenandoah_traversal_gc;
-        heap->set_cycle_mode(traversal_mode);
       } else if (heuristics->should_start_normal_gc()) {
         mode = concurrent_normal;
         cause = GCCause::_shenandoah_concurrent_gc;
-        heap->set_cycle_mode(ShenandoahHeap::MAJOR);
       }
 
       // Ask policy if this cycle wants to process references or unload classes
@@ -193,8 +190,6 @@ void ShenandoahControlThread::run_service() {
       default:
         ShouldNotReachHere();
     }
-
-    heap->set_cycle_mode(ShenandoahHeap::NONE);
 
     if (gc_requested) {
       heap->set_used_at_last_gc();
@@ -275,9 +270,7 @@ void ShenandoahControlThread::service_concurrent_traversal_cycle(GCCause::Cause 
   ShenandoahGCSession session(cause);
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
-  bool is_minor = heap->is_minor_gc();
-  TraceCollectorStats tcs(is_minor ? heap->monitoring_support()->partial_collection_counters()
-                                   : heap->monitoring_support()->concurrent_collection_counters());
+  TraceCollectorStats tcs(heap->monitoring_support()->concurrent_collection_counters());
 
   heap->vmop_entry_init_traversal();
 

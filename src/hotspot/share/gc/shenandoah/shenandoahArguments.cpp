@@ -52,7 +52,6 @@ void ShenandoahArguments::initialize() {
   FLAG_SET_DEFAULT(ShenandoahCASBarrier,             false);
   FLAG_SET_DEFAULT(ShenandoahAcmpBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahCloneBarrier,           false);
-  FLAG_SET_DEFAULT(UseShenandoahMatrix,              false);
 #endif
 
 #ifdef _LP64

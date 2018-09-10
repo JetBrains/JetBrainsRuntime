@@ -24,7 +24,6 @@
 #include "precompiled.hpp"
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
-#include "gc/shenandoah/shenandoahConnectionMatrix.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
@@ -299,46 +298,6 @@ void ShenandoahBarrierSetAssembler::satb_write_barrier_pre(MacroAssembler* masm,
   __ bind(done);
 }
 
-void ShenandoahBarrierSetAssembler::shenandoah_write_barrier_post(MacroAssembler* masm,
-                                                                  Register store_addr,
-                                                                  Register new_val,
-                                                                  Register thread,
-                                                                  Register tmp,
-                                                                  Register tmp2) {
-  assert(UseShenandoahGC, "why else should we be here?");
-
-  if (! UseShenandoahMatrix) {
-    // No need for that barrier if not using matrix.
-    return;
-  }
-
-  Label done;
-  __ testptr(new_val, new_val);
-  __ jcc(Assembler::zero, done);
-  ShenandoahConnectionMatrix* matrix = ShenandoahHeap::heap()->connection_matrix();
-  address matrix_addr = matrix->matrix_addr();
-  __ movptr(rscratch1, (intptr_t) ShenandoahHeap::heap()->base());
-  // Compute to-region index
-  __ movptr(tmp, new_val);
-  __ subptr(tmp, rscratch1);
-  __ shrptr(tmp, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-  // Compute from-region index
-  __ movptr(tmp2, store_addr);
-  __ subptr(tmp2, rscratch1);
-  __ shrptr(tmp2, ShenandoahHeapRegion::region_size_bytes_shift_jint());
-  // Compute matrix index
-  __ imulptr(tmp, tmp, matrix->stride_jint());
-  __ addptr(tmp, tmp2);
-  // Address is _matrix[to * stride + from]
-  __ movptr(rscratch1, (intptr_t) matrix_addr);
-  // Test if the element is already set.
-  __ cmpb(Address(rscratch1, tmp, Address::times_1), 0);
-  __ jcc(Assembler::notEqual, done);
-  // Store true, if not yet set.
-  __ movb(Address(rscratch1, tmp, Address::times_1), 1);
-  __ bind(done);
-}
-
 void ShenandoahBarrierSetAssembler::read_barrier(MacroAssembler* masm, Register dst) {
   if (ShenandoahReadBarrier) {
     read_barrier_impl(masm, dst);
@@ -482,7 +441,6 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
   }
   if (type == T_OBJECT || type == T_ARRAY) {
     bool needs_pre_barrier = as_normal;
-    bool needs_post_barrier = val != noreg && in_heap && UseShenandoahMatrix;
 
     Register tmp3 = LP64_ONLY(r8) NOT_LP64(rsi);
     Register rthread = LP64_ONLY(r15_thread) NOT_LP64(rcx);
@@ -516,26 +474,9 @@ void ShenandoahBarrierSetAssembler::store_at(MacroAssembler* masm, DecoratorSet 
       BarrierSetAssembler::store_at(masm, decorators, type, Address(tmp1, 0), val, noreg, noreg);
     } else {
       storeval_barrier(masm, val, tmp3);
-      Register new_val = val;
-      if (needs_post_barrier) {
-        if (UseCompressedOops) {
-          new_val = tmp2;
-          __ movptr(new_val, val);
-        }
-      }
       BarrierSetAssembler::store_at(masm, decorators, type, Address(tmp1, 0), val, noreg, noreg);
-
-      if (needs_post_barrier) {
-        shenandoah_write_barrier_post(masm /*masm*/,
-                                      tmp1 /* store_adr */,
-                                      new_val /* new_val */,
-                                      rthread /* thread */,
-                                      tmp3 /* tmp */,
-                                      tmp2 /* tmp2 */);
-      }
     }
     NOT_LP64(imasm->restore_bcp());
-
   } else {
     BarrierSetAssembler::store_at(masm, decorators, type, dst, val, tmp1, tmp2);
   }

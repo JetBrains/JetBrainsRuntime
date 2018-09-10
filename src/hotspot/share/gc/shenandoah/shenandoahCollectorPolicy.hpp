@@ -33,7 +33,6 @@
 #include "utilities/numberSeq.hpp"
 
 class ShenandoahCollectionSet;
-class ShenandoahConnectionMatrix;
 class ShenandoahFreeSet;
 class ShenandoahHeap;
 class ShenandoahHeuristics;
