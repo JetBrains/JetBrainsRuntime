@@ -2144,7 +2144,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         public enum OverloadKind {
             OVERLOADED,
-            UNOVERLOADED
+            UNOVERLOADED,
+            ERROR
         }
 
         /**
