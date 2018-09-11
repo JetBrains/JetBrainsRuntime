@@ -28,6 +28,7 @@
 #include "gc/shenandoah/shenandoahArguments.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "utilities/defaultStream.hpp"
 
 void ShenandoahArguments::initialize() {
@@ -64,6 +65,12 @@ void ShenandoahArguments::initialize() {
     vm_exit(1);
   }
 #endif
+
+  if (UseLargePages && (MaxHeapSize / os::large_page_size()) < ShenandoahHeapRegion::MIN_NUM_REGIONS) {
+    warning("Large pages size (" SIZE_FORMAT "K) is too large to afford page-sized regions, disabling uncommit",
+            os::large_page_size() / K);
+    FLAG_SET_DEFAULT(ShenandoahUncommit, false);
+  }
 
   FLAG_SET_DEFAULT(ParallelGCThreads,
                    Abstract_VM_Version::parallel_worker_threads());
@@ -188,7 +195,11 @@ void ShenandoahArguments::initialize() {
 }
 
 size_t ShenandoahArguments::conservative_max_heap_alignment() {
-  return ShenandoahMaxRegionSize;
+  size_t align = ShenandoahMaxRegionSize;
+  if (UseLargePages) {
+    align = MAX2(align, os::large_page_size());
+  }
+  return align;
 }
 
 CollectedHeap* ShenandoahArguments::create_heap() {

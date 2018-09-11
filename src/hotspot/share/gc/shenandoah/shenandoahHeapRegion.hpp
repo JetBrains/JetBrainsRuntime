@@ -244,6 +244,8 @@ private:
 public:
   ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start, size_t size_words, size_t index, bool committed);
 
+  static const size_t MIN_NUM_REGIONS = 10;
+
   static void setup_sizes(size_t initial_heap_size, size_t max_heap_size);
 
   double empty_time() {

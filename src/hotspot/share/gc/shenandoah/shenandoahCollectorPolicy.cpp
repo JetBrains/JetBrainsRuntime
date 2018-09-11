@@ -75,8 +75,12 @@ HeapWord* ShenandoahCollectorPolicy::satisfy_failed_allocation(size_t size, bool
 void ShenandoahCollectorPolicy::initialize_alignments() {
 
   // This is expected by our algorithm for ShenandoahHeap::heap_region_containing().
-  _space_alignment = ShenandoahHeapRegion::region_size_bytes();
-  _heap_alignment = ShenandoahHeapRegion::region_size_bytes();
+  size_t align = ShenandoahHeapRegion::region_size_bytes();
+  if (UseLargePages) {
+    align = MAX2(align, os::large_page_size());
+  }
+  _space_alignment = align;
+  _heap_alignment = align;
 }
 
 void ShenandoahCollectorPolicy::record_explicit_to_concurrent() {
