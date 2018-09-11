@@ -1700,22 +1700,6 @@ static IfNode* idealize_test(PhaseGVN* phase, IfNode* iff) {
   return iff;
 }
 
-bool IfNode::is_g1_marking_if(PhaseTransform *phase) const {
-  if (Opcode() != Op_If) {
-    return false;
-  }
-
-  Node* bol = in(1);
-  assert(bol->is_Bool(), "");
-  Node* cmpx = bol->in(1);
-  if (bol->as_Bool()->_test._test == BoolTest::ne &&
-      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
-      cmpx->in(1)->is_g1_marking_load()) {
-    return true;
-  }
-  return false;
-}
-
 #if INCLUDE_SHENANDOAHGC
 bool IfNode::is_shenandoah_marking_if(PhaseTransform *phase) const {
   if (!UseShenandoahGC) {

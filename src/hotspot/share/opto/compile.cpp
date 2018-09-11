@@ -3882,7 +3882,9 @@ void Compile::verify_barriers() {
             if (cmp->Opcode() == Op_CmpI && cmp->in(2)->is_Con() && cmp->in(2)->bottom_type()->is_int()->get_con() == 0
                 && cmp->in(1)->is_Load()) {
               LoadNode* load = cmp->in(1)->as_Load();
-              if (load->is_g1_marking_load()) {
+              if (load->Opcode() == Op_LoadB && load->in(2)->is_AddP() && load->in(2)->in(2)->Opcode() == Op_ThreadLocal
+                  && load->in(2)->in(3)->is_Con()
+                  && load->in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == marking_offset) {
 
                 Node* if_ctrl = iff->in(0);
                 Node* load_ctrl = load->in(0);

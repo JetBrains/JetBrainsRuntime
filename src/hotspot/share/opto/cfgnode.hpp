@@ -397,7 +397,6 @@ public:
   // Returns NULL is it couldn't improve the type.
   static const TypeInt* filtered_int_type(PhaseGVN* phase, Node* val, Node* if_proj);
 
-  bool is_g1_marking_if(PhaseTransform *phase) const;
 #if INCLUDE_SHENANDOAHGC
   bool is_shenandoah_marking_if(PhaseTransform *phase) const;
 #endif
