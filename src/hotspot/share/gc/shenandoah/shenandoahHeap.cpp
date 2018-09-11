@@ -461,23 +461,18 @@ public:
     ShenandoahMarkingContext* const next_ctx = heap->next_marking_context();
     ShenandoahMarkingContext* const compl_ctx = heap->complete_marking_context();
     while (region != NULL) {
-      if (!region->is_trash()) {
-        assert(!region->is_empty_uncommitted(), "sanity");
-        assert(heap->is_bitmap_slice_committed(region), "sanity");
-        HeapWord* bottom = region->bottom();
-        HeapWord* top = next_ctx->top_at_mark_start(region->region_number());
-        assert(top <= region->top(),
-               "TAMS must smaller/equals than top: TAMS: "PTR_FORMAT", top: "PTR_FORMAT,
-               p2i(top), p2i(region->top()));
-        if (top > bottom) {
-          compl_ctx->mark_bit_map()->copy_from(next_ctx->mark_bit_map(), MemRegion(bottom, top));
-          compl_ctx->set_top_at_mark_start(region->region_number(), top);
-          next_ctx->clear_bitmap(bottom, top);
-          next_ctx->set_top_at_mark_start(region->region_number(), bottom);
-        }
-        assert(next_ctx->is_bitmap_clear_range(region->bottom(), region->end()),
-               "need clear next bitmap");
+      assert(!region->is_trash() && !region->is_empty_uncommitted(), "sanity");
+      assert(heap->is_bitmap_slice_committed(region), "sanity");
+      HeapWord* bottom = region->bottom();
+      HeapWord* top = next_ctx->top_at_mark_start(region->region_number());
+      if (top > bottom) {
+        compl_ctx->mark_bit_map()->copy_from(next_ctx->mark_bit_map(), MemRegion(bottom, top));
+        compl_ctx->set_top_at_mark_start(region->region_number(), top);
+        next_ctx->clear_bitmap(bottom, top);
+        next_ctx->set_top_at_mark_start(region->region_number(), bottom);
       }
+      assert(next_ctx->is_bitmap_clear_range(region->bottom(), region->end()),
+             "need clear next bitmap");
       region = _regions.claim_next();
     }
   }
@@ -1678,13 +1673,10 @@ void ShenandoahHeap::op_cleanup_bitmaps() {
 }
 
 void ShenandoahHeap::op_cleanup_traversal() {
-
-  {
-    ShenandoahGCPhase phase_reset(ShenandoahPhaseTimings::conc_cleanup_reset_bitmaps);
-    reset_next_mark_bitmap_traversal();
-  }
-
   op_cleanup();
+
+  ShenandoahGCPhase phase_reset(ShenandoahPhaseTimings::conc_cleanup_reset_bitmaps);
+  reset_next_mark_bitmap_traversal();
 }
 
 void ShenandoahHeap::op_preclean() {
