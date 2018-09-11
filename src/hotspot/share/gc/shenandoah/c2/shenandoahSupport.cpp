@@ -2816,7 +2816,7 @@ void ShenandoahWriteBarrierNode::fix_ctrl(Node* barrier, Node* region, const Mem
       Node* c = old_c;
       if (c != ctrl ||
           is_dominator_same_ctrl(old_c, barrier, u, phase) ||
-          u->is_g1_marking_load()) {
+          u->is_shenandoah_state_load()) {
         phase->igvn().rehash_node_delayed(u);
         int nb = u->replace_edge(ctrl, region);
         if (u->is_CFG()) {
