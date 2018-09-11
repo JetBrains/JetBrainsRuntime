@@ -4739,26 +4739,3 @@ void CloneMap::dump(node_idx_t key) const {
     ni.dump();
   }
 }
-
-#if INCLUDE_SHENANDOAHGC
-void Compile::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) {
-  assert(UseShenandoahGC && call->is_shenandoah_wb_pre_call(), "");
-  Node* c = call->as_Call()->proj_out(TypeFunc::Control);
-  c = c->unique_ctrl_out();
-  assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
-  c = c->unique_ctrl_out();
-  assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
-  Node* iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
-  assert(iff->is_If(), "expect test");
-  if (!iff->is_shenandoah_marking_if(igvn)) {
-    c = c->unique_ctrl_out();
-    assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
-    iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
-    assert(iff->is_shenandoah_marking_if(igvn), "expect marking test");
-  }
-  Node* cmpx = iff->in(1)->in(1);
-  igvn->replace_node(cmpx, igvn->makecon(TypeInt::CC_EQ));
-  igvn->rehash_node_delayed(call);
-  call->del_req(call->req()-1);
-}
-#endif

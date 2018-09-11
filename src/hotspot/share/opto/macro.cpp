@@ -943,10 +943,6 @@ void PhaseMacroExpand::process_users_of_allocation(CallNode *alloc) {
             if (membar_after->is_MemBar()) {
               disconnect_projections(membar_after->as_MemBar(), _igvn);
             }
-#if INCLUDE_SHENANDOAHGC
-          } else if (UseShenandoahGC && n->is_shenandoah_wb_pre_call()) {
-            C->shenandoah_eliminate_wb_pre(n, &_igvn);
-#endif
           } else {
             eliminate_gc_barrier(n);
           }
