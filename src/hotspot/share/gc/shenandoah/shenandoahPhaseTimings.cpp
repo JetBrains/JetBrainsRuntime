@@ -80,6 +80,7 @@ void ShenandoahPhaseTimings::record_workers_end(Phase phase) {
             phase == final_traversal_update_roots ||
             phase == final_update_refs_roots ||
             phase == full_gc_roots ||
+            phase == degen_gc_update_roots ||
             phase == _num_phases,
             "only in these phases we can add per-thread phase times");
   if (phase != _num_phases) {
@@ -208,6 +209,22 @@ void ShenandoahPhaseTimings::init_phase_names() {
 
   _phase_names[degen_gc_gross]                  = "Pause Degenerated GC (G)";
   _phase_names[degen_gc]                        = "Pause Degenerated GC (N)";
+  _phase_names[degen_gc_update_roots]           = "  Degen Update Roots";
+  _phase_names[degen_gc_update_thread_roots]        = "    DU: Thread Roots";
+  _phase_names[degen_gc_update_code_roots]          = "    DU: Code Cache Roots";
+  _phase_names[degen_gc_update_string_table_roots]  = "    DU: String Table Roots";
+  _phase_names[degen_gc_update_universe_roots]      = "    DU: Universe Roots";
+  _phase_names[degen_gc_update_jni_roots]           = "    DU: JNI Roots";
+  _phase_names[degen_gc_update_jni_weak_roots]      = "    DU: JNI Weak Roots";
+  _phase_names[degen_gc_update_synchronizer_roots]  = "    DU: Synchronizer Roots";
+  _phase_names[degen_gc_update_flat_profiler_roots] = "    DU: Flat Profiler Roots";
+  _phase_names[degen_gc_update_management_roots]    = "    DU: Management Roots";
+  _phase_names[degen_gc_update_system_dict_roots]   = "    DU: System Dict Roots";
+  _phase_names[degen_gc_update_cldg_roots]          = "    DU: CLDG Roots";
+  _phase_names[degen_gc_update_jvmti_roots]         = "    DU: JVMTI Roots";
+  _phase_names[degen_gc_update_string_dedup_table_roots] = "    DU: Dedup Table Roots";
+  _phase_names[degen_gc_update_string_dedup_queue_roots] = "    DU: Dedup Queue Roots";
+  _phase_names[degen_gc_update_finish_queues]       = "    DU: Finish Queues";
 
   _phase_names[full_gc_gross]                   = "Pause Full GC (G)";
   _phase_names[full_gc]                         = "Pause Full GC (N)";

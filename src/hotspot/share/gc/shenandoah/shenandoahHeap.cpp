@@ -2350,7 +2350,9 @@ void ShenandoahHeap::op_final_updaterefs() {
   }
   assert(!cancelled_gc(), "Should have been done right before");
 
-  concurrentMark()->update_roots(ShenandoahPhaseTimings::final_update_refs_roots);
+  concurrentMark()->update_roots(is_degenerated_gc_in_progress() ?
+                                 ShenandoahPhaseTimings::degen_gc_update_roots:
+                                 ShenandoahPhaseTimings::final_update_refs_roots);
 
   ShenandoahGCPhase final_update_refs(ShenandoahPhaseTimings::final_update_refs_recycle);
 
