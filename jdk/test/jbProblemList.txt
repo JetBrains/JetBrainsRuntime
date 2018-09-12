@@ -125,6 +125,7 @@ java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java              
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8192929 windows-all,macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.html                           8017454 windows-all,macosx-all
 java/awt/Component/DimensionEncapsulation/DimensionEncapsulation.java               8190514 windows-all
+java/awt/Component/F10TopToplevel/F10TopToplevel.html                               JRE-948 macosx-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java                           8203905 windows-all,macosx-all
 java/awt/Component/InsetsEncapsulation/InsetsEncapsulation.java                     8190514 windows-all
 java/awt/Component/NativeInLightShow/NativeInLightShow.java                         8202932 windows-all,macosx-all
@@ -784,7 +785,7 @@ javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java               
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 macosx-all,windows-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
-javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      JRE-898 macosx-all,
+javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      JRE-898 macosx-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  8186513 macosx-all,windows-all
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java                     JRE-873 macosx-all
 javax/swing/JInternalFrame/Test6325652.java                                         8160880,8196467 macosx-all,windows-all
