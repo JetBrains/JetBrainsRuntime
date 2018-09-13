@@ -106,8 +106,8 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
       assert(!heap->is_concurrent_mark_in_progress(), "sanity");
 
       // c. Reset the bitmaps for new marking
-      heap->reset_next_mark_bitmap();
-      assert(heap->next_marking_context()->is_bitmap_clear(), "sanity");
+      heap->reset_mark_bitmap();
+      assert(heap->marking_context()->is_bitmap_clear(), "sanity");
 
       // d. Abandon reference discovery and clear all discovered references.
       ReferenceProcessor* rp = heap->ref_processor();
@@ -184,7 +184,7 @@ private:
   ShenandoahMarkingContext* const _ctx;
 
 public:
-  ShenandoahPrepareForMarkClosure() : _ctx(ShenandoahHeap::heap()->next_marking_context()) {}
+  ShenandoahPrepareForMarkClosure() : _ctx(ShenandoahHeap::heap()->marking_context()) {}
 
   bool heap_region_do(ShenandoahHeapRegion *r) {
     _ctx->set_top_at_mark_start(r->region_number(), r->top());
@@ -223,7 +223,7 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
   cm->mark_roots(ShenandoahPhaseTimings::full_gc_roots);
   cm->shared_finish_mark_from_roots(/* full_gc = */ true);
 
-  heap->swap_mark_contexts();
+  heap->mark_complete_marking_context();
 }
 
 class ShenandoahPrepareForCompactionObjectClosure : public ObjectClosure {
@@ -851,10 +851,4 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
   }
 
   heap->clear_cancelled_gc();
-
-  // Also clear the next bitmap in preparation for next marking.
-  {
-    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_reset_next);
-    heap->reset_next_mark_bitmap();
-  }
 }

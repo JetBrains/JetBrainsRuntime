@@ -225,7 +225,7 @@ protected:
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
     _thread(Thread::current()),
     _queue(q),
-    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {
+    _mark_context(ShenandoahHeap::heap()->marking_context()) {
   }
 
   template <class T, bool STRING_DEDUP, bool DEGEN>

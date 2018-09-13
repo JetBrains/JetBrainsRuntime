@@ -109,7 +109,7 @@ private:
   ShenandoahMarkingContext* const _mark_context;
 
 public:
-  ShenandoahIsMarkedNextClosure() : _mark_context(ShenandoahHeap::heap()->next_marking_context()) { }
+  ShenandoahIsMarkedNextClosure() : _mark_context(ShenandoahHeap::heap()->marking_context()) { }
 
   bool do_object_b(oop obj) {
     return _mark_context->is_marked(obj);

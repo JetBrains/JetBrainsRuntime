@@ -61,3 +61,15 @@ HeapWord* ShenandoahMarkingContext::top_at_mark_start(size_t region_number) cons
 void ShenandoahMarkingContext::clear_bitmap(HeapWord* start, HeapWord* end) {
   _mark_bit_map.clear_range_large(MemRegion(start, end));
 }
+
+bool ShenandoahMarkingContext::is_complete() {
+  return _is_complete.is_set();
+}
+
+void ShenandoahMarkingContext::mark_complete() {
+  _is_complete.set();
+}
+
+void ShenandoahMarkingContext::mark_incomplete() {
+  _is_complete.unset();
+}

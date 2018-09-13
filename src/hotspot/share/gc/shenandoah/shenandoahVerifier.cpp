@@ -194,9 +194,9 @@ private:
       case ShenandoahVerifier::_verify_marked_disable:
         // skip
         break;
-      case ShenandoahVerifier::_verify_marked_next:
-        check(ShenandoahAsserts::_safe_all, obj, _heap->next_marking_context()->is_marked(obj),
-               "Must be marked in next bitmap");
+      case ShenandoahVerifier::_verify_marked_incomplete:
+        check(ShenandoahAsserts::_safe_all, obj, _heap->marking_context()->is_marked(obj),
+               "Must be marked in incomplete bitmap");
         break;
       case ShenandoahVerifier::_verify_marked_complete:
         check(ShenandoahAsserts::_safe_all, obj, _heap->complete_marking_context()->is_marked(obj),
@@ -358,10 +358,13 @@ public:
     verify(r, r->capacity() == ShenandoahHeapRegion::region_size_bytes(),
            "Capacity should match region size");
 
-    verify(r, r->bottom() <= _heap->complete_marking_context()->top_at_mark_start(r->region_number()),
+    verify(r, r->bottom() <= r->top(),
            "Region top should not be less than bottom");
 
-    verify(r, _heap->complete_marking_context()->top_at_mark_start(r->region_number()) <= r->top(),
+    verify(r, r->bottom() <= _heap->marking_context()->top_at_mark_start(r->region_number()),
+           "Region TAMS should not be less than bottom");
+
+    verify(r, _heap->marking_context()->top_at_mark_start(r->region_number()) <= r->top(),
            "Complete TAMS should not be larger than top");
 
     verify(r, r->get_live_data_bytes() <= r->capacity(),
@@ -709,11 +712,12 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
 
   size_t count_marked = 0;
   if (ShenandoahVerifyLevel >= 4 && marked == _verify_marked_complete) {
+    guarantee(_heap->marking_context()->is_complete(), "Marking context should be complete");
     ShenandoahVerifierMarkedRegionTask task(_verification_bit_map, ld, label, options);
     _heap->workers()->run_task(&task);
     count_marked = task.processed();
   } else {
-    guarantee(ShenandoahVerifyLevel < 4 || marked == _verify_marked_next || marked == _verify_marked_disable, "Should be");
+    guarantee(ShenandoahVerifyLevel < 4 || marked == _verify_marked_incomplete || marked == _verify_marked_disable, "Should be");
   }
 
   // Step 4. Verify accumulated liveness data, if needed. Only reliable if verification level includes
@@ -878,7 +882,7 @@ void ShenandoahVerifier::verify_after_traversal() {
   verify_at_safepoint(
           "After Traversal",
           _verify_forwarded_none,      // cannot have forwarded objects
-          _verify_marked_disable,      // We only have partial marking info after traversal
+          _verify_marked_complete,     // should have complete marking after traversal
           _verify_cset_none,           // no cset references left after traversal
           _verify_liveness_disable,    // liveness data is not collected for new allocations
           _verify_regions_nocset,      // no cset regions, trash regions allowed

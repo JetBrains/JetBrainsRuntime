@@ -288,20 +288,18 @@ public:
     full_gc_copy_objects,
     full_gc_copy_objects_regular,
     full_gc_copy_objects_humong,
-    full_gc_copy_objects_reset_next,
     full_gc_copy_objects_reset_complete,
     full_gc_copy_objects_rebuild,
     full_gc_resize_tlabs,
 
     // Longer concurrent phases at the end
+    conc_reset,
     conc_mark,
     conc_termination,
     conc_preclean,
     conc_evac,
     conc_update_refs,
     conc_cleanup,
-    conc_cleanup_recycle,
-    conc_cleanup_reset_bitmaps,
     conc_traversal,
     conc_traversal_termination,
 

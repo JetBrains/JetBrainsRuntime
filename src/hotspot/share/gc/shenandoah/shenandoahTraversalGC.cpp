@@ -113,7 +113,7 @@ public:
       oop* p = (oop*) &buffer[i];
       oop obj = RawAccess<>::oop_load(p);
       shenandoah_assert_not_forwarded(p, obj);
-      if (_heap->next_marking_context()->mark(obj)) {
+      if (_heap->marking_context()->mark(obj)) {
         _queue->push(ShenandoahMarkTask(obj));
       }
     }
@@ -340,7 +340,7 @@ ShenandoahTraversalGC::~ShenandoahTraversalGC() {
 void ShenandoahTraversalGC::prepare_regions() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   size_t num_regions = heap->num_regions();
-  ShenandoahMarkingContext* const ctx = _heap->next_marking_context();
+  ShenandoahMarkingContext* const ctx = _heap->marking_context();
   for (size_t i = 0; i < num_regions; i++) {
     ShenandoahHeapRegion* region = heap->get_region(i);
     if (heap->is_bitmap_slice_committed(region)) {
@@ -379,7 +379,7 @@ void ShenandoahTraversalGC::prepare() {
     _heap->resize_tlabs();
   }
 
-  assert(_heap->next_marking_context()->is_bitmap_clear(), "need clean mark bitmap");
+  assert(_heap->marking_context()->is_bitmap_clear(), "need clean mark bitmap");
 
   ShenandoahFreeSet* free_set = _heap->free_set();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
@@ -651,6 +651,9 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     TASKQUEUE_STATS_ONLY(_task_queues->print_taskqueue_stats());
     TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
 
+    // No more marking expected
+    _heap->mark_complete_marking_context();
+
     // Still good? We can now trash the cset, and make final verification
     {
       ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_cleanup);
@@ -662,7 +665,7 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
       ShenandoahHeapRegionSet* traversal_regions = traversal_set();
       ShenandoahFreeSet* free_regions = _heap->free_set();
-      ShenandoahMarkingContext* const ctx = _heap->next_marking_context();
+      ShenandoahMarkingContext* const ctx = _heap->marking_context();
       free_regions->clear();
       for (size_t i = 0; i < num_regions; i++) {
         ShenandoahHeapRegion* r = _heap->get_region(i);
@@ -801,7 +804,7 @@ public:
   ShenandoahTraversalKeepAliveUpdateClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
+    _mark_context(ShenandoahHeap::heap()->marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -823,7 +826,7 @@ public:
   ShenandoahTraversalKeepAliveUpdateDegenClosure(ShenandoahObjToScanQueue* q) :
     _queue(q), _thread(Thread::current()),
     _traversal_gc(ShenandoahHeap::heap()->traversal_gc()),
-    _mark_context(ShenandoahHeap::heap()->next_marking_context()) {}
+    _mark_context(ShenandoahHeap::heap()->marking_context()) {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }

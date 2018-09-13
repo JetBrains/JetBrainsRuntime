@@ -61,17 +61,14 @@ void ShenandoahAsserts::print_obj(ShenandoahMessageBuffer& msg, oop obj) {
   stringStream ss;
   r->print_on(&ss);
 
-  ShenandoahMarkingContext* const next_ctx = heap->next_marking_context();
-  ShenandoahMarkingContext* const compl_ctx = heap->complete_marking_context();
+  ShenandoahMarkingContext* const ctx = heap->marking_context();
 
   msg.append("  " PTR_FORMAT " - klass " PTR_FORMAT " %s\n", p2i(obj), p2i(obj->klass()), obj->klass()->external_name());
-  msg.append("    %3s allocated after complete mark start\n", compl_ctx->allocated_after_mark_start((HeapWord *) obj) ? "" : "not");
-  msg.append("    %3s allocated after next mark start\n",     next_ctx->allocated_after_mark_start((HeapWord *) obj)     ? "" : "not");
-  msg.append("    %3s marked complete\n",      compl_ctx->is_marked(obj) ? "" : "not");
-  msg.append("    %3s marked next\n",          next_ctx->is_marked(obj) ? "" : "not");
-  msg.append("    %3s in collection set\n",    heap->in_collection_set(obj) ? "" : "not");
+  msg.append("    %3s allocated after mark start\n", ctx->allocated_after_mark_start((HeapWord *) obj) ? "" : "not");
+  msg.append("    %3s marked \n",                    ctx->is_marked(obj) ? "" : "not");
+  msg.append("    %3s in collection set\n",          heap->in_collection_set(obj) ? "" : "not");
   if (heap->traversal_gc() != NULL) {
-    msg.append("    %3s in traversal set\n",   heap->traversal_gc()->traversal_set()->is_in((HeapWord*) obj) ? "" : "not");
+    msg.append("    %3s in traversal set\n",         heap->traversal_gc()->traversal_set()->is_in((HeapWord*) obj) ? "" : "not");
   }
   msg.append("  region: %s", ss.as_string());
 }
@@ -297,24 +294,13 @@ void ShenandoahAsserts::assert_not_forwarded(void* interior_loc, oop obj, const 
   }
 }
 
-void ShenandoahAsserts::assert_marked_complete(void* interior_loc, oop obj, const char* file, int line) {
+void ShenandoahAsserts::assert_marked(void *interior_loc, oop obj, const char *file, int line) {
   assert_correct(interior_loc, obj, file, line);
 
   ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
-  if (!heap->complete_marking_context()->is_marked(obj)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_complete failed",
-                  "Object should be marked (complete)",
-                  file, line);
-  }
-}
-
-void ShenandoahAsserts::assert_marked_next(void* interior_loc, oop obj, const char* file, int line) {
-  assert_correct(interior_loc, obj, file, line);
-
-  ShenandoahHeap* heap = ShenandoahHeap::heap_no_check();
-  if (!heap->next_marking_context()->is_marked(obj)) {
-    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked_next failed",
-                  "Object should be marked (next)",
+  if (!heap->marking_context()->is_marked(obj)) {
+    print_failure(_safe_all, obj, interior_loc, NULL, "Shenandoah assert_marked failed",
+                  "Object should be marked",
                   file, line);
   }
 }

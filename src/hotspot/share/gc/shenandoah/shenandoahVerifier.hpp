@@ -72,7 +72,7 @@ public:
     _verify_marked_disable,
 
     // Objects should be marked in "next" bitmap.
-    _verify_marked_next,
+    _verify_marked_incomplete,
 
     // Objects should be marked in "complete" bitmap.
     _verify_marked_complete,

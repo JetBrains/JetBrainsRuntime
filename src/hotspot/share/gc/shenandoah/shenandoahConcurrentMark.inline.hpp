@@ -40,7 +40,7 @@ void ShenandoahConcurrentMark::do_task(ShenandoahObjToScanQueue* q, T* cl, jusho
   oop obj = task->obj();
 
   shenandoah_assert_not_forwarded_except(NULL, obj, _heap->is_concurrent_traversal_in_progress() && _heap->cancelled_gc());
-  shenandoah_assert_marked_next(NULL, obj);
+  shenandoah_assert_marked(NULL, obj);
   shenandoah_assert_not_in_cset_except(NULL, obj, _heap->cancelled_gc());
 
   if (task->is_not_chunked()) {
@@ -212,7 +212,7 @@ public:
   ShenandoahSATBBufferClosure(ShenandoahObjToScanQueue* q) :
     _queue(q),
     _heap(ShenandoahHeap::heap()),
-    _mark_context(_heap->next_marking_context())
+    _mark_context(_heap->marking_context())
   {
   }
 
@@ -277,7 +277,7 @@ inline void ShenandoahConcurrentMark::mark_through_ref(T *p, ShenandoahHeap* hea
         }
       }
 
-      shenandoah_assert_marked_next(p, obj);
+      shenandoah_assert_marked(p, obj);
     }
   }
 }

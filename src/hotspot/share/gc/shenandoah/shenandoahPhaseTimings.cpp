@@ -272,7 +272,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_copy_objects]            = "  Copy Objects";
   _phase_names[full_gc_copy_objects_regular]    = "    Regular Objects";
   _phase_names[full_gc_copy_objects_humong]     = "    Humongous Objects";
-  _phase_names[full_gc_copy_objects_reset_next]     = "    Reset Next Bitmap";
   _phase_names[full_gc_copy_objects_reset_complete] = "    Reset Complete Bitmap";
   _phase_names[full_gc_copy_objects_rebuild]     = "    Rebuild Region Sets";
   _phase_names[full_gc_resize_tlabs]            = "  Resize TLABs";
@@ -345,13 +344,12 @@ void ShenandoahPhaseTimings::init_phase_names() {
 
   _phase_names[pause_other]                     = "Pause Other";
 
+  _phase_names[conc_reset]                      = "Concurrent Reset";
   _phase_names[conc_mark]                       = "Concurrent Marking";
   _phase_names[conc_termination]                = "  Termination";
   _phase_names[conc_preclean]                   = "Concurrent Precleaning";
   _phase_names[conc_evac]                       = "Concurrent Evacuation";
   _phase_names[conc_cleanup]                    = "Concurrent Cleanup";
-  _phase_names[conc_cleanup_recycle]            = "  Recycle";
-  _phase_names[conc_cleanup_reset_bitmaps]      = "  Reset Bitmaps";
   _phase_names[conc_other]                      = "Concurrent Other";
   _phase_names[conc_traversal]                  = "Concurrent Traversal";
   _phase_names[conc_traversal_termination]      = "  Termination";

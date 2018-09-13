@@ -238,8 +238,7 @@ private:
   size_t _bitmap_regions_per_slice;
   size_t _bitmap_bytes_per_slice;
   MemRegion _heap_region;
-  MemRegion _bitmap0_region;
-  MemRegion _bitmap1_region;
+  MemRegion _bitmap_region;
   MemRegion _aux_bitmap_region;
 
   ShenandoahHeapRegion** _regions;
@@ -274,8 +273,7 @@ private:
   MarkBitMap _verification_bit_map;
   MarkBitMap _aux_bit_map;
 
-  ShenandoahMarkingContext* _complete_marking_context;
-  ShenandoahMarkingContext* _next_marking_context;
+  ShenandoahMarkingContext* _marking_context;
 
   volatile size_t _bytes_allocated_since_gc_start;
 
@@ -501,16 +499,12 @@ public:
 
   void notify_mutator_alloc_words(size_t words, bool waste);
 
-  void reset_next_mark_bitmap();
-  void reset_next_mark_bitmap_traversal();
+  void reset_mark_bitmap();
 
-  inline ShenandoahMarkingContext* complete_marking_context() const {
-    return _complete_marking_context;
-  }
-
-  inline ShenandoahMarkingContext* next_marking_context() const {
-    return _next_marking_context;
-  }
+  inline void mark_complete_marking_context();
+  inline void mark_incomplete_marking_context();
+  inline ShenandoahMarkingContext* complete_marking_context() const;
+  inline ShenandoahMarkingContext* marking_context() const;
 
   bool commit_bitmap_slice(ShenandoahHeapRegion *r);
   bool uncommit_bitmap_slice(ShenandoahHeapRegion *r);
@@ -582,8 +576,6 @@ public:
   inline void marked_object_oop_safe_iterate(ShenandoahHeapRegion* region, T* cl);
 
   GCTimer* gc_timer() const;
-
-  void swap_mark_contexts();
 
   void cancel_gc(GCCause::Cause cause);
 
@@ -797,11 +789,10 @@ public:
 
   // Entry methods to normally concurrent GC operations. These set up logging, monitoring
   // for concurrent operation.
+  void entry_reset();
   void entry_mark();
   void entry_preclean();
   void entry_cleanup();
-  void entry_cleanup_bitmaps();
-  void entry_cleanup_traversal();
   void entry_evac();
   void entry_updaterefs();
   void entry_traversal();
@@ -821,13 +812,12 @@ private:
   void op_degenerated_fail();
   void op_degenerated_futile();
 
+  void op_reset();
   void op_mark();
   void op_preclean();
   void op_cleanup();
   void op_evac();
   void op_updaterefs();
-  void op_cleanup_bitmaps();
-  void op_cleanup_traversal();
   void op_traversal();
   void op_uncommit(double shrink_before);
 
