@@ -589,6 +589,43 @@ public:
   void do_oop(oop* p)       { do_oop_work(p); }
 };
 
+class ShenandoahWeakUpdateClosure : public OopClosure {
+private:
+  ShenandoahHeap* const _heap;
+
+  template <class T>
+  inline void do_oop_work(T* p) {
+    oop o = _heap->maybe_update_with_forwarded(p);
+    shenandoah_assert_marked_except(p, o, o == NULL);
+  }
+
+public:
+  ShenandoahWeakUpdateClosure() : _heap(ShenandoahHeap::heap()) {}
+
+  void do_oop(narrowOop* p) { do_oop_work(p); }
+  void do_oop(oop* p)       { do_oop_work(p); }
+};
+
+class ShenandoahWeakAssertNotForwardedClosure : public OopClosure {
+private:
+  ShenandoahHeap* const _heap;
+
+  template <class T>
+  inline void do_oop_work(T* p) {
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
+      shenandoah_assert_not_forwarded(p, obj);
+    }
+  }
+
+public:
+  ShenandoahWeakAssertNotForwardedClosure() : _heap(ShenandoahHeap::heap()) {}
+
+  void do_oop(narrowOop* p) { do_oop_work(p); }
+  void do_oop(oop* p)       { do_oop_work(p); }
+};
+
 class ShenandoahRefProcTaskProxy : public AbstractGangTask {
 
 private:
@@ -733,19 +770,16 @@ void ShenandoahConcurrentMark::weak_refs_work_doit(bool full_gc) {
                                       &should_not_reach_here_complete,
                                       &executor, &pt);
 
-    // Closures instantiated here are only needed for the single-threaded path in WeakProcessor.
-    // They share the queue 0 for tracking work, which simplifies implementation.
-    // TODO: As soon as WeakProcessor becomes MT-capable, these closures would become
-    // unnecessary, and could be removed.
-    uint serial_worker_id = 0;
-    ShenandoahPushWorkerQueuesScope scope(workers, task_queues(), 1, /* do_check = */ false);
-    ShenandoahForwardedIsAliveClosure is_alive;
+    // Process leftover weak oops: update them, if needed, or assert they do not
+    // need updating otherwise. This JDK version does not have parallel WeakProcessor.
+    // Weak processor API requires us to visit the oops, even if we are not doing
+    // anything to them.
     if (sh->has_forwarded_objects()) {
-      ShenandoahCMKeepAliveUpdateClosure keep_alive(get_queue(serial_worker_id));
-      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
+      ShenandoahWeakUpdateClosure cl;
+      WeakProcessor::weak_oops_do(is_alive.is_alive_closure(), &cl);
     } else {
-      ShenandoahCMKeepAliveClosure keep_alive(get_queue(serial_worker_id));
-      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
+      ShenandoahWeakAssertNotForwardedClosure cl;
+      WeakProcessor::weak_oops_do(is_alive.is_alive_closure(), &cl);
     }
 
     pt.print_all_references();

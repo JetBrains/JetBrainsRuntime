@@ -810,6 +810,31 @@ public:
   void do_oop(oop* p)       { do_oop_work(p); }
 };
 
+class ShenandoahTraversalWeakUpdateClosure : public OopClosure {
+private:
+  ShenandoahHeap* const _heap;
+
+  template <class T>
+  inline void do_oop_work(T* p) {
+    // Cannot call maybe_update_with_forwarded, because on traversal-degen
+    // path the collection set is already dropped. Instead, do the unguarded store.
+    // TODO: This can be fixed after degen-traversal stops dropping cset.
+    T o = RawAccess<>::oop_load(p);
+    if (!CompressedOops::is_null(o)) {
+      oop obj = CompressedOops::decode_not_null(o);
+      obj = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
+      shenandoah_assert_marked(p, obj);
+      RawAccess<IS_NOT_NULL>::oop_store(p, obj);
+    }
+  }
+
+public:
+  ShenandoahTraversalWeakUpdateClosure() :  _heap(ShenandoahHeap::heap()) {}
+
+  void do_oop(narrowOop* p) { do_oop_work(p); }
+  void do_oop(oop* p)       { do_oop_work(p); }
+};
+
 class ShenandoahTraversalKeepAliveUpdateDegenClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
@@ -1033,23 +1058,9 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
                                       &should_not_reach_here_complete,
                                       &executor, &pt);
 
-
-   // Closures instantiated here are only needed for the single-threaded path in WeakProcessor.
-   // They share the queue 0 for tracking work, which simplifies implementation.
-   // TODO: As soon as WeakProcessor becomes MT-capable, these closures would become
-   // unnecessary, and could be removed.
-    uint serial_worker_id = 0;
-    ParallelTaskTerminator terminator(1, task_queues());
-    ShenandoahPushWorkerQueuesScope scope(workers, task_queues(), 1, /* do_check = */ false);
-    ShenandoahTraversalDrainMarkingStackClosure complete_gc(serial_worker_id, &terminator, /* reset_terminator = */ true);
-    ShenandoahForwardedIsAliveClosure is_alive;
-    if (!_heap->is_degenerated_gc_in_progress()) {
-      ShenandoahTraversalKeepAliveUpdateClosure keep_alive(task_queues()->queue(serial_worker_id));
-      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
-    } else {
-      ShenandoahTraversalKeepAliveUpdateDegenClosure keep_alive(task_queues()->queue(serial_worker_id));
-      WeakProcessor::weak_oops_do(&is_alive, &keep_alive);
-    }
+    // Process leftover weak oops
+    ShenandoahTraversalWeakUpdateClosure cl;
+    WeakProcessor::weak_oops_do(&is_alive, &cl);
 
     pt.print_all_references();
 
