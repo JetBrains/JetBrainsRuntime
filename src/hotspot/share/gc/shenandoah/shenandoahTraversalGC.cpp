@@ -345,17 +345,17 @@ void ShenandoahTraversalGC::prepare_regions() {
     ShenandoahHeapRegion* region = heap->get_region(i);
     if (heap->is_bitmap_slice_committed(region)) {
       if (_traversal_set.is_in(i)) {
-        ctx->set_top_at_mark_start(region->region_number(), region->top());
+        ctx->capture_top_at_mark_start(region);
         region->clear_live_data();
         assert(ctx->is_bitmap_clear_range(region->bottom(), region->end()), "bitmap for traversal regions must be cleared");
       } else {
         // Everything outside the traversal set is always considered live.
-        ctx->set_top_at_mark_start(region->region_number(), region->bottom());
+        ctx->reset_top_at_mark_start(region);
       }
     } else {
       // FreeSet may contain uncommitted empty regions, once they are recommitted,
       // their TAMS may have old values, so reset them here.
-      ctx->set_top_at_mark_start(region->region_number(), region->bottom());
+      ctx->reset_top_at_mark_start(region);
     }
   }
 }
@@ -669,25 +669,25 @@ void ShenandoahTraversalGC::final_traversal_collection() {
       free_regions->clear();
       for (size_t i = 0; i < num_regions; i++) {
         ShenandoahHeapRegion* r = _heap->get_region(i);
-        bool not_allocated = ctx->top_at_mark_start(r->region_number()) == r->top();
+        bool not_allocated = ctx->top_at_mark_start(r) == r->top();
 
         bool candidate = traversal_regions->is_in(r) && !r->has_live() && not_allocated;
         if (r->is_humongous_start() && candidate) {
           // Trash humongous.
           HeapWord* humongous_obj = r->bottom() + BrooksPointer::word_size();
           assert(!ctx->is_marked(oop(humongous_obj)), "must not be marked");
-          r->make_trash();
+          r->make_trash_immediate();
           while (i + 1 < num_regions && _heap->get_region(i + 1)->is_humongous_continuation()) {
             i++;
             r = _heap->get_region(i);
             assert(r->is_humongous_continuation(), "must be humongous continuation");
-            r->make_trash();
+            r->make_trash_immediate();
           }
         } else if (!r->is_empty() && candidate) {
           // Trash regular.
           assert(!r->is_humongous(), "handled above");
           assert(!r->is_trash(), "must not already be trashed");
-          r->make_trash();
+          r->make_trash_immediate();
         }
       }
       _heap->collection_set()->clear();

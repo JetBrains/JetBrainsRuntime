@@ -409,7 +409,7 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
   assert(ctx->is_complete(), "sanity");
 
   MarkBitMap* mark_bit_map = ctx->mark_bit_map();
-  HeapWord* tams = ctx->top_at_mark_start(region->region_number());
+  HeapWord* tams = ctx->top_at_mark_start(region);
 
   size_t skip_bitmap_delta = BrooksPointer::word_size() + 1;
   size_t skip_objsize_delta = BrooksPointer::word_size() /* + actual obj.size() below */;

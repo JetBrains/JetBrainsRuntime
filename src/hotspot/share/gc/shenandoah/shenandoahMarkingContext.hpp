@@ -32,12 +32,13 @@
 class HeapWord;
 
 /**
- * Encapsulate a marking bitmap with a top-at-mark-start array.
+ * Encapsulate a marking bitmap with the top-at-mark-start and top-bitmaps array.
  */
 class ShenandoahMarkingContext : public CHeapObj<mtGC> {
 private:
   MarkBitMap _mark_bit_map;
 
+  HeapWord** const _top_bitmaps;
   HeapWord** const _top_at_mark_starts_base;
   HeapWord** const _top_at_mark_starts;
 
@@ -58,10 +59,14 @@ public:
   inline bool allocated_after_mark_start(HeapWord* addr) const;
 
   inline MarkBitMap* mark_bit_map();
-  HeapWord* top_at_mark_start(size_t region_number) const;
-  void set_top_at_mark_start(size_t region_number, HeapWord* tams);
 
-  void clear_bitmap(HeapWord* start, HeapWord* end);
+  HeapWord* top_at_mark_start(ShenandoahHeapRegion* r) const;
+  void capture_top_at_mark_start(ShenandoahHeapRegion* r);
+  void reset_top_at_mark_start(ShenandoahHeapRegion* r);
+  void initialize_top_at_mark_start(ShenandoahHeapRegion* r);
+
+  void reset_top_bitmap(ShenandoahHeapRegion *r);
+  void clear_bitmap(ShenandoahHeapRegion *r);
 
   bool is_bitmap_clear() const;
   bool is_bitmap_clear_range(HeapWord* start, HeapWord* end) const;

@@ -148,7 +148,7 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
         // We can recycle it right away and put it in the free set.
         immediate_regions++;
         immediate_garbage += garbage;
-        region->make_trash();
+        region->make_trash_immediate();
       } else {
         // This is our candidate for later consideration.
         candidates[cand_idx]._region = region;

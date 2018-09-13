@@ -245,7 +245,7 @@ jint ShenandoahHeap::initialize() {
                                                          i,
                                                          i < num_committed_regions);
 
-      _marking_context->set_top_at_mark_start(i, r->bottom());
+      _marking_context->initialize_top_at_mark_start(r);
       _regions[i] = r;
       assert(!collection_set()->is_in(i), "New region should not be in collection set");
     }
@@ -417,12 +417,7 @@ public:
     ShenandoahMarkingContext* const ctx = heap->marking_context();
     while (region != NULL) {
       if (heap->is_bitmap_slice_committed(region)) {
-        HeapWord* bottom = region->bottom();
-        HeapWord* top = ctx->top_at_mark_start(region->region_number());
-        if (top > bottom) {
-          ctx->clear_bitmap(bottom, top);
-        }
-        assert(ctx->is_bitmap_clear_range(bottom, region->end()), "must be clear");
+        ctx->clear_bitmap(region);
       }
       region = _regions.next();
     }
@@ -1020,7 +1015,7 @@ void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
     assert(region->is_humongous(), "expect correct humongous start or continuation");
     assert(!in_collection_set(region), "Humongous region should not be in collection set");
 
-    region->make_trash();
+    region->make_trash_immediate();
   }
 }
 
@@ -1475,7 +1470,7 @@ public:
 
   bool heap_region_do(ShenandoahHeapRegion* r) {
     r->clear_live_data();
-    sh->marking_context()->set_top_at_mark_start(r->region_number(), r->top());
+    sh->marking_context()->capture_top_at_mark_start(r);
     return false;
   }
 };
@@ -1546,7 +1541,7 @@ void ShenandoahHeap::op_final_mark() {
         ShenandoahHeapRegion* r = get_region(i);
         if (!r->is_active()) continue;
 
-        HeapWord* tams = complete_marking_context()->top_at_mark_start(r->region_number());
+        HeapWord* tams = complete_marking_context()->top_at_mark_start(r);
         HeapWord* top = r->top();
         if (top > tams) {
           r->increase_live_data_alloc_words(pointer_delta(top, tams));
@@ -2209,16 +2204,8 @@ public:
     ShenandoahHeapRegion* r = _regions->next();
     ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
     while (r != NULL) {
-      if (_heap->in_collection_set(r)) {
-        HeapWord* bottom = r->bottom();
-        HeapWord* top = ctx->top_at_mark_start(r->region_number());
-        if (top > bottom) {
-          ctx->clear_bitmap(bottom, top);
-        }
-      } else {
-        if (r->is_active()) {
-          _heap->marked_object_oop_safe_iterate(r, &cl);
-        }
+      if (r->is_active() && !r->is_cset()) {
+        _heap->marked_object_oop_safe_iterate(r, &cl);
       }
       if (ShenandoahPacing) {
         HeapWord* top_at_start_ur = r->concurrent_iteration_safe_limit();

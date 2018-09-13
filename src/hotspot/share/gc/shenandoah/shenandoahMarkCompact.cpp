@@ -187,7 +187,7 @@ public:
   ShenandoahPrepareForMarkClosure() : _ctx(ShenandoahHeap::heap()->marking_context()) {}
 
   bool heap_region_do(ShenandoahHeapRegion *r) {
-    _ctx->set_top_at_mark_start(r->region_number(), r->top());
+    _ctx->capture_top_at_mark_start(r);
     r->clear_live_data();
     r->set_concurrent_iteration_safe_limit(r->top());
     return false;
@@ -457,9 +457,7 @@ public:
              "Region " SIZE_FORMAT " should have live", r->region_number());
     } else if (r->is_regular()) {
       if (!r->has_live()) {
-        assert(_ctx->is_bitmap_clear_range(r->bottom(), r->end()),
-               "Region " SIZE_FORMAT " should not have marks in bitmap", r->region_number());
-        r->make_trash();
+        r->make_trash_immediate();
       }
     }
     return false;
@@ -677,7 +675,7 @@ public:
     // NOTE: See blurb at ShenandoahMCResetCompleteBitmapTask on why we need to skip
     // pinned regions.
     if (!r->is_pinned()) {
-      _heap->complete_marking_context()->set_top_at_mark_start(r->region_number(), r->bottom());
+      _heap->complete_marking_context()->reset_top_at_mark_start(r);
     }
 
     size_t live = r->used();
@@ -797,13 +795,8 @@ public:
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahMarkingContext* const ctx = heap->complete_marking_context();
     while (region != NULL) {
-      if (heap->is_bitmap_slice_committed(region) && !region->is_pinned()) {
-        HeapWord* bottom = region->bottom();
-        HeapWord* top = ctx->top_at_mark_start(region->region_number());
-        if (top > bottom && region->has_live()) {
-          ctx->clear_bitmap(bottom, top);
-        }
-        assert(ctx->is_bitmap_clear_range(bottom, region->end()), "must be clear");
+      if (heap->is_bitmap_slice_committed(region) && !region->is_pinned() && region->has_live()) {
+        ctx->clear_bitmap(region);
       }
       region = _regions.next();
     }

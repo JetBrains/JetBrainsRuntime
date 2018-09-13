@@ -425,9 +425,6 @@
           "Allow mixing mutator and collector allocations in a single "     \
           "region")                                                         \
                                                                             \
-  diagnostic(bool, ShenandoahRecycleClearsBitmap, false,                    \
-          "Recycling a region also clears the marking bitmap")              \
-                                                                            \
   diagnostic(bool, ShenandoahTerminationTrace, false,                       \
           "Tracing task termination timings")                               \
                                                                             \

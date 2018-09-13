@@ -37,7 +37,6 @@ ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuri
   FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
   FLAG_SET_DEFAULT(ShenandoahWriteBarrierRB,         false);
   FLAG_SET_DEFAULT(ShenandoahAllowMixedAllocs,       false);
-  FLAG_SET_DEFAULT(ShenandoahRecycleClearsBitmap,    true);
 
   SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahRefProcFrequency, 1);
 

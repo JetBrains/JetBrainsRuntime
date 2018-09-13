@@ -361,10 +361,10 @@ public:
     verify(r, r->bottom() <= r->top(),
            "Region top should not be less than bottom");
 
-    verify(r, r->bottom() <= _heap->marking_context()->top_at_mark_start(r->region_number()),
+    verify(r, r->bottom() <= _heap->marking_context()->top_at_mark_start(r),
            "Region TAMS should not be less than bottom");
 
-    verify(r, _heap->marking_context()->top_at_mark_start(r->region_number()) <= r->top(),
+    verify(r, _heap->marking_context()->top_at_mark_start(r) <= r->top(),
            "Complete TAMS should not be larger than top");
 
     verify(r, r->get_live_data_bytes() <= r->capacity(),
@@ -542,7 +542,7 @@ public:
   virtual void work_regular(ShenandoahHeapRegion *r, ShenandoahVerifierStack &stack, ShenandoahVerifyOopClosure &cl) {
     size_t processed = 0;
     MarkBitMap* mark_bit_map = _heap->complete_marking_context()->mark_bit_map();
-    HeapWord* tams = _heap->complete_marking_context()->top_at_mark_start(r->region_number());
+    HeapWord* tams = _heap->complete_marking_context()->top_at_mark_start(r);
 
     // Bitmaps, before TAMS
     if (tams > r->bottom()) {
