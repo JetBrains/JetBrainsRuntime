@@ -484,6 +484,7 @@ void ShenandoahHeap::post_initialize() {
   ShenandoahInitGCLABClosure init_gclabs;
   Threads::threads_do(&init_gclabs);
   _workers->threads_do(&init_gclabs);
+  _safepoint_workers->threads_do(&init_gclabs);
 
   // gclab can not be initialized early during VM startup, as it can not determinate its max_size.
   // Now, we will let WorkGang to initialize gclab when new worker is created.
@@ -1087,6 +1088,7 @@ void ShenandoahHeap::make_parsable(bool retire_tlabs) {
     cl.do_thread(t);
   }
   workers()->threads_do(&cl);
+  _safepoint_workers->threads_do(&cl);
 }
 
 void ShenandoahHeap::resize_tlabs() {
@@ -1228,6 +1230,7 @@ void ShenandoahHeap::retire_and_reset_gclabs() {
     cl.do_thread(t);
   }
   workers()->threads_do(&cl);
+  _safepoint_workers->threads_do(&cl);
 }
 
 bool  ShenandoahHeap::can_elide_tlab_store_barriers() const {
@@ -1304,6 +1307,7 @@ void ShenandoahHeap::print_gc_threads_on(outputStream* st) const {
 
 void ShenandoahHeap::gc_threads_do(ThreadClosure* tcl) const {
   workers()->threads_do(tcl);
+  _safepoint_workers->threads_do(tcl);
   if (ShenandoahStringDedup::is_enabled()) {
     ShenandoahStringDedup::threads_do(tcl);
   }
