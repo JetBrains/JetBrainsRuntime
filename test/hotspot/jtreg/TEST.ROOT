@@ -58,7 +58,7 @@ requires.properties= \
     vm.hasSAandCanAttach \
     vm.hasJFR \
     vm.rtm.cpu \
-    vm.rtm.os \
+    vm.rtm.compiler \
     vm.aot \
     vm.cds \
     vm.cds.custom.loaders \
