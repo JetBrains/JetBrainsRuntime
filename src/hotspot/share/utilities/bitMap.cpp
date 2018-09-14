@@ -672,26 +672,6 @@ void BitMap::print_on_error(outputStream* st, const char* prefix) const {
       prefix, p2i(map()), p2i((char*)map() + (size() >> LogBitsPerByte)));
 }
 
-void BitMap::copy_from(BitMap& other, idx_t start_bit, idx_t end_bit) {
-  // Copy prefix.
-  while (bit_in_word(start_bit) != 0 && start_bit < end_bit) {
-    at_put(start_bit, other.at(start_bit));
-    start_bit++;
-  }
-  // Copy suffix.
-  while (bit_in_word(end_bit) != 0 && end_bit > start_bit) {
-    end_bit--;
-    at_put(end_bit, other.at(end_bit));
-  }
-
-  assert(bit_in_word(start_bit) == 0, "can only handle aligned copy for now, bit: "SIZE_FORMAT, bit_in_word(start_bit));
-  assert(bit_in_word(end_bit) == 0,   "can only handle aligned copy for now, bit: "SIZE_FORMAT, bit_in_word(end_bit));
-
-  idx_t start_word = word_index(start_bit);
-  idx_t end_word = word_index(end_bit);
-  Copy::conjoint_jbytes(other._map + start_word, _map + start_word, (end_word - start_word) * sizeof(bm_word_t));
-}
-
 #ifndef PRODUCT
 
 void BitMap::print_on(outputStream* st) const {

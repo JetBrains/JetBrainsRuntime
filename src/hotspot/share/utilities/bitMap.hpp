@@ -236,9 +236,6 @@ class BitMap {
   void clear_large();
   inline void clear();
 
-  // Copying
-  void copy_from(BitMap& other, size_t start, size_t end);
-
   // Iteration support.  Returns "true" if the iteration completed, false
   // if the iteration terminated early (because the closure "blk" returned
   // false).

@@ -1413,8 +1413,7 @@ void ShenandoahHeap::object_iterate(ObjectClosure* cl) {
   }
 
   // Reset bitmap
-  MemRegion mr = MemRegion(_aux_bit_map.startWord(), _aux_bit_map.endWord());
-  _aux_bit_map.clear_range_large(mr);
+  _aux_bit_map.clear();
 
   Stack<oop,mtGC> oop_stack;
 

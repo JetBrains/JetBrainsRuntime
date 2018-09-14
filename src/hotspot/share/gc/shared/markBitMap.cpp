@@ -62,6 +62,11 @@ void MarkBitMap::initialize(MemRegion heap, MemRegion bitmap) {
   _bmWordSize = heap.word_size();
 
   _bm = BitMapView((BitMap::bm_word_t*) bitmap.start(), _bmWordSize >> _shifter);
+  _covered = heap;
+}
+
+void MarkBitMap::clear() {
+  clear_range_large(_covered);
 }
 
 void MarkBitMap::clear_range(MemRegion mr) {
@@ -80,11 +85,3 @@ void MarkBitMap::clear_range_large(MemRegion mr) {
                         heapWordToOffset(mr.end()));
 }
 
-void MarkBitMap::copy_from(MarkBitMap* other, MemRegion mr) {
-  guarantee(startWord() == other->startWord(), "bitmaps must cover same region");
-  guarantee(endWord() == other->endWord(), "bitmaps must cover same region");
-  mr.intersection(MemRegion(_bmStartWord, _bmWordSize));
-  size_t start_offset = heapWordToOffset(mr.start());
-  size_t end_offset = heapWordToOffset(mr.end());
-  _bm.copy_from(other->_bm, start_offset, end_offset);
-}

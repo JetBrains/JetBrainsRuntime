@@ -682,8 +682,7 @@ void ShenandoahVerifier::verify_at_safepoint(const char *label,
   _heap->make_parsable(false);
 
   // Allocate temporary bitmap for storing marking wavefront:
-  MemRegion mr = MemRegion(_verification_bit_map->startWord(), _verification_bit_map->endWord());
-  _verification_bit_map->clear_range_large(mr);
+  _verification_bit_map->clear();
 
   // Allocate temporary array for storing liveness data
   ShenandoahLivenessData* ld = NEW_C_HEAP_ARRAY(ShenandoahLivenessData, _heap->num_regions(), mtGC);
