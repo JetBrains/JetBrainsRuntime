@@ -40,6 +40,9 @@
 #include "opto/type.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 class RegMask;
 // #include "phase.hpp"
@@ -1393,7 +1396,8 @@ static void kill_dead_code( Node *dead, PhaseIterGVN *igvn ) {
             // and remove_globally_dead_node().
             igvn->add_users_to_worklist( n );
 #if INCLUDE_SHENANDOAHGC
-          } else if (n->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(n)) {
+          // TODO: Move into below enqueue_useful_gc_barrier() call
+          } else if (n->Opcode() == Op_AddP && ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(n)) {
             igvn->add_users_to_worklist(n);
 #endif
           } else {

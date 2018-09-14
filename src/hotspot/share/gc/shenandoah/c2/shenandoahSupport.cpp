@@ -25,6 +25,7 @@
 #include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "gc/shenandoah/shenandoahRuntime.hpp"
 #include "opto/arraycopynode.hpp"
 #include "opto/block.hpp"
 #include "opto/callnode.hpp"
@@ -2816,7 +2817,7 @@ void ShenandoahWriteBarrierNode::fix_ctrl(Node* barrier, Node* region, const Mem
       Node* c = old_c;
       if (c != ctrl ||
           is_dominator_same_ctrl(old_c, barrier, u, phase) ||
-          u->is_shenandoah_state_load()) {
+          ShenandoahBarrierSetC2::is_shenandoah_state_load(u)) {
         phase->igvn().rehash_node_delayed(u);
         int nb = u->replace_edge(ctrl, region);
         if (u->is_CFG()) {

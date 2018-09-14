@@ -86,6 +86,12 @@ protected:
 
 public:
   static ShenandoahBarrierSetC2* bsc2();
+
+  static bool is_shenandoah_wb_pre_call(Node* call);
+  static bool is_shenandoah_marking_if(PhaseTransform *phase, Node* n);
+  static bool is_shenandoah_state_load(Node* n);
+  static bool has_only_shenandoah_wb_pre_uses(Node* n);
+
   ShenandoahBarrierSetC2State* state() const;
 
   Node* shenandoah_read_barrier_acmp(GraphKit* kit, Node* obj);
@@ -133,6 +139,8 @@ public:
   // expanded later, then now is the time to do so.
   virtual bool expand_macro_nodes(PhaseMacroExpand* macro) const;
   virtual void verify_gc_barriers(bool post_parse) const;
+
+  virtual Node* ideal_node(PhaseGVN* phase, Node* n, bool can_reshape) const;
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAHBARRIERSETC2_HPP

@@ -357,9 +357,42 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
   if (ShenandoahSATBBarrier && adr != NULL) {
     Node* c = kit->control();
     Node* call = c->in(1)->in(1)->in(1)->in(0);
-    assert(call->is_shenandoah_wb_pre_call(), "shenandoah_wb_pre call expected");
+    assert(is_shenandoah_wb_pre_call(call), "shenandoah_wb_pre call expected");
     call->add_req(adr);
   }
+}
+
+bool ShenandoahBarrierSetC2::is_shenandoah_wb_pre_call(Node* call) {
+  return call->is_CallLeaf() &&
+         call->as_CallLeaf()->entry_point() == CAST_FROM_FN_PTR(address, ShenandoahRuntime::write_ref_field_pre_entry);
+}
+
+bool ShenandoahBarrierSetC2::is_shenandoah_marking_if(PhaseTransform *phase, Node* n) {
+
+  if (n->Opcode() != Op_If) {
+    return false;
+  }
+
+  Node* bol = n->in(1);
+  assert(bol->is_Bool(), "");
+  Node* cmpx = bol->in(1);
+  if (bol->as_Bool()->_test._test == BoolTest::ne &&
+      cmpx->is_Cmp() && cmpx->in(2) == phase->intcon(0) &&
+      is_shenandoah_state_load(cmpx->in(1)->in(1)) &&
+      cmpx->in(1)->in(2)->is_Con() &&
+      cmpx->in(1)->in(2) == phase->intcon(ShenandoahHeap::MARKING)) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ShenandoahBarrierSetC2::is_shenandoah_state_load(Node* n) {
+  if (!n->is_Load()) return false;
+  const int state_offset = in_bytes(ShenandoahThreadLocalData::gc_state_offset());
+  return n->in(2)->is_AddP() && n->in(2)->in(2)->Opcode() == Op_ThreadLocal
+         && n->in(2)->in(3)->is_Con()
+         && n->in(2)->in(3)->bottom_type()->is_intptr_t()->get_con() == state_offset;
 }
 
 void ShenandoahBarrierSetC2::shenandoah_write_barrier_pre(GraphKit* kit,
@@ -714,13 +747,13 @@ void ShenandoahBarrierSetC2::unregister_potential_barrier_node(Node* node) const
 }
 
 void ShenandoahBarrierSetC2::eliminate_gc_barrier(PhaseMacroExpand* macro, Node* n) const {
-  if (n->is_shenandoah_wb_pre_call()) {
+  if (is_shenandoah_wb_pre_call(n)) {
     shenandoah_eliminate_wb_pre(n, &macro->igvn());
   }
 }
 
 void ShenandoahBarrierSetC2::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) const {
-  assert(UseShenandoahGC && call->is_shenandoah_wb_pre_call(), "");
+  assert(UseShenandoahGC && is_shenandoah_wb_pre_call(call), "");
   Node* c = call->as_Call()->proj_out(TypeFunc::Control);
   c = c->unique_ctrl_out();
   assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
@@ -728,11 +761,11 @@ void ShenandoahBarrierSetC2::shenandoah_eliminate_wb_pre(Node* call, PhaseIterGV
   assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
   Node* iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
   assert(iff->is_If(), "expect test");
-  if (!iff->is_shenandoah_marking_if(igvn)) {
+  if (!is_shenandoah_marking_if(igvn, iff)) {
     c = c->unique_ctrl_out();
     assert(c->is_Region() && c->req() == 3, "where's the pre barrier control flow?");
     iff = c->in(1)->is_IfProj() ? c->in(1)->in(0) : c->in(2)->in(0);
-    assert(iff->is_shenandoah_marking_if(igvn), "expect marking test");
+    assert(is_shenandoah_marking_if(igvn, iff), "expect marking test");
   }
   Node* cmpx = iff->in(1)->in(1);
   igvn->replace_node(cmpx, igvn->makecon(TypeInt::CC_EQ));
@@ -772,4 +805,31 @@ void ShenandoahBarrierSetC2::verify_gc_barriers(bool post_parse) const {
     ShenandoahBarrierNode::verify(Compile::current()->root());
   }
 #endif
+}
+
+Node* ShenandoahBarrierSetC2::ideal_node(PhaseGVN *phase, Node* n, bool can_reshape) const {
+  if (is_shenandoah_wb_pre_call(n)) {
+    uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
+    if (n->req() > cnt) {
+      Node* addp = n->in(cnt);
+      if (has_only_shenandoah_wb_pre_uses(addp)) {
+        n->del_req(cnt);
+        if (can_reshape) {
+          phase->is_IterGVN()->_worklist.push(addp);
+        }
+        return n;
+      }
+    }
+  }
+  return NULL;
+}
+
+bool ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(Node* n) {
+  for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
+    Node* u = n->fast_out(i);
+    if (!is_shenandoah_wb_pre_call(u)) {
+      return false;
+    }
+  }
+  return n->outcnt() > 0;
 }

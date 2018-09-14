@@ -40,6 +40,7 @@
 #include "opto/rootnode.hpp"
 #include "utilities/macros.hpp"
 #if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
@@ -1382,7 +1383,8 @@ void PhaseIterGVN::remove_globally_dead_node( Node *dead ) {
               assert(i == 0 && in->Opcode() == Op_ShenandoahWriteBarrier, "broken graph");
               _worklist.push(in);
 #if INCLUDE_SHENANDOAHGC
-            } else if (in->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(in)) {
+            // TODO: Move into below call to enqueue_useful_gc_barrier()
+            } else if (in->Opcode() == Op_AddP && ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(in)) {
               add_users_to_worklist(in);
 #endif
             } else {
@@ -2098,7 +2100,7 @@ void Node::set_req_X( uint i, Node *n, PhaseIterGVN *igvn ) {
       break;
     }
 #if INCLUDE_SHENANDOAHGC
-    if (old->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(old)) {
+    if (old->Opcode() == Op_AddP && ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(old)) {
       igvn->add_users_to_worklist(old);
     }
 #endif

@@ -397,10 +397,6 @@ public:
   // Returns NULL is it couldn't improve the type.
   static const TypeInt* filtered_int_type(PhaseGVN* phase, Node* val, Node* if_proj);
 
-#if INCLUDE_SHENANDOAHGC
-  bool is_shenandoah_marking_if(PhaseTransform *phase) const;
-#endif
-
 #ifndef PRODUCT
   virtual void dump_spec(outputStream *st) const;
   virtual void related(GrowableArray <Node *> *in_rel, GrowableArray <Node *> *out_rel, bool compact) const;

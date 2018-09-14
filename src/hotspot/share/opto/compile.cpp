@@ -397,7 +397,8 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
       record_for_igvn(n->unique_out());
     }
 #if INCLUDE_SHENANDOAHGC
-    if (n->Opcode() == Op_AddP && CallLeafNode::has_only_shenandoah_wb_pre_uses(n)) {
+    // TODO: Move into below eliminate_useless_gc_barriers(..) below
+    if (n->Opcode() == Op_AddP && ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(n)) {
       for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
         record_for_igvn(n->fast_out(i));
       }
@@ -2848,12 +2849,12 @@ void Compile::final_graph_reshaping_impl( Node *n, Final_Reshape_Counts &frc) {
     assert (n->is_Call(), "");
     CallNode *call = n->as_Call();
 #if INCLUDE_SHENANDOAHGC
-    if (UseShenandoahGC && call->is_shenandoah_wb_pre_call()) {
+    if (UseShenandoahGC && ShenandoahBarrierSetC2::is_shenandoah_wb_pre_call(call)) {
       uint cnt = ShenandoahBarrierSetC2::write_ref_field_pre_entry_Type()->domain()->cnt();
       if (call->req() > cnt) {
         assert(call->req() == cnt+1, "only one extra input");
         Node* addp = call->in(cnt);
-        assert(!CallLeafNode::has_only_shenandoah_wb_pre_uses(addp), "useless address computation?");
+        assert(!ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(addp), "useless address computation?");
         call->del_req(cnt);
       }
     }

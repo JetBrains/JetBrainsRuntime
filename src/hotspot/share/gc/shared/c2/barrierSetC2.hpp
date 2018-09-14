@@ -198,6 +198,8 @@ public:
     return n;
   }
 
+  virtual Node* ideal_node(PhaseGVN *phase, Node* n, bool can_reshape) const { return NULL; }
+
   // These are general helper methods used by C2
   virtual bool array_copy_requires_gc_barriers(BasicType type) const { return false; }
 
