@@ -1,0 +1,131 @@
+#
+# Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+$(eval $(call IncludeCustomExtension, hotspot, lib/CompileGtest.gmk))
+
+GTEST_TEST_SRC += $(HOTSPOT_TOPDIR)/test/native
+GTEST_LAUNCHER_SRC := $(HOTSPOT_TOPDIR)/test/native/gtestLauncher.cpp
+GTEST_FRAMEWORK_SRC := $(SRC_ROOT)/test/fmw/gtest
+
+# On Windows, there are no internal debug symbols so must set copying to true
+# to get any at all.
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  GTEST_COPY_DEBUG_SYMBOLS := true
+else
+  GTEST_COPY_DEBUG_SYMBOLS := false
+endif
+
+################################################################################
+
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  GTEST_JVM_MAPFILE := $(JVM_MAPFILE)
+else
+  GTEST_JVM_MAPFILE := $(JVM_OUTPUTDIR)/gtest/mapfile
+
+  $(JVM_OUTPUTDIR)/gtest/symbols: $(JVM_OUTPUTDIR)/symbols
+	$(call MakeDir, $(@D))
+	( $(CAT) $< ; echo "runUnitTests" ) > $@
+
+  $(GTEST_JVM_MAPFILE): $(JVM_OUTPUTDIR)/gtest/symbols
+	$(call create-mapfile)
+endif
+
+# Disabling switch warning for clang because of test source.
+
+# Note: On AIX, the gtest test classes linked into the libjvm.so push the TOC
+# size beyond 64k, so we need to link with bigtoc. However, this means that
+# -qpic=large would be advisable to lessen the performance effect of bigtoc.
+# But we want to avoid imposing -qpic=large onto the regular libjvm.so, which
+# has no problem with its TOC, so do this only for object files which are
+# exclusive to the gtest libjvm.so.
+
+$(eval $(call SetupNativeCompilation, BUILD_GTEST_LIBJVM, \
+    TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
+    LIBRARY := jvm, \
+    OUTPUT_DIR := $(JVM_OUTPUTDIR)/gtest, \
+    OBJECT_DIR := $(JVM_OUTPUTDIR)/gtest/objs, \
+    SRC := $(GTEST_TEST_SRC), \
+    EXCLUDES := $(JVM_EXCLUDES), \
+    EXCLUDE_FILES := gtestLauncher.cpp, \
+    EXCLUDE_PATTERNS := $(JVM_EXCLUDE_PATTERNS), \
+    EXTRA_FILES := $(GTEST_FRAMEWORK_SRC)/src/gtest-all.cc, \
+    EXTRA_OBJECT_FILES := $(filter-out %/operator_new$(OBJ_SUFFIX), \
+        $(BUILD_LIBJVM_ALL_OBJS)), \
+    CFLAGS := $(JVM_CFLAGS) -I$(GTEST_FRAMEWORK_SRC) \
+        -I$(GTEST_FRAMEWORK_SRC)/include \
+        $(addprefix -I,$(GTEST_TEST_SRC)), \
+    CFLAGS_windows := -EHsc, \
+    CFLAGS_solaris := -DGTEST_HAS_EXCEPTIONS=0 -library=stlport4, \
+    CFLAGS_macosx := -DGTEST_OS_MAC=1, \
+    CFLAGS_aix := -qpic=large, \
+    CFLAGS_DEBUG_SYMBOLS := $(JVM_CFLAGS_SYMBOLS), \
+    CXXFLAGS_DEBUG_SYMBOLS := $(JVM_CFLAGS_SYMBOLS), \
+    DISABLED_WARNINGS_gcc := undef, \
+    DISABLED_WARNINGS_clang := undef switch format-nonliteral \
+        tautological-undefined-compare $(BUILD_LIBJVM_DISABLED_WARNINGS_clang), \
+    DISABLED_WARNINGS_solstudio := identexpected, \
+    LDFLAGS := $(JVM_LDFLAGS), \
+    LDFLAGS_solaris := -library=stlport4 $(call SET_SHARED_LIBRARY_ORIGIN), \
+    LDFLAGS_aix := -bbigtoc, \
+    LIBS := $(JVM_LIBS), \
+    OPTIMIZATION := $(JVM_OPTIMIZATION), \
+    MAPFILE := $(GTEST_JVM_MAPFILE), \
+    USE_MAPFILE_FOR_SYMBOLS := true, \
+    COPY_DEBUG_SYMBOLS := $(GTEST_COPY_DEBUG_SYMBOLS), \
+    ZIP_EXTERNAL_DEBUG_SYMBOLS := false, \
+    STRIP_SYMBOLS := false, \
+    PRECOMPILED_HEADER := $(JVM_PRECOMPILED_HEADER), \
+    PRECOMPILED_HEADER_EXCLUDE := gtest-all.cc gtestMain.cpp, \
+))
+
+TARGETS += $(BUILD_GTEST_LIBJVM)
+
+################################################################################
+
+$(eval $(call SetupNativeCompilation, BUILD_GTEST_LAUNCHER, \
+    TOOLCHAIN := TOOLCHAIN_LINK_CXX, \
+    PROGRAM := gtestLauncher, \
+    OUTPUT_DIR := $(JVM_OUTPUTDIR)/gtest, \
+    EXTRA_FILES := $(GTEST_LAUNCHER_SRC), \
+    OBJECT_DIR := $(JVM_OUTPUTDIR)/gtest/launcher-objs, \
+    CFLAGS := $(JVM_CFLAGS) -I$(GTEST_FRAMEWORK_SRC) \
+        -I$(GTEST_FRAMEWORK_SRC)/include, \
+    CFLAGS_DEBUG_SYMBOLS := $(JVM_CFLAGS_SYMBOLS), \
+    CXXFLAGS_DEBUG_SYMBOLS := $(JVM_CFLAGS_SYMBOLS), \
+    LDFLAGS := $(LDFLAGS_JDKEXE), \
+    LDFLAGS_unix := -L$(JVM_OUTPUTDIR)/gtest $(call SET_SHARED_LIBRARY_ORIGIN), \
+    LDFLAGS_solaris := -library=stlport4, \
+    LIBS_linux := $(LIBCXX), \
+    LIBS_unix := -ljvm, \
+    LIBS_windows := $(JVM_OUTPUTDIR)/gtest/objs/jvm.lib, \
+    COPY_DEBUG_SYMBOLS := $(GTEST_COPY_DEBUG_SYMBOLS), \
+    ZIP_EXTERNAL_DEBUG_SYMBOLS := false, \
+))
+
+$(BUILD_GTEST_LAUNCHER): $(BUILD_GTEST_LIBJVM)
+
+TARGETS += $(BUILD_GTEST_LAUNCHER)
+
+################################################################################
