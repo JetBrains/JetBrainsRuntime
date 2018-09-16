@@ -1,0 +1,5 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="configure" type="CMakeRunConfiguration" factoryName="Application" PASS_PARENT_ENVS_2="true" PROJECT_NAME="hotspot" TARGET_NAME="configure" CONFIG_NAME="Debug">
+    <method />
+  </configuration>
+</component>
