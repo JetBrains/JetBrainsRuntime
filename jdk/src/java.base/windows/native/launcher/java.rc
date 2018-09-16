@@ -1,0 +1,8 @@
+#include "version.rc"
+#include "java_rc.h"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+IDI_ICON           ICON    DISCARDABLE     "awt.ico"
