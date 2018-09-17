@@ -58,7 +58,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, false /* string dedup */>(p, _heap, _queue, _mark_context);
+    ShenandoahConcurrentMark::mark_through_ref<T, UPDATE_REFS, NO_DEDUP>(p, _heap, _queue, _mark_context);
   }
 
 public:
@@ -555,7 +555,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, NONE, false /* string dedup */>(p, _heap, _queue, _mark_context);
+    ShenandoahConcurrentMark::mark_through_ref<T, NONE, NO_DEDUP>(p, _heap, _queue, _mark_context);
   }
 
 public:
@@ -576,7 +576,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE, false /* string dedup */>(p, _heap, _queue, _mark_context);
+    ShenandoahConcurrentMark::mark_through_ref<T, SIMPLE, NO_DEDUP>(p, _heap, _queue, _mark_context);
   }
 
 public:
@@ -823,7 +823,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT, false /* string dedup */>(p, _heap, _queue, _mark_context);
+    ShenandoahConcurrentMark::mark_through_ref<T, CONCURRENT, NO_DEDUP>(p, _heap, _queue, _mark_context);
   }
 
 public:
