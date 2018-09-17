@@ -211,26 +211,6 @@ class VM_Operation: public CHeapObj<mtInternal> {
 
   static const char* mode_to_string(Mode mode);
 
-  // Safepoint cleanup
-  // Return true if this VM_Operation takes care of idle monitor deflation.
-  // Idle monitor deflation is usually done by the safepoint cleanup phase
-  // in SafepointSynchronize::do_cleanup_tasks(). However, a VM_Operation
-  // may want to take care of this itself, for example if a GC operation
-  // scans the thread stack anyway, it probably can piggy-back monitor
-  // deflation. Note that this is only possible if the oop marks are preserved
-  // during the VM operation (for example, most current GCs *don't* preserve
-  // the mark word, but displace it and temporarily use the mark word as
-  // forwarding pointer).
-  virtual bool deflates_idle_monitors() { return false; }
-
-  // Return true if this VM_Operation takes care of nmethod marking.
-  // NMethod marking is usually done by the safepoint cleanup phase
-  // in SafepointSynchronize::do_cleanup_tasks(). However, a VM_Operation
-  // may want to take care of this itself, for example if a GC operation
-  // scans the thread stack anyway, it can just as well piggy-back nmethod
-  // marking.
-  virtual bool marks_nmethods() { return false; }
-
   // Debugging
   virtual void print_on_error(outputStream* st) const;
   const char* name() const { return _names[type()]; }

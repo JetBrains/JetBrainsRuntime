@@ -77,7 +77,6 @@ class ShenandoahRootProcessor : public StackObj {
                           CLDClosure* scan_strong_clds,
                           CLDClosure* scan_weak_clds,
                           CodeBlobClosure* scan_strong_code,
-                          CodeBlobClosure* nmethods_cl,
                           ThreadClosure* thread_cl,
                           uint worker_i);
 
@@ -117,7 +116,6 @@ class ShenandoahRootEvacuator : public StackObj {
   StrongRootsScope _srs;
   ShenandoahPhaseTimings::Phase _phase;
   ShenandoahCsetCodeRootsIterator _coderoots_cset_iterator;
-  CodeBlobClosure* _threads_nmethods_cl;
 
 public:
   ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_workers,

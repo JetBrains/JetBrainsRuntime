@@ -1678,8 +1678,7 @@ bool ObjectSynchronizer::deflate_monitor(ObjectMonitor* mid, oop obj,
 // Threads::parallel_java_threads_do() in thread.cpp.
 int ObjectSynchronizer::deflate_monitor_list(ObjectMonitor** listHeadp,
                                              ObjectMonitor** freeHeadp,
-                                             ObjectMonitor** freeTailp,
-                                             OopClosure* cl) {
+                                             ObjectMonitor** freeTailp) {
   ObjectMonitor* mid;
   ObjectMonitor* next;
   ObjectMonitor* cur_mid_in_use = NULL;
@@ -1700,9 +1699,6 @@ int ObjectSynchronizer::deflate_monitor_list(ObjectMonitor** listHeadp,
       mid = next;
       deflated_count++;
     } else {
-      if (obj != NULL && cl != NULL) {
-        cl->do_oop((oop*) mid->object_addr());
-      }
       cur_mid_in_use = mid;
       mid = mid->FreeNext;
     }
@@ -1808,14 +1804,14 @@ void ObjectSynchronizer::finish_deflate_idle_monitors(DeflateMonitorCounters* co
   GVars.stwCycle++;
 }
 
-void ObjectSynchronizer::deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters, OopClosure* cl) {
+void ObjectSynchronizer::deflate_thread_local_monitors(Thread* thread, DeflateMonitorCounters* counters) {
   assert(SafepointSynchronize::is_at_safepoint(), "must be at safepoint");
   if (!MonitorInUseLists) return;
 
   ObjectMonitor * freeHeadp = NULL;  // Local SLL of scavenged monitors
   ObjectMonitor * freeTailp = NULL;
 
-  int deflated_count = deflate_monitor_list(thread->omInUseList_addr(), &freeHeadp, &freeTailp, cl);
+  int deflated_count = deflate_monitor_list(thread->omInUseList_addr(), &freeHeadp, &freeTailp);
 
   Thread::muxAcquire(&gListLock, "scavenge - return");
 

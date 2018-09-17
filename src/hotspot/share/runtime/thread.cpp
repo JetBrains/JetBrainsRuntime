@@ -857,13 +857,7 @@ void Thread::oops_do(OopClosure* f, CodeBlobClosure* cf) {
   if (MonitorInUseLists) {
     // When using thread local monitor lists, we scan them here,
     // and the remaining global monitors in ObjectSynchronizer::oops_do().
-    VM_Operation* op = VMThread::vm_operation();
-    if (op != NULL && op->deflates_idle_monitors()) {
-      DeflateMonitorCounters counters; // Dummy for now.
-      ObjectSynchronizer::deflate_thread_local_monitors(this, &counters, f);
-    } else {
-      ObjectSynchronizer::thread_local_used_oops_do(this, f);
-    }
+    ObjectSynchronizer::thread_local_used_oops_do(this, f);
   }
 }
 
@@ -4447,25 +4441,15 @@ class ParallelOopsDoThreadClosure : public ThreadClosure {
 private:
   OopClosure* _f;
   CodeBlobClosure* _cf;
-  CodeBlobClosure* _nmethods_cl;
-  ThreadClosure* _thread_cl;
 public:
-  ParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl, ThreadClosure* thread_cl) :
-          _f(f), _cf(cf), _nmethods_cl(nmethods_cl), _thread_cl(thread_cl) {}
+  ParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf) : _f(f), _cf(cf) {}
   void do_thread(Thread* t) {
     t->oops_do(_f, _cf);
-    if (_thread_cl != NULL) {
-      _thread_cl->do_thread(t);
-    }
-    if (_nmethods_cl != NULL && t->is_Java_thread() && !t->is_Code_cache_sweeper_thread()) {
-      ((JavaThread*)t)->nmethods_do(_nmethods_cl);
-    }
   }
 };
 
-void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl,
-                                        ThreadClosure* thread_cl) {
-  ParallelOopsDoThreadClosure tc(f, cf, nmethods_cl, thread_cl);
+void Threads::possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf) {
+  ParallelOopsDoThreadClosure tc(f, cf);
   possibly_parallel_threads_do(is_par, &tc);
 }
 

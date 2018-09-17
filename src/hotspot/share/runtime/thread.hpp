@@ -2159,7 +2159,7 @@ class Threads: AllStatic {
   // This version may only be called by sequential code.
   static void oops_do(OopClosure* f, CodeBlobClosure* cf);
   // This version may be called by sequential or parallel code.
-  static void possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf, CodeBlobClosure* nmethods_cl = NULL, ThreadClosure* thread_cl = NULL);
+  static void possibly_parallel_oops_do(bool is_par, OopClosure* f, CodeBlobClosure* cf);
 
   // Apply "f->do_oop" to roots in all threads that
   // are part of compiled frames

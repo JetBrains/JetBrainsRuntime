@@ -262,9 +262,6 @@
   experimental(bool, ShenandoahFastSyncRoots, true,                         \
           "Enable fast synchronizer roots scanning")                        \
                                                                             \
-  experimental(bool, ShenandoahMergeSafepointCleanup, false,                \
-              "Do safepoint cleanup piggy-backed on thread scans")          \
-                                                                            \
   experimental(uint, ParallelSafepointCleanupThreads, 4,                    \
           "Number of parallel threads used for safepoint cleanup")          \
                                                                             \

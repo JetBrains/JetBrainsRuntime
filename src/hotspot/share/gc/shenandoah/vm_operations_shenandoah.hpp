@@ -44,10 +44,7 @@ class VM_ShenandoahOperation : public VM_Operation {
 protected:
   uint         _gc_id;
 public:
-  bool _safepoint_cleanup_done;
-  VM_ShenandoahOperation() : _gc_id(GCId::current()), _safepoint_cleanup_done(false) {};
-  virtual bool deflates_idle_monitors() { return ShenandoahMergeSafepointCleanup && ! _safepoint_cleanup_done; }
-  virtual bool marks_nmethods() { return ShenandoahMergeSafepointCleanup && ! _safepoint_cleanup_done; }
+  VM_ShenandoahOperation() : _gc_id(GCId::current()) {};
 };
 
 class VM_ShenandoahReferenceOperation : public VM_ShenandoahOperation {
@@ -79,8 +76,6 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFinalEvac; }
   const char* name()             const { return "Shenandoah Final Evacuation"; }
   virtual  void doit();
-  bool deflates_idle_monitors() { return false; }
-  bool marks_nmethods() { return false; }
 };
 
 class VM_ShenandoahDegeneratedGC: public VM_ShenandoahReferenceOperation {
@@ -93,11 +88,6 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahDegeneratedGC; }
   const char* name()             const { return "Shenandoah Degenerated GC"; }
   virtual  void doit();
-
-  // Degenerate GC may be upgraded to Full GC, and therefore we need to block deflation and
-  // marking, as VM_ShenandoahFullGC does.
-  bool deflates_idle_monitors() { return false; }
-  bool marks_nmethods() { return false; }
 };
 
 class VM_ShenandoahFullGC : public VM_ShenandoahReferenceOperation {
@@ -108,11 +98,6 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahFullGC; }
   const char* name()             const { return "Shenandoah Full GC"; }
   virtual void doit();
-  // Full-GC cannot deflate monitors and mark nmethods, because it installs a speciall BarrierSet
-  // that disables read-barriers. However, the monitor and nmethod code requires read-barriers
-  // to work correctly.
-  bool deflates_idle_monitors() { return false; }
-  bool marks_nmethods() { return false; }
 };
 
 class VM_ShenandoahInitTraversalGC: public VM_ShenandoahOperation {
@@ -137,9 +122,6 @@ public:
   VM_Operation::VMOp_Type type() const { return VMOp_ShenandoahInitUpdateRefs; }
   const char* name()             const { return "Shenandoah Init Update References"; }
   virtual void doit();
-  // We cannot deflate monitors and mark nmethods here, because it doesn't scan roots.
-  bool deflates_idle_monitors() { return false; }
-  bool marks_nmethods() { return false; }
 };
 
 class VM_ShenandoahFinalUpdateRefs: public VM_ShenandoahOperation {

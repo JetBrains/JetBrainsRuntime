@@ -36,6 +36,7 @@
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/iterator.hpp"
 #include "runtime/mutex.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/vmThread.hpp"
@@ -48,17 +49,9 @@ ShenandoahRootProcessor::ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_wo
   _par_state_string(StringTable::weak_storage()),
   _phase(phase),
   _coderoots_all_iterator(ShenandoahCodeRoots::iterator()),
-  _om_iterator(ObjectSynchronizer::parallel_iterator()),
-  _threads_nmethods_cl(NULL)
+  _om_iterator(ObjectSynchronizer::parallel_iterator())
 {
   heap->phase_timings()->record_workers_start(_phase);
-
-  if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
-    VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-    if (op == NULL || !op->_safepoint_cleanup_done) {
-      _threads_nmethods_cl = NMethodSweeper::prepare_mark_active_nmethods();
-    }
-  }
 
   if (ShenandoahStringDedup::is_enabled()) {
     StringDedup::gc_prologue(false);
@@ -72,13 +65,6 @@ ShenandoahRootProcessor::~ShenandoahRootProcessor() {
   }
 
   ShenandoahHeap::heap()->phase_timings()->record_workers_end(_phase);
-
-  if (ShenandoahSafepoint::is_at_shenandoah_safepoint()) {
-    VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-    if (op != NULL) {
-      op->_safepoint_cleanup_done = true;
-    }
-  }
 }
 
 void ShenandoahRootProcessor::process_all_roots_slow(OopClosure* oops) {
@@ -114,7 +100,7 @@ void ShenandoahRootProcessor::process_strong_roots(OopClosure* oops,
                                                    ThreadClosure* thread_cl,
                                                    uint worker_id) {
 
-  process_java_roots(oops, clds, weak_clds, blobs, _threads_nmethods_cl, thread_cl, worker_id);
+  process_java_roots(oops, clds, weak_clds, blobs, thread_cl, worker_id);
   process_vm_roots(oops, NULL, weak_oops, worker_id);
 
   _process_strong_tasks->all_tasks_completed(n_workers());
@@ -128,7 +114,7 @@ void ShenandoahRootProcessor::process_all_roots(OopClosure* oops,
                                                 uint worker_id) {
 
   ShenandoahWorkerTimings* worker_times = ShenandoahHeap::heap()->phase_timings()->worker_times();
-  process_java_roots(oops, clds, clds, blobs, _threads_nmethods_cl, thread_cl, worker_id);
+  process_java_roots(oops, clds, clds, blobs, thread_cl, worker_id);
   process_vm_roots(oops, oops, weak_oops, worker_id);
 
   if (blobs != NULL) {
@@ -139,11 +125,27 @@ void ShenandoahRootProcessor::process_all_roots(OopClosure* oops,
   _process_strong_tasks->all_tasks_completed(n_workers());
 }
 
+class ShenandoahParallelOopsDoThreadClosure : public ThreadClosure {
+private:
+  OopClosure* _f;
+  CodeBlobClosure* _cf;
+  ThreadClosure* _thread_cl;
+public:
+  ShenandoahParallelOopsDoThreadClosure(OopClosure* f, CodeBlobClosure* cf, ThreadClosure* thread_cl) :
+    _f(f), _cf(cf), _thread_cl(thread_cl) {}
+
+  void do_thread(Thread* t) {
+    if (_thread_cl != NULL) {
+      _thread_cl->do_thread(t);
+    }
+    t->oops_do(_f, _cf);
+  }
+};
+
 void ShenandoahRootProcessor::process_java_roots(OopClosure* strong_roots,
                                                  CLDClosure* strong_clds,
                                                  CLDClosure* weak_clds,
                                                  CodeBlobClosure* strong_code,
-                                                 CodeBlobClosure* nmethods_cl,
                                                  ThreadClosure* thread_cl,
                                                  uint worker_id)
 {
@@ -160,7 +162,8 @@ void ShenandoahRootProcessor::process_java_roots(OopClosure* strong_roots,
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::ThreadRoots, worker_id);
     bool is_par = n_workers() > 1;
     ResourceMark rm;
-    Threads::possibly_parallel_oops_do(is_par, strong_roots, strong_code, nmethods_cl, thread_cl);
+    ShenandoahParallelOopsDoThreadClosure cl(strong_roots, strong_code, thread_cl);
+    Threads::possibly_parallel_threads_do(is_par, &cl);
   }
 }
 
@@ -228,22 +231,13 @@ uint ShenandoahRootProcessor::n_workers() const {
 ShenandoahRootEvacuator::ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_workers, ShenandoahPhaseTimings::Phase phase) :
   _srs(n_workers),
   _phase(phase),
-  _coderoots_cset_iterator(ShenandoahCodeRoots::cset_iterator()),
-  _threads_nmethods_cl(NULL)
+  _coderoots_cset_iterator(ShenandoahCodeRoots::cset_iterator())
 {
   heap->phase_timings()->record_workers_start(_phase);
-  VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-  if (op == NULL || !op->_safepoint_cleanup_done) {
-    _threads_nmethods_cl = NMethodSweeper::prepare_mark_active_nmethods();
-  }
 }
 
 ShenandoahRootEvacuator::~ShenandoahRootEvacuator() {
   ShenandoahHeap::heap()->phase_timings()->record_workers_end(_phase);
-  VM_ShenandoahOperation* op = (VM_ShenandoahOperation*) VMThread::vm_operation();
-  if (op != NULL) {
-    op->_safepoint_cleanup_done = true;
-  }
 }
 
 void ShenandoahRootEvacuator::process_evacuate_roots(OopClosure* oops,
@@ -256,7 +250,7 @@ void ShenandoahRootEvacuator::process_evacuate_roots(OopClosure* oops,
     ResourceMark rm;
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::ThreadRoots, worker_id);
 
-    Threads::possibly_parallel_oops_do(is_par, oops, NULL, _threads_nmethods_cl);
+    Threads::possibly_parallel_oops_do(is_par, oops, NULL);
   }
 
   if (blobs != NULL) {
