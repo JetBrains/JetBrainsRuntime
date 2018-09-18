@@ -39,6 +39,8 @@
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
@@ -48,7 +50,6 @@
 #include "runtime/thread.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/growableArray.hpp"
-#include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/workgroup.hpp"
 
 void ShenandoahMarkCompact::initialize(GCTimer* gc_timer) {

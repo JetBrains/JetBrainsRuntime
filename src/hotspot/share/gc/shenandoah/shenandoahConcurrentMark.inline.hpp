@@ -31,6 +31,7 @@
 #include "gc/shenandoah/shenandoahConcurrentMark.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
 #include "memory/iterator.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/prefetch.inline.hpp"
@@ -191,12 +192,6 @@ inline void ShenandoahConcurrentMark::do_chunked_array(ShenandoahObjToScanQueue*
 #endif
 
   array->oop_iterate_range(cl, from, to);
-}
-
-inline bool ShenandoahConcurrentMark::try_queue(ShenandoahObjToScanQueue* q, ShenandoahMarkTask &task) {
-  return (q->pop_buffer(task) ||
-          q->pop_local(task) ||
-          q->pop_overflow(task));
 }
 
 class ShenandoahSATBBufferClosure : public SATBBufferClosure {

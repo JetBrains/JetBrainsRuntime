@@ -28,7 +28,6 @@
 #include "gc/shared/referenceProcessor.hpp"
 #include "gc/shared/referenceProcessorPhaseTimes.hpp"
 #include "gc/shared/workgroup.hpp"
-#include "gc/shared/taskqueue.inline.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
 #include "gc/shenandoah/shenandoahCodeRoots.hpp"
@@ -47,6 +46,7 @@
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
 #include "gc/shenandoah/shenandoahWorkGroup.hpp"
@@ -520,9 +520,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
     }
 
     for (uint i = 0; i < stride; i++) {
-      if (q->pop_buffer(task) ||
-          q->pop_local(task) ||
-          q->pop_overflow(task)) {
+      if (q->pop(task)) {
         conc_mark->do_task<T>(q, cl, live_data, &task);
       } else {
         assert(q->is_empty(), "Must be empty");
@@ -551,9 +549,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 
     uint work = 0;
     for (uint i = 0; i < stride; i++) {
-      if (q->pop_buffer(task) ||
-          q->pop_local(task) ||
-          q->pop_overflow(task) ||
+      if (q->pop(task) ||
           queues->steal(worker_id, &seed, task)) {
         conc_mark->do_task<T>(q, cl, live_data, &task);
         work++;

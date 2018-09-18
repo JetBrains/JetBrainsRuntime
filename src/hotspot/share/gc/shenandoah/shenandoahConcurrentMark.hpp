@@ -109,8 +109,6 @@ public:
   void finish_mark_from_roots();
   // Those are only needed public because they're called from closures.
 
-  inline bool try_queue(ShenandoahObjToScanQueue* q, ShenandoahMarkTask &task);
-
   ShenandoahObjToScanQueue* get_queue(uint worker_id);
   void clear_queue(ShenandoahObjToScanQueue *q);
 

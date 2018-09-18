@@ -33,9 +33,7 @@ void ShenandoahObjToScanQueueSet::clear() {
   for (uint index = 0; index < size; index ++) {
     ShenandoahObjToScanQueue* q = queue(index);
     assert(q != NULL, "Sanity");
-    q->set_empty();
-    q->overflow_stack()->clear();
-    q->clear_buffer();
+    q->clear();
   }
 }
 
