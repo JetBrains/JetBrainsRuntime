@@ -58,125 +58,118 @@ void ShenandoahMarkCompact::initialize(GCTimer* gc_timer) {
 void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  {
-    if (ShenandoahVerify) {
-      heap->verifier()->verify_before_fullgc();
-    }
-
-    heap->set_full_gc_in_progress(true);
-
-    assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at a safepoint");
-    assert(Thread::current()->is_VM_thread(), "Do full GC only while world is stopped");
-
-    {
-      ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_heapdumps);
-      heap->pre_full_gc_dump(_gc_timer);
-    }
-
-    {
-      ShenandoahGCPhase prepare_phase(ShenandoahPhaseTimings::full_gc_prepare);
-      // Full GC is supposed to recover from any GC state:
-
-      // a0. Remember if we have forwarded objects
-      bool has_forwarded_objects = heap->has_forwarded_objects();
-
-      // a1. Cancel evacuation, if in progress
-      if (heap->is_evacuation_in_progress()) {
-        heap->set_evacuation_in_progress(false);
-      }
-      assert(!heap->is_evacuation_in_progress(), "sanity");
-
-      // a2. Cancel update-refs, if in progress
-      if (heap->is_update_refs_in_progress()) {
-        heap->set_update_refs_in_progress(false);
-      }
-      assert(!heap->is_update_refs_in_progress(), "sanity");
-
-      // a3. Cancel concurrent traversal GC, if in progress
-      if (heap->is_concurrent_traversal_in_progress()) {
-        heap->traversal_gc()->reset();
-        heap->set_concurrent_traversal_in_progress(false);
-      }
-
-      // b. Cancel concurrent mark, if in progress
-      if (heap->is_concurrent_mark_in_progress()) {
-        heap->concurrentMark()->cancel();
-        heap->stop_concurrent_marking();
-      }
-      assert(!heap->is_concurrent_mark_in_progress(), "sanity");
-
-      // c. Reset the bitmaps for new marking
-      heap->reset_mark_bitmap();
-      assert(heap->marking_context()->is_bitmap_clear(), "sanity");
-
-      // d. Abandon reference discovery and clear all discovered references.
-      ReferenceProcessor* rp = heap->ref_processor();
-      rp->disable_discovery();
-      rp->abandon_partial_discovery();
-      rp->verify_no_references_recorded();
-
-      // e. Set back forwarded objects bit back, in case some steps above dropped it.
-      heap->set_has_forwarded_objects(has_forwarded_objects);
-    }
-
-    {
-      heap->make_parsable(true);
-
-      CodeCache::gc_prologue();
-
-      OrderAccess::fence();
-
-      phase1_mark_heap();
-
-      // Once marking is done, which may have fixed up forwarded objects, we can drop it.
-      // Coming out of Full GC, we would not have any forwarded objects.
-      // This also prevents read barrier from kicking in while adjusting pointers in phase3.
-      heap->set_has_forwarded_objects(false);
-
-      heap->set_full_gc_move_in_progress(true);
-
-      // Setup workers for the rest
-      {
-        OrderAccess::fence();
-
-        // Initialize worker slices
-        ShenandoahHeapRegionSet** worker_slices = NEW_C_HEAP_ARRAY(ShenandoahHeapRegionSet*, heap->max_workers(), mtGC);
-        for (uint i = 0; i < heap->max_workers(); i++) {
-          worker_slices[i] = new ShenandoahHeapRegionSet();
-        }
-
-        phase2_calculate_target_addresses(worker_slices);
-
-        OrderAccess::fence();
-
-        phase3_update_references();
-
-        phase4_compact_objects(worker_slices);
-
-        // Free worker slices
-        for (uint i = 0; i < heap->max_workers(); i++) {
-          delete worker_slices[i];
-        }
-        FREE_C_HEAP_ARRAY(ShenandoahHeapRegionSet*, worker_slices);
-
-        CodeCache::gc_epilogue();
-        JvmtiExport::gc_epilogue();
-      }
-
-      heap->set_full_gc_move_in_progress(false);
-      heap->set_full_gc_in_progress(false);
-
-      if (ShenandoahVerify) {
-        heap->verifier()->verify_after_fullgc();
-      }
-    }
-
-    {
-      ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_heapdumps);
-      heap->post_full_gc_dump(_gc_timer);
-    }
+  if (ShenandoahVerify) {
+    heap->verifier()->verify_before_fullgc();
   }
 
+  heap->set_full_gc_in_progress(true);
+
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "must be at a safepoint");
+  assert(Thread::current()->is_VM_thread(), "Do full GC only while world is stopped");
+
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_heapdumps);
+    heap->pre_full_gc_dump(_gc_timer);
+  }
+
+  {
+    ShenandoahGCPhase prepare_phase(ShenandoahPhaseTimings::full_gc_prepare);
+    // Full GC is supposed to recover from any GC state:
+
+    // a0. Remember if we have forwarded objects
+    bool has_forwarded_objects = heap->has_forwarded_objects();
+
+    // a1. Cancel evacuation, if in progress
+    if (heap->is_evacuation_in_progress()) {
+      heap->set_evacuation_in_progress(false);
+    }
+    assert(!heap->is_evacuation_in_progress(), "sanity");
+
+    // a2. Cancel update-refs, if in progress
+    if (heap->is_update_refs_in_progress()) {
+      heap->set_update_refs_in_progress(false);
+    }
+    assert(!heap->is_update_refs_in_progress(), "sanity");
+
+    // a3. Cancel concurrent traversal GC, if in progress
+    if (heap->is_concurrent_traversal_in_progress()) {
+      heap->traversal_gc()->reset();
+      heap->set_concurrent_traversal_in_progress(false);
+    }
+
+    // b. Cancel concurrent mark, if in progress
+    if (heap->is_concurrent_mark_in_progress()) {
+      heap->concurrentMark()->cancel();
+      heap->stop_concurrent_marking();
+    }
+    assert(!heap->is_concurrent_mark_in_progress(), "sanity");
+
+    // c. Reset the bitmaps for new marking
+    heap->reset_mark_bitmap();
+    assert(heap->marking_context()->is_bitmap_clear(), "sanity");
+
+    // d. Abandon reference discovery and clear all discovered references.
+    ReferenceProcessor* rp = heap->ref_processor();
+    rp->disable_discovery();
+    rp->abandon_partial_discovery();
+    rp->verify_no_references_recorded();
+
+    // e. Set back forwarded objects bit back, in case some steps above dropped it.
+    heap->set_has_forwarded_objects(has_forwarded_objects);
+  }
+
+  heap->make_parsable(true);
+
+  CodeCache::gc_prologue();
+
+  OrderAccess::fence();
+
+  phase1_mark_heap();
+
+  // Once marking is done, which may have fixed up forwarded objects, we can drop it.
+  // Coming out of Full GC, we would not have any forwarded objects.
+  // This also prevents read barrier from kicking in while adjusting pointers in phase3.
+  heap->set_has_forwarded_objects(false);
+
+  heap->set_full_gc_move_in_progress(true);
+
+  // Setup workers for the rest
+  OrderAccess::fence();
+
+  // Initialize worker slices
+  ShenandoahHeapRegionSet** worker_slices = NEW_C_HEAP_ARRAY(ShenandoahHeapRegionSet*, heap->max_workers(), mtGC);
+  for (uint i = 0; i < heap->max_workers(); i++) {
+    worker_slices[i] = new ShenandoahHeapRegionSet();
+  }
+
+  phase2_calculate_target_addresses(worker_slices);
+
+  OrderAccess::fence();
+
+  phase3_update_references();
+
+  phase4_compact_objects(worker_slices);
+
+  // Free worker slices
+  for (uint i = 0; i < heap->max_workers(); i++) {
+    delete worker_slices[i];
+  }
+  FREE_C_HEAP_ARRAY(ShenandoahHeapRegionSet*, worker_slices);
+
+  CodeCache::gc_epilogue();
+  JvmtiExport::gc_epilogue();
+
+  heap->set_full_gc_move_in_progress(false);
+  heap->set_full_gc_in_progress(false);
+
+  if (ShenandoahVerify) {
+    heap->verifier()->verify_after_fullgc();
+  }
+
+  {
+    ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_heapdumps);
+    heap->post_full_gc_dump(_gc_timer);
+  }
 }
 
 class ShenandoahPrepareForMarkClosure: public ShenandoahHeapRegionClosure {
