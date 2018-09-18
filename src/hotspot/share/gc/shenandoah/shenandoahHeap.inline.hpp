@@ -543,10 +543,10 @@ inline void ShenandoahHeap::marked_object_oop_safe_iterate(ShenandoahHeapRegion*
 }
 
 inline ShenandoahHeapRegion* const ShenandoahHeap::get_region(size_t region_idx) const {
-  if (region_idx >= _num_regions) {
-    return NULL;
-  } else {
+  if (region_idx < _num_regions) {
     return _regions[region_idx];
+  } else {
+    return NULL;
   }
 }
 
