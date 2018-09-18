@@ -142,13 +142,19 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
     worker_slices[i] = new ShenandoahHeapRegionSet();
   }
 
-  phase2_calculate_target_addresses(worker_slices);
+  {
+    // The rest of code performs region moves, where region status is undefined
+    // until all phases run together.
+    ShenandoahHeapLocker lock(heap->lock());
 
-  OrderAccess::fence();
+    phase2_calculate_target_addresses(worker_slices);
 
-  phase3_update_references();
+    OrderAccess::fence();
 
-  phase4_compact_objects(worker_slices);
+    phase3_update_references();
+
+    phase4_compact_objects(worker_slices);
+  }
 
   // Free worker slices
   for (uint i = 0; i < heap->max_workers(); i++) {
@@ -193,11 +199,8 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
 
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  {
-    ShenandoahHeapLocker lock(heap->lock());
-    ShenandoahPrepareForMarkClosure cl;
-    heap->heap_region_iterate(&cl, false, false);
-  }
+  ShenandoahPrepareForMarkClosure cl;
+  heap->heap_region_iterate(&cl, false, false);
 
   ShenandoahConcurrentMark* cm = heap->concurrentMark();
 
@@ -464,8 +467,6 @@ void ShenandoahMarkCompact::phase2_calculate_target_addresses(ShenandoahHeapRegi
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   {
-    ShenandoahHeapLocker lock(heap->lock());
-
     // Trash the immediately collectible regions before computing addresses
     ShenandoahTrashImmediateGarbageClosure tigcl;
     heap->heap_region_iterate(&tigcl, false, false);
@@ -736,8 +737,6 @@ void ShenandoahMarkCompact::compact_humongous_objects() {
       BrooksPointer::initialize(new_obj);
 
       {
-        ShenandoahHeapLocker lock(heap->lock());
-
         for (size_t c = old_start; c <= old_end; c++) {
           ShenandoahHeapRegion* r = heap->get_region(c);
           r->make_regular_bypass();
@@ -827,7 +826,6 @@ void ShenandoahMarkCompact::phase4_compact_objects(ShenandoahHeapRegionSet** wor
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::full_gc_copy_objects_rebuild);
 
-    ShenandoahHeapLocker lock(heap->lock());
     ShenandoahPostCompactClosure post_compact;
     heap->heap_region_iterate(&post_compact);
     heap->set_used(post_compact.get_live());
