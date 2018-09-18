@@ -2863,17 +2863,17 @@ const char* ShenandoahHeap::final_mark_event_message() const {
   bool unload_cls = unload_classes();
 
   if (update_refs && proc_refs && unload_cls) {
-    return "Pause Final Mark (update refs) (process refs) (unload classes)";
+    return "Pause Final Mark (update refs) (process weakrefs) (unload classes)";
   } else if (update_refs && proc_refs) {
-    return "Pause Final Mark (update refs) (process refs)";
+    return "Pause Final Mark (update refs) (process weakrefs)";
   } else if (update_refs && unload_cls) {
     return "Pause Final Mark (update refs) (unload classes)";
   } else if (proc_refs && unload_cls) {
-    return "Pause Final Mark (process refs) (unload classes)";
+    return "Pause Final Mark (process weakrefs) (unload classes)";
   } else if (update_refs) {
     return "Pause Final Mark (update refs)";
   } else if (proc_refs) {
-    return "Pause Final Mark (process refs)";
+    return "Pause Final Mark (process weakrefs)";
   } else if (unload_cls) {
     return "Pause Final Mark (unload classes)";
   } else {
@@ -2887,17 +2887,17 @@ const char* ShenandoahHeap::conc_mark_event_message() const {
   bool unload_cls = unload_classes();
 
   if (update_refs && proc_refs && unload_cls) {
-    return "Concurrent marking (update refs) (process refs) (unload classes)";
+    return "Concurrent marking (update refs) (process weakrefs) (unload classes)";
   } else if (update_refs && proc_refs) {
-    return "Concurrent marking (update refs) (process refs)";
+    return "Concurrent marking (update refs) (process weakrefs)";
   } else if (update_refs && unload_cls) {
     return "Concurrent marking (update refs) (unload classes)";
   } else if (proc_refs && unload_cls) {
-    return "Concurrent marking (process refs) (unload classes)";
+    return "Concurrent marking (process weakrefs) (unload classes)";
   } else if (update_refs) {
     return "Concurrent marking (update refs)";
   } else if (proc_refs) {
-    return "Concurrent marking (process refs)";
+    return "Concurrent marking (process weakrefs)";
   } else if (unload_cls) {
     return "Concurrent marking (unload classes)";
   } else {
