@@ -1930,52 +1930,9 @@ void ShenandoahHeap::stop() {
 void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
   assert(ClassUnloading || full_gc, "Class unloading should be enabled");
 
-  ShenandoahPhaseTimings::Phase phase_root =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge :
-          ShenandoahPhaseTimings::purge;
-
-  ShenandoahPhaseTimings::Phase phase_unload =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_class_unload :
-          ShenandoahPhaseTimings::purge_class_unload;
-
-  ShenandoahPhaseTimings::Phase phase_cldg =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_cldg :
-          ShenandoahPhaseTimings::purge_cldg;
-
-  ShenandoahPhaseTimings::Phase phase_par =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par :
-          ShenandoahPhaseTimings::purge_par;
-
-  ShenandoahPhaseTimings::Phase phase_par_classes =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par_classes :
-          ShenandoahPhaseTimings::purge_par_classes;
-
-  ShenandoahPhaseTimings::Phase phase_par_codecache =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par_codecache :
-          ShenandoahPhaseTimings::purge_par_codecache;
-
-  ShenandoahPhaseTimings::Phase phase_par_rmt =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par_rmt :
-          ShenandoahPhaseTimings::purge_par_rmt;
-
-  ShenandoahPhaseTimings::Phase phase_par_symbstring =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par_symbstring :
-          ShenandoahPhaseTimings::purge_par_symbstring;
-
-  ShenandoahPhaseTimings::Phase phase_par_sync =
-          full_gc ?
-          ShenandoahPhaseTimings::full_gc_purge_par_sync :
-          ShenandoahPhaseTimings::purge_par_sync;
-
-  ShenandoahGCPhase root_phase(phase_root);
+  ShenandoahGCPhase root_phase(full_gc ?
+                               ShenandoahPhaseTimings::full_gc_purge :
+                               ShenandoahPhaseTimings::purge);
 
   ShenandoahIsAliveSelector alive;
   BoolObjectClosure* is_alive = alive.is_alive_closure();
@@ -1984,40 +1941,33 @@ void ShenandoahHeap::unload_classes_and_cleanup_tables(bool full_gc) {
 
   // Unload classes and purge SystemDictionary.
   {
-    ShenandoahGCPhase phase(phase_unload);
+    ShenandoahGCPhase phase(full_gc ?
+                            ShenandoahPhaseTimings::full_gc_purge_class_unload :
+                            ShenandoahPhaseTimings::purge_class_unload);
     purged_class = SystemDictionary::do_unloading(gc_timer(),
                                                   full_gc /* do_cleaning*/ );
   }
 
   {
-    ShenandoahGCPhase phase(phase_par);
+    ShenandoahGCPhase phase(full_gc ?
+                            ShenandoahPhaseTimings::full_gc_purge_par :
+                            ShenandoahPhaseTimings::purge_par);
     uint active = _workers->active_workers();
     ParallelCleaningTask unlink_task(is_alive, true, true, active, purged_class);
     _workers->run_task(&unlink_task);
-
-    ShenandoahPhaseTimings* p = phase_timings();
-    ParallelCleaningTimes times = unlink_task.times();
-
-    // "times" report total time, phase_tables_cc reports wall time. Divide total times
-    // by active workers to get average time per worker, that would add up to wall time.
-    p->record_phase_time(phase_par_classes,    times.klass_work_us() / active);
-    p->record_phase_time(phase_par_codecache,  times.codecache_work_us() / active);
-    p->record_phase_time(phase_par_rmt,        times.rmt_work_us() / active);
-    p->record_phase_time(phase_par_symbstring, times.tables_work_us() / active);
-    p->record_phase_time(phase_par_sync,       times.sync_us() / active);
   }
 
   if (ShenandoahStringDedup::is_enabled()) {
-    ShenandoahPhaseTimings::Phase phase_purge_dedup =
-            full_gc ?
-            ShenandoahPhaseTimings::full_gc_purge_string_dedup :
-            ShenandoahPhaseTimings::purge_string_dedup;
-    ShenandoahGCPhase phase(phase_purge_dedup);
+    ShenandoahGCPhase phase(full_gc ?
+                            ShenandoahPhaseTimings::full_gc_purge_string_dedup :
+                            ShenandoahPhaseTimings::purge_string_dedup);
     ShenandoahStringDedup::parallel_cleanup();
   }
 
   {
-    ShenandoahGCPhase phase(phase_cldg);
+    ShenandoahGCPhase phase(full_gc ?
+                            ShenandoahPhaseTimings::full_gc_purge_cldg :
+                            ShenandoahPhaseTimings::purge_cldg);
     ClassLoaderDataGraph::purge();
   }
 }

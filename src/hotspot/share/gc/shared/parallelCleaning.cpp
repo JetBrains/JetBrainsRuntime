@@ -304,63 +304,27 @@ ParallelCleaningTask::ParallelCleaningTask(BoolObjectClosure* is_alive,
 
 }
 
-class ParallelCleaningTaskTimer {
-  volatile jint* _timer_us;
-  jlong start;
-public:
-  ParallelCleaningTaskTimer(jint* timer_us) : _timer_us(timer_us) {
-    start = os::javaTimeNanos();
-  }
-  ~ParallelCleaningTaskTimer() {
-    jlong ns = os::javaTimeNanos() - start;
-    jlong us = ns / 1000;
-    assert (us < max_jint, "overflow");
-    Atomic::add((jint) us, _timer_us);
-  }
-};
-
 // The parallel work done by all worker threads.
 void ParallelCleaningTask::work(uint worker_id) {
-  {
-    ParallelCleaningTaskTimer timer(&_times._codecache_work);
-    // Do first pass of code cache cleaning.
-    _code_cache_task.work_first_pass(worker_id);
-  }
+  // Do first pass of code cache cleaning.
+  _code_cache_task.work_first_pass(worker_id);
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._sync);
-    // Let the threads mark that the first pass is done.
-    _code_cache_task.barrier_mark(worker_id);
-  }
+  // Let the threads mark that the first pass is done.
+  _code_cache_task.barrier_mark(worker_id);
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._tables_work);
-    // Clean the Strings and Symbols.
-    _string_symbol_task.work(worker_id);
-  }
+  // Clean the Strings and Symbols.
+  _string_symbol_task.work(worker_id);
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._rmt_work);
-    // Clean unreferenced things in the ResolvedMethodTable
-    _resolved_method_cleaning_task.work();
-  }
+  // Clean unreferenced things in the ResolvedMethodTable
+  _resolved_method_cleaning_task.work();
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._sync);
-    // Wait for all workers to finish the first code cache cleaning pass.
-    _code_cache_task.barrier_wait(worker_id);
-  }
+  // Wait for all workers to finish the first code cache cleaning pass.
+  _code_cache_task.barrier_wait(worker_id);
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._codecache_work);
-    // Do the second code cache cleaning work, which realize on
-    // the liveness information gathered during the first pass.
-    _code_cache_task.work_second_pass(worker_id);
-  }
+  // Do the second code cache cleaning work, which realize on
+  // the liveness information gathered during the first pass.
+  _code_cache_task.work_second_pass(worker_id);
 
-  {
-    ParallelCleaningTaskTimer timer(&_times._klass_work);
-    // Clean all klasses that were not unloaded.
-    _klass_cleaning_task.work();
-  }
+  // Clean all klasses that were not unloaded.
+  _klass_cleaning_task.work();
 }

@@ -144,11 +144,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[purge]                           = "  System Purge";
   _phase_names[purge_class_unload]              = "    Unload Classes";
   _phase_names[purge_par]                       = "    Parallel Cleanup";
-  _phase_names[purge_par_codecache]             = "      Code Cache";
-  _phase_names[purge_par_symbstring]            = "      String/Symbol Tables";
-  _phase_names[purge_par_rmt]                   = "      Resolved Methods";
-  _phase_names[purge_par_classes]               = "      Clean Classes";
-  _phase_names[purge_par_sync]                  = "      Synchronization";
   _phase_names[purge_string_dedup]              = "    String Dedup";
   _phase_names[purge_cldg]                      = "    CLDG";
   _phase_names[complete_liveness]               = "  Complete Liveness";
@@ -256,15 +251,9 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_weakrefs_termination]    = "        Termination";
   _phase_names[full_gc_purge]                   = "    System Purge";
   _phase_names[full_gc_purge_class_unload]      = "      Unload Classes";
-  _phase_names[full_gc_purge_par]               = "    Parallel Cleanup";
-  _phase_names[full_gc_purge_par_codecache]     = "      Code Cache";
-  _phase_names[full_gc_purge_par_symbstring]    = "      String/Symbol Tables";
-  _phase_names[full_gc_purge_par_rmt]           = "      Resolved Methods";
-  _phase_names[full_gc_purge_par_classes]       = "      Clean Classes";
-  _phase_names[full_gc_purge_par_sync]          = "      Synchronization";
-  _phase_names[full_gc_purge_cldg]              = "    CLDG";
-  _phase_names[full_gc_purge_string_dedup]
-                                                = "    String Dedup";
+  _phase_names[full_gc_purge_par]               = "      Parallel Cleanup";
+  _phase_names[full_gc_purge_cldg]              = "      CLDG";
+  _phase_names[full_gc_purge_string_dedup]      = "      String Dedup";
   _phase_names[full_gc_calculate_addresses]     = "  Calculate Addresses";
   _phase_names[full_gc_calculate_addresses_regular] = "    Regular Objects";
   _phase_names[full_gc_calculate_addresses_humong]  = "    Humongous Objects";

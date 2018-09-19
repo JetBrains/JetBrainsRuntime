@@ -135,34 +135,9 @@ public:
   void work();
 };
 
-class ParallelCleaningTask;
-
-class ParallelCleaningTimes {
-  friend class ParallelCleaningTask;
-private:
-  // All times are in microseconds, making room for ~2 hrs in jint
-  jint _sync, _codecache_work, _tables_work, _rmt_work, _klass_work;
-
-public:
-  ParallelCleaningTimes() :
-          _sync(0),
-          _codecache_work(0),
-          _tables_work(0),
-          _rmt_work(0),
-          _klass_work(0) {};
-
-  jint sync_us()           const { return _sync; }
-  jint codecache_work_us() const { return _codecache_work; }
-  jint tables_work_us()    const { return _tables_work; }
-  jint rmt_work_us()       const { return _rmt_work; }
-  jint klass_work_us()     const { return _klass_work; }
-};
-
 // To minimize the remark pause times, the tasks below are done in parallel.
 class ParallelCleaningTask : public AbstractGangTask {
-  friend class ParallelCleaningTimes;
 private:
-  ParallelCleaningTimes       _times;
   StringSymbolTableUnlinkTask _string_symbol_task;
   CodeCacheUnloadingTask      _code_cache_task;
   KlassCleaningTask           _klass_cleaning_task;
@@ -174,10 +149,6 @@ public:
 
   // The parallel work done by all worker threads.
   void work(uint worker_id);
-
-  ParallelCleaningTimes times() {
-    return _times;
-  }
 };
 
 #endif // SHARE_VM_GC_SHARED_PARALLELCLEANING_HPP
