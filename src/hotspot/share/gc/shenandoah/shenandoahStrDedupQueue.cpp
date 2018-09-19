@@ -41,7 +41,6 @@ ShenandoahStrDedupQueue::ShenandoahStrDedupQueue() :
   _max_free_buffer(ShenandoahHeap::heap()->max_workers() * 2),
   _cancel(false),
   _total_buffers(0) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
   _producer_queues = NEW_C_HEAP_ARRAY(ShenandoahQueueBuffer*, _num_producer_queue, mtGC);
   for (size_t index = 0; index < _num_producer_queue; index ++) {
     _producer_queues[index] = NULL;

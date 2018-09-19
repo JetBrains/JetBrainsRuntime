@@ -52,26 +52,6 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
 
 }
 
-ShenandoahCollectorPolicy* ShenandoahCollectorPolicy::as_pgc_policy() {
-  return this;
-}
-
-BarrierSet::Name ShenandoahCollectorPolicy::barrier_set_name() {
-  return BarrierSet::Shenandoah;
-}
-
-HeapWord* ShenandoahCollectorPolicy::mem_allocate_work(size_t size,
-                                                       bool is_tlab,
-                                                       bool* gc_overhead_limit_was_exceeded) {
-  guarantee(false, "Not using this policy feature yet.");
-  return NULL;
-}
-
-HeapWord* ShenandoahCollectorPolicy::satisfy_failed_allocation(size_t size, bool is_tlab) {
-  guarantee(false, "Not using this policy feature yet.");
-  return NULL;
-}
-
 void ShenandoahCollectorPolicy::initialize_alignments() {
 
   // This is expected by our algorithm for ShenandoahHeap::heap_region_containing().

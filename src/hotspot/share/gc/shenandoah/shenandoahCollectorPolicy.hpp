@@ -60,16 +60,6 @@ private:
 public:
   ShenandoahCollectorPolicy();
 
-  virtual ShenandoahCollectorPolicy* as_pgc_policy();
-
-  BarrierSet::Name barrier_set_name();
-
-  HeapWord* mem_allocate_work(size_t size,
-                              bool is_tlab,
-                              bool* gc_overhead_limit_was_exceeded);
-
-  HeapWord* satisfy_failed_allocation(size_t size, bool is_tlab);
-
   void initialize_alignments();
 
   // TODO: This is different from gc_end: that one encompasses one VM operation.

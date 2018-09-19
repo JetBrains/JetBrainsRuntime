@@ -338,7 +338,6 @@ void ShenandoahAsserts::assert_not_in_cset_loc(void* interior_loc, const char* f
 
 void ShenandoahAsserts::print_rp_failure(const char *label, BoolObjectClosure* actual,
                                          const char *file, int line) {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
   ShenandoahMessageBuffer msg("%s\n", label);
   msg.append(" Actual:                  " PTR_FORMAT "\n", p2i(actual));
   report_vm_error(file, line, msg.buffer());

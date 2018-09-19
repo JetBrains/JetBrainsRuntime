@@ -286,7 +286,6 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
 
   Node* tls = __ thread(); // ThreadLocalStorage
 
-  Node* no_ctrl = NULL;
   Node* no_base = __ top();
   Node* zero  = __ ConI(0);
   Node* zeroX = __ ConX(0);
@@ -294,16 +293,11 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
   float likely  = PROB_LIKELY(0.999);
   float unlikely  = PROB_UNLIKELY(0.999);
 
-  BasicType active_type = in_bytes(SATBMarkQueue::byte_width_of_active()) == 4 ? T_INT : T_BYTE;
-  assert(in_bytes(SATBMarkQueue::byte_width_of_active()) == 4 || in_bytes(SATBMarkQueue::byte_width_of_active()) == 1, "flag width");
-
   // Offsets into the thread
-  const int marking_offset = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_active_offset());
   const int index_offset   = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_index_offset());
   const int buffer_offset  = in_bytes(ShenandoahThreadLocalData::satb_mark_queue_buffer_offset());
 
   // Now the actual pointers into the thread
-  Node* marking_adr = __ AddP(no_base, tls, __ ConX(marking_offset));
   Node* buffer_adr  = __ AddP(no_base, tls, __ ConX(buffer_offset));
   Node* index_adr   = __ AddP(no_base, tls, __ ConX(index_offset));
 

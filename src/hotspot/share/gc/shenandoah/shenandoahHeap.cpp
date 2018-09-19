@@ -1233,23 +1233,6 @@ void ShenandoahHeap::retire_and_reset_gclabs() {
   _safepoint_workers->threads_do(&cl);
 }
 
-bool  ShenandoahHeap::can_elide_tlab_store_barriers() const {
-  return true;
-}
-
-oop ShenandoahHeap::new_store_pre_barrier(JavaThread* thread, oop new_obj) {
-  // Overridden to do nothing.
-  return new_obj;
-}
-
-bool  ShenandoahHeap::can_elide_initializing_store_barrier(oop new_obj) {
-  return true;
-}
-
-bool ShenandoahHeap::card_mark_must_follow_store() const {
-  return false;
-}
-
 void ShenandoahHeap::collect(GCCause::Cause cause) {
   control_thread()->handle_explicit_gc(cause);
 }
@@ -1885,8 +1868,6 @@ bool ShenandoahIsAliveClosure::do_object_b(oop obj) {
 }
 
 void ShenandoahHeap::ref_processing_init() {
-  MemRegion mr = reserved_region();
-
   assert(_max_workers > 0, "Sanity");
 
   _ref_processor =

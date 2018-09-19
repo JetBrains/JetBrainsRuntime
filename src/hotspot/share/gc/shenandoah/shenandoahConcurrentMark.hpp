@@ -110,7 +110,6 @@ public:
   // Those are only needed public because they're called from closures.
 
   ShenandoahObjToScanQueue* get_queue(uint worker_id);
-  void clear_queue(ShenandoahObjToScanQueue *q);
 
   ShenandoahObjToScanQueueSet* task_queues() { return _task_queues;}
 

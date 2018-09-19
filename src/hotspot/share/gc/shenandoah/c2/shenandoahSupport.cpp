@@ -547,7 +547,6 @@ Node* ShenandoahWriteBarrierNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     return NULL;
   }
 
-  PhaseIterGVN* igvn = phase->is_IterGVN();
   Node* mem_in = in(Memory);
 
   if (mem_in->isa_MergeMem()) {

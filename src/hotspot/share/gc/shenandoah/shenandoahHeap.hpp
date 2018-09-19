@@ -40,7 +40,6 @@ class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahControlThread;
-class ShenandoahFastRegionSet;
 class ShenandoahGCSession;
 class ShenandoahHeuristics;
 class ShenandoahMarkingContext;
@@ -336,10 +335,6 @@ public:
   virtual oop class_allocate(Klass* klass, int size, TRAPS);
   HeapWord* mem_allocate(size_t size, bool* what) /* override */;
   virtual void fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap);
-  bool can_elide_tlab_store_barriers() const /* override */;
-  oop new_store_pre_barrier(JavaThread* thread, oop new_obj) /* override */;
-  bool can_elide_initializing_store_barrier(oop new_obj) /* override */;
-  bool card_mark_must_follow_store() const /* override */;
   void collect(GCCause::Cause cause) /* override */;
   void do_full_collection(bool clear_all_soft_refs) /* override */;
   AdaptiveSizePolicy* size_policy() /* override */;
@@ -368,10 +363,6 @@ public:
   virtual void safepoint_synchronize_end();
 
   WorkGang* get_safepoint_workers() { return _safepoint_workers; }
-
-#ifndef CC_INTERP
-  void compile_prepare_oop(MacroAssembler* masm, Register obj) /* override */;
-#endif
 
   void register_nmethod(nmethod* nm);
   void unregister_nmethod(nmethod* nm);

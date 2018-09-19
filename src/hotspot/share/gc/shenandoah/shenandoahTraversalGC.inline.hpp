@@ -56,7 +56,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
       }
       shenandoah_assert_forwarded_except(p, obj, _heap->cancelled_gc());
       // Update reference.
-      oop previous = _heap->atomic_compare_exchange_oop(forw, p, obj);
+      _heap->atomic_compare_exchange_oop(forw, p, obj);
       obj = forw;
     }
 
