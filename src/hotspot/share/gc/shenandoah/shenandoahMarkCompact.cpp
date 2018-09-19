@@ -108,6 +108,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
     // c. Reset the bitmaps for new marking
     heap->reset_mark_bitmap();
     assert(heap->marking_context()->is_bitmap_clear(), "sanity");
+    assert(!heap->marking_context()->is_complete(), "sanity");
 
     // d. Abandon reference discovery and clear all discovered references.
     ReferenceProcessor* rp = heap->ref_processor();

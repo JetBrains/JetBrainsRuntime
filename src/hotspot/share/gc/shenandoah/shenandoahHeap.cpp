@@ -426,6 +426,7 @@ public:
 
 void ShenandoahHeap::reset_mark_bitmap() {
   assert_gc_workers(_workers->active_workers());
+  mark_incomplete_marking_context();
 
   ShenandoahResetBitmapTask task;
   _workers->run_task(&task);
@@ -1465,6 +1466,7 @@ void ShenandoahHeap::op_init_mark() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
   assert(marking_context()->is_bitmap_clear(), "need clear marking bitmap");
+  assert(!marking_context()->is_complete(), "should not be complete");
 
   if (ShenandoahVerify) {
     verifier()->verify_before_concmark();

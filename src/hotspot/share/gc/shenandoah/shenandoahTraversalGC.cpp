@@ -380,6 +380,7 @@ void ShenandoahTraversalGC::prepare() {
   }
 
   assert(_heap->marking_context()->is_bitmap_clear(), "need clean mark bitmap");
+  assert(!_heap->marking_context()->is_complete(), "should not be complete");
 
   ShenandoahFreeSet* free_set = _heap->free_set();
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
