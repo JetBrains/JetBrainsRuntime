@@ -2140,12 +2140,12 @@ public:
     ShenandoahHeapRegion* r = _regions->next();
     ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
     while (r != NULL) {
+      HeapWord* top_at_start_ur = r->concurrent_iteration_safe_limit();
+      assert (top_at_start_ur >= r->bottom(), "sanity");
       if (r->is_active() && !r->is_cset()) {
-        _heap->marked_object_oop_safe_iterate(r, &cl);
+        _heap->marked_object_oop_iterate(r, &cl, top_at_start_ur);
       }
       if (ShenandoahPacing) {
-        HeapWord* top_at_start_ur = r->concurrent_iteration_safe_limit();
-        assert (top_at_start_ur >= r->bottom(), "sanity");
         _heap->pacer()->report_updaterefs(pointer_delta(top_at_start_ur, r->bottom()));
       }
       if (_heap->check_cancelled_gc_and_yield(_concurrent)) {

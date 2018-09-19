@@ -546,25 +546,15 @@ public:
   // Call after finished with evacuation.
   void leave_evacuation();
 
-private:
-  template<class T>
-  inline void marked_object_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit);
-
-  template<class T>
-  inline void marked_object_oop_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit);
-
 public:
   template<class T>
   inline void marked_object_iterate(ShenandoahHeapRegion* region, T* cl);
 
   template<class T>
-  inline void marked_object_safe_iterate(ShenandoahHeapRegion* region, T* cl);
+  inline void marked_object_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit);
 
   template<class T>
-  inline void marked_object_oop_iterate(ShenandoahHeapRegion* region, T* cl);
-
-  template<class T>
-  inline void marked_object_oop_safe_iterate(ShenandoahHeapRegion* region, T* cl);
+  inline void marked_object_oop_iterate(ShenandoahHeapRegion* region, T* cl, HeapWord* limit);
 
   GCTimer* gc_timer() const;
 
