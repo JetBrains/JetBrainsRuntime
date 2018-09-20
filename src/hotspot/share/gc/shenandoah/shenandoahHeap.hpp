@@ -307,7 +307,7 @@ private:
 public:
   ShenandoahHeap(ShenandoahCollectorPolicy* policy);
 
-  const char* name() const /* override */;
+  const char* name() const { return "Shenandoah"; }
   virtual HeapWord* allocate_new_tlab(size_t min_size,
                                       size_t requested_size,
                                       size_t* actual_size) /* override */;
@@ -327,7 +327,7 @@ public:
   size_t max_capacity() const /* override */;
   size_t initial_capacity() const /* override */;
   bool is_in(const void* p) const /* override */;
-  bool is_scavengable(oop obj) /* override */;
+  bool is_scavengable(oop obj) { return true; }
   virtual oop obj_allocate(Klass* klass, int size, TRAPS);
   virtual oop array_allocate(Klass* klass, int size, int length, bool do_zero, TRAPS);
   virtual oop class_allocate(Klass* klass, int size, TRAPS);
@@ -337,7 +337,7 @@ public:
   void do_full_collection(bool clear_all_soft_refs) /* override */;
   AdaptiveSizePolicy* size_policy() shenandoah_not_implemented_return(NULL);
   CollectorPolicy* collector_policy() const /* override */;
-  SoftRefPolicy* soft_ref_policy() /* override */;
+  SoftRefPolicy* soft_ref_policy() { return &_soft_ref_policy; }
   void ensure_parsability(bool retire_tlabs) /* override */;
   HeapWord* block_start(const void* addr) const /* override */;
   size_t block_size(const HeapWord* addr) const /* override */;
@@ -348,7 +348,7 @@ public:
   void gc_threads_do(ThreadClosure* tcl) const /* override */;
   void print_tracing_info() const /* override */;
   void verify(VerifyOption vo) /* override */;
-  bool supports_tlab_allocation() const /* override */;
+  bool supports_tlab_allocation() const { return true; }
   size_t tlab_capacity(Thread *thr) const /* override */;
   void object_iterate(ObjectClosure* cl) /* override */;
   void safe_object_iterate(ObjectClosure* cl) /* override */;
@@ -447,8 +447,6 @@ public:
 
   void force_satb_flush_all_threads();
 
-  bool last_gc_made_progress() const;
-
   template <class T>
   inline bool in_collection_set(T obj) const;
 
@@ -510,9 +508,9 @@ public:
   ShenandoahMonitoringSupport* monitoring_support();
   ShenandoahConcurrentMark* concurrent_mark() { return _scm; }
   ShenandoahMarkCompact* full_gc() { return _full_gc; }
-  ShenandoahTraversalGC* traversal_gc();
+  ShenandoahTraversalGC* traversal_gc() { return _traversal_gc; }
   ShenandoahVerifier* verifier();
-  ShenandoahPacer* pacer() const;
+  ShenandoahPacer* pacer() const { return _pacer; }
 
   ReferenceProcessor* ref_processor() { return _ref_processor;}
 
