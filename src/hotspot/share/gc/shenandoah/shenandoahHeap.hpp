@@ -572,9 +572,6 @@ private:
   HeapWord* allocate_from_gclab_slow(Thread* thread, size_t size);
   HeapWord* allocate_new_gclab(size_t min_size, size_t word_size, size_t* actual_size);
 
-  template<class T>
-  inline void do_object_marked_complete(T* cl, oop obj);
-
   ShenandoahControlThread* control_thread() { return _control_thread; }
 
 public:

@@ -442,7 +442,9 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
         assert (slots[c] < tams,  "only objects below TAMS here: "  PTR_FORMAT " (" PTR_FORMAT ")", p2i(slots[c]), p2i(tams));
         assert (slots[c] < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(slots[c]), p2i(limit));
         oop obj = oop(slots[c]);
-        do_object_marked_complete(cl, obj);
+        assert(oopDesc::is_oop(obj), "sanity");
+        assert(ctx->is_marked(obj), "object expected to be marked");
+        cl->do_object(obj);
       }
     } while (avail > 0);
   } else {
@@ -450,7 +452,9 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
       assert (cb < tams,  "only objects below TAMS here: "  PTR_FORMAT " (" PTR_FORMAT ")", p2i(cb), p2i(tams));
       assert (cb < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(cb), p2i(limit));
       oop obj = oop(cb);
-      do_object_marked_complete(cl, obj);
+      assert(oopDesc::is_oop(obj), "sanity");
+      assert(ctx->is_marked(obj), "object expected to be marked");
+      cl->do_object(obj);
       cb += skip_bitmap_delta;
       if (cb < limit_bitmap) {
         cb = mark_bit_map->getNextMarkedWordAddress(cb, limit_bitmap);
@@ -466,17 +470,12 @@ inline void ShenandoahHeap::marked_object_iterate(ShenandoahHeapRegion* region, 
     assert (cs > tams,  "only objects past TAMS here: "   PTR_FORMAT " (" PTR_FORMAT ")", p2i(cs), p2i(tams));
     assert (cs < limit, "only objects below limit here: " PTR_FORMAT " (" PTR_FORMAT ")", p2i(cs), p2i(limit));
     oop obj = oop(cs);
+    assert(oopDesc::is_oop(obj), "sanity");
+    assert(ctx->is_marked(obj), "object expected to be marked");
     int size = obj->size();
-    do_object_marked_complete(cl, obj);
+    cl->do_object(obj);
     cs += size + skip_objsize_delta;
   }
-}
-
-template<class T>
-inline void ShenandoahHeap::do_object_marked_complete(T* cl, oop obj) {
-  assert(oopDesc::is_oop(obj), "sanity");
-  assert(_marking_context->is_marked(obj), "object expected to be marked");
-  cl->do_object(obj);
 }
 
 template <class T>
