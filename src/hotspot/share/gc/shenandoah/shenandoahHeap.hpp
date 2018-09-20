@@ -304,10 +304,6 @@ private:
 
   ShenandoahEvacOOMHandler _oom_evac_handler;
 
-#ifdef ASSERT
-  int     _heap_expansion_count;
-#endif
-
 public:
   ShenandoahHeap(ShenandoahCollectorPolicy* policy);
 

@@ -372,9 +372,6 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
   _memory_pool(NULL)
-#ifdef ASSERT
-  , _heap_expansion_count(0)
-#endif
 {
   log_info(gc, init)("GC threads: " UINT32_FORMAT " parallel, " UINT32_FORMAT " concurrent", ParallelGCThreads, ConcGCThreads);
   log_info(gc, init)("Reference processing: %s", ParallelRefProcEnabled ? "parallel" : "serial");
