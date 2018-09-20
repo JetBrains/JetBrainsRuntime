@@ -332,15 +332,6 @@ inline bool ShenandoahHeap::requires_marking(const void* entry) const {
   return !_marking_context->is_marked(oop(entry));
 }
 
-bool ShenandoahHeap::region_in_collection_set(size_t region_index) const {
-  assert(collection_set() != NULL, "Sanity");
-  return collection_set()->is_in(region_index);
-}
-
-bool ShenandoahHeap::in_collection_set(ShenandoahHeapRegion* r) const {
-  return region_in_collection_set(r->region_number());
-}
-
 template <class T>
 inline bool ShenandoahHeap::in_collection_set(T p) const {
   HeapWord* obj = (HeapWord*) p;

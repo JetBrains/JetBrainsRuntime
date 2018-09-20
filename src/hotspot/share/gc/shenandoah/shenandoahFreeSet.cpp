@@ -415,7 +415,7 @@ void ShenandoahFreeSet::rebuild() {
   for (size_t idx = 0; idx < _heap->num_regions(); idx++) {
     ShenandoahHeapRegion* region = _heap->get_region(idx);
     if (region->is_alloc_allowed() || region->is_trash()) {
-      assert(!region->in_collection_set(), "Shouldn't be adding those to the free set");
+      assert(!region->is_cset(), "Shouldn't be adding those to the free set");
 
       // Do not add regions that would surely fail allocation
       if (has_no_alloc_capacity(region)) continue;

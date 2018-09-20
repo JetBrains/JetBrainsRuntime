@@ -1008,7 +1008,7 @@ void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
     ShenandoahHeapRegion* region = get_region(index --);
 
     assert(region->is_humongous(), "expect correct humongous start or continuation");
-    assert(!in_collection_set(region), "Humongous region should not be in collection set");
+    assert(!region->is_cset(), "Humongous region should not be in collection set");
 
     region->make_trash_immediate();
   }
@@ -1371,7 +1371,7 @@ void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk, bool 
     if (skip_humongous_continuation && current->is_humongous_continuation()) {
       continue;
     }
-    if (skip_cset_regions && in_collection_set(current)) {
+    if (skip_cset_regions && current->is_cset()) {
       continue;
     }
     if (blk->heap_region_do(current)) {

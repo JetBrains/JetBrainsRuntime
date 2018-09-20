@@ -390,10 +390,6 @@ size_t ShenandoahHeapRegion::garbage() const {
   return result;
 }
 
-bool ShenandoahHeapRegion::in_collection_set() const {
-  return _heap->region_in_collection_set(_region_number);
-}
-
 void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|");
   st->print(SIZE_FORMAT_W(5), this->_region_number);

@@ -453,14 +453,11 @@ public:
 
   bool last_gc_made_progress() const;
 
-  inline bool region_in_collection_set(size_t region_index) const;
-
-  // Mainly there to avoid accidentally calling the templated
-  // method below with ShenandoahHeapRegion* which would be *wrong*.
-  inline bool in_collection_set(ShenandoahHeapRegion* r) const;
-
   template <class T>
   inline bool in_collection_set(T obj) const;
+
+  // Avoid accidentally calling the method above with ShenandoahHeapRegion*, which would be *wrong*.
+  inline bool in_collection_set(ShenandoahHeapRegion* r) shenandoah_not_implemented_return(false);
 
   // Evacuates object src. Returns the evacuated object if this thread
   // succeeded, otherwise rolls back the evacuation and returns the

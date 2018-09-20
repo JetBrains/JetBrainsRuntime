@@ -391,7 +391,7 @@ public:
     verify(r, !r->is_empty() || !r->has_live(),
            "Empty regions should not have live data");
 
-    verify(r, r->is_cset() == r->in_collection_set(),
+    verify(r, r->is_cset() == _heap->collection_set()->is_in(r),
            "Transitional: region flags and collection set agree");
 
     verify(r, r->is_empty() || r->seqnum_first_alloc() != 0,
