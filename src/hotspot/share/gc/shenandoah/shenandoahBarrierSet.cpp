@@ -92,14 +92,6 @@ bool ShenandoahBarrierSet::is_aligned(HeapWord* hw) {
   return true;
 }
 
-void ShenandoahBarrierSet::resize_covered_region(MemRegion mr) {
-  Unimplemented();
-}
-
-void ShenandoahBarrierSet::write_ref_array_work(MemRegion r) {
-  ShouldNotReachHere();
-}
-
 template <class T, bool STOREVAL_WRITE_BARRIER>
 void ShenandoahBarrierSet::write_ref_array_loop(HeapWord* start, size_t count) {
   assert(UseShenandoahGC && ShenandoahCloneBarrier, "should be enabled");

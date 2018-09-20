@@ -324,11 +324,6 @@ void ShenandoahHeapRegion::make_committed_bypass() {
   }
 }
 
-bool ShenandoahHeapRegion::rollback_allocation(uint size) {
-  set_top(top() - size);
-  return true;
-}
-
 void ShenandoahHeapRegion::clear_live_data() {
   OrderAccess::release_store_fence<size_t>(&_live_data, 0);
 }
@@ -480,15 +475,6 @@ void ShenandoahHeapRegion::oop_iterate_humongous(OopIterateClosure* blk) {
   assert(r->is_humongous_start(), "need humongous head here");
   oop obj = oop(r->bottom() + BrooksPointer::word_size());
   obj->oop_iterate(blk, MemRegion(bottom(), top()));
-}
-
-void ShenandoahHeapRegion::fill_region() {
-  if (free() > (BrooksPointer::word_size() + CollectedHeap::min_fill_size())) {
-    HeapWord* filler = allocate(BrooksPointer::word_size(), ShenandoahHeap::_alloc_shared);
-    HeapWord* obj = allocate(end() - top(), ShenandoahHeap::_alloc_shared);
-    _heap->fill_with_object(obj, end() - obj);
-    BrooksPointer::initialize(oop(obj));
-  }
 }
 
 ShenandoahHeapRegion* ShenandoahHeapRegion::humongous_start_region() const {
@@ -677,28 +663,6 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
                      byte_size_in_proper_unit(HumongousThresholdBytes), proper_unit_for_byte_size(HumongousThresholdBytes));
   log_info(gc, init)("Max TLAB size: " SIZE_FORMAT "%s",
                      byte_size_in_proper_unit(MaxTLABSizeBytes), proper_unit_for_byte_size(MaxTLABSizeBytes));
-}
-
-CompactibleSpace* ShenandoahHeapRegion::next_compaction_space() const {
-  return _heap->next_compaction_region(this);
-}
-
-void ShenandoahHeapRegion::prepare_for_compaction(CompactPoint* cp) {
-  scan_and_forward(this, cp);
-}
-
-void ShenandoahHeapRegion::adjust_pointers() {
-  // Check first is there is any work to do.
-  if (used() == 0) {
-    return;   // Nothing to do.
-  }
-
-  scan_and_adjust_pointers(this);
-}
-
-void ShenandoahHeapRegion::compact() {
-  assert(!is_humongous(), "Shouldn't be compacting humongous regions");
-  scan_and_compact(this);
 }
 
 void ShenandoahHeapRegion::do_commit() {

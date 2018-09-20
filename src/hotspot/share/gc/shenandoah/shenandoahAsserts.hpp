@@ -161,6 +161,11 @@ public:
 #define shenandoah_assert_rp_isalive_not_installed()
 #endif
 
+#define shenandoah_not_implemented \
+                    { fatal("Deliberately not implemented."); }
+#define shenandoah_not_implemented_return(v) \
+                    { fatal("Deliberately not implemented."); return v; }
+
 };
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHASSERTS_HPP

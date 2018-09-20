@@ -334,15 +334,8 @@ public:
 
   // Allocation (return NULL if full)
   inline HeapWord* allocate(size_t word_size, ShenandoahHeap::AllocType type);
-  HeapWord* allocate(size_t word_size) {
-    // ContiguousSpace wants us to have this method. But it is an error to call this with Shenandoah.
-    ShouldNotCallThis();
-    return NULL;
-  }
 
-  // Roll back the previous allocation of an object with specified size.
-  // Returns TRUE when successful, FALSE if not successful or not supported.
-  bool rollback_allocation(uint size);
+  HeapWord* allocate(size_t word_size) shenandoah_not_implemented_return(NULL)
 
   void clear_live_data();
   void set_live_data(size_t s);
@@ -367,20 +360,15 @@ public:
 
   HeapWord* block_start_const(const void* p) const;
 
-  // Just before GC we need to fill the current region.
-  void fill_region();
-
   bool in_collection_set() const;
 
   // Find humongous start region that this region belongs to
   ShenandoahHeapRegion* humongous_start_region() const;
 
-  virtual CompactibleSpace* next_compaction_space() const;
-
-  // Override for scan_and_forward support.
-  void prepare_for_compaction(CompactPoint* cp);
-  void adjust_pointers();
-  void compact();
+  CompactibleSpace* next_compaction_space() const shenandoah_not_implemented_return(NULL);
+  void prepare_for_compaction(CompactPoint* cp)   shenandoah_not_implemented;
+  void adjust_pointers()                          shenandoah_not_implemented;
+  void compact()                                  shenandoah_not_implemented;
 
   void set_new_top(HeapWord* new_top) { _new_top = new_top; }
   HeapWord* new_top() const { return _new_top; }

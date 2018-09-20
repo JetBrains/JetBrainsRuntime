@@ -59,10 +59,8 @@ public:
   bool is_a(BarrierSet::Name bsn);
 
   bool is_aligned(HeapWord* hw);
-  void resize_covered_region(MemRegion mr);
 
   void write_ref_array(HeapWord* start, size_t count);
-  void write_ref_array_work(MemRegion r);
 
   template <class T> void
   write_ref_array_pre_work(T* dst, size_t count);
