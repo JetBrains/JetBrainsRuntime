@@ -2523,6 +2523,15 @@ Java_sun_awt_windows_WToolkit_getScreenInsets(JNIEnv *env,
         DASSERT(insetsClass != NULL);
         CHECK_NULL_RETURN(insetsClass, NULL);
 
+        Devices::InstanceAccess devices;
+        AwtWin32GraphicsDevice *device = devices->GetDevice(screen);
+        if (device != NULL) {
+            ::SetRect(&rect,
+                device->ScaleDownX(rect.left),
+                device->ScaleDownY(rect.top),
+                device->ScaleDownX(rect.right),
+                device->ScaleDownY(rect.bottom));
+        }
         insets = env->NewObject(insetsClass,
                 AwtToolkit::insetsMID,
                 rect.top,
