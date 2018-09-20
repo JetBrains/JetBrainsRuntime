@@ -96,7 +96,7 @@ public:
     ShenandoahWorkerSession worker_session(worker_id);
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
-    ShenandoahObjToScanQueueSet* queues = heap->concurrentMark()->task_queues();
+    ShenandoahObjToScanQueueSet* queues = heap->concurrent_mark()->task_queues();
     assert(queues->get_reserved() > worker_id, "Queue has not been reserved for worker id: %d", worker_id);
 
     ShenandoahObjToScanQueue* q = queues->queue(worker_id);
@@ -118,7 +118,7 @@ public:
     //      pause time.
 
     ResourceMark m;
-    if (heap->concurrentMark()->unload_classes()) {
+    if (heap->concurrent_mark()->unload_classes()) {
       _rp->process_strong_roots(&mark_cl, _process_refs ? NULL : &mark_cl, &cldCl, NULL, &blobsCl, NULL, worker_id);
     } else {
       if (ShenandoahConcurrentScanCodeRoots) {
@@ -528,7 +528,7 @@ public:
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* sh = ShenandoahHeap::heap();
-    ShenandoahConcurrentMark* scm = sh->concurrentMark();
+    ShenandoahConcurrentMark* scm = sh->concurrent_mark();
     assert(scm->process_references(), "why else would we be here?");
     ReferenceProcessor* rp = sh->ref_processor();
 
@@ -648,11 +648,11 @@ public:
     ShenandoahCMDrainMarkingStackClosure complete_gc(worker_id, _terminator);
     if (heap->has_forwarded_objects()) {
       ShenandoahForwardedIsAliveClosure is_alive;
-      ShenandoahCMKeepAliveUpdateClosure keep_alive(heap->concurrentMark()->get_queue(worker_id));
+      ShenandoahCMKeepAliveUpdateClosure keep_alive(heap->concurrent_mark()->get_queue(worker_id));
       _proc_task.work(worker_id, is_alive, keep_alive, complete_gc);
     } else {
       ShenandoahIsAliveClosure is_alive;
-      ShenandoahCMKeepAliveClosure keep_alive(heap->concurrentMark()->get_queue(worker_id));
+      ShenandoahCMKeepAliveClosure keep_alive(heap->concurrent_mark()->get_queue(worker_id));
       _proc_task.work(worker_id, is_alive, keep_alive, complete_gc);
     }
   }
@@ -674,7 +674,7 @@ public:
     assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
     ShenandoahHeap* heap = ShenandoahHeap::heap();
-    ShenandoahConcurrentMark* cm = heap->concurrentMark();
+    ShenandoahConcurrentMark* cm = heap->concurrent_mark();
     ShenandoahPushWorkerQueuesScope scope(_workers, cm->task_queues(),
                                           ergo_workers,
                                           /* do_check = */ false);
@@ -800,7 +800,7 @@ class ShenandoahPrecleanCompleteGCClosure : public VoidClosure {
 public:
   void do_void() {
     ShenandoahHeap* sh = ShenandoahHeap::heap();
-    ShenandoahConcurrentMark* scm = sh->concurrentMark();
+    ShenandoahConcurrentMark* scm = sh->concurrent_mark();
     assert(scm->process_references(), "why else would we be here?");
     ParallelTaskTerminator terminator(1, scm->task_queues());
 

@@ -513,7 +513,7 @@ public:
   virtual GrowableArray<MemoryPool*> memory_pools();
 
   ShenandoahMonitoringSupport* monitoring_support();
-  ShenandoahConcurrentMark* concurrentMark() { return _scm; }
+  ShenandoahConcurrentMark* concurrent_mark() { return _scm; }
   ShenandoahMarkCompact* full_gc() { return _full_gc; }
   ShenandoahTraversalGC* traversal_gc();
   ShenandoahVerifier* verifier();

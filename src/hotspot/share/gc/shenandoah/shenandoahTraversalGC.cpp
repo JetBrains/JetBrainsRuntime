@@ -504,7 +504,7 @@ template <class T>
 void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator* terminator) {
   ShenandoahObjToScanQueueSet* queues = task_queues();
   ShenandoahObjToScanQueue* q = queues->queue(worker_id);
-  ShenandoahConcurrentMark* conc_mark = _heap->concurrentMark();
+  ShenandoahConcurrentMark* conc_mark = _heap->concurrent_mark();
 
   uintx stride = ShenandoahMarkLoopStride;
 

@@ -100,7 +100,7 @@ void ShenandoahMarkCompact::do_it(GCCause::Cause gc_cause) {
 
     // b. Cancel concurrent mark, if in progress
     if (heap->is_concurrent_mark_in_progress()) {
-      heap->concurrentMark()->cancel();
+      heap->concurrent_mark()->cancel();
       heap->stop_concurrent_marking();
     }
     assert(!heap->is_concurrent_mark_in_progress(), "sanity");
@@ -204,7 +204,7 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
   ShenandoahPrepareForMarkClosure cl;
   heap->heap_region_iterate(&cl, false, false);
 
-  ShenandoahConcurrentMark* cm = heap->concurrentMark();
+  ShenandoahConcurrentMark* cm = heap->concurrent_mark();
 
   // Do not trust heuristics, because this can be our last resort collection.
   // Only ignore processing references and class unloading if explicitly disabled.

@@ -1424,7 +1424,7 @@ void ShenandoahHeap::op_init_mark() {
   // Make above changes visible to worker threads
   OrderAccess::fence();
 
-  concurrentMark()->init_mark_roots();
+  concurrent_mark()->init_mark_roots();
 
   if (UseTLAB) {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::resize_tlabs);
@@ -1437,7 +1437,7 @@ void ShenandoahHeap::op_init_mark() {
 }
 
 void ShenandoahHeap::op_mark() {
-  concurrentMark()->mark_from_roots();
+  concurrent_mark()->mark_from_roots();
 }
 
 void ShenandoahHeap::op_final_mark() {
@@ -1448,7 +1448,7 @@ void ShenandoahHeap::op_final_mark() {
   // get unmarked objects in the roots.
 
   if (!cancelled_gc()) {
-    concurrentMark()->finish_mark_from_roots();
+    concurrent_mark()->finish_mark_from_roots();
     stop_concurrent_marking();
 
     {
@@ -1509,7 +1509,7 @@ void ShenandoahHeap::op_final_mark() {
       pacer()->setup_for_evac();
     }
   } else {
-    concurrentMark()->cancel();
+    concurrent_mark()->cancel();
     stop_concurrent_marking();
 
     if (process_references()) {
@@ -1552,7 +1552,7 @@ void ShenandoahHeap::op_reset() {
 }
 
 void ShenandoahHeap::op_preclean() {
-  concurrentMark()->preclean_weak_refs();
+  concurrent_mark()->preclean_weak_refs();
 }
 
 void ShenandoahHeap::op_init_traversal() {
@@ -2145,7 +2145,7 @@ void ShenandoahHeap::op_final_updaterefs() {
   }
   assert(!cancelled_gc(), "Should have been done right before");
 
-  concurrentMark()->update_roots(is_degenerated_gc_in_progress() ?
+  concurrent_mark()->update_roots(is_degenerated_gc_in_progress() ?
                                  ShenandoahPhaseTimings::degen_gc_update_roots:
                                  ShenandoahPhaseTimings::final_update_refs_roots);
 
