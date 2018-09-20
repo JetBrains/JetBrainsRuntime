@@ -465,7 +465,6 @@ public:
   inline void clear_cancelled_gc();
 
   inline ShenandoahHeapRegion* const get_region(size_t region_idx) const;
-  void heap_region_iterate(ShenandoahHeapRegionClosure& cl) const;
 
   ShenandoahFreeSet* free_set()             const { return _free_set; }
   ShenandoahCollectionSet* collection_set() const { return _collection_set; }
