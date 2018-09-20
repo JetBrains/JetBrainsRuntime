@@ -409,7 +409,6 @@ public:
 
   void stop_concurrent_marking();
 
-  void prepare_for_concurrent_evacuation();
   void evacuate_and_update_roots();
   // Fixup roots after concurrent cycle failed
   void fixup_roots();

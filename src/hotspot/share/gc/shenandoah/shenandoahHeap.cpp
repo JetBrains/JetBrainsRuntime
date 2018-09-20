@@ -1014,55 +1014,6 @@ void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
   }
 }
 
-#ifdef ASSERT
-class ShenandoahCheckCollectionSetClosure: public ShenandoahHeapRegionClosure {
-  bool heap_region_do(ShenandoahHeapRegion* r) {
-    assert(! ShenandoahHeap::heap()->in_collection_set(r), "Should have been cleared by now");
-    return false;
-  }
-};
-#endif
-
-void ShenandoahHeap::prepare_for_concurrent_evacuation() {
-  if (!cancelled_gc()) {
-    make_parsable(true);
-
-    if (ShenandoahVerify) {
-      verifier()->verify_after_concmark();
-    }
-
-    trash_cset_regions();
-
-    // NOTE: This needs to be done during a stop the world pause, because
-    // putting regions into the collection set concurrently with Java threads
-    // will create a race. In particular, acmp could fail because when we
-    // resolve the first operand, the containing region might not yet be in
-    // the collection set, and thus return the original oop. When the 2nd
-    // operand gets resolved, the region could be in the collection set
-    // and the oop gets evacuated. If both operands have originally been
-    // the same, we get false negatives.
-
-    {
-      ShenandoahHeapLocker locker(lock());
-      _collection_set->clear();
-      _free_set->clear();
-
-#ifdef ASSERT
-      ShenandoahCheckCollectionSetClosure ccsc;
-      heap_region_iterate(&ccsc);
-#endif
-
-      heuristics()->choose_collection_set(_collection_set);
-
-      _free_set->rebuild();
-    }
-
-    if (ShenandoahVerify) {
-      verifier()->verify_before_evacuation();
-    }
-  }
-}
-
 
 class ShenandoahRetireGCLABClosure : public ThreadClosure {
 public:
@@ -1525,7 +1476,28 @@ void ShenandoahHeap::op_final_mark() {
 
     {
       ShenandoahGCPhase prepare_evac(ShenandoahPhaseTimings::prepare_evac);
-      prepare_for_concurrent_evacuation();
+
+      make_parsable(true);
+
+      if (ShenandoahVerify) {
+        verifier()->verify_after_concmark();
+      }
+
+      trash_cset_regions();
+
+      {
+        ShenandoahHeapLocker locker(lock());
+        _collection_set->clear();
+        _free_set->clear();
+
+        heuristics()->choose_collection_set(_collection_set);
+
+        _free_set->rebuild();
+      }
+
+      if (ShenandoahVerify) {
+        verifier()->verify_before_evacuation();
+      }
     }
 
     // If collection set has candidates, start evacuation.
