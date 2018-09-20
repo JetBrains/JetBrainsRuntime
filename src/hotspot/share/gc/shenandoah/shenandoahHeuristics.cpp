@@ -201,11 +201,11 @@ void ShenandoahHeuristics::choose_collection_set(ShenandoahCollectionSet* collec
 }
 
 void ShenandoahHeuristics::record_gc_start() {
-  ShenandoahHeap::heap()->set_alloc_seq_gc_start();
+  // Do nothing
 }
 
 void ShenandoahHeuristics::record_gc_end() {
-  ShenandoahHeap::heap()->set_alloc_seq_gc_end();
+  // Do nothing
 }
 
 void ShenandoahHeuristics::record_cycle_start() {

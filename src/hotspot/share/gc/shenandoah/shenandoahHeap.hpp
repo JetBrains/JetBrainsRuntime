@@ -719,21 +719,7 @@ public:
 private:
   void ref_processing_init();
 
-private:
-  uint64_t _alloc_seq_at_last_gc_start;
-  uint64_t _alloc_seq_at_last_gc_end;
-  size_t _used_at_last_gc;
-
 public:
-  uint64_t alloc_seq_at_last_gc_end()   const { return _alloc_seq_at_last_gc_end;  }
-  uint64_t alloc_seq_at_last_gc_start() const { return _alloc_seq_at_last_gc_start;}
-  size_t used_at_last_gc()              const { return _used_at_last_gc;}
-
-  void set_alloc_seq_gc_start();
-  void set_alloc_seq_gc_end();
-
-  void set_used_at_last_gc() {_used_at_last_gc = used();}
-
   void make_parsable(bool retire_tlabs);
   void accumulate_statistics_tlabs();
   void resize_tlabs();

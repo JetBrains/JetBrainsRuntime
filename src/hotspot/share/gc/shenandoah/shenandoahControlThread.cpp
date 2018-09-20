@@ -192,8 +192,6 @@ void ShenandoahControlThread::run_service() {
     }
 
     if (gc_requested) {
-      heap->set_used_at_last_gc();
-
       // If this was the explicit GC cycle, notify waiters about it
       if (explicit_gc_requested) {
         notify_explicit_gc_waiters();

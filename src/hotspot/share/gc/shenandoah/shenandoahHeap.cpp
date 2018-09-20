@@ -371,13 +371,11 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
   _gc_timer(new (ResourceObj::C_HEAP, mtGC) ConcurrentGCTimer()),
   _stw_memory_manager("Shenandoah Pauses", "end of GC pause"),
   _cycle_memory_manager("Shenandoah Cycles", "end of GC cycle"),
-  _memory_pool(NULL),
+  _memory_pool(NULL)
 #ifdef ASSERT
-  _heap_expansion_count(0),
+  , _heap_expansion_count(0)
 #endif
-  _alloc_seq_at_last_gc_start(0),
-  _alloc_seq_at_last_gc_end(0),
-  _used_at_last_gc(0) {
+{
   log_info(gc, init)("GC threads: " UINT32_FORMAT " parallel, " UINT32_FORMAT " concurrent", ParallelGCThreads, ConcGCThreads);
   log_info(gc, init)("Reference processing: %s", ParallelRefProcEnabled ? "parallel" : "serial");
 
@@ -2200,17 +2198,6 @@ void ShenandoahHeap::op_final_updaterefs() {
     _free_set->rebuild();
   }
 }
-
-void ShenandoahHeap::set_alloc_seq_gc_start() {
-  // Take next number, the start seq number is inclusive
-  _alloc_seq_at_last_gc_start = ShenandoahHeapRegion::seqnum_current_alloc() + 1;
-}
-
-void ShenandoahHeap::set_alloc_seq_gc_end() {
-  // Take current number, the end seq number is also inclusive
-  _alloc_seq_at_last_gc_end = ShenandoahHeapRegion::seqnum_current_alloc();
-}
-
 
 #ifdef ASSERT
 void ShenandoahHeap::assert_heaplock_owned_by_current_thread() {
