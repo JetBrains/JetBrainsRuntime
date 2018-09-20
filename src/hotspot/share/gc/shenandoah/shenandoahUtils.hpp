@@ -75,9 +75,9 @@ class ShenandoahAllocTrace : public StackObj {
 private:
   double _start;
   size_t _size;
-  ShenandoahHeap::AllocType _alloc_type;
+  ShenandoahAllocRequest::Type _alloc_type;
 public:
-  ShenandoahAllocTrace(size_t words_size, ShenandoahHeap::AllocType alloc_type);
+  ShenandoahAllocTrace(size_t words_size, ShenandoahAllocRequest::Type alloc_type);
   ~ShenandoahAllocTrace();
 };
 

@@ -102,7 +102,7 @@ ShenandoahGCPhase::~ShenandoahGCPhase() {
   ShenandoahHeap::heap()->phase_timings()->record_phase_end(_phase);
 }
 
-ShenandoahAllocTrace::ShenandoahAllocTrace(size_t words_size, ShenandoahHeap::AllocType alloc_type) {
+ShenandoahAllocTrace::ShenandoahAllocTrace(size_t words_size, ShenandoahAllocRequest::Type alloc_type) {
   if (ShenandoahAllocationTrace) {
     _start = os::elapsedTime();
     _size = words_size;
@@ -110,7 +110,7 @@ ShenandoahAllocTrace::ShenandoahAllocTrace(size_t words_size, ShenandoahHeap::Al
   } else {
     _start = 0;
     _size = 0;
-    _alloc_type = ShenandoahHeap::AllocType(0);
+    _alloc_type = ShenandoahAllocRequest::Type(0);
   }
 }
 

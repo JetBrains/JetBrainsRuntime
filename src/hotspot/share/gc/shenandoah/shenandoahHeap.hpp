@@ -28,6 +28,7 @@
 #include "gc/shared/softRefPolicy.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
+#include "gc/shenandoah/shenandoahAllocRequest.hpp"
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
@@ -564,144 +565,14 @@ public:
   void assert_heaplock_not_owned_by_current_thread() PRODUCT_RETURN;
   void assert_heaplock_or_safepoint() PRODUCT_RETURN;
 
-public:
-  typedef enum {
-    _alloc_shared,      // Allocate common, outside of TLAB
-    _alloc_shared_gc,   // Allocate common, outside of GCLAB
-    _alloc_tlab,        // Allocate TLAB
-    _alloc_gclab,       // Allocate GCLAB
-    _ALLOC_LIMIT,
-  } AllocType;
-
-  static const char* alloc_type_to_string(AllocType type) {
-    switch (type) {
-      case _alloc_shared:
-        return "Shared";
-      case _alloc_shared_gc:
-        return "Shared GC";
-      case _alloc_tlab:
-        return "TLAB";
-      case _alloc_gclab:
-        return "GCLAB";
-      default:
-        ShouldNotReachHere();
-        return "";
-    }
-  }
-
-  class ShenandoahAllocationRequest : StackObj {
-  private:
-    size_t _min_size;
-    size_t _requested_size;
-    size_t _actual_size;
-    AllocType _alloc_type;
-#ifdef ASSERT
-    bool _actual_size_set;
-#endif
-
-    ShenandoahAllocationRequest(size_t _min_size, size_t _requested_size, AllocType _alloc_type) :
-            _min_size(_min_size), _requested_size(_requested_size),
-            _actual_size(0), _alloc_type(_alloc_type)
-#ifdef ASSERT
-            , _actual_size_set(false)
-#endif
-    {}
-
-  public:
-    static inline ShenandoahAllocationRequest for_tlab(size_t min_size, size_t requested_size) {
-      return ShenandoahAllocationRequest(min_size, requested_size, ShenandoahHeap::_alloc_tlab);
-    }
-
-    static inline ShenandoahAllocationRequest for_gclab(size_t min_size, size_t requested_size) {
-      return ShenandoahAllocationRequest(min_size, requested_size, ShenandoahHeap::_alloc_gclab);
-    }
-
-    static inline ShenandoahAllocationRequest for_shared_gc(size_t requested_size) {
-      return ShenandoahAllocationRequest(0, requested_size, ShenandoahHeap::_alloc_shared_gc);
-    }
-
-    static inline ShenandoahAllocationRequest for_shared(size_t requested_size) {
-      return ShenandoahAllocationRequest(0, requested_size, ShenandoahHeap::_alloc_shared);
-    }
-
-    inline size_t size() {
-      return _requested_size;
-    }
-
-    inline AllocType type() {
-      return _alloc_type;
-    }
-
-    inline size_t min_size() {
-      assert (is_lab_alloc(), "Only access for LAB allocs");
-      return _min_size;
-    }
-
-    inline size_t actual_size() {
-      assert (_actual_size_set, "Should be set");
-      return _actual_size;
-    }
-
-    inline void set_actual_size(size_t v) {
-#ifdef ASSERT
-      assert (!_actual_size_set, "Should not be set");
-      _actual_size_set = true;
-#endif
-      _actual_size = v;
-    }
-
-    inline bool is_mutator_alloc() {
-      switch (_alloc_type) {
-        case _alloc_tlab:
-        case _alloc_shared:
-          return true;
-        case _alloc_gclab:
-        case _alloc_shared_gc:
-          return false;
-        default:
-          ShouldNotReachHere();
-          return false;
-      }
-    }
-
-    inline bool is_gc_alloc() {
-      switch (_alloc_type) {
-        case _alloc_tlab:
-        case _alloc_shared:
-          return false;
-        case _alloc_gclab:
-        case _alloc_shared_gc:
-          return true;
-        default:
-          ShouldNotReachHere();
-          return false;
-      }
-    }
-
-    inline bool is_lab_alloc() {
-      switch (_alloc_type) {
-        case _alloc_tlab:
-        case _alloc_gclab:
-          return true;
-        case _alloc_shared:
-        case _alloc_shared_gc:
-          return false;
-        default:
-          ShouldNotReachHere();
-          return false;
-      }
-    }
-  };
-
 private:
-
   HeapWord* tlab_post_allocation_setup(HeapWord* obj);
 
   void initialize_heuristics();
   virtual void initialize_serviceability();
 
-  HeapWord* allocate_memory_under_lock(ShenandoahAllocationRequest& request, bool& in_new_region);
-  HeapWord* allocate_memory(ShenandoahAllocationRequest& request);
+  HeapWord* allocate_memory_under_lock(ShenandoahAllocRequest& request, bool& in_new_region);
+  HeapWord* allocate_memory(ShenandoahAllocRequest& request);
   // Shenandoah functionality.
   inline HeapWord* allocate_from_gclab(Thread* thread, size_t size);
   HeapWord* allocate_from_gclab_slow(Thread* thread, size_t size);

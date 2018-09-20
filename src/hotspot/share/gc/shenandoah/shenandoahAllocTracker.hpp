@@ -31,12 +31,12 @@
 
 class ShenandoahAllocTracker : public CHeapObj<mtGC> {
 private:
-  BinaryMagnitudeSeq _alloc_size[ShenandoahHeap::_ALLOC_LIMIT];
-  BinaryMagnitudeSeq _alloc_latency[ShenandoahHeap::_ALLOC_LIMIT];
+  BinaryMagnitudeSeq _alloc_size[ShenandoahAllocRequest::_ALLOC_LIMIT];
+  BinaryMagnitudeSeq _alloc_latency[ShenandoahAllocRequest::_ALLOC_LIMIT];
 
 public:
   void record_alloc_latency(size_t words_size,
-                            ShenandoahHeap::AllocType _alloc_type,
+                            ShenandoahAllocRequest::Type _alloc_type,
                             double latency_us) {
     _alloc_size[_alloc_type].add(words_size);
     _alloc_latency[_alloc_type].add((size_t)latency_us);

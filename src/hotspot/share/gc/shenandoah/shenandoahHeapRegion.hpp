@@ -333,7 +333,7 @@ public:
   size_t region_number() const;
 
   // Allocation (return NULL if full)
-  inline HeapWord* allocate(size_t word_size, ShenandoahHeap::AllocType type);
+  inline HeapWord* allocate(size_t word_size, ShenandoahAllocRequest::Type type);
 
   HeapWord* allocate(size_t word_size) shenandoah_not_implemented_return(NULL)
 
@@ -373,7 +373,7 @@ public:
   void set_new_top(HeapWord* new_top) { _new_top = new_top; }
   HeapWord* new_top() const { return _new_top; }
 
-  inline void adjust_alloc_metadata(ShenandoahHeap::AllocType type, size_t);
+  inline void adjust_alloc_metadata(ShenandoahAllocRequest::Type type, size_t);
   void reset_alloc_metadata_to_shared();
   void reset_alloc_metadata();
   size_t get_shared_allocs() const;

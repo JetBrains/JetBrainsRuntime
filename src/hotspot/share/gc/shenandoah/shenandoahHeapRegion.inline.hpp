@@ -29,7 +29,7 @@
 #include "gc/shenandoah/shenandoahPacer.inline.hpp"
 #include "runtime/atomic.hpp"
 
-HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahHeap::AllocType type) {
+HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahAllocRequest::Type type) {
   _heap->assert_heaplock_or_safepoint();
 
   HeapWord* obj = top();
@@ -47,20 +47,20 @@ HeapWord* ShenandoahHeapRegion::allocate(size_t size, ShenandoahHeap::AllocType 
   }
 }
 
-inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahHeap::AllocType type, size_t size) {
+inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahAllocRequest::Type type, size_t size) {
   bool is_first_alloc = (top() == bottom());
 
   switch (type) {
-    case ShenandoahHeap::_alloc_shared:
-    case ShenandoahHeap::_alloc_tlab:
+    case ShenandoahAllocRequest::_alloc_shared:
+    case ShenandoahAllocRequest::_alloc_tlab:
       _seqnum_last_alloc_mutator = AllocSeqNum++;
       if (is_first_alloc) {
         assert (_seqnum_first_alloc_mutator == 0, "Region " SIZE_FORMAT " metadata is correct", _region_number);
         _seqnum_first_alloc_mutator = _seqnum_last_alloc_mutator;
       }
       break;
-    case ShenandoahHeap::_alloc_shared_gc:
-    case ShenandoahHeap::_alloc_gclab:
+    case ShenandoahAllocRequest::_alloc_shared_gc:
+    case ShenandoahAllocRequest::_alloc_gclab:
       _seqnum_last_alloc_gc = AllocSeqNum++;
       if (is_first_alloc) {
         assert (_seqnum_first_alloc_gc == 0, "Region " SIZE_FORMAT " metadata is correct", _region_number);
@@ -72,14 +72,14 @@ inline void ShenandoahHeapRegion::adjust_alloc_metadata(ShenandoahHeap::AllocTyp
   }
 
   switch (type) {
-    case ShenandoahHeap::_alloc_shared:
-    case ShenandoahHeap::_alloc_shared_gc:
+    case ShenandoahAllocRequest::_alloc_shared:
+    case ShenandoahAllocRequest::_alloc_shared_gc:
       _shared_allocs += size;
       break;
-    case ShenandoahHeap::_alloc_tlab:
+    case ShenandoahAllocRequest::_alloc_tlab:
       _tlab_allocs += size;
       break;
-    case ShenandoahHeap::_alloc_gclab:
+    case ShenandoahAllocRequest::_alloc_gclab:
       _gclab_allocs += size;
       break;
     default:
