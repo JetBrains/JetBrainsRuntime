@@ -410,8 +410,6 @@ public:
   void stop_concurrent_marking();
 
   void evacuate_and_update_roots();
-  // Fixup roots after concurrent cycle failed
-  void fixup_roots();
 
   void update_heap_references(bool concurrent);
 

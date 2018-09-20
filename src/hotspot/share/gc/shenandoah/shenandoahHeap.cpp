@@ -1103,13 +1103,6 @@ void ShenandoahHeap::evacuate_and_update_roots() {
   DerivedPointerTable::update_pointers();
 #endif
   if (cancelled_gc()) {
-    fixup_roots();
-  }
-}
-
-void ShenandoahHeap::fixup_roots() {
-    assert(cancelled_gc(), "Only after concurrent cycle failed");
-
     // If initial evacuation has been cancelled, we need to update all references
     // after all workers have finished. Otherwise we might run into the following problem:
     // GC thread 1 cannot allocate anymore, thus evacuation fails, leaves from-space ptr of object X.
@@ -1126,6 +1119,7 @@ void ShenandoahHeap::fixup_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::update_pointers();
 #endif
+  }
 }
 
 void ShenandoahHeap::roots_iterate(OopClosure* cl) {
