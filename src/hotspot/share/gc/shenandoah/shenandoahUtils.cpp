@@ -44,7 +44,7 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
   _tracer->report_gc_start(cause, _timer->gc_start());
   sh->trace_heap(GCWhen::BeforeGC, _tracer);
 
-  sh->shenandoahPolicy()->record_cycle_start();
+  sh->shenandoah_policy()->record_cycle_start();
   sh->heuristics()->record_cycle_start();
   _trace_cycle.initialize(sh->cycle_memory_manager(), sh->gc_cause(),
           /* allMemoryPoolsAffected */    true,

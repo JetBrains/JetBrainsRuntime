@@ -282,14 +282,14 @@ void ShenandoahHeuristics::record_explicit_gc() {
 
 bool ShenandoahHeuristics::should_process_references() {
   if (ShenandoahRefProcFrequency == 0) return false;
-  size_t cycle = ShenandoahHeap::heap()->shenandoahPolicy()->cycle_counter();
+  size_t cycle = ShenandoahHeap::heap()->shenandoah_policy()->cycle_counter();
   // Process references every Nth GC cycle.
   return cycle % ShenandoahRefProcFrequency == 0;
 }
 
 bool ShenandoahHeuristics::should_unload_classes() {
   if (ShenandoahUnloadClassesFrequency == 0) return false;
-  size_t cycle = ShenandoahHeap::heap()->shenandoahPolicy()->cycle_counter();
+  size_t cycle = ShenandoahHeap::heap()->shenandoah_policy()->cycle_counter();
   // Unload classes every Nth GC cycle.
   // This should not happen in the same cycle as process_references to amortize costs.
   // Offsetting by one is enough to break the rendezvous when periods are equal.

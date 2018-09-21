@@ -34,7 +34,7 @@ ShenandoahPhaseTimings::ShenandoahPhaseTimings() : _policy(NULL) {
   uint max_workers = MAX2(ConcGCThreads, ParallelGCThreads);
   _worker_times = new ShenandoahWorkerTimings(max_workers);
   _termination_times = new ShenandoahTerminationTimings(max_workers);
-  _policy = ShenandoahHeap::heap()->shenandoahPolicy();
+  _policy = ShenandoahHeap::heap()->shenandoah_policy();
   assert(_policy != NULL, "Can not be NULL");
   init_phase_names();
 }

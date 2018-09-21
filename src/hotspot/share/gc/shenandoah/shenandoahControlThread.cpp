@@ -80,7 +80,7 @@ void ShenandoahControlThread::run_service() {
   // ShenandoahUncommitDelay is in msecs, but shrink_period is in seconds.
   double shrink_period = (double)ShenandoahUncommitDelay / 1000 / 10;
 
-  ShenandoahCollectorPolicy* policy = heap->shenandoahPolicy();
+  ShenandoahCollectorPolicy* policy = heap->shenandoah_policy();
   ShenandoahHeuristics* heuristics = heap->heuristics();
   while (!in_graceful_shutdown() && !should_terminate()) {
     // Figure out if we have pending requests.
@@ -285,7 +285,7 @@ void ShenandoahControlThread::service_concurrent_traversal_cycle(GCCause::Cause 
   heap->entry_cleanup();
 
   heap->heuristics()->record_success_concurrent();
-  heap->shenandoahPolicy()->record_success_concurrent();
+  heap->shenandoah_policy()->record_success_concurrent();
 }
 
 void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cause) {
@@ -386,7 +386,7 @@ void ShenandoahControlThread::service_concurrent_normal_cycle(GCCause::Cause cau
 
   // Cycle is complete
   heap->heuristics()->record_success_concurrent();
-  heap->shenandoahPolicy()->record_success_concurrent();
+  heap->shenandoah_policy()->record_success_concurrent();
 }
 
 bool ShenandoahControlThread::check_cancellation_or_degen(ShenandoahHeap::ShenandoahDegenPoint point) {
@@ -415,7 +415,7 @@ void ShenandoahControlThread::service_stw_full_cycle(GCCause::Cause cause) {
   heap->vmop_entry_full(cause);
 
   heap->heuristics()->record_success_full();
-  heap->shenandoahPolicy()->record_success_full();
+  heap->shenandoah_policy()->record_success_full();
 }
 
 void ShenandoahControlThread::service_stw_degenerated_cycle(GCCause::Cause cause, ShenandoahHeap::ShenandoahDegenPoint point) {
@@ -428,7 +428,7 @@ void ShenandoahControlThread::service_stw_degenerated_cycle(GCCause::Cause cause
   heap->vmop_degenerated(point);
 
   heap->heuristics()->record_success_degenerated();
-  heap->shenandoahPolicy()->record_success_degenerated();
+  heap->shenandoah_policy()->record_success_degenerated();
 }
 
 void ShenandoahControlThread::service_uncommit(double shrink_before) {

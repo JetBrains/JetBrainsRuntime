@@ -378,7 +378,7 @@ public:
   static address cancelled_gc_addr();
   static address gc_state_addr();
 
-  ShenandoahCollectorPolicy *shenandoahPolicy() const { return _shenandoah_policy; }
+  ShenandoahCollectorPolicy *shenandoah_policy() const { return _shenandoah_policy; }
   ShenandoahHeuristics*     heuristics()        const { return _heuristics; }
   ShenandoahPhaseTimings*   phase_timings()     const { return _phase_timings; }
   ShenandoahAllocTracker*   alloc_tracker()     const { return _alloc_tracker; }
