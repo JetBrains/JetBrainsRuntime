@@ -146,6 +146,7 @@ java/awt/FileDialog/8003399/bug8003399.java                                     
 java/awt/FileDialog/8017487/bug8017487.java                                         8197806 windows-all
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java                      8160558 windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                      7149081 macosx-all
+java/awt/FileDialog/ISCthrownByFileListTest/ISCthrownByFileListTest.java            JRE-898 linux-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                        8194751 macosx-all,windows-all,linux-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       8198616,JRE-813 macosx-all,windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java                                         8047703 windows-all,macosx-all
@@ -158,7 +159,7 @@ java/awt/Focus/8073453/SwingFocusTransitionTest.java                            
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8168408 windows-all,macosx-all,linux-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java            6829264 generic-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest.html                   6862004 windows-all,macosx-all,linux-all
-java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html                  6849367 windows-all,linux-all
+java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html                  6849367 windows-all,linux-all,macosx-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java             6848407 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java                6848406 generic-all
 java/awt/Focus/Cause/FocusCauseTest.java                                            JRE-898 macosx-all
@@ -234,6 +235,7 @@ java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                          
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              8197814 macosx-all,windows-all
 java/awt/JAWT/JAWT.sh                                                               8170729 windows-all
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html JRE-948 macosx-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.html JRE-948 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.html JRE-898 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.html        8198624 generic-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.html                    8198626 windows-all,macosx-all
@@ -688,6 +690,7 @@ java/awt/font/TextLayout/TextLayoutBounds.java                                  
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150,8203918 macosx-all,linux-all,windows-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 macosx-all,windows-all,linux-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.html                                    8202934 macosx-all,windows-all
+java/awt/hidpi/SetMaximizedBoundsTest.java                                          JRE-898 windows-all
 java/awt/hidpi/properties/HiDPIPropertiesWindowsTest.java                           JRE-898 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 macosx-all
 java/awt/image/DrawImage/EABlitTest.java                                            8028000 windows-all
@@ -850,6 +853,7 @@ javax/swing/JTableHeader/6884066/bug6884066.java                                
 javax/swing/JTableHeader/6889007/bug6889007.java                                    8197552 macosx-all,windows-all,linux-all
 javax/swing/JTextArea/4697612/bug4697612.java                                       JRE-898,JRE-948 linux-all,macosx-all
 javax/swing/JTextField/8036819/bug8036819.java                                      8197552 macosx-all,windows-all
+javax/swing/JToolBar/4529206/bug4529206.java                                        JRE-898 macosx-all
 javax/swing/JToolTip/4846413/bug4846413.java                                        8172407 macosx-all,windows-all
 javax/swing/JToolTip/6219960/bug6219960.java                                        8197781 macosx-all,windows-all
 javax/swing/JTree/4330357/bug4330357.java                                           8029682 macosx-all,windows-all
@@ -857,6 +861,7 @@ javax/swing/JTree/4633594/JTreeFocusTest.java                                   
 javax/swing/JTree/4908142/bug4908142.java                                           8172065,8197552 macosx-all,windows-all
 javax/swing/JTree/4927934/bug4927934.java                                           8172063,8197552 macosx-all,windows-all
 javax/swing/JTree/6263446/bug6263446.java                                           8003839 macosx-all,windows-all
+javax/swing/JTree/6578666/bug6578666.java                                           JRE-948 macosx-all
 javax/swing/JTree/8003400/Test8003400.java                                          8197560 macosx-all,windows-all,linux-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java                                    8159131 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java            8164811 windows-all
