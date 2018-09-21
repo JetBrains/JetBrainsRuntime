@@ -705,6 +705,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
          sysW = width;
          sysH = height;
 
+         /* [tav] JDK-8176097 fixed by JRE-119
          int cx = x + width / 2;
          int cy = y + height / 2;
          GraphicsConfiguration current = getGraphicsConfiguration();
@@ -718,7 +719,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
                  x = (int) Math.floor(x * otherScaleX / scaleX);
                  y = (int) Math.floor(y * otherScaleY / scaleY);
              }
-         }
+         }*/
 
          super.setBounds(x, y, width, height, op);
      }
