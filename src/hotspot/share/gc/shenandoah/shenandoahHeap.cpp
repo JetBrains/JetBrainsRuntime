@@ -873,39 +873,6 @@ public:
   }
 };
 
-class ShenandoahEvacuateRootsClosure: public BasicOopIterateClosure {
-private:
-  ShenandoahHeap* _heap;
-  Thread* _thread;
-public:
-  ShenandoahEvacuateRootsClosure() :
-          _heap(ShenandoahHeap::heap()), _thread(Thread::current()) {
-  }
-
-private:
-  template <class T>
-  void do_oop_work(T* p) {
-    T o = RawAccess<>::oop_load(p);
-    if (! CompressedOops::is_null(o)) {
-      oop obj = CompressedOops::decode_not_null(o);
-      if (_heap->in_collection_set(obj)) {
-        oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
-        if (oopDesc::unsafe_equals(resolved, obj)) {
-          _heap->evacuate_object(obj, _thread);
-        }
-      }
-    }
-  }
-
-public:
-  void do_oop(oop* p) {
-    do_oop_work(p);
-  }
-  void do_oop(narrowOop* p) {
-    do_oop_work(p);
-  }
-};
-
 class ShenandoahParallelEvacuateRegionObjectClosure : public ObjectClosure {
 private:
   ShenandoahHeap* const _heap;
