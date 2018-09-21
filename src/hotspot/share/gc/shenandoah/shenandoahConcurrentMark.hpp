@@ -25,9 +25,8 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTMARK_HPP
 
 #include "gc/shared/taskqueue.hpp"
-#include "gc/shared/workgroup.hpp"
-#include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahOopClosures.hpp"
+#include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 
 class ShenandoahStrDedupQueue;

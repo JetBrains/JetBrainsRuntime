@@ -25,12 +25,14 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPREGION_HPP
 
 #include "gc/shared/space.hpp"
+#include "gc/shenandoah/shenandoahAllocRequest.hpp"
+#include "gc/shenandoah/shenandoahAsserts.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahPacer.hpp"
 #include "memory/universe.hpp"
 #include "utilities/sizes.hpp"
 
 class VMStructs;
-class ShenandoahHeap;
-class ShenandoahPacer;
 
 class ShenandoahHeapRegion : public ContiguousSpace {
   friend class VMStructs;

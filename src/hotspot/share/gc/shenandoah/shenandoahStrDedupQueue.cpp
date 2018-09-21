@@ -31,6 +31,7 @@
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "logging/log.hpp"
 #include "runtime/mutex.hpp"
+#include "runtime/mutexLocker.hpp"
 
 ShenandoahStrDedupQueue::ShenandoahStrDedupQueue() :
   _consumer_queue(NULL),

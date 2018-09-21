@@ -24,7 +24,6 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHASSERTS_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHASSERTS_HPP
 
-#include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
 #include "utilities/formatBuffer.hpp"
 

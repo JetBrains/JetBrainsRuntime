@@ -24,12 +24,13 @@
 
 #ifdef ASSERT
 
-#include "memory/allocation.hpp"
-#include "memory/iterator.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahPrinter.hpp"
+#include "memory/allocation.hpp"
+#include "memory/iterator.inline.hpp"
+#include "utilities/ostream.hpp"
 
 class ShenandoahPrintAllRefsOopClosure: public BasicOopIterateClosure {
 private:

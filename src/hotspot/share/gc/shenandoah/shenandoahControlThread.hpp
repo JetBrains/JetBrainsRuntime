@@ -24,12 +24,12 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHSCHEDULERTHREAD_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHSCHEDULERTHREAD_HPP
 
+#include "gc/shared/gcCause.hpp"
+#include "gc/shared/concurrentGCThread.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
-#include "gc/shared/concurrentGCThread.hpp"
-#include "gc/shared/gcCause.hpp"
-#include "memory/resourceArea.hpp"
 #include "runtime/task.hpp"
+#include "utilities/ostream.hpp"
 
 // Periodic task is useful for doing asynchronous things that do not require (heap) locks,
 // or synchronization with other parts of collector. These could run even when ShenandoahConcurrentThread

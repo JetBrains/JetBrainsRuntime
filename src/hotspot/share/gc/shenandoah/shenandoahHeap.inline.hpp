@@ -33,6 +33,7 @@
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
+#include "gc/shenandoah/shenandoahWorkGroup.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.inline.hpp"
@@ -69,6 +70,14 @@ inline ShenandoahHeapRegion* ShenandoahRegionIterator::next() {
 
 inline bool ShenandoahHeap::has_forwarded_objects() const {
   return _gc_state.is_set(HAS_FORWARDED);
+}
+
+inline WorkGang* ShenandoahHeap::workers() const {
+  return _workers;
+}
+
+inline WorkGang* ShenandoahHeap::get_safepoint_workers() {
+  return _safepoint_workers;
 }
 
 inline size_t ShenandoahHeap::heap_region_index_containing(const void* addr) const {

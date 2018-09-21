@@ -32,13 +32,10 @@
 #include "gc/shenandoah/shenandoahHeapLock.hpp"
 #include "gc/shenandoah/shenandoahEvacOOMHandler.hpp"
 #include "gc/shenandoah/shenandoahSharedVariables.hpp"
-#include "gc/shenandoah/shenandoahWorkGroup.hpp"
 #include "services/memoryManager.hpp"
 
 class ConcurrentGCTimer;
-class PLABStats;
 class ReferenceProcessor;
-class ShenandoahAsserts;
 class ShenandoahAllocTracker;
 class ShenandoahCollectorPolicy;
 class ShenandoahControlThread;
@@ -53,10 +50,11 @@ class ShenandoahCollectionSet;
 class ShenandoahFreeSet;
 class ShenandoahConcurrentMark;
 class ShenandoahMarkCompact;
+class ShenandoahMonitoringSupport;
 class ShenandoahPacer;
 class ShenandoahTraversalGC;
 class ShenandoahVerifier;
-class ShenandoahMonitoringSupport;
+class ShenandoahWorkGang;
 class VMStructs;
 
 class ShenandoahRegionIterator : public StackObj {
@@ -230,8 +228,8 @@ public:
   uint max_workers();
   void assert_gc_workers(uint nworker) PRODUCT_RETURN;
 
-  WorkGang* workers()               const { return _workers;           }
-  WorkGang* get_safepoint_workers()       { return _safepoint_workers; }
+  WorkGang* workers() const;
+  WorkGang* get_safepoint_workers();
 
   void gc_threads_do(ThreadClosure* tcl) const;
 

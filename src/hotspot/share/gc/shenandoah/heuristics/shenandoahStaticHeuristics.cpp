@@ -22,10 +22,13 @@
  */
 
 #include "precompiled.hpp"
+
 #include "gc/shenandoah/heuristics/shenandoahStaticHeuristics.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 
 ShenandoahStaticHeuristics::ShenandoahStaticHeuristics() : ShenandoahHeuristics() {
   // Static heuristics may degrade to continuous if live data is larger

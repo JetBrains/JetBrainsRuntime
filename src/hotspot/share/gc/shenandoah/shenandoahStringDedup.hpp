@@ -24,12 +24,9 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUP_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUP_HPP
 
-
 #include "classfile/javaClasses.inline.hpp"
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "memory/iterator.hpp"
-#include "utilities/ostream.hpp"
-
 
 class ShenandoahStringDedup : public StringDedup {
 public:

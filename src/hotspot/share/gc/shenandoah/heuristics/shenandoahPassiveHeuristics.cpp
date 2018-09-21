@@ -22,10 +22,10 @@
  */
 
 #include "precompiled.hpp"
+
 #include "gc/shenandoah/heuristics/shenandoahPassiveHeuristics.hpp"
-#include "gc/shenandoah/shenandoahCollectionSet.hpp"
-#include "gc/shenandoah/shenandoahHeap.hpp"
-#include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 
 ShenandoahPassiveHeuristics::ShenandoahPassiveHeuristics() : ShenandoahAdaptiveHeuristics() {
   // Do not allow concurrent cycles.

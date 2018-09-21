@@ -26,7 +26,6 @@
 #include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shared/stringdedup/stringDedup.inline.hpp"
 #include "gc/shared/workgroup.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/shenandoahCollectionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
@@ -35,7 +34,7 @@
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
-#include "runtime/os.hpp"
+#include "runtime/thread.hpp"
 
 void ShenandoahStringDedup::initialize() {
   assert(UseShenandoahGC, "String deduplication available with Shenandoah GC");

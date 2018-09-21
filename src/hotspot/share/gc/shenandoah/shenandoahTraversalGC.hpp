@@ -25,12 +25,11 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHTRAVERSALGC_HPP
 
 #include "memory/allocation.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
-
-class Thread;
-class ShenandoahHeap;
-class ShenandoahStrDedupQueue;
+#include "gc/shared/taskqueue.hpp"
+#include "runtime/thread.hpp"
 
 class ShenandoahTraversalGC : public CHeapObj<mtGC> {
 private:

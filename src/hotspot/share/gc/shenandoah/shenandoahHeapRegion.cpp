@@ -32,6 +32,7 @@
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shared/space.inline.hpp"
 #include "memory/iterator.inline.hpp"
+#include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/java.hpp"

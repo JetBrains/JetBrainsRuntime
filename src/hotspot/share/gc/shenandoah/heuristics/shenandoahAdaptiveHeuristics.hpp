@@ -25,6 +25,8 @@
 #define SHARE_VM_GC_SHENANDOAH_HEURISTICS_SHENANDOAHADAPTIVEHEURISTICS_HPP
 
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
+#include "gc/shenandoah/shenandoahPhaseTimings.hpp"
+#include "utilities/numberSeq.hpp"
 
 class ShenandoahAdaptiveHeuristics : public ShenandoahHeuristics {
 private:

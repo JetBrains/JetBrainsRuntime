@@ -25,6 +25,7 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHWORKGROUP_HPP
 
 #include "gc/shared/workgroup.hpp"
+#include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "memory/allocation.hpp"
 
 class ShenandoahObjToScanQueueSet;

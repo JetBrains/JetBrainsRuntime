@@ -24,10 +24,13 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHOOPCLOSURES_HPP
 
+#include "gc/shared/referenceProcessor.hpp"
+#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahStrDedupQueue.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
-
-class ShenandoahHeap;
-class ShenandoahStrDedupQueue;
+#include "gc/shenandoah/shenandoahTraversalGC.hpp"
+#include "memory/iterator.hpp"
+#include "runtime/thread.hpp"
 
 enum UpdateRefsMode {
   NONE,       // No reference updating

@@ -24,14 +24,12 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHVERIFIER_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHVERIFIER_HPP
 
-#include "memory/allocation.hpp"
-#include "utilities/stack.hpp"
 #include "gc/shared/markBitMap.hpp"
+#include "memory/allocation.hpp"
+#include "oops/oopsHierarchy.hpp"
+#include "utilities/stack.hpp"
 
-class Thread;
-class ShenandoahHeapRegionSet;
 class ShenandoahHeap;
-class ShenandoahVerifyOopClosure;
 
 #ifdef _WINDOWS
 #pragma warning( disable : 4522 )

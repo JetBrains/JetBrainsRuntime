@@ -22,10 +22,13 @@
  */
 
 #include "precompiled.hpp"
+
 #include "gc/shenandoah/heuristics/shenandoahTraversalHeuristics.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 #include "utilities/quickSort.hpp"
 
 ShenandoahTraversalHeuristics::ShenandoahTraversalHeuristics() : ShenandoahHeuristics(),

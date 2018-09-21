@@ -24,19 +24,10 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTORPOLICY_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTORPOLICY_HPP
 
-#include "gc/shared/gcTrace.hpp"
-#include "gc/shared/gcTimer.hpp"
 #include "gc/shared/collectorPolicy.hpp"
-#include "gc/shenandoah/shenandoahPhaseTimings.hpp"
+#include "gc/shared/gcTrace.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
-#include "runtime/arguments.hpp"
-#include "utilities/numberSeq.hpp"
-
-class ShenandoahCollectionSet;
-class ShenandoahFreeSet;
-class ShenandoahHeap;
-class ShenandoahHeuristics;
-class outputStream;
+#include "utilities/ostream.hpp"
 
 class ShenandoahCollectorPolicy: public CollectorPolicy {
 private:

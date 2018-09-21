@@ -26,6 +26,7 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCODEROOTS_HPP
 
 #include "code/codeCache.hpp"
+#include "gc/shenandoah/shenandoahSharedVariables.hpp"
 #include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
 

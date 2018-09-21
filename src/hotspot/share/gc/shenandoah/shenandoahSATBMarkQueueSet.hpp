@@ -25,6 +25,8 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHSATBMARKQUEUESET_HPP
 
 #include "gc/g1/satbMarkQueue.hpp"
+#include "runtime/mutex.hpp"
+#include "runtime/thread.hpp"
 
 class ShenandoahSATBMarkQueueSet : public SATBMarkQueueSet {
 public:

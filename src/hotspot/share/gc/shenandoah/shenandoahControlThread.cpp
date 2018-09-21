@@ -22,7 +22,7 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shared/gcTraceTime.inline.hpp"
+
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
@@ -37,7 +37,6 @@
 #include "gc/shenandoah/vm_operations_shenandoah.hpp"
 #include "memory/iterator.hpp"
 #include "memory/universe.hpp"
-#include "runtime/vmThread.hpp"
 
 ShenandoahControlThread::ShenandoahControlThread() :
   ConcurrentGCThread(),

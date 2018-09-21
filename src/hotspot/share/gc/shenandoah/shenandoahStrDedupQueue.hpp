@@ -24,10 +24,9 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUPQUEUE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHSTRINGDEDUPQUEUE_HPP
 
+#include "gc/shared/stringdedup/stringDedup.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
-#include "memory/iterator.hpp"
 #include "oops/oop.hpp"
-#include "runtime/mutex.hpp"
 
 template <uint buffer_size>
 class ShenandoahOopBuffer : public CHeapObj<mtGC> {

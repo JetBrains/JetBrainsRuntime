@@ -24,7 +24,6 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPLOCK_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPLOCK_HPP
 
-#include "gc/shenandoah/shenandoahHeap.hpp"
 #include "memory/allocation.hpp"
 #include "runtime/thread.hpp"
 

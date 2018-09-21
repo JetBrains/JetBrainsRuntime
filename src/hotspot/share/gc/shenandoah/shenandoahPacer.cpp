@@ -23,10 +23,10 @@
 
 #include "precompiled.hpp"
 
-#include "gc/shenandoah/shenandoahPacer.hpp"
+#include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
-#include "gc/shenandoah/shenandoahFreeSet.hpp"
+#include "gc/shenandoah/shenandoahPacer.hpp"
 
 /*
  * In normal concurrent cycle, we have to pace the application to let GC finish.

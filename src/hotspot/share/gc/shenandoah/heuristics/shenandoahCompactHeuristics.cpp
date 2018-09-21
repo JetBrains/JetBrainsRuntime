@@ -22,10 +22,13 @@
  */
 
 #include "precompiled.hpp"
+
 #include "gc/shenandoah/shenandoahCollectionSet.hpp"
 #include "gc/shenandoah/heuristics/shenandoahCompactHeuristics.hpp"
 #include "gc/shenandoah/shenandoahFreeSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 
 ShenandoahCompactHeuristics::ShenandoahCompactHeuristics() : ShenandoahHeuristics() {
   SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahUncommit);

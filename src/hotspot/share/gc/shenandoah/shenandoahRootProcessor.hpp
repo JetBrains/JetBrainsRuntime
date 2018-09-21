@@ -24,32 +24,20 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHROOTPROCESSOR_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHROOTPROCESSOR_HPP
 
-#include "classfile/classLoaderData.hpp"
 #include "code/codeCache.hpp"
+#include "gc/shenandoah/shenandoahCodeRoots.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shared/strongRootsScope.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "memory/allocation.hpp"
-#include "runtime/mutex.hpp"
-#include "shenandoahCodeRoots.hpp"
-
-class CLDClosure;
-class CodeBlobClosure;
-class G1CollectedHeap;
-class G1GCPhaseTimes;
-class G1ParPushHeapRSClosure;
-class Monitor;
-class OopClosure;
-class SubTasksDone;
-
+#include "memory/iterator.hpp"
 
 class ParallelCLDRootIterator {
 public:
   ParallelCLDRootIterator();
   void root_cld_do(CLDClosure* strong, CLDClosure* weak);
 };
-
 
 enum Shenandoah_process_roots_tasks {
   SHENANDOAH_RP_PS_Universe_oops_do,

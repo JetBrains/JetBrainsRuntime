@@ -24,7 +24,7 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHALLOCTRACKER_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHALLOCTRACKER_HPP
 
-#include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahAllocRequest.hpp"
 #include "memory/allocation.hpp"
 #include "utilities/numberSeq.hpp"
 #include "utilities/ostream.hpp"
@@ -44,6 +44,5 @@ public:
 
   void print_on(outputStream* out) const;
 };
-
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHALLOCTRACKER_HPP

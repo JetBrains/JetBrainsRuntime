@@ -25,12 +25,8 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHMARKCOMPACT_HPP
 
 #include "gc/shared/gcTimer.hpp"
-#include "gc/shared/taskqueue.hpp"
-#include "gc/shared/workgroup.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
-
-class HeapWord;
 
 /**
  * This implements Full GC (e.g. when invoking System.gc()) using a mark-compact algorithm.
