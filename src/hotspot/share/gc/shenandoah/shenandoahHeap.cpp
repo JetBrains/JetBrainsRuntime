@@ -1898,10 +1898,6 @@ bool ShenandoahHeap::unload_classes() const {
   return _unload_classes.is_set();
 }
 
-ShenandoahMonitoringSupport* ShenandoahHeap::monitoring_support() {
-  return _monitoring_support;
-}
-
 address ShenandoahHeap::in_cset_fast_test_addr() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   assert(heap->collection_set() != NULL, "Sanity");
