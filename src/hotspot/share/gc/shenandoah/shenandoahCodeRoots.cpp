@@ -362,9 +362,10 @@ void ShenandoahNMethod::assert_alive_and_correct() {
   assert(_oops_count > 0, "should have filtered nmethods without oops before");
   ShenandoahHeap* heap = ShenandoahHeap::heap();
   for (int c = 0; c < _oops_count; c++) {
-    oop o = RawAccess<>::oop_load(_oops[c]);
-    shenandoah_assert_correct_except(NULL, o, o == NULL || heap->is_full_gc_move_in_progress());
-    assert(_nm->code_contains((address)_oops[c]) || _nm->oops_contains(_oops[c]), "nmethod should contain the oop*");
+    oop *loc = _oops[c];
+    assert(_nm->code_contains((address) loc) || _nm->oops_contains(loc), "nmethod should contain the oop*");
+    oop o = RawAccess<>::oop_load(loc);
+    shenandoah_assert_correct_except(loc, o, o == NULL || heap->is_full_gc_move_in_progress());
   }
 }
 
