@@ -115,6 +115,12 @@ private:
 // There is also a fallback version that uses plain fields, when we don't have enough space to steal the
 // bits from the native pointer. It is useful to debug the _LP64 version.
 //
+
+#ifdef _MSC_VER
+// warning C4522: multiple assignment operators specified
+#pragma warning( disable:4522 )
+#endif
+
 #ifdef _LP64
 class ObjArrayChunkedTask
 {
