@@ -148,7 +148,7 @@ bool ShenandoahAdaptiveHeuristics::should_start_normal_gc() const {
   // TODO: Allocation rate is way too averaged to be useful during state changes
 
   double average_gc = _gc_time_history->avg();
-  double time_since_last = os::elapsedTime() - _cycle_start;
+  double time_since_last = time_since_last_gc();
   double allocation_rate = heap->bytes_allocated_since_gc_start() / time_since_last;
 
   if (average_gc > allocation_headroom / allocation_rate) {

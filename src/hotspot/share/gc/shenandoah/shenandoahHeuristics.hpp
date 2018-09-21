@@ -143,6 +143,7 @@ public:
   virtual bool is_experimental() = 0;
   virtual void initialize();
 
+  double time_since_last_gc() const;
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEURISTICS_HPP

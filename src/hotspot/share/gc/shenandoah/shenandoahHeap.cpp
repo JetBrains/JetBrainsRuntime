@@ -1156,7 +1156,7 @@ bool ShenandoahHeap::block_is_obj(const HeapWord* addr) const {
 }
 
 jlong ShenandoahHeap::millis_since_last_gc() {
-  return 0;
+  return heuristics()->time_since_last_gc() * 1000;
 }
 
 void ShenandoahHeap::prepare_for_verify() {
