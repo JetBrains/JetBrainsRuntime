@@ -233,6 +233,7 @@ ShenandoahCodeRootsIterator::ShenandoahCodeRootsIterator() :
         _par_iterator(CodeCache::heaps()),
         _claimed(0) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at safepoint");
+  assert(!Thread::current()->is_Worker_thread(), "Should not be acquired by workers");
   switch (ShenandoahCodeRootsStyle) {
     case 0:
     case 1: {

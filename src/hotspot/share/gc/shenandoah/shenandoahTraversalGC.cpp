@@ -166,11 +166,13 @@ class ShenandoahInitTraversalCollectionTask : public AbstractGangTask {
 private:
   ShenandoahRootProcessor* _rp;
   ShenandoahHeap* _heap;
+  ShenandoahCsetCodeRootsIterator* _cset_coderoots;
 public:
-  ShenandoahInitTraversalCollectionTask(ShenandoahRootProcessor* rp) :
+  ShenandoahInitTraversalCollectionTask(ShenandoahRootProcessor* rp, ShenandoahCsetCodeRootsIterator* cset_coderoots) :
     AbstractGangTask("Shenandoah Init Traversal Collection"),
     _rp(rp),
-    _heap(ShenandoahHeap::heap()) {}
+    _heap(ShenandoahHeap::heap()),
+    _cset_coderoots(cset_coderoots) {}
 
   void work(uint worker_id) {
     ShenandoahWorkerSession worker_session(worker_id);
@@ -196,8 +198,7 @@ public:
         // Need to pre-evac code roots here. Otherwise we might see from-space constants.
         ShenandoahWorkerTimings* worker_times = _heap->phase_timings()->worker_times();
         ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::CodeCacheRoots, worker_id);
-        ShenandoahCsetCodeRootsIterator coderoots = ShenandoahCodeRoots::cset_iterator();
-        coderoots.possibly_parallel_blobs_do(&code_cl);
+        _cset_coderoots->possibly_parallel_blobs_do(&code_cl);
       } else {
         _rp->process_all_roots(&roots_cl, process_refs ? NULL : &roots_cl, &cld_cl, &code_cl, NULL, worker_id);
       }
@@ -432,7 +433,9 @@ void ShenandoahTraversalGC::init_traversal_collection() {
       task_queues()->reserve(nworkers);
       ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::init_traversal_gc_work);
 
-      ShenandoahInitTraversalCollectionTask traversal_task(&rp);
+      ShenandoahCsetCodeRootsIterator cset_coderoots = ShenandoahCodeRoots::cset_iterator();
+
+      ShenandoahInitTraversalCollectionTask traversal_task(&rp, &cset_coderoots);
       _heap->workers()->run_task(&traversal_task);
     }
 
