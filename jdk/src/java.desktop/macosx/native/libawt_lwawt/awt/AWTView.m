@@ -313,23 +313,8 @@ static BOOL shouldUsePressAndHold() {
     [self deliverJavaKeyEventHelper: event];
 }
 
-static const int COCOA_KEYCODE_US_BACKSLASH = 44;
-
 - (BOOL) performKeyEquivalent: (NSEvent *) event {
 
-    // French keyboard layouts invoke the method several times
-    // with '+' character, but '/' keycode. Correct character
-    // is passed into the method ony once.
-    // Current keyboard layout status call could be quite expensive.
-    // We assume that where are no keyboards that actually use
-    // the improper combination
-    if ([event keyCode] == COCOA_KEYCODE_US_BACKSLASH && [[event characters] isEqual:@"+"]) {
-        return 0;
-    }
-
-    if ([AWTToolkit latestPerformKeyEquivalentEvent] != NULL) {
-        [[AWTToolkit latestPerformKeyEquivalentEvent] release];
-    }
     AWTToolkit.latestPerformKeyEquivalentEvent = event;
 
     // if IM is active key events should be ignored
