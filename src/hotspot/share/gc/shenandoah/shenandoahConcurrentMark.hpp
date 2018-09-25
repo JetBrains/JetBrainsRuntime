@@ -35,12 +35,14 @@ class ShenandoahConcurrentMark: public CHeapObj<mtGC> {
   friend class ShenandoahTraversalGC;
 private:
   ShenandoahHeap* _heap;
-
-  // The per-worker-thread work queues
   ShenandoahObjToScanQueueSet* _task_queues;
 
-  ShenandoahSharedFlag _claimed_codecache;
+public:
+  void initialize(uint workers);
+  void cancel();
 
+// ---------- Marking loop and tasks
+//
 private:
   template <class T>
   inline void do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task);
@@ -53,7 +55,6 @@ private:
 
   inline void count_liveness(jushort* live_data, oop obj);
 
-  // Actual mark loop with closures set up
   template <class T, bool CANCELLABLE>
   void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *t);
 
@@ -61,8 +62,6 @@ private:
   void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp, bool strdedup);
 
 public:
-  // Mark loop entry.
-  // Translates dynamic arguments to template parameters with progressive currying.
   void mark_loop(uint worker_id, ParallelTaskTerminator* terminator, ReferenceProcessor *rp,
                  bool cancellable, bool strdedup) {
     if (cancellable) {
@@ -71,12 +70,6 @@ public:
       mark_loop_prework<false>(worker_id, terminator, rp, strdedup);
     }
   }
-
-  // We need to do this later when the heap is already created.
-  void initialize(uint workers);
-
-  bool claim_codecache();
-  void clear_claim_codecache();
 
   template<class T, UpdateRefsMode UPDATE_REFS, StringDedupMode STRING_DEDUP>
   static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context);
@@ -87,21 +80,32 @@ public:
   void mark_roots(ShenandoahPhaseTimings::Phase root_phase);
   void update_roots(ShenandoahPhaseTimings::Phase root_phase);
 
-  // Those are only needed public because they're called from closures.
-
-  ShenandoahObjToScanQueue* get_queue(uint worker_id);
-
-  ShenandoahObjToScanQueueSet* task_queues() { return _task_queues;}
-
-  void cancel();
-
-  void preclean_weak_refs();
-
-  void concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp);
+// ---------- Weak references
+//
 private:
-
   void weak_refs_work(bool full_gc);
   void weak_refs_work_doit(bool full_gc);
+
+public:
+  void preclean_weak_refs();
+
+// ---------- Concurrent code cache
+//
+private:
+  ShenandoahSharedFlag _claimed_codecache;
+
+public:
+  void concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp);
+  bool claim_codecache();
+  void clear_claim_codecache();
+
+// ---------- Helpers
+// Used from closures, need to be public
+//
+public:
+  ShenandoahObjToScanQueue* get_queue(uint worker_id);
+  ShenandoahObjToScanQueueSet* task_queues() { return _task_queues; }
+
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHCONCURRENTMARK_HPP
