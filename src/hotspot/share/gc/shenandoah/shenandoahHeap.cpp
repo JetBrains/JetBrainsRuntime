@@ -296,6 +296,12 @@ jint ShenandoahHeap::initialize() {
                      SafepointMechanism::uses_thread_local_poll() ? "thread-local poll" :
                      (SafepointMechanism::uses_global_page_poll() ? "global-page poll" : "unknown"));
 
+  _liveness_cache = NEW_C_HEAP_ARRAY(jushort*, _max_workers, mtGC);
+  for (uint worker = 0; worker < _max_workers; worker++) {
+    _liveness_cache[worker] = NEW_C_HEAP_ARRAY(jushort, _num_regions, mtGC);
+    Copy::fill_to_bytes(_liveness_cache[worker], _num_regions * sizeof(jushort));
+  }
+
   return JNI_OK;
 }
 
@@ -2714,6 +2720,28 @@ const char* ShenandoahHeap::degen_event_message(ShenandoahDegenPoint point) cons
   }
 }
 
+jushort* ShenandoahHeap::get_liveness_cache(uint worker_id) {
+#ifdef ASSERT
+  assert(worker_id < _max_workers, "sanity");
+  for (uint i = 0; i < num_regions(); i++) {
+    assert(_liveness_cache[worker_id][i] == 0, "liveness cache should be empty");
+  }
+#endif
+  return _liveness_cache[worker_id];
+}
+
+void ShenandoahHeap::flush_liveness_cache(uint worker_id) {
+  assert(worker_id < _max_workers, "sanity");
+  jushort* ld = _liveness_cache[worker_id];
+  for (uint i = 0; i < num_regions(); i++) {
+    ShenandoahHeapRegion* r = get_region(i);
+    jushort live = ld[i];
+    if (live > 0) {
+      r->increase_live_data_gc_words(live);
+      ld[i] = 0;
+    }
+  }
+}
 
 BoolObjectClosure* ShenandoahIsAliveSelector::is_alive_closure() {
   return ShenandoahHeap::heap()->has_forwarded_objects() ? reinterpret_cast<BoolObjectClosure*>(&_fwd_alive_cl)

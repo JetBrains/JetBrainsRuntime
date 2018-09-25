@@ -191,7 +191,6 @@ public:
     ShenandoahWorkerSession worker_session(worker_id);
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahObjToScanQueue* q = _cm->get_queue(worker_id);
-    jushort* live_data = _cm->get_liveness(worker_id);
     ReferenceProcessor* rp;
     if (heap->process_references()) {
       rp = ShenandoahHeap::heap()->ref_processor();
@@ -367,12 +366,6 @@ void ShenandoahConcurrentMark::initialize(uint workers) {
   }
 
   ShenandoahBarrierSet::satb_mark_queue_set().set_buffer_size(ShenandoahSATBBufferSize);
-
-  size_t num_regions = ShenandoahHeap::heap()->num_regions();
-  _liveness_local = NEW_C_HEAP_ARRAY(jushort*, workers, mtGC);
-  for (uint worker = 0; worker < workers; worker++) {
-     _liveness_local[worker] = NEW_C_HEAP_ARRAY(jushort, num_regions, mtGC);
-  }
 }
 
 void ShenandoahConcurrentMark::concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp) {
@@ -890,8 +883,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
                                                  bool strdedup) {
   ShenandoahObjToScanQueue* q = get_queue(w);
 
-  jushort* ld = get_liveness(w);
-  Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
+  jushort* ld = _heap->get_liveness_cache(w);
 
   // TODO: We can clean up this if we figure out how to do templated oop closures that
   // play nice with specialized_oop_iterators.
@@ -933,14 +925,7 @@ void ShenandoahConcurrentMark::mark_loop_prework(uint w, ParallelTaskTerminator 
     }
   }
 
-
-  for (uint i = 0; i < _heap->num_regions(); i++) {
-    ShenandoahHeapRegion* r = _heap->get_region(i);
-    jushort live = ld[i];
-    if (live > 0) {
-      r->increase_live_data_gc_words(live);
-    }
-  }
+  _heap->flush_liveness_cache(w);
 }
 
 template <class T, bool CANCELLABLE>
@@ -1030,8 +1015,3 @@ void ShenandoahConcurrentMark::clear_claim_codecache() {
   assert(ShenandoahConcurrentScanCodeRoots, "must not be called otherwise");
   _claimed_codecache.unset();
 }
-
-jushort* ShenandoahConcurrentMark::get_liveness(uint worker_id) {
-  return _liveness_local[worker_id];
-}
-

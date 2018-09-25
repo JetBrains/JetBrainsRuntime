@@ -41,16 +41,6 @@ private:
 
   ShenandoahSharedFlag _claimed_codecache;
 
-  // Used for buffering per-region liveness data.
-  // Needed since ShenandoahHeapRegion uses atomics to update liveness.
-  //
-  // The array has max-workers elements, each of which is an array of
-  // jushort * max_regions. The choice of jushort is not accidental:
-  // there is a tradeoff between static/dynamic footprint that translates
-  // into cache pressure (which is already high during marking), and
-  // too many atomic updates. size_t/jint is too large, jbyte is too small.
-  jushort** _liveness_local;
-
 private:
   template <class T>
   inline void do_task(ShenandoahObjToScanQueue* q, T* cl, jushort* live_data, ShenandoahMarkTask* task);
@@ -106,8 +96,6 @@ public:
   ShenandoahObjToScanQueue* get_queue(uint worker_id);
 
   ShenandoahObjToScanQueueSet* task_queues() { return _task_queues;}
-
-  jushort* get_liveness(uint worker_id);
 
   void cancel();
 

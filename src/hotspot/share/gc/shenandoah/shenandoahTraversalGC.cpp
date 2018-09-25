@@ -300,18 +300,6 @@ public:
   }
 };
 
-void ShenandoahTraversalGC::flush_liveness(uint worker_id) {
-  jushort* ld = get_liveness(worker_id);
-  for (uint i = 0; i < _heap->num_regions(); i++) {
-    ShenandoahHeapRegion* r = _heap->get_region(i);
-    jushort live = ld[i];
-    if (live > 0) {
-      r->increase_live_data_gc_words(live);
-      ld[i] = 0;
-    }
-  }
-}
-
 ShenandoahTraversalGC::ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_regions) :
   _heap(heap),
   _task_queues(new ShenandoahObjToScanQueueSet(heap->max_workers())),
@@ -323,13 +311,6 @@ ShenandoahTraversalGC::ShenandoahTraversalGC(ShenandoahHeap* heap, size_t num_re
     task_queue->initialize();
     _task_queues->register_queue(i, task_queue);
   }
-
-  uint workers = heap->max_workers();
-  _liveness_local = NEW_C_HEAP_ARRAY(jushort*, workers, mtGC);
-  for (uint worker = 0; worker < workers; worker++) {
-     _liveness_local[worker] = NEW_C_HEAP_ARRAY(jushort, num_regions, mtGC);
-  }
-
 }
 
 ShenandoahTraversalGC::~ShenandoahTraversalGC() {
@@ -450,8 +431,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
   ShenandoahObjToScanQueue* q = task_queues()->queue(w);
 
   // Initialize live data.
-  jushort* ld = get_liveness(w);
-  Copy::fill_to_bytes(ld, _heap->num_regions() * sizeof(jushort));
+  jushort* ld = _heap->get_liveness_cache(w);
 
   ReferenceProcessor* rp = NULL;
   if (_heap->process_references()) {
@@ -496,8 +476,8 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
       }
     }
   }
-  flush_liveness(w);
 
+  _heap->flush_liveness_cache(w);
 }
 
 template <class T>
@@ -759,10 +739,6 @@ void ShenandoahTraversalGC::reset() {
 
 ShenandoahObjToScanQueueSet* ShenandoahTraversalGC::task_queues() {
   return _task_queues;
-}
-
-jushort* ShenandoahTraversalGC::get_liveness(uint worker_id) {
-  return _liveness_local[worker_id];
 }
 
 class ShenandoahTraversalCancelledGCYieldClosure : public YieldClosure {

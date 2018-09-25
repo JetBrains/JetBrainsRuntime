@@ -35,17 +35,6 @@ class ShenandoahTraversalGC : public CHeapObj<mtGC> {
 private:
   ShenandoahHeap* const _heap;
   ShenandoahObjToScanQueueSet* const _task_queues;
-
-  // Used for buffering per-region liveness data.
-  // Needed since ShenandoahHeapRegion uses atomics to update liveness.
-  //
-  // The array has max-workers elements, each of which is an array of
-  // jushort * max_regions. The choice of jushort is not accidental:
-  // there is a tradeoff between static/dynamic footprint that translates
-  // into cache pressure (which is already high during marking), and
-  // too many atomic updates. size_t/jint is too large, jbyte is too small.
-  jushort** _liveness_local;
-
   ShenandoahHeapRegionSet _traversal_set;
 
 public:
@@ -66,9 +55,6 @@ public:
   bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
 
   ShenandoahObjToScanQueueSet* task_queues();
-
-  jushort* get_liveness(uint worker_id);
-  void flush_liveness(uint worker_id);
 
   void main_loop(uint worker_id, ParallelTaskTerminator* terminator);
 
