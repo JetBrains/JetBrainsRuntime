@@ -68,27 +68,22 @@ private:
   void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *t);
 
   template <bool CANCELLABLE>
-  void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp,
-                         bool class_unload, bool update_refs, bool strdedup);
+  void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp, bool strdedup);
 
 public:
   // Mark loop entry.
   // Translates dynamic arguments to template parameters with progressive currying.
   void mark_loop(uint worker_id, ParallelTaskTerminator* terminator, ReferenceProcessor *rp,
-                 bool cancellable,
-                 bool class_unload, bool update_refs, bool strdedup) {
+                 bool cancellable, bool strdedup) {
     if (cancellable) {
-      mark_loop_prework<true>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      mark_loop_prework<true>(worker_id, terminator, rp, strdedup);
     } else {
-      mark_loop_prework<false>(worker_id, terminator, rp, class_unload, update_refs, strdedup);
+      mark_loop_prework<false>(worker_id, terminator, rp, strdedup);
     }
   }
 
   // We need to do this later when the heap is already created.
   void initialize(uint workers);
-
-  bool process_references() const;
-  bool unload_classes() const;
 
   bool claim_codecache();
   void clear_claim_codecache();
@@ -118,7 +113,7 @@ public:
 
   void preclean_weak_refs();
 
-  void concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp, bool update_ref);
+  void concurrent_scan_code_roots(uint worker_id, ReferenceProcessor* rp);
 private:
 
   void weak_refs_work(bool full_gc);
