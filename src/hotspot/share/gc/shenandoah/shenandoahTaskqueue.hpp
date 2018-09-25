@@ -117,6 +117,7 @@ private:
 //
 
 #ifdef _MSC_VER
+#pragma warning(push)
 // warning C4522: multiple assignment operators specified
 #pragma warning( disable:4522 )
 #endif
@@ -232,6 +233,10 @@ private:
   int _chunk;
   int _pow;
 };
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
 
 typedef ObjArrayChunkedTask ShenandoahMarkTask;
