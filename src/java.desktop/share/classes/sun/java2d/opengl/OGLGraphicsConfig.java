@@ -34,7 +34,7 @@ import sun.java2d.pipe.hw.AccelGraphicsConfig;
  * GLXGraphicsConfig and WGLGraphicsConfig, making it easier to invoke these
  * methods directly from OGLSurfaceData.
  */
-interface OGLGraphicsConfig extends
+public interface OGLGraphicsConfig extends
     AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
     OGLContext getContext();

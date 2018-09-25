@@ -33,6 +33,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsEnvironment;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLLayer;
+import sun.java2d.metal.MTLSurfaceData;
 import sun.lwawt.LWWindowPeer;
 
 import sun.java2d.SurfaceData;
@@ -48,7 +51,7 @@ public class CPlatformView extends CFRetainedResource {
 
     private LWWindowPeer peer;
     private SurfaceData surfaceData;
-    private CGLLayer windowLayer;
+    private CFRetainedResource windowLayer;
     private CPlatformResponder responder;
 
     public CPlatformView() {
@@ -59,7 +62,7 @@ public class CPlatformView extends CFRetainedResource {
         initializeBase(peer, responder);
 
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            this.windowLayer = createCGLayer();
+            this.windowLayer = MacOSFlags.isMetalEnabled()? createMTLLayer() : createCGLayer();
         }
         setPtr(nativeCreateView(0, 0, 0, 0, getWindowLayerPtr()));
     }
@@ -67,6 +70,11 @@ public class CPlatformView extends CFRetainedResource {
     public CGLLayer createCGLayer() {
         return new CGLLayer(peer);
     }
+
+    public MTLLayer createMTLLayer() {
+        return new MTLLayer(peer);
+    }
+
 
     protected void initializeBase(LWWindowPeer peer, CPlatformResponder responder) {
         this.peer = peer;
@@ -107,7 +115,10 @@ public class CPlatformView extends CFRetainedResource {
     // ----------------------------------------------------------------------
     public SurfaceData replaceSurfaceData() {
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            surfaceData = windowLayer.replaceSurfaceData();
+            surfaceData = (MacOSFlags.isMetalEnabled()) ?
+                    ((MTLLayer)windowLayer).replaceSurfaceData() :
+                    ((CGLLayer)windowLayer).replaceSurfaceData()
+            ;
         } else {
             if (surfaceData == null) {
                 CGraphicsConfig graphicsConfig = (CGraphicsConfig)getGraphicsConfiguration();
@@ -121,7 +132,11 @@ public class CPlatformView extends CFRetainedResource {
 
     private void validateSurface() {
         if (surfaceData != null) {
-            ((CGLSurfaceData)surfaceData).validate();
+            if (MacOSFlags.isMetalEnabled()) {
+                ((MTLSurfaceData) surfaceData).validate();
+            } else {
+                ((CGLSurfaceData) surfaceData).validate();
+            }
         }
     }
 
@@ -143,7 +158,9 @@ public class CPlatformView extends CFRetainedResource {
 
     public long getWindowLayerPtr() {
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            return windowLayer.getPointer();
+            return MacOSFlags.isMetalEnabled() ?
+                    ((MTLLayer)windowLayer).getPointer() :
+                    ((CGLLayer)windowLayer).getPointer();
         } else {
             return 0;
         }

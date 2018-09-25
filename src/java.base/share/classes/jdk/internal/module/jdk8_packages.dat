@@ -1162,6 +1162,7 @@ sun.java2d.d3d
 sun.java2d.jules
 sun.java2d.loops
 sun.java2d.opengl
+sun.java2d.metal
 sun.java2d.pipe
 sun.java2d.pipe.hw
 sun.java2d.pisces

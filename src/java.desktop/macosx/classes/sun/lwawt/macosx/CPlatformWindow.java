@@ -62,6 +62,7 @@ import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.AWTAccessor.WindowAccessor;
 import sun.java2d.SurfaceData;
+import sun.java2d.metal.MTLSurfaceData;
 import sun.java2d.opengl.CGLSurfaceData;
 import sun.lwawt.LWLightweightFramePeer;
 import sun.lwawt.LWToolkit;
@@ -1056,6 +1057,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         SurfaceData surfaceData = getSurfaceData();
         if (surfaceData instanceof CGLSurfaceData) {
             ((CGLSurfaceData)surfaceData).validate();
+        } else if (surfaceData instanceof MTLSurfaceData) {
+            ((MTLSurfaceData)surfaceData).validate();
         }
     }
 

@@ -36,6 +36,8 @@ import java.awt.geom.Rectangle2D;
 import java.util.Objects;
 
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
 
 public final class CGraphicsDevice extends GraphicsDevice
@@ -60,7 +62,9 @@ public final class CGraphicsDevice extends GraphicsDevice
 
     public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
-        config = CGLGraphicsConfig.getConfig(this, displayID, 0);
+        config = MacOSFlags.isMetalEnabled() ?
+                MTLGraphicsConfig.getConfig(this, displayID, 0) :
+                CGLGraphicsConfig.getConfig(this, displayID, 0);
     }
 
     /**

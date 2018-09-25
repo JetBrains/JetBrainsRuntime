@@ -24,7 +24,8 @@
  */
 
 #import <Cocoa/Cocoa.h>
-
+#import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
 #import "CDragSource.h"
 #import "CDropTarget.h"
 

@@ -108,6 +108,8 @@ import sun.awt.LightweightFrame;
 import sun.awt.SunToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWCursorManager;
@@ -476,7 +478,11 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public void sync() {
         // flush the OGL pipeline (this is a no-op if OGL is not enabled)
-        OGLRenderQueue.sync();
+        if (MacOSFlags.isMetalEnabled()) {
+            MTLRenderQueue.sync();
+        } else {
+            OGLRenderQueue.sync();
+        }
         // setNeedsDisplay() selector was sent to the appropriate CALayer so now
         // we have to flush the native selectors queue.
         flushNativeSelectors();

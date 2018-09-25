@@ -26,6 +26,8 @@
 #import "LWCToolkit.h"
 #import "ThreadUtilities.h"
 #include "GeomUtilities.h"
+#import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 

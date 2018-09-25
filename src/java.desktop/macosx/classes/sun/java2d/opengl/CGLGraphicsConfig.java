@@ -55,6 +55,7 @@ import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
 import sun.lwawt.LWComponentPeer;
+import sun.lwawt.macosx.CFRetainedResource;
 import sun.lwawt.macosx.CPlatformView;
 
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
@@ -264,8 +265,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     @Override
-    public SurfaceData createSurfaceData(CGLLayer layer) {
-        return CGLSurfaceData.createData(layer);
+    public SurfaceData createSurfaceData(CFRetainedResource layer) {
+        return CGLSurfaceData.createData((CGLLayer) layer);
     }
 
     @Override

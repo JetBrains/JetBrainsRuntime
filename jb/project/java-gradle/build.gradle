@@ -123,5 +123,4 @@ task run_test << {
 tasks.cleanTest.dependsOn tasks.run_test
 classes.dependsOn.clear()
 classes.dependsOn tasks.make_images
-processResources.dependsOn tasks.make_images
 tasks.cleanClasses.dependsOn tasks.make_clean

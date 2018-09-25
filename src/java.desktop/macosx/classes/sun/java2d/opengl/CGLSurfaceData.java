@@ -249,7 +249,7 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
         }
 
         @Override
-        boolean isOnScreen() {
+        public boolean isOnScreen() {
             return true;
         }
 
