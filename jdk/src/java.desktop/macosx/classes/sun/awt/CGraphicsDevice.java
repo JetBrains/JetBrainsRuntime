@@ -33,6 +33,8 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.util.Objects;
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
 
 public final class CGraphicsDevice extends GraphicsDevice
@@ -61,8 +63,11 @@ public final class CGraphicsDevice extends GraphicsDevice
     public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
         configs = new GraphicsConfiguration[] {
-            CGLGraphicsConfig.getConfig(this, 0)
+                MacOSFlags.isMetalEnabled() ?
+                        MTLGraphicsConfig.getConfig(this, 0) :
+                        CGLGraphicsConfig.getConfig(this, 0)
         };
+        System.err.println(nativeGetMetalDeviceName(displayID));
     }
 
     /**
@@ -273,4 +278,6 @@ public final class CGraphicsDevice extends GraphicsDevice
     private static native double nativeGetYResolution(int displayID);
 
     private static native Insets nativeGetScreenInsets(int displayID);
+
+    private static native String nativeGetMetalDeviceName(int displayID);
 }

@@ -48,6 +48,8 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
       LIBS := \
           -losxapp \
           -framework Cocoa \
+          -framework Metal \
+          -framework MetalKit \
           -framework ApplicationServices \
           -framework JavaNativeFoundation \
           -framework JavaRuntimeSupport \

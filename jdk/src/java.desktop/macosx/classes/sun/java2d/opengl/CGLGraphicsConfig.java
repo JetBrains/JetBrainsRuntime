@@ -61,6 +61,7 @@ import static sun.java2d.opengl.OGLSurfaceData.*;
 import static sun.java2d.opengl.OGLContext.OGLContextCaps.*;
 
 import sun.lwawt.LWComponentPeer;
+import sun.lwawt.macosx.CFRetainedResource;
 import sun.lwawt.macosx.CPlatformView;
 import sun.lwawt.macosx.CThreading;
 import java.security.PrivilegedAction;
@@ -320,8 +321,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     @Override
-    public SurfaceData createSurfaceData(CGLLayer layer) {
-        return CGLSurfaceData.createData(layer);
+    public SurfaceData createSurfaceData(CFRetainedResource layer) {
+        return CGLSurfaceData.createData((CGLLayer) layer);
     }
 
     @Override

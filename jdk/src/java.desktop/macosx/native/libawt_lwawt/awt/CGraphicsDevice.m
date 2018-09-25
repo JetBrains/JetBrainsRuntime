@@ -25,6 +25,8 @@
 
 #import "LWCToolkit.h"
 #import "ThreadUtilities.h"
+#import <Metal/Metal.h>
+#import <MetalKit/MetalKit.h>
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
@@ -348,4 +350,24 @@ JNF_COCOA_ENTER(env);
 
 JNF_COCOA_EXIT(env);
     return ret;
+}
+
+/*
+ * Class:     sun_awt_CGraphicsDevice
+ * Method:    nativeGetMetalDeviceName
+ * Signature: (I)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_sun_awt_CGraphicsDevice_nativeGetMetalDeviceName
+  (JNIEnv *env, jclass class, jint displayID)
+{
+
+    id<MTLDevice> device = CGDirectDisplayCopyCurrentMetalDevice(displayID);
+    if (!device) return NULL;
+    NSString* name = [device name];
+    UniChar *chars = malloc(name.length * sizeof(UniChar));
+    if (!chars) return NULL;
+    [name getCharacters:chars range:NSMakeRange(0,name.length)];
+    jstring javaString = (*env)->NewString(env, chars, name.length);
+    free(chars);
+    return javaString;
 }

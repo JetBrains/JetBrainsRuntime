@@ -333,9 +333,16 @@ JNF_COCOA_ENTER(env);
 JNF_COCOA_EXIT(env);
 }
 
+extern void
+MTLSD_Flush(JNIEnv *env);
+extern jboolean metalEnabled;
+
 void
 OGLSD_Flush(JNIEnv *env)
 {
+    if (metalEnabled) {
+        MTLSD_Flush(env);
+    } else {
     OGLSDOps *dstOps = OGLRenderQueue_GetCurrentDestination();
     if (dstOps != NULL) {
         CGLSDOps *dstCGLOps = (CGLSDOps *)dstOps->privOps;
@@ -363,6 +370,7 @@ OGLSD_Flush(JNIEnv *env)
 #endif /* REMOTELAYER */
             }];
         }
+    }
     }
 }
 

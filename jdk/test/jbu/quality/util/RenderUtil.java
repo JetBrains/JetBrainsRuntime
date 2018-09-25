@@ -91,6 +91,7 @@ public class RenderUtil {
     {
         JFrame[] f = new JFrame[1];
         Point[] p = new Point[1];
+        double[] scale = new double[2];
         SwingUtilities.invokeAndWait(() -> {
             f[0] = new JFrame();
 
@@ -104,6 +105,8 @@ public class RenderUtil {
             c.setLocation(50, 50);
             f[0].setVisible(true);
             p[0]= c.getLocationOnScreen();
+            scale[0] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleX();
+            scale[1] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleY();
         });
 
         Rectangle screenRect;
@@ -111,10 +114,12 @@ public class RenderUtil {
         while (!Color.black.equals(r.getPixelColor(p[0].x, p[0].y))) {
             Thread.sleep(100);
         }
-        screenRect = new Rectangle(p[0].x + 5, p[0].y + 5, width, height);
+        screenRect = new Rectangle(
+                p[0].x + 5,
+                p[0].y + 5,
+                (int)((width - 20)  * scale[0]), (int)((height - 30) * scale[1]));
 
-        BufferedImage result = SystemUtils.IS_OS_MAC ?
-                captureScreen(f[0], screenRect) : r.createScreenCapture(screenRect);
+        BufferedImage result = r.createScreenCapture(screenRect);
         SwingUtilities.invokeAndWait(f[0]::dispose);
         return result;
     }
@@ -129,14 +134,16 @@ public class RenderUtil {
 
         @Override
         protected void paintComponent(Graphics g) {
-            g.translate(5, 5);
             Shape savedClip = g.getClip();
-            g.clipRect(0, 0, getWidth() - 20, getHeight() - 20);
+            g.translate(5, 5);
             painter.accept((Graphics2D)g);
+            g.translate(-5, -5);
             g.setClip(savedClip);
             g.setColor(Color.black);
-            ((Graphics2D) g).setStroke(new BasicStroke(10));
-            g.drawRect(-5, -5, getWidth() - 5, getHeight() - 5);
+            g.fillRect(0, 0, getWidth() + 10, 5);
+            g.fillRect(0, getHeight()-5, getWidth() + 10, 5);
+            g.fillRect(getWidth() - 10, -10, getWidth() + 5, getHeight() + 5);
+            g.fillRect(-5, -10,  10, getHeight() + 5);
         }
     }
 

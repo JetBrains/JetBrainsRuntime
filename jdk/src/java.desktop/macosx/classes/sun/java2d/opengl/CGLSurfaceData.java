@@ -251,7 +251,7 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
         }
 
         @Override
-        boolean isOnScreen() {
+        public boolean isOnScreen() {
             return true;
         }
 
@@ -383,7 +383,7 @@ public abstract class CGLSurfaceData extends OGLSurfaceData {
         }
     }
 
-    static void dispose(long pData, long pConfigInfo) {
+    public static void dispose(long pData, long pConfigInfo) {
         OGLSurfaceData.dispose(pData, pConfigInfo);
         CGLGraphicsConfig.deRefPConfigInfo(pConfigInfo);
     }

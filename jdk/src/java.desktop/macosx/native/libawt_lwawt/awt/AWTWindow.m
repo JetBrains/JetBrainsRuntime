@@ -935,6 +935,9 @@ JNF_COCOA_ENTER(env);
 
     JNFWeakJObjectWrapper *platformWindow = [JNFWeakJObjectWrapper wrapperWithJObject:obj withEnv:env];
     NSView *contentView = OBJC(contentViewPtr);
+
+    NSString *className = NSStringFromClass([contentView class]);
+    NSLog(@"%@",className);
     NSRect frameRect = NSMakeRect(x, y, w, h);
     AWTWindow *owner = [OBJC(ownerPtr) delegate];
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){

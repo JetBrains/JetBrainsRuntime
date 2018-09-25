@@ -46,6 +46,8 @@ ifeq ($(OPENJDK_TARGET_OS), macosx)
           -framework AudioToolbox \
           -framework Carbon \
           -framework Cocoa \
+          -framework Metal \
+          -framework MetalKit \
           -framework Security \
           -framework ExceptionHandling \
           -framework JavaNativeFoundation \

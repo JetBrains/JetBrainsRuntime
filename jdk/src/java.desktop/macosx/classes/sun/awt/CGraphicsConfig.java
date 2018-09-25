@@ -32,6 +32,7 @@ import java.awt.image.*;
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.CGLLayer;
 import sun.lwawt.LWGraphicsConfig;
+import sun.lwawt.macosx.CFRetainedResource;
 import sun.lwawt.macosx.CPlatformView;
 
 public abstract class CGraphicsConfig extends GraphicsConfiguration
@@ -98,7 +99,7 @@ public abstract class CGraphicsConfig extends GraphicsConfiguration
      * Creates a new SurfaceData that will be associated with the given
      * CGLLayer.
      */
-    public abstract SurfaceData createSurfaceData(CGLLayer layer);
+    public abstract SurfaceData createSurfaceData(CFRetainedResource layer);
 
     @Override
     public final boolean isTranslucencyCapable() {

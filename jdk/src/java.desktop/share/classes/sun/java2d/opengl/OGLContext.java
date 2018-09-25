@@ -42,7 +42,7 @@ public class OGLContext extends BufferedContext {
 
     private final OGLGraphicsConfig config;
 
-    OGLContext(RenderQueue rq, OGLGraphicsConfig config) {
+    public OGLContext(RenderQueue rq, OGLGraphicsConfig config) {
         super(rq);
         this.config = config;
     }
@@ -71,7 +71,7 @@ public class OGLContext extends BufferedContext {
      * situations where we may not otherwise have a current context (e.g.
      * when disposing a texture-based surface).
      */
-    static void setScratchSurface(long pConfigInfo) {
+    public static void setScratchSurface(long pConfigInfo) {
         // assert OGLRenderQueue.getInstance().lock.isHeldByCurrentThread();
 
         // invalidate the current context
@@ -92,7 +92,7 @@ public class OGLContext extends BufferedContext {
      * that affect the current context state (e.g. disposing a context or
      * surface).
      */
-    static void invalidateCurrentContext() {
+    public static void invalidateCurrentContext() {
         // assert OGLRenderQueue.getInstance().lock.isHeldByCurrentThread();
 
         // invalidate the current Java-level context so that we
@@ -121,7 +121,7 @@ public class OGLContext extends BufferedContext {
      *
      * @return an id string for the adapter
      */
-    static final native String getOGLIdString();
+    public static final native String getOGLIdString();
 
     @Override
     public void saveState() {
@@ -155,18 +155,18 @@ public class OGLContext extends BufferedContext {
         rq.flushNow();
     }
 
-    static class OGLContextCaps extends ContextCapabilities {
+    public static class OGLContextCaps extends ContextCapabilities {
         /**
          * Indicates the presence of the GL_EXT_framebuffer_object extension.
          * This cap will only be set if the fbobject system property has been
          * enabled and we are able to create an FBO with depth buffer.
          */
         @Native
-        static final int CAPS_EXT_FBOBJECT     =
+        public static final int CAPS_EXT_FBOBJECT     =
                 (CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE);
         /** Indicates that the context is doublebuffered. */
         @Native
-        static final int CAPS_DOUBLEBUFFERED   = (FIRST_PRIVATE_CAP << 0);
+        public static final int CAPS_DOUBLEBUFFERED   = (FIRST_PRIVATE_CAP << 0);
         /**
          * Indicates the presence of the GL_ARB_fragment_shader extension.
          * This cap will only be set if the lcdshader system property has been
@@ -196,7 +196,7 @@ public class OGLContext extends BufferedContext {
         static final int CAPS_EXT_TEXBARRIER = (FIRST_PRIVATE_CAP << 5);
 
 
-        OGLContextCaps(int caps, String adapterId) {
+        public OGLContextCaps(int caps, String adapterId) {
             super(caps, adapterId);
         }
 
