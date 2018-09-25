@@ -216,7 +216,7 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
 
   cm->update_roots(ShenandoahPhaseTimings::full_gc_roots);
   cm->mark_roots(ShenandoahPhaseTimings::full_gc_roots);
-  cm->shared_finish_mark_from_roots(/* full_gc = */ true);
+  cm->finish_mark_from_roots(/* full_gc = */ true);
 
   heap->mark_complete_marking_context();
 }

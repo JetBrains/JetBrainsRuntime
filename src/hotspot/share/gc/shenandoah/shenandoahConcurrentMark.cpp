@@ -309,13 +309,6 @@ void ShenandoahConcurrentMark::mark_roots(ShenandoahPhaseTimings::Phase root_pha
   }
 }
 
-void ShenandoahConcurrentMark::init_mark_roots() {
-  assert(Thread::current()->is_VM_thread(), "can only do this in VMThread");
-  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
-
-  mark_roots(ShenandoahPhaseTimings::scan_roots);
-}
-
 void ShenandoahConcurrentMark::update_roots(ShenandoahPhaseTimings::Phase root_phase) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
@@ -424,19 +417,7 @@ void ShenandoahConcurrentMark::mark_from_roots() {
   assert(task_queues()->is_empty() || sh->cancelled_gc(), "Should be empty when not cancelled");
 }
 
-void ShenandoahConcurrentMark::finish_mark_from_roots() {
-  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
-
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-
-  shared_finish_mark_from_roots(/* full_gc = */ false);
-
-  if (sh->has_forwarded_objects()) {
-    update_roots(ShenandoahPhaseTimings::update_roots);
-  }
-}
-
-void ShenandoahConcurrentMark::shared_finish_mark_from_roots(bool full_gc) {
+void ShenandoahConcurrentMark::finish_mark_from_roots(bool full_gc) {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();

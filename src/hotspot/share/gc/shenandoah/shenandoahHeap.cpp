@@ -1361,6 +1361,7 @@ public:
 
 void ShenandoahHeap::op_init_mark() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
+  assert(Thread::current()->is_VM_thread(), "can only do this in VMThread");
 
   assert(marking_context()->is_bitmap_clear(), "need clear marking bitmap");
   assert(!marking_context()->is_complete(), "should not be complete");
@@ -1390,7 +1391,7 @@ void ShenandoahHeap::op_init_mark() {
   // Make above changes visible to worker threads
   OrderAccess::fence();
 
-  concurrent_mark()->init_mark_roots();
+  concurrent_mark()->mark_roots(ShenandoahPhaseTimings::scan_roots);
 
   if (UseTLAB) {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::resize_tlabs);
@@ -1414,7 +1415,12 @@ void ShenandoahHeap::op_final_mark() {
   // get unmarked objects in the roots.
 
   if (!cancelled_gc()) {
-    concurrent_mark()->finish_mark_from_roots();
+    concurrent_mark()->finish_mark_from_roots(/* full_gc = */ false);
+
+    if (has_forwarded_objects()) {
+      concurrent_mark()->update_roots(ShenandoahPhaseTimings::update_roots);
+    }
+
     stop_concurrent_marking();
 
     {

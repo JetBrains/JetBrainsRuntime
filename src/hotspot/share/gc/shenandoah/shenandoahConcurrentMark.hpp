@@ -82,15 +82,11 @@ public:
   static inline void mark_through_ref(T* p, ShenandoahHeap* heap, ShenandoahObjToScanQueue* q, ShenandoahMarkingContext* const mark_context);
 
   void mark_from_roots();
+  void finish_mark_from_roots(bool full_gc);
 
-  // Prepares unmarked root objects by marking them and putting
-  // them into the marking task queue.
-  void init_mark_roots();
   void mark_roots(ShenandoahPhaseTimings::Phase root_phase);
   void update_roots(ShenandoahPhaseTimings::Phase root_phase);
 
-  void shared_finish_mark_from_roots(bool full_gc);
-  void finish_mark_from_roots();
   // Those are only needed public because they're called from closures.
 
   ShenandoahObjToScanQueue* get_queue(uint worker_id);
