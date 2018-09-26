@@ -237,6 +237,7 @@ java/awt/JAWT/JAWT.sh                                                           
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html JRE-948 macosx-all
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.html JRE-948 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.html JRE-898 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JRE-898 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.html        8198624 generic-all
 java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.html                    8198626 windows-all,macosx-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        8159252 generic-all
@@ -847,6 +848,7 @@ javax/swing/JTabbedPane/7161568/bug7161568.java                                 
 javax/swing/JTabbedPane/8007563/Test8007563.java                                    8051591,8197822 macosx-all,windows-all,linux-all
 javax/swing/JTable/4220171/bug4220171.java                                          JRE-948 macosx-all
 javax/swing/JTable/6263446/bug6263446.java                                          8169959 macosx-all,windows-all
+javax/swing/JTable/7055065/bug7055065.java                                          JRE-948 macosx-all
 javax/swing/JTable/7068740/bug7068740.java                                          8049313,8197552 macosx-all,windows-all
 javax/swing/JTable/7124218/SelectEditTableCell.java                                 8148958 macosx-all,windows-all,linux-all
 javax/swing/JTableHeader/6884066/bug6884066.java                                    8169952 macosx-all,windows-all
@@ -1020,7 +1022,7 @@ java/nio/channels/FileChannel/Size.java                                         
 java/nio/channels/FileChannel/Transfer4GBFile.java                                  nobug   generic-all often fails because No space left on device
 java/nio/file/WatchService/Basic.java                                               7158947 solaris-all Solaris 11
 java/nio/file/WatchService/MayFlies.java                                            7158947 solaris-all Solaris 11
-java/nio/file/WatchService/LotsOfEvents.java                                        7158947 solaris-all Solaris 11
+java/nio/file/WatchService/LotsOfEvents.java                                        JRE-969,7158947 windows-all,solaris-all Solaris 11
 
 com/sun/nio/sctp/SctpMultiChannel/SocketOptionTests.java                            8141694 linux-all
 com/sun/nio/sctp/SctpChannel/SocketOptionTests.java                                 8141694 linux-all
