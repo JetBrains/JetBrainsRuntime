@@ -2640,17 +2640,17 @@ const char* ShenandoahHeap::init_mark_event_message() const {
   bool unload_cls = unload_classes();
 
   if (update_refs && proc_refs && unload_cls) {
-    return "Pause Init Mark (update refs) (process refs) (unload classes)";
+    return "Pause Init Mark (update refs) (process weakrefs) (unload classes)";
   } else if (update_refs && proc_refs) {
-    return "Pause Init Mark (update refs) (process refs)";
+    return "Pause Init Mark (update refs) (process weakrefs)";
   } else if (update_refs && unload_cls) {
     return "Pause Init Mark (update refs) (unload classes)";
   } else if (proc_refs && unload_cls) {
-    return "Pause Init Mark (process refs) (unload classes)";
+    return "Pause Init Mark (process weakrefs) (unload classes)";
   } else if (update_refs) {
     return "Pause Init Mark (update refs)";
   } else if (proc_refs) {
-    return "Pause Init Mark (process refs)";
+    return "Pause Init Mark (process weakrefs)";
   } else if (unload_cls) {
     return "Pause Init Mark (unload classes)";
   } else {
