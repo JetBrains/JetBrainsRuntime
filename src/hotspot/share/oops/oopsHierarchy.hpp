@@ -106,36 +106,22 @@ public:
   oopDesc*  operator->() const        { return obj(); }
   bool operator==(const oop o) const  {
 #if INCLUDE_SHENANDOAHGC
-    if (VerifyStrictOopOperations) {
+    if (VerifyObjectEquals) {
       ShouldNotReachHere();
     }
 #endif
     return obj() == o.obj();
   }
-  bool operator==(void *p) const      {
-#if INCLUDE_SHENANDOAHGC
-    if (p != NULL && VerifyStrictOopOperations) {
-      ShouldNotReachHere();
-    }
-#endif
-    return obj() == p;
-  }
+  bool operator==(void *p) const      { return obj() == p; }
   bool operator!=(const volatile oop o) const  {
 #if INCLUDE_SHENANDOAHGC
-    if (VerifyStrictOopOperations) {
+    if (VerifyObjectEquals) {
       ShouldNotReachHere();
     }
 #endif
     return obj() != o.obj();
   }
-  bool operator!=(void *p) const      {
-#if INCLUDE_SHENANDOAHGC
-    if (p != NULL && VerifyStrictOopOperations) {
-      ShouldNotReachHere();
-    }
-#endif
-    return obj() != p;
-  }
+  bool operator!=(void *p) const      { return obj() != p; }
 
   // Assignment
   oop& operator=(const oop& o)                            { _o = o.obj(); return *this; }

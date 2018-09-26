@@ -769,7 +769,7 @@ void DerivedPointerTable::add(oop *derived_loc, oop *base_loc) {
   assert(Universe::heap()->is_in_or_null(*base_loc), "not an oop");
   assert(derived_loc != base_loc, "Base and derived in same location");
   if (_active) {
-    assert(! oopDesc::unsafe_equals(*derived_loc, (oop)base_loc), "location already added");
+    assert(*derived_loc != (void*)base_loc, "location already added");
     assert(_list != NULL, "list must exist");
     intptr_t offset = value_of_loc(derived_loc) - value_of_loc(base_loc);
     // This assert is invalid because derived pointers can be

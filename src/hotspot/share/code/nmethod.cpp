@@ -1477,7 +1477,7 @@ bool nmethod::unload_if_dead_at(RelocIterator* iter_at_oop, BoolObjectClosure *i
 bool nmethod::do_unloading_scopes(BoolObjectClosure* is_alive) {
   // Scopes
   for (oop* p = oops_begin(); p < oops_end(); p++) {
-    if (oopDesc::unsafe_equals(*p, (oop) Universe::non_oop_word()))  continue;  // skip non-oops
+    if (*p == Universe::non_oop_word())  continue;  // skip non-oops
     if (can_unload(is_alive, p)) {
       return true;
     }
@@ -1593,7 +1593,7 @@ void nmethod::oops_do(OopClosure* f, bool allow_zombie) {
   // Scopes
   // This includes oop constants not inlined in the code stream.
   for (oop* p = oops_begin(); p < oops_end(); p++) {
-    if (oopDesc::unsafe_equals(*p, (oop) Universe::non_oop_word()))  continue;  // skip non-oops
+    if (*p == Universe::non_oop_word())  continue;  // skip non-oops
     f->do_oop(p);
   }
 }
@@ -2329,7 +2329,7 @@ void nmethod::print_recorded_oops() {
   for (int i = 0; i < oops_count(); i++) {
     oop o = oop_at(i);
     tty->print("#%3d: " INTPTR_FORMAT " ", i, p2i(o));
-    if (oopDesc::unsafe_equals(o, (oop)Universe::non_oop_word())) {
+    if (o == Universe::non_oop_word()) {
       tty->print("non-oop word");
     } else {
       o->print_value();
