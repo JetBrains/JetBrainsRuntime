@@ -2,7 +2,7 @@ package performance.text;
 
 import org.junit.Test;
 import performance.BaseScrollingPerformanceTest;
-import sun.swing.SwingUtilities2;
+//import sun.swing.SwingUtilities2;
 
 import javax.swing.*;
 
@@ -18,12 +18,12 @@ public class LCDTextAreaScrollingTest extends BaseScrollingPerformanceTest {
 
     protected JComponent createComponent() {
         JComponent textArea = createTextArea();
-        textArea.putClientProperty(SwingUtilities2.AA_TEXT_PROPERTY_KEY, SUBPIXEL_HINT);
+//        textArea.putClientProperty(SwingUtilities2.AA_TEXT_PROPERTY_KEY, SUBPIXEL_HINT);
         return textArea;
     }
 
     @Override
     protected void configureScrollPane(JScrollPane scrollPane) {
-        scrollPane.putClientProperty(SwingUtilities2.AA_TEXT_PROPERTY_KEY, SUBPIXEL_HINT);
+//        scrollPane.putClientProperty(SwingUtilities2.AA_TEXT_PROPERTY_KEY, SUBPIXEL_HINT);
     }
 }

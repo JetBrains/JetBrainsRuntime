@@ -5,7 +5,7 @@
       <GradleProjectSettings>
         <option name="distributionType" value="WRAPPED" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleJvm" value="#JAVA_INTERNAL" />
+        <option name="gradleJvm" value="9" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />

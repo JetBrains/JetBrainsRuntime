@@ -16,23 +16,12 @@
 
 package quality.util;
 
-import com.sun.jna.Pointer;
-import org.apache.commons.lang3.SystemUtils;
-import quality.util.osx.Foundation;
-import quality.util.osx.FoundationLibrary;
-import quality.util.osx.ID;
-import quality.util.osx.MacUtil;
-
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
 import java.awt.image.Raster;
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import static org.junit.Assert.assertNotNull;
@@ -40,51 +29,6 @@ import static org.junit.Assert.assertTrue;
 
 public class RenderUtil {
 
-    private static BufferedImage captureScreen(Window belowWindow, Rectangle rect) {
-        ID pool = Foundation.invoke("NSAutoreleasePool", "new");
-        try {
-            ID windowId = belowWindow != null ? MacUtil.findWindowFromJavaWindow(belowWindow) : null;
-            Foundation.NSRect nsRect = new Foundation.NSRect(rect.x, rect.y, rect.width, rect.height);
-            ID cgWindowId = windowId != null ? Foundation.invoke(windowId, "windowNumber") : ID.NIL;
-            int windowListOptions = cgWindowId != null
-                    ? FoundationLibrary.kCGWindowListOptionIncludingWindow
-                    : FoundationLibrary.kCGWindowListOptionAll;
-            int windowImageOptions = FoundationLibrary.kCGWindowImageBestResolution |
-                    FoundationLibrary.kCGWindowImageShouldBeOpaque;
-            ID cgImageRef = Foundation.cgWindowListCreateImage(
-                    nsRect, windowListOptions, cgWindowId, windowImageOptions);
-
-            ID bitmapRep = Foundation.invoke(
-                    Foundation.invoke("NSBitmapImageRep", "alloc"),
-                    "initWithCGImage:", cgImageRef);
-            ID nsImage = Foundation.invoke(
-                    Foundation.invoke("NSImage", "alloc"),
-                    "init");
-            Foundation.invoke(nsImage, "addRepresentation:", bitmapRep);
-            ID data = Foundation.invoke(nsImage, "TIFFRepresentation");
-            ID bytes = Foundation.invoke(data, "bytes");
-            ID length = Foundation.invoke(data, "length");
-            Pointer ptr = new Pointer(bytes.longValue());
-            ByteBuffer byteBuffer = ptr.getByteBuffer(0, length.longValue());
-            Foundation.invoke(nsImage, "release");
-            byte[] b = new byte[byteBuffer.remaining()];
-            byteBuffer.get(b);
-
-            BufferedImage result = ImageIO.read(new ByteArrayInputStream(b));
-            if (result != null) {
-                ColorSpace ics = ColorSpace.getInstance(ColorSpace.CS_sRGB);
-                ColorConvertOp cco = new ColorConvertOp(ics, null);
-                return cco.filter(result, null);
-            }
-            return null;
-        }
-        catch (Throwable t) {
-            return null;
-        }
-        finally {
-            Foundation.invoke(pool, "release");
-        }
-    }
 
     public static BufferedImage capture(int width, int height, Consumer<Graphics2D> painter)
             throws Exception

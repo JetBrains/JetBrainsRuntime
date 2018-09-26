@@ -1,5 +1,5 @@
 package performance;
-import sun.swing.SwingUtilities2;
+//import sun.swing.SwingUtilities2;
 
 import javax.swing.*;
 import java.awt.*;
@@ -7,11 +7,11 @@ import java.util.concurrent.Semaphore;
 
 public abstract class BaseScrollingPerformanceTest extends JFrame {
 
-    protected static SwingUtilities2.AATextInfo SUBPIXEL_HINT = new SwingUtilities2.AATextInfo(
-            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, 100);
+//    protected static SwingUtilities2.AATextInfo SUBPIXEL_HINT = new SwingUtilities2.AATextInfo(
+//            RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB, 100);
 
-    protected static SwingUtilities2.AATextInfo GREYSCALE_HINT = new SwingUtilities2.AATextInfo(
-            RenderingHints.VALUE_TEXT_ANTIALIAS_ON, 100);
+//    protected static SwingUtilities2.AATextInfo GREYSCALE_HINT = new SwingUtilities2.AATextInfo(
+//            RenderingHints.VALUE_TEXT_ANTIALIAS_ON, 100);
 
     protected static String hugeText =
             "sdfsdffffffffffffffffffffffsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfsdfdsfsdfsd" +
