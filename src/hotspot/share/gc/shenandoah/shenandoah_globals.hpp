@@ -259,9 +259,6 @@
           "Turns on heap region sampling via JVMStat")                      \
            writeable(Always)                                                \
                                                                             \
-  experimental(bool, ShenandoahFastSyncRoots, true,                         \
-          "Enable fast synchronizer roots scanning")                        \
-                                                                            \
   experimental(uint, ParallelSafepointCleanupThreads, 4,                    \
           "Number of parallel threads used for safepoint cleanup")          \
                                                                             \

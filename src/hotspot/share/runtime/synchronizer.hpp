@@ -34,21 +34,6 @@
 class ObjectMonitor;
 class ThreadsList;
 
-
-class ParallelObjectSynchronizerIterator {
-  friend class ObjectSynchronizer;
-
-  private:
-    PaddedEnd<ObjectMonitor>*  volatile _cur;
-
-  private:
-    ParallelObjectSynchronizerIterator(PaddedEnd<ObjectMonitor>* head);
-    ObjectMonitor* claim();
-
-  public:
-    bool parallel_oops_do(OopClosure* f);
-};
-
 struct DeflateMonitorCounters {
   int nInuse;          // currently associated with objects
   int nInCirculation;  // extant
@@ -57,7 +42,6 @@ struct DeflateMonitorCounters {
 
 class ObjectSynchronizer : AllStatic {
   friend class VMStructs;
-  friend class ParallelObjectSynchronizerIterator;
  public:
   typedef enum {
     owner_self,
@@ -167,9 +151,6 @@ class ObjectSynchronizer : AllStatic {
   static void oops_do(OopClosure* f);
   // Process oops in thread local used monitors
   static void thread_local_used_oops_do(Thread* thread, OopClosure* f);
-
-  // Parallel GC support
-  static ParallelObjectSynchronizerIterator parallel_iterator();
 
   // debugging
   static void sanity_checks(const bool verbose,

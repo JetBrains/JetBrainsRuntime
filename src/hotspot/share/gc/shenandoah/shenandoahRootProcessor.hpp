@@ -58,7 +58,6 @@ class ShenandoahRootProcessor : public StackObj {
   ShenandoahPhaseTimings::Phase _phase;
   ParallelCLDRootIterator   _cld_iterator;
   ShenandoahAllCodeRootsIterator _coderoots_all_iterator;
-  ParallelObjectSynchronizerIterator _om_iterator;
   CodeBlobClosure* _threads_nmethods_cl;
 
   void process_java_roots(OopClosure* scan_non_heap_roots,
