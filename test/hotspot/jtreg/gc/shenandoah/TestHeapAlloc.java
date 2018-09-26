@@ -51,6 +51,7 @@ public class TestHeapAlloc {
         true,
         "-Xmx1G",
         "-Xms256M",
+        "-XX:+UnlockExperimentalVMOptions",
         "-XX:+UseShenandoahGC",
         "-XX:ShenandoahFailHeapExpansionAfter=50",
         "-Xlog:gc+region=debug",

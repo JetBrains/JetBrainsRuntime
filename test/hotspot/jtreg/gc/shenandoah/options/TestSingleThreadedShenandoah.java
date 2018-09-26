@@ -23,7 +23,9 @@
 
 /* @test
  * @summary test single worker threaded Shenandoah
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 TestSingleThreadedShenandoah
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
+ *                   -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
+ *                   -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 TestSingleThreadedShenandoah
  */
 
 public class TestSingleThreadedShenandoah {

@@ -61,6 +61,7 @@ public class TestThreadFailure {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                     "-Xmx16m",
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     TestThreadFailure.class.getName(),
                                     "test");
@@ -74,6 +75,7 @@ public class TestThreadFailure {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                     "-Xmx128m",
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     TestThreadFailure.class.getName(),
                                     "test");

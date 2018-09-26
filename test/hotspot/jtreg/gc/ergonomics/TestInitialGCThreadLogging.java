@@ -53,7 +53,7 @@ public class TestInitialGCThreadLogging {
 
   private static void testInitialGCThreadLogging(String gcFlag, String threadName) throws Exception {
     // UseDynamicNumberOfGCThreads and TraceDynamicGCThreads enabled
-    String[] baseArgs = {"-XX:+" + gcFlag, "-Xmx10M", "-XX:+UseDynamicNumberOfGCThreads", "-Xlog:gc+task=trace", "-version"};
+    String[] baseArgs = {"-XX:+UnlockExperimentalVMOptions", "-XX:+" + gcFlag, "-Xmx10M", "-XX:+UseDynamicNumberOfGCThreads", "-Xlog:gc+task=trace", "-version"};
 
     // Base test with gc and +UseDynamicNumberOfGCThreads:
     ProcessBuilder pb_enabled = ProcessTools.createJavaProcessBuilder(baseArgs);

@@ -51,8 +51,9 @@ public class EvilSyncBug {
             for (int i = 0; i < NUM_RUNS; i++) {
                 ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
                                                                           "-Xmx128m",
-                                                                          "-XX:+UseShenandoahGC",
+                                                                          "-XX:+UnlockExperimentalVMOptions",
                                                                           "-XX:+UnlockDiagnosticVMOptions",
+                                                                          "-XX:+UseShenandoahGC",
                                                                           "-XX:ShenandoahGCHeuristics=aggressive",
                                                                           "-XX:+ShenandoahStoreCheck",
                                                                           "EvilSyncBug", "test");

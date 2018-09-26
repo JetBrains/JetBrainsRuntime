@@ -46,8 +46,8 @@
  * @requires vm.gc=="null" & !vm.graal.enabled
  * @run main/othervm -Xms71M -Xmx91M -XX:+UseConcMarkSweepGC -XX:+UseLargePages TestAlignmentToUseLargePages
  * @run main/othervm -Xms71M -Xmx91M -XX:+UseConcMarkSweepGC -XX:-UseLargePages TestAlignmentToUseLargePages
- * @run main/othervm -Xms71M -Xmx91M -XX:+UseShenandoahGC -XX:+UseLargePages TestAlignmentToUseLargePages
- * @run main/othervm -Xms71M -Xmx91M -XX:+UseShenandoahGC -XX:-UseLargePages TestAlignmentToUseLargePages
+ * @run main/othervm -Xms71M -Xmx91M -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+UseLargePages TestAlignmentToUseLargePages
+ * @run main/othervm -Xms71M -Xmx91M -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:-UseLargePages TestAlignmentToUseLargePages
  */
 
 public class TestAlignmentToUseLargePages {

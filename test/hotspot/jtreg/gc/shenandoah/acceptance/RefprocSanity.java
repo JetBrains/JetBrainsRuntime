@@ -25,11 +25,11 @@
  * @test RefprocSanity
  * @summary Test that null references/referents work fine
  *
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                                                             RefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahVerify                                       RefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                       -XX:ShenandoahGCHeuristics=aggressive RefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions                       -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                                                             RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify                                       RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=aggressive RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
  */
 
 import java.lang.ref.*;

@@ -24,11 +24,11 @@
  /*
  * @test TestShenandoahWithLogLevel.java
  * @summary Test Shenandoah with different log levels
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=debug   TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=debug   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestShenandoahWithLogLevel
  */
 
 

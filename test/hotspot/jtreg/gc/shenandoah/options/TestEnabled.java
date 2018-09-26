@@ -26,8 +26,8 @@ import java.lang.management.ManagementFactory;
 
 /*
  * @test TestEnabled
- * @run main/othervm -Dexpected=false -Xmx64m                      TestEnabled
- * @run main/othervm -Dexpected=true  -Xmx64m -XX:+UseShenandoahGC TestEnabled
+ * @run main/othervm -Dexpected=false -Xmx64m                                                       TestEnabled
+ * @run main/othervm -Dexpected=true  -Xmx64m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestEnabled
  */
 
 public class TestEnabled {

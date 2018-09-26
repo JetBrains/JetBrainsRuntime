@@ -43,8 +43,8 @@ public class TestDisableDefaultGC {
                                                                   "-XX:-UseParallelGC",
                                                                   "-XX:-UseG1GC",
                                                                   "-XX:-UseConcMarkSweepGC",
-                                                                  "-XX:-UseShenandoahGC",
                                                                   "-XX:+UnlockExperimentalVMOptions",
+                                                                  "-XX:-UseShenandoahGC",
                                                                   "-XX:-UseZGC",
                                                                   "-version");
         OutputAnalyzer output = new OutputAnalyzer(pb.start());

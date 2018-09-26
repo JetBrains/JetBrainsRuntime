@@ -37,7 +37,8 @@ import jdk.test.lib.process.OutputAnalyzer;
 public class TestHumongousThresholdArgs {
     public static void main(String[] args) throws Exception {
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             output.shouldHaveExitValue(0);
@@ -47,8 +48,8 @@ public class TestHumongousThresholdArgs {
         int[] invalid = new int[] { -100, -1, 0, 101, 1000 };
 
         for (int v : valid) {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-XX:ShenandoahHumongousThreshold=" + v,
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -56,8 +57,8 @@ public class TestHumongousThresholdArgs {
         }
 
         for (int v : invalid) {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-XX:ShenandoahHumongousThreshold=" + v,
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());

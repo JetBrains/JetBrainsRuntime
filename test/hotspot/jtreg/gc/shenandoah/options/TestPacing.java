@@ -23,8 +23,8 @@
 
 /*
  * @test TestPacing
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:-ShenandoahPacing -Xmx128m TestPacing
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:+ShenandoahPacing -Xmx128m TestPacing
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:-ShenandoahPacing -Xmx128m TestPacing
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahPacing -Xmx128m TestPacing
  */
 
 public class TestPacing {

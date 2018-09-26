@@ -186,9 +186,6 @@
   product(bool, UseG1GC, false,                                             \
           "Use the Garbage-First garbage collector")                        \
                                                                             \
-  product(bool, UseShenandoahGC, false,                                     \
-          "Use the Shenandoah garbage collector")                           \
-                                                                            \
   product(bool, UseParallelGC, false,                                       \
           "Use the Parallel Scavenge garbage collector")                    \
                                                                             \
@@ -200,6 +197,9 @@
                                                                             \
   experimental(bool, UseZGC, false,                                         \
           "Use the Z garbage collector")                                    \
+                                                                            \
+  product(bool, UseShenandoahGC, false,                                     \
+          "Use the Shenandoah garbage collector")                           \
                                                                             \
   product(uint, ParallelGCThreads, 0,                                       \
           "Number of parallel threads parallel gc will use")                \

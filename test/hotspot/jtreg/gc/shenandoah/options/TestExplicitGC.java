@@ -65,6 +65,7 @@ public class TestExplicitGC {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     "-Xlog:gc",
                                     TestExplicitGC.class.getName(),
@@ -83,6 +84,7 @@ public class TestExplicitGC {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     "-Xlog:gc",
                                     "-XX:+DisableExplicitGC",
@@ -102,6 +104,7 @@ public class TestExplicitGC {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     "-Xlog:gc",
                                     "-XX:+ExplicitGCInvokesConcurrent",
@@ -121,10 +124,10 @@ public class TestExplicitGC {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     "-Xlog:gc",
                                     "-XX:+ExplicitGCInvokesConcurrent",
-                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:ShenandoahGCHeuristics=traversal",
                                     TestExplicitGC.class.getName(),
                                     "test");
@@ -142,6 +145,7 @@ public class TestExplicitGC {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     "-Xlog:gc",
                                     "-XX:-ExplicitGCInvokesConcurrent",

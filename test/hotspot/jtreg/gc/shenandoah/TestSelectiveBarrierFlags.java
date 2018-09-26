@@ -63,9 +63,9 @@ public class TestSelectiveBarrierFlags {
             List<String> conf = new ArrayList<>();
             conf.addAll(Arrays.asList(args));
             conf.add("-Xmx128m");
-            conf.add("-XX:+UseShenandoahGC");
             conf.add("-XX:+UnlockDiagnosticVMOptions");
             conf.add("-XX:+UnlockExperimentalVMOptions");
+            conf.add("-XX:+UseShenandoahGC");
             conf.add("-XX:ShenandoahGCHeuristics=passive");
 
             StringBuilder sb = new StringBuilder();

@@ -34,8 +34,8 @@ import jdk.internal.vm.annotation.Contended;
  * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xmx128m -XX:+UseG1GC -XX:G1HeapRegionSize=2M -XX:ContendedPaddingWidth=8192 TestHumongousReferenceObject
  * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xmx128m -XX:+UseG1GC -XX:G1HeapRegionSize=4M -XX:ContendedPaddingWidth=8192 TestHumongousReferenceObject
  * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xmx128m -XX:+UseG1GC -XX:G1HeapRegionSize=8M -XX:ContendedPaddingWidth=8192 TestHumongousReferenceObject
- * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xms128m -Xmx128m -XX:+UseShenandoahGC -XX:ShenandoahHeapRegionSize=8M -XX:ContendedPaddingWidth=8192 TestHumongousReferenceObject
- * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xms128m -Xmx128m -XX:+UseShenandoahGC -XX:ShenandoahHeapRegionSize=8M -XX:ContendedPaddingWidth=8192 -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify TestHumongousReferenceObject
+ * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xms128m -Xmx128m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahHeapRegionSize=8M -XX:ContendedPaddingWidth=8192 TestHumongousReferenceObject
+ * @run main/othervm -XX:+EnableContended -XX:-RestrictContended -Xms128m -Xmx128m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahHeapRegionSize=8M -XX:ContendedPaddingWidth=8192 -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify TestHumongousReferenceObject
  */
 public class TestHumongousReferenceObject {
 

@@ -44,7 +44,8 @@ public class TestRegionSizeArgs {
     private static void testInvalidRegionSizes() throws Exception {
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms2m",
                                                                       "-Xmx1g",
                                                                       "-version");
@@ -54,7 +55,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms4m",
                                                                       "-Xmx1g",
                                                                       "-version");
@@ -63,7 +65,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms8m",
                                                                       "-Xmx1g",
                                                                       "-version");
@@ -72,7 +75,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
                                                                       "-XX:ShenandoahHeapRegionSize=200m",
@@ -83,7 +87,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
                                                                       "-XX:ShenandoahHeapRegionSize=11m",
@@ -94,7 +99,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
                                                                       "-XX:ShenandoahHeapRegionSize=9m",
@@ -104,7 +110,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
                                                                       "-XX:ShenandoahHeapRegionSize=255K",
@@ -115,7 +122,8 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
                                                                       "-XX:ShenandoahHeapRegionSize=260K",
@@ -125,10 +133,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms1g",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahHeapRegionSize=32M",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -136,10 +144,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms1g",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahHeapRegionSize=64M",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -148,10 +156,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms1g",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahHeapRegionSize=256K",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -159,10 +167,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms1g",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahHeapRegionSize=128K",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -174,10 +182,10 @@ public class TestRegionSizeArgs {
     private static void testMinRegionSize() throws Exception {
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=255K",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -186,10 +194,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=1M",
                                                                       "-XX:ShenandoahMaxRegionSize=260K",
                                                                       "-version");
@@ -198,10 +206,10 @@ public class TestRegionSizeArgs {
             output.shouldHaveExitValue(1);
         }
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=200m",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -210,10 +218,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=11m",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -222,10 +230,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=9m",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -237,10 +245,10 @@ public class TestRegionSizeArgs {
     private static void testMaxRegionSize() throws Exception {
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMaxRegionSize=255K",
                                                                       "-version");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
@@ -249,10 +257,10 @@ public class TestRegionSizeArgs {
         }
 
         {
-            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UseShenandoahGC",
+            ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-XX:+UnlockExperimentalVMOptions",
+                                                                      "-XX:+UseShenandoahGC",
                                                                       "-Xms100m",
                                                                       "-Xmx1g",
-                                                                      "-XX:+UnlockExperimentalVMOptions",
                                                                       "-XX:ShenandoahMinRegionSize=1M",
                                                                       "-XX:ShenandoahMaxRegionSize=260K",
                                                                       "-version");

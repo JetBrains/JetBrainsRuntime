@@ -24,12 +24,12 @@
 /*
  * @test TestSmallHeap
  *
- * @run main/othervm -XX:+UseShenandoahGC         TestSmallHeap
- * @run main/othervm -XX:+UseShenandoahGC -Xmx64m TestSmallHeap
- * @run main/othervm -XX:+UseShenandoahGC -Xmx32m TestSmallHeap
- * @run main/othervm -XX:+UseShenandoahGC -Xmx16m TestSmallHeap
- * @run main/othervm -XX:+UseShenandoahGC -Xmx8m  TestSmallHeap
- * @run main/othervm -XX:+UseShenandoahGC -Xmx4m  TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC         TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx64m TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx32m TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx16m TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx8m  TestSmallHeap
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx4m  TestSmallHeap
  */
 
 public class TestSmallHeap {

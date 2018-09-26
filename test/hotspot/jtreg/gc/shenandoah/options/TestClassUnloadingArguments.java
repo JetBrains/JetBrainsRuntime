@@ -81,20 +81,24 @@ public class TestClassUnloadingArguments {
     public static void testShenandoah() throws Exception {
         testWith("Shenandoah GC should have class unloading enabled",
             true, false,
+            "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UseShenandoahGC");
 
         testWith("Shenandoah GC should disable everything",
             false, false,
+            "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UseShenandoahGC",
             "-XX:-ClassUnloading");
 
         testWith("Shenandoah GC should enable conc unload",
             true, true,
+            "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UseShenandoahGC",
             "-XX:+ClassUnloadingWithConcurrentMark");
 
         testWith("Shenandoah GC should not let conc unload to be enabled separately",
             false, false,
+            "-XX:+UnlockExperimentalVMOptions",
             "-XX:+UseShenandoahGC",
             "-XX:-ClassUnloading",
             "-XX:+ClassUnloadingWithConcurrentMark");

@@ -23,8 +23,8 @@
 
 /* @test
  * @summary test JNI critical arrays support in Shenandoah
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify                 ShenandoahJNICritical
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive ShenandoahJNICritical
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahVerify                 ShenandoahJNICritical
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive ShenandoahJNICritical
  */
 
 import java.util.Arrays;

@@ -28,7 +28,7 @@
  * @summary Ensure no access violation when using FullGCALot
  * @requires vm.debug
  * @run main/othervm -XX:NewSize=10m -XX:+FullGCALot -XX:FullGCALotInterval=120 TestFullGCALot
- * @run main/othervm -XX:NewSize=10m -XX:+FullGCALot -XX:FullGCALotInterval=120 -XX:+UseShenandoahGC TestFullGCALot
+ * @run main/othervm -XX:NewSize=10m -XX:+FullGCALot -XX:FullGCALotInterval=120 -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestFullGCALot
  */
 
 public class TestFullGCALot {

@@ -56,9 +56,9 @@ public class TestHeuristicsUnlock {
     private static void testWith(String h, Mode mode) throws Exception {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:+UseShenandoahGC",
                                     "-XX:-UnlockDiagnosticVMOptions",
                                     "-XX:-UnlockExperimentalVMOptions",
+                                    "-XX:+UseShenandoahGC",
                                     "-XX:ShenandoahGCHeuristics=" + h,
                                     "-version"
             );
@@ -76,9 +76,9 @@ public class TestHeuristicsUnlock {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:+UseShenandoahGC",
                                     "-XX:+UnlockDiagnosticVMOptions",
                                     "-XX:-UnlockExperimentalVMOptions",
+                                    "-XX:+UseShenandoahGC",
                                     "-XX:ShenandoahGCHeuristics=" + h,
                                     "-version"
             );
@@ -96,9 +96,9 @@ public class TestHeuristicsUnlock {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:+UseShenandoahGC",
                                     "-XX:-UnlockDiagnosticVMOptions",
                                     "-XX:+UnlockExperimentalVMOptions",
+                                    "-XX:+UseShenandoahGC",
                                     "-XX:ShenandoahGCHeuristics=" + h,
                                     "-version"
             );

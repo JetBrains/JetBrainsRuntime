@@ -34,8 +34,8 @@
  * @run main/othervm -XX:+UseG1GC -XX:+ExplicitGCInvokesConcurrent TestSystemGC
  * @run main/othervm -XX:+UseLargePages TestSystemGC
  * @run main/othervm -XX:+UseLargePages -XX:+UseLargePagesInMetaspace TestSystemGC
- * @run main/othervm -XX:+UseShenandoahGC TestSystemGC
- * @run main/othervm -XX:+UseShenandoahGC -XX:+ExplicitGCInvokesConcurrent TestSystemGC
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestSystemGC
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ExplicitGCInvokesConcurrent TestSystemGC
  */
 
 /*

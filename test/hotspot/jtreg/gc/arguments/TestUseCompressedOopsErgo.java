@@ -52,7 +52,7 @@
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                              sun.hotspot.WhiteBox$WhiteBoxPermission
  * @run main/othervm TestUseCompressedOopsErgo -XX:+UseConcMarkSweepGC
- * @run main/othervm TestUseCompressedOopsErgo -XX:+UseShenandoahGC
+ * @run main/othervm TestUseCompressedOopsErgo -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC
  */
 
 public class TestUseCompressedOopsErgo {

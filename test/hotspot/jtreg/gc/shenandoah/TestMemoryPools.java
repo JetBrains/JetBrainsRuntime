@@ -27,7 +27,7 @@
  * @summary Test JMX memory pools
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run main/othervm -XX:+UseShenandoahGC -Xmx1g -Xms1g TestMemoryPools
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g TestMemoryPools
  */
 
 

@@ -23,8 +23,8 @@
 
 /* @test
  * @summary Test JNI Global Refs with Shenandoah
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -Xlog:gc -XX:ShenandoahGCHeuristics=aggressive -XX:+ShenandoahVerify TestJNIGlobalRefs
- * @run main/othervm/native -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -Xlog:gc -XX:ShenandoahGCHeuristics=aggressive                       TestJNIGlobalRefs
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xlog:gc -XX:ShenandoahGCHeuristics=aggressive -XX:+ShenandoahVerify TestJNIGlobalRefs
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xlog:gc -XX:ShenandoahGCHeuristics=aggressive                       TestJNIGlobalRefs
  */
 
 import java.util.Arrays;

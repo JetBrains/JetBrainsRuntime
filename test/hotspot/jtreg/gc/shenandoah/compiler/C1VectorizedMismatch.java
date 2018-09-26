@@ -23,7 +23,7 @@
 
 /* @test
  * @summary test C1 vectorized mismatch intrinsic
- * @run main/othervm -XX:TieredStopAtLevel=1 -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:ShenandoahGCHeuristics=aggressive C1VectorizedMismatch
+ * @run main/othervm -XX:TieredStopAtLevel=1 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive C1VectorizedMismatch
  */
 
 import java.util.Arrays;

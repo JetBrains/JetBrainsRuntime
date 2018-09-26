@@ -30,19 +30,19 @@ import java.io.IOException;
  * @requires vm.flavor == "server"
  * @summary Stress the Shenandoah GC by trying to make old objects more likely to be garbage than young objects.
  *
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahVerify -XX:+ShenandoahDegeneratedGC TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahVerify -XX:-ShenandoahDegeneratedGC TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahVerify -XX:+ShenandoahDegeneratedGC TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=passive      -XX:+ShenandoahVerify -XX:-ShenandoahDegeneratedGC TestGCBasherWithShenandoah 120000
  *
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahOOMDuringEvacALot TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahAllocFailureALot  TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=aggressive                                                          TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahOOMDuringEvacALot TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive                         -XX:+ShenandoahAllocFailureALot  TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive                                                          TestGCBasherWithShenandoah 120000
  *
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive     -XX:+ShenandoahVerify TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal    -XX:+ShenandoahVerify TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=adaptive     -XX:+ShenandoahVerify TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=traversal    -XX:+ShenandoahVerify TestGCBasherWithShenandoah 120000
  *
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=adaptive                           TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=traversal                          TestGCBasherWithShenandoah 120000
- * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:ShenandoahGCHeuristics=compact                            TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=adaptive                           TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=traversal                          TestGCBasherWithShenandoah 120000
+ * @run main/othervm/timeout=200 -Xlog:gc*=info -Xmx1g -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=compact                            TestGCBasherWithShenandoah 120000
  */
 public class TestGCBasherWithShenandoah {
     public static void main(String[] args) throws IOException {

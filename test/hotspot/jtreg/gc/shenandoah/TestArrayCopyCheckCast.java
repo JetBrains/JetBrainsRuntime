@@ -24,7 +24,7 @@
 /*
  * @test TestArrayCopyCheckCast
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:TieredStopAtLevel=0 -Xmx16m TestArrayCopyCheckCast
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:TieredStopAtLevel=0 -Xmx16m TestArrayCopyCheckCast
  */
 public class TestArrayCopyCheckCast {
 

@@ -64,7 +64,7 @@
  *                   -XX:-ClassUnloading -XX:+UseConcMarkSweepGC TestClassUnloadingDisabled
  *
  * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
- *                   -XX:-ClassUnloading -XX:+UseShenandoahGC TestClassUnloadingDisabled
+ *                   -XX:-ClassUnloading -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestClassUnloadingDisabled
  */
 
 import java.io.File;

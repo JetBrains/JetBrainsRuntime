@@ -25,14 +25,14 @@
  * @test TestElasticTLAB
  * @summary Test that Shenandoah is able to work with elastic TLABs
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:-UseTLAB -XX:-ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:-UseTLAB -XX:-ShenandoahElasticTLAB                       TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:-UseTLAB -XX:+ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:-UseTLAB -XX:+ShenandoahElasticTLAB                       TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:+UseTLAB -XX:-ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:+UseTLAB -XX:-ShenandoahElasticTLAB                       TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:+UseTLAB -XX:+ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -Xmx1g -XX:+UseTLAB -XX:+ShenandoahElasticTLAB                       TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:-UseTLAB -XX:-ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:-UseTLAB -XX:-ShenandoahElasticTLAB                       TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:-UseTLAB -XX:+ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:-UseTLAB -XX:+ShenandoahElasticTLAB                       TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:+UseTLAB -XX:-ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:+UseTLAB -XX:-ShenandoahElasticTLAB                       TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:+UseTLAB -XX:+ShenandoahElasticTLAB -XX:+ShenandoahVerify TestElasticTLAB
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:+UseTLAB -XX:+ShenandoahElasticTLAB                       TestElasticTLAB
  */
 
 import java.util.Random;

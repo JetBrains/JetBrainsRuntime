@@ -22,9 +22,9 @@
  */
 
 /* @test
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahCodeRootsStyle=0 TestCodeCacheRootStyles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahCodeRootsStyle=1 TestCodeCacheRootStyles
- * @run main/othervm -XX:+UseShenandoahGC -XX:+UnlockExperimentalVMOptions -XX:ShenandoahCodeRootsStyle=2 TestCodeCacheRootStyles
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahCodeRootsStyle=0 TestCodeCacheRootStyles
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahCodeRootsStyle=1 TestCodeCacheRootStyles
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahCodeRootsStyle=2 TestCodeCacheRootStyles
  */
 
 public class TestCodeCacheRootStyles {

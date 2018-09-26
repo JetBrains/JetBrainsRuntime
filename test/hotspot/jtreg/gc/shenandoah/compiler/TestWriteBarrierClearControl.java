@@ -24,7 +24,10 @@
 /**
  * @test
  * @summary Clearing control during final graph reshape causes memory barrier to loose dependency on null check
- * @run main/othervm -XX:-BackgroundCompilation -XX:-UseOnStackReplacement -XX:+UseShenandoahGC -XX:-TieredCompilation -XX:+UnlockDiagnosticVMOptions -XX:+StressLCM -XX:+StressGCM TestWriteBarrierClearControl
+ * @run main/othervm -XX:-BackgroundCompilation -XX:-UseOnStackReplacement -XX:-TieredCompilation
+ *                   -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC
+ *                   -XX:+UnlockDiagnosticVMOptions -XX:+StressLCM -XX:+StressGCM
+ *                   TestWriteBarrierClearControl
  *
  */
 public class TestWriteBarrierClearControl {

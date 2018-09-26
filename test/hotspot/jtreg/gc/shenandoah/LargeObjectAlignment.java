@@ -24,10 +24,10 @@
 /*
  * @test LargeObjectAlignment
  * @summary Shenandoah crashes with -XX:ObjectAlignmentInBytes=16
- * @run main/othervm -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -Xint  LargeObjectAlignment
- * @run main/othervm -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:-TieredCompilation LargeObjectAlignment
- * @run main/othervm -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:TieredStopAtLevel=1 LargeObjectAlignment
- * @run main/othervm -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:TieredStopAtLevel=4 LargeObjectAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -Xint                   LargeObjectAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:-TieredCompilation  LargeObjectAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:TieredStopAtLevel=1 LargeObjectAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ObjectAlignmentInBytes=16 -XX:TieredStopAtLevel=4 LargeObjectAlignment
  */
 
 import java.util.ArrayList;

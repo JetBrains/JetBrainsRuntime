@@ -27,10 +27,10 @@
  * @key gc
  * @requires vm.gc.Shenandoah
  * @summary Stress Shenandoah's JNI handling by calling GetPrimitiveArrayCritical while concurrently filling up old gen.
- * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:+UseShenandoahGC TestGCLockerWithShenandoah
- * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m                                                      -XX:+UseShenandoahGC TestGCLockerWithShenandoah
- * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockDiagnosticVMOptions                       -XX:+UseShenandoahGC -XX:+ShenandoahOOMDuringEvacALot -XX:ShenandoahGCHeuristics=aggressive TestGCLockerWithShenandoah
- * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockDiagnosticVMOptions                       -XX:+UseShenandoahGC -XX:+ShenandoahAllocFailureALot  -XX:ShenandoahGCHeuristics=aggressive TestGCLockerWithShenandoah
+ * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+ShenandoahVerify -XX:+UseShenandoahGC TestGCLockerWithShenandoah
+ * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions                                                      -XX:+UseShenandoahGC TestGCLockerWithShenandoah
+ * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions                       -XX:+UseShenandoahGC -XX:+ShenandoahOOMDuringEvacALot -XX:ShenandoahGCHeuristics=aggressive TestGCLockerWithShenandoah
+ * @run main/native/othervm/timeout=200 -Xlog:gc*=info -Xms1500m -Xmx1500m -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions                       -XX:+UseShenandoahGC -XX:+ShenandoahAllocFailureALot  -XX:ShenandoahGCHeuristics=aggressive TestGCLockerWithShenandoah
  */
 public class TestGCLockerWithShenandoah {
     public static void main(String[] args) {

@@ -56,6 +56,7 @@ public class TestAllocLargeObj {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                     "-Xmx16m",
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     TestAllocLargeObj.class.getName(),
                                     "test");
@@ -68,6 +69,7 @@ public class TestAllocLargeObj {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                     "-Xmx1g",
+                                    "-XX:+UnlockExperimentalVMOptions",
                                     "-XX:+UseShenandoahGC",
                                     TestAllocLargeObj.class.getName(),
                                     "test");

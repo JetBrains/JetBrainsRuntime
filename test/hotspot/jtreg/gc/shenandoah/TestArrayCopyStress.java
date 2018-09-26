@@ -26,7 +26,7 @@ import java.util.concurrent.*;
 /*
  * @test TestArrayCopyStress
  *
- * @run main/othervm -XX:+UseShenandoahGC -XX:TieredStopAtLevel=0 -Xmx16m TestArrayCopyStress
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:TieredStopAtLevel=0 -Xmx16m TestArrayCopyStress
  */
 public class TestArrayCopyStress {
 
