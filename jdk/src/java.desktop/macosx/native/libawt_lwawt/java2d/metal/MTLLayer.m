@@ -148,27 +148,31 @@ AWT_ASSERT_APPKIT_THREAD;
                                         options:
                                                 MTLResourceCPUCacheModeDefaultCache];
     // Encode render command.
-    MTLRenderPassDescriptor*  _renderPassDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+    if (!ctx->mtlRenderPassDesc) {
+        ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
+        if (ctx->mtlRenderPassDesc) {
+          MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
+          colorAttachment.texture = ctx->mtlDrawable.texture;
+          colorAttachment.loadAction = MTLLoadActionLoad;
+          colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
 
-    if (_renderPassDesc) {
-        MTLRenderPassColorAttachmentDescriptor *colorAttachment = _renderPassDesc.colorAttachments[0];
-        colorAttachment.texture = ctx->mtlDrawable.texture;
-        colorAttachment.loadAction = MTLLoadActionLoad;
-        colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+          colorAttachment.storeAction = MTLStoreActionStore;
+        }
+    }
 
-        colorAttachment.storeAction = MTLStoreActionStore;
-        id <MTLRenderCommandEncoder> encoder =
-                [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:_renderPassDesc];
+    if (ctx->mtlRenderPassDesc) {
+        id<MTLRenderCommandEncoder>  mtlEncoder =
+            [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
         MTLViewport vp = {0, 0, self.drawableSize.width, self.drawableSize.height, 0, 1};
         //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
-        [encoder setViewport:vp];
-        [encoder setRenderPipelineState:ctx->mtlPipelineState];
-        [encoder setVertexBuffer:ctx->mtlUniformBuffer
+        [mtlEncoder setViewport:vp];
+        [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
+        [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
                           offset:0 atIndex:FrameUniformBuffer];
 
-        [encoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
-        [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
-        [encoder endEncoding];
+        [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
+        [mtlEncoder endEncoding];
     }
 
 }
@@ -214,7 +218,8 @@ AWT_ASSERT_APPKIT_THREAD;
         ctx->mtlDrawable = nil;
         ctx->mtlCommandBuffer = nil;
         ctx->mtlEmptyCommandBuffer = YES;
-       // fprintf(stderr, "----endFrame---- 1\n");
+        [ctx->mtlRenderPassDesc release];
+        ctx->mtlRenderPassDesc = nil;
     }
 }
 

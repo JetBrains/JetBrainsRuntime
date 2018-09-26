@@ -92,6 +92,7 @@ typedef struct _MTLCtxInfo {
     NSView*                     scratchSurface;
     NSString*                   mtlShadersLib;
     jint                        mtlColor;
+    MTLRenderPassDescriptor*    mtlRenderPassDesc;
 } MTLCtxInfo;
 
 #endif /* MTLGraphicsConfig_h_Included */
