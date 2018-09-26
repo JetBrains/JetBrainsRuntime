@@ -1877,8 +1877,6 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
       return;
     }
     if (opr2->is_double_cpu()) {
-      guarantee(opr2->type() != T_OBJECT && opr2->type() != T_ARRAY, "need acmp barrier?");
-      guarantee(opr1->type() != T_OBJECT && opr1->type() != T_ARRAY, "need acmp barrier?");
       // cpu register - cpu register
       Register reg2 = opr2->as_register_lo();
       __ cmp(reg1, reg2);

@@ -27,7 +27,6 @@
 #define CPU_AARCH64_VM_MACROASSEMBLER_AARCH64_HPP
 
 #include "asm/assembler.hpp"
-#include "utilities/macros.hpp"
 
 // MacroAssembler extends Assembler by frequently used macros.
 //
@@ -549,17 +548,6 @@ public:
   inline void clear_fpsr()
   {
     msr(0b011, 0b0100, 0b0100, 0b001, zr);
-  }
-
-  // Macro instructions for accessing and updating the condition flags
-  inline void get_nzcv(Register reg)
-  {
-    mrs(0b011, 0b0100, 0b0010, 0b000, reg);
-  }
-
-  inline void set_nzcv(Register reg)
-  {
-    msr(0b011, 0b0100, 0b0010, 0b000, reg);
   }
 
   // DCZID_EL0: op1 == 011
