@@ -35,7 +35,6 @@
 #include "memory/universe.hpp"
 #include "oops/accessDecorators.hpp"
 #include "oops/klass.inline.hpp"
-#include "oops/oop.hpp"
 #include "prims/methodHandles.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
