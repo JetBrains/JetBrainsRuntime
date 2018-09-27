@@ -157,7 +157,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[scan_jni_roots]                  = "    S: JNI Roots";
   _phase_names[scan_jni_weak_roots]             = "    S: JNI Weak Roots";
   _phase_names[scan_synchronizer_roots]         = "    S: Synchronizer Roots";
-  _phase_names[scan_flat_profiler_roots]        = "    S: Flat Profiler Roots";
   _phase_names[scan_management_roots]           = "    S: Management Roots";
   _phase_names[scan_system_dictionary_roots]    = "    S: System Dict Roots";
   _phase_names[scan_cldg_roots]                 = "    S: CLDG Roots";
@@ -174,7 +173,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[update_jni_roots]                = "    U: JNI Roots";
   _phase_names[update_jni_weak_roots]           = "    U: JNI Weak Roots";
   _phase_names[update_synchronizer_roots]       = "    U: Synchronizer Roots";
-  _phase_names[update_flat_profiler_roots]      = "    U: Flat Profiler Roots";
   _phase_names[update_management_roots]         = "    U: Management Roots";
   _phase_names[update_system_dictionary_roots]  = "    U: System Dict Roots";
   _phase_names[update_cldg_roots]               = "    U: CLDG Roots";
@@ -191,7 +189,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[evac_jni_roots]                  = "    E: JNI Roots";
   _phase_names[evac_jni_weak_roots]             = "    E: JNI Weak Roots";
   _phase_names[evac_synchronizer_roots]         = "    E: Synchronizer Roots";
-  _phase_names[evac_flat_profiler_roots]        = "    E: Flat Profiler Roots";
   _phase_names[evac_management_roots]           = "    E: Management Roots";
   _phase_names[evac_system_dictionary_roots]    = "    E: System Dict Roots";
   _phase_names[evac_cldg_roots]                 = "    E: CLDG Roots";
@@ -212,7 +209,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[degen_gc_update_jni_roots]           = "    DU: JNI Roots";
   _phase_names[degen_gc_update_jni_weak_roots]      = "    DU: JNI Weak Roots";
   _phase_names[degen_gc_update_synchronizer_roots]  = "    DU: Synchronizer Roots";
-  _phase_names[degen_gc_update_flat_profiler_roots] = "    DU: Flat Profiler Roots";
   _phase_names[degen_gc_update_management_roots]    = "    DU: Management Roots";
   _phase_names[degen_gc_update_system_dict_roots]   = "    DU: System Dict Roots";
   _phase_names[degen_gc_update_cldg_roots]          = "    DU: CLDG Roots";
@@ -233,7 +229,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[full_gc_jni_roots]               = "    F: JNI Roots";
   _phase_names[full_gc_jni_weak_roots]          = "    F: JNI Weak Roots";
   _phase_names[full_gc_synchronizer_roots]      = "    F: Synchronizer Roots";
-  _phase_names[full_gc_flat_profiler_roots]     = "    F: Flat Profiler Roots";
   _phase_names[full_gc_management_roots]        = "    F: Management Roots";
   _phase_names[full_gc_system_dictionary_roots] = "    F: System Dict Roots";
   _phase_names[full_gc_cldg_roots]              = "    F: CLDG Roots";
@@ -279,7 +274,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[init_traversal_gc_jni_roots]           = "    TI: JNI Roots";
   _phase_names[init_traversal_gc_jni_weak_roots]      = "    TI: JNI Weak Roots";
   _phase_names[init_traversal_gc_synchronizer_roots]  = "    TI: Synchronizer Roots";
-  _phase_names[init_traversal_gc_flat_profiler_roots] = "    TI: Flat Profiler Roots";
   _phase_names[init_traversal_gc_management_roots]    = "    TI: Management Roots";
   _phase_names[init_traversal_gc_system_dict_roots]   = "    TI: System Dict Roots";
   _phase_names[init_traversal_gc_cldg_roots]          = "    TI: CLDG Roots";
@@ -299,7 +293,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_traversal_gc_jni_roots]           = "    TF: JNI Roots";
   _phase_names[final_traversal_gc_jni_weak_roots]      = "    TF: JNI Weak Roots";
   _phase_names[final_traversal_gc_synchronizer_roots]  = "    TF: Synchronizer Roots";
-  _phase_names[final_traversal_gc_flat_profiler_roots] = "    TF: Flat Profiler Roots";
   _phase_names[final_traversal_gc_management_roots]    = "    TF: Management Roots";
   _phase_names[final_traversal_gc_system_dict_roots]   = "    TF: System Dict Roots";
   _phase_names[final_traversal_gc_cldg_roots]          = "    TF: CLDG Roots";
@@ -318,7 +311,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_traversal_update_jni_roots]           = "    TU: JNI Roots";
   _phase_names[final_traversal_update_jni_weak_roots]      = "    TU: JNI Weak Roots";
   _phase_names[final_traversal_update_synchronizer_roots]  = "    TU: Synchronizer Roots";
-  _phase_names[final_traversal_update_flat_profiler_roots] = "    TU: Flat Profiler Roots";
   _phase_names[final_traversal_update_management_roots]    = "    TU: Management Roots";
   _phase_names[final_traversal_update_system_dict_roots]   = "    TU: System Dict Roots";
   _phase_names[final_traversal_update_cldg_roots]          = "    TU: CLDG Roots";
@@ -360,7 +352,6 @@ void ShenandoahPhaseTimings::init_phase_names() {
   _phase_names[final_update_refs_jni_roots]            = "    UR: JNI Roots";
   _phase_names[final_update_refs_jni_weak_roots]       = "    UR: JNI Weak Roots";
   _phase_names[final_update_refs_synchronizer_roots]   = "    UR: Synchronizer Roots";
-  _phase_names[final_update_refs_flat_profiler_roots]  = "    UR: Flat Profiler Roots";
   _phase_names[final_update_refs_management_roots]     = "    UR: Management Roots";
   _phase_names[final_update_refs_system_dict_roots]    = "    UR: System Dict Roots";
   _phase_names[final_update_refs_cldg_roots]           = "    UR: CLDG Roots";
@@ -386,7 +377,6 @@ ShenandoahWorkerTimings::ShenandoahWorkerTimings(uint max_gc_threads) :
   _gc_par_phases[ShenandoahPhaseTimings::JNIRoots]                = new WorkerDataArray<double>(max_gc_threads, "JNI Handles Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::JNIWeakRoots]            = new WorkerDataArray<double>(max_gc_threads, "JNI Weak Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::ObjectSynchronizerRoots] = new WorkerDataArray<double>(max_gc_threads, "ObjectSynchronizer Roots (ms):");
-  _gc_par_phases[ShenandoahPhaseTimings::FlatProfilerRoots]       = new WorkerDataArray<double>(max_gc_threads, "FlatProfiler Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::ManagementRoots]         = new WorkerDataArray<double>(max_gc_threads, "Management Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::SystemDictionaryRoots]   = new WorkerDataArray<double>(max_gc_threads, "SystemDictionary Roots (ms):");
   _gc_par_phases[ShenandoahPhaseTimings::CLDGRoots]               = new WorkerDataArray<double>(max_gc_threads, "CLDG Roots (ms):");
