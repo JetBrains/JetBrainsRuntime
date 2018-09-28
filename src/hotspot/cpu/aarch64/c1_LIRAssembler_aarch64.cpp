@@ -1122,6 +1122,7 @@ void LIR_Assembler::emit_opBranch(LIR_OpBranch* op) {
 }
 
 
+
 void LIR_Assembler::emit_opConvert(LIR_OpConvert* op) {
   LIR_Opr src  = op->in_opr();
   LIR_Opr dest = op->result_opr();
@@ -1907,12 +1908,6 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
         ShouldNotReachHere();
         imm = 0;  // unreachable
         break;
-      }
-
-      if (opr2->type() == T_OBJECT || opr2->type() == T_ARRAY) {
-        jobject2reg(opr2->as_constant_ptr()->as_jobject(), rscratch1);
-        __ cmpoop(reg1, rscratch1);
-        return;
       }
 
       if (Assembler::operand_valid_for_add_sub_immediate(imm)) {
