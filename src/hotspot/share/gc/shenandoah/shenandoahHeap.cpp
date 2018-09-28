@@ -855,12 +855,12 @@ public:
   }
 };
 
-class ShenandoahParallelEvacuateRegionObjectClosure : public ObjectClosure {
+class ShenandoahConcurrentEvacuateRegionObjectClosure : public ObjectClosure {
 private:
   ShenandoahHeap* const _heap;
   Thread* const _thread;
 public:
-  ShenandoahParallelEvacuateRegionObjectClosure(ShenandoahHeap* heap) :
+  ShenandoahConcurrentEvacuateRegionObjectClosure(ShenandoahHeap* heap) :
     _heap(heap), _thread(Thread::current()) {}
 
   void do_object(oop p) {
@@ -871,13 +871,13 @@ public:
   }
 };
 
-class ShenandoahParallelEvacuationTask : public AbstractGangTask {
+class ShenandoahConcurrentEvacuationTask : public AbstractGangTask {
 private:
   ShenandoahHeap* const _sh;
   ShenandoahCollectionSet* const _cs;
 
 public:
-  ShenandoahParallelEvacuationTask(ShenandoahHeap* sh,
+  ShenandoahConcurrentEvacuationTask(ShenandoahHeap* sh,
                          ShenandoahCollectionSet* cs) :
     AbstractGangTask("Parallel Evacuation Task"),
     _sh(sh),
@@ -889,7 +889,7 @@ public:
     ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
 
-    ShenandoahParallelEvacuateRegionObjectClosure cl(_sh);
+    ShenandoahConcurrentEvacuateRegionObjectClosure cl(_sh);
     ShenandoahHeapRegion* r;
     while ((r =_cs->claim_next()) != NULL) {
       assert(r->has_live(), "all-garbage regions are reclaimed early");
@@ -1475,7 +1475,7 @@ void ShenandoahHeap::op_final_evac() {
 }
 
 void ShenandoahHeap::op_evac() {
-  ShenandoahParallelEvacuationTask task(this, _collection_set);
+  ShenandoahConcurrentEvacuationTask task(this, _collection_set);
   workers()->run_task(&task);
 }
 
