@@ -764,16 +764,17 @@ HeapWord* ShenandoahHeap::allocate_memory_under_lock(ShenandoahAllocRequest& req
   return _free_set->allocate(req, in_new_region);
 }
 
-class ShenandoahObjAllocator : public ObjAllocator {
+class ShenandoahMemAllocator : public MemAllocator {
+private:
+  MemAllocator& _initializer;
 public:
-  ShenandoahObjAllocator(Klass* klass, size_t word_size, Thread* thread) :
-    ObjAllocator(klass, word_size, thread) {}
+  ShenandoahMemAllocator(MemAllocator& initializer, Klass* klass, size_t word_size, Thread* thread) :
+  MemAllocator(klass, word_size + BrooksPointer::word_size(), thread),
+    _initializer(initializer) {}
 
-  virtual HeapWord* mem_allocate(Allocation& allocation) {
-    // Allocate object.
-    _word_size += BrooksPointer::word_size();
-    HeapWord* result = ObjAllocator::mem_allocate(allocation);
-    _word_size -= BrooksPointer::word_size();
+protected:
+  virtual HeapWord* mem_allocate(Allocation& allocation) const {
+    HeapWord* result = MemAllocator::mem_allocate(allocation);
     // Initialize brooks-pointer
     if (result != NULL) {
       result += BrooksPointer::word_size();
@@ -782,60 +783,27 @@ public:
     }
     return result;
   }
+
+  virtual oop initialize(HeapWord* mem) const {
+     return _initializer.initialize(mem);
+  }
 };
 
 oop ShenandoahHeap::obj_allocate(Klass* klass, int size, TRAPS) {
-  ShenandoahObjAllocator allocator(klass, size, THREAD);
+  ObjAllocator initializer(klass, size, THREAD);
+  ShenandoahMemAllocator allocator(initializer, klass, size, THREAD);
   return allocator.allocate();
 }
-
-class ShenandoahObjArrayAllocator : public ObjArrayAllocator {
-public:
-  ShenandoahObjArrayAllocator(Klass* klass, size_t word_size, int length, bool do_zero,
-                              Thread* thread) :
-    ObjArrayAllocator(klass, word_size, length, do_zero, thread) {}
-
-  virtual HeapWord* mem_allocate(Allocation& allocation) {
-    // Allocate object.
-    _word_size += BrooksPointer::word_size();
-    HeapWord* result = ObjArrayAllocator::mem_allocate(allocation);
-    _word_size -= BrooksPointer::word_size();
-    if (result != NULL) {
-      result += BrooksPointer::word_size();
-      BrooksPointer::initialize(oop(result));
-      assert(! ShenandoahHeap::heap()->in_collection_set(result), "never allocate in targetted region");
-    }
-    return result;
-  }
-
-};
 
 oop ShenandoahHeap::array_allocate(Klass* klass, int size, int length, bool do_zero, TRAPS) {
-  ShenandoahObjArrayAllocator allocator(klass, size, length, do_zero, THREAD);
+  ObjArrayAllocator initializer(klass, size, length, do_zero, THREAD);
+  ShenandoahMemAllocator allocator(initializer, klass, size, THREAD);
   return allocator.allocate();
 }
 
-class ShenandoahClassAllocator : public ClassAllocator {
-public:
-  ShenandoahClassAllocator(Klass* klass, size_t word_size, Thread* thread) :
-    ClassAllocator(klass, word_size, thread) {}
-
-  virtual HeapWord* mem_allocate(Allocation& allocation) {
-    _word_size += BrooksPointer::word_size();
-    HeapWord* result = ClassAllocator::mem_allocate(allocation);
-    _word_size -= BrooksPointer::word_size();
-    if (result != NULL) {
-      result += BrooksPointer::word_size();
-      BrooksPointer::initialize(oop(result));
-      assert(! ShenandoahHeap::heap()->in_collection_set(result), "never allocate in targetted region");
-    }
-    return result;
-  }
-
-};
-
 oop ShenandoahHeap::class_allocate(Klass* klass, int size, TRAPS) {
-  ShenandoahClassAllocator allocator(klass, size, THREAD);
+  ClassAllocator initializer(klass, size, THREAD);
+  ShenandoahMemAllocator allocator(initializer, klass, size, THREAD);
   return allocator.allocate();
 }
 
