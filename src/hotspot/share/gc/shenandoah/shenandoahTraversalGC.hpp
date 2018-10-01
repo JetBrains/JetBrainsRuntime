@@ -28,7 +28,6 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
-#include "gc/shared/taskqueue.hpp"
 #include "runtime/thread.hpp"
 
 class ShenandoahTraversalGC : public CHeapObj<mtGC> {
@@ -52,18 +51,18 @@ public:
   template <class T, bool STRING_DEDUP, bool DEGEN>
   inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context);
 
-  bool check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator);
+  bool check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator);
 
   ShenandoahObjToScanQueueSet* task_queues();
 
-  void main_loop(uint worker_id, ParallelTaskTerminator* terminator);
+  void main_loop(uint worker_id, ShenandoahTaskTerminator* terminator);
 
 private:
 
   void prepare_regions();
 
   template <class T>
-  void main_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator* terminator);
+  void main_loop_work(T* cl, jushort* live_data, uint worker_id, ShenandoahTaskTerminator* terminator);
 
   void preclean_weak_refs();
   void weak_refs_work();

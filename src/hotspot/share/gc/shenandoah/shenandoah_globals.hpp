@@ -243,9 +243,6 @@
   experimental(bool, ShenandoahLoopOptsAfterExpansion, true,                \
           "Attempt more loop opts after write barrier expansion")           \
                                                                             \
-  experimental(bool, UseShenandoahOWST, true,                               \
-          "Use Shenandoah work stealing termination protocol")              \
-                                                                            \
   experimental(size_t, ShenandoahSATBBufferSize, 1 * K,                     \
           "Number of entries in an SATB log buffer.")                       \
           range(1, max_uintx)                                               \

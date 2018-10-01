@@ -56,13 +56,13 @@ private:
   inline void count_liveness(jushort* live_data, oop obj);
 
   template <class T, bool CANCELLABLE>
-  void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator *t);
+  void mark_loop_work(T* cl, jushort* live_data, uint worker_id, ShenandoahTaskTerminator *t);
 
   template <bool CANCELLABLE>
-  void mark_loop_prework(uint worker_id, ParallelTaskTerminator *terminator, ReferenceProcessor *rp, bool strdedup);
+  void mark_loop_prework(uint worker_id, ShenandoahTaskTerminator *terminator, ReferenceProcessor *rp, bool strdedup);
 
 public:
-  void mark_loop(uint worker_id, ParallelTaskTerminator* terminator, ReferenceProcessor *rp,
+  void mark_loop(uint worker_id, ShenandoahTaskTerminator* terminator, ReferenceProcessor *rp,
                  bool cancellable, bool strdedup) {
     if (cancellable) {
       mark_loop_prework<true>(worker_id, terminator, rp, strdedup);

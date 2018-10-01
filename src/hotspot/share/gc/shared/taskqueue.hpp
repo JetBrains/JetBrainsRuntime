@@ -429,7 +429,6 @@ size_t GenericTaskQueueSet<T, F>::tasks() {
 class TerminatorTerminator: public CHeapObj<mtInternal> {
 public:
   virtual bool should_exit_termination() = 0;
-  virtual bool should_force_termination() { return false; }
 };
 
 // A class to aid in the termination of a set of parallel tasks using
@@ -464,7 +463,6 @@ public:
   // else is.  If returns "true", all threads are terminated.  If returns
   // "false", available work has been observed in one of the task queues,
   // so the global task is not complete.
-  // If force is set to true, it terminates even if there's remaining work left
   bool offer_termination() {
     return offer_termination(NULL);
   }
@@ -472,7 +470,6 @@ public:
   // As above, but it also terminates if the should_exit_termination()
   // method of the terminator parameter returns true. If terminator is
   // NULL, then it is ignored.
-  // If force is set to true, it terminates even if there's remaining work left
   virtual bool offer_termination(TerminatorTerminator* terminator);
 
   // Reset the terminator, so that it may be reused again.

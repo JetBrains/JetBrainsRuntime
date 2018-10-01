@@ -226,7 +226,7 @@ ParallelTaskTerminator::offer_termination(TerminatorTerminator* terminator) {
 #ifdef TRACESPINNING
       _total_peeks++;
 #endif
-      if ((peek_in_queue_set() && (terminator == NULL || ! terminator->should_force_termination())) ||
+      if (peek_in_queue_set() ||
           (terminator != NULL && terminator->should_exit_termination())) {
         Atomic::dec(&_offered_termination);
         assert(_offered_termination < _n_threads, "Invariant");

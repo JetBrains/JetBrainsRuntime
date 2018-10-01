@@ -205,10 +205,10 @@ public:
 
 class ShenandoahConcurrentTraversalCollectionTask : public AbstractGangTask {
 private:
-  ParallelTaskTerminator* _terminator;
+  ShenandoahTaskTerminator* _terminator;
   ShenandoahHeap* _heap;
 public:
-  ShenandoahConcurrentTraversalCollectionTask(ParallelTaskTerminator* terminator) :
+  ShenandoahConcurrentTraversalCollectionTask(ShenandoahTaskTerminator* terminator) :
     AbstractGangTask("Shenandoah Concurrent Traversal Collection"),
     _terminator(terminator),
     _heap(ShenandoahHeap::heap()) {}
@@ -227,10 +227,10 @@ public:
 class ShenandoahFinalTraversalCollectionTask : public AbstractGangTask {
 private:
   ShenandoahRootProcessor* _rp;
-  ParallelTaskTerminator* _terminator;
+  ShenandoahTaskTerminator* _terminator;
   ShenandoahHeap* _heap;
 public:
-  ShenandoahFinalTraversalCollectionTask(ShenandoahRootProcessor* rp, ParallelTaskTerminator* terminator) :
+  ShenandoahFinalTraversalCollectionTask(ShenandoahRootProcessor* rp, ShenandoahTaskTerminator* terminator) :
     AbstractGangTask("Shenandoah Final Traversal Collection"),
     _rp(rp),
     _terminator(terminator),
@@ -427,7 +427,7 @@ void ShenandoahTraversalGC::init_traversal_collection() {
   }
 }
 
-void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
+void ShenandoahTraversalGC::main_loop(uint w, ShenandoahTaskTerminator* t) {
   ShenandoahObjToScanQueue* q = task_queues()->queue(w);
 
   // Initialize live data.
@@ -481,7 +481,7 @@ void ShenandoahTraversalGC::main_loop(uint w, ParallelTaskTerminator* t) {
 }
 
 template <class T>
-void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worker_id, ParallelTaskTerminator* terminator) {
+void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worker_id, ShenandoahTaskTerminator* terminator) {
   ShenandoahObjToScanQueueSet* queues = task_queues();
   ShenandoahObjToScanQueue* q = queues->queue(worker_id);
   ShenandoahConcurrentMark* conc_mark = _heap->concurrent_mark();
@@ -548,7 +548,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   }
 }
 
-bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ParallelTaskTerminator* terminator) {
+bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator) {
   if (_heap->cancelled_gc()) {
     ShenandoahCancelledTerminatorTerminator tt;
     ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
@@ -567,15 +567,9 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
     task_queues()->reserve(nworkers);
     ShenandoahTerminationTracker tracker(ShenandoahPhaseTimings::conc_traversal_termination);
 
-    if (UseShenandoahOWST) {
-      ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahConcurrentTraversalCollectionTask task(&terminator);
-      _heap->workers()->run_task(&task);
-    } else {
-      ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahConcurrentTraversalCollectionTask task(&terminator);
-      _heap->workers()->run_task(&task);
-    }
+    ShenandoahTaskTerminator terminator(nworkers, task_queues());
+    ShenandoahConcurrentTraversalCollectionTask task(&terminator);
+    _heap->workers()->run_task(&task);
   }
 
   if (!_heap->cancelled_gc() && ShenandoahPreclean && _heap->process_references()) {
@@ -600,15 +594,9 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     ShenandoahRootProcessor rp(_heap, nworkers, ShenandoahPhaseTimings::final_traversal_gc_work);
     ShenandoahTerminationTracker term(ShenandoahPhaseTimings::final_traversal_gc_termination);
 
-    if (UseShenandoahOWST) {
-      ShenandoahTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
-      _heap->workers()->run_task(&task);
-    } else {
-      ParallelTaskTerminator terminator(nworkers, task_queues());
-      ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
-      _heap->workers()->run_task(&task);
-    }
+    ShenandoahTaskTerminator terminator(nworkers, task_queues());
+    ShenandoahFinalTraversalCollectionTask task(&rp, &terminator);
+    _heap->workers()->run_task(&task);
 #if defined(COMPILER2) || INCLUDE_JVMCI
     DerivedPointerTable::update_pointers();
 #endif
@@ -755,7 +743,7 @@ public:
     ShenandoahHeap* sh = ShenandoahHeap::heap();
     ShenandoahTraversalGC* traversal_gc = sh->traversal_gc();
     assert(sh->process_references(), "why else would we be here?");
-    ParallelTaskTerminator terminator(1, traversal_gc->task_queues());
+    ShenandoahTaskTerminator terminator(1, traversal_gc->task_queues());
     shenandoah_assert_rp_isalive_installed();
     traversal_gc->main_loop((uint) 0, &terminator);
   }
@@ -873,11 +861,11 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
 // Weak Reference Closures
 class ShenandoahTraversalDrainMarkingStackClosure: public VoidClosure {
   uint _worker_id;
-  ParallelTaskTerminator* _terminator;
+  ShenandoahTaskTerminator* _terminator;
   bool _reset_terminator;
 
 public:
-  ShenandoahTraversalDrainMarkingStackClosure(uint worker_id, ParallelTaskTerminator* t, bool reset_terminator = false):
+  ShenandoahTraversalDrainMarkingStackClosure(uint worker_id, ShenandoahTaskTerminator* t, bool reset_terminator = false):
     _worker_id(worker_id),
     _terminator(t),
     _reset_terminator(reset_terminator) {
@@ -924,11 +912,11 @@ class ShenandoahTraversalRefProcTaskProxy : public AbstractGangTask {
 
 private:
   AbstractRefProcTaskExecutor::ProcessTask& _proc_task;
-  ParallelTaskTerminator* _terminator;
+  ShenandoahTaskTerminator* _terminator;
 public:
 
   ShenandoahTraversalRefProcTaskProxy(AbstractRefProcTaskExecutor::ProcessTask& proc_task,
-                             ParallelTaskTerminator* t) :
+                                      ShenandoahTaskTerminator* t) :
     AbstractGangTask("Process reference objects in parallel"),
     _proc_task(proc_task),
     _terminator(t) {
@@ -974,22 +962,12 @@ public:
                                           /* do_check = */ false);
     uint nworkers = _workers->active_workers();
     traversal_gc->task_queues()->reserve(nworkers);
-    if (UseShenandoahOWST) {
-      ShenandoahTaskTerminator terminator(nworkers, traversal_gc->task_queues());
-      ShenandoahTraversalRefProcTaskProxy proc_task_proxy(task, &terminator);
-      if (nworkers == 1) {
-        proc_task_proxy.work(0);
-      } else {
-        _workers->run_task(&proc_task_proxy);
-      }
+    ShenandoahTaskTerminator terminator(nworkers, traversal_gc->task_queues());
+    ShenandoahTraversalRefProcTaskProxy proc_task_proxy(task, &terminator);
+    if (nworkers == 1) {
+      proc_task_proxy.work(0);
     } else {
-      ParallelTaskTerminator terminator(nworkers, traversal_gc->task_queues());
-      ShenandoahTraversalRefProcTaskProxy proc_task_proxy(task, &terminator);
-      if (nworkers == 1) {
-        proc_task_proxy.work(0);
-      } else {
-        _workers->run_task(&proc_task_proxy);
-      }
+      _workers->run_task(&proc_task_proxy);
     }
   }
 };

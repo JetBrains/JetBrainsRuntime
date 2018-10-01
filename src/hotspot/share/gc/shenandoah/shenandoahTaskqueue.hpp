@@ -304,6 +304,11 @@ public:
 #endif // TASKQUEUE_STATS
 };
 
+class ShenandoahTerminatorTerminator : public TerminatorTerminator {
+public:
+  // return true, terminates immediately, even if there's remaining work left
+  virtual bool should_force_termination() { return false; }
+};
 
 /*
  * This is an enhanced implementation of Google's work stealing
@@ -334,7 +339,14 @@ public:
     delete _blocker;
   }
 
-  bool offer_termination(TerminatorTerminator* terminator);
+  bool offer_termination(ShenandoahTerminatorTerminator* terminator);
+  bool offer_termination() { return offer_termination((ShenandoahTerminatorTerminator*)NULL); }
+
+private:
+  bool offer_termination(TerminatorTerminator* terminator) {
+    ShouldNotReachHere();
+    return false;
+  }
 
 private:
   size_t tasks_in_queue_set() { return _queue_set->tasks(); }
@@ -345,10 +357,10 @@ private:
    * return true if termination condition is detected
    * otherwise, return false
    */
-  bool do_spin_master_work(TerminatorTerminator* terminator);
+  bool do_spin_master_work(ShenandoahTerminatorTerminator* terminator);
 };
 
-class ShenandoahCancelledTerminatorTerminator : public TerminatorTerminator {
+class ShenandoahCancelledTerminatorTerminator : public ShenandoahTerminatorTerminator {
   virtual bool should_exit_termination() {
     return false;
   }
