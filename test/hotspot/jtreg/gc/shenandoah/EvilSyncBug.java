@@ -40,7 +40,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 
 public class EvilSyncBug {
 
-    private static final int NUM_RUNS = 20;
+    private static final int NUM_RUNS = 100;
 
     static Thread[] hooks = new MyHook[10000];
 
@@ -48,18 +48,33 @@ public class EvilSyncBug {
         if (args.length > 0) {
             test();
         } else {
-            for (int i = 0; i < NUM_RUNS; i++) {
-                ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
-                                                                          "-Xmx128m",
-                                                                          "-XX:+UnlockExperimentalVMOptions",
-                                                                          "-XX:+UnlockDiagnosticVMOptions",
-                                                                          "-XX:+UseShenandoahGC",
-                                                                          "-XX:ShenandoahGCHeuristics=aggressive",
-                                                                          "-XX:+ShenandoahStoreCheck",
-                                                                          "EvilSyncBug", "test");
-                OutputAnalyzer output = new OutputAnalyzer(pb.start());
-                output.shouldHaveExitValue(0);
+            ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+            Future<?>[] fs = new Future<?>[NUM_RUNS];
+
+            for (int c = 0; c < NUM_RUNS; c++) {
+                Callable<Void> task = () -> {
+                    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
+                                                                              "-Xmx128m",
+                                                                              "-XX:+UnlockExperimentalVMOptions",
+                                                                              "-XX:+UnlockDiagnosticVMOptions",
+                                                                              "-XX:+UseShenandoahGC",
+                                                                              "-XX:ShenandoahGCHeuristics=aggressive",
+                                                                              "-XX:+ShenandoahStoreCheck",
+                                                                              "EvilSyncBug", "test");
+                    OutputAnalyzer output = new OutputAnalyzer(pb.start());
+                    output.shouldHaveExitValue(0);
+                    return null;
+                };
+                fs[c] = pool.submit(task);
+            };
+
+            for (Future<?> f : fs) {
+              f.get();
             }
+
+            pool.shutdown();
+            pool.awaitTermination(1, TimeUnit.HOURS);
         }
     }
 
