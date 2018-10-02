@@ -24,6 +24,8 @@
  */
 package org.netbeans.jemmy.drivers;
 
+import javax.swing.UIManager;
+
 import org.netbeans.jemmy.ClassReference;
 import org.netbeans.jemmy.JemmyException;
 import org.netbeans.jemmy.JemmyProperties;
@@ -50,6 +52,7 @@ import org.netbeans.jemmy.drivers.trees.JTreeMouseDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultFrameDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultInternalFrameDriver;
 import org.netbeans.jemmy.drivers.windows.DefaultWindowDriver;
+import org.netbeans.jemmy.drivers.windows.InternalFramePopupMenuDriver;
 
 /**
  * Installs all necessary drivers for Jemmy operators except low-level drivers
@@ -119,9 +122,9 @@ public class DefaultDriverInstaller extends ArrayDriverInstaller {
                     new ChoiceDriver(),
                     new DefaultFrameDriver(),
                     new DefaultWindowDriver(),
-                    new DefaultInternalFrameDriver(),
-                    new DefaultInternalFrameDriver(),
-                    new DefaultInternalFrameDriver(),
+                    "Motif".equals(UIManager.getLookAndFeel().getID())? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
+                    "Motif".equals(UIManager.getLookAndFeel().getID())? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
+                    "Motif".equals(UIManager.getLookAndFeel().getID())? new InternalFramePopupMenuDriver(): new DefaultInternalFrameDriver(),
                     new APIFocusDriver(),
                     new MouseFocusDriver(),
                     (shortcutEvents ? new QueueJMenuDriver() : new DefaultJMenuDriver()),
