@@ -787,6 +787,43 @@ public:
   void do_oop(oop* p)       { do_oop_work(p); }
 };
 
+class ShenandoahPrecleanTask : public AbstractGangTask {
+private:
+  ReferenceProcessor* _rp;
+
+public:
+  ShenandoahPrecleanTask(ReferenceProcessor* rp) :
+          AbstractGangTask("Precleaning task"),
+          _rp(rp) {}
+
+  void work(uint worker_id) {
+    assert(worker_id == 0, "The code below is single-threaded, only one worker is expected");
+
+    ShenandoahHeap* sh = ShenandoahHeap::heap();
+
+    ShenandoahObjToScanQueue* q = sh->concurrent_mark()->get_queue(worker_id);
+
+    ShenandoahCancelledGCYieldClosure yield;
+    ShenandoahPrecleanCompleteGCClosure complete_gc;
+
+    if (sh->has_forwarded_objects()) {
+      ShenandoahForwardedIsAliveClosure is_alive;
+      ShenandoahPrecleanKeepAliveUpdateClosure keep_alive(q);
+      ResourceMark rm;
+      _rp->preclean_discovered_references(&is_alive, &keep_alive,
+                                          &complete_gc, &yield,
+                                          NULL);
+    } else {
+      ShenandoahIsAliveClosure is_alive;
+      ShenandoahCMKeepAliveClosure keep_alive(q);
+      ResourceMark rm;
+      _rp->preclean_discovered_references(&is_alive, &keep_alive,
+                                          &complete_gc, &yield,
+                                          NULL);
+    }
+  }
+};
+
 void ShenandoahConcurrentMark::preclean_weak_refs() {
   // Pre-cleaning weak references before diving into STW makes sense at the
   // end of concurrent mark. This will filter out the references which referents
@@ -796,15 +833,15 @@ void ShenandoahConcurrentMark::preclean_weak_refs() {
   // reference was discovered by RP.
 
   ShenandoahHeap* sh = ShenandoahHeap::heap();
-
   assert(sh->process_references(), "sanity");
 
-  ReferenceProcessor* rp = sh->ref_processor();
-
   // Shortcut if no references were discovered to avoid winding up threads.
+  ReferenceProcessor* rp = sh->ref_processor();
   if (!rp->has_discovered_references()) {
     return;
   }
+
+  assert(task_queues()->is_empty(), "Should be empty");
 
   ReferenceProcessorMTDiscoveryMutator fix_mt_discovery(rp, false);
 
@@ -812,27 +849,16 @@ void ShenandoahConcurrentMark::preclean_weak_refs() {
   ShenandoahIsAliveSelector is_alive;
   ReferenceProcessorIsAliveMutator fix_isalive(rp, is_alive.is_alive_closure());
 
-  // Interrupt on cancelled GC
-  ShenandoahCancelledGCYieldClosure yield;
+  // Execute precleaning in the worker thread: it will give us GCLABs, String dedup
+  // queues and other goodies. When upstream ReferenceProcessor starts supporting
+  // parallel precleans, we can extend this to more threads.
+  WorkGang* workers = sh->workers();
+  uint nworkers = workers->active_workers();
+  assert(nworkers == 1, "This code uses only a single worker");
+  task_queues()->reserve(nworkers);
 
-  assert(task_queues()->is_empty(), "Should be empty");
-
-  ShenandoahPrecleanCompleteGCClosure complete_gc;
-  if (sh->has_forwarded_objects()) {
-    ShenandoahForwardedIsAliveClosure is_alive;
-    ShenandoahPrecleanKeepAliveUpdateClosure keep_alive(get_queue(0));
-    ResourceMark rm;
-    rp->preclean_discovered_references(&is_alive, &keep_alive,
-                                       &complete_gc, &yield,
-                                       NULL);
-  } else {
-    ShenandoahIsAliveClosure is_alive;
-    ShenandoahCMKeepAliveClosure keep_alive(get_queue(0));
-    ResourceMark rm;
-    rp->preclean_discovered_references(&is_alive, &keep_alive,
-                                       &complete_gc, &yield,
-                                       NULL);
-  }
+  ShenandoahPrecleanTask task(rp);
+  workers->run_task(&task);
 
   assert(task_queues()->is_empty(), "Should be empty");
 }

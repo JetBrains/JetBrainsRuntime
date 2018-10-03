@@ -2501,7 +2501,8 @@ void ShenandoahHeap::entry_preclean() {
 
     ShenandoahWorkerScope scope(workers(),
                                 ShenandoahWorkerPolicy::calc_workers_for_conc_preclean(),
-                                "concurrent preclean");
+                                "concurrent preclean",
+                                /* check_workers = */ false);
 
     try_inject_alloc_failure();
     op_preclean();
