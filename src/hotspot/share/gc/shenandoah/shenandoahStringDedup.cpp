@@ -42,12 +42,11 @@ void ShenandoahStringDedup::initialize() {
 }
 
 /* Enqueue candidates for deduplication.
- * The method should only be called by GC worker threads, during concurrent marking phase.
+ * The method should only be called by GC worker threads during marking phases.
  */
 void ShenandoahStringDedup::enqueue_candidate(oop java_string) {
-  assert(Thread::current()->is_Worker_thread() ||
-         Thread::current()->is_ConcurrentGC_thread(),
-        "Only from a GC worker/concurrent thread");
+  assert(Thread::current()->is_Worker_thread(),
+        "Only from a GC worker thread");
 
   if (java_string->age() <= StringDeduplicationAgeThreshold) {
     const markOop mark = java_string->mark();
