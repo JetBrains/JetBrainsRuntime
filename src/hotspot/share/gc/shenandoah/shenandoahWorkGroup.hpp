@@ -41,7 +41,7 @@ public:
 
 
 class ShenandoahPushWorkerScope : StackObj {
-private:
+protected:
   uint      _n_workers;
   uint      _old_workers;
   WorkGang* _workers;
@@ -51,11 +51,8 @@ public:
   ~ShenandoahPushWorkerScope();
 };
 
-class ShenandoahPushWorkerQueuesScope : StackObj {
+class ShenandoahPushWorkerQueuesScope : public ShenandoahPushWorkerScope {
 private:
-  uint      _n_workers;
-  uint      _old_workers;
-  WorkGang* _workers;
   ShenandoahObjToScanQueueSet* _queues;
 
 public:
