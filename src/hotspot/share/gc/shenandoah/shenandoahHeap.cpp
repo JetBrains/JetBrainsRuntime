@@ -171,7 +171,7 @@ jint ShenandoahHeap::initialize() {
   }
 
   assert((((size_t) base()) & ShenandoahHeapRegion::region_size_bytes_mask()) == 0,
-         "misaligned heap: "PTR_FORMAT, p2i(base()));
+         "misaligned heap: " PTR_FORMAT, p2i(base()));
 
   // The call below uses stuff (the SATB* things) that are in G1, but probably
   // belong into a shared location.

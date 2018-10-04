@@ -43,8 +43,8 @@ void ShenandoahFreeSet::increase_used(size_t num_bytes) {
   assert_heaplock_owned_by_current_thread();
   _used += num_bytes;
 
-  assert(_used <= _capacity, "must not use more than we have: used: "SIZE_FORMAT
-         ", capacity: "SIZE_FORMAT", num_bytes: "SIZE_FORMAT, _used, _capacity, num_bytes);
+  assert(_used <= _capacity, "must not use more than we have: used: " SIZE_FORMAT
+         ", capacity: " SIZE_FORMAT ", num_bytes: " SIZE_FORMAT, _used, _capacity, num_bytes);
 }
 
 bool ShenandoahFreeSet::is_mutator_free(size_t idx) const {
