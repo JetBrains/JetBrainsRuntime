@@ -78,7 +78,6 @@ ShenandoahMarkRefsSuperClosure::ShenandoahMarkRefsSuperClosure(ShenandoahObjToSc
   _mark_context(_heap->marking_context())
 { }
 
-
 template<UpdateRefsMode UPDATE_REFS>
 class ShenandoahInitMarkRootsTask : public AbstractGangTask {
 private:
@@ -219,10 +218,11 @@ public:
 };
 
 class ShenandoahSATBThreadsClosure : public ThreadClosure {
+private:
   ShenandoahSATBBufferClosure* _satb_cl;
   int _thread_parity;
 
- public:
+public:
   ShenandoahSATBThreadsClosure(ShenandoahSATBBufferClosure* satb_cl) :
     _satb_cl(satb_cl),
     _thread_parity(Threads::thread_claim_parity()) {}
@@ -504,7 +504,6 @@ public:
   }
 };
 
-
 class ShenandoahCMKeepAliveClosure : public OopClosure {
 private:
   ShenandoahObjToScanQueue* _queue;
@@ -583,12 +582,11 @@ public:
 };
 
 class ShenandoahRefProcTaskProxy : public AbstractGangTask {
-
 private:
   AbstractRefProcTaskExecutor::ProcessTask& _proc_task;
   ShenandoahTaskTerminator* _terminator;
-public:
 
+public:
   ShenandoahRefProcTaskProxy(AbstractRefProcTaskExecutor::ProcessTask& proc_task,
                              ShenandoahTaskTerminator* t) :
     AbstractGangTask("Process reference objects in parallel"),
@@ -615,12 +613,10 @@ public:
 };
 
 class ShenandoahRefProcTaskExecutor : public AbstractRefProcTaskExecutor {
-
 private:
   WorkGang* _workers;
 
 public:
-
   ShenandoahRefProcTaskExecutor(WorkGang* workers) :
     _workers(workers) {
   }
@@ -645,7 +641,6 @@ public:
     }
   }
 };
-
 
 void ShenandoahConcurrentMark::weak_refs_work(bool full_gc) {
   assert(_heap->process_references(), "sanity");

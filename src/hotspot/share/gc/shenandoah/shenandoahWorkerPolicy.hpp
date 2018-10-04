@@ -21,12 +21,10 @@
  *
  */
 
-
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHWORKERPOLICY_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHWORKERPOLICY_HPP
 
 #include "memory/allocation.hpp"
-
 
 class ShenandoahWorkerPolicy : AllStatic {
 private:

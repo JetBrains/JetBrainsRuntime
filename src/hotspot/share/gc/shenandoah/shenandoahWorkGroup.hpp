@@ -39,7 +39,6 @@ public:
   ~ShenandoahWorkerScope();
 };
 
-
 class ShenandoahPushWorkerScope : StackObj {
 protected:
   uint      _n_workers;

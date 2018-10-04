@@ -46,4 +46,3 @@ JNIEXPORT jobject JNICALL
 Java_TestJNIGlobalRefs_readWeakGlobalRef(JNIEnv *env, jclass unused) {
   return weak_global_ref;
 }
-

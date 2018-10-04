@@ -111,5 +111,3 @@ public class ChurnNotifications {
     }
   }
 }
-
-

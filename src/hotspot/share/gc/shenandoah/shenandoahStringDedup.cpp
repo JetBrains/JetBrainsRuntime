@@ -73,7 +73,6 @@ void ShenandoahStringDedup::deduplicate(oop java_string) {
   StringDedupTable::deduplicate(java_string, &dummy);
 }
 
-
 void ShenandoahStringDedup::parallel_oops_do(OopClosure* cl, uint worker_id) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");
   assert(is_enabled(), "String deduplication not enabled");
@@ -91,7 +90,6 @@ void ShenandoahStringDedup::parallel_oops_do(OopClosure* cl, uint worker_id) {
     StringDedupTable::unlink_or_oops_do(&sd_cl, worker_id);
   }
 }
-
 
 void ShenandoahStringDedup::oops_do_slow(OopClosure* cl) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at a safepoint");

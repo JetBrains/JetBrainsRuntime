@@ -21,7 +21,6 @@
  *
  */
 
-
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTIONSET_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTIONSET_INLINE_HPP
 
@@ -46,6 +45,5 @@ bool ShenandoahCollectionSet::is_in(HeapWord* p) const {
   // _biased_cset_map is biased
   return _biased_cset_map[index] == 1;
 }
-
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTIONSET_INLINE_HPP

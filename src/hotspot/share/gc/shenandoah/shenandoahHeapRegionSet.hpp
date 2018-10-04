@@ -65,7 +65,6 @@ private:
   size_t                _region_count;
 
 public:
-
   ShenandoahHeapRegionSet();
   ~ShenandoahHeapRegionSet();
 

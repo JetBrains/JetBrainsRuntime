@@ -31,7 +31,7 @@ class ShenandoahBarrierSetC2State : public ResourceObj {
 private:
   GrowableArray<ShenandoahWriteBarrierNode*>* _shenandoah_barriers;
 
- public:
+public:
   ShenandoahBarrierSetC2State(Arena* comp_arena);
   int shenandoah_barriers_count() const;
   ShenandoahWriteBarrierNode* shenandoah_barrier(int idx) const;
@@ -41,7 +41,6 @@ private:
 
 class ShenandoahBarrierSetC2 : public BarrierSetC2 {
 private:
-
   void shenandoah_eliminate_wb_pre(Node* call, PhaseIterGVN* igvn) const;
 
   bool satb_can_remove_pre_barrier(GraphKit* kit, PhaseTransform* phase, Node* adr,
@@ -96,7 +95,6 @@ public:
   ShenandoahBarrierSetC2State* state() const;
 
   Node* shenandoah_read_barrier_acmp(GraphKit* kit, Node* obj);
-
 
   static const TypeFunc* write_ref_field_pre_entry_Type();
   static const TypeFunc* shenandoah_clone_barrier_Type();

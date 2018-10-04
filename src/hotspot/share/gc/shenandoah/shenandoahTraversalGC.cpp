@@ -118,9 +118,10 @@ public:
 };
 
 class ShenandoahTraversalSATBThreadsClosure : public ThreadClosure {
+private:
   ShenandoahTraversalSATBBufferClosure* _satb_cl;
 
- public:
+public:
   ShenandoahTraversalSATBThreadsClosure(ShenandoahTraversalSATBBufferClosure* satb_cl) :
     _satb_cl(satb_cl) {}
 
@@ -577,7 +578,6 @@ void ShenandoahTraversalGC::concurrent_traversal_collection() {
 }
 
 void ShenandoahTraversalGC::final_traversal_collection() {
-
   _heap->make_parsable(true);
 
   if (!_heap->cancelled_gc()) {
@@ -670,7 +670,6 @@ void ShenandoahTraversalGC::final_traversal_collection() {
 
 class ShenandoahTraversalFixRootsClosure : public OopClosure {
 private:
-
   template <class T>
   inline void do_oop_work(T* p) {
     T o = RawAccess<>::oop_load(p);
@@ -682,21 +681,20 @@ private:
       }
     }
   }
+
 public:
   inline void do_oop(oop* p) { do_oop_work(p); }
   inline void do_oop(narrowOop* p) { do_oop_work(p); }
 };
 
 class ShenandoahTraversalFixRootsTask : public AbstractGangTask {
+private:
   ShenandoahRootProcessor* _rp;
-public:
 
+public:
   ShenandoahTraversalFixRootsTask(ShenandoahRootProcessor* rp) :
     AbstractGangTask("Shenandoah traversal fix roots"),
-    _rp(rp)
-  {
-    // Nothing else to do.
-  }
+    _rp(rp) {}
 
   void work(uint worker_id) {
     ShenandoahTraversalFixRootsClosure cl;
@@ -812,7 +810,6 @@ public:
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
 };
-
 
 class ShenandoahTraversalPrecleanTask : public AbstractGangTask {
 private:
@@ -932,12 +929,11 @@ void ShenandoahTraversalGC::weak_refs_work() {
 }
 
 class ShenandoahTraversalRefProcTaskProxy : public AbstractGangTask {
-
 private:
   AbstractRefProcTaskExecutor::ProcessTask& _proc_task;
   ShenandoahTaskTerminator* _terminator;
-public:
 
+public:
   ShenandoahTraversalRefProcTaskProxy(AbstractRefProcTaskExecutor::ProcessTask& proc_task,
                                       ShenandoahTaskTerminator* t) :
     AbstractGangTask("Process reference objects in parallel"),
@@ -963,15 +959,11 @@ public:
 };
 
 class ShenandoahTraversalRefProcTaskExecutor : public AbstractRefProcTaskExecutor {
-
 private:
   WorkGang* _workers;
 
 public:
-
-  ShenandoahTraversalRefProcTaskExecutor(WorkGang* workers) :
-    _workers(workers) {
-  }
+  ShenandoahTraversalRefProcTaskExecutor(WorkGang* workers) : _workers(workers) {}
 
   // Executes a task using worker threads.
   void execute(ProcessTask& task, uint ergo_workers) {

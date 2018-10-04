@@ -21,7 +21,6 @@
  *
  */
 
-
 /* @test
  * @requires (os.arch =="x86_64" | os.arch == "amd64") & (vm.bits == "64")
  *
@@ -38,9 +37,7 @@ public class CriticalNativeArgs {
     System.loadLibrary("CriticalNative");
   }
 
-
   static native boolean isNull(int[] a);
-
 
   public static void main(String[] args) {
     int[] arr = new int[2];
@@ -54,4 +51,3 @@ public class CriticalNativeArgs {
     }
   }
 }
-

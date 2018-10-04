@@ -171,7 +171,6 @@ bool ShenandoahStrDedupQueue::pop_candidate(oop& obj) {
   return suc;
 }
 
-
 ShenandoahQueueBuffer* ShenandoahStrDedupQueue::new_buffer() {
   assert_lock_strong(StringDedupQueue_lock);
   if (_free_list != NULL) {
@@ -211,7 +210,6 @@ void ShenandoahStrDedupQueue::print_statistics_impl() {
     _total_buffers, (_total_buffers * sizeof(ShenandoahQueueBuffer) / K), _num_free_buffer);
 }
 
-
 class VerifyQueueClosure : public OopClosure {
 private:
   ShenandoahHeap* _heap;
@@ -246,6 +244,3 @@ void ShenandoahStrDedupQueue::verify_impl() {
     }
   }
 }
-
-
-

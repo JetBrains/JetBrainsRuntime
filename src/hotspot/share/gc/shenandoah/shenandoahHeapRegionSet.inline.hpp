@@ -21,7 +21,6 @@
  *
  */
 
-
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPREGIONSET_INLINE_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPREGIONSET_INLINE_HPP
 
@@ -46,6 +45,5 @@ bool ShenandoahHeapRegionSet::is_in(HeapWord* p) const {
   // _biased_set_map is biased
   return _biased_set_map[index] == 1;
 }
-
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHHEAPREGIONSET_INLINE_HPP

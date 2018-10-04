@@ -117,7 +117,6 @@ public:
 };
 
 jint ShenandoahHeap::initialize() {
-
   BrooksPointer::initial_checks();
 
   initialize_heuristics();
@@ -266,7 +265,6 @@ jint ShenandoahHeap::initialize() {
     ShenandoahPretouchTask cl(bitmap0.base(), _bitmap_size, page_size);
     _workers->run_task(&cl);
   }
-
 
   // Reserve aux bitmap for use in object_iterate(). We don't commit it here.
   ReservedSpace aux_bitmap(_bitmap_size, bitmap_page_size);
@@ -952,7 +950,6 @@ void ShenandoahHeap::trash_humongous_region_at(ShenandoahHeapRegion* start) {
   }
 }
 
-
 class ShenandoahRetireGCLABClosure : public ThreadClosure {
 public:
   void do_thread(Thread* thread) {
@@ -983,15 +980,13 @@ void ShenandoahHeap::accumulate_statistics_tlabs() {
 }
 
 class ShenandoahEvacuateUpdateRootsTask : public AbstractGangTask {
+private:
   ShenandoahRootEvacuator* _rp;
-public:
 
+public:
   ShenandoahEvacuateUpdateRootsTask(ShenandoahRootEvacuator* rp) :
     AbstractGangTask("Shenandoah evacuate and update roots"),
-    _rp(rp)
-  {
-    // Nothing else to do.
-  }
+    _rp(rp) {}
 
   void work(uint worker_id) {
     ShenandoahWorkerSession worker_session(worker_id);
@@ -1004,15 +999,13 @@ public:
 };
 
 class ShenandoahFixRootsTask : public AbstractGangTask {
+private:
   ShenandoahRootEvacuator* _rp;
-public:
 
+public:
   ShenandoahFixRootsTask(ShenandoahRootEvacuator* rp) :
     AbstractGangTask("Shenandoah update roots"),
-    _rp(rp)
-  {
-    // Nothing else to do.
-  }
+    _rp(rp) {}
 
   void work(uint worker_id) {
     ShenandoahWorkerSession worker_session(worker_id);
@@ -1025,7 +1018,6 @@ public:
 };
 
 void ShenandoahHeap::evacuate_and_update_roots() {
-
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::clear();
 #endif
@@ -1776,7 +1768,6 @@ void ShenandoahHeap::ref_processing_init() {
 
   shenandoah_assert_rp_isalive_not_installed();
 }
-
 
 GCTracer* ShenandoahHeap::tracer() {
   return shenandoah_policy()->tracer();

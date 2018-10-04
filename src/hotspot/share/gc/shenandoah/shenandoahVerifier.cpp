@@ -248,7 +248,6 @@ private:
   }
 
 public:
-
   /**
    * Verify object with known interior reference.
    * @param p interior reference where the object is referenced from; can be off-heap
@@ -608,7 +607,6 @@ public:
   }
 };
 
-
 void ShenandoahVerifier::verify_at_safepoint(const char *label,
                                              VerifyForwarded forwarded, VerifyMarked marked,
                                              VerifyCollectionSet cset,
@@ -913,4 +911,3 @@ void ShenandoahVerifier::verify_after_fullgc() {
           _verify_gcstate_stable       // full gc cleaned up everything
   );
 }
-

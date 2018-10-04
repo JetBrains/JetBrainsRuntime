@@ -351,7 +351,6 @@ void ShenandoahBarrierSet::on_thread_destroy(Thread* thread) {
   ShenandoahThreadLocalData::destroy(thread);
 }
 
-
 void ShenandoahBarrierSet::on_thread_attach(JavaThread* thread) {
   assert(!SafepointSynchronize::is_at_safepoint(), "We should not be at a safepoint");
   assert(!ShenandoahThreadLocalData::satb_mark_queue(thread).is_active(), "SATB queue should not be active");

@@ -98,7 +98,6 @@ protected:
                                                      size_t free) = 0;
 
 public:
-
   ShenandoahHeuristics();
   virtual ~ShenandoahHeuristics();
 

@@ -114,7 +114,6 @@ ShenandoahHeapRegion* ShenandoahHeapRegionSetIterator::claim_next() {
   return NULL;
 }
 
-
 ShenandoahHeapRegion* ShenandoahHeapRegionSetIterator::next() {
   size_t num_regions = _heap->num_regions();
   for (size_t index = (size_t)_current_index; index < num_regions; index ++) {

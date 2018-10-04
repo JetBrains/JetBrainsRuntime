@@ -31,7 +31,6 @@
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestShenandoahWithLogLevel
  */
 
-
 import java.util.*;
 
 public class TestShenandoahWithLogLevel {

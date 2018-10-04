@@ -37,7 +37,6 @@ void ShenandoahObjToScanQueueSet::clear() {
   }
 }
 
-
 bool ShenandoahObjToScanQueueSet::is_empty() {
   uint size = GenericTaskQueueSet<ShenandoahObjToScanQueue, mtGC>::size();
   for (uint index = 0; index < size; index ++) {
@@ -137,7 +136,6 @@ void ShenandoahObjToScanQueueSet::reset_taskqueue_stats() {
   }
 }
 #endif // TASKQUEUE_STATS
-
 
 bool ShenandoahTaskTerminator::do_spin_master_work(ShenandoahTerminatorTerminator* terminator) {
   uint yield_count = 0;

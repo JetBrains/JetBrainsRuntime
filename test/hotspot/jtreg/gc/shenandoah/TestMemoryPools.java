@@ -30,7 +30,6 @@
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g TestMemoryPools
  */
 
-
 import java.lang.management.*;
 import java.util.*;
 

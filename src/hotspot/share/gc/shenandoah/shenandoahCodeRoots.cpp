@@ -21,7 +21,6 @@
  *
  */
 
-
 #include "precompiled.hpp"
 #include "code/codeCache.hpp"
 #include "code/nmethod.hpp"
@@ -49,8 +48,7 @@ void ShenandoahParallelCodeCacheIterator::parallel_blobs_do(CodeBlobClosure* f) 
 
 ShenandoahParallelCodeHeapIterator::ShenandoahParallelCodeHeapIterator(CodeHeap* heap) :
         _heap(heap), _claimed_idx(0), _finished(false) {
-};
-
+}
 
 void ShenandoahParallelCodeHeapIterator::parallel_blobs_do(CodeBlobClosure* f) {
   assert(SafepointSynchronize::is_at_safepoint(), "Must be at safepoint");

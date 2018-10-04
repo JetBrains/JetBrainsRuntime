@@ -135,7 +135,6 @@ void ShenandoahMetricsSnapshot::print() {
 }
 
 bool ShenandoahMetricsSnapshot::is_good_progress(const char *label) {
-
   // Under the critical threshold? Declare failure.
   size_t free_actual   = _heap->free_set()->available();
   size_t free_expected = _heap->max_capacity() / 100 * ShenandoahCriticalFreeThreshold;
@@ -175,4 +174,3 @@ bool ShenandoahMetricsSnapshot::is_good_progress(const char *label) {
   // Nothing good had happened.
   return false;
 }
-

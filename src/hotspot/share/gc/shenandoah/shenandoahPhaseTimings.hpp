@@ -307,14 +307,12 @@ class outputStream;
 
 class ShenandoahPhaseTimings : public CHeapObj<mtGC> {
 public:
-
 #define GC_PHASE_DECLARE_ENUM(type, title)   type,
 
   enum Phase {
     SHENANDOAH_GC_PHASE_DO(GC_PHASE_DECLARE_ENUM)
     _num_phases
   };
-
 
   // These are the subphases of GC phases (scan_roots, update_roots,
   // init_evac, final_update_refs_roots and full_gc_roots).
@@ -414,7 +412,6 @@ public:
   ShenandoahTerminationTimingsTracker(uint worker_id);
   ~ShenandoahTerminationTimingsTracker();
 };
-
 
 // Tracking termination time in specific GC phase
 class ShenandoahTerminationTracker : public StackObj {

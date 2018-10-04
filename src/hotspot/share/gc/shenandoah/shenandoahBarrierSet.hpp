@@ -31,7 +31,6 @@
 
 class ShenandoahBarrierSet: public BarrierSet {
 private:
-
   enum ArrayCopyStoreValMode {
     NONE,
     READ_BARRIER,
@@ -43,7 +42,6 @@ private:
   ShenandoahHeap* _heap;
 
 public:
-
   ShenandoahBarrierSet(ShenandoahHeap* heap);
 
   inline static ShenandoahBarrierSet* barrier_set() {
@@ -68,7 +66,6 @@ public:
   void write_ref_array_pre(oop* dst, size_t count, bool dest_uninitialized);
 
   void write_ref_array_pre(narrowOop* dst, size_t count, bool dest_uninitialized);
-
 
   // We export this to make it available in cases where the static
   // type of the barrier set is known.  Note that it is non-virtual.

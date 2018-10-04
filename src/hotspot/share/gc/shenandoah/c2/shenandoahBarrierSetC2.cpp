@@ -47,7 +47,6 @@ ShenandoahWriteBarrierNode* ShenandoahBarrierSetC2State::shenandoah_barrier(int 
   return _shenandoah_barriers->at(idx);
 }
 
-
 void ShenandoahBarrierSetC2State::add_shenandoah_barrier(ShenandoahWriteBarrierNode * n) {
   assert(!_shenandoah_barriers->contains(n), "duplicate entry in barrier list");
   _shenandoah_barriers->append(n);
@@ -84,7 +83,6 @@ Node* ShenandoahBarrierSetC2::shenandoah_read_barrier_acmp(GraphKit* kit, Node* 
 }
 
 Node* ShenandoahBarrierSetC2::shenandoah_read_barrier_impl(GraphKit* kit, Node* obj, bool use_ctrl, bool use_mem, bool allow_fromspace) const {
-
   const Type* obj_type = obj->bottom_type();
   if (obj_type->higher_equal(TypePtr::NULL_PTR)) {
     return obj;
@@ -96,7 +94,6 @@ Node* ShenandoahBarrierSetC2::shenandoah_read_barrier_impl(GraphKit* kit, Node* 
     // We know it is null, no barrier needed.
     return obj;
   }
-
 
   if (obj_type->meet(TypePtr::NULL_PTR) == obj_type->remove_speculative()) {
 
@@ -142,7 +139,6 @@ Node* ShenandoahBarrierSetC2::shenandoah_write_barrier_helper(GraphKit* kit, Nod
 }
 
 Node* ShenandoahBarrierSetC2::shenandoah_write_barrier(GraphKit* kit, Node* obj) const {
-
   if (ShenandoahWriteBarrier) {
     obj = shenandoah_write_barrier_impl(kit, obj);
   }
@@ -257,7 +253,6 @@ void ShenandoahBarrierSetC2::satb_write_barrier_pre(GraphKit* kit,
                                                     const TypeOopPtr* val_type,
                                                     Node* pre_val,
                                                     BasicType bt) const {
-
   // Some sanity checks
   // Note: val is unused in this routine.
 
@@ -362,7 +357,6 @@ bool ShenandoahBarrierSetC2::is_shenandoah_wb_pre_call(Node* call) {
 }
 
 bool ShenandoahBarrierSetC2::is_shenandoah_marking_if(PhaseTransform *phase, Node* n) {
-
   if (n->Opcode() != Op_If) {
     return false;
   }
@@ -575,7 +569,6 @@ Node* ShenandoahBarrierSetC2::store_at_resolved(C2Access& access, C2AccessValue&
               static_cast<const TypeOopPtr*>(val.type()), NULL /* pre_val */, access.type());
   return BarrierSetC2::store_at_resolved(access, val);
 }
-
 
 Node* ShenandoahBarrierSetC2::load_at(C2Access& access, const Type* val_type) const {
   // TODO: Implement using proper barriers.

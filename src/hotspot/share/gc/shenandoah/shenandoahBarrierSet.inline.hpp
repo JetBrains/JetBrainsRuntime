@@ -233,7 +233,6 @@ void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::clone_in_heap
   ShenandoahBarrierSet::barrier_set()->write_region(MemRegion((HeapWord*) dst, size));
 }
 
-
 template <DecoratorSet decorators, typename BarrierSetT>
 template <typename T>
 bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy_in_heap(arrayOop src_obj, size_t src_offset_in_bytes, T* src_raw,

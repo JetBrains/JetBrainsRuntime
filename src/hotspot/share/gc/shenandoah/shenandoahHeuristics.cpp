@@ -33,7 +33,6 @@
 #include "logging/log.hpp"
 #include "logging/logTag.hpp"
 
-
 int ShenandoahHeuristics::compare_by_garbage(RegionData a, RegionData b) {
   if (a._garbage > b._garbage)
     return -1;

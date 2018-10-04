@@ -31,7 +31,6 @@
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 
-
 public class TestAllocSmallObj {
 
     static final int COUNT = 16*1024*1024;

@@ -29,14 +29,14 @@
 
 class ShenandoahPreBarrierStub: public CodeStub {
   friend class ShenandoahBarrierSetC1;
- private:
+private:
   bool _do_load;
   LIR_Opr _addr;
   LIR_Opr _pre_val;
   LIR_PatchCode _patch_code;
   CodeEmitInfo* _info;
 
- public:
+public:
   // Version that _does_ generate a load of the previous value from addr.
   // addr (the address of the field to be read) must be a LIR_Address
   // pre_val (a temporary register) must be a register;
@@ -87,13 +87,13 @@ class ShenandoahPreBarrierStub: public CodeStub {
 
 class ShenandoahWriteBarrierStub: public CodeStub {
   friend class ShenandoahBarrierSetC1;
- private:
+private:
   LIR_Opr _obj;
   LIR_Opr _result;
   CodeEmitInfo* _info;
   bool _needs_null_check;
 
- public:
+public:
   ShenandoahWriteBarrierStub(LIR_Opr obj, LIR_Opr result, CodeEmitInfo* info, bool needs_null_check) :
     _obj(obj), _result(result), _info(info), _needs_null_check(needs_null_check)
   {

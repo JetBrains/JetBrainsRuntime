@@ -699,7 +699,6 @@ void ShenandoahHeapRegion::do_uncommit() {
   _heap->decrease_committed(ShenandoahHeapRegion::region_size_bytes());
 }
 
-
 bool ShenandoahHeapRegion::can_idle_region() const {
   return LINUX_ONLY(ShenandoahUncommitWithIdle && !UseLargePages) NOT_LINUX(false);
 }

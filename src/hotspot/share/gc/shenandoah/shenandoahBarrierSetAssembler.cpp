@@ -31,4 +31,3 @@ bool ShenandoahBarrierSetAssembler::is_shenandoah_wb_C_call(address call) {
     return false;
   }
 }
-

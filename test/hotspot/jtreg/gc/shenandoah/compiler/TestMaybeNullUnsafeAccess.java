@@ -55,7 +55,6 @@ public class TestMaybeNullUnsafeAccess {
         return (A)o;
     }
 
-
     static int test(Object o) {
         int f = 0;
         for (int i = 0; i < 100; i++) {

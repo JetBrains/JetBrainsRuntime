@@ -58,7 +58,6 @@ public:
   void main_loop(uint worker_id, ShenandoahTaskTerminator* terminator);
 
 private:
-
   void prepare_regions();
 
   template <class T>

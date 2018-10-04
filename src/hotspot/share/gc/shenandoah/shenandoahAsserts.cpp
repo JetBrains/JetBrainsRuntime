@@ -41,7 +41,6 @@ void print_raw_memory(ShenandoahMessageBuffer &msg, void* loc) {
 
   ShenandoahHeapRegion* r = heap->heap_region_containing(loc);
   if (r != NULL && r->is_committed()) {
-
     address start = MAX2((address) r->bottom(), (address) loc - 32);
     address end   = MIN2((address) r->end(),    (address) loc + 128);
     if (start >= end) return;
@@ -201,7 +200,6 @@ void ShenandoahAsserts::assert_correct(void* interior_loc, oop obj, const char* 
   oop fwd = oop(BrooksPointer::get_raw_unchecked(obj));
 
   if (!oopDesc::unsafe_equals(obj, fwd)) {
-
     // When Full GC moves the objects, we cannot trust fwdptrs. If we got here, it means something
     // tries fwdptr manipulation when Full GC is running. The only exception is using the fwdptr
     // that still points to the object itself.

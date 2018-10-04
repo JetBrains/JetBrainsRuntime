@@ -88,7 +88,6 @@ public:
   void push_impl(uint worker_id, oop string_oop);
   oop  pop_impl();
 
-
   void unlink_or_oops_do_impl(StringDedupUnlinkOrOopsDoClosure* cl, size_t queue);
 
   void print_statistics_impl();

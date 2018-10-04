@@ -202,7 +202,6 @@ inline bool ShenandoahHeap::check_cancelled_gc_and_yield(bool sts_active) {
 
   jbyte prev = _cancelled_gc.cmpxchg(NOT_CANCELLED, CANCELLABLE);
   if (prev == CANCELLABLE || prev == NOT_CANCELLED) {
-
     if (SuspendibleThreadSet::should_yield()) {
       SuspendibleThreadSet::yield();
     }

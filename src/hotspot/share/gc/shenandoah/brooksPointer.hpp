@@ -28,9 +28,6 @@
 #include "utilities/globalDefinitions.hpp"
 
 class BrooksPointer {
-
-public:
-
   /*
    * Notes:
    *
@@ -46,6 +43,7 @@ public:
    *     calculations should always be via *_size.
    */
 
+public:
   /* Offset from the object start, in HeapWords. */
   static inline int word_offset() {
     return -1; // exactly one HeapWord

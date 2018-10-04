@@ -34,7 +34,6 @@
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 
-
 ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
   _heap(ShenandoahHeap::heap()),
   _timer(_heap->gc_timer()),
@@ -139,4 +138,3 @@ ShenandoahWorkerSession::~ShenandoahWorkerSession() {
   ShenandoahThreadLocalData::set_worker_id(thr, ShenandoahThreadLocalData::INVALID_WORKER_ID);
 #endif
 }
-
