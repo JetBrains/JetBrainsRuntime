@@ -317,12 +317,11 @@ ShenandoahTraversalGC::~ShenandoahTraversalGC() {
 }
 
 void ShenandoahTraversalGC::prepare_regions() {
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  size_t num_regions = heap->num_regions();
+  size_t num_regions = _heap->num_regions();
   ShenandoahMarkingContext* const ctx = _heap->marking_context();
   for (size_t i = 0; i < num_regions; i++) {
-    ShenandoahHeapRegion* region = heap->get_region(i);
-    if (heap->is_bitmap_slice_committed(region)) {
+    ShenandoahHeapRegion* region = _heap->get_region(i);
+    if (_heap->is_bitmap_slice_committed(region)) {
       if (_traversal_set.is_in(i)) {
         ctx->capture_top_at_mark_start(region);
         region->clear_live_data();
@@ -711,10 +710,9 @@ void ShenandoahTraversalGC::fixup_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::clear();
 #endif
-  ShenandoahHeap* heap = ShenandoahHeap::heap();
-  ShenandoahRootProcessor rp(heap, heap->workers()->active_workers(), ShenandoahPhaseTimings::final_traversal_update_roots);
+  ShenandoahRootProcessor rp(_heap, _heap->workers()->active_workers(), ShenandoahPhaseTimings::final_traversal_update_roots);
   ShenandoahTraversalFixRootsTask update_roots_task(&rp);
-  heap->workers()->run_task(&update_roots_task);
+  _heap->workers()->run_task(&update_roots_task);
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::update_pointers();
 #endif
@@ -772,8 +770,6 @@ public:
 
 class ShenandoahTraversalWeakUpdateClosure : public OopClosure {
 private:
-  ShenandoahHeap* const _heap;
-
   template <class T>
   inline void do_oop_work(T* p) {
     // Cannot call maybe_update_with_forwarded, because on traversal-degen
@@ -789,7 +785,7 @@ private:
   }
 
 public:
-  ShenandoahTraversalWeakUpdateClosure() :  _heap(ShenandoahHeap::heap()) {}
+  ShenandoahTraversalWeakUpdateClosure() {}
 
   void do_oop(narrowOop* p) { do_oop_work(p); }
   void do_oop(oop* p)       { do_oop_work(p); }
@@ -854,12 +850,11 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   // that missed the initial filtering, i.e. when referent was marked alive after
   // reference was discovered by RP.
 
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-  assert(sh->process_references(), "sanity");
-  assert(!sh->is_degenerated_gc_in_progress(), "must be in concurrent non-degenerated phase");
+  assert(_heap->process_references(), "sanity");
+  assert(!_heap->is_degenerated_gc_in_progress(), "must be in concurrent non-degenerated phase");
 
   // Shortcut if no references were discovered to avoid winding up threads.
-  ReferenceProcessor* rp = sh->ref_processor();
+  ReferenceProcessor* rp = _heap->ref_processor();
   if (!rp->has_discovered_references()) {
     return;
   }
@@ -877,7 +872,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   // parallel precleans, we can extend this to more threads.
   ShenandoahPushWorkerScope scope(_heap->workers(), 1, /* check_workers = */ false);
 
-  WorkGang* workers = sh->workers();
+  WorkGang* workers = _heap->workers();
   uint nworkers = workers->active_workers();
   assert(nworkers == 1, "This code uses only a single worker");
   task_queues()->reserve(nworkers);
@@ -885,7 +880,7 @@ void ShenandoahTraversalGC::preclean_weak_refs() {
   ShenandoahTraversalPrecleanTask task(rp);
   workers->run_task(&task);
 
-  assert(sh->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
+  assert(_heap->cancelled_gc() || task_queues()->is_empty(), "Should be empty");
 }
 
 // Weak Reference Closures
@@ -920,13 +915,11 @@ public:
 void ShenandoahTraversalGC::weak_refs_work() {
   assert(_heap->process_references(), "sanity");
 
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-
   ShenandoahPhaseTimings::Phase phase_root = ShenandoahPhaseTimings::weakrefs;
 
   ShenandoahGCPhase phase(phase_root);
 
-  ReferenceProcessor* rp = sh->ref_processor();
+  ReferenceProcessor* rp = _heap->ref_processor();
 
   // NOTE: We cannot shortcut on has_discovered_references() here, because
   // we will miss marking JNI Weak refs then, see implementation in
@@ -1003,9 +996,7 @@ public:
 };
 
 void ShenandoahTraversalGC::weak_refs_work_doit() {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-
-  ReferenceProcessor* rp = sh->ref_processor();
+  ReferenceProcessor* rp = _heap->ref_processor();
 
   ShenandoahPhaseTimings::Phase phase_process = ShenandoahPhaseTimings::weakrefs_process;
 
@@ -1013,17 +1004,17 @@ void ShenandoahTraversalGC::weak_refs_work_doit() {
   ShenandoahForwardedIsAliveClosure is_alive;
   ReferenceProcessorIsAliveMutator fix_isalive(rp, &is_alive);
 
-  WorkGang* workers = sh->workers();
+  WorkGang* workers = _heap->workers();
   uint nworkers = workers->active_workers();
 
-  rp->setup_policy(sh->soft_ref_policy()->should_clear_all_soft_refs());
+  rp->setup_policy(_heap->soft_ref_policy()->should_clear_all_soft_refs());
   rp->set_active_mt_degree(nworkers);
 
   assert(task_queues()->is_empty(), "Should be empty");
 
   ShenandoahTraversalRefProcTaskExecutor executor(workers);
 
-  ReferenceProcessorPhaseTimes pt(sh->gc_timer(), rp->num_queues());
+  ReferenceProcessorPhaseTimes pt(_heap->gc_timer(), rp->num_queues());
 
   {
     ShenandoahGCPhase phase(phase_process);

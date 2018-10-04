@@ -99,11 +99,10 @@ void ShenandoahParallelCodeHeapIterator::parallel_blobs_do(CodeBlobClosure* f) {
 
 class ShenandoahNMethodOopDetector : public OopClosure {
 private:
-  ShenandoahHeap* _heap;
   GrowableArray<oop*> _oops;
 
 public:
-  ShenandoahNMethodOopDetector() : _heap(ShenandoahHeap::heap()), _oops(10) {};
+  ShenandoahNMethodOopDetector() : _oops(10) {};
 
   void do_oop(oop* o) {
     _oops.append(o);

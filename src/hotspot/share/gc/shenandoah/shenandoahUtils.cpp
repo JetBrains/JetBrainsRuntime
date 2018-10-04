@@ -36,17 +36,17 @@
 
 
 ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
-  _timer(ShenandoahHeap::heap()->gc_timer()),
-  _tracer(ShenandoahHeap::heap()->tracer()) {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
+  _heap(ShenandoahHeap::heap()),
+  _timer(_heap->gc_timer()),
+  _tracer(_heap->tracer()) {
 
   _timer->register_gc_start();
   _tracer->report_gc_start(cause, _timer->gc_start());
-  sh->trace_heap(GCWhen::BeforeGC, _tracer);
+  _heap->trace_heap(GCWhen::BeforeGC, _tracer);
 
-  sh->shenandoah_policy()->record_cycle_start();
-  sh->heuristics()->record_cycle_start();
-  _trace_cycle.initialize(sh->cycle_memory_manager(), sh->gc_cause(),
+  _heap->shenandoah_policy()->record_cycle_start();
+  _heap->heuristics()->record_cycle_start();
+  _trace_cycle.initialize(_heap->cycle_memory_manager(), _heap->gc_cause(),
           /* allMemoryPoolsAffected */    true,
           /* recordGCBeginTime = */       true,
           /* recordPreGCUsage = */        true,
@@ -59,21 +59,19 @@ ShenandoahGCSession::ShenandoahGCSession(GCCause::Cause cause) :
 }
 
 ShenandoahGCSession::~ShenandoahGCSession() {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-  sh->heuristics()->record_cycle_end();
+  _heap->heuristics()->record_cycle_end();
   _timer->register_gc_end();
-  sh->trace_heap(GCWhen::AfterGC, _tracer);
+  _heap->trace_heap(GCWhen::AfterGC, _tracer);
   _tracer->report_gc_end(_timer->gc_end(), _timer->time_partitions());
 }
 
 ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_type type) :
-  _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
+  _heap(ShenandoahHeap::heap()), _gc_id_mark(gc_id), _svc_gc_mark(type), _is_gc_active_mark() {
 
   // FIXME: It seems that JMC throws away level 0 events, which are the Shenandoah
   // pause events. Create this pseudo level 0 event to push real events to level 1.
-  sh->gc_timer()->register_gc_phase_start("Shenandoah", Ticks::now());
-  _trace_pause.initialize(sh->stw_memory_manager(), sh->gc_cause(),
+  _heap->gc_timer()->register_gc_phase_start("Shenandoah", Ticks::now());
+  _trace_pause.initialize(_heap->stw_memory_manager(), _heap->gc_cause(),
           /* allMemoryPoolsAffected */    true,
           /* recordGCBeginTime = */       true,
           /* recordPreGCUsage = */        false,
@@ -84,22 +82,21 @@ ShenandoahGCPauseMark::ShenandoahGCPauseMark(uint gc_id, SvcGCMarker::reason_typ
           /* countCollection = */         true
   );
 
-  sh->heuristics()->record_gc_start();
+  _heap->heuristics()->record_gc_start();
 }
 
 ShenandoahGCPauseMark::~ShenandoahGCPauseMark() {
-  ShenandoahHeap* sh = ShenandoahHeap::heap();
-  sh->gc_timer()->register_gc_phase_end(Ticks::now());
-  sh->heuristics()->record_gc_end();
+  _heap->gc_timer()->register_gc_phase_end(Ticks::now());
+  _heap->heuristics()->record_gc_end();
 }
 
 ShenandoahGCPhase::ShenandoahGCPhase(const ShenandoahPhaseTimings::Phase phase) :
-  _phase(phase) {
-  ShenandoahHeap::heap()->phase_timings()->record_phase_start(_phase);
+  _heap(ShenandoahHeap::heap()), _phase(phase) {
+  _heap->phase_timings()->record_phase_start(_phase);
 }
 
 ShenandoahGCPhase::~ShenandoahGCPhase() {
-  ShenandoahHeap::heap()->phase_timings()->record_phase_end(_phase);
+  _heap->phase_timings()->record_phase_end(_phase);
 }
 
 ShenandoahAllocTrace::ShenandoahAllocTrace(size_t words_size, ShenandoahAllocRequest::Type alloc_type) {

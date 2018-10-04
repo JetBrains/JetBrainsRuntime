@@ -324,7 +324,7 @@ void ShenandoahBarrierSet::keep_alive_barrier(oop obj) {
 }
 
 void ShenandoahBarrierSet::enqueue(oop obj) {
-  shenandoah_assert_not_forwarded_if(NULL, obj, ShenandoahHeap::heap()->is_concurrent_traversal_in_progress());
+  shenandoah_assert_not_forwarded_if(NULL, obj, _heap->is_concurrent_traversal_in_progress());
   if (!_satb_mark_queue_set.is_active()) return;
 
   // Filter marked objects before hitting the SATB queues. The same predicate would
@@ -359,7 +359,7 @@ void ShenandoahBarrierSet::on_thread_attach(JavaThread* thread) {
   if (ShenandoahBarrierSet::satb_mark_queue_set().is_active()) {
     ShenandoahThreadLocalData::satb_mark_queue(thread).set_active(true);
   }
-  ShenandoahThreadLocalData::set_gc_state(thread, ShenandoahHeap::heap()->gc_state());
+  ShenandoahThreadLocalData::set_gc_state(thread, _heap->gc_state());
   ShenandoahThreadLocalData::initialize_gclab(thread);
 }
 

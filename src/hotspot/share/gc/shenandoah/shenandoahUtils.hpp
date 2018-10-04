@@ -41,6 +41,7 @@ class GCTracer;
 
 class ShenandoahGCSession : public StackObj {
 private:
+  ShenandoahHeap* const _heap;
   GCTimer*  const _timer;
   GCTracer* const _tracer;
 
@@ -52,6 +53,7 @@ public:
 
 class ShenandoahGCPhase : public StackObj {
 private:
+  ShenandoahHeap* const _heap;
   const ShenandoahPhaseTimings::Phase   _phase;
 public:
   ShenandoahGCPhase(ShenandoahPhaseTimings::Phase phase);
@@ -61,6 +63,7 @@ public:
 // Aggregates all the things that should happen before/after the pause.
 class ShenandoahGCPauseMark : public StackObj {
 private:
+  ShenandoahHeap* const _heap;
   const GCIdMark                _gc_id_mark;
   const SvcGCMarker             _svc_gc_mark;
   const IsGCActiveMark          _is_gc_active_mark;
