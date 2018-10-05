@@ -113,7 +113,7 @@
 # jdk_awt
 
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html                  8169106 windows-all,macosx-all
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 windows-all,macosx-all
+java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 windows-all,macosx-all,linux-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 windows-all,macosx-all,linux-all
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                        JRE-837 windows-all,macosx-all
 java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all
@@ -135,8 +135,8 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java             
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8171909 windows-all,macosx-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                    8197808,7054586 windows-all,macosx-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindWrongSelectionOnMouseOverowAlwaysOnTop.java 7054586,8197808 windows-all,macosx-all
-java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                      JRE-883 windows-all,macosx-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                JRE-883 windows-all,macosx-all
+java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                      JRE-883 windows-all,macosx-all,linux-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                JRE-883 windows-all,macosx-all,linux-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         6990210 generic-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                     JRE-812 generic-all
@@ -178,7 +178,7 @@ java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java                         
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java     6849364 generic-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java       8198621 macosx-all,windows-all,linux-all
 java/awt/Focus/ModalDialogActivationTest/ModalDialogActivationTest.java             8165157 macosx-all
-java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.html       JRE-884 macosx-all,windows-all
+java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.html       JRE-884 macosx-all,windows-all,linux-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java   8202921,8194753 generic-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980 macosx-all,windows-all,linux-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.html       7124275 macosx-all
@@ -715,6 +715,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java              
 java/awt/Toolkit/RealSync/Test.java                                                 JRE-874,6849383,6823915 macosx-all,windows-all,linux-all
 
 java/awt/print/PrinterJob/CheckPrivilege.java                                       JRE-893 generic-all
+java/awt/print/PrinterJob/GetMediasTest.java                                        JRE-979 windows-all
 java/awt/print/PrinterJob/LandscapeStackOverflow.java                               JRE-893 generic-all
 java/awt/print/PrinterJob/Margins.java                                              JRE-893 generic-all
 java/awt/print/PrinterJob/PaintText.java                                            JRE-893 generic-all
@@ -874,6 +875,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradien
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8079254,8164811 macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java JRE-898 windows-all
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh                                       8193546 linux-all
+javax/swing/LookAndFeel/8145547/DemandGTK3.sh                                       JRE-975 linux-all
 javax/swing/MultiUIDefaults/4300666/bug4300666.java                                 7105119 macosx-all
 javax/swing/Popup/TaskbarPositionTest.java                                          8065097 macosx-all
 javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java                        8065099,8208565 macosx-all,windows-all
