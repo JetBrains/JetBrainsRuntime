@@ -55,13 +55,13 @@ public:
 
   ShenandoahObjToScanQueueSet* task_queues();
 
-  void main_loop(uint worker_id, ShenandoahTaskTerminator* terminator);
+  void main_loop(uint worker_id, ShenandoahTaskTerminator* terminator, bool sts_yield);
 
 private:
   void prepare_regions();
 
   template <class T>
-  void main_loop_work(T* cl, jushort* live_data, uint worker_id, ShenandoahTaskTerminator* terminator);
+  void main_loop_work(T* cl, jushort* live_data, uint worker_id, ShenandoahTaskTerminator* terminator, bool sts_yield);
 
   void preclean_weak_refs();
   void weak_refs_work();

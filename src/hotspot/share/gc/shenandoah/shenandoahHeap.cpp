@@ -873,19 +873,21 @@ class ShenandoahConcurrentEvacuationTask : public AbstractGangTask {
 private:
   ShenandoahHeap* const _sh;
   ShenandoahCollectionSet* const _cs;
-
+  bool _concurrent;
 public:
   ShenandoahConcurrentEvacuationTask(ShenandoahHeap* sh,
-                         ShenandoahCollectionSet* cs) :
+                                     ShenandoahCollectionSet* cs,
+                                     bool concurrent) :
     AbstractGangTask("Parallel Evacuation Task"),
     _sh(sh),
-    _cs(cs)
+    _cs(cs),
+    _concurrent(concurrent)
   {}
 
   void work(uint worker_id) {
     ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
-    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers && _concurrent);
 
     ShenandoahConcurrentEvacuateRegionObjectClosure cl(_sh);
     ShenandoahHeapRegion* r;
@@ -897,7 +899,7 @@ public:
         _sh->pacer()->report_evac(r->used() >> LogHeapWordSize);
       }
 
-      if (_sh->check_cancelled_gc_and_yield()) {
+      if (_sh->check_cancelled_gc_and_yield(_concurrent)) {
         break;
       }
     }
@@ -1466,8 +1468,13 @@ void ShenandoahHeap::op_final_evac() {
   }
 }
 
-void ShenandoahHeap::op_evac() {
-  ShenandoahConcurrentEvacuationTask task(this, _collection_set);
+void ShenandoahHeap::op_conc_evac() {
+  ShenandoahConcurrentEvacuationTask task(this, _collection_set, true);
+  workers()->run_task(&task);
+}
+
+void ShenandoahHeap::op_stw_evac() {
+  ShenandoahConcurrentEvacuationTask task(this, _collection_set, false);
   workers()->run_task(&task);
 }
 
@@ -1603,7 +1610,7 @@ void ShenandoahHeap::op_degenerated(ShenandoahDegenPoint point) {
         // in preparation for evacuation anyway.
         collection_set()->clear_current_index();
 
-        op_evac();
+        op_stw_evac();
         if (cancelled_gc()) {
           op_degenerated_fail();
           return;
@@ -2437,7 +2444,7 @@ void ShenandoahHeap::entry_evac() {
                               "concurrent evacuation");
 
   try_inject_alloc_failure();
-  op_evac();
+  op_conc_evac();
 }
 
 void ShenandoahHeap::entry_updaterefs() {
