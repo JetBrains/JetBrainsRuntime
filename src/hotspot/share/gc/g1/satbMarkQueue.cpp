@@ -166,26 +166,7 @@ bool SATBMarkQueue::should_enqueue_buffer() {
 
   size_t cap = capacity();
   size_t percent_used = ((cap - index()) * 100) / cap;
-  bool should_enqueue = percent_used > G1SATBBufferEnqueueingThresholdPercent;
-
-#if INCLUDE_SHENANDOAHGC
-  if (UseShenandoahGC) {
-    Thread* t = Thread::current();
-    if (ShenandoahThreadLocalData::is_force_satb_flush(t)) {
-      if (!should_enqueue && cap != index()) {
-        // Non-empty buffer is compacted, and we decided not to enqueue it.
-        // Shenandoah still wants to know about leftover work in that buffer eventually.
-        // This avoid dealing with these leftovers during the final-mark, after the buffers
-        // are drained completely.
-        // TODO: This can be extended to handle G1 too
-        should_enqueue = true;
-      }
-      ShenandoahThreadLocalData::set_force_satb_flush(t, false);
-    }
-  }
-#endif
-
-  return should_enqueue;
+  return percent_used > G1SATBBufferEnqueueingThresholdPercent;
 }
 
 void SATBMarkQueue::apply_closure_and_empty(SATBBufferClosure* cl) {

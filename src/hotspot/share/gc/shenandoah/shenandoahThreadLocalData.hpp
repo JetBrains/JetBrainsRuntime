@@ -24,9 +24,9 @@
 #ifndef SHARE_GC_SHENANDOAH_SHENANDOAHTHREADLOCALDATA_HPP
 #define SHARE_GC_SHENANDOAH_SHENANDOAHTHREADLOCALDATA_HPP
 
-#include "gc/g1/satbMarkQueue.hpp"
 #include "gc/shared/plab.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
+#include "gc/shenandoah/shenandoahSATBMarkQueueSet.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/debug.hpp"
 #include "utilities/sizes.hpp"
@@ -38,7 +38,7 @@ public:
 private:
   char _gc_state;
   char _oom_during_evac;
-  SATBMarkQueue  _satb_mark_queue;
+  ShenandoahSATBMarkQueue _satb_mark_queue;
   PLAB* _gclab;
   size_t _gclab_size;
   uint  _worker_id;
