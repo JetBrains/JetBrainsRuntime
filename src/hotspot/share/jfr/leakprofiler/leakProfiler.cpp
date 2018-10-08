@@ -46,7 +46,8 @@ bool LeakProfiler::start(jint sample_count) {
     log_warning(jfr)("LeakProfiler is currently not supported in combination with ZGC");
     return false;
   }
-   if (UseShenandoahGC) {
+
+  if (UseShenandoahGC) {
     log_warning(jfr)("LeakProfiler is currently not supported in combination with Shenandoah GC");
     return false;
   }

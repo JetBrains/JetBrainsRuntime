@@ -1569,6 +1569,8 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
   }
   Register newval = as_reg(op->new_value());
   Register cmpval = as_reg(op->cmp_value());
+  Label succeed, fail, around;
+
   if (op->code() == lir_cas_obj) {
     assert(op->tmp1()->is_valid(), "must be");
     assert(op->tmp1()->is_register(), "tmp1 must be register");

@@ -757,7 +757,11 @@ BoolNode* PhaseIdealLoop::rc_predicate(IdealLoopTree *loop, Node* ctrl,
   if ((stride > 0) == (scale > 0) == upper) {
     guarantee(limit != NULL, "sanity");
     if (TraceLoopPredicate) {
-      predString->print(limit->is_Con() ? "(%d " : "(limit ", con_limit);
+      if (limit->is_Con()) {
+        predString->print("(%d ", con_limit);
+      } else {
+        predString->print("(limit ");
+      }
       predString->print("- %d) ", stride);
     }
     // Check if (limit - stride) may overflow
@@ -783,7 +787,11 @@ BoolNode* PhaseIdealLoop::rc_predicate(IdealLoopTree *loop, Node* ctrl,
     register_new_node(max_idx_expr, ctrl);
   } else {
     if (TraceLoopPredicate) {
-      predString->print(init->is_Con() ? "%d " : "init ", con_init);
+      if (init->is_Con()) {
+        predString->print("%d ", con_init);
+      } else {
+        predString->print("init ");
+      }
     }
     idx_type = _igvn.type(init)->isa_int();
     max_idx_expr = init;
@@ -819,7 +827,11 @@ BoolNode* PhaseIdealLoop::rc_predicate(IdealLoopTree *loop, Node* ctrl,
 
   if (offset && (!offset->is_Con() || con_offset != 0)){
     if (TraceLoopPredicate) {
-      predString->print(offset->is_Con() ? "+ %d " : "+ offset", con_offset);
+      if (offset->is_Con()) {
+        predString->print("+ %d ", con_offset);
+      } else {
+        predString->print("+ offset");
+      }
     }
     // Check if (max_idx_expr + offset) may overflow
     const TypeInt* offset_type = _igvn.type(offset)->isa_int();

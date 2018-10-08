@@ -47,7 +47,6 @@
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
-
 // Portions of code courtesy of Clifford Click
 
 // Optimization - Graph Style

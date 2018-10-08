@@ -435,6 +435,7 @@ class Compile : public Phase {
   IdealGraphPrinter*    _printer;
 #endif
 
+
   // Node management
   uint                  _unique;                // Counter for unique Node indices
   VectorSet             _dead_node_list;        // Set of dead nodes

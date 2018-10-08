@@ -27,10 +27,6 @@
 #include "opto/machnode.hpp"
 #include "opto/regalloc.hpp"
 #include "utilities/vmError.hpp"
-#include "utilities/macros.hpp"
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
-#endif
 
 //=============================================================================
 // Return the value requested
@@ -251,7 +247,7 @@ const MachOper*  MachNode::memory_inputs(Node* &base, Node* &index) const {
 }
 
 //-----------------------------get_base_and_disp----------------------------
-Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const {
+const Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) const {
 
   // Find the memory inputs using our helper function
   Node* base;
@@ -330,10 +326,9 @@ Node* MachNode::get_base_and_disp(intptr_t &offset, const TypePtr* &adr_type) co
 const class TypePtr *MachNode::adr_type() const {
   intptr_t offset = 0;
   const TypePtr *adr_type = TYPE_PTR_SENTINAL;  // attempt computing adr_type
-  Node *base = get_base_and_disp(offset, adr_type);
-
+  const Node *base = get_base_and_disp(offset, adr_type);
   if( adr_type != TYPE_PTR_SENTINAL ) {
-    return adr_type; // get_base_and_disp has the answer
+    return adr_type;      // get_base_and_disp has the answer
   }
 
   // Direct addressing modes have no base node, simply an indirect
@@ -821,7 +816,6 @@ uint MachMemBarNode::size_of() const { return sizeof(*this); }
 const TypePtr *MachMemBarNode::adr_type() const {
   return _adr_type;
 }
-
 
 //=============================================================================
 #ifndef PRODUCT

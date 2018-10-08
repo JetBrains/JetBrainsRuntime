@@ -44,8 +44,8 @@ PLAB::PLAB(size_t desired_plab_sz_) :
   _end(NULL), _hard_end(NULL), _allocated(0), _wasted(0), _undo_wasted(0)
 {
   // ArrayOopDesc::header_size depends on command line initialization.
-  int rsv_regular = oopDesc::header_size() + (int) Universe::heap()->oop_extra_words();
-  int rsv_array   = align_object_size(arrayOopDesc::header_size(T_INT) + Universe::heap()->oop_extra_words());
+  int rsv_regular  = oopDesc::header_size() + (int) Universe::heap()->oop_extra_words();
+  int rsv_array    = align_object_size(arrayOopDesc::header_size(T_INT) + Universe::heap()->oop_extra_words());
   AlignmentReserve = rsv_regular > MinObjAlignment ? rsv_array : 0;
   assert(min_size() > AlignmentReserve,
          "Minimum PLAB size " SIZE_FORMAT " must be larger than alignment reserve " SIZE_FORMAT " "

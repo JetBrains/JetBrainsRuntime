@@ -62,6 +62,7 @@
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
+
 class LibraryIntrinsic : public InlineCallGenerator {
   // Extend the set of intrinsics known to the runtime:
  public:

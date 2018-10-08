@@ -4143,7 +4143,7 @@ void PhaseIdealLoop::build_loop_late(VectorSet &visited, Node_List &worklist, No
   }
 }
 
-// Verify that no data node is scheduled in the outer loop of a strip
+// Verify that no data node is schedules in the outer loop of a strip
 // mined loop.
 void PhaseIdealLoop::verify_strip_mined_scheduling(Node *n, Node* least) {
 #ifdef ASSERT
@@ -4237,7 +4237,6 @@ void PhaseIdealLoop::build_loop_late_post(Node *n, bool verify_strip_mined) {
     case Op_HasNegatives:
       pinned = false;
     }
-
     if( pinned ) {
       IdealLoopTree *chosen_loop = get_loop(n->is_CFG() ? n : get_ctrl(n));
       if( !chosen_loop->_child )       // Inner loop?

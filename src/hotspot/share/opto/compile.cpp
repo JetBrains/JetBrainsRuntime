@@ -426,7 +426,6 @@ void Compile::remove_useless_nodes(Unique_Node_List &useful) {
       remove_expensive_node(n);
     }
   }
-
   // Remove useless Opaque4 nodes
   for (int i = opaque4_count() - 1; i >= 0; i--) {
     Node* opaq = opaque4_node(i);

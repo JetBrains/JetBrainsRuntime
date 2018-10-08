@@ -1156,7 +1156,7 @@ const char *InstructForm::mach_base_class(FormDict &globals)  const {
   else if (is_ideal_nop()) {
     return "MachNopNode";
   }
-  else if( is_ideal_membar()) {
+  else if (is_ideal_membar()) {
     return "MachMemBarNode";
   }
   else if (is_ideal_jump()) {
@@ -4106,7 +4106,7 @@ bool MatchRule::is_ideal_membar() const {
     !strcmp(_opType,"MemBarVolatile") ||
     !strcmp(_opType,"MemBarCPUOrder") ||
     !strcmp(_opType,"MemBarStoreStore") ||
-    !strcmp(_opType, "OnSpinWait");
+    !strcmp(_opType,"OnSpinWait");
 }
 
 bool MatchRule::is_ideal_loadPC() const {
