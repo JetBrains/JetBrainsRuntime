@@ -82,10 +82,11 @@
  *                   ShenandoahStrDedupStress
  *
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+UseStringDeduplication -Xmx512M -Xlog:gc+stats
- *                   -XX:ShenandoahGCHeuristics=traversal -XX:+ShenandoahOOMDuringEvacALot
+ *                   -XX:ShenandoahGCHeuristics=traversal -XX:+ShenandoahOOMDuringEvacALot -DtargetStrings=2000000
  *                   ShenandoahStrDedupStress
  */
 
+import java.lang.management.*;
 import java.lang.reflect.*;
 import java.util.*;
 import sun.misc.*;
@@ -96,6 +97,7 @@ public class ShenandoahStrDedupStress {
 
   private static long TARGET_STRINGS = Long.getLong("targetStrings", 2_500_000);
   private static long TARGET_OVERWRITES = Long.getLong("targetOverwrites", 600_000);
+  private static final long MAX_REWRITE_GC_CYCLES = 6;
 
   private static final int UNIQUE_STRINGS = 20;
   static {
@@ -168,14 +170,29 @@ public class ShenandoahStrDedupStress {
   }
 
   static volatile ArrayList<StringAndId> astrs = new ArrayList<>();
+  static GarbageCollectorMXBean gcCycleMBean;
+
   public static void main(String[] args) {
     Random rn = new Random();
+
+    for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
+      if ("Shenandoah Cycles".equals(bean.getName())) {
+        gcCycleMBean = bean;
+        break;
+      }
+    }
+
+    if (gcCycleMBean == null) {
+      throw new RuntimeException("Can not find Shenandoah GC cycle mbean");
+    }
 
     long gen_iterations = TARGET_STRINGS * 2 / UNIQUE_STRINGS;
 
     for(long index = 0; index < gen_iterations; index ++) {
       generateStrings(astrs, UNIQUE_STRINGS);
     }
+
+    long cycleBeforeRewrite = gcCycleMBean.getCollectionCount();
 
     for (long loop = 1; loop < TARGET_OVERWRITES; loop ++) {
       int arr_size = astrs.size();
@@ -184,8 +201,14 @@ public class ShenandoahStrDedupStress {
       int n = Math.abs(rn.nextInt() % UNIQUE_STRINGS);
       item.str = "Unique String " + n;
       item.id = n;
-    }
 
+      if (loop % 1000 == 0) {
+        // enough GC cycles for rewritten strings to be deduplicated
+        if (gcCycleMBean.getCollectionCount() - cycleBeforeRewrite >= MAX_REWRITE_GC_CYCLES) {
+          break;
+        }
+      }
+    }
     verifyDedepString(astrs);
   }
 }
