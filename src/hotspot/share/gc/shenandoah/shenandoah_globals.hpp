@@ -230,9 +230,6 @@
            "Setting this delay to 0 effectively makes Shenandoah to "       \
            "uncommit the regions almost immediately.")                      \
                                                                             \
-  experimental(bool, ShenandoahUncommitWithIdle, false,                     \
-           "Uncommit memory using MADV_DONTNEED.")                          \
-                                                                            \
   experimental(bool, ShenandoahDontIncreaseWBFreq, true,                    \
           "Common 2 WriteBarriers or WriteBarrier and a ReadBarrier only "  \
           "if the resulting WriteBarrier isn't executed more frequently")   \

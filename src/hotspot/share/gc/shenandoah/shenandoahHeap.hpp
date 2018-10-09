@@ -674,8 +674,6 @@ public:
   // Support for bitmap uncommits
   bool commit_bitmap_slice(ShenandoahHeapRegion *r);
   bool uncommit_bitmap_slice(ShenandoahHeapRegion *r);
-  bool idle_bitmap_slice(ShenandoahHeapRegion* r);
-  void activate_bitmap_slice(ShenandoahHeapRegion* r);
   bool is_bitmap_slice_committed(ShenandoahHeapRegion* r, bool skip_self = false);
 
   // Liveness caching support

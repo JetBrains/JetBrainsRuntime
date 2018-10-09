@@ -72,7 +72,6 @@ ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start
   _seqnum_last_alloc_gc(0),
   _state(committed ? _empty_committed : _empty_uncommitted),
   _empty_time(os::elapsedTime()),
-  _initialized(false),
   _pacer(ShenandoahPacing ? heap->pacer() : NULL) {
 
   ContiguousSpace::initialize(_reserved, true, committed);
@@ -663,42 +662,21 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
 }
 
 void ShenandoahHeapRegion::do_commit() {
-  if (_initialized && can_idle_region()) {
-    os::activate_memory((char *)_reserved.start(), _reserved.byte_size());
-    _heap->activate_bitmap_slice(this);
-  } else {
-    if (!os::commit_memory((char *) _reserved.start(), _reserved.byte_size(), false)) {
-      report_java_out_of_memory("Unable to commit region");
-    }
-    if (!_heap->commit_bitmap_slice(this)) {
-      report_java_out_of_memory("Unable to commit bitmaps for region");
-    }
-
-    _initialized = true;
+  if (!os::commit_memory((char *) _reserved.start(), _reserved.byte_size(), false)) {
+    report_java_out_of_memory("Unable to commit region");
+  }
+  if (!_heap->commit_bitmap_slice(this)) {
+    report_java_out_of_memory("Unable to commit bitmaps for region");
   }
   _heap->increase_committed(ShenandoahHeapRegion::region_size_bytes());
 }
 
 void ShenandoahHeapRegion::do_uncommit() {
-  if (can_idle_region()) {
-    if (!os::idle_memory((char *)_reserved.start(), _reserved.byte_size())) {
-      report_java_out_of_memory("Unable to idle the region");
-    }
-
-    if (!_heap->idle_bitmap_slice(this)) {
-      report_java_out_of_memory("Unable to idle bitmaps for region");
-    }
-  } else {
-    if (!os::uncommit_memory((char *) _reserved.start(), _reserved.byte_size())) {
-      report_java_out_of_memory("Unable to uncommit region");
-    }
-    if (!_heap->uncommit_bitmap_slice(this)) {
-      report_java_out_of_memory("Unable to uncommit bitmaps for region");
-    }
+  if (!os::uncommit_memory((char *) _reserved.start(), _reserved.byte_size())) {
+    report_java_out_of_memory("Unable to uncommit region");
+  }
+  if (!_heap->uncommit_bitmap_slice(this)) {
+    report_java_out_of_memory("Unable to uncommit bitmaps for region");
   }
   _heap->decrease_committed(ShenandoahHeapRegion::region_size_bytes());
-}
-
-bool ShenandoahHeapRegion::can_idle_region() const {
-  return LINUX_ONLY(ShenandoahUncommitWithIdle && !UseLargePages) NOT_LINUX(false);
 }
