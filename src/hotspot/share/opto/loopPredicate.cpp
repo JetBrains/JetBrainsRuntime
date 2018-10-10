@@ -322,12 +322,13 @@ void PhaseIdealLoop::clone_loop_predicates_fix_mem(ProjNode* dom_proj , ProjNode
     for (DUIterator_Fast imax, i = dom_r->fast_outs(imax); i < imax; i++) {
       Node* dom_use = dom_r->fast_out(i);
       if (dom_use->is_Phi() && dom_use->bottom_type() == Type::MEMORY) {
-        assert(dom_use->adr_type() != TypePtr::BOTTOM, "no bottom memory phi");
+        assert(dom_use->in(0) == dom_r, "");
         Node* phi = NULL;
         for (DUIterator_Fast jmax, j = r->fast_outs(jmax); j < jmax; j++) {
           Node* use = r->fast_out(j);
           if (use->is_Phi() && use->bottom_type() == Type::MEMORY &&
               use->adr_type() == dom_use->adr_type()) {
+            assert(use->in(0) == r, "");
             assert(phi == NULL, "only one phi");
             phi = use;
           }
