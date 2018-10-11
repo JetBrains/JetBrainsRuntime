@@ -28,9 +28,6 @@
 #include "metaprogramming/integralConstant.hpp"
 #include "metaprogramming/primitiveConversions.hpp"
 #include "runtime/globals.hpp"
-#if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/shenandoah_globals.hpp"
-#endif
 #include "utilities/globalDefinitions.hpp"
 
 // OBJECT hierarchy
