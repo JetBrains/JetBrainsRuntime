@@ -30,6 +30,7 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
+#include "gc/shenandoah/shenandoahUtils.hpp"
 #include "memory/resourceArea.hpp"
 
 void print_raw_memory(ShenandoahMessageBuffer &msg, void* loc) {

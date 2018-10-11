@@ -869,15 +869,15 @@ public:
   }
 };
 
-class ShenandoahConcurrentEvacuationTask : public AbstractGangTask {
+class ShenandoahEvacuationTask : public AbstractGangTask {
 private:
   ShenandoahHeap* const _sh;
   ShenandoahCollectionSet* const _cs;
   bool _concurrent;
 public:
-  ShenandoahConcurrentEvacuationTask(ShenandoahHeap* sh,
-                                     ShenandoahCollectionSet* cs,
-                                     bool concurrent) :
+  ShenandoahEvacuationTask(ShenandoahHeap* sh,
+                           ShenandoahCollectionSet* cs,
+                           bool concurrent) :
     AbstractGangTask("Parallel Evacuation Task"),
     _sh(sh),
     _cs(cs),
@@ -885,10 +885,19 @@ public:
   {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
-    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers && _concurrent);
+    if (_concurrent) {
+      ShenandoahConcurrentWorkerSession worker_session(worker_id);
+      SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+      do_work();
+    } else {
+      ShenandoahParallelWorkerSession worker_session(worker_id);
+      do_work();
+    }
+  }
 
+private:
+  void do_work() {
     ShenandoahConcurrentEvacuateRegionObjectClosure cl(_sh);
     ShenandoahHeapRegion* r;
     while ((r =_cs->claim_next()) != NULL) {
@@ -991,7 +1000,7 @@ public:
     _rp(rp) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahEvacuateUpdateRootsClosure cl;
 
@@ -1010,7 +1019,7 @@ public:
     _rp(rp) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahUpdateRefsClosure cl;
     MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
@@ -1469,12 +1478,12 @@ void ShenandoahHeap::op_final_evac() {
 }
 
 void ShenandoahHeap::op_conc_evac() {
-  ShenandoahConcurrentEvacuationTask task(this, _collection_set, true);
+  ShenandoahEvacuationTask task(this, _collection_set, true);
   workers()->run_task(&task);
 }
 
 void ShenandoahHeap::op_stw_evac() {
-  ShenandoahConcurrentEvacuationTask task(this, _collection_set, false);
+  ShenandoahEvacuationTask task(this, _collection_set, false);
   workers()->run_task(&task);
 }
 
@@ -1995,8 +2004,18 @@ public:
   }
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
-    SuspendibleThreadSetJoiner stsj(_concurrent && ShenandoahSuspendibleWorkers);
+    if (_concurrent) {
+      ShenandoahConcurrentWorkerSession worker_session(worker_id);
+      SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+      do_work();
+    } else {
+      ShenandoahParallelWorkerSession worker_session(worker_id);
+      do_work();
+    }
+  }
+
+private:
+  void do_work() {
     ShenandoahHeapRegion* r = _regions->next();
     ShenandoahMarkingContext* const ctx = _heap->complete_marking_context();
     while (r != NULL) {

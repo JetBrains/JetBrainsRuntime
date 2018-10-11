@@ -45,6 +45,7 @@
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.hpp"
 #include "gc/shenandoah/shenandoahTaskqueue.inline.hpp"
+#include "gc/shenandoah/shenandoahTimingTracker.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
 #include "gc/shenandoah/shenandoahVerifier.hpp"
@@ -174,7 +175,7 @@ public:
     _cset_coderoots(cset_coderoots) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
 
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahObjToScanQueueSet* queues = _heap->traversal_gc()->task_queues();
@@ -216,7 +217,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahConcurrentWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
@@ -239,7 +240,7 @@ public:
     _heap(ShenandoahHeap::heap()) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
 
     ShenandoahEvacOOMScope oom_evac_scope;
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
@@ -701,7 +702,7 @@ public:
     _rp(rp) {}
 
   void work(uint worker_id) {
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahTraversalFixRootsClosure cl;
     MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
     CLDToOopClosure cldCl(&cl);
@@ -827,7 +828,7 @@ public:
 
   void work(uint worker_id) {
     assert(worker_id == 0, "The code below is single-threaded, only one worker is expected");
-    ShenandoahWorkerSession worker_session(worker_id);
+    ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahEvacOOMScope oom_evac_scope;
     SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
 
