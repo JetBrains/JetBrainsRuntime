@@ -52,6 +52,7 @@ import gc.testlibrary.PerfCounters;
  *
  * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -XX:+UsePerfData -XX:+UseSerialGC TestMetaspacePerfCounters
  * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -XX:+UsePerfData -XX:+UseParallelGC -XX:+UseParallelOldGC TestMetaspacePerfCounters
+ * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -XX:+UsePerfData -XX:+UseG1GC TestMetaspacePerfCounters
  * @run main/othervm -XX:+IgnoreUnrecognizedVMOptions -XX:+UseCompressedOops -XX:+UseCompressedClassPointers -XX:+UsePerfData -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestMetaspacePerfCounters
  */
 public class TestMetaspacePerfCounters {

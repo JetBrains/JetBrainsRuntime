@@ -161,11 +161,7 @@ tier2_gc_shenandoah = \
   gc/metaspace/TestMetaspacePerfCounters.java \
   gc/metaspace/TestMetaspacePerfCounters.java \
   gc/startup_warnings/TestShenandoah.java \
-  gc/TestFullGCALot.java \
-  gc/logging/TestUnifiedLoggingSwitchStress.java \
-  runtime/Metaspace/DefineClass.java \
   gc/shenandoah/ \
-  serviceability/sa/TestHeapDumpForInvokeDynamic.java \
   -gc/shenandoah/ShenandoahStrDedupStress.java \
   -gc/shenandoah/CriticalNativeStress.java
 

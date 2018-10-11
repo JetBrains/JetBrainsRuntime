@@ -62,7 +62,6 @@ public class MemberNameLeak {
         ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
                                       "-Xlog:membername+table=trace",
                                       "-XX:+UnlockExperimentalVMOptions",
-                                      "-XX:-ExplicitGCInvokesConcurrent",
                                       gc, Leak.class.getName());
         OutputAnalyzer output = new OutputAnalyzer(pb.start());
         output.shouldContain("ResolvedMethod entry added for MemberNameLeak$Leak.callMe()V");
@@ -75,7 +74,7 @@ public class MemberNameLeak {
         test("-XX:+UseG1GC");
         test("-XX:+UseParallelGC");
         test("-XX:+UseSerialGC");
-        if (!Compiler.isGraalEnabled()) { // Graal does not support CMS
+        if (!Compiler.isGraalEnabled()) { // Graal does not support CMS and Shenandoah
             test("-XX:+UseConcMarkSweepGC");
             test("-XX:+UseShenandoahGC");
         }

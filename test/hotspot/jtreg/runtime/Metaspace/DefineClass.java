@@ -37,14 +37,6 @@
                      test.DefineClass defineClassParallel
  * @run main/othervm -Djdk.attach.allowAttachSelf test.DefineClass redefineClass
  * @run main/othervm -Djdk.attach.allowAttachSelf test.DefineClass redefineClassWithError
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC test.DefineClass defineClass
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC test.DefineClass defineSystemClass
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+AllowParallelDefineClass
-                     test.DefineClass defineClassParallel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:-AllowParallelDefineClass
-                     test.DefineClass defineClassParallel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Djdk.attach.allowAttachSelf test.DefineClass redefineClass
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Djdk.attach.allowAttachSelf test.DefineClass redefineClassWithError
  * @author volker.simonis@gmail.com
  */
 
