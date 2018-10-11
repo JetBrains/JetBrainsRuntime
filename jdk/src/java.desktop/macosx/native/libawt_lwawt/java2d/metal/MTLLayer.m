@@ -152,7 +152,8 @@ AWT_ASSERT_APPKIT_THREAD;
         ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
         if (ctx->mtlRenderPassDesc) {
           MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-          colorAttachment.texture = ctx->mtlDrawable.texture;
+          colorAttachment.texture = ctx->mtlFrameBuffer;
+
           colorAttachment.loadAction = MTLLoadActionLoad;
           colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -163,7 +164,7 @@ AWT_ASSERT_APPKIT_THREAD;
     if (ctx->mtlRenderPassDesc) {
         id<MTLRenderCommandEncoder>  mtlEncoder =
             [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
-        MTLViewport vp = {0, 0, self.drawableSize.width, self.drawableSize.height, 0, 1};
+        MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
         //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
         [mtlEncoder setViewport:vp];
         [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
@@ -207,6 +208,76 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void) endFrameCtx:(MTLCtxInfo*)ctx {
     if (ctx->mtlCommandBuffer) {
+    // Encode render command.
+        if (!ctx->mtlRenderPassDesc) {
+            ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
+        }
+            if (ctx->mtlRenderPassDesc) {
+
+                verts[0].position[0] = -1.0;
+                verts[0].position[1] = 1.0;
+                verts[0].position[2] = 0;
+                verts[0].txtpos[0] = 0;
+                verts[0].txtpos[1] = 0;
+
+                verts[1].position[0] = 1.0;
+                verts[1].position[1] = 1.0;
+                verts[1].position[2] = 0;
+                verts[1].txtpos[0] = 1;
+                verts[1].txtpos[1] = 0;
+
+                verts[2].position[0] = 1.0;
+                verts[2].position[1] = -1.0;
+                verts[2].position[2] = 0;
+                verts[2].txtpos[0] = 1;
+                verts[2].txtpos[1] = 1;
+
+
+                verts[3].position[0] = 1.0;
+                verts[3].position[1] = -1.0;
+                verts[3].position[2] = 0;
+                verts[3].txtpos[0] = 1;
+                verts[3].txtpos[1] = 1;
+
+
+                verts[4].position[0] = -1.0;
+                verts[4].position[1] = -1.0;
+                verts[4].position[2] = 0;
+                verts[4].txtpos[0] = 0;
+                verts[4].txtpos[1] = 1;
+
+                verts[5].position[0] = -1.0;
+                verts[5].position[1] = 1.0;
+                verts[5].position[2] = 0;
+                verts[5].txtpos[0] = 0;
+                verts[5].txtpos[1] = 0;
+
+                ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
+                                                                   length:sizeof(verts)
+                                                                   options:MTLResourceCPUCacheModeDefaultCache];
+                MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
+                colorAttachment.texture = ctx->mtlDrawable.texture;
+
+                colorAttachment.loadAction = MTLLoadActionLoad;
+                colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+
+                colorAttachment.storeAction = MTLStoreActionStore;
+
+            id<MTLRenderCommandEncoder>  mtlEncoder =
+                [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
+            MTLViewport vp = {0, 0, self.drawableSize.width, self.drawableSize.height, 0, 1};
+            //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
+            [mtlEncoder setViewport:vp];
+            [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
+            [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
+                              offset:0 atIndex:FrameUniformBuffer];
+
+            [mtlEncoder setFragmentTexture: ctx->mtlFrameBuffer atIndex: 0];
+            [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
+            [mtlEncoder endEncoding];
+        }
+
         if (!ctx->mtlEmptyCommandBuffer) {
             [ctx->mtlCommandBuffer presentDrawable:ctx->mtlDrawable];
             [ctx->mtlCommandBuffer commit];

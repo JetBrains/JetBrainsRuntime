@@ -264,7 +264,8 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     J2dTraceLn(J2D_TRACE_INFO, "CGLSurfaceData_initOps");
     J2dTraceLn1(J2D_TRACE_INFO, "  pPeerData=%p", jlong_to_ptr(pPeerData));
     J2dTraceLn2(J2D_TRACE_INFO, "  xoff=%d, yoff=%d", (int)xoff, (int)yoff);
-//fprintf(stderr, "_MTLSurfaceData_initOps\n");
+
+
     BMTLSDOps *bmtlsdo = (BMTLSDOps *)
         SurfaceData_InitOps(env, cglsd, sizeof(BMTLSDOps));
     MTLSDOps *mtlsdo = (MTLSDOps *)malloc(sizeof(MTLSDOps));

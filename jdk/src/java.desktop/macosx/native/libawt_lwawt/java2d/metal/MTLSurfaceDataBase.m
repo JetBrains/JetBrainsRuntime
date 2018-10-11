@@ -394,19 +394,48 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFBObject
      jboolean texNonPow2, jboolean texRect,
      jint width, jint height)
 {
- /*   MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
-    GLuint fbobjectID, depthID;
+
+    BMTLSDOps *bmtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
+
+    if (bmtlsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+            "MTLSurfaceData_initFBObject: BMTLSDOps are null");
+        return JNI_FALSE;
+    }
+
+    MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
+
+    if (mtlsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR,
+            "MTLSurfaceData_initFBObject: MTLSDOps are null");
+        return JNI_FALSE;
+    }
 
     J2dTraceLn2(J2D_TRACE_INFO,
                 "MTLSurfaceData_initFBObject: w=%d h=%d",
                 width, height);
 
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFBObject: ops are null");
-        return JNI_FALSE;
-    }
 
+
+    if (mtlsdo->configInfo) {
+        if (mtlsdo->configInfo->context != NULL) {
+            MTLCtxInfo* ctx = mtlsdo->configInfo->context->ctxInfo;
+            if (ctx == NULL) {
+              NSLog(@"ctx is NULL");
+            } else {
+              MTLTextureDescriptor *textureDescriptor =
+                [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm
+                                                                   width: width
+                                                                  height: height
+                                                               mipmapped: NO];
+
+              ctx->mtlFrameBuffer = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
+            }
+        }
+     }
+
+
+/*
     // initialize color texture object
     if (!MTLSD_InitTextureObject(mtlsdo, isOpaque, texNonPow2, texRect,
                                  width, height))

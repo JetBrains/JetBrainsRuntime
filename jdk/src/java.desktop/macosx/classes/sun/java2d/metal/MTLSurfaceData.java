@@ -23,9 +23,7 @@
 
 package sun.java2d.metal;
 
-import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
-import sun.java2d.opengl.OGLSurfaceData;
 import sun.lwawt.macosx.CPlatformView;
 
 import java.awt.*;

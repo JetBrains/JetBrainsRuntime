@@ -82,9 +82,11 @@ typedef struct _MTLCtxInfo {
     id<MTLDevice>               mtlDevice;
     id<MTLLibrary>              mtlLibrary;
     id<MTLRenderPipelineState>  mtlPipelineState;
+    id<MTLRenderPipelineState>  mtlBlitPipelineState;
     id<MTLBuffer>               mtlUniformBuffer;
     id<MTLCommandQueue>         mtlCommandQueue;
     id<MTLCommandBuffer>        mtlCommandBuffer;
+    id<MTLTexture>              mtlFrameBuffer;
     struct FrameUniforms*       mtlUniforms;
     id<CAMetalDrawable>         mtlDrawable;
     BOOL                        mtlEmptyCommandBuffer;

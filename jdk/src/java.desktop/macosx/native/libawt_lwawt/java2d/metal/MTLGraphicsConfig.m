@@ -204,6 +204,7 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     }
     id <MTLFunction> vertFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert"];
     id <MTLFunction> fragFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag"];
+    id <MTLFunction> fragTxtFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag_txt"];
 
     // Create depth state.
     MTLDepthStencilDescriptor *depthDesc = [MTLDepthStencilDescriptor new];
@@ -217,6 +218,9 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     vertDesc.attributes[VertexAttributeColor].format = MTLVertexFormatUChar4;
     vertDesc.attributes[VertexAttributeColor].offset = 3*sizeof(float);
     vertDesc.attributes[VertexAttributeColor].bufferIndex = MeshVertexBuffer;
+    vertDesc.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+    vertDesc.attributes[VertexAttributeTexPos].offset = 3*sizeof(float) + 4*sizeof(char);
+    vertDesc.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
     vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
     vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
     vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
@@ -230,6 +234,19 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     ctxinfo->mtlPipelineState = [ctxinfo->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
     if (!ctxinfo->mtlPipelineState) {
+        NSLog(@"Failed to create pipeline state, error %@", error);
+        exit(0);
+    }
+
+    // Create pipeline state.
+    pipelineDesc = [MTLRenderPipelineDescriptor new];
+    pipelineDesc.sampleCount = 1;
+    pipelineDesc.vertexFunction = vertFunc;
+    pipelineDesc.fragmentFunction = fragTxtFunc;
+    pipelineDesc.vertexDescriptor = vertDesc;
+    pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    ctxinfo->mtlBlitPipelineState = [ctxinfo->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!ctxinfo->mtlBlitPipelineState) {
         NSLog(@"Failed to create pipeline state, error %@", error);
         exit(0);
     }
