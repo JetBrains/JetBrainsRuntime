@@ -104,51 +104,6 @@ public:
   virtual void dump_on(outputStream* s);
 };
 
-// HDR sequence stores the low-resolution high-dynamic-range values.
-// It does so by maintaining the double array, where first array defines
-// the magnitude of the value being stored, and the second array maintains
-// the low resolution histogram within that magnitude. For example, storing
-// 4.352819 * 10^3 increments the bucket _hdr[3][435]. This allows for
-// memory efficient storage of huge amount of samples.
-//
-// Accepts positive numbers only.
-class HdrSeq: public NumberSeq {
-private:
-  enum PrivateConstants {
-    ValBuckets = 512,
-    MagBuckets = 24,
-    MagMinimum = -12,
-  };
-  int** _hdr;
-
-public:
-  HdrSeq();
-  ~HdrSeq();
-
-  virtual void add(double val);
-  double percentile(double level) const;
-};
-
-// Binary magnitude sequence stores the power-of-two histogram.
-// It has very low memory requirements, and is thread-safe. When accuracy
-// is not needed, it is preferred over HdrSeq.
-class BinaryMagnitudeSeq {
-private:
-  size_t  _sum;
-  size_t* _mags;
-
-public:
-  BinaryMagnitudeSeq();
-  ~BinaryMagnitudeSeq();
-
-  void add(size_t val);
-  size_t num() const;
-  size_t level(int level) const;
-  size_t sum() const;
-  int min_level() const;
-  int max_level() const;
-};
-
 class TruncatedSeq: public AbsSeq {
 private:
   enum PrivateConstants {

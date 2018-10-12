@@ -24,8 +24,8 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHPACER_HPP
 
+#include "gc/shenandoah/shenandoahNumberSeq.hpp"
 #include "memory/allocation.hpp"
-#include "utilities/numberSeq.hpp"
 
 class ShenandoahHeap;
 

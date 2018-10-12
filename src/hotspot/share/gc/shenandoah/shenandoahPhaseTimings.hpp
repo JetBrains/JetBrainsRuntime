@@ -25,9 +25,9 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHPHASETIMEINGS_HPP
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHPHASETIMEINGS_HPP
 
+#include "gc/shenandoah/shenandoahNumberSeq.hpp"
 #include "gc/shared/workerDataArray.hpp"
 #include "memory/allocation.hpp"
-#include "utilities/numberSeq.hpp"
 
 class ShenandoahCollectorPolicy;
 class ShenandoahWorkerTimings;
