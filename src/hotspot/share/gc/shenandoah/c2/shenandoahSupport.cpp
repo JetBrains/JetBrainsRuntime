@@ -1089,12 +1089,12 @@ void ShenandoahBarrierNode::verify(RootNode* root) {
         }
       }
     } else if (n->is_LoadStore()) {
-      if (n->in(MemNode::ValueIn)->bottom_type()->isa_ptr() &&
-          !ShenandoahBarrierNode::verify_helper(n->in(MemNode::ValueIn), phis, visited, ShenandoahLoad, trace, barriers_used)) {
+      if (n->in(MemNode::ValueIn)->bottom_type()->make_ptr() &&
+          !ShenandoahBarrierNode::verify_helper(n->in(MemNode::ValueIn), phis, visited, ShenandoahStoreValEnqueueBarrier ? ShenandoahOopStore : ShenandoahValue, trace, barriers_used)) {
         report_verify_failure("Shenandoah verification: LoadStore (value) should have barriers", n);
       }
 
-      if (n->in(MemNode::Address)->bottom_type()->isa_oopptr() && !ShenandoahBarrierNode::verify_helper(n->in(MemNode::Address), phis, visited, ShenandoahStore, trace, barriers_used)) {
+      if (n->in(MemNode::Address)->bottom_type()->make_oopptr() && !ShenandoahBarrierNode::verify_helper(n->in(MemNode::Address), phis, visited, ShenandoahStore, trace, barriers_used)) {
         report_verify_failure("Shenandoah verification: LoadStore (address) should have barriers", n);
       }
     } else if (n->Opcode() == Op_CallLeafNoFP || n->Opcode() == Op_CallLeaf) {
