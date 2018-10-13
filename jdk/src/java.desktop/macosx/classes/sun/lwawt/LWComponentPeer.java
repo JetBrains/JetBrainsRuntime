@@ -54,6 +54,7 @@ import sun.awt.image.SunVolatileImage;
 import sun.awt.image.ToolkitImage;
 
 import sun.java2d.SunGraphics2D;
+import sun.java2d.macos.MacOSFlags;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.Region;
 
@@ -1421,12 +1422,14 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-        final OGLRenderQueue rq = OGLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            rq.flushNow();
-        } finally {
-            rq.unlock();
+        if (!MacOSFlags.isMetalEnabled()) {
+            final OGLRenderQueue rq = OGLRenderQueue.getInstance();
+            rq.lock();
+            try {
+                rq.flushNow();
+            } finally {
+                rq.unlock();
+            }
         }
     }
 

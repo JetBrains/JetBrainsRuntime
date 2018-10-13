@@ -28,9 +28,6 @@
 #import "MTLSurfaceData.h"
 
 
-extern NSOpenGLPixelFormat *sharedPixelFormat;
-extern NSOpenGLContext *sharedContext;
-
 const int N = 2;
 static struct Vertex verts[N*3];
 
@@ -188,6 +185,7 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 
     if (!ctx->mtlDrawable) {
+
         fprintf(stderr, "ERROR: Failed to get a valid drawable.\n");
     } else {
         vector_float4 X = {1, 0, 0, 0};
@@ -212,56 +210,57 @@ AWT_ASSERT_APPKIT_THREAD;
         if (!ctx->mtlRenderPassDesc) {
             ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
         }
-            if (ctx->mtlRenderPassDesc) {
 
-                verts[0].position[0] = -1.0;
-                verts[0].position[1] = 1.0;
-                verts[0].position[2] = 0;
-                verts[0].txtpos[0] = 0;
-                verts[0].txtpos[1] = 0;
+        if (ctx->mtlRenderPassDesc) {
 
-                verts[1].position[0] = 1.0;
-                verts[1].position[1] = 1.0;
-                verts[1].position[2] = 0;
-                verts[1].txtpos[0] = 1;
-                verts[1].txtpos[1] = 0;
+            verts[0].position[0] = -1.0;
+            verts[0].position[1] = 1.0;
+            verts[0].position[2] = 0;
+            verts[0].txtpos[0] = 0;
+            verts[0].txtpos[1] = 0;
 
-                verts[2].position[0] = 1.0;
-                verts[2].position[1] = -1.0;
-                verts[2].position[2] = 0;
-                verts[2].txtpos[0] = 1;
-                verts[2].txtpos[1] = 1;
+            verts[1].position[0] = 1.0;
+            verts[1].position[1] = 1.0;
+            verts[1].position[2] = 0;
+            verts[1].txtpos[0] = 1;
+            verts[1].txtpos[1] = 0;
 
-
-                verts[3].position[0] = 1.0;
-                verts[3].position[1] = -1.0;
-                verts[3].position[2] = 0;
-                verts[3].txtpos[0] = 1;
-                verts[3].txtpos[1] = 1;
+            verts[2].position[0] = 1.0;
+            verts[2].position[1] = -1.0;
+            verts[2].position[2] = 0;
+            verts[2].txtpos[0] = 1;
+            verts[2].txtpos[1] = 1;
 
 
-                verts[4].position[0] = -1.0;
-                verts[4].position[1] = -1.0;
-                verts[4].position[2] = 0;
-                verts[4].txtpos[0] = 0;
-                verts[4].txtpos[1] = 1;
+            verts[3].position[0] = 1.0;
+            verts[3].position[1] = -1.0;
+            verts[3].position[2] = 0;
+            verts[3].txtpos[0] = 1;
+            verts[3].txtpos[1] = 1;
 
-                verts[5].position[0] = -1.0;
-                verts[5].position[1] = 1.0;
-                verts[5].position[2] = 0;
-                verts[5].txtpos[0] = 0;
-                verts[5].txtpos[1] = 0;
 
-                ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
-                                                                   length:sizeof(verts)
-                                                                   options:MTLResourceCPUCacheModeDefaultCache];
-                MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-                colorAttachment.texture = ctx->mtlDrawable.texture;
+            verts[4].position[0] = -1.0;
+            verts[4].position[1] = -1.0;
+            verts[4].position[2] = 0;
+            verts[4].txtpos[0] = 0;
+            verts[4].txtpos[1] = 1;
 
-                colorAttachment.loadAction = MTLLoadActionLoad;
-                colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+            verts[5].position[0] = -1.0;
+            verts[5].position[1] = 1.0;
+            verts[5].position[2] = 0;
+            verts[5].txtpos[0] = 0;
+            verts[5].txtpos[1] = 0;
 
-                colorAttachment.storeAction = MTLStoreActionStore;
+            ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
+                                                               length:sizeof(verts)
+                                                               options:MTLResourceCPUCacheModeDefaultCache];
+            MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
+            colorAttachment.texture = ctx->mtlDrawable.texture;
+
+            colorAttachment.loadAction = MTLLoadActionLoad;
+            colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+
+            colorAttachment.storeAction = MTLStoreActionStore;
 
             id<MTLRenderCommandEncoder>  mtlEncoder =
                 [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
@@ -276,6 +275,9 @@ AWT_ASSERT_APPKIT_THREAD;
             [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
             [mtlEncoder endEncoding];
+
+            [ctx->mtlRenderPassDesc release];
+            ctx->mtlRenderPassDesc = nil;
         }
 
         if (!ctx->mtlEmptyCommandBuffer) {
@@ -285,13 +287,12 @@ AWT_ASSERT_APPKIT_THREAD;
 
 
         [ctx->mtlCommandBuffer release];
-        if (ctx->mtlDrawable) [ctx->mtlDrawable release];
-        ctx->mtlDrawable = nil;
         ctx->mtlCommandBuffer = nil;
         ctx->mtlEmptyCommandBuffer = YES;
-        [ctx->mtlRenderPassDesc release];
-        ctx->mtlRenderPassDesc = nil;
     }
+
+    if (ctx->mtlDrawable) [ctx->mtlDrawable release];
+    ctx->mtlDrawable = nil;
 }
 
 - (void) dealloc {
