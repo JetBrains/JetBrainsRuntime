@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,21 +19,6 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
-
-import java.io.IOException;
-
-/*
- * @test TestGCBasherWithAllocateHeapAt
- * @key gc stress
- * @requires vm.gc.G1
- * @requires vm.flavor == "server" & !vm.emulatedClient & os.family != "aix"
- * @summary Stress Java heap allocation with AllocateHeapAt flag using GC basher.
- * @run main/othervm/timeout=500 -Xlog:gc*=info -Xmx256m -server -XX:+UseG1GC -XX:AllocateHeapAt=. TestGCBasherWithAllocateHeapAt 120000
- */
-public class TestGCBasherWithAllocateHeapAt {
-    public static void main(String[] args) throws IOException {
-        TestGCBasher.main(args);
-    }
+module foo {
 }
