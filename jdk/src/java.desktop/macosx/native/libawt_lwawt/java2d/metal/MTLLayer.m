@@ -86,28 +86,28 @@ AWT_ASSERT_APPKIT_THREAD;
     ctx->mtlEmptyCommandBuffer = NO;
    // fprintf(stderr, "----fillParallelogramX----\n");
 
-    verts[0].position[0] = (2.0*x/self.drawableSize.width) - 1.0;
-    verts[0].position[1] = 2.0*(1.0 - y/self.drawableSize.height) - 1.0;
+    verts[0].position[0] = (2.0*x/ctx->mtlFrameBuffer.width) - 1.0;
+    verts[0].position[1] = 2.0*(1.0 - y/ctx->mtlFrameBuffer.height) - 1.0;
     verts[0].position[2] = 0;
 
-    verts[1].position[0] = 2.0*(x+dx1)/self.drawableSize.width - 1.0;
-    verts[1].position[1] = 2.0*(1.0 - (y+dy1)/self.drawableSize.height) - 1.0;
+    verts[1].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[1].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
     verts[1].position[2] = 0;
 
-    verts[2].position[0] = 2.0*(x+dx2)/self.drawableSize.width - 1.0;
-    verts[2].position[1] = 2.0*(1.0 - (y+dy2)/self.drawableSize.height) - 1.0;
+    verts[2].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[2].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
     verts[2].position[2] = 0;
 
-    verts[3].position[0] = 2.0*(x+dx1)/self.drawableSize.width - 1.0;
-    verts[3].position[1] = 2.0*(1.0 - (y+dy1)/self.drawableSize.height) - 1.0;
+    verts[3].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[3].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
     verts[3].position[2] = 0;
 
-    verts[4].position[0] = 2.0*(x + dx1 + dx2)/self.drawableSize.width - 1.0;
-    verts[4].position[1] = 2.0*(1.0 - (y+ dy1 + dy2)/self.drawableSize.height) - 1.0;
+    verts[4].position[0] = 2.0*(x + dx1 + dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[4].position[1] = 2.0*(1.0 - (y+ dy1 + dy2)/ctx->mtlFrameBuffer.height) - 1.0;
     verts[4].position[2] = 0;
 
-    verts[5].position[0] = 2.0*(x+dx2)/self.drawableSize.width - 1.0;
-    verts[5].position[1] = 2.0*(1.0 - (y+dy2)/self.drawableSize.height) - 1.0;
+    verts[5].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[5].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
     verts[5].position[2] = 0;
 
     verts[0].color[0] = (ctx->mtlColor >> 16)&(0xFF);
@@ -162,7 +162,7 @@ AWT_ASSERT_APPKIT_THREAD;
         id<MTLRenderCommandEncoder>  mtlEncoder =
             [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
         MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-        //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
+        //fprintf(stderr, "%f %f \n", ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height);
         [mtlEncoder setViewport:vp];
         [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
         [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
@@ -264,7 +264,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
             id<MTLRenderCommandEncoder>  mtlEncoder =
                 [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
-            MTLViewport vp = {0, 0, self.drawableSize.width, self.drawableSize.height, 0, 1};
+            MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
             //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
             [mtlEncoder setViewport:vp];
             [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
