@@ -115,18 +115,18 @@ MTLSD_SetScratchSurface(JNIEnv *env, jlong pConfigInfo)
     J2dTraceLn(J2D_TRACE_INFO, "MTLSD_SetScratchSurface");
 
 
-    MTLGraphicsConfigInfo *cglInfo = (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
-    if (cglInfo == NULL) {
-         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_SetScratchSurface: cgl config info is null");
+    MTLGraphicsConfigInfo *mtlInfo = (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
+    if (mtlInfo == NULL) {
+         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_SetScratchSurface: mtl config info is null");
          return NULL;
     }
 
-    MTLContext *oglc = cglInfo->context;
-    if (oglc == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "OGLSD_SetScratchContext: ogl context is null");
+    MTLContext *mtlc = mtlInfo->context;
+    if (mtlc == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_SetScratchContext: mtl context is null");
         return NULL;
     }
-    return oglc;
+    return mtlc;
 }
 
 /**
@@ -138,7 +138,7 @@ MTLSD_SetScratchSurface(JNIEnv *env, jlong pConfigInfo)
 MTLContext *
 MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_MakeOGLContextCurrent");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_MakeMTLContextCurrent");
 
     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
 
@@ -217,7 +217,7 @@ MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
 jboolean
 MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *oglsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_InitOGLWindow");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_InitMTLWindow");
 
     return JNI_TRUE;
 }
@@ -261,7 +261,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
      jlong pConfigInfo, jlong pPeerData, jlong layerPtr,
      jint xoff, jint yoff, jboolean isOpaque)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "CGLSurfaceData_initOps");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initOps");
     J2dTraceLn1(J2D_TRACE_INFO, "  pPeerData=%p", jlong_to_ptr(pPeerData));
     J2dTraceLn2(J2D_TRACE_INFO, "  xoff=%d, yoff=%d", (int)xoff, (int)yoff);
 

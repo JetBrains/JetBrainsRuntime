@@ -469,6 +469,8 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFBObject
     // rather than GL_FRONT (or GL_BACK)
     mtlsdo->activeBuffer = GL_COLOR_ATTACHMENT0_EXT;
 */
+    bmtlsdo->drawableType = MTLSD_FBOBJECT;
+
     return JNI_TRUE;
 }
 
