@@ -51,7 +51,7 @@ public:
   template <class T, bool STRING_DEDUP, bool DEGEN>
   inline void process_oop(T* p, Thread* thread, ShenandoahObjToScanQueue* queue, ShenandoahMarkingContext* const mark_context);
 
-  bool check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator);
+  bool check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator, bool sts_yield);
 
   ShenandoahObjToScanQueueSet* task_queues();
 

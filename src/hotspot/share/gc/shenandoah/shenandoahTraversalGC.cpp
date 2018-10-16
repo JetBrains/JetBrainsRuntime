@@ -514,7 +514,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
     }
   }
 
-  if (check_and_handle_cancelled_gc(terminator)) return;
+  if (check_and_handle_cancelled_gc(terminator, sts_yield)) return;
 
   // Normal loop.
   q = queues->queue(worker_id);
@@ -525,7 +525,7 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   int seed = 17;
 
   while (true) {
-    if (check_and_handle_cancelled_gc(terminator)) return;
+    if (check_and_handle_cancelled_gc(terminator, sts_yield)) return;
 
     while (satb_mq_set.completed_buffers_num() > 0) {
       satb_mq_set.apply_closure_to_completed_buffer(&drain_satb);
@@ -552,10 +552,10 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   }
 }
 
-bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator) {
+bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator, bool sts_yield) {
   if (_heap->cancelled_gc()) {
     ShenandoahCancelledTerminatorTerminator tt;
-    SuspendibleThreadSetLeaver stsl(ShenandoahSuspendibleWorkers);
+    SuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
     ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
     while (! terminator->offer_termination(&tt));
     return true;
