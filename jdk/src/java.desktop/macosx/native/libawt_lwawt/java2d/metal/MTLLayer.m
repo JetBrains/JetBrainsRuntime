@@ -35,10 +35,9 @@ static struct Vertex verts[N*3];
 
 
 @synthesize javaLayer;
-@synthesize textureID;
-@synthesize target;
-@synthesize textureWidth;
-@synthesize textureHeight;
+@synthesize ctx;
+@synthesize bufferWidth;
+@synthesize bufferHeight;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
@@ -66,23 +65,24 @@ AWT_ASSERT_APPKIT_THREAD;
     self.actions = actions;
     [actions release];
 
-    textureID = 0; // texture will be created by rendering pipe
-    target = 0;
+    self.ctx = NULL;
 
     return self;
 }
 
-- (void) fillParallelogramCtx:(MTLCtxInfo*)ctx
-                            X:(jfloat)x
-                            Y:(jfloat)y
-                          DX1:(jfloat)dx1
-                          DY1:(jfloat)dy1
-                          DX2:(jfloat)dx2
-                          DY2:(jfloat)dy2
+- (void) fillParallelogramCtxX:(jfloat)x
+                             Y:(jfloat)y
+                           DX1:(jfloat)dx1
+                           DY1:(jfloat)dy1
+                           DX2:(jfloat)dx2
+                           DY2:(jfloat)dy2
 {
-    if (!ctx->mtlCommandBuffer) {
-        [self beginFrameCtx:ctx];
+
+    if (self.ctx == NULL) {
+        return;
     }
+
+    fprintf(stderr, "fillParallelogramCtx\n");
     ctx->mtlEmptyCommandBuffer = NO;
    // fprintf(stderr, "----fillParallelogramX----\n");
 
@@ -175,38 +175,39 @@ AWT_ASSERT_APPKIT_THREAD;
 
 }
 
-- (void) beginFrameCtx:(MTLCtxInfo*)ctx {
-    self.device = ctx->mtlDevice;
+- (void) beginFrameCtx {
+    if (self.ctx == NULL) {
+        return;
+    }
+
+    fprintf(stderr, "beginFrameCtx\n");
+
     if (ctx->mtlCommandBuffer) {
-        [self endFrameCtx:ctx];
-    }
-    if (!ctx->mtlDrawable) {
-        ctx->mtlDrawable = [[self nextDrawable] retain];
+        [self blitTexture];
     }
 
-    if (!ctx->mtlDrawable) {
+    vector_float4 X = {1, 0, 0, 0};
+    vector_float4 Y = {0, 1, 0, 0};
+    vector_float4 Z = {0, 0, 1, 0};
+    vector_float4 W = {0, 0, 0, 1};
 
-        fprintf(stderr, "ERROR: Failed to get a valid drawable.\n");
-    } else {
-        vector_float4 X = {1, 0, 0, 0};
-        vector_float4 Y = {0, 1, 0, 0};
-        vector_float4 Z = {0, 0, 1, 0};
-        vector_float4 W = {0, 0, 0, 1};
+    matrix_float4x4 rot = {X, Y, Z, W};
 
-        matrix_float4x4 rot = {X, Y, Z, W};
+    ctx->mtlUniforms = (struct FrameUniforms *) [ctx->mtlUniformBuffer contents];
+    ctx->mtlUniforms->projectionViewModel = rot;
 
-        ctx->mtlUniforms = (struct FrameUniforms *) [ctx->mtlUniformBuffer contents];
-        ctx->mtlUniforms->projectionViewModel = rot;
-
-        // Create a command buffer.
-        ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
-    }
-
+    // Create a command buffer.
+    ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
 }
 
-- (void) endFrameCtx:(MTLCtxInfo*)ctx {
+- (void) blitTexture {
+    if (self.ctx == NULL) {
+        return;
+    }
+fprintf(stderr, "blitTexture\n");
     if (ctx->mtlCommandBuffer) {
     // Encode render command.
+        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (!ctx->mtlRenderPassDesc) {
             ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
         }
@@ -252,10 +253,11 @@ AWT_ASSERT_APPKIT_THREAD;
             verts[5].txtpos[1] = 0;
 
             ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
-                                                               length:sizeof(verts)
-                                                               options:MTLResourceCPUCacheModeDefaultCache];
+                                                           length:sizeof(verts)
+                                                           options:MTLResourceCPUCacheModeDefaultCache];
             MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-            colorAttachment.texture = ctx->mtlDrawable.texture;
+
+            colorAttachment.texture = mtlDrawable.texture;
 
             colorAttachment.loadAction = MTLLoadActionLoad;
             colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
@@ -281,7 +283,7 @@ AWT_ASSERT_APPKIT_THREAD;
         }
 
         if (!ctx->mtlEmptyCommandBuffer) {
-            [ctx->mtlCommandBuffer presentDrawable:ctx->mtlDrawable];
+            [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
             [ctx->mtlCommandBuffer commit];
         }
 
@@ -299,36 +301,6 @@ AWT_ASSERT_APPKIT_THREAD;
     self.javaLayer = nil;
     [super dealloc];
 }
-
-// use texture (intermediate buffer) as src and blit it to the layer
-- (void) blitTexture
-{
-    if (textureID == 0) {
-        return;
-    }
-/*
-    glEnable(target);
-    glBindTexture(target, textureID);
-
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE); // srccopy
-
-    float swid = 1.0f, shgt = 1.0f;
-    if (target == GL_TEXTURE_RECTANGLE_ARB) {
-        swid = textureWidth;
-        shgt = textureHeight;
-    }
-    glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
-    glTexCoord2f(swid, 0.0f); glVertex2f( 1.0f, -1.0f);
-    glTexCoord2f(swid, shgt); glVertex2f( 1.0f,  1.0f);
-    glTexCoord2f(0.0f, shgt); glVertex2f(-1.0f,  1.0f);
-    glEnd();
-
-    glBindTexture(target, 0);
-    glDisable(target);
-    */
-}
-
 
 @end
 
@@ -364,15 +336,15 @@ Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
     MTLLayer *layer = OBJC(layerPtr);
-//fprintf(stderr, "Java_sun_java2d_metal_MTLLayer_validate\n");
+fprintf(stderr, "Java_sun_java2d_metal_MTLLayer_validate\n");
     if (surfaceData != NULL) {
-        BMTLSDOps *oglsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
-        layer.textureID = oglsdo->textureID;
-        //layer.target =  GL_TEXTURE_2D;
-        layer.textureWidth = oglsdo->width;
-        layer.textureHeight = oglsdo->height;
+        BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
+        layer.bufferWidth = bmtlsdo->width;
+        layer.bufferHeight = bmtlsdo->height;
+        layer.ctx = (MTLCtxInfo*)(((MTLSDOps *)bmtlsdo->privOps)->configInfo->context->ctxInfo);
+        layer.device = layer.ctx->mtlDevice;
     } else {
-        layer.textureID = 0;
+        layer.ctx = NULL;
     }
 }
 
@@ -381,7 +353,7 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_blitTexture
 (JNIEnv *env, jclass cls, jlong layerPtr)
 {
-//    fprintf(stderr, "Blit!!!\n");
+    fprintf(stderr, "Java_sun_java2d_metal_MTLLayer_blitTexture\n");
     MTLLayer *layer = jlong_to_ptr(layerPtr);
 
     [layer blitTexture];

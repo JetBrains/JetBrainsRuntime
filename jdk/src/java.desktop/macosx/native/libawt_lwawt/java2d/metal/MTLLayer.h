@@ -35,36 +35,26 @@
     JNFWeakJObjectWrapper *javaLayer;
 
     // intermediate buffer, used the RQ lock to synchronize
-    GLuint textureID;
-    GLenum target;
-    float textureWidth;
-    float textureHeight;
+    MTLCtxInfo* ctx;
+    float bufferWidth;
+    float bufferHeight;
 }
 
 @property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
-@property (readwrite, assign) GLuint textureID;
-@property (readwrite, assign) GLenum target;
-@property (readwrite, assign) float textureWidth;
-@property (readwrite, assign) float textureHeight;
-
-#ifdef REMOTELAYER
-@property (nonatomic, retain) CGLLayer *parentLayer;
-@property (nonatomic, retain) CGLLayer *remoteLayer;
-@property (nonatomic, retain) NSObject<JRSRemoteLayer> *jrsRemoteLayer;
-#endif
+@property (readwrite, assign) MTLCtxInfo* ctx;
+@property (readwrite, assign) float bufferWidth;
+@property (readwrite, assign) float bufferHeight;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
 
 - (void) blitTexture;
-- (void) fillParallelogramCtx:(MTLCtxInfo*)ctx
-                          X:(jfloat)x
-                          Y:(jfloat)y
-                        DX1:(jfloat)dx1
-                        DY1:(jfloat)dy1
-                        DX2:(jfloat)dx2
-                        DY2:(jfloat)dy2;
-- (void) beginFrameCtx:(MTLCtxInfo*)ctx;
-- (void) endFrameCtx:(MTLCtxInfo*)ctx;
+- (void) fillParallelogramCtxX:(jfloat)x
+                             Y:(jfloat)y
+                           DX1:(jfloat)dx1
+                           DY1:(jfloat)dy1
+                           DX2:(jfloat)dx2
+                           DY2:(jfloat)dy2;
+- (void) beginFrameCtx;
 
 @end
 

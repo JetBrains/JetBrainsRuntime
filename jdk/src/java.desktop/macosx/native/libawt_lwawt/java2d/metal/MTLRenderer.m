@@ -349,7 +349,7 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
             MTLLayer *layer = (MTLLayer *) dstCGLOps->layer;
             if (layer != NULL) {
                 [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                    [layer fillParallelogramCtx:dstCGLOps->configInfo->context->ctxInfo X:x1 Y:y1 DX1:x2-x1 DY1:0 DX2:0 DY2:y2 - y1];
+                    [layer fillParallelogramCtxX:x1 Y:y1 DX1:x2-x1 DY1:0 DX2:0 DY2:y2 - y1];
                 }];
             }
         }
@@ -389,7 +389,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
         if (layer != NULL) {
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
 //                AWT_ASSERT_APPKIT_THREAD;
-                [layer fillParallelogramCtx:dstCGLOps->configInfo->context->ctxInfo X:fx11 Y:fy11 DX1:dx21 DY1:dy21 DX2:dx12 DY2:dy12];
+                [layer fillParallelogramCtxX:fx11 Y:fy11 DX1:dx21 DY1:dy21 DX2:dx12 DY2:dy12];
             }];
         } else {
 //            fprintf(stderr, "MTLRenderer_FillParallelogram: dstCGLOps->layer=NULL\n");

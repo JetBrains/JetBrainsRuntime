@@ -31,41 +31,10 @@
 #import "MTLSurfaceData.h"
 #import "ThreadUtilities.h"
 
-/* JDK's glext.h is already included and will prevent the Apple glext.h
- * being included, so define the externs directly
- */
-extern void glBindFramebufferEXT(GLenum target, GLuint framebuffer);
-extern CGLError CGLTexImageIOSurface2D(
-        CGLContextObj ctx, GLenum target, GLenum internal_format,
-        GLsizei width, GLsizei height, GLenum format, GLenum type,
-        IOSurfaceRef ioSurface, GLuint plane);
-
 /**
  * The methods in this file implement the native windowing system specific
- * layer (CGL) for the OpenGL-based Java 2D pipeline.
+ * layer for the Metal-based Java 2D pipeline.
  */
-
-#pragma mark -
-#pragma mark "--- Mac OS X specific methods for GL pipeline ---"
-
-// TODO: hack that's called from OGLRenderQueue to test out unlockFocus behavior
-#if 0
-void
-OGLSD_UnlockFocus(OGLContext *oglc, OGLSDOps *dstOps)
-{
-    CGLCtxInfo *ctxinfo = (CGLCtxInfo *)oglc->ctxInfo;
-    CGLSDOps *cglsdo = (CGLSDOps *)dstOps->privOps;
-    fprintf(stderr, "about to unlock focus: %p %p\n",
-            cglsdo->peerData, ctxinfo->context);
-
-    NSOpenGLView *nsView = cglsdo->peerData;
-    if (nsView != NULL) {
-JNF_COCOA_ENTER(env);
-        [nsView unlockFocus];
-JNF_COCOA_EXIT(env);
-    }
-}
-#endif
 
 /**
  * Makes the given context current to its associated "scratch" surface.  If
@@ -144,17 +113,30 @@ MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
 
     J2dTraceLn4(J2D_TRACE_VERBOSE, "  src: %d %p dst: %d %p", srcOps->drawableType, srcOps, dstOps->drawableType, dstOps);
 
-    MTLContext *oglc = dstCGLOps->configInfo->context;
-    if (oglc == NULL) {
+    MTLContext *mtlc = dstCGLOps->configInfo->context;
+    if (mtlc == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_MakeOGLContextCurrent: context is null");
         return NULL;
     }
 
-    MTLCtxInfo *ctxinfo = (MTLCtxInfo *)oglc->ctxInfo;
+    MTLCtxInfo *ctxinfo = (MTLCtxInfo *)mtlc->ctxInfo;
 
     // it seems to be necessary to explicitly flush between context changes
     MTLContext *currentContext = MTLRenderQueue_GetCurrentContext();
     if (currentContext != NULL) {
+        if (dstOps != NULL) {
+            MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
+            MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
+
+          //  if (layer != NULL) {
+          //      [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+          //          [layer endFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
+          //      }];
+          //  }
+        } else {
+          //          fprintf(stderr, "MTLSD_Flush: dstOps=NULL\n");
+          return JNI_FALSE;
+        }
        // j2d_glFlush();
     }
 
@@ -162,51 +144,14 @@ MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
         // first make sure we have a current context (if the context isn't
         // already current to some drawable, we will make it current to
         // its scratch surface)
-        if (oglc != currentContext) {
-            if (!MTLSD_MakeCurrentToScratch(env, oglc)) {
+        if (mtlc != currentContext) {
+            if (!MTLSD_MakeCurrentToScratch(env, dstOps)) {
                 return NULL;
             }
         }
 
-        // now bind to the fbobject associated with the destination surface;
-        // this means that all rendering will go into the fbobject destination
-        // (note that we unbind the currently bound texture first; this is
-        // recommended procedure when binding an fbobject)
-        //j2d_glBindTexture(GL_TEXTURE_2D, 0);
-        //j2d_glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, dstOps->fbobjectID);
-
-        if (dstOps != NULL) {
-            MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-            MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-            if (layer != NULL) {
-                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-//                AWT_ASSERT_APPKIT_THREAD;
-                    [layer beginFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
-                }];
-            }
-        } else {
-  //          fprintf(stderr, "MTLSD_Flush: dstOps=NULL\n");
-        }
-
-        return oglc;
     }
-
-    JNF_COCOA_ENTER(env);
-
-            MTLSDOps *cglsdo = (MTLSDOps *)dstOps->privOps;
-            NSView *nsView = (NSView *)cglsdo->peerData;
-
-
-            if (MTLC_IS_CAP_PRESENT(oglc, CAPS_EXT_FBOBJECT)) {
-                // the GL_EXT_framebuffer_object extension is present, so we
-                // must bind to the default (windowing system provided)
-                // framebuffer
-                //j2d_glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-            }
-
-    JNF_COCOA_EXIT(env);
-
-    return oglc;
+    return mtlc;
 }
 
 /**
@@ -239,7 +184,8 @@ MTLSD_Flush(JNIEnv *env)
         if (layer != NULL) {
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
                 AWT_ASSERT_APPKIT_THREAD;
-                [layer endFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
+             //   [layer endFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
+                [layer blitTexture];
             }];
         }
     } else {
@@ -282,7 +228,6 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
     bmtlsdo->sdOps.Dispose            = MTLSD_Dispose;
 
     bmtlsdo->drawableType = MTLSD_UNDEFINED;
-    //bmtlsdo->activeBuffer = GL_FRONT;
     bmtlsdo->needsInit = JNI_TRUE;
     bmtlsdo->xOffset = xoff;
     bmtlsdo->yOffset = yoff;

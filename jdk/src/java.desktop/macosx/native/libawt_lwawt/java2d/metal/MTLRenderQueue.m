@@ -464,7 +464,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     if (layer != NULL) {
                         [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
                             //AWT_ASSERT_APPKIT_THREAD;
-                            [layer beginFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
+                            [layer beginFrameCtx];
                         }];
                     } else {
                         dstOps = oldDstOps;
@@ -472,7 +472,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                         MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
                         if (layer != NULL) {
                             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                                [layer beginFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
+                                [layer beginFrameCtx];
                             }];
                         }
                     }
