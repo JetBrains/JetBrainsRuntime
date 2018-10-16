@@ -89,8 +89,9 @@ bool ShenandoahTaskTerminator::offer_termination(ShenandoahTerminatorTerminator*
       }
     }
 
-    if (((terminator == NULL || terminator->should_force_termination()) && peek_in_queue_set()) ||
-      (terminator != NULL && terminator->should_exit_termination())) {
+    bool force = (terminator != NULL) && terminator->should_force_termination();
+    bool exit  = (terminator != NULL) && terminator->should_exit_termination();
+    if ((!force && peek_in_queue_set()) || exit) {
       _offered_termination --;
       _blocker->unlock();
       return false;
