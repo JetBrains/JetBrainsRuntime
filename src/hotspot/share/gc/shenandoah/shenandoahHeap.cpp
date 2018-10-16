@@ -1774,8 +1774,8 @@ void ShenandoahHeap::ref_processing_init() {
 
   _ref_processor =
     new ReferenceProcessor(&_subject_to_discovery,  // is_subject_to_discovery
-                           true,                    // MT processing
-                           ParallelRefProcEnabled ? _max_workers : 1, // Degree of MT processing
+                           ParallelRefProcEnabled,  // MT processing
+                           _max_workers,            // Degree of MT processing
                            true,                    // MT discovery
                            _max_workers,            // Degree of MT discovery
                            false,                   // Reference discovery is not atomic

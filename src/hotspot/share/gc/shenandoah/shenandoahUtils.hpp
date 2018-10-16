@@ -32,7 +32,6 @@
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
 #include "memory/allocation.hpp"
-#include "memory/iterator.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/vmThread.hpp"
 #include "runtime/vm_operations.hpp"
@@ -143,28 +142,6 @@ class ShenandoahParallelWorkerSession : public ShenandoahWorkerSession {
 public:
   ShenandoahParallelWorkerSession(uint worker_id) : ShenandoahWorkerSession(worker_id) { }
   ~ShenandoahParallelWorkerSession();
-};
-
-class ShouldNotReachHereVoidClosure : public VoidClosure {
-  virtual void do_void() {
-    ShouldNotReachHere();
-  }
-};
-
-class ShouldNotReachHereBoolObjectClosure : public BoolObjectClosure {
-  virtual bool do_object_b(oop obj) {
-    ShouldNotReachHere();
-    return false;
-  }
-};
-
-class ShouldNotReachHereOopClosure : public OopClosure {
-  virtual void do_oop(oop* o) {
-    ShouldNotReachHere();
-  }
-  virtual void do_oop(narrowOop* o) {
-    ShouldNotReachHere();
-  }
 };
 
 #endif // SHARE_VM_GC_SHENANDOAHUTILS_HPP
