@@ -38,7 +38,138 @@
 #include "MTLRenderer.h"
 #include "MTLRenderQueue.h"
 #include "MTLSurfaceData.h"
+#import "MTLLayer.h"
 
+
+
+static const int N = 2;
+static struct Vertex verts[N*3];
+
+void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer) {
+    if (ctx == NULL) {
+        return;
+    }
+
+    fprintf(stderr, "MTLRenderer_BeginFrame\n");
+
+    if (ctx->mtlCommandBuffer) {
+        [layer blitTexture];
+    }
+
+    vector_float4 X = {1, 0, 0, 0};
+    vector_float4 Y = {0, 1, 0, 0};
+    vector_float4 Z = {0, 0, 1, 0};
+    vector_float4 W = {0, 0, 0, 1};
+
+    matrix_float4x4 rot = {X, Y, Z, W};
+
+    ctx->mtlUniforms = (struct FrameUniforms *) [ctx->mtlUniformBuffer contents];
+    ctx->mtlUniforms->projectionViewModel = rot;
+
+    // Create a command buffer.
+    ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
+}
+
+void MTLRenderer_FillParallelogramMetal(
+    MTLCtxInfo* ctx, jfloat x, jfloat y, jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
+{
+
+    if (ctx == NULL) {
+        return;
+    }
+
+    fprintf(stderr, "MTLRenderer_FillParallelogramMetal\n");
+    ctx->mtlEmptyCommandBuffer = NO;
+   // fprintf(stderr, "----fillParallelogramX----\n");
+
+    verts[0].position[0] = (2.0*x/ctx->mtlFrameBuffer.width) - 1.0;
+    verts[0].position[1] = 2.0*(1.0 - y/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[0].position[2] = 0;
+
+    verts[1].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[1].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[1].position[2] = 0;
+
+    verts[2].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[2].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[2].position[2] = 0;
+
+    verts[3].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[3].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[3].position[2] = 0;
+
+    verts[4].position[0] = 2.0*(x + dx1 + dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[4].position[1] = 2.0*(1.0 - (y+ dy1 + dy2)/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[4].position[2] = 0;
+
+    verts[5].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
+    verts[5].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
+    verts[5].position[2] = 0;
+
+    verts[0].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[0].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[0].color[2] = (ctx->mtlColor)&0xFF;
+    verts[0].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    verts[1].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[1].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[1].color[2] = (ctx->mtlColor)&0xFF;
+    verts[1].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    verts[2].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[2].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[2].color[2] = (ctx->mtlColor)&0xFF;
+    verts[2].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    verts[3].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[3].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[3].color[2] = (ctx->mtlColor)&0xFF;
+    verts[3].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    verts[4].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[4].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[4].color[2] = (ctx->mtlColor)&0xFF;
+    verts[4].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    verts[5].color[0] = (ctx->mtlColor >> 16)&(0xFF);
+    verts[5].color[1] = (ctx->mtlColor >> 8)&0xFF;
+    verts[5].color[2] = (ctx->mtlColor)&0xFF;
+    verts[5].color[3] = (ctx->mtlColor >> 24)&0xFF;
+
+    ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
+                                         length:sizeof(verts)
+                                        options:
+                                                MTLResourceCPUCacheModeDefaultCache];
+    // Encode render command.
+    if (!ctx->mtlRenderPassDesc) {
+        ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
+        if (ctx->mtlRenderPassDesc) {
+          MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
+          colorAttachment.texture = ctx->mtlFrameBuffer;
+
+          colorAttachment.loadAction = MTLLoadActionLoad;
+          colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+
+          colorAttachment.storeAction = MTLStoreActionStore;
+        }
+    }
+
+    if (ctx->mtlRenderPassDesc) {
+        id<MTLRenderCommandEncoder>  mtlEncoder =
+            [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
+        MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
+        //fprintf(stderr, "%f %f \n", ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height);
+        [mtlEncoder setViewport:vp];
+        [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
+        [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
+                          offset:0 atIndex:FrameUniformBuffer];
+
+        [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
+        [mtlEncoder endEncoding];
+    }
+
+}
 
 /**
  * Note: Some of the methods in this file apply a "magic number"
@@ -346,12 +477,11 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
 
         if (dstOps != NULL) {
             MTLSDOps *dstCGLOps = (MTLSDOps *) dstOps->privOps;
-            MTLLayer *layer = (MTLLayer *) dstCGLOps->layer;
-            if (layer != NULL) {
-                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                    [layer fillParallelogramCtxX:x1 Y:y1 DX1:x2-x1 DY1:0 DX2:0 DY2:y2 - y1];
+            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                MTLRenderer_FillParallelogramMetal(
+                    dstCGLOps->configInfo->context->ctxInfo,
+                    x1, y1, x2-x1, 0, 0, y2 - y1);
                 }];
-            }
         }
         spanCount--;
     }
@@ -385,15 +515,11 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
 
     if (dstOps != NULL) {
         MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-        MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-        if (layer != NULL) {
-            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-//                AWT_ASSERT_APPKIT_THREAD;
-                [layer fillParallelogramCtxX:fx11 Y:fy11 DX1:dx21 DY1:dy21 DX2:dx12 DY2:dy12];
-            }];
-        } else {
-//            fprintf(stderr, "MTLRenderer_FillParallelogram: dstCGLOps->layer=NULL\n");
-        }
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+         MTLRenderer_FillParallelogramMetal(
+            dstCGLOps->configInfo->context->ctxInfo,
+            fx11, fy11, dx21, dy21, dx12, dy12);
+         }];
     } else {
 //        fprintf(stderr, "MTLRenderer_FillParallelogram: dstOps=NULL\n");
     }

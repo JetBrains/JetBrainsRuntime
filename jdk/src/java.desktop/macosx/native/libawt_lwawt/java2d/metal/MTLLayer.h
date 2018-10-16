@@ -54,8 +54,6 @@
                            DY1:(jfloat)dy1
                            DX2:(jfloat)dx2
                            DY2:(jfloat)dy2;
-- (void) beginFrameCtx;
-
 @end
 
 #endif /* CGLLayer_h_Included */

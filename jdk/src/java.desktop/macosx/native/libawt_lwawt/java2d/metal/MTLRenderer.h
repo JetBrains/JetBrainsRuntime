@@ -26,6 +26,8 @@
 
 #include "sun_java2d_pipe_BufferedRenderPipe.h"
 #include "MTLContext.h"
+#include "MTLGraphicsConfig.h"
+#import "MTLLayer.h"
 
 #define BYTES_PER_POLY_POINT \
     sun_java2d_pipe_BufferedRenderPipe_BYTES_PER_POLY_POINT
@@ -70,5 +72,6 @@ void MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
 
 void MTLRenderer_EnableAAParallelogramProgram();
 void MTLRenderer_DisableAAParallelogramProgram();
+void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer);
 
 #endif /* MTLRenderer_h_Included */
