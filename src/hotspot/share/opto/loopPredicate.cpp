@@ -304,6 +304,9 @@ Node* PhaseIdealLoop::clone_loop_predicates(Node* old_entry, Node* new_entry, bo
 void PhaseIdealLoop::clone_loop_predicates_fix_mem(ProjNode* dom_proj , ProjNode* proj,
                                                    PhaseIdealLoop* loop_phase,
                                                    PhaseIterGVN* igvn) {
+  if (!UseShenandoahGC) {
+    return;
+  }
   Compile* C = NULL;
   if (loop_phase != NULL) {
     igvn = &loop_phase->igvn();

@@ -619,7 +619,7 @@ Node *RegionNode::Ideal(PhaseGVN *phase, bool can_reshape) {
             if( n->as_Phi()->is_unsafe_data_reference(in) )
               in = phase->C->top();      // replaced by top
           }
-          if (n->outcnt() == 0) {
+          if (UseShenandoahGC && n->outcnt() == 0) {
             in = phase->C->top();
           }
           igvn->replace_node(n, in);
@@ -1685,7 +1685,7 @@ Node *PhiNode::Ideal(PhaseGVN *phase, bool can_reshape) {
           igvn->_worklist.push(r);
         }
         // Nuke it down
-        if (can_reshape) {
+        if (UseShenandoahGC && can_reshape) {
           set_req_X(j, top, igvn);
         } else {
           set_req(j, top);

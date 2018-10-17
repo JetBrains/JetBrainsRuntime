@@ -2413,7 +2413,7 @@ void Compile::Optimize() {
   print_method(PHASE_BEFORE_BARRIER_EXPAND, 2);
 
 #if INCLUDE_SHENANDOAHGC
-  if (!ShenandoahWriteBarrierNode::expand(this, igvn, loop_opts_cnt)) {
+  if (UseShenandoahGC && !ShenandoahWriteBarrierNode::expand(this, igvn, loop_opts_cnt)) {
     assert(failing(), "must bail out w/ explicit message");
     return;
   }
@@ -4604,7 +4604,7 @@ void Compile::remove_speculative_types(PhaseIterGVN &igvn) {
         const Type* t_no_spec = t->remove_speculative();
         if (t_no_spec != t) {
           bool in_hash = igvn.hash_delete(n);
-          assert(in_hash || n->hash() == Node::NO_HASH, "node should be in igvn hash table");
+          assert(in_hash || (UseShenandoahGC && n->hash() == Node::NO_HASH), "node should be in igvn hash table");
           tn->set_type(t_no_spec);
           igvn.hash_insert(n);
           igvn._worklist.push(n); // give it a chance to go away

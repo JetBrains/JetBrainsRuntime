@@ -337,6 +337,10 @@ class LibraryCallKit : public GraphKit {
     }
 #endif
   }
+
+  Node* shenandoah_must_be_not_null(Node* n, bool f) {
+    return UseShenandoahGC ? must_be_not_null(n, f) : n;
+  }
 };
 
 //---------------------------make_vm_intrinsic----------------------------
@@ -1103,8 +1107,8 @@ bool LibraryCallKit::inline_string_compareTo(StrIntrinsicNode::ArgEnc ae) {
   Node* arg1 = argument(0);
   Node* arg2 = argument(1);
 
-  arg1 = must_be_not_null(arg1, true);
-  arg2 = must_be_not_null(arg2, true);
+  arg1 = shenandoah_must_be_not_null(arg1, true);
+  arg2 = shenandoah_must_be_not_null(arg2, true);
 
   arg1 = access_resolve_for_read(arg1);
   arg2 = access_resolve_for_read(arg2);
@@ -1133,8 +1137,8 @@ bool LibraryCallKit::inline_string_equals(StrIntrinsicNode::ArgEnc ae) {
 
   if (!stopped()) {
 
-    arg1 = must_be_not_null(arg1, true);
-    arg2 = must_be_not_null(arg2, true);
+    arg1 = shenandoah_must_be_not_null(arg1, true);
+    arg2 = shenandoah_must_be_not_null(arg2, true);
 
     arg1 = access_resolve_for_read(arg1);
     arg2 = access_resolve_for_read(arg2);
@@ -1201,7 +1205,7 @@ bool LibraryCallKit::inline_hasNegatives() {
   Node* offset     = argument(1);
   Node* len        = argument(2);
 
-  ba = must_be_not_null(ba, true);
+  ba = shenandoah_must_be_not_null(ba, true);
 
   // Range checks
   generate_string_range_check(ba, offset, len, false);
@@ -1278,8 +1282,8 @@ bool LibraryCallKit::inline_string_indexOf(StrIntrinsicNode::ArgEnc ae) {
   RegionNode* result_rgn = new RegionNode(4);
   Node*       result_phi = new PhiNode(result_rgn, TypeInt::INT);
 
-  src = must_be_not_null(src, true);
-  tgt = must_be_not_null(tgt, true);
+  src = shenandoah_must_be_not_null(src, true);
+  tgt = shenandoah_must_be_not_null(tgt, true);
 
   src = access_resolve_for_read(src);
   tgt = access_resolve_for_read(tgt);
@@ -1328,8 +1332,8 @@ bool LibraryCallKit::inline_string_indexOfI(StrIntrinsicNode::ArgEnc ae) {
   Node* tgt_count   = argument(3); // char count
   Node* from_index  = argument(4); // char index
 
-  src = must_be_not_null(src, true);
-  tgt = must_be_not_null(tgt, true);
+  src = shenandoah_must_be_not_null(src, true);
+  tgt = shenandoah_must_be_not_null(tgt, true);
 
   src = access_resolve_for_read(src);
   tgt = access_resolve_for_read(tgt);
@@ -1419,7 +1423,7 @@ bool LibraryCallKit::inline_string_indexOfChar() {
   Node* from_index  = argument(2);
   Node* max         = argument(3);
 
-  src = must_be_not_null(src, true);
+  src = shenandoah_must_be_not_null(src, true);
   src = access_resolve_for_read(src);
 
   Node* src_offset = _gvn.transform(new LShiftINode(from_index, intcon(1)));
@@ -1492,8 +1496,8 @@ bool LibraryCallKit::inline_string_copy(bool compress) {
          (!compress && src_elem == T_BYTE && (dst_elem == T_BYTE || dst_elem == T_CHAR)),
          "Unsupported array types for inline_string_copy");
 
-  src = must_be_not_null(src, true);
-  dst = must_be_not_null(dst, true);
+  src = shenandoah_must_be_not_null(src, true);
+  dst = shenandoah_must_be_not_null(dst, true);
 
   // Convert char[] offsets to byte[] offsets
   bool convert_src = (compress && src_elem == T_BYTE);
@@ -1760,7 +1764,7 @@ bool LibraryCallKit::inline_string_char_access(bool is_store) {
     return false;
   }
 
-  value = must_be_not_null(value, true);
+  value = shenandoah_must_be_not_null(value, true);
 
   if (is_store) {
     value = access_resolve_for_write(value);
@@ -3801,7 +3805,9 @@ bool LibraryCallKit::inline_array_copyOf(bool is_copyOfRange) {
         }
         Node* n = _gvn.transform(ac);
         if (n == ac) {
-          ac->_adr_type = TypePtr::BOTTOM;
+          if (UseShenandoahGC) {
+            ac->_adr_type = TypePtr::BOTTOM;
+          }
           ac->connect_outputs(this);
         } else {
           assert(validated, "shouldn't transform if all arguments not validated");
@@ -4400,7 +4406,9 @@ bool LibraryCallKit::inline_native_clone(bool is_virtual) {
           ac->set_cloneoop();
           Node* n = _gvn.transform(ac);
           assert(n == ac, "cannot disappear");
-          ac->_adr_type = TypePtr::BOTTOM;
+          if (UseShenandoahGC) {
+            ac->_adr_type = TypePtr::BOTTOM;
+          }
           ac->connect_outputs(this);
 
           result_reg->init_req(_objArray_path, control());
@@ -4884,7 +4892,9 @@ bool LibraryCallKit::inline_arraycopy() {
 
   Node* n = _gvn.transform(ac);
   if (n == ac) {
-    ac->_adr_type = TypePtr::BOTTOM;
+    if (UseShenandoahGC) {
+      ac->_adr_type = TypePtr::BOTTOM;
+    }
     ac->connect_outputs(this);
   } else {
     assert(validated, "shouldn't transform if all arguments not validated");
@@ -4988,8 +4998,8 @@ bool LibraryCallKit::inline_encodeISOArray() {
   Node *dst_offset  = argument(3);
   Node *length      = argument(4);
 
-  src = must_be_not_null(src, true);
-  dst = must_be_not_null(dst, true);
+  src = shenandoah_must_be_not_null(src, true);
+  dst = shenandoah_must_be_not_null(dst, true);
 
   src = access_resolve_for_read(src);
   dst = access_resolve_for_write(dst);
@@ -5046,9 +5056,9 @@ bool LibraryCallKit::inline_multiplyToLen() {
   Node* ylen = argument(3);
   Node* z    = argument(4);
 
-  x = must_be_not_null(x, true);
+  x = shenandoah_must_be_not_null(x, true);
   x = access_resolve_for_read(x);
-  y = must_be_not_null(y, true);
+  y = shenandoah_must_be_not_null(y, true);
   y = access_resolve_for_read(y);
   z = access_resolve_for_write(z);
 
@@ -5097,12 +5107,17 @@ bool LibraryCallKit::inline_multiplyToLen() {
      } __ else_(); {
        // Update graphKit memory and control from IdealKit.
        sync_kit(ideal);
-       Node *cast = new CastPPNode(z, TypePtr::NOTNULL);
-       cast->init_req(0, control());
-       _gvn.set_type(cast, cast->bottom_type());
-       C->record_for_igvn(cast);
+       Node* zlen_arg = NULL;
+       if (UseShenandoahGC) {
+         Node *cast = new CastPPNode(z, TypePtr::NOTNULL);
+         cast->init_req(0, control());
+         _gvn.set_type(cast, cast->bottom_type());
+         C->record_for_igvn(cast);
 
-       Node* zlen_arg = load_array_length(cast);
+         zlen_arg = load_array_length(cast);
+       } else {
+         zlen_arg = load_array_length(z);
+       }
        // Update IdealKit memory and control from graphKit.
        __ sync_kit(this);
        __ if_then(zlen_arg, BoolTest::lt, zlen); {
@@ -5157,9 +5172,9 @@ bool LibraryCallKit::inline_squareToLen() {
   Node* z    = argument(2);
   Node* zlen = argument(3);
 
-  x = must_be_not_null(x, true);
+  x = shenandoah_must_be_not_null(x, true);
   x = access_resolve_for_read(x);
-  z = must_be_not_null(z, true);
+  z = shenandoah_must_be_not_null(z, true);
   z = access_resolve_for_write(z);
 
   const Type* x_type = x->Value(&_gvn);
@@ -5210,7 +5225,7 @@ bool LibraryCallKit::inline_mulAdd() {
   Node* k        = argument(4);
 
   in = access_resolve_for_read(in);
-  out = must_be_not_null(out, true);
+  out = shenandoah_must_be_not_null(out, true);
   out = access_resolve_for_write(out);
 
   const Type* out_type = out->Value(&_gvn);
@@ -5474,7 +5489,7 @@ bool LibraryCallKit::inline_updateBytesCRC32() {
   }
 
   // 'src_start' points to src array + scaled offset
-  src = must_be_not_null(src, true);
+  src = shenandoah_must_be_not_null(src, true);
   src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, offset, src_elem);
 
@@ -5565,12 +5580,12 @@ bool LibraryCallKit::inline_updateBytesCRC32C() {
 
   // 'src_start' points to src array + scaled offset
   src = access_resolve_for_read(src);
-  src = must_be_not_null(src, true);
+  src = shenandoah_must_be_not_null(src, true);
   Node* src_start = array_element_address(src, offset, src_elem);
 
   // static final int[] byteTable in class CRC32C
   Node* table = get_table_from_crc32c_class(callee()->holder());
-  table = must_be_not_null(table, true);
+  table = shenandoah_must_be_not_null(table, true);
   table = access_resolve_for_read(table);
   Node* table_start = array_element_address(table, intcon(0), T_INT);
 
@@ -5615,7 +5630,7 @@ bool LibraryCallKit::inline_updateDirectByteBufferCRC32C() {
 
   // static final int[] byteTable in class CRC32C
   Node* table = get_table_from_crc32c_class(callee()->holder());
-  table = must_be_not_null(table, true);
+  table = shenandoah_must_be_not_null(table, true);
   table = access_resolve_for_read(table);
   Node* table_start = array_element_address(table, intcon(0), T_INT);
 
@@ -5872,9 +5887,9 @@ bool LibraryCallKit::inline_aescrypt_Block(vmIntrinsics::ID id) {
   Node* dest_offset     = argument(4);
 
   // Resolve src and dest arrays for ShenandoahGC.
-  src = must_be_not_null(src, true);
+  src = shenandoah_must_be_not_null(src, true);
   src = access_resolve_for_read(src);
-  dest = must_be_not_null(dest, true);
+  dest = shenandoah_must_be_not_null(dest, true);
   dest = access_resolve_for_write(dest);
 
   // (1) src and dest are arrays.
@@ -5950,8 +5965,8 @@ bool LibraryCallKit::inline_cipherBlockChaining_AESCrypt(vmIntrinsics::ID id) {
 
   // inline_cipherBlockChaining_AESCrypt_predicate() has its own
   // barrier. This one should optimize away.
-  src = must_be_not_null(src, false);
-  dest = must_be_not_null(dest, false);
+  src = shenandoah_must_be_not_null(src, false);
+  dest = shenandoah_must_be_not_null(dest, false);
   src = access_resolve_for_read(src);
   dest = access_resolve_for_write(dest);
 
@@ -6198,8 +6213,8 @@ Node* LibraryCallKit::inline_cipherBlockChaining_AESCrypt_predicate(bool decrypt
   // Resolve src and dest arrays for ShenandoahGC.  Here because new
   // memory state is not handled by predicate logic in
   // inline_cipherBlockChaining_AESCrypt itself
-  src = must_be_not_null(src, true);
-  dest = must_be_not_null(dest, true);
+  src = shenandoah_must_be_not_null(src, true);
+  dest = shenandoah_must_be_not_null(dest, true);
   src = access_resolve_for_write(src);
   dest = access_resolve_for_write(dest);
 
@@ -6287,9 +6302,9 @@ bool LibraryCallKit::inline_ghash_processBlocks() {
   Node* state          = argument(3);
   Node* subkeyH        = argument(4);
 
-  state = must_be_not_null(state, true);
-  subkeyH = must_be_not_null(subkeyH, true);
-  data = must_be_not_null(data, true);
+  state = shenandoah_must_be_not_null(state, true);
+  subkeyH = shenandoah_must_be_not_null(subkeyH, true);
+  data = shenandoah_must_be_not_null(data, true);
 
   state = access_resolve_for_write(state);
   subkeyH = access_resolve_for_read(subkeyH);
@@ -6368,7 +6383,7 @@ bool LibraryCallKit::inline_sha_implCompress(vmIntrinsics::ID id) {
     return false;
   }
   // 'src_start' points to src array + offset
-  src = must_be_not_null(src, true);
+  src = shenandoah_must_be_not_null(src, true);
   src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, ofs, src_elem);
   Node* state = NULL;
@@ -6436,7 +6451,7 @@ bool LibraryCallKit::inline_digestBase_implCompressMB(int predicate) {
     return false;
   }
   // 'src_start' points to src array + offset
-  src = must_be_not_null(src, false);
+  src = shenandoah_must_be_not_null(src, false);
   src = access_resolve_for_read(src);
   Node* src_start = array_element_address(src, ofs, src_elem);
 

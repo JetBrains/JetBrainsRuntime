@@ -812,6 +812,9 @@ Node* ShenandoahBarrierSetC2::ideal_node(PhaseGVN *phase, Node* n, bool can_resh
 }
 
 bool ShenandoahBarrierSetC2::has_only_shenandoah_wb_pre_uses(Node* n) {
+  if (!UseShenandoahGC) {
+    return false;
+  }
   for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
     Node* u = n->fast_out(i);
     if (!is_shenandoah_wb_pre_call(u)) {

@@ -2968,7 +2968,7 @@ TypeOopPtr::TypeOopPtr(TYPES t, PTR ptr, ciKlass* k, bool xk, ciObject* o, int o
     if (_offset == oopDesc::klass_offset_in_bytes()) {
       _is_ptr_to_narrowklass = UseCompressedClassPointers;
 #if INCLUDE_SHENANDOAHGC
-    } else if (_offset == BrooksPointer::byte_offset()) {
+    } else if (UseShenandoahGC && _offset == BrooksPointer::byte_offset()) {
       // Shenandoah doesn't support compressed forwarding pointers
 #endif
     } else if (klass() == NULL) {

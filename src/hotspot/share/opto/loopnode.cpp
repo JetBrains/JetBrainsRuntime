@@ -982,7 +982,7 @@ void LoopNode::verify_strip_mined(int expect_skeleton) const {
             stores++;
           }
         }
-        if (c->in(0)->is_CountedLoopEnd()) {
+        if (c->in(0)->is_CountedLoopEnd() || !UseShenandoahGC) {
           break;
         }
 #if INCLUDE_SHENANDOAHGC
@@ -3964,7 +3964,7 @@ Node *PhaseIdealLoop::get_late_ctrl( Node *n, Node *early ) {
     while(worklist.size() != 0 && LCA != early) {
       Node* s = worklist.pop();
       if (s->is_Load() || s->is_ShenandoahBarrier() || s->Opcode() == Op_SafePoint ||
-          (s->is_CallStaticJava() && s->as_CallStaticJava()->uncommon_trap_request() != 0)) {
+          (UseShenandoahGC && s->is_CallStaticJava() && s->as_CallStaticJava()->uncommon_trap_request() != 0)) {
         continue;
       } else if (s->is_MergeMem()) {
         for (DUIterator_Fast imax, i = s->fast_outs(imax); i < imax; i++) {

@@ -909,23 +909,6 @@ uint PhaseCFG::sched_call(Block* block, uint node_cnt, Node_List& worklist, Grow
   return node_cnt;
 }
 
-void PhaseCFG::push_ready_nodes(Node* n, Node* m, Block* block, GrowableArray<int>& ready_cnt, Node_List& worklist, uint max_idx, int c) {
-  if (get_block_for_node(m) != block) {
-    return;
-  }
-  if (m->is_Phi()) {
-    return;
-  }
-  if (m->_idx >= max_idx) { // new node, skip it
-    assert(m->is_MachProj() && n->is_Mach() && n->as_Mach()->has_call(), "unexpected node types");
-    return;
-  }
-  int m_cnt = ready_cnt.at(m->_idx) - c;
-  ready_cnt.at_put(m->_idx, m_cnt);
-  if (m_cnt == 0) {
-    worklist.push(m);
-  }
-}
 
 //------------------------------schedule_local---------------------------------
 // Topological sort within a block.  Someday become a real scheduler.
@@ -964,13 +947,6 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
         recalc_pressure_nodes[n->_idx] = 0x7fff7fff;
       }
     }
-  } else {
-#ifdef ASSERT
-    for (i = 1; i < block->number_of_nodes(); i++) {
-      Node *n = block->get_node(i);
-      assert(!n->is_scheduled(), "shouldn't be scheduled yet");
-    }
-#endif
   }
 
   // Move PhiNodes and ParmNodes from 1 to cnt up to the start
@@ -983,8 +959,10 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
       // Move guy at 'phi_cnt' to the end; makes a hole at phi_cnt
       block->map_node(block->get_node(phi_cnt), i);
       block->map_node(n, phi_cnt++);  // swap Phi/Parm up front
-      // mark n as scheduled
-      n->add_flag(Node::Flag_is_scheduled);
+      if (OptoRegScheduling && block_size_threshold_ok) {
+        // mark n as scheduled
+        n->add_flag(Node::Flag_is_scheduled);
+      }
     } else {                    // All others
       // Count block-local inputs to 'n'
       uint cnt = n->len();      // Input count
@@ -1045,9 +1023,11 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
       Node* m = n->fast_out(j);
       if (get_block_for_node(m) == block) { // Local-block user
         int m_cnt = ready_cnt.at(m->_idx)-1;
-        // mark m as scheduled
-        if (m_cnt < 0) {
-          m->add_flag(Node::Flag_is_scheduled);
+        if (OptoRegScheduling && block_size_threshold_ok) {
+          // mark m as scheduled
+          if (m_cnt < 0) {
+            m->add_flag(Node::Flag_is_scheduled);
+          }
         }
         ready_cnt.at_put(m->_idx, m_cnt);   // Fix ready count
       }
@@ -1125,9 +1105,9 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
     Node* n = select(block, worklist, ready_cnt, next_call, phi_cnt, recalc_pressure_nodes);
     block->map_node(n, phi_cnt++);    // Schedule him next
 
-    n->add_flag(Node::Flag_is_scheduled);
-
     if (OptoRegScheduling && block_size_threshold_ok) {
+      n->add_flag(Node::Flag_is_scheduled);
+
       // Now adjust the resister pressure with the node we selected
       if (!n->is_Phi()) {
         adjust_register_pressure(n, block, recalc_pressure_nodes, true);
@@ -1171,12 +1151,19 @@ bool PhaseCFG::schedule_local(Block* block, GrowableArray<int>& ready_cnt, Vecto
     // Children are now all ready
     for (DUIterator_Fast i5max, i5 = n->fast_outs(i5max); i5 < i5max; i5++) {
       Node* m = n->fast_out(i5); // Get user
-      push_ready_nodes(n, m, block, ready_cnt, worklist, max_idx, 1);
+      if (get_block_for_node(m) != block) {
+        continue;
+      }
+      if( m->is_Phi() ) continue;
+      if (m->_idx >= max_idx) { // new node, skip it
+        assert(m->is_MachProj() && n->is_Mach() && n->as_Mach()->has_call(), "unexpected node types");
+        continue;
+      }
+      int m_cnt = ready_cnt.at(m->_idx) - 1;
+      ready_cnt.at_put(m->_idx, m_cnt);
+      if( m_cnt == 0 )
+        worklist.push(m);
     }
-
-#if INCLUDE_SHENANDOAHGC
-    replace_uses_with_shenandoah_barrier(n, block, worklist, ready_cnt, max_idx, phi_cnt);
-#endif
   }
 
   if( phi_cnt != block->end_idx() ) {

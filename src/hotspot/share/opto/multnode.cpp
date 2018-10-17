@@ -154,7 +154,7 @@ void ProjNode::check_con() const {
   if (n->is_Start())   return;  // alas, starts can have mach. projs. also
   if (_con == SCMemProjNode::SCMEMPROJCON ) return;
 #if INCLUDE_SHENANDOAHGC
-  if (_con == ShenandoahWBMemProjNode::SWBMEMPROJCON ) return;
+  if (UseShenandoahGC && _con == ShenandoahWBMemProjNode::SWBMEMPROJCON ) return;
 #endif
   const Type* t = n->bottom_type();
   if (t == Type::TOP)  return;  // multi is dead

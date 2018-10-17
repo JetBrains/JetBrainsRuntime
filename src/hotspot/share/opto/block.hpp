@@ -442,14 +442,6 @@ class PhaseCFG : public Phase {
   void set_next_call(Block* block, Node* n, VectorSet& next_call);
   void needed_for_next_call(Block* block, Node* this_call, VectorSet& next_call);
 
-#if INCLUDE_SHENANDOAHGC
-  void replace_uses_with_shenandoah_barrier(Node* n, Block* block, Node_List& worklist, GrowableArray<int>& ready_cnt, uint max_idx, uint& phi_cnt);
-  int replace_uses_with_shenandoah_barrier_helper(Node* n, Node* use, Node* val, Block* block, Block* null_check_block);
-  bool replace_uses_with_shenandoah_barrier_skip_use(Node* use, Node* val);
-#endif
-
-  void push_ready_nodes(Node* n, Node* m, Block* block, GrowableArray<int>& ready_cnt, Node_List& worklist, uint max_idx, int c);
-
   // Perform basic-block local scheduling
   Node* select(Block* block, Node_List& worklist, GrowableArray<int>& ready_cnt, VectorSet& next_call, uint sched_slot,
                intptr_t* recacl_pressure_nodes);
