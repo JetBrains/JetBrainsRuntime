@@ -31,7 +31,6 @@
 #include "gc/shared/gcTimer.hpp"
 #include "gc/shared/referenceProcessor.hpp"
 #include "gc/shared/referenceProcessorPhaseTimes.hpp"
-#include "gc/shared/suspendibleThreadSet.hpp"
 
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
 #include "gc/shenandoah/shenandoahConcurrentMark.inline.hpp"
@@ -201,7 +200,7 @@ public:
   void work(uint worker_id) {
     ShenandoahHeap* heap = ShenandoahHeap::heap();
     ShenandoahConcurrentWorkerSession worker_session(worker_id);
-    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
+    ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahObjToScanQueue* q = _cm->get_queue(worker_id);
     ReferenceProcessor* rp;
     if (heap->process_references()) {
@@ -940,7 +939,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
   while (q != NULL) {
     if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
-      SuspendibleThreadSetLeaver stsl(ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetLeaver stsl(ShenandoahSuspendibleWorkers);
       while (!terminator->offer_termination(&tt));
       return;
     }
@@ -966,7 +965,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
   while (true) {
     if (CANCELLABLE && heap->check_cancelled_gc_and_yield()) {
       ShenandoahCancelledTerminatorTerminator tt;
-      SuspendibleThreadSetLeaver stsl(ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetLeaver stsl(ShenandoahSuspendibleWorkers);
       while (!terminator->offer_termination(&tt));
       return;
     }
@@ -989,7 +988,7 @@ void ShenandoahConcurrentMark::mark_loop_work(T* cl, jushort* live_data, uint wo
     if (work == 0) {
       // No work encountered in current stride, try to terminate.
       // Need to leave the STS here otherwise it might block safepoints.
-      SuspendibleThreadSetLeaver stsl(CANCELLABLE && ShenandoahSuspendibleWorkers);
+      ShenandoahSuspendibleThreadSetLeaver stsl(CANCELLABLE && ShenandoahSuspendibleWorkers);
       ShenandoahTerminationTimingsTracker term_tracker(worker_id);
       if (terminator->offer_termination()) return;
     }

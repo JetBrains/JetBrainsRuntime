@@ -25,7 +25,6 @@
 
 #include "gc/shared/referenceProcessor.hpp"
 #include "gc/shared/referenceProcessorPhaseTimes.hpp"
-#include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "gc/shenandoah/shenandoahBarrierSet.hpp"
@@ -218,8 +217,8 @@ public:
 
   void work(uint worker_id) {
     ShenandoahConcurrentWorkerSession worker_session(worker_id);
+    ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahEvacOOMScope oom_evac_scope;
-    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahTraversalGC* traversal_gc = _heap->traversal_gc();
 
     // Drain all outstanding work in queues.
@@ -497,8 +496,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
   while (q != NULL) {
     if (_heap->check_cancelled_gc_and_yield(sts_yield)) {
       ShenandoahCancelledTerminatorTerminator tt;
-      SuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
       ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+      ShenandoahSuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
       while (!terminator->offer_termination(&tt));
       return;
     }
@@ -544,8 +543,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 
     if (work == 0) {
       // No more work, try to terminate
-      SuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
       ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+      ShenandoahSuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
       ShenandoahTerminationTimingsTracker term_tracker(worker_id);
       if (terminator->offer_termination()) return;
     }
@@ -555,8 +554,8 @@ void ShenandoahTraversalGC::main_loop_work(T* cl, jushort* live_data, uint worke
 bool ShenandoahTraversalGC::check_and_handle_cancelled_gc(ShenandoahTaskTerminator* terminator, bool sts_yield) {
   if (_heap->cancelled_gc()) {
     ShenandoahCancelledTerminatorTerminator tt;
-    SuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
     ShenandoahEvacOOMScopeLeaver oom_scope_leaver;
+    ShenandoahSuspendibleThreadSetLeaver stsl(sts_yield && ShenandoahSuspendibleWorkers);
     while (! terminator->offer_termination(&tt));
     return true;
   }
@@ -875,8 +874,8 @@ public:
   void work(uint worker_id) {
     assert(worker_id == 0, "The code below is single-threaded, only one worker is expected");
     ShenandoahParallelWorkerSession worker_session(worker_id);
+    ShenandoahSuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
     ShenandoahEvacOOMScope oom_evac_scope;
-    SuspendibleThreadSetJoiner stsj(ShenandoahSuspendibleWorkers);
 
     ShenandoahHeap* sh = ShenandoahHeap::heap();
 
