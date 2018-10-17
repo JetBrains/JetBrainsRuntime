@@ -1043,7 +1043,7 @@ class JvmtiObjectAllocEventMark : public JvmtiClassEventMark  {
  public:
    JvmtiObjectAllocEventMark(JavaThread *thread, oop obj) : JvmtiClassEventMark(thread, oop_to_klass(obj)) {
      _jobj = (jobject)to_jobject(obj);
-     _size = obj->size() * wordSize;
+     _size = (obj->size() + Universe::heap()->oop_extra_words()) * wordSize;
    };
    jobject jni_jobject() { return _jobj; }
    jlong size() { return _size; }
