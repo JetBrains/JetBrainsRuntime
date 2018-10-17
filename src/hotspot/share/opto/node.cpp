@@ -2468,3 +2468,14 @@ const Type* TypeNode::Value(PhaseGVN* phase) const { return _type; }
 uint TypeNode::ideal_reg() const {
   return _type->ideal_reg();
 }
+
+bool Node::eqv_uncast(const Node* n) const {
+  if (UseShenandoahGC) {
+    BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
+    Node* obj1 = bs->step_over_gc_barrier(const_cast<Node*>(this));
+    Node* obj2 = bs->step_over_gc_barrier(const_cast<Node*>(n));
+    return (obj1->uncast() == obj2->uncast());
+  } else {
+    return (this->uncast() == n->uncast());
+  }
+}
