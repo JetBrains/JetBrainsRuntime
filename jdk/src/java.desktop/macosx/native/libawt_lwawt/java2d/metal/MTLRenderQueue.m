@@ -455,27 +455,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
                 mtlc = MTLContext_SetSurfaces(env, pSrc, pDst);
 
-                BMTLSDOps* oldDstOps = dstOps;
                 dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
 
                 if (dstOps != NULL) {
                     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
                     MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-                    if (layer != NULL) {
-                        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                            //AWT_ASSERT_APPKIT_THREAD;
-                            MTLRenderer_BeginFrame(dstCGLOps->configInfo->context->ctxInfo, layer);
-                        }];
-                    } else {
-                        dstOps = oldDstOps;
-                        MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-                        MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-                        if (layer != NULL) {
-                            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                                MTLRenderer_BeginFrame(dstCGLOps->configInfo->context->ctxInfo, layer);
-                            }];
-                        }
-                    }
+                    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                        MTLRenderer_BeginFrame(dstCGLOps->configInfo->context->ctxInfo, layer);
+                    }];
                 }
             }
             break;
@@ -487,7 +474,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     RESET_PREVIOUS_OP();
                 }
                 mtlc = MTLSD_SetScratchSurface(env, pConfigInfo);
-               // dstOps = NULL;
+                dstOps = NULL;
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:

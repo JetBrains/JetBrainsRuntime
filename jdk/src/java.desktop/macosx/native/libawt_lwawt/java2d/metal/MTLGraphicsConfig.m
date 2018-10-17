@@ -254,7 +254,6 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     ctxinfo->mtlUniformBuffer = [ctxinfo->mtlDevice newBufferWithLength:sizeof(struct FrameUniforms)
                                           options:MTLResourceCPUCacheModeWriteCombined];
     ctxinfo->mtlCommandBuffer = nil;
-    ctxinfo->mtlDrawable = nil;
 
     // Create command queue
     ctxinfo->mtlCommandQueue = [ctxinfo->mtlDevice newCommandQueue];

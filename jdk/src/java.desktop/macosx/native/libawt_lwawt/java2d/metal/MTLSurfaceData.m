@@ -123,22 +123,6 @@ MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
 
     // it seems to be necessary to explicitly flush between context changes
     MTLContext *currentContext = MTLRenderQueue_GetCurrentContext();
-    if (currentContext != NULL) {
-        if (dstOps != NULL) {
-            MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-            MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-
-          //  if (layer != NULL) {
-          //      [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-          //          [layer endFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
-          //      }];
-          //  }
-        } else {
-          //          fprintf(stderr, "MTLSD_Flush: dstOps=NULL\n");
-          return JNI_FALSE;
-        }
-       // j2d_glFlush();
-    }
 
     if (dstOps->drawableType == MTLSD_FBOBJECT) {
         // first make sure we have a current context (if the context isn't
@@ -183,8 +167,6 @@ MTLSD_Flush(JNIEnv *env)
         MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
         if (layer != NULL) {
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                AWT_ASSERT_APPKIT_THREAD;
-             //   [layer endFrameCtx:dstCGLOps->configInfo->context->ctxInfo];
                 [layer blitTexture];
             }];
         }

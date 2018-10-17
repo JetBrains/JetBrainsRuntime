@@ -50,10 +50,9 @@ void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer) {
         return;
     }
 
-    fprintf(stderr, "MTLRenderer_BeginFrame\n");
-
-    if (ctx->mtlCommandBuffer) {
+    if (ctx->mtlCommandBuffer && layer != NULL) {
         [layer blitTexture];
+        return;
     }
 
     vector_float4 X = {1, 0, 0, 0};
@@ -78,7 +77,6 @@ void MTLRenderer_FillParallelogramMetal(
         return;
     }
 
-    fprintf(stderr, "MTLRenderer_FillParallelogramMetal\n");
     ctx->mtlEmptyCommandBuffer = NO;
    // fprintf(stderr, "----fillParallelogramX----\n");
 

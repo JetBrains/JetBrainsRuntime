@@ -30,6 +30,7 @@
 #include "jlong.h"
 #include "jni_util.h"
 #include "MTLSurfaceData.h"
+#import "ThreadUtilities.h"
 
 /**
  * The following methods are implemented in the windowing system (i.e. GLX
@@ -423,13 +424,14 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFBObject
             if (ctx == NULL) {
               NSLog(@"ctx is NULL");
             } else {
-              MTLTextureDescriptor *textureDescriptor =
-                [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm
-                                                                   width: width
-                                                                  height: height
-                                                               mipmapped: NO];
-
-              ctx->mtlFrameBuffer = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
+                [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+                        MTLTextureDescriptor *textureDescriptor =
+                                    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm
+                                                                                       width: width
+                                                                                      height: height
+                                                                                   mipmapped: NO];
+                        ctx->mtlFrameBuffer = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
+                }];
             }
         }
      }

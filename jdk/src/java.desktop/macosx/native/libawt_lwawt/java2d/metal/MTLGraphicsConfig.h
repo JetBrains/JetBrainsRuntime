@@ -88,7 +88,6 @@ typedef struct _MTLCtxInfo {
     id<MTLCommandBuffer>        mtlCommandBuffer;
     id<MTLTexture>              mtlFrameBuffer;
     struct FrameUniforms*       mtlUniforms;
-    id<CAMetalDrawable>         mtlDrawable;
     BOOL                        mtlEmptyCommandBuffer;
     id<MTLBuffer>               mtlVertexBuffer;
     NSView*                     scratchSurface;

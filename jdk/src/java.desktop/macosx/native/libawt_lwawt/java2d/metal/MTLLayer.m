@@ -41,8 +41,7 @@ static struct Vertex verts[N*3];
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
-//fprintf(stderr, "MTLayer.initWithJavaLayer\n");
-AWT_ASSERT_APPKIT_THREAD;
+    AWT_ASSERT_APPKIT_THREAD;
     // Initialize ourselves
     self = [super init];
     if (self == nil) return self;
@@ -76,15 +75,33 @@ AWT_ASSERT_APPKIT_THREAD;
     if (self.ctx == NULL) {
         return;
     }
-fprintf(stderr, "blitTexture\n");
-    if (ctx->mtlCommandBuffer) {
-    // Encode render command.
-        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
-        if (!ctx->mtlRenderPassDesc) {
-            ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
-        }
 
-        if (ctx->mtlRenderPassDesc) {
+    @autoreleasepool {
+        if (ctx->mtlCommandBuffer) {
+            self.device = ctx->mtlDevice;
+            self.pixelFormat = MTLPixelFormatBGRA8Unorm;
+            self.framebufferOnly = NO;
+
+            self.drawableSize =
+                CGSizeMake(ctx->mtlFrameBuffer.width,
+                           ctx->mtlFrameBuffer.height);
+
+            id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
+            if (mtlDrawable == nil) {
+                [ctx->mtlCommandBuffer release];
+                ctx->mtlCommandBuffer = nil;
+                ctx->mtlEmptyCommandBuffer = YES;
+                if (ctx->mtlRenderPassDesc) {
+                    [ctx->mtlRenderPassDesc release];
+                    ctx->mtlRenderPassDesc = nil;
+                }
+                return;
+            }
+
+            if (!ctx->mtlRenderPassDesc) {
+                ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
+            }
+
 
             verts[0].position[0] = -1.0;
             verts[0].position[1] = 1.0;
@@ -139,7 +156,7 @@ fprintf(stderr, "blitTexture\n");
             id<MTLRenderCommandEncoder>  mtlEncoder =
                 [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
             MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-            //fprintf(stderr, "%f %f \n", self.drawableSize.width, self.drawableSize.height);
+
             [mtlEncoder setViewport:vp];
             [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
             [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
@@ -152,21 +169,18 @@ fprintf(stderr, "blitTexture\n");
 
             [ctx->mtlRenderPassDesc release];
             ctx->mtlRenderPassDesc = nil;
+
+            if (!ctx->mtlEmptyCommandBuffer) {
+                [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
+                [ctx->mtlCommandBuffer commit];
+            }
+
+
+            [ctx->mtlCommandBuffer release];
+            ctx->mtlCommandBuffer = nil;
+            ctx->mtlEmptyCommandBuffer = YES;
         }
-
-        if (!ctx->mtlEmptyCommandBuffer) {
-            [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
-            [ctx->mtlCommandBuffer commit];
-        }
-
-
-        [ctx->mtlCommandBuffer release];
-        ctx->mtlCommandBuffer = nil;
-        ctx->mtlEmptyCommandBuffer = YES;
     }
-
-    if (ctx->mtlDrawable) [ctx->mtlDrawable release];
-    ctx->mtlDrawable = nil;
 }
 
 - (void) dealloc {
@@ -208,7 +222,7 @@ Java_sun_java2d_metal_MTLLayer_validate
 (JNIEnv *env, jclass cls, jlong layerPtr, jobject surfaceData)
 {
     MTLLayer *layer = OBJC(layerPtr);
-fprintf(stderr, "Java_sun_java2d_metal_MTLLayer_validate\n");
+
     if (surfaceData != NULL) {
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.bufferWidth = bmtlsdo->width;
@@ -225,10 +239,10 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLLayer_blitTexture
 (JNIEnv *env, jclass cls, jlong layerPtr)
 {
-    fprintf(stderr, "Java_sun_java2d_metal_MTLLayer_blitTexture\n");
     MTLLayer *layer = jlong_to_ptr(layerPtr);
-
-    [layer blitTexture];
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        [layer blitTexture];
+    }];
 }
 
 JNIEXPORT void JNICALL
