@@ -133,6 +133,15 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
 }
 
 
+static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+    {-1.0, 1.0, 0.0, 0, 0, 0, 0, 0.0, 0.0},
+    {1.0, 1.0, 0.0, 0, 0, 0, 0, 1.0, 0.0},
+    {1.0, -1.0, 0.0, 0, 0, 0, 0, 1.0, 1.0},
+    {1.0, -1.0, 0.0, 0, 0, 0, 0, 1.0, 1.0},
+    {-1.0, -1.0, 0.0, 0, 0, 0, 0, 0.0, 1.0},
+    {-1.0, 1.0, 0.0, 0, 0, 0, 0, 0.0, 0.0}
+};
+
 
 @implementation MTLGraphicsConfigUtil
 + (void) _getMTLConfigInfo: (NSMutableArray *)argValue {
@@ -193,6 +202,9 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
     ctxinfo->mtlDevice = [CGDirectDisplayCopyCurrentMetalDevice(displayID) retain];
     ctxinfo->mtlShadersLib = [mtlShadersLib retain];
 
+    ctxinfo->mtlVertexBuffer = [[ctxinfo->mtlDevice  newBufferWithBytes:verts
+                                                           length:sizeof(verts)
+                                                           options:MTLResourceCPUCacheModeDefaultCache] retain];
 
     NSError *error = nil;
     NSLog(@"Load shader library from %@", mtlShadersLib);

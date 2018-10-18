@@ -28,9 +28,6 @@
 #import "MTLSurfaceData.h"
 
 
-static const int N = 2;
-static struct Vertex verts[N*3];
-
 @implementation MTLLayer
 
 
@@ -69,8 +66,6 @@ static struct Vertex verts[N*3];
     return self;
 }
 
-
-
 - (void) blitTexture {
     if (self.ctx == NULL) {
         return;
@@ -101,49 +96,6 @@ static struct Vertex verts[N*3];
             if (!ctx->mtlRenderPassDesc) {
                 ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
             }
-
-
-            verts[0].position[0] = -1.0;
-            verts[0].position[1] = 1.0;
-            verts[0].position[2] = 0;
-            verts[0].txtpos[0] = 0;
-            verts[0].txtpos[1] = 0;
-
-            verts[1].position[0] = 1.0;
-            verts[1].position[1] = 1.0;
-            verts[1].position[2] = 0;
-            verts[1].txtpos[0] = 1;
-            verts[1].txtpos[1] = 0;
-
-            verts[2].position[0] = 1.0;
-            verts[2].position[1] = -1.0;
-            verts[2].position[2] = 0;
-            verts[2].txtpos[0] = 1;
-            verts[2].txtpos[1] = 1;
-
-
-            verts[3].position[0] = 1.0;
-            verts[3].position[1] = -1.0;
-            verts[3].position[2] = 0;
-            verts[3].txtpos[0] = 1;
-            verts[3].txtpos[1] = 1;
-
-
-            verts[4].position[0] = -1.0;
-            verts[4].position[1] = -1.0;
-            verts[4].position[2] = 0;
-            verts[4].txtpos[0] = 0;
-            verts[4].txtpos[1] = 1;
-
-            verts[5].position[0] = -1.0;
-            verts[5].position[1] = 1.0;
-            verts[5].position[2] = 0;
-            verts[5].txtpos[0] = 0;
-            verts[5].txtpos[1] = 0;
-
-            ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
-                                                           length:sizeof(verts)
-                                                           options:MTLResourceCPUCacheModeDefaultCache];
             MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
 
             colorAttachment.texture = mtlDrawable.texture;
@@ -164,7 +116,7 @@ static struct Vertex verts[N*3];
 
             [mtlEncoder setFragmentTexture: ctx->mtlFrameBuffer atIndex: 0];
             [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
-            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
             [mtlEncoder endEncoding];
 
             [ctx->mtlRenderPassDesc release];

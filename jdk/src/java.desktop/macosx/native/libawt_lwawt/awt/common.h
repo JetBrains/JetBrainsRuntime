@@ -3,6 +3,8 @@
 
 #include <simd/SIMD.h>
 
+#define PGRAM_VERTEX_COUNT 6
+
 enum VertexAttributes {
     VertexAttributePosition = 0,
     VertexAttributeColor = 1,

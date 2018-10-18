@@ -23,9 +23,6 @@
 
 #ifndef HEADLESS
 
-
-
-
 #include <jlong.h>
 #include <jni_util.h>
 #include <math.h>
@@ -39,11 +36,6 @@
 #include "MTLRenderQueue.h"
 #include "MTLSurfaceData.h"
 #import "MTLLayer.h"
-
-
-
-static const int N = 2;
-static struct Vertex verts[N*3];
 
 void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer) {
     if (ctx == NULL) {
@@ -78,63 +70,39 @@ void MTLRenderer_FillParallelogramMetal(
     }
 
     ctx->mtlEmptyCommandBuffer = NO;
-   // fprintf(stderr, "----fillParallelogramX----\n");
 
-    verts[0].position[0] = (2.0*x/ctx->mtlFrameBuffer.width) - 1.0;
-    verts[0].position[1] = 2.0*(1.0 - y/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[0].position[2] = 0;
+    char r = (ctx->mtlColor >> 16)&(0xFF);
+    char g = (ctx->mtlColor >> 8)&0xFF;
+    char b = (ctx->mtlColor)&0xFF;
+    char a = (ctx->mtlColor >> 24)&0xFF;
 
-    verts[1].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
-    verts[1].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[1].position[2] = 0;
+    struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+    { (2.0*x/ctx->mtlFrameBuffer.width) - 1.0,
+       2.0*(1.0 - y/ctx->mtlFrameBuffer.height) - 1.0,
+       0.0, r, g, b, a, 0.0, 0.0},
 
-    verts[2].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
-    verts[2].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[2].position[2] = 0;
+    { 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0,
+      2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0,
+      0.0, r, g, b, a, 0.0, 0.0},
 
-    verts[3].position[0] = 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0;
-    verts[3].position[1] = 2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[3].position[2] = 0;
+    { 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0,
+      2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0,
+      0.0, r, g, b, a, 0.0, 0.0},
 
-    verts[4].position[0] = 2.0*(x + dx1 + dx2)/ctx->mtlFrameBuffer.width - 1.0;
-    verts[4].position[1] = 2.0*(1.0 - (y+ dy1 + dy2)/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[4].position[2] = 0;
+    { 2.0*(x+dx1)/ctx->mtlFrameBuffer.width - 1.0,
+      2.0*(1.0 - (y+dy1)/ctx->mtlFrameBuffer.height) - 1.0,
+      0.0, r, g, b, a, 0.0, 0.0},
 
-    verts[5].position[0] = 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0;
-    verts[5].position[1] = 2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0;
-    verts[5].position[2] = 0;
+    { 2.0*(x + dx1 + dx2)/ctx->mtlFrameBuffer.width - 1.0,
+      2.0*(1.0 - (y+ dy1 + dy2)/ctx->mtlFrameBuffer.height) - 1.0,
+      0.0, r, g, b, a, 0.0, 0.0},
 
-    verts[0].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[0].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[0].color[2] = (ctx->mtlColor)&0xFF;
-    verts[0].color[3] = (ctx->mtlColor >> 24)&0xFF;
+    { 2.0*(x+dx2)/ctx->mtlFrameBuffer.width - 1.0,
+      2.0*(1.0 - (y+dy2)/ctx->mtlFrameBuffer.height) - 1.0,
+      0.0, r, g, b, a, 0.0, 0.0}};
 
-    verts[1].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[1].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[1].color[2] = (ctx->mtlColor)&0xFF;
-    verts[1].color[3] = (ctx->mtlColor >> 24)&0xFF;
 
-    verts[2].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[2].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[2].color[2] = (ctx->mtlColor)&0xFF;
-    verts[2].color[3] = (ctx->mtlColor >> 24)&0xFF;
-
-    verts[3].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[3].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[3].color[2] = (ctx->mtlColor)&0xFF;
-    verts[3].color[3] = (ctx->mtlColor >> 24)&0xFF;
-
-    verts[4].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[4].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[4].color[2] = (ctx->mtlColor)&0xFF;
-    verts[4].color[3] = (ctx->mtlColor >> 24)&0xFF;
-
-    verts[5].color[0] = (ctx->mtlColor >> 16)&(0xFF);
-    verts[5].color[1] = (ctx->mtlColor >> 8)&0xFF;
-    verts[5].color[2] = (ctx->mtlColor)&0xFF;
-    verts[5].color[3] = (ctx->mtlColor >> 24)&0xFF;
-
-    ctx->mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
+    id<MTLBuffer>  mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
                                          length:sizeof(verts)
                                         options:
                                                 MTLResourceCPUCacheModeDefaultCache];
@@ -162,8 +130,8 @@ void MTLRenderer_FillParallelogramMetal(
         [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
                           offset:0 atIndex:FrameUniformBuffer];
 
-        [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
-        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:N * 3];
+        [mtlEncoder setVertexBuffer:mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
         [mtlEncoder endEncoding];
     }
 
