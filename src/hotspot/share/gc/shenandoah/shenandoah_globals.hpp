@@ -259,7 +259,7 @@
   experimental(bool, ShenandoahPreclean, true,                              \
               "Do preclean phase before final mark")                        \
                                                                             \
-  experimental(bool, ShenandoahSuspendibleWorkers, true,                    \
+  experimental(bool, ShenandoahSuspendibleWorkers, false,                   \
               "Suspend concurrent GC worker threads at safepoints")         \
                                                                             \
   experimental(uintx, ShenandoahControlIntervalMin, 1,                      \
