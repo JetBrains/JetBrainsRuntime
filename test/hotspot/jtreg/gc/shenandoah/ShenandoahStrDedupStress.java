@@ -133,13 +133,12 @@ public class ShenandoahStrDedupStress {
     public int    id()  { return id;  }
   }
 
-  private static void generateStrings(ArrayList<StringAndId> strs, int unique_strs) {
+  // Generate uniqueStrings number of strings
+  private static void generateStrings(ArrayList<StringAndId> strs, int uniqueStrings) {
     Random rn = new Random();
-    for (int u = 0; u < unique_strs; u ++) {
-      int n = Math.abs(rn.nextInt() % 2);
-      for (int index = 0; index < n; index ++) {
-          strs.add(new StringAndId("Unique String " + u, u));
-      }
+    for (int u = 0; u < uniqueStrings; u ++) {
+      int n = rn.nextInt(uniqueStrings);
+      strs.add(new StringAndId("Unique String " + n, n));
     }
   }
 
@@ -150,15 +149,15 @@ public class ShenandoahStrDedupStress {
 
     for (StringAndId item : strs) {
       total ++;
-      StringAndId existing_item = seen.get(getValue(item.str()));
-      if (existing_item == null) {
+      StringAndId existingItem = seen.get(getValue(item.str()));
+      if (existingItem == null) {
         seen.put(getValue(item.str()), item);
       } else {
-        if (item.id() != existing_item.id() ||
-            !item.str().equals(existing_item.str())) {
+        if (item.id() != existingItem.id() ||
+            !item.str().equals(existingItem.str())) {
           System.out.println("StringDedup error:");
-          System.out.println("id: " + item.id() + " != " + existing_item.id());
-          System.out.println("or String: " + item.str() + " != " + existing_item.str());
+          System.out.println("id: " + item.id() + " != " + existingItem.id());
+          System.out.println("or String: " + item.str() + " != " + existingItem.str());
           throw new RuntimeException("StringDedup Test failed");
         } else {
           dedup ++;
@@ -186,19 +185,19 @@ public class ShenandoahStrDedupStress {
       throw new RuntimeException("Can not find Shenandoah GC cycle mbean");
     }
 
-    long gen_iterations = TARGET_STRINGS * 2 / UNIQUE_STRINGS;
-
-    for(long index = 0; index < gen_iterations; index ++) {
+    // Generate roughly TARGET_STRINGS strings, only UNIQUE_STRINGS are unique
+    long genIters = TARGET_STRINGS / UNIQUE_STRINGS;
+    for(long index = 0; index < genIters; index ++) {
       generateStrings(astrs, UNIQUE_STRINGS);
     }
 
     long cycleBeforeRewrite = gcCycleMBean.getCollectionCount();
 
     for (long loop = 1; loop < TARGET_OVERWRITES; loop ++) {
-      int arr_size = astrs.size();
-      int index = Math.abs(rn.nextInt()) % arr_size;
+      int arrSize = astrs.size();
+      int index = rn.nextInt(arrSize);
       StringAndId item = astrs.get(index);
-      int n = Math.abs(rn.nextInt() % UNIQUE_STRINGS);
+      int n = rn.nextInt(UNIQUE_STRINGS);
       item.str = "Unique String " + n;
       item.id = n;
 
