@@ -80,7 +80,9 @@ class ShenandoahEvacOOMHandler {
 private:
   static const jint OOM_MARKER_MASK;
 
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile jint));
   volatile jint _threads_in_evac;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
 
   void wait_for_no_evac_threads();
 
