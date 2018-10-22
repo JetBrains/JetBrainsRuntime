@@ -1421,10 +1421,6 @@ void ShenandoahHeap::op_final_mark() {
 
       make_parsable(true);
 
-      if (ShenandoahVerify) {
-        verifier()->verify_after_concmark();
-      }
-
       trash_cset_regions();
 
       {
@@ -1436,9 +1432,29 @@ void ShenandoahHeap::op_final_mark() {
 
         _free_set->rebuild();
       }
+    }
+
+    // If collection set has candidates, start evacuation.
+    // Otherwise, bypass the rest of the cycle.
+    if (!collection_set()->is_empty()) {
+      ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
 
       if (ShenandoahVerify) {
         verifier()->verify_before_evacuation();
+      }
+
+      set_evacuation_in_progress(true);
+      // From here on, we need to update references.
+      set_has_forwarded_objects(true);
+
+      evacuate_and_update_roots();
+
+      if (ShenandoahPacing) {
+        pacer()->setup_for_evac();
+      }
+    } else {
+      if (ShenandoahVerify) {
+        verifier()->verify_after_concmark();
       }
 
       if (VerifyAfterGC) {
@@ -1446,20 +1462,6 @@ void ShenandoahHeap::op_final_mark() {
       }
     }
 
-    // If collection set has candidates, start evacuation.
-    // Otherwise, bypass the rest of the cycle.
-    if (!collection_set()->is_empty()) {
-      set_evacuation_in_progress(true);
-      // From here on, we need to update references.
-      set_has_forwarded_objects(true);
-
-      ShenandoahGCPhase init_evac(ShenandoahPhaseTimings::init_evac);
-      evacuate_and_update_roots();
-    }
-
-    if (ShenandoahPacing) {
-      pacer()->setup_for_evac();
-    }
   } else {
     concurrent_mark()->cancel();
     stop_concurrent_marking();
