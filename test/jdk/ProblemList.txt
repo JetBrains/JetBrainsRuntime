@@ -905,6 +905,8 @@ sun/tools/jhsdb/HeapDumpTest.java                               8193639 solaris-
 
 com/sun/jndi/ldap/DeadSSLLdapTimeoutTest.java                   8169942 linux-i586,macosx-all,windows-x64
 
+com/sun/jndi/dns/ConfigTests/PortUnreachable.java               7164518 macosx-all
+
 javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-all
 
 ############################################################################
