@@ -357,12 +357,12 @@ enum SignatureScheme {
                 } else if (SSLLogger.isOn &&
                         SSLLogger.isOn("ssl,handshake,verbose")) {
                     SSLLogger.finest(
-                        "Ignore disabled signature sheme: " + ss.name);
+                        "Ignore disabled signature scheme: " + ss.name);
                 }
             } else if (SSLLogger.isOn &&
                     SSLLogger.isOn("ssl,handshake,verbose")) {
                 SSLLogger.finest(
-                    "Ignore inactive signature sheme: " + ss.name);
+                    "Ignore inactive signature scheme: " + ss.name);
             }
         }
 
