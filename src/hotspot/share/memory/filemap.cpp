@@ -994,8 +994,8 @@ bool FileMapInfo::map_heap_data(MemRegion **heap_mem, int first,
 }
 
 bool FileMapInfo::verify_mapped_heap_regions(int first, int num) {
-  for (int i = first;
-           i <= first + num; i++) {
+  assert(num > 0, "sanity");
+  for (int i = first; i < first + num; i++) {
     if (!verify_region_checksum(i)) {
       return false;
     }
@@ -1029,6 +1029,7 @@ void FileMapInfo::dealloc_archive_heap_regions(MemRegion* regions, int num) {
 #endif // INCLUDE_CDS_JAVA_HEAP
 
 bool FileMapInfo::verify_region_checksum(int i) {
+  assert(i >= 0 && i < MetaspaceShared::n_regions, "invalid region");
   if (!VerifySharedSpaces) {
     return true;
   }
