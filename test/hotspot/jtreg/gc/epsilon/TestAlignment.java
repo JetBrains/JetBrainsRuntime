@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2002, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,35 +21,24 @@
  * questions.
  */
 
-/*
- * @test
- * @bug 4739870 8205593
- * @summary Make sure that a new line may act as a separator between
- * link and label.
- * @author jamieh
- * @library ../lib
- * @modules jdk.javadoc/jdk.javadoc.internal.tool
- * @build JavadocTester
- * @run main TestNewLineInLink
+/**
+ * @test TestAlignment
+ * @key gc
+ * @requires vm.gc.Epsilon & !vm.graal.enabled
+ * @summary Check Epsilon runs fine with (un)usual alignments
+ * @bug 8212005
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -Xmx128m -XX:+UseEpsilonGC -XX:+UseTLAB TestAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -Xmx128m -XX:+UseEpsilonGC -XX:-UseTLAB TestAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -Xmx128m -XX:+UseEpsilonGC -XX:+UseTLAB -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16 TestAlignment
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -Xmx128m -XX:+UseEpsilonGC -XX:-UseTLAB -XX:+IgnoreUnrecognizedVMOptions -XX:ObjectAlignmentInBytes=16 TestAlignment
  */
 
-public class TestNewLineInLink extends JavadocTester {
+public class TestAlignment {
+    static Object sink;
 
-    public static void main(String... args) throws Exception {
-        TestNewLineInLink tester = new TestNewLineInLink();
-        tester.runTests();
-    }
-
-    @Test
-    void test() {
-        javadoc("-d", "out",
-                "-source", "8",
-                "-sourcepath", testSrc,
-                "-linkoffline", "http://www.java.sun.com/j2se/1.4/docs/api", testSrc("jdk"),
-                "testNewLineInLink");
-        checkExit(Exit.OK);
-
-        checkOutput(Output.OUT, false,
-                "illegal character");
+    public static void main(String[] args) throws Exception {
+        for (int c = 0; c < 1000; c++) {
+            sink = new byte[c];
+        }
     }
 }
