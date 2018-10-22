@@ -334,16 +334,27 @@ void PhaseIdealLoop::clone_loop_predicates_fix_mem(ProjNode* dom_proj , ProjNode
           }
         }
         if (phi == NULL) {
+          const TypePtr* adr_type = dom_use->adr_type();
+          int alias = C->get_alias_index(adr_type);
           Node* call = r->unique_ctrl_out();
           Node* mem = call->in(TypeFunc::Memory);
           MergeMemNode* mm = NULL;
           if (mem->is_MergeMem()) {
             mm = mem->clone()->as_MergeMem();
+            if (adr_type == TypePtr::BOTTOM) {
+              mem = mem->as_MergeMem()->base_memory();
+            } else {
+              mem = mem->as_MergeMem()->memory_at(alias);
+            }
           } else {
             mm = MergeMemNode::make(mem);
           }
-          phi = PhiNode::make(r, mem, Type::MEMORY, dom_use->adr_type());
-          mm->set_memory_at(C->get_alias_index(phi->adr_type()), phi);
+          phi = PhiNode::make(r, mem, Type::MEMORY, adr_type);
+          if (adr_type == TypePtr::BOTTOM) {
+            mm->set_base_memory(phi);
+          } else {
+            mm->set_memory_at(alias, phi);
+          }
           if (loop_phase != NULL) {
             loop_phase->register_new_node(mm, r);
             loop_phase->register_new_node(phi, r);
