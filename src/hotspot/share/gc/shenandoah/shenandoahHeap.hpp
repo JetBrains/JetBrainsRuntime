@@ -59,8 +59,11 @@ class VMStructs;
 
 class ShenandoahRegionIterator : public StackObj {
 private:
-  volatile size_t _index;
   ShenandoahHeap* _heap;
+
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
+  volatile size_t _index;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
 
   // No implicit copying: iterators should be passed by reference to capture the state
   ShenandoahRegionIterator(const ShenandoahRegionIterator& that);
@@ -195,9 +198,11 @@ public:
 //
 private:
            size_t _initial_size;
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
   volatile size_t _used;
   volatile size_t _committed;
   volatile size_t _bytes_allocated_since_gc_start;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
 
 public:
   void increase_used(size_t bytes);

@@ -210,34 +210,49 @@ private:
   static size_t MaxTLABSizeBytes;
   static size_t MaxTLABSizeWords;
 
-  // Global alloaction counter, increased for each allocation
-  // under Shenandoah heap lock
-  static uint64_t AllocSeqNum;
+  // Global allocation counter, increased for each allocation under Shenandoah heap lock.
+  // Padded to avoid false sharing with the read-only fields above.
+  struct PaddedAllocSeqNum {
+    DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(uint64_t));
+    uint64_t value;
+    DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
 
+    PaddedAllocSeqNum() {
+      // start with 1, reserve 0 for uninitialized value
+      value = 1;
+    }
+  };
+
+  static PaddedAllocSeqNum _alloc_seq_num;
+
+  // Never updated fields
   ShenandoahHeap* _heap;
-  size_t _region_number;
-  volatile size_t _live_data;
+  ShenandoahPacer* _pacer;
   MemRegion _reserved;
+  size_t _region_number;
 
+  // Rarely updated fields
+  HeapWord* _new_top;
+  size_t _critical_pins;
+  double _empty_time;
+
+  // Seldom updated fields
+  RegionState _state;
+
+  // Frequently updated fields
   size_t _tlab_allocs;
   size_t _gclab_allocs;
   size_t _shared_allocs;
 
-  HeapWord* _new_top;
+  uint64_t _seqnum_first_alloc_mutator;
+  uint64_t _seqnum_first_alloc_gc;
+  uint64_t _seqnum_last_alloc_mutator;
+  uint64_t _seqnum_last_alloc_gc;
 
-  size_t _critical_pins;
+  volatile size_t _live_data;
 
-  // Seq numbers are used to drive heuristics decisions for collection.
-  // They are set when the region is used for allocation.
-  uint64_t  _seqnum_first_alloc_mutator;
-  uint64_t  _seqnum_first_alloc_gc;
-  uint64_t  _seqnum_last_alloc_mutator;
-  uint64_t  _seqnum_last_alloc_gc;
-
-  RegionState _state;
-  double _empty_time;
-
-  ShenandoahPacer* _pacer;
+  // Claim some space at the end to protect next region
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, 0);
 
 public:
   ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start, size_t size_words, size_t index, bool committed);
@@ -324,7 +339,7 @@ public:
 
   static uint64_t seqnum_current_alloc() {
     // Last used seq number
-    return AllocSeqNum - 1;
+    return _alloc_seq_num.value - 1;
   }
 
   size_t region_number() const;

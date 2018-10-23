@@ -81,9 +81,12 @@ private:
   ShenandoahSharedFlag _heap_changed;
   ShenandoahSharedFlag _do_counters_update;
   ShenandoahSharedFlag _force_counters_update;
-  volatile size_t _allocs_seen;
   GCCause::Cause _explicit_gc_cause;
   ShenandoahHeap::ShenandoahDegenPoint _degen_point;
+
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
+  volatile size_t _allocs_seen;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, 0);
 
   bool check_cancellation_or_degen(ShenandoahHeap::ShenandoahDegenPoint point);
   void service_concurrent_normal_cycle(GCCause::Cause cause);

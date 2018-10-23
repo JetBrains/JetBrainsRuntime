@@ -52,27 +52,26 @@ size_t ShenandoahHeapRegion::HumongousThresholdWords = 0;
 size_t ShenandoahHeapRegion::MaxTLABSizeBytes = 0;
 size_t ShenandoahHeapRegion::MaxTLABSizeWords = 0;
 
-// start with 1, reserve 0 for uninitialized value
-uint64_t ShenandoahHeapRegion::AllocSeqNum = 1;
+ShenandoahHeapRegion::PaddedAllocSeqNum ShenandoahHeapRegion::_alloc_seq_num;
 
 ShenandoahHeapRegion::ShenandoahHeapRegion(ShenandoahHeap* heap, HeapWord* start,
                                            size_t size_words, size_t index, bool committed) :
   _heap(heap),
-  _region_number(index),
-  _live_data(0),
+  _pacer(ShenandoahPacing ? heap->pacer() : NULL),
   _reserved(MemRegion(start, size_words)),
+  _region_number(index),
+  _new_top(NULL),
+  _critical_pins(0),
+  _empty_time(os::elapsedTime()),
+  _state(committed ? _empty_committed : _empty_uncommitted),
   _tlab_allocs(0),
   _gclab_allocs(0),
   _shared_allocs(0),
-  _new_top(NULL),
-  _critical_pins(0),
   _seqnum_first_alloc_mutator(0),
   _seqnum_first_alloc_gc(0),
   _seqnum_last_alloc_mutator(0),
   _seqnum_last_alloc_gc(0),
-  _state(committed ? _empty_committed : _empty_uncommitted),
-  _empty_time(os::elapsedTime()),
-  _pacer(ShenandoahPacing ? heap->pacer() : NULL) {
+  _live_data(0) {
 
   ContiguousSpace::initialize(_reserved, true, committed);
 }
@@ -343,7 +342,7 @@ void ShenandoahHeapRegion::reset_alloc_metadata_to_shared() {
     _tlab_allocs = 0;
     _gclab_allocs = 0;
     _shared_allocs = used() >> LogHeapWordSize;
-    uint64_t next = AllocSeqNum++;
+    uint64_t next = _alloc_seq_num.value++;
     _seqnum_first_alloc_mutator = next;
     _seqnum_last_alloc_mutator = next;
     _seqnum_first_alloc_gc = 0;

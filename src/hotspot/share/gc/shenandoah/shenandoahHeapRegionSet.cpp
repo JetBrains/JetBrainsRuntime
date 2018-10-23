@@ -32,7 +32,7 @@
 #include "utilities/copy.hpp"
 
 ShenandoahHeapRegionSetIterator::ShenandoahHeapRegionSetIterator(const ShenandoahHeapRegionSet* const set) :
-        _set(set), _current_index(0), _heap(ShenandoahHeap::heap()) {}
+        _set(set), _heap(ShenandoahHeap::heap()), _current_index(0) {}
 
 void ShenandoahHeapRegionSetIterator::reset(const ShenandoahHeapRegionSet* const set) {
   _set = set;

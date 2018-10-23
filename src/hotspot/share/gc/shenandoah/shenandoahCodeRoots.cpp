@@ -151,11 +151,11 @@ public:
   }
 };
 
-volatile int ShenandoahCodeRoots::_recorded_nms_lock;
+ShenandoahCodeRoots::PaddedLock ShenandoahCodeRoots::_recorded_nms_lock;
 GrowableArray<ShenandoahNMethod*>* ShenandoahCodeRoots::_recorded_nms;
 
 void ShenandoahCodeRoots::initialize() {
-  _recorded_nms_lock = 0;
+  _recorded_nms_lock._lock = 0;
   _recorded_nms = new (ResourceObj::C_HEAP, mtGC) GrowableArray<ShenandoahNMethod*>(100, true, mtGC);
 }
 

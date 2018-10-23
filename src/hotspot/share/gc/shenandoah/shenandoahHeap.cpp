@@ -2587,12 +2587,12 @@ void ShenandoahHeap::leave_evacuation() {
 }
 
 ShenandoahRegionIterator::ShenandoahRegionIterator() :
-  _index(0),
-  _heap(ShenandoahHeap::heap()) {}
+  _heap(ShenandoahHeap::heap()),
+  _index(0) {}
 
 ShenandoahRegionIterator::ShenandoahRegionIterator(ShenandoahHeap* heap) :
-  _index(0),
-  _heap(heap) {}
+  _heap(heap),
+  _index(0) {}
 
 void ShenandoahRegionIterator::reset() {
   _index = 0;
