@@ -1320,31 +1320,29 @@ void PhaseIdealLoop::split_if_with_blocks_post(Node *n, bool last_round) {
   }
 
   // Two identical ifs back to back can be merged
-  if (identical_backtoback_ifs(n)) {
-    Node *n_ctrl = n_ctrl = n->in(0);
-    if (can_split_if(n_ctrl)) {
-      IfNode* dom_if = idom(n_ctrl)->as_If();
-      PhiNode* bolphi = PhiNode::make_blank(n_ctrl, n->in(1));
-      Node* proj_true = dom_if->proj_out(1);
-      Node* proj_false = dom_if->proj_out(0);
-      Node* con_true = _igvn.makecon(TypeInt::ONE);
-      Node* con_false = _igvn.makecon(TypeInt::ZERO);
+  if (identical_backtoback_ifs(n) && can_split_if(n->in(0))) {
+    Node *n_ctrl = n->in(0);
+    PhiNode* bolphi = PhiNode::make_blank(n_ctrl, n->in(1));
+    IfNode* dom_if = idom(n_ctrl)->as_If();
+    Node* proj_true = dom_if->proj_out(1);
+    Node* proj_false = dom_if->proj_out(0);
+    Node* con_true = _igvn.makecon(TypeInt::ONE);
+    Node* con_false = _igvn.makecon(TypeInt::ZERO);
 
-      for (uint i = 1; i < n_ctrl->req(); i++) {
-        if (is_dominator(proj_true, n_ctrl->in(i))) {
-          bolphi->init_req(i, con_true);
-        } else {
-          assert(is_dominator(proj_false, n_ctrl->in(i)), "bad if");
-          bolphi->init_req(i, con_false);
-        }
+    for (uint i = 1; i < n_ctrl->req(); i++) {
+      if (is_dominator(proj_true, n_ctrl->in(i))) {
+        bolphi->init_req(i, con_true);
+      } else {
+        assert(is_dominator(proj_false, n_ctrl->in(i)), "bad if");
+        bolphi->init_req(i, con_false);
       }
-      register_new_node(bolphi, n_ctrl);
-      _igvn.replace_input_of(n, 1, bolphi);
-
-      // Now split the IF
-      do_split_if(n);
-      return;
     }
+    register_new_node(bolphi, n_ctrl);
+    _igvn.replace_input_of(n, 1, bolphi);
+
+    // Now split the IF
+    do_split_if(n);
+    return;
   }
 
   // Check for an IF ready to split; one that has its
