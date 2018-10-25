@@ -1245,6 +1245,8 @@ void FileMapInfo::print_shared_spaces() {
 
 // Unmap mapped regions of shared space.
 void FileMapInfo::stop_sharing_and_unmap(const char* msg) {
+  MetaspaceObj::set_shared_metaspace_range(NULL, NULL);
+
   FileMapInfo *map_info = FileMapInfo::current_info();
   if (map_info) {
     map_info->fail_continue("%s", msg);
