@@ -192,11 +192,10 @@ private:
 public:
   ShenandoahPrepareForMarkClosure() : _ctx(ShenandoahHeap::heap()->marking_context()) {}
 
-  bool heap_region_do(ShenandoahHeapRegion *r) {
+  void heap_region_do(ShenandoahHeapRegion *r) {
     _ctx->capture_top_at_mark_start(r);
     r->clear_live_data();
     r->set_concurrent_iteration_safe_limit(r->top());
-    return false;
   }
 };
 
@@ -207,7 +206,7 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
   ShenandoahPrepareForMarkClosure cl;
-  heap->heap_region_iterate(&cl, false, false);
+  heap->heap_region_iterate(&cl);
 
   ShenandoahConcurrentMark* cm = heap->concurrent_mark();
 
@@ -414,7 +413,7 @@ private:
 
 public:
   ShenandoahEnsureHeapActiveClosure() : _heap(ShenandoahHeap::heap()) {}
-  bool heap_region_do(ShenandoahHeapRegion* r) {
+  void heap_region_do(ShenandoahHeapRegion* r) {
     if (r->is_trash()) {
       r->recycle();
     }
@@ -429,7 +428,6 @@ public:
     // Record current region occupancy: this communicates empty regions are free
     // to the rest of Full GC code.
     r->set_new_top(r->top());
-    return false;
   }
 };
 
@@ -443,7 +441,7 @@ public:
     _heap(ShenandoahHeap::heap()),
     _ctx(ShenandoahHeap::heap()->complete_marking_context()) {}
 
-  bool heap_region_do(ShenandoahHeapRegion* r) {
+  void heap_region_do(ShenandoahHeapRegion* r) {
     if (r->is_humongous_start()) {
       oop humongous_obj = oop(r->bottom() + BrooksPointer::word_size());
       if (!_ctx->is_marked(humongous_obj)) {
@@ -463,7 +461,6 @@ public:
         r->make_trash_immediate();
       }
     }
-    return false;
   }
 };
 
@@ -476,12 +473,12 @@ void ShenandoahMarkCompact::phase2_calculate_target_addresses(ShenandoahHeapRegi
   {
     // Trash the immediately collectible regions before computing addresses
     ShenandoahTrashImmediateGarbageClosure tigcl;
-    heap->heap_region_iterate(&tigcl, false, false);
+    heap->heap_region_iterate(&tigcl);
 
     // Make sure regions are in good state: committed, active, clean.
     // This is needed because we are potentially sliding the data through them.
     ShenandoahEnsureHeapActiveClosure ecl;
-    heap->heap_region_iterate(&ecl, false, false);
+    heap->heap_region_iterate(&ecl);
   }
 
   // Compute the new addresses for regular objects
@@ -667,7 +664,7 @@ public:
     _heap->free_set()->clear();
   }
 
-  bool heap_region_do(ShenandoahHeapRegion* r) {
+  void heap_region_do(ShenandoahHeapRegion* r) {
     assert (!r->is_cset(), "cset regions should have been demoted already");
 
     // Need to reset the complete-top-at-mark-start pointer here because
@@ -700,7 +697,6 @@ public:
     r->set_live_data(live);
     r->reset_alloc_metadata_to_shared();
     _live += live;
-    return false;
   }
 
   size_t get_live() {

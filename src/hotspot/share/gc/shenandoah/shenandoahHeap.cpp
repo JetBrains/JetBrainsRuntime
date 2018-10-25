@@ -1301,20 +1301,10 @@ void ShenandoahHeap::safe_object_iterate(ObjectClosure* cl) {
   object_iterate(cl);
 }
 
-// Apply blk->heap_region_do() on all committed regions in address order,
-// terminating the iteration early if heap_region_do() returns true.
-void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk, bool skip_cset_regions, bool skip_humongous_continuation) const {
+void ShenandoahHeap::heap_region_iterate(ShenandoahHeapRegionClosure* blk) const {
   for (size_t i = 0; i < num_regions(); i++) {
-    ShenandoahHeapRegion* current  = get_region(i);
-    if (skip_humongous_continuation && current->is_humongous_continuation()) {
-      continue;
-    }
-    if (skip_cset_regions && current->is_cset()) {
-      continue;
-    }
-    if (blk->heap_region_do(current)) {
-      return;
-    }
+    ShenandoahHeapRegion* current = get_region(i);
+    blk->heap_region_do(current);
   }
 }
 
@@ -1324,10 +1314,9 @@ private:
 public:
   ShenandoahClearLivenessClosure(ShenandoahHeap* heap) : sh(heap) {}
 
-  bool heap_region_do(ShenandoahHeapRegion* r) {
+  void heap_region_do(ShenandoahHeapRegion* r) {
     r->clear_live_data();
     sh->marking_context()->capture_top_at_mark_start(r);
-    return false;
   }
 };
 

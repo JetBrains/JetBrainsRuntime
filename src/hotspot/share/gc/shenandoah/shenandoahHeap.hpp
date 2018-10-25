@@ -87,8 +87,7 @@ public:
 
 class ShenandoahHeapRegionClosure : public StackObj {
 public:
-  // typically called on each region until it returns true;
-  virtual bool heap_region_do(ShenandoahHeapRegion* r) = 0;
+  virtual void heap_region_do(ShenandoahHeapRegion* r) = 0;
 };
 
 class ShenandoahUpdateRefsClosure: public OopClosure {
@@ -254,9 +253,7 @@ public:
 
   inline ShenandoahHeapRegion* const get_region(size_t region_idx) const;
 
-  void heap_region_iterate(ShenandoahHeapRegionClosure* blk,
-                           bool skip_cset_regions = false,
-                           bool skip_humongous_continuation = false) const;
+  void heap_region_iterate(ShenandoahHeapRegionClosure* blk) const;
 
 // ---------- GC state machinery
 //
