@@ -1422,6 +1422,29 @@ void ShenandoahHeap::op_mark() {
   concurrent_mark()->mark_from_roots();
 }
 
+class ShenandoahCompleteLivenessClosure : public ShenandoahHeapRegionClosure {
+private:
+  ShenandoahMarkingContext* const _ctx;
+public:
+  ShenandoahCompleteLivenessClosure() : _ctx(ShenandoahHeap::heap()->complete_marking_context()) {}
+
+  void heap_region_do(ShenandoahHeapRegion* r) {
+    if (r->is_active()) {
+      HeapWord *tams = _ctx->top_at_mark_start(r);
+      HeapWord *top = r->top();
+      if (top > tams) {
+        r->increase_live_data_alloc_words(pointer_delta(top, tams));
+      }
+    } else {
+      assert(!r->has_live(), "Region " SIZE_FORMAT " should have no live data", r->region_number());
+      assert(_ctx->top_at_mark_start(r) == r->top(),
+             "Region " SIZE_FORMAT " should have correct TAMS", r->region_number());
+    }
+  }
+
+  bool is_thread_safe() { return true; }
+};
+
 void ShenandoahHeap::op_final_mark() {
   assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Should be at safepoint");
 
@@ -1443,16 +1466,8 @@ void ShenandoahHeap::op_final_mark() {
 
       // All allocations past TAMS are implicitly live, adjust the region data.
       // Bitmaps/TAMS are swapped at this point, so we need to poll complete bitmap.
-      for (size_t i = 0; i < num_regions(); i++) {
-        ShenandoahHeapRegion* r = get_region(i);
-        if (!r->is_active()) continue;
-
-        HeapWord* tams = complete_marking_context()->top_at_mark_start(r);
-        HeapWord* top = r->top();
-        if (top > tams) {
-          r->increase_live_data_alloc_words(pointer_delta(top, tams));
-        }
-      }
+      ShenandoahCompleteLivenessClosure cl;
+      parallel_heap_region_iterate(&cl);
     }
 
     {
