@@ -1352,14 +1352,22 @@ void ShenandoahHeap::parallel_heap_region_iterate(ShenandoahHeapRegionClosure* b
 
 class ShenandoahClearLivenessClosure : public ShenandoahHeapRegionClosure {
 private:
-  ShenandoahHeap* sh;
+  ShenandoahMarkingContext* const _ctx;
 public:
-  ShenandoahClearLivenessClosure(ShenandoahHeap* heap) : sh(heap) {}
+  ShenandoahClearLivenessClosure() : _ctx(ShenandoahHeap::heap()->marking_context()) {}
 
   void heap_region_do(ShenandoahHeapRegion* r) {
-    r->clear_live_data();
-    sh->marking_context()->capture_top_at_mark_start(r);
+    if (r->is_active()) {
+      r->clear_live_data();
+      _ctx->capture_top_at_mark_start(r);
+    } else {
+      assert(!r->has_live(), "Region " SIZE_FORMAT " should have no live data", r->region_number());
+      assert(_ctx->top_at_mark_start(r) == r->top(),
+             "Region " SIZE_FORMAT " should already have correct TAMS", r->region_number());
+    }
   }
+
+  bool is_thread_safe() { return true; }
 };
 
 void ShenandoahHeap::op_init_mark() {
@@ -1391,8 +1399,8 @@ void ShenandoahHeap::op_init_mark() {
 
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::clear_liveness);
-    ShenandoahClearLivenessClosure clc(this);
-    heap_region_iterate(&clc);
+    ShenandoahClearLivenessClosure clc;
+    parallel_heap_region_iterate(&clc);
   }
 
   // Make above changes visible to worker threads
