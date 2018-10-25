@@ -88,6 +88,7 @@ public:
 class ShenandoahHeapRegionClosure : public StackObj {
 public:
   virtual void heap_region_do(ShenandoahHeapRegion* r) = 0;
+  virtual bool is_thread_safe() { return false; }
 };
 
 class ShenandoahUpdateRefsClosure: public OopClosure {
@@ -254,6 +255,7 @@ public:
   inline ShenandoahHeapRegion* const get_region(size_t region_idx) const;
 
   void heap_region_iterate(ShenandoahHeapRegionClosure* blk) const;
+  void parallel_heap_region_iterate(ShenandoahHeapRegionClosure* blk) const;
 
 // ---------- GC state machinery
 //

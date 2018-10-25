@@ -210,6 +210,10 @@
   experimental(uintx, ShenandoahMarkLoopStride, 1000,                       \
           "How many items are processed during one marking step")           \
                                                                             \
+  experimental(uintx, ShenandoahParallelRegionStride, 1024,                 \
+          "How many regions are processed in one stride during parallel "   \
+          "iteration.")                                                     \
+                                                                            \
   experimental(bool, ShenandoahConcurrentScanCodeRoots, true,               \
           "Scan code roots concurrently, instead of during a pause")        \
                                                                             \
