@@ -64,7 +64,11 @@ class JDWPException extends Exception {
             case JDWP.Error.INVALID_THREAD:
                 return new IllegalThreadStateException();
             default:
-                return new InternalException("Unexpected JDWP Error: " + errorCode, errorCode);
+                InternalException internalException = new InternalException("Unexpected JDWP Error: " + errorCode, errorCode);
+                if (errorCode == JDWP.Error.INTERNAL) {
+                    internalException.initCause(getCause());
+                }
+                return internalException;
         }
     }
 }
