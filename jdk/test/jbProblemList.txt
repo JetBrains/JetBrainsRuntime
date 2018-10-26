@@ -1098,7 +1098,7 @@ sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java                        
 # core_tools
 
 tools/pack200/CommandLineTests.java                                                 8059906 generic-all
-tools/launcher/FXLauncherTest.java                                                  8068049 linux-all,macosx-all
+tools/launcher/FXLauncherTest.java                                                  8068049,JRE-898 linux-all,macosx-all,windows-all
 tools/launcher/TooSmallStackSize.java                                               8175342 generic-all
 tools/jimage/JImageExtractTest.java                                                 8170120 generic-all
 tools/jimage/JImageListTest.java                                                    8170120 generic-all
