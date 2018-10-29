@@ -230,6 +230,7 @@ class Metaspace : public AllStatic {
 class ClassLoaderMetaspace : public CHeapObj<mtClass> {
   friend class CollectedHeap; // For expand_and_allocate()
   friend class ZCollectedHeap; // For expand_and_allocate()
+  friend class ShenandoahHeap; // For expand_and_allocate()
   friend class Metaspace;
   friend class MetaspaceUtils;
   friend class metaspace::PrintCLDMetaspaceInfoClosure;

@@ -63,6 +63,7 @@ bool ShenandoahPassiveHeuristics::should_process_references() {
 }
 
 bool ShenandoahPassiveHeuristics::should_unload_classes() {
+  if (has_metaspace_oom()) return true;
   if (ShenandoahUnloadClassesFrequency == 0) return false;
   // Always unload classes.
   return true;

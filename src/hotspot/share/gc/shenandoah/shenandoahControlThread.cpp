@@ -41,9 +41,9 @@
 ShenandoahControlThread::ShenandoahControlThread() :
   ConcurrentGCThread(),
   _alloc_failure_waiters_lock(Mutex::leaf, "ShenandoahAllocFailureGC_lock", true, Monitor::_safepoint_check_always),
-  _explicit_gc_waiters_lock(Mutex::leaf, "ShenandoahExplicitGC_lock", true, Monitor::_safepoint_check_always),
+  _gc_waiters_lock(Mutex::leaf, "ShenandoahRequestedGC_lock", true, Monitor::_safepoint_check_always),
   _periodic_task(this),
-  _explicit_gc_cause(GCCause::_no_cause_specified),
+  _requested_gc_cause(GCCause::_no_cause_specified),
   _degen_point(ShenandoahHeap::_degenerated_outside_cycle),
   _allocs_seen(0) {
 
@@ -84,7 +84,8 @@ void ShenandoahControlThread::run_service() {
   while (!in_graceful_shutdown() && !should_terminate()) {
     // Figure out if we have pending requests.
     bool alloc_failure_pending = _alloc_failure_gc.is_set();
-    bool explicit_gc_requested = _explicit_gc.is_set();
+    bool has_requested_gc = _gc_requested.is_set();
+    bool explicit_gc_requested = has_requested_gc && is_explicit_gc(_requested_gc_cause);
 
     // This control loop iteration have seen this much allocations.
     size_t allocs_seen = Atomic::xchg<size_t>(0, &_allocs_seen);
@@ -118,7 +119,7 @@ void ShenandoahControlThread::run_service() {
       // Honor explicit GC requests
       log_info(gc)("Trigger: Explicit GC request");
 
-      cause = _explicit_gc_cause;
+      cause = _requested_gc_cause;
 
       if (ExplicitGCInvokesConcurrent) {
         heuristics->record_explicit_gc();
@@ -133,6 +134,9 @@ void ShenandoahControlThread::run_service() {
         policy->record_explicit_to_full();
         mode = stw_full;
       }
+    } else if (has_requested_gc) {
+      cause = _requested_gc_cause;
+      mode = stw_full;
     } else {
       // Potential normal cycle: ask heuristics if it wants to act
       if (heuristics->should_start_traversal_gc()) {
@@ -191,9 +195,9 @@ void ShenandoahControlThread::run_service() {
     }
 
     if (gc_requested) {
-      // If this was the explicit GC cycle, notify waiters about it
-      if (explicit_gc_requested) {
-        notify_explicit_gc_waiters();
+      // If this was the requested GC cycle, notify waiters about it
+      if (has_requested_gc) {
+        notify_gc_waiters();
       }
 
       // If this was the allocation failure GC cycle, notify waiters about it
@@ -220,6 +224,11 @@ void ShenandoahControlThread::run_service() {
 
       // Retract forceful part of soft refs policy
       heap->soft_ref_policy()->set_should_clear_all_soft_refs(false);
+
+      // Clear metaspace oom flag, if current cycle unloaded classes
+      if (heap->unload_classes()) {
+        heuristics->clear_metaspace_oom();
+      }
 
       // GC is over, we are at idle now
       if (ShenandoahPacing) {
@@ -451,21 +460,39 @@ void ShenandoahControlThread::service_uncommit(double shrink_before) {
   }
 }
 
-void ShenandoahControlThread::handle_explicit_gc(GCCause::Cause cause) {
+bool ShenandoahControlThread::is_explicit_gc(GCCause::Cause cause) const {
+  return GCCause::is_user_requested_gc(cause) ||
+         GCCause::is_serviceability_requested_gc(cause);
+}
+
+void ShenandoahControlThread::request_gc(GCCause::Cause cause) {
   assert(GCCause::is_user_requested_gc(cause) ||
          GCCause::is_serviceability_requested_gc(cause) ||
+         cause == GCCause::_metadata_GC_clear_soft_refs ||
          cause == GCCause::_full_gc_alot ||
          cause == GCCause::_wb_full_gc ||
          cause == GCCause::_scavenge_alot,
          "only requested GCs here");
-  if (!DisableExplicitGC) {
-    _explicit_gc_cause = cause;
 
-    _explicit_gc.set();
-    MonitorLockerEx ml(&_explicit_gc_waiters_lock);
-    while (_explicit_gc.is_set()) {
-      ml.wait();
-    }
+  if (is_explicit_gc(cause)) {
+    handle_explicit_gc(cause);
+  } else {
+    handle_requested_gc(cause);
+  }
+}
+
+void ShenandoahControlThread::handle_explicit_gc(GCCause::Cause cause) {
+  if (!DisableExplicitGC) {
+    handle_requested_gc(cause);
+  }
+}
+
+void ShenandoahControlThread::handle_requested_gc(GCCause::Cause cause) {
+  _requested_gc_cause = cause;
+  _gc_requested.set();
+  MonitorLockerEx ml(&_gc_waiters_lock);
+  while (_gc_requested.is_set()) {
+    ml.wait();
   }
 }
 
@@ -516,9 +543,9 @@ bool ShenandoahControlThread::is_alloc_failure_gc() {
   return _alloc_failure_gc.is_set();
 }
 
-void ShenandoahControlThread::notify_explicit_gc_waiters() {
-  _explicit_gc.unset();
-  MonitorLockerEx ml(&_explicit_gc_waiters_lock);
+void ShenandoahControlThread::notify_gc_waiters() {
+  _gc_requested.unset();
+  MonitorLockerEx ml(&_gc_waiters_lock);
   ml.notify_all();
 }
 

@@ -70,6 +70,7 @@ bool ShenandoahAggressiveHeuristics::should_process_references() {
 }
 
 bool ShenandoahAggressiveHeuristics::should_unload_classes() {
+  if (has_metaspace_oom()) return true;
   if (ShenandoahUnloadClassesFrequency == 0) return false;
   // Randomly unload classes with 50% chance.
   return (os::random() & 1) == 1;

@@ -811,6 +811,43 @@ HeapWord* ShenandoahHeap::mem_allocate(size_t size,
   return allocate_memory(req);
 }
 
+MetaWord* ShenandoahHeap::satisfy_failed_metadata_allocation(ClassLoaderData* loader_data,
+                                                             size_t size,
+                                                             Metaspace::MetadataType mdtype) {
+  MetaWord* result;
+
+  // Inform metaspace OOM to GC heuristics if class unloading is possible.
+  if ((ClassUnloadingWithConcurrentMark || FLAG_IS_DEFAULT(ClassUnloadingWithConcurrentMark)) &&
+      ClassUnloading) {
+    ShenandoahHeuristics* h = heuristics();
+    h->record_metaspace_oom();
+  }
+
+  // Expand and retry allocation
+  result = loader_data->metaspace_non_null()->expand_and_allocate(size, mdtype);
+  if (result != NULL) {
+    return result;
+  }
+
+  // Start full GC
+  collect(GCCause::_metadata_GC_clear_soft_refs);
+
+  // Retry allocation
+  result = loader_data->metaspace_non_null()->allocate(size, mdtype);
+  if (result != NULL) {
+    return result;
+  }
+
+  // Expand and retry allocation
+  result = loader_data->metaspace_non_null()->expand_and_allocate(size, mdtype);
+  if (result != NULL) {
+    return result;
+  }
+
+  // Out of memory
+  return NULL;
+}
+
 void ShenandoahHeap::fill_with_dummy_object(HeapWord* start, HeapWord* end, bool zap) {
   HeapWord* obj = tlab_post_allocation_setup(start);
   CollectedHeap::fill_with_object(obj, end);
@@ -1111,7 +1148,7 @@ void ShenandoahHeap::retire_and_reset_gclabs() {
 }
 
 void ShenandoahHeap::collect(GCCause::Cause cause) {
-  control_thread()->handle_explicit_gc(cause);
+  control_thread()->request_gc(cause);
 }
 
 void ShenandoahHeap::do_full_collection(bool clear_all_soft_refs) {
