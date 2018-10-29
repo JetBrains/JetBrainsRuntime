@@ -46,6 +46,7 @@
 #include "gc/shared/weakProcessor.hpp"
 
 #include "memory/iterator.inline.hpp"
+#include "memory/metaspace.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/oop.inline.hpp"
 
@@ -469,6 +470,9 @@ void ShenandoahConcurrentMark::finish_mark_from_roots(bool full_gc) {
   assert(task_queues()->is_empty(), "Should be empty");
   TASKQUEUE_STATS_ONLY(task_queues()->print_taskqueue_stats());
   TASKQUEUE_STATS_ONLY(task_queues()->reset_taskqueue_stats());
+
+  // Resize Metaspace
+  MetaspaceGC::compute_new_size();
 }
 
 // Weak Reference Closures
