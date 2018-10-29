@@ -2143,17 +2143,19 @@ class MethodArityHistogram {
   static int _max_size;                       // max. arg size seen
 
   static void add_method_to_histogram(nmethod* nm) {
-    Method* m = nm->method();
-    ArgumentCount args(m->signature());
-    int arity   = args.size() + (m->is_static() ? 0 : 1);
-    int argsize = m->size_of_parameters();
-    arity   = MIN2(arity, MAX_ARITY-1);
-    argsize = MIN2(argsize, MAX_ARITY-1);
-    int count = nm->method()->compiled_invocation_count();
-    _arity_histogram[arity]  += count;
-    _size_histogram[argsize] += count;
-    _max_arity = MAX2(_max_arity, arity);
-    _max_size  = MAX2(_max_size, argsize);
+    if (CompiledMethod::nmethod_access_is_safe(nm)) {
+      Method* method = nm->method();
+      ArgumentCount args(method->signature());
+      int arity   = args.size() + (method->is_static() ? 0 : 1);
+      int argsize = method->size_of_parameters();
+      arity   = MIN2(arity, MAX_ARITY-1);
+      argsize = MIN2(argsize, MAX_ARITY-1);
+      int count = method->compiled_invocation_count();
+      _arity_histogram[arity]  += count;
+      _size_histogram[argsize] += count;
+      _max_arity = MAX2(_max_arity, arity);
+      _max_size  = MAX2(_max_size, argsize);
+    }
   }
 
   void print_histogram_helper(int n, int* histo, const char* name) {
