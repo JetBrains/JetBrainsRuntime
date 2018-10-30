@@ -1047,25 +1047,6 @@ public:
   }
 };
 
-class ShenandoahFixRootsTask : public AbstractGangTask {
-private:
-  ShenandoahRootEvacuator* _rp;
-
-public:
-  ShenandoahFixRootsTask(ShenandoahRootEvacuator* rp) :
-    AbstractGangTask("Shenandoah update roots"),
-    _rp(rp) {}
-
-  void work(uint worker_id) {
-    ShenandoahParallelWorkerSession worker_session(worker_id);
-    ShenandoahEvacOOMScope oom_evac_scope;
-    ShenandoahUpdateRefsClosure cl;
-    MarkingCodeBlobClosure blobsCl(&cl, CodeBlobToOopClosure::FixRelocations);
-
-    _rp->process_evacuate_roots(&cl, &blobsCl, worker_id);
-  }
-};
-
 void ShenandoahHeap::evacuate_and_update_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::clear();
@@ -1081,24 +1062,6 @@ void ShenandoahHeap::evacuate_and_update_roots() {
 #if defined(COMPILER2) || INCLUDE_JVMCI
   DerivedPointerTable::update_pointers();
 #endif
-  if (cancelled_gc()) {
-    // If initial evacuation has been cancelled, we need to update all references
-    // after all workers have finished. Otherwise we might run into the following problem:
-    // GC thread 1 cannot allocate anymore, thus evacuation fails, leaves from-space ptr of object X.
-    // GC thread 2 evacuates the same object X to to-space
-    // which leaves a truly dangling from-space reference in the first root oop*. This must not happen.
-    // clear() and update_pointers() must always be called in pairs,
-    // cannot nest with above clear()/update_pointers().
-#if defined(COMPILER2) || INCLUDE_JVMCI
-    DerivedPointerTable::clear();
-#endif
-    ShenandoahRootEvacuator rp(this, workers()->active_workers(), ShenandoahPhaseTimings::init_evac);
-    ShenandoahFixRootsTask update_roots_task(&rp);
-    workers()->run_task(&update_roots_task);
-#if defined(COMPILER2) || INCLUDE_JVMCI
-    DerivedPointerTable::update_pointers();
-#endif
-  }
 }
 
 void ShenandoahHeap::roots_iterate(OopClosure* cl) {
