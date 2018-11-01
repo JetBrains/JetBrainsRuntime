@@ -101,10 +101,16 @@ public:
 };
 
 class ShenandoahRootEvacuator : public StackObj {
+  SubTasksDone* _evacuation_tasks;
   StrongRootsScope _srs;
   ShenandoahPhaseTimings::Phase _phase;
   ShenandoahCsetCodeRootsIterator _coderoots_cset_iterator;
 
+  enum Shenandoah_evacuate_roots_tasks {
+      SHENANDOAH_EVAC_jvmti_oops_do,
+      // Leave this one last.
+      SHENANDOAH_EVAC_NumElements
+  };
 public:
   ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_workers,
                           ShenandoahPhaseTimings::Phase phase);

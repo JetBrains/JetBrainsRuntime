@@ -223,6 +223,7 @@ uint ShenandoahRootProcessor::n_workers() const {
 }
 
 ShenandoahRootEvacuator::ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_workers, ShenandoahPhaseTimings::Phase phase) :
+  _evacuation_tasks(new SubTasksDone(SHENANDOAH_EVAC_NumElements)),
   _srs(n_workers),
   _phase(phase),
   _coderoots_cset_iterator(ShenandoahCodeRoots::cset_iterator())
@@ -231,6 +232,7 @@ ShenandoahRootEvacuator::ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_wo
 }
 
 ShenandoahRootEvacuator::~ShenandoahRootEvacuator() {
+  delete _evacuation_tasks;
   ShenandoahHeap::heap()->phase_timings()->record_workers_end(_phase);
 }
 
@@ -250,6 +252,12 @@ void ShenandoahRootEvacuator::process_evacuate_roots(OopClosure* oops,
   if (blobs != NULL) {
     ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::CodeCacheRoots, worker_id);
     _coderoots_cset_iterator.possibly_parallel_blobs_do(blobs);
+  }
+
+  if (_evacuation_tasks->is_task_claimed(SHENANDOAH_EVAC_jvmti_oops_do)) {
+    ShenandoahForwardedIsAliveClosure is_alive;
+    ShenandoahWorkerTimingsTracker timer(worker_times, ShenandoahPhaseTimings::JVMTIRoots, worker_id);
+    JvmtiExport::weak_oops_do(&is_alive, oops);
   }
 }
 
