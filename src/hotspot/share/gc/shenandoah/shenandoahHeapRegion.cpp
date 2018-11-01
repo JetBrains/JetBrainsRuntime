@@ -595,7 +595,7 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
   // Recalculate the region size to make sure it's a power of
   // 2. This means that region_size is the largest power of 2 that's
   // <= what we've calculated so far.
-  region_size = (1u << region_size_log);
+  region_size = size_t(1) << region_size_log;
 
   // Now, set up the globals.
   guarantee(RegionSizeBytesShift == 0, "we should only set it once");
