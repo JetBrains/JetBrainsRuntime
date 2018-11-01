@@ -790,33 +790,6 @@ public class ImageView extends View {
                 }
             }
 
-            int imageWidth = newImage.getWidth(imageObserver);
-            int imageHeight = newImage.getHeight(imageObserver);
-
-            if (newWidth <= 0) {
-                if ((newState & HEIGHT_FLAG) != 0 && imageWidth > 0 && imageHeight > 0) {
-                    newWidth = imageWidth * newHeight / imageHeight;
-                }
-                else {
-                    newWidth = imageWidth;
-                }
-                if (newWidth <= 0) {
-                    newWidth = DEFAULT_WIDTH;
-                }
-            }
-
-            if (newHeight <= 0) {
-                if ((newState & WIDTH_FLAG) != 0 && imageWidth > 0 && imageHeight > 0) {
-                    newHeight = imageHeight * newWidth / imageWidth;
-                }
-                else {
-                    newHeight = imageHeight;
-                }
-                if (newHeight <= 0) {
-                    newHeight = DEFAULT_HEIGHT;
-                }
-            }
-
             // Make sure the image starts loading:
             if ((newState & (WIDTH_FLAG | HEIGHT_FLAG)) != 0) {
                 Toolkit.getDefaultToolkit().prepareImage(newImage, newWidth,
@@ -968,19 +941,51 @@ public class ImageView extends View {
 
             if (image == img) {
                 // Resize image if necessary:
-                boolean changed = (flags & (ImageObserver.WIDTH | ImageObserver.HEIGHT)) != 0
-                        && (!getElement().getAttributes().isDefined(HTML.Attribute.WIDTH)
-                        || !getElement().getAttributes().isDefined(HTML.Attribute.HEIGHT));
+                short changed = 0;
+                if ((flags & ImageObserver.HEIGHT) != 0 && !getElement().
+                      getAttributes().isDefined(HTML.Attribute.HEIGHT)) {
+                    changed |= 1;
+                }
+                if ((flags & ImageObserver.WIDTH) != 0 && !getElement().
+                      getAttributes().isDefined(HTML.Attribute.WIDTH)) {
+                    changed |= 2;
+                }
 
-                synchronized(ImageView.this) {
-                    boolean calcProportional = newWidth > 0 && newHeight > 0 &&
-                            (flags & ImageObserver.WIDTH) != 0 && (flags & ImageObserver.HEIGHT) != 0 &&
-                            ((state & WIDTH_FLAG) == 0 ^ (state & HEIGHT_FLAG) == 0);
-                    if ((flags & ImageObserver.WIDTH) != 0 && (state & WIDTH_FLAG) == 0) {
-                        width = calcProportional ? newWidth * height / newHeight : newWidth;
+                /**
+                 * If the image properties (height and width) have been loaded,
+                 * then figure out if scaling is necessary based on the
+                 * specified HTML attributes.
+                 */
+                if (((flags & ImageObserver.HEIGHT) != 0) &&
+                    ((flags & ImageObserver.WIDTH) != 0)) {
+                    double proportion = 0.0;
+                    final int specifiedWidth = getIntAttr(HTML.Attribute.WIDTH, -1);
+                    final int specifiedHeight = getIntAttr(HTML.Attribute.HEIGHT, -1);
+                    /**
+                     * If either of the attributes are not specified, then calculate the
+                     * proportion for the specified dimension wrt actual value, and then
+                     * apply the same proportion to the unspecified dimension as well,
+                     * so that the aspect ratio of the image is maintained.
+                     */
+                    if (specifiedWidth != -1 ^ specifiedHeight != -1) {
+                        if (specifiedWidth <= 0) {
+                            proportion = specifiedHeight / ((double)newHeight);
+                            newWidth = (int)(proportion * newWidth);
+                        }
+
+                        if (specifiedHeight <= 0) {
+                            proportion = specifiedWidth / ((double)newWidth);
+                            newHeight = (int)(proportion * newHeight);
+                        }
+                        changed |= 3;
                     }
-                    if ((flags & ImageObserver.HEIGHT) != 0 && (state & HEIGHT_FLAG) == 0) {
-                        height = calcProportional ? newHeight * width / newWidth : newHeight;
+                }
+                synchronized(ImageView.this) {
+                    if ((changed & 1) == 1 && (state & HEIGHT_FLAG) == 0) {
+                        height = newHeight;
+                    }
+                    if ((changed & 2) == 2 && (state & WIDTH_FLAG) == 0) {
+                        width = newWidth;
                     }
                     if ((state & LOADING_FLAG) == LOADING_FLAG) {
                         // No need to resize or repaint, still in the process of
@@ -988,7 +993,7 @@ public class ImageView extends View {
                         return true;
                     }
                 }
-                if (changed) {
+                if (changed != 0) {
                     // May need to resize myself, asynchronously:
                     safePreferenceChanged();
                     return true;
