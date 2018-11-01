@@ -791,8 +791,15 @@ bool SystemDictionaryShared::add_verification_constraint(Klass* k, Symbol* name,
   }
 }
 
+void SystemDictionaryShared::finalize_verification_constraints_for(InstanceKlass* k) {
+  if (!k->is_anonymous()) {
+    SharedDictionaryEntry* entry = ((SharedDictionary*)(k->class_loader_data()->dictionary()))->find_entry_for(k);
+    entry->finalize_verification_constraints();
+  }
+}
+
 void SystemDictionaryShared::finalize_verification_constraints() {
-  boot_loader_dictionary()->finalize_verification_constraints();
+  ClassLoaderDataGraph::dictionary_classes_do(finalize_verification_constraints_for);
 }
 
 void SystemDictionaryShared::check_verification_constraints(InstanceKlass* klass,
@@ -817,28 +824,6 @@ SharedDictionaryEntry* SharedDictionary::find_entry_for(Klass* klass) {
   }
 
   return NULL;
-}
-
-void SharedDictionary::finalize_verification_constraints() {
-  int bytes = 0, count = 0;
-  for (int index = 0; index < table_size(); index++) {
-    for (SharedDictionaryEntry *probe = bucket(index);
-                                probe != NULL;
-                               probe = probe->next()) {
-      int n = probe->finalize_verification_constraints();
-      if (n > 0) {
-        bytes += n;
-        count ++;
-      }
-    }
-  }
-  if (log_is_enabled(Info, cds, verification)) {
-    double avg = 0;
-    if (count > 0) {
-      avg = double(bytes) / double(count);
-    }
-    log_info(cds, verification)("Recorded verification constraints for %d classes = %d bytes (avg = %.2f bytes) ", count, bytes, avg);
-  }
 }
 
 void SharedDictionaryEntry::add_verification_constraint(Symbol* name,
