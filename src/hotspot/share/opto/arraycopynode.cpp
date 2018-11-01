@@ -313,7 +313,7 @@ bool ArrayCopyNode::prepare_array_copy(PhaseGVN *phase, bool can_reshape,
 
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
     if (dest_elem == T_OBJECT && (!is_alloc_tightly_coupled() ||
-                                  bs->array_copy_requires_gc_barriers(T_OBJECT) SHENANDOAHGC_ONLY(&& !ShenandoahStoreValEnqueueBarrier))) {
+         (bs->array_copy_requires_gc_barriers(T_OBJECT) SHENANDOAHGC_ONLY(&& !ShenandoahStoreValEnqueueBarrier)))) {
       // It's an object array copy but we can't emit the card marking
       // that is needed
       return false;
