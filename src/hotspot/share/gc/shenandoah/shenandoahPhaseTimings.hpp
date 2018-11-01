@@ -349,8 +349,8 @@ public:
   void record_phase_start(Phase phase);
   // record phase end and return elapsed time in seconds for the phase
   void record_phase_end(Phase phase);
-  // record an elapsed time in microseconds for the phase
-  void record_phase_time(Phase phase, jint time_us);
+  // record an elapsed time for the phase
+  void record_phase_time(Phase phase, double time);
 
   void record_workers_start(Phase phase);
   void record_workers_end(Phase phase);

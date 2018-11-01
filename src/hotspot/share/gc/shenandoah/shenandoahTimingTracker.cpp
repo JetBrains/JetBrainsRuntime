@@ -83,6 +83,6 @@ ShenandoahTerminationTracker::~ShenandoahTerminationTracker() {
   ShenandoahPhaseTimings* phase_times = ShenandoahHeap::heap()->phase_timings();
 
   double t = phase_times->termination_times()->average();
-  phase_times->record_phase_time(_phase, t * 1000 * 1000);
+  phase_times->record_phase_time(_phase, t);
   debug_only(_current_termination_phase = ShenandoahPhaseTimings::_num_phases;)
 }

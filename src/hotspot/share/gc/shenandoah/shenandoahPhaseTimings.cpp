@@ -62,10 +62,10 @@ void ShenandoahPhaseTimings::record_phase_end(Phase phase) {
   ShenandoahHeap::heap()->heuristics()->record_phase_time(phase, elapsed);
 }
 
-void ShenandoahPhaseTimings::record_phase_time(Phase phase, jint time_us) {
+void ShenandoahPhaseTimings::record_phase_time(Phase phase, double time) {
   assert(_policy != NULL, "Not yet initialized");
   if (!_policy->is_at_shutdown()) {
-    _timing_data[phase]._secs.add((double)time_us / 1000 / 1000);
+    _timing_data[phase]._secs.add(time);
   }
 }
 
