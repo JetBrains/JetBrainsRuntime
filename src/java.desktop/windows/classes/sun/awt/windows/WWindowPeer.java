@@ -591,13 +591,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      * Called from native code when we have been dragged onto another screen.
      */
     void draggedToNewScreen() {
-        SunToolkit.executeOnEventHandlerThread((Component)target,new Runnable()
-        {
-            @Override
-            public void run() {
-                displayChanged();
-            }
-        });
+        displayChanged();
     }
 
     public void updateGC() {
@@ -673,8 +667,12 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
      */
     @Override
     public void displayChanged() {
+<<<<<<< HEAD
         updateGC();
         adjustBoundsOnDPIChange();
+=======
+        SunToolkit.executeOnEventHandlerThread(target, this::updateGC);
+>>>>>>> 138004c... 8207070: Webstart app popup on wrong screen in a one-screen setup changing to multi-monitor
     }
 
     private native void adjustBoundsOnDPIChange();
