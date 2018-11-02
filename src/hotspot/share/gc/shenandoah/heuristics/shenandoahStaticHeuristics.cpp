@@ -35,6 +35,9 @@ ShenandoahStaticHeuristics::ShenandoahStaticHeuristics() : ShenandoahHeuristics(
   // than free threshold. ShenandoahAllocationThreshold is supposed to break this,
   // but it only works if it is non-zero.
   SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 1);
+
+  SHENANDOAH_ERGO_ENABLE_FLAG(ExplicitGCInvokesConcurrent);
+  SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahImplicitGCInvokesConcurrent);
 }
 
 ShenandoahStaticHeuristics::~ShenandoahStaticHeuristics() {}

@@ -30,6 +30,7 @@
 ShenandoahPassiveHeuristics::ShenandoahPassiveHeuristics() : ShenandoahAdaptiveHeuristics() {
   // Do not allow concurrent cycles.
   FLAG_SET_DEFAULT(ExplicitGCInvokesConcurrent, false);
+  FLAG_SET_DEFAULT(ShenandoahImplicitGCInvokesConcurrent, false);
 
   // Passive runs with max speed, reacts on allocation failure.
   FLAG_SET_DEFAULT(ShenandoahPacing, false);

@@ -36,6 +36,9 @@ ShenandoahAdaptiveHeuristics::ShenandoahAdaptiveHeuristics() :
   _cycle_gap_history(new TruncatedSeq(5)),
   _conc_mark_duration_history(new TruncatedSeq(5)),
   _conc_uprefs_duration_history(new TruncatedSeq(5)) {
+
+  SHENANDOAH_ERGO_ENABLE_FLAG(ExplicitGCInvokesConcurrent);
+  SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahImplicitGCInvokesConcurrent);
 }
 
 ShenandoahAdaptiveHeuristics::~ShenandoahAdaptiveHeuristics() {}

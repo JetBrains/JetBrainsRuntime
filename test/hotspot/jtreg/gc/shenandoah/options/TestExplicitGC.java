@@ -72,10 +72,10 @@ public class TestExplicitGC {
                                     "test");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             for (String p : full) {
-                output.shouldContain(p);
+                output.shouldNotContain(p);
             }
             for (String p : concNormal) {
-                output.shouldNotContain(p);
+                output.shouldContain(p);
             }
             for (String p : concTraversal) {
                 output.shouldNotContain(p);
