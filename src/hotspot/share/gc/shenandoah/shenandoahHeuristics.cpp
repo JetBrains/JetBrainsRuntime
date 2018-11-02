@@ -291,16 +291,34 @@ void ShenandoahHeuristics::record_explicit_gc() {
   _gc_times_learned = 0;
 }
 
-bool ShenandoahHeuristics::should_process_references() {
+bool ShenandoahHeuristics::can_process_references() {
   if (ShenandoahRefProcFrequency == 0) return false;
+  return true;
+}
+
+bool ShenandoahHeuristics::should_process_references() {
+  if (!can_process_references()) return false;
   size_t cycle = ShenandoahHeap::heap()->shenandoah_policy()->cycle_counter();
   // Process references every Nth GC cycle.
   return cycle % ShenandoahRefProcFrequency == 0;
 }
 
-bool ShenandoahHeuristics::should_unload_classes() {
+bool ShenandoahHeuristics::can_unload_classes() {
+  if (!ClassUnloading) return false;
+  return true;
+}
+
+bool ShenandoahHeuristics::can_unload_classes_normal() {
+  if (!can_unload_classes()) return false;
   if (has_metaspace_oom()) return true;
+  if (!ClassUnloadingWithConcurrentMark) return false;
   if (ShenandoahUnloadClassesFrequency == 0) return false;
+  return true;
+}
+
+bool ShenandoahHeuristics::should_unload_classes() {
+  if (!can_unload_classes_normal()) return false;
+  if (has_metaspace_oom()) return true;
   size_t cycle = ShenandoahHeap::heap()->shenandoah_policy()->cycle_counter();
   // Unload classes every Nth GC cycle.
   // This should not happen in the same cycle as process_references to amortize costs.

@@ -34,6 +34,7 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahMarkingContext.inline.hpp"
 #include "gc/shenandoah/shenandoahRootProcessor.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
@@ -214,10 +215,8 @@ void ShenandoahMarkCompact::phase1_mark_heap() {
 
   ShenandoahConcurrentMark* cm = heap->concurrent_mark();
 
-  // Do not trust heuristics, because this can be our last resort collection.
-  // Only ignore processing references and class unloading if explicitly disabled.
-  heap->set_process_references(ShenandoahRefProcFrequency != 0);
-  heap->set_unload_classes(ClassUnloading);
+  heap->set_process_references(heap->heuristics()->can_process_references());
+  heap->set_unload_classes(heap->heuristics()->can_unload_classes());
 
   ReferenceProcessor* rp = heap->ref_processor();
   // enable ("weak") refs discovery

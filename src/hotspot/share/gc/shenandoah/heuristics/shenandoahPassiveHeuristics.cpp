@@ -57,16 +57,13 @@ bool ShenandoahPassiveHeuristics::should_start_normal_gc() const {
 }
 
 bool ShenandoahPassiveHeuristics::should_process_references() {
-  if (ShenandoahRefProcFrequency == 0) return false;
-  // Always process references.
-  return true;
+  // Always process references, if we can.
+  return can_process_references();
 }
 
 bool ShenandoahPassiveHeuristics::should_unload_classes() {
-  if (has_metaspace_oom()) return true;
-  if (ShenandoahUnloadClassesFrequency == 0) return false;
-  // Always unload classes.
-  return true;
+  // Always unload classes, if we can.
+  return can_unload_classes();
 }
 
 bool ShenandoahPassiveHeuristics::should_degenerate_cycle() {
