@@ -55,14 +55,16 @@ import sun.java2d.opengl.OGLContext.OGLContextCaps;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
-import static sun.java2d.opengl.OGLSurfaceData.*;
-import static sun.java2d.opengl.OGLContext.OGLContextCaps.*;
-
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CPlatformView;
 import sun.lwawt.macosx.CThreading;
 import java.security.PrivilegedAction;
 import java.util.concurrent.Callable;
+
+import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
+import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
+import static sun.java2d.opengl.OGLSurfaceData.FBOBJECT;
+import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
 
 public final class CGLGraphicsConfig extends CGraphicsConfig
     implements OGLGraphicsConfig
@@ -129,12 +131,13 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     public static CGLGraphicsConfig getConfig(CGraphicsDevice device,
-                                              int pixfmt)
+                                              int displayID, int pixfmt)
     {
         if (!cglAvailable) {
             return null;
         }
 
+<<<<<<< HEAD
         // Move CGLGraphicsConfig creation code to AppKit thread in order to avoid the
         // following deadlock:
         // 1) CGLGraphicsConfig.getCGLConfigInfo (called from EDT) takes RenderQueue.lock
@@ -170,6 +173,29 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             }
             if (cfginfo == 0) {
                 return null;
+=======
+        long cfginfo = 0;
+        int textureSize = 0;
+        final String ids[] = new String[1];
+        OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            // getCGLConfigInfo() creates and destroys temporary
+            // surfaces/contexts, so we should first invalidate the current
+            // Java-level context and flush the queue...
+            OGLContext.invalidateCurrentContext();
+            cfginfo = getCGLConfigInfo(displayID, pixfmt, kOpenGLSwapInterval);
+            if (cfginfo != 0L) {
+                textureSize = nativeGetMaxTextureSize();
+                // 7160609: GL still fails to create a square texture of this
+                // size. Half should be safe enough.
+                // Explicitly not support a texture more than 2^14, see 8010999.
+                textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
+                OGLContext.setScratchSurface(cfginfo);
+                rq.flushAndInvokeNow(() -> {
+                    ids[0] = OGLContext.getOGLIdString();
+                });
+>>>>>>> e410e72... 8211992: GraphicsConfiguration.getDevice().getDisplayMode() causes JVM crash on Mac
             }
 
             int oglCaps = getOGLCapabilities(cfginfo);
@@ -280,8 +306,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
 
     @Override
     public String toString() {
-        int displayID = getDevice().getCGDisplayID();
-        return ("CGLGraphicsConfig[dev="+displayID+",pixfmt="+pixfmt+"]");
+        String display = getDevice().getIDstring();
+        return ("CGLGraphicsConfig[" + display + ", pixfmt=" + pixfmt + "]");
     }
 
     @Override
