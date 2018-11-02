@@ -36,6 +36,8 @@ ShenandoahCollectorPolicy::ShenandoahCollectorPolicy() :
   _alloc_failure_full(0),
   _explicit_concurrent(0),
   _explicit_full(0),
+  _implicit_concurrent(0),
+  _implicit_full(0),
   _cycle_counter(0) {
 
   Copy::zero_to_bytes(_degen_points, sizeof(size_t) * ShenandoahHeap::_DEGENERATED_LIMIT);
@@ -64,6 +66,14 @@ void ShenandoahCollectorPolicy::record_explicit_to_concurrent() {
 
 void ShenandoahCollectorPolicy::record_explicit_to_full() {
   _explicit_full++;
+}
+
+void ShenandoahCollectorPolicy::record_implicit_to_concurrent() {
+  _implicit_concurrent++;
+}
+
+void ShenandoahCollectorPolicy::record_implicit_to_full() {
+  _implicit_full++;
 }
 
 void ShenandoahCollectorPolicy::record_alloc_failure_to_full() {
@@ -117,6 +127,7 @@ void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
 
   out->print_cr(SIZE_FORMAT_W(5) " successful concurrent GCs",         _success_concurrent_gcs);
   out->print_cr("  " SIZE_FORMAT_W(5) " invoked explicitly",           _explicit_concurrent);
+  out->print_cr("  " SIZE_FORMAT_W(5) " invoked implicitly",           _implicit_concurrent);
   out->cr();
 
   out->print_cr(SIZE_FORMAT_W(5) " Degenerated GCs",                   _success_degenerated_gcs);
@@ -132,6 +143,7 @@ void ShenandoahCollectorPolicy::print_gc_stats(outputStream* out) const {
 
   out->print_cr(SIZE_FORMAT_W(5) " Full GCs",                          _success_full_gcs + _alloc_failure_degenerated_upgrade_to_full);
   out->print_cr("  " SIZE_FORMAT_W(5) " invoked explicitly",           _explicit_full);
+  out->print_cr("  " SIZE_FORMAT_W(5) " invoked implicitly",           _implicit_full);
   out->print_cr("  " SIZE_FORMAT_W(5) " caused by allocation failure", _alloc_failure_full);
   out->print_cr("  " SIZE_FORMAT_W(5) " upgraded from Degenerated GC", _alloc_failure_degenerated_upgrade_to_full);
 }

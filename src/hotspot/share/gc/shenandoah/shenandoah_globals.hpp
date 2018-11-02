@@ -109,6 +109,9 @@
           "Set to 0 to disable concurrent class unloading. "                \
           "Defaults to unload classes every 5 cycles.")                     \
                                                                             \
+  product(bool, ShenandoahImplicitGCInvokesConcurrent, false,               \
+          "Should internally-caused GCs invoke concurrent, or go to full?") \
+                                                                            \
   experimental(uintx, ShenandoahFullGCThreshold, 3,                         \
           "How many back-to-back Degenerated GCs to do before triggering "  \
           "a Full GC. Defaults to 3.")                                      \

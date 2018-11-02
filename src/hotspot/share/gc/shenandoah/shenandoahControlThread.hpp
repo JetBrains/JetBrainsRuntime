@@ -101,10 +101,6 @@ private:
 
   void notify_gc_waiters();
 
-  // Handle explicit GC request.
-  // Blocks until GC is over.
-  void handle_explicit_gc(GCCause::Cause cause);
-
   // Handle GC request.
   // Blocks until GC is over.
   void handle_requested_gc(GCCause::Cause cause);

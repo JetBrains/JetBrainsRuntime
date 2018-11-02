@@ -283,7 +283,7 @@ void ShenandoahHeuristics::record_allocation_failure_gc() {
   _bytes_in_cset = 0;
 }
 
-void ShenandoahHeuristics::record_explicit_gc() {
+void ShenandoahHeuristics::record_requested_gc() {
   _bytes_in_cset = 0;
 
   // Assume users call System.gc() when external state changes significantly,

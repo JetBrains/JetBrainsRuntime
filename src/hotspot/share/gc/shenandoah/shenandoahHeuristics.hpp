@@ -137,7 +137,7 @@ public:
 
   virtual void record_allocation_failure_gc();
 
-  virtual void record_explicit_gc();
+  virtual void record_requested_gc();
 
   virtual void choose_collection_set(ShenandoahCollectionSet* collection_set);
 

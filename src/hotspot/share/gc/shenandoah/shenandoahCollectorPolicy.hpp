@@ -39,6 +39,8 @@ private:
   size_t _alloc_failure_full;
   size_t _explicit_concurrent;
   size_t _explicit_full;
+  size_t _implicit_concurrent;
+  size_t _implicit_full;
   size_t _degen_points[ShenandoahHeap::_DEGENERATED_LIMIT];
 
   ShenandoahSharedFlag _in_shutdown;
@@ -64,6 +66,8 @@ public:
   void record_degenerated_upgrade_to_full();
   void record_explicit_to_concurrent();
   void record_explicit_to_full();
+  void record_implicit_to_concurrent();
+  void record_implicit_to_full();
 
   void record_shutdown();
   bool is_at_shutdown();
