@@ -747,7 +747,8 @@ var getJibProfilesProfiles = function (input, common, data) {
         "run-test-prebuilt": {
             target_os: input.build_os,
             target_cpu: input.build_cpu,
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "jib", testedProfile + ".jdk",
+            dependencies: [
+                "jtreg", "gnumake", "boot_jdk", "devkit", "jib", testedProfile + ".jdk",
                 testedProfile + ".test"
             ],
             src: "src.conf",
@@ -781,7 +782,6 @@ var getJibProfilesProfiles = function (input, common, data) {
     // This gives us a guaranteed working version of lldb for the jtreg failure handler.
     if (input.build_os == "macosx") {
         macosxRunTestExtra = {
-            dependencies: [ "devkit" ],
             environment_path: input.get("devkit", "install_path")
                 + "/Xcode.app/Contents/Developer/usr/bin"
         };
@@ -882,7 +882,10 @@ var getJibProfilesDependencies = function (input, common) {
             organization: common.organization,
             ext: "tar.gz",
             module: "devkit-" + devkit_platform,
-            revision: devkit_platform_revisions[devkit_platform]
+            revision: devkit_platform_revisions[devkit_platform],
+            environment: {
+                "DEVKIT_HOME": input.get("devkit", "home_path"),
+            }
         },
 
         build_devkit: {
@@ -982,14 +985,6 @@ var getJibProfilesDependencies = function (input, common) {
             environment_name: "GRAALUNIT_LIB"
         },
     };
-
-    // Need to add a value for the Visual Studio tools variable to make
-    // jaot be able to pick up the Visual Studio linker in testing.
-    if (input.target_os == "windows") {
-        dependencies.devkit.environment = {
-            VS120COMNTOOLS: input.get("devkit", "install_path") + "/Common7/Tools"
-        };
-    }
 
     return dependencies;
 };
