@@ -145,11 +145,16 @@ jint ShenandoahHeap::initialize() {
   ReservedSpace pgc_rs = heap_rs.first_part(max_byte_size);
 
   _num_regions = ShenandoahHeapRegion::region_count();
+
   size_t num_committed_regions = init_byte_size / ShenandoahHeapRegion::region_size_bytes();
+  num_committed_regions = MIN2(num_committed_regions, _num_regions);
+  assert(num_committed_regions <= _num_regions, "sanity");
+
   _initial_size = num_committed_regions * ShenandoahHeapRegion::region_size_bytes();
   _committed = _initial_size;
 
-  log_info(gc, heap)("Initialize Shenandoah heap with initial size " SIZE_FORMAT " bytes", init_byte_size);
+  log_info(gc, heap)("Initialize Shenandoah heap with initial size " SIZE_FORMAT "%s",
+          byte_size_in_proper_unit(_initial_size), proper_unit_for_byte_size(_initial_size));
   if (!os::commit_memory(pgc_rs.base(), _initial_size, false)) {
     vm_exit_out_of_memory(_initial_size, OOM_MMAP_ERROR, "Shenandoah failed to initialize heap");
   }
