@@ -46,7 +46,6 @@
 #include "gc/z/c2/zBarrierSetC2.hpp"
 #endif
 #if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
@@ -2142,11 +2141,6 @@ bool ConnectionGraph::is_oop_field(Node* n, int offset, bool* unsafe) {
     } else if (adr_type->isa_aryptr()) {
       if (offset == arrayOopDesc::length_offset_in_bytes()) {
         // Ignore array length load.
-#if INCLUDE_SHENANDOAHGC
-      } else if (UseShenandoahGC && ShenandoahReadBarrier && offset == BrooksPointer::byte_offset()) {
-        // Shenandoah read barrier.
-        bt = T_ARRAY;
-#endif
       } else if (find_second_addp(n, n->in(AddPNode::Base)) != NULL) {
         // Ignore first AddP.
       } else {
