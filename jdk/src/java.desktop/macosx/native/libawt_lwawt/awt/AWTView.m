@@ -26,6 +26,7 @@
 #import "jni_util.h"
 #import "CGLGraphicsConfig.h"
 
+#import <Carbon/Carbon.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <JavaRuntimeSupport/JavaRuntimeSupport.h>
 #include <Carbon/Carbon.h>
@@ -62,6 +63,13 @@ static BOOL shouldUsePressAndHold() {
     shouldUsePressAndHold = !isSnowLeopardOrLower();
     return shouldUsePressAndHold;
 }
+
+#ifndef kCFCoreFoundationVersionNumber10_13_Max
+#define kCFCoreFoundationVersionNumber10_13_Max 1499
+#endif
+
+#define IS_OSX_GT10_13 (floor(kCFCoreFoundationVersionNumber) > \
+    kCFCoreFoundationVersionNumber10_13_Max)
 
 @implementation AWTView
 
@@ -286,11 +294,31 @@ static BOOL shouldUsePressAndHold() {
     // Allow TSM to look at the event and potentially send back NSTextInputClient messages.
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
 
-    if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod]) {
+    if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
+         fInputMethodLOCKABLE)
+    {
         fProcessingKeystroke = NO;
         if (!fInPressAndHold) {
             fInPressAndHold = YES;
             fPAHNeedsToSelect = YES;
+        } else if (IS_OSX_GT10_13) {
+            // Abandon input to reset IM and unblock input after canceling
+            // input accented symbols (macOS 10.14+ only)
+
+            switch([event keyCode]) {
+                case kVK_Escape:
+                case kVK_Delete:
+                case kVK_Return:
+                case kVK_ForwardDelete:
+                case kVK_PageUp:
+                case kVK_PageDown:
+                case kVK_DownArrow:
+                case kVK_UpArrow:
+                case kVK_Home:
+                case kVK_End:
+                   [self abandonInput];
+                   break;
+            }
         }
         return;
     }
@@ -1124,6 +1152,13 @@ JNF_CLASS_CACHE(jc_CInputMethod, "sun/lwawt/macosx/CInputMethod");
         }
     }
     fPAHNeedsToSelect = NO;
+
+    // Abandon input to reset IM and unblock input after entering accented
+    // symbols (macOS 10.14+ only)
+
+    if (IS_OSX_GT10_13) {
+        [self abandonInput];
+    }
 }
 
 - (void) doCommandBySelector:(SEL)aSelector
