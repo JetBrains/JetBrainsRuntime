@@ -1437,7 +1437,7 @@ Node *LoadNode::split_through_phi(PhaseGVN *phase) {
 
   // Do nothing here if Identity will find a value
   // (to avoid infinite chain of value phis generation).
-  if (!phase->eqv(this, this->Identity(phase)))
+  if (!phase->eqv(this, phase->apply_identity(this)))
     return NULL;
 
   // Select Region to split through.
@@ -1527,7 +1527,7 @@ Node *LoadNode::split_through_phi(PhaseGVN *phase) {
       // otherwise it will be not updated during igvn->transform since
       // igvn->type(x) is set to x->Value() already.
       x->raise_bottom_type(t);
-      Node *y = x->Identity(igvn);
+      Node *y = igvn->apply_identity(x);
       if (y != x) {
         x = y;
       } else {
