@@ -394,14 +394,6 @@ public final class CInputMethod extends InputMethodAdapter {
         fAwtFocussedComponentPeer = null;
     }
 
-    private boolean isValid() {
-        return  fIMContext != null &&
-                fAwtFocussedComponent != null &&
-                fAwtFocussedComponentPeer != null &&
-                fCurrentText != null &&
-                fCurrentTextAsString != null;
-    }
-
     /**
         * Returns a control object from this input method, or null. A
      * control object provides methods that control the behavior of the
@@ -622,7 +614,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final String[] retString = new String[1];
 
         try {
-            if (isValid())
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(retString) {
                     int location = locationIn;
@@ -675,7 +667,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] returnValue = new int[2];
 
         try {
-            if (isValid())
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(returnValue) {
                     AttributedCharacterIterator theIterator = fIMContext.getSelectedText(null);
@@ -751,7 +743,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] rect = new int[4];
 
         try {
-            if (isValid())
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(rect) {
                     int insertOffset = fIMContext.getInsertPositionOffset();
@@ -770,7 +762,7 @@ public final class CInputMethod extends InputMethodAdapter {
                     if (composedTextOffset > 0 && (fAwtFocussedComponent instanceof JTextComponent)) {
                         Rectangle r2 = fIMContext.getTextLocation(TextHitInfo.beforeOffset(0));
 
-                        if (r.equals(r2)) {
+                        if (r.equals(r2) && fCurrentTextAsString != null) {
                             // FIXME: (SAK) If the candidate text wraps over two lines, this calculation pushes the candidate
                             // window off the right edge of the component.
                             String inProgressSubstring = fCurrentTextAsString.substring(0, composedTextOffset);
@@ -796,7 +788,7 @@ public final class CInputMethod extends InputMethodAdapter {
         final int[] insertPositionOffset = new int[1];
 
         try {
-            if (isValid())
+            if (fIMContext != null)
             LWCToolkit.invokeAndWait(new Runnable() {
                 public void run() { synchronized(offsetInfo) {
                     offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
