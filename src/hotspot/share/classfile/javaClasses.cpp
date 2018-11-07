@@ -4141,8 +4141,19 @@ const char* java_lang_ClassLoader::describe_external(const oop loader) {
   ss.print("%s (instance of %s", name, loader->klass()->external_name());
   if (!well_known_loader) {
     oop pl = java_lang_ClassLoader::parent(loader);
-    ClassLoaderData *pl_cld = ClassLoaderData::class_loader_data(pl);
-    const char* parentName = pl_cld->loader_name_and_id();
+    const char* parentName = "";
+    ClassLoaderData *parent_cld = ClassLoaderData::class_loader_data_or_null(pl);
+    // The parent loader's ClassLoaderData could be null if it is
+    // a delegating class loader that has never defined a class.
+    // In this case the loader's name must be obtained via the parent loader's oop.
+    if (parent_cld == NULL) {
+      oop cl_name_and_id = java_lang_ClassLoader::nameAndId(pl);
+      if (cl_name_and_id != NULL) {
+        parentName = java_lang_String::as_utf8_string(cl_name_and_id);
+      }
+    } else {
+      parentName = parent_cld->loader_name_and_id();
+    }
     if (pl != NULL) {
       ss.print(", child of %s %s", parentName, pl->klass()->external_name());
     } else {
