@@ -999,8 +999,10 @@ source_hpp %{
 #include "gc/shared/cardTable.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
 #include "gc/shared/collectedHeap.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "opto/addnode.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/brooksPointer.hpp"
+#endif
 
 class CallStubImpl {
 
@@ -9393,9 +9395,13 @@ instruct shenandoahRB(iRegPNoSp dst, iRegP src, rFlagsReg cr) %{
   match(Set dst (ShenandoahReadBarrier src));
   format %{ "shenandoah_rb $dst,$src" %}
   ins_encode %{
+#if INCLUDE_SHENANDOAHGC
     Register s = $src$$Register;
     Register d = $dst$$Register;
     __ ldr(d, Address(s, BrooksPointer::byte_offset()));
+#else
+    ShouldNotReachHere();
+#endif
   %}
   ins_pipe(pipe_class_memory);
 %}
