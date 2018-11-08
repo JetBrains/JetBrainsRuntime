@@ -114,6 +114,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
     } else {
         thePanel = [NSOpenPanel openPanel];
     }
+    [thePanel retain];
 
     if (thePanel != nil) {
         [thePanel setTitle:fTitle];
@@ -201,6 +202,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
 
         [thePanel setDelegate:nil];
     }
+    [thePanel release];
 
     [self disposer];
 }
