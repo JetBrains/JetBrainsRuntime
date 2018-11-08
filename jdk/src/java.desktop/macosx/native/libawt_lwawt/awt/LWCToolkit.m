@@ -69,12 +69,6 @@ static pthread_cond_t sAppKitStarted_cv = PTHREAD_COND_INITIALIZER;
 
 @implementation AWTToolkit
 
-static NSEvent* latestPerformKeyEquivalentEvent;
-+ (NSEvent*) latestPerformKeyEquivalentEvent
-{ @synchronized(self) { return latestPerformKeyEquivalentEvent; } }
-+ (void) setLatestPerformKeyEquivalentEvent:(NSEvent*) e
-{ @synchronized(self) { latestPerformKeyEquivalentEvent = e; } }
-
 static long eventCount;
 
 + (long) getEventCount{
