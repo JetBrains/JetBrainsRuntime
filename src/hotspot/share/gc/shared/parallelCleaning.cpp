@@ -30,6 +30,7 @@
 #include "memory/resourceArea.hpp"
 #include "prims/resolvedMethodTable.hpp"
 #include "logging/log.hpp"
+#include "gc/shared/gcCause.hpp"
 #include "gc/shared/gcTraceTime.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
 

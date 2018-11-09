@@ -46,15 +46,13 @@
 #include "opto/runtime.hpp"
 #include "opto/subnode.hpp"
 #include "opto/type.hpp"
-#include "utilities/macros.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
 #if INCLUDE_G1GC
 #include "gc/g1/g1ThreadLocalData.hpp"
 #endif // INCLUDE_G1GC
 #if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
 #endif
 
 

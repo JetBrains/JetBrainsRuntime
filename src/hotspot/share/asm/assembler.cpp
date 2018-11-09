@@ -26,11 +26,14 @@
 #include "asm/codeBuffer.hpp"
 #include "asm/macroAssembler.hpp"
 #include "asm/macroAssembler.inline.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/icache.hpp"
 #include "runtime/os.hpp"
 #include "runtime/thread.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#endif
 
 
 // Implementation of AbstractAssembler

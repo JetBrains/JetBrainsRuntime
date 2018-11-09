@@ -25,7 +25,6 @@
 #ifndef SHARE_VM_GC_SHARED_GCTRACETIME_HPP
 #define SHARE_VM_GC_SHARED_GCTRACETIME_HPP
 
-#include "gc/shared/gcCause.hpp"
 #include "logging/log.hpp"
 #include "logging/logHandle.hpp"
 #include "logging/logStream.hpp"

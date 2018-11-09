@@ -135,7 +135,7 @@
 #include "opto/subnode.hpp"
 #include "opto/vectornode.hpp"
 #if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/c2/shenandoahSupport.hpp"
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
 #endif
 #endif // COMPILER2
 
