@@ -120,18 +120,18 @@ private:
 
   template <typename T>
   bool arraycopy_loop_1(T* src, T* dst, size_t length, Klass* bound,
-                        bool checkcast, bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
+                        bool checkcast, bool satb, bool disjoint, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
 
   template <typename T, bool CHECKCAST>
   bool arraycopy_loop_2(T* src, T* dst, size_t length, Klass* bound,
-                        bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
+                        bool satb, bool disjoint, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
 
   template <typename T, bool CHECKCAST, bool SATB>
   bool arraycopy_loop_3(T* src, T* dst, size_t length, Klass* bound,
-                        ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
+                        bool disjoint, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode);
 
   template <typename T, bool CHECKCAST, bool SATB, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
-  bool arraycopy_loop(T* src, T* dst, size_t length, Klass* bound);
+  bool arraycopy_loop(T* src, T* dst, size_t length, Klass* bound, bool disjoint);
 
   template <typename T, bool CHECKCAST, bool SATB, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
   bool arraycopy_element(T* cur_src, T* cur_dst, Klass* bound, Thread* thread);

@@ -93,34 +93,36 @@ void ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::arraycopy_in_
 
 template <typename T>
 bool ShenandoahBarrierSet::arraycopy_loop_1(T* src, T* dst, size_t length, Klass* bound,
-                                            bool checkcast, bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
+                                            bool checkcast, bool satb, bool disjoint,
+                                            ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   if (checkcast) {
-    return arraycopy_loop_2<T, true>(src, dst, length, bound, satb, storeval_mode);
+    return arraycopy_loop_2<T, true>(src, dst, length, bound, satb, disjoint, storeval_mode);
   } else {
-    return arraycopy_loop_2<T, false>(src, dst, length, bound, satb, storeval_mode);
+    return arraycopy_loop_2<T, false>(src, dst, length, bound, satb, disjoint, storeval_mode);
   }
 }
 
 template <typename T, bool CHECKCAST>
 bool ShenandoahBarrierSet::arraycopy_loop_2(T* src, T* dst, size_t length, Klass* bound,
-                                            bool satb, ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
+                                            bool satb, bool disjoint,
+                                            ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   if (satb) {
-    return arraycopy_loop_3<T, CHECKCAST, true>(src, dst, length, bound, storeval_mode);
+    return arraycopy_loop_3<T, CHECKCAST, true>(src, dst, length, bound, disjoint, storeval_mode);
   } else {
-    return arraycopy_loop_3<T, CHECKCAST, false>(src, dst, length, bound, storeval_mode);
+    return arraycopy_loop_3<T, CHECKCAST, false>(src, dst, length, bound, disjoint, storeval_mode);
   }
 }
 
 template <typename T, bool CHECKCAST, bool SATB>
-bool ShenandoahBarrierSet::arraycopy_loop_3(T* src, T* dst, size_t length, Klass* bound,
+bool ShenandoahBarrierSet::arraycopy_loop_3(T* src, T* dst, size_t length, Klass* bound, bool disjoint,
                                             ShenandoahBarrierSet::ArrayCopyStoreValMode storeval_mode) {
   switch (storeval_mode) {
     case NONE:
-      return arraycopy_loop<T, CHECKCAST, SATB, NONE>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, NONE>(src, dst, length, bound, disjoint);
     case READ_BARRIER:
-      return arraycopy_loop<T, CHECKCAST, SATB, READ_BARRIER>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, READ_BARRIER>(src, dst, length, bound, disjoint);
     case WRITE_BARRIER:
-      return arraycopy_loop<T, CHECKCAST, SATB, WRITE_BARRIER>(src, dst, length, bound);
+      return arraycopy_loop<T, CHECKCAST, SATB, WRITE_BARRIER>(src, dst, length, bound, disjoint);
     default:
       ShouldNotReachHere();
       return true; // happy compiler
@@ -128,30 +130,30 @@ bool ShenandoahBarrierSet::arraycopy_loop_3(T* src, T* dst, size_t length, Klass
 }
 
 template <typename T, bool CHECKCAST, bool SATB, ShenandoahBarrierSet::ArrayCopyStoreValMode STOREVAL_MODE>
-bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* bound) {
+bool ShenandoahBarrierSet::arraycopy_loop(T* src, T* dst, size_t length, Klass* bound, bool disjoint) {
   Thread* thread = Thread::current();
 
   ShenandoahEvacOOMScope oom_evac_scope;
 
   // We need to handle four cases:
   //
-  // a) src < dst, intersecting, can only copy backward only
+  // a) src < dst, conjoint, can only copy backward only
   //   [...src...]
   //         [...dst...]
   //
-  // b) src < dst, non-intersecting, can copy forward/backward
+  // b) src < dst, disjoint, can only copy forward, because types may mismatch
   //   [...src...]
   //              [...dst...]
   //
-  // c) src > dst, intersecting, can copy forward only
+  // c) src > dst, conjoint, can copy forward only
   //         [...src...]
   //   [...dst...]
   //
-  // d) src > dst, non-intersecting, can copy forward/backward
+  // d) src > dst, disjoint, can only copy forward, because types may mismatch
   //              [...src...]
   //   [...dst...]
   //
-  if (src > dst) {
+  if (src > dst || disjoint) {
     // copy forward:
     T* cur_src = src;
     T* cur_dst = dst;
@@ -248,6 +250,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
 
   bool satb = ShenandoahSATBBarrier && heap->is_concurrent_mark_in_progress();
   bool checkcast = HasDecorator<decorators, ARRAYCOPY_CHECKCAST>::value;
+  bool disjoint = HasDecorator<decorators, ARRAYCOPY_DISJOINT>::value;
   ArrayCopyStoreValMode storeval_mode;
   if (heap->has_forwarded_objects()) {
     if (heap->is_concurrent_traversal_in_progress()) {
@@ -273,7 +276,7 @@ bool ShenandoahBarrierSet::AccessBarrier<decorators, BarrierSetT>::oop_arraycopy
 
   Klass* bound = objArrayOop(dst_obj)->element_klass();
   ShenandoahBarrierSet* bs = ShenandoahBarrierSet::barrier_set();
-  return bs->arraycopy_loop_1(src_raw, dst_raw, length, bound, checkcast, satb, storeval_mode);
+  return bs->arraycopy_loop_1(src_raw, dst_raw, length, bound, checkcast, satb, disjoint, storeval_mode);
 }
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_INLINE_HPP
