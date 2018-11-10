@@ -1001,7 +1001,7 @@ source_hpp %{
 #include "gc/shared/collectedHeap.hpp"
 #include "opto/addnode.hpp"
 #if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 #endif
 
 class CallStubImpl {
@@ -9398,7 +9398,7 @@ instruct shenandoahRB(iRegPNoSp dst, iRegP src, rFlagsReg cr) %{
 #if INCLUDE_SHENANDOAHGC
     Register s = $src$$Register;
     Register d = $dst$$Register;
-    __ ldr(d, Address(s, BrooksPointer::byte_offset()));
+    __ ldr(d, Address(s, ShenandoahBrooksPointer::byte_offset()));
 #else
     ShouldNotReachHere();
 #endif

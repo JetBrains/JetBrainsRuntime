@@ -24,7 +24,7 @@
 #ifndef SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP
 #define SHARE_VM_GC_SHENANDOAH_C2_SHENANDOAH_SUPPORT_HPP
 
-#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 #include "memory/allocation.hpp"
 #include "opto/addnode.hpp"
 #include "opto/graphKit.hpp"
@@ -72,7 +72,7 @@ public:
   static Node* skip_through_barrier(Node* n);
 
   static const TypeOopPtr* brooks_pointer_type(const Type* t) {
-    return t->is_oopptr()->cast_to_nonconst()->add_offset(BrooksPointer::byte_offset())->is_oopptr();
+    return t->is_oopptr()->cast_to_nonconst()->add_offset(ShenandoahBrooksPointer::byte_offset())->is_oopptr();
   }
 
   virtual const TypePtr* adr_type() const {
@@ -81,7 +81,7 @@ public:
     }
     //const TypePtr* adr_type = in(MemNode::Address)->bottom_type()->is_ptr();
     const TypePtr* adr_type = brooks_pointer_type(bottom_type());
-    assert(adr_type->offset() == BrooksPointer::byte_offset(), "sane offset");
+    assert(adr_type->offset() == ShenandoahBrooksPointer::byte_offset(), "sane offset");
     assert(Compile::current()->alias_type(adr_type)->is_rewritable(), "brooks ptr must be rewritable");
     return adr_type;
   }

@@ -23,7 +23,7 @@
 
 #include "precompiled.hpp"
 #include "memory/allocation.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
@@ -454,12 +454,12 @@ void ShenandoahHeapRegion::oop_iterate(OopIterateClosure* blk) {
 
 void ShenandoahHeapRegion::oop_iterate_objects(OopIterateClosure* blk) {
   assert(! is_humongous(), "no humongous region here");
-  HeapWord* obj_addr = bottom() + BrooksPointer::word_size();
+  HeapWord* obj_addr = bottom() + ShenandoahBrooksPointer::word_size();
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
   while (obj_addr < t) {
     oop obj = oop(obj_addr);
-    obj_addr += obj->oop_iterate_size(blk) + BrooksPointer::word_size();
+    obj_addr += obj->oop_iterate_size(blk) + ShenandoahBrooksPointer::word_size();
   }
 }
 
@@ -468,7 +468,7 @@ void ShenandoahHeapRegion::oop_iterate_humongous(OopIterateClosure* blk) {
   // Find head.
   ShenandoahHeapRegion* r = humongous_start_region();
   assert(r->is_humongous_start(), "need humongous head here");
-  oop obj = oop(r->bottom() + BrooksPointer::word_size());
+  oop obj = oop(r->bottom() + ShenandoahBrooksPointer::word_size());
   obj->oop_iterate(blk, MemRegion(bottom(), top()));
 }
 
@@ -507,11 +507,11 @@ HeapWord* ShenandoahHeapRegion::block_start_const(const void* p) const {
   if (p >= top()) {
     return top();
   } else {
-    HeapWord* last = bottom() + BrooksPointer::word_size();
+    HeapWord* last = bottom() + ShenandoahBrooksPointer::word_size();
     HeapWord* cur = last;
     while (cur <= p) {
       last = cur;
-      cur += oop(cur)->size() + BrooksPointer::word_size();
+      cur += oop(cur)->size() + ShenandoahBrooksPointer::word_size();
     }
     shenandoah_assert_correct(NULL, oop(last));
     return last;

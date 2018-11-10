@@ -1738,7 +1738,7 @@ const Type* LoadNode::Value(PhaseGVN* phase) const {
     // as to alignment, which will therefore produce the smallest
     // possible base offset.
     const int min_base_off = arrayOopDesc::base_offset_in_bytes(T_BYTE);
-    const bool off_beyond_header = SHENANDOAHGC_ONLY((off != BrooksPointer::byte_offset() || !UseShenandoahGC) &&)
+    const bool off_beyond_header = SHENANDOAHGC_ONLY((off != ShenandoahBrooksPointer::byte_offset() || !UseShenandoahGC) &&)
                                     ((uint)off >= (uint)min_base_off);
 
     // Try to constant-fold a stable array element.

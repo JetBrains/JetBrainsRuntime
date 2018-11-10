@@ -322,7 +322,7 @@ bool MacroAssembler::needs_explicit_null_check(intptr_t offset) {
     int adj = 0;
 #if INCLUDE_SHENANDOAHGC
     if (UseShenandoahGC) {
-      adj = BrooksPointer::byte_offset();
+      adj = ShenandoahBrooksPointer::byte_offset();
       assert(adj < 0, "no need for positive adjustments");
     }
 #endif
@@ -334,7 +334,7 @@ bool MacroAssembler::needs_explicit_null_check(intptr_t offset) {
 #endif
 
 #if INCLUDE_SHENANDOAHGC
-  if (UseShenandoahGC && ((offset & address_bits) == (BrooksPointer::byte_offset() & address_bits))) {
+  if (UseShenandoahGC && ((offset & address_bits) == (ShenandoahBrooksPointer::byte_offset() & address_bits))) {
     return false;
   }
 #endif

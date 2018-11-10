@@ -21,13 +21,13 @@
  *
  */
 
-#ifndef SHARE_VM_GC_SHENANDOAH_BROOKSPOINTER_HPP
-#define SHARE_VM_GC_SHENANDOAH_BROOKSPOINTER_HPP
+#ifndef SHARE_VM_GC_SHENANDOAH_SHENANDOAHBROOKSPOINTER_HPP
+#define SHARE_VM_GC_SHENANDOAH_SHENANDOAHBROOKSPOINTER_HPP
 
 #include "oops/oop.hpp"
 #include "utilities/globalDefinitions.hpp"
 
-class BrooksPointer {
+class ShenandoahBrooksPointer {
   /*
    * Notes:
    *
@@ -103,4 +103,4 @@ private:
   static inline HeapWord** brooks_ptr_addr(oop obj);
 };
 
-#endif // SHARE_VM_GC_SHENANDOAH_BROOKSPOINTER_HPP
+#endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHBROOKSPOINTER_HPP

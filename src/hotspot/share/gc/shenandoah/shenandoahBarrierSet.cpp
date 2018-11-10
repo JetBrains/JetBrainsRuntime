@@ -256,7 +256,7 @@ oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
       ShenandoahHeapRegion* r = _heap->heap_region_containing(obj);
       assert(r->is_cset(), "sanity");
 
-      HeapWord* cur = (HeapWord*)obj + obj->size() + BrooksPointer::word_size();
+      HeapWord* cur = (HeapWord*)obj + obj->size() + ShenandoahBrooksPointer::word_size();
 
       size_t count = 0;
       while ((cur < r->top()) && ctx->is_marked(oop(cur)) && (count++ < max)) {
@@ -264,7 +264,7 @@ oop ShenandoahBarrierSet::write_barrier_mutator(oop obj) {
         if (oopDesc::unsafe_equals(cur_oop, resolve_forwarded_not_null(cur_oop))) {
           _heap->evacuate_object(cur_oop, thread);
         }
-        cur = cur + cur_oop->size() + BrooksPointer::word_size();
+        cur = cur + cur_oop->size() + ShenandoahBrooksPointer::word_size();
       }
     }
 

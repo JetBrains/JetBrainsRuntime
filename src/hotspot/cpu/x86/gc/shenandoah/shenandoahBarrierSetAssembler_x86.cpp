@@ -320,7 +320,7 @@ void ShenandoahBarrierSetAssembler::read_barrier_not_null(MacroAssembler* masm, 
 
 void ShenandoahBarrierSetAssembler::read_barrier_not_null_impl(MacroAssembler* masm, Register dst) {
   assert(UseShenandoahGC && (ShenandoahReadBarrier || ShenandoahStoreValReadBarrier || ShenandoahCASBarrier), "should be enabled");
-  __ movptr(dst, Address(dst, BrooksPointer::byte_offset()));
+  __ movptr(dst, Address(dst, ShenandoahBrooksPointer::byte_offset()));
 }
 
 
@@ -542,9 +542,9 @@ void ShenandoahBarrierSetAssembler::tlab_allocate(MacroAssembler* masm,
 
   __ movptr(obj, Address(thread, JavaThread::tlab_top_offset()));
   if (var_size_in_bytes == noreg) {
-    __ lea(end, Address(obj, con_size_in_bytes + BrooksPointer::byte_size()));
+    __ lea(end, Address(obj, con_size_in_bytes + ShenandoahBrooksPointer::byte_size()));
   } else {
-    __ addptr(var_size_in_bytes, BrooksPointer::byte_size());
+    __ addptr(var_size_in_bytes, ShenandoahBrooksPointer::byte_size());
     __ lea(end, Address(obj, var_size_in_bytes, Address::times_1));
   }
   __ cmpptr(end, Address(thread, JavaThread::tlab_end_offset()));
@@ -555,11 +555,11 @@ void ShenandoahBarrierSetAssembler::tlab_allocate(MacroAssembler* masm,
 
   // Initialize brooks pointer
 #ifdef _LP64
-  __ incrementq(obj, BrooksPointer::byte_size());
+  __ incrementq(obj, ShenandoahBrooksPointer::byte_size());
 #else
-  __ incrementl(obj, BrooksPointer::byte_size());
+  __ incrementl(obj, ShenandoahBrooksPointer::byte_size());
 #endif
-  __ movptr(Address(obj, BrooksPointer::byte_offset()), obj);
+  __ movptr(Address(obj, ShenandoahBrooksPointer::byte_offset()), obj);
 
   // recover var_size_in_bytes if necessary
   if (var_size_in_bytes == end) {

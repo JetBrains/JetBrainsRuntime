@@ -1468,7 +1468,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
         ta = TypeAryPtr::RANGE; // generic ignored junk
         ptr = TypePtr::BotPTR;
 #if INCLUDE_SHENANDOAHGC
-      } else if (offset == BrooksPointer::byte_offset() && UseShenandoahGC) {
+      } else if (offset == ShenandoahBrooksPointer::byte_offset() && UseShenandoahGC) {
         // Need to distinguish brooks ptr as is.
         tj = ta = TypeAryPtr::make(ptr,ta->ary(),ta->klass(),false,offset);
 #endif
@@ -1536,7 +1536,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
       if (!is_known_inst) { // Do it only for non-instance types
         tj = to = TypeInstPtr::make(TypePtr::BotPTR, env()->Object_klass(), false, NULL, offset);
       }
-    } else if (SHENANDOAHGC_ONLY((offset != BrooksPointer::byte_offset() || !UseShenandoahGC) &&) (offset < 0 || offset >= k->size_helper() * wordSize)) {
+    } else if (SHENANDOAHGC_ONLY((offset != ShenandoahBrooksPointer::byte_offset() || !UseShenandoahGC) &&) (offset < 0 || offset >= k->size_helper() * wordSize)) {
       // Static fields are in the space above the normal instance
       // fields in the java.lang.Class instance.
       if (to->klass() != ciEnv::current()->Class_klass()) {
@@ -1635,7 +1635,7 @@ const TypePtr *Compile::flatten_alias_type( const TypePtr *tj ) const {
           (offset == oopDesc::mark_offset_in_bytes() && tj->base() == Type::AryPtr) ||
           (offset == oopDesc::klass_offset_in_bytes() && tj->base() == Type::AryPtr) ||
           (offset == arrayOopDesc::length_offset_in_bytes() && tj->base() == Type::AryPtr) ||
-          (UseShenandoahGC SHENANDOAHGC_ONLY(&& offset == BrooksPointer::byte_offset() && tj->base() == Type::AryPtr)),
+          (UseShenandoahGC SHENANDOAHGC_ONLY(&& offset == ShenandoahBrooksPointer::byte_offset() && tj->base() == Type::AryPtr)),
           "For oops, klasses, raw offset must be constant; for arrays the offset is never known" );
   assert( tj->ptr() != TypePtr::TopPTR &&
           tj->ptr() != TypePtr::AnyNull &&

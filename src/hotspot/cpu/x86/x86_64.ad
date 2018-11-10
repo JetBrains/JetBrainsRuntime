@@ -6632,7 +6632,7 @@ instruct shenandoahRB(rRegP dst, rRegP src, rFlagsReg cr) %{
 #if INCLUDE_SHENANDOAHGC
     Register d = $dst$$Register;
     Register s = $src$$Register;
-    __ movptr(d, Address(s, BrooksPointer::byte_offset()));
+    __ movptr(d, Address(s, ShenandoahBrooksPointer::byte_offset()));
 #else
     ShouldNotReachHere();
 #endif
@@ -6650,7 +6650,7 @@ instruct shenandoahRBNarrow(rRegP dst, rRegN src) %{
 #if INCLUDE_SHENANDOAHGC
     Register d = $dst$$Register;
     Register s = $src$$Register;
-    __ movptr(d, Address(r12, s, Address::times_1, BrooksPointer::byte_offset()));
+    __ movptr(d, Address(r12, s, Address::times_1, ShenandoahBrooksPointer::byte_offset()));
 #else
     ShouldNotReachHere();
 #endif
@@ -6668,7 +6668,7 @@ instruct shenandoahRBNarrowShift(rRegP dst, rRegN src) %{
 #if INCLUDE_SHENANDOAHGC
     Register d = $dst$$Register;
     Register s = $src$$Register;
-    __ movptr(d, Address(r12, s, Address::times_8, BrooksPointer::byte_offset()));
+    __ movptr(d, Address(r12, s, Address::times_8, ShenandoahBrooksPointer::byte_offset()));
 #else
     ShouldNotReachHere();
 #endif

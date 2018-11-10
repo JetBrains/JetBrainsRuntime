@@ -24,8 +24,8 @@
 #include "precompiled.hpp"
 #include "c1/c1_IR.hpp"
 #include "gc/g1/satbMarkQueue.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
 #include "gc/shenandoah/shenandoahThreadLocalData.hpp"
@@ -123,7 +123,7 @@ LIR_Opr ShenandoahBarrierSetC1::read_barrier_impl(LIRAccess& access, LIR_Opr obj
     __ cmp(lir_cond_equal, result, LIR_OprFact::oopConst(NULL));
     __ branch(lir_cond_equal, T_LONG, done->label());
   }
-  LIR_Address* brooks_ptr_address = gen->generate_address(result, BrooksPointer::byte_offset(), T_ADDRESS);
+  LIR_Address* brooks_ptr_address = gen->generate_address(result, ShenandoahBrooksPointer::byte_offset(), T_ADDRESS);
   __ load(brooks_ptr_address, result, info ? new CodeEmitInfo(info) : NULL, lir_patch_none);
 
   __ branch_destination(done->label());

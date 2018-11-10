@@ -25,7 +25,7 @@
 #define SHARE_GC_SHENANDOAH_SHENANDOAHBARRIERSETASSEMBLER_HPP
 
 #include "utilities/macros.hpp"
-#include "gc/shenandoah/brooksPointer.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 
 #include CPU_HEADER(gc/shenandoah/shenandoahBarrierSetAssembler)
 
