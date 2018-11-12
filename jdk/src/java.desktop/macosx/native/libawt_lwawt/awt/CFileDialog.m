@@ -126,8 +126,8 @@ canChooseDirectories:(BOOL)inChooseDirectories
         if (fMode == java_awt_FileDialog_LOAD) {
             NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
             [openPanel setAllowsMultipleSelection:fMultipleMode];
-            [openPanel setCanChooseFiles:!fChooseDirectories];
-            [openPanel setCanChooseDirectories:fChooseDirectories];
+            [openPanel setCanChooseFiles:YES];
+            [openPanel setCanChooseDirectories:YES];
             [openPanel setCanCreateDirectories:YES];
         }
 
