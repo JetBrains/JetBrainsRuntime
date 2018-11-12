@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -63,6 +63,7 @@ BOOT_MODULES += \
     jdk.management \
     jdk.management.jfr \
     jdk.management.agent \
+    jdk.naming.ldap \
     jdk.net \
     jdk.sctp \
     jdk.unsupported \
@@ -165,6 +166,7 @@ DOCS_MODULES += \
     jdk.management.agent \
     jdk.management.jfr \
     jdk.naming.dns \
+    jdk.naming.ldap \
     jdk.naming.rmi \
     jdk.net \
     jdk.pack \

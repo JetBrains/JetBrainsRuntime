@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,16 @@
  */
 
 /**
- * Defines the Java Naming and Directory Interface (JNDI) API.
+ * Provides the implementation of the LDAP DNS provider.
  *
+ * @uses com.sun.jndi.ldap.spi.LdapDnsProvider
  * @moduleGraph
- * @since 9
+ * @since 11
  */
-module java.naming {
-    requires java.security.sasl;
+module jdk.naming.ldap {
+    requires transitive java.naming;
 
-    exports javax.naming;
-    exports javax.naming.directory;
-    exports javax.naming.event;
-    exports javax.naming.ldap;
-    exports javax.naming.spi;
+    exports com.sun.jndi.ldap.spi;
 
-    exports com.sun.jndi.toolkit.ctx to
-        jdk.naming.dns;
-    exports com.sun.jndi.toolkit.url to
-        jdk.naming.dns,
-        jdk.naming.rmi;
-    exports com.sun.jndi.ldap to
-        jdk.naming.ldap;
-
-    uses javax.naming.ldap.StartTlsResponse;
-    uses javax.naming.spi.InitialContextFactory;
-
-    provides java.security.Provider with
-        sun.security.provider.certpath.ldap.JdkLDAP;
+    uses com.sun.jndi.ldap.spi.LdapDnsProvider;
 }
