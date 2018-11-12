@@ -543,7 +543,7 @@ source_hpp %{
 #include "gc/z/zBarrierSetAssembler.hpp"
 #endif
 #if INCLUDE_SHENANDOAHGC
-#include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
+#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
 #endif
 %}
 
