@@ -1075,12 +1075,12 @@ void Universe::initialize_known_methods(JavaThread* current) {
                           vmSymbols::doStackWalk_signature(), false);
 }
 
-void Universe::reinitialize_loader_addClass_method(TRAPS) {
+void Universe::reinitialize_loader_addClass_method(JavaThread* current) {
   // Set up method for registering loaded classes in class loader vector
-  initialize_known_method(_loader_addClass_cache,
-                          vmClasses::ClassLoader_klass(),
-                          "addClass",
-                          vmSymbols::class_void_signature(), false, CHECK);
+  _loader_addClass_cache.init(current,
+                              vmClasses::ClassLoader_klass(),
+                              "addClass",
+                              vmSymbols::class_void_signature(), false);
 }
 
 void universe2_init() {
