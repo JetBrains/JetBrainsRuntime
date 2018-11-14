@@ -506,6 +506,7 @@ class Arguments : AllStatic {
   static bool process_settings_file(const char* file_name, bool should_exist, jboolean ignore_unrecognized);
 
   static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
+
   // Return the maximum size a heap with compressed oops can take
   static size_t max_heap_for_compressed_oops();
 
