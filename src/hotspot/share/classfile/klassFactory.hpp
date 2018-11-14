@@ -64,6 +64,7 @@ class KlassFactory : AllStatic {
                                            Symbol* name,
                                            ClassLoaderData* loader_data,
                                            const ClassLoadInfo& cl_info,
+                                           const bool pick_newest,
                                            TRAPS);
   static InstanceKlass* check_shared_class_file_load_hook(
                                           InstanceKlass* ik,
