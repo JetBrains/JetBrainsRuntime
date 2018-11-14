@@ -197,7 +197,13 @@ void* Klass::operator new(size_t size, ClassLoaderData* loader_data, size_t word
 Klass::Klass(KlassID id) : _id(id),
                            _prototype_header(markOopDesc::prototype()),
                            _shared_class_path_index(-1),
-                           _java_mirror(NULL) {
+                           _java_mirror(NULL),
+                           _new_version(NULL),
+                           _old_version(NULL),
+                           _is_redefining(false),
+                           _is_copying_backwards(false),
+                           _redefinition_flags(Klass::NoRedefinition),
+                           _update_information(NULL) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror = 0;)
   _primary_supers[0] = this;
@@ -390,6 +396,27 @@ void Klass::append_to_sibling_list() {
   }
   // make ourselves the superklass' first subklass
   super->set_subklass(this);
+  debug_only(verify();)
+}
+
+void Klass::remove_from_sibling_list() {
+  debug_only(verify();)
+
+  // remove ourselves to superklass' subklass list
+  InstanceKlass* super = superklass();
+  if (super == NULL) return;        // special case: class Object
+  if (super->subklass() == this) {
+    // this klass is the first subklass
+    super->set_subklass(next_sibling());
+  } else {
+    Klass* sib = super->subklass();
+    assert(sib != NULL, "cannot find this class in sibling list!");
+    while (sib->next_sibling() != this) {
+      sib = sib->next_sibling();
+      assert(sib != NULL, "cannot find this class in sibling list!");
+    }
+    sib->set_next_sibling(next_sibling());
+  }
   debug_only(verify();)
 }
 

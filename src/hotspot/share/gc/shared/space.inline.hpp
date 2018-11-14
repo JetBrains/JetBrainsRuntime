@@ -134,7 +134,7 @@ public:
 };
 
 template <class SpaceType>
-inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp) {
+inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp, bool redefinition_run) {
   // Compute the new addresses for the live objects and store it in the mark
   // Used by universe::mark_sweep_phase2()
 
@@ -172,7 +172,18 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
       // prefetch beyond cur_obj
       Prefetch::write(cur_obj, interval);
       size_t size = space->scanned_block_size(cur_obj);
-      compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top);
+
+      if (redefinition_run) {
+        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top);
+        if (first_dead == NULL && oop(cur_obj)->is_gc_marked()) {
+          /* Was moved (otherwise, forward would reset mark),
+             set first_dead to here */
+          first_dead = cur_obj;
+        }
+      } else {
+        compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top);
+      }
+
       cur_obj += size;
       end_of_live = cur_obj;
     } else {
@@ -205,6 +216,10 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
       // move on to the next object
       cur_obj = end;
     }
+  }
+
+  if (redefinition_run) {
+    compact_top = space->forward_rescued(cp, compact_top);
   }
 
   assert(cur_obj == scan_limit, "just checking");
@@ -293,7 +308,7 @@ inline void CompactibleSpace::clear_empty_region(SpaceType* space) {
 }
 
 template <class SpaceType>
-inline void CompactibleSpace::scan_and_compact(SpaceType* space) {
+inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefinition_run) {
   // Copy all live objects to their new location
   // Used by MarkSweep::mark_sweep_phase4()
 
@@ -317,7 +332,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space) {
   if (space->_first_dead > cur_obj && !oop(cur_obj)->is_gc_marked()) {
     // All object before _first_dead can be skipped. They should not be moved.
     // A pointer to the first live object is stored at the memory location for _first_dead.
-    cur_obj = *(HeapWord**)(space->_first_dead);
+    cur_obj = space->_first_dead;
   }
 
   debug_only(HeapWord* prev_obj = NULL);
@@ -335,11 +350,35 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space) {
       size_t size = space->obj_size(cur_obj);
       HeapWord* compaction_top = (HeapWord*)oop(cur_obj)->forwardee();
 
+      if (redefinition_run &&  space->must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
+         space->rescue(cur_obj);
+        debug_only(Copy::fill_to_words(cur_obj, size, 0));
+        cur_obj += size;
+        continue;
+      }
+
       // prefetch beyond compaction_top
       Prefetch::write(compaction_top, copy_interval);
 
       // copy object and reinit its mark
-      assert(cur_obj != compaction_top, "everything in this pass should be moving");
+      assert(cur_obj != compaction_top || oop(cur_obj)->klass()->new_version() != NULL,
+             "everything in this pass should be moving");
+      if (redefinition_run && oop(cur_obj)->klass()->new_version() != NULL) {
+        Klass* new_version = oop(cur_obj)->klass()->new_version();
+        if (new_version->update_information() == NULL) {
+          Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
+          oop(compaction_top)->set_klass(new_version);
+        } else {
+          MarkSweep::update_fields(oop(cur_obj), oop(compaction_top));
+        }
+        oop(compaction_top)->init_mark();
+        assert(oop(compaction_top)->klass() != NULL, "should have a class");
+
+        debug_only(prev_obj = cur_obj);
+        cur_obj += size;
+        continue;
+      }
+
       Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
       oop(compaction_top)->init_mark_raw();
       assert(oop(compaction_top)->klass() != NULL, "should have a class");
