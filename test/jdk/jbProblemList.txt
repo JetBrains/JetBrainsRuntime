@@ -1148,6 +1148,7 @@ javax/swing/JFileChooser/JFileChooserSetLocationTest.java 8295804 linux-all,maco
 javax/swing/JSlider/6348946/bug6348946.java 8197552 windows-all
 javax/swing/JSpinner/4973721/bug4973721.java 8197552 windows-all
 javax/swing/JSpinner/5012888/bug5012888.java JBR-4880 windows-all
+javax/swing/JSpinner/JSpinnerFocusTest.java JBR-5288 windows-all
 javax/swing/JSpinner/SpinnerTest.java JBR-4880 windows-all
 javax/swing/JTable/7068740/bug7068740.java 8197552 windows-all
 javax/swing/text/FlowView/LayoutTest.java JBR-4880 windows-all
