@@ -74,6 +74,7 @@
 
 // NSWindow overrides delegate methods
 - (BOOL) canBecomeKeyWindow;
+- (void) becomeKeyWindow;
 - (BOOL) canBecomeMainWindow;
 - (BOOL) worksWhenModal;
 - (void)sendEvent:(NSEvent *)event;
