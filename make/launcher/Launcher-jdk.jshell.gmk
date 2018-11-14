@@ -27,5 +27,6 @@ include LauncherCommon.gmk
 
 $(eval $(call SetupBuildLauncher, jshell, \
     MAIN_CLASS := jdk.internal.jshell.tool.JShellToolProvider, \
+    JAVA_ARGS := -XX:+DisableHotswapAgent, \
     CFLAGS := -DEXPAND_CLASSPATH_WILDCARDS, \
 ))
