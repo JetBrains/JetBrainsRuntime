@@ -116,12 +116,13 @@
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
 java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
+java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java JBR-5178 windows-all
 java/awt/Focus/FrameMinimizeTest/FrameMinimizeTest.java 8016266 linux-x64
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java 6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java 6848407 generic-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java 8169110 linux-all
-java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java 8239801 macosx-all
+java/awt/Focus/UnaccessibleChoice/AccessibleChoiceTest.java 8239801,JBR-5178 macosx-all,windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java 8022302 generic-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java 8296972 macosx-13.0,macosx-13.1
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java 8160558 windows-all
@@ -135,7 +136,7 @@ java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.java 8171510,JBR-881 
 javax/swing/dnd/7171812/bug7171812.java 8041447,8253184 macosx-all,windows-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java 8169103 windows-all,macosx-all
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java 8198618 macosx-all
-java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252 macosx-all
+java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252,JBR-5178 macosx-all,windows-all
 java/awt/Focus/MouseClickRequestFocusRaceTest/MouseClickRequestFocusRaceTest.java 8194753 linux-all,macosx-all
 java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest.java 7152980 macosx-all
 java/awt/Focus/SimpleWindowActivationTest/SimpleWindowActivationTest.java 8159599 macosx-all
@@ -195,6 +196,7 @@ java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8252
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java 6829264 generic-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java 8080982 generic-all
 java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java 8079268 linux-all
+java/awt/datatrasfer/UnicodeTransferTest/UnicodeTransferTest.java 8300704 linux-all
 java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java 6829250 windows-all
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java JBR-5051 windows-all
 java/awt/Toolkit/RealSync/Test.java 8072110 linux-all,windows-all
@@ -216,9 +218,7 @@ java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,wind
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
 
-# causes mass failures on Ubuntu 22.04
-# java.awt.AWTError: Can't connect to X11 window server using ':0' as the value of the DISPLAY variable.
-java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java 8252713,JBR-3636,JBR-4880 linux-all,macosx-all,windows-all
+java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java JBR-3636,JBR-4880 macosx-all,windows-all
 
 java/awt/event/KeyEvent/KeyTyped/CtrlSpace.java JBR-3817 windows-all,macosx-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
@@ -299,7 +299,6 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 maco
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java 8017454 macosx-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8079267,8266244 windows-all,linux-all,macosx-aarch64
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java 8253184 windows-all
-java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java 8253184 windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java 8157173 generic-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java 7186009,8253184 macosx-all,windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java 7186009,8253184 macosx-all,windows-all
@@ -873,12 +872,12 @@ javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java  8277816 maco
 javax/swing/JInternalFrame/8020708/bug8020708.java JBR-4879 windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java 8277816,8253184 macosx-aarch64,windows-all
 java/awt/Robot/HiDPIScreenCapture/HiDPIRobotScreenCaptureTest.java 8253184 windows-all
-java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816 macosx-aarch64
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java  8277816,8253184 macosx-aarch64,windows-all
 java/awt/Robot/CheckCommonColors/CheckCommonColors.java 8277816,8253184 macosx-aarch64,windows-all
 java/awt/ColorClass/AlphaColorTest.java 8277816 macosx-aarch64
 java/awt/AlphaComposite/WindowAlphaCompositeTest.java 8277816 macosx-aarch64
 
-sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8273312 windows-all
+sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java 8265770,8273312 windows-all,macosx-all
 sanity/client/SwingSet/src/DialogDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/FrameDemoTest.java 8253184 windows-all
 sanity/client/SwingSet/src/InternalFrameDemoTest.java 8253184 windows-all
@@ -1078,7 +1077,7 @@ java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java JBR-4880 windo
 java/awt/event/KeyEvent/KeyCharTest/KeyCharTest.java JBR-4880 windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java JBR-4880 windows-all
 java/awt/Frame/MiscUndecorated/UndecoratedInitiallyIconified.java JBR-4880 windows-all
-java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4880 windows-all
+java/awt/FullScreen/FullscreenWindowProps/FullscreenWindowProps.java JBR-4275,JBR-4880 linux-all,windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java 8253184 windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java JBR-4880 windows-all
 java/awt/image/multiresolution/MenuMultiresolutionIconTest.java JBR-4880,8253184 windows-all
