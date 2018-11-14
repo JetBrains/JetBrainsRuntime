@@ -25,12 +25,19 @@
 
 include LauncherCommon.gmk
 
-$(eval $(call SetupBuildLauncher, rmid, \
-    MAIN_CLASS := sun.rmi.server.Activation, \
-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
-))
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  $(eval $(call SetupBuildLauncher, kinit, \
+      MAIN_CLASS := sun.security.krb5.internal.tools.Kinit, \
+      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+  ))
 
-$(eval $(call SetupBuildLauncher, rmiregistry, \
-    MAIN_CLASS := sun.rmi.registry.RegistryImpl, \
-    JAVA_ARGS := -XX:+DisableHotswapAgent, \
-))
+  $(eval $(call SetupBuildLauncher, klist, \
+      MAIN_CLASS := sun.security.krb5.internal.tools.Klist, \
+      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+  ))
+
+  $(eval $(call SetupBuildLauncher, ktab, \
+      MAIN_CLASS := sun.security.krb5.internal.tools.Ktab, \
+      JAVA_ARGS := -XX:+DisableHotswapAgent, \
+  ))
+endif

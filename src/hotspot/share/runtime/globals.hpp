@@ -31,6 +31,13 @@
 #include "utilities/align.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
+
+#ifdef DCEVM_ONLY
+#define DISABLED_HOTSWAP_AGENT true
+#else
+#define DISABLED_HOTSWAP_AGENT false
+#endif
+
 #include CPU_HEADER(globals)
 #include OS_HEADER(globals)
 #include OS_CPU_HEADER(globals)
@@ -2461,7 +2468,10 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(bool, AllowEnhancedClassRedefinition, true,                       \
              "Allow enhanced class redefinition beyond swapping method "    \
-             "bodies")
+             "bodies")                                                      \
+                                                                            \
+  product(bool, DisableHotswapAgent, DISABLED_HOTSWAP_AGENT,                \
+             "Disable integrated Hotswap Agent (HotswapVM only)")
 
 
 // Interface macros
