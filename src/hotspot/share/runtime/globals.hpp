@@ -32,6 +32,12 @@
 
 #include <float.h> // for DBL_MAX
 
+#ifdef DCEVM_ONLY
+#define DISABLED_HOTSWAP_AGENT true
+#else
+#define DISABLED_HOTSWAP_AGENT false
+#endif
+
 // The larger HeapWordSize for 64bit requires larger heaps
 // for the same application running in 64bit.  See bug 4967770.
 // The minimum alignment to a heap word size is done.  Other
@@ -2678,8 +2684,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                             \
   product(bool, AllowEnhancedClassRedefinition, true,                       \
              "Allow enhanced class redefinition beyond swapping method "    \
-             "bodies")
-
+             "bodies")                                                      \
+                                                                            \
+  product(bool, DisableHotswapAgent, DISABLED_HOTSWAP_AGENT,                \
+             "Disable integrated Hotswap Agent (HotswapVM only)")
 #define VM_FLAGS(develop,                                                   \
                  develop_pd,                                                \
                  product,                                                   \
