@@ -301,7 +301,13 @@ Klass::Klass() : _kind(UnknownKlassKind) {
 // which doesn't zero out the memory before calling the constructor.
 Klass::Klass(KlassKind kind) : _kind(kind),
                                _prototype_header(make_prototype(this)),
-                               _shared_class_path_index(-1) {
+                               _shared_class_path_index(-1),
+                               _old_version(nullptr),
+                               _new_version(nullptr),
+                               _redefinition_flags(Klass::NoRedefinition),
+                               _is_redefining(false),
+                               _update_information(nullptr),
+                               _is_copying_backwards(false) {
   CDS_ONLY(_shared_class_flags = 0;)
   CDS_JAVA_HEAP_ONLY(_archived_mirror_index = -1;)
   _primary_supers[0] = this;
@@ -716,6 +722,27 @@ void Klass::clean_subklass() {
     // Try to fix _subklass until it points at something not dead.
     Atomic::cmpxchg(&_subklass, subklass, subklass->next_sibling());
   }
+}
+
+void Klass::remove_from_sibling_list() {
+  DEBUG_ONLY(verify();)
+
+  // remove ourselves to superklass' subklass list
+  InstanceKlass* super = superklass();
+  if (super == NULL) return;        // special case: class Object
+  if (super->subklass() == this) {
+    // this klass is the first subklass
+    super->set_subklass(next_sibling());
+  } else {
+    Klass* sib = super->subklass();
+    assert(sib != NULL, "cannot find this class in sibling list!");
+    while (sib->next_sibling() != this) {
+      sib = sib->next_sibling();
+      assert(sib != NULL, "cannot find this class in sibling list!");
+    }
+    sib->set_next_sibling(next_sibling());
+  }
+  DEBUG_ONLY(verify();)
 }
 
 void Klass::clean_weak_klass_links(bool unloading_occurred, bool clean_alive_klasses) {

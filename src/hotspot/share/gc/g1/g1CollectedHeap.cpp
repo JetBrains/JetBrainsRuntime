@@ -1915,6 +1915,24 @@ public:
   }
 };
 
+class G1IterateObjectClosureTask : public WorkerTask {
+ private:
+  ObjectClosure* _cl;
+  G1CollectedHeap* _g1h;
+  HeapRegionClaimer _hrclaimer;
+ public:
+  G1IterateObjectClosureTask(ObjectClosure* cl, G1CollectedHeap* g1h) : WorkerTask("IterateObject Closure"),
+    _cl(cl), _g1h(g1h),  _hrclaimer(g1h->workers()->active_workers()) { }
+
+  virtual void work(uint worker_id) {
+    Thread *thread = Thread::current();
+    HandleMark hm(thread);   // make sure any handles created are deleted
+    ResourceMark rm(thread);
+    IterateObjectClosureRegionClosure blk(_cl);
+    _g1h->heap_region_par_iterate_from_worker_offset(&blk, &_hrclaimer, worker_id);
+  }
+};
+
 void G1CollectedHeap::object_iterate(ObjectClosure* cl) {
   IterateObjectClosureRegionClosure blk(cl);
   heap_region_iterate(&blk);
@@ -1954,6 +1972,11 @@ void G1CollectedHeap::heap_region_iterate(G1HeapRegionClosure* cl) const {
 
 void G1CollectedHeap::heap_region_iterate(G1HeapRegionIndexClosure* cl) const {
   _hrm.iterate(cl);
+}
+
+void G1CollectedHeap::object_par_iterate(ObjectClosure* cl) {
+  G1IterateObjectClosureTask iocl_task(cl, this);
+  workers()->run_task(&iocl_task);
 }
 
 void G1CollectedHeap::heap_region_par_iterate_from_worker_offset(G1HeapRegionClosure* cl,

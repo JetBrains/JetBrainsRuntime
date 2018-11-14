@@ -83,6 +83,7 @@ Monitor* CompileTaskWait_lock         = nullptr;
 Monitor* MethodCompileQueue_lock      = nullptr;
 Monitor* CompileThread_lock           = nullptr;
 Monitor* Compilation_lock             = nullptr;
+Monitor* DcevmCompilation_lock        = nullptr;
 Monitor* CompileTaskAlloc_lock        = nullptr;
 Mutex*   CompileStatistics_lock       = nullptr;
 Mutex*   DirectivesStack_lock         = nullptr;
@@ -108,6 +109,7 @@ Mutex*   OldSets_lock                 = nullptr;
 Mutex*   Uncommit_lock                = nullptr;
 Monitor* RootRegionScan_lock          = nullptr;
 
+Mutex* EnhancedRedefineClasses_lock   = nullptr;
 Mutex*   Management_lock              = nullptr;
 Monitor* MonitorDeflation_lock        = nullptr;
 Monitor* Service_lock                 = nullptr;
@@ -256,6 +258,7 @@ void mutex_init() {
   MUTEX_DEFN(Terminator_lock                 , PaddedMonitor, safepoint, true);
   MUTEX_DEFN(InitCompleted_lock              , PaddedMonitor, nosafepoint);
   MUTEX_DEFN(Notify_lock                     , PaddedMonitor, safepoint, true);
+  MUTEX_DEFN(EnhancedRedefineClasses_lock    , PaddedMutex  , safepoint); // for ensuring that class redefinition is not done in parallel
 
   MUTEX_DEFN(JfieldIdCreation_lock           , PaddedMutex  , safepoint);
 
@@ -283,6 +286,8 @@ void mutex_init() {
   if (WhiteBoxAPI) {
     MUTEX_DEFN(Compilation_lock              , PaddedMonitor, nosafepoint);
   }
+
+  def(DcevmCompilation_lock        , PaddedMonitor, nosafepoint);
 
 #if INCLUDE_JFR
   MUTEX_DEFN(JfrBuffer_lock                  , PaddedMutex  , event);

@@ -79,6 +79,9 @@ class Method : public Metadata {
   int               _vtable_index;               // vtable index of this method (see VtableIndexFlag)
   AccessFlags       _access_flags;               // Access flags
   MethodFlags       _flags;
+  // (DCEVM) Newer version of method available?
+  Method*           _new_version;
+  Method*           _old_version;
 
   u2                _intrinsic_id;               // vmSymbols::intrinsic_id (0 == _none)
 
@@ -144,6 +147,23 @@ class Method : public Metadata {
   u2 name_index() const                          { return constMethod()->name_index();         }
   void set_name_index(int index)                 { constMethod()->set_name_index(index);       }
 
+  Method* new_version() const                    { return _new_version; }
+  void set_new_version(Method* m)                { _new_version = m; }
+  Method* newest_version()                       { return (_new_version == NULL) ? this : _new_version->newest_version(); }
+
+  Method* old_version() const                    { return _old_version; }
+  void set_old_version(Method* m) {
+    /*if (m == NULL) {
+      _old_version = NULL;
+      return;
+    }*/
+
+    assert(_old_version == NULL, "may only be set once");
+    assert(this->code_size() == m->code_size(), "must have same code length");
+    _old_version = m;
+  }
+  const Method* oldest_version() const           { return (_old_version == NULL) ? this : _old_version->oldest_version(); }
+
   // signature
   Symbol* signature() const                      { return constants()->symbol_at(signature_index()); }
   u2 signature_index() const                     { return constMethod()->signature_index();         }
@@ -199,7 +219,7 @@ class Method : public Metadata {
 
   // JVMTI breakpoints
 #if !INCLUDE_JVMTI
-  Bytecodes::Code orig_bytecode_at(int bci) const {
+  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const {
     ShouldNotReachHere();
     return Bytecodes::_shouldnotreachhere;
   }
@@ -208,7 +228,7 @@ class Method : public Metadata {
   };
   u2   number_of_breakpoints() const {return 0;}
 #else // !INCLUDE_JVMTI
-  Bytecodes::Code orig_bytecode_at(int bci) const;
+  Bytecodes::Code orig_bytecode_at(int bci, bool no_fatal) const;
   void set_orig_bytecode_at(int bci, Bytecodes::Code code);
   void set_breakpoint(int bci);
   void clear_breakpoint(int bci);

@@ -184,7 +184,7 @@ class ThreadInVMfromNative : public ThreadStateTransition {
 class ThreadToNativeFromVM : public ThreadStateTransition {
  public:
   ThreadToNativeFromVM(JavaThread *thread) : ThreadStateTransition(thread) {
-    assert(!thread->owns_locks(), "must release all locks when leaving VM");
+    assert(AllowEnhancedClassRedefinition || !thread->owns_locks(), "must release all locks when leaving VM");
     transition_from_vm(thread, _thread_in_native);
   }
   ~ThreadToNativeFromVM() {
