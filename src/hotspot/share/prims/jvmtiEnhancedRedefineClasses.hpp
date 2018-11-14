@@ -16,6 +16,8 @@
  * 2 along with this work; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
+ *
+ *
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
@@ -30,21 +32,19 @@
 #include "memory/resourceArea.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.hpp"
-#include "runtime/vm_operations.hpp"
 #include "gc/shared/vmGCOperations.hpp"
 #include "../../../java.base/unix/native/include/jni_md.h"
 
-/**
- * Enhanced class redefiner.
- *
- * This class implements VM_GC_Operation - the usual usage should be:
- *     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
- *     VMThread::execute(&op);
- * Which in turn runs:
- *   - doit_prologue() - calculate all affected classes (add subclasses etc) and load new class versions
- *   - doit() - main redefition, adjust existing objects on the heap, clear caches
- *   - doit_epilogue() - cleanup
-*/
+//
+// Enhanced class redefiner.
+//
+// This class implements VM_GC_Operation - the usual usage should be:
+//     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+//     VMThread::execute(&op);
+// Which in turn runs:
+//   - doit_prologue() - calculate all affected classes (add subclasses etc) and load new class versions
+//   - doit() - main redefition, adjust existing objects on the heap, clear caches
+//   - doit_epilogue() - cleanup
 class VM_EnhancedRedefineClasses: public VM_GC_Operation {
  private:
   // These static fields are needed by ClassLoaderDataGraph::classes_do()
@@ -69,17 +69,6 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // RetransformClasses.  Indicate which.
   JvmtiClassLoadKind          _class_load_kind;
 
-  // _index_map_count is just an optimization for knowing if
-  // _index_map_p contains any entries.
-  int                         _index_map_count;
-  intArray *                  _index_map_p;
-
-  // _operands_index_map_count is just an optimization for knowing if
-  // _operands_index_map_p contains any entries.
-  int                         _operands_cur_length;
-  int                         _operands_index_map_count;
-  intArray *                  _operands_index_map_p;
-
   GrowableArray<InstanceKlass*>*      _new_classes;
   jvmtiError                  _res;
 
@@ -103,17 +92,15 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
 
   // These routines are roughly in call order unless otherwise noted.
 
-  /**
-    Load and link new classes (either redefined or affected by redefinition - subclass, ...)
-
-    - find sorted affected classes
-    - resolve new class
-    - calculate redefine flags (field change, method change, supertype change, ...)
-    - calculate modified fields and mapping to old fields
-    - link new classes
-
-    The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
-  */
+  // Load and link new classes (either redefined or affected by redefinition - subclass, ...)
+  //
+  // - find sorted affected classes
+  // - resolve new class
+  // - calculate redefine flags (field change, method change, supertype change, ...)
+  // - calculate modified fields and mapping to old fields
+  // - link new classes
+  //
+  // The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
   jvmtiError load_new_class_versions(TRAPS);
 
   // Searches for all affected classes and performs a sorting such tha
@@ -144,14 +131,13 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Install the redefinition of a class
   void redefine_single_class(InstanceKlass* new_class_oop, TRAPS);
 
-  void swap_annotations(InstanceKlass* new_class,
-                        InstanceKlass* scratch_class);
-
   // Increment the classRedefinedCount field in the specific InstanceKlass
   // and in all direct and indirect subclasses.
   void increment_class_counter(InstanceKlass *ik, TRAPS);
 
   void flush_dependent_code(InstanceKlass* k_h, TRAPS);
+
+  static void check_class(InstanceKlass* k_oop, TRAPS);
 
   static void dump_methods();
 
@@ -195,8 +181,5 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Modifiable test must be shared between IsModifiableClass query
   // and redefine implementation
   static bool is_modifiable_class(oop klass_mirror);
-
-  // Error printing
-  void print_on_error(outputStream* st) const;
 };
 #endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
