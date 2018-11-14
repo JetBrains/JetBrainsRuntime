@@ -125,6 +125,11 @@ class ClassLoaderDataGraph : public AllStatic {
   // Added for initialize_itable_for_klass to handle exceptions.
   static void dictionary_classes_do(void f(InstanceKlass*, TRAPS), TRAPS);
 
+  static void dictionary_classes_do(KlassClosure* klass_closure);
+
+  // Enhanced class redefinition
+  static void rollback_redefinition();
+
   // Iterate all classes and their class loaders, including initiating class loaders.
   static void dictionary_all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
 
