@@ -160,6 +160,7 @@ private:
   bool phase2b_forward_oops();
   void phase2c_prepare_serial_compaction();
   void phase2d_prepare_humongous_compaction();
+  void phase2c_prepare_serial_compaction_dcevm();
 
   void phase3_adjust_pointers();
   void phase4_do_compaction();

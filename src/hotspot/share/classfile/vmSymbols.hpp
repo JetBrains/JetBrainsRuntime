@@ -313,6 +313,8 @@ class SerializeClosure;
   template(java_lang_invoke_CallSite,                 "java/lang/invoke/CallSite")                \
   template(java_lang_invoke_ConstantCallSite,         "java/lang/invoke/ConstantCallSite")        \
   template(java_lang_invoke_DirectMethodHandle,       "java/lang/invoke/DirectMethodHandle")      \
+  template(java_lang_invoke_DirectMethodHandle_StaticAccessor, "java/lang/invoke/DirectMethodHandle$StaticAccessor") \
+  template(java_lang_invoke_DirectMethodHandle_Accessor, "java/lang/invoke/DirectMethodHandle$Accessor") \
   template(java_lang_invoke_MutableCallSite,          "java/lang/invoke/MutableCallSite")         \
   template(java_lang_invoke_VolatileCallSite,         "java/lang/invoke/VolatileCallSite")        \
   template(java_lang_invoke_MethodHandle,             "java/lang/invoke/MethodHandle")            \
@@ -386,6 +388,8 @@ class SerializeClosure;
   template(interrupt_method_name,                     "interrupt")                                \
   template(exit_method_name,                          "exit")                                     \
   template(remove_method_name,                        "remove")                                   \
+  template(registerNatives_method_name,               "registerNatives")                          \
+  template(initIDs_method_name,                       "initIDs")                                  \
   template(parent_name,                               "parent")                                   \
   template(maxPriority_name,                          "maxPriority")                              \
   template(shutdown_name,                             "shutdown")                                 \
@@ -512,6 +516,9 @@ class SerializeClosure;
   template(maxThawingSize_name,                       "maxThawingSize")                           \
   template(lockStackSize_name,                        "lockStackSize")                            \
   template(objectWaiter_name,                         "objectWaiter")                             \
+  template(static_offset_name,                        "staticOffset")                             \
+  template(static_base_name,                          "staticBase")                               \
+  template(field_offset_name,                         "fieldOffset")                              \
                                                                                                   \
   /* name symbols needed by intrinsics */                                                         \
   VM_INTRINSICS_DO(VM_INTRINSIC_IGNORE, VM_SYMBOL_IGNORE, template, VM_SYMBOL_IGNORE, VM_ALIAS_IGNORE) \

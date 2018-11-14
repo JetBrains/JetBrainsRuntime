@@ -43,4 +43,6 @@ void commonRef_compact(void);
 void commonRef_lock(void);
 void commonRef_unlock(void);
 
+jvmtiError commonRef_updateTags(JNIEnv *env, jlong id);
+
 #endif
