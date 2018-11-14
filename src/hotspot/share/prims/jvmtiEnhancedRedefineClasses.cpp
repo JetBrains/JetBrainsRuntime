@@ -36,6 +36,7 @@
 #include "classfile/loaderConstraints.hpp"
 #include "interpreter/linkResolver.hpp"
 #include "interpreter/rewriter.hpp"
+#include "interpreter/bytecodeStream.hpp"
 #include "logging/logStream.hpp"
 #include "memory/metadataFactory.hpp"
 #include "memory/resourceArea.hpp"
@@ -247,8 +248,8 @@ void VM_EnhancedRedefineClasses::root_oops_do(OopClosure *oopClosure) {
   OopStorageSet::strong_oops_do(oopClosure);
   WeakProcessor::oops_do(oopClosure);
 
-  CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
-  CodeCache::blobs_do(&blobClosure);
+  NMethodToOopClosure nm_cl(oopClosure, NMethodToOopClosure::FixRelocations);
+  CodeCache::nmethods_do(&nm_cl);
 }
 
 // TODO comment
@@ -2155,9 +2156,6 @@ struct KlassPair {
   KlassPair(const Klass* left, const Klass* right) : _left(left), _right(right) { }
 };
 
-static bool match_second(void* value, KlassPair elem) {
-  return elem._right == value;
-}
 
 // For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
 // First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
@@ -2232,7 +2230,10 @@ jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
     for (j = i; j < _affected_klasses->length(); j++) {
       // Search for node with no incoming edges
       Klass* klass = _affected_klasses->at(j);
-      int k = links.find(klass, match_second);
+      int k = links.find_if([&](KlassPair elem) {
+        return elem._right == klass;
+      });
+
       if (k == -1) break;
     }
     if (j == _affected_klasses->length()) {
