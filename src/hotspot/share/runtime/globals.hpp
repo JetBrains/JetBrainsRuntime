@@ -2017,6 +2017,20 @@ const int ObjectAlignmentInBytes = 8;
   develop(uint, BinarySearchThreshold, 16,                                  \
           "Minimal number of elements in a sorted collection to prefer"     \
           "binary search over simple linear search." )                      \
+                                                                            \
+  product(bool, AllowEnhancedClassRedefinition, false,                      \
+             "Allow enhanced class redefinition beyond swapping method "    \
+             "bodies")                                                      \
+                                                                            \
+  product(ccstr, HotswapAgent, "disabled",                                  \
+          "Specify HotswapAgent image to be used."                          \
+          "disabled: hotswap agent is disabled (default)"                   \
+          "fatjar: full HA. Use integrated hotswap-agent.jar"               \
+          "core: core HA. Use integrated hotswap-agent-core.jar"            \
+          "external: external HA. use external HA, open required JDK "      \
+          "modules.")                                                       \
+          constraint(HotswapAgentConstraintFunc, AfterErgo)
+
 
 // end of RUNTIME_FLAGS
 
