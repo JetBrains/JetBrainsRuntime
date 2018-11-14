@@ -251,6 +251,10 @@ class ConstantPoolCache: public MetaspaceObj {
 
   // Verify
   void verify_on(outputStream* st);
+
+  void clear_entries() {
+    // TODO: DCEVM
+  }
 };
 
 #endif // SHARE_OOPS_CPCACHE_HPP
