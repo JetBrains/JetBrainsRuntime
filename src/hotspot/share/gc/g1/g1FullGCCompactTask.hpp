@@ -45,6 +45,8 @@ class G1FullGCCompactTask : public G1FullGCTask {
   void free_non_overlapping_regions(uint src_start_idx, uint dest_start_idx, uint num_regions);
 
   static void copy_object_to_new_location(oop obj);
+  void compact_region_dcevm(G1HeapRegion* hr, GrowableArray<HeapWord*>* rescued_oops_values,
+    GrowableArrayIterator<HeapWord*>* rescue_oops_it);
 
 public:
   G1FullGCCompactTask(G1FullCollector* collector) :
@@ -56,12 +58,29 @@ public:
   void work(uint worker_id);
   void serial_compaction();
   void humongous_compaction();
+  void serial_compaction_dcevm();
 
   class G1CompactRegionClosure : public StackObj {
     G1CMBitMap* _bitmap;
     void clear_in_bitmap(oop object);
   public:
     G1CompactRegionClosure(G1CMBitMap* bitmap) : _bitmap(bitmap) { }
+    size_t apply(oop object);
+  };
+
+  class G1CompactRegionClosureDcevm : public StackObj {
+    G1CMBitMap* _bitmap;
+    GrowableArray<HeapWord*>* _rescued_oops_values;
+    GrowableArrayIterator<HeapWord*>* _rescue_oops_it;
+    void clear_in_bitmap(oop object);
+  public:
+    G1CompactRegionClosureDcevm(G1CMBitMap* bitmap,
+                           GrowableArray<HeapWord*>* rescued_oops_values,
+                           GrowableArrayIterator<HeapWord*>* rescue_oops_it) :
+      _bitmap(bitmap),
+      _rescued_oops_values(rescued_oops_values),
+      _rescue_oops_it(rescue_oops_it)
+      { }
     size_t apply(oop object);
   };
 };

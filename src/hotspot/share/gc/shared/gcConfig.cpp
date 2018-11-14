@@ -95,7 +95,10 @@ void GCConfig::fail_if_non_included_gc_is_selected() {
 }
 
 void GCConfig::select_gc_ergonomically() {
-  if (os::is_server_class_machine()) {
+  if (AllowEnhancedClassRedefinition && !UseSerialGC) {
+    // (DCEVM) use G1 as default GC in Enhanced class redefinition
+    FLAG_SET_ERGO(UseG1GC, true);
+  } else if (os::is_server_class_machine()) {
 #if INCLUDE_G1GC
     FLAG_SET_ERGO_IF_DEFAULT(UseG1GC, true);
 #elif INCLUDE_PARALLELGC
