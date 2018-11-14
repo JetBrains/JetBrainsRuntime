@@ -441,6 +441,18 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS), 
   }
 }
 
+void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->classes_do(klass_closure);
+  }
+}
+
+void ClassLoaderDataGraph::rollback_redefinition() {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->rollback_redefinition();
+  }
+}
+
 void ClassLoaderDataGraph::verify_dictionary() {
   FOR_ALL_DICTIONARY(cld) {
     cld->dictionary()->verify();

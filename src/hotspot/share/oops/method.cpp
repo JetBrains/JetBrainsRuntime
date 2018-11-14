@@ -95,7 +95,8 @@ Method* Method::allocate(ClassLoaderData* loader_data,
   return new (loader_data, size, MetaspaceObj::MethodType, THREAD) Method(cm, access_flags);
 }
 
-Method::Method(ConstMethod* xconst, AccessFlags access_flags) {
+Method::Method(ConstMethod* xconst, AccessFlags access_flags) :  _new_version(NULL),
+                                                                 _old_version(NULL) {
   NoSafepointVerifier no_safepoint;
   set_constMethod(xconst);
   set_access_flags(access_flags);
@@ -1534,6 +1535,8 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
 
   // Reset correct method/const method, method size, and parameter info
   newm->set_constMethod(newcm);
+  newm->set_new_version(newm->new_version());
+  newm->set_old_version(newm->old_version());
   newm->constMethod()->set_code_size(new_code_length);
   newm->constMethod()->set_constMethod_size(new_const_method_size);
   assert(newm->code_size() == new_code_length, "check");
@@ -2195,6 +2198,10 @@ void Method::ensure_jmethod_ids(ClassLoaderData* loader_data, int capacity) {
 
 // Add a method id to the jmethod_ids
 jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
+  // FIXME: (DCEVM) ???
+  if (m != m->newest_version()) {
+    m = m->newest_version();
+  }
   ClassLoaderData* cld = loader_data;
 
   if (!SafepointSynchronize::is_at_safepoint()) {
