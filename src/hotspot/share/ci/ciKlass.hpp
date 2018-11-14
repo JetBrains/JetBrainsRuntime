@@ -139,6 +139,7 @@ public:
 
   juint prototype_header_offset();
   uintptr_t prototype_header();
+  Klass* new_version() { return get_Klass()->new_version(); }
 };
 
 #endif // SHARE_CI_CIKLASS_HPP

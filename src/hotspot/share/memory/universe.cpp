@@ -180,6 +180,7 @@ int             Universe::_base_vtable_size = 0;
 bool            Universe::_bootstrapping = false;
 bool            Universe::_module_initialized = false;
 bool            Universe::_fully_initialized = false;
+bool            Universe::_is_redefining_gc_run = false; // FIXME: review
 
 OopStorage*     Universe::_vm_weak = nullptr;
 OopStorage*     Universe::_vm_global = nullptr;
@@ -1072,6 +1073,14 @@ void Universe::initialize_known_methods(JavaThread* current) {
                           vmClasses::AbstractStackWalker_klass(),
                           "doStackWalk",
                           vmSymbols::doStackWalk_signature(), false);
+}
+
+void Universe::reinitialize_loader_addClass_method(TRAPS) {
+  // Set up method for registering loaded classes in class loader vector
+  initialize_known_method(_loader_addClass_cache,
+                          vmClasses::ClassLoader_klass(),
+                          "addClass",
+                          vmSymbols::class_void_signature(), false, CHECK);
 }
 
 void universe2_init() {
