@@ -118,6 +118,7 @@ class SystemDictionary : AllStatic {
                                                          Symbol* class_name,
                                                          Handle class_loader,
                                                          const ClassLoadInfo& cl_info,
+                                                         InstanceKlass* old_klass,
                                                          TRAPS);
 
   // Resolve a class from stream (called by jni_DefineClass and JVM_DefineClass)
@@ -126,6 +127,7 @@ class SystemDictionary : AllStatic {
                                                   Symbol* class_name,
                                                   Handle class_loader,
                                                   const ClassLoadInfo& cl_info,
+                                                  InstanceKlass* old_klass,
                                                   TRAPS);
 
   static oop get_system_class_loader_impl(TRAPS);
@@ -137,6 +139,7 @@ class SystemDictionary : AllStatic {
                                             Symbol* class_name,
                                             Handle class_loader,
                                             const ClassLoadInfo& cl_info,
+                                            InstanceKlass* old_klass,
                                             TRAPS);
 
   // Lookup an already loaded class. If not found null is returned.
@@ -196,6 +199,10 @@ class SystemDictionary : AllStatic {
 
   // Initialization
   static void initialize(TRAPS);
+
+  // (DCEVM) Enhanced class redefinition
+  static void remove_from_hierarchy(InstanceKlass* k);
+  static void update_constraints_after_redefinition();
 
 public:
   // Returns java system loader
@@ -308,7 +315,7 @@ private:
                                                 Handle lockObject,
                                                 bool* throw_circularity_error);
 
-  static void define_instance_class(InstanceKlass* k, Handle class_loader, TRAPS);
+  static void define_instance_class(InstanceKlass* k, InstanceKlass* old_klass, Handle class_loader, TRAPS);
   static InstanceKlass* find_or_define_helper(Symbol* class_name,
                                               Handle class_loader,
                                               InstanceKlass* k, TRAPS);

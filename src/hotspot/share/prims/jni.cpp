@@ -294,6 +294,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
   Klass* k = SystemDictionary::resolve_from_stream(&st, class_name,
                                                    class_loader,
                                                    cl_info,
+                                                   NULL,
                                                    CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve)) {

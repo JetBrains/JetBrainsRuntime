@@ -58,6 +58,7 @@ STWGCTimer*             MarkSweep::_gc_timer        = nullptr;
 SerialOldTracer*        MarkSweep::_gc_tracer       = nullptr;
 
 StringDedup::Requests*  MarkSweep::_string_dedup_requests = nullptr;
+GrowableArray<HeapWord*>*  MarkSweep::_rescued_oops       = nullptr;
 
 MarkSweep::FollowRootClosure  MarkSweep::follow_root_closure;
 

@@ -2581,6 +2581,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
         skip_throwableInit_check = true;
       }
     }
+    // (DCEVM): Line numbers from newest version must be used for EMCP-swapped methods
+    method = method->newest_version();
     if (method->is_hidden() || method->is_continuation_enter_intrinsic()) {
       if (skip_hidden) {
         if (total_count == 0) {
@@ -3849,6 +3851,62 @@ void java_lang_invoke_DirectMethodHandle::compute_offsets() {
 #if INCLUDE_CDS
 void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f) {
   DIRECTMETHODHANDLE_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+}
+#endif
+
+// Support for java_lang_invoke_DirectMethodHandle$StaticAccessor
+
+int java_lang_invoke_DirectMethodHandle_StaticAccessor::_static_offset_offset;
+
+long java_lang_invoke_DirectMethodHandle_StaticAccessor::static_offset(oop dmh) {
+  assert(_static_offset_offset != 0, "");
+  return dmh->long_field(_static_offset_offset);
+}
+
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::set_static_offset(oop dmh, long static_offset) {
+  assert(_static_offset_offset != 0, "");
+  dmh->long_field_put(_static_offset_offset, static_offset);
+}
+
+#define DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(macro) \
+  macro(_static_offset_offset, k, vmSymbols::static_offset_name(), long_signature, false)
+
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::compute_offsets() {
+  InstanceKlass* k = vmClasses::DirectMethodHandle_StaticAccessor_klass();
+  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
+}
+
+#if INCLUDE_CDS
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::serialize_offsets(SerializeClosure* f) {
+  DIRECTMETHODHANDLE_STATIC_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
+}
+#endif
+
+// Support for java_lang_invoke_DirectMethodHandle$Accessor
+
+int java_lang_invoke_DirectMethodHandle_Accessor::_field_offset_offset;
+
+int java_lang_invoke_DirectMethodHandle_Accessor::field_offset(oop dmh) {
+  assert(_field_offset_offset != 0, "");
+  return dmh->int_field(_field_offset_offset);
+}
+
+void java_lang_invoke_DirectMethodHandle_Accessor::set_field_offset(oop dmh, int field_offset) {
+  assert(_field_offset_offset != 0, "");
+  dmh->int_field_put(_field_offset_offset, field_offset);
+}
+
+#define DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(macro) \
+  macro(_field_offset_offset, k, vmSymbols::field_offset_name(), int_signature, false)
+
+void java_lang_invoke_DirectMethodHandle_Accessor::compute_offsets() {
+  InstanceKlass* k = vmClasses::DirectMethodHandle_Accessor_klass();
+  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_COMPUTE_OFFSET);
+}
+
+#if INCLUDE_CDS
+void java_lang_invoke_DirectMethodHandle_Accessor::serialize_offsets(SerializeClosure* f) {
+  DIRECTMETHODHANDLE_ACCESSOR_FIELDS_DO(FIELD_SERIALIZE_OFFSET);
 }
 #endif
 
@@ -5162,6 +5220,8 @@ void java_lang_InternalError::serialize_offsets(SerializeClosure* f) {
   f(java_lang_invoke_MethodType) \
   f(java_lang_invoke_CallSite) \
   f(java_lang_invoke_ConstantCallSite) \
+  f(java_lang_invoke_DirectMethodHandle_StaticAccessor) \
+  f(java_lang_invoke_DirectMethodHandle_Accessor) \
   f(java_lang_invoke_MethodHandleNatives_CallSiteContext) \
   f(java_security_AccessControlContext) \
   f(java_lang_reflect_AccessibleObject) \

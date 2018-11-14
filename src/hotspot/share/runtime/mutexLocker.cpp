@@ -113,6 +113,7 @@ Mutex*   OldSets_lock                 = nullptr;
 Mutex*   Uncommit_lock                = nullptr;
 Monitor* RootRegionScan_lock          = nullptr;
 
+Mutex* EnhancedRedefineClasses_lock   = nullptr;
 Mutex*   Management_lock              = nullptr;
 Monitor* MonitorDeflation_lock        = nullptr;
 Monitor* Service_lock                 = nullptr;
@@ -276,6 +277,7 @@ void mutex_init() {
   def(Terminator_lock              , PaddedMonitor, safepoint, true);
   def(InitCompleted_lock           , PaddedMonitor, nosafepoint);
   def(Notify_lock                  , PaddedMonitor, safepoint, true);
+  def(EnhancedRedefineClasses_lock , PaddedMutex  , safepoint); // for ensuring that class redefinition is not done in parallel
 
   def(Heap_lock                    , PaddedMonitor, safepoint); // Doesn't safepoint check during termination.
   def(JfieldIdCreation_lock        , PaddedMutex  , safepoint);

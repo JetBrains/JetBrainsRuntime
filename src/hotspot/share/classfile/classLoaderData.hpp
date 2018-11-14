@@ -176,6 +176,8 @@ class ClassLoaderData : public CHeapObj<mtClass> {
 
   oop holder_no_keepalive() const;
   oop holder() const;
+  // (DCEVM)
+  void exchange_holders(ClassLoaderData* cld);
 
  private:
   void unload();

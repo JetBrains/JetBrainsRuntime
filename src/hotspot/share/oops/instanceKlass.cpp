@@ -407,9 +407,19 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
     return false;
   }
 
+  // (DCEVM) cur_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    cur_host = InstanceKlass::cast(cur_host->active_version());
+  }
+
   Klass* k_nest_host = k->nest_host(CHECK_false);
   if (k_nest_host == NULL) {
     return false;
+  }
+
+  // (DCEVM) k_nest_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    k_nest_host = InstanceKlass::cast(k_nest_host->active_version());
   }
 
   bool access = (cur_host == k_nest_host);
@@ -869,7 +879,10 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         if (is_shared()) {
           assert(!verified_at_dump_time(), "must be");
         }
-        {
+        // (DCEVM): If class A is being redefined and class B->A (B is extended from A) and B is host class of anonymous class C
+        // then second redefinition fails with cannot cast klass exception. So we currently turn off bytecode verification
+        // on redefinition.
+        if (!AllowEnhancedClassRedefinition || !newest_version()->is_redefining()) {
           bool verify_ok = verify_code(THREAD);
           if (!verify_ok) {
             return false;
@@ -917,7 +930,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
       // itable().verify(tty, true);
 #endif
       set_initialization_state_and_notify(linked, THREAD);
-      if (JvmtiExport::should_post_class_prepare()) {
+      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */)) {
         JvmtiExport::post_class_prepare(THREAD, this);
       }
     }
@@ -1039,7 +1052,8 @@ void InstanceKlass::initialize_impl(TRAPS) {
     MonitorLocker ml(THREAD, _init_monitor);
 
     // Step 2
-    while (is_being_initialized() && !is_init_thread(jt)) {
+    while ((is_being_initialized() && !is_init_thread(jt))
+            || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
       wait = true;
       jt->set_class_to_be_initialized(this);
       ml.wait();
@@ -1280,6 +1294,15 @@ void InstanceKlass::init_implementor() {
   }
 }
 
+// (DCEVM) - init_implementor() for dcevm
+void InstanceKlass::init_implementor_from_redefine() {
+  assert(is_interface(), "not interface");
+  InstanceKlass* volatile* addr = adr_implementor();
+  assert(addr != NULL, "null addr");
+  if (addr != NULL) {
+    *addr = NULL;
+  }
+}
 
 void InstanceKlass::process_interfaces() {
   // link this class into the implementors list of every interface it implements
@@ -1331,6 +1354,20 @@ bool InstanceKlass::implements_interface(Klass* k) const {
   assert(k->is_interface(), "should be an interface class");
   for (int i = 0; i < transitive_interfaces()->length(); i++) {
     if (transitive_interfaces()->at(i) == k) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+// (DCEVM)
+bool InstanceKlass::implements_interface_any_version(Klass* k) const {
+  k = k->newest_version();
+  if (this->newest_version() == k) return true;
+  assert(k->is_interface(), "should be an interface class");
+  for (int i = 0; i < transitive_interfaces()->length(); i++) {
+    if (transitive_interfaces()->at(i)->newest_version() == k) {
       return true;
     }
   }
@@ -1623,6 +1660,36 @@ void InstanceKlass::methods_do(void f(Method* method)) {
     assert(m->is_method(), "must be method");
     f(m);
   }
+}
+
+void InstanceKlass::methods_do(void f(Method* method, TRAPS), TRAPS) {
+  // Methods aren't stable until they are loaded.  This can be read outside
+  // a lock through the ClassLoaderData for profiling
+  if (!is_loaded()) {
+    return;
+  }
+
+  int len = methods()->length();
+  for (int index = 0; index < len; index++) {
+    Method* m = methods()->at(index);
+    assert(m->is_method(), "must be method");
+    f(m, CHECK);
+  }
+}
+
+//  (DCEVM) Update information contains mapping of fields from old class to the new class.
+//  Info is stored on HEAP, you need to call clear_update_information to free the space.
+void InstanceKlass::store_update_information(GrowableArray<int> &values) {
+  int *arr = NEW_C_HEAP_ARRAY(int, values.length(), mtClass);
+  for (int i = 0; i < values.length(); i++) {
+    arr[i] = values.at(i);
+  }
+  set_update_information(arr);
+}
+
+void InstanceKlass::clear_update_information() {
+  FREE_C_HEAP_ARRAY(int, update_information());
+  set_update_information(NULL);
 }
 
 
@@ -2335,6 +2402,20 @@ void InstanceKlass::add_dependent_nmethod(nmethod* nm) {
 
 void InstanceKlass::clean_dependency_context() {
   dependencies().clean_unloading_dependents();
+}
+
+// DCEVM - update jmethod ids
+bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
+  size_t idnum = (size_t)method->method_idnum();
+  jmethodID* jmeths = methods_jmethod_ids_acquire();
+  size_t length;                                // length assigned as debugging crumb
+  jmethodID id = NULL;
+  if (jmeths != NULL &&                         // If there is a cache
+      (length = (size_t)jmeths[0]) > idnum) {   // and if it is long enough,
+    jmeths[idnum+1] = newMethodID;              // Set method id (may be NULL)
+    return true;
+  }
+  return false;
 }
 
 #ifndef PRODUCT
@@ -3753,7 +3834,8 @@ void InstanceKlass::verify_on(outputStream* st) {
     }
 
     guarantee(sib->is_klass(), "should be klass");
-    guarantee(sib->super() == super, "siblings should have same superklass");
+    // TODO: (DCEVM) explain
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == vmClasses::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces

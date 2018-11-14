@@ -240,7 +240,9 @@ class java_lang_Class : AllStatic {
 
   static void set_protection_domain(oop java_class, oop protection_domain);
   static void set_class_loader(oop java_class, oop class_loader);
+ public: // DCEVM
   static void set_component_mirror(oop java_class, oop comp_mirror);
+ private:
   static void initialize_mirror_fields(Klass* k, Handle mirror, Handle protection_domain,
                                        Handle classData, TRAPS);
   static void set_mirror_module_field(JavaThread* current, Klass* K, Handle mirror, Handle module);
@@ -1052,6 +1054,55 @@ class java_lang_invoke_DirectMethodHandle: AllStatic {
   // Accessors for code generation:
   static int member_offset()           { CHECK_INIT(_member_offset); }
 };
+
+// Interface to java.lang.invoke.DirectMethodHandle$StaticAccessor objects
+
+class java_lang_invoke_DirectMethodHandle_StaticAccessor: AllStatic {
+  friend class JavaClasses;
+
+ private:
+  static int _static_offset_offset;               // offset to static field
+
+  static void compute_offsets();
+
+ public:
+  // Accessors
+  static long      static_offset(oop dmh);
+  static void  set_static_offset(oop dmh, long value);
+
+  // Testers
+  static bool is_subclass(Klass* klass) {
+    return klass->is_subclass_of(vmClasses::DirectMethodHandle_StaticAccessor_klass());
+  }
+  static bool is_instance(oop obj);
+
+  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
+};
+
+// Interface to java.lang.invoke.DirectMethodHandle$Accessor objects
+
+class java_lang_invoke_DirectMethodHandle_Accessor: AllStatic {
+  friend class JavaClasses;
+
+ private:
+  static int _field_offset_offset;               // offset to field
+
+  static void compute_offsets();
+
+ public:
+  // Accessors
+  static int      field_offset(oop dmh);
+  static void set_field_offset(oop dmh, int value);
+
+  // Testers
+  static bool is_subclass(Klass* klass) {
+    return klass->is_subclass_of(vmClasses::DirectMethodHandle_Accessor_klass());
+  }
+  static bool is_instance(oop obj);
+
+  static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
+};
+
 
 // Interface to java.lang.invoke.LambdaForm objects
 // (These are a private interface for managing adapter code generation.)

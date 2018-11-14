@@ -1396,6 +1396,7 @@ jvmtiError VM_RedefineClasses::load_new_class_versions() {
                                                       the_class->name(),
                                                       the_class->class_loader_data(),
                                                       cl_info,
+                                                      NULL,
                                                       THREAD);
 
     // Clear class_being_redefined just to be sure.

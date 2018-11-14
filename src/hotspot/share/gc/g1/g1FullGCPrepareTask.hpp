@@ -80,6 +80,7 @@ private:
     G1FullCollector* _collector;
     G1CMBitMap* _bitmap;
     G1FullGCCompactionPoint* _cp;
+    uint _region_processing_order;
 
     void prepare_for_compaction(HeapRegion* hr);
 
@@ -111,6 +112,16 @@ private:
 
   public:
     G1PrepareCompactLiveClosure(G1FullGCCompactionPoint* cp);
+    size_t apply(oop object);
+  };
+
+  class G1PrepareCompactLiveClosureDcevm : public StackObj {
+    G1FullGCCompactionPoint* _cp;
+    uint _region_processing_order;
+
+    bool must_rescue(oop old_obj, oop new_obj);
+  public:
+    G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp, uint region_processing_order);
     size_t apply(oop object);
   };
 };

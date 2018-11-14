@@ -358,6 +358,9 @@ public:
   // indicates when the next such action should be taken.
   virtual void prepare_for_compaction(CompactPoint* cp) = 0;
   // MarkSweep support phase3
+  DEBUG_ONLY(int space_index(oop obj));
+  virtual bool must_rescue(oop old_obj, oop new_obj);
+  HeapWord* rescue(HeapWord* old_obj);
   void adjust_pointers() override;
   // MarkSweep support phase4
   virtual void compact();
@@ -384,7 +387,17 @@ public:
   // Invokes the "alloc_block" function of the then-current compaction
   // space.
   virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
-                    HeapWord* compact_top);
+                    HeapWord* compact_top, bool force_forward);
+  // (DCEVM) same as forwad, but can rescue objects. Invoked only during
+  // redefinition runs
+  HeapWord* forward_with_rescue(HeapWord* q, size_t size, CompactPoint* cp,
+                                HeapWord* compact_top, bool force_forward);
+
+  HeapWord* forward_rescued(CompactPoint* cp, HeapWord* compact_top);
+
+  // (tw) Compute new compact top without actually forwarding the object.
+  virtual HeapWord* forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top);
+
 protected:
   // Used during compaction.
   HeapWord* _first_dead;

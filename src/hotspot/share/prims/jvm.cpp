@@ -901,6 +901,7 @@ static jclass jvm_define_class_common(const char *name,
   Klass* k = SystemDictionary::resolve_from_stream(&st, class_name,
                                                    class_loader,
                                                    cl_info,
+                                                   NULL,
                                                    CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve)) {
@@ -988,6 +989,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
     ik = SystemDictionary::resolve_from_stream(&st, class_name,
                                                class_loader,
                                                cl_info,
+                                               NULL,
                                                CHECK_NULL);
 
     if (log_is_enabled(Debug, class, resolve)) {
@@ -1004,6 +1006,7 @@ static jclass jvm_lookup_define_class(jclass lookup, const char *name,
     ik = SystemDictionary::resolve_from_stream(&st, class_name,
                                                class_loader,
                                                cl_info,
+                                               NULL,
                                                CHECK_NULL);
 
     // The hidden class loader data has been artificially been kept alive to

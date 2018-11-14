@@ -252,9 +252,8 @@ void CompactibleSpace::clear(bool mangle_space) {
   _compaction_top = bottom();
 }
 
-HeapWord* CompactibleSpace::forward(oop q, size_t size,
-                                    CompactPoint* cp, HeapWord* compact_top) {
-  // q is alive
+// (DCEVM) Calculates the compact_top that will be used for placing the next object with the giving size on the heap.
+HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top) {
   // First check if we should switch compaction space
   assert(this == cp->space, "'this' should be current compaction space.");
   size_t compaction_max_size = pointer_delta(end(), compact_top);
@@ -274,8 +273,15 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
     compaction_max_size = pointer_delta(cp->space->end(), compact_top);
   }
 
+  return compact_top;
+}
+
+HeapWord* CompactibleSpace::forward(oop q, size_t size,
+                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+  compact_top = forward_compact_top(size, cp, compact_top);
+
   // store the forwarding pointer into the mark word
-  if (cast_from_oop<HeapWord*>(q) != compact_top) {
+  if (force_forward || cast_from_oop<HeapWord*>(q) != compact_top || (size_t)q->size() != size) {
     q->forward_to(cast_to_oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
@@ -297,6 +303,8 @@ HeapWord* CompactibleSpace::forward(oop q, size_t size,
 #if INCLUDE_SERIALGC
 
 void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
+  bool redefinition_run = Universe::is_redefining_gc_run();
+
   // Compute the new addresses for the live objects and store it in the mark
   // Used by universe::mark_sweep_phase2()
 
@@ -324,12 +332,27 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
   HeapWord* cur_obj = bottom();
   HeapWord* scan_limit = top();
 
+  bool force_forward = false;
+
   while (cur_obj < scan_limit) {
     if (cast_to_oop(cur_obj)->is_gc_marked()) {
       // prefetch beyond cur_obj
       Prefetch::write(cur_obj, interval);
+
       size_t size = cast_to_oop(cur_obj)->size();
-      compact_top = cp->space->forward(cast_to_oop(cur_obj), size, cp, compact_top);
+
+      if (redefinition_run) {
+        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top, force_forward);
+        if (first_dead == NULL && cast_to_oop(cur_obj)->is_gc_marked()) {
+          /* Was moved (otherwise, forward would reset mark),
+             set first_dead to here */
+          first_dead = cur_obj;
+          force_forward = true;
+        }
+      } else {
+        compact_top = cp->space->forward(cast_to_oop(cur_obj), size, cp, compact_top, false);
+      }
+
       cur_obj += size;
       end_of_live = cur_obj;
     } else {
@@ -343,9 +366,9 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
 
       // see if we might want to pretend this object is alive so that
       // we don't have to compact quite as often.
-      if (cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
+      if (!redefinition_run && cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
         oop obj = cast_to_oop(cur_obj);
-        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top);
+        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top, force_forward);
         end_of_live = end;
       } else {
         // otherwise, it really is a free region.
@@ -356,12 +379,17 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
         // see if this is the first dead region.
         if (first_dead == NULL) {
           first_dead = cur_obj;
+          force_forward = true;
         }
       }
 
       // move on to the next object
       cur_obj = end;
     }
+  }
+
+  if (redefinition_run) {
+    compact_top = forward_rescued(cp, compact_top);
   }
 
   assert(cur_obj == scan_limit, "just checking");
@@ -374,6 +402,127 @@ void ContiguousSpace::prepare_for_compaction(CompactPoint* cp) {
 
   // save the compaction_top of the compaction space.
   cp->space->set_compaction_top(compact_top);
+}
+
+
+
+#ifdef ASSERT
+
+int CompactibleSpace::space_index(oop obj) {
+  GenCollectedHeap* heap = GenCollectedHeap::heap();
+
+  //if (heap->is_in_permanent(obj)) {
+  //  return -1;
+  //}
+
+  int index = 0;
+  CompactibleSpace* space = heap->old_gen()->first_compaction_space();
+  while (space != NULL) {
+    if (space->is_in_reserved(obj)) {
+      return index;
+    }
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  space = heap->young_gen()->first_compaction_space();
+  while (space != NULL) {
+    if (space->is_in_reserved(obj)) {
+      return index;
+    }
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  tty->print_cr("could not compute space_index for %08xh", cast_from_oop<HeapWord*>(obj));
+  index = 0;
+
+  Generation* gen = heap->old_gen();
+  tty->print_cr("  generation %s: %08xh - %08xh", gen->name(), gen->reserved().start(), gen->reserved().end());
+
+  space = gen->first_compaction_space();
+  while (space != NULL) {
+    tty->print_cr("    %2d space %08xh - %08xh", index, space->bottom(), space->end());
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  gen = heap->young_gen();
+  tty->print_cr("  generation %s: %08xh - %08xh", gen->name(), gen->reserved().start(), gen->reserved().end());
+
+  space = gen->first_compaction_space();
+  while (space != NULL) {
+    tty->print_cr("    %2d space %08xh - %08xh", index, space->bottom(), space->end());
+    space = space->next_compaction_space();
+    index++;
+  }
+
+  ShouldNotReachHere();
+  return 0;
+}
+#endif
+
+bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
+  // Only redefined objects can have the need to be rescued.
+  if (oop(old_obj)->klass()->new_version() == NULL) return false;
+
+  //if (old_obj->is_perm()) {
+  //  // This object is in perm gen: Always rescue to satisfy invariant obj->klass() <= obj.
+  //  return true;
+  //}
+
+  int new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  int original_size = old_obj->size();
+
+  Generation* tenured_gen = GenCollectedHeap::heap()->old_gen();
+  bool old_in_tenured = tenured_gen->is_in_reserved(old_obj);
+  bool new_in_tenured = tenured_gen->is_in_reserved(new_obj);
+  if (old_in_tenured == new_in_tenured) {
+    // Rescue if object may overlap with a higher memory address.
+    bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
+    if (old_in_tenured) {
+      // Old and new address are in same space, so just compare the address.
+      // Must rescue if object moves towards the top of the space.
+      assert(space_index(old_obj) == space_index(new_obj), "old_obj and new_obj must be in same space");
+    } else {
+      // In the new generation, eden is located before the from space, so a
+      // simple pointer comparison is sufficient.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(overlap == (space_index(old_obj) < space_index(new_obj)), "slow and fast computation must yield same result");
+    }
+    return overlap;
+
+  } else {
+    assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
+    if (new_in_tenured) {
+      // Must never rescue when moving from the new into the old generation.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) > space_index(new_obj), "must be");
+      return false;
+
+    } else /* if (tenured_gen->is_in_reserved(old_obj)) */ {
+      // Must always rescue when moving from the old into the new generation.
+      assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) < space_index(new_obj), "must be");
+      return true;
+    }
+  }
+}
+
+HeapWord* CompactibleSpace::rescue(HeapWord* old_obj) {
+  assert(must_rescue(oop(old_obj), oop(old_obj)->forwardee()), "do not call otherwise");
+
+  int size = oop(old_obj)->size();
+  HeapWord* rescued_obj = NEW_RESOURCE_ARRAY(HeapWord, size);
+  Copy::aligned_disjoint_words(old_obj, rescued_obj, size);
+
+  if (MarkSweep::_rescued_oops == NULL) {
+    MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
+  }
+
+  MarkSweep::_rescued_oops->append(rescued_obj);
+  return rescued_obj;
 }
 
 void CompactibleSpace::adjust_pointers() {
@@ -414,6 +563,9 @@ void CompactibleSpace::adjust_pointers() {
 }
 
 void CompactibleSpace::compact() {
+
+  bool redefinition_run = Universe::is_redefining_gc_run();
+
   // Copy all live objects to their new location
   // Used by MarkSweep::mark_sweep_phase4()
 
@@ -455,15 +607,33 @@ void CompactibleSpace::compact() {
       size_t size = cast_to_oop(cur_obj)->size();
       HeapWord* compaction_top = cast_from_oop<HeapWord*>(cast_to_oop(cur_obj)->forwardee());
 
+      if (redefinition_run &&  must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
+        rescue(cur_obj);
+        debug_only(Copy::fill_to_words(cur_obj, size, 0));
+        cur_obj += size;
+        continue;
+      }
+
       // prefetch beyond compaction_top
       Prefetch::write(compaction_top, copy_interval);
 
       // copy object and reinit its mark
-      assert(cur_obj != compaction_top, "everything in this pass should be moving");
-      Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
-      oop new_obj = cast_to_oop(compaction_top);
+      assert(redefinition_run || cur_obj != compaction_top, "everything in this pass should be moving");
+      if (redefinition_run && oop(cur_obj)->klass()->new_version() != NULL) {
+        Klass* new_version = oop(cur_obj)->klass()->new_version();
+        if (new_version->update_information() == NULL) {
+          Copy::aligned_conjoint_words(cur_obj, compaction_top, size);
+          oop(compaction_top)->set_klass(new_version);
+        } else {
+          DcevmSharedGC::update_fields(oop(cur_obj), oop(compaction_top));
+        }
+        oop(compaction_top)->init_mark();
+        assert(oop(compaction_top)->klass() != NULL, "should have a class");
 
-      ContinuationGCSupport::transform_stack_chunk(new_obj);
+        debug_only(prev_obj = cur_obj);
+        cur_obj += size;
+        continue;
+      }
 
       new_obj->init_mark();
       assert(new_obj->klass() != NULL, "should have a class");
@@ -473,8 +643,9 @@ void CompactibleSpace::compact() {
     }
   }
 
-  clear_empty_region(this);
+  clear_empty_region(space);
 }
+
 
 #endif // INCLUDE_SERIALGC
 
@@ -697,6 +868,58 @@ void TenuredSpace::verify() const {
   guarantee(p == top(), "end of last object must match end of space");
 }
 
+// Compute the forward sizes and leave out objects whose position could
+// possibly overlap other objects.
+HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
+                                                CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+  size_t forward_size = size;
+
+  // (DCEVM) There is a new version of the class of q => different size
+  if (oop(q)->klass()->new_version() != NULL) {
+
+    size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+    // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+    forward_size = new_size;
+  }
+
+  compact_top = forward_compact_top(forward_size, cp, compact_top);
+
+  if (must_rescue(oop(q), oop(compact_top))) {
+    if (MarkSweep::_rescued_oops == NULL) {
+      MarkSweep::_rescued_oops = new GrowableArray<HeapWord*>(128);
+    }
+    MarkSweep::_rescued_oops->append(q);
+    return compact_top;
+  }
+
+  return forward(oop(q), forward_size, cp, compact_top, force_forward);
+}
+
+// Compute the forwarding addresses for the objects that need to be rescued.
+HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_top) {
+  // TODO: empty the _rescued_oops after ALL spaces are compacted!
+  if (MarkSweep::_rescued_oops != NULL) {
+    for (int i=0; i<MarkSweep::_rescued_oops->length(); i++) {
+      HeapWord* q = MarkSweep::_rescued_oops->at(i);
+
+      /* size_t size = oop(q)->size();  changing this for cms for perm gen */
+      size_t size = block_size(q);
+
+      // (DCEVM) There is a new version of the class of q => different size
+      if (oop(q)->klass()->new_version() != NULL) {
+        size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
+        // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+        size = new_size;
+      }
+
+      compact_top = cp->space->forward(oop(q), size, cp, compact_top, true);
+      assert(compact_top <= end(), "must not write over end of space!");
+    }
+    MarkSweep::_rescued_oops->clear();
+    MarkSweep::_rescued_oops = NULL;
+  }
+  return compact_top;
+}
 
 size_t TenuredSpace::allowed_dead_ratio() const {
   return MarkSweepDeadRatio;

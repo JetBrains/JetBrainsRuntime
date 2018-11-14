@@ -97,6 +97,12 @@ class ClassLoaderDataGraph : public AllStatic {
   // Called from VMOperation
   static void walk_metadata_and_clean_metaspaces();
 
+  // (DCEVM)
+  static void dictionary_classes_do(KlassClosure* klass_closure);
+
+  // (DCEVM) Enhanced class redefinition
+  static void rollback_redefinition();
+
   // VM_CounterDecay iteration support
   static InstanceKlass* try_get_next_class();
   static void adjust_saved_class(ClassLoaderData* cld);

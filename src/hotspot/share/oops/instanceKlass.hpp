@@ -132,6 +132,7 @@ class InstanceKlass: public Klass {
   friend class JVMCIVMStructs;
   friend class ClassFileParser;
   friend class CompileReplay;
+  friend class VM_EnhancedRedefineClasses;
 
  public:
   static const KlassKind Kind = InstanceKlassKind;
@@ -813,6 +814,7 @@ public:
                 size_t *length_p, jmethodID* id_p);
   void ensure_space_for_methodids(int start_offset = 0);
   jmethodID jmethod_id_or_null(Method* method);
+  bool update_jmethod_id(Method* method, jmethodID newMethodID);
 
   // annotations support
   Annotations* annotations() const          { return _annotations; }
@@ -886,6 +888,7 @@ public:
 
   // subclass/subinterface checks
   bool implements_interface(Klass* k) const;
+  bool implements_interface_any_version(Klass* k) const;
   bool is_same_or_direct_interface(Klass* k) const;
 
 #ifdef ASSERT
@@ -899,6 +902,7 @@ public:
   int  nof_implementors() const;
   void add_implementor(InstanceKlass* ik);  // ik is a new class that implements this interface
   void init_implementor();           // initialize
+  void init_implementor_from_redefine();           // initialize
 
   // link this class into the implementors list of every interface it implements
   void process_interfaces();
@@ -917,6 +921,10 @@ public:
   void do_nonstatic_fields(FieldClosure* cl); // including inherited fields
   void do_local_static_fields(void f(fieldDescriptor*, Handle, TRAPS), Handle, TRAPS);
   void print_nonstatic_fields(FieldClosure* cl); // including inherited and injected fields
+
+  // Advanced class redefinition: FIXME: why here?
+  void store_update_information(GrowableArray<int> &values);
+  void clear_update_information();
 
   void methods_do(void f(Method* method));
 
