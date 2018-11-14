@@ -4152,7 +4152,7 @@ void Arguments::add_virtualization_information_property()
 
 void Arguments::setup_hotswap_agent() {
 
-  if (DumpSharedSpaces)
+  if (CDSConfig::is_dumping_heap())
     return;
 
   if (HotswapAgent == NULL || strcmp(HotswapAgent, "disabled") == 0)
@@ -4197,7 +4197,7 @@ void Arguments::setup_hotswap_agent() {
         size_t length = strlen(ext_path_str) + 1;
         char *options = NEW_C_HEAP_ARRAY(char,  length, mtArguments);
         jio_snprintf(options, length, "%s", ext_path_str);
-        add_init_agent("instrument", ext_path_str, false);
+        JvmtiAgentList::add("instrument", ext_path_str, false);
         jio_fprintf(defaultStream::output_stream(), "Starting HotswapAgent '%s'\n", ext_path_str);
       }
       else
