@@ -208,6 +208,8 @@ private:
   // Resolving the holder keeps this CLD alive for the current GC cycle.
   oop holder() const;
   void keep_alive() const { (void)holder(); }
+  // (DCEVM)
+  void exchange_holders(ClassLoaderData* cld);
 
   void classes_do(void f(Klass* const));
 

@@ -41,6 +41,9 @@ class G1FullGCCompactionPoint : public CHeapObj<mtGC> {
   PreservedMarks* _preserved_stack;
   GrowableArray<G1HeapRegion*>* _compaction_regions;
   GrowableArrayIterator<G1HeapRegion*> _compaction_region_iterator;
+  GrowableArray<HeapWord*>* _rescued_oops;
+  GrowableArray<HeapWord*>* _rescued_oops_values;
+  int _last_rescued_oop;
 
   bool object_will_fit(size_t size);
   void initialize_values();
@@ -60,6 +63,8 @@ public:
   void forward_humongous(G1HeapRegion* hr);
   void add(G1HeapRegion* hr);
   void add_humongous(G1HeapRegion* hr);
+  HeapWord* forward_compact_top(size_t size);
+  void forward_dcevm(oop object, size_t size, bool force_forward);
 
   void remove_at_or_above(uint bottom);
   G1HeapRegion* current_region();
@@ -75,6 +80,12 @@ public:
     assert(_preserved_stack == nullptr, "only initialize once");
     _preserved_stack = preserved_stack;
   }
+
+  GrowableArray<HeapWord*>* rescued_oops();
+  GrowableArray<HeapWord*>* rescued_oops_values();
+
+  void forward_rescued();
+  int last_rescued_oop() { return _last_rescued_oop; }
 };
 
 #endif // SHARE_GC_G1_G1FULLGCCOMPACTIONPOINT_HPP
