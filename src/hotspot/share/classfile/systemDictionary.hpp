@@ -158,6 +158,8 @@ class OopStorage;
                                                                                                                          \
   /* support for dynamic typing; it's OK if these are NULL in earlier JDKs */                                            \
   do_klass(DirectMethodHandle_klass,                    java_lang_invoke_DirectMethodHandle,       Opt                 ) \
+  do_klass(DirectMethodHandle_StaticAccessor_klass,     java_lang_invoke_DirectMethodHandle_StaticAccessor, Opt        ) \
+  do_klass(DirectMethodHandle_Accessor_klass,           java_lang_invoke_DirectMethodHandle_Accessor, Opt              ) \
   do_klass(MethodHandle_klass,                          java_lang_invoke_MethodHandle,             Pre                 ) \
   do_klass(VarHandle_klass,                             java_lang_invoke_VarHandle,                Pre                 ) \
   do_klass(MemberName_klass,                            java_lang_invoke_MemberName,               Pre                 ) \
@@ -315,6 +317,7 @@ public:
                                             Handle class_loader,
                                             Handle protection_domain,
                                             ClassFileStream* st,
+                                            InstanceKlass* old_klass,
                                             TRAPS);
 
   // Lookup an already loaded class. If not found NULL is returned.
@@ -451,6 +454,10 @@ public:
     return check_klass(_box_klasses[t]);
   }
   static BasicType box_klass_type(Klass* k);  // inverse of box_klass
+
+  // Enhanced class redefinition
+  static void remove_from_hierarchy(InstanceKlass* k);
+  static void update_constraints_after_redefinition();
 
 protected:
   // Returns the class loader data to be used when looking up/updating the
@@ -645,7 +652,7 @@ protected:
   // after waiting, but before reentering SystemDictionary_lock
   // to preserve lock order semantics.
   static void double_lock_wait(Handle lockObject, TRAPS);
-  static void define_instance_class(InstanceKlass* k, TRAPS);
+  static void define_instance_class(InstanceKlass* k, InstanceKlass* old_klass, TRAPS);
   static InstanceKlass* find_or_define_instance_class(Symbol* class_name,
                                                 Handle class_loader,
                                                 InstanceKlass* k, TRAPS);

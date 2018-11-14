@@ -50,6 +50,7 @@
 #include "prims/jvmtiManageCapabilities.hpp"
 #include "prims/jvmtiRawMonitor.hpp"
 #include "prims/jvmtiRedefineClasses.hpp"
+#include "prims/jvmtiEnhancedRedefineClasses.hpp"
 #include "prims/jvmtiTagMap.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "prims/jvmtiUtil.hpp"
@@ -381,8 +382,13 @@ JvmtiEnv::GetClassLoaderClasses(jobject initiating_loader, jint* class_count_ptr
 // is_modifiable_class_ptr - pre-checked for NULL
 jvmtiError
 JvmtiEnv::IsModifiableClass(oop k_mirror, jboolean* is_modifiable_class_ptr) {
-  *is_modifiable_class_ptr = VM_RedefineClasses::is_modifiable_class(k_mirror)?
-                                                       JNI_TRUE : JNI_FALSE;
+  if (AllowEnhancedClassRedefinition) {
+    *is_modifiable_class_ptr = VM_EnhancedRedefineClasses::is_modifiable_class(k_mirror)?
+                                                         JNI_TRUE : JNI_FALSE;
+  } else {
+    *is_modifiable_class_ptr = VM_RedefineClasses::is_modifiable_class(k_mirror)?
+                                                         JNI_TRUE : JNI_FALSE;
+  }
   return JVMTI_ERROR_NONE;
 } /* end IsModifiableClass */
 
@@ -412,7 +418,8 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
       return JVMTI_ERROR_INVALID_CLASS;
     }
 
-    if (!VM_RedefineClasses::is_modifiable_class(k_mirror)) {
+    if ((!AllowEnhancedClassRedefinition && !VM_RedefineClasses::is_modifiable_class(k_mirror)) ||
+        (AllowEnhancedClassRedefinition && !VM_EnhancedRedefineClasses::is_modifiable_class(k_mirror))) {
       return JVMTI_ERROR_UNMODIFIABLE_CLASS;
     }
 
@@ -444,6 +451,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
     }
     class_definitions[index].klass              = jcls;
   }
+  if (AllowEnhancedClassRedefinition) {
+    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+    VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+    VMThread::execute(&op);
+    return (op.check_error());
+  }
   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
   VMThread::execute(&op);
   return (op.check_error());
@@ -454,7 +467,12 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
 // class_definitions - pre-checked for NULL
 jvmtiError
 JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
-//TODO: add locking
+  if (AllowEnhancedClassRedefinition) {
+    MutexLocker sd_mutex(EnhancedRedefineClasses_lock);
+    VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+    VMThread::execute(&op);
+    return (op.check_error());
+  }
   VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
   VMThread::execute(&op);
   return (op.check_error());

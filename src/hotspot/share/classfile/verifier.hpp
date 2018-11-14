@@ -348,6 +348,7 @@ class ClassVerifier : public StackObj {
 
   VerificationType object_type() const;
 
+  InstanceKlass*      _klass_to_verify;
   InstanceKlass*      _klass;  // the class being verified
   methodHandle        _method; // current method being verified
   VerificationType    _this_type; // the verification type of the current class
