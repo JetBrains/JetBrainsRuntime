@@ -198,6 +198,19 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
   _table->do_scan(Thread::current(), doit);
 }
 
+// (DCEVM) iterate over dict entry
+void Dictionary::classes_do(KlassClosure* closure) {
+  auto doit = [&] (DictionaryEntry** value) {
+    InstanceKlass* k = (*value)->instance_klass();
+    if (loader_data() == k->class_loader_data()) {
+      closure->do_klass(k);
+    }
+    return true;
+  };
+
+  _table->do_scan(Thread::current(), doit);
+}
+
 // All classes, and their class loaders, including initiating class loaders
 void Dictionary::all_entries_do(KlassClosure* closure) {
   auto all_doit = [&] (DictionaryEntry** value) {
@@ -290,6 +303,35 @@ DictionaryEntry* Dictionary::get_entry(Thread* current,
   return result;
 }
 
+// (DCEVM) replace old_class by new class in dictionary
+bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass) {
+  // There are several entries for the same class in the dictionary: One extra entry for each parent classloader of the classloader of the class.
+  bool found = false;
+  for (int index = 0; index < table_size(); index++) {
+    for (DictionaryEntry* entry = bucket(index); entry != NULL; entry = entry->next()) {
+      if (entry->instance_klass() == old_klass) {
+        entry->set_literal(k);
+        found = true;
+      }
+    }
+  }
+  return found;
+}
+
+// (DCEVM) rollback redefinition
+void Dictionary::rollback_redefinition() {
+  for (int index = 0; index < table_size(); index++) {
+    for (DictionaryEntry* entry = bucket(index);
+                          entry != NULL;
+                          entry = entry->next()) {
+      if (entry->instance_klass()->is_redefining()) {
+        entry->set_literal((InstanceKlass*) entry->instance_klass()->old_version());
+      }
+    }
+  }
+}
+
+
 
 InstanceKlass* Dictionary::find(Thread* current, Symbol* name,
                                 Handle protection_domain) {
@@ -297,7 +339,7 @@ InstanceKlass* Dictionary::find(Thread* current, Symbol* name,
 
   DictionaryEntry* entry = get_entry(current, name);
   if (entry != nullptr && entry->is_valid_protection_domain(protection_domain)) {
-    return entry->instance_klass();
+    return old_if_redefining(entry->instance_klass());
   } else {
     return nullptr;
   }
@@ -307,7 +349,7 @@ InstanceKlass* Dictionary::find_class(Thread* current,
                                       Symbol* name) {
   assert_locked_or_safepoint(SystemDictionary_lock);
   DictionaryEntry* entry = get_entry(current, name);
-  return (entry != nullptr) ? entry->instance_klass() : nullptr;
+  return old_if_redefining((entry != nullptr) ? entry->instance_klass() : nullptr);
 }
 
 void Dictionary::add_protection_domain(JavaThread* current,

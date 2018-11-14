@@ -1929,6 +1929,38 @@ unsigned int addmods_count = 0;
 unsigned int patch_mod_count = 0;
 unsigned int enable_native_access_count = 0;
 
+// Check consistency of GC selection
+bool Arguments::check_gc_consistency() {
+  // Ensure that the user has not selected conflicting sets
+  // of collectors.
+  uint i = 0;
+  if (UseSerialGC)                       i++;
+  if (UseParallelGC)                     i++;
+  if (UseG1GC)                           i++;
+  if (UseEpsilonGC)                      i++;
+  if (UseZGC)                            i++;
+  if (UseShenandoahGC)                   i++;
+  if (AllowEnhancedClassRedefinition) {
+    // Must use serial GC. This limitation applies because the instance size changing GC modifications
+    // are only built into the mark and compact algorithm.
+    if (!UseSerialGC && !UseG1GC && i >= 1) {
+      jio_fprintf(defaultStream::error_stream(),
+                  "Must use the Serial or G1 GC with enhanced class redefinition.\n");
+      return false;
+    }
+  }
+
+  if (i > 1) {
+    jio_fprintf(defaultStream::error_stream(),
+                "Conflicting collector combinations in option list; "
+                "please refer to the release notes for the combinations "
+                "allowed\n");
+    return false;
+  }
+
+  return true;
+}
+
 // Check the consistency of vm_init_args
 bool Arguments::check_vm_args_consistency() {
   // Method for adding checks for flag consistency.
@@ -1944,6 +1976,8 @@ bool Arguments::check_vm_args_consistency() {
                 TLABRefillWasteFraction);
     status = false;
   }
+
+  status = status && check_gc_consistency();
 
   status = CompilerConfig::check_args_consistency(status);
 #if INCLUDE_JVMCI
@@ -3954,6 +3988,13 @@ jint Arguments::parse(const JavaVMInitArgs* initial_cmd_args) {
 
   // Set object alignment values.
   set_object_alignment();
+
+  if (FlightRecorder) {
+    if (AllowEnhancedClassRedefinition) {
+      warning("EnhancedClassRedefinition was disabled, it is not allowed in FlightRecorder.");
+      AllowEnhancedClassRedefinition = false;
+    }
+  }
 
 #if !INCLUDE_CDS
   if (DumpSharedSpaces || RequireSharedSpaces) {

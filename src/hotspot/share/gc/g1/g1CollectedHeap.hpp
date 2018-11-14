@@ -162,6 +162,7 @@ class G1CollectedHeap : public CollectedHeap {
   // Closures used in implementation.
   friend class G1EvacuateRegionsTask;
   friend class G1PLABAllocator;
+  friend class G1FullGCPrepareTask;
 
   // Other related classes.
   friend class G1HeapPrinterMark;
@@ -1094,6 +1095,7 @@ public:
   // Iteration functions.
 
   void object_iterate_parallel(ObjectClosure* cl, uint worker_id, HeapRegionClaimer* claimer);
+  void object_par_iterate(ObjectClosure* cl);
 
   // Iterate over all objects, calling "cl.do_object" on each.
   void object_iterate(ObjectClosure* cl) override;

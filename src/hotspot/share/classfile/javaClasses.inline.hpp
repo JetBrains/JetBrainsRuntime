@@ -318,6 +318,14 @@ inline bool java_lang_invoke_DirectMethodHandle::is_instance(oop obj) {
   return obj != nullptr && is_subclass(obj->klass());
 }
 
+inline bool java_lang_invoke_DirectMethodHandle_StaticAccessor::is_instance(oop obj) {
+  return obj != NULL && is_subclass(obj->klass());
+}
+
+inline bool java_lang_invoke_DirectMethodHandle_Accessor::is_instance(oop obj) {
+  return obj != NULL && is_subclass(obj->klass());
+}
+
 inline bool java_lang_Module::is_instance(oop obj) {
   return obj != nullptr && obj->klass() == vmClasses::Module_klass();
 }

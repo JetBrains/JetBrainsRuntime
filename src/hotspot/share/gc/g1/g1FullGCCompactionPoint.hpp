@@ -38,6 +38,9 @@ class G1FullGCCompactionPoint : public CHeapObj<mtGC> {
   HeapWord*   _compaction_top;
   GrowableArray<HeapRegion*>* _compaction_regions;
   GrowableArrayIterator<HeapRegion*> _compaction_region_iterator;
+  GrowableArray<HeapWord*>* _rescued_oops;
+  GrowableArray<HeapWord*>* _rescued_oops_values;
+  int _last_rescued_oop;
 
   bool object_will_fit(size_t size);
   void initialize_values();
@@ -53,12 +56,20 @@ public:
   void initialize(HeapRegion* hr);
   void update();
   void forward(oop object, size_t size);
+  HeapWord* forward_compact_top(size_t size);
+  void forward_dcevm(oop object, size_t size, bool force_forward);
   void add(HeapRegion* hr);
 
   HeapRegion* remove_last();
   HeapRegion* current_region();
 
   GrowableArray<HeapRegion*>* regions();
+
+  GrowableArray<HeapWord*>* rescued_oops();
+  GrowableArray<HeapWord*>* rescued_oops_values();
+
+  void forward_rescued();
+  int last_rescued_oop() { return _last_rescued_oop; }
 };
 
 #endif // SHARE_GC_G1_G1FULLGCCOMPACTIONPOINT_HPP

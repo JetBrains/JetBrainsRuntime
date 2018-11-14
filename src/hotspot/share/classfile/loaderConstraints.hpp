@@ -43,6 +43,8 @@ private:
   static void merge_loader_constraints(Symbol* class_name, LoaderConstraint* pp1,
                                        LoaderConstraint* pp2, InstanceKlass* klass);
 public:
+  // (DCEVM) update all klasses with newest version
+  void update_after_redefinition();
 
   // Check class loader constraints
   static bool add_entry(Symbol* name, InstanceKlass* klass1, ClassLoaderData* loader1,

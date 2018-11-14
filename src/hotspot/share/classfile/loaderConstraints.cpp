@@ -4,7 +4,7 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation) replace old_class by new class in dictionary.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -169,6 +169,21 @@ void LoaderConstraintTable::add_loader_constraint(Symbol* name, InstanceKlass* k
     set->initialize(constraint);
   } else {
     set->add_constraint(constraint);
+  }
+}
+
+// (DCEVM) update constraint entries to new classes, called from dcevm redefinition code only
+void LoaderConstraintTable::update_after_redefinition() {
+  for (int index = 0; index < table_size(); index++) {
+    LoaderConstraintEntry** p = bucket_addr(index);
+    while(*p) {
+      LoaderConstraintEntry* probe = *p;
+      if (probe->klass() != NULL) {
+        // We swap the class with the newest version with an assumption that the hash will be the same
+        probe->set_klass((InstanceKlass*) probe->klass()->newest_version());
+      }
+      p = probe->next_addr();
+    }
   }
 }
 
@@ -459,7 +474,7 @@ void LoaderConstraintTable::verify() {
         if (k != nullptr) {
           // We found the class in the dictionary, so we should
           // make sure that the Klass* matches what we already have.
-          guarantee(k == probe->klass(), "klass should be in dictionary");
+          guarantee(k == probe->klass()->newest_version(), "klass should be in dictionary");
         } else {
           // If we don't find the class in the dictionary, it
           // has to be in the placeholders table.

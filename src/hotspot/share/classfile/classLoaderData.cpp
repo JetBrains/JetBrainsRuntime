@@ -614,6 +614,15 @@ Dictionary* ClassLoaderData::create_dictionary() {
   return new Dictionary(this, size);
 }
 
+void ClassLoaderData::exchange_holders(ClassLoaderData* cld) {
+  oop holder_oop = _holder.peek();
+  _holder.replace(cld->_holder.peek());
+  cld->_holder.replace(holder_oop);
+  WeakHandle exchange = _holder;
+  _holder = cld->_holder;
+  cld->_holder = exchange;
+}
+
 // Tell the GC to keep this klass alive. Needed while iterating ClassLoaderDataGraph,
 // and any runtime code that uses klasses.
 oop ClassLoaderData::holder() const {
