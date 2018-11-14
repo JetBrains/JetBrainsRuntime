@@ -184,6 +184,7 @@ class JvmtiExport : public AllStatic {
   // systems as needed to relax invariant checks.
   static uint64_t _redefinition_count;
   friend class VM_RedefineClasses;
+  friend class VM_EnhancedRedefineClasses;
   inline static void increment_redefinition_count() {
     JVMTI_ONLY(_redefinition_count++;)
   }

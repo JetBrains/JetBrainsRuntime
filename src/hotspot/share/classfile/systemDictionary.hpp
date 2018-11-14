@@ -140,6 +140,7 @@ class SystemDictionary : AllStatic {
                                             Symbol* class_name,
                                             Handle class_loader,
                                             const ClassLoadInfo& cl_info,
+                                            InstanceKlass* old_klass,
                                             TRAPS);
 
   // Lookup an already loaded class. If not found NULL is returned.
@@ -336,7 +337,7 @@ private:
                                                 Handle lockObject,
                                                 bool* throw_circularity_error);
 
-  static void define_instance_class(InstanceKlass* k, Handle class_loader, TRAPS);
+  static void define_instance_class(InstanceKlass* k, InstanceKlass* old_klass, Handle class_loader, TRAPS);
   static InstanceKlass* find_or_define_helper(Symbol* class_name,
                                               Handle class_loader,
                                               InstanceKlass* k, TRAPS);

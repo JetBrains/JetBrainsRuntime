@@ -290,6 +290,7 @@ InstanceKlass* ClassLoaderExt::load_class(Symbol* name, const char* path, TRAPS)
                                                       name,
                                                       loader_data,
                                                       cl_info,
+                                                      false,
                                                       CHECK_NULL);
   return k;
 }
