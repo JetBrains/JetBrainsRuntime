@@ -63,6 +63,10 @@ public:
   InstanceKlass* find_class(Thread* current, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+  // (DCEVM)
+  void classes_do_safepoint(void f(InstanceKlass*));
+  void classes_do(KlassClosure* closure);
+
   void all_entries_do(KlassClosure* closure);
   void classes_do(MetaspaceClosure* it);
 
@@ -71,6 +75,11 @@ public:
   void print_on(outputStream* st) const;
   void print_size(outputStream* st) const;
   void verify();
+
+  // (DCEVM) Enhanced class redefinition
+  bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
+
+  void rollback_redefinition();
 };
 
 #endif // SHARE_CLASSFILE_DICTIONARY_HPP

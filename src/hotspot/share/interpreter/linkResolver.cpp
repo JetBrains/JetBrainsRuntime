@@ -158,14 +158,14 @@ void CallInfo::set_common(Klass* resolved_klass,
 }
 
 // utility query for unreflecting a method
-CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS) {
+CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, Thread* thread) {
   Klass* resolved_method_holder = resolved_method->method_holder();
   if (resolved_klass == nullptr) { // 2nd argument defaults to holder of 1st
     resolved_klass = resolved_method_holder;
   }
   _resolved_klass  = resolved_klass;
-  _resolved_method = methodHandle(THREAD, resolved_method);
-  _selected_method = methodHandle(THREAD, resolved_method);
+  _resolved_method = methodHandle(thread, resolved_method);
+  _selected_method = methodHandle(thread, resolved_method);
   // classify:
   CallKind kind = CallInfo::unknown_kind;
   int index = resolved_method->vtable_index();
@@ -206,8 +206,9 @@ CallInfo::CallInfo(Method* resolved_method, Klass* resolved_klass, TRAPS) {
   _call_index = index;
   _resolved_appendix = Handle();
   // Find or create a ResolvedMethod instance for this Method*
-  set_resolved_method_name(CHECK);
-
+  if (thread->is_Java_thread()) { // exclude DCEVM VM thread
+    set_resolved_method_name(JavaThread::cast(thread));
+  }
   DEBUG_ONLY(verify());
 }
 
@@ -215,6 +216,10 @@ void CallInfo::set_resolved_method_name(TRAPS) {
   assert(_resolved_method() != nullptr, "Should already have a Method*");
   oop rmethod_name = java_lang_invoke_ResolvedMethodName::find_resolved_method(_resolved_method, CHECK);
   _resolved_method_name = Handle(THREAD, rmethod_name);
+}
+
+void CallInfo::set_resolved_method_name_dcevm(oop rmethod_name, Thread* thread) {
+  _resolved_method_name = Handle(thread, rmethod_name);
 }
 
 #ifdef ASSERT
@@ -314,9 +319,14 @@ void LinkResolver::check_klass_accessibility(Klass* ref_klass, Klass* sel_klass,
   if (!base_klass->is_instance_klass()) {
     return;  // no relevant check to do
   }
-
+  Klass* refKlassNewest = ref_klass;
+  Klass* baseKlassNewest = base_klass;
+  if (AllowEnhancedClassRedefinition) {
+    refKlassNewest = ref_klass->newest_version();
+    baseKlassNewest = base_klass->newest_version();
+  }
   Reflection::VerifyClassAccessResults vca_result =
-    Reflection::verify_class_access(ref_klass, InstanceKlass::cast(base_klass), true);
+    Reflection::verify_class_access(refKlassNewest, InstanceKlass::cast(baseKlassNewest), true);
   if (vca_result != Reflection::ACCESS_OK) {
     ResourceMark rm(THREAD);
     char* msg = Reflection::verify_class_access_msg(ref_klass,
@@ -578,7 +588,8 @@ void LinkResolver::check_method_accessability(Klass* ref_klass,
   // We'll check for the method name first, as that's most likely
   // to be false (so we'll short-circuit out of these tests).
   if (sel_method->name() == vmSymbols::clone_name() &&
-      sel_klass == vmClasses::Object_klass() &&
+      ( (!AllowEnhancedClassRedefinition && sel_klass == vmClasses::Object_klass()) ||
+        (AllowEnhancedClassRedefinition && sel_klass->newest_version() == vmClasses::Object_klass()->newest_version()) ) &&
       resolved_klass->is_array_klass()) {
     // We need to change "protected" to "public".
     assert(flags.is_protected(), "clone not protected?");
@@ -1040,7 +1051,7 @@ void LinkResolver::resolve_field(fieldDescriptor& fd,
     //     or by the <init> method (in case of an instance field).
     if (is_put && fd.access_flags().is_final()) {
 
-      if (sel_klass != current_klass) {
+      if (sel_klass != current_klass && (!AllowEnhancedClassRedefinition || sel_klass != current_klass->active_version())) {
         ResourceMark rm(THREAD);
         stringStream ss;
         ss.print("Update to %s final field %s.%s attempted from a different class (%s) than the field's declaring class",
