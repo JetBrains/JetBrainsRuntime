@@ -27,5 +27,6 @@ include LauncherCommon.gmk
 
 $(eval $(call SetupBuildLauncher, jrunscript, \
     MAIN_CLASS := com.sun.tools.script.shell.Main, \
-    JAVA_ARGS := --add-modules ALL-DEFAULT, \
+    JAVA_ARGS := --add-modules ALL-DEFAULT \
+        -XX:+DisableHotswapAgent, \
 ))
