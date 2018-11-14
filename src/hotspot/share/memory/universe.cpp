@@ -205,7 +205,7 @@ void Universe::basic_type_classes_do(KlassClosure *closure) {
 #define DO_PRIMITIVE_MIRROR(m) \
   f->do_oop((oop*) &m);
 
-// FIXME: This method should iterate all pointers that are not within heap objects.
+// FIXME: (DCEVM) This method should iterate all pointers that are not within heap objects.
 void Universe::root_oops_do(OopClosure *oopClosure) {
 
   class AlwaysTrueClosure: public BoolObjectClosure {
