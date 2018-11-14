@@ -841,7 +841,7 @@ void StringTable::copy_shared_string_table(CompactStringTableWriter* writer) {
   assert(MetaspaceShared::is_heap_object_archiving_allowed(), "must be");
 
   CopyToArchive copy(writer);
-  StringTable::the_table()->_local_table->do_scan(Thread::current(), copy);
+  StringTable::the_table()->_local_table->do_safepoint_scan(copy);
 }
 
 void StringTable::write_to_archive() {
