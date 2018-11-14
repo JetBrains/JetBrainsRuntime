@@ -559,7 +559,7 @@ class ClassFileParser {
                                TRAPS);
 
   void update_class_name(Symbol* new_name);
-  // Enhanced class redefinition
+  // (DCEVM) Enhanced class redefinition
   inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
 
  public:
