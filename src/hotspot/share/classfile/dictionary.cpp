@@ -245,6 +245,8 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
   }
 }
 
+
+// (DCEVM) iterate over dict entry
 void Dictionary::classes_do(KlassClosure* closure) {
   for (int index = 0; index < table_size(); index++) {
     for (DictionaryEntry* probe = bucket(index);
@@ -342,6 +344,7 @@ DictionaryEntry* Dictionary::get_entry(int index, unsigned int hash,
   return NULL;
 }
 
+// (DCEVM) replace old_class by new class in dictionary
 bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass) {
   // There are several entries for the same class in the dictionary: One extra entry for each parent classloader of the classloader of the class.
   bool found = false;
@@ -356,6 +359,7 @@ bool Dictionary::update_klass(unsigned int hash, Symbol* name, ClassLoaderData* 
   return found;
 }
 
+// (DCEVM) rollback redefinition
 void Dictionary::rollback_redefinition() {
   for (int index = 0; index < table_size(); index++) {
     for (DictionaryEntry* entry = bucket(index);
