@@ -34,13 +34,18 @@ G1FullGCCompactionPoint::G1FullGCCompactionPoint(G1FullCollector* collector, Pre
     _collector(collector),
     _current_region(nullptr),
     _compaction_top(nullptr),
-    _preserved_stack(preserved_stack) {
+    _preserved_stack(preserved_stack),
+    _last_rescued_oop(0) {
   _compaction_regions = new (mtGC) GrowableArray<G1HeapRegion*>(32, mtGC);
   _compaction_region_iterator = _compaction_regions->begin();
+  _rescued_oops = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
+  _rescued_oops_values = new (mtGC) GrowableArray<HeapWord*>(128, mtGC);
 }
 
 G1FullGCCompactionPoint::~G1FullGCCompactionPoint() {
   delete _compaction_regions;
+  delete _rescued_oops;
+  delete _rescued_oops_values;
 }
 
 void G1FullGCCompactionPoint::update() {
@@ -78,6 +83,14 @@ G1HeapRegion* G1FullGCCompactionPoint::next_region() {
 
 GrowableArray<G1HeapRegion*>* G1FullGCCompactionPoint::regions() {
   return _compaction_regions;
+}
+
+GrowableArray<HeapWord*>* G1FullGCCompactionPoint::rescued_oops() {
+  return _rescued_oops;
+}
+
+GrowableArray<HeapWord*>* G1FullGCCompactionPoint::rescued_oops_values() {
+  return _rescued_oops_values;
 }
 
 bool G1FullGCCompactionPoint::object_will_fit(size_t size) {
@@ -215,4 +228,60 @@ uint G1FullGCCompactionPoint::find_contiguous_before(G1HeapRegion* hr, uint num_
   }
   // Return the index of the first region in the range of contiguous regions.
   return range_end - contiguous_region_count;
+}
+
+HeapWord* G1FullGCCompactionPoint::forward_compact_top(size_t size) {
+  assert(_current_region != NULL, "Must have been initialized");
+  // Ensure the object fit in the current region.
+  while (!object_will_fit(size)) {
+    if (!_compaction_region_iterator.has_next()) {
+      return NULL;
+    }
+    switch_region();
+  }
+  return _compaction_top;
+}
+
+void G1FullGCCompactionPoint::forward_dcevm(oop object, size_t size, bool force_forward) {
+  assert(_current_region != NULL, "Must have been initialized");
+
+  // Ensure the object fit in the current region.
+  while (!object_will_fit(size)) {
+    switch_region();
+  }
+
+  // Store a forwarding pointer if the object should be moved.
+  if (cast_from_oop<HeapWord*>(object) != _compaction_top || force_forward) {
+    object->forward_to(cast_to_oop(_compaction_top));
+    assert(object->is_forwarded(), "must be forwarded");
+  } else {
+    assert(!object->is_forwarded(), "must not be forwarded");
+  }
+
+  // Update compaction values.
+  _compaction_top += size;
+  _current_region->update_bot_for_block(_compaction_top - size, _compaction_top);
+}
+
+void G1FullGCCompactionPoint::forward_rescued() {
+  int i;
+
+  i = _last_rescued_oop;
+
+  for (;i<rescued_oops()->length(); i++) {
+    HeapWord* q = rescued_oops()->at(i);
+
+    size_t size = cast_to_oop(q)->size();
+
+    // (DCEVM) There is a new version of the class of q => different size
+    if (cast_to_oop(q)->klass()->new_version() != NULL) {
+      // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+      size = cast_to_oop(q)->size_given_klass(cast_to_oop(q)->klass()->new_version());
+    }
+    if (forward_compact_top(size) == NULL) {
+      break;
+    }
+    forward_dcevm(cast_to_oop(q), size, true);
+  }
+  _last_rescued_oop = i;
 }

@@ -83,6 +83,7 @@ extern Mutex*   Compile_lock;                    // a lock held when Compilation
 extern Monitor* MethodCompileQueue_lock;         // a lock held when method compilations are enqueued, dequeued
 extern Monitor* CompileThread_lock;              // a lock held by compile threads during compilation system initialization
 extern Monitor* Compilation_lock;                // a lock used to pause compilation
+extern Monitor* DcevmCompilation_lock;           // a lock used to pause compilation from dcevm
 extern Mutex*   CompileTaskAlloc_lock;           // a lock held when CompileTasks are allocated
 extern Mutex*   CompileStatistics_lock;          // a lock held when updating compilation statistics
 extern Mutex*   DirectivesStack_lock;            // a lock held when mutating the dirstack and ref counting directives
@@ -99,6 +100,8 @@ extern Mutex*   FullGCALot_lock;                 // a lock to make FullGCALot MT
 extern Mutex*   RawMonitor_lock;
 extern Mutex*   PerfDataMemAlloc_lock;           // a lock on the allocator for PerfData memory for performance data
 extern Mutex*   PerfDataManager_lock;            // a long on access to PerfDataManager resources
+
+extern Mutex* EnhancedRedefineClasses_lock;      // locks classes from parallel enhanced redefinition
 
 extern Mutex*   FreeList_lock;                   // protects the free region list during safepoints
 extern Mutex*   OldSets_lock;                    // protects the old region sets
