@@ -2428,6 +2428,8 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
         skip_throwableInit_check = true;
       }
     }
+    // (DCEVM): Line numbers from newest version must be used for EMCP-swapped methods
+    method = method->newest_version();
     if (method->is_hidden()) {
       if (skip_hidden)  continue;
     }
@@ -3610,6 +3612,50 @@ void java_lang_invoke_DirectMethodHandle::serialize_offsets(SerializeClosure* f)
 }
 #endif
 
+// Support for java_lang_invoke_DirectMethodHandle$StaticAccessor
+
+int java_lang_invoke_DirectMethodHandle_StaticAccessor::_static_offset_offset;
+
+long java_lang_invoke_DirectMethodHandle_StaticAccessor::static_offset(oop dmh) {
+  assert(_static_offset_offset != 0, "");
+  return dmh->long_field(_static_offset_offset);
+}
+
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::set_static_offset(oop dmh, long static_offset) {
+  assert(_static_offset_offset != 0, "");
+  dmh->long_field_put(_static_offset_offset, static_offset);
+}
+
+
+void java_lang_invoke_DirectMethodHandle_StaticAccessor::compute_offsets() {
+  Klass* klass_oop = SystemDictionary::DirectMethodHandle_StaticAccessor_klass();
+  if (klass_oop != NULL) {
+    compute_offset(_static_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::static_offset_name(), vmSymbols::long_signature());
+  }
+}
+
+// Support for java_lang_invoke_DirectMethodHandle$Accessor
+
+int java_lang_invoke_DirectMethodHandle_Accessor::_field_offset_offset;
+
+int java_lang_invoke_DirectMethodHandle_Accessor::field_offset(oop dmh) {
+  assert(_field_offset_offset != 0, "");
+  return dmh->int_field(_field_offset_offset);
+}
+
+void java_lang_invoke_DirectMethodHandle_Accessor::set_field_offset(oop dmh, int field_offset) {
+  assert(_field_offset_offset != 0, "");
+  dmh->int_field_put(_field_offset_offset, field_offset);
+}
+
+
+void java_lang_invoke_DirectMethodHandle_Accessor::compute_offsets() {
+  Klass* klass_oop = SystemDictionary::DirectMethodHandle_Accessor_klass();
+  if (klass_oop != NULL) {
+    compute_offset(_field_offset_offset, InstanceKlass::cast(klass_oop), vmSymbols::field_offset_name(), vmSymbols::int_signature());
+  }
+}
+
 // Support for java_lang_invoke_MethodHandle
 
 int java_lang_invoke_MethodHandle::_type_offset;
@@ -3794,6 +3840,11 @@ Method* java_lang_invoke_ResolvedMethodName::vmtarget(oop resolved_method) {
 void java_lang_invoke_ResolvedMethodName::set_vmtarget(oop resolved_method, Method* m) {
   assert(is_instance(resolved_method), "wrong type");
   resolved_method->address_field_put(_vmtarget_offset, (address)m);
+}
+
+void java_lang_invoke_ResolvedMethodName::set_vmholder_offset(oop resolved_method, Method* m) {
+  assert(is_instance(resolved_method), "wrong type");
+  resolved_method->obj_field_put(_vmholder_offset, m->method_holder()->java_mirror());
 }
 
 oop java_lang_invoke_ResolvedMethodName::find_resolved_method(const methodHandle& m, TRAPS) {

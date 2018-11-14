@@ -276,8 +276,8 @@ class ThreadToNativeFromVM : public ThreadStateTransition {
  public:
   ThreadToNativeFromVM(JavaThread *thread) : ThreadStateTransition(thread) {
     // We are leaving the VM at this point and going directly to native code.
-    // Block, if we are in the middle of a safepoint synchronization.
-    assert(!thread->owns_locks(), "must release all locks when leaving VM");
+    // DCEVM allow locks on leaving JVM
+    assert(AllowEnhancedClassRedefinition || !thread->owns_locks(), "must release all locks when leaving VM");
     thread->frame_anchor()->make_walkable(thread);
     trans_and_fence(_thread_in_vm, _thread_in_native);
     // Check for pending. async. exceptions or suspends.
