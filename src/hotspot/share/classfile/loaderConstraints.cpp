@@ -172,6 +172,21 @@ void LoaderConstraintTable::add_loader_constraint(Symbol* name, InstanceKlass* k
   }
 }
 
+// (DCEVM) update constraint entries to new classes, called from dcevm redefinition code only
+void LoaderConstraintTable::update_after_redefinition() {
+  auto update_old = [&] (SymbolHandle& key, ConstraintSet& set) {
+    int len = set.num_constraints();
+    for (int i = 0; i < len; i++) {
+      LoaderConstraint* probe = set.constraint_at(i);
+      if (probe->klass() != NULL) {
+        // We swap the class with the newest version with an assumption that the hash will be the same
+        probe->set_klass((InstanceKlass*) probe->klass()->newest_version());
+      }
+    }
+  };
+  _loader_constraint_table.iterate_all(update_old);
+}
+
 class PurgeUnloadedConstraints : public StackObj {
  public:
   bool do_entry(SymbolHandle& name, ConstraintSet& set) {
@@ -459,7 +474,7 @@ void LoaderConstraintTable::verify() {
         if (k != nullptr) {
           // We found the class in the dictionary, so we should
           // make sure that the Klass* matches what we already have.
-          guarantee(k == probe->klass(), "klass should be in dictionary");
+          guarantee(k == probe->klass()->newest_version(), "klass should be in dictionary");
         } else {
           // If we don't find the class in the dictionary, it
           // has to be in the placeholders table.

@@ -443,6 +443,29 @@ void ClassLoaderDataGraph::verify_dictionary() {
                                 while (ClassLoaderData* X = iter.get_next()) \
                                   if (X->dictionary() != nullptr)
 
+// (DCEVM) - iterate over dict classes
+void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->classes_do(klass_closure);
+  }
+}
+
+// (DCEVM) rollback redefined classes
+void ClassLoaderDataGraph::rollback_redefinition() {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->rollback_redefinition();
+  }
+}
+
+// (DCEVM) - iterate over all classes in all dictionaries
+bool ClassLoaderDataGraph::dictionary_classes_do_update_klass(Thread* current, Symbol* name, InstanceKlass* k, InstanceKlass* old_klass) {
+  bool ok = false;
+  FOR_ALL_DICTIONARY(cld) {
+    ok = cld->dictionary()->update_klass(current, name, k, old_klass) || ok;
+  }
+  return ok;
+}
+
 void ClassLoaderDataGraph::print_dictionary(outputStream* st) {
   FOR_ALL_DICTIONARY(cld) {
     st->print("Dictionary for ");

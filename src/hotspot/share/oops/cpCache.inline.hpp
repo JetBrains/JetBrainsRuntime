@@ -66,7 +66,11 @@ inline Klass* ConstantPoolCacheEntry::f1_as_klass() const {
   return (Klass*)f1;
 }
 
-inline bool ConstantPoolCacheEntry::is_f1_null() const { Metadata* f1 = f1_ord(); return f1 == nullptr; }
+inline bool ConstantPoolCacheEntry::is_f1_null() const {
+  Metadata* f1 = f1_ord();
+  intx flags = flags_ord();
+  return f1 == nullptr || (flags & (1 << is_f1_null_dcevm_shift)) != 0;
+}
 
 inline bool ConstantPoolCacheEntry::has_appendix() const {
   return (!is_f1_null()) && (_flags & (1 << has_appendix_shift)) != 0;

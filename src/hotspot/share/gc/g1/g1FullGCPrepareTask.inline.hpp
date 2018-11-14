@@ -50,6 +50,9 @@ inline bool G1DetermineCompactionQueueClosure::should_compact(HeapRegion* hr) co
   if (hr->is_pinned()) {
     return false;
   }
+  if (Universe::is_redefining_gc_run()) {
+    return true;
+  }
   size_t live_words = _collector->live_words(hr->hrm_index());
   size_t live_words_threshold = _collector->scope()->region_compaction_threshold();
   // High live ratio region will not be compacted.

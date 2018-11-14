@@ -110,6 +110,10 @@ public:
   static bool Cloneable_klass_loaded()      { return is_loaded(VM_CLASS_AT(Cloneable_klass));          }
   static bool Parameter_klass_loaded()      { return is_loaded(VM_CLASS_AT(reflect_Parameter_klass));  }
   static bool ClassLoader_klass_loaded()    { return is_loaded(VM_CLASS_AT(ClassLoader_klass));        }
+
+  // (DCEVM) vmClasses could be modified
+  static bool update_vm_klass(InstanceKlass* new_klass, InstanceKlass* old_klass);
+
 };
 
 #endif // SHARE_CLASSFILE_VMCLASSES_HPP

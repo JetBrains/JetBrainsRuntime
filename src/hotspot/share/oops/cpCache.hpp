@@ -146,13 +146,13 @@ class ConstantPoolCacheEntry {
   void set_bytecode_2(Bytecodes::Code code);
   void set_f1(Metadata* f1) {
     Metadata* existing_f1 = _f1; // read once
-    assert(existing_f1 == nullptr || existing_f1 == f1, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f1 == nullptr || existing_f1 == f1, "illegal field change");
     _f1 = f1;
   }
   void release_set_f1(Metadata* f1);
   void set_f2(intx f2) {
     intx existing_f2 = _f2; // read once
-    assert(existing_f2 == 0 || existing_f2 == f2, "illegal field change");
+    assert(AllowEnhancedClassRedefinition || existing_f2 == 0 || existing_f2 == f2, "illegal field change");
     _f2 = f2;
   }
   void set_f2_as_vfinal_method(Method* f2) {
@@ -178,6 +178,9 @@ class ConstantPoolCacheEntry {
     tos_state_bits             = 4,
     tos_state_mask             = right_n_bits(tos_state_bits),
     tos_state_shift            = BitsPerInt - tos_state_bits,  // see verify_tos_state_shift below
+    // (DCEVM) dcevm additional indicator, that f1 is NULL. DCEVM need to keep the old value of the f1 until the
+    //         cache entry is reresolved to avoid race condition
+    is_f1_null_dcevm_shift     = 27,
     // misc. option bits; can be any bit position in [16..27]
     is_field_entry_shift       = 26,  // (F) is it a field or a method?
     has_local_signature_shift  = 25,  // (S) does the call site have a per-site signature (sig-poly methods)?
@@ -364,6 +367,10 @@ class ConstantPoolCacheEntry {
          bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
   Method* get_interesting_method_entry();
+
+  // Enhanced RedefineClasses() API support (DCEVM):
+  // Clear cached entry, let it be re-resolved
+  void clear_entry();
 #endif // INCLUDE_JVMTI
 
   // Debugging & Printing
@@ -504,6 +511,10 @@ class ConstantPoolCache: public MetaspaceObj {
   void adjust_method_entries(bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
   void dump_cache();
+
+  // Enhanced RedefineClasses() API support (DCEVM):
+  // Clear all entries
+  void clear_entries();
 #endif // INCLUDE_JVMTI
 
   // RedefineClasses support

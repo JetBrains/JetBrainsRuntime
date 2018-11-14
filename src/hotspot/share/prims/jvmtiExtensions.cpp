@@ -163,6 +163,21 @@ static jvmtiError JNICALL GetCarrierThread(const jvmtiEnv* env, ...) {
   return op.result();
 }
 
+// extension function
+static jvmtiError JNICALL IsEnhancedClassRedefinitionEnabled(const jvmtiEnv* env, ...) {
+  jboolean* enabled = NULL;
+  va_list ap;
+
+  va_start(ap, env);
+  enabled = va_arg(ap, jboolean *);
+  va_end(ap);
+  if (enabled == NULL) {
+    return JVMTI_ERROR_NULL_POINTER;
+  }
+  *enabled = (jboolean)AllowEnhancedClassRedefinition;
+  return JVMTI_ERROR_NONE;
+}
+
 // register extension functions and events. In this implementation we
 // have a single extension function (to prove the API) that tests if class
 // unloading is enabled or disabled. We also have a single extension event
@@ -243,6 +258,7 @@ void JvmtiExtensions::register_extensions() {
     sizeof(class_unload_event_params)/sizeof(class_unload_event_params[0]),
     class_unload_event_params
   };
+
   static jvmtiExtensionEventInfo virtual_thread_mount_ext_event = {
     EXT_EVENT_VIRTUAL_THREAD_MOUNT,
     (char*)"com.sun.hotspot.events.VirtualThreadMount",
@@ -261,6 +277,21 @@ void JvmtiExtensions::register_extensions() {
   _ext_events->append(&class_unload_ext_event);
   _ext_events->append(&virtual_thread_mount_ext_event);
   _ext_events->append(&virtual_thread_unmount_ext_event);
+
+  static jvmtiParamInfo func_params_enh_redef[] = {
+    { (char*)"IsEnhancedClassRedefinitionEnabled", JVMTI_KIND_OUT,  JVMTI_TYPE_JBOOLEAN, JNI_FALSE }
+
+  };
+  static jvmtiExtensionFunctionInfo ext_func_enh_redef = {
+    (jvmtiExtensionFunction)IsEnhancedClassRedefinitionEnabled,
+    (char*)"com.sun.hotspot.functions.IsEnhancedClassRedefinitionEnabled",
+    (char*)"Tell if enhanced class redefinition is enabled (-noclassgc)",
+    sizeof(func_params_enh_redef)/sizeof(func_params_enh_redef[0]),
+    func_params_enh_redef,
+    0,              // no non-universal errors
+    NULL
+  };
+  _ext_functions->append(&ext_func_enh_redef);
 }
 
 

@@ -70,6 +70,10 @@ public:
   InstanceKlass* find_class(Thread* current, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+  // (DCEVM)
+  void classes_do_safepoint(void f(InstanceKlass*));
+  void classes_do(KlassClosure* closure);
+
   void all_entries_do(KlassClosure* closure);
   void classes_do(MetaspaceClosure* it);
 
@@ -88,11 +92,21 @@ public:
   void print_size(outputStream* st) const;
   void verify();
 
+  // (DCEVM) Enhanced class redefinition
+  bool update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass);
+
+  void rollback_redefinition();
+
  private:
   bool is_valid_protection_domain(JavaThread* current, Symbol* name,
                                   Handle protection_domain);
   void add_protection_domain(JavaThread* current, InstanceKlass* klass,
                              Handle protection_domain);
+
+  // (DCEVM) return old class if redefining in AllowEnhancedClassRedefinition, otherwise return "k"
+  static InstanceKlass* old_if_redefining(InstanceKlass* k) {
+    return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+  }
 };
 
 // An entry in the class loader data dictionaries, this describes a class as
@@ -127,6 +141,8 @@ class DictionaryEntry : public CHeapObj<mtClass> {
 
   InstanceKlass* instance_klass() const { return _instance_klass; }
   InstanceKlass** instance_klass_addr() { return &_instance_klass; }
+
+  void set_instance_klass(InstanceKlass* instance_klass) { _instance_klass = instance_klass; }
 
   ProtectionDomainEntry* pd_set_acquire() const            { return Atomic::load_acquire(&_pd_set); }
   void release_set_pd_set(ProtectionDomainEntry* entry)    { Atomic::release_store(&_pd_set, entry); }

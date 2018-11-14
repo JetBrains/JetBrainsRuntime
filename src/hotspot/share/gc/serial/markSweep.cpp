@@ -55,6 +55,7 @@ AlwaysTrueClosure   MarkSweep::_always_true_closure;
 ReferenceProcessor* MarkSweep::_ref_processor;
 
 StringDedup::Requests*  MarkSweep::_string_dedup_requests = nullptr;
+GrowableArray<HeapWord*>*  MarkSweep::_rescued_oops       = nullptr;
 
 MarkSweep::FollowRootClosure  MarkSweep::follow_root_closure;
 

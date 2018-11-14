@@ -1974,6 +1974,20 @@ const int ObjectAlignmentInBytes = 8;
           false AARCH64_ONLY(DEBUG_ONLY(||true)),                           \
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
+                                                                            \
+  product(bool, AllowEnhancedClassRedefinition, false,                      \
+             "Allow enhanced class redefinition beyond swapping method "    \
+             "bodies")                                                      \
+                                                                            \
+  product(ccstr, HotswapAgent, "disabled",                                  \
+          "Specify HotswapAgent image to be used."                          \
+          "disabled: hotswap agent is disabled (default)"                   \
+          "fatjar: full HA. Use integrated hotswap-agent.jar"               \
+          "core: core HA. Use integrated hotswap-agent-core.jar"            \
+          "external: external HA. use external HA, open required JDK "      \
+          "modules.")                                                       \
+          constraint(HotswapAgentConstraintFunc, AfterErgo)
+
 
 // end of RUNTIME_FLAGS
 

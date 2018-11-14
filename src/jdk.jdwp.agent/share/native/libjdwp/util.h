@@ -142,6 +142,9 @@ typedef struct {
     /* Indication that VM_DEATH has been received and the JVMTI callbacks have been cleared. */
     volatile jboolean jvmtiCallBacksCleared;
 
+    /* true if enhanced class redefinition is enabled */
+    jboolean isEnhancedClassRedefinitionEnabled;
+
 } BackendGlobalData;
 
 extern BackendGlobalData * gdata;

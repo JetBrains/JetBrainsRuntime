@@ -429,8 +429,10 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
   if (has_appendix) {
     const int appendix_index = f2_as_index();
     oop old_oop = cpool->set_resolved_reference_at(appendix_index, appendix());
-    assert(old_oop == nullptr, "init just once");
+    assert(AllowEnhancedClassRedefinition || old_oop == nullptr, "init just once");
   }
+
+  Atomic::release_store(&_flags, (intx) (_flags & ~(1u << is_f1_null_dcevm_shift)));
 
   release_set_f1(adapter);  // This must be the last one to set (see NOTE above)!
 
@@ -584,6 +586,27 @@ Method* ConstantPoolCacheEntry::get_interesting_method_entry() {
     return nullptr;
   }
   return m;
+}
+
+// Enhanced RedefineClasses() API support (DCEVM):
+// Clear cached entry, let it be re-resolved
+void ConstantPoolCacheEntry::clear_entry() {
+  // Always clear for invokehandle/invokedynamic to re-resolve them
+  bool clearData = bytecode_1() == Bytecodes::_invokehandle || bytecode_1() == Bytecodes::_invokedynamic;
+  _indices = constant_pool_index();
+
+  if (clearData) {
+     // DCEVM: do not clear f1 now, since it can be used before cache entry is re-resolved
+    _flags |= (1 << is_f1_null_dcevm_shift);
+  }
+}
+
+// Enhanced RedefineClasses() API support (DCEVM):
+// Clear all entries
+void ConstantPoolCache::clear_entries() {
+  for (int i = 0; i < length(); i++) {
+    entry_at(i)->clear_entry();
+  }
 }
 #endif // INCLUDE_JVMTI
 

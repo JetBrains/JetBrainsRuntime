@@ -48,6 +48,7 @@
 #include "gc/shared/space.hpp"
 #include "gc/shared/strongRootsScope.hpp"
 #include "gc/shared/weakProcessor.hpp"
+#include "gc/shared/dcevmSharedGC.hpp"
 #include "memory/universe.hpp"
 #include "oops/instanceRefKlass.hpp"
 #include "oops/oop.inline.hpp"
@@ -263,4 +264,9 @@ void GenMarkSweep::mark_sweep_phase4() {
 
   GenCompactClosure blk;
   GenCollectedHeap::heap()->generation_iterate(&blk, true);
+  if (AllowEnhancedClassRedefinition) {
+    DcevmSharedGC::copy_rescued_objects_back(MarkSweep::_rescued_oops, true);
+    DcevmSharedGC::clear_rescued_objects_resource(MarkSweep::_rescued_oops);
+    MarkSweep::_rescued_oops = NULL;
+  }
 }
