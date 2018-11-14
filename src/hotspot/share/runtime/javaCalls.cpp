@@ -57,7 +57,8 @@ JavaCallWrapper::JavaCallWrapper(const methodHandle& callee_method, Handle recei
   bool clear_pending_exception = true;
 
   guarantee(thread->is_Java_thread(), "crucial check - the VM thread cannot and must not escape to Java code");
-  assert(!thread->owns_locks(), "must release all locks when leaving VM");
+  // DCEVM allow locks on leaving JVM
+  assert(AllowEnhancedClassRedefinition || !thread->owns_locks(), "must release all locks when leaving VM");
   guarantee(thread->can_call_java(), "cannot make java calls from the native compiler");
   _result   = result;
 
