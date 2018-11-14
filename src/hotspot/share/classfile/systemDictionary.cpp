@@ -875,7 +875,8 @@ Klass* SystemDictionary::resolve_instance_class_or_null(Symbol* name,
     ClassLoaderData* loader_data = k->class_loader_data();
     MutexLocker mu(SystemDictionary_lock, THREAD);
     Klass* kk = find_class(name, loader_data);
-    // FIXME: (kk == k() && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version())
+    // FIXME: (DCEVM)
+    // assert(kk == k() && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version())
     assert(kk == k, "should be present in dictionary");
   }
 #endif
@@ -1078,7 +1079,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
  InstanceKlass* k = NULL;
 
 #if INCLUDE_CDS
-  // FIXME: what to do during redefinition?
+  // FIXME: (DCEVM) what to do during redefinition?
   if (!DumpSharedSpaces) {
     k = SystemDictionaryShared::lookup_from_stream(class_name,
                                                    class_loader,
@@ -1832,7 +1833,7 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k, TRAPS) {
   CodeCache::flush_dependents_on(k);
 }
 
-// Enhanced class redefinition
+// (DCEVM) - remove from klass hierarchy
 void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
     assert(k != NULL, "just checking");
 
@@ -1840,6 +1841,7 @@ void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
   k->remove_from_sibling_list();
 }
 
+// (DCEVM) 
 void SystemDictionary::update_constraints_after_redefinition() {
   constraints()->update_after_redefinition();
 }

@@ -1,4 +1,4 @@
-/*
+  /*
  * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,6 +28,7 @@
 #include "classfile/metadataOnStackMark.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/verifier.hpp"
+#include "classfile/dictionary.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
@@ -35,7 +36,7 @@
 #include "memory/metaspaceShared.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/iterator.inline.hpp"
-#include "gc/serial/markSweep.hpp" // FIXME: other GC?
+#include "gc/serial/markSweep.hpp"
 #include "oops/fieldStreams.hpp"
 #include "oops/klassVtable.hpp"
 #include "oops/oop.inline.hpp"
@@ -48,6 +49,7 @@
 #include "runtime/deoptimization.hpp"
 #include "runtime/jniHandles.inline.hpp"
 #include "runtime/relocator.hpp"
+#include "runtime/fieldDescriptor.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
@@ -64,21 +66,19 @@ int         VM_EnhancedRedefineClasses::_deleted_methods_length  = 0;
 int         VM_EnhancedRedefineClasses::_added_methods_length    = 0;
 Klass*      VM_EnhancedRedefineClasses::_the_class_oop = NULL;
 
-/**
- * Create new instance of enhanced class redefiner.
- *
- * This class implements VM_GC_Operation - the usual usage should be:
- *     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
- *     VMThread::execute(&op);
- * Which
- *
- * @param class_count size of class_defs
- * @param class_defs class definition - either new class or redefined class
- *               note that this is not the final array of classes to be redefined
- *               we need to scan for all affected classes (e.g. subclasses) and
- *               caculcate redefinition for them as well.
- * @param class_load_kind always jvmti_class_load_kind_redefine
- */
+//
+// Create new instance of enhanced class redefiner.
+//
+// This class implements VM_GC_Operation - the usual usage should be:
+//     VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+//     VMThread::execute(&op);
+// Which
+//  - class_count size of class_defs
+//  - class_defs class definition - either new class or redefined class
+//               note that this is not the final array of classes to be redefined
+//               we need to scan for all affected classes (e.g. subclasses) and
+//               caculcate redefinition for them as well.
+// @param class_load_kind always jvmti_class_load_kind_redefine
 VM_EnhancedRedefineClasses::VM_EnhancedRedefineClasses(jint class_count, const jvmtiClassDefinition *class_defs, JvmtiClassLoadKind class_load_kind) :
         VM_GC_Operation(Universe::heap()->total_collections(), GCCause::_heap_inspection, Universe::heap()->total_full_collections(), true) {
   _affected_klasses = NULL;
@@ -94,12 +94,10 @@ static inline InstanceKlass* get_ik(jclass def) {
   return InstanceKlass::cast(java_lang_Class::as_Klass(mirror));
 }
 
-/**
- * Start the redefinition:
- * - Load new class definitions - @see load_new_class_versions
- * - Start mark&sweep GC.
- * @return true if success, otherwise all chnages are rollbacked.
- */
+// Start the redefinition:
+// - Load new class definitions - @see load_new_class_versions
+// - Start mark&sweep GC.
+// - true if success, otherwise all chnages are rollbacked.
 bool VM_EnhancedRedefineClasses::doit_prologue() {
 
   if (_class_count == 0) {
@@ -172,9 +170,7 @@ bool VM_EnhancedRedefineClasses::doit_prologue() {
   return true;
 }
 
-/**
- * Closer for static fields - copy value from old class to the new class.
- */
+// Closer for static fields - copy value from old class to the new class.
 class FieldCopier : public FieldClosure {
   public:
   void do_field(fieldDescriptor* fd) {
@@ -222,18 +218,18 @@ void VM_EnhancedRedefineClasses::mark_as_scavengable(nmethod* nm) {
 // TODO comment
 struct StoreBarrier {
   // TODO: j10 review change ::oop_store -> HeapAccess<>::oop_store
-  template <class T> static void oop_store(T* p, oop v) { HeapAccess<>::oop_store(p, v); }
+  template <class T> static void oop_store_not_null(T* p, oop v) { HeapAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store(T* p) { HeapAccess<>::oop_store(p, oop(NULL)); }
 };
 
 
 // TODO comment
 struct StoreNoBarrier {
-  template <class T> static void oop_store(T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store_not_null(T* p, oop v) { RawAccess<IS_NOT_NULL>::oop_store(p, v); }
+  template <class T> static void oop_store(T* p) { RawAccess<>::oop_store(p, oop(NULL)); }
 };
 
-/**
-  Closure to scan all heap objects and update method handles
-*/
+// Closure to scan all heap objects and update method handles
 template <class S>
 class ChangePointersOopClosure : public BasicOopIterateClosure {
   // import java_lang_invoke_MemberName.*
@@ -242,13 +238,12 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     REFERENCE_KIND_MASK  = java_lang_invoke_MemberName::MN_REFERENCE_KIND_MASK,
   };
 
-
   bool update_member_name(oop obj) {
     int flags    =       java_lang_invoke_MemberName::flags(obj);
     int ref_kind =       (flags >> REFERENCE_KIND_SHIFT) & REFERENCE_KIND_MASK;
     if (MethodHandles::ref_kind_is_method(ref_kind)) {
       Method* m = (Method*) java_lang_invoke_MemberName::vmtarget(obj);
-      if (m != NULL && m->method_holder()->new_version() != NULL) {
+      if (m != NULL && m->method_holder()->is_redefining()) {
         // Let's try to re-resolve method
         InstanceKlass* newest = InstanceKlass::cast(m->method_holder()->newest_version());
         Method* new_method = newest->find_method(m->name(), m->signature());
@@ -257,29 +252,34 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
           // Note: we might set NULL at this point, which should force AbstractMethodError at runtime
           Thread *thread = Thread::current();
           CallInfo info(new_method, newest, thread);
-          Handle objHandle(thread, obj);  // TODO : review thread
+          Handle objHandle(thread, obj);
           MethodHandles::init_method_MemberName(objHandle, info);
         } else {
           java_lang_invoke_MemberName::set_method(obj, NULL);
         }
       }
     } else if (MethodHandles::ref_kind_is_field(ref_kind)) {
-      Klass* k = (Klass*) java_lang_invoke_MemberName::vmtarget(obj);
+      oop clazz = java_lang_invoke_MemberName::clazz(obj);
+      if (clazz == NULL) {
+        return false;
+      }
+      Klass* k = java_lang_Class::as_Klass(clazz);
       if (k == NULL) {
         return false; // Was cleared before, this MemberName is invalid.
       }
 
-      if (k != NULL && k->new_version() != NULL) {
+      if (k->is_redefining()) {
         // Let's try to re-resolve field
+        InstanceKlass* old = InstanceKlass::cast(k->old_version());
         fieldDescriptor fd;
         int offset = java_lang_invoke_MemberName::vmindex(obj);
         bool is_static = MethodHandles::ref_kind_is_static(ref_kind);
-        InstanceKlass* ik = InstanceKlass::cast(k);
-        if (ik->find_local_field_from_offset(offset, is_static, &fd)) {
-          InstanceKlass* newest = InstanceKlass::cast(k->newest_version());
+        InstanceKlass* ik_old = InstanceKlass::cast(old);
+        if (ik_old->find_local_field_from_offset(offset, is_static, &fd)) {
+          InstanceKlass* ik_new = InstanceKlass::cast(k->newest_version());
           fieldDescriptor fd_new;
-          if (newest->find_local_field(fd.name(), fd.signature(), &fd_new)) {
-            Handle objHandle(Thread::current(), obj);  // TODO : review thread
+          if (ik_new->find_local_field(fd.name(), fd.signature(), &fd_new)) {
+            Handle objHandle(Thread::current(), obj);
             MethodHandles::init_field_MemberName(objHandle, fd_new, MethodHandles::ref_kind_is_setter(ref_kind));
           } else {
             // Matching field is not found in new version, not much we can do here.
@@ -288,7 +288,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
             // Eventually, we probably want to replace them with something more meaningful,
             // like instance throwing NoSuchFieldError or DMH that will resort to dynamic
             // field resolution (with possibility of type conversion)
-            java_lang_invoke_MemberName::set_method(obj, NULL);
+            java_lang_invoke_MemberName::set_clazz(obj, NULL);
             java_lang_invoke_MemberName::set_vmindex(obj, 0);
             return false;
           }
@@ -301,6 +301,9 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
   bool update_direct_method_handle(oop obj) {
     // Always update member name first.
     oop mem_name = java_lang_invoke_DirectMethodHandle::member(obj);
+    if (mem_name == NULL) {
+      return true;
+    }
     if (!update_member_name(mem_name)) {
       return false;
     }
@@ -332,25 +335,30 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     if (obj == NULL) {
       return;
     }
+    bool oop_updated  = false;
     if (obj->is_instance() && InstanceKlass::cast(obj->klass())->is_mirror_instance_klass()) {
       Klass* klass = java_lang_Class::as_Klass(obj);
       if (klass != NULL && klass->is_instance_klass()) {
         assert(obj == InstanceKlass::cast(klass)->java_mirror(), "just checking");
         if (klass->new_version() != NULL) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
-          S::oop_store(p, obj);
+          S::oop_store_not_null(p, obj);
+          oop_updated = true;
         }
       }
     }
 
+
     // JSR 292 support, uptade java.lang.invoke.MemberName instances
     if (java_lang_invoke_MemberName::is_instance(obj)) {
-      update_member_name(obj);
+      if (oop_updated) {
+        update_member_name(obj);
+      }
     } else if (java_lang_invoke_DirectMethodHandle::is_instance(obj)) {
       if (!update_direct_method_handle(obj)) {
         // DMH is no longer valid, replace it with null reference.
         // See note above. We probably want to replace this with something more meaningful.
-        S::oop_store(p, NULL);
+        S::oop_store(p);
       }
     }
   }
@@ -364,14 +372,12 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
   }
 };
 
-/**
- * Closure to scan all objects on heap for objects of changed classes
- *   - if the fields are compatible, only update class definition reference
- *   - otherwise if the new object size is smaller then old size, reshufle
- *          the fields and fill the gap with "dead_space"
- *   - otherwise set the _needs_instance_update flag, we need to do full GC
- *          and reshuffle object positions durring mark&sweep
- */
+// Closure to scan all objects on heap for objects of changed classes
+//  - if the fields are compatible, only update class definition reference
+//  - otherwise if the new object size is smaller then old size, reshufle
+//         the fields and fill the gap with "dead_space"
+//  - otherwise set the _needs_instance_update flag, we need to do full GC
+//         and reshuffle object positions durring mark&sweep
 class ChangePointersObjectClosure : public ObjectClosure {
   private:
 
@@ -440,22 +446,19 @@ public:
 };
 
 
-/**
-  Main transformation method - runs in VM thread.
-
-  - UseSharedSpaces - TODO what does it mean?
-  - for each sratch class call redefine_single_class
-  - clear code cache (flush_dependent_code)
-  - iterate the heap and update object defintions, check it old/new class fields
-       are compatible. If new class size is smaller then old, it can be solved directly here.
-  - iterate the heap and update method handles to new version
-  - Swap marks to have same hashcodes
-  - copy static fields
-  - notify JVM of the modification
-*/
+// Main transformation method - runs in VM thread.
+//  - for each scratch class call redefine_single_class
+//  - clear code cache (flush_dependent_code)
+//  - iterate the heap and update object definitions, check it old/new class fields
+//       are compatible. If new class size is smaller then old, it can be solved directly here.
+//  - iterate the heap and update method handles to new version
+//  - Swap marks to have same hashcodes
+//  - copy static fields
+//  - notify JVM of the modification
 void VM_EnhancedRedefineClasses::doit() {
   Thread *thread = Thread::current();
 
+#if INCLUDE_CDS
   if (UseSharedSpaces) {
     // Sharing is enabled so we remap the shared readonly space to
     // shared readwrite, private just in case we need to redefine
@@ -467,10 +470,13 @@ void VM_EnhancedRedefineClasses::doit() {
       return;
     }
   }
+#endif
 
   // Mark methods seen on stack and everywhere else so old methods are not
   // cleaned up if they're on the stack.
-  MetadataOnStackMark md_on_stack(true);
+
+  // FIXME: fails in enhanced redefinition
+  // MetadataOnStackMark md_on_stack(true);
   HandleMark hm(thread);   // make sure any handles created are deleted
                            // before the stack walk again.
 
@@ -479,12 +485,19 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 
   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
-  flush_dependent_code(NULL, thread);
+  // if (_max_redefinition_flags > Klass::ModifyClass) {
+    flush_dependent_code(NULL, thread);
+  // }
+
+    // Adjust constantpool caches for all classes that reference methods of the evolved class.
+    ClearCpoolCacheAndUnpatch clear_cpool_cache(thread);
+    ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
+
 
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
     bool trace_name_printed = false;
-    ResolvedMethodTable::adjust_method_entries(&trace_name_printed);
+    ResolvedMethodTable::adjust_method_entries_dcevm(&trace_name_printed);
   }
 
   ChangePointersOopClosure<StoreNoBarrier> oopClosureNoBarrier;
@@ -554,14 +567,14 @@ void VM_EnhancedRedefineClasses::doit() {
     }
   }
 
-//  if (objectClosure.needs_instance_update()) {
+  if (objectClosure.needs_instance_update()) {
     // Do a full garbage collection to update the instance sizes accordingly
     Universe::set_redefining_gc_run(true);
     notify_gc_begin(true);
     Universe::heap()->collect_as_vm_thread(GCCause::_heap_inspection);
     notify_gc_end();
     Universe::set_redefining_gc_run(false);
-//  }
+  }
 
   // Unmark Klass*s as "redefining"
   for (int i = 0; i < _new_classes->length(); i++) {
@@ -587,24 +600,32 @@ void VM_EnhancedRedefineClasses::doit() {
   // See jvmtiExport.hpp for detailed explanation.
   JvmtiExport::set_has_redefined_a_class();
 
-  // check_class() is optionally called for product bits, but is
-  // always called for non-product bits.
 #ifdef PRODUCT
   if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
 #endif
-    log_trace(redefine, class, obsolete, metadata)("calling check_class");
-    CheckClass check_class(thread);
-    ClassLoaderDataGraph::classes_do(&check_class);
+  for (int i=0; i<_affected_klasses->length(); i++) {
+    Klass* the_class = _affected_klasses->at(i);
+    assert(the_class->new_version() != NULL, "Must have been redefined");
+    Klass* new_version = the_class->new_version();
+    assert(new_version->new_version() == NULL, "Must be newest version");
+
+    if (!(new_version->super() == NULL || new_version->super()->new_version() == NULL)) {
+      new_version->print();
+      new_version->super()->print();
+    }
+    assert(new_version->super() == NULL || new_version->super()->new_version() == NULL, "Super class must be newest version");
+  }
+  log_trace(redefine, class, obsolete, metadata)("calling check_class");
+  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do(check_class, thread);
 #ifdef PRODUCT
   }
 #endif
+
 }
 
-/**
- * Cleanup - runs in JVM thread
- *  - free used memory
- *  - end GC
- */
+// Cleanup - runs in JVM thread
+//  - free used memory
+//  - end GC
 void VM_EnhancedRedefineClasses::doit_epilogue() {
   VM_GC_Operation::doit_epilogue();
 
@@ -636,11 +657,9 @@ void VM_EnhancedRedefineClasses::doit_epilogue() {
   }
 }
 
-/**
- * Exclude java primitives and arrays from redefinition
- * @param klass_mirror  pointer to the klass
- * @return true if is modifiable
- */
+// Exclude java primitives and arrays from redefinition
+//  - klass_mirror  pointer to the klass
+//  - true if is modifiable
 bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
   // classes for primitives cannot be redefined
   if (java_lang_Class::is_primitive(klass_mirror)) {
@@ -659,17 +678,12 @@ bool VM_EnhancedRedefineClasses::is_modifiable_class(oop klass_mirror) {
   return true;
 }
 
-/**
-  Load and link new classes (either redefined or affected by redefinition - subclass, ...)
-
-  - find sorted affected classes
-  - resolve new class
-  - calculate redefine flags (field change, method change, supertype change, ...)
-  - calculate modified fields and mapping to old fields
-  - link new classes
-
-  The result is sotred in _affected_klasses(old definitions) and _new_classes(new definitions) arrays.
-*/
+// Load and link new classes (either redefined or affected by redefinition - subclass, ...)
+//  - find sorted affected classes
+//  - resolve new class
+//  - calculate redefine flags (field change, method change, supertype change, ...)
+//  - calculate modified fields and mapping to old fields
+//  - link new classes
 jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
 
   _affected_klasses = new (ResourceObj::C_HEAP, mtInternal) GrowableArray<Klass*>(_class_count, true);
@@ -842,9 +856,7 @@ jvmtiError VM_EnhancedRedefineClasses::load_new_class_versions(TRAPS) {
   return JVMTI_ERROR_NONE;
 }
 
-/**
-  Calculated the difference between new and old class  (field change, method change, supertype change, ...).
-*/
+ // Calculated the difference between new and old class  (field change, method change, supertype change, ...).
 int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_class) {
   int result = Klass::NoRedefinition;
   log_info(redefine, class, load)("Comparing different class versions of class %s",new_class->name()->as_C_string());
@@ -1127,14 +1139,11 @@ int VM_EnhancedRedefineClasses::calculate_redefinition_flags(InstanceKlass* new_
 }
 
 
-/** 
-  Searches for the class bytecode of the given class and returns it as a byte array.
-  
-  @param the_class definition of a class, either existing class or new_class
-  @param class_bytes - if the class is redefined, it contains new class definition, otherwise just original class bytecode.
-  @param class_byte_count - size of class_bytes
-  @param not_changed - new_class not available or same as current class
-*/
+// Searches for the class bytecode of the given class and returns it as a byte array.
+//  - the_class definition of a class, either existing class or new_class
+//  - class_bytes - if the class is redefined, it contains new class definition, otherwise just original class bytecode.
+//  - class_byte_count - size of class_bytes
+//  - not_changed - new_class not available or same as current class
 jvmtiError VM_EnhancedRedefineClasses::find_class_bytes(InstanceKlass* the_class, const unsigned char **class_bytes, jint *class_byte_count, jboolean *not_changed) {
 
   *not_changed = false;
@@ -1177,11 +1186,9 @@ jvmtiError VM_EnhancedRedefineClasses::find_class_bytes(InstanceKlass* the_class
   return JVMTI_ERROR_NONE;
 }
 
-/**
-  Calculate difference between non static fields of old and new class and store the info into new class:
-     instanceKlass->store_update_information
-     instanceKlass->copy_backwards
-*/
+// Calculate difference between non static fields of old and new class and store the info into new class:
+//     instanceKlass->store_update_information
+//     instanceKlass->copy_backwards
 void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* new_version) {
 
   class CalculateFieldUpdates : public FieldClosure {
@@ -1273,29 +1280,26 @@ void VM_EnhancedRedefineClasses::calculate_instance_update_information(Klass* ne
   GrowableArray<int> result = cl.finish();
   ik->store_update_information(result);
   ik->set_copying_backwards(cl.does_copy_backwards());
-/* TODO logging
-  if (RC_TRACE_ENABLED(0x00000001)) {
-    RC_TRACE(0x00000001, ("Instance update information for %s:", new_version->name()->as_C_string()));
+  if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
+    log_trace(redefine, class, obsolete, metadata)("Instance update information for %s:", new_version->name()->as_C_string());
     if (cl.does_copy_backwards()) {
-      RC_TRACE(0x00000001, ("\tDoes copy backwards!"));
+      log_trace(redefine, class, obsolete, metadata)("\tDoes copy backwards!");
     }
     for (int i=0; i<result.length(); i++) {
       int curNum = result.at(i);
       if (curNum < 0) {
-        RC_TRACE(0x00000001, ("\t%d CLEAN", curNum));
+        log_trace(redefine, class, obsolete, metadata)("\t%d CLEAN", curNum);
       } else if (curNum > 0) {
-        RC_TRACE(0x00000001, ("\t%d COPY from %d", curNum, result.at(i + 1)));
+        log_trace(redefine, class, obsolete, metadata)("\t%d COPY from %d", curNum, result.at(i + 1));
         i++;
       } else {
-        RC_TRACE(0x00000001, ("\tEND"));
+        log_trace(redefine, class, obsolete, metadata)("\tEND");
       }
     }
-  }*/
+  }
 }
 
-/**
-  Rollback all changes - clear new classes from the system dictionary, return old classes to directory, free memory.
-*/
+// Rollback all changes - clear new classes from the system dictionary, return old classes to directory, free memory.
 void VM_EnhancedRedefineClasses::rollback() {
   log_info(redefine, class, load)("Rolling back redefinition, result=%d", _res);
   ClassLoaderDataGraph::rollback_redefinition();
@@ -1364,90 +1368,39 @@ void VM_EnhancedRedefineClasses::unpatch_bytecode(Method* method) {
     }
   }
 
-// Unevolving classes may point to methods of the_class directly
+// Unevolving classes may point to old methods directly
 // from their constant pool caches, itables, and/or vtables. We
-// use the ClassLoaderDataGraph::classes_do() facility and this helper
-// to fix up these pointers.
-// Adjust cpools and vtables closure
+// use the SystemDictionary::classes_do() facility and this helper
+// to fix up these pointers. Additional field offsets and vtable indices
+// in the constant pool cache entries are fixed.
+//
+// Note: We currently don't support updating the vtable in
+// arrayKlassOops. See Open Issues in jvmtiRedefineClasses.hpp.
 void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
-  // This is a very busy routine. We don't want too much tracing
-  // printed out.
-  bool trace_name_printed = false;
-  InstanceKlass *the_class = InstanceKlass::cast(_the_class_oop);
+  if (!k->is_instance_klass()) {
+	return;
+  }
 
-  // If the class being redefined is java.lang.Object, we need to fix all
-  // array class vtables also
-  if (k->is_array_klass() && _the_class_oop == SystemDictionary::Object_klass()) {
-    k->vtable().adjust_method_entries(the_class, &trace_name_printed);
-  } else if (k->is_instance_klass()) {
-    HandleMark hm(_thread);
-    InstanceKlass *ik = InstanceKlass::cast(k);
+  HandleMark hm(_thread);
+  InstanceKlass *ik = InstanceKlass::cast(k);
 
-    // HotSpot specific optimization! HotSpot does not currently
-    // support delegation from the bootstrap class loader to a
-    // user-defined class loader. This means that if the bootstrap
-    // class loader is the initiating class loader, then it will also
-    // be the defining class loader. This also means that classes
-    // loaded by the bootstrap class loader cannot refer to classes
-    // loaded by a user-defined class loader. Note: a user-defined
-    // class loader can delegate to the bootstrap class loader.
-    //
-    // If the current class being redefined has a user-defined class
-    // loader as its defining class loader, then we can skip all
-    // classes loaded by the bootstrap class loader.
-    bool is_user_defined =
-            InstanceKlass::cast(_the_class_oop)->class_loader() != NULL;
-    if (is_user_defined && ik->class_loader() == NULL) {
-       return;
-    }
-
-    // Fix the vtable embedded in the_class and subclasses of the_class,
-    // if one exists. We discard scratch_class and we don't keep an
-    // InstanceKlass around to hold obsolete methods so we don't have
-    // any other InstanceKlass embedded vtables to update. The vtable
-    // holds the Method*s for virtual (but not final) methods.
-    // Default methods, or concrete methods in interfaces are stored
-    // in the vtable, so if an interface changes we need to check
-    // adjust_method_entries() for every InstanceKlass, which will also
-    // adjust the default method vtable indices.
-    // We also need to adjust any default method entries that are
-    // not yet in the vtable, because the vtable setup is in progress.
-    // This must be done after we adjust the default_methods and
-    // default_vtable_indices for methods already in the vtable.
-    // If redefining Unsafe, walk all the vtables looking for entries.
-// FIXME - code from standard redefine - if needed, it should switch to new_class
-//    if (ik->vtable_length() > 0 && (_the_class_oop->is_interface()
-//        || _the_class_oop == SystemDictionary::internal_Unsafe_klass()
-//        || ik->is_subtype_of(_the_class_oop))) {
-//      // ik->vtable() creates a wrapper object; rm cleans it up
-//      ResourceMark rm(_thread);
-//
-//      ik->vtable()->adjust_method_entries(the_class, &trace_name_printed);
-//      ik->adjust_default_methods(the_class, &trace_name_printed);
-//    }
-
-    // If the current class has an itable and we are either redefining an
-    // interface or if the current class is a subclass of the_class, then
-    // we potentially have to fix the itable. If we are redefining an
-    // interface, then we have to call adjust_method_entries() for
-    // every InstanceKlass that has an itable since there isn't a
-    // subclass relationship between an interface and an InstanceKlass.
-    // If redefining Unsafe, walk all the itables looking for entries.
-// FIXME - code from standard redefine - if needed, it should switch to new_class
-//    if (ik->itable_length() > 0 && (_the_class_oop->is_interface()
-//        || _the_class_oop == SystemDictionary::internal_Unsafe_klass()
-//        || ik->is_subclass_of(_the_class_oop))) {
-//      // ik->itable() creates a wrapper object; rm cleans it up
-//      ResourceMark rm(_thread);
-//
-//      ik->itable()->adjust_method_entries(the_class, &trace_name_printed);
-//    }
-   
-   constantPoolHandle other_cp = constantPoolHandle(ik->constants());
+  constantPoolHandle other_cp = constantPoolHandle(ik->constants());
 
   // Update host klass of anonymous classes (for example, produced by lambdas) to newest version.
   if (ik->is_anonymous() && ik->host_klass()->new_version() != NULL) {
     ik->set_host_klass(InstanceKlass::cast(ik->host_klass()->newest_version()));
+  }
+
+  // Update implementor if there is only one, in this case implementor() can reference old class
+  if (ik->is_interface()) {
+    Klass* implKlass = ik->implementor();
+    if (implKlass != NULL && implKlass != ik && implKlass->new_version() != NULL) {
+      InstanceKlass* newest_impl = InstanceKlass::cast(implKlass->newest_version());
+      ik->init_implementor_from_redefine();
+      if (newest_impl->implements_interface(ik)) {
+        ik->add_implementor(newest_impl);
+      }
+    }
   }
 
   for (int i = 0; i < other_cp->length(); i++) {
@@ -1457,8 +1410,7 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
         // Constant pool entry points to redefined class -- update to the new version
         other_cp->klass_at_put(i, klass->newest_version());
       }
-      klass = other_cp->resolved_klass_at(i);
-      assert(klass->new_version() == NULL, "Must be new klass!");
+      assert(other_cp->resolved_klass_at(i)->new_version() == NULL, "Must be new klass!");
     }
   }
 
@@ -1471,7 +1423,6 @@ void VM_EnhancedRedefineClasses::ClearCpoolCacheAndUnpatch::do_klass(Klass* k) {
   // If bytecode rewriting is enabled, we also need to unpatch bytecode to force resolution of zeroed entries
   if (RewriteBytecodes) {
     ik->methods_do(unpatch_bytecode);
-  }
   }
 }
 
@@ -1519,9 +1470,7 @@ void VM_EnhancedRedefineClasses::update_jmethod_ids() {
   }
 }
 
-/**
-  Set method as obsolete / old / deleted.
-*/
+// Set method as obsolete / old / deleted.
 void VM_EnhancedRedefineClasses::check_methods_and_mark_as_obsolete() {
   for (int j = 0; j < _matching_methods_length; ++j/*, ++old_index*/) {
     Method* old_method = _matching_old_methods[j];
@@ -1718,8 +1667,14 @@ void VM_EnhancedRedefineClasses::flush_dependent_code(InstanceKlass* k_h, TRAPS)
   // All dependencies have been recorded from startup or this is a second or
   // subsequent use of RedefineClasses
   // FIXME: for now, deoptimize all!
-  if (0 && JvmtiExport::all_dependencies_are_recorded()) {
+  if (0 && k_h != NULL && JvmtiExport::all_dependencies_are_recorded()) {
     CodeCache::flush_evol_dependents_on(k_h);
+    Klass* superCl = k_h->super();
+    // Deoptimize super classes since redefined class can has a new method override
+    while (superCl != NULL && !superCl->is_redefining()) {
+      CodeCache::flush_evol_dependents_on(InstanceKlass::cast(superCl));
+      superCl = superCl->super();
+    }
   } else {
     CodeCache::mark_all_nmethods_for_deoptimization();
 
@@ -1737,12 +1692,9 @@ void VM_EnhancedRedefineClasses::flush_dependent_code(InstanceKlass* k_h, TRAPS)
   }
 }
 
-/**
-  Compare _old_methods and _new_methods arrays and store the result into
-	_matching_old_methods, _matching_new_methods, _added_methods, _deleted_methods
-  
-  Setup _old_methods and _new_methods before the call - it should be called for one class only!
-*/
+//  Compare _old_methods and _new_methods arrays and store the result into
+//  _matching_old_methods, _matching_new_methods, _added_methods, _deleted_methods
+//  Setup _old_methods and _new_methods before the call - it should be called for one class only!
 void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
   Method* old_method;
   Method* new_method;
@@ -1804,19 +1756,6 @@ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
   assert(_matching_methods_length + _added_methods_length == _new_methods->length(), "sanity");
 }
 
-/**
-  FIXME - swap_annotations is never called, check that annotations work
-*/
-void VM_EnhancedRedefineClasses::swap_annotations(InstanceKlass* the_class,
-                                          InstanceKlass* new_class) {
-  // FIXME - probably original implementation only 
-  // Swap annotation fields values
-  Annotations* old_annotations = the_class->annotations();
-  the_class->set_annotations(new_class->annotations());
-  new_class->set_annotations(old_annotations);
-}
-
-
 // Install the redefinition of a class:
 //    - house keeping (flushing breakpoints and caches, deoptimizing
 //      dependent compiled code)
@@ -1847,7 +1786,9 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
   // DCEVM Deoptimization is always for whole java world, call only once after all classes are redefined
   // Deoptimize all compiled code that depends on this class
-  //  flush_dependent_code(the_class, THREAD);
+//  if (_max_redefinition_flags <= Klass::ModifyClass) {
+//    flush_dependent_code(the_class, THREAD);
+//  }
 
   _old_methods = the_class->methods();
   _new_methods = new_class->methods();
@@ -1877,22 +1818,17 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
   }
   */
 
-  // Adjust constantpool caches for all classes that reference methods of the evolved class.
-  ClearCpoolCacheAndUnpatch clear_cpool_cache(THREAD);
-  ClassLoaderDataGraph::classes_do(&clear_cpool_cache);
-
   {
     ResourceMark rm(THREAD);
     // increment the classRedefinedCount field in the_class and in any
     // direct and indirect subclasses of the_class
-    increment_class_counter(the_class, THREAD);
+    increment_class_counter(new_class, THREAD);
     log_info(redefine, class, load)
       ("redefined name=%s, count=%d (avail_mem=" UINT64_FORMAT "K)",
-       the_class->external_name(), java_lang_Class::classRedefinedCount(the_class->java_mirror()), os::available_memory() >> 10);
+       new_class->external_name(), java_lang_Class::classRedefinedCount(new_class->java_mirror()), os::available_memory() >> 10);
     Events::log_redefinition(THREAD, "redefined class name=%s, count=%d",
-                             the_class->external_name(),
-                             java_lang_Class::classRedefinedCount(the_class->java_mirror()));
-
+                             new_class->external_name(),
+                             java_lang_Class::classRedefinedCount(new_class->java_mirror()));
   }
   _timer_rsc_phase2.stop();
 } // end redefine_single_class()
@@ -1901,91 +1837,27 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 // Increment the classRedefinedCount field in the specific InstanceKlass
 // and in all direct and indirect subclasses.
 void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAPS) {
-  oop class_mirror = ik->java_mirror();
+  oop class_mirror = ik->old_version()->java_mirror();
   Klass* class_oop = java_lang_Class::as_Klass(class_mirror);
   int new_count = java_lang_Class::classRedefinedCount(class_mirror) + 1;
-  java_lang_Class::set_classRedefinedCount(class_mirror, new_count);
+  java_lang_Class::set_classRedefinedCount(ik->java_mirror(), new_count);
+}
 
-  if (class_oop != _the_class_oop) {
-    // _the_class_oop count is printed at end of redefine_single_class()
-    log_debug(redefine, class, subclass)("updated count in subclass=%s to %d", ik->external_name(), new_count);
-  }
+void VM_EnhancedRedefineClasses::check_class(InstanceKlass* ik, TRAPS) {
+  if (ik->is_instance_klass() && ik->old_version() != NULL) {
+    HandleMark hm(THREAD);
 
-  for (Klass *subk = ik->subklass(); subk != NULL;
-       subk = subk->next_sibling()) {
-    if (subk->is_instance_klass()) {
-      // Only update instanceKlasses
-      InstanceKlass *subik = InstanceKlass::cast(subk);
-      // recursively do subclasses of the current subclass
-      increment_class_counter(subik, THREAD);
+    assert(ik->new_version() == NULL, "must be latest version in system dictionary");
+
+    if (ik->vtable_length() > 0) {
+      ResourceMark rm(THREAD);
+      assert(ik->vtable().check_no_old_or_obsolete_entries(), "old method found");
+      ik->vtable().verify(tty, true);
     }
   }
 }
 
-// FIXME - class check is currently disabled
-void VM_EnhancedRedefineClasses::CheckClass::do_klass(Klass* k) {
-  return;
-  bool no_old_methods = true;  // be optimistic
-
-  // Both array and instance classes have vtables.
-  // a vtable should never contain old or obsolete methods
-  ResourceMark rm(_thread);
-  if (k->vtable_length() > 0 &&
-      !k->vtable().check_no_old_or_obsolete_entries()) {
-    if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
-      log_trace(redefine, class, obsolete, metadata)
-        ("klassVtable::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
-         k->signature_name());
-      k->vtable().dump_vtable();
-    }
-    no_old_methods = false;
-  }
-
-  if (k->is_instance_klass()) {
-    HandleMark hm(_thread);
-    InstanceKlass *ik = InstanceKlass::cast(k);
-
-    // an itable should never contain old or obsolete methods
-    if (ik->itable_length() > 0 &&
-        !ik->itable().check_no_old_or_obsolete_entries()) {
-      if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
-        log_trace(redefine, class, obsolete, metadata)
-          ("klassItable::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
-           ik->signature_name());
-        ik->itable().dump_itable();
-      }
-      no_old_methods = false;
-    }
-
-    // the constant pool cache should never contain non-deleted old or obsolete methods
-    if (ik->constants() != NULL &&
-        ik->constants()->cache() != NULL &&
-        !ik->constants()->cache()->check_no_old_or_obsolete_entries()) {
-      if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
-        log_trace(redefine, class, obsolete, metadata)
-          ("cp-cache::check_no_old_or_obsolete_entries failure -- OLD or OBSOLETE method found -- class: %s",
-           ik->signature_name());
-        ik->constants()->cache()->dump_cache();
-      }
-      no_old_methods = false;
-    }
-  }
-
-  // print and fail guarantee if old methods are found.
-  if (!no_old_methods) {
-    if (log_is_enabled(Trace, redefine, class, obsolete, metadata)) {
-      dump_methods();
-    } else {
-      log_trace(redefine, class)("Use the '-Xlog:redefine+class*:' option "
-        "to see more info about the following guarantee() failure.");
-    }
-    guarantee(false, "OLD and/or OBSOLETE method(s) found");
-  }
-}
-
-/**
- * Logging of all methods (old, new, changed, ...)
- */
+// Logging of all methods (old, new, changed, ...)
 void VM_EnhancedRedefineClasses::dump_methods() {
   int j;
   log_trace(redefine, class, dump)("_old_methods --");
@@ -2045,18 +1917,7 @@ void VM_EnhancedRedefineClasses::dump_methods() {
   }
 }
 
-// TODO - is it called anywhere?
-void VM_EnhancedRedefineClasses::print_on_error(outputStream* st) const {
-  VM_Operation::print_on_error(st);
-  if (_the_class_oop != NULL) {
-    ResourceMark rm;
-    st->print_cr(", redefining class %s", _the_class_oop->external_name());
-  }
-}
-
-/**
- Helper class to traverse all loaded classes and figure out if the class is affected by redefinition.
-*/
+// Helper class to traverse all loaded classes and figure out if the class is affected by redefinition.
 class AffectedKlassClosure : public KlassClosure {
  private:
    GrowableArray<Klass*>* _affected_klasses;
@@ -2087,7 +1948,7 @@ class AffectedKlassClosure : public KlassClosure {
         log_trace(redefine, class, load)("found affected class: %s", klass->name()->as_C_string());
         klass->set_redefinition_flag(Klass::MarkedAsAffected);
         _affected_klasses->append(klass);
-         return;
+        return;
       }
     }
 
@@ -2104,10 +1965,8 @@ class AffectedKlassClosure : public KlassClosure {
   }
 };
 
-/**
-  Find all affected classes by current redefinition (either because of redefine, class hierarchy or interface change).
-  Affected classes are stored in _affected_klasses and parent classes always precedes child class.  
-*/
+// Find all affected classes by current redefinition (either because of redefine, class hierarchy or interface change).
+// Affected classes are stored in _affected_klasses and parent classes always precedes child class.
 jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   for (int i = 0; i < _class_count; i++) {
     InstanceKlass* klass_handle = get_ik(_class_defs[i].klass);
@@ -2119,7 +1978,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
 
   // Find classes not directly redefined, but affected by a redefinition (because one of its supertypes is redefined)
   AffectedKlassClosure closure(_affected_klasses);
-  // TODO: j10 - review chancge from SystemDictionary::classes_do(&closure);
+  // Updated in j10, from original SystemDictionary::classes_do
   ClassLoaderDataGraph::dictionary_classes_do(&closure);
   log_trace(redefine, class, load)("%d classes affected", _affected_klasses->length());
 
@@ -2135,9 +1994,7 @@ jvmtiError VM_EnhancedRedefineClasses::find_sorted_affected_classes(TRAPS) {
   return JVMTI_ERROR_NONE;
 }
 
-/**
-  Pairs of class dependencies (for topological sort)
-*/
+// Pairs of class dependencies (for topological sort)
 struct KlassPair {
   const Klass* _left;
   const Klass* _right;
@@ -2150,15 +2007,11 @@ static bool match_second(void* value, KlassPair elem) {
   return elem._right == value;
 }
 
-/**
- For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
- First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
- Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
-
- For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
- 
- TODO - the class file is potentionally parsed multiple times - introduce a cache?
-*/
+// For each class to be redefined parse the bytecode and figure out the superclass and all interfaces.
+// First newly introduced classes (_class_defs) are scanned and then affected classed (_affected_klasses).
+// Affected flag is cleared (clear_redefinition_flag(Klass::MarkedAsAffected))
+// For each dependency create a KlassPair instance. Finnaly, affected classes (_affected_klasses) are sorted according to pairs.
+// TODO - the class file is potentionally parsed multiple times - introduce a cache?
 jvmtiError VM_EnhancedRedefineClasses::do_topological_class_sorting(TRAPS) {
   ResourceMark mark(THREAD);
 

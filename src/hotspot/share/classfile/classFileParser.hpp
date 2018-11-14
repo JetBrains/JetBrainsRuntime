@@ -503,7 +503,7 @@ class ClassFileParser {
                      FieldLayoutInfo* info,
                      TRAPS);
 
-  // Enhanced class redefinition
+  // (DCEVM) Enhanced class redefinition
   inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
 
  public:
