@@ -71,6 +71,7 @@ public:
   InstanceKlass* find_shared_class(int index, unsigned int hash, Symbol* name);
 
   void classes_do(void f(InstanceKlass*));
+  void classes_do(KlassClosure* closure);
   void classes_do(void f(InstanceKlass*, TRAPS), TRAPS);
   void all_entries_do(void f(InstanceKlass*, ClassLoaderData*));
   void classes_do(MetaspaceClosure* it);
@@ -112,6 +113,15 @@ public:
   }
 
   void free_entry(DictionaryEntry* entry);
+
+  // Enhanced class redefinition
+  bool update_klass(unsigned int hash, Symbol* name, ClassLoaderData* loader_data, InstanceKlass* k, InstanceKlass* old_klass);
+
+  void rollback_redefinition();
+
+  static InstanceKlass* old_if_redefined(InstanceKlass* k) {
+    return (k != NULL && k->is_redefining()) ? ((InstanceKlass* )k->old_version()) : k;
+  }
 };
 
 // An entry in the class loader data dictionaries, this describes a class as
