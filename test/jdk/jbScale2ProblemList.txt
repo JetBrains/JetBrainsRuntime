@@ -10,5 +10,6 @@ java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java 815
 java/awt/PopupMenu/PopupMenuLocation.java                                           8238720,8288415,JBR-5071 windows-all,macosx-all,linux-all
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      7124313,JBR-5071 macosx-all,linux-all
 javax/swing/JSlider/TestJSliderRendering.java                                       JBR-5342 linux-all
+javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                        8274106 macosx-all
 
 sun/java2d/GdiRendering/ClipShapeRendering.java                                     JBR-5204 linux-all,windows-all
