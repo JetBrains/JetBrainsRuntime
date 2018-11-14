@@ -454,7 +454,8 @@ void ConstantPoolCacheEntry::set_method_handle_common(const constantPoolHandle& 
   if (has_appendix) {
     const int appendix_index = f2_as_index();
     assert(appendix_index >= 0 && appendix_index < resolved_references->length(), "oob");
-    assert(resolved_references->obj_at(appendix_index) == NULL, "init just once");
+    // FIXME (DCEVM) relaxing for now...
+    //assert(resolved_references->obj_at(appendix_index) == NULL, "init just once");
     resolved_references->obj_at_put(appendix_index, appendix());
   }
 
@@ -643,6 +644,35 @@ Method* ConstantPoolCacheEntry::get_interesting_method_entry() {
     return NULL;
   }
   return m;
+}
+
+// Enhanced RedefineClasses() API support (DCEVM):
+// Clear cached entry, let it be re-resolved
+void ConstantPoolCacheEntry::clear_entry() {
+  // Always clear for invokehandle/invokedynamic to re-resolve them
+  bool clearData = bytecode_1() == Bytecodes::_invokehandle || bytecode_1() == Bytecodes::_invokedynamic;
+  _indices = constant_pool_index();
+
+  if (clearData) {
+    if (!is_resolved_reference()) {
+      _f2 = 0;
+    }
+    // FIXME: (DCEVM) we want to clear flags, but parameter size is actually used
+    // after we return from the method, before entry is re-initialized. So let's
+    // keep parameter size the same.
+    // For example, it's used in TemplateInterpreterGenerator::generate_return_entry_for
+    // Also, we need to keep flag marking entry as one containing resolved_reference
+    _flags &= parameter_size_mask | (1 << is_resolved_ref_shift);
+    _f1 = NULL;
+  }
+}
+
+// Enhanced RedefineClasses() API support (DCEVM):
+// Clear all entries
+void ConstantPoolCache::clear_entries() {
+  for (int i = 0; i < length(); i++) {
+    entry_at(i)->clear_entry();
+  }
 }
 #endif // INCLUDE_JVMTI
 

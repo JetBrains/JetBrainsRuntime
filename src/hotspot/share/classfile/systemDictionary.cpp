@@ -227,7 +227,7 @@ void verify_dictionary_entry(Symbol* class_name, InstanceKlass* k) {
   assert(class_name == k->name(), "Must be the same");
   unsigned int name_hash = dictionary->compute_hash(class_name);
   InstanceKlass* kk = dictionary->find_class(name_hash, class_name);
-  assert(kk == k, "should be present in dictionary");
+  assert((kk == k && !k->is_redefining()) || (k->is_redefining() && kk == k->old_version()), "should be present in the dictionary");
 }
 #endif
 
@@ -264,6 +264,7 @@ Klass* SystemDictionary::resolve_or_fail(Symbol* class_name, Handle class_loader
   if (HAS_PENDING_EXCEPTION || klass == NULL) {
     handle_resolution_exception(class_name, throw_error, CHECK_NULL);
   }
+  assert(klass == NULL || klass->new_version() == NULL || klass->newest_version()->is_redefining(), "must be");
   return klass;
 }
 
@@ -1006,6 +1007,7 @@ InstanceKlass* SystemDictionary::parse_stream(Symbol* class_name,
                                                       class_name,
                                                       loader_data,
                                                       cl_info,
+                                                      false, // pick_newest
                                                       CHECK_NULL);
 
   if ((cl_info.is_hidden() || is_unsafe_anon_class) && k != NULL) {
@@ -1057,10 +1059,12 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
                                                      Handle class_loader,
                                                      Handle protection_domain,
                                                      ClassFileStream* st,
+                                                     InstanceKlass* old_klass,
                                                      TRAPS) {
 
   HandleMark hm(THREAD);
 
+  bool is_redefining = (old_klass != NULL);
   ClassLoaderData* loader_data = register_loader(class_loader);
 
   // Classloaders that support parallelism, e.g. bootstrap classloader,
@@ -1075,6 +1079,7 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
  InstanceKlass* k = NULL;
 
 #if INCLUDE_CDS
+  // FIXME: what to do during redefinition?
   if (!DumpSharedSpaces) {
     k = SystemDictionaryShared::lookup_from_stream(class_name,
                                                    class_loader,
@@ -1089,7 +1094,12 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
       return NULL;
     }
     ClassLoadInfo cl_info(protection_domain);
-    k = KlassFactory::create_from_stream(st, class_name, loader_data, cl_info, CHECK_NULL);
+    k = KlassFactory::create_from_stream(st, class_name, loader_data, cl_info, is_redefining, CHECK_NULL);
+  }
+
+  if (is_redefining && k != NULL) {
+    k->set_redefining(true);
+    k->set_old_version(old_klass);
   }
 
   assert(k != NULL, "no klass created");
@@ -1100,10 +1110,10 @@ InstanceKlass* SystemDictionary::resolve_from_stream(Symbol* class_name,
   // If a class loader supports parallel classloading, handle parallel define requests.
   // find_or_define_instance_class may return a different InstanceKlass,
   // in which case the old k would be deallocated
-  if (is_parallelCapable(class_loader)) {
+  if (is_parallelCapable(class_loader) && !is_redefining) {
     k = find_or_define_instance_class(h_name, class_loader, k, CHECK_NULL);
   } else {
-    define_instance_class(k, class_loader, THREAD);
+    define_instance_class(k, old_klass, class_loader, THREAD);
 
     // If defining the class throws an exception register 'k' for cleanup.
     if (HAS_PENDING_EXCEPTION) {
@@ -1546,10 +1556,11 @@ static void post_class_define_event(InstanceKlass* k, const ClassLoaderData* def
   }
 }
 
-void SystemDictionary::define_instance_class(InstanceKlass* k, Handle class_loader, TRAPS) {
+void SystemDictionary::define_instance_class(InstanceKlass* k, InstanceKlass* old_klass, Handle class_loader, TRAPS) {
 
   ClassLoaderData* loader_data = k->class_loader_data();
   assert(loader_data->class_loader() == class_loader(), "they must be the same");
+  bool is_redefining = (old_klass != NULL);
 
   // Bootstrap and other parallel classloaders don't acquire a lock,
   // they use placeholder token.
@@ -1573,8 +1584,13 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, Handle class_load
   // which will require a token to perform the define class
   Symbol*  name_h = k->name();
   Dictionary* dictionary = loader_data->dictionary();
+
   unsigned int name_hash = dictionary->compute_hash(name_h);
-  check_constraints(name_hash, k, class_loader, true, CHECK);
+  if (is_redefining) {
+    bool ok = dictionary->update_klass(name_hash, name_h, loader_data, k, old_klass);
+    assert (ok, "must have found old class and updated!");
+  }
+  check_constraints(name_hash, k, class_loader, !is_redefining, CHECK);
 
   // Register class just loaded with class loader (placed in ArrayList)
   // Note we do this before updating the dictionary, as this can
@@ -1603,7 +1619,7 @@ void SystemDictionary::define_instance_class(InstanceKlass* k, Handle class_load
   k->eager_initialize(THREAD);
 
   // notify jvmti
-  if (JvmtiExport::should_post_class_load()) {
+  if (!is_redefining && JvmtiExport::should_post_class_load()) {
     JvmtiExport::post_class_load(THREAD->as_Java_thread(), k);
   }
   post_class_define_event(k, loader_data);
@@ -1677,7 +1693,7 @@ InstanceKlass* SystemDictionary::find_or_define_helper(Symbol* class_name, Handl
     }
   }
 
-  define_instance_class(k, class_loader, THREAD);
+  define_instance_class(k, NULL, class_loader, THREAD);
 
   // definer must notify any waiting threads
   {
@@ -1738,6 +1754,18 @@ void SystemDictionary::add_to_hierarchy(InstanceKlass* k) {
   if (Universe::is_fully_initialized()) {
     CodeCache::flush_dependents_on(k);
   }
+}
+
+// Enhanced class redefinition
+void SystemDictionary::remove_from_hierarchy(InstanceKlass* k) {
+    assert(k != NULL, "just checking");
+
+  // remove receiver from sibling list
+  k->remove_from_sibling_list();
+}
+
+void SystemDictionary::update_constraints_after_redefinition() {
+  constraints()->update_after_redefinition();
 }
 
 // ----------------------------------------------------------------------------
@@ -1852,7 +1880,7 @@ void SystemDictionary::check_constraints(unsigned int name_hash,
       // else - ok, class loaded by a different thread in parallel.
       // We should only have found it if it was done loading and ok to use.
 
-      if ((defining == true) || (k != check)) {
+      if ((defining == true) || (k != check && (!AllowEnhancedClassRedefinition || k->old_version() != check))) {
         throwException = true;
         ss.print("loader %s", loader_data->loader_name_and_id());
         ss.print(" attempted duplicate %s definition for %s. (%s)",

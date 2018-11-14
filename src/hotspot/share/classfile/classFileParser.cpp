@@ -978,6 +978,8 @@ void ClassFileParser::parse_interfaces(const ClassFileStream* const stream,
                                                   CHECK);
       }
 
+      interf = (Klass *) maybe_newest(interf);
+
       if (!interf->is_interface()) {
         THROW_MSG(vmSymbols::java_lang_IncompatibleClassChangeError(),
                   err_msg("class %s can not implement %s, because it is not an interface (%s)",
@@ -4147,7 +4149,7 @@ const InstanceKlass* ClassFileParser::parse_super_class(ConstantPool* const cp,
     // However, make sure it is not an array type.
     bool is_array = false;
     if (cp->tag_at(super_class_index).is_klass()) {
-      super_klass = InstanceKlass::cast(cp->resolved_klass_at(super_class_index));
+      super_klass = InstanceKlass::cast(maybe_newest(cp->resolved_klass_at(super_class_index)));
       if (need_verify)
         is_array = super_klass->is_array_klass();
     } else if (need_verify) {
@@ -4287,7 +4289,10 @@ void ClassFileParser::set_precomputed_flags(InstanceKlass* ik) {
   if (!_has_empty_finalizer) {
     if (_has_finalizer ||
         (super != NULL && super->has_finalizer())) {
-      ik->set_has_finalizer();
+        // FIXME - condition from previous DCEVM version, however after reload new finelize() method is not active
+        if (ik->old_version() == NULL || ik->old_version()->has_finalizer()) {
+          ik->set_has_finalizer();
+        }
     }
   }
 
@@ -5702,6 +5707,7 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
                                  ClassLoaderData* loader_data,
                                  const ClassLoadInfo* cl_info,
                                  Publicity pub_level,
+                                 const bool pick_newest,
                                  TRAPS) :
   _stream(stream),
   _class_name(NULL),
@@ -5765,7 +5771,8 @@ ClassFileParser::ClassFileParser(ClassFileStream* stream,
   _has_finalizer(false),
   _has_empty_finalizer(false),
   _has_vanilla_constructor(false),
-  _max_bootstrap_specifier_index(-1) {
+  _max_bootstrap_specifier_index(-1),
+  _pick_newest(pick_newest) {
 
   _class_name = name != NULL ? name : vmSymbols::unknown_class_name();
   _class_name->increment_refcount();
@@ -6218,14 +6225,15 @@ void ClassFileParser::post_process_parsed_stream(const ClassFileStream* const st
         CHECK);
     }
     Handle loader(THREAD, _loader_data->class_loader());
-    _super_klass = (const InstanceKlass*)
+    const Klass* super_klass =
                        SystemDictionary::resolve_super_or_fail(_class_name,
                                                                super_class_name,
                                                                loader,
                                                                _protection_domain,
                                                                true,
                                                                CHECK);
-  }
+   _super_klass = (const InstanceKlass*) maybe_newest(super_klass);
+ }
 
   if (_super_klass != NULL) {
     if (_super_klass->has_nonstatic_concrete_methods()) {

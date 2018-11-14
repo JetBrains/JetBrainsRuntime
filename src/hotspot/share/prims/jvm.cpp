@@ -864,6 +864,7 @@ static jclass jvm_define_class_common(const char *name,
                                                    class_loader,
                                                    protection_domain,
                                                    &st,
+                                                   NULL,
                                                    CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve) && k != NULL) {

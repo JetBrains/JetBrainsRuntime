@@ -136,6 +136,7 @@ class SystemDictionary : AllStatic {
                                             Handle class_loader,
                                             Handle protection_domain,
                                             ClassFileStream* st,
+                                            InstanceKlass* old_klass,
                                             TRAPS);
 
   // Lookup an already loaded class. If not found NULL is returned.
@@ -347,7 +348,7 @@ private:
   // after waiting, but before reentering SystemDictionary_lock
   // to preserve lock order semantics.
   static void double_lock_wait(Thread* thread, Handle lockObject);
-  static void define_instance_class(InstanceKlass* k, Handle class_loader, TRAPS);
+  static void define_instance_class(InstanceKlass* k, InstanceKlass* old_klass, Handle class_loader, TRAPS);
   static InstanceKlass* find_or_define_helper(Symbol* class_name,
                                               Handle class_loader,
                                               InstanceKlass* k, TRAPS);

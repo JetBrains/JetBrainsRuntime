@@ -106,6 +106,8 @@ extern Mutex*   PerfDataMemAlloc_lock;           // a lock on the allocator for 
 extern Mutex*   PerfDataManager_lock;            // a long on access to PerfDataManager resources
 extern Mutex*   OopMapCacheAlloc_lock;           // protects allocation of oop_map caches
 
+extern Mutex* EnhancedRedefineClasses_lock;      // locks classes from parallel enhanced redefinition
+
 extern Mutex*   FreeList_lock;                   // protects the free region list during safepoints
 extern Mutex*   OldSets_lock;                    // protects the old region sets
 extern Mutex*   Uncommit_lock;                   // protects the uncommit list when not at safepoints

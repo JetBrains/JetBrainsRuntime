@@ -144,6 +144,7 @@ int             Universe::_base_vtable_size = 0;
 bool            Universe::_bootstrapping = false;
 bool            Universe::_module_initialized = false;
 bool            Universe::_fully_initialized = false;
+bool            Universe::_is_redefining_gc_run = false; // FIXME: review
 
 OopStorage*     Universe::_vm_weak = NULL;
 OopStorage*     Universe::_vm_global = NULL;
@@ -199,6 +200,79 @@ void Universe::basic_type_classes_do(KlassClosure *closure) {
   for (int i = T_BOOLEAN; i < T_LONG+1; i++) {
     closure->do_klass(_typeArrayKlassObjs[i]);
   }
+}
+
+#define DO_PRIMITIVE_MIRROR(m) \
+  f->do_oop((oop*) &m);
+
+// FIXME: This method should iterate all pointers that are not within heap objects.
+void Universe::root_oops_do(OopClosure *oopClosure) {
+
+  class AlwaysTrueClosure: public BoolObjectClosure {
+  public:
+    void do_object(oop p) { ShouldNotReachHere(); }
+    bool do_object_b(oop p) { return true; }
+  };
+  AlwaysTrueClosure always_true;
+
+  Universe::oops_do(oopClosure);
+//  ReferenceProcessor::oops_do(oopClosure); (tw) check why no longer there
+  JNIHandles::oops_do(oopClosure);   // Global (strong) JNI handles
+  Threads::oops_do(oopClosure, NULL);
+  ObjectSynchronizer::oops_do(oopClosure);
+  // TODO: review, flat profiler was removed in j10
+  // FlatProfiler::oops_do(oopClosure);
+  JvmtiExport::oops_do(oopClosure);
+
+  // Now adjust pointers in remaining weak roots.  (All of which should
+  // have been cleared if they pointed to non-surviving objects.)
+  // Global (weak) JNI handles
+  JNIHandles::weak_oops_do(&always_true, oopClosure);
+
+  CodeBlobToOopClosure blobClosure(oopClosure, CodeBlobToOopClosure::FixRelocations);
+  CodeCache::blobs_do(&blobClosure);
+  StringTable::oops_do(oopClosure);
+
+  // (DCEVM) TODO: Check if this is correct?
+  //CodeCache::scavenge_root_nmethods_oops_do(oopClosure);
+  //Management::oops_do(oopClosure);
+  //ref_processor()->weak_oops_do(&oopClosure);
+  //PSScavenge::reference_processor()->weak_oops_do(&oopClosure);
+
+  // SO_AllClasses
+  SystemDictionary::oops_do(oopClosure);
+}
+
+void Universe::oops_do(OopClosure* f) {
+  PRIMITIVE_MIRRORS_DO(DO_PRIMITIVE_MIRROR);
+
+  for (int i = T_BOOLEAN; i < T_VOID+1; i++) {
+    f->do_oop((oop*) &_mirrors[i]);
+  }
+  assert(_mirrors[0] == NULL && _mirrors[T_BOOLEAN - 1] == NULL, "checking");
+
+  f->do_oop((oop*)&_the_empty_class_array);
+  f->do_oop((oop*)&_the_null_sentinel);
+  f->do_oop((oop*)&_the_null_string);
+  f->do_oop((oop*)&_the_min_jint_string);
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_java_heap));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_c_heap));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_metaspace));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_class_metaspace));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_array_size));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_gc_overhead_limit));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_realloc_objects));
+  f->do_oop((oop*)&out_of_memory_errors()->obj_at(_oom_retry));
+  f->do_oop((oop*)&_delayed_stack_overflow_error_message);
+  f->do_oop((oop*)&_preallocated_out_of_memory_error_array);
+  f->do_oop((oop*)&_null_ptr_exception_instance);
+  f->do_oop((oop*)&_arithmetic_exception_instance);
+  f->do_oop((oop*)&_virtual_machine_error_instance);
+  f->do_oop((oop*)&_main_thread_group);
+  f->do_oop((oop*)&_system_thread_group);
+  f->do_oop((oop*)&_reference_pending_list);
+  debug_only(f->do_oop((oop*)&_fullgc_alot_dummy_array);)
+  ThreadsSMRSupport::exiting_threads_oops_do(f);
 }
 
 void LatestMethodCache::metaspace_pointers_do(MetaspaceClosure* it) {

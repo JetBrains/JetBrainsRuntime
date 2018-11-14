@@ -294,6 +294,7 @@ InstanceKlass* ClassLoaderExt::load_class(Symbol* name, const char* path, TRAPS)
                                                            name,
                                                            loader_data,
                                                            cl_info,
+                                                           false,
                                                            THREAD);
 
   if (HAS_PENDING_EXCEPTION) {

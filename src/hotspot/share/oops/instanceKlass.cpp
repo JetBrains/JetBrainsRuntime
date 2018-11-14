@@ -997,7 +997,8 @@ bool InstanceKlass::link_class_impl(TRAPS) {
       // itable().verify(tty, true);
 #endif
       set_init_state(linked);
-      if (JvmtiExport::should_post_class_prepare()) {
+      // (DCEVM) Must check for old version in order to prevent infinite loops.
+      if (JvmtiExport::should_post_class_prepare() && old_version() == NULL /* JVMTI deadlock otherwise */) {
         JvmtiExport::post_class_prepare(THREAD->as_Java_thread(), this);
       }
     }
@@ -1074,7 +1075,8 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // If we were to use wait() instead of waitInterruptibly() then
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
-    while (is_being_initialized() && !is_reentrant_initialization(jt)) {
+    while ((is_being_initialized() && !is_reentrant_initialization(jt))
+            || (old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
       wait = true;
       jt->set_class_to_be_initialized(this);
       ol.wait_uninterruptibly(jt);
@@ -1366,6 +1368,18 @@ bool InstanceKlass::implements_interface(Klass* k) const {
   return false;
 }
 
+bool InstanceKlass::implements_interface_any_version(Klass* k) const {
+  k = k->newest_version();
+  if (this->newest_version() == k) return true;
+  assert(k->is_interface(), "should be an interface class");
+  for (int i = 0; i < transitive_interfaces()->length(); i++) {
+    if (transitive_interfaces()->at(i)->newest_version() == k) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool InstanceKlass::is_same_or_direct_interface(Klass *k) const {
   // Verify direct super interface
   if (this == k) return true;
@@ -1630,6 +1644,23 @@ void InstanceKlass::methods_do(void f(Method* method)) {
     assert(m->is_method(), "must be method");
     f(m);
   }
+}
+
+/**
+  Update information contains mapping of fields from old class to the new class.
+  Info is stored on HEAP, you need to call clear_update_information to free the space.
+*/
+void InstanceKlass::store_update_information(GrowableArray<int> &values) {
+  int *arr = NEW_C_HEAP_ARRAY(int, values.length(), mtClass);
+  for (int i = 0; i < values.length(); i++) {
+    arr[i] = values.at(i);
+  }
+  set_update_information(arr);
+}
+
+void InstanceKlass::clear_update_information() {
+  FREE_C_HEAP_ARRAY(int, update_information());
+  set_update_information(NULL);
 }
 
 
@@ -2317,10 +2348,28 @@ void InstanceKlass::add_dependent_nmethod(nmethod* nm) {
 
 void InstanceKlass::remove_dependent_nmethod(nmethod* nm) {
   dependencies().remove_dependent_nmethod(nm);
+  // (DCEVM) Hack as dependencies get wrong version of Klass*
+//  if (this->old_version() != NULL) {
+//    InstanceKlass::cast(this->old_version())->remove_dependent_nmethod(nm, true);
+//    return;
+//  }
 }
 
 void InstanceKlass::clean_dependency_context() {
   dependencies().clean_unloading_dependents();
+}
+
+bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
+  size_t idnum = (size_t)method->method_idnum();
+  jmethodID* jmeths = methods_jmethod_ids_acquire();
+  size_t length;                                // length assigned as debugging crumb
+  jmethodID id = NULL;
+  if (jmeths != NULL &&                         // If there is a cache
+      (length = (size_t)jmeths[0]) > idnum) {   // and if it is long enough,
+    jmeths[idnum+1] = newMethodID;              // Set method id (may be NULL)
+    return true;
+  }
+  return false;
 }
 
 #ifndef PRODUCT
@@ -3778,7 +3827,7 @@ void InstanceKlass::verify_on(outputStream* st) {
     }
 
     guarantee(sib->is_klass(), "should be klass");
-    guarantee(sib->super() == super, "siblings should have same superklass");
+    guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces
