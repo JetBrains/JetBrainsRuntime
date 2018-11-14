@@ -26,7 +26,6 @@
 #define SHARE_GC_DCEVM_SHARED_GC_HPP
 
 #include "gc/shared/collectedHeap.hpp"
-#include "gc/shared/genOopClosures.hpp"
 #include "gc/shared/taskqueue.hpp"
 #include "memory/iterator.hpp"
 #include "oops/markWord.hpp"
