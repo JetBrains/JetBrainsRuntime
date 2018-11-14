@@ -168,6 +168,8 @@ void G1FullGCCompactTask::free_non_overlapping_regions(uint src_start_idx, uint 
     G1HeapRegion* hr = _g1h->region_at(i);
     _g1h->free_humongous_region(hr, nullptr);
   }
+}
+
 void G1FullGCCompactTask::compact_region_dcevm(G1HeapRegion* hr, GrowableArray<HeapWord*>* rescued_oops_values,
     GrowableArrayIterator<HeapWord*>* rescue_oops_it) {
   assert(!hr->is_humongous(), "Should be no humongous regions in compaction queue");
