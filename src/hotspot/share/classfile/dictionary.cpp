@@ -91,6 +91,31 @@ void Dictionary::classes_do(void f(InstanceKlass*)) {
   _table->do_scan(Thread::current(), doit);
 }
 
+void Dictionary::classes_do_safepoint(void f(InstanceKlass*)) {
+    auto doit = [&] (DictionaryEntry** value) {
+        InstanceKlass* k = (*value)->instance_klass();
+        if (loader_data() == k->class_loader_data()) {
+            f(k);
+        }
+        return true;
+    };
+
+    _table->do_safepoint_scan(doit);
+}
+
+// (DCEVM) iterate over dict entry
+void Dictionary::classes_do(KlassClosure* closure) {
+  auto doit = [&] (DictionaryEntry** value) {
+    InstanceKlass* k = (*value)->instance_klass();
+    if (loader_data() == k->class_loader_data()) {
+      closure->do_klass(k);
+    }
+    return true;
+  };
+
+  _table->do_scan(Thread::current(), doit);
+}
+
 // All classes, and their class loaders, including initiating class loaders
 void Dictionary::all_entries_do(KlassClosure* closure) {
   auto all_doit = [&] (InstanceKlass** value) {
@@ -180,6 +205,30 @@ InstanceKlass* Dictionary::find_class(Thread* current, Symbol* class_name) {
   _table->get(current, lookup, get, &needs_rehashing);
   assert (!needs_rehashing, "should never need rehashing");
   return result;
+}
+
+// (DCEVM) replace old_class by new class in dictionary
+bool Dictionary::update_klass(Thread* current, Symbol* class_name, InstanceKlass* k, InstanceKlass* old_klass) {
+  DictionaryEntry* entry = get_entry(current, class_name);
+  if (entry != NULL) {
+    assert(entry->instance_klass() == old_klass, "should be old class");
+    entry->set_instance_klass(k);
+    return true;
+  }
+  return false;
+}
+
+// (DCEVM) rollback redefinition
+void Dictionary::rollback_redefinition() {
+  // TODO : (DCEVM)
+  auto all_doit = [&] (DictionaryEntry** value) {
+    if ((*value)->instance_klass()->is_redefining()) {
+      (*value)->set_instance_klass((InstanceKlass*) (*value)->instance_klass()->old_version());
+    }
+    return true;
+  };
+
+  _table->do_scan(Thread::current(), all_doit);
 }
 
 void Dictionary::print_size(outputStream* st) const {

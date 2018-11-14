@@ -70,6 +70,7 @@ static bool enable() {
   }
   _enabled = FlightRecorder;
   assert(_enabled, "invariant");
+  AllowEnhancedClassRedefinition = false;
   return _enabled;
 }
 
