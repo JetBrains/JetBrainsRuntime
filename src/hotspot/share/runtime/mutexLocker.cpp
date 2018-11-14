@@ -283,7 +283,7 @@ void mutex_init() {
     MUTEX_DEFN(Compilation_lock              , PaddedMonitor, nosafepoint);
   }
 
-  def(DcevmCompilation_lock        , PaddedMonitor, nosafepoint);
+  MUTEX_DEFN(DcevmCompilation_lock           , PaddedMonitor, nosafepoint);
 
 #if INCLUDE_JFR
   MUTEX_DEFN(JfrBuffer_lock                  , PaddedMutex  , event);
