@@ -45,6 +45,7 @@ G1DetermineCompactionQueueClosure::G1DetermineCompactionQueueClosure(G1FullColle
 bool G1FullGCPrepareTask::G1CalculatePointersClosure::do_heap_region(G1HeapRegion* hr) {
   uint region_idx = hr->hrm_index();
   assert(_collector->is_compaction_target(region_idx), "must be");
+  hr->set_processing_order(_region_processing_order++);
 
   assert(!hr->is_humongous(), "must be");
 
@@ -82,6 +83,9 @@ void G1FullGCPrepareTask::work(uint worker_id) {
          ++it) {
       closure.do_heap_region(*it);
     }
+    if (Universe::is_redefining_gc_run()) {
+      compaction_point->forward_rescued();
+    }
     compaction_point->update();
     // Determine if there are any unused compaction targets. This is only the case if
     // there are
@@ -100,7 +104,8 @@ G1FullGCPrepareTask::G1CalculatePointersClosure::G1CalculatePointersClosure(G1Fu
   _g1h(G1CollectedHeap::heap()),
   _collector(collector),
   _bitmap(collector->mark_bitmap()),
-  _cp(cp) { }
+  _cp(cp),
+  _region_processing_order(0) { }
 
 
 G1FullGCPrepareTask::G1PrepareCompactLiveClosure::G1PrepareCompactLiveClosure(G1FullGCCompactionPoint* cp) :
@@ -114,7 +119,61 @@ size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosure::apply(oop object) {
 
 void G1FullGCPrepareTask::G1CalculatePointersClosure::prepare_for_compaction(G1HeapRegion* hr) {
   if (!_collector->is_free(hr->hrm_index())) {
-    G1PrepareCompactLiveClosure prepare_compact(_cp);
-    hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+    if (!Universe::is_redefining_gc_run()) {
+      G1PrepareCompactLiveClosure prepare_compact(_cp);
+      hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+    } else {
+      G1PrepareCompactLiveClosureDcevm prepare_compact(_cp, hr->processing_order());
+      hr->apply_to_marked_objects(_bitmap, &prepare_compact);
+    }
   }
+}
+
+G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::G1PrepareCompactLiveClosureDcevm(G1FullGCCompactionPoint* cp,
+                                                                                        uint region_processing_order) :
+    _cp(cp),
+    _region_processing_order(region_processing_order) { }
+
+size_t G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::apply(oop object) {
+  size_t size = object->size();
+  size_t forward_size = size;
+
+  // (DCEVM) There is a new version of the class of q => different size
+  if (object->klass()->new_version() != NULL) {
+    forward_size = object->size_given_klass(object->klass()->new_version());
+  }
+
+  HeapWord* compact_top = _cp->forward_compact_top(forward_size);
+
+  if (compact_top == NULL || must_rescue(object, cast_to_oop(compact_top))) {
+    _cp->rescued_oops()->append(cast_from_oop<HeapWord*>(object));
+  } else {
+    _cp->forward_dcevm(object, forward_size, (size != forward_size));
+  }
+
+  return size;
+}
+
+bool G1FullGCPrepareTask::G1PrepareCompactLiveClosureDcevm::must_rescue(oop old_obj, oop new_obj) {
+  // Only redefined objects can have the need to be rescued.
+  if (old_obj->klass()->new_version() == NULL) {
+    return false;
+  }
+
+  if (_region_processing_order > _cp->current_region()->processing_order()) {
+    return false;
+  }
+
+  if (_region_processing_order < _cp->current_region()->processing_order()) {
+    return true;
+  }
+
+  // old obj and new obj are within same region
+  size_t new_size = old_obj->size_given_klass(oop(old_obj)->klass()->new_version());
+  size_t original_size = old_obj->size();
+
+  // what if old_obj > new_obj ?
+  bool overlap = (cast_from_oop<HeapWord*>(old_obj) + original_size < cast_from_oop<HeapWord*>(new_obj) + new_size);
+
+  return overlap;
 }
