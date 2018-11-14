@@ -2803,7 +2803,7 @@ JvmtiDynamicCodeEventCollector::JvmtiDynamicCodeEventCollector() : _code_blobs(N
 // iterate over any code blob descriptors collected and post a
 // DYNAMIC_CODE_GENERATED event to the profiler.
 JvmtiDynamicCodeEventCollector::~JvmtiDynamicCodeEventCollector() {
-  assert(!JavaThread::current()->owns_locks(), "all locks must be released to post deferred events");
+  assert(AllowEnhancedClassRedefinition || !JavaThread::current()->owns_locks(), "all locks must be released to post deferred events");
  // iterate over any code blob descriptors that we collected
  if (_code_blobs != NULL) {
    for (int i=0; i<_code_blobs->length(); i++) {

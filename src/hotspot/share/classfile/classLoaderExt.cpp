@@ -301,6 +301,7 @@ InstanceKlass* ClassLoaderExt::load_class(Symbol* name, const char* path, TRAPS)
                                                            protection_domain,
                                                            NULL, // host_klass
                                                            NULL, // cp_patches
+                                                           false,
                                                            THREAD);
 
   if (HAS_PENDING_EXCEPTION) {

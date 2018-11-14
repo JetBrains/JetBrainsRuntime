@@ -112,11 +112,11 @@ class CompactibleFreeListSpace: public CompactibleSpace {
   template <typename SpaceType>
   friend void CompactibleSpace::scan_and_adjust_pointers(SpaceType* space);
   template <typename SpaceType>
-  friend void CompactibleSpace::scan_and_compact(SpaceType* space);
+  friend void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefinition_run);
   template <typename SpaceType>
   friend void CompactibleSpace::verify_up_to_first_dead(SpaceType* space);
   template <typename SpaceType>
-  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp);
+  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp, bool redefinition_run);
 
   // "Size" of chunks of work (executed during parallel remark phases
   // of CMS collection); this probably belongs in CMSCollector, although
@@ -200,6 +200,7 @@ class CompactibleFreeListSpace: public CompactibleSpace {
 
   // Support for compacting cms
   HeapWord* cross_threshold(HeapWord* start, HeapWord* end);
+  HeapWord* forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top);
   HeapWord* forward(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top);
 
   // Initialization helpers.

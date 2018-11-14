@@ -376,6 +376,12 @@ CompactibleFreeListSpace::CompactibleFreeListSpace(BlockOffsetSharedArray* bs, M
   _used_stable = 0;
 }
 
+HeapWord* CompactibleFreeListSpace::forward_compact_top(size_t size,
+                                    CompactPoint* cp, HeapWord* compact_top) {
+  ShouldNotReachHere();
+  return NULL;
+}
+
 // Like CompactibleSpace forward() but always calls cross_threshold() to
 // update the block offset table.  Removed initialize_threshold call because
 // CFLS does not use a block offset array for contiguous spaces.
@@ -2203,7 +2209,8 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
 
 // Support for compaction
 void CompactibleFreeListSpace::prepare_for_compaction(CompactPoint* cp) {
-  scan_and_forward(this, cp);
+  scan_and_forward(this, cp, false);
+   // of the free lists doesn't work after.
   // Prepare_for_compaction() uses the space between live objects
   // so that later phase can skip dead space quickly.  So verification
   // of the free lists doesn't work after.
@@ -2221,7 +2228,7 @@ void CompactibleFreeListSpace::adjust_pointers() {
 }
 
 void CompactibleFreeListSpace::compact() {
-  scan_and_compact(this);
+  scan_and_compact(this, false);
 }
 
 // Fragmentation metric = 1 - [sum of (fbs**2) / (sum of fbs)**2]

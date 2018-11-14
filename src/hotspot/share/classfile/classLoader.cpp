@@ -1508,6 +1508,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, bool search_append_only, TR
                                                            protection_domain,
                                                            NULL, // host_klass
                                                            NULL, // cp_patches
+                                                           false, // pick_newest
                                                            THREAD);
   if (HAS_PENDING_EXCEPTION) {
     if (DumpSharedSpaces) {

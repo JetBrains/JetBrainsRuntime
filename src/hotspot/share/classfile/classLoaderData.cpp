@@ -1245,12 +1245,24 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
   }
 }
 
+void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->classes_do(klass_closure);
+  }
+}
+
 // Only walks the classes defined in this class loader.
 void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS), TRAPS) {
   Thread* thread = Thread::current();
   FOR_ALL_DICTIONARY(cld) {
     Handle holder(thread, cld->holder_phantom());
     cld->dictionary()->classes_do(f, CHECK);
+  }
+}
+
+void ClassLoaderDataGraph::rollback_redefinition() {
+  FOR_ALL_DICTIONARY(cld) {
+    cld->dictionary()->rollback_redefinition();
   }
 }
 
@@ -1375,11 +1387,15 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
   // Mark metadata seen on the stack only so we can delete unneeded entries.
   // Only walk all metadata, including the expensive code cache walk, for Full GC
   // and only if class redefinition and if there's previous versions of
-  // Klasses to delete.
+  // Klassesoto delete.
+
+  // FIXME: dcevm - block asserts in MetadataOnStackMark
+  /*
   bool walk_all_metadata = clean_previous_versions &&
                            JvmtiExport::has_redefined_a_class() &&
                            InstanceKlass::has_previous_versions_and_reset();
   MetadataOnStackMark md_on_stack(walk_all_metadata);
+  */
 
   // Save previous _unloading pointer for CMS which may add to unloading list before
   // purging and we don't want to rewalk the previously unloaded class loader data.
@@ -1389,10 +1405,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
   while (data != NULL) {
     if (data->is_alive()) {
       // clean metaspace
+      /*
       if (walk_all_metadata) {
         data->classes_do(InstanceKlass::purge_previous_versions);
       }
       data->free_deallocate_list();
+      */
       prev = data;
       data = data->next();
       loaders_processed++;

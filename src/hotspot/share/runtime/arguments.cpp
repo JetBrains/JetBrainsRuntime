@@ -2033,6 +2033,36 @@ unsigned int addopens_count = 0;
 unsigned int addmods_count = 0;
 unsigned int patch_mod_count = 0;
 
+// Check consistency of GC selection
+bool Arguments::check_gc_consistency() {
+  // Ensure that the user has not selected conflicting sets
+  // of collectors.
+  uint i = 0;
+  if (UseSerialGC)                       i++;
+  if (UseConcMarkSweepGC)                i++;
+  if (UseParallelGC || UseParallelOldGC) i++;
+  if (UseG1GC)                           i++;
+  if (AllowEnhancedClassRedefinition) {
+    // Must use serial GC. This limitation applies because the instance size changing GC modifications
+    // are only built into the mark and compact algorithm.
+    if (!UseSerialGC && i >= 1) {
+      jio_fprintf(defaultStream::error_stream(),
+                  "Must use the serial GC with enhanced class redefinition\n");
+      return false;
+    }
+  }
+
+  if (i > 1) {
+    jio_fprintf(defaultStream::error_stream(),
+                "Conflicting collector combinations in option list; "
+                "please refer to the release notes for the combinations "
+                "allowed\n");
+    return false;
+  }
+
+  return true;
+}
+
 // Check the consistency of vm_init_args
 bool Arguments::check_vm_args_consistency() {
   // Method for adding checks for flag consistency.
@@ -2048,6 +2078,8 @@ bool Arguments::check_vm_args_consistency() {
                 TLABRefillWasteFraction);
     status = false;
   }
+
+  status = status && check_gc_consistency();
 
   if (PrintNMTStatistics) {
 #if INCLUDE_NMT
