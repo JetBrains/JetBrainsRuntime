@@ -53,7 +53,13 @@ class LatestMethodCache : public CHeapObj<mtClass> {
   Klass*                _klass;
   int                   _method_idnum;
 
+  static bool _is_redefining_gc_run;
+
  public:
+
+   static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
+   static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
+
   LatestMethodCache()   { _klass = NULL; _method_idnum = -1; }
   ~LatestMethodCache()  { _klass = NULL; _method_idnum = -1; }
 
@@ -211,9 +217,14 @@ class Universe: AllStatic {
 
   static uintptr_t _verify_oop_mask;
   static uintptr_t _verify_oop_bits;
+  static bool _is_redefining_gc_run;
 
  public:
   static void calculate_verify_data(HeapWord* low_boundary, HeapWord* high_boundary) PRODUCT_RETURN;
+
+  // Advanced class redefinition. FIXME: review?
+  static bool is_redefining_gc_run()               { return _is_redefining_gc_run; }
+  static void set_redefining_gc_run(bool b)        { _is_redefining_gc_run = b;    }
 
   // Known classes in the VM
   static Klass* boolArrayKlassObj()                 { return typeArrayKlassObj(T_BOOLEAN); }
@@ -344,6 +355,7 @@ class Universe: AllStatic {
 
   // Iteration
 
+  static void root_oops_do(OopClosure *oopClosure); // FIXME: kill...
   // Apply "f" to the addresses of all the direct heap pointers maintained
   // as static fields of "Universe".
   static void oops_do(OopClosure* f);

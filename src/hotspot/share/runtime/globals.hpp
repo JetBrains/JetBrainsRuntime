@@ -2458,6 +2458,11 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   diagnostic(bool, DeoptimizeNMethodBarriersALot, false,                    \
                 "Make nmethod barriers deoptimise a lot.")                  \
+                                                                            \
+  product(bool, AllowEnhancedClassRedefinition, true,                       \
+             "Allow enhanced class redefinition beyond swapping method "    \
+             "bodies")
+
 
 // Interface macros
 #define DECLARE_PRODUCT_FLAG(type, name, value, doc)      extern "C" type name;
