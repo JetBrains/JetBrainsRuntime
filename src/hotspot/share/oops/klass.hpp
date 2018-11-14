@@ -165,6 +165,18 @@ class Klass : public Metadata {
   // vtable length
   int _vtable_len;
 
+  // Advanced class redefinition
+
+  // Old version (used in advanced class redefinition)
+  Klass*      _old_version;
+  // New version (used in advanced class redefinition)
+  Klass*      _new_version;
+
+  int         _redefinition_flags;     // Level of class redefinition
+  bool        _is_redefining;
+  int*        _update_information;
+  bool        _is_copying_backwards;   // Does the class need to copy fields backwards? => possibly overwrite itself?
+
 private:
   // This is an index into FileMapHeader::_shared_path_table[], to
   // associate this class with the JAR file where it's loaded from during
@@ -289,6 +301,7 @@ protected:
   Klass* next_sibling() const          { return _next_sibling; }
   InstanceKlass* superklass() const;
   void append_to_sibling_list();           // add newly created receiver to superklass' subklass list
+  void remove_from_sibling_list();         // enhanced class redefinition
 
   void set_next_link(Klass* k) { _next_link = k; }
   Klass* next_link() const { return _next_link; }   // The next klass defined by the class loader.
@@ -329,11 +342,45 @@ protected:
   virtual ModuleEntry* module() const = 0;
   virtual PackageEntry* package() const = 0;
 
+  // Advanced class redefinition
+  Klass* old_version() const             { return _old_version; }
+  void set_old_version(Klass* klass)     { assert(_old_version == NULL || klass == NULL, "Old version can only be set once!"); _old_version = klass; }
+  Klass* new_version() const             { return _new_version; }
+  void set_new_version(Klass* klass)     { assert(_new_version == NULL || klass == NULL, "New version can only be set once!"); _new_version = klass; }
+  bool is_redefining() const             { return _is_redefining; }
+  void set_redefining(bool b)            { _is_redefining = b; }
+  int redefinition_flags() const         { return _redefinition_flags; }
+  bool check_redefinition_flag(int flags) const { return (_redefinition_flags & flags) != 0; }
+  void clear_redefinition_flag(int flag) { _redefinition_flags &= ~flag; }
+  void set_redefinition_flag(int flag)   { _redefinition_flags |= flag; }
+  void set_redefinition_flags(int flags) { _redefinition_flags = flags; }
+
+  const Klass* newest_version() const    { return _new_version == NULL ? this : _new_version->newest_version(); }
+        Klass* newest_version()          { return _new_version == NULL ? this : _new_version->newest_version(); }
+
+  const Klass* active_version() const   { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
+        Klass* active_version()         { return _new_version == NULL || _new_version->is_redefining() ? this : _new_version->active_version(); }
+
+  // update information
+  int *update_information() const        { return _update_information; }
+  void set_update_information(int *info) { _update_information = info; }
+  bool is_copying_backwards() const      { return _is_copying_backwards; }
+  void set_copying_backwards(bool b)     { _is_copying_backwards = b; }
+
  protected:                                // internal accessors
   void     set_subklass(Klass* s);
   void     set_next_sibling(Klass* s);
 
  public:
+   enum RedefinitionFlags {
+     NoRedefinition,                             // This class is not redefined at all!
+     ModifyClass = 1,                            // There are changes to the class meta data.
+     ModifyClassSize = ModifyClass << 1,         // The size of the class meta data changes.
+     ModifyInstances = ModifyClassSize << 1,     // There are change to the instance format.
+     ModifyInstanceSize = ModifyInstances << 1,  // The size of instances changes.
+     RemoveSuperType = ModifyInstanceSize << 1,  // A super type of this class is removed.
+     MarkedAsAffected = RemoveSuperType << 1     // This class has been marked as an affected class.
+   };
 
   // Compiler support
   static ByteSize super_offset()                 { return in_ByteSize(offset_of(Klass, _super)); }
