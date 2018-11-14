@@ -44,6 +44,9 @@ private:
                                        LoaderConstraint* pp2, InstanceKlass* klass);
 public:
   static void initialize();
+  // (DCEVM) update all klasses with newest version
+  static void update_after_redefinition();
+
   // Check class loader constraints
   static bool add_entry(Symbol* name, InstanceKlass* klass1, ClassLoaderData* loader1,
                         InstanceKlass* klass2, ClassLoaderData* loader2);

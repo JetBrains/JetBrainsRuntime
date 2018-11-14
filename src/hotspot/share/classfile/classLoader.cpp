@@ -1111,6 +1111,7 @@ InstanceKlass* ClassLoader::load_class(Symbol* name, PackageEntry* pkg_entry, bo
                                                            name,
                                                            loader_data,
                                                            cl_info,
+                                                           false, // pick_newest
                                                            CHECK_NULL);
   result->set_classpath_index(classpath_index);
   return result;

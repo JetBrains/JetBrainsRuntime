@@ -30,6 +30,7 @@
 #include "classfile/vmClasses.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.hpp"
+#include "compiler/compileBroker.hpp"
 #include "interpreter/bytecodeStream.hpp"
 #include "interpreter/interpreter.hpp"
 #include "jfr/jfrEvents.hpp"
@@ -54,6 +55,7 @@
 #include "prims/jvmtiManageCapabilities.hpp"
 #include "prims/jvmtiRawMonitor.hpp"
 #include "prims/jvmtiRedefineClasses.hpp"
+#include "prims/jvmtiEnhancedRedefineClasses.hpp"
 #include "prims/jvmtiTagMap.hpp"
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "prims/jvmtiUtil.hpp"
@@ -407,8 +409,13 @@ JvmtiEnv::GetClassLoaderClasses(jobject initiating_loader, jint* class_count_ptr
 // is_modifiable_class_ptr - pre-checked for null
 jvmtiError
 JvmtiEnv::IsModifiableClass(oop k_mirror, jboolean* is_modifiable_class_ptr) {
-  *is_modifiable_class_ptr = VM_RedefineClasses::is_modifiable_class(k_mirror)?
-                                                       JNI_TRUE : JNI_FALSE;
+  if (AllowEnhancedClassRedefinition) {
+    *is_modifiable_class_ptr = VM_EnhancedRedefineClasses::is_modifiable_class(k_mirror)?
+                                                         JNI_TRUE : JNI_FALSE;
+  } else {
+    *is_modifiable_class_ptr = VM_RedefineClasses::is_modifiable_class(k_mirror)?
+                                                         JNI_TRUE : JNI_FALSE;
+  }
   return JVMTI_ERROR_NONE;
 } /* end IsModifiableClass */
 
@@ -438,7 +445,8 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
       return JVMTI_ERROR_INVALID_CLASS;
     }
 
-    if (!VM_RedefineClasses::is_modifiable_class(k_mirror)) {
+    if ((!AllowEnhancedClassRedefinition && !VM_RedefineClasses::is_modifiable_class(k_mirror)) ||
+        (AllowEnhancedClassRedefinition && !VM_EnhancedRedefineClasses::is_modifiable_class(k_mirror))) {
       return JVMTI_ERROR_UNMODIFIABLE_CLASS;
     }
 
@@ -470,13 +478,29 @@ JvmtiEnv::RetransformClasses(jint class_count, const jclass* classes) {
     }
     class_definitions[index].klass              = jcls;
   }
+
   EventRetransformClasses event;
-  VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
-  VMThread::execute(&op);
-  jvmtiError error = op.check_error();
+  jvmtiError error;
+  u8 op_id;
+
+  if (AllowEnhancedClassRedefinition) {
+    // MutexLocker sd_mutex(EnhancedRedefineClasses_lock, Monitor::_no_safepoint_check_flag);
+    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+    VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+    VMThread::execute(&op);
+    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+    op_id = op.id();
+    error = (op.check_error());
+  } else {
+    VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_retransform);
+    VMThread::execute(&op);
+    op_id = op.id();
+    error = op.check_error();
+  }
   if (error == JVMTI_ERROR_NONE) {
     event.set_classCount(class_count);
-    event.set_redefinitionId(op.id());
+    event.set_redefinitionId(op_id);
     event.commit();
   }
   return error;
@@ -489,12 +513,28 @@ jvmtiError
 JvmtiEnv::RedefineClasses(jint class_count, const jvmtiClassDefinition* class_definitions) {
 //TODO: add locking
   EventRedefineClasses event;
-  VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
-  VMThread::execute(&op);
-  jvmtiError error = op.check_error();
+  jvmtiError error;
+
+  u8 op_id;
+
+  if (AllowEnhancedClassRedefinition) {
+    // MutexLocker sd_mutex(EnhancedRedefineClasses_lock, Monitor::_no_safepoint_check_flag);
+    // Stop compilation to avoid compilator race condition (crashes) with advanced redefinition
+    CompileBroker::stopCompilationBeforeEnhancedRedefinition();
+    VM_EnhancedRedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+    VMThread::execute(&op);
+    CompileBroker::releaseCompilationAfterEnhancedRedefinition();
+    op_id = op.id();
+    error = (op.check_error());
+  } else {
+    VM_RedefineClasses op(class_count, class_definitions, jvmti_class_load_kind_redefine);
+    VMThread::execute(&op);
+    op_id = op.id();
+    error = op.check_error();
+  }
   if (error == JVMTI_ERROR_NONE) {
     event.set_classCount(class_count);
-    event.set_redefinitionId(op.id());
+    event.set_redefinitionId(op_id);
     event.commit();
   }
   return error;
