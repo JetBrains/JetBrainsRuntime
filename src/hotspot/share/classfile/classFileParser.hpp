@@ -197,6 +197,9 @@ class ClassFileParser {
   bool _has_empty_finalizer;
   int _max_bootstrap_specifier_index;  // detects BSS values
 
+  // (DCEVM) Enhanced class redefinition
+  const bool _pick_newest;
+
   void parse_stream(const ClassFileStream* const stream, TRAPS);
 
   void mangle_hidden_class_name(InstanceKlass* const ik);
@@ -484,6 +487,8 @@ class ClassFileParser {
                                TRAPS);
 
   void update_class_name(Symbol* new_name);
+  // (DCEVM) Enhanced class redefinition
+  inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
 
  public:
   ClassFileParser(ClassFileStream* stream,
@@ -491,6 +496,7 @@ class ClassFileParser {
                   ClassLoaderData* loader_data,
                   const ClassLoadInfo* cl_info,
                   Publicity pub_level,
+                  const bool pick_newest,
                   TRAPS);
 
   ~ClassFileParser();
@@ -521,6 +527,7 @@ class ClassFileParser {
   ClassLoaderData* loader_data() const { return _loader_data; }
   const Symbol* class_name() const { return _class_name; }
   const InstanceKlass* super_klass() const { return _super_klass; }
+  Array<InstanceKlass*>* local_interfaces() const { return _local_interfaces; }
 
   ReferenceType super_reference_type() const;
   bool is_instance_ref_klass() const;
