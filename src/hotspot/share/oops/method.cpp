@@ -103,7 +103,8 @@ Method* Method::allocate(ClassLoaderData* loader_data,
   return new (loader_data, size, MetaspaceObj::MethodType, THREAD) Method(cm, access_flags, name);
 }
 
-Method::Method(ConstMethod* xconst, AccessFlags access_flags, Symbol* name) {
+Method::Method(ConstMethod* xconst, AccessFlags access_flags, Symbol* name) :  _new_version(NULL),
+                                                                               _old_version(NULL) {
   NoSafepointVerifier no_safepoint;
   set_constMethod(xconst);
   set_access_flags(access_flags);
@@ -1914,14 +1915,14 @@ bool CompressedLineNumberReadStream::read_pair() {
 
 #if INCLUDE_JVMTI
 
-Bytecodes::Code Method::orig_bytecode_at(int bci) const {
+Bytecodes::Code Method::orig_bytecode_at(int bci, bool no_fatal) const {
   BreakpointInfo* bp = method_holder()->breakpoints();
   for (; bp != nullptr; bp = bp->next()) {
     if (bp->match(this, bci)) {
       return bp->orig_bytecode();
     }
   }
-  {
+  if (!no_fatal) {
     ResourceMark rm;
     fatal("no original bytecode found in %s at bci %d", name_and_sig_as_C_string(), bci);
   }
@@ -2026,7 +2027,7 @@ BreakpointInfo::BreakpointInfo(Method* m, int bci) {
   _signature_index = m->signature_index();
   _orig_bytecode = (Bytecodes::Code) *m->bcp_from(_bci);
   if (_orig_bytecode == Bytecodes::_breakpoint)
-    _orig_bytecode = m->orig_bytecode_at(_bci);
+    _orig_bytecode = m->orig_bytecode_at(_bci, false);
   _next = nullptr;
 }
 
@@ -2035,7 +2036,7 @@ void BreakpointInfo::set(Method* method) {
   {
     Bytecodes::Code code = (Bytecodes::Code) *method->bcp_from(_bci);
     if (code == Bytecodes::_breakpoint)
-      code = method->orig_bytecode_at(_bci);
+      code = method->orig_bytecode_at(_bci, false);
     assert(orig_bytecode() == code, "original bytecode must be the same");
   }
 #endif
@@ -2211,7 +2212,10 @@ jmethodID Method::make_jmethod_id(ClassLoaderData* cld, Method* m) {
   // Have to add jmethod_ids() to class loader data thread-safely.
   // Also have to add the method to the list safely, which the lock
   // protects as well.
-  assert(JmethodIdCreation_lock->owned_by_self(), "sanity check");
+  assert(AllowEnhancedClassRedefinition || JmethodIdCreation_lock->owned_by_self(), "sanity check");
+  if (AllowEnhancedClassRedefinition && m != m->newest_version()) {
+    m = m->newest_version();
+  }
 
   ResourceMark rm;
   log_debug(jmethod)("Creating jmethodID for Method %s", m->external_name());
