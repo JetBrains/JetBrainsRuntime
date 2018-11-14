@@ -1904,7 +1904,7 @@ void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAP
   oop class_mirror = ik->java_mirror();
   Klass* class_oop = java_lang_Class::as_Klass(class_mirror);
   int new_count = java_lang_Class::classRedefinedCount(class_mirror) + 1;
-  java_lang_Class::set_classRedefinedCount(class_mirror, new_count);
+  java_lang_Class::set_classRedefinedCount(ik->new_version()->java_mirror(), new_count);
 
   if (class_oop != _the_class_oop) {
     // _the_class_oop count is printed at end of redefine_single_class()
