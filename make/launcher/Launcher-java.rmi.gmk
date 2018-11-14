@@ -27,8 +27,10 @@ include LauncherCommon.gmk
 
 $(eval $(call SetupBuildLauncher, rmid, \
     MAIN_CLASS := sun.rmi.server.Activation, \
+    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))
 
 $(eval $(call SetupBuildLauncher, rmiregistry, \
     MAIN_CLASS := sun.rmi.registry.RegistryImpl, \
+    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))

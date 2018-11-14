@@ -343,6 +343,7 @@
   /* common method and field names */                                                             \
   template(object_initializer_name,                   "<init>")                                   \
   template(class_initializer_name,                    "<clinit>")                                 \
+  template(ha_class_initializer_name,                 "$$ha$clinit")                              \
   template(println_name,                              "println")                                  \
   template(printStackTrace_name,                      "printStackTrace")                          \
   template(main_name,                                 "main")                                     \
