@@ -108,6 +108,7 @@
   template(RehashSymbolTable)                     \
   template(PrintCompileQueue)                     \
   template(PrintClassHierarchy)                   \
+  template(ThreadsSuspendJVMTI)                   \
   template(PrintClasses)                          \
   template(PrintMetadata)                         \
   template(GTestExecuteAtSafepoint)               \

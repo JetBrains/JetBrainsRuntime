@@ -892,6 +892,10 @@ class GrowableArrayIterator : public StackObj {
     assert(_array == rhs._array, "iterator belongs to different array");
     return _position != rhs._position;
   }
+
+  bool at_end() { return _position >= _array->length(); }
+
+  bool has_next() { return _position < _array->length() - 1; }
 };
 
 // Arrays for basic types

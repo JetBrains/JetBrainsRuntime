@@ -431,9 +431,19 @@ bool InstanceKlass::has_nestmate_access_to(InstanceKlass* k, TRAPS) {
     return false;
   }
 
+  // (DCEVM) cur_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    cur_host = InstanceKlass::cast(cur_host->active_version());
+  }
+
   Klass* k_nest_host = k->nest_host(CHECK_false);
   if (k_nest_host == nullptr) {
     return false;
+  }
+
+  // (DCEVM) k_nest_host can be old, decide accessibility based on active version
+  if (AllowEnhancedClassRedefinition) {
+    k_nest_host = InstanceKlass::cast(k_nest_host->active_version());
   }
 
   bool access = (cur_host == k_nest_host);
@@ -998,7 +1008,10 @@ bool InstanceKlass::link_class_impl(TRAPS) {
         if (is_shared()) {
           assert(!verified_at_dump_time(), "must be");
         }
-        {
+        // (DCEVM): If class A is being redefined and class B->A (B is extended from A) and B is host class of anonymous class C
+        // then second redefinition fails with cannot cast klass exception. So we currently turn off bytecode verification
+        // on redefinition.
+        if (!AllowEnhancedClassRedefinition || !newest_version()->is_redefining()) {
           bool verify_ok = verify_code(THREAD);
           if (!verify_ok) {
             return false;
@@ -1060,7 +1073,7 @@ bool InstanceKlass::link_class_impl(TRAPS) {
       } else {
         set_init_state(linked);
       }
-      if (JvmtiExport::should_post_class_prepare()) {
+      if (JvmtiExport::should_post_class_prepare() && (!AllowEnhancedClassRedefinition || old_version() == NULL /* JVMTI deadlock otherwise */)) {
         JvmtiExport::post_class_prepare(THREAD, this);
       }
     }
@@ -1206,7 +1219,8 @@ void InstanceKlass::initialize_impl(TRAPS) {
     // If we were to use wait() instead of waitInterruptibly() then
     // we might end up throwing IE from link/symbol resolution sites
     // that aren't expected to throw.  This would wreak havoc.  See 6320309.
-    while (is_being_initialized() && !is_reentrant_initialization(jt)) {
+    while ((is_being_initialized() && !is_reentrant_initialization(jt))
+           || (AllowEnhancedClassRedefinition && old_version() != NULL && InstanceKlass::cast(old_version())->is_being_initialized())) {
       if (debug_logging_enabled) {
         ResourceMark rm(jt);
         log_debug(class, init)("Thread \"%s\" waiting for initialization of %s by thread \"%s\"",
@@ -1494,6 +1508,15 @@ void InstanceKlass::init_implementor() {
   }
 }
 
+// (DCEVM) - init_implementor() for dcevm
+void InstanceKlass::init_implementor_from_redefine() {
+  assert(is_interface(), "not interface");
+  InstanceKlass* volatile* addr = adr_implementor();
+  assert(addr != NULL, "null addr");
+  if (addr != NULL) {
+    *addr = NULL;
+  }
+}
 
 void InstanceKlass::process_interfaces() {
   // link this class into the implementors list of every interface it implements
@@ -1544,6 +1567,20 @@ bool InstanceKlass::implements_interface(Klass* k) const {
   assert(k->is_interface(), "should be an interface class");
   for (int i = 0; i < transitive_interfaces()->length(); i++) {
     if (transitive_interfaces()->at(i) == k) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+// (DCEVM)
+bool InstanceKlass::implements_interface_any_version(Klass* k) const {
+  k = k->newest_version();
+  if (this->newest_version() == k) return true;
+  assert(k->is_interface(), "should be an interface class");
+  for (int i = 0; i < transitive_interfaces()->length(); i++) {
+    if (transitive_interfaces()->at(i)->newest_version() == k) {
       return true;
     }
   }
@@ -1899,6 +1936,21 @@ void InstanceKlass::methods_do(void f(Method* method)) {
   }
 }
 
+//  (DCEVM) Update information contains mapping of fields from old class to the new class.
+//  Info is stored on HEAP, you need to call clear_update_information to free the space.
+void InstanceKlass::store_update_information(GrowableArray<int> &values) {
+  int *arr = NEW_C_HEAP_ARRAY(int, values.length(), mtClass);
+  for (int i = 0; i < values.length(); i++) {
+    arr[i] = values.at(i);
+  }
+  set_update_information(arr);
+}
+
+void InstanceKlass::clear_update_information() {
+  FREE_C_HEAP_ARRAY(int, update_information());
+  set_update_information(NULL);
+}
+
 
 void InstanceKlass::do_local_static_fields(FieldClosure* cl) {
   for (JavaFieldStream fs(this); !fs.done(); fs.next()) {
@@ -1934,6 +1986,36 @@ void InstanceKlass::do_nonstatic_fields(FieldClosure* cl) {
 
 static int compare_fields_by_offset(FieldInfo* a, FieldInfo* b) {
   return a->offset() - b->offset();
+}
+
+void InstanceKlass::do_nonstatic_fields_sorted(FieldClosure* cl) {
+  InstanceKlass* super = superklass();
+  if (super != NULL) {
+    super->do_nonstatic_fields_sorted(cl);
+  }
+  fieldDescriptor fd;
+  // In DebugInfo nonstatic fields are sorted by offset.
+  GrowableArray<Pair<int,int> > fields_sorted;
+  int i = 0;
+  for (AllFieldStream fs(this); !fs.done(); fs.next()) {
+    if (!fs.access_flags().is_static()) {
+      fd = fs.field_descriptor();
+      Pair<int,int> f(fs.offset(), fs.index());
+      fields_sorted.push(f);
+      i++;
+    }
+  }
+  if (i > 0) {
+    int length = i;
+    assert(length == fields_sorted.length(), "duh");
+    // _sort_Fn is defined in growableArray.hpp.
+    fields_sorted.sort(compare_fields_by_offset);
+    for (int i = 0; i < length; i++) {
+      fd.reinitialize(this, fields_sorted.at(i).second);
+      assert(!fd.is_static() && fd.offset() == fields_sorted.at(i).first, "only nonstatic fields");
+      cl->do_field(&fd);
+    }
+  }
 }
 
 void InstanceKlass::print_nonstatic_fields(FieldClosure* cl) {
@@ -2517,6 +2599,20 @@ void InstanceKlass::add_dependent_nmethod(nmethod* nm) {
 
 void InstanceKlass::clean_dependency_context() {
   dependencies().clean_unloading_dependents();
+}
+
+// DCEVM - update jmethod ids
+bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
+  size_t idnum = (size_t)method->method_idnum();
+  jmethodID* jmeths = methods_jmethod_ids_acquire();
+  size_t length;                                // length assigned as debugging crumb
+  jmethodID id = NULL;
+  if (jmeths != NULL &&                         // If there is a cache
+      (length = (size_t)jmeths[0]) > idnum) {   // and if it is long enough,
+    jmeths[idnum+1] = newMethodID;              // Set method id (may be NULL)
+    return true;
+  }
+  return false;
 }
 
 #ifndef PRODUCT
@@ -4109,7 +4205,8 @@ void InstanceKlass::verify_on(outputStream* st) {
     }
 
     guarantee(sib->is_klass(), "should be klass");
-    guarantee(sib->super() == super, "siblings should have same superklass");
+    // TODO: (DCEVM) explain
+    guarantee(sib->super() == super || AllowEnhancedClassRedefinition && super->newest_version() == vmClasses::Object_klass(), "siblings should have same superklass");
   }
 
   // Verify local interfaces
