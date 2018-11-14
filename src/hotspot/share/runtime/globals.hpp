@@ -2086,6 +2086,11 @@ const intx ObjectAlignmentInBytes = 8;
           false AARCH64_ONLY(DEBUG_ONLY(||true)),                           \
              "Mark all threads after a safepoint, and clear on a modify "   \
              "fence. Add cleanliness checks.")                              \
+                                                                            \
+  product(bool, AllowEnhancedClassRedefinition, true,                       \
+             "Allow enhanced class redefinition beyond swapping method "    \
+             "bodies")
+
 
 // end of RUNTIME_FLAGS
 
