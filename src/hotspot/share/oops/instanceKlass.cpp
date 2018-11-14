@@ -178,6 +178,7 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
       }
 
       Klass* k2 = _constants->klass_at(cp_index, CHECK_false);
+      k2 = k2->newest_version();
       if (k2 == k) {
         log_trace(class, nestmates)("- class is listed as a nest member");
         return true;
@@ -1135,6 +1136,15 @@ void InstanceKlass::init_implementor() {
   }
 }
 
+// (DCEVM) - init_implementor() for dcevm
+void InstanceKlass::init_implementor_from_redefine() {
+  assert(is_interface(), "not interface");
+  Klass** addr = adr_implementor();
+  assert(addr != NULL, "null addr");
+  if (addr != NULL) {
+    *addr = NULL;
+  }
+}
 
 void InstanceKlass::process_interfaces(Thread *thread) {
   // link this class into the implementors list of every interface it implements
@@ -1197,6 +1207,8 @@ bool InstanceKlass::implements_interface(Klass* k) const {
   return false;
 }
 
+
+// (DCEVM)
 bool InstanceKlass::implements_interface_any_version(Klass* k) const {
   k = k->newest_version();
   if (this->newest_version() == k) return true;
@@ -1479,10 +1491,8 @@ void InstanceKlass::methods_do(void f(Method* method)) {
   }
 }
 
-/**
-  Update information contains mapping of fields from old class to the new class.
-  Info is stored on HEAP, you need to call clear_update_information to free the space.
-*/
+//  (DCEVM) Update information contains mapping of fields from old class to the new class.
+//  Info is stored on HEAP, you need to call clear_update_information to free the space.
 void InstanceKlass::store_update_information(GrowableArray<int> &values) {
   int *arr = NEW_C_HEAP_ARRAY(int, values.length(), mtClass);
   for (int i = 0; i < values.length(); i++) {
@@ -2150,6 +2160,7 @@ void InstanceKlass::add_dependent_nmethod(nmethod* nm) {
   dependencies().add_dependent_nmethod(nm);
 }
 
+// DCEVM - update jmethod ids
 bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
   size_t idnum = (size_t)method->method_idnum();
   jmethodID* jmeths = methods_jmethod_ids_acquire();
@@ -2165,7 +2176,7 @@ bool InstanceKlass::update_jmethod_id(Method* method, jmethodID newMethodID) {
 
 void InstanceKlass::remove_dependent_nmethod(nmethod* nm, bool delete_immediately) {
   dependencies().remove_dependent_nmethod(nm, delete_immediately);
-  // (DCEVM) Hack as dependencies get wrong version of Klass*
+  // FIXME: (DCEVM) Hack as dependencies get wrong version of Klass*
 //  if (this->old_version() != NULL) {
 //    InstanceKlass::cast(this->old_version())->remove_dependent_nmethod(nm, true);
 //    return;
@@ -3602,6 +3613,7 @@ void InstanceKlass::verify_on(outputStream* st) {
     }
 
     guarantee(sib->is_klass(), "should be klass");
+    // TODO: (DCEVM) explain
     guarantee(sib->super() == super || super->newest_version() == SystemDictionary::Object_klass(), "siblings should have same superklass");
   }
 

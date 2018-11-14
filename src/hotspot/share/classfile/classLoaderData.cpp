@@ -1242,6 +1242,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*)) {
   }
 }
 
+// (DCEVM) - iterate over dict classes
 void ClassLoaderDataGraph::dictionary_classes_do(KlassClosure* klass_closure) {
   FOR_ALL_DICTIONARY(cld) {
     cld->dictionary()->classes_do(klass_closure);
@@ -1257,6 +1258,7 @@ void ClassLoaderDataGraph::dictionary_classes_do(void f(InstanceKlass*, TRAPS), 
   }
 }
 
+// (DCEVM) rollback redefined classes
 void ClassLoaderDataGraph::rollback_redefinition() {
   FOR_ALL_DICTIONARY(cld) {
     cld->dictionary()->rollback_redefinition();
@@ -1387,12 +1389,13 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
   // Klassesoto delete.
 
   // FIXME: dcevm - block asserts in MetadataOnStackMark
-  /*
-  bool walk_all_metadata = clean_previous_versions &&
-                           JvmtiExport::has_redefined_a_class() &&
-                           InstanceKlass::has_previous_versions_and_reset();
-  MetadataOnStackMark md_on_stack(walk_all_metadata);
-  */
+  bool walk_all_metadata = false;
+  if (!AllowEnhancedClassRedefinition) {
+    walk_all_metadata = clean_previous_versions &&
+                             JvmtiExport::has_redefined_a_class() &&
+                             InstanceKlass::has_previous_versions_and_reset();
+    MetadataOnStackMark md_on_stack(walk_all_metadata);
+  }
 
   // Save previous _unloading pointer for CMS which may add to unloading list before
   // purging and we don't want to rewalk the previously unloaded class loader data.
@@ -1402,12 +1405,12 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
   while (data != NULL) {
     if (data->is_alive()) {
       // clean metaspace
-      /*
-      if (walk_all_metadata) {
-        data->classes_do(InstanceKlass::purge_previous_versions);
+      if (!AllowEnhancedClassRedefinition) {
+        if (walk_all_metadata) {
+          data->classes_do(InstanceKlass::purge_previous_versions);
+        }
+        data->free_deallocate_list();
       }
-      data->free_deallocate_list();
-      */
       prev = data;
       data = data->next();
       loaders_processed++;
