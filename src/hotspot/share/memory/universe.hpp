@@ -254,7 +254,7 @@ class Universe: AllStatic {
   // Function to initialize these
   static void initialize_known_methods(JavaThread* current);
 
-  static void reinitialize_loader_addClass_method(TRAPS);
+  static void reinitialize_loader_addClass_method(JavaThread* current);
 
   static void create_preallocated_out_of_memory_errors(TRAPS);
 
