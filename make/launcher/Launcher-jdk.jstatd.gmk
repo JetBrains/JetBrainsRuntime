@@ -27,6 +27,7 @@ include LauncherCommon.gmk
 
 $(eval $(call SetupBuildLauncher, jstatd, \
     MAIN_CLASS := sun.tools.jstatd.Jstatd, \
+    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))
 
 # Hook to include the corresponding custom file, if present.
