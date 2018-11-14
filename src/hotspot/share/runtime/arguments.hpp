@@ -507,6 +507,9 @@ class Arguments : AllStatic {
 
   static size_t conservative_max_heap_alignment() { return _conservative_max_heap_alignment; }
 
+  // Initialize HotswapAgent
+  static void setup_hotswap_agent();
+
   // Return the maximum size a heap with compressed oops can take
   static size_t max_heap_for_compressed_oops();
 
