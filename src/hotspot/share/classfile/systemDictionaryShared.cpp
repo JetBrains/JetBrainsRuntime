@@ -520,7 +520,7 @@ InstanceKlass* SystemDictionaryShared::find_or_load_shared_class(
 
       k = load_shared_class_for_builtin_loader(name, class_loader, THREAD);
       if (k != NULL) {
-        define_instance_class(k, CHECK_NULL);
+        define_instance_class(k, NULL, CHECK_NULL);
       }
     }
   }
