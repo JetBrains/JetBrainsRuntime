@@ -69,6 +69,7 @@ public:
 
   // JVMTI Support - It is called at safepoint only for RedefineClasses
   JVMTI_ONLY(static void adjust_method_entries(bool * trace_name_printed);)
+  JVMTI_ONLY(static void adjust_method_entries_dcevm(bool * trace_name_printed);)
 
   // Debugging
   static size_t items_count();
