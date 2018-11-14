@@ -1,3 +1,7 @@
+# cannotbe run against jbr which does not contain some jbrsdk's utilities required for test executions
+javax/imageio/stream/StreamCloserLeak/run_test.sh NO_BUG generic_all
+javax/imageio/spi/AppletContextTest/BadPluginConfigurationTest.sh NO_BUG generic_all
+
 #
 # intermittently failed, they were muted in regular runs with the option "unmute manually"
 #
@@ -8,7 +12,6 @@ java/awt/hidpi/SetMaximizedBoundsTest.java nobug windows-all
 java/awt/Focus/8000326/SetFocusTraversalKeysEnabledTest.java nobug windows-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java JBR-4354,8298247 windows-all,linux-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java nobug windows-all
-java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.javanobug windows-all,linux-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java nobug windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java nobug windows-all
 java/awt/Focus/KeyEventForBadFocusOwnerTest/KeyEventForBadFocusOwnerTest.java nobug windows-all
