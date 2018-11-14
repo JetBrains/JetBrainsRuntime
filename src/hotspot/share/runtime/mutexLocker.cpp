@@ -5,7 +5,7 @@
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
  * published by the Free Software Foundation.
- *
+ *                     \
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
@@ -124,6 +124,8 @@ Mutex*   OopMapCacheAlloc_lock        = NULL;
 Mutex*   FreeList_lock                = NULL;
 Mutex*   OldSets_lock                 = NULL;
 Monitor* RootRegionScan_lock          = NULL;
+
+Mutex* EnhancedRedefineClasses_lock   = NULL;
 
 Monitor* GCTaskManager_lock           = NULL;
 
@@ -291,6 +293,7 @@ void mutex_init() {
   def(JNIGlobalActive_lock         , PaddedMutex  , nonleaf-1,   true,  Monitor::_safepoint_check_never);
   def(JNIWeakAlloc_lock            , PaddedMutex  , nonleaf,     true,  Monitor::_safepoint_check_never);
   def(JNIWeakActive_lock           , PaddedMutex  , nonleaf-1,   true,  Monitor::_safepoint_check_never);
+  def(EnhancedRedefineClasses_lock , PaddedMutex  , nonleaf+7,   false, Monitor::_safepoint_check_always);     // for ensuring that class redefinition is not done in parallel
   def(JNICritical_lock             , PaddedMonitor, nonleaf,     true,  Monitor::_safepoint_check_always);     // used for JNI critical regions
   def(AdapterHandlerLibrary_lock   , PaddedMutex  , nonleaf,     true,  Monitor::_safepoint_check_always);
 

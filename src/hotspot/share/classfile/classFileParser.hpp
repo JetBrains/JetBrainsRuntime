@@ -115,6 +115,9 @@ class ClassFileParser {
   const intArray* _method_ordering;
   GrowableArray<Method*>* _all_mirandas;
 
+  // Enhanced class redefinition
+  const bool _pick_newest;
+
   enum { fixed_buffer_size = 128 };
   u_char _linenumbertable_buffer[fixed_buffer_size];
 
@@ -500,6 +503,9 @@ class ClassFileParser {
                      FieldLayoutInfo* info,
                      TRAPS);
 
+  // Enhanced class redefinition
+  inline const Klass* maybe_newest(const Klass* klass) const { return klass != NULL && _pick_newest ? klass->newest_version() : klass; }
+
  public:
   ClassFileParser(ClassFileStream* stream,
                   Symbol* name,
@@ -508,6 +514,7 @@ class ClassFileParser {
                   const InstanceKlass* host_klass,
                   GrowableArray<Handle>* cp_patches,
                   Publicity pub_level,
+                  const bool pick_newest,
                   TRAPS);
 
   ~ClassFileParser();
@@ -536,6 +543,7 @@ class ClassFileParser {
   ClassLoaderData* loader_data() const { return _loader_data; }
   const Symbol* class_name() const { return _class_name; }
   const InstanceKlass* super_klass() const { return _super_klass; }
+  Array<Klass*>* local_interfaces() const { return _local_interfaces; }
 
   ReferenceType reference_type() const { return _rt; }
   AccessFlags access_flags() const { return _access_flags; }

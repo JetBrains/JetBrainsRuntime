@@ -176,6 +176,7 @@ class JvmtiExport : public AllStatic {
   // systems as needed to relax invariant checks.
   static bool _has_redefined_a_class;
   friend class VM_RedefineClasses;
+  friend class VM_EnhancedRedefineClasses;
   inline static void set_has_redefined_a_class() {
     JVMTI_ONLY(_has_redefined_a_class = true;)
   }

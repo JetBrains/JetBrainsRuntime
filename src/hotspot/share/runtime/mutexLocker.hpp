@@ -124,6 +124,8 @@ extern Mutex*   PerfDataManager_lock;            // a long on access to PerfData
 extern Mutex*   ParkerFreeList_lock;
 extern Mutex*   OopMapCacheAlloc_lock;           // protects allocation of oop_map caches
 
+extern Mutex* EnhancedRedefineClasses_lock;      // locks classes from parallel enhanced redefinition
+
 extern Mutex*   FreeList_lock;                   // protects the free region list during safepoints
 extern Mutex*   OldSets_lock;                    // protects the old region sets
 extern Monitor* RootRegionScan_lock;             // used to notify that the CM threads have finished scanning the IM snapshot regions

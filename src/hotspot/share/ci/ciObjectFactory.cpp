@@ -726,3 +726,28 @@ void ciObjectFactory::print() {
              _unloaded_instances->length(),
              _unloaded_klasses->length());
 }
+
+
+int ciObjectFactory::compare_cimetadata(ciMetadata** a, ciMetadata** b) {
+  Metadata* am = (*a)->constant_encoding();
+  Metadata* bm = (*b)->constant_encoding();
+  return ((am > bm) ? 1 : ((am == bm) ? 0 : -1));
+}
+
+// FIXME: review... Resoring the ciObject arrays after class redefinition
+void ciObjectFactory::resort_shared_ci_metadata() {
+  if (_shared_ci_metadata == NULL) return;
+  _shared_ci_metadata->sort(ciObjectFactory::compare_cimetadata);
+
+#ifdef ASSERT
+  if (CIObjectFactoryVerify) {
+    Metadata* last = NULL;
+    for (int j = 0; j< _shared_ci_metadata->length(); j++) {
+      Metadata* o = _shared_ci_metadata->at(j)->constant_encoding();
+      assert(last < o, "out of order");
+      last = o;
+    }
+  }
+#endif // ASSERT
+}
+

@@ -1471,6 +1471,7 @@ static InstanceKlass* create_new_instance_klass(InstanceKlass* ik, ClassFileStre
                              NULL, // host klass
                              NULL, // cp_patches
                              ClassFileParser::INTERNAL, // internal visibility
+							 false,
                              THREAD);
   if (HAS_PENDING_EXCEPTION) {
     log_pending_exception(PENDING_EXCEPTION);

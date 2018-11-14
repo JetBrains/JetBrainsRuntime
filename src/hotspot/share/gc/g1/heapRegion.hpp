@@ -192,7 +192,7 @@ class HeapRegion: public G1ContiguousSpace {
   friend class VMStructs;
   // Allow scan_and_forward to call (private) overrides for auxiliary functions on this class
   template <typename SpaceType>
-  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp);
+  friend void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* cp, bool redefinition_run);
  private:
 
   // The remembered set for this region.
