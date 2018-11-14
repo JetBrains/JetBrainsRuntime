@@ -45,6 +45,12 @@ final class CCursorManager extends LWCursorManager {
         return theInstance;
     }
 
+    private static void resetCurrentCursor() {
+        if (theInstance != null) {
+            theInstance.currentCursor = null;
+        }
+    }
+
     private volatile Cursor currentCursor;
 
     private CCursorManager() { }
