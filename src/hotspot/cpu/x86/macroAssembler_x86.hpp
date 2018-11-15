@@ -1751,8 +1751,6 @@ public:
   void byte_array_inflate(Register src, Register dst, Register len,
                           XMMRegister tmp1, Register tmp2);
 
-  void save_vector_registers();
-  void restore_vector_registers();
 };
 
 /**

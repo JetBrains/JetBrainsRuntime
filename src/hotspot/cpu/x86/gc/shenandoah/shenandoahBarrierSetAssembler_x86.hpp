@@ -67,6 +67,9 @@ private:
 
   address generate_shenandoah_wb(StubCodeGenerator* cgen, bool c_abi, bool do_cset_test);
 
+  void save_vector_registers(MacroAssembler* masm);
+  void restore_vector_registers(MacroAssembler* masm);
+
 public:
   static address shenandoah_wb();
   static address shenandoah_wb_C();
