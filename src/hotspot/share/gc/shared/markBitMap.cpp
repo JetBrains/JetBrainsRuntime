@@ -65,23 +65,18 @@ void MarkBitMap::initialize(MemRegion heap, MemRegion bitmap) {
   _covered = heap;
 }
 
-void MarkBitMap::clear() {
-  clear_range_large(_covered);
-}
-
-void MarkBitMap::clear_range(MemRegion mr) {
-  mr.intersection(MemRegion(_bmStartWord, _bmWordSize));
-  assert(!mr.is_empty(), "unexpected empty region");
+void MarkBitMap::do_clear(MemRegion mr, bool large) {
+  MemRegion intersection = mr.intersection(_covered);
+  assert(!intersection.is_empty(),
+         "Given range from " PTR_FORMAT " to " PTR_FORMAT " is completely outside the heap",
+         p2i(mr.start()), p2i(mr.end()));
   // convert address range into offset range
-  _bm.clear_range(heapWordToOffset(mr.start()),
-                  heapWordToOffset(mr.end()));
-}
-
-void MarkBitMap::clear_range_large(MemRegion mr) {
-  mr.intersection(MemRegion(_bmStartWord, _bmWordSize));
-  assert(!mr.is_empty(), "unexpected empty region");
-  // convert address range into offset range
-  _bm.clear_large_range(heapWordToOffset(mr.start()),
-                        heapWordToOffset(mr.end()));
+  size_t beg = heapWordToOffset(intersection.start());
+  size_t end = heapWordToOffset(intersection.end());
+  if (large) {
+    _bm.clear_large_range(beg, end);
+  } else {
+    _bm.clear_range(beg, end);
+  }
 }
 
