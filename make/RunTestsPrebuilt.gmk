@@ -87,12 +87,12 @@ endef
 # $1: The output file name
 # $2..$N: The lines to output to the file
 define CreateNewSpec
-  $(if $(strip $(26)), \
+  $(if $(strip $(27)), \
     $(error Internal makefile error: \
       Too many arguments to macro, please update CreateNewSpec in RunTestsPrebuilt.gmk) \
   ) \
   $(shell $(RM) $1) \
-  $(foreach i, $(call sequence, 2, 25), \
+  $(foreach i, $(call sequence, 2, 26), \
     $(if $(strip $($i)), \
       $(call AppendFile, $(strip $($i)), $1) \
     ) \
@@ -212,17 +212,29 @@ else
   PATH_SEP:=:
 endif
 
-# Check number of cores
+# Check number of cores and memory in MB
 ifeq ($(OPENJDK_TARGET_OS), linux)
     NUM_CORES := $(shell $(CAT) /proc/cpuinfo  | $(GREP) -c processor)
+    MEMORY_SIZE := $(shell \
+      $(EXPR) `$(CAT) /proc/meminfo | $(GREP) MemTotal | $(AWK) '{print $$2}'` / 1024 \
+    )
 else ifeq ($(OPENJDK_TARGET_OS), macosx)
     NUM_CORES := $(shell /usr/sbin/sysctl -n hw.ncpu)
+    MEMORY_SIZE := $(shell $(EXPR) `/usr/sbin/sysctl -n hw.memsize` / 1024 / 1024)
 else ifeq ($(OPENJDK_TARGET_OS), solaris)
     NUM_CORES := $(shell LC_MESSAGES=C /usr/sbin/psrinfo -v | $(GREP) -c on-line)
+    MEMORY_SIZE := $(shell \
+      /usr/sbin/prtconf 2> /dev/null | $(GREP) "^Memory [Ss]ize" | $(AWK) '{print $$3}' \
+    )
 else ifeq ($(OPENJDK_TARGET_OS), windows)
     NUM_CORES := $(NUMBER_OF_PROCESSORS)
+    MEMORY_SIZE := $(shell \
+      $(EXPR) `wmic computersystem get totalphysicalmemory -value | $(GREP) = \
+          | $(CUT) -d "=" -f 2-` / 1024 / 1024 \
+    )
 else
     NUM_CORES := 1
+    MEMORY_SIZE := 1024
 endif
 
 ################################################################################
@@ -260,6 +272,7 @@ $(call CreateNewSpec, $(NEW_SPEC), \
     OPENJDK_TARGET_CPU_BITS := $(OPENJDK_TARGET_CPU_BITS), \
     OPENJDK_TARGET_CPU_ENDIAN := $(OPENJDK_TARGET_CPU_ENDIAN), \
     NUM_CORES := $(NUM_CORES), \
+    MEMORY_SIZE := $(MEMORY_SIZE), \
     include $(TOPDIR)/make/RunTestsPrebuiltSpec.gmk, \
     $(CUSTOM_NEW_SPEC_LINE), \
 )
