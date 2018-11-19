@@ -676,6 +676,6 @@ void ShenandoahBarrierSetAssembler::barrier_stubs_init() {
     CodeBuffer buf(bb);
     StubCodeGenerator cgen(&buf);
     _shenandoah_wb = generate_shenandoah_wb(&cgen, false, true);
-    _shenandoah_wb_C = generate_shenandoah_wb(&cgen, true, !ShenandoahWriteBarrierCsetTestInIR);
+    _shenandoah_wb_C = generate_shenandoah_wb(&cgen, true, false);
   }
 }
