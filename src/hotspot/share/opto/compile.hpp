@@ -74,7 +74,6 @@ class PhaseCCP;
 class PhaseCCP_DCE;
 class RootNode;
 class relocInfo;
-class ShenandoahWriteBarrierNode;
 class Scope;
 class StartNode;
 class SafePointNode;
