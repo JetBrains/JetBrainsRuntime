@@ -57,6 +57,10 @@ oop Klass::java_mirror() const {
   return _java_mirror.resolve();
 }
 
+oop Klass::java_mirror_no_keepalive() const {
+  return _java_mirror.peek();
+}
+
 bool Klass::is_cloneable() const {
   return _access_flags.is_cloneable_fast() ||
          is_subtype_of(SystemDictionary::Cloneable_klass());
@@ -725,8 +729,8 @@ void Klass::verify_on(outputStream* st) {
     }
   }
 
-  if (java_mirror() != NULL) {
-    guarantee(oopDesc::is_oop(java_mirror()), "should be instance");
+  if (java_mirror_no_keepalive() != NULL) {
+    guarantee(oopDesc::is_oop(java_mirror_no_keepalive()), "should be instance");
   }
 }
 
