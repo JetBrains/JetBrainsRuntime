@@ -1160,59 +1160,6 @@ lib/security/cacerts/VerifyCACerts.java                                         
 
 # SunToolkit$OperationTimedOut 8072110 linux-all
 
-# Can't find library: /test/lib
-com/sun/corba/serialization/ObjectStreamTest.java                                   JRE-780 macosx-all,windows-all,linux-all
-com/sun/jdi/InvokeHangTest.java                                                     JRE-780 macosx-all,windows-all,linux-all
-com/sun/jdi/SunBootClassPathEmptyTest.java                                          JRE-780 macosx-all,windows-all,linux-all
-com/sun/management/HotSpotDiagnosticMXBean/DumpHeap.java                            JRE-780 macosx-all,windows-all,linux-all
-java/io/FilePermission/FilePermissionCollectionMerge.java                           JRE-780 macosx-all,windows-all,linux-all
-java/io/FilePermission/Invalid.java                                                 JRE-780 macosx-all,windows-all,linux-all
-java/io/FilePermission/MergeName.java                                               JRE-780 macosx-all,windows-all,linux-all
-java/io/FilePermission/ReadFileOnPath.java                                          JRE-780 macosx-all,windows-all,linux-all
-java/lang/ProcessHandle/Basic.java                                                  JRE-780 macosx-all,windows-all,linux-all
-java/lang/ProcessHandle/InfoTest.java                                               JRE-780 macosx-all,windows-all,linux-all
-java/lang/ProcessHandle/OnExitTest.java                                             JRE-780 macosx-all,windows-all,linux-all
-java/lang/ProcessHandle/TreeTest.java                                               JRE-780 macosx-all,windows-all,linux-all
-java/lang/ref/CleanerTest.java                                                      JRE-780 macosx-all,windows-all,linux-all
-java/net/InetAddress/ptr/Lookup.java                                                JRE-780 macosx-all,windows-all,linux-all
-java/net/ServerSocket/AcceptCauseFileDescriptorLeak.java                            JRE-780 macosx-all,windows-all,linux-all
-java/security/SecureRandom/DrbgParametersSpec.java                                  JRE-780 macosx-all,windows-all,linux-all
-java/util/Arrays/TimSortStackSize2.java                                             JRE-780 macosx-all,windows-all,linux-all
-jdk/internal/ref/Cleaner/ExitOnThrow.java                                           JRE-780 macosx-all,windows-all,linux-all
-sun/jvmstat/monitor/MonitoredVm/TestPollingInterval.java                            JRE-780 macosx-all,windows-all,linux-all
-sun/misc/SunMiscSignalTest.java                                                     JRE-780 macosx-all,windows-all,linux-all
-sun/net/www/protocol/https/HttpsURLConnection/PostThruProxy.java                    JRE-780 macosx-all,windows-all,linux-all
-sun/net/www/protocol/https/HttpsURLConnection/PostThruProxyWithAuth.java            JRE-780 macosx-all,windows-all,linux-all
-sun/security/krb5/auto/ModuleName.java                                              JRE-780 macosx-all,windows-all,linux-all
-sun/security/krb5/auto/ReplayCacheTestProc.java                                     JRE-780 macosx-all,windows-all,linux-all
-sun/security/krb5/auto/rcache_usemd5.sh                                             JRE-780 macosx-all,windows-all,linux-all
-sun/security/ssl/CertPathRestrictions/TLSRestrictions.java                          JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/jarsigner/AltProvider.java                                       JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/jarsigner/TimestampCheck.java                                    JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/jarsigner/TsacertOptionTest.java                                 JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/jarsigner/multiRelease/MVJarSigningTest.java                     JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/keytool/ImportPrompt.java                                        JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/keytool/PrintSSL.java                                            JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/keytool/ReadJar.java                                             JRE-780 macosx-all,windows-all,linux-all
-sun/security/tools/keytool/WeakAlg.java                                             JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jhsdb/BasicLauncherTest.java                                              JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jhsdb/HeapDumpTest.java                                                   JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jhsdb/heapconfig/JMapHeapConfigTest.java                                  JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jinfo/JInfoTest.java                                                      JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jmap/BasicJMapTest.java                                                   JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jps/TestJps.java                                                          JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jps/TestJpsSanity.java                                                    JRE-780 macosx-all,windows-all,linux-all
-sun/tools/jstack/DeadlockDetectionTest.java                                         JRE-780 macosx-all,windows-all,linux-all
-tools/jar/multiRelease/ApiValidatorTest.java                                        JRE-780 macosx-all,windows-all,linux-all
-tools/jar/multiRelease/Basic.java                                                   JRE-780 macosx-all,windows-all,linux-all
-tools/jar/multiRelease/Basic1.java                                                  JRE-780 macosx-all,windows-all,linux-all
-tools/jar/multiRelease/RuntimeTest.java                                             JRE-780 macosx-all,windows-all,linux-all
-tools/jimage/JImageBasicsTest.java                                                  JRE-780 macosx-all,windows-all,linux-all
-tools/jimage/JImageInfoTest.java                                                    JRE-780 macosx-all,windows-all,linux-all
-tools/jlink/multireleasejar/JLinkMultiReleaseJarTest.java                           JRE-780 macosx-all,windows-all,linux-all
-tools/schemagen/MultiReleaseJarTest.java                                            JRE-780 macosx-all,windows-all,linux-all
-tools/wsgen/MultiReleaseJarTest.java                                                JRE-780 macosx-all,windows-all,linux-all
-
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                          JRE-788 macosx-all,windows-all
 # Closed in JBS as Won't fix
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                    8203918 macosx-all,linux-all,windows-all
