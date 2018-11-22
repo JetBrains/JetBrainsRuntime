@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,14 @@
 #ifndef HEADLESS
 #include <X11/extensions/Xdbe.h>
 #include <X11/XKBlib.h>
+<<<<<<< HEAD
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
+=======
+#ifndef _AIX
+>>>>>>> f668abb... 8213944: Fix AIX build after the removal of Xrandr.h and add a configure check for it
 #include <X11/extensions/Xrandr.h>
+#endif
 #include "GLXGraphicsConfig.h"
 #endif /* !HEADLESS */
 
@@ -1627,6 +1632,8 @@ Java_sun_awt_X11GraphicsEnvironment_getXineramaCenterPoint(JNIEnv *env,
 
 #ifndef HEADLESS
 
+#ifndef _AIX
+
 #define BIT_DEPTH_MULTI java_awt_DisplayMode_BIT_DEPTH_MULTI
 #define REFRESH_RATE_UNKNOWN java_awt_DisplayMode_REFRESH_RATE_UNKNOWN
 
@@ -1832,6 +1839,8 @@ X11GD_AddDisplayMode(JNIEnv *env, jobject arrayList,
     }
 }
 
+#endif /* !_AIX */
+
 static void
 X11GD_SetFullscreenMode(Window win, jboolean enabled)
 {
@@ -1871,7 +1880,7 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11GraphicsDevice_initXrandrExtension
     (JNIEnv *env, jclass x11gd)
 {
-#ifdef HEADLESS
+#if defined(HEADLESS) || defined(_AIX)
     return JNI_FALSE;
 #else
     int opcode = 0, firstEvent = 0, firstError = 0;
@@ -1898,7 +1907,7 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_X11GraphicsDevice_getCurrentDisplayMode
     (JNIEnv* env, jclass x11gd, jint screen)
 {
-#ifdef HEADLESS
+#if defined(HEADLESS) || defined(_AIX)
     return NULL;
 #else
     XRRScreenConfiguration *config;
@@ -1994,7 +2003,7 @@ Java_sun_awt_X11GraphicsDevice_enumDisplayModes
     (JNIEnv* env, jclass x11gd,
      jint screen, jobject arrayList)
 {
-#ifndef HEADLESS
+#if !defined(HEADLESS) && !defined(_AIX)
 
     AWT_LOCK();
 
@@ -2082,7 +2091,7 @@ Java_sun_awt_X11GraphicsDevice_configDisplayMode
     (JNIEnv* env, jclass x11gd,
      jint screen, jint width, jint height, jint refreshRate)
 {
-#ifndef HEADLESS
+#if !defined(HEADLESS) && !defined(_AIX)
     jboolean success = JNI_FALSE;
     XRRScreenConfiguration *config;
     Drawable root;
@@ -2199,6 +2208,9 @@ Java_sun_awt_X11GraphicsDevice_exitFullScreenExclusive
  */
 
 static char *get_output_screen_name(JNIEnv *env, int screen) {
+#ifdef _AIX
+    return NULL;
+#else
     if (!awt_XRRGetScreenResources || !awt_XRRGetOutputInfo) {
         return NULL;
     }
@@ -2228,6 +2240,7 @@ static char *get_output_screen_name(JNIEnv *env, int screen) {
     }
     AWT_UNLOCK();
     return name;
+#endif /* _AIX */
 }
 
 /*
