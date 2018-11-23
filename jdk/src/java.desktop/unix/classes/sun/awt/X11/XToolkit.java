@@ -70,6 +70,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
     //We use the same hardcoded constant.
     private static final int AWT_MULTICLICK_DEFAULT_TIME = 500;
 
+    private final static int DEFAULT_SCREEN_RESOLUTION = 96;
+
+    private final static int DEFAULT_SCREEN_RESOLUTION = 96;
+
     static final boolean PRIMARY_LOOP = false;
     static final boolean SECONDARY_LOOP = true;
 
@@ -1353,10 +1357,14 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         long display = getDisplay();
         awtLock();
         try {
+            long displayWidthMM = XlibWrapper.DisplayWidthMM(
+                    display, XlibWrapper.DefaultScreen(display));
+
+            if (displayWidthMM <= 0) return DEFAULT_SCREEN_RESOLUTION;
+
             return (int) ((XlibWrapper.DisplayWidth(display,
                 XlibWrapper.DefaultScreen(display)) * 25.4) /
-                    XlibWrapper.DisplayWidthMM(display,
-                XlibWrapper.DefaultScreen(display)));
+                displayWidthMM);
         } finally {
             awtUnlock();
         }
