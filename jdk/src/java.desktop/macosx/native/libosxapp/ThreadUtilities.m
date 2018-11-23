@@ -106,3 +106,14 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CThreading_isMainThread
     return [NSThread isMainThread];
 }
 
+/*
+ * Class:     sun_lwawt_macosx_CThreading
+ * Method:    isMainThread
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CThreading_isMainThread
+  (JNIEnv *env, jclass c)
+{
+    return [NSThread isMainThread];
+}
+

@@ -18,7 +18,6 @@
  * @test
  * @summary regression test on JRE-624 CThreading.isAppKit() fails to detect main app thread if it was renamed
  * @compile -XDignore.symbol.file IsAppKit.java
- * @requires os.family == "mac"
  * @run main/othervm IsAppKit 
  */
 
