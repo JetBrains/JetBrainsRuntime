@@ -111,9 +111,6 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _shenandoah_concurrent_gc:
       return "Shenandoah Concurrent GC";
 
-    case _shenandoah_partial_gc:
-      return "Shenandoah Partial GC";
-
     case _shenandoah_traversal_gc:
       return "Shenandoah Traversal GC";
 
