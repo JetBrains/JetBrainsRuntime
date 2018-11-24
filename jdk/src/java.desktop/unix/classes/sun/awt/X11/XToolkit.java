@@ -72,8 +72,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
     private final static int DEFAULT_SCREEN_RESOLUTION = 96;
 
-    private final static int DEFAULT_SCREEN_RESOLUTION = 96;
-
     static final boolean PRIMARY_LOOP = false;
     static final boolean SECONDARY_LOOP = true;
 
