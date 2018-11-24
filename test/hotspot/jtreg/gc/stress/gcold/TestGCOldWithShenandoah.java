@@ -25,6 +25,7 @@
  * @test TestGCOldWithShenandoah
  * @key gc
  * @key stress
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @summary Stress the GC by trying to make old objects more likely to be garbage than young objects.
  *
  * @run main/othervm/timeout=600 -Xmx384M -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=passive       -XX:+ShenandoahDegeneratedGC -XX:+ShenandoahVerify TestGCOld 50 1 20 10 10000
