@@ -63,7 +63,7 @@ public class ShenandoahHeap extends CollectedHeap {
 
     @Override
     public CollectedHeapName kind() {
-        return CollectedHeapName.SHENANDOAH_HEAP;
+        return CollectedHeapName.SHENANDOAH;
     }
 
     public long numOfRegions() {

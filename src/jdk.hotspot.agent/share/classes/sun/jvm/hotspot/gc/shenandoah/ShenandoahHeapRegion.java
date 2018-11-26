@@ -35,7 +35,6 @@ import java.util.Observer;
 
 
 public class ShenandoahHeapRegion extends ContiguousSpace {
-    // static int RegionSizeBytes;
     private static CIntegerField RegionSizeBytes;
     private static CIntegerField State;
     private static CIntegerField regionNumber;
