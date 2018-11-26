@@ -399,9 +399,9 @@ ShenandoahHeap::ShenandoahHeap(ShenandoahCollectorPolicy* policy) :
     _workers->initialize_workers();
   }
 
-  if (ParallelSafepointCleanupThreads > 1) {
+  if (ShenandoahParallelSafepointThreads > 1) {
     _safepoint_workers = new ShenandoahWorkGang("Safepoint Cleanup Thread",
-                                                ParallelSafepointCleanupThreads,
+                                                ShenandoahParallelSafepointThreads,
                                                 false, false);
     _safepoint_workers->initialize_workers();
   }

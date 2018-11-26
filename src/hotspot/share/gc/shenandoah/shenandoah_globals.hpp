@@ -253,8 +253,8 @@
           "Turns on heap region sampling via JVMStat")                      \
            writeable(Always)                                                \
                                                                             \
-  experimental(uint, ParallelSafepointCleanupThreads, 4,                    \
-          "Number of parallel threads used for safepoint cleanup")          \
+  experimental(uint, ShenandoahParallelSafepointThreads, 4,                 \
+          "Number of parallel threads used for safepoint prolog/epilog")    \
                                                                             \
   experimental(bool, ShenandoahPreclean, true,                              \
               "Do preclean phase before final mark")                        \
