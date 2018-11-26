@@ -23,27 +23,23 @@
  * questions.
  */
 
-package com.apple.eawt.event;
+package com.apple.eawt;
+
+import com.apple.eawt.AppEvent.OpenFilesEvent;
 
 /**
- * Event encapsulating a relative rotation performed by the user.
+ * An implementor is notified when the application is asked to open a list of files.
+ * This message is only sent if the application has registered that it handles CFBundleDocumentTypes in it's Info.plist.
  *
- * @see RotationListener
+ * @see Application#setOpenFileHandler(OpenFilesHandler)
  *
- * @since Java for Mac OS X 10.5 Update 7, Java for Mac OS X 10.6 Update 2
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
  */
-public class RotationEvent extends GestureEvent {
-    final double rotation;
-
-    RotationEvent(final double rotation) {
-        // package private
-        this.rotation = rotation;
-    }
-
+public interface OpenFilesHandler {
     /**
-     * @return an abstract measure of rotation (clockwise is negative)
+     * Called when the application is asked to open a list of files.
+     * @param e the request to open a list of files, and the search term used to find them, if any.
      */
-    public double getRotation() {
-        return rotation;
-    }
+    public void openFiles(final OpenFilesEvent e);
 }

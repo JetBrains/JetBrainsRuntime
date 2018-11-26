@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,44 +23,29 @@
  * questions.
  */
 
-package com.apple.eawt.event;
+package com.apple.eawt;
 
-import java.awt.*;
-import java.awt.event.InputEvent;
+import com.apple.eawt.AppEvent.AppForegroundEvent;
 
 /**
- * Abstract event all gestures inherit from.
+ * Implementors are notified when the app becomes the foreground app and when it resigns being the foreground app.
+ * This notification is useful for hiding and showing transient UI like palette windows which should be hidden when the app is in the background.
  *
- * Note: GestureEvent is not subclass of {@link AWTEvent} and is not dispatched
- * directly from the {@link EventQueue}. This is an intentional design decision
- * to prevent collision with an official java.awt.* gesture event types subclassing
- * {@link InputEvent}.
+ * @see Application#addAppEventListener(AppEventListener)
  *
- * {@link GestureListener}s are only notified from the AWT Event Dispatch thread.
- *
- * @see GestureUtilities
- *
- * @since Java for Mac OS X 10.5 Update 7, Java for Mac OS X 10.6 Update 2
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
  */
-public abstract class GestureEvent {
-    boolean consumed;
-
-    GestureEvent() {
-        // package private
-    }
+public interface AppForegroundListener extends AppEventListener {
+    /**
+     * Called when the app becomes the foreground app.
+     * @param e the app became foreground notification.
+     */
+    public void appRaisedToForeground(final AppForegroundEvent e);
 
     /**
-     * Consuming an event prevents listeners later in the chain or higher in the
-     * component hierarchy from receiving the event.
+     * Called when the app resigns to the background and another app becomes the foreground app.
+     * @param e the app resigned foreground notification.
      */
-    public void consume() {
-        consumed = true;
-    }
-
-    /**
-     * @return if the event has been consumed
-     */
-    protected boolean isConsumed() {
-        return consumed;
-    }
+    public void appMovedToBackground(final AppForegroundEvent e);
 }

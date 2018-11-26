@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,15 @@
 
 package com.apple.eawt;
 
-import java.awt.desktop.AboutHandler;
-import java.awt.desktop.AppReopenedListener;
-import java.awt.desktop.OpenFilesHandler;
-import java.awt.desktop.PreferencesHandler;
-import java.awt.desktop.PrintFilesHandler;
-import java.awt.desktop.QuitHandler;
 import java.util.EventObject;
 
 /**
  * The class of events sent to the deprecated ApplicationListener callbacks.
  *
- * @deprecated replaced by {@link AboutHandler}, {@link PreferencesHandler}, {@link AppReopenedListener}, {@link OpenFilesHandler}, {@link PrintFilesHandler}, {@link QuitHandler}, {@link MacQuitResponse}
+ * @deprecated replaced by {@link AboutHandler}, {@link PreferencesHandler}, {@link AppReOpenedListener}, {@link OpenFilesHandler}, {@link PrintFilesHandler}, {@link QuitHandler}, {@link QuitResponse}
  * @since 1.4
  */
 @Deprecated
-@SuppressWarnings("serial") // JDK implementation class
 public class ApplicationEvent extends EventObject {
     private String fFilename = null;
     private boolean fHandled = false;
@@ -56,9 +49,9 @@ public class ApplicationEvent extends EventObject {
 
     /**
      * Determines whether an ApplicationListener has acted on a particular event.
-     * An event is marked as having been handled with {@code setHandled(true)}.
+     * An event is marked as having been handled with <code>setHandled(true)</code>.
      *
-     * @return {@code true} if the event has been handled, otherwise {@code false}
+     * @return <code>true</code> if the event has been handled, otherwise <code>false</code>
      *
      * @since 1.4
      * @deprecated
@@ -71,10 +64,10 @@ public class ApplicationEvent extends EventObject {
     /**
      * Marks the event as handled.
      * After this method handles an ApplicationEvent, it may be useful to specify that it has been handled.
-     * This is usually used in conjunction with {@code getHandled()}.
-     * Set to {@code true} to designate that this event has been handled. By default it is {@code false}.
+     * This is usually used in conjunction with <code>getHandled()</code>.
+     * Set to <code>true</code> to designate that this event has been handled. By default it is <code>false</code>.
      *
-     * @param state {@code true} if the event has been handled, otherwise {@code false}.
+     * @param state <code>true</code> if the event has been handled, otherwise <code>false</code>.
      *
      * @since 1.4
      * @deprecated
@@ -90,7 +83,7 @@ public class ApplicationEvent extends EventObject {
      * For example, the Print and Open events refer to specific files.
      * For these cases, this returns the appropriate file name.
      *
-     * @return the full path to the file associated with the event, if applicable, otherwise {@code null}
+     * @return the full path to the file associated with the event, if applicable, otherwise <code>null</code>
      *
      * @since 1.4
      * @deprecated use {@link OpenFilesHandler} or {@link PrintFilesHandler} instead

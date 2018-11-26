@@ -25,40 +25,38 @@
 
 package com.apple.eawt;
 
-class _AppMiscHandlers {
-    private static boolean isSuddenTerminationEnabled;
+/**
+ * Used to respond to a request to quit the application.
+ * The QuitResponse may be used after the {@link QuitHandler#handleQuitRequestWith(AppEvent.QuitEvent, QuitResponse)} method has returned, and may be used from any thread.
+ *
+ * @see Application#setQuitHandler(QuitHandler)
+ * @see QuitHandler
+ * @see Application#setQuitStrategy(QuitStrategy)
+ *
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
+ */
+public class QuitResponse {
+    final _AppEventHandler appEventHandler;
 
-    private static native void nativeOpenHelpViewer();
-
-    private static native void nativeRequestActivation(final boolean allWindows);
-    private static native void nativeRequestUserAttention(final boolean critical);
-
-    private static native void nativeEnableSuddenTermination();
-    private static native void nativeDisableSuddenTermination();
-
-    static void openHelpViewer() {
-        nativeOpenHelpViewer();
+    QuitResponse(final _AppEventHandler appEventHandler) {
+        this.appEventHandler = appEventHandler;
     }
 
-    static void requestActivation(final boolean allWindows) {
-        nativeRequestActivation(allWindows);
+    /**
+     * Notifies the external quit requester that the quit will proceed, and performs the default {@link QuitStrategy}.
+     */
+    public void performQuit() {
+        if (appEventHandler.currentQuitResponse != this) return;
+        appEventHandler.performQuit();
     }
 
-    static void requestUserAttention(final boolean critical) {
-        nativeRequestUserAttention(critical);
-    }
-
-    static void enableSuddenTermination() {
-        isSuddenTerminationEnabled = true;
-        nativeEnableSuddenTermination();
-    }
-
-    static void disableSuddenTermination() {
-        isSuddenTerminationEnabled = false;
-        nativeDisableSuddenTermination();
-    }
-
-    public static boolean isSuddenTerminationEnbaled() {
-        return isSuddenTerminationEnabled;
+    /**
+     * Notifies the external quit requester that the user has explicitly canceled the pending quit, and leaves the application running.
+     * <b>Note: this will cancel a pending log-out, restart, or shutdown.</b>
+     */
+    public void cancelQuit() {
+        if (appEventHandler.currentQuitResponse != this) return;
+        appEventHandler.cancelQuit();
     }
 }

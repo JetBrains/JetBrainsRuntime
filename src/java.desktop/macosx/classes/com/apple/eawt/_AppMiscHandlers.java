@@ -26,8 +26,6 @@
 package com.apple.eawt;
 
 class _AppMiscHandlers {
-    private static boolean isSuddenTerminationEnabled;
-
     private static native void nativeOpenHelpViewer();
 
     private static native void nativeRequestActivation(final boolean allWindows);
@@ -49,16 +47,10 @@ class _AppMiscHandlers {
     }
 
     static void enableSuddenTermination() {
-        isSuddenTerminationEnabled = true;
         nativeEnableSuddenTermination();
     }
 
     static void disableSuddenTermination() {
-        isSuddenTerminationEnabled = false;
         nativeDisableSuddenTermination();
-    }
-
-    public static boolean isSuddenTerminationEnbaled() {
-        return isSuddenTerminationEnabled;
     }
 }

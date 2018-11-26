@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,26 +23,32 @@
  * questions.
  */
 
-package com.apple.eawt.event;
+package com.apple.eawt;
+
+import com.apple.eawt.AppEvent.ScreenSleepEvent;
 
 /**
- * Abstract adapter class for receiving gesture events. This class is provided
- * as a convenience for creating listeners.
+ * Implementors receive notification when the displays attached to the system have entered power save sleep.
  *
- * Subclasses registered with {@link GestureUtilities#addGestureListenerTo}
- * will receive all phase, magnification, rotation, and swipe events.
+ * This notification is useful for discontinuing a costly animation, or indicating that the user is no longer present on a network service.
  *
- * @see GestureUtilities
+ * This message is not sent on Mac OS X versions prior to 10.6.
  *
- * @since Java for Mac OS X 10.5 Update 7, Java for Mac OS X 10.6 Update 2
+ * @see Application#addAppEventListener(AppEventListener)
+ *
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
  */
-public abstract class GestureAdapter implements GesturePhaseListener, MagnificationListener, RotationListener, SwipeListener {
-    public void gestureBegan(final GesturePhaseEvent e) { }
-    public void gestureEnded(final GesturePhaseEvent e) { }
-    public void magnify(final MagnificationEvent e) { }
-    public void rotate(final RotationEvent e) { }
-    public void swipedDown(final SwipeEvent e) { }
-    public void swipedLeft(final SwipeEvent e) { }
-    public void swipedRight(final SwipeEvent e) { }
-    public void swipedUp(final SwipeEvent e) { }
+public interface ScreenSleepListener extends AppEventListener {
+    /**
+     * Called when the system displays have entered power save sleep.
+     * @param e the screen sleep event
+     */
+    public void screenAboutToSleep(final ScreenSleepEvent e);
+
+    /**
+     * Called when the system displays have awoke from power save sleep.
+     * @param e the screen sleep event
+     */
+    public void screenAwoke(final ScreenSleepEvent e);
 }

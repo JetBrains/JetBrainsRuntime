@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,24 +25,28 @@
 
 package com.apple.eawt;
 
-import java.awt.Window;
-
-import com.apple.eawt.event.FullScreenEvent;
+import com.apple.eawt.AppEvent.UserSessionEvent;
 
 /**
- * Abstract adapter class for receiving fullscreen events. This class is provided
- * as a convenience for creating listeners.
+ * Implementors receive notification when Fast User Switching changes the user session.
  *
- * Subclasses registered with {@link FullScreenUtilities#addFullScreenListenerTo(Window, FullScreenListener)}
- * will receive all entering/entered/exiting/exited full screen events.
+ * This notification is useful for discontinuing a costly animation, or indicating that the user is no longer present on a network service.
  *
- * @see FullScreenUtilities
+ * @see Application#addAppEventListener(AppEventListener)
  *
- * @since Java for Mac OS X 10.7 Update 1
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
  */
-public abstract class FullScreenAdapter implements FullScreenListener {
-        public void windowEnteringFullScreen(final FullScreenEvent e) {}
-        public void windowEnteredFullScreen(final FullScreenEvent e) {}
-        public void windowExitingFullScreen(final FullScreenEvent e) {}
-        public void windowExitedFullScreen(final FullScreenEvent e) {}
+public interface UserSessionListener extends AppEventListener {
+    /**
+     * Called when the user session has been switched away.
+     * @param e the user session switch event
+     */
+    public void userSessionDeactivated(final UserSessionEvent e);
+
+    /**
+     * Called when the user session has been switched to.
+     * @param e the user session switch event
+     */
+    public void userSessionActivated(final UserSessionEvent e);
 }

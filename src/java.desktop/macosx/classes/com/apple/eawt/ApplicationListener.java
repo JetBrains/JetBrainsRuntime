@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,25 +25,12 @@
 
 package com.apple.eawt;
 
-import java.awt.desktop.AboutHandler;
-import java.awt.desktop.AppForegroundListener;
-import java.awt.desktop.AppHiddenListener;
-import java.awt.desktop.AppReopenedListener;
-import java.awt.desktop.OpenFilesHandler;
-import java.awt.desktop.OpenURIHandler;
-import java.awt.desktop.PreferencesHandler;
-import java.awt.desktop.PrintFilesHandler;
-import java.awt.desktop.QuitHandler;
-import java.awt.desktop.ScreenSleepListener;
-import java.awt.desktop.SystemEventListener;
-import java.awt.desktop.SystemSleepListener;
-import java.awt.desktop.UserSessionListener;
 import java.util.EventListener;
 
 /**
  * ApplicationEvents are deprecated. Use individual AppEvent listeners or handlers instead.
  *
- * @see Application#addAppEventListener(SystemEventListener)
+ * @see Application#addAppEventListener(AppEventListener)
  *
  * @see AboutHandler
  * @see PreferencesHandler
@@ -52,7 +39,7 @@ import java.util.EventListener;
  * @see PrintFilesHandler
  * @see QuitHandler
  *
- * @see AppReopenedListener
+ * @see AppReOpenedListener
  * @see AppForegroundListener
  * @see AppHiddenListener
  * @see UserSessionListener
@@ -60,15 +47,15 @@ import java.util.EventListener;
  * @see SystemSleepListener
  *
  * @since 1.4
- * @deprecated replaced by {@link AboutHandler}, {@link PreferencesHandler}, {@link AppReopenedListener}, {@link OpenFilesHandler}, {@link PrintFilesHandler}, {@link QuitHandler}, {@link MacQuitResponse}
+ * @deprecated replaced by {@link AboutHandler}, {@link PreferencesHandler}, {@link AppReOpenedListener}, {@link OpenFilesHandler}, {@link PrintFilesHandler}, {@link QuitHandler}, {@link QuitResponse}
  */
 @SuppressWarnings("deprecation")
 @Deprecated
 public interface ApplicationListener extends EventListener {
     /**
-     * Called when the user selects the About item in the application menu. If {@code event} is not handled by
-     * setting {@code isHandled(true)}, a default About window consisting of the application's name and icon is
-     * displayed. To display a custom About window, designate the {@code event} as being handled and display the
+     * Called when the user selects the About item in the application menu. If <code>event</code> is not handled by
+     * setting <code>isHandled(true)</code>, a default About window consisting of the application's name and icon is
+     * displayed. To display a custom About window, designate the <code>event</code> as being handled and display the
      * appropriate About window.
      *
      * @param event an ApplicationEvent initiated by the user choosing About in the application menu
@@ -112,7 +99,7 @@ public interface ApplicationListener extends EventListener {
      * Called when the Preference item in the application menu is selected. Native Mac OS X applications make their
      * Preferences window available through the application menu. Java applications are automatically given an application
      * menu in Mac OS X. By default, the Preferences item is disabled in that menu. If you are deploying an application
-     * on Mac OS X, you should enable the preferences item with {@code setEnabledPreferencesMenu(true)} in the
+     * on Mac OS X, you should enable the preferences item with <code>setEnabledPreferencesMenu(true)</code> in the
      * Application object and then display your Preferences window in this handler.
      *
      * @param event triggered when the user selects Preferences from the application menu
@@ -143,11 +130,11 @@ public interface ApplicationListener extends EventListener {
      * application menu, when the user types Command-Q, or when the user control clicks on your application icon in the
      * Dock and chooses Quit. You can either accept or reject the request to quit. You might want to reject the request
      * to quit if the user has unsaved work. Reject the request, move into your code to save changes, then quit your
-     * application. To accept the request to quit, and terminate the application, set {@code isHandled(true)} for the
-     * {@code event}. To reject the quit, set {@code isHandled(false)}.
+     * application. To accept the request to quit, and terminate the application, set <code>isHandled(true)</code> for the
+     * <code>event</code>. To reject the quit, set <code>isHandled(false)</code>.
      *
      * @param event a Quit Application event
-     * @deprecated use {@link QuitHandler} and {@link MacQuitResponse}
+     * @deprecated use {@link QuitHandler} and {@link QuitResponse}
      */
     @Deprecated
     public void handleQuit(ApplicationEvent event);
@@ -159,7 +146,7 @@ public interface ApplicationListener extends EventListener {
      * event is sent from another application, include that code as part of this handler.
      *
      * @param event the Reopen Application event
-     * @deprecated use {@link AppReopenedListener}
+     * @deprecated use {@link AppReOpenedListener}
      */
     @Deprecated
     public void handleReOpenApplication(ApplicationEvent event);

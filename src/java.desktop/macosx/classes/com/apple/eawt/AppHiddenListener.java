@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,21 +23,29 @@
  * questions.
  */
 
-package com.apple.eawt.event;
+package com.apple.eawt;
+
+import com.apple.eawt.AppEvent.AppHiddenEvent;
 
 /**
- * Listener interface for receiving magnification events.
+ * Implementors are notified when the app is hidden or shown by the user.
+ * This notification is helpful for discontinuing a costly animation if it's not visible to the user.
  *
- * @see MagnificationEvent
- * @see GesturePhaseListener
- * @see GestureUtilities
+ * @see Application#addAppEventListener(AppEventListener)
  *
- * @since Java for Mac OS X 10.5 Update 7, Java for Mac OS X 10.6 Update 2
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
  */
-public interface MagnificationListener extends GestureListener {
+public interface AppHiddenListener extends AppEventListener {
     /**
-     * Invoked when a magnification gesture is performed by the user.
-     * @param e containing the scale of the magnification.
+     * Called the app is hidden.
+     * @param e
      */
-    public void magnify(final MagnificationEvent e);
+    public void appHidden(final AppHiddenEvent e);
+
+    /**
+     * Called when the hidden app is shown again (but not necessarily brought to the foreground).
+     * @param e
+     */
+    public void appUnhidden(final AppHiddenEvent e);
 }

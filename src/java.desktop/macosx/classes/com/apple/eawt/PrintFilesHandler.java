@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +23,22 @@
  * questions.
  */
 
-/**
- * Provides classes for integrating Java applications with the native
- * application environment. These classes provide a simple way to implement
- * native features to fine tune Java applications on Mac OS X. These listeners
- * and handlers can help make Java applications behaviors and user interface
- * indistinguishable from native applications. For further information on the
- * Mac OS X user interface, consult the <a target=_blank
- * href="http://developer.apple.com/mac/library/documentation/UserExperience/Conceptual/AppleHIGuidelines">
- * Aqua Human Interface Guidelines</a>.
- */
 package com.apple.eawt;
+
+import com.apple.eawt.AppEvent.PrintFilesEvent;
+
+/**
+ * An implementor can respond to requests to print documents that the app has been registered to handle.
+ *
+ * @see Application#setPrintFileHandler(PrintFilesHandler)
+ *
+ * @since Java for Mac OS X 10.6 Update 3
+ * @since Java for Mac OS X 10.5 Update 8
+ */
+public interface PrintFilesHandler {
+    /**
+     * Called when the application is asked to print a list of files.
+     * @param e the request to print a list of files.
+     */
+    public void printFiles(final PrintFilesEvent e);
+}
