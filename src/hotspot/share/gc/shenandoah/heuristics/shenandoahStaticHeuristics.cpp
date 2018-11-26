@@ -34,7 +34,7 @@ ShenandoahStaticHeuristics::ShenandoahStaticHeuristics() : ShenandoahHeuristics(
   // Static heuristics may degrade to continuous if live data is larger
   // than free threshold. ShenandoahAllocationThreshold is supposed to break this,
   // but it only works if it is non-zero.
-  SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahImmediateThreshold, 1);
+  SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahAllocationThreshold, 1);
 
   SHENANDOAH_ERGO_ENABLE_FLAG(ExplicitGCInvokesConcurrent);
   SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahImplicitGCInvokesConcurrent);
