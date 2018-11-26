@@ -340,9 +340,7 @@ void ShenandoahBarrierSetAssembler::write_barrier_impl(MacroAssembler* masm, Reg
   __ jccb(Assembler::zero, done);
 
   // Heap is unstable, need to perform the read-barrier even if WB is inactive
-  if (ShenandoahWriteBarrierRB) {
-    read_barrier_not_null(masm, dst);
-  }
+  read_barrier_not_null(masm, dst);
 
   __ testb(gc_state, ShenandoahHeap::EVACUATION | ShenandoahHeap::TRAVERSAL);
   __ jccb(Assembler::zero, done);
