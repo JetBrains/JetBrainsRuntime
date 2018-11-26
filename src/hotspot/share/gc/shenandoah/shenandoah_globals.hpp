@@ -334,7 +334,7 @@
   experimental(bool, ShenandoahCommonGCStateLoads, false,                   \
          "Enable commonning for GC state loads in generated code.")         \
                                                                             \
-  develop(bool, VerifyObjectEquals, false,                                  \
+  develop(bool, ShenandoahVerifyObjectEquals, false,                        \
           "Verify that == and != are not used on oops. Only in fastdebug")  \
                                                                             \
   develop(bool, ShenandoahVerifyOptoBarriers, false,                        \
