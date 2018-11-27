@@ -28,7 +28,6 @@ package jdk.jfr.internal.instrument;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.module.Modules;
 import jdk.jfr.Event;
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
@@ -98,12 +97,6 @@ public final class JDKEvents {
     public synchronized static void initialize() {
         try {
             if (initializationTriggered == false) {
-                Module jdkJfrModule = Event.class.getModule();
-                Module javaBaseModule = Object.class.getModule();
-                Modules.addReads(javaBaseModule, jdkJfrModule);
-                Modules.addExports(jdkJfrModule, Utils.EVENTS_PACKAGE_NAME, javaBaseModule);
-                Modules.addExports(jdkJfrModule, Utils.INSTRUMENT_PACKAGE_NAME, javaBaseModule);
-                Modules.addExports(jdkJfrModule, Utils.HANDLERS_PACKAGE_NAME, javaBaseModule);
                 for (Class<?> mirrorEventClass : mirrorEventClasses) {
                     SecuritySupport.registerMirror(((Class<? extends Event>)mirrorEventClass));
                 }
