@@ -58,8 +58,6 @@ module java.desktop {
     exports java.awt;
     exports java.awt.color;
     exports java.awt.desktop;
-    exports com.apple.eawt;
-    exports com.apple.eawt.event;
     exports java.awt.dnd;
     exports java.awt.event;
     exports java.awt.font;
