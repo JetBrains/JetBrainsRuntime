@@ -89,14 +89,6 @@ public class ShenandoahHeap extends CollectedHeap {
         }
     }
 
-    public int oop_extra_words() {
-        return 1;
-    }
-
-    public int oop_region_offset_words() {
-        return 1;
-    }
-
     @Override
     public void printOn(PrintStream tty) {
         MemRegion mr = reservedRegion();
