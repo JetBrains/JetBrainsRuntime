@@ -30,10 +30,14 @@
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
+ * @build sun.hotspot.WhiteBox
+ * @run driver ClassFileInstaller sun.hotspot.WhiteBox sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI TestGCId
  */
 
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
+import sun.hotspot.gc.GC;
 
 public class TestGCId {
   public static void main(String[] args) throws Exception {
@@ -41,7 +45,9 @@ public class TestGCId {
     testGCId("UseG1GC");
     testGCId("UseConcMarkSweepGC");
     testGCId("UseSerialGC");
-    testGCId("UseShenandoahGC");
+    if (GC.Shenandoah.isSupported()) {
+        testGCId("UseShenandoahGC");
+    }
   }
 
   private static void verifyContainsGCIDs(OutputAnalyzer output) {

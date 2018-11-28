@@ -59,7 +59,7 @@
  * @key gc
  * @bug 8010722
  * @comment Graal does not support Shenandoah
- * @requires vm.gc=="null" & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management/sun.management

@@ -65,11 +65,11 @@
  */
 
 /*
- * @test
+ * @test TestClassUnloadingDisabledShenandoah
  * @key gc
  * @bug 8114823
  * @comment Graal does not support Shenandoah
- * @requires vm.gc=="null" & !vm.graal.enabled
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @requires vm.opt.ExplicitGCInvokesConcurrent != true
  * @requires vm.opt.ClassUnloading != true
  * @library /test/lib

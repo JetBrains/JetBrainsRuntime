@@ -36,6 +36,7 @@ import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
 
 import sun.hotspot.code.Compiler;
+import sun.hotspot.gc.GC;
 
 public class MemberNameLeak {
     static class Leak {
@@ -76,7 +77,9 @@ public class MemberNameLeak {
         test("-XX:+UseSerialGC");
         if (!Compiler.isGraalEnabled()) { // Graal does not support CMS and Shenandoah
             test("-XX:+UseConcMarkSweepGC");
-            test("-XX:+UseShenandoahGC");
+            if (GC.Shenandoah.isSupported()) {
+                test("-XX:+UseShenandoahGC");
+            }
         }
     }
 }
