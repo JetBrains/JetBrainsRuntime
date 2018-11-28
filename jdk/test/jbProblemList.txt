@@ -763,6 +763,7 @@ javax/swing/JComponent/6683775/bug6683775.java                                  
 javax/swing/JComponent/7154030/bug7154030.java                                      7190978 macosx-all,windows-all
 javax/swing/JDialog/Transparency/TransparencyTest.java                              JRE-898 macosx-all,windows-all
 javax/swing/JEditorPane/6917744/bug6917744.java                                     8203912 macosx-all,windows-all
+javax/swing/JEditorPane/8195095/ImageViewTest.java                                  8202656 windows-all,macosx-all,linux-all
 javax/swing/JFileChooser/4524490/bug4524490.java                                    8042380 macosx-all,windows-all
 javax/swing/JFileChooser/4847375/bug4847375.java                                    8194766,8190514 windows-all
 javax/swing/JFileChooser/6342301/bug6342301.java                                    8190514 windows-all
@@ -813,6 +814,7 @@ javax/swing/JMenuBar/4750590/bug4750590.java                                    
 javax/swing/JMenuItem/4171437/bug4171437.java                                       8197552,8040916 macosx-all,windows-all,linux-all
 javax/swing/JMenuItem/4654927/bug4654927.java                                       8172536 macosx-all,windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java                                       8197552 macosx-all,windows-all
+javax/swing/JMenuItem/ActionListenerCalledTwice/ActionListenerCalledTwiceTest.java  8139169 macosx-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java              8172536,8203918 macosx-all
 javax/swing/JPopupMenu/4458079/bug4458079.java                                      8040917 macosx-all,windows-all,linux-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                      8204072,JRE-898 macosx-all,windows-all,linux-all
@@ -1025,6 +1027,7 @@ java/nio/channels/FileChannel/Transfer4GBFile.java                              
 java/nio/file/WatchService/Basic.java                                               7158947 solaris-all Solaris 11
 java/nio/file/WatchService/MayFlies.java                                            7158947 solaris-all Solaris 11
 java/nio/file/WatchService/LotsOfEvents.java                                        JRE-969,7158947 windows-all,solaris-all Solaris 11
+java/nio/file/WatchService/LotsOfCancels.java                                       8211761 windows-all
 
 com/sun/nio/sctp/SctpMultiChannel/SocketOptionTests.java                            8141694 linux-all
 com/sun/nio/sctp/SctpChannel/SocketOptionTests.java                                 8141694 linux-all
@@ -1036,6 +1039,7 @@ jdk/nio/zipfs/ZeroDate.java                                                     
 # jdk_rmi
 
 java/rmi/server/Unreferenced/finiteGCLatency/FiniteGCLatency.java                   7140992 generic-all
+java/rmi/server/Unreferenced/leaseCheckInterval/LeaseCheckInterval.java             8074574 generic-all
 java/rmi/transport/rapidExportUnexport/RapidExportUnexport.java                     7146541 linux-all
 java/rmi/transport/checkLeaseInfoLeak/CheckLeaseLeak.java                           7191877 generic-all
 java/rmi/activation/Activatable/extLoadedImpl/ext.sh                                8062724 generic-all
@@ -1049,6 +1053,7 @@ java/rmi/registry/reexport/Reexport.java                                        
 
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                     8148501 generic-all
 sun/security/pkcs11/Secmod/AddTrustedCert.java                                      8180837 generic-all
+sun/security/pkcs11/Secmod/GetPrivateKey.java                                       8212134 generic-all
 sun/security/pkcs11/ec/TestKeyFactory.java                                          8026976 generic-all
 sun/security/tools/keytool/ListKeychainStore.sh                                     8156889 macosx-all
 sun/security/tools/jarsigner/warnings/BadKeyUsageTest.java                          8026393 generic-all
@@ -1142,7 +1147,7 @@ com/sun/tools/attach/StartManagementAgent.java                                  
 # jdk_other
 
 com/sun/jndi/ldap/DeadSSLLdapTimeoutTest.java                                       8169942 linux-i586,macosx-all,windows-x64
-javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java                  8169737 linux-all
+javax/rmi/PortableRemoteObject/8146975/RmiIiopReturnValueTest.java                  8169737 generic-all
 org/omg/CORBA/OrbPropertiesTest.java                                                8175177 generic-all
 
 ############################################################################
