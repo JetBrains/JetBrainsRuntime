@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,15 @@ class VersionProps {
     private static final String VENDOR_VERSION_STRING =
         "@@VENDOR_VERSION_STRING@@";
 
+    private static final String VENDOR =
+        "@@VENDOR@@";
+
+    private static final String VENDOR_URL =
+        "@@VENDOR_URL@@";
+
+    private static final String VENDOR_URL_BUG =
+        "@@VENDOR_URL_BUG@@";
+
     private static final String vendor_version =
         (!VENDOR_VERSION_STRING.isEmpty()
          ? " " + VENDOR_VERSION_STRING : "");
@@ -80,6 +89,10 @@ class VersionProps {
         System.setProperty("java.runtime.name", java_runtime_name);
         if (!VENDOR_VERSION_STRING.isEmpty())
             System.setProperty("java.vendor.version", VENDOR_VERSION_STRING);
+
+        System.setProperty("java.vendor", VENDOR);
+        System.setProperty("java.vendor.url", VENDOR_URL);
+        System.setProperty("java.vendor.url.bug", VENDOR_URL_BUG);
     }
 
     private static int parseVersionNumber(String version, int prevIndex, int index) {
