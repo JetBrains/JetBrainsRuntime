@@ -29,7 +29,7 @@
  *
  * @library /vmTestbase /test/lib
  * @run driver jdk.test.lib.FileInstaller . .
- * @run main/othervm metaspace.stressDictionary.StressDictionary -stressTime 30
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:-CMSPrecleaningEnabled metaspace.stressDictionary.StressDictionary -stressTime 30
  */
 
 package metaspace.stressDictionary;
