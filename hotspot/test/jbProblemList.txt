@@ -1,0 +1,145 @@
+#
+# Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+
+#############################################################################
+#
+# List of quarantined tests -- tests that should not be run by default, because
+# they may fail due to known reason. The reason (CR#) must be mandatory specified.
+#
+# List items are testnames followed by labels, all MUST BE commented
+#   as to why they are here and use a label:
+#     generic-all   Problems on all platforms
+#     generic-ARCH  Where ARCH is one of: sparc, sparcv9, x64, i586, etc.
+#     OSNAME-all    Where OSNAME is one of: solaris, linux, windows, macosx, aix
+#     OSNAME-ARCH   Specific on to one OSNAME and ARCH, e.g. solaris-amd64
+#     OSNAME-REV    Specific on to one OSNAME and REV, e.g. solaris-5.8
+#
+# More than one label is allowed but must be on the same line.
+#
+#############################################################################
+
+# :hotspot_compiler
+
+compiler/codecache/stress/OverloadCompileQueueTest.java                        8166554 generic-all
+compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java                8140405 generic-all
+compiler/jvmci/compilerToVM/GetResolvedJavaTypeTest.java                       8158860 generic-all
+compiler/jvmci/compilerToVM/InvalidateInstalledCodeTest.java                   8163894 generic-all
+compiler/jvmci/jdk.vm.ci.code.test/src/jdk/vm/ci/code/test/NativeCallTest.java 8180324 generic-all
+compiler/rtm/locking/TestRTMAbortRatio.java                                    8204134 linux-all
+compiler/rtm/locking/TestRTMAbortThreshold.java                                8204134 linux-all
+compiler/rtm/locking/TestRTMAfterNonRTMDeopt.java                              8204134 linux-all
+compiler/rtm/locking/TestRTMDeoptOnHighAbortRatio.java                         8204134 linux-all
+compiler/rtm/locking/TestRTMDeoptOnLowAbortRatio.java                          8204134 linux-all
+compiler/rtm/locking/TestRTMLockingCalculationDelay.java                       8183263 generic-all
+compiler/rtm/locking/TestRTMLockingThreshold.java                              8204134 linux-all
+compiler/rtm/locking/TestRTMTotalCountIncrRate.java                            8183263 generic-all
+compiler/rtm/locking/TestUseRTMXendForLockBusy.java                            8183263 generic-all
+compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java                   8183263 generic-all
+compiler/rtm/locking/TestUseRTMDeopt.java                                      8183263 generic-all
+compiler/rtm/print/TestPrintPreciseRTMLockingStatistics.java                   8183263 generic-all
+compiler/startup/SmallCodeCacheStartup.java                                    8134286 generic-all
+compiler/tiered/LevelTransitionTest.java                                       8067651 generic-all
+compiler/types/correctness/CorrectnessTest.java                                8066173 generic-all
+compiler/types/correctness/OffTest.java                                        8066173 generic-all
+
+#############################################################################
+
+# :hotspot_gc
+
+gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java             8156755 generic-all
+gc/survivorAlignment/TestPromotionToSurvivor.java                              8129886 generic-all
+gc/g1/logging/TestG1LoggingFailure.java                                        8169634 generic-all
+
+#############################################################################
+
+# :hotspot_runtime
+
+runtime/6981737/Test6981737.java                                               NOBUG   generic-all expected: vm properties specific for JetBrains
+runtime/CompressedOops/UseCompressedOops.java                                  8079353 generic-all
+# This test is disabled since it will stress NMT and timeout during normal testing
+runtime/NMT/MallocStressTest.java                                              8166548 generic-all
+runtime/SharedArchiveFile/BootAppendTests.java                                 8179103 generic-all
+runtime/SharedArchiveFile/DefaultUseWithClient.java                            8154204 generic-all
+
+#############################################################################
+
+# :hotspot_serviceability
+
+serviceability/jdwp/AllModulesCommandTest.java                                 8170541 generic-all
+serviceability/sa/sadebugd/SADebugDTest.java                                   8163805 generic-all
+serviceability/jvmti/ModuleAwareAgents/ClassFileLoadHook/MAAClassFileLoadHook.java 8173936 generic-all
+
+#############################################################################
+
+# :hotspot_misc
+
+#############################################################################
+
+# The most of the below tests fail in the first run.
+# The failures need to be investigated in order to be enabled
+# Excluding them as not enabled
+compiler/calls/TestDirtyInt.java                                               NA generic-all
+compiler/calls/fromCompiled/CompiledInvokeDynamic2NativeTest.java              NA generic-all
+compiler/calls/fromCompiled/CompiledInvokeInterface2NativeTest.java            NA generic-all
+compiler/calls/fromCompiled/CompiledInvokeSpecial2NativeTest.java              NA generic-all
+compiler/calls/fromCompiled/CompiledInvokeStatic2NativeTest.java               NA generic-all
+compiler/calls/fromCompiled/CompiledInvokeVirtual2NativeTest.java              NA generic-all
+compiler/calls/fromInterpreted/InterpretedInvokeDynamic2NativeTest.java        NA generic-all
+compiler/calls/fromInterpreted/InterpretedInvokeInterface2NativeTest.java      NA generic-all
+compiler/calls/fromInterpreted/InterpretedInvokeSpecial2NativeTest.java        NA generic-all
+compiler/calls/fromInterpreted/InterpretedInvokeStatic2NativeTest.java         NA generic-all
+compiler/calls/fromInterpreted/InterpretedInvokeVirtual2NativeTest.java        NA generic-all
+compiler/calls/fromNative/NativeInvokeSpecial2CompiledTest.java                NA generic-all
+compiler/calls/fromNative/NativeInvokeSpecial2InterpretedTest.java             NA generic-all
+compiler/calls/fromNative/NativeInvokeSpecial2NativeTest.java                  NA generic-all
+compiler/calls/fromNative/NativeInvokeStatic2CompiledTest.java                 NA generic-all
+compiler/calls/fromNative/NativeInvokeStatic2InterpretedTest.java              NA generic-all
+compiler/calls/fromNative/NativeInvokeStatic2NativeTest.java                   NA generic-all
+compiler/calls/fromNative/NativeInvokeVirtual2CompiledTest.java                NA generic-all
+compiler/calls/fromNative/NativeInvokeVirtual2InterpretedTest.java             NA generic-all
+compiler/calls/fromNative/NativeInvokeVirtual2NativeTest.java                  NA generic-all
+compiler/floatingpoint/TestFloatJNIArgs.java                                   NA generic-all
+native/GTestWrapper.java                                                       NA generic-all
+native_sanity/JniVersion.java                                                  NA generic-all
+runtime/BoolReturn/NativeSmallIntCallsTest.java                                NA generic-all
+runtime/SameObject/SameObject.java                                             NA generic-all
+runtime/StackGuardPages/testme.sh                                              NA generic-all
+runtime/jni/8025979/UninitializedStrings.java                                  NA generic-all
+runtime/jni/8033445/DefaultMethods.java                                        NA generic-all
+runtime/jni/CallWithJNIWeak/CallWithJNIWeak.java                               NA generic-all
+runtime/jni/CalleeSavedRegisters/FPRegs.java                                   NA generic-all
+runtime/jni/PrivateInterfaceMethods/PrivateInterfaceMethods.java               NA generic-all
+runtime/jni/ReturnJNIWeak/ReturnJNIWeak.java                                   NA generic-all
+runtime/jni/ToStringInInterfaceTest/ToStringTest.java                          NA generic-all
+runtime/jni/checked/TestCheckedJniExceptionCheck.java                          NA generic-all
+runtime/modules/getModuleJNI/GetModule.java                                    NA generic-all
+serviceability/jvmti/AddModuleExportsAndOpens/MyPackage/AddModuleExportsAndOpensTest.java NA generic-all
+serviceability/jvmti/AddModuleReads/MyPackage/AddModuleReadsTest.java          NA generic-all
+serviceability/jvmti/AddModuleUsesAndProvides/MyPackage/AddModuleUsesAndProvidesTest.java NA generic-all
+serviceability/jvmti/GetModulesInfo/JvmtiGetAllModulesTest.java                NA generic-all
+serviceability/jvmti/GetNamedModule/MyPackage/GetNamedModuleTest.java          NA generic-all
+serviceability/jvmti/IsModifiableModule/MyPackage/IsModifiableModuleTest.java  NA generic-all
+serviceability/jvmti/ModuleAwareAgents/ClassLoadPrepare/MAAClassLoadPrepare.java NA generic-all
+serviceability/jvmti/ModuleAwareAgents/ThreadStart/MAAThreadStart.java         NA generic-all
+testlibrary_tests/RedefineClassTest.java                                       NA generic-all
+testlibrary_tests/SimpleClassFileLoadHookTest.java                             NA generic-all
