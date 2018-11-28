@@ -278,12 +278,12 @@ public:
 
 template<>
 struct BarrierSet::GetName<ShenandoahBarrierSet> {
-  static const BarrierSet::Name value = BarrierSet::Shenandoah;
+  static const BarrierSet::Name value = BarrierSet::ShenandoahBarrierSet;
 };
 
 template<>
-struct BarrierSet::GetType<BarrierSet::Shenandoah> {
-  typedef ShenandoahBarrierSet type;
+struct BarrierSet::GetType<BarrierSet::ShenandoahBarrierSet> {
+  typedef ::ShenandoahBarrierSet type;
 };
 
 #endif //SHARE_VM_GC_SHENANDOAH_SHENANDOAHBARRIERSET_HPP
