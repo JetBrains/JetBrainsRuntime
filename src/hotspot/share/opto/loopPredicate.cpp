@@ -866,13 +866,6 @@ BoolNode* PhaseIdealLoop::rc_predicate(IdealLoopTree *loop, Node* ctrl,
       max_idx_expr = new AddINode(max_idx_expr, offset);
     }
     register_new_node(max_idx_expr, ctrl);
-    if (TraceLoopPredicate) {
-      if (offset->is_Con()) {
-        predString->print("+ %d ", offset->get_int());
-      } else {
-        predString->print("+ offset ");
-      }
-    }
   }
 
   CmpNode* cmp = NULL;
