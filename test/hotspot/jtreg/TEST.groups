@@ -211,7 +211,6 @@ tier1_gc_shenandoah = \
   gc/shenandoah/oom/
 
 tier2_gc_shenandoah = \
-  :tier1_gc_shenandoah \
   runtime/MemberName/MemberNameLeak.java \
   runtime/CompressedOops/UseCompressedOops.java \
   gc/TestHumongousReferenceObject.java \
@@ -232,19 +231,22 @@ tier2_gc_shenandoah = \
   gc/shenandoah/ \
   serviceability/sa/TestHeapDumpForInvokeDynamic.java \
   -gc/shenandoah/ShenandoahStrDedupStress.java \
-  -gc/shenandoah/CriticalNativeStress.java
+  -gc/shenandoah/CriticalNativeStress.java \
+  -:tier1_gc_shenandoah
 
-shenandoah_stress = \
+tier3_gc_shenandoah = \
   gc/stress/gcold/TestGCOldWithShenandoah.java \
   gc/stress/gcbasher/TestGCBasherWithShenandoah.java \
   gc/stress/gclocker/TestGCLockerWithShenandoah.java \
   gc/stress/systemgc/TestSystemGCWithShenandoah.java \
   gc/shenandoah/ShenandoahStrDedupStress.java \
-  gc/shenandoah/CriticalNativeStress.java
+  gc/shenandoah/CriticalNativeStress.java \
+  -:tier2_gc_shenandoah
 
-tier3_gc_shenandoah = \
+hotspot_gc_shenandoah = \
+  :tier1_gc_shenandoah \
   :tier2_gc_shenandoah \
-  :shenandoah_stress
+  :tier3_gc_shenandoah
 
 tier1_runtime = \
   runtime/ \
