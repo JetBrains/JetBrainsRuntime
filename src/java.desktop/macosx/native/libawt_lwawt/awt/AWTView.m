@@ -309,6 +309,12 @@ static BOOL shouldUsePressAndHold() {
 }
 
 - (BOOL) performKeyEquivalent: (NSEvent *) event {
+    if ([AWTToolkit latestPerformKeyEquivalentEvent] != NULL) {
+        [[AWTToolkit latestPerformKeyEquivalentEvent] release];
+    }
+    AWTToolkit.latestPerformKeyEquivalentEvent = event;
+    [event retain];
+
     // if IM is active key events should be ignored
     if (![self hasMarkedText] && !fInPressAndHold) {
         [self deliverJavaKeyEventHelper: event];
