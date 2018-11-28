@@ -23,6 +23,8 @@
 
 /*
  * @test WrongArrayMember
+ * @key gc
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -Xmx128m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC                                      WrongArrayMember
  * @run main/othervm -Xmx128m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=traversal WrongArrayMember

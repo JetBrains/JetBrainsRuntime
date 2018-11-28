@@ -24,6 +24,8 @@
 /**
  * @test TestThreadFailure
  * @summary Test OOME in separate thread is recoverable
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @run main TestThreadFailure
  */

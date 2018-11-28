@@ -24,6 +24,8 @@
 /**
  * @test TestAllocLargeObj
  * @summary Test allocation of small object to result OOM, but not to crash JVM
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @run main TestAllocLargeObj
  */

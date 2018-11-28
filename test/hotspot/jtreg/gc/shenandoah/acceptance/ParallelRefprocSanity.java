@@ -24,6 +24,8 @@
 /*
  * @test ParallelRefprocSanity
  * @summary Test that reference processing works with both parallel and non-parallel variants.
+ * @key gc
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                              ParallelRefprocSanity
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:-ParallelRefProcEnabled ParallelRefprocSanity

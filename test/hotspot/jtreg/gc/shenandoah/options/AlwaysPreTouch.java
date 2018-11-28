@@ -24,6 +24,9 @@
 /*
  * @test AlwaysPreTouch
  * @summary Check that Shenandoah's AlwaysPreTouch does not fire asserts
+ * @key gc
+ * @requires vm.gc.Shenandoah
+ *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+AlwaysPreTouch                                  -Xmx1g AlwaysPreTouch
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+AlwaysPreTouch -XX:ConcGCThreads=2              -Xmx1g AlwaysPreTouch
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+AlwaysPreTouch -XX:ParallelGCThreads=2          -Xmx1g AlwaysPreTouch

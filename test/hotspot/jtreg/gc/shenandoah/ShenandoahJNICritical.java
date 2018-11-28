@@ -21,8 +21,11 @@
  *
  */
 
-/* @test
+/* @test ShenandoahJNICritical
  * @summary test JNI critical arrays support in Shenandoah
+ * @key gc
+ * @requires vm.gc.Shenandoah
+ *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahVerify                 ShenandoahJNICritical
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive ShenandoahJNICritical
  */

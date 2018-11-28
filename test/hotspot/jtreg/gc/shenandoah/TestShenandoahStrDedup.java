@@ -22,9 +22,10 @@
  */
 
  /*
- * @test TestShenandoahStringDedup.java
+ * @test TestShenandoahStringDedup
  * @summary Test Shenandoah string deduplication implementation
  * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @modules java.base/jdk.internal.misc:open
  * @modules java.base/java.lang:open

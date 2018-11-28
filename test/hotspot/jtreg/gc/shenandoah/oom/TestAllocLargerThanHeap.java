@@ -24,6 +24,8 @@
 /**
  * @test TestAllocLargerThanHeap
  * @summary Test that allocation of the object larger than heap fails predictably
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @run main TestAllocLargerThanHeap
  */

@@ -25,6 +25,8 @@ import java.util.concurrent.*;
 
 /*
  * @test TestArrayCopyStress
+ * @key gc
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:TieredStopAtLevel=0 -Xmx16m TestArrayCopyStress
  */

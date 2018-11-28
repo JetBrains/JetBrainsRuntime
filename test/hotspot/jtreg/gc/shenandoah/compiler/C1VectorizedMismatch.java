@@ -21,8 +21,10 @@
  *
  */
 
-/* @test
+/* @test C1VectorizedMismatch
  * @summary test C1 vectorized mismatch intrinsic
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @run main/othervm -XX:TieredStopAtLevel=1 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive C1VectorizedMismatch
  */
 

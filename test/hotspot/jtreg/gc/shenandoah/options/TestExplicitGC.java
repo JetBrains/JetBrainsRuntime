@@ -25,6 +25,7 @@
  * @test TestExplicitGC
  * @summary Test that Shenandoah reacts to explicit GC flags appropriately
  * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

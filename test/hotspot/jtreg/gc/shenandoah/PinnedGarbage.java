@@ -21,8 +21,10 @@
  *
  */
 
-/* @test
+/* @test PinnedGarbage
  * @summary Test that garbage in the pinned region does not crash VM
+ * @key gc
+ * @requires vm.gc.Shenandoah
  *
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:+ShenandoahDegeneratedGC PinnedGarbage
  * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:-ShenandoahDegeneratedGC PinnedGarbage

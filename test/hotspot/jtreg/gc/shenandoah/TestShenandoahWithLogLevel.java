@@ -22,8 +22,11 @@
  */
 
  /*
- * @test TestShenandoahWithLogLevel.java
+ * @test TestShenandoahWithLogLevel
  * @summary Test Shenandoah with different log levels
+ * @key gc
+ * @requires vm.gc.Shenandoah
+ *
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestShenandoahWithLogLevel
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestShenandoahWithLogLevel
  * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestShenandoahWithLogLevel

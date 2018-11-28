@@ -25,6 +25,7 @@
  * @test TestRegionSizeArgs
  * @summary Test that Shenandoah region size args are checked
  * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

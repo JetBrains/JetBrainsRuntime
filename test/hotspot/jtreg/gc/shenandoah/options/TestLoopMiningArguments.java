@@ -25,6 +25,7 @@
  * @test TestLoopMiningArguments
  * @summary Test that loop mining arguments are sane
  * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @run driver TestLoopMiningArguments
  */

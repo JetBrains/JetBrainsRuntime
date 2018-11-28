@@ -25,6 +25,7 @@
  * @test EvilSyncBug
  * @summary Tests for crash/assert when attaching init thread during shutdown
  * @key gc
+ * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management

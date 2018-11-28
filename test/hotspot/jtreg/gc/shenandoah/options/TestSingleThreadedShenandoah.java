@@ -21,8 +21,10 @@
  *
  */
 
-/* @test
+/* @test TestSingleThreadedShenandoah
  * @summary test single worker threaded Shenandoah
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions
  *                   -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive
  *                   -XX:ParallelGCThreads=1 -XX:ConcGCThreads=1 TestSingleThreadedShenandoah

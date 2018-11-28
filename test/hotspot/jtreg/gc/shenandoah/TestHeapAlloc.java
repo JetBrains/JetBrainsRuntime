@@ -23,8 +23,9 @@
 
 /**
  * @test TestHeapAlloc
- * @key gc
  * @summary Fail to expand Java heap should not result fatal errors
+ * @key gc
+ * @requires vm.gc.Shenandoah
  * @requires (vm.debug == true)
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
