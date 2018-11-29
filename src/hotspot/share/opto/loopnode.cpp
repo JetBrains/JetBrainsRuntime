@@ -3973,7 +3973,7 @@ Node *PhaseIdealLoop::get_late_ctrl( Node *n, Node *early ) {
         }
       } else {
         Node *sctrl = has_ctrl(s) ? get_ctrl(s) : s->in(0);
-        assert(sctrl != NULL || s->outcnt() == 0 || s->is_ShenandoahBarrier(), "must have control");
+        assert(sctrl != NULL || s->outcnt() == 0, "must have control");
         if (sctrl != NULL && !sctrl->is_top() && is_dominator(early, sctrl)) {
           LCA = dom_lca_for_get_late_ctrl(LCA, sctrl, n);
         }
