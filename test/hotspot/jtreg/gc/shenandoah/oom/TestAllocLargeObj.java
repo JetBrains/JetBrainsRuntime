@@ -35,7 +35,7 @@ import jdk.test.lib.process.ProcessTools;
 
 public class TestAllocLargeObj {
 
-    static final int SIZE  = 1*1024*1024;
+    static final int SIZE = 1 * 1024 * 1024;
     static final int COUNT = 16;
 
     static volatile Object sink;
@@ -56,11 +56,11 @@ public class TestAllocLargeObj {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-Xmx16m",
-                                    "-XX:+UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    TestAllocLargeObj.class.getName(),
-                                    "test");
+                    "-Xmx16m",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    TestAllocLargeObj.class.getName(),
+                    "test");
 
             OutputAnalyzer analyzer = new OutputAnalyzer(pb.start());
             analyzer.shouldHaveExitValue(1);
@@ -69,11 +69,11 @@ public class TestAllocLargeObj {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-Xmx1g",
-                                    "-XX:+UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    TestAllocLargeObj.class.getName(),
-                                    "test");
+                    "-Xmx1g",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    TestAllocLargeObj.class.getName(),
+                    "test");
 
             OutputAnalyzer analyzer = new OutputAnalyzer(pb.start());
             analyzer.shouldHaveExitValue(0);

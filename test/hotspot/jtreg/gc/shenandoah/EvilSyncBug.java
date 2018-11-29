@@ -56,22 +56,22 @@ public class EvilSyncBug {
             for (int c = 0; c < NUM_RUNS; c++) {
                 Callable<Void> task = () -> {
                     ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
-                                                                              "-Xmx128m",
-                                                                              "-XX:+UnlockExperimentalVMOptions",
-                                                                              "-XX:+UnlockDiagnosticVMOptions",
-                                                                              "-XX:+UseShenandoahGC",
-                                                                              "-XX:ShenandoahGCHeuristics=aggressive",
-                                                                              "-XX:+ShenandoahStoreCheck",
-                                                                              "EvilSyncBug", "test");
+                            "-Xmx128m",
+                            "-XX:+UnlockExperimentalVMOptions",
+                            "-XX:+UnlockDiagnosticVMOptions",
+                            "-XX:+UseShenandoahGC",
+                            "-XX:ShenandoahGCHeuristics=aggressive",
+                            "-XX:+ShenandoahStoreCheck",
+                            "EvilSyncBug", "test");
                     OutputAnalyzer output = new OutputAnalyzer(pb.start());
                     output.shouldHaveExitValue(0);
                     return null;
                 };
                 fs[c] = pool.submit(task);
-            };
+            }
 
             for (Future<?> f : fs) {
-              f.get();
+                f.get();
             }
 
             pool.shutdown();
@@ -82,77 +82,77 @@ public class EvilSyncBug {
     private static void test() throws Exception {
 
         for (int t = 0; t < hooks.length; t++) {
-          hooks[t] = new MyHook();
+            hooks[t] = new MyHook();
         }
 
         ExecutorService service = Executors.newFixedThreadPool(
-          2,
-          r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            return t;
-          }
+                2,
+                r -> {
+                    Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    return t;
+                }
         );
 
         List<Future<?>> futures = new ArrayList<>();
         for (int c = 0; c < 100; c++) {
-          Runtime.getRuntime().addShutdownHook(hooks[c]);
-          final Test[] tests = new Test[1000];
-          for (int t = 0; t < tests.length; t++) {
-            tests[t] = new Test();
-          }
-
-          Future<?> f1 = service.submit(() -> {
-            Runtime.getRuntime().addShutdownHook(new MyHook());
-            IntResult2 r = new IntResult2();
-            for (Test test : tests) {
-              test.RL_Us(r);
+            Runtime.getRuntime().addShutdownHook(hooks[c]);
+            final Test[] tests = new Test[1000];
+            for (int t = 0; t < tests.length; t++) {
+                tests[t] = new Test();
             }
-          });
-          Future<?> f2 = service.submit(() -> {
-            Runtime.getRuntime().addShutdownHook(new MyHook());
-            for (Test test : tests) {
-              test.WLI_Us();
-            }
-          });
 
-          futures.add(f1);
-          futures.add(f2);
+            Future<?> f1 = service.submit(() -> {
+                Runtime.getRuntime().addShutdownHook(new MyHook());
+                IntResult2 r = new IntResult2();
+                for (Test test : tests) {
+                    test.RL_Us(r);
+                }
+            });
+            Future<?> f2 = service.submit(() -> {
+                Runtime.getRuntime().addShutdownHook(new MyHook());
+                for (Test test : tests) {
+                    test.WLI_Us();
+                }
+            });
+
+            futures.add(f1);
+            futures.add(f2);
         }
 
         for (Future<?> f : futures) {
-          f.get();
+            f.get();
         }
     }
 
     public static class IntResult2 {
-      int r1, r2;
+        int r1, r2;
     }
 
     public static class Test {
-      final StampedLock lock = new StampedLock();
+        final StampedLock lock = new StampedLock();
 
-      int x, y;
+        int x, y;
 
-      public void RL_Us(IntResult2 r) {
-          StampedLock lock = this.lock;
-          long stamp = lock.readLock();
-          r.r1 = x;
-          r.r2 = y;
-          lock.unlock(stamp);
-      }
+        public void RL_Us(IntResult2 r) {
+            StampedLock lock = this.lock;
+            long stamp = lock.readLock();
+            r.r1 = x;
+            r.r2 = y;
+            lock.unlock(stamp);
+        }
 
-      public void WLI_Us() {
-          try {
-              StampedLock lock = this.lock;
-              long stamp = lock.writeLockInterruptibly();
-              x = 1;
-              y = 2;
-              lock.unlock(stamp);
-          } catch (InterruptedException e) {
-              throw new RuntimeException(e);
-          }
-      }
+        public void WLI_Us() {
+            try {
+                StampedLock lock = this.lock;
+                long stamp = lock.writeLockInterruptibly();
+                x = 1;
+                y = 2;
+                lock.unlock(stamp);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static class MyHook extends Thread {

@@ -44,24 +44,24 @@ public class TestHeuristicsUnlock {
     }
 
     public static void main(String[] args) throws Exception {
-        testWith("adaptive",        Mode.PRODUCT);
-        testWith("static",          Mode.PRODUCT);
-        testWith("compact",         Mode.PRODUCT);
+        testWith("adaptive", Mode.PRODUCT);
+        testWith("static", Mode.PRODUCT);
+        testWith("compact", Mode.PRODUCT);
 
-        testWith("traversal",       Mode.EXPERIMENTAL);
+        testWith("traversal", Mode.EXPERIMENTAL);
 
-        testWith("aggressive",      Mode.DIAGNOSTIC);
-        testWith("passive",         Mode.DIAGNOSTIC);
+        testWith("aggressive", Mode.DIAGNOSTIC);
+        testWith("passive", Mode.DIAGNOSTIC);
     }
 
     private static void testWith(String h, Mode mode) throws Exception {
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:-UnlockDiagnosticVMOptions",
-                                    "-XX:-UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    "-XX:ShenandoahGCHeuristics=" + h,
-                                    "-version"
+                    "-XX:-UnlockDiagnosticVMOptions",
+                    "-XX:-UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-version"
             );
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             switch (mode) {
@@ -77,11 +77,11 @@ public class TestHeuristicsUnlock {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:+UnlockDiagnosticVMOptions",
-                                    "-XX:-UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    "-XX:ShenandoahGCHeuristics=" + h,
-                                    "-version"
+                    "-XX:+UnlockDiagnosticVMOptions",
+                    "-XX:-UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-version"
             );
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             switch (mode) {
@@ -97,11 +97,11 @@ public class TestHeuristicsUnlock {
 
         {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:-UnlockDiagnosticVMOptions",
-                                    "-XX:+UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    "-XX:ShenandoahGCHeuristics=" + h,
-                                    "-version"
+                    "-XX:-UnlockDiagnosticVMOptions",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-version"
             );
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             switch (mode) {

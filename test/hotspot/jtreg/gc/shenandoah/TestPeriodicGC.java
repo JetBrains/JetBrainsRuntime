@@ -56,53 +56,53 @@ public class TestPeriodicGC {
 
     public static void main(String[] args) throws Exception {
         if (args.length > 0 && args[0].equals("test")) {
-           Thread.sleep(5000); // stay idle
-           return;
+            Thread.sleep(5000); // stay idle
+            return;
         }
 
         String[] enabled = new String[] {
-           "adaptive",
-           "compact",
-           "static",
-           "traversal",
+                "adaptive",
+                "compact",
+                "static",
+                "traversal",
         };
 
         String[] disabled = new String[] {
-           "aggressive",
-           "passive",
+                "aggressive",
+                "passive",
         };
 
         for (String h : enabled) {
             testWith("Short period with " + h,
-                true,
-                "-Xlog:gc",
-                "-XX:+UnlockDiagnosticVMOptions",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+UseShenandoahGC",
-                "-XX:ShenandoahGCHeuristics=" + h,
-                "-XX:ShenandoahGuaranteedGCInterval=1000"
+                    true,
+                    "-Xlog:gc",
+                    "-XX:+UnlockDiagnosticVMOptions",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-XX:ShenandoahGuaranteedGCInterval=1000"
             );
 
             testWith("Long period with " + h,
-                false,
-                "-Xlog:gc",
-                "-XX:+UnlockDiagnosticVMOptions",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+UseShenandoahGC",
-                "-XX:ShenandoahGCHeuristics=" + h,
-                "-XX:ShenandoahGuaranteedGCInterval=100000" // deliberately too long
+                    false,
+                    "-Xlog:gc",
+                    "-XX:+UnlockDiagnosticVMOptions",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-XX:ShenandoahGuaranteedGCInterval=100000" // deliberately too long
             );
         }
 
         for (String h : disabled) {
             testWith("Short period with " + h,
-                false,
-                "-Xlog:gc",
-                "-XX:+UnlockDiagnosticVMOptions",
-                "-XX:+UnlockExperimentalVMOptions",
-                "-XX:+UseShenandoahGC",
-                "-XX:ShenandoahGCHeuristics=" + h,
-                "-XX:ShenandoahGuaranteedGCInterval=1000"
+                    false,
+                    "-Xlog:gc",
+                    "-XX:+UnlockDiagnosticVMOptions",
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-XX:ShenandoahGCHeuristics=" + h,
+                    "-XX:ShenandoahGuaranteedGCInterval=1000"
             );
         }
     }

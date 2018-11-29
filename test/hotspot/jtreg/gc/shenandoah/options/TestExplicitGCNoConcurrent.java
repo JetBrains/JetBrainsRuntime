@@ -45,30 +45,30 @@ public class TestExplicitGCNoConcurrent {
         }
 
         String[] concurrent = new String[] {
-            "Pause Init Mark",
-            "Pause Final Mark",
-            "Pause Init Update Refs",
-            "Pause Final Update Refs",
-            "Pause Init Traversal",
-            "Pause Final Traversal",
+                "Pause Init Mark",
+                "Pause Final Mark",
+                "Pause Init Update Refs",
+                "Pause Final Update Refs",
+                "Pause Init Traversal",
+                "Pause Final Traversal",
         };
 
         String[] opts = new String[] {
-            "",
-            "-XX:-ExplicitGCInvokesConcurrent",
-            "-XX:+ExplicitGCInvokesConcurrent"
+                "",
+                "-XX:-ExplicitGCInvokesConcurrent",
+                "-XX:+ExplicitGCInvokesConcurrent"
         };
 
         for (String opt : opts) {
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-                                    "-XX:+UnlockExperimentalVMOptions",
-                                    "-XX:+UseShenandoahGC",
-                                    "-Xlog:gc",
-                                    "-XX:+UnlockDiagnosticVMOptions",
-                                    opt,
-                                    "-XX:ShenandoahGCHeuristics=passive",
-                                    TestExplicitGCNoConcurrent.class.getName(),
-                                    "test");
+                    "-XX:+UnlockExperimentalVMOptions",
+                    "-XX:+UseShenandoahGC",
+                    "-Xlog:gc",
+                    "-XX:+UnlockDiagnosticVMOptions",
+                    opt,
+                    "-XX:ShenandoahGCHeuristics=passive",
+                    TestExplicitGCNoConcurrent.class.getName(),
+                    "test");
             OutputAnalyzer output = new OutputAnalyzer(pb.start());
             for (String p : concurrent) {
                 output.shouldNotContain(p);

@@ -33,6 +33,7 @@
  */
 
 import jdk.internal.misc.Unsafe;
+
 import java.lang.reflect.Field;
 
 public class TestMaybeNullUnsafeAccess {
@@ -54,7 +55,7 @@ public class TestMaybeNullUnsafeAccess {
     }
 
     static A test_helper(Object o) {
-        return (A)o;
+        return (A) o;
     }
 
     static int test(Object o) {

@@ -59,94 +59,94 @@ public class TestLoopMiningArguments {
 
     public static void testDefaultGC() throws Exception {
         testWith("Default GC should have CLS enabled, LSM = 1000",
-            true, 1000);
+                true, 1000);
 
         testWith("Default GC with +CLS should set LSM = 1",
-            true, 1,
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Default GC with +CLS should not override LSM>1",
-            true, 10,
-            "-XX:LoopStripMiningIter=10",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 10,
+                "-XX:LoopStripMiningIter=10",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Default GC with +CLS should not override LSM=1",
-            true, 1,
-            "-XX:LoopStripMiningIter=1",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:LoopStripMiningIter=1",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Default GC with +CLS should override LSM=0 to 1",
-            true, 1,
-            "-XX:LoopStripMiningIter=0",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:LoopStripMiningIter=0",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Default GC with -CLS should set LSM = 0",
-            false, 0,
-            "-XX:-UseCountedLoopSafepoints"
+                false, 0,
+                "-XX:-UseCountedLoopSafepoints"
         );
 
         testWith("Default GC with -CLS should override LSM to 0",
-            false, 0,
-            "-XX:LoopStripMiningIter=10",
-            "-XX:-UseCountedLoopSafepoints"
+                false, 0,
+                "-XX:LoopStripMiningIter=10",
+                "-XX:-UseCountedLoopSafepoints"
         );
     }
 
     public static void testShenandoah() throws Exception {
         testWith("Shenandoah should have CLS and LSM enabled",
-            true, 1000,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC"
+                true, 1000,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC"
         );
 
         testWith("Shenandoah with +CLS should set LSM = 1",
-            true, 1,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Shenandoah GC with +CLS should not override LSM>1",
-            true, 10,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:LoopStripMiningIter=10",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 10,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:LoopStripMiningIter=10",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Shenandoah GC with +CLS should not override LSM=1",
-            true, 1,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:LoopStripMiningIter=1",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:LoopStripMiningIter=1",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Shenandoah GC with +CLS should override LSM=0 to 1",
-            true, 1,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:LoopStripMiningIter=0",
-            "-XX:+UseCountedLoopSafepoints"
+                true, 1,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:LoopStripMiningIter=0",
+                "-XX:+UseCountedLoopSafepoints"
         );
 
         testWith("Shenandoah GC with -CLS should set LSM = 0",
-            false, 0,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:-UseCountedLoopSafepoints"
+                false, 0,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:-UseCountedLoopSafepoints"
         );
 
         testWith("Shenandoah GC with -CLS should override LSM to 0",
-            false, 0,
-            "-XX:+UnlockExperimentalVMOptions",
-            "-XX:+UseShenandoahGC",
-            "-XX:LoopStripMiningIter=10",
-            "-XX:-UseCountedLoopSafepoints"
+                false, 0,
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:LoopStripMiningIter=10",
+                "-XX:-UseCountedLoopSafepoints"
         );
     }
 

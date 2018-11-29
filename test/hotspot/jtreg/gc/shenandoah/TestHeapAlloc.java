@@ -42,41 +42,41 @@ import java.util.concurrent.*;
 
 public class TestHeapAlloc {
 
-  public static void main(String[] args) throws Exception {
-    if (!Platform.isDebugBuild()) {
-      System.out.println("Test requires debug build. Please silently for release build");
-      return;
-    }
-
-    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
-        true,
-        "-Xmx1G",
-        "-Xms256M",
-        "-XX:+UnlockExperimentalVMOptions",
-        "-XX:+UseShenandoahGC",
-        "-XX:ShenandoahFailHeapExpansionAfter=50",
-        "-Xlog:gc+region=debug",
-        AllocALotObjects.class.getName());
-    OutputAnalyzer output = new OutputAnalyzer(pb.start());
-    output.shouldContain("Artificially fails heap expansion");
-    output.shouldHaveExitValue(0);
-  }
-
-  public static class AllocALotObjects {
-    public static void main(String[] args) {
-      try {
-        ArrayList<String> list = new ArrayList<>();
-        long count = 500 * 1024 * 1024 / 16; // 500MB allocation
-        for (long index = 0; index < count; index ++) {
-          String sink = "string " + index;
-          list.add(sink);
+    public static void main(String[] args) throws Exception {
+        if (!Platform.isDebugBuild()) {
+            System.out.println("Test requires debug build. Please silently for release build");
+            return;
         }
 
-        int index = ThreadLocalRandom.current().nextInt(0, (int)count);
-        System.out.print(list.get(index));
-      } catch (OutOfMemoryError e) {
-      }
+        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+                true,
+                "-Xmx1G",
+                "-Xms256M",
+                "-XX:+UnlockExperimentalVMOptions",
+                "-XX:+UseShenandoahGC",
+                "-XX:ShenandoahFailHeapExpansionAfter=50",
+                "-Xlog:gc+region=debug",
+                AllocALotObjects.class.getName());
+        OutputAnalyzer output = new OutputAnalyzer(pb.start());
+        output.shouldContain("Artificially fails heap expansion");
+        output.shouldHaveExitValue(0);
     }
-  }
+
+    public static class AllocALotObjects {
+        public static void main(String[] args) {
+            try {
+                ArrayList<String> list = new ArrayList<>();
+                long count = 500 * 1024 * 1024 / 16; // 500MB allocation
+                for (long index = 0; index < count; index++) {
+                    String sink = "string " + index;
+                    list.add(sink);
+                }
+
+                int index = ThreadLocalRandom.current().nextInt(0, (int) count);
+                System.out.print(list.get(index));
+            } catch (OutOfMemoryError e) {
+            }
+        }
+    }
 
 }

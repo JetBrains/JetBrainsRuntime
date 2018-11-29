@@ -38,9 +38,9 @@ public class TestHeapDump {
     private static final int ARRAY_SIZE = 1000;
 
     private static final int EXPECTED_OBJECTS =
-        ARRAY_SIZE +   // array reachable from instance field
-        1 +            // static field root
-        1;             // local field root
+            ARRAY_SIZE +   // array reachable from instance field
+                    1 +            // static field root
+                    1;             // local field root
 
     static {
         try {
@@ -48,7 +48,7 @@ public class TestHeapDump {
         } catch (UnsatisfiedLinkError ule) {
             System.err.println("Could not load TestHeapDump library");
             System.err.println("java.library.path: "
-                + System.getProperty("java.library.path"));
+                    + System.getProperty("java.library.path"));
             throw ule;
         }
     }
@@ -56,7 +56,7 @@ public class TestHeapDump {
     native static int heapdump(Class<?> filterClass);
 
     public static void main(String args[]) {
-      new TestHeapDump().run();
+        new TestHeapDump().run();
     }
 
     // This root needs to be discovered

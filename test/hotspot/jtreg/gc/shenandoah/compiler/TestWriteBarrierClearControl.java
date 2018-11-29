@@ -55,10 +55,10 @@ public class TestWriteBarrierClearControl {
         }
         try {
             test1(null);
-        } catch(NullPointerException npe) {}
+        } catch (NullPointerException npe) {}
         fo = null;
         try {
             test2();
-        } catch(NullPointerException npe) {}
+        } catch (NullPointerException npe) {}
     }
 }

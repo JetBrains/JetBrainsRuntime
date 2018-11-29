@@ -55,10 +55,10 @@ public class TestNullCheck {
         }
         try {
             test1(null);
-        } catch(NullPointerException npe) {}
+        } catch (NullPointerException npe) {}
         static_obj = null;
         try {
             test2();
-        } catch(NullPointerException npe) {}
+        } catch (NullPointerException npe) {}
     }
 }

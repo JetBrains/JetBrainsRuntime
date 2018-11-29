@@ -44,7 +44,7 @@ public class TestMemoryMXBeans {
         }
 
         long initSize = 1L * Integer.parseInt(args[0]) * 1024 * 1024;
-        long maxSize =  1L * Integer.parseInt(args[1]) * 1024 * 1024;
+        long maxSize  = 1L * Integer.parseInt(args[1]) * 1024 * 1024;
 
         testMemoryBean(initSize, maxSize);
     }

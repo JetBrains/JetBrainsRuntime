@@ -34,6 +34,7 @@
 
 import java.util.*;
 import java.util.concurrent.*;
+
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 
@@ -41,15 +42,15 @@ public class TestSelectiveBarrierFlags {
 
     public static void main(String[] args) throws Exception {
         String[][] opts = {
-            new String[]{ "ShenandoahKeepAliveBarrier" },
-            new String[]{ "ShenandoahWriteBarrier" },
-            new String[]{ "ShenandoahReadBarrier" },
-            // StoreValRead+SATB are actually compatible, but we need to protect against
-            // StorveValEnqueue+SATB. TODO: Make it better.
-            new String[]{ "ShenandoahSATBBarrier", "ShenandoahStoreValReadBarrier", "ShenandoahStoreValEnqueueBarrier" },
-            new String[]{ "ShenandoahCASBarrier" },
-            new String[]{ "ShenandoahAcmpBarrier" },
-            new String[]{ "ShenandoahCloneBarrier" },
+                new String[] { "ShenandoahKeepAliveBarrier" },
+                new String[] { "ShenandoahWriteBarrier" },
+                new String[] { "ShenandoahReadBarrier" },
+                // StoreValRead+SATB are actually compatible, but we need to protect against
+                // StorveValEnqueue+SATB. TODO: Make it better.
+                new String[] { "ShenandoahSATBBarrier", "ShenandoahStoreValReadBarrier", "ShenandoahStoreValEnqueueBarrier" },
+                new String[] { "ShenandoahCASBarrier" },
+                new String[] { "ShenandoahAcmpBarrier" },
+                new String[] { "ShenandoahCloneBarrier" },
         };
 
         int size = 1;
@@ -76,7 +77,7 @@ public class TestSelectiveBarrierFlags {
                 // Zero means no flag is selected from the group.
                 int choice = t % (l.length + 1);
                 for (int e = 0; e < l.length; e++) {
-                  conf.add("-XX:" + ((choice == (e + 1)) ? "+" : "-") + l[e]);
+                    conf.add("-XX:" + ((choice == (e + 1)) ? "+" : "-") + l[e]);
                 }
                 t = t / (l.length + 1);
             }

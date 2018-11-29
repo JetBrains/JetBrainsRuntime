@@ -37,10 +37,11 @@ public class ShenandoahJNICritical {
         System.loadLibrary("ShenandoahJNICritical");
     }
 
-    private static final int NUM_RUNS = 10000;
-    private static final int ARRAY_SIZE=10000;
+    private static final int NUM_RUNS   = 10000;
+    private static final int ARRAY_SIZE = 10000;
     private static int[] a;
     private static int[] b;
+
     private static native void copyAtoB(int[] a, int[] b);
 
     public static void main(String[] args) {
@@ -57,7 +58,7 @@ public class ShenandoahJNICritical {
         fillArray(a);
         copyAtoB(a, b);
         copyAtoB(a1, b1); // Don't optimize out garbage arrays.
-        if (! Arrays.equals(a, b)) {
+        if (!Arrays.equals(a, b)) {
             throw new RuntimeException("arrays not equal");
         }
     }

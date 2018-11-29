@@ -33,7 +33,7 @@ import java.util.Arrays;
 public class C1VectorizedMismatch {
 
     private static final int NUM_RUNS = 10000;
-    private static final int ARRAY_SIZE=10000;
+    private static final int ARRAY_SIZE = 10000;
     private static int[] a;
     private static int[] b;
 
@@ -50,7 +50,7 @@ public class C1VectorizedMismatch {
         int[] b1 = new int[ARRAY_SIZE];
         fillArray(a);
         System.arraycopy(a, 0, b, 0, ARRAY_SIZE);
-        if (! Arrays.equals(a, b)) {
+        if (!Arrays.equals(a, b)) {
             throw new RuntimeException("arrays not equal");
         }
     }

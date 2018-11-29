@@ -31,7 +31,7 @@
 public class C1ArrayCopyNPE {
 
     private static final int NUM_RUNS = 10000;
-    private static final int ARRAY_SIZE=10000;
+    private static final int ARRAY_SIZE = 10000;
     private static int[] a;
     private static int[] b;
 
