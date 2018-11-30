@@ -87,7 +87,25 @@ class PacketStream {
         vm.waitForTargetReply(pkt);
 
         if (pkt.errorCode != Packet.ReplyNoError) {
-            throw new JDWPException(pkt.errorCode);
+            JDWPException e = new JDWPException(pkt.errorCode);
+            if (pkt.errorCode == JDWP.Error.INTERNAL && pkt.data.length > 0) {
+                // try to read the internal exception cause if any
+                try {
+                    e.initCause(new Throwable("(remote exception) " + readString()) {
+                        @Override
+                        public synchronized Throwable fillInStackTrace() {
+                            return this;
+                        }
+
+                        @Override
+                        public String toString() {
+                            return getMessage();
+                        }
+                    });
+                } catch (Exception ignored) {
+                }
+            }
+            throw e;
         }
     }
 
