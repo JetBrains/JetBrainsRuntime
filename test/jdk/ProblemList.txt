@@ -682,7 +682,6 @@ javax/sound/midi/Sequencer/MetaCallback.java 8178698 linux-all,solaris-all
 com/sun/java/swing/plaf/windows/Test8173145.java 8198334 windows-all
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java 8233177 linux-all
 
-javax/swing/border/Test6981576.java 8198339 generic-all
 javax/swing/JComponent/7154030/bug7154030.java 7190978 generic-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java 8067986 generic-all
 javax/swing/JComponent/6683775/bug6683775.java 8172337 generic-all
