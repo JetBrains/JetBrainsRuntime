@@ -102,6 +102,9 @@ const char* GCCause::to_string(GCCause::Cause cause) {
     case _g1_humongous_allocation:
       return "G1 Humongous Allocation";
 
+    case _dcmd_gc_run:
+      return "Diagnostic Command";
+
     case _shenandoah_allocation_failure_evac:
       return "Allocation Failure During Evac";
 
@@ -116,9 +119,6 @@ const char* GCCause::to_string(GCCause::Cause cause) {
 
     case _shenandoah_upgrade_to_full_gc:
       return "Shenandoah Upgrade To Full GC";
-
-    case _dcmd_gc_run:
-      return "Diagnostic Command";
 
     case _z_timer:
       return "Timer";

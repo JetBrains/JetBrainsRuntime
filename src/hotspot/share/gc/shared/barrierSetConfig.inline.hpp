@@ -36,11 +36,11 @@
 #if INCLUDE_G1GC
 #include "gc/g1/g1BarrierSet.inline.hpp"
 #endif
-#if INCLUDE_ZGC
-#include "gc/z/zBarrierSet.inline.hpp"
-#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoahBarrierSet.inline.hpp"
+#endif
+#if INCLUDE_ZGC
+#include "gc/z/zBarrierSet.inline.hpp"
 #endif
 
 #endif // SHARE_VM_GC_SHARED_BARRIERSETCONFIG_INLINE_HPP
