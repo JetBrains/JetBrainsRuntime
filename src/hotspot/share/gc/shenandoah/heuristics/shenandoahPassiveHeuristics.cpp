@@ -52,6 +52,9 @@ ShenandoahPassiveHeuristics::ShenandoahPassiveHeuristics() : ShenandoahHeuristic
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCASBarrier);
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahAcmpBarrier);
   SHENANDOAH_ERGO_DISABLE_FLAG(ShenandoahCloneBarrier);
+
+  // Final configuration checks
+  // No barriers are required to run.
 }
 
 bool ShenandoahPassiveHeuristics::should_start_normal_gc() const {
