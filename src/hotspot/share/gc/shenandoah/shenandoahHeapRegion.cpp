@@ -437,7 +437,7 @@ void ShenandoahHeapRegion::print_on(outputStream* st) const {
   st->print("|S " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_shared_allocs()),   proper_unit_for_byte_size(get_shared_allocs()));
   st->print("|L " SIZE_FORMAT_W(5) "%1s", byte_size_in_proper_unit(get_live_data_bytes()), proper_unit_for_byte_size(get_live_data_bytes()));
   st->print("|CP " SIZE_FORMAT_W(3), _critical_pins);
-  st->print("|SN " UINT64_FORMAT_HEX_W(12) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8) ", " UINT64_FORMAT_HEX_W(8),
+  st->print("|SN " UINT64_FORMAT_X_W(12) ", " UINT64_FORMAT_X_W(8) ", " UINT64_FORMAT_X_W(8) ", " UINT64_FORMAT_X_W(8),
             seqnum_first_alloc_mutator(), seqnum_last_alloc_mutator(),
             seqnum_first_alloc_gc(), seqnum_last_alloc_gc());
   st->cr();
