@@ -27,11 +27,17 @@ import java.lang.management.ManagementFactory;
 /*
  * @test TestEnabled
  * @key gc
- * @requires vm.gc.Shenandoah
+ * @requires vm.gc.Shenandoah & vm.gc == "null"
  * @run main/othervm -Dexpected=false -Xmx64m                                                       TestEnabled
  * @run main/othervm -Dexpected=true  -Xmx64m -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC TestEnabled
  */
 
+/*
+ * @test TestEnabledAlready
+ * @key gc
+ * @requires vm.gc.Shenandoah & vm.gc == "Shenandoah"
+ * @run main/othervm -Dexpected=true -Xmx64m                                                        TestEnabled
+ */
 public class TestEnabled {
 
     public static void main(String... args) {
