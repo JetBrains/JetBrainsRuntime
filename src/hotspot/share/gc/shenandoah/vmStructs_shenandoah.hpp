@@ -32,21 +32,8 @@
   nonstatic_field(ShenandoahHeap, _num_regions,              size_t)                    \
   volatile_nonstatic_field(ShenandoahHeap, _used,            size_t)                    \
   volatile_nonstatic_field(ShenandoahHeap, _committed,       size_t)                    \
-  nonstatic_field(ShenandoahHeap,          _regions, ShenandoahHeapRegion**)            \
-  nonstatic_field(ShenandoahHeapRegion,    _state,  ShenandoahHeapRegion::RegionState)  \
-  nonstatic_field(ShenandoahHeapRegion,    _region_number,   size_t)
 
-#define VM_INT_CONSTANTS_SHENANDOAH(declare_constant, declare_constant_with_value)    \
-  declare_constant(ShenandoahHeapRegion::_empty_uncommitted)                          \
-  declare_constant(ShenandoahHeapRegion::_empty_committed)                            \
-  declare_constant(ShenandoahHeapRegion::_regular)                                    \
-  declare_constant(ShenandoahHeapRegion::_humongous_start)                            \
-  declare_constant(ShenandoahHeapRegion::_humongous_cont)                             \
-  declare_constant(ShenandoahHeapRegion::_pinned_humongous_start)                     \
-  declare_constant(ShenandoahHeapRegion::_cset)                                       \
-  declare_constant(ShenandoahHeapRegion::_pinned)                                     \
-  declare_constant(ShenandoahHeapRegion::_pinned_cset)                                \
-  declare_constant(ShenandoahHeapRegion::_trash)
+#define VM_INT_CONSTANTS_SHENANDOAH(declare_constant, declare_constant_with_value)
 
 #define VM_TYPES_SHENANDOAH(declare_type,                                     \
                             declare_toplevel_type,                            \
@@ -55,6 +42,5 @@
   declare_type(ShenandoahHeapRegion, ContiguousSpace)                         \
   declare_toplevel_type(ShenandoahHeap*)                                      \
   declare_toplevel_type(ShenandoahHeapRegion*)                                \
-  declare_integer_type(ShenandoahHeapRegion::RegionState)                     \
 
 #endif // SHARE_VM_GC_SHENANDOAH_VMSTRUCTS_SHENANDOAH_HPP
