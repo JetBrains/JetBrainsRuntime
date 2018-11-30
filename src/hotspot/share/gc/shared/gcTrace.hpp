@@ -198,11 +198,6 @@ class OldGCTracer : public GCTracer {
   void send_concurrent_mode_failure_event();
 };
 
-class ShenandoahTracer : public GCTracer {
-public:
-  ShenandoahTracer() : GCTracer(Shenandoah) {}
-};
-
 class ParallelOldTracer : public OldGCTracer {
   ParallelOldGCInfo _parallel_old_gc_info;
 

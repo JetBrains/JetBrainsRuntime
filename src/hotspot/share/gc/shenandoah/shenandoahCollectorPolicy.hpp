@@ -25,8 +25,8 @@
 #define SHARE_VM_GC_SHENANDOAH_SHENANDOAHCOLLECTORPOLICY_HPP
 
 #include "gc/shared/collectorPolicy.hpp"
-#include "gc/shared/gcTrace.hpp"
 #include "gc/shenandoah/shenandoahHeap.hpp"
+#include "gc/shenandoah/shenandoahTracer.hpp"
 #include "utilities/ostream.hpp"
 
 class ShenandoahCollectorPolicy: public CollectorPolicy {
