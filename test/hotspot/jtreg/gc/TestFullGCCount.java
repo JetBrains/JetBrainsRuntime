@@ -26,7 +26,8 @@
  * @bug 7072527
  * @summary CMS: JMM GC counters overcount in some cases
  * @requires !(vm.gc == "ConcMarkSweep" & vm.opt.ExplicitGCInvokesConcurrent == true)
- * @requires !(vm.gc == "Shenandoah"    & vm.opt.ExplicitGCInvokesConcurrent == true)
+ * @comment Shenandoah has "ExplicitGCInvokesConcurrent" on by default
+ * @requires !(vm.gc == "Shenandoah"    & vm.opt.ExplicitGCInvokesConcurrent != false)
  * @modules java.management
  * @run main/othervm -Xlog:gc TestFullGCCount
  */
