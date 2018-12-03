@@ -40,20 +40,20 @@ def jdk_modules = ["java.base", "java.logging", "java.prefs",
 def jdk_class_dirs = []
 
 jdk_modules.collect(jdk_class_dirs) {
-    new File("../../../jdk/src/" + it + "/share/classes")
+    new File("../../../src/" + it + "/share/classes")
 }
 
 if (OperatingSystem.current().isMacOsX())
     jdk_modules.collect(jdk_class_dirs) {
-        "../../../jdk/src/" + it + "/macosx/classes"
+        "../../../src/" + it + "/macosx/classes"
     }
 else if (OperatingSystem.current().isLinux())
     jdk_modules.collect(jdk_class_dirs) {
-        "../../../jdk/src/" + it + "/solaris/classes"
+        "../../../src/" + it + "/solaris/classes"
     }
 else
     jdk_modules.collect(jdk_class_dirs) {
-        "../../../jdk/src/" + it + "/windows/classes"
+        "../../../src/" + it + "/windows/classes"
     }
 
 sourceSets.main.java.srcDirs = jdk_class_dirs
