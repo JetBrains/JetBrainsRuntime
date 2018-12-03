@@ -50,11 +50,11 @@
 #include "gc/serial/defNewGeneration.hpp"
 #include "gc/serial/vmStructs_serial.hpp"
 #endif
-#if INCLUDE_ZGC
-#include "gc/z/vmStructs_z.hpp"
-#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/vmStructs_shenandoah.hpp"
+#endif
+#if INCLUDE_ZGC
+#include "gc/z/vmStructs_z.hpp"
 #endif
 
 #define VM_STRUCTS_GC(nonstatic_field,                                                                                               \
@@ -70,15 +70,15 @@
   G1GC_ONLY(VM_STRUCTS_G1GC(nonstatic_field,                                                                                         \
                             volatile_nonstatic_field,                                                                                \
                             static_field))                                                                                           \
-  SHENANDOAHGC_ONLY(VM_STRUCTS_SHENANDOAH(nonstatic_field,                                                                           \
-                               volatile_nonstatic_field,                                                                             \
-                               static_field))                                                                                        \
   PARALLELGC_ONLY(VM_STRUCTS_PARALLELGC(nonstatic_field,                                                                             \
                                         volatile_nonstatic_field,                                                                    \
                                         static_field))                                                                               \
   SERIALGC_ONLY(VM_STRUCTS_SERIALGC(nonstatic_field,                                                                                 \
                                     volatile_nonstatic_field,                                                                        \
                                     static_field))                                                                                   \
+  SHENANDOAHGC_ONLY(VM_STRUCTS_SHENANDOAH(nonstatic_field,                                                                           \
+                               volatile_nonstatic_field,                                                                             \
+                               static_field))                                                                                        \
   ZGC_ONLY(VM_STRUCTS_ZGC(nonstatic_field,                                                                                           \
                           volatile_nonstatic_field,                                                                                  \
                           static_field))                                                                                             \
@@ -178,15 +178,15 @@
   G1GC_ONLY(VM_TYPES_G1GC(declare_type,                                   \
                           declare_toplevel_type,                          \
                           declare_integer_type))                          \
-  SHENANDOAHGC_ONLY(VM_TYPES_SHENANDOAH(declare_type,                     \
-                             declare_toplevel_type,                       \
-                             declare_integer_type))                       \
   PARALLELGC_ONLY(VM_TYPES_PARALLELGC(declare_type,                       \
                                       declare_toplevel_type,              \
                                       declare_integer_type))              \
   SERIALGC_ONLY(VM_TYPES_SERIALGC(declare_type,                           \
                                   declare_toplevel_type,                  \
                                   declare_integer_type))                  \
+  SHENANDOAHGC_ONLY(VM_TYPES_SHENANDOAH(declare_type,                     \
+                             declare_toplevel_type,                       \
+                             declare_integer_type))                       \
   ZGC_ONLY(VM_TYPES_ZGC(declare_type,                                     \
                         declare_toplevel_type,                            \
                         declare_integer_type))                            \
@@ -258,12 +258,12 @@
                                             declare_constant_with_value))   \
   G1GC_ONLY(VM_INT_CONSTANTS_G1GC(declare_constant,                         \
                                   declare_constant_with_value))             \
-  SHENANDOAHGC_ONLY(VM_INT_CONSTANTS_SHENANDOAH(declare_constant,           \
-                                     declare_constant_with_value))          \
   PARALLELGC_ONLY(VM_INT_CONSTANTS_PARALLELGC(declare_constant,             \
                                               declare_constant_with_value)) \
   SERIALGC_ONLY(VM_INT_CONSTANTS_SERIALGC(declare_constant,                 \
                                           declare_constant_with_value))     \
+  SHENANDOAHGC_ONLY(VM_INT_CONSTANTS_SHENANDOAH(declare_constant,           \
+                                     declare_constant_with_value))          \
   ZGC_ONLY(VM_INT_CONSTANTS_ZGC(declare_constant,                           \
                                 declare_constant_with_value))               \
                                                                             \

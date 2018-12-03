@@ -41,11 +41,11 @@
 #if INCLUDE_SERIALGC
 #include "gc/serial/serial_globals.hpp"
 #endif
-#if INCLUDE_ZGC
-#include "gc/z/z_globals.hpp"
-#endif
 #if INCLUDE_SHENANDOAHGC
 #include "gc/shenandoah/shenandoah_globals.hpp"
+#endif
+#if INCLUDE_ZGC
+#include "gc/z/z_globals.hpp"
 #endif
 
 #define GC_FLAGS(develop,                                                   \
@@ -127,7 +127,7 @@
     constraint,                                                             \
     writeable))                                                             \
                                                                             \
-  SHENANDOAHGC_ONLY(GC_SHENANDOAH_FLAGS(                                    \
+  SERIALGC_ONLY(GC_SERIAL_FLAGS(                                            \
     develop,                                                                \
     develop_pd,                                                             \
     product,                                                                \
@@ -143,7 +143,7 @@
     constraint,                                                             \
     writeable))                                                             \
                                                                             \
-  SERIALGC_ONLY(GC_SERIAL_FLAGS(                                            \
+  SHENANDOAHGC_ONLY(GC_SHENANDOAH_FLAGS(                                    \
     develop,                                                                \
     develop_pd,                                                             \
     product,                                                                \
