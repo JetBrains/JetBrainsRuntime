@@ -690,7 +690,7 @@ public final class LWCToolkit extends LWToolkit {
                 invocations.push(currentQueue = new LinkedBlockingQueue<>());
             }
 
-            FutureTask<T> task = new FutureTask(selector) {
+            FutureTask<T> task = new FutureTask<T>(selector) {
                 @Override
                 protected void done() {
                     synchronized (invocations) {
