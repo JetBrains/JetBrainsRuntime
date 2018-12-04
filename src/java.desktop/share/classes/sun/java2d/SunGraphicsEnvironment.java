@@ -76,6 +76,12 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
                 ("true".equals(AccessController.doPrivileged(
                         new GetPropertyAction("sun.java2d.uiScale.enabled", "true"))) &&
                 isWindows_8_1_orUpper());
+        if (uiScaleEnabled && FontUtilities.isWindows) {
+            AccessController.doPrivileged((PrivilegedAction<Object>) () -> {
+                System.setProperty("swing.bufferPerWindow", "false"); // todo: until JRE-489 is fixed
+                return null;
+            });
+        }
         debugScale = uiScaleEnabled ? getScaleFactor("sun.java2d.uiScale") : -1;
     }
 
