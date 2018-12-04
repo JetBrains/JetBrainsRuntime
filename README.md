@@ -41,6 +41,15 @@ $ docker run -v `pwd`../../../../:/JetBrainsRuntime -it 942ea9900054
 
 ```
 
+## Linux (Ubuntu 18.10 desktop)
+```
+$ sudo apt-get install autoconf make build-essential libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev install libcups2-dev libfontconfig1-dev libasound2-dev 
+
+$ cd JetBrainsRuntime
+$ sh ./configure --disable-warnings-as-errors
+$ make images
+```
+
 ## Windows
 #### TBD
 
