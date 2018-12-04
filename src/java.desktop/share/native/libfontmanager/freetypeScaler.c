@@ -2002,7 +2002,8 @@ Java_sun_font_FreetypeFontScaler_getGlyphPointNative(
                              sunFontIDs.pt2DFloatCtr, x, y);
 }
 
-void JNI_OnUnload(JavaVM *vm, void *reserved) {
+JNIEXPORT void JNICALL
+JNI_OnUnload(JavaVM *vm, void *reserved) {
     if (libFontConfig != NULL) {
 #ifndef _WIN32
         dlclose(libFontConfig);
