@@ -29,6 +29,9 @@
 #define S_ISCHR(mode)   (((mode) & _S_IFCHR) == _S_IFCHR)
 #define S_ISFIFO(mode)  (((mode) & _S_IFIFO) == _S_IFIFO)
 
+// strtok_s is the Windows thread-safe equivalent of POSIX strtok_r
+#define strtok_r strtok_s
+
 // Information about the protection of the page at address '0' on this os.
 static bool zero_page_read_protected() { return true; }
 
