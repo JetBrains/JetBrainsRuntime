@@ -66,6 +66,7 @@
 #define  FT26Dot6ToFloat(x)  ((x) / ((float) (1<<6)))
 #define  ROUND(x) ((int) ((x<0) ? (x-0.5) : (x+0.5)))
 #define  FT26Dot6ToDouble(x)  ((x) / ((double) (1<<6)))
+#define  FT26Dot6ToInt(x) (((int)(x)) >> 6)
 #define  DEFAULT_DPI 72
 #define  ADJUST_FONT_SIZE(X, DPI) (((X)*DEFAULT_DPI + ((DPI)>>1))/(DPI))
 
