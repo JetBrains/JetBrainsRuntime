@@ -198,7 +198,9 @@ public class HeapSummary extends Tool {
 
        l = getFlagValue("UseShenandoahGC", flagMap);
        if (l == 1L) {
-           System.out.print("Shenandoah GC");
+           System.out.print("Shenandoah GC ");
+           l = getFlagValue("ParallelGCThreads", flagMap);
+           System.out.println("with " + l + " thread(s)");
            return;
        }
 
