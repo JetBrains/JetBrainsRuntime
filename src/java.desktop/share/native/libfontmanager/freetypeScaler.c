@@ -562,7 +562,7 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
 
             if (logFC) fprintf(stderr, "FC_LOG: %s ", fontName);
 
-            fcValue.u.s = fontName;
+            fcValue.u.s = (const unsigned char *)fontName;
             (*FcPatternAddPtr)(fcPattern, FC_FILE, fcValue, FcTrue);
             (*FcPatternAddBoolPtr)(fcPattern, FC_SCALABLE, FcTrue);
             double fcSize = FT26Dot6ToDouble(ADJUST_FONT_SIZE(context->ptsz, dpi));
