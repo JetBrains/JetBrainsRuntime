@@ -22,21 +22,21 @@
  */
 
 /*
- * @test RefprocSanity
+ * @test TestRefprocSanity
  * @summary Test that null references/referents work fine
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                                                             RefprocSanity
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify                                       RefprocSanity
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=aggressive RefprocSanity
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=traversal  RefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                                                             TestRefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify                                       TestRefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=aggressive TestRefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=traversal  TestRefprocSanity
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                       -XX:ShenandoahGCHeuristics=traversal  TestRefprocSanity
  */
 
 import java.lang.ref.*;
 
-public class RefprocSanity {
+public class TestRefprocSanity {
 
     static final long TARGET_MB = Long.getLong("target", 10_000); // 10 Gb allocation
     static final int WINDOW = 10_000;

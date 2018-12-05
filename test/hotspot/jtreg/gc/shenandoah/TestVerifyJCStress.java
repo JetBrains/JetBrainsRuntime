@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -22,69 +22,50 @@
  */
 
 /*
- * @test EvilSyncBug
- * @summary Tests for crash/assert when attaching init thread during shutdown
+ * @test TestVerifyJCStress
+ * @summary Tests that we pass at least one jcstress-like test with all verification turned on
  * @key gc
  * @requires vm.gc.Shenandoah
- * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run driver/timeout=480 EvilSyncBug
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+UseShenandoahGC -Xmx1g -Xms1g
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyObjectEquals
+ *                    -XX:ShenandoahGCHeuristics=passive -XX:+ShenandoahDegeneratedGC
+ *                    TestVerifyJCStress
+ *
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+UseShenandoahGC -Xmx1g -Xms1g
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyObjectEquals
+ *                    -XX:ShenandoahGCHeuristics=passive -XX:-ShenandoahDegeneratedGC
+ *                    TestVerifyJCStress
+ *
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+UseShenandoahGC -Xmx1g -Xms1g
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyObjectEquals -XX:+ShenandoahVerifyOptoBarriers
+ *                    -XX:ShenandoahGCHeuristics=adaptive
+ *                    TestVerifyJCStress
+ *
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+UseShenandoahGC -Xmx1g -Xms1g
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyObjectEquals -XX:+ShenandoahVerifyOptoBarriers
+ *                    -XX:ShenandoahGCHeuristics=static
+ *                    TestVerifyJCStress
+ *
+ * @run main/othervm  -XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions
+ *                    -XX:+UseShenandoahGC -Xmx1g -Xms1g
+ *                    -XX:+ShenandoahStoreCheck -XX:+ShenandoahVerify -XX:+VerifyObjectEquals -XX:+ShenandoahVerifyOptoBarriers
+ *                    -XX:ShenandoahGCHeuristics=traversal
+ *                    TestVerifyJCStress
  */
 
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
-import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.process.OutputAnalyzer;
-
-public class EvilSyncBug {
-
-    private static final int NUM_RUNS = 100;
-
-    static Thread[] hooks = new MyHook[10000];
+public class TestVerifyJCStress {
 
     public static void main(String[] args) throws Exception {
-        if (args.length > 0) {
-            test();
-        } else {
-            ExecutorService pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-
-            Future<?>[] fs = new Future<?>[NUM_RUNS];
-
-            for (int c = 0; c < NUM_RUNS; c++) {
-                Callable<Void> task = () -> {
-                    ProcessBuilder pb = ProcessTools.createJavaProcessBuilder("-Xms128m",
-                            "-Xmx128m",
-                            "-XX:+UnlockExperimentalVMOptions",
-                            "-XX:+UnlockDiagnosticVMOptions",
-                            "-XX:+UseShenandoahGC",
-                            "-XX:ShenandoahGCHeuristics=aggressive",
-                            "-XX:+ShenandoahStoreCheck",
-                            "EvilSyncBug", "test");
-                    OutputAnalyzer output = new OutputAnalyzer(pb.start());
-                    output.shouldHaveExitValue(0);
-                    return null;
-                };
-                fs[c] = pool.submit(task);
-            }
-
-            for (Future<?> f : fs) {
-                f.get();
-            }
-
-            pool.shutdown();
-            pool.awaitTermination(1, TimeUnit.HOURS);
-        }
-    }
-
-    private static void test() throws Exception {
-
-        for (int t = 0; t < hooks.length; t++) {
-            hooks[t] = new MyHook();
-        }
-
         ExecutorService service = Executors.newFixedThreadPool(
                 2,
                 r -> {
@@ -94,34 +75,26 @@ public class EvilSyncBug {
                 }
         );
 
-        List<Future<?>> futures = new ArrayList<>();
-        for (int c = 0; c < 100; c++) {
-            Runtime.getRuntime().addShutdownHook(hooks[c]);
-            final Test[] tests = new Test[1000];
+        for (int c = 0; c < 10000; c++) {
+            final Test[] tests = new Test[10000];
             for (int t = 0; t < tests.length; t++) {
                 tests[t] = new Test();
             }
 
             Future<?> f1 = service.submit(() -> {
-                Runtime.getRuntime().addShutdownHook(new MyHook());
                 IntResult2 r = new IntResult2();
                 for (Test test : tests) {
                     test.RL_Us(r);
                 }
             });
             Future<?> f2 = service.submit(() -> {
-                Runtime.getRuntime().addShutdownHook(new MyHook());
                 for (Test test : tests) {
                     test.WLI_Us();
                 }
             });
 
-            futures.add(f1);
-            futures.add(f2);
-        }
-
-        for (Future<?> f : futures) {
-            f.get();
+            f1.get();
+            f2.get();
         }
     }
 
@@ -152,15 +125,6 @@ public class EvilSyncBug {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-        }
-    }
-
-    private static class MyHook extends Thread {
-        @Override
-        public void run() {
-            try {
-                Thread.sleep(10);
-            } catch (Exception e) {}
         }
     }
 

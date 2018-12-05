@@ -21,25 +21,25 @@
  *
  */
 
-/* @test PinnedGarbage
+/* @test TestPinnedGarbage
  * @summary Test that garbage in the pinned region does not crash VM
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:+ShenandoahDegeneratedGC PinnedGarbage
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:-ShenandoahDegeneratedGC PinnedGarbage
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:+ShenandoahDegeneratedGC TestPinnedGarbage
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify -XX:ShenandoahGCHeuristics=passive    -XX:-ShenandoahDegeneratedGC TestPinnedGarbage
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m                       -XX:ShenandoahGCHeuristics=aggressive PinnedGarbage
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m                       -XX:ShenandoahGCHeuristics=aggressive TestPinnedGarbage
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify                                       PinnedGarbage
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx512m -XX:+ShenandoahVerify                                       TestPinnedGarbage
  */
 
 import java.util.Arrays;
 import java.util.concurrent.*;
 
-public class PinnedGarbage {
+public class TestPinnedGarbage {
     static {
-        System.loadLibrary("PinnedGarbage");
+        System.loadLibrary("TestPinnedGarbage");
     }
 
     private static final int NUM_RUNS      = 1_000;

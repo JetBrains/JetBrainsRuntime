@@ -21,16 +21,16 @@
  *
  */
 
-/* @test C1VectorizedMismatch
+/* @test TestC1VectorizedMismatch
  * @summary test C1 vectorized mismatch intrinsic
  * @key gc
  * @requires vm.gc.Shenandoah
- * @run main/othervm -XX:TieredStopAtLevel=1 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive C1VectorizedMismatch
+ * @run main/othervm -XX:TieredStopAtLevel=1 -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive TestC1VectorizedMismatch
  */
 
 import java.util.Arrays;
 
-public class C1VectorizedMismatch {
+public class TestC1VectorizedMismatch {
 
     private static final int NUM_RUNS = 10000;
     private static final int ARRAY_SIZE = 10000;

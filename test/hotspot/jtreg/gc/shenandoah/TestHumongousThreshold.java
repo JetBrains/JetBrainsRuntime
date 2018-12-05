@@ -22,22 +22,22 @@
  */
 
 /*
- * @test HumongousThreshold
+ * @test TestHumongousThreshold
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g                                      -XX:+ShenandoahVerify HumongousThreshold
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=50  -XX:+ShenandoahVerify HumongousThreshold
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=90  -XX:+ShenandoahVerify HumongousThreshold
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=99  -XX:+ShenandoahVerify HumongousThreshold
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=100 -XX:+ShenandoahVerify HumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g                                      -XX:+ShenandoahVerify TestHumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=50  -XX:+ShenandoahVerify TestHumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=90  -XX:+ShenandoahVerify TestHumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=99  -XX:+ShenandoahVerify TestHumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=100 -XX:+ShenandoahVerify TestHumongousThreshold
  *
- * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=90  -XX:ShenandoahGCHeuristics=aggressive HumongousThreshold
+ * @run main/othervm -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -XX:ShenandoahHumongousThreshold=90  -XX:ShenandoahGCHeuristics=aggressive TestHumongousThreshold
  */
 
 import java.util.Random;
 
-public class HumongousThreshold {
+public class TestHumongousThreshold {
 
     static final long TARGET_MB = Long.getLong("target", 20_000); // 20 Gb allocation
 

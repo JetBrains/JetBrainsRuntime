@@ -22,19 +22,19 @@
  */
 
 /*
- * @test ParallelRefprocSanity
+ * @test TestParallelRefprocSanity
  * @summary Test that reference processing works with both parallel and non-parallel variants.
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                              ParallelRefprocSanity
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:-ParallelRefProcEnabled ParallelRefprocSanity
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:+ParallelRefProcEnabled ParallelRefprocSanity
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g                              TestParallelRefprocSanity
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:-ParallelRefProcEnabled TestParallelRefprocSanity
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xmx1g -Xms1g  -XX:+ParallelRefProcEnabled TestParallelRefprocSanity
  */
 
 import java.lang.ref.*;
 
-public class ParallelRefprocSanity {
+public class TestParallelRefprocSanity {
 
     static final long TARGET_MB = Long.getLong("target", 10_000); // 10 Gb allocation
 

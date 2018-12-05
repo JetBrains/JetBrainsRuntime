@@ -27,11 +27,11 @@
 static jint* pinned;
 
 JNIEXPORT void JNICALL
-Java_PinnedGarbage_pin(JNIEnv *env, jclass unused, jintArray a) {
+Java_TestPinnedGarbage_pin(JNIEnv *env, jclass unused, jintArray a) {
   pinned = (*env)->GetPrimitiveArrayCritical(env, a, 0);
 }
 
 JNIEXPORT void JNICALL
-Java_PinnedGarbage_unpin(JNIEnv *env, jclass unused, jintArray a) {
+Java_TestPinnedGarbage_unpin(JNIEnv *env, jclass unused, jintArray a) {
   (*env)->ReleasePrimitiveArrayCritical(env, a, pinned, 0);
 }
