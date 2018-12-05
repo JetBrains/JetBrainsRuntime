@@ -22,21 +22,21 @@
  */
 
  /*
- * @test TestShenandoahWithLogLevel
+ * @test TestWithLogLevel
  * @summary Test Shenandoah with different log levels
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=debug   TestShenandoahWithLogLevel
- * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestShenandoahWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=error   TestWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=warning TestWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=info    TestWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=debug   TestWithLogLevel
+ * @run main/othervm -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -Xms256M -Xmx1G -Xlog:gc*=trace   TestWithLogLevel
  */
 
 import java.util.*;
 
-public class TestShenandoahWithLogLevel {
+public class TestWithLogLevel {
     public static void main(String[] args) {
         ArrayList<Object> list = new ArrayList<>();
         long count = 300 * 1024 * 1024 / 16; // 300MB allocation

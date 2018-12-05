@@ -21,20 +21,20 @@
  *
  */
 
-/* @test ShenandoahJNICritical
+/* @test TestJNICritical
  * @summary test JNI critical arrays support in Shenandoah
  * @key gc
  * @requires vm.gc.Shenandoah
  *
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahVerify                 ShenandoahJNICritical
- * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive ShenandoahJNICritical
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:+ShenandoahVerify                 TestJNICritical
+ * @run main/othervm/native -XX:+UnlockDiagnosticVMOptions -XX:+UnlockExperimentalVMOptions -XX:+UseShenandoahGC -XX:ShenandoahGCHeuristics=aggressive TestJNICritical
  */
 
 import java.util.Arrays;
 
-public class ShenandoahJNICritical {
+public class TestJNICritical {
     static {
-        System.loadLibrary("ShenandoahJNICritical");
+        System.loadLibrary("TestJNICritical");
     }
 
     private static final int NUM_RUNS   = 10000;

@@ -25,7 +25,7 @@
 #include <string.h>
 
 JNIEXPORT void JNICALL
-Java_ShenandoahJNICritical_copyAtoB(JNIEnv *env, jclass unused, jintArray a, jintArray b) {
+Java_TestJNICritical_copyAtoB(JNIEnv *env, jclass unused, jintArray a, jintArray b) {
   jint len = (*env)->GetArrayLength(env, a);
   jint* aa = (*env)->GetPrimitiveArrayCritical(env, a, 0);
   jint* bb = (*env)->GetPrimitiveArrayCritical(env, b, 0);

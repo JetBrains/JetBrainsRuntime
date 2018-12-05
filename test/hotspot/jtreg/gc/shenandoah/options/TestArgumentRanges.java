@@ -22,20 +22,20 @@
  */
 
 /*
- * @test TestShenandoahArgumentRanges
+ * @test TestArgumentRanges
  * @summary Test that Shenandoah arguments are checked for ranges where applicable
  * @key gc
  * @requires vm.gc.Shenandoah
  * @library /test/lib
  * @modules java.base/jdk.internal.misc
  *          java.management
- * @run driver TestShenandoahArgumentRanges
+ * @run driver TestArgumentRanges
  */
 
 import jdk.test.lib.process.ProcessTools;
 import jdk.test.lib.process.OutputAnalyzer;
 
-public class TestShenandoahArgumentRanges {
+public class TestArgumentRanges {
     public static void main(String[] args) throws Exception {
         testRange("ShenandoahGarbageThreshold", 0, 100);
         testRange("ShenandoahFreeThreshold", 0, 100);
