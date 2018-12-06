@@ -25,7 +25,7 @@
 #ifndef SHARE_JFR_LEAKPROFILER_UTILITIES_VMOPERATION_HPP
 #define SHARE_JFR_LEAKPROFILER_UTILITIES_VMOPERATION_HPP
 
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 
 class OldObjectVMOperation : public VM_Operation {
  public:

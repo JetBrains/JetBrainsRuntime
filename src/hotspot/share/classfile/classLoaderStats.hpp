@@ -29,7 +29,7 @@
 #include "classfile/classLoaderData.hpp"
 #include "oops/klass.hpp"
 #include "oops/oopsHierarchy.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 #include "services/diagnosticCommand.hpp"
 #include "utilities/resourceHash.hpp"
 
