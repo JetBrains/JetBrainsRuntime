@@ -115,7 +115,6 @@ public:
   static bool is_dominator(Node *d_c, Node *n_c, Node* d, Node* n, PhaseIdealLoop* phase);
   static bool is_dominator_same_ctrl(Node* c, Node* d, Node* n, PhaseIdealLoop* phase);
   static Node* no_branches(Node* c, Node* dom, bool allow_one_proj, PhaseIdealLoop* phase);
-  static void do_cmpp_if(GraphKit& kit, Node*& taken_branch, Node*& untaken_branch, Node*& taken_memory, Node*& untaken_memory);
 
 protected:
   uint hash() const;

@@ -78,10 +78,6 @@ Node* ShenandoahBarrierSetC2::shenandoah_storeval_barrier(GraphKit* kit, Node* o
   return obj;
 }
 
-Node* ShenandoahBarrierSetC2::shenandoah_read_barrier_acmp(GraphKit* kit, Node* obj) {
-  return shenandoah_read_barrier_impl(kit, obj, true, true, false);
-}
-
 Node* ShenandoahBarrierSetC2::shenandoah_read_barrier_impl(GraphKit* kit, Node* obj, bool use_ctrl, bool use_mem, bool allow_fromspace) const {
   const Type* obj_type = obj->bottom_type();
   if (obj_type->higher_equal(TypePtr::NULL_PTR)) {
