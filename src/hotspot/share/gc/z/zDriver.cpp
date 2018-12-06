@@ -33,7 +33,7 @@
 #include "gc/z/zServiceability.hpp"
 #include "gc/z/zStat.hpp"
 #include "logging/log.hpp"
-#include "runtime/vm_operations.hpp"
+#include "runtime/vmOperations.hpp"
 #include "runtime/vmThread.hpp"
 
 static const ZStatPhaseCycle      ZPhaseCycle("Garbage Collection Cycle");

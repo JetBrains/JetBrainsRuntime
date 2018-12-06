@@ -210,7 +210,7 @@
 # include "runtime/unhandledOops.hpp"
 # include "runtime/vframe.hpp"
 # include "runtime/vmThread.hpp"
-# include "runtime/vm_operations.hpp"
+# include "runtime/vmOperations.hpp"
 # include "runtime/vm_version.hpp"
 # include "services/allocationSite.hpp"
 # include "services/lowMemoryDetector.hpp"
