@@ -30,7 +30,6 @@ import java.util.List;
 
 import jdk.internal.module.Modules;
 import jdk.jfr.Event;
-import jdk.jfr.FlightRecorder;
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
 import jdk.jfr.events.ErrorThrownEvent;
@@ -94,7 +93,7 @@ public final class JDKEvents {
                     SecuritySupport.registerEvent((Class<? extends Event>) eventClass);
                 }
                 initializationTriggered = true;
-                FlightRecorder.addPeriodicEvent(ExceptionStatisticsEvent.class, emitExceptionStatistics);
+                RequestEngine.addTrustedJDKHook(ExceptionStatisticsEvent.class, emitExceptionStatistics);
             }
         } catch (Exception e) {
             Logger.log(LogTag.JFR_SYSTEM, LogLevel.WARN, "Could not initialize JDK events. " + e.getMessage());
