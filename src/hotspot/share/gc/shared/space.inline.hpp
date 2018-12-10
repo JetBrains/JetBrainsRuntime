@@ -371,7 +371,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
         } else {
           MarkSweep::update_fields(oop(cur_obj), oop(compaction_top));
         }
-        oop(compaction_top)->init_mark();
+        oop(compaction_top)->init_mark_raw();
         assert(oop(compaction_top)->klass() != NULL, "should have a class");
 
         debug_only(prev_obj = cur_obj);
