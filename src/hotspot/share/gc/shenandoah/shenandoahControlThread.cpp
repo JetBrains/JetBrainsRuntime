@@ -33,8 +33,8 @@
 #include "gc/shenandoah/shenandoahControlThread.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
+#include "gc/shenandoah/shenandoahVMOperations.hpp"
 #include "gc/shenandoah/shenandoahWorkerPolicy.hpp"
-#include "gc/shenandoah/vm_operations_shenandoah.hpp"
 #include "memory/iterator.hpp"
 #include "memory/universe.hpp"
 

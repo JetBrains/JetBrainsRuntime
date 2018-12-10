@@ -33,7 +33,7 @@
 #include "gc/shenandoah/shenandoahStringDedup.hpp"
 #include "gc/shenandoah/shenandoahTimingTracker.hpp"
 #include "gc/shenandoah/shenandoahUtils.hpp"
-#include "gc/shenandoah/vm_operations_shenandoah.hpp"
+#include "gc/shenandoah/shenandoahVMOperations.hpp"
 #include "gc/shared/weakProcessor.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/iterator.hpp"
