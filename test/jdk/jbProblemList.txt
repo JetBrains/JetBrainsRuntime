@@ -542,7 +542,7 @@ java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java                      
 java/awt/Window/8159168/SetShapeTest.java                                           8208507 generic-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java                  8142536 generic-all
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
-java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            JRE-1075 macosx-all,windows-all
+java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132 macosx-all,windows-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all
