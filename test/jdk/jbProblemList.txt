@@ -513,7 +513,7 @@ java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 linux-all,macosx-all
-java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            JRE-1073 macosx-all,windows-all
+java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            8215105 macosx-all,windows-all
 java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                           8157173 generic-all
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java            JRE-898 macosx-all
