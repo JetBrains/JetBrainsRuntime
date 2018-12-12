@@ -9547,7 +9547,7 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
   XMMRegister tmp1Reg, XMMRegister tmp2Reg,
   XMMRegister tmp3Reg, XMMRegister tmp4Reg,
   Register tmp5, Register result) {
-  Label copy_chars_loop, return_length, return_zero, done, below_threshold;
+  Label copy_chars_loop, return_length, return_zero, done;
 
   // rsi: src
   // rdi: dst
@@ -9568,13 +9568,12 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     VM_Version::supports_avx512vlbw() &&
     VM_Version::supports_bmi2()) {
 
-    Label copy_32_loop, copy_loop_tail;
+    Label copy_32_loop, copy_loop_tail, below_threshold;
 
-    // alignement
-    Label post_alignement;
+    // alignment
+    Label post_alignment;
 
-    // if length of the string is less than 16, handle it in an old fashioned
-    // way
+    // if length of the string is less than 16, handle it in an old fashioned way
     testl(len, -32);
     jcc(Assembler::zero, below_threshold);
 
@@ -9584,7 +9583,7 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     evpbroadcastw(tmp2Reg, result, Assembler::AVX_512bit);
 
     testl(len, -64);
-    jcc(Assembler::zero, post_alignement);
+    jcc(Assembler::zero, post_alignment);
 
     movl(tmp5, dst);
     andl(tmp5, (32 - 1));
@@ -9593,7 +9592,7 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
 
     // bail out when there is nothing to be done
     testl(tmp5, 0xFFFFFFFF);
-    jcc(Assembler::zero, post_alignement);
+    jcc(Assembler::zero, post_alignment);
 
     // ~(~0 << len), where len is the # of remaining elements to process
     movl(result, 0xFFFFFFFF);
@@ -9613,8 +9612,8 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
     addptr(dst, tmp5);
     subl(len, tmp5);
 
-    bind(post_alignement);
-    // end of alignement
+    bind(post_alignment);
+    // end of alignment
 
     movl(tmp5, len);
     andl(tmp5, (32 - 1));    // tail count (in chars)
@@ -9658,11 +9657,12 @@ void MacroAssembler::char_array_compress(Register src, Register dst, Register le
 
     evpmovwb(Address(dst, 0), k3, tmp1Reg, Assembler::AVX_512bit);
     jmp(return_length);
-  }
-  if (UseSSE42Intrinsics) {
-    Label copy_32_loop, copy_16, copy_tail;
 
     bind(below_threshold);
+  }
+
+  if (UseSSE42Intrinsics) {
+    Label copy_32_loop, copy_16, copy_tail;
 
     movl(result, len);
 
@@ -9774,8 +9774,7 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
     Label copy_32_loop, copy_tail;
     Register tmp3_aliased = len;
 
-    // if length of the string is less than 16, handle it in an old fashioned
-    // way
+    // if length of the string is less than 16, handle it in an old fashioned way
     testl(len, -16);
     jcc(Assembler::zero, below_threshold);
 
@@ -9882,7 +9881,10 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
     addptr(dst, 8);
 
     bind(copy_bytes);
+  } else {
+    bind(below_threshold);
   }
+
   testl(len, len);
   jccb(Assembler::zero, done);
   lea(src, Address(src, len, Address::times_1));
