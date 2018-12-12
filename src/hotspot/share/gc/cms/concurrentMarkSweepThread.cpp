@@ -78,10 +78,12 @@ void ConcurrentMarkSweepThread::run_service() {
   while (!should_terminate()) {
     sleepBeforeNextCycle();
     if (should_terminate()) break;
-    GCIdMark gc_id_mark;
-    GCCause::Cause cause = _collector->_full_gc_requested ?
-      _collector->_full_gc_cause : GCCause::_cms_concurrent_mark;
-    _collector->collect_in_background(cause);
+    if (!Universe::is_redefining_gc_run()) {
+        GCIdMark gc_id_mark;
+        GCCause::Cause cause = _collector->_full_gc_requested ?
+          _collector->_full_gc_cause : GCCause::_cms_concurrent_mark;
+        _collector->collect_in_background(cause);
+    }
   }
 
   // Check that the state of any protocol for synchronization
