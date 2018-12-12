@@ -247,7 +247,7 @@ void MarkSweep::copy_rescued_objects_back() {
 
       FREE_RESOURCE_ARRAY(HeapWord, rescued_ptr, size);
 
-      new_obj->init_mark();
+      new_obj->init_mark_raw();
       assert(oopDesc::is_oop(new_obj), "must be a valid oop");
     }
     _rescued_oops->clear();

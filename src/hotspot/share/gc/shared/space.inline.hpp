@@ -163,6 +163,8 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
   HeapWord* cur_obj = space->bottom();
   HeapWord* scan_limit = space->scan_limit();
 
+  bool force_forward = false;
+
   while (cur_obj < scan_limit) {
     assert(!space->scanned_block_is_obj(cur_obj) ||
            oop(cur_obj)->mark_raw()->is_marked() || oop(cur_obj)->mark_raw()->is_unlocked() ||
@@ -174,14 +176,15 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
       size_t size = space->scanned_block_size(cur_obj);
 
       if (redefinition_run) {
-        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top);
+        compact_top = cp->space->forward_with_rescue(cur_obj, size, cp, compact_top, force_forward);
         if (first_dead == NULL && oop(cur_obj)->is_gc_marked()) {
           /* Was moved (otherwise, forward would reset mark),
              set first_dead to here */
           first_dead = cur_obj;
+          force_forward = true;
         }
       } else {
-        compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top);
+        compact_top = cp->space->forward(oop(cur_obj), size, cp, compact_top, false);
       }
 
       cur_obj += size;
@@ -197,9 +200,9 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
 
       // see if we might want to pretend this object is alive so that
       // we don't have to compact quite as often.
-      if (cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
+      if (!redefinition_run && cur_obj == compact_top && dead_spacer.insert_deadspace(cur_obj, end)) {
         oop obj = oop(cur_obj);
-        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top);
+        compact_top = cp->space->forward(obj, obj->size(), cp, compact_top, force_forward);
         end_of_live = end;
       } else {
         // otherwise, it really is a free region.
@@ -351,7 +354,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
       HeapWord* compaction_top = (HeapWord*)oop(cur_obj)->forwardee();
 
       if (redefinition_run &&  space->must_rescue(oop(cur_obj), oop(cur_obj)->forwardee())) {
-         space->rescue(cur_obj);
+        space->rescue(cur_obj);
         debug_only(Copy::fill_to_words(cur_obj, size, 0));
         cur_obj += size;
         continue;
@@ -361,8 +364,7 @@ inline void CompactibleSpace::scan_and_compact(SpaceType* space, bool redefiniti
       Prefetch::write(compaction_top, copy_interval);
 
       // copy object and reinit its mark
-      assert(cur_obj != compaction_top || oop(cur_obj)->klass()->new_version() != NULL,
-             "everything in this pass should be moving");
+      assert(redefinition_run || cur_obj != compaction_top, "everything in this pass should be moving");
       if (redefinition_run && oop(cur_obj)->klass()->new_version() != NULL) {
         Klass* new_version = oop(cur_obj)->klass()->new_version();
         if (new_version->update_information() == NULL) {
