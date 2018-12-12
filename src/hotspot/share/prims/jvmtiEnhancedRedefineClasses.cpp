@@ -52,6 +52,7 @@
 #include "prims/jvmtiThreadState.inline.hpp"
 #include "utilities/events.hpp"
 #include "oops/constantPool.inline.hpp"
+#include "gc/cms/cmsHeap.hpp"
 
 Array<Method*>* VM_EnhancedRedefineClasses::_old_methods = NULL;
 Array<Method*>* VM_EnhancedRedefineClasses::_new_methods = NULL;
@@ -420,13 +421,11 @@ public:
       Klass* new_klass = obj->klass()->new_version();
 
       if (new_klass->update_information() != NULL) {
-        int size_diff = obj->size() - obj->size_given_klass(new_klass);
-
-        // Either new size is bigger or gap is to small to be filled
-        if (size_diff < 0 || (size_diff > 0 && (size_t) size_diff < CollectedHeap::min_fill_size())) {
+        if (obj->size() - obj->size_given_klass(new_klass) != 0) {
           // We need an instance update => set back to old klass
           _needs_instance_update = true;
         } else {
+          // Either new size is bigger or gap is to small to be filled
           oop src = obj;
           if (new_klass->is_copying_backwards()) {
             copy_to_tmp(obj);
@@ -436,11 +435,6 @@ public:
           //  FIXME: instance updates...
           //guarantee(false, "instance updates!");
           MarkSweep::update_fields(obj, src, new_klass->update_information());
-
-          if (size_diff > 0) {
-            HeapWord* dead_space = ((HeapWord *)obj) + obj->size();
-            CollectedHeap::fill_with_object(dead_space, size_diff);
-          }
         }
       } else {
         obj->set_klass(obj->klass()->new_version());
