@@ -388,11 +388,11 @@ HeapWord* CompactibleSpace::forward_compact_top(size_t size, CompactPoint* cp, H
 }
 
 HeapWord* CompactibleSpace::forward(oop q, size_t size,
-                                    CompactPoint* cp, HeapWord* compact_top) {
+                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
   compact_top = forward_compact_top(size, cp, compact_top);
 
   // store the forwarding pointer into the mark word
-  if ((HeapWord*)q != compact_top || (size_t)q->size() != size) {
+  if (force_forward || (HeapWord*)q != compact_top || (size_t)q->size() != size) {
     q->forward_to(oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
@@ -514,7 +514,7 @@ bool CompactibleSpace::must_rescue(oop old_obj, oop new_obj) {
 
   } else {
     assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
-    if (tenured_gen->is_in_reserved(new_obj)) {
+    if (new_in_tenured) {
       // Must never rescue when moving from the new into the old generation.
       assert(GenCollectedHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
       assert(space_index(old_obj) > space_index(new_obj), "must be");
@@ -858,14 +858,14 @@ void OffsetTableContigSpace::verify() const {
 // Compute the forward sizes and leave out objects whose position could
 // possibly overlap other objects.
 HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
-                                                CompactPoint* cp, HeapWord* compact_top) {
+                                                CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
   size_t forward_size = size;
 
   // (DCEVM) There is a new version of the class of q => different size
   if (oop(q)->klass()->new_version() != NULL && oop(q)->klass()->new_version()->update_information() != NULL) {
 
     size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
-    assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+    // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
     forward_size = new_size;
   }
 
@@ -879,7 +879,7 @@ HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
     return compact_top;
   }
 
-  return forward(oop(q), forward_size, cp, compact_top);
+  return forward(oop(q), forward_size, cp, compact_top, force_forward);
 }
 
 // Compute the forwarding addresses for the objects that need to be rescued.
@@ -895,11 +895,11 @@ HeapWord* CompactibleSpace::forward_rescued(CompactPoint* cp, HeapWord* compact_
       // (DCEVM) There is a new version of the class of q => different size
       if (oop(q)->klass()->new_version() != NULL) {
         size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
-        assert(size != new_size, "instances without changed size have to be updated prior to GC run");
+        // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
         size = new_size;
       }
 
-      compact_top = cp->space->forward(oop(q), size, cp, compact_top);
+      compact_top = cp->space->forward(oop(q), size, cp, compact_top, true);
       assert(compact_top <= end(), "must not write over end of space!");
     }
     MarkSweep::_rescued_oops->clear();
