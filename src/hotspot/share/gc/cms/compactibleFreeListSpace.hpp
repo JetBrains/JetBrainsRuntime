@@ -201,7 +201,7 @@ class CompactibleFreeListSpace: public CompactibleSpace {
   // Support for compacting cms
   HeapWord* cross_threshold(HeapWord* start, HeapWord* end);
   HeapWord* forward_compact_top(size_t size, CompactPoint* cp, HeapWord* compact_top);
-  HeapWord* forward(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top);
+  HeapWord* forward(oop q, size_t size, CompactPoint* cp, HeapWord* compact_top, bool force_forward);
 
   // Initialization helpers.
   void initializeIndexedFreeListArray();
@@ -576,6 +576,9 @@ class CompactibleFreeListSpace: public CompactibleSpace {
 
   // Support for compaction.
   void prepare_for_compaction(CompactPoint* cp);
+
+  bool must_rescue(oop old_obj, oop new_obj);
+
   void adjust_pointers();
   void compact();
   // Reset the space to reflect the fact that a compaction of the
