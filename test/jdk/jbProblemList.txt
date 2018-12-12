@@ -581,8 +581,11 @@ java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java                            
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java                6854300 generic-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.html                        8168389 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java             8060176 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java           8060176 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java             8204200,8060176 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java           8204200,8060176 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java           8204200 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java           8204200 windows-all,macosx-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           8204200 windows-all,macosx-all
 java/awt/font/TextLayout/CombiningPerf.java                                         8192931 generic-all
 java/awt/font/TextLayout/LigatureCaretTest.java                                     8197821 generic-all
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
@@ -596,6 +599,7 @@ java/awt/image/DrawImage/IncorrectSourceOffset.java                             
 java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java                    8196087 windows-all
 java/awt/image/MultiResolutionImage/MultiResolutionDrawImageWithTransformTest.java  8198390 generic-all
 java/awt/image/multiresolution/MultiresolutionIconTest.java                         8169187 macosx-all
+java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8204214,8193941 macosx-all,windows-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java                              8133102 linux-all
 java/awt/image/VolatileImage/CustomCompositeTest.java                               8199002 windows-all,linux-all
 java/awt/image/VolatileImage/GradientPaints.java                                    8199003 linux-all
