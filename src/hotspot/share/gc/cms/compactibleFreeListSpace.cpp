@@ -376,55 +376,58 @@ CompactibleFreeListSpace::CompactibleFreeListSpace(BlockOffsetSharedArray* bs, M
   _used_stable = 0;
 }
 
+#define forward_compact_top_DEFN()                                                    \
+  assert(this == cp->space, "'this' should be current compaction space.");            \
+  size_t compaction_max_size = pointer_delta(end(), compact_top);                     \
+  assert(adjustObjectSize(size) == cp->space->adjust_object_size_v(size),             \
+    "virtual adjustObjectSize_v() method is not correct");                            \
+  size_t adjusted_size = adjustObjectSize(size);                                      \
+  assert(compaction_max_size >= MinChunkSize || compaction_max_size == 0,             \
+         "no small fragments allowed");                                               \
+  assert(minimum_free_block_size() == MinChunkSize,                                   \
+         "for de-virtualized reference below");                                       \
+  /* Can't leave a nonzero size, residual fragment smaller than MinChunkSize */       \
+  if (adjusted_size + MinChunkSize > compaction_max_size &&                           \
+      adjusted_size != compaction_max_size) {                                         \
+    do {                                                                              \
+      /* switch to next compaction space*/                                            \
+      cp->space->set_compaction_top(compact_top);                                     \
+      cp->space = cp->space->next_compaction_space();                                 \
+      if (cp->space == NULL) {                                                        \
+        cp->gen = CMSHeap::heap()->young_gen();                                       \
+        assert(cp->gen != NULL, "compaction must succeed");                           \
+        cp->space = cp->gen->first_compaction_space();                                \
+        assert(cp->space != NULL, "generation must have a first compaction space");   \
+      }                                                                               \
+      compact_top = cp->space->bottom();                                              \
+      cp->space->set_compaction_top(compact_top);                                     \
+      /* The correct adjusted_size may not be the same as that for this method */     \
+      /* (i.e., cp->space may no longer be "this" so adjust the size again. */        \
+      /* Use the virtual method which is not used above to save the virtual */        \
+      /* dispatch. */                                                                 \
+      adjusted_size = cp->space->adjust_object_size_v(size);                          \
+      compaction_max_size = pointer_delta(cp->space->end(), compact_top);             \
+      assert(cp->space->minimum_free_block_size() == 0, "just checking");             \
+    } while (adjusted_size > compaction_max_size);                                    \
+  }
+
+
 HeapWord* CompactibleFreeListSpace::forward_compact_top(size_t size,
                                     CompactPoint* cp, HeapWord* compact_top) {
-  ShouldNotReachHere();
-  return NULL;
+  forward_compact_top_DEFN()
+  return compact_top;
 }
 
 // Like CompactibleSpace forward() but always calls cross_threshold() to
 // update the block offset table.  Removed initialize_threshold call because
 // CFLS does not use a block offset array for contiguous spaces.
 HeapWord* CompactibleFreeListSpace::forward(oop q, size_t size,
-                                    CompactPoint* cp, HeapWord* compact_top) {
-  // q is alive
-  // First check if we should switch compaction space
-  assert(this == cp->space, "'this' should be current compaction space.");
-  size_t compaction_max_size = pointer_delta(end(), compact_top);
-  assert(adjustObjectSize(size) == cp->space->adjust_object_size_v(size),
-    "virtual adjustObjectSize_v() method is not correct");
-  size_t adjusted_size = adjustObjectSize(size);
-  assert(compaction_max_size >= MinChunkSize || compaction_max_size == 0,
-         "no small fragments allowed");
-  assert(minimum_free_block_size() == MinChunkSize,
-         "for de-virtualized reference below");
-  // Can't leave a nonzero size, residual fragment smaller than MinChunkSize
-  if (adjusted_size + MinChunkSize > compaction_max_size &&
-      adjusted_size != compaction_max_size) {
-    do {
-      // switch to next compaction space
-      cp->space->set_compaction_top(compact_top);
-      cp->space = cp->space->next_compaction_space();
-      if (cp->space == NULL) {
-        cp->gen = CMSHeap::heap()->young_gen();
-        assert(cp->gen != NULL, "compaction must succeed");
-        cp->space = cp->gen->first_compaction_space();
-        assert(cp->space != NULL, "generation must have a first compaction space");
-      }
-      compact_top = cp->space->bottom();
-      cp->space->set_compaction_top(compact_top);
-      // The correct adjusted_size may not be the same as that for this method
-      // (i.e., cp->space may no longer be "this" so adjust the size again.
-      // Use the virtual method which is not used above to save the virtual
-      // dispatch.
-      adjusted_size = cp->space->adjust_object_size_v(size);
-      compaction_max_size = pointer_delta(cp->space->end(), compact_top);
-      assert(cp->space->minimum_free_block_size() == 0, "just checking");
-    } while (adjusted_size > compaction_max_size);
-  }
+                                    CompactPoint* cp, HeapWord* compact_top, bool force_forward) {
+  forward_compact_top_DEFN()
 
   // store the forwarding pointer into the mark word
-  if ((HeapWord*)q != compact_top) {
+  // the size of object changed for: new_version() != NULL
+  if (force_forward || (HeapWord*)q != compact_top || q->klass()->new_version() != NULL) {
     q->forward_to(oop(compact_top));
     assert(q->is_gc_marked(), "encoding the pointer should preserve the mark");
   } else {
@@ -2209,11 +2212,58 @@ CompactibleFreeListSpace::refillLinearAllocBlock(LinearAllocBlock* blk) {
 
 // Support for compaction
 void CompactibleFreeListSpace::prepare_for_compaction(CompactPoint* cp) {
-  scan_and_forward(this, cp, false);
-   // of the free lists doesn't work after.
+  if (!Universe::is_redefining_gc_run()) {
+    scan_and_forward(this, cp, false);
+  } else {
+    // Redefinition run
+    scan_and_forward(this, cp, true);
+  }
   // Prepare_for_compaction() uses the space between live objects
   // so that later phase can skip dead space quickly.  So verification
   // of the free lists doesn't work after.
+}
+
+bool CompactibleFreeListSpace::must_rescue(oop old_obj, oop new_obj) {
+  // Only redefined objects can have the need to be rescued.
+  if (oop(old_obj)->klass()->new_version() == NULL) return false;
+
+  int new_size = adjustObjectSize(old_obj->size_given_klass(oop(old_obj)->klass()->new_version()));
+  int original_size = adjustObjectSize(old_obj->size());
+
+  Generation* tenured_gen = CMSHeap::heap()->old_gen();
+  bool old_in_tenured = tenured_gen->is_in_reserved(old_obj);
+  bool new_in_tenured = tenured_gen->is_in_reserved(new_obj);
+  if (old_in_tenured == new_in_tenured) {
+    // Rescue if object may overlap with a higher memory address.
+    bool overlap = ((HeapWord*)old_obj + original_size < (HeapWord*)new_obj + new_size);
+    if (old_in_tenured) {
+      // Old and new address are in same space, so just compare the address.
+      // Must rescue if object moves towards the top of the space.
+      assert(space_index(old_obj) == space_index(new_obj), "old_obj and new_obj must be in same space");
+    } else {
+      // In the new generation, eden is located before the from space, so a
+      // simple pointer comparison is sufficient.
+      assert(CMSHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(CMSHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(overlap == (space_index(old_obj) < space_index(new_obj)), "slow and fast computation must yield same result");
+    }
+    return overlap;
+
+  } else {
+    assert(space_index(old_obj) != space_index(new_obj), "old_obj and new_obj must be in different spaces");
+    if (new_in_tenured) {
+      // Must never rescue when moving from the new into the old generation.
+      assert(CMSHeap::heap()->young_gen()->is_in_reserved(old_obj), "old_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) > space_index(new_obj), "must be");
+      return false;
+
+    } else /* if (tenured_gen->is_in_reserved(old_obj)) */ {
+      // Must always rescue when moving from the old into the new generation.
+      assert(CMSHeap::heap()->young_gen()->is_in_reserved(new_obj), "new_obj must be in DefNewGeneration");
+      assert(space_index(old_obj) < space_index(new_obj), "must be");
+      return true;
+    }
+  }
 }
 
 void CompactibleFreeListSpace::adjust_pointers() {
@@ -2228,7 +2278,12 @@ void CompactibleFreeListSpace::adjust_pointers() {
 }
 
 void CompactibleFreeListSpace::compact() {
-  scan_and_compact(this, false);
+  if(!Universe::is_redefining_gc_run()) {
+    scan_and_compact(this, false);
+  } else {
+    // Redefinition run
+    scan_and_compact(this, true);
+  }
 }
 
 // Fragmentation metric = 1 - [sum of (fbs**2) / (sum of fbs)**2]
