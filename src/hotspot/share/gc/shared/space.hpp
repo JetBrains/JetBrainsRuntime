@@ -421,7 +421,7 @@ public:
   virtual void prepare_for_compaction(CompactPoint* cp) = 0;
   // MarkSweep support phase3
   DEBUG_ONLY(int space_index(oop obj));
-  bool must_rescue(oop old_obj, oop new_obj);
+  virtual bool must_rescue(oop old_obj, oop new_obj);
   HeapWord* rescue(HeapWord* old_obj);
   virtual void adjust_pointers();
   // MarkSweep support phase4
@@ -452,11 +452,11 @@ public:
   // function of the then-current compaction space, and updates "cp->threshold
   // accordingly".
   virtual HeapWord* forward(oop q, size_t size, CompactPoint* cp,
-                    HeapWord* compact_top);
+                    HeapWord* compact_top, bool force_forward);
   // (DCEVM) same as forwad, but can rescue objects. Invoked only during
   // redefinition runs
   HeapWord* forward_with_rescue(HeapWord* q, size_t size, CompactPoint* cp,
-                                HeapWord* compact_top);
+                                HeapWord* compact_top, bool force_forward);
 
   HeapWord* forward_rescued(CompactPoint* cp, HeapWord* compact_top);
 
