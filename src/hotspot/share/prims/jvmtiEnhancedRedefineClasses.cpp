@@ -248,7 +248,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     int ref_kind =       (flags >> REFERENCE_KIND_SHIFT) & REFERENCE_KIND_MASK;
     if (MethodHandles::ref_kind_is_method(ref_kind)) {
       Method* m = (Method*) java_lang_invoke_MemberName::vmtarget(obj);
-      if (m != NULL && m->method_holder()->new_version() != NULL) {
+      if (m != NULL && m->method_holder()->is_redefining()) {
         // Let's try to re-resolve method
         InstanceKlass* newest = InstanceKlass::cast(m->method_holder()->newest_version());
         Method* new_method = newest->find_method(m->name(), m->signature());
