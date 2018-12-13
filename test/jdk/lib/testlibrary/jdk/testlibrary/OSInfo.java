@@ -155,7 +155,8 @@ public class OSInfo {
             OutputAnalyzer output = ProcessTools.executeProcess("uname", "-v");
             System.out.println("'uname -v' finished with code "
                     + output.getExitValue());
-            return Double.parseDouble(output.getOutput());
+            String version = output.getOutput().replaceAll("(\\d+\\.\\d+)\\..*", "$1");
+            return Double.parseDouble(version);
         } catch (Exception e) {
             System.out.println("First attempt failed with: " + e.getMessage());
         }
