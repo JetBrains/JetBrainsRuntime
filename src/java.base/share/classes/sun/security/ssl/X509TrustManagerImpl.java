@@ -148,7 +148,7 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
                 "null or zero-length certificate chain");
         }
 
-        if (authType == null || authType.length() == 0) {
+        if (authType == null || authType.isEmpty()) {
             throw new IllegalArgumentException(
                 "null or zero-length authentication type");
         }
@@ -225,9 +225,15 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = sslSocket.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
+<<<<<<< HEAD
             if (identityAlg != null && identityAlg.length() != 0) {
                 checkIdentity(session,
                         trustedChain, identityAlg, checkClientTrusted);
+=======
+            if (identityAlg != null && !identityAlg.isEmpty()) {
+                checkIdentity(session, trustedChain[0], identityAlg, isClient,
+                        getRequestedServerNames(socket), chainsToPublicCA);
+>>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
         } else {
             trustedChain = validate(v, chain, Collections.emptyList(),
@@ -279,9 +285,15 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = engine.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
+<<<<<<< HEAD
             if (identityAlg != null && identityAlg.length() != 0) {
                 checkIdentity(session, trustedChain,
                         identityAlg, checkClientTrusted);
+=======
+            if (identityAlg != null && !identityAlg.isEmpty()) {
+                checkIdentity(session, trustedChain[0], identityAlg, isClient,
+                        getRequestedServerNames(engine), chainsToPublicCA);
+>>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
         } else {
             trustedChain = validate(v, chain, Collections.emptyList(),
@@ -444,7 +456,7 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
     private static void checkIdentity(String hostname, X509Certificate cert,
             String algorithm, boolean chainsToPublicCA)
             throws CertificateException {
-        if (algorithm != null && algorithm.length() != 0) {
+        if (algorithm != null && !algorithm.isEmpty()) {
             // if IPv6 strip off the "[]"
             if ((hostname != null) && hostname.startsWith("[") &&
                     hostname.endsWith("]")) {

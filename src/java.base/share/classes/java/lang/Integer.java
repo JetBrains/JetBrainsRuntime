@@ -1388,7 +1388,7 @@ public final class Integer extends Number implements Comparable<Integer> {
         boolean negative = false;
         Integer result;
 
-        if (nm.length() == 0)
+        if (nm.isEmpty())
             throw new NumberFormatException("Zero length string");
         char firstChar = nm.charAt(0);
         // Handle sign, if present

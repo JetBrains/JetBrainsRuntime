@@ -655,7 +655,7 @@ public final class String
      *          object.
      */
     public int length() {
-        return value.length >> coder();
+        return isLatin1() ? value.length : value.length >> UTF16;
     }
 
     /**
@@ -1934,8 +1934,7 @@ public final class String
      *          characters followed by the string argument's characters.
      */
     public String concat(String str) {
-        int olen = str.length();
-        if (olen == 0) {
+        if (str.isEmpty()) {
             return this;
         }
         if (coder() == str.coder()) {
@@ -1947,6 +1946,7 @@ public final class String
             return new String(buf, coder);
         }
         int len = length();
+        int olen = str.length();
         byte[] buf = StringUTF16.newBytesFor(len + olen);
         getBytes(buf, 0, UTF16);
         str.getBytes(buf, len, UTF16);
@@ -2307,7 +2307,7 @@ public final class String
             // Construct result
             int resultSize = list.size();
             if (limit == 0) {
-                while (resultSize > 0 && list.get(resultSize - 1).length() == 0) {
+                while (resultSize > 0 && list.get(resultSize - 1).isEmpty()) {
                     resultSize--;
                 }
             }

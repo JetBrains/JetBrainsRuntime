@@ -131,7 +131,7 @@ class JrtFileSystem extends FileSystem {
         StringBuilder sb = new StringBuilder();
         sb.append(first);
         for (String path : more) {
-            if (path.length() > 0) {
+            if (!path.isEmpty()) {
                 if (sb.length() > 0) {
                     sb.append('/');
                 }
