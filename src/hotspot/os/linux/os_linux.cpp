@@ -1402,9 +1402,11 @@ void os::shutdown() {
 void os::abort(bool dump_core, void* siginfo, const void* context) {
   os::shutdown();
   if (dump_core) {
+#if INCLUDE_CDS
     if (UseSharedSpaces && DumpPrivateMappingsInCore) {
       ClassLoader::close_jrt_image();
     }
+#endif
 #ifndef PRODUCT
     fdStream out(defaultStream::output_fd());
     out.print_raw("Current thread is ");
@@ -5202,9 +5204,11 @@ jint os::init_2(void) {
     set_coredump_filter(DAX_SHARED_BIT);
   }
 
+#if INCLUDE_CDS
   if (UseSharedSpaces && DumpPrivateMappingsInCore) {
     set_coredump_filter(FILE_BACKED_PVT_BIT);
   }
+#endif
 
   return JNI_OK;
 }
