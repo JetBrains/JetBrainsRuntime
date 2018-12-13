@@ -1936,10 +1936,8 @@ public final class URI
         throws URISyntaxException
     {
         if (scheme != null) {
-            if ((path != null)
-                && ((path.length() > 0) && (path.charAt(0) != '/')))
-                throw new URISyntaxException(s,
-                                             "Relative path in absolute URI");
+            if (path != null && !path.isEmpty() && path.charAt(0) != '/')
+                throw new URISyntaxException(s, "Relative path in absolute URI");
         }
     }
 
@@ -2140,7 +2138,7 @@ public final class URI
             ru.port = base.port;
 
             String cp = (child.path == null) ? "" : child.path;
-            if ((cp.length() > 0) && (cp.charAt(0) == '/')) {
+            if (!cp.isEmpty() && cp.charAt(0) == '/') {
                 // 5.2 (5): Child path is absolute
                 ru.path = child.path;
             } else {
@@ -2164,7 +2162,7 @@ public final class URI
     // o.w., return a new URI containing the normalized path.
     //
     private static URI normalize(URI u) {
-        if (u.isOpaque() || (u.path == null) || (u.path.length() == 0))
+        if (u.isOpaque() || u.path == null || u.path.isEmpty())
             return u;
 
         String np = normalize(u.path);
