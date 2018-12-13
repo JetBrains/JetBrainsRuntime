@@ -37,13 +37,15 @@
 #include <wincrypt.h>
 #include <stdio.h>
 #include <memory>
-#include "sun_security_mscapi_Key.h"
-#include "sun_security_mscapi_KeyStore.h"
+#include "sun_security_mscapi_CKey.h"
+#include "sun_security_mscapi_CKeyStore.h"
 #include "sun_security_mscapi_PRNG.h"
-#include "sun_security_mscapi_RSACipher.h"
-#include "sun_security_mscapi_RSAKeyPairGenerator.h"
-#include "sun_security_mscapi_RSAPublicKey.h"
-#include "sun_security_mscapi_RSASignature.h"
+#include "sun_security_mscapi_CRSACipher.h"
+#include "sun_security_mscapi_CKeyPairGenerator_RSA.h"
+#include "sun_security_mscapi_CPublicKey.h"
+#include "sun_security_mscapi_CPublicKey_CRSAPublicKey.h"
+#include "sun_security_mscapi_CSignature.h"
+#include "sun_security_mscapi_CSignature_RSA.h"
 
 #define OID_EKU_ANY         "2.5.29.37.0"
 
@@ -64,7 +66,7 @@
         }
 
 //#define PP(fmt, ...) \
-//        fprintf(stdout, "SSPI (%ld): ", __LINE__); \
+//        fprintf(stdout, "MSCAPI (%ld): ", __LINE__); \
 //        fprintf(stdout, fmt, ##__VA_ARGS__); \
 //        fprintf(stdout, "\n"); \
 //        fflush(stdout)
@@ -79,13 +81,27 @@ DEF_STATIC_JNI_OnLoad
 //void dump(LPSTR title, PBYTE data, DWORD len)
 //{
 //    printf("==== %s ====\n", title);
-//    for (DWORD i = 0; i < len; i++) {
-//        if (i != 0 && i % 16 == 0) {
-//            printf("\n");
+//    for (DWORD i = 0; i < len; i+=16) {
+//        printf("%04x: ", i);
+//        for (int j = 0; j < 16; j++) {
+//            if (j == 8) {
+//                printf("  ");
+//            }
+//            if (i + j < len) {
+//                printf("%02X ", *(data + i + j) & 0xff);
+//            } else {
+//                printf("   ");
+//            }
 //        }
-//        printf("%02X ", *(data + i) & 0xff);
+//        for (int j = 0; j < 16; j++) {
+//            if (i + j < len) {
+//                int k = *(data + i + j) & 0xff;
+//                if (k < 32 || k > 127) printf(".");
+//                else printf("%c", (char)k);
+//            }
+//        }
+//        printf("\n");
 //    }
-//    printf("\n");
 //}
 
 /*
@@ -248,7 +264,7 @@ bool GetCertificateChain(LPSTR lpszKeyUsageIdentifier, PCCERT_CONTEXT pCertConte
 JNIEXPORT jlong JNICALL Java_sun_security_mscapi_PRNG_getContext
         (JNIEnv *env, jclass clazz) {
     HCRYPTPROV hCryptProv = NULL;
-    if(::CryptAcquireContext(
+    if(::CryptAcquireContext( //deprecated
        &hCryptProv,
        NULL,
        NULL,
@@ -269,7 +285,7 @@ JNIEXPORT jlong JNICALL Java_sun_security_mscapi_PRNG_getContext
 JNIEXPORT void JNICALL Java_sun_security_mscapi_PRNG_releaseContext
         (JNIEnv *env, jclass clazz, jlong ctxt) {
     if (ctxt) {
-        ::CryptReleaseContext((HCRYPTPROV)ctxt, 0);
+        ::CryptReleaseContext((HCRYPTPROV)ctxt, 0); //deprecated
     }
 }
 
@@ -304,7 +320,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_PRNG_generateSeed
                 __leave;
             }
 
-            if (::CryptGenRandom(
+            if (::CryptGenRandom( //deprecated
                 hCryptProv,
                 length,
                 (BYTE *) reseedBytes) == FALSE) {
@@ -330,7 +346,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_PRNG_generateSeed
                 __leave;
             }
 
-            if (::CryptGenRandom(
+            if (::CryptGenRandom( //deprecated
                 hCryptProv,
                 length,
                 (BYTE *) seedBytes) == FALSE) {
@@ -359,11 +375,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_PRNG_generateSeed
 
 
 /*
- * Class:     sun_security_mscapi_KeyStore
+ * Class:     sun_security_mscapi_CKeyStore
  * Method:    loadKeysOrCertificateChains
- * Signature: (Ljava/lang/String;Ljava/util/Collection;)V
+ * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_loadKeysOrCertificateChains
+JNIEXPORT void JNICALL Java_sun_security_mscapi_CKeyStore_loadKeysOrCertificateChains
   (JNIEnv *env, jobject obj, jstring jCertStoreName)
 {
     /**
@@ -460,7 +476,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_loadKeysOrCertificateCh
             else
             {
                 if (bCallerFreeProv == TRUE) {
-                    ::CryptReleaseContext(hCryptProv, NULL);
+                    ::CryptReleaseContext(hCryptProv, NULL); // deprecated
                     bCallerFreeProv = FALSE;
                 }
 
@@ -473,18 +489,18 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_loadKeysOrCertificateCh
                 else
                 {
                     // Private key is available
-                    BOOL bGetUserKey = ::CryptGetUserKey(hCryptProv, dwKeySpec, &hUserKey);
+                    BOOL bGetUserKey = ::CryptGetUserKey(hCryptProv, dwKeySpec, &hUserKey); //deprecated
 
                     // Skip certificate if cannot find private key
                     if (bGetUserKey == FALSE) {
                         if (bCallerFreeProv)
-                            ::CryptReleaseContext(hCryptProv, NULL);
+                            ::CryptReleaseContext(hCryptProv, NULL); // deprecated
                         continue;
                     }
 
                     // Set cipher mode to ECB
                     DWORD dwCipherMode = CRYPT_MODE_ECB;
-                    ::CryptSetKeyParam(hUserKey, KP_MODE, (BYTE*)&dwCipherMode, NULL);
+                    ::CryptSetKeyParam(hUserKey, KP_MODE, (BYTE*)&dwCipherMode, NULL); //deprecated
 
                     // If the private key is present in smart card, we may not be able to
                     // determine the key length by using the private key handle. However,
@@ -591,7 +607,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_loadKeysOrCertificateCh
                             // Determine key type: RSA or DSA
                             DWORD dwData = CALG_RSA_KEYX;
                             DWORD dwSize = sizeof(DWORD);
-                            ::CryptGetKeyParam(hUserKey, KP_ALGID, (BYTE*)&dwData,
+                            ::CryptGetKeyParam(hUserKey, KP_ALGID, (BYTE*)&dwData, //deprecated
                                     &dwSize, NULL);
 
                             if ((dwData & ALG_TYPE_RSA) == ALG_TYPE_RSA)
@@ -640,18 +656,18 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_Key_cleanUp
   (JNIEnv *env, jclass clazz, jlong hCryptProv, jlong hCryptKey)
 {
     if (hCryptKey != NULL)
-        ::CryptDestroyKey((HCRYPTKEY) hCryptKey);
+        ::CryptDestroyKey((HCRYPTKEY) hCryptKey); // deprecated
 
     if (hCryptProv != NULL)
-        ::CryptReleaseContext((HCRYPTPROV) hCryptProv, NULL);
+        ::CryptReleaseContext((HCRYPTPROV) hCryptProv, NULL); // deprecated
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature
+ * Class:     sun_security_mscapi_CSignature
  * Method:    signHash
  * Signature: (Z[BILjava/lang/String;JJ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CSignature_signHash
   (JNIEnv *env, jclass clazz, jboolean noHashOID, jbyteArray jHash,
         jint jHashSize, jstring jHashAlgorithm, jlong hCryptProv,
         jlong hCryptKey)
@@ -668,7 +684,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
         ALG_ID algId = MapHashAlgorithm(env, jHashAlgorithm);
 
         // Acquire a hash object handle.
-        if (::CryptCreateHash(HCRYPTPROV(hCryptProv), algId, 0, 0, &hHash) == FALSE)
+        if (::CryptCreateHash(HCRYPTPROV(hCryptProv), algId, 0, 0, &hHash) == FALSE) //deprecated
         {
             // Failover to using the PROV_RSA_AES CSP
 
@@ -677,11 +693,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
             pbData[0] = '\0';
 
             // Get name of the key container
-            ::CryptGetProvParam((HCRYPTPROV)hCryptProv, PP_CONTAINER,
+            ::CryptGetProvParam((HCRYPTPROV)hCryptProv, PP_CONTAINER, //deprecated
                 (BYTE *)pbData, &cbData, 0);
 
             // Acquire an alternative CSP handle
-            if (::CryptAcquireContext(&hCryptProvAlt, LPCSTR(pbData), NULL,
+            if (::CryptAcquireContext(&hCryptProvAlt, LPCSTR(pbData), NULL, //deprecated
                 PROV_RSA_AES, 0) == FALSE)
             {
 
@@ -690,7 +706,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
             }
 
             // Acquire a hash object handle.
-            if (::CryptCreateHash(HCRYPTPROV(hCryptProvAlt), algId, 0, 0,
+            if (::CryptCreateHash(HCRYPTPROV(hCryptProvAlt), algId, 0, 0, //deprecated
                 &hHash) == FALSE)
             {
                 ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
@@ -706,7 +722,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
         env->GetByteArrayRegion(jHash, 0, jHashSize, pHashBuffer);
 
         // Set hash value in the hash object
-        if (::CryptSetHashParam(hHash, HP_HASHVAL, (BYTE*)pHashBuffer, NULL) == FALSE)
+        if (::CryptSetHashParam(hHash, HP_HASHVAL, (BYTE*)pHashBuffer, NULL) == FALSE) //deprecated
         {
             ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
             __leave;
@@ -717,7 +733,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
         ALG_ID dwAlgId;
         DWORD dwAlgIdLen = sizeof(ALG_ID);
 
-        if (! ::CryptGetKeyParam((HCRYPTKEY) hCryptKey, KP_ALGID, (BYTE*)&dwAlgId, &dwAlgIdLen, 0)) {
+        if (! ::CryptGetKeyParam((HCRYPTKEY) hCryptKey, KP_ALGID, (BYTE*)&dwAlgId, &dwAlgIdLen, 0)) { //deprecated
             ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
             __leave;
 
@@ -734,7 +750,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
             dwFlags = CRYPT_NOHASHOID; // omit hash OID in NONEwithRSA signature
         }
 
-        if (::CryptSignHash(hHash, dwKeySpec, NULL, dwFlags, NULL, &dwBufLen) == FALSE)
+        if (::CryptSignHash(hHash, dwKeySpec, NULL, dwFlags, NULL, &dwBufLen) == FALSE) //deprecated
         {
             ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
             __leave;
@@ -744,7 +760,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
         if (pSignedHashBuffer == NULL) {
             __leave;
         }
-        if (::CryptSignHash(hHash, dwKeySpec, NULL, dwFlags, (BYTE*)pSignedHashBuffer, &dwBufLen) == FALSE)
+        if (::CryptSignHash(hHash, dwKeySpec, NULL, dwFlags, (BYTE*)pSignedHashBuffer, &dwBufLen) == FALSE) //deprecated
         {
             ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
             __leave;
@@ -770,21 +786,21 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_signHash
             delete [] pHashBuffer;
 
         if (hHash)
-            ::CryptDestroyHash(hHash);
+            ::CryptDestroyHash(hHash); //deprecated
 
         if (hCryptProvAlt)
-            ::CryptReleaseContext(hCryptProvAlt, 0);
+            ::CryptReleaseContext(hCryptProvAlt, 0); // deprecated
     }
 
     return jSignedHash;
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature_PSS
- * Method:    signPssHash
+ * Class:     sun_security_mscapi_CSignature
+ * Method:    signCngHash
  * Signature: ([BIILjava/lang/String;JJ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_signPssHash
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CSignature_signCngHash
   (JNIEnv *env, jclass clazz, jbyteArray jHash,
         jint jHashSize, jint saltLen, jstring jHashAlgorithm, jlong hCryptProv,
         jlong hCryptKey)
@@ -871,11 +887,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_sign
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature
+ * Class:     sun_security_mscapi_CSignature
  * Method:    verifySignedHash
  * Signature: ([BIL/java/lang/String;[BIJJ)Z
  */
-JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_verifySignedHash
+JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_CSignature_verifySignedHash
   (JNIEnv *env, jclass clazz, jbyteArray jHash, jint jHashSize,
         jstring jHashAlgorithm, jbyteArray jSignedHash, jint jSignedHashSize,
         jlong hCryptProv, jlong hCryptKey)
@@ -903,11 +919,11 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_verifySignedHas
             pbData[0] = '\0';
 
             // Get name of the key container
-            ::CryptGetProvParam((HCRYPTPROV)hCryptProv, PP_CONTAINER,
+            ::CryptGetProvParam((HCRYPTPROV)hCryptProv, PP_CONTAINER, //deprecated
                 (BYTE *)pbData, &cbData, 0);
 
             // Acquire an alternative CSP handle
-            if (::CryptAcquireContext(&hCryptProvAlt, LPCSTR(pbData), NULL,
+            if (::CryptAcquireContext(&hCryptProvAlt, LPCSTR(pbData), NULL, //deprecated
                 PROV_RSA_AES, 0) == FALSE)
             {
 
@@ -939,7 +955,7 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_verifySignedHas
             pSignedHashBuffer);
 
         // Set hash value in the hash object
-        if (::CryptSetHashParam(hHash, HP_HASHVAL, (BYTE*) pHashBuffer, NULL)
+        if (::CryptSetHashParam(hHash, HP_HASHVAL, (BYTE*) pHashBuffer, NULL) //deprecated
             == FALSE)
         {
             ThrowException(env, SIGNATURE_EXCEPTION, GetLastError());
@@ -950,7 +966,7 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_verifySignedHas
         // public key algorithm, so AT_SIGNATURE is used.
 
         // Verify the signature
-        if (::CryptVerifySignatureA(hHash, (BYTE *) pSignedHashBuffer,
+        if (::CryptVerifySignatureA(hHash, (BYTE *) pSignedHashBuffer, //deprecated
             dwSignedHashBufferLen, (HCRYPTKEY) hCryptKey, NULL, 0) == TRUE)
         {
             result = JNI_TRUE;
@@ -966,26 +982,26 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_verifySignedHas
             delete [] pHashBuffer;
 
         if (hHash)
-            ::CryptDestroyHash(hHash);
+            ::CryptDestroyHash(hHash); //deprecated
 
         if (hCryptProvAlt)
-            ::CryptReleaseContext(hCryptProvAlt, 0);
+            ::CryptReleaseContext(hCryptProvAlt, 0); // deprecated
     }
 
     return result;
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature_PSS
- * Method:    verifyPssSignedHash
+ * Class:     sun_security_mscapi_CSignature
+ * Method:    verifyCngSignedHash
  * Signature: ([BI[BIILjava/lang/String;JJ)Z
  */
-JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_verifyPssSignedHash
+JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_CSignature_verifyCngSignedHash
   (JNIEnv *env, jclass clazz,
         jbyteArray jHash, jint jHashSize,
         jbyteArray jSignedHash, jint jSignedHashSize,
         jint saltLen, jstring jHashAlgorithm,
-        jlong hCryptProv, jlong hKey)
+        jlong hCryptProv, jlong hCryptKey)
 {
     jbyte* pHashBuffer = NULL;
     jbyte* pSignedHashBuffer = NULL;
@@ -998,7 +1014,7 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_verify
                 NULL,
                 &hk,
                 (HCRYPTPROV)hCryptProv,
-                (HCRYPTKEY)hKey,
+                (HCRYPTKEY)hCryptKey,
                 NULL,
                 0));
 
@@ -1019,17 +1035,12 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_verify
         BCRYPT_PSS_PADDING_INFO pssInfo;
         pssInfo.pszAlgId = MapHashIdentifier(env, jHashAlgorithm);
         pssInfo.cbSalt = saltLen;
-
         if (pssInfo.pszAlgId == NULL) {
             ThrowExceptionWithMessage(env, SIGNATURE_EXCEPTION,
                     "Unrecognised hash algorithm");
             __leave;
         }
 
-        // For RSA, the hash encryption algorithm is normally the same as the
-        // public key algorithm, so AT_SIGNATURE is used.
-
-        // Verify the signature
         if (::NCryptVerifySignature(hk, &pssInfo,
                 (BYTE *) pHashBuffer, jHashSize,
                 (BYTE *) pSignedHashBuffer, jSignedHashSize,
@@ -1055,12 +1066,12 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_verify
 }
 
 /*
- * Class:     sun_security_mscapi_RSAKeyPairGenerator
- * Method:    generateRSAKeyPair
- * Signature: (ILjava/lang/String;)Lsun/security/mscapi/RSAKeyPair;
+ * Class:     sun_security_mscapi_CKeyPairGenerator_RSA
+ * Method:    generateCKeyPair
+ * Signature: (Ljava/lang/String;ILjava/lang/String;)Lsun/security/mscapi/CKeyPair;
  */
-JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateRSAKeyPair
-  (JNIEnv *env, jclass clazz, jint keySize, jstring keyContainerName)
+JNIEXPORT jobject JNICALL Java_sun_security_mscapi_CKeyPairGenerator_00024RSA_generateCKeyPair
+  (JNIEnv *env, jclass clazz, jstring alg, jint keySize, jstring keyContainerName)
 {
     HCRYPTPROV hCryptProv = NULL;
     HCRYPTKEY hKeyPair;
@@ -1078,7 +1089,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateR
         // Acquire a CSP context (create a new key container).
         // Prefer a PROV_RSA_AES CSP, when available, due to its support
         // for SHA-2-based signatures.
-        if (::CryptAcquireContext(
+        if (::CryptAcquireContext( //deprecated
             &hCryptProv,
             pszKeyContainerName,
             NULL,
@@ -1087,7 +1098,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateR
         {
             // Failover to using the default CSP (PROV_RSA_FULL)
 
-            if (::CryptAcquireContext(
+            if (::CryptAcquireContext( //deprecated
                 &hCryptProv,
                 pszKeyContainerName,
                 NULL,
@@ -1099,8 +1110,8 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateR
             }
         }
 
-        // Generate an RSA keypair
-        if(::CryptGenKey(
+        // Generate an keypair
+        if(::CryptGenKey( //deprecated
            hCryptProv,
            AT_KEYEXCHANGE,
            dwFlags,
@@ -1110,22 +1121,22 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateR
             __leave;
         }
 
-        // Get the method ID for the RSAKeyPair constructor
-        jclass clazzRSAKeyPair =
-            env->FindClass("sun/security/mscapi/RSAKeyPair");
-        if (clazzRSAKeyPair == NULL) {
+        // Get the method ID for the CKeyPair constructor
+        jclass clazzCKeyPair =
+            env->FindClass("sun/security/mscapi/CKeyPair");
+        if (clazzCKeyPair == NULL) {
             __leave;
         }
 
-        jmethodID mNewRSAKeyPair =
-            env->GetMethodID(clazzRSAKeyPair, "<init>", "(JJI)V");
-        if (mNewRSAKeyPair == NULL) {
+        jmethodID mNewCKeyPair =
+            env->GetMethodID(clazzCKeyPair, "<init>", "(Ljava/lang/String;JJI)V");
+        if (mNewCKeyPair == NULL) {
             __leave;
         }
 
-        // Create a new RSA keypair
-        keypair = env->NewObject(clazzRSAKeyPair, mNewRSAKeyPair,
-            (jlong) hCryptProv, (jlong) hKeyPair, keySize);
+        // Create a new keypair
+        keypair = env->NewObject(clazzCKeyPair, mNewCKeyPair,
+            alg, (jlong) hCryptProv, (jlong) hKeyPair, keySize);
 
     }
     __finally
@@ -1141,18 +1152,18 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSAKeyPairGenerator_generateR
 }
 
 /*
- * Class:     sun_security_mscapi_Key
+ * Class:     sun_security_mscapi_CKey
  * Method:    getContainerName
  * Signature: (J)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_sun_security_mscapi_Key_getContainerName
+JNIEXPORT jstring JNICALL Java_sun_security_mscapi_CKey_getContainerName
   (JNIEnv *env, jclass jclazz, jlong hCryptProv)
 {
     DWORD cbData = 256;
     BYTE pbData[256];
     pbData[0] = '\0';
 
-    ::CryptGetProvParam(
+    ::CryptGetProvParam( //deprecated
         (HCRYPTPROV)hCryptProv,
         PP_CONTAINER,
         (BYTE *)pbData,
@@ -1163,17 +1174,17 @@ JNIEXPORT jstring JNICALL Java_sun_security_mscapi_Key_getContainerName
 }
 
 /*
- * Class:     sun_security_mscapi_Key
+ * Class:     sun_security_mscapi_CKey
  * Method:    getKeyType
  * Signature: (J)Ljava/lang/String;
  */
-JNIEXPORT jstring JNICALL Java_sun_security_mscapi_Key_getKeyType
+JNIEXPORT jstring JNICALL Java_sun_security_mscapi_CKey_getKeyType
   (JNIEnv *env, jclass jclazz, jlong hCryptKey)
 {
     ALG_ID dwAlgId;
     DWORD dwAlgIdLen = sizeof(ALG_ID);
 
-    if (::CryptGetKeyParam((HCRYPTKEY) hCryptKey, KP_ALGID, (BYTE*)&dwAlgId, &dwAlgIdLen, 0)) {
+    if (::CryptGetKeyParam((HCRYPTKEY) hCryptKey, KP_ALGID, (BYTE*)&dwAlgId, &dwAlgIdLen, 0)) { //deprecated
 
         if (CALG_RSA_SIGN == dwAlgId) {
             return env->NewStringUTF("Signature");
@@ -1193,11 +1204,11 @@ JNIEXPORT jstring JNICALL Java_sun_security_mscapi_Key_getKeyType
 }
 
 /*
- * Class:     sun_security_mscapi_KeyStore
+ * Class:     sun_security_mscapi_CKeyStore
  * Method:    storeCertificate
  * Signature: (Ljava/lang/String;Ljava/lang/String;[BIJJ)V
  */
-JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
+JNIEXPORT void JNICALL Java_sun_security_mscapi_CKeyStore_storeCertificate
   (JNIEnv *env, jobject obj, jstring jCertStoreName, jstring jCertAliasName,
         jbyteArray jCertEncoding, jint jCertEncodingSize, jlong hCryptProv,
         jlong hCryptKey)
@@ -1275,7 +1286,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
             DWORD dwDataLen;
 
             // Get the name of the key container
-            if (! ::CryptGetProvParam(
+            if (! ::CryptGetProvParam( //deprecated
                 (HCRYPTPROV) hCryptProv,
                 PP_CONTAINER,
                 NULL,
@@ -1291,7 +1302,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
                 __leave;
             }
 
-            if (! ::CryptGetProvParam(
+            if (! ::CryptGetProvParam( //deprecated
                 (HCRYPTPROV) hCryptProv,
                 PP_CONTAINER,
                 (BYTE *) pszContainerName,
@@ -1318,7 +1329,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
 
 
             // Get the name of the provider
-            if (! ::CryptGetProvParam(
+            if (! ::CryptGetProvParam( //deprecated
                 (HCRYPTPROV) hCryptProv,
                 PP_NAME,
                 NULL,
@@ -1334,7 +1345,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
                 __leave;
             }
 
-            if (! ::CryptGetProvParam(
+            if (! ::CryptGetProvParam( //deprecated
                 (HCRYPTPROV) hCryptProv,
                 PP_NAME,
                 (BYTE *) pszProviderName,
@@ -1360,7 +1371,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
             keyProviderInfo.pwszProvName = pwszProviderName;
 
             // Get and set the type of the provider
-            if (! ::CryptGetProvParam(
+            if (! ::CryptGetProvParam( //deprecated
                 (HCRYPTPROV) hCryptProv,
                 PP_PROVTYPE,
                 (LPBYTE) &keyProviderInfo.dwProvType,
@@ -1379,7 +1390,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
             keyProviderInfo.rgProvParam = NULL;
 
             // Get the key's algorithm ID
-            if (! ::CryptGetKeyParam(
+            if (! ::CryptGetKeyParam( //deprecated
                 (HCRYPTKEY) hCryptKey,
                 KP_ALGID,
                 (LPBYTE) &keyProviderInfo.dwKeySpec,
@@ -1458,11 +1469,11 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_storeCertificate
 }
 
 /*
- * Class:     sun_security_mscapi_KeyStore
+ * Class:     sun_security_mscapi_CKeyStore
  * Method:    removeCertificate
  * Signature: (Ljava/lang/String;Ljava/lang/String;[BI)V
  */
-JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_removeCertificate
+JNIEXPORT void JNICALL Java_sun_security_mscapi_CKeyStore_removeCertificate
   (JNIEnv *env, jobject obj, jstring jCertStoreName, jstring jCertAliasName,
   jbyteArray jCertEncoding, jint jCertEncodingSize) {
 
@@ -1574,11 +1585,11 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_removeCertificate
 }
 
 /*
- * Class:     sun_security_mscapi_KeyStore
+ * Class:     sun_security_mscapi_CKeyStore
  * Method:    destroyKeyContainer
  * Signature: (Ljava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_destroyKeyContainer
+JNIEXPORT void JNICALL Java_sun_security_mscapi_CKeyStore_destroyKeyContainer
   (JNIEnv *env, jobject clazz, jstring keyContainerName)
 {
     HCRYPTPROV hCryptProv = NULL;
@@ -1600,7 +1611,7 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_destroyKeyContainer
         }
 
         // Acquire a CSP context (to the key container).
-        if (::CryptAcquireContext(
+        if (::CryptAcquireContext( //deprecated
             &hCryptProv,
             pszKeyContainerName,
             NULL,
@@ -1623,11 +1634,11 @@ JNIEXPORT void JNICALL Java_sun_security_mscapi_KeyStore_destroyKeyContainer
 }
 
 /*
- * Class:     sun_security_mscapi_RSACipher
+ * Class:     sun_security_mscapi_CRSACipher
  * Method:    encryptDecrypt
  * Signature: ([BIJZ)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSACipher_encryptDecrypt
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CRSACipher_encryptDecrypt
   (JNIEnv *env, jclass clazz, jbyteArray jData, jint jDataSize, jlong hKey,
    jboolean doEncrypt)
 {
@@ -1649,7 +1660,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSACipher_encryptDecrypt
 
         if (doEncrypt == JNI_TRUE) {
             // encrypt
-            if (! ::CryptEncrypt((HCRYPTKEY) hKey, 0, TRUE, 0, (BYTE *)pData,
+            if (! ::CryptEncrypt((HCRYPTKEY) hKey, 0, TRUE, 0, (BYTE *)pData, //deprecated
                 &dwDataLen, dwBufLen)) {
 
                 ThrowException(env, KEY_EXCEPTION, GetLastError());
@@ -1672,7 +1683,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSACipher_encryptDecrypt
             }
 
             // decrypt
-            if (! ::CryptDecrypt((HCRYPTKEY) hKey, 0, TRUE, 0, (BYTE *)pData,
+            if (! ::CryptDecrypt((HCRYPTKEY) hKey, 0, TRUE, 0, (BYTE *)pData, //deprecated
                 &dwBufLen)) {
 
                 ThrowException(env, KEY_EXCEPTION, GetLastError());
@@ -1698,11 +1709,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSACipher_encryptDecrypt
 }
 
 /*
- * Class:     sun_security_mscapi_RSAPublicKey
+ * Class:     sun_security_mscapi_CPublicKey
  * Method:    getPublicKeyBlob
  * Signature: (J)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyBlob
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CPublicKey_getPublicKeyBlob
     (JNIEnv *env, jobject clazz, jlong hCryptKey) {
 
     jbyteArray blob = NULL;
@@ -1713,7 +1724,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyB
     {
 
         // Determine the size of the blob
-        if (! ::CryptExportKey((HCRYPTKEY) hCryptKey, 0, PUBLICKEYBLOB, 0, NULL,
+        if (! ::CryptExportKey((HCRYPTKEY) hCryptKey, 0, PUBLICKEYBLOB, 0, NULL, //deprecated
             &dwBlobLen)) {
 
             ThrowException(env, KEY_EXCEPTION, GetLastError());
@@ -1726,7 +1737,7 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyB
         }
 
         // Generate key blob
-        if (! ::CryptExportKey((HCRYPTKEY) hCryptKey, 0, PUBLICKEYBLOB, 0,
+        if (! ::CryptExportKey((HCRYPTKEY) hCryptKey, 0, PUBLICKEYBLOB, 0, //deprecated
             pbKeyBlob, &dwBlobLen)) {
 
             ThrowException(env, KEY_EXCEPTION, GetLastError());
@@ -1751,11 +1762,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getPublicKeyB
 }
 
 /*
- * Class:     sun_security_mscapi_RSAPublicKey
+ * Class:     sun_security_mscapi_CPublicKey_CRSAPublicKey
  * Method:    getExponent
  * Signature: ([B)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getExponent
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CPublicKey_00024CRSAPublicKey_getExponent
     (JNIEnv *env, jobject clazz, jbyteArray jKeyBlob) {
 
     jbyteArray exponent = NULL;
@@ -1816,11 +1827,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getExponent
 }
 
 /*
- * Class:     sun_security_mscapi_RSAPublicKey
+ * Class:     sun_security_mscapi_CPublicKey_CRSAPublicKey
  * Method:    getModulus
  * Signature: ([B)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSAPublicKey_getModulus
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CPublicKey_00024CRSAPublicKey_getModulus
     (JNIEnv *env, jobject clazz, jbyteArray jKeyBlob) {
 
     jbyteArray modulus = NULL;
@@ -2104,11 +2115,11 @@ jbyteArray generateKeyBlob(
 }
 
 /*
- * Class:     sun_security_mscapi_KeyStore
- * Method:    generatePrivateKeyBlob
+ * Class:     sun_security_mscapi_CKeyStore
+ * Method:    generateRSAPrivateKeyBlob
  * Signature: (I[B[B[B[B[B[B[B[B)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_KeyStore_generatePrivateKeyBlob
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CKeyStore_generateRSAPrivateKeyBlob
     (JNIEnv *env, jobject clazz,
         jint jKeyBitLength,
         jbyteArray jModulus,
@@ -2126,11 +2137,11 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_KeyStore_generatePrivateKe
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature
+ * Class:     sun_security_mscapi_CSignature_RSA
  * Method:    generatePublicKeyBlob
  * Signature: (I[B[B)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_generatePublicKeyBlob
+JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_CSignature_00024RSA_generatePublicKeyBlob
     (JNIEnv *env, jclass clazz,
         jint jKeyBitLength,
         jbyteArray jModulus,
@@ -2141,13 +2152,13 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_generatePubli
 }
 
 /*
- * Class:     sun_security_mscapi_KeyStore
+ * Class:     sun_security_mscapi_CKeyStore
  * Method:    storePrivateKey
- * Signature: ([BLjava/lang/String;I)Lsun/security/mscapi/RSAPrivateKey;
+ * Signature: (Ljava/lang/String;[BLjava/lang/String;I)Lsun/security/mscapi/CPrivateKey;
  */
-JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
-    (JNIEnv *env, jobject clazz, jbyteArray keyBlob, jstring keyContainerName,
-     jint keySize)
+JNIEXPORT jobject JNICALL Java_sun_security_mscapi_CKeyStore_storePrivateKey
+    (JNIEnv *env, jobject clazz, jstring alg, jbyteArray keyBlob,
+     jstring keyContainerName, jint keySize)
 {
     HCRYPTPROV hCryptProv = NULL;
     HCRYPTKEY hKey = NULL;
@@ -2169,7 +2180,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
         }
 
         // Acquire a CSP context (create a new key container).
-        if (::CryptAcquireContext(
+        if (::CryptAcquireContext( //deprecated
             &hCryptProv,
             pszKeyContainerName,
             NULL,
@@ -2181,7 +2192,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
         }
 
         // Import the private key
-        if (::CryptImportKey(
+        if (::CryptImportKey( //deprecated
             hCryptProv,
             pbKeyBlob,
             dwBlobLen,
@@ -2193,22 +2204,23 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
             __leave;
         }
 
-        // Get the method ID for the RSAPrivateKey constructor
-        jclass clazzRSAPrivateKey =
-            env->FindClass("sun/security/mscapi/RSAPrivateKey");
-        if (clazzRSAPrivateKey == NULL) {
+        // Get the method ID for the CPrivateKey constructor
+        jclass clazzCPrivateKey =
+            env->FindClass("sun/security/mscapi/CPrivateKey");
+        if (clazzCPrivateKey == NULL) {
             __leave;
         }
 
-        jmethodID mNewRSAPrivateKey =
-            env->GetMethodID(clazzRSAPrivateKey, "<init>", "(JJI)V");
-        if (mNewRSAPrivateKey == NULL) {
+        jmethodID mNewCPrivateKey =
+            env->GetStaticMethodID(clazzCPrivateKey, "of",
+            "(Ljava/lang/String;JJI)Lsun/security/mscapi/CPrivateKey;");
+        if (mNewCPrivateKey == NULL) {
             __leave;
         }
 
-        // Create a new RSA private key
-        privateKey = env->NewObject(clazzRSAPrivateKey, mNewRSAPrivateKey,
-            (jlong) hCryptProv, (jlong) hKey, keySize);
+        // Create a new private key
+        privateKey = env->CallStaticObjectMethod(clazzCPrivateKey, mNewCPrivateKey,
+            alg, (jlong) hCryptProv, (jlong) hKey, keySize);
 
     }
     __finally
@@ -2228,12 +2240,12 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_KeyStore_storePrivateKey
 }
 
 /*
- * Class:     sun_security_mscapi_RSASignature
+ * Class:     sun_security_mscapi_CSignature
  * Method:    importPublicKey
- * Signature: ([BI)Lsun/security/mscapi/RSAPublicKey;
+ * Signature: (Ljava/lang/String;[BI)Lsun/security/mscapi/CPublicKey;
  */
-JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSASignature_importPublicKey
-    (JNIEnv *env, jclass clazz, jbyteArray keyBlob, jint keySize)
+JNIEXPORT jobject JNICALL Java_sun_security_mscapi_CSignature_importPublicKey
+    (JNIEnv *env, jclass clazz, jstring alg, jbyteArray keyBlob, jint keySize)
 {
     HCRYPTPROV hCryptProv = NULL;
     HCRYPTKEY hKey = NULL;
@@ -2252,7 +2264,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSASignature_importPublicKey
         // Acquire a CSP context (create a new key container).
         // Prefer a PROV_RSA_AES CSP, when available, due to its support
         // for SHA-2-based signatures.
-        if (::CryptAcquireContext(
+        if (::CryptAcquireContext( //deprecated
             &hCryptProv,
             NULL,
             NULL,
@@ -2261,7 +2273,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSASignature_importPublicKey
         {
             // Failover to using the default CSP (PROV_RSA_FULL)
 
-            if (::CryptAcquireContext(
+            if (::CryptAcquireContext( //deprecated
                 &hCryptProv,
                 NULL,
                 NULL,
@@ -2274,7 +2286,7 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSASignature_importPublicKey
         }
 
         // Import the public key
-        if (::CryptImportKey(
+        if (::CryptImportKey( //deprecated
             hCryptProv,
             pbKeyBlob,
             dwBlobLen,
@@ -2286,22 +2298,23 @@ JNIEXPORT jobject JNICALL Java_sun_security_mscapi_RSASignature_importPublicKey
             __leave;
         }
 
-        // Get the method ID for the RSAPublicKey constructor
-        jclass clazzRSAPublicKey =
-            env->FindClass("sun/security/mscapi/RSAPublicKey");
-        if (clazzRSAPublicKey == NULL) {
+        // Get the method ID for the CPublicKey constructor
+        jclass clazzCPublicKey =
+            env->FindClass("sun/security/mscapi/CPublicKey");
+        if (clazzCPublicKey == NULL) {
             __leave;
         }
 
-        jmethodID mNewRSAPublicKey =
-            env->GetMethodID(clazzRSAPublicKey, "<init>", "(JJI)V");
-        if (mNewRSAPublicKey == NULL) {
+        jmethodID mNewCPublicKey =
+            env->GetStaticMethodID(clazzCPublicKey, "of",
+            "(Ljava/lang/String;JJI)Lsun/security/mscapi/CPublicKey;");
+        if (mNewCPublicKey == NULL) {
             __leave;
         }
 
-        // Create a new RSA public key
-        publicKey = env->NewObject(clazzRSAPublicKey, mNewRSAPublicKey,
-            (jlong) hCryptProv, (jlong) hKey, keySize);
+        // Create a new public key
+        publicKey = env->CallStaticObjectMethod(clazzCPublicKey, mNewCPublicKey,
+            alg, (jlong) hCryptProv, (jlong) hKey, keySize);
 
     }
     __finally
