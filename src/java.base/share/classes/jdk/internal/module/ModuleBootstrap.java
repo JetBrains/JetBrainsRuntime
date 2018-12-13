@@ -550,7 +550,8 @@ public final class ModuleBootstrap {
             Set<String> modules = new HashSet<>();
             while (value != null) {
                 for (String s : value.split(",")) {
-                    if (s.length() > 0) modules.add(s);
+                    if (!s.isEmpty())
+                        modules.add(s);
                 }
                 index++;
                 value = getAndRemoveProperty(prefix + index);
@@ -842,7 +843,7 @@ public final class ModuleBootstrap {
             List<String> values = map.computeIfAbsent(key, k -> new ArrayList<>());
             int ntargets = 0;
             for (String s : rhs.split(regex)) {
-                if (s.length() > 0) {
+                if (!s.isEmpty()) {
                     values.add(s);
                     ntargets++;
                 }
