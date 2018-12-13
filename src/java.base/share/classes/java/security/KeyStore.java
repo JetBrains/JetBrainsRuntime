@@ -1813,8 +1813,8 @@ public class KeyStore {
             }
         }
 
-        throw new KeyStoreException("This keystore does not support probing "
-                + "and must be loaded with a specified type");
+        throw new KeyStoreException("Unrecognized keystore format. "
+                + "Please load it with a specified type");
     }
 
     /**
