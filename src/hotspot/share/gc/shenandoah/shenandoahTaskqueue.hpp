@@ -305,9 +305,12 @@ public:
 };
 
 class ShenandoahTerminatorTerminator : public TerminatorTerminator {
+private:
+  ShenandoahHeap* const _heap;
 public:
+  ShenandoahTerminatorTerminator(ShenandoahHeap* const heap) : _heap(heap) { }
   // return true, terminates immediately, even if there's remaining work left
-  virtual bool should_force_termination() { return false; }
+  virtual bool should_exit_termination() { return _heap->cancelled_gc(); }
 };
 
 /*
@@ -356,15 +359,6 @@ private:
    * otherwise, return false
    */
   bool do_spin_master_work(ShenandoahTerminatorTerminator* terminator);
-};
-
-class ShenandoahCancelledTerminatorTerminator : public ShenandoahTerminatorTerminator {
-  virtual bool should_exit_termination() {
-    return false;
-  }
-  virtual bool should_force_termination() {
-    return true;
-  }
 };
 
 #endif // SHARE_VM_GC_SHENANDOAH_SHENANDOAHTASKQUEUE_HPP
