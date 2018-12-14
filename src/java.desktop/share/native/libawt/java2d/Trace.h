@@ -34,7 +34,7 @@
 extern "C" {
 #endif /* __cplusplus */
 extern JavaVM *jvm;
-extern jint graphicsPrimitive_traceflags;
+JNIEXPORT extern jint graphicsPrimitive_traceflags;
 
 /**
  * J2dTrace
