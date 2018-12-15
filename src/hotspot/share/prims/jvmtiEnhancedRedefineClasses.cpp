@@ -337,6 +337,7 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
     if (obj == NULL) {
       return;
     }
+    bool oop_updated  = false;
     if (obj->is_instance() && InstanceKlass::cast(obj->klass())->is_mirror_instance_klass()) {
       Klass* klass = java_lang_Class::as_Klass(obj);
       if (klass != NULL && klass->is_instance_klass()) {
@@ -344,13 +345,17 @@ class ChangePointersOopClosure : public BasicOopIterateClosure {
         if (klass->new_version() != NULL) {
           obj = InstanceKlass::cast(klass->new_version())->java_mirror();
           S::oop_store(p, obj);
+          oop_updated = true;
         }
       }
     }
 
+
     // JSR 292 support, uptade java.lang.invoke.MemberName instances
     if (java_lang_invoke_MemberName::is_instance(obj)) {
-      update_member_name(obj);
+      if (oop_updated) {
+        update_member_name(obj);
+      }
     } else if (java_lang_invoke_DirectMethodHandle::is_instance(obj)) {
       if (!update_direct_method_handle(obj)) {
         // DMH is no longer valid, replace it with null reference.
