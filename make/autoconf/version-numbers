@@ -43,7 +43,7 @@ PRODUCT_NAME=OpenJDK
 PRODUCT_SUFFIX="Runtime Environment"
 JDK_RC_PLATFORM_NAME=Platform
 COMPANY_NAME=N/A
-HOTSPOT_VM_DISTRO="OpenJDK"
+HOTSPOT_VM_DISTRO="Dynamic Code Evolution"
 
 # Might need better names for these
 MACOSX_BUNDLE_NAME_BASE="OpenJDK"
