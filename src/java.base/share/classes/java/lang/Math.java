@@ -1463,6 +1463,7 @@ public final class Math {
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
      */
+    @HotSpotIntrinsicCandidate
     public static float max(float a, float b) {
         if (a != a)
             return a;   // a is NaN
@@ -1489,6 +1490,7 @@ public final class Math {
      * @param   b   another argument.
      * @return  the larger of {@code a} and {@code b}.
      */
+    @HotSpotIntrinsicCandidate
     public static double max(double a, double b) {
         if (a != a)
             return a;   // a is NaN
@@ -1544,6 +1546,7 @@ public final class Math {
      * @param   b   another argument.
      * @return  the smaller of {@code a} and {@code b}.
      */
+    @HotSpotIntrinsicCandidate
     public static float min(float a, float b) {
         if (a != a)
             return a;   // a is NaN
@@ -1570,6 +1573,7 @@ public final class Math {
      * @param   b   another argument.
      * @return  the smaller of {@code a} and {@code b}.
      */
+    @HotSpotIntrinsicCandidate
     public static double min(double a, double b) {
         if (a != a)
             return a;   // a is NaN
