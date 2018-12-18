@@ -322,7 +322,8 @@ static int checkThreads(int suspended, const char* kind) {
             /* query frame location */
             if (!NSK_JVMTI_VERIFY(
                     NSK_CPP_STUB5(GetFrameLocation, jvmti, threadsDesc[i].thread,
-                                                        j, &qMethod, &qLocation))) {
+                                                        j, &qMethod, &qLocation))
+                && (suspended == NSK_TRUE)) {
                 nsk_jvmti_setFailStatus();
                 continue;
             }
@@ -330,8 +331,8 @@ static int checkThreads(int suspended, const char* kind) {
             NSK_DISPLAY2("      queried: method: %p, location: %ld\n",
                                         (void*)qMethod, (long)qLocation);
 
-            /* check frame equalaty */
-            if (frameStack[j].method != qMethod) {
+            /* check frame equality */
+            if ((suspended == NSK_TRUE) && (frameStack[j].method != qMethod)) {
                 NSK_COMPLAIN6("Different method in stack frame #%d for %s thread #%d (%s):\n"
                             "#   GetStackTrace():    %p\n"
                             "#   GetFrameLocation(): %p\n",
