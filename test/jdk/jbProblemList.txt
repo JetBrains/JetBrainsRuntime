@@ -1066,6 +1066,8 @@ jdk/jfr/event/io/TestInstrumentation.java                                       
 jdk/jfr/event/sampling/TestNative.java                                              8202142    generic-all
 jdk/jfr/event/os/TestSystemProcess.java                                             8202835    linux-all
 
+demo/jfc/J2Ddemo/J2DdemoTest.java                                                   8213118 generic-all
+
 # no printer found
 java/awt/print/PrinterJob/ExceptionTest.java                                        generic-all
 java/awt/print/PrinterJob/ImagePrinting/NullClipARGB.java                           generic-all
