@@ -3807,7 +3807,7 @@ void MatchNode::count_commutative_op(int& count) {
     "AddVB","AddVS","AddVI","AddVL","AddVF","AddVD",
     "AndI","AndL",
     "AndV",
-    "MaxI","MinI",
+    "MaxI","MinI","MaxF","MinF","MaxD","MinD",
     "MulI","MulL","MulF","MulD",
     "MulVB","MulVS","MulVI","MulVL","MulVF","MulVD",
     "OrI","OrL",
