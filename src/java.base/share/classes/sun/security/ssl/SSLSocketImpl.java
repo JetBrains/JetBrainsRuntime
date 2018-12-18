@@ -601,7 +601,12 @@ public final class SSLSocketImpl
             }
         } else {
             if (!conContext.isInboundClosed()) {
-                conContext.inputRecord.close();
+                try (conContext.inputRecord) {
+                    // Try the best to use up the input records and close the
+                    // socket gracefully, without impact the performance too
+                    // much.
+                    appInput.deplete();
+                }
             }
 
             if ((autoClose || !isLayered()) && !super.isInputShutdown()) {
@@ -899,6 +904,30 @@ public final class SSLSocketImpl
             }
 
             return false;
+        }
+
+        /**
+         * Try the best to use up the input records so as to close the
+         * socket gracefully, without impact the performance too much.
+         */
+        private synchronized void deplete() {
+            if (!conContext.isInboundClosed()) {
+                if (!(conContext.inputRecord instanceof SSLSocketInputRecord)) {
+                    return;
+                }
+
+                SSLSocketInputRecord socketInputRecord =
+                        (SSLSocketInputRecord)conContext.inputRecord;
+                try {
+                    socketInputRecord.deplete(
+                        conContext.isNegotiated && (getSoTimeout() > 0));
+                } catch (IOException ioe) {
+                    if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
+                        SSLLogger.warning(
+                            "input stream close depletion failed", ioe);
+                    }
+                }
+            }
         }
     }
 
