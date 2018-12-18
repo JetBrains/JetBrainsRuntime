@@ -28,6 +28,7 @@
  *         by reflection API
  * @library /test/lib/
  * @modules jdk.compiler
+ *          java.base/java.lang.reflect:+open
  * @build ReflectionCallerCacheTest Members jdk.test.lib.compiler.CompilerUtils
  * @run testng/othervm ReflectionCallerCacheTest
  */
