@@ -411,18 +411,18 @@ public class FileFontStrike extends PhysicalStrike {
         byte charset = fileFont.getSupportedCharset();
         long ptr = 0;
         if (useDirectWrite) {
-            ptr = _getGlyphImageFromWindowsUsingDirectWrite(family, style, size, glyphCode,
+            ptr = _getGlyphImageFromWindowsUsingDirectWrite(family, style, size, glyphCode, rotation,
                     dwMeasuringMode, dwRenderingMode, dwClearTypeLevel, dwEnhancedContrast, dwGamma, dwPixelGeometry,
                     charset);
             if (ptr == 0 && FontUtilities.isLogging()) {
                 FontUtilities.getLogger().warning("Failed to render glyph via DirectWrite: code=" + glyphCode
-                        + ", fontFamily=" + family + ", style=" + style + ", size=" + size);
+                        + ", fontFamily=" + family + ", style=" + style + ", size=" + size + ", rotation=" + rotation);
             }
         }
         if (ptr == 0) {
             ptr = _getGlyphImageFromWindows(family, style, size, glyphCode,
                     desc.fmHint == INTVAL_FRACTIONALMETRICS_ON, charset);
-            if (ptr != 0) {
+            if (ptr != 0 && (rotation == 0 || rotation == 2)) {
                 /* Get the advance from the JDK rasterizer. This is mostly
                  * necessary for the fractional metrics case, but there are
                  * also some very small number (<0.25%) of marginal cases where
