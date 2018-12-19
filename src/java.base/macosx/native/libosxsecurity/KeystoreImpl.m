@@ -581,13 +581,15 @@ JNF_COCOA_ENTER(env);
         cssmPerror("_addItemToKeychain: SecKeychainItemImport", err);
     }
 
-    (*env)->ReleaseByteArrayElements(env, rawDataObj, rawData, JNI_ABORT);
-
     if (createdItems != NULL) {
         CFRelease(createdItems);
     }
 
 errOut:
+    if (rawData) {
+        (*env)->ReleaseByteArrayElements(env, rawDataObj, rawData, JNI_ABORT);
+    }
+
     if (passwordStrRef) CFRelease(passwordStrRef);
     if (passwordChars) {
         // clear the password and release
