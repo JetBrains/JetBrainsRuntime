@@ -455,6 +455,10 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
      */
     private boolean prepare(JComponent c, Container root, boolean isPaint, int x, int y,
                             int w, int h) {
+        if (!c.isOpaque()) {
+            // Do not use buffering per window for non-opaque components
+            return false;
+        }
         if (bsg != null) {
             bsg.dispose();
             bsg = null;
