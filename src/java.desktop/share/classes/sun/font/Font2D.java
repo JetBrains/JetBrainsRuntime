@@ -335,7 +335,7 @@ public abstract class Font2D {
         return getStrike(desc, true);
     }
 
-    private FontStrike getStrike(FontStrikeDesc desc, boolean copy) {
+    FontStrike getStrike(FontStrikeDesc desc, boolean copy) {
         /* Before looking in the map, see if the descriptor matches the
          * last strike returned from this Font2D. This should often be a win
          * since its common for the same font, in the same size to be
