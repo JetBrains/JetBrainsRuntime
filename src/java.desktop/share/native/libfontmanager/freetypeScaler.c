@@ -712,7 +712,6 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             if (logFC) fprintf(stderr, " size=%f", fcSize);
 
             (*FcConfigSubstitutePtr)(0, fcPattern, FcMatchPattern);
-            (*FcConfigSubstitutePtr)(0, fcPattern, FcMatchFont);
             (*FcDefaultSubstitutePtr)(fcPattern);
             FcResult matchResult = FcResultNoMatch;
             FcPattern *resultPattern = 0;
