@@ -455,7 +455,7 @@ public class Font implements java.io.Serializable
      * If the origin of a Font is a created font then this attribute
      * must be set on all derived fonts too.
      */
-    private transient boolean createdFont = false;
+    private boolean createdFont = false;
 
     /*
      * This is true if the font transform is not identity.  It
@@ -1849,6 +1849,7 @@ public class Font implements java.io.Serializable
                 nonIdentityTx == font.nonIdentityTx &&
                 hasLayoutAttributes == font.hasLayoutAttributes &&
                 pointSize == font.pointSize &&
+                createdFont == font.createdFont &&
                 name.equals(font.name)) {
 
                 /* 'values' is usually initialized lazily, except when
