@@ -180,6 +180,8 @@ public class TrueTypeFont extends FileFont {
     private String localeFamilyName;
     private String localeFullName;
 
+    private Byte supportedCharset;
+
     public TrueTypeFont(String platname, Object nativeNames, int fIndex,
                  boolean javaRasterizer)
         throws FontFormatException
@@ -1766,6 +1768,32 @@ public class TrueTypeFont extends FileFont {
     public boolean hasSupplementaryChars() {
         return ((TrueTypeGlyphMapper)getMapper()).hasSupplementaryChars();
     }
+
+    @Override
+    synchronized byte getSupportedCharset() {
+        if (supportedCharset != null) return supportedCharset;
+        Map<String, Byte> supportedCharsets = new HashMap<>();
+        getSupportedCharsetsForFamily(familyName, supportedCharsets);
+        HashSet<String> allNames = new HashSet<>();
+        try {
+            initAllNames(FULL_NAME_ID, allNames);
+        } catch (Exception e) {
+            /* In case of malformed font */
+        }
+        Byte charset = super.getSupportedCharset();
+        for (Map.Entry<String, Byte> e : supportedCharsets.entrySet()) {
+            if (allNames.contains(e.getKey())) {
+                charset = e.getValue();
+                break;
+            }
+        }
+        if (FontUtilities.isLogging()) {
+            FontUtilities.getLogger().info(fullName + " supported charset: " + (charset.intValue() & 0xFF));
+        }
+        return (supportedCharset = charset);
+    }
+
+    private static native void getSupportedCharsetsForFamily(String familyName, Map<String, Byte> supportedCharsets);
 
     @Override
     public String toString() {
