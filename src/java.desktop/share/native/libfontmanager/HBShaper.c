@@ -139,7 +139,7 @@ jboolean storeGVData(JNIEnv* env,
         positions[storei*2] = startX + x + glyphPos[i].x_offset * scale;
         positions[(storei*2)+1] = startY + y - glyphPos[i].y_offset * scale;
         x += glyphPos[i].x_advance * scale;
-        y += glyphPos[i].y_advance * scale;
+        y -= glyphPos[i].y_advance * scale;
         storei++;
     }
     storeadv = initialCount + glyphCount;
