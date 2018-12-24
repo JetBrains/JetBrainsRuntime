@@ -36,6 +36,8 @@ import sun.java2d.DisposerRecord;
 
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.WeakHashMap;
 
@@ -105,8 +107,12 @@ import java.util.WeakHashMap;
  * suffice.
  * */
 public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory {
+    private static final boolean useCtFace;
+
     static {
         FontManagerNativeLibrary.load();
+        useCtFace = AccessController.doPrivileged((PrivilegedAction<Boolean>) () ->
+                Boolean.getBoolean("sun.font.use.ct.face"));
     }
 
     private LayoutEngineKey key;
@@ -156,6 +162,8 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
             new WeakHashMap<>();
 
     private static boolean isAAT(Font2D font) {
+       if (!useCtFace) return false;
+
        Boolean aatObj;
        synchronized (aatInfo) {
            aatObj = aatInfo.get(font);
