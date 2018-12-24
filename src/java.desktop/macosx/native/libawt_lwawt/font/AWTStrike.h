@@ -34,6 +34,7 @@
     CGFloat                  fSize;
     JRSFontRenderingStyle    fStyle;
     jint                     fAAStyle;
+    jint                     fFmHint;
 
     CGAffineTransform        fTx;
     CGAffineTransform        fDevTx;
@@ -41,6 +42,6 @@
     CGAffineTransform        fFontTx;
 }
 
-+ (AWTStrike *) awtStrikeForFont:(AWTFont *)awtFont tx:(CGAffineTransform)tx invDevTx:(CGAffineTransform)invDevTx style:(JRSFontRenderingStyle)style aaStyle:(jint)aaStyle;
++ (AWTStrike *) awtStrikeForFont:(AWTFont *)awtFont tx:(CGAffineTransform)tx invDevTx:(CGAffineTransform)invDevTx style:(JRSFontRenderingStyle)style aaStyle:(jint)aaStyle fmHint:(jint)fmHint;
 
 @end
