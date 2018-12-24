@@ -201,18 +201,7 @@ public abstract class RenderQueue {
      * This method will block until the entire buffer has been flushed.  The
      * queue lock must be acquired before calling this method.
      */
-    public void flushNow() {
-        flushNow(true);
-    }
-
-    /**
-     * Schedule to process each operation currently pending on the buffer.
-     * This method will block until the entire buffer has been flushed.  The
-     * queue lock must be acquired before calling this method.
-     * @param sync true, process the operations immediately
-     */
-    public abstract void flushNow(boolean sync);
-
+    public abstract void flushNow();
 
     /**
      * Immediately processes each operation currently pending on the buffer,
