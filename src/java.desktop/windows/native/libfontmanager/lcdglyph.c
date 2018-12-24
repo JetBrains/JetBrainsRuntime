@@ -164,8 +164,7 @@ JNIEXPORT jboolean JNICALL
 JNIEXPORT jlong JNICALL
 Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
 (JNIEnv *env, jobject unused,
- jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm,
- jint fontDataSize) {
+ jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm, jint rotation, jint fontDataSize) {
 
     GLYPHMETRICS glyphMetrics;
     LOGFONTW lf;
@@ -227,6 +226,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     lf.lfOutPrecision = OUT_TT_PRECIS;
     lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
     lf.lfPitchAndFamily = DEFAULT_PITCH;
+    lf.lfEscapement = lf.lfOrientation = 900 * rotation;
 
     nameLen = (*env)->GetStringLength(env, fontFamily);
     name = (LPWSTR)alloca((nameLen+1)*2);
@@ -367,7 +367,17 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     if (fm) {
         x += 1;
     }
-    y = topLeftY - textMetric.tmAscent;
+    if (rotation == 1) {
+        x -= textMetric.tmAscent;
+    } else if (rotation == 3) {
+        x += textMetric.tmAscent;
+    }
+    y = topLeftY;
+    if (rotation == 0) {
+        y -= textMetric.tmAscent;
+    } else if (rotation == 2) {
+        y += textMetric.tmAscent;
+    }
     err = ExtTextOutW(hMemoryDC, x, y, ETO_GLYPH_INDEX|ETO_OPAQUE,
                 (LPRECT)&rect, (LPCWSTR)&glyphCode, 1, NULL);
     if (err == 0) {
