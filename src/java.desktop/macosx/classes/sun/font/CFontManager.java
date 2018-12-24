@@ -210,10 +210,10 @@ public final class CFontManager extends SunFontManager {
             if (plain == null && bold == null) continue;
             if (italic != null && boldItalic != null) continue;
             if (plain != null && italic == null) {
-               registerGenericFont(plain.createItalicVariant(), true);
+               registerGenericFont(plain.createItalicVariant(true), true);
             }
             if (bold != null && boldItalic == null) {
-               registerGenericFont(bold.createItalicVariant(), true);
+               registerGenericFont(bold.createItalicVariant(true), true);
             }
         }
     }
