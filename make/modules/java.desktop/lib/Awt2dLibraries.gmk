@@ -500,10 +500,12 @@ else ifeq ($(call isTargetOs, macosx), true)
   LIBFONTMANAGER_EXCLUDE_FILES += X11FontScaler.c \
       X11TextRenderer.c \
       fontpath.c \
-      lcdglyph.c
+      lcdglyph.c \
+      lcdglyphDW.cpp
 else
   LIBFONTMANAGER_EXCLUDE_FILES += fontpath.c \
-      lcdglyph.c
+      lcdglyph.c \
+      lcdglyphDW.cpp
 endif
 
 LIBFONTMANAGER_CFLAGS += $(X_CFLAGS) -DLE_STANDALONE -DHEADLESS
