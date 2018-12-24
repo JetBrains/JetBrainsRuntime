@@ -242,7 +242,7 @@ public abstract class FlowView extends BoxView {
         float min = layoutPool.getMinimumSpan(axis);
         // Don't include insets, Box.getXXXSpan will include them.
         r.minimum = (int)min;
-        r.preferred = Math.max(r.minimum, (int) pref);
+        r.preferred = Math.max(r.minimum, (int) Math.ceil(pref));
         r.maximum = Integer.MAX_VALUE;
         r.alignment = 0.5f;
         return r;
