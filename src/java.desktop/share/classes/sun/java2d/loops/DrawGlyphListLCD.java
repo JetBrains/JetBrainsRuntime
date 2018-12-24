@@ -69,7 +69,7 @@ public class DrawGlyphListLCD extends GraphicsPrimitive {
     }
 
     public native void DrawGlyphListLCD(SunGraphics2D sg2d, SurfaceData dest,
-                                         GlyphList srcData);
+                                         GlyphList srcData, int fromGlyph, int toGlyph);
 
     static {
         GraphicsPrimitiveMgr.registerGeneral(
@@ -107,10 +107,10 @@ public class DrawGlyphListLCD extends GraphicsPrimitive {
         }
 
         public void DrawGlyphListLCD(SunGraphics2D sg2d, SurfaceData dest,
-                                      GlyphList glyphs)
+                                      GlyphList glyphs, int fromGlyph, int toGlyph)
         {
             tracePrimitive(target);
-            target.DrawGlyphListLCD(sg2d, dest, glyphs);
+            target.DrawGlyphListLCD(sg2d, dest, glyphs, fromGlyph, toGlyph);
         }
     }
 }

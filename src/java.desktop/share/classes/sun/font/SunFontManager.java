@@ -3578,4 +3578,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     {
         return new FontUIResource(family, style, size);
     }
+
+    public boolean areColorGlyphsSupported() {
+        return false;
+    }
 }

@@ -34,4 +34,6 @@ CGGlyphImages_GetGlyphImagePtrs(jlong glyphInfos[],
                                 const AWTStrike *strike,
                                 jint rawGlyphCodes[], const CFIndex len);
 
+bool CGGI_IsColorFont(CGFontRef font);
+
 #endif /* __CGGLYPHIMAGES_H */
