@@ -31,15 +31,6 @@ package sun.font;
  * and the JDK scaler others. That needs to be dealt with somewhere, but
  * here we can just always get the same glyph code without
  * needing a strike.
- *
- * The C implementation would cache the results of anything up
- * to the maximum surrogate pair code point.
- * This implementation will not cache as much, since the storage
- * requirements are not justifiable. Even so it still can use up
- * to 216*256*4 bytes of storage per composite font. If an app
- * calls canDisplay on this range for all 20 composite fonts that's
- * over 1Mb of cached data. May need to employ WeakReferences if
- * this appears to cause problems.
  */
 
 public class CompositeGlyphMapper extends CharToGlyphMapper {
@@ -47,7 +38,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
     public static final int SLOTMASK =  0xff000000;
     public static final int GLYPHMASK = 0x00ffffff;
 
-    public static final int NBLOCKS = 216;
+    public static final int NBLOCKS = 512; // covering BMP and SMP
     public static final int BLOCKSZ = 256;
     public static final int MAXUNICODE = NBLOCKS*BLOCKSZ;
 
@@ -85,7 +76,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
 
     private int getCachedGlyphCode(int unicode) {
         if (unicode >= MAXUNICODE) {
-            return UNINITIALIZED_GLYPH; // don't cache surrogates
+            return UNINITIALIZED_GLYPH;
         }
         int[] gmap;
         if ((gmap = glyphMaps[unicode >> 8]) == null) {
@@ -94,9 +85,9 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return gmap[unicode & 0xff];
     }
 
-    private void setCachedGlyphCode(int unicode, int glyphCode) {
+    void setCachedGlyphCode(int unicode, int glyphCode) {
         if (unicode >= MAXUNICODE) {
-            return;     // don't cache surrogates
+            return;
         }
         int index0 = unicode >> 8;
         if (glyphMaps[index0] == null) {
