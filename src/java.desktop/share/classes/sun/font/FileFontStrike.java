@@ -120,6 +120,8 @@ public class FileFontStrike extends PhysicalStrike {
 
     private static native boolean isDirectWriteAvailable();
 
+    private static boolean useNativesForRotatedText;
+
     private static boolean useDirectWrite;
 
     // DirectWrite rendering options' values can be found in MSDN documentation
@@ -145,6 +147,8 @@ public class FileFontStrike extends PhysicalStrike {
 
     static {
         if (FontUtilities.isWindows && !FontUtilities.useJDKScaler && !GraphicsEnvironment.isHeadless()) {
+            String rotatedProperty = System.getProperty("rotated.text.native.rendering");
+            useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
             useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
             if (useDirectWrite) {
                 String options = System.getProperty("directwrite.font.rendering.options");
@@ -277,7 +281,7 @@ public class FileFontStrike extends PhysicalStrike {
                 pts = Math.abs(matrix[1]);
             }
             intPtSize = (int) pts;
-            useNatives = rotation >= 0 && pts >= 3.0 && pts <= 100.0 &&
+            useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
                     !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
         }
         if (FontUtilities.isLogging() && FontUtilities.isWindows) {
