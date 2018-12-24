@@ -34,9 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Locale;
-import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.plaf.FontUIResource;
 
@@ -46,7 +44,6 @@ import sun.lwawt.macosx.*;
 
 public final class CFontManager extends SunFontManager {
     private static Hashtable<String, Font2D> genericFonts = new Hashtable<String, Font2D>();
-    private final Map<String, Font2D> fallbackFonts = new ConcurrentHashMap<>();
 
     @Override
     protected FontConfiguration createFontConfiguration() {
@@ -210,10 +207,10 @@ public final class CFontManager extends SunFontManager {
             if (plain == null && bold == null) continue;
             if (italic != null && boldItalic != null) continue;
             if (plain != null && italic == null) {
-               registerGenericFont(plain.createItalicVariant(), true);
+               registerGenericFont(plain.createItalicVariant(true), true);
             }
             if (bold != null && boldItalic == null) {
-               registerGenericFont(bold.createItalicVariant(), true);
+               registerGenericFont(bold.createItalicVariant(true), true);
             }
         }
     }
@@ -340,17 +337,4 @@ public final class CFontManager extends SunFontManager {
     @Override
     protected void populateFontFileNameMap(HashMap<String, String> fontToFileMap, HashMap<String, String> fontToFamilyNameMap,
             HashMap<String, ArrayList<String>> familyToFontListMap, Locale locale) {}
-
-    Font2D getOrCreateFallbackFont(String fontName) {
-        Font2D font2D = findFont2D(fontName, Font.PLAIN, FontManager.NO_FALLBACK);
-        if (font2D != null || fontName.startsWith(".")) {
-            return font2D;
-        } else {
-            // macOS doesn't list some system fonts in [NSFontManager availableFontFamilies] output,
-            // so they are not registered in font manager as part of 'loadNativeFonts'.
-            // These fonts are present in [NSFontManager availableFonts] output though,
-            // and can be accessed in the same way as other system fonts.
-            return fallbackFonts.computeIfAbsent(fontName, name -> new CFont(name, null));
-        }
-    }
 }
