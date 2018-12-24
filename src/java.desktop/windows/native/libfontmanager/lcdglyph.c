@@ -155,7 +155,8 @@ static unsigned char* getIGTable(int gamma) {
 JNIEXPORT jlong JNICALL
 Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
 (JNIEnv *env, jobject unused,
- jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm, jint rotation, jint fontDataSize) {
+ jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm,
+ jint rotation, jbyte charset, jint fontDataSize) {
 
     GLYPHMETRICS glyphMetrics;
     LOGFONTW lf;
@@ -212,7 +213,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     lf.lfHeight = -size;
     lf.lfWeight = (style & 1) ? FW_BOLD : FW_NORMAL;
     lf.lfItalic = (style & 2) ? 0xff : 0;
-    lf.lfCharSet = DEFAULT_CHARSET;
+    lf.lfCharSet = (BYTE) charset;
     lf.lfQuality = CLEARTYPE_QUALITY;
     lf.lfOutPrecision = OUT_TT_PRECIS;
     lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
