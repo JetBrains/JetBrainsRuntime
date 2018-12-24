@@ -28,6 +28,8 @@ package sun.font;
 import java.util.HashMap;
 
 public class CCharToGlyphMapper extends CharToGlyphMapper {
+    private static final int UNMAPPED_CHAR = Integer.MIN_VALUE;
+
     private static native int countGlyphs(final long nativeFontPtr);
 
     private Cache cache = new Cache();
@@ -90,7 +92,7 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
 
     public synchronized int charToGlyph(char unicode) {
         int glyph = cache.get(unicode);
-        if (glyph != 0) return glyph;
+        if (glyph != 0) return glyph == UNMAPPED_CHAR ? 0 : glyph;
 
         if (FontUtilities.isDefaultIgnorable(unicode)) {
             glyph = INVISIBLE_GLYPH_ID;
@@ -101,7 +103,7 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
             glyph = glyphArray[0];
         }
 
-        cache.put(unicode, glyph);
+        cache.put(unicode, glyph == 0 ? UNMAPPED_CHAR : glyph);
 
         return glyph;
     }
@@ -248,7 +250,7 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
 
                 final int value = get(code);
                 if (value != 0 && value != -1) {
-                    values[i] = value;
+                    values[i] = value == UNMAPPED_CHAR ? 0 : value;
                     if (code >= 0x10000) {
                         values[i+1] = INVISIBLE_GLYPH_ID;
                         i++;
@@ -296,9 +298,10 @@ public class CCharToGlyphMapper extends CharToGlyphMapper {
                             low - LO_SURROGATE_START + 0x10000;
                     }
                 }
-               values[i] = glyphCodes[m];
-               put(code, values[i]);
-               if (code >= 0x10000) {
+                values[i] = glyphCodes[m];
+                int glyphCode = values[i];
+                put(code, glyphCode == 0 ? UNMAPPED_CHAR : glyphCode);
+                if (code >= 0x10000) {
                    m++;
                    values[i + 1] = INVISIBLE_GLYPH_ID;
                 }
