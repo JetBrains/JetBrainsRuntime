@@ -2882,6 +2882,11 @@ public class Font implements java.io.Serializable
      */
     public static final int LAYOUT_NO_LIMIT_CONTEXT = 4;
 
+    /**
+     * A flag to layoutGlyphVector requesting to disable detection of paired characters
+     * when splitting text into scripts.
+     */
+    public static final int LAYOUT_NO_PAIRED_CHARS_AT_SCRIPT_SPLIT = 8;
 
     private static void applyTransform(AffineTransform trans, AttributeValues values) {
         if (trans == null) {
