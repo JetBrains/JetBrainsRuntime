@@ -88,7 +88,8 @@ Java_sun_font_FileFontStrike_isDirectWriteAvailable(JNIEnv *env, jclass unused) 
 JNIEXPORT jlong JNICALL
 Java_sun_font_FileFontStrike__1getGlyphImageFromWindowsUsingDirectWrite
 (JNIEnv *env, jobject unused, jstring fontFamily, jint style, jint size, jint glyphCode, jint rotation,
-    jint measuringMode, jint renderingMode, jfloat clearTypeLevel, jfloat enhancedContrast, jfloat gamma, jint pixelGeometry) {
+    jint measuringMode, jint renderingMode, jfloat clearTypeLevel, jfloat enhancedContrast, jfloat gamma, jint pixelGeometry,
+    jbyte charset) {
     // variables cleared by FREE macro
     IDWriteFactory* factory = NULL;
     IDWriteGdiInterop* interop = NULL;
@@ -102,6 +103,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindowsUsingDirectWrite
     memset(&lf, 0, sizeof(LOGFONTW));
     lf.lfWeight = (style & 1) ? FW_BOLD : FW_NORMAL;
     lf.lfItalic = (style & 2) ? TRUE : FALSE;
+    lf.lfCharSet = (BYTE) charset;
 
     int nameLen = env->GetStringLength(fontFamily);
     if (nameLen >= (sizeof(lf.lfFaceName) / sizeof(lf.lfFaceName[0]))) {
