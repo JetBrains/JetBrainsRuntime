@@ -88,18 +88,10 @@ ReleaseCTStateDictionary(CFDictionaryRef ctStateDict)
     CFRelease(ctStateDict); // GC
 }
 
-/*
- *    Transform Unicode characters into glyphs.
- *
- *    Fills the "glyphsAsInts" array with the glyph codes for the current font,
- *    or the negative unicode value if we know the character can be hot-substituted.
- *
- *    This is the heart of "Universal Font Substitution" in Java.
- */
-void CTS_GetGlyphsAsIntsForCharacters
-(const AWTFont *font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[], const size_t count)
+void GetFontsAndGlyphsForCharacters(CTFontRef font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[],
+                                    CTFontRef actualFonts[], const size_t count)
 {
-    CTFontGetGlyphsForCharacters((CTFontRef)font->fFont, unicodes, glyphs, count);
+    CTFontGetGlyphsForCharacters(font, unicodes, glyphs, count);
 
     size_t i;
     for (i = 0; i < count; i++) {
@@ -115,12 +107,15 @@ void CTS_GetGlyphsAsIntsForCharacters
             continue;
         }
 
-        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters((CTFontRef)font->fFont, &unicodes[i],
-                                                                          surrogatePair ? 2 : 1);
+        const CTFontRef fallback = JRSFontCreateFallbackFontForCharacters(font, &unicodes[i], surrogatePair ? 2 : 1);
         if (fallback) {
             CTFontGetGlyphsForCharacters(fallback, &unicodes[i], &glyphs[i], surrogatePair ? 2 : 1);
             glyph = glyphs[i];
-            CFRelease(fallback);
+            if (actualFonts && glyph > 0) {
+                actualFonts[i] = fallback;
+            } else {
+                CFRelease(fallback);
+            }
         }
 
         if (glyph > 0) {
@@ -132,6 +127,53 @@ void CTS_GetGlyphsAsIntsForCharacters
         }
         if (surrogatePair) i++;
     }
+}
+
+/*
+ *    Transform Unicode characters into glyphs.
+ *
+ *    Fills the "glyphsAsInts" array with the glyph codes for the current font,
+ *    or the negative unicode value if we know the character can be hot-substituted.
+ *
+ *    This is the heart of "Universal Font Substitution" in Java.
+ */
+void CTS_GetGlyphsAsIntsForCharacters
+(const AWTFont *font, const UniChar unicodes[], CGGlyph glyphs[], jint glyphsAsInts[], const size_t count)
+{
+    GetFontsAndGlyphsForCharacters((CTFontRef)font->fFont, unicodes, glyphs, glyphsAsInts, NULL, count);
+}
+
+/*
+ *   Returns glyph code for a given Unicode character.
+ *   Names of the corresponding substituted font are also returned if substitution is performed.
+ */
+CGGlyph CTS_CopyGlyphAndFontNamesForCodePoint
+(const AWTFont *font, const UnicodeScalarValue codePoint, CFStringRef fontNames[])
+{
+    CTFontRef fontRef = (CTFontRef)font->fFont;
+    int count = codePoint >= 0x10000 ? 2 : 1;
+    UTF16Char unicodes[count];
+    if (count == 1) {
+        unicodes[0] = (UTF16Char)codePoint;
+    } else {
+        CTS_BreakupUnicodeIntoSurrogatePairs(codePoint, unicodes);
+    }
+    CGGlyph glyphs[count];
+    jint glyphsAsInts[count];
+    CTFontRef actualFonts[count];
+    GetFontsAndGlyphsForCharacters(fontRef, unicodes, glyphs, glyphsAsInts, actualFonts, count);
+    CGGlyph glyph = glyphs[0];
+    bool substitutionHappened = glyphsAsInts[0] < 0;
+    if (glyph > 0 && substitutionHappened) {
+        CTFontRef actualFont = actualFonts[0];
+        CFStringRef fontName = CTFontCopyPostScriptName(actualFont);
+        CFStringRef familyName = CTFontCopyFamilyName(actualFont);
+        CFRelease(actualFont);
+        fontNames[0] = fontName;
+        fontNames[1] = familyName;
+        if (!fontName || !familyName) glyph = 0;
+    }
+    return glyph;
 }
 
 /*
