@@ -356,6 +356,7 @@ public class FileFontStrike extends PhysicalStrike {
                                                   int glyphCode,
                                                   boolean fracMetrics,
                                                   int rotation,
+                                                  byte charset,
                                                   int fontDataSize);
 
     private native long _getGlyphImageFromWindowsUsingDirectWrite(String family,
@@ -368,17 +369,20 @@ public class FileFontStrike extends PhysicalStrike {
                                                                   float clearTypeLevel,
                                                                   float enhancedContrast,
                                                                   float gamma,
-                                                                  int pixelGeometry);
+                                                                  int pixelGeometry,
+                                                                  byte charset);
 
     long getGlyphImageFromWindows(int glyphCode) {
         String family = fileFont.getFamilyName(null);
         int style = desc.style & Font.BOLD | desc.style & Font.ITALIC
             | fileFont.getStyle();
         int size = intPtSize;
+        byte charset = fileFont.getSupportedCharset();
         long ptr = 0;
         if (useDirectWrite) {
             ptr = _getGlyphImageFromWindowsUsingDirectWrite(family, style, size, glyphCode, rotation,
-                    dwMeasuringMode, dwRenderingMode, dwClearTypeLevel, dwEnhancedContrast, dwGamma, dwPixelGeometry);
+                    dwMeasuringMode, dwRenderingMode, dwClearTypeLevel, dwEnhancedContrast, dwGamma, dwPixelGeometry,
+                    charset);
             if (ptr == 0 && FontUtilities.isLogging()) {
                 FontUtilities.logWarning("Failed to render glyph via DirectWrite: code=" + glyphCode
                         + ", fontFamily=" + family + ", style=" + style + ", size=" + size + ", rotation=" + rotation);
@@ -386,7 +390,7 @@ public class FileFontStrike extends PhysicalStrike {
         }
         if (ptr == 0) {
             ptr = _getGlyphImageFromWindows(family, style, size, glyphCode,
-                    desc.fmHint == INTVAL_FRACTIONALMETRICS_ON, rotation,
+                    desc.fmHint == INTVAL_FRACTIONALMETRICS_ON, rotation, charset,
                     ((TrueTypeFont)fileFont).fontDataSize);
             if (ptr != 0 && (rotation == 0 || rotation == 2)) {
                 /* Get the advance from the JDK rasterizer. This is mostly
