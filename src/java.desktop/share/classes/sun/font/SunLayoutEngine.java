@@ -148,33 +148,13 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
         this.key = key;
     }
 
-    private boolean isAAT(Font2D font) {
-       if (font instanceof TrueTypeFont) {
-           TrueTypeFont ttf = (TrueTypeFont)font;
-           return ttf.getDirectoryEntry(TrueTypeFont.morxTag) != null ||
-                  ttf.getDirectoryEntry(TrueTypeFont.mortTag) != null;
-       } else if (font instanceof PhysicalFont) {
-           PhysicalFont pf = (PhysicalFont)font;
-           return pf.getTableBytes(TrueTypeFont.morxTag) != null ||
-                  pf.getTableBytes(TrueTypeFont.mortTag) != null;
-       }
-       return false;
-    }
-
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
                        int baseIndex, TextRecord tr, int typo_flags,
                        Point2D.Float pt, GVData data) {
         Font2D font = key.font();
         FontStrike strike = font.getStrike(desc);
-        long layoutTables = font.getLayoutTableCache();
-        long pNativeFont = font.getPlatformNativeFontPtr(); // used on OSX
-        // pScaler probably not needed long term.
-        long pScaler = 0L;
-        if (font instanceof FileFont) {
-            pScaler = ((FileFont)font).getScaler().nativeScaler;
-        }
-        shape(font, strike, ptSize, mat, pScaler, pNativeFont,
-              layoutTables, isAAT(font),
+        shape(font, strike, ptSize, mat,
+              font.getHarfbuzzFacePtr(), font.getPlatformNativeFontPtr(), font.isAAT(),
               tr.text, data, key.script(),
               tr.start, tr.limit, baseIndex, pt,
               typo_flags, gmask);
@@ -183,7 +163,7 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     /* Native method to invoke harfbuzz layout engine */
     private static native boolean
         shape(Font2D font, FontStrike strike, float ptSize, float[] mat,
-              long pscaler, long pNativeFont, long layoutTables, boolean aat,
+              long pscaler, long pNativeFont, boolean aat,
               char[] chars, GVData data,
               int script, int offset, int limit,
               int baseIndex, Point2D.Float pt, int typo_flags, int slot);
