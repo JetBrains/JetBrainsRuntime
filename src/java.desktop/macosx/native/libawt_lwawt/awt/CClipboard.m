@@ -24,6 +24,7 @@
  */
 
 #import "CDataTransferer.h"
+#include "sun_lwawt_macosx_CDataTransferer.h"
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 #import <Cocoa/Cocoa.h>
@@ -259,13 +260,22 @@ JNI_COCOA_ENTER(env);
     }
 
     NSUInteger dataSize = [clipData length];
+    const void *dataBuffer = [clipData bytes];
+    if (format == sun_lwawt_macosx_CDataTransferer_CF_STRING && dataSize >= 3) {
+        const unsigned char *bytesPtr = (const unsigned char *)dataBuffer;
+        if (bytesPtr[0] == 0xEF && bytesPtr[1] == 0xBB && bytesPtr[2] == 0xBF) {
+            // strip BOM from string content, like native applications do
+            dataSize -= 3;
+            dataBuffer = (const void *)(bytesPtr + 3);
+        }
+    }
+
     returnValue = (*env)->NewByteArray(env, dataSize);
     if (returnValue == NULL) {
         return NULL;
     }
 
     if (dataSize != 0) {
-        const void *dataBuffer = [clipData bytes];
         (*env)->SetByteArrayRegion(env, returnValue, 0, dataSize, (jbyte *)dataBuffer);
     }
 
