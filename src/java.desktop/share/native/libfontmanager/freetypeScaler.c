@@ -72,7 +72,6 @@
 #define  FloatToFTFixed(f) (FT_Fixed)((f) * (float)(ftFixed1))
 #define  FTFixedToFloat(x) ((x) / (float)(ftFixed1))
 #define  FT26Dot6ToFloat(x)  ((x) / ((float) (1<<6)))
-#define  ROUND(x) ((int) ((x<0) ? (x-0.5) : (x+0.5)))
 #define  FT26Dot6ToDouble(x)  ((x) / ((double) (1<<6)))
 #define  FT26Dot6ToInt(x) (((int)(x)) >> 6)
 #define  DEFAULT_DPI 72
@@ -1283,12 +1282,12 @@ Java_sun_font_FreetypeFontScaler_getGlyphImageNative(
     } else {
         if (!ftglyph->advance.y) {
             glyphInfo->advanceX =
-                (float) ROUND(FT26Dot6ToFloat(ftglyph->advance.x));
+                (float) FT26Dot6ToInt(ftglyph->advance.x);
             glyphInfo->advanceY = 0;
         } else if (!ftglyph->advance.x) {
             glyphInfo->advanceX = 0;
             glyphInfo->advanceY =
-                (float) ROUND(FT26Dot6ToFloat(-ftglyph->advance.y));
+                (float) FT26Dot6ToInt(-ftglyph->advance.y);
         } else {
             glyphInfo->advanceX = FT26Dot6ToFloat(ftglyph->advance.x);
             glyphInfo->advanceY = FT26Dot6ToFloat(-ftglyph->advance.y);
