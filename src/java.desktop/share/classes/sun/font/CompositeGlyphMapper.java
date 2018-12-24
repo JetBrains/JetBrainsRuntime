@@ -115,7 +115,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    private int getGlyph(int unicode, boolean raw) {
+    int getGlyph(int unicode, boolean raw) {
         int glyphCode = getCachedGlyphCode(unicode, raw);
         if (glyphCode != UNINITIALIZED_GLYPH) {
             return glyphCode;
