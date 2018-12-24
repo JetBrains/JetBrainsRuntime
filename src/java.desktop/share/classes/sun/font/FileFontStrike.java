@@ -113,6 +113,9 @@ public class FileFontStrike extends PhysicalStrike {
     /* Used only for communication to native layer */
     private int intPtSize;
 
+    // -1 - undefined, 0 - horizontal (normal direction), 1 - 90 degrees CCW, 2 - 180 degrees, 3 - 90 degrees CW
+    private int rotation = -1;
+
     FileFontStrike(FileFont fileFont, FontStrikeDesc desc) {
         super(fileFont, desc);
         this.fileFont = fileFont;
@@ -207,12 +210,18 @@ public class FileFontStrike extends PhysicalStrike {
             !GraphicsEnvironment.isHeadless() &&
             !fileFont.useJavaRasterizer &&
             (desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HRGB ||
-             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR) &&
-            (matrix[1] == 0.0 && matrix[2] == 0.0 &&
-             matrix[0] == matrix[3] &&
-             matrix[0] >= 3.0 && matrix[0] <= 100.0) &&
-            !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize)) {
-            useNatives = true;
+             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR)) {
+            double pts = 0;
+            if (matrix[1] == 0.0 && matrix[2] == 0.0 && matrix[0] == matrix[3]) {
+                rotation = matrix[0] > 0 ? 0 : 2;
+                pts = Math.abs(matrix[0]);
+            } else if (matrix[0] == 0.0 && matrix[3] == 0.0 && matrix[1] == -matrix[2]) {
+                rotation = matrix[1] > 0 ? 3 : 1;
+                pts = Math.abs(matrix[1]);
+            }
+            intPtSize = (int) pts;
+            useNatives = rotation >= 0 && pts >= 3.0 && pts <= 100.0 &&
+                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
         }
         if (FontUtilities.isLogging() && FontUtilities.isWindows) {
             FontUtilities.logInfo("Strike for " + fileFont + " at size = " + intPtSize +
@@ -285,6 +294,7 @@ public class FileFontStrike extends PhysicalStrike {
                                                   int size,
                                                   int glyphCode,
                                                   boolean fracMetrics,
+                                                  int rotation,
                                                   int fontDataSize);
 
     long getGlyphImageFromWindows(int glyphCode) {
@@ -295,6 +305,7 @@ public class FileFontStrike extends PhysicalStrike {
         long ptr = _getGlyphImageFromWindows
             (family, style, size, glyphCode,
              desc.fmHint == INTVAL_FRACTIONALMETRICS_ON,
+             rotation,
              ((TrueTypeFont)fileFont).fontDataSize);
         if (ptr != 0) {
             /* Get the advance from the JDK rasterizer. This is mostly
@@ -304,8 +315,10 @@ public class FileFontStrike extends PhysicalStrike {
              * After these are resolved, we can restrict this extra
              * work to the FM case.
              */
-            float advance = getGlyphAdvance(glyphCode, false);
-            StrikeCache.setGlyphXAdvance(ptr, advance);
+            if (rotation == 0 || rotation == 2) {
+                float advance = getGlyphAdvance(glyphCode, false);
+                StrikeCache.setGlyphXAdvance(ptr, advance);
+            }
             return ptr;
         } else {
             if (FontUtilities.isLogging()) {
