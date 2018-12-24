@@ -265,8 +265,8 @@ public class Font implements java.io.Serializable
             font.font2DHandle = handle;
         }
 
-        public void setCreatedFont(Font font) {
-            font.createdFont = true;
+        public void setWithFallback(Font font) {
+            font.withFallback = true;
         }
 
         public boolean isCreatedFont(Font font) {
@@ -454,6 +454,12 @@ public class Font implements java.io.Serializable
     private transient boolean createdFont = false;
 
     /*
+     * Font with fallback components (using CompositeFont), its font2dHandle
+     * should be copied to derived fonts.
+     */
+    private transient boolean withFallback;
+
+    /*
      * This is true if the font transform is not identity.  It
      * is used to avoid unnecessary instantiation of an AffineTransform.
      */
@@ -604,26 +610,26 @@ public class Font implements java.io.Serializable
 
     /* This constructor is used by deriveFont when attributes is null */
     private Font(String name, int style, float sizePts,
-                 boolean created, Font2DHandle handle) {
+                 boolean created, boolean withFallback,
+                 Font2DHandle handle) {
         this(name, style, sizePts);
         this.createdFont = created;
+        this.withFallback = withFallback;
         /* Fonts created from a stream will use the same font2D instance
          * as the parent.
-         * One exception is that if the derived font is requested to be
-         * in a different style, then also check if its a CompositeFont
-         * and if so build a new CompositeFont from components of that style.
-         * CompositeFonts can only be marked as "created" if they are used
-         * to add fall backs to a physical font. And non-composites are
-         * always from "Font.createFont()" and shouldn't get this treatment.
+         * When a derived font is requested to be in a different style
+         * than a base font with fallback, then build a new CompositeFont
+         * from components of that style.
          */
-        if (created) {
-            if (handle.font2D instanceof CompositeFont &&
-                handle.font2D.getStyle() != style) {
+        if (withFallback) {
+            if (handle.font2D.getStyle() != style) {
                 FontManager fm = FontManagerFactory.getInstance();
                 this.font2DHandle = fm.getNewComposite(null, style, handle);
             } else {
                 this.font2DHandle = handle;
             }
+        } else if (created) {
+            this.font2DHandle = handle;
         }
     }
 
@@ -649,7 +655,7 @@ public class Font implements java.io.Serializable
      * parent. They can be distinguished because the "created" argument
      * will be "true". Since there is no way to recreate these fonts they
      * need to have the handle to the underlying font2D passed in.
-     * "created" is also true when a special composite is referenced by the
+     * "withFallback" flag is set when a special composite is referenced by the
      * handle for essentially the same reasons.
      * But when deriving a font in these cases two particular attributes
      * need special attention: family/face and style.
@@ -668,10 +674,12 @@ public class Font implements java.io.Serializable
      * In these cases there is no need to interrogate "values".
      */
     private Font(AttributeValues values, String oldName, int oldStyle,
-                 boolean created, Font2DHandle handle) {
+                 boolean created, boolean withFallback,
+                 Font2DHandle handle) {
 
         this.createdFont = created;
-        if (created) {
+        this.withFallback = withFallback;
+        if (created || withFallback) {
             this.font2DHandle = handle;
 
             String newName = null;
@@ -687,7 +695,7 @@ public class Font implements java.io.Serializable
                 if (values.getPosture() >= .2f) newStyle |= ITALIC;
                 if (oldStyle == newStyle)       newStyle  = -1;
             }
-            if (handle.font2D instanceof CompositeFont) {
+            if (withFallback) {
                 if (newStyle != -1 || newName != null) {
                     FontManager fm = FontManagerFactory.getInstance();
                     this.font2DHandle =
@@ -695,6 +703,7 @@ public class Font implements java.io.Serializable
                 }
             } else if (newName != null) {
                 this.createdFont = false;
+                this.withFallback = false;
                 this.font2DHandle = null;
             }
         }
@@ -737,6 +746,7 @@ public class Font implements java.io.Serializable
         }
         this.font2DHandle = font.font2DHandle;
         this.createdFont = font.createdFont;
+        this.withFallback = font.withFallback;
     }
 
     /**
@@ -866,7 +876,8 @@ public class Font implements java.io.Serializable
                 values = font.getAttributeValues().clone();
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
-                                font.createdFont, font.font2DHandle);
+                                font.createdFont, font.withFallback,
+                                font.font2DHandle);
             }
             return new Font(attributes);
         }
@@ -877,7 +888,8 @@ public class Font implements java.io.Serializable
                 AttributeValues values = font.getAttributeValues().clone();
                 values.merge(attributes, SECONDARY_MASK);
                 return new Font(values, font.name, font.style,
-                                font.createdFont, font.font2DHandle);
+                                font.createdFont, font.withFallback,
+                                font.font2DHandle);
             }
 
             return font;
@@ -1705,6 +1717,7 @@ public class Font implements java.io.Serializable
                 nonIdentityTx == font.nonIdentityTx &&
                 hasLayoutAttributes == font.hasLayoutAttributes &&
                 pointSize == font.pointSize &&
+                withFallback == font.withFallback &&
                 name.equals(font.name)) {
 
                 /* 'values' is usually initialized lazily, except when
@@ -1938,13 +1951,15 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(int style, float size){
         if (values == null) {
-            return new Font(name, style, size, createdFont, font2DHandle);
+            return new Font(name, style, size, createdFont, withFallback,
+                            font2DHandle);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
         newValues.setSize(size);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, withFallback,
+                        font2DHandle);
     }
 
     /**
@@ -1963,7 +1978,8 @@ public class Font implements java.io.Serializable
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
         applyTransform(trans, newValues);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, withFallback,
+                        font2DHandle);
     }
 
     /**
@@ -1975,11 +1991,13 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(float size){
         if (values == null) {
-            return new Font(name, style, size, createdFont, font2DHandle);
+            return new Font(name, style, size, createdFont, withFallback,
+                            font2DHandle);
         }
         AttributeValues newValues = getAttributeValues().clone();
         newValues.setSize(size);
-        return new Font(newValues, null, -1, createdFont, font2DHandle);
+        return new Font(newValues, null, -1, createdFont, withFallback,
+                        font2DHandle);
     }
 
     /**
@@ -1995,7 +2013,8 @@ public class Font implements java.io.Serializable
     public Font deriveFont(AffineTransform trans){
         AttributeValues newValues = getAttributeValues().clone();
         applyTransform(trans, newValues);
-        return new Font(newValues, null, -1, createdFont, font2DHandle);
+        return new Font(newValues, null, -1, createdFont, withFallback,
+                        font2DHandle);
     }
 
     /**
@@ -2007,12 +2026,14 @@ public class Font implements java.io.Serializable
      */
     public Font deriveFont(int style){
         if (values == null) {
-           return new Font(name, style, size, createdFont, font2DHandle);
+           return new Font(name, style, size, createdFont, withFallback,
+                           font2DHandle);
         }
         AttributeValues newValues = getAttributeValues().clone();
         int oldStyle = (this.style != style) ? this.style : -1;
         applyStyle(style, newValues);
-        return new Font(newValues, null, oldStyle, createdFont, font2DHandle);
+        return new Font(newValues, null, oldStyle, createdFont, withFallback,
+                        font2DHandle);
     }
 
     /**
@@ -2032,7 +2053,7 @@ public class Font implements java.io.Serializable
         AttributeValues newValues = getAttributeValues().clone();
         newValues.merge(attributes, RECOGNIZED_MASK);
 
-        return new Font(newValues, name, style, createdFont, font2DHandle);
+        return new Font(newValues, name, style, createdFont, withFallback, font2DHandle);
     }
 
     /**
