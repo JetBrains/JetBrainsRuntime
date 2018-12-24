@@ -308,4 +308,9 @@ public final class CFontManager extends SunFontManager {
     @Override
     protected void populateFontFileNameMap(HashMap<String, String> fontToFileMap, HashMap<String, String> fontToFamilyNameMap,
             HashMap<String, ArrayList<String>> familyToFontListMap, Locale locale) {}
+
+    @Override
+    public boolean areColorGlyphsSupported() {
+        return true;
+    }
 }

@@ -246,6 +246,12 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
         return nativeFontName;
     }
 
+    @Override
+    protected boolean isAAT() {
+        // using CoreText layout in Harfbuzz code leads to wrong advances for emoji glyphs
+        return !"AppleColorEmoji".equals(nativeFontName) && super.isAAT();
+    }
+
     // <rdar://problem/5321707> sun.font.Font2D caches the last used strike,
     // but does not check if the properties of the strike match the properties
     // of the incoming java.awt.Font object (size, style, etc).
