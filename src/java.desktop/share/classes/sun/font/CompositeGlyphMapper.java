@@ -119,7 +119,7 @@ public class CompositeGlyphMapper extends CharToGlyphMapper {
         return mapper;
     }
 
-    private int getGlyph(int unicode, boolean raw) {
+    int getGlyph(int unicode, boolean raw) {
         if (isIgnorableWhitespace(unicode) || (isDefaultIgnorable(unicode) && !raw)) {
             return INVISIBLE_GLYPH_ID;
         }
