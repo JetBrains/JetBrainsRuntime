@@ -43,7 +43,7 @@ package sun.font;
  * COMMON and INHERITED characters are first, they will be assigned to
  * the same script as the following characters.
  *
- * The iterator will try to match paired punctuation. If it sees an
+ * The iterator will try (optionally) to match paired punctuation. If it sees an
  * opening punctuation character, it will remember the script that
  * was assigned to that character, and assign the same script to the
  * matching closing punctuation.
@@ -83,6 +83,8 @@ public final class ScriptRun
     private int[] stack;         // stack used to handle paired punctuation if encountered
     private int parenSP;
 
+    private boolean handlePairedChars;
+
     public ScriptRun() {
         // must call init later or we die.
     }
@@ -100,7 +102,11 @@ public final class ScriptRun
         init(chars, start, count);
     }
 
-    public void init(char[] chars, int start, int count)
+    public void init(char[] chars, int start, int count) {
+        init(chars, start, count, true);
+    }
+
+    public void init(char[] chars, int start, int count, boolean pairedChars)
     {
         if (chars == null || start < 0 || count < 0 || count > chars.length - start) {
             throw new IllegalArgumentException();
@@ -114,6 +120,7 @@ public final class ScriptRun
         scriptLimit = textStart;
         scriptCode = Script.INVALID_CODE;
         parenSP = 0;
+        handlePairedChars = pairedChars;
     }
 
     /**
@@ -165,7 +172,7 @@ public final class ScriptRun
 
         while ((ch = nextCodePoint()) != DONE) {
             int sc = ScriptRunData.getScript(ch);
-            int pairIndex = sc == Script.COMMON ? getPairIndex(ch) : -1;
+            int pairIndex = handlePairedChars && sc == Script.COMMON ? getPairIndex(ch) : -1;
 
             // Paired character handling:
             //

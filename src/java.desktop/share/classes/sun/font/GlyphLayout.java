@@ -360,6 +360,8 @@ public final class GlyphLayout {
 
         init(count);
 
+        boolean handlePairedChars = (flags & Font.LAYOUT_NO_PAIRED_CHARS_AT_SCRIPT_SPLIT) == 0;
+
         // need to set after init
         // go through the back door for this
         if (font.hasLayoutAttributes()) {
@@ -408,7 +410,7 @@ public final class GlyphLayout {
         _textRecord.init(text, offset, lim, min, max);
         int start = offset;
         if (font2D instanceof CompositeFont) {
-            _scriptRuns.init(text, offset, count); // ??? how to handle 'common' chars
+            _scriptRuns.init(text, offset, count, handlePairedChars); // ??? how to handle 'common' chars
             _fontRuns.init((CompositeFont)font2D, text, offset, lim);
             while (_scriptRuns.next()) {
                 int limit = _scriptRuns.getScriptLimit();
@@ -431,7 +433,7 @@ public final class GlyphLayout {
                 }
             }
         } else {
-            _scriptRuns.init(text, offset, count); // ??? don't worry about 'common' chars
+            _scriptRuns.init(text, offset, count, handlePairedChars); // ??? don't worry about 'common' chars
             while (_scriptRuns.next()) {
                 int limit = _scriptRuns.getScriptLimit();
                 int script = _scriptRuns.getScriptCode();
