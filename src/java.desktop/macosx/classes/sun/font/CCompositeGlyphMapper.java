@@ -39,12 +39,15 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
         String[] fallbackFontInfo = new String[2];
         int glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, fallbackFontInfo);
         if (glyphCode == missingGlyph) {
+            setCachedGlyphCode(unicode, missingGlyph);
             return missingGlyph;
         }
         String fallbackFontName = fallbackFontInfo[0];
         String fallbackFontFamilyName = fallbackFontInfo[1];
         if (fallbackFontName == null || fallbackFontFamilyName == null) {
-            return compositeGlyphCode(0, glyphCode);
+            int result = compositeGlyphCode(0, glyphCode);
+            setCachedGlyphCode(unicode, result);
+            return result;
         }
 
         int slot = compositeFont.findSlot(fallbackFontName);
@@ -65,7 +68,9 @@ public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
             slot = compositeFont.addSlot((CFont) fallbackFont);
         }
 
-        return compositeGlyphCode(slot, glyphCode);
+        int result = compositeGlyphCode(slot, glyphCode);
+        setCachedGlyphCode(unicode, result);
+        return result;
     }
 
     // This invokes native font fallback mechanism, returning information about font (its Postscript and family names)
