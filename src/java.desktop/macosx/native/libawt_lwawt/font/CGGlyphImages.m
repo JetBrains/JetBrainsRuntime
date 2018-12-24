@@ -567,14 +567,17 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
     }
     advance = CGSizeApplyAffineTransform(advance, strike->fDevTx);
 
+    int imageBytes = height * width * pixelSize;
+    int extraPixelStorage = (strike->fAAStyle == sun_awt_SunHints_INTVAL_TEXT_ANTIALIAS_LCD_HRGB &&
+                             strike->fFmHint == sun_awt_SunHints_INTVAL_FRACTIONALMETRICS_ON) ? 3 : 0;
+
 #ifdef USE_IMAGE_ALIGNED_MEMORY
     // create separate memory
     GlyphInfo *glyphInfo = (GlyphInfo *)malloc(sizeof(GlyphInfo));
-    void *image = (void *)malloc(height * width * pixelSize);
+    void *image = (void *)malloc(imageBytes + extraPixelStorage);
 #else
     // create a GlyphInfo struct fused to the image it points to
-    GlyphInfo *glyphInfo = (GlyphInfo *)malloc(sizeof(GlyphInfo) +
-                                               height * width * pixelSize);
+    GlyphInfo *glyphInfo = (GlyphInfo *)malloc(sizeof(GlyphInfo) + imageBytes + extraPixelStorage);
 #endif
 
     glyphInfo->advanceX = advance.width;
@@ -591,6 +594,9 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 #else
     glyphInfo->image = ((void *)glyphInfo) + sizeof(GlyphInfo);
 #endif
+
+    int i;
+    for (i = 0; i < extraPixelStorage; i++) (glyphInfo->image)[imageBytes + i] = 0;
 
     return glyphInfo;
 }
