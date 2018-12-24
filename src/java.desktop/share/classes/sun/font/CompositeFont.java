@@ -38,7 +38,7 @@ import java.awt.Font;
  * But its probably OK to include it so long as only composites include
  * fallbacks. If physicals do then it would be really confusing ..
  */
-public final class CompositeFont extends Font2D {
+public class CompositeFont extends Font2D {
 
     private boolean[] deferredInitialisation;
     String[] componentFileNames;
