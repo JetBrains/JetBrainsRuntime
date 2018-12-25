@@ -22,14 +22,21 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/z/c1/zBarrierSetC1.hpp"
-#include "gc/z/c2/zBarrierSetC2.hpp"
 #include "gc/z/zBarrierSet.hpp"
 #include "gc/z/zBarrierSetAssembler.hpp"
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zHeap.inline.hpp"
 #include "gc/z/zThreadLocalData.hpp"
 #include "runtime/thread.hpp"
+#ifdef COMPILER1
+#include "gc/z/c1/zBarrierSetC1.hpp"
+#endif
+#ifdef COMPILER2
+#include "gc/z/c2/zBarrierSetC2.hpp"
+#endif
+
+class ZBarrierSetC1;
+class ZBarrierSetC2;
 
 ZBarrierSet::ZBarrierSet() :
     BarrierSet(make_barrier_set_assembler<ZBarrierSetAssembler>(),
