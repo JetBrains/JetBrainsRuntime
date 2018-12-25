@@ -668,3 +668,42 @@ Java_sun_awt_FontDescriptor_initIDs
 {
 }
 #endif
+
+/*
+ * Class:     sun_awt_FontDescriptor
+ * Method:    initIDs
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL
+Java_sun_font_CFont_getCascadeList
+    (JNIEnv *env, jclass cls, jlong awtFontPtr, jobject arrayListOfString)
+{
+    jclass alc = (*env)->FindClass(env, "java/util/ArrayList");
+    if (alc == NULL) return;
+    jmethodID addMID = (*env)->GetMethodID(env, alc, "add", "(Ljava/lang/Object;)Z");
+    if (addMID == NULL) return;
+
+    CFIndex i;
+    AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
+    NSFont* nsFont = awtFont->fFont;
+    CTFontRef font = (CTFontRef)nsFont;
+    CFStringRef base = CTFontCopyFullName(font);
+    CFArrayRef codes = CFLocaleCopyISOLanguageCodes();
+
+#ifdef DEBUG
+    NSLog(@"BaseFont is : %@", (NSString*)base);
+#endif
+    CFArrayRef fds = CTFontCopyDefaultCascadeListForLanguages(font, codes);
+    CFIndex cnt = CFArrayGetCount(fds);
+    for (i=0; i<cnt; i++) {
+        CTFontDescriptorRef ref = CFArrayGetValueAtIndex(fds, i);
+        CFStringRef fontname =
+            CTFontDescriptorCopyAttribute(ref, kCTFontNameAttribute);
+#ifdef DEBUG
+        NSLog(@"Font is : %@", (NSString*)fontname);
+#endif
+        jstring jFontName = (jstring)JNFNSToJavaString(env, fontname);
+        (*env)->CallBooleanMethod(env, arrayListOfString, addMID, jFontName); 
+        (*env)->DeleteLocalRef(env, jFontName);
+    }
+}

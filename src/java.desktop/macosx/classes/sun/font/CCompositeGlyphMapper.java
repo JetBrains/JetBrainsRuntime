@@ -25,50 +25,131 @@
 
 package sun.font;
 
-import java.awt.*;
-
 public final class CCompositeGlyphMapper extends CompositeGlyphMapper {
-    public CCompositeGlyphMapper(CCompositeFont compFont) {
+
+    private CompositeFont font;
+    private CharToGlyphMapper slotMappers[];
+
+    public CCompositeGlyphMapper(CompositeFont compFont) {
         super(compFont);
+        font = compFont;
+        slotMappers = new CharToGlyphMapper[font.numSlots];
+        missingGlyph = 0;
     }
 
-    @Override
-    protected int convertToGlyph(int unicode) {
-        CCompositeFont compositeFont = (CCompositeFont) font;
-        CFont mainFont = (CFont) font.getSlotFont(0);
-        String[] fallbackFontInfo = new String[2];
-        int glyphCode = nativeCodePointToGlyph(mainFont.getNativeFontPtr(), unicode, fallbackFontInfo);
-        if (glyphCode == missingGlyph) {
-            return missingGlyph;
+    private CharToGlyphMapper getSlotMapper(int slot) {
+        CharToGlyphMapper mapper = slotMappers[slot];
+        if (mapper == null) {
+            mapper = font.getSlotFont(slot).getMapper();
+            slotMappers[slot] = mapper;
         }
-        String fallbackFontName = fallbackFontInfo[0];
-        String fallbackFontFamilyName = fallbackFontInfo[1];
-        if (fallbackFontName == null || fallbackFontFamilyName == null) {
-            return compositeGlyphCode(0, glyphCode);
+        return mapper;
+    }
+
+    public boolean canDisplay(char ch) {
+        int glyph = charToGlyph(ch);
+        return glyph != missingGlyph;
+    }
+
+    private int convertToGlyph(int unicode) {
+        for (int slot = 0; slot < font.numSlots; slot++) {
+            CharToGlyphMapper mapper = getSlotMapper(slot);
+            int glyphCode = mapper.charToGlyph(unicode);
+            // The CFont Mappers will return a negative code
+            // for fonts that will fill the glyph from fallbacks
+            // - cascading font in OSX-speak. But we need to be
+            //  know here that only the codes > 0 are really present.
+            if (glyphCode > 0) {
+                glyphCode = compositeGlyphCode(slot, glyphCode);
+                return glyphCode;
+            }
         }
+        return missingGlyph;
+    }
 
-        int slot = compositeFont.findSlot(fallbackFontName);
+    public int getNumGlyphs() {
+        int numGlyphs = 0;
+        for (int slot=0; slot<1 /*font.numSlots*/; slot++) {
+           CharToGlyphMapper mapper = slotMappers[slot];
+           if (mapper == null) {
+               mapper = font.getSlotFont(slot).getMapper();
+               slotMappers[slot] = mapper;
+           }
+           numGlyphs += mapper.getNumGlyphs();
+        }
+        return numGlyphs;
+    }
 
-        if (slot < 0) {
-            Font2D fallbackFont = FontManagerFactory.getInstance().findFont2D(fallbackFontName,
-                    Font.PLAIN, FontManager.NO_FALLBACK);
-            if (!(fallbackFont instanceof CFont) ||
-                    !fallbackFontName.equals(((CFont) fallbackFont).getNativeFontName())) {
-                // Native font fallback mechanism can return "hidden" fonts - their names start with dot,
-                // and they are not returned in a list of fonts available in system, but they can still be used
-                // if requested explicitly.
-                fallbackFont = new CFont(fallbackFontName, fallbackFontFamilyName);
+    public int charToGlyph(int unicode) {
+        return convertToGlyph(unicode);
+    }
+
+    public int charToGlyph(char unicode) {
+        return convertToGlyph(unicode);
+    }
+
+    public boolean charsToGlyphsNS(int count, char[] unicodes, int[] glyphs) {
+
+        for (int i=0; i<count; i++) {
+            int code = unicodes[i]; // char is unsigned.
+
+            if (code >= HI_SURROGATE_START &&
+                code <= HI_SURROGATE_END && i < count - 1) {
+                char low = unicodes[i + 1];
+
+                if (low >= LO_SURROGATE_START &&
+                    low <= LO_SURROGATE_END) {
+                    code = (code - HI_SURROGATE_START) *
+                        0x400 + low - LO_SURROGATE_START + 0x10000;
+                    glyphs[i + 1] = INVISIBLE_GLYPH_ID;
+                }
             }
 
-            if (mainFont.isFakeItalic()) fallbackFont = ((CFont)fallbackFont).createItalicVariant(false);
+            glyphs[i] = convertToGlyph(code);
 
-            slot = compositeFont.addSlot((CFont) fallbackFont);
+            if (code < FontUtilities.MIN_LAYOUT_CHARCODE) {
+                continue;
+            }
+            else if (FontUtilities.isComplexCharCode(code)) {
+                return true;
+            }
+            else if (code >= 0x10000) {
+                i += 1; // Empty glyph slot after surrogate
+                continue;
+            }
         }
 
-        return compositeGlyphCode(slot, glyphCode);
+        return false;
     }
 
-    // This invokes native font fallback mechanism, returning information about font (its Postscript and family names)
-    // able to display a given character, and corresponding glyph code
-    private static native int nativeCodePointToGlyph(long nativeFontPtr, int codePoint, String[] result);
+    public void charsToGlyphs(int count, char[] unicodes, int[] glyphs) {
+        for (int i=0; i<count; i++) {
+            int code = unicodes[i]; // char is unsigned.
+
+            if (code >= HI_SURROGATE_START &&
+                code <= HI_SURROGATE_END && i < count - 1) {
+                char low = unicodes[i + 1];
+
+                if (low >= LO_SURROGATE_START &&
+                    low <= LO_SURROGATE_END) {
+                    code = (code - HI_SURROGATE_START) *
+                        0x400 + low - LO_SURROGATE_START + 0x10000;
+
+                    glyphs[i] = convertToGlyph(code);
+                    i += 1; // Empty glyph slot after surrogate
+                    glyphs[i] = INVISIBLE_GLYPH_ID;
+                    continue;
+                }
+            }
+
+            glyphs[i] = convertToGlyph(code);
+        }
+    }
+
+    public void charsToGlyphs(int count, int[] unicodes, int[] glyphs) {
+        for (int i=0; i<count; i++) {
+             glyphs[i] = convertToGlyph(unicodes[i]);
+        }
+    }
+
 }

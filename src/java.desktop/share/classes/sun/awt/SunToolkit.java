@@ -1080,10 +1080,6 @@ public abstract class SunToolkit extends Toolkit
         return ((mods & InputEvent.ALT_MASK) == (mods & InputEvent.CTRL_MASK));
     }
 
-    public boolean isPrintableCharacter(char c, int mods) {
-        return isPrintableCharacterModifiersMask(mods);
-    }
-
     /**
      * Returns whether popup is allowed to be shown above the task bar.
      * This is a default implementation of this method, which checks

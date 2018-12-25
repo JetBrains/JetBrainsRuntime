@@ -45,15 +45,13 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
                  tx:(CGAffineTransform)tx
            invDevTx:(CGAffineTransform)invDevTx
               style:(JRSFontRenderingStyle)style
-            aaStyle:(jint)aaStyle
-             fmHint:(jint)fmHint {
+            aaStyle:(jint)aaStyle {
 
     self = [super init];
     if (self) {
         fAWTFont = [awtFont retain];
         fStyle = style;
         fAAStyle = aaStyle;
-        fFmHint = fmHint;
 
         fTx = tx; // composited glyph and device transform
 
@@ -83,14 +81,12 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
                               tx:(CGAffineTransform)tx
                         invDevTx:(CGAffineTransform)invDevTx
                            style:(JRSFontRenderingStyle)style
-                         aaStyle:(jint)aaStyle
-                          fmHint:(jint)fmHint {
+                         aaStyle:(jint)aaStyle {
 
     return [[[AWTStrike alloc] initWithFont:awtFont
                                          tx:tx invDevTx:invDevTx
                                       style:style
-                                    aaStyle:aaStyle
-                                     fmHint:fmHint] autorelease];
+                                    aaStyle:aaStyle] autorelease];
 }
 
 @end
@@ -412,7 +408,7 @@ JNF_COCOA_ENTER(env);
     CGAffineTransform glyphTx = GetTxFromDoubles(env, glyphTxArray);
     CGAffineTransform invDevTx = GetTxFromDoubles(env, invDevTxArray);
 
-    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style aaStyle:aaStyle fmHint:fmHint]; // autoreleased
+    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style aaStyle:aaStyle]; // autoreleased
 
     if (awtStrike)
     {

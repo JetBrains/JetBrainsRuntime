@@ -106,10 +106,6 @@ public abstract class FileFont extends PhysicalFont {
      */
     protected abstract void close();
 
-    // for Windows only
-    byte getSupportedCharset() {
-        return 1; // DEFAULT_CHARSET
-    }
 
     /*
      * This is the public interface. The subclasses need to implement

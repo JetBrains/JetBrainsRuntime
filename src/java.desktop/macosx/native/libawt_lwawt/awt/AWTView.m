@@ -698,14 +698,10 @@ static BOOL shouldUsePressAndHold() {
 }
 
 -(BOOL) isCodePointInUnicodeBlockNeedingIMEvent: (unichar) codePoint {
-    if ((codePoint == 0x0024) || (codePoint == 0x00A3) ||
-        (codePoint == 0x00A5) ||
-        ((codePoint >= 0x20A3) && (codePoint <= 0x20BF)) ||
-        ((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
+    if (((codePoint >= 0x3000) && (codePoint <= 0x303F)) ||
         ((codePoint >= 0xFF00) && (codePoint <= 0xFFEF))) {
         // Code point is in 'CJK Symbols and Punctuation' or
-        // 'Halfwidth and Fullwidth Forms' Unicode block or
-        // currency symbols unicode
+        // 'Halfwidth and Fullwidth Forms' Unicode block.
         return YES;
     }
     return NO;

@@ -35,8 +35,6 @@ import java.awt.geom.GeneralPath;
 import java.awt.geom.NoninvertibleTransformException;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.concurrent.ConcurrentHashMap;
 import static sun.awt.SunHints.*;
 
@@ -112,77 +110,13 @@ public class FileFontStrike extends PhysicalStrike {
     /* Used only for communication to native layer */
     private int intPtSize;
 
-    // -1 - undefined, 0 - horizontal (normal direction), 1 - 90 degrees CCW, 2 - 180 degrees, 3 - 90 degrees CW
-    private int rotation = -1;
-
     /* Perform global initialisation needed for Windows native rasterizer */
     private static native boolean initNative();
-    private static native boolean isDirectWriteAvailable();
     private static boolean isXPorLater = false;
-
-    private static boolean useNativesForRotatedText;
-
-    private static boolean useDirectWrite;
-
-    // DirectWrite rendering options' values can be found in MSDN documentation
-    // for IDWriteBitmapRenderTarget::DrawGlyphRun method and its parameters
-    // (https://msdn.microsoft.com/en-us/library/windows/desktop/dd368167(v=vs.85).aspx)
-
-    // Measuring mode doesn't seem to impact glyph rendering directly,
-    // but values other that 0 ('natural' measuring mode) seem to limit possible other options' values.
-    private static int dwMeasuringMode = 0;
-    // Only 'natural' and 'natural symmetric' rendering modes seem to use requested gamma value,
-    // so only they can be used to produce valid glyph images.
-    // 'Natural' mode is said to look better for smaller font sizes.
-    private static int dwRenderingMode = 4;
-    // 'Full' ClearType
-    private static float dwClearTypeLevel = 1;
-    // Disabling enhanced contrast - it doesn't seem to be doing anything for white-on-black glyphs being generated.
-    private static float dwEnhancedContrast = 0;
-    // gamma correction will be applied when glyph image is blitted onto target surface, so for a cached glyph image
-    // we don't need any gamma correction
-    private static float dwGamma = 1;
-    // use monitor-default pixel geometry
-    private static int dwPixelGeometry = -1;
-
     static {
         if (FontUtilities.isWindows && !FontUtilities.useJDKScaler &&
             !GraphicsEnvironment.isHeadless()) {
             isXPorLater = initNative();
-            if (isXPorLater) {
-                AccessController.doPrivileged(new PrivilegedAction<Void>() {
-                    public Void run() {
-                        String rotatedProperty = System.getProperty("rotated.text.native.rendering");
-                        useNativesForRotatedText = rotatedProperty == null || Boolean.parseBoolean(rotatedProperty);
-                        useDirectWrite = Boolean.getBoolean("directwrite.font.rendering") && isDirectWriteAvailable();
-                        if (useDirectWrite) {
-                            String options = System.getProperty("directwrite.font.rendering.options");
-                            if (options != null) {
-                                String[] parts = options.split(":");
-                                if (parts.length > 0 && parts[0].length() > 0) {
-                                    try { dwMeasuringMode = Integer.parseInt(parts[0]); } catch (NumberFormatException ignored) { }
-                                }
-                                if (parts.length > 1 && parts[1].length() > 0) {
-                                    try { dwRenderingMode = Integer.parseInt(parts[1]); } catch (NumberFormatException ignored) { }
-                                }
-                                if (parts.length > 2 && parts[2].length() > 0) {
-                                    try { dwClearTypeLevel = Float.parseFloat(parts[2]); } catch (NumberFormatException ignored) { }
-                                }
-                                if (parts.length > 3 && parts[3].length() > 0) {
-                                    try { dwEnhancedContrast = Float.parseFloat(parts[3]); } catch (NumberFormatException ignored) { }
-                                }
-                                if (parts.length > 4 && parts[4].length() > 0) {
-                                    try { dwGamma = Float.parseFloat(parts[4]); } catch (NumberFormatException ignored) { }
-                                }
-                                if (parts.length > 5 && parts[5].length() > 0) {
-                                    try { dwPixelGeometry = Integer.parseInt(parts[5]); } catch (NumberFormatException ignored) { }
-                                }
-                            }
-                        }
-                        return null;
-                    }
-                });
-            }
         }
     }
 
@@ -298,18 +232,12 @@ public class FileFontStrike extends PhysicalStrike {
             !GraphicsEnvironment.isHeadless() &&
             !fileFont.useJavaRasterizer &&
             (desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HRGB ||
-             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR)) {
-            double pts = 0;
-            if (matrix[1] == 0.0 && matrix[2] == 0.0 && matrix[0] == matrix[3]) {
-                rotation = matrix[0] > 0 ? 0 : 2;
-                pts = Math.abs(matrix[0]);
-            } else if (matrix[0] == 0.0 && matrix[3] == 0.0 && matrix[1] == -matrix[2]) {
-                rotation = matrix[1] > 0 ? 3 : 1;
-                pts = Math.abs(matrix[1]);
-            }
-            intPtSize = (int) pts;
-            useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
-                    !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
+             desc.aaHint == INTVAL_TEXT_ANTIALIAS_LCD_HBGR) &&
+            (matrix[1] == 0.0 && matrix[2] == 0.0 &&
+             matrix[0] == matrix[3] &&
+             matrix[0] >= 3.0 && matrix[0] <= 100.0) &&
+            !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize)) {
+            useNatives = true;
         }
         else if (fileFont.checkUseNatives() && desc.aaHint==0 && !algoStyle) {
             /* Check its a simple scale of a pt size in the range
@@ -400,58 +328,31 @@ public class FileFontStrike extends PhysicalStrike {
                                                   int style,
                                                   int size,
                                                   int glyphCode,
-                                                  boolean fracMetrics,
-                                                  int rotation,
-                                                  byte charset);
-
-    private native long _getGlyphImageFromWindowsUsingDirectWrite(String family,
-                                                                  int style,
-                                                                  int size,
-                                                                  int glyphCode,
-                                                                  int rotation,
-                                                                  int measuringMode,
-                                                                  int renderingMode,
-                                                                  float clearTypeLevel,
-                                                                  float enhancedContrast,
-                                                                  float gamma,
-                                                                  int pixelGeometry,
-                                                                  byte charset);
+                                                  boolean fracMetrics);
 
     long getGlyphImageFromWindows(int glyphCode) {
         String family = fileFont.getFamilyName(null);
         int style = desc.style & Font.BOLD | desc.style & Font.ITALIC
             | fileFont.getStyle();
         int size = intPtSize;
-        byte charset = fileFont.getSupportedCharset();
-        long ptr = 0;
-        if (useDirectWrite) {
-            ptr = _getGlyphImageFromWindowsUsingDirectWrite(family, style, size, glyphCode, rotation,
-                    dwMeasuringMode, dwRenderingMode, dwClearTypeLevel, dwEnhancedContrast, dwGamma, dwPixelGeometry,
-                    charset);
-            if (ptr == 0 && FontUtilities.isLogging()) {
-                FontUtilities.getLogger().warning("Failed to render glyph via DirectWrite: code=" + glyphCode
-                        + ", fontFamily=" + family + ", style=" + style + ", size=" + size + ", rotation=" + rotation);
-            }
+        long ptr = _getGlyphImageFromWindows
+            (family, style, size, glyphCode,
+             desc.fmHint == INTVAL_FRACTIONALMETRICS_ON);
+        if (ptr != 0) {
+            /* Get the advance from the JDK rasterizer. This is mostly
+             * necessary for the fractional metrics case, but there are
+             * also some very small number (<0.25%) of marginal cases where
+             * there is some rounding difference between windows and JDK.
+             * After these are resolved, we can restrict this extra
+             * work to the FM case.
+             */
+            float advance = getGlyphAdvance(glyphCode, false);
+            StrikeCache.unsafe.putFloat(ptr + StrikeCache.xAdvanceOffset,
+                                        advance);
+            return ptr;
+        } else {
+            return fileFont.getGlyphImage(pScalerContext, glyphCode);
         }
-        if (ptr == 0) {
-            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode,
-                    desc.fmHint == INTVAL_FRACTIONALMETRICS_ON, rotation, charset);
-            if (ptr != 0 && (rotation == 0 || rotation == 2)) {
-                /* Get the advance from the JDK rasterizer. This is mostly
-                 * necessary for the fractional metrics case, but there are
-                 * also some very small number (<0.25%) of marginal cases where
-                 * there is some rounding difference between windows and JDK.
-                 * After these are resolved, we can restrict this extra
-                 * work to the FM case.
-                 */
-                float advance = getGlyphAdvance(glyphCode, false);
-                StrikeCache.unsafe.putFloat(ptr + StrikeCache.xAdvanceOffset, advance);
-            }
-        }
-        if (ptr == 0) {
-            ptr = fileFont.getGlyphImage(pScalerContext, glyphCode);
-        }
-        return ptr;
     }
 
     /* Try the native strikes first, then try the fileFont strike */
