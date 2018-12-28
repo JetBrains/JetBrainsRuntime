@@ -14,7 +14,7 @@
 # A test flagged with key "printer" requires a printer to succeed, else
 # throws a PrinterException or the like.
 
-keys=2d dnd headful i18n intermittent printer randomness jfr
+keys=2d dnd headful i18n intermittent printer randomness jfr dtrace
 
 # Tests that must run in othervm mode
 othervm.dirs=java/awt java/beans javax/accessibility javax/imageio javax/sound javax/swing javax/print \
