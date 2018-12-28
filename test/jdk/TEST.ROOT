@@ -15,7 +15,7 @@
 # throws a PrinterException or the like.
 # A test flagged with cgroups uses cgroups.
 
-keys=2d dnd headful i18n intermittent printer randomness jfr cgroups
+keys=2d dnd headful i18n intermittent printer randomness jfr cgroups dtrace
 
 # Tests that must run in othervm mode
 othervm.dirs=java/awt java/beans javax/accessibility javax/imageio javax/sound javax/swing javax/print \
