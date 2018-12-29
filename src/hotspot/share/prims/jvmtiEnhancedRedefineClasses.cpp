@@ -1,4 +1,4 @@
-/*
+  /*
  * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -28,6 +28,7 @@
 #include "classfile/metadataOnStackMark.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/verifier.hpp"
+#include "classfile/dictionary.hpp"
 #include "interpreter/oopMapCache.hpp"
 #include "interpreter/rewriter.hpp"
 #include "logging/logStream.hpp"
@@ -611,8 +612,7 @@ void VM_EnhancedRedefineClasses::doit() {
     assert(new_version->super() == NULL || new_version->super()->new_version() == NULL, "Super class must be newest version");
   }
   log_trace(redefine, class, obsolete, metadata)("calling check_class");
-  CheckClass check_class(thread);
-  ClassLoaderDataGraph::classes_do(&check_class);
+  ClassLoaderData::the_null_class_loader_data()->dictionary()->classes_do(check_class, thread);
 #ifdef PRODUCT
   }
 #endif
@@ -1822,19 +1822,6 @@ void VM_EnhancedRedefineClasses::compute_added_deleted_matching_methods() {
   assert(_matching_methods_length + _added_methods_length == _new_methods->length(), "sanity");
 }
 
-/**
-  FIXME - swap_annotations is never called, check that annotations work
-*/
-// TODO : delete it
-void VM_EnhancedRedefineClasses::swap_annotations(InstanceKlass* the_class,
-                                          InstanceKlass* new_class) {
-  // FIXME - probably original implementation only 
-  // Swap annotation fields values
-  Annotations* old_annotations = the_class->annotations();
-  the_class->set_annotations(new_class->annotations());
-  new_class->set_annotations(old_annotations);
-}
-
 // Install the redefinition of a class:
 //    - house keeping (flushing breakpoints and caches, deoptimizing
 //      dependent compiled code)
@@ -1942,15 +1929,17 @@ void VM_EnhancedRedefineClasses::increment_class_counter(InstanceKlass *ik, TRAP
   }
 }
 
-void VM_EnhancedRedefineClasses::CheckClass::do_klass(Klass* k) {
-  HandleMark hm(_thread);
-  InstanceKlass *ik = (InstanceKlass *) k;
-  assert(ik->new_version() == NULL, "must be latest version in system dictionary");
+void VM_EnhancedRedefineClasses::check_class(InstanceKlass* ik, TRAPS) {
+  if (ik->is_instance_klass() && ik->old_version() != NULL) {
+    HandleMark hm(THREAD);
 
-  if (ik->vtable_length() > 0) {
-    ResourceMark rm(_thread);
-    assert(ik->vtable().check_no_old_or_obsolete_entries(), "old method found");
-    ik->vtable().verify(tty, true);
+    assert(ik->new_version() == NULL, "must be latest version in system dictionary");
+
+    if (ik->vtable_length() > 0) {
+      ResourceMark rm(THREAD);
+      assert(ik->vtable().check_no_old_or_obsolete_entries(), "old method found");
+      ik->vtable().verify(tty, true);
+    }
   }
 }
 
@@ -2017,7 +2006,7 @@ void VM_EnhancedRedefineClasses::dump_methods() {
 }
 
 /**
- Helper class to traverse all loaded classes and figure out if the class is affected by redefinition.
+  Helper class to traverse all loaded classes and figure out if the class is affected by redefinition.
 */
 class AffectedKlassClosure : public KlassClosure {
  private:
