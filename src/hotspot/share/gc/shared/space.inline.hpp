@@ -213,6 +213,7 @@ inline void CompactibleSpace::scan_and_forward(SpaceType* space, CompactPoint* c
         // see if this is the first dead region.
         if (first_dead == NULL) {
           first_dead = cur_obj;
+          force_forward = true;
         }
       }
 
