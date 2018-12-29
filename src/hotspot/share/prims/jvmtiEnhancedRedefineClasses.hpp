@@ -195,8 +195,5 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Modifiable test must be shared between IsModifiableClass query
   // and redefine implementation
   static bool is_modifiable_class(oop klass_mirror);
-
-  // Error printing
-  void print_on_error(outputStream* st) const;
 };
 #endif // SHARE_VM_PRIMS_JVMTIREDEFINECLASSES2_HPP
