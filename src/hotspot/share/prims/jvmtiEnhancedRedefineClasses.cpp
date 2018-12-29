@@ -486,9 +486,9 @@ void VM_EnhancedRedefineClasses::doit() {
   }
 
   // Deoptimize all compiled code that depends on this class (do only once, because it clears whole cache)
-  //if (_max_redefinition_flags > Klass::ModifyClass) {
+  // if (_max_redefinition_flags > Klass::ModifyClass) {
     flush_dependent_code(NULL, thread);
-  //}
+  // }
 
   // JSR-292 support
   if (_any_class_has_resolved_methods) {
@@ -1736,8 +1736,14 @@ void VM_EnhancedRedefineClasses::flush_dependent_code(InstanceKlass* k_h, TRAPS)
   // All dependencies have been recorded from startup or this is a second or
   // subsequent use of RedefineClasses
   // FIXME: for now, deoptimize all!
-  if (0 && JvmtiExport::all_dependencies_are_recorded()) {
+  if (0 && k_h != NULL && JvmtiExport::all_dependencies_are_recorded()) {
     CodeCache::flush_evol_dependents_on(k_h);
+    Klass* superCl = k_h->super();
+    // Deoptimize super classes since redefined class can has a new method override
+    while (superCl != NULL && !superCl->is_redefining()) {
+      CodeCache::flush_evol_dependents_on(InstanceKlass::cast(superCl));
+      superCl = superCl->super();
+    }
   } else {
     CodeCache::mark_all_nmethods_for_deoptimization();
 
@@ -1852,9 +1858,9 @@ void VM_EnhancedRedefineClasses::redefine_single_class(InstanceKlass* new_class_
 
   // DCEVM Deoptimization is always for whole java world, call only once after all classes are redefined
   // Deoptimize all compiled code that depends on this class
-  //if (_max_redefinition_flags <= Klass::ModifyClass) {
-    //flush_dependent_code(the_class, THREAD);
-  //}
+//  if (_max_redefinition_flags <= Klass::ModifyClass) {
+//    flush_dependent_code(the_class, THREAD);
+//  }
 
   _old_methods = the_class->methods();
   _new_methods = new_class->methods();
