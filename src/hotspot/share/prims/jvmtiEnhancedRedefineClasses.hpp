@@ -144,14 +144,13 @@ class VM_EnhancedRedefineClasses: public VM_GC_Operation {
   // Install the redefinition of a class
   void redefine_single_class(InstanceKlass* new_class_oop, TRAPS);
 
-  void swap_annotations(InstanceKlass* new_class,
-                        InstanceKlass* scratch_class);
-
   // Increment the classRedefinedCount field in the specific InstanceKlass
   // and in all direct and indirect subclasses.
   void increment_class_counter(InstanceKlass *ik, TRAPS);
 
   void flush_dependent_code(InstanceKlass* k_h, TRAPS);
+
+  static void check_class(InstanceKlass* k_oop, TRAPS);
 
   static void dump_methods();
 
