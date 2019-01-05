@@ -49,7 +49,7 @@
   <target name="compile" depends="init"
         description="compile the source " >
     <!-- Compile the java code from ${src} into ${build} -->
-    <javac debug="off" source="1.6" target="1.6" srcdir="${src}" destdir="${build}"/>
+    <javac debug="on" source="8" target="8" srcdir="${src}" destdir="${build}"/>
   </target>
 
   <target name="run" depends="dist"
