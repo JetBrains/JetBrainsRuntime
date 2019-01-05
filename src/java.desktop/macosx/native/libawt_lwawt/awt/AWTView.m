@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -148,6 +148,11 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
         fInputMethodLOCKABLE = NULL;
     }
 
+    if (rolloverTrackingArea != nil) {
+        [self removeTrackingArea:rolloverTrackingArea];
+        [rolloverTrackingArea release];
+        rolloverTrackingArea = nil;
+    }
 
     [super dealloc];
 }
@@ -293,7 +298,11 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
 
     if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
+<<<<<<< HEAD
          fInputMethodLOCKABLE)
+=======
+        fInputMethodLOCKABLE)
+>>>>>>> 0efb086... 8215756: Memory leaks in the AWT on macOS
     {
         BOOL skipProcessingCancelKeys = YES;
         fProcessingKeystroke = NO;
@@ -301,6 +310,12 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
             fInPressAndHold = YES;
             fPAHNeedsToSelect = YES;
         } else {
+<<<<<<< HEAD
+=======
+            // Abandon input to reset IM and unblock input after canceling
+            // input accented symbols
+
+>>>>>>> 0efb086... 8215756: Memory leaks in the AWT on macOS
             switch([event keyCode]) {
                 case kVK_ForwardDelete:
                 case kVK_Delete:
