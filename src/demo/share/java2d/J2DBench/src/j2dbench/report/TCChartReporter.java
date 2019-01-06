@@ -38,6 +38,9 @@ import java.util.Vector;
  */
 public class TCChartReporter {
 
+    private static boolean printTCValues = false;
+    private static boolean printValues = false;
+
     private static final DecimalFormat decimalFormat =
             new DecimalFormat("0.00");
 
@@ -127,9 +130,11 @@ public class TCChartReporter {
 
                     value = generateTestCaseReport(curTestName, testCaseResult, testCaseResultCount);
 
-                    System.out.println("##teamcity[buildStatisticValue key='" + (OJRname.isEmpty()? "": OJRname + ".") + curTestName
-                            + "' value='" + decimalFormat.format(value) + "']");
-                    System.out.println((OJRname.isEmpty()? "": OJRname + ".") + curTestName + "," + decimalFormat.format(value));
+                    if (printTCValues)
+                        System.out.println("##teamcity[buildStatisticValue key='" + (OJRname.isEmpty() ? "" : OJRname + ".") + curTestName
+                                + "' value='" + decimalFormat.format(value) + "']");
+                    if (printValues)
+                        System.out.println((OJRname.isEmpty() ? "" : OJRname + ".") + curTestName + "," + decimalFormat.format(value));
                     if (rememberReference) {
                         referenceValues.put(curTestName, value);
                     } else {
@@ -172,7 +177,10 @@ public class TCChartReporter {
                         args[i].startsWith("-b")) {
                     i++;
                     baseXML = args[i];
-                }
+                } else if (args[i].startsWith("-tc")) {
+                    printTCValues = true;
+                } else if (args[i].startsWith("-v"))
+                    printValues = true;
             }
         } catch (Exception e) {
             printUsage();
@@ -302,7 +310,6 @@ public class TCChartReporter {
         }
 
         String OJRname = osName + "." + jdkName + "." + renderName;
-        System.out.println("******" + OJRname);
         generateTestCaseSummaryReport((OJRname.length() == 2? "": OJRname),
                 consoleBaseRes,
                 testCaseBaseResult,
