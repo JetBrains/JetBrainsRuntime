@@ -1458,7 +1458,7 @@ Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
       dist = 4;               // Do not bother for random pointer tests
     }
 #if INCLUDE_SHENANDOAHGC
-  } else if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this)) {
+  } else if (ShenandoahWriteBarrierNode::is_heap_stable_test(this)) {
     dist = 16;
 #endif
   } else {
@@ -1550,11 +1550,11 @@ Node* IfNode::search_identical(int dist) {
   Node* prev_dom = this;
   int op = Opcode();
 #if INCLUDE_SHENANDOAHGC
-  bool evac_in_progress = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(this);
+  bool heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(this);
 #endif
   // Search up the dominator tree for an If with an identical test
   while (dom->Opcode() != op    ||  // Not same opcode?
-         (dom->in(1) != in(1) SHENANDOAHGC_ONLY(&& (!evac_in_progress || !ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom->as_If())))) ||  // Not same input 1?
+         (dom->in(1) != in(1) SHENANDOAHGC_ONLY(&& (!heap_stable || !ShenandoahWriteBarrierNode::is_heap_stable_test(dom->as_If())))) ||  // Not same input 1?
          prev_dom->in(0) != dom) {  // One path of test does not dominate?
     if (dist < 0) return NULL;
 
