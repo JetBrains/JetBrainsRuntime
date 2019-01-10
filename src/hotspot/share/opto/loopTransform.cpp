@@ -1021,11 +1021,7 @@ Node *PhaseIdealLoop::clone_up_backedge_goo( Node *back_ctrl, Node *preheader_ct
   // Recursive fixup any other input edges into x.
   // If there are no changes we can just return 'n', otherwise
   // we need to clone a private copy and change it.
-  uint start = 1;
-  if (n->Opcode() == Op_ShenandoahWBMemProj) {
-    start = 0;
-  }
-  for( uint i = start; i < n->req(); i++ ) {
+  for( uint i = 1; i < n->req(); i++ ) {
     Node *g = clone_up_backedge_goo( back_ctrl, preheader_ctrl, n->in(i), visited, clones );
     if( g != n->in(i) ) {
       if( !x ) {

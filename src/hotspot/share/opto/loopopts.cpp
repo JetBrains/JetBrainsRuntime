@@ -3227,7 +3227,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
 
           // if not pinned and not a load (which maybe anti-dependent on a store)
           // and not a CMove (Matcher expects only bool->cmove).
-          if ( n->in(0) == NULL && !n->is_Load() && !n->is_CMove() ) {
+          if (n->in(0) == NULL && !n->is_Load() && !n->is_CMove() && n->Opcode() != Op_ShenandoahWBMemProj) {
             cloned_for_outside_use += clone_for_use_outside_loop( loop, n, worklist );
             sink_list.push(n);
             peel     >>= n->_idx; // delete n from peel set.
