@@ -1767,7 +1767,8 @@ void ConnectionGraph::adjust_scalar_replaceable_state(JavaObjectNode* jobj) {
     }
 
     for (DUIterator_Fast imax, i = n->fast_outs(imax); i < imax; i++) {
-      if (n->fast_out(i)->is_LoadStore()) {
+      Node* u = n->fast_out(i);
+      if (u->is_LoadStore() || (u->is_Mem() && u->as_Mem()->is_mismatched_access())) {
         jobj->set_scalar_replaceable(false);
         return;
       }
