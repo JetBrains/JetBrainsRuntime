@@ -229,7 +229,7 @@ java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.html                      
 java/awt/List/KeyEventsTest/KeyEventsTest.html                                      8047703 windows-all
 java/awt/List/SingleModeDeselect/SingleModeDeselect.java                            8196367 windows-all
 java/awt/MenuBar/8007006/bug8007006.java                                            8202886 macosx-all
-java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java                   8049405 macosx-all,windows-all
+java/awt/Mixing/AWT_Mixing/HierarchyBoundsListenerMixingTest.java                   8049405 macosx-all,windows-all,linux-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java                             8048171 generic-all
 java/awt/Mixing/AWT_Mixing/JButtonInGlassPaneOverlapping.java                       8158801 windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JButtonOverlapping.java                                  8158801 windows-all,macosx-all,linux-all
@@ -502,7 +502,7 @@ java/awt/Modal/ToBack/ToBackTKModal6Test.java                                   
 java/awt/Modal/ToFront/DialogToFrontAppModalTest.java                               8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontDocModalTest.java                               8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontModalTest.java                                  8196441 macosx-all,windows-all,linux-all
-java/awt/Modal/ToFront/DialogToFrontModeless1Test.java                              8208512 windows-all
+java/awt/Modal/ToFront/DialogToFrontModeless1Test.java                              8208512,8213530 windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontNonModalTest.java                               8198282,8208512 linux-all,windows-all
 java/awt/Modal/ToFront/DialogToFrontTKModalTest.java                                8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/FrameToFrontAppModal1Test.java                               8196441 macosx-all,windows-all,linux-all
@@ -617,12 +617,12 @@ java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java                            
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java                6854300 generic-all
 java/awt/event/MouseEvent/MouseButtonsAndKeyMasksTest/MouseButtonsAndKeyMasksTest.java 8129778 generic-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.html                        8168389 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java             8204200,8060176 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java           8204200,8060176 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java           8204200 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java           8204200 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           8204200 windows-all,macosx-all
-java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                     8169475 windows-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion.java             8204200,8060176 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_1.java           8204200,8060176 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_2.java           8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java           8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           8204200 windows-all,macosx-all,linux-all
+java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                     8169475 windows-all,linux-all
 java/awt/font/TextLayout/CombiningPerf.java                                         8192931 generic-all
 java/awt/font/TextLayout/LigatureCaretTest.java                                     8197821 generic-all
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
@@ -738,6 +738,7 @@ com/sun/net/httpserver/bugs/B6361557.java                                       
 
 java/nio/Buffer/EqualsCompareTest.java                                              8193917 solaris-all
 
+java/nio/channels/AsyncCloseAndInterrupt.java                                       8160716,8172045,8189601 linux-all
 java/nio/channels/DatagramChannel/ChangingAddress.java                              7141822 macosx-all
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java                    8044365 macosx-all
 java/nio/channels/Selector/Wakeup.java                                              6963118 windows-all
