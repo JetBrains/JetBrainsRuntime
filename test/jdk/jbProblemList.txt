@@ -580,11 +580,11 @@ java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                   
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999,8198690 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                        8078999 macosx-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java                  8078999 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java                  8078999,8198690 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8165218 linux-all
+java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8198690,8165218 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8194129 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java             8194129 macosx-all,windows-all,linux-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                      6847593 macosx-all,windows-all,linux-all
