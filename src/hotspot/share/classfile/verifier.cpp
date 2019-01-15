@@ -2015,7 +2015,6 @@ Klass* ClassVerifier::load_class(Symbol* name, TRAPS) {
     true, THREAD);
 
   if (kls != NULL) {
-    current_class()->class_loader_data()->record_dependency(kls);
     if (log_is_enabled(Debug, class, resolve)) {
       InstanceKlass* cur_class = InstanceKlass::cast(current_class());
       Verifier::trace_class_resolution(kls, cur_class);
