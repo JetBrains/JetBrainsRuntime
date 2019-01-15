@@ -495,6 +495,11 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                         LOGGER.finer("prepare: contents lost on expose");
                     }
                 }
+
+                if (bsg != null && !c.isOpaque() &&
+                        ((SunGraphics2D)bsg).getSurfaceData().getTransparency() ==
+                                Transparency.OPAQUE) return false;
+
                 if (isPaint && c == rootJ && x == 0 && y == 0 &&
                       c.getWidth() == w && c.getHeight() == h) {
                     bufferInfo.setInSync(true);
@@ -513,9 +518,6 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                         resetDoubleBufferPerWindow();
                     }
                 }
-                if (bsg != null && !c.isOpaque() &&
-                        ((SunGraphics2D)bsg).getSurfaceData().getTransparency() ==
-                                Transparency.OPAQUE) return false;
                 return (bufferInfos != null);
             }
         }
