@@ -160,6 +160,12 @@ abstract class ExchangeImpl<T> {
         }
     }
 
+    // Called for 204 response - when no body is permitted
+    void nullBody(HttpResponse<T> resp, Throwable t) {
+        // only needed for HTTP/1.1 to close the connection
+        // or return it to the pool
+    }
+
     /* The following methods have separate HTTP/1.1 and HTTP/2 implementations */
 
     abstract CompletableFuture<ExchangeImpl<T>> sendHeadersAsync();
@@ -175,6 +181,7 @@ abstract class ExchangeImpl<T> {
      * Ignore/consume the body.
      */
     abstract CompletableFuture<Void> ignoreBody();
+
 
     /** Gets the response headers. Completes before body is read. */
     abstract CompletableFuture<Response> getResponseAsync(Executor executor);

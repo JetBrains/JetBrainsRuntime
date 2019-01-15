@@ -267,6 +267,15 @@ class Http1Response<T> {
         }
     }
 
+    // Used for those response codes that have no body associated
+    public void nullBody(HttpResponse<T> resp, Throwable t) {
+        if (t != null) connection.close();
+        else {
+            return2Cache = !request.isWebSocket();
+            onFinished();
+        }
+    }
+
     static final Flow.Subscription NOP = new Flow.Subscription() {
         @Override
         public void request(long n) { }
