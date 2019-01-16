@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,11 @@ import java.security.cert.X509Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateEncodingException;
 import java.security.*;
+import java.security.spec.AlgorithmParameterSpec;
 import java.util.Date;
 
 import sun.security.pkcs10.PKCS10;
 import sun.security.x509.*;
-
 
 /**
  * Generate a pair of keys, and provide access to them.  This class is
@@ -123,6 +123,21 @@ public final class CertAndKeyGen {
 
     // want "public void generate (X509Certificate)" ... inherit DSA/D-H param
 
+    public void generate(int keyBits) {
+        if (keyBits != -1) {
+            try {
+                if (prng == null) {
+                    prng = new SecureRandom();
+                }
+                keyGen.initialize(keyBits, prng);
+
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e.getMessage());
+            }
+        }
+        generateInternal();
+    }
+
     /**
      * Generates a random public/private key pair, with a given key
      * size.  Different algorithms provide different degrees of security
@@ -140,21 +155,8 @@ public final class CertAndKeyGen {
      * @exception InvalidKeyException if the environment does not
      *  provide X.509 public keys for this signature algorithm.
      */
-    public void generate (int keyBits)
-    throws InvalidKeyException
-    {
-        KeyPair pair;
-
-        try {
-            if (prng == null) {
-                prng = new SecureRandom();
-            }
-            keyGen.initialize(keyBits, prng);
-            pair = keyGen.generateKeyPair();
-
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e.getMessage());
-        }
+    public void generateInternal() {
+        KeyPair pair = keyGen.generateKeyPair();
 
         publicKey = pair.getPublic();
         privateKey = pair.getPrivate();
@@ -262,12 +264,14 @@ public final class CertAndKeyGen {
                                    new CertificateValidity(firstDate,lastDate);
 
             X509CertInfo info = new X509CertInfo();
+            AlgorithmParameterSpec params = AlgorithmId
+                    .getDefaultAlgorithmParameterSpec(sigAlg, privateKey);
             // Add all mandatory attributes
             info.set(X509CertInfo.VERSION,
                      new CertificateVersion(CertificateVersion.V3));
             info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(
                     new java.util.Random().nextInt() & 0x7fffffff));
-            AlgorithmId algID = AlgorithmId.get(sigAlg);
+            AlgorithmId algID = AlgorithmId.getWithParameterSpec(sigAlg, params);
             info.set(X509CertInfo.ALGORITHM_ID,
                      new CertificateAlgorithmId(algID));
             info.set(X509CertInfo.SUBJECT, myname);
@@ -277,13 +281,19 @@ public final class CertAndKeyGen {
             if (ext != null) info.set(X509CertInfo.EXTENSIONS, ext);
 
             cert = new X509CertImpl(info);
-            cert.sign(privateKey, this.sigAlg);
+            cert.sign(privateKey,
+                    params,
+                    sigAlg,
+                    null);
 
             return (X509Certificate)cert;
 
         } catch (IOException e) {
              throw new CertificateEncodingException("getSelfCert: " +
                                                     e.getMessage());
+        } catch (InvalidAlgorithmParameterException e2) {
+            throw new SignatureException(
+                    "Unsupported PSSParameterSpec: " + e2.getMessage());
         }
     }
 
@@ -309,6 +319,7 @@ public final class CertAndKeyGen {
      * @exception InvalidKeyException on key handling errors.
      * @exception SignatureException on signature handling errors.
      */
+    // This method is not used inside JDK. Will not update it.
     public PKCS10 getCertRequest (X500Name myname)
     throws InvalidKeyException, SignatureException
     {
