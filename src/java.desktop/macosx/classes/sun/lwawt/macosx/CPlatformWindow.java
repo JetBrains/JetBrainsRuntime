@@ -25,6 +25,7 @@
 
 package sun.lwawt.macosx;
 
+import java.awt.AWTError;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.DefaultKeyboardFocusManager;
@@ -52,7 +53,7 @@ import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.Callable;
+import java.security.PrivilegedAction;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
@@ -344,28 +345,35 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         } else {
             bounds = _peer.constrainBounds(_target.getBounds());
         }
-        long nativeWindowPtr = LWCToolkit.SelectorPerformer.perform(() -> {
-            AtomicLong ref = new AtomicLong();
-            contentView.execute(viewPtr -> {
-                boolean hasOwnerPtr = false;
+        long nativeWindowPtr = java.security.AccessController.doPrivileged(
+                (PrivilegedAction<Long>) () -> {
+                    try {
+                        return LWCToolkit.SelectorPerformer.perform(() -> {
+                            AtomicLong ref = new AtomicLong();
+                            contentView.execute(viewPtr -> {
+                                boolean hasOwnerPtr = false;
 
-                if (owner != null) {
-                    hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
-                        ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
-                                bounds.x, bounds.y,
-                                bounds.width, bounds.height));
-                        return 1;
-                    });
-                }
+                                if (owner != null) {
+                                    hasOwnerPtr = 0L != owner.executeGet(ownerPtr -> {
+                                        ref.set(nativeCreateNSWindow(viewPtr, ownerPtr, styleBits,
+                                                bounds.x, bounds.y,
+                                                bounds.width, bounds.height));
+                                        return 1;
+                                    });
+                                }
 
-                if (!hasOwnerPtr) {
-                    ref.set(nativeCreateNSWindow(viewPtr, 0,
-                            styleBits, bounds.x, bounds.y,
-                            bounds.width, bounds.height));
-                }
-            });
-            return ref.get();
-        });
+                                if (!hasOwnerPtr) {
+                                    ref.set(nativeCreateNSWindow(viewPtr, 0,
+                                            styleBits, bounds.x, bounds.y,
+                                            bounds.width, bounds.height));
+                                }
+                            });
+                            return ref.get();
+                        });
+                    } catch (Throwable throwable) {
+                        throw new AWTError(throwable.getMessage());
+                    }
+                });
         setPtr(nativeWindowPtr);
         if (peer != null) { // Not applicable to CWarningWindow
             peer.setTextured(IS(TEXTURED, styleBits));
