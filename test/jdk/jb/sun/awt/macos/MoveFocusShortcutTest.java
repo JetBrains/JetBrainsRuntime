@@ -1,0 +1,209 @@
+/*
+ * Copyright 2000-2023 JetBrains s.r.o.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+import java.awt.AWTException;
+import java.awt.Frame;
+import java.awt.GraphicsEnvironment;
+import java.awt.Robot;
+import java.awt.Window;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * @test
+ * @summary Regression test for JRE-318: Cmd+` doesn't work after update to JDK 152_*
+ * @requires (jdk.version.major >= 8 & os.family == "mac")
+ * @run main MoveFocusShortcutTest
+ */
+
+/*
+ * Description: Test checks that Command+` macOS system shortcut successively switches focus between three Java Frames.
+ *
+ * Note: Please check that Command+` macOS system shortcut is enabled before launching this test
+ * (use System Preferences -> Keyboard -> Shortcuts tab -> Keyboard -> mark 'Move focus to next window' checkbox)
+ * On MacOS 10.14 and later accessibility permission should be granted for the application launching this test, so
+ * Java Robot is able to access keyboard (use System Preferences -> Security & Privacy -> Privacy tab -> Accessibility).
+ */
+
+public class MoveFocusShortcutTest {
+
+    private static final int PAUSE = 2000;
+
+    private static TestFrame frame1;
+    private static TestFrame frame2;
+    private static TestFrame frame3;
+
+    private static WindowAdapter frameFocusListener;
+
+    private static Robot robot;
+
+    private static class TestFrame extends Frame {
+
+        private final CountDownLatch frameGainedFocus;
+
+        private TestFrame(String title) {
+            super(title);
+            frameGainedFocus = new CountDownLatch(2);
+        }
+
+        private CountDownLatch getLatch() {
+            return frameGainedFocus;
+        }
+    }
+
+    /*
+     * Checks that pressing Command+` successively switches focus between three Java Frames
+     */
+    public static void main(String[] args) throws AWTException, InterruptedException {
+
+        if (GraphicsEnvironment.isHeadless()) {
+            throw new RuntimeException("ERROR: Cannot execute the test in headless environment");
+        }
+
+        frame1 = new TestFrame("TestFrame1");
+        frame2 = new TestFrame("TestFrame2");
+        frame3 = new TestFrame("TestFrame3");
+
+        frameFocusListener = new WindowAdapter() {
+            @Override
+            public void windowGainedFocus(WindowEvent windowEvent) {
+                Window window = windowEvent.getWindow();
+                try {
+                    TestFrame frame = (TestFrame) windowEvent.getWindow();
+                    frame.getLatch().countDown();
+                    System.out.println("Window gained focus: " + frame.getTitle());
+                } catch (ClassCastException e) {
+                    throw new RuntimeException("Unexpected window: " + window);
+                }
+            }
+        };
+
+        try {
+            robot = new Robot();
+            robot.setAutoDelay(50);
+
+            System.out.println("Open test frames");
+            showGUI();
+
+            Thread.sleep(PAUSE);
+            robot.waitForIdle();
+
+            boolean check1 = (frame1.getLatch().getCount() == 1);
+            boolean check2 = (frame2.getLatch().getCount() == 1);
+            boolean check3 = (frame3.getLatch().getCount() == 1);
+
+            if (check1 && check2 && check3) {
+                System.out.println("All frames were opened");
+            } else {
+                throw new RuntimeException("Test ERROR: Cannot focus the TestFrame(s): "
+                        + getFailedChecksString(check1, check2, check3));
+            }
+
+            moveFocusToNextWindow();
+            Thread.sleep(PAUSE);
+            robot.waitForIdle();
+
+            moveFocusToNextWindow();
+            Thread.sleep(PAUSE);
+            robot.waitForIdle();
+
+            moveFocusToNextWindow();
+            Thread.sleep(PAUSE);
+            robot.waitForIdle();
+
+            boolean result1 = frame1.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
+            boolean result2 = frame2.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
+            boolean result3 = frame3.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
+
+            if(result1 && result2 && result3) {
+                System.out.println("Test PASSED");
+            } else {
+                throw new RuntimeException("Test FAILED: Command+` shortcut cannot move focus to the TestFrame(s): "
+                        + getFailedChecksString(result1 , result2 , result3));
+            }
+        } finally {
+            destroyGUI();
+            /* Waiting for EDT auto-shutdown */
+            Thread.sleep(PAUSE);
+        }
+    }
+
+    /*
+     * Opens test frames
+     */
+    private static void showGUI() {
+        frame1.setSize(400, 200);
+        frame2.setSize(400, 200);
+        frame3.setSize(400, 200);
+        frame1.setLocation(50, 50);
+        frame2.setLocation(100, 100);
+        frame3.setLocation(150, 150);
+        frame1.addWindowFocusListener(frameFocusListener);
+        frame2.addWindowFocusListener(frameFocusListener);
+        frame3.addWindowFocusListener(frameFocusListener);
+        frame1.setVisible(true);
+        frame2.setVisible(true);
+        frame3.setVisible(true);
+    }
+
+    /*
+     * Presses Command+` on macOS keyboard
+     */
+    private static void moveFocusToNextWindow() {
+        System.out.println("Move focus to the next window");
+        robot.keyPress(KeyEvent.VK_META);
+        robot.keyPress(KeyEvent.VK_BACK_QUOTE);
+        robot.keyRelease(KeyEvent.VK_BACK_QUOTE);
+        robot.keyRelease(KeyEvent.VK_META);
+    }
+
+    /*
+     * Returns string containing positions of the false values
+     */
+    private static String getFailedChecksString(boolean ... values) {
+        int i = 0;
+        String result = "";
+        for (boolean value : values) {
+            i++;
+            if(!value) {
+                result += result.isEmpty() ? i : (", " + i);
+            }
+        }
+        return result;
+    }
+
+    /*
+     * Disposes test frames
+     */
+    private static void destroyGUI() {
+        frame1.removeWindowFocusListener(frameFocusListener);
+        frame2.removeWindowFocusListener(frameFocusListener);
+        frame3.removeWindowFocusListener(frameFocusListener);
+        frame1.dispose();
+        frame2.dispose();
+        frame3.dispose();
+    }
+}
