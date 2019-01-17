@@ -711,6 +711,7 @@ java/io/pathNames/GeneralWin32.java                                             
 
 # jdk_management
 
+com/sun/management/OperatingSystemMXBean/GetCommittedVirtualMemorySize.java         8206179 macosx-all
 com/sun/management/OperatingSystemMXBean/GetProcessCpuLoad.java                     8030957 aix-all
 com/sun/management/OperatingSystemMXBean/GetSystemCpuLoad.java                      8030957 aix-all
 
