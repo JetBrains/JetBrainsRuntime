@@ -26,6 +26,9 @@
 #define OS_WINDOWS_VM_OS_WINDOWS_HPP
 // Win32_OS defines the interface to windows operating systems
 
+#define S_ISCHR(mode)   (((mode) & _S_IFCHR) == _S_IFCHR)
+#define S_ISFIFO(mode)  (((mode) & _S_IFIFO) == _S_IFIFO)
+
 // Information about the protection of the page at address '0' on this os.
 static bool zero_page_read_protected() { return true; }
 
