@@ -106,8 +106,7 @@ IfNode* PhaseIdealLoop::find_unswitching_candidate(const IdealLoopTree *loop, bo
             }
 #if INCLUDE_SHENANDOAHGC
             else if (shenandoah_opts &&
-                       (ShenandoahWriteBarrierNode::is_heap_stable_test(iff) ||
-                        ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(iff)) &&
+                       (ShenandoahWriteBarrierNode::is_heap_stable_test(iff)) &&
                        (loop_has_sfpts == -1 || loop_has_sfpts == 0)) {
               assert(UseShenandoahGC, "shenandoah only");
               assert(!loop->is_loop_exit(iff), "both branches should be in the loop");
@@ -149,9 +148,7 @@ void PhaseIdealLoop::do_unswitching(IdealLoopTree *loop, Node_List &old_new, boo
   IfNode* unswitch_iff = find_unswitching_candidate((const IdealLoopTree *)loop, shenandoah_opts);
 
 #if INCLUDE_SHENANDOAHGC
-  if (ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(unswitch_iff)) {
-    ShenandoahWriteBarrierNode::move_evacuation_test_out_of_loop(unswitch_iff, this);
-  } else if (ShenandoahWriteBarrierNode::is_heap_stable_test(unswitch_iff)) {
+  if (ShenandoahWriteBarrierNode::is_heap_stable_test(unswitch_iff)) {
     ShenandoahWriteBarrierNode::move_heap_stable_test_out_of_loop(unswitch_iff, this);
   }
 #endif

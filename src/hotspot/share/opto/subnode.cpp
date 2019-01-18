@@ -109,22 +109,8 @@ const Type* SubNode::Value(PhaseGVN* phase) const {
   if (t != NULL) {
     return t;
   }
-  Node* in1 = in(1);
-  Node* in2 = in(2);
-#if INCLUDE_SHENANDOAHGC
-  if (Opcode() == Op_CmpP) {
-    Node* n = ShenandoahBarrierNode::skip_through_barrier(in1);
-    if (!n->is_top()) {
-      in1 = n;
-    }
-    n = ShenandoahBarrierNode::skip_through_barrier(in2);
-    if (!n->is_top()) {
-      in2 = n;
-    }
-  }
-#endif
-  const Type* t1 = phase->type(in1);
-  const Type* t2 = phase->type(in2);
+  const Type* t1 = phase->type(in(1));
+  const Type* t2 = phase->type(in(2));
   return sub(t1,t2);            // Local flavor of type subtraction
 
 }

@@ -73,8 +73,7 @@ bool PhaseIdealLoop::split_up( Node *n, Node *blk1, Node *blk2 ) {
   if( n->is_Phi() ) return false; // Local PHIs are expected
 
   // Recursively split-up inputs
-  uint first_input = n->Opcode() == Op_ShenandoahWBMemProj ? 0 : 1;
-  for (uint i = first_input; i < n->req(); i++) {
+  for (uint i = 1; i < n->req(); i++) {
     if( split_up( n->in(i), blk1, blk2 ) ) {
       // Got split recursively and self went dead?
       if (n->outcnt() == 0)

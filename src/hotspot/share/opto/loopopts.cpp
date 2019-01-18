@@ -1133,15 +1133,6 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   }
   Node* region = n->in(0);
 
-#if INCLUDE_SHENANDOAHGC
-  bool shenandoah_evac = ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(n);
-  bool shenandoah_heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(n);
-  if (shenandoah_evac) {
-    assert(UseShenandoahGC, "for shenandoah only");
-    region = ShenandoahWriteBarrierNode::evacuation_in_progress_test_ctrl(n);
-  }
-#endif
-
   if (!region->is_Region()) {
     return false;
   }
@@ -1151,11 +1142,8 @@ bool PhaseIdealLoop::identical_backtoback_ifs(Node *n) {
   }
 
 #if INCLUDE_SHENANDOAHGC
-  if (shenandoah_evac) {
-    if (!ShenandoahWriteBarrierNode::is_evacuation_in_progress_test(dom)) {
-      return false;
-    }
-  } else if (shenandoah_heap_stable) {
+  bool shenandoah_heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(n);
+  if (shenandoah_heap_stable) {
     if (!ShenandoahWriteBarrierNode::is_heap_stable_test(dom)) {
       return false;
     }
@@ -3239,7 +3227,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
 
           // if not pinned and not a load (which maybe anti-dependent on a store)
           // and not a CMove (Matcher expects only bool->cmove).
-          if ( n->in(0) == NULL && !n->is_Load() && !n->is_CMove() ) {
+          if (n->in(0) == NULL && !n->is_Load() && !n->is_CMove() && n->Opcode() != Op_ShenandoahWBMemProj) {
             cloned_for_outside_use += clone_for_use_outside_loop( loop, n, worklist );
             sink_list.push(n);
             peel     >>= n->_idx; // delete n from peel set.
