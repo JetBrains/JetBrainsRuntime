@@ -8839,7 +8839,7 @@ class Character implements java.io.Serializable, Comparable<Character> {
      * @since   1.5
      */
     public static boolean isLowerCase(int codePoint) {
-        return getType(codePoint) == Character.LOWERCASE_LETTER ||
+        return CharacterData.of(codePoint).isLowerCase(codePoint) ||
                CharacterData.of(codePoint).isOtherLowercase(codePoint);
     }
 
@@ -8905,7 +8905,7 @@ class Character implements java.io.Serializable, Comparable<Character> {
      * @since   1.5
      */
     public static boolean isUpperCase(int codePoint) {
-        return getType(codePoint) == Character.UPPERCASE_LETTER ||
+        return CharacterData.of(codePoint).isUpperCase(codePoint) ||
                CharacterData.of(codePoint).isOtherUppercase(codePoint);
     }
 
@@ -9056,7 +9056,7 @@ class Character implements java.io.Serializable, Comparable<Character> {
      * @since   1.5
      */
     public static boolean isDigit(int codePoint) {
-        return getType(codePoint) == Character.DECIMAL_DIGIT_NUMBER;
+        return CharacterData.of(codePoint).isDigit(codePoint);
     }
 
     /**
