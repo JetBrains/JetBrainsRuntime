@@ -64,6 +64,7 @@ import com.sun.java.swing.plaf.gtk.GTKConstants.PositionType;
 import com.sun.java.swing.plaf.gtk.GTKConstants.StateType;
 import sun.awt.SunToolkit;
 import sun.awt.UNIXToolkit;
+import sun.awt.X11GraphicsDevice;
 import sun.swing.AltProcessor;
 import sun.swing.DefaultLayoutStyle;
 import sun.swing.MnemonicHandler;
@@ -1463,6 +1464,18 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
 
         // By default mnemonics are hidden for GTK L&F
         MnemonicHandler.setMnemonicHidden(true);
+
+        Object value = GTKEngine.INSTANCE.getSetting(GTKEngine.Settings.GTK_XFT_DPI);
+        if (value instanceof Integer) {
+            int dpi = ((Integer)value).intValue() / 1024;
+            if (dpi == -1) {
+                dpi = 96;
+            }
+            if (dpi < 50) {
+                dpi = 50;
+            }
+            X11GraphicsDevice.setGlobalScale(Math.round(dpi / 96f));
+        }
     }
 
     /**
