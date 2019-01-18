@@ -40,7 +40,6 @@ import com.sun.java.swing.plaf.gtk.GTKConstants.TextDirection;
 
 import sun.awt.image.SunWritableRaster;
 import sun.swing.ImageCache;
-import sun.awt.X11GraphicsDevice;
 
 /**
  * GTKEngine delegates all painting job to native GTK libraries.
@@ -272,18 +271,6 @@ class GTKEngine {
         regionToWidgetTypeMap.put(Region.TREE, WidgetType.TREE);
         regionToWidgetTypeMap.put(Region.TREE_CELL, WidgetType.TREE_CELL);
         regionToWidgetTypeMap.put(Region.VIEWPORT, WidgetType.VIEWPORT);
-
-        Object value = INSTANCE.getSetting(Settings.GTK_XFT_DPI);
-        if (value instanceof Integer) {
-            int dpi = ((Integer)value).intValue() / 1024;
-            if (dpi == -1) {
-                dpi = 96;
-            }
-            if (dpi < 50) {
-                dpi = 50;
-            }
-            X11GraphicsDevice.setGlobalScale(Math.round(dpi / 96f));
-        }
     }
 
     /** Translate Region and JComponent into WidgetType ordinals */
