@@ -1148,6 +1148,7 @@ java/awt/print/PrinterJob/PrintCrashTest.java                                   
 java/awt/print/PrinterJob/PrtException.java                                         generic-all
 javax/print/attribute/ChromaticityValues.java                                       generic-all
 javax/print/CheckDupFlavor.java                                                     generic-all
+javax/print/PrintSE/PrintSE.sh                                                      generic-all
 javax/print/PrintSEUmlauts/PrintSEUmlauts.java                                      8135174 generic-all
 javax/print/PrintServiceLookup/CountPrintServices.java                              generic-all
 javax/print/attribute/AttributeTest.java                                            generic-all
