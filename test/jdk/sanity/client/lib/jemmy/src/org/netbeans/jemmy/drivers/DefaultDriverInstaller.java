@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,7 @@ import org.netbeans.jemmy.drivers.lists.ListKeyboardDriver;
 import org.netbeans.jemmy.drivers.menus.DefaultJMenuDriver;
 import org.netbeans.jemmy.drivers.menus.QueueJMenuDriver;
 import org.netbeans.jemmy.drivers.scrolling.JScrollBarDriver;
-import org.netbeans.jemmy.drivers.scrolling.JSliderDriver;
+import org.netbeans.jemmy.drivers.scrolling.KeyboardJSliderScrollDriver;
 import org.netbeans.jemmy.drivers.scrolling.JSplitPaneDriver;
 import org.netbeans.jemmy.drivers.scrolling.ScrollPaneDriver;
 import org.netbeans.jemmy.drivers.scrolling.ScrollbarDriver;
@@ -106,7 +106,7 @@ public class DefaultDriverInstaller extends ArrayDriverInstaller {
                     new ScrollPaneDriver(),
                     new JScrollBarDriver(),
                     new JSplitPaneDriver(),
-                    new JSliderDriver(),
+                    new KeyboardJSliderScrollDriver(),
                     createSpinnerDriver(),
                     new ButtonMouseDriver(),
                     new JTabMouseDriver(),
