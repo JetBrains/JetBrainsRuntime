@@ -1090,15 +1090,13 @@ JVM_ENTRY(jint, jmm_GetThreadInfo(JNIEnv *env, jlongArray ids, jint maxDepth, jo
     for (int i = 0; i < num_threads; i++) {
       jlong tid = ids_ah->long_at(i);
       JavaThread* jt = dump_result.t_list()->find_JavaThread_from_java_tid(tid);
-      ThreadSnapshot* ts;
       if (jt == NULL) {
         // if the thread does not exist or now it is terminated,
         // create dummy snapshot
-        ts = new ThreadSnapshot();
+        dump_result.add_thread_snapshot();
       } else {
-        ts = new ThreadSnapshot(dump_result.t_list(), jt);
+        dump_result.add_thread_snapshot(jt);
       }
-      dump_result.add_thread_snapshot(ts);
     }
   } else {
     // obtain thread dump with the specific list of threads with stack trace
