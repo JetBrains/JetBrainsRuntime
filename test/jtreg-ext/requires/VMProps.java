@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,6 +87,7 @@ public class VMProps implements Callable<Map<String, String>> {
         map.put("vm.rtm.cpu", vmRTMCPU());
         map.put("vm.rtm.compiler", vmRTMCompiler());
         map.put("vm.aot", vmAOT());
+        map.put("vm.aot.enabled", vmAotEnabled());
         // vm.cds is true if the VM is compiled with cds support.
         map.put("vm.cds", vmCDS());
         map.put("vm.cds.custom.loaders", vmCDSForCustomLoaders());
@@ -366,6 +367,13 @@ public class VMProps implements Callable<Map<String, String>> {
 
         // Every other GC is not supported
         return "false";
+    }
+
+    /*
+     * @return true if there is at least one loaded AOT'ed library.
+     */
+    protected String vmAotEnabled() {
+        return "" + (WB.aotLibrariesCount() > 0);
     }
 
     /**
