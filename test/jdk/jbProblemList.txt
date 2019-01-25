@@ -550,6 +550,7 @@ java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java        
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java             8196018 windows-all,linux-all
 java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8061235,8159592,8134231 macosx-all,windows-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
+java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java      8213120 macosx-all
 java/awt/TextArea/TextAreaScrolling/TextAreaScrolling.java                          8196300 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java               8169533 macosx-all,windows-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java                                  8193547 linux-all
@@ -563,7 +564,7 @@ java/awt/TrayIcon/ActionEventTest/ActionEventTest.java                          
 java/awt/TrayIcon/ModalityTest/ModalityTest.java                                    8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/MouseEventMask/MouseEventMaskTest.java                            8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/MouseMovedTest/MouseMovedTest.java                                8150540 macosx-all,windows-all
-java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java          8150540 macosx-all,windows-all
+java/awt/TrayIcon/Securityjava/awt/Window/WindowDeadlockTest/WindowDeadlockTest.javaCheck/FunctionalityCheck/FunctionalityCheck.java          8150540 macosx-all,windows-all
 java/awt/TrayIcon/SystemTrayInstance/SystemTrayInstanceTest.java                    8193543 linux-all
 java/awt/TrayIcon/TrayIconEventModifiers/TrayIconEventModifiersTest.java            8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java                            8197575,8150540 macosx-all,windows-all
@@ -611,6 +612,7 @@ java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.h
 java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 generic-all
+java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   8194045 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java                    8169476 windows-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java            8129778 generic-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java                                    8169474 windows-all
@@ -893,7 +895,7 @@ javax/swing/JColorChooser/Test8051548.java                                      
 javax/swing/JComboBox/4743225/bug4743225.java                                       8171302 windows-all,macosx-all
 javax/swing/JComboBox/6236162/bug6236162.java                                       8028707 windows-all,macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java                                       8196090 windows-all,macosx-all
-javax/swing/JComboBox/6607130/bug6607130.java                                       8196091 windows-all
+javax/swing/JComboBox/6607130/bug6607130.java                                       8196091,JRE-948 windows-all,macosx-all
 javax/swing/JComboBox/7031551/bug7031551.java                                       8199056 generic-all
 javax/swing/JComboBox/8032878/bug8032878.java                                       8196092 windows-all,macosx-all
 javax/swing/JComboBox/8032878/bug8032878.java                                       8196439 macosx-all,windows-all,linux-all
@@ -1148,6 +1150,7 @@ java/awt/print/PrinterJob/PrintCrashTest.java                                   
 java/awt/print/PrinterJob/PrtException.java                                         generic-all
 javax/print/attribute/ChromaticityValues.java                                       generic-all
 javax/print/CheckDupFlavor.java                                                     generic-all
+javax/print/PrintSE/PrintSE.sh                                                      generic-all
 javax/print/PrintSEUmlauts/PrintSEUmlauts.java                                      8135174 generic-all
 javax/print/PrintServiceLookup/CountPrintServices.java                              generic-all
 javax/print/attribute/AttributeTest.java                                            generic-all
@@ -1155,3 +1158,24 @@ javax/print/attribute/GetCopiesSupported.java                                   
 javax/print/attribute/SidesPageRangesTest.java                                      generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  generic-all
 
+# https://youtrack.jetbrains.com/issue/JRE-948
+
+java/awt/Component/F10TopToplevel/F10TopToplevel.html
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html JRE-948 macosx-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.html JRE-948 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JRE-948 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JRE-948 macosx-all
+java/awt/List/EmptyListEventTest/EmptyListEventTest.java                            JRE-948 macosx-all
+java/awt/event/KeyEvent/8020209/bug8020209.java                                     JRE-948 macosx-all
+java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JRE-948 macosx-all
+java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                  JRE-948 macosx-all
+javax/swing/JComboBox/4515752/DefaultButtonTest.java                                JRE-948 macosx-all
+javax/swing/JTabbedPane/7161568/bug7161568.java                                     JRE-948 macosx-all
+javax/swing/JTable/4220171/bug4220171.java                                          JRE-948 macosx-all
+javax/swing/JTable/7055065/bug7055065.java                                          JRE-948 macosx-all
+javax/swing/JTextArea/4697612/bug4697612.java                                       JRE-948 macosx-all
+javax/swing/JTree/6578666/bug6578666.java                                           JRE-948 macosx-all
+javax/swing/text/DefaultStyledDocument/6636983/bug6636983.java                      JRE-948 macosx-all
+javax/swing/text/TableView/TableViewLayoutTest.java                                 JRE-948 macosx-all
+javax/swing/JComboBox/4199622/bug4199622.java                                       JRE-948 macosx-all
+java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.html JRE-948 macosx-all

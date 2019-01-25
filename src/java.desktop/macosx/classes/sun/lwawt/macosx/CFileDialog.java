@@ -148,6 +148,10 @@ class CFileDialog implements FileDialogPeer {
      * If the dialog doesn't have a file filter return true.
      */
     private boolean queryFilenameFilter(final String inFilename) {
+
+        // Temporary workaround for JRE-199
+    /*
+
         AtomicBoolean ret = new AtomicBoolean(false);
 
         final FilenameFilter ff = target.getFilenameFilter();
@@ -175,7 +179,8 @@ class CFileDialog implements FileDialogPeer {
             }
 
         }
-        return ret.get();
+        return ret.get(); */
+        return true;
     }
 
     private native String[] nativeRunFileDialog(long ownerPtr, String title, int mode,
