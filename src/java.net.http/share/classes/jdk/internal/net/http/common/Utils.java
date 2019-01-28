@@ -71,6 +71,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import jdk.internal.net.http.HttpRequestImpl;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -238,6 +239,15 @@ public final class Utils {
     public static boolean proxyHasDisabledSchemes(boolean tunnel) {
         return tunnel ? ! PROXY_AUTH_TUNNEL_DISABLED_SCHEMES.isEmpty()
                       : ! PROXY_AUTH_DISABLED_SCHEMES.isEmpty();
+    }
+
+    // WebSocket connection Upgrade headers
+    private static final String HEADER_CONNECTION = "Connection";
+    private static final String HEADER_UPGRADE    = "Upgrade";
+
+    public static final void setWebSocketUpgradeHeaders(HttpRequestImpl request) {
+        request.setSystemHeader(HEADER_UPGRADE, "websocket");
+        request.setSystemHeader(HEADER_CONNECTION, "Upgrade");
     }
 
     public static IllegalArgumentException newIAE(String message, Object... args) {
