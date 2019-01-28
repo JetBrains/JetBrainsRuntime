@@ -89,6 +89,9 @@ final class XWM
     static final XAtom XA_NET_FRAME_EXTENTS = new XAtom();
     static final XAtom XA_NET_REQUEST_FRAME_EXTENTS = new XAtom();
 
+/* Root window */
+    static final XAtom XA_NET_DESKTOP_GEOMETRY = new XAtom();
+
     static final int
         UNDETERMINED_WM = 1,
         NO_WM = 2,
@@ -206,6 +209,7 @@ final class XWM
             { XA_MWM_HINTS,                  "_MOTIF_WM_HINTS"               },
             { XA_NET_FRAME_EXTENTS,          "_NET_FRAME_EXTENTS"            },
             { XA_NET_REQUEST_FRAME_EXTENTS,  "_NET_REQUEST_FRAME_EXTENTS"    },
+            { XA_NET_DESKTOP_GEOMETRY,       "_NET_DESKTOP_GEOMETRY"         }
         };
 
         String[] names = new String[atomInitList.length];
