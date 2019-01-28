@@ -345,19 +345,19 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             System.setProperty("sun.awt.enableExtraMouseButtons", ""+areExtraMouseButtonsEnabled);
 
             // Detect display mode changes
-            XlibWrapper.XSelectInput(XToolkit.getDisplay(), XToolkit.getDefaultRootWindow(), XConstants.StructureNotifyMask);
-            XToolkit.addEventDispatcher(XToolkit.getDefaultRootWindow(), new XEventDispatcher() {
-                @Override
-                public void dispatchEvent(XEvent ev) {
-                    if (ev.get_type() == XConstants.ConfigureNotify) {
-                        awtUnlock();
-                        try {
-                            ((X11GraphicsEnvironment)GraphicsEnvironment.
-                             getLocalGraphicsEnvironment()).
-                                displayChanged();
-                        } finally {
-                            awtLock();
-                        }
+            XlibWrapper.XSelectInput(XToolkit.getDisplay(), XToolkit.getDefaultRootWindow(), XConstants.StructureNotifyMask | XConstants.PropertyChangeMask);
+            XToolkit.addEventDispatcher(XToolkit.getDefaultRootWindow(), ev -> {
+                if (ev.get_type() == XConstants.ConfigureNotify ||
+                    (ev.get_type() == XConstants.PropertyNotify &&
+                     ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
+                {
+                    awtUnlock();
+                    try {
+                        ((X11GraphicsEnvironment)GraphicsEnvironment.
+                         getLocalGraphicsEnvironment()).
+                            displayChanged();
+                    } finally {
+                        awtLock();
                     }
                 }
             });
