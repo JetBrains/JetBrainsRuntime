@@ -350,7 +350,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             XToolkit.addEventDispatcher(XToolkit.getDefaultRootWindow(), new XEventDispatcher() {
                 @Override
                 public void dispatchEvent(XEvent ev) {
-                    if (ev.get_type() == XConstants.ConfigureNotify) {
+                    if (ev.get_type() == XConstants.ConfigureNotify ||
+                        (ev.get_type() == XConstants.PropertyNotify &&
+                         ev.get_xproperty().get_atom() == XWM.XA_NET_DESKTOP_GEOMETRY.getAtom())) // possible DPI change
+                    {
                         awtUnlock();
                         try {
                             ((X11GraphicsEnvironment)GraphicsEnvironment.
