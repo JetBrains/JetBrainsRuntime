@@ -26,6 +26,7 @@
 #define SHARE_VM_GC_SHARED_TASKQUEUE_HPP
 
 #include "memory/allocation.hpp"
+#include "memory/padded.hpp"
 #include "oops/oopsHierarchy.hpp"
 #include "utilities/ostream.hpp"
 #include "utilities/stack.hpp"
@@ -428,7 +429,10 @@ class ParallelTaskTerminator: public StackObj {
 private:
   uint _n_threads;
   TaskQueueSetSuper* _queue_set;
+
+  DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, 0);
   volatile uint _offered_termination;
+  DEFINE_PAD_MINUS_SIZE(1, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile uint));
 
 #ifdef TRACESPINNING
   static uint _total_yields;
