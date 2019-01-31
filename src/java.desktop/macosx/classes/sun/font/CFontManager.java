@@ -190,10 +190,10 @@ public final class CFontManager extends SunFontManager {
             if (plain == null && bold == null) continue;
             if (italic != null && boldItalic != null) continue;
             if (plain != null && italic == null) {
-               registerGenericFont(plain.createItalicVariant(), true);
+               registerGenericFont(plain.createItalicVariant(true), true);
             }
             if (bold != null && boldItalic == null) {
-               registerGenericFont(bold.createItalicVariant(), true);
+               registerGenericFont(bold.createItalicVariant(true), true);
             }
         }
     }
@@ -308,4 +308,9 @@ public final class CFontManager extends SunFontManager {
     @Override
     protected void populateFontFileNameMap(HashMap<String, String> fontToFileMap, HashMap<String, String> fontToFamilyNameMap,
             HashMap<String, ArrayList<String>> familyToFontListMap, Locale locale) {}
+
+    @Override
+    public boolean areColorGlyphsSupported() {
+        return true;
+    }
 }

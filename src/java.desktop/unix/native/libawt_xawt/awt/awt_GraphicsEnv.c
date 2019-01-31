@@ -34,6 +34,8 @@
 #ifndef HEADLESS
 #include <X11/extensions/Xdbe.h>
 #include <X11/XKBlib.h>
+#include <X11/Xlib.h>
+#include <X11/Xresource.h>
 #include "Xrandr.h"
 #include "GLXGraphicsConfig.h"
 #endif /* !HEADLESS */
@@ -2239,6 +2241,30 @@ Java_sun_awt_X11GraphicsDevice_getNativeScaleFactor
     // in case of Xinerama individual screen scales are not supported
     char *name = get_output_screen_name(env, usingXinerama ? 0 : screen);
     double scale = getNativeScaleFactor(name, -1);
+
+#ifndef HEADLESS
+    // Ubuntu 18.04 introduced a new settings for a scale factor: Settings > Devices > Displays > Scale.
+    // It is propagated to Xresource (and is read fine with 'xrdb' util) but is not propagated to GSettings
+    // (gtk3 doesn't see it in 'gtk-xft-dpi'). So, retrieve "Xft.dpi" from Xresource via X11 API call.
+    if (scale <= 0) {
+        Display *display = XOpenDisplay(NULL); // need to open new display to get up-to-date XResource value
+        if (display) {
+            char *resource_manager = XResourceManagerString(display);
+            if (resource_manager) {
+                XrmDatabase db = XrmGetStringDatabase(resource_manager);
+                if (db) {
+                    XrmValue value;
+                    char *type;
+                    if (XrmGetResource(db, "Xft.dpi", "Xft.dpi", &type, &value)) {
+                        scale = (double)atoi(value.addr) / 96;
+                    }
+                }
+            }
+            XCloseDisplay(display);
+        }
+    }
+#endif
+
     if (name) {
         free(name);
     }

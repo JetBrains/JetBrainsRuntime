@@ -47,11 +47,14 @@ if (OperatingSystem.current().isMacOsX())
     jdk_modules.collect(jdk_class_dirs) {
         "../../../src/" + it + "/macosx/classes"
     }
-else if (OperatingSystem.current().isLinux())
+else if (OperatingSystem.current().isLinux()) {
     jdk_modules.collect(jdk_class_dirs) {
         "../../../src/" + it + "/solaris/classes"
     }
-else
+    jdk_modules.collect(jdk_class_dirs) {
+        "../../../src/" + it + "/unix/classes"
+    }
+} else
     jdk_modules.collect(jdk_class_dirs) {
         "../../../src/" + it + "/windows/classes"
     }

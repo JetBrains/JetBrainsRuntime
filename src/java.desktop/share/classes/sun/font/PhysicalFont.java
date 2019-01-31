@@ -79,6 +79,12 @@ public abstract class PhysicalFont extends Font2D {
         return new Point2D.Float();
     }
 
+    @Override
+    protected boolean isAAT() {
+        return getTableBytes(TrueTypeFont.morxTag) != null ||
+               getTableBytes(TrueTypeFont.mortTag) != null;
+    }
+
     /* These 3 metrics methods should be implemented to return
      * values in user space.
      */

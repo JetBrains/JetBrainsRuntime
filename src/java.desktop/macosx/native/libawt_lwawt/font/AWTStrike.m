@@ -45,13 +45,15 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
                  tx:(CGAffineTransform)tx
            invDevTx:(CGAffineTransform)invDevTx
               style:(JRSFontRenderingStyle)style
-            aaStyle:(jint)aaStyle {
+            aaStyle:(jint)aaStyle
+             fmHint:(jint)fmHint {
 
     self = [super init];
     if (self) {
         fAWTFont = [awtFont retain];
         fStyle = style;
         fAAStyle = aaStyle;
+        fFmHint = fmHint;
 
         fTx = tx; // composited glyph and device transform
 
@@ -81,12 +83,14 @@ static CGAffineTransform sInverseTX = { 1, 0, 0, -1, 0, 0 };
                               tx:(CGAffineTransform)tx
                         invDevTx:(CGAffineTransform)invDevTx
                            style:(JRSFontRenderingStyle)style
-                         aaStyle:(jint)aaStyle {
+                         aaStyle:(jint)aaStyle
+                          fmHint:(jint)fmHint {
 
     return [[[AWTStrike alloc] initWithFont:awtFont
                                          tx:tx invDevTx:invDevTx
                                       style:style
-                                    aaStyle:aaStyle] autorelease];
+                                    aaStyle:aaStyle
+                                     fmHint:fmHint] autorelease];
 }
 
 @end
@@ -156,7 +160,19 @@ JNF_COCOA_ENTER(env);
     // to indicate we should use CoreText to substitute the character
     CGGlyph glyph;
     const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
-    CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
+    if (CGGI_IsColorFont(cgFallback)) {
+        CGAffineTransform matrix = awtStrike->fAltTx;
+        CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
+        CTFontRef font = CTFontCreateWithGraphicsFont(cgFallback, fontSize, NULL, NULL);
+        CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
+        CFRelease(font);
+        advance.width /= fontSize;
+        advance.height /= fontSize;
+    } else {
+        CTFontGetAdvancesForGlyphs(fallback, kCTFontDefaultOrientation, &glyph, &advance, 1);
+    }
+    CFRelease(cgFallback);
     CFRelease(fallback);
     advance = CGSizeApplyAffineTransform(advance, awtStrike->fFontTx);
     if (!JRSFontStyleUsesFractionalMetrics(awtStrike->fStyle)) {
@@ -408,7 +424,7 @@ JNF_COCOA_ENTER(env);
     CGAffineTransform glyphTx = GetTxFromDoubles(env, glyphTxArray);
     CGAffineTransform invDevTx = GetTxFromDoubles(env, invDevTxArray);
 
-    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style aaStyle:aaStyle]; // autoreleased
+    awtStrike = [AWTStrike awtStrikeForFont:awtFont tx:glyphTx invDevTx:invDevTx style:style aaStyle:aaStyle fmHint:fmHint]; // autoreleased
 
     if (awtStrike)
     {

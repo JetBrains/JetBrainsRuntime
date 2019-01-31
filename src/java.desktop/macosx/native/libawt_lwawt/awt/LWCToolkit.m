@@ -810,3 +810,42 @@ Java_sun_lwawt_macosx_LWCToolkit_isEmbedded
     return isEmbedded ? JNI_TRUE : JNI_FALSE;
 }
 
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    getKeyboardLayoutNativeId
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_getKeyboardLayoutNativeId(JNIEnv *env, jclass cls)
+{
+JNF_COCOA_ENTER(env);
+__block NSString * layoutId;
+[ThreadUtilities performOnMainThreadWaiting:YES block:^(){
+    TISInputSourceRef source = TISCopyCurrentKeyboardInputSource();
+    layoutId = TISGetInputSourceProperty(source, kTISPropertyInputSourceID);
+}];
+return JNFNSToJavaString(env, layoutId);
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
+ * Method:    switchKeyboardLayoutNative
+ * Signature: (Ljava/lang/String;)V
+ */
+JNIEXPORT void JNICALL
+JNICALL Java_sun_lwawt_macosx_LWCToolkit_switchKeyboardLayoutNative(JNIEnv *env, jclass cls, jstring jLayoutId)
+{
+JNF_COCOA_ENTER(env);
+__block NSString* layoutId = [JNFJavaToNSString(env, jLayoutId) retain];
+[ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+    NSArray* sources = CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)@{ (__bridge NSString*)kTISPropertyInputSourceID : layoutId }, FALSE));
+    TISInputSourceRef source = (__bridge TISInputSourceRef)sources[0];
+    OSStatus status = TISSelectInputSource(source);
+    if (status != noErr) {
+        NSLog(@"error during keyboard layout switch");
+    }
+    [layoutId release];
+}];
+JNF_COCOA_EXIT(env);
+}

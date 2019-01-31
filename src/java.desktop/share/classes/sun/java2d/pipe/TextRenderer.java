@@ -57,6 +57,7 @@ public class TextRenderer extends GlyphListPipe {
                                         bounds[3] - bounds[1]);
             Shape s = sg2d.untransformShape(r);
             ctx = outpipe.startSequence(sg2d, s, r, bounds);
+            gl.startGlyphIteration();
             for (int i = 0; i < num; i++) {
                 gl.setGlyphIndex(i);
                 int metrics[] = gl.getMetrics();
@@ -76,7 +77,7 @@ public class TextRenderer extends GlyphListPipe {
                 }
                 if (gx2 > cx2) gx2 = cx2;
                 if (gy2 > cy2) gy2 = cy2;
-                if (gx2 > gx1 && gy2 > gy1 &&
+                if (gx2 > gx1 && gy2 > gy1 && !gl.isColorGlyph(i) &&
                     outpipe.needTile(ctx, gx1, gy1, gx2 - gx1, gy2 - gy1))
                 {
                     byte alpha[] = gl.getGrayBits();

@@ -532,7 +532,82 @@ static NSDictionary* getUnicharToVkCodeDictionary() {
     return unicharToVkCodeDictionary;
 }
 
-/*§
+/*
+ * This is the function that uses the table above to take incoming
+ * NSEvent keyCodes and translate to the Java virtual key code.
+ */
+static void
+NsCharToJavaVirtualKeyCodeOld(unichar ch, BOOL isDeadChar,
+                           NSUInteger flags, unsigned short key,
+                           jint *keyCode, jint *keyLocation, BOOL *postsTyped, unichar *deadChar)
+{
+    static size_t size = sizeof(keyTable) / sizeof(struct _key);
+    NSInteger offset;
+
+    if (isDeadChar) {
+        unichar testDeadChar = NsGetDeadKeyChar(key);
+        const struct CharToVKEntry *map;
+        for (map = charToDeadVKTable; map->c != 0; ++map) {
+            if (testDeadChar == map->c) {
+                *keyCode = map->javaKey;
+                *postsTyped = NO;
+                // TODO: use UNKNOWN here?
+                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
+                *deadChar = testDeadChar;
+                return;
+            }
+        }
+        // If we got here, we keep looking for a normal key.
+    }
+
+    if ([[NSCharacterSet letterCharacterSet] characterIsMember:ch]) {
+        // key is an alphabetic character
+        unichar lower;
+        lower = tolower(ch);
+        offset = lower - 'a';
+        if (offset >= 0 && offset <= 25) {
+            // some chars in letter set are NOT actually A-Z characters?!
+            // skip them...
+            *postsTyped = YES;
+            // do quick conversion
+            *keyCode = java_awt_event_KeyEvent_VK_A + offset;
+            *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
+            return;
+        }
+    }
+
+    if ([[NSCharacterSet decimalDigitCharacterSet] characterIsMember:ch]) {
+        // key is a digit
+        offset = ch - '0';
+        // make sure in range for decimal digits
+        if (offset >= 0 && offset <= 9)    {
+            jboolean numpad = (flags & NSNumericPadKeyMask) != 0;
+            *postsTyped = YES;
+            if (numpad) {
+                *keyCode = offset + java_awt_event_KeyEvent_VK_NUMPAD0;
+                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_NUMPAD;
+            } else {
+                *keyCode = offset + java_awt_event_KeyEvent_VK_0;
+                *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
+            }
+            return;
+        }
+    }
+
+    if (key < size) {
+        *postsTyped = keyTable[key].postsTyped;
+        *keyCode = keyTable[key].javaKeyCode;
+        *keyLocation = keyTable[key].javaKeyLocation;
+    } else {
+        // Should we report this? This means we've got a keyboard
+        // we don't know about...
+        *postsTyped = NO;
+        *keyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
+        *keyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
+    }
+}
+
+/*
  * This is the function that uses the table above to take incoming
  * NSEvent keyCodes and translate to the Java virtual key code.
  */
@@ -814,6 +889,49 @@ JNF_COCOA_EXIT(env);
  * Signature: ([I[I)Z
  */
 JNIEXPORT jboolean JNICALL
+Java_sun_lwawt_macosx_NSEvent_nsToJavaKeyInfoOld
+(JNIEnv *env, jclass cls, jintArray inData, jintArray outData)
+{
+    BOOL postsTyped = NO;
+
+JNF_COCOA_ENTER(env);
+
+    jboolean copy = JNI_FALSE;
+    jint *data = (*env)->GetIntArrayElements(env, inData, &copy);
+    CHECK_NULL_RETURN(data, postsTyped);
+
+    // in  = [testChar, testDeadChar, modifierFlags, keyCode]
+    jchar testChar = (jchar)data[0];
+    jint modifierFlags = data[1];
+    BOOL isDeadChar = (data[2] != 0);
+    jshort keyCode = (jshort)data[3];
+
+    jint jkeyCode = java_awt_event_KeyEvent_VK_UNDEFINED;
+    jint jkeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_UNKNOWN;
+    jchar testDeadChar = 0;
+
+    NsCharToJavaVirtualKeyCodeOld((unichar)testChar, isDeadChar,
+                               (NSUInteger)modifierFlags, (unsigned short)keyCode,
+                               &jkeyCode, &jkeyLocation, &postsTyped, &testDeadChar);
+
+    // out = [jkeyCode, jkeyLocation];
+    (*env)->SetIntArrayRegion(env, outData, 0, 1, &jkeyCode);
+    (*env)->SetIntArrayRegion(env, outData, 1, 1, &jkeyLocation);
+    (*env)->SetIntArrayRegion(env, outData, 2, 1, (jint *)&testDeadChar);
+
+    (*env)->ReleaseIntArrayElements(env, inData, data, 0);
+
+JNF_COCOA_EXIT(env);
+
+    return postsTyped;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_NSEvent
+ * Method:    nsToJavaKeyInfo
+ * Signature: ([I[I)Z
+ */
+JNIEXPORT jboolean JNICALL
 Java_sun_lwawt_macosx_NSEvent_nsToJavaKeyInfo
 (JNIEnv *env, jclass cls, jintArray inData, jintArray outData)
 {
@@ -911,4 +1029,24 @@ JNF_COCOA_ENTER(env);
 JNF_COCOA_EXIT(env);
 
     return charAsString;
+}
+
+/*
+ * Class:     sun_lwawt_macosx_NSEvent
+ * Method:    nsToJavaChar
+ * Signature: (CI)C
+ */
+JNIEXPORT jint JNICALL
+Java_sun_lwawt_macosx_NSEvent_nsToJavaCharOld
+(JNIEnv *env, jclass cls, jchar nsChar, jint modifierFlags)
+{
+    jchar javaChar = 0;
+
+JNF_COCOA_ENTER(env);
+
+    javaChar = NsCharToJavaChar(nsChar, modifierFlags, false);
+
+JNF_COCOA_EXIT(env);
+
+    return javaChar;
 }
