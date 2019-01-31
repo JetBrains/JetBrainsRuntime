@@ -250,6 +250,8 @@ AwtWindow::AwtWindow() {
     prevScaleRec.scaleX = -1.0f;
     prevScaleRec.scaleY = -1.0f;*/
     m_overriddenHwnd = NULL;
+
+    ::SetRect(&m_boundsOnDPIChange, 0, 0, 0, 0);
 }
 
 AwtWindow::~AwtWindow()
@@ -992,6 +994,8 @@ MsgRouting AwtWindow::WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds) {
                            SWP_NOZORDER | SWP_NOACTIVATE);
     } else {
         // DPI of this screen changed. Store the new bounds for async update.
+        // Either DPI of this screen changed, or the window moved to a new screen by a shortcut (shift+meta+arrow).
+        // Store the new bounds for async update.
         ::CopyRect(&m_boundsOnDPIChange, bounds);
     }
     return mrConsume;
