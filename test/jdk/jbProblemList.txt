@@ -592,6 +592,7 @@ java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                  
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java                          8169530 macosx-all,windows-all
 java/awt/Window/GrabSequence/GrabSequence.java                                      6848409 macosx-all,windows-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java                  8203371 linux-all,solaris-all
+java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java                     JRE-1173 windows-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java  8202860 linux-all
 java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java                          JRE-898 macosx-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java                   8080982 generic-all
@@ -646,7 +647,7 @@ java/awt/image/DrawImage/IncorrectSourceOffset.java                             
 java/awt/image/DrawImage/IncorrectUnmanagedImageRotatedClip.java                    8196087 windows-all
 java/awt/image/MultiResolutionImage/MultiResolutionDrawImageWithTransformTest.java  8198390 generic-all
 java/awt/image/multiresolution/MultiresolutionIconTest.java                         8169187 macosx-all,linux-all,windows-all
-java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8204214,8193941 macosx-all,windows-all
+java/awt/image/multiresolution/MultiResolutionJOptionPaneIconTest.java              8204214,8193941 macosx-all,windows-all,linux-all
 java/awt/image/VolatileImage/BitmaskVolatileImage.java                              8133102 linux-all
 java/awt/image/VolatileImage/CustomCompositeTest.java                               8199002 windows-all,linux-all
 java/awt/image/VolatileImage/GradientPaints.java                                    8199003,8194045 linux-all,windows-all
@@ -654,7 +655,7 @@ java/awt/print/Headless/HeadlessPrinterJob.java                                 
 java/awt/print/PrinterJob/CheckPrivilege.java                                       8212202 windows-all
 java/awt/print/PrinterJob/GlyphPositions.java                                       7003378 generic-all
 java/awt/print/PrinterJob/LandscapeStackOverflow.java                               8215537 windows-all
-java/awt/print/PrinterJob/Margins.java                                              8196301 windows-all
+java/awt/print/PrinterJob/Margins.java                                              8196301 windows-all,macosx-all,linux-all
 java/awt/print/PrinterJob/PSQuestionMark.java                                       7003378 generic-all
 java/awt/print/PrinterJob/PaintText.java                                            8212202 windows-all
 java/awt/print/PrinterJob/TestPgfmtSetMPA.java                                      8198343 generic-all
@@ -725,6 +726,7 @@ sun/management/jmxremote/bootstrap/RmiRegistrySslTest.java                      
 # jdk_jmx
 
 javax/management/MBeanServer/OldMBeanServerTest.java                                8030957 aix-all
+javax/management/remote/mandatory/connection/BrokenConnectionTest.java              8079445 generic-all
 javax/management/remote/mandatory/notif/NotifReconnectDeadlockTest.java             8042215 generic-all
 
 ############################################################################
@@ -738,6 +740,7 @@ java/net/MulticastSocket/JoinLeave.java                                         
 java/net/MulticastSocket/SetGetNetworkInterfaceTest.java                            8207404 aix-all
 java/net/DatagramSocket/ReuseAddressTest.java                                       8194231 windows-all
 java/net/DatagramSocket/SendDatagramToBadAddress.java                               7143960 macosx-all
+java/net/httpclient/ProxyAuthDisabledSchemesSSL.java                                8212695 macosx-all
 java/net/httpclient/UnknownBodyLengthTest.java                                      8210130 macosx-all,windows-all
 
 com/sun/net/httpserver/bugs/B6361557.java                                           8196070 windows-all
@@ -894,7 +897,7 @@ javax/swing/JColorChooser/Test7194184.java                                      
 javax/swing/JColorChooser/Test8051548.java                                          8197552 macosx-all,windows-all,linux-all
 javax/swing/JComboBox/4743225/bug4743225.java                                       8171302 windows-all,macosx-all
 javax/swing/JComboBox/6236162/bug6236162.java                                       8028707 windows-all,macosx-all
-javax/swing/JComboBox/6559152/bug6559152.java                                       8196090 windows-all,macosx-all
+javax/swing/JComboBox/6559152/bug6559152.java                                       8196090 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/6607130/bug6607130.java                                       8196091,JRE-948 windows-all,macosx-all
 javax/swing/JComboBox/7031551/bug7031551.java                                       8199056 generic-all
 javax/swing/JComboBox/8032878/bug8032878.java                                       8196092 windows-all,macosx-all
@@ -1088,6 +1091,7 @@ tools/pack200/CommandLineTests.java                                             
 
 com/sun/jdi/BasicJDWPConnectionTest.java                                            8195703 generic-all
 com/sun/jdi/RedefineImplementor.sh                                                  8004127 generic-all
+com/sun/jdi/Frames2Test.java                                                        JRE-1165 generic-all
 com/sun/jdi/JdbExprTest.sh                                                          8203393 solaris-all
 com/sun/jdi/JdbMethodExitTest.sh                                                    8203393 solaris-all
 com/sun/jdi/RepStep.java                                                            8043571 generic-all
@@ -1173,7 +1177,7 @@ javax/swing/JComboBox/4515752/DefaultButtonTest.java                            
 javax/swing/JTabbedPane/7161568/bug7161568.java                                     JRE-948 macosx-all
 javax/swing/JTable/4220171/bug4220171.java                                          JRE-948 macosx-all
 javax/swing/JTable/7055065/bug7055065.java                                          JRE-948 macosx-all
-javax/swing/JTextArea/4697612/bug4697612.java                                       JRE-948 macosx-all
+javax/swing/JTextArea/4697612/bug4697612.java                                       JRE-948,8159253 macosx-all,windows-all,linux-all
 javax/swing/JTree/6578666/bug6578666.java                                           JRE-948 macosx-all
 javax/swing/text/DefaultStyledDocument/6636983/bug6636983.java                      JRE-948 macosx-all
 javax/swing/text/TableView/TableViewLayoutTest.java                                 JRE-948 macosx-all
