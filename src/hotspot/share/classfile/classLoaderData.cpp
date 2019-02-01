@@ -1420,6 +1420,13 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
       if (data->modules_defined()) {
         data->modules()->purge_all_module_reads();
       }
+      // Clean cached pd lists
+      // It's unlikely, but some loaded classes in a dictionary might
+      // point to a protection_domain that has been unloaded.
+      // The dictionary pd_set points at entries in the ProtectionDomainCacheTable.
+      if (data->dictionary() != NULL) {
+        data->dictionary()->clean_cached_protection_domains();
+      }
       data = data->next();
     }
     JFR_ONLY(post_class_unload_events();)

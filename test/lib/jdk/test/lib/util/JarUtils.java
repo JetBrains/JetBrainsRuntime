@@ -89,6 +89,35 @@ public final class JarUtils {
     }
 
     /**
+     * Creates a JAR file.
+     *
+     * Equivalent to {@code jar cf <jarfile>  -C <dir> file...}
+     *
+     * The input files are resolved against the given directory. Any input
+     * files that are directories are processed recursively.
+     */
+    public static void createJarFile(Path jarfile, Path dir, Path... files)
+            throws IOException
+    {
+        createJarFile(jarfile, null, dir, files);
+    }
+
+    /**
+     * Creates a JAR file.
+     *
+     * Equivalent to {@code jar cf <jarfile> -C <dir> file...}
+     *
+     * The input files are resolved against the given directory. Any input
+     * files that are directories are processed recursively.
+     */
+    public static void createJarFile(Path jarfile, Path dir, String... input)
+            throws IOException
+    {
+        Path[] paths = Stream.of(input).map(Paths::get).toArray(Path[]::new);
+        createJarFile(jarfile, dir, paths);
+    }
+
+    /**
      * Create jar file with specified files. If a specified file does not exist,
      * a new jar entry will be created with the file name itself as the content.
      */
