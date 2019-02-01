@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,41 +211,6 @@ void DictionaryEntry::add_protection_domain(Dictionary* dict, Handle protection_
   }
 }
 
-// During class loading we may have cached a protection domain that has
-// since been unreferenced, so this entry should be cleared.
-void Dictionary::clean_cached_protection_domains(DictionaryEntry* probe) {
-  assert_locked_or_safepoint(SystemDictionary_lock);
-
-  ProtectionDomainEntry* current = probe->pd_set();
-  ProtectionDomainEntry* prev = NULL;
-  while (current != NULL) {
-    if (current->object_no_keepalive() == NULL) {
-      LogTarget(Debug, protectiondomain) lt;
-      if (lt.is_enabled()) {
-        ResourceMark rm;
-        // Print out trace information
-        LogStream ls(lt);
-        ls.print_cr("PD in set is not alive:");
-        ls.print("class loader: "); loader_data()->class_loader()->print_value_on(&ls);
-        ls.print(" loading: "); probe->instance_klass()->print_value_on(&ls);
-        ls.cr();
-      }
-      if (probe->pd_set() == current) {
-        probe->set_pd_set(current->next());
-      } else {
-        assert(prev != NULL, "should be set by alive entry");
-        prev->set_next(current->next());
-      }
-      ProtectionDomainEntry* to_delete = current;
-      current = current->next();
-      delete to_delete;
-    } else {
-      prev = current;
-      current = current->next();
-    }
-  }
-}
-
 void Dictionary::remove_classes_in_error_state() {
   assert(DumpSharedSpaces, "supported only when dumping");
   DictionaryEntry* probe = NULL;
@@ -429,6 +394,54 @@ bool Dictionary::is_valid_protection_domain(unsigned int hash,
   int index = hash_to_index(hash);
   DictionaryEntry* entry = get_entry(index, hash, name);
   return entry->is_valid_protection_domain(protection_domain);
+}
+
+// During class loading we may have cached a protection domain that has
+// since been unreferenced, so this entry should be cleared.
+void Dictionary::clean_cached_protection_domains() {
+  assert_locked_or_safepoint(SystemDictionary_lock);
+
+  if (loader_data()->is_the_null_class_loader_data()) {
+    // Classes in the boot loader are not loaded with protection domains
+    return;
+  }
+
+  for (int index = 0; index < table_size(); index++) {
+    for (DictionaryEntry* probe = bucket(index);
+                          probe != NULL;
+                          probe = probe->next()) {
+      Klass* e = probe->instance_klass();
+
+      ProtectionDomainEntry* current = probe->pd_set();
+      ProtectionDomainEntry* prev = NULL;
+      while (current != NULL) {
+        if (current->object_no_keepalive() == NULL) {
+          LogTarget(Debug, protectiondomain) lt;
+          if (lt.is_enabled()) {
+            ResourceMark rm;
+            // Print out trace information
+            LogStream ls(lt);
+            ls.print_cr("PD in set is not alive:");
+            ls.print("class loader: "); loader_data()->class_loader()->print_value_on(&ls);
+            ls.print(" loading: "); probe->instance_klass()->print_value_on(&ls);
+            ls.cr();
+          }
+          if (probe->pd_set() == current) {
+            probe->set_pd_set(current->next());
+          } else {
+            assert(prev != NULL, "should be set by alive entry");
+            prev->set_next(current->next());
+          }
+          ProtectionDomainEntry* to_delete = current;
+          current = current->next();
+          delete to_delete;
+        } else {
+          prev = current;
+          current = current->next();
+        }
+      }
+    }
+  }
 }
 
 #if INCLUDE_CDS
