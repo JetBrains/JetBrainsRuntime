@@ -38,7 +38,7 @@
 #
 #############################################################################
 
-application generic-all
+application/* generic-all
 
 # :hotspot_compiler
 
