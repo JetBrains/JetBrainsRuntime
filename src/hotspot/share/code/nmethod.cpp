@@ -1076,6 +1076,9 @@ void nmethod::make_unloaded(oop cause) {
     CodeCache::set_needs_cache_clean(true);
   }
 
+  // Clear ICStubs and release any CompiledICHolders.
+  clear_ic_callsites();
+
   // Unregister must be done before the state change
   Universe::heap()->unregister_nmethod(this);
 
@@ -1286,6 +1289,7 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
 }
 
 void nmethod::flush() {
+  MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
   // Note that there are no valid oops in the nmethod anymore.
   assert(!is_osr_method() || is_unloaded() || is_zombie(),
          "osr nmethod must be unloaded or zombie before flushing");
