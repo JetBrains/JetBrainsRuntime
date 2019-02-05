@@ -539,6 +539,7 @@ java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java      
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java     8157170 macosx-all,windows-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
+java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/Paint/bug8024864.java                                                      8176512 macosx-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
@@ -906,7 +907,7 @@ javax/swing/JComboBox/8033069/bug8033069NoScrollBar.java                        
 javax/swing/JComboBox/8033069/bug8033069ScrollBar.java                              8163367 generic-all
 javax/swing/JComboBox/8041909/ActionListenerExceptionTest.java                      8197552 macosx-all,windows-all,linux-all
 javax/swing/JComboBox/8057893/bug8057893.java                                       8169953 windows-all,macosx-all
-javax/swing/JComboBox/8072767/bug8072767.java                                       8196093 windows-all,macosx-all
+javax/swing/JComboBox/8072767/bug8072767.java                                       8196093 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/8136998/bug8136998.java                                       8203909 macosx-all,windows-all
 javax/swing/JComboBox/8182031/ComboPopupTest.java                                   8196465 linux-all,macosx-all,windows-all
 javax/swing/JComboBox/ConsumedKeyTest/ConsumedKeyTest.java                          8067986 generic-all
@@ -924,7 +925,7 @@ javax/swing/JFileChooser/6396844/TwentyThousandTest.java                        
 javax/swing/JFileChooser/6738668/bug6738668.java                                    8194946 generic-all
 javax/swing/JFileChooser/6798062/bug6798062.java                                    8146446 windows-all
 javax/swing/JFileChooser/6868611/bug6868611.java                                    7059834 windows-all
-javax/swing/JFileChooser/8002077/bug8002077.java                                    8196094,8072110 macosx-all,windows-all
+javax/swing/JFileChooser/8002077/bug8002077.java                                    8196094,8072110 macosx-all,windows-all,linux-all
 javax/swing/JFileChooser/8021253/bug8021253.java                                    8169954,8072110 windows-all,linux-all,macosx-all
 javax/swing/JFileChooser/8041694/bug8041694.java                                    8196302 windows-all
 javax/swing/JFileChooser/8062561/bug8062561.java                                    8196466 linux-all,macosx-all
@@ -934,6 +935,8 @@ javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                       
 javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
+javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
+javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      8168135 macosx-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  8186513 generic-all
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java                     8208289 macosx-all
 javax/swing/JInternalFrame/Test6325652.java                                         8160880,8196467 linux-all,macosx-all,windows-all
