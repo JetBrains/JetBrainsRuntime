@@ -618,6 +618,8 @@ AwtFileDialog::Show(void *p)
 
     peer = (jobject)p;
 
+    LPTSTR fileBuffer = NULL;
+
     static BOOL useCommonItemDialog = JNU_CallStaticMethodByName(env, NULL,
             "sun/awt/windows/WFileDialogPeer", "useCommonItemDialog", "()Z").z == JNI_TRUE;
     try {
@@ -664,7 +666,7 @@ AwtFileDialog::Show(void *p)
         } else {
             bufferLimit = SINGLE_MODE_BUFFER_LIMIT;
         }
-        LPTSTR fileBuffer = new TCHAR[bufferLimit];
+        fileBuffer = new TCHAR[bufferLimit];
         memset(fileBuffer, 0, bufferLimit * sizeof(TCHAR));
 
         file = (jstring)env->GetObjectField(target, AwtFileDialog::fileID);
@@ -869,8 +871,9 @@ AwtFileDialog::Show(void *p)
         env->DeleteGlobalRef(peer);
 
         delete[] currentDirectory;
-        if (ofn.lpstrFile)
-            delete[] ofn.lpstrFile;
+        /* ofn.lpstrFile may have not been set if useCommonItemDialog == true,
+         * so use fileBuffer instead */
+        delete[] fileBuffer;
         throw;
     }
 
@@ -889,8 +892,9 @@ AwtFileDialog::Show(void *p)
     env->DeleteGlobalRef(peer);
 
     delete[] currentDirectory;
-    if (ofn.lpstrFile)
-        delete[] ofn.lpstrFile;
+    /* ofn.lpstrFile may have not been set if useCommonItemDialog == true,
+     * so use fileBuffer instead */
+    delete[] fileBuffer;
 }
 
 BOOL AwtFileDialog::InheritsNativeMouseWheelBehavior() {return true;}
