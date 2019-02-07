@@ -34,6 +34,7 @@ import java.util.ResourceBundle;
 import java.util.MissingResourceException;
 import java.util.Vector;
 import sun.awt.AWTAccessor;
+import sun.security.action.GetBooleanAction;
 
 final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
 
@@ -93,6 +94,10 @@ final class WFileDialogPeer extends WWindowPeer implements FileDialogPeer {
     protected void disposeImpl() {
         WToolkit.targetDisposedPeer(target, this);
         _dispose();
+    }
+
+    private static boolean useCommonItemDialog() {
+        return AccessController.doPrivileged(new GetBooleanAction("sun.awt.windows.useCommonItemDialog"));
     }
 
     private native void _show();
