@@ -183,11 +183,20 @@ struct CLogEntryPoint0 {
 struct OLEHolder
 {
     OLEHolder()
-    : m_hr(::OleInitialize(NULL))
-    {}
+            : m_hr(::OleInitialize(NULL))
+    {
+        if (SUCCEEDED(m_hr)) {
+            STRACE(_T("{OLE"));
+        }
+    }
 
-    ~OLEHolder(){}
-    operator bool() const { return S_OK==SUCCEEDED(m_hr); }
+    ~OLEHolder(){
+        if (SUCCEEDED(m_hr)) {
+            ::OleUninitialize();
+            STRACE(_T("}OLE"));
+        }
+    }
+    operator bool() const { return TRUE==SUCCEEDED(m_hr); }
     HRESULT m_hr;
 };
 
