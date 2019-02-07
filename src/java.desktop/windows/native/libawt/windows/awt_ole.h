@@ -180,4 +180,24 @@ struct CLogEntryPoint0 {
 #define _VE      _variant_t()
 #define _VB(b)   _variant_t(bool(b))
 
+struct OLEHolder
+{
+    OLEHolder()
+            : m_hr(::OleInitialize(NULL))
+    {
+        if (SUCCEEDED(m_hr)) {
+            STRACE(_T("{OLE"));
+        }
+    }
+
+    ~OLEHolder(){
+        if (SUCCEEDED(m_hr)) {
+            ::OleUninitialize();
+            STRACE(_T("}OLE"));
+        }
+    }
+    operator bool() const { return TRUE==SUCCEEDED(m_hr); }
+    HRESULT m_hr;
+};
+
 #endif//AWT_OLE_H
