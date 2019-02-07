@@ -106,11 +106,17 @@ AC_DEFUN([FLAGS_SETUP_SHARED_LIBS],
 
 AC_DEFUN([FLAGS_SETUP_DEBUG_SYMBOLS],
 [
+  # By default don't set any specific assembler debug
+  # info flags for toolchains unless we know they work.
+  # See JDK-8207057.
+  ASFLAGS_DEBUG_SYMBOLS=""
   # Debug symbols
   if test "x$TOOLCHAIN_TYPE" = xgcc; then
     CFLAGS_DEBUG_SYMBOLS="-g"
+    ASFLAGS_DEBUG_SYMBOLS="-g"
   elif test "x$TOOLCHAIN_TYPE" = xclang; then
     CFLAGS_DEBUG_SYMBOLS="-g"
+    ASFLAGS_DEBUG_SYMBOLS="-g"
   elif test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     # -g0 enables debug symbols without disabling inlining.
     CFLAGS_DEBUG_SYMBOLS="-g0 -xs"
@@ -121,6 +127,7 @@ AC_DEFUN([FLAGS_SETUP_DEBUG_SYMBOLS],
   fi
 
   AC_SUBST(CFLAGS_DEBUG_SYMBOLS)
+  AC_SUBST(ASFLAGS_DEBUG_SYMBOLS)
 ])
 
 AC_DEFUN([FLAGS_SETUP_WARNINGS],
@@ -366,6 +373,20 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS],
 
   FLAGS_SETUP_CFLAGS_CPU_DEP([BUILD], [OPENJDK_BUILD_])
 
+  COMPILER_FP_CONTRACT_OFF_FLAG="-ffp-contract=off"
+  # Check that the compiler supports -ffp-contract=off flag
+  # Set FDLIBM_CFLAGS to -ffp-contract=off if it does. Empty
+  # otherwise.
+  # These flags are required for GCC-based builds of
+  # fdlibm with optimization without losing precision.
+  # Notably, -ffp-contract=off needs to be added for GCC >= 4.6.
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
+    FLAGS_COMPILER_CHECK_ARGUMENTS(ARGUMENT: [${COMPILER_FP_CONTRACT_OFF_FLAG}],
+	IF_TRUE: [FDLIBM_CFLAGS=${COMPILER_FP_CONTRACT_OFF_FLAG}],
+	IF_FALSE: [FDLIBM_CFLAGS=""])
+  fi
+  AC_SUBST(FDLIBM_CFLAGS)
+
   # Tests are only ever compiled for TARGET
   CFLAGS_TESTLIB="$CFLAGS_JDKLIB"
   CXXFLAGS_TESTLIB="$CXXFLAGS_JDKLIB"
@@ -473,8 +494,8 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_HELPER],
   fi
 
   if test "x$TOOLCHAIN_TYPE" = xgcc; then
-    TOOLCHAIN_CFLAGS_JVM="$TOOLCHAIN_CFLAGS_JVM -fcheck-new"
-    TOOLCHAIN_CFLAGS_JDK="-pipe"
+    TOOLCHAIN_CFLAGS_JVM="$TOOLCHAIN_CFLAGS_JVM -fcheck-new -fstack-protector"
+    TOOLCHAIN_CFLAGS_JDK="-pipe -fstack-protector"
     TOOLCHAIN_CFLAGS_JDK_CONLY="-fno-strict-aliasing" # technically NOT for CXX (but since this gives *worse* performance, use no-strict-aliasing everywhere!)
 
     CXXSTD_CXXFLAG="-std=gnu++98"

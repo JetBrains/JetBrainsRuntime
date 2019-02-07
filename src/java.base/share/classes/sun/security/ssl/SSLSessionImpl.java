@@ -132,6 +132,10 @@ final class SSLSessionImpl extends ExtendedSSLSession {
     // Counter used to create unique nonces in NewSessionTicket
     private BigInteger ticketNonceCounter = BigInteger.ONE;
 
+    // The endpoint identification algorithm used to check certificates
+    // in this session.
+    private final String              identificationProtocol;
+
     /*
      * Create a new non-rejoinable session, using the default (null)
      * cipher spec.  This constructor returns a session which could
@@ -149,6 +153,8 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         this.requestedServerNames = Collections.<SNIServerName>emptyList();
         this.useExtendedMasterSecret = false;
         this.creationTime = System.currentTimeMillis();
+        this.identificationProtocol = null;
+        this.boundValues = new ConcurrentHashMap<>();
     }
 
     /*
@@ -198,6 +204,42 @@ final class SSLSessionImpl extends ExtendedSSLSession {
                 (!hc.negotiatedProtocol.useTLS13PlusSpec());
         }
         this.creationTime = creationTime;
+        this.identificationProtocol = hc.sslConfig.identificationProtocol;
+        this.boundValues = new ConcurrentHashMap<>();
+
+        if (SSLLogger.isOn && SSLLogger.isOn("session")) {
+             SSLLogger.finest("Session initialized:  " + this);
+        }
+    }
+
+    SSLSessionImpl(SSLSessionImpl baseSession, SessionId newId) {
+        this.protocolVersion = baseSession.getProtocolVersion();
+        this.cipherSuite = baseSession.cipherSuite;
+        this.sessionId = newId;
+        this.host = baseSession.getPeerHost();
+        this.port = baseSession.getPeerPort();
+        this.localSupportedSignAlgs =
+            baseSession.localSupportedSignAlgs == null ?
+                Collections.emptySet() :
+                Collections.unmodifiableCollection(
+                        baseSession.localSupportedSignAlgs);
+        this.peerSupportedSignAlgs =
+                baseSession.getPeerSupportedSignatureAlgorithms();
+        this.serverNameIndication = baseSession.serverNameIndication;
+        this.requestedServerNames = baseSession.getRequestedServerNames();
+        this.masterSecret = baseSession.getMasterSecret();
+        this.useExtendedMasterSecret = baseSession.useExtendedMasterSecret;
+        this.creationTime = baseSession.getCreationTime();
+        this.lastUsedTime = System.currentTimeMillis();
+        this.identificationProtocol = baseSession.getIdentificationProtocol();
+        this.localCerts = baseSession.localCerts;
+        this.peerCerts = baseSession.peerCerts;
+        this.statusResponses = baseSession.statusResponses;
+        this.resumptionMasterSecret = baseSession.resumptionMasterSecret;
+        this.context = baseSession.context;
+        this.negotiatedMaxFragLen = baseSession.negotiatedMaxFragLen;
+        this.maximumPacketSize = baseSession.maximumPacketSize;
+        this.boundValues = baseSession.boundValues;
 
         if (SSLLogger.isOn && SSLLogger.isOn("session")) {
              SSLLogger.finest("Session initialized:  " + this);
@@ -259,11 +301,8 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         return ticketAgeAdd;
     }
 
-    /*
-     * Get the PSK identity. Take care not to use it in multiple connections.
-     */
-    synchronized Optional<byte[]> getPskIdentity() {
-        return Optional.ofNullable(pskIdentity);
+    String getIdentificationProtocol() {
+        return this.identificationProtocol;
     }
 
     /* PSK identities created from new_session_ticket messages should only
@@ -762,8 +801,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * key and the calling security context. This is important since
      * sessions can be shared across different protection domains.
      */
-    private final ConcurrentHashMap<SecureKey, Object> boundValues =
-            new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SecureKey, Object> boundValues;
 
     /**
      * Assigns a session value.  Session change events are given if

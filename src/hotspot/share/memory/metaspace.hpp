@@ -71,6 +71,7 @@ namespace metaspace {
   class PrintCLDMetaspaceInfoClosure;
   class SpaceManager;
   class VirtualSpaceList;
+  class VirtualSpaceNode;
 }
 
 // Metaspaces each have a  SpaceManager and allocations
@@ -297,6 +298,10 @@ class MetaspaceUtils : AllStatic {
   // Spacemanager updates running counters.
   friend class metaspace::SpaceManager;
 
+  // Special access for error reporting (checks without locks).
+  friend class oopDesc;
+  friend class Klass;
+
   // Running counters for statistics concerning in-use chunks.
   // Note: capacity = used + free + waste + overhead. Note that we do not
   // count free and waste. Their sum can be deduces from the three other values.
@@ -323,6 +328,12 @@ class MetaspaceUtils : AllStatic {
 
   // Helper for print_xx_report.
   static void print_vs(outputStream* out, size_t scale);
+
+  // Utils to check if a pointer or range is part of a committed metaspace region
+  // without acquiring any locks.
+  static metaspace::VirtualSpaceNode* find_enclosing_virtual_space(const void* p);
+  static bool is_in_committed(const void* p);
+  static bool is_range_in_committed(const void* from, const void* to);
 
 public:
 
@@ -449,7 +460,8 @@ class MetaspaceGC : AllStatic {
   static size_t capacity_until_GC();
   static bool inc_capacity_until_GC(size_t v,
                                     size_t* new_cap_until_GC = NULL,
-                                    size_t* old_cap_until_GC = NULL);
+                                    size_t* old_cap_until_GC = NULL,
+                                    bool* can_retry = NULL);
   static size_t dec_capacity_until_GC(size_t v);
 
   static bool should_concurrent_collect() { return _should_concurrent_collect; }

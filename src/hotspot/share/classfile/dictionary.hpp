@@ -80,9 +80,6 @@ public:
   void unlink();
   void remove_classes_in_error_state();
 
-  // Unload classes whose defining loaders are unloaded
-  void do_unloading();
-
   // Protection domains
   InstanceKlass* find(unsigned int hash, Symbol* name, Handle protection_domain);
   bool is_valid_protection_domain(unsigned int hash,

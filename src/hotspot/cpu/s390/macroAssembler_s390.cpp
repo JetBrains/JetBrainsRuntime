@@ -465,19 +465,8 @@ void MacroAssembler::not_(Register r1, Register r2, bool wide) {
       z_xihf(r1, -1);
     }
   } else { // Distinct src and dst registers.
-    if (VM_Version::has_DistinctOpnds()) {
-      load_const_optimized(r1, -1);
-      z_xgrk(r1, r2, r1);
-    } else {
-      if (wide) {
-        z_lgr(r1, r2);
-        z_xilf(r1, -1);
-        z_xihf(r1, -1);
-      } else {
-        z_lr(r1, r2);
-        z_xilf(r1, -1);
-      }
-    }
+    load_const_optimized(r1, -1);
+    z_xgr(r1, r2);
   }
 }
 
@@ -1158,8 +1147,10 @@ void MacroAssembler::load_absolute_address(Register d, address addr) {
 // Make sure to keep code size constant -> no value-dependent optimizations.
 // Do not kill condition code.
 void MacroAssembler::load_const(Register t, long x) {
-  Assembler::z_iihf(t, (int)(x >> 32));
-  Assembler::z_iilf(t, (int)(x & 0xffffffff));
+  // Note: Right shift is only cleanly defined for unsigned types
+  //       or for signed types with nonnegative values.
+  Assembler::z_iihf(t, (long)((unsigned long)x >> 32));
+  Assembler::z_iilf(t, (long)((unsigned long)x & 0xffffffffUL));
 }
 
 // Load a 32bit constant into a 64bit register, sign-extend or zero-extend.
@@ -1256,8 +1247,10 @@ bool MacroAssembler::is_compare_immediate_narrow_klass(address pos) {
 // CPU-version dependend patching of load_const.
 void MacroAssembler::patch_const(address a, long x) {
   assert(is_load_const(a), "not a load of a constant");
-  set_imm32((address)a, (int) ((x >> 32) & 0xffffffff));
-  set_imm32((address)(a + 6), (int)(x & 0xffffffff));
+  // Note: Right shift is only cleanly defined for unsigned types
+  //       or for signed types with nonnegative values.
+  set_imm32((address)a, (long)((unsigned long)x >> 32));
+  set_imm32((address)(a + 6), (long)((unsigned long)x & 0xffffffffUL));
 }
 
 // Patching the value of CPU version dependent load_const_32to64 sequence.
@@ -1461,13 +1454,17 @@ int MacroAssembler::load_const_optimized_rtn_len(Register t, long x, bool emit) 
 
   // 64 bit value: | part1 | part2 | part3 | part4 |
   // At least one part is not zero!
-  int part1 = ((x >> 32) & 0xffff0000) >> 16;
-  int part2 = (x >> 32) & 0x0000ffff;
-  int part3 = (x & 0xffff0000) >> 16;
-  int part4 = (x & 0x0000ffff);
+  // Note: Right shift is only cleanly defined for unsigned types
+  //       or for signed types with nonnegative values.
+  int part1 = (int)((unsigned long)x >> 48) & 0x0000ffff;
+  int part2 = (int)((unsigned long)x >> 32) & 0x0000ffff;
+  int part3 = (int)((unsigned long)x >> 16) & 0x0000ffff;
+  int part4 = (int)x & 0x0000ffff;
+  int part12 = (int)((unsigned long)x >> 32);
+  int part34 = (int)x;
 
   // Lower word only (unsigned).
-  if ((part1 == 0) && (part2 == 0)) {
+  if (part12 == 0) {
     if (part3 == 0) {
       if (emit) z_llill(t, part4);
       return 4;
@@ -1476,12 +1473,12 @@ int MacroAssembler::load_const_optimized_rtn_len(Register t, long x, bool emit) 
       if (emit) z_llilh(t, part3);
       return 4;
     }
-    if (emit) z_llilf(t, (int)(x & 0xffffffff));
+    if (emit) z_llilf(t, part34);
     return 6;
   }
 
   // Upper word only.
-  if ((part3 == 0) && (part4 == 0)) {
+  if (part34 == 0) {
     if (part1 == 0) {
       if (emit) z_llihl(t, part2);
       return 4;
@@ -1490,13 +1487,13 @@ int MacroAssembler::load_const_optimized_rtn_len(Register t, long x, bool emit) 
       if (emit) z_llihh(t, part1);
       return 4;
     }
-    if (emit) z_llihf(t, (int)(x >> 32));
+    if (emit) z_llihf(t, part12);
     return 6;
   }
 
   // Lower word only (signed).
   if ((part1 == 0x0000ffff) && (part2 == 0x0000ffff) && ((part3 & 0x00008000) != 0)) {
-    if (emit) z_lgfi(t, (int)(x & 0xffffffff));
+    if (emit) z_lgfi(t, part34);
     return 6;
   }
 
@@ -1511,7 +1508,7 @@ int MacroAssembler::load_const_optimized_rtn_len(Register t, long x, bool emit) 
       len += 4;
     }
   } else {
-    if (emit) z_llihf(t, (int)(x >> 32));
+    if (emit) z_llihf(t, part12);
     len += 6;
   }
 
@@ -1524,7 +1521,7 @@ int MacroAssembler::load_const_optimized_rtn_len(Register t, long x, bool emit) 
       len += 4;
     }
   } else {
-    if (emit) z_iilf(t, (int)(x & 0xffffffff));
+    if (emit) z_iilf(t, part34);
     len += 6;
   }
   return len;
@@ -6361,75 +6358,6 @@ void MacroAssembler::update_1word_crc32(Register crc, Register buf, Register tab
   z_xy(t0, Address(table, t1, (intptr_t)ix2));
   z_xr(t0, t2);           // Now t0 contains the updated CRC value.
   lgr_if_needed(crc, t0);
-}
-
-/**
- * @param crc   register containing existing CRC (32-bit)
- * @param buf   register pointing to input byte buffer (byte*)
- * @param len   register containing number of bytes
- * @param table register pointing to CRC table
- *
- * uses Z_R10..Z_R13 as work register. Must be saved/restored by caller!
- */
-void MacroAssembler::kernel_crc32_2word(Register crc, Register buf, Register len, Register table,
-                                        Register t0,  Register t1,  Register t2,  Register t3,
-                                        bool invertCRC) {
-  assert_different_registers(crc, buf, len, table);
-
-  Label L_mainLoop, L_tail;
-  Register  data = t0;
-  Register  ctr  = Z_R0;
-  const int mainLoop_stepping = 8;
-  const int tailLoop_stepping = 1;
-  const int log_stepping      = exact_log2(mainLoop_stepping);
-
-  // Don't test for len <= 0 here. This pathological case should not occur anyway.
-  // Optimizing for it by adding a test and a branch seems to be a waste of CPU cycles.
-  // The situation itself is detected and handled correctly by the conditional branches
-  // following aghi(len, -stepping) and aghi(len, +stepping).
-
-  if (invertCRC) {
-    not_(crc, noreg, false);           // 1s complement of crc
-  }
-
-#if 0
-  {
-    // Pre-mainLoop alignment did not show any positive effect on performance.
-    // We leave the code in for reference. Maybe the vector instructions in z13 depend on alignment.
-
-    z_cghi(len, mainLoop_stepping);    // Alignment is useless for short data streams.
-    z_brnh(L_tail);
-
-    // Align buf to word (4-byte) boundary.
-    z_lcr(ctr, buf);
-    rotate_then_insert(ctr, ctr, 62, 63, 0, true); // TODO: should set cc
-    z_sgfr(len, ctr);                  // Remaining len after alignment.
-
-    update_byteLoop_crc32(crc, buf, ctr, table, data);
-  }
-#endif
-
-  // Check for short (<mainLoop_stepping bytes) buffer.
-  z_srag(ctr, len, log_stepping);
-  z_brnh(L_tail);
-
-  z_lrvr(crc, crc);          // Revert byte order because we are dealing with big-endian data.
-  rotate_then_insert(len, len, 64-log_stepping, 63, 0, true); // #bytes for tailLoop
-
-  BIND(L_mainLoop);
-    update_1word_crc32(crc, buf, table, 0, 0, crc, t1, t2, t3);
-    update_1word_crc32(crc, buf, table, 4, mainLoop_stepping, crc, t1, t2, t3);
-    z_brct(ctr, L_mainLoop); // Iterate.
-
-  z_lrvr(crc, crc);          // Revert byte order back to original.
-
-  // Process last few (<8) bytes of buffer.
-  BIND(L_tail);
-  update_byteLoop_crc32(crc, buf, len, table, data);
-
-  if (invertCRC) {
-    not_(crc, noreg, false);           // 1s complement of crc
-  }
 }
 
 /**

@@ -735,6 +735,22 @@ void Klass::oop_verify_on(oop obj, outputStream* st) {
   guarantee(obj->klass()->is_klass(), "klass field is not a klass");
 }
 
+Klass* Klass::decode_klass_raw(narrowKlass narrow_klass) {
+  return (Klass*)(void*)( (uintptr_t)Universe::narrow_klass_base() +
+                         ((uintptr_t)narrow_klass << Universe::narrow_klass_shift()));
+}
+
+bool Klass::is_valid(Klass* k) {
+  if (!is_aligned(k, sizeof(MetaWord))) return false;
+  if ((size_t)k < os::min_page_size()) return false;
+
+  if (!os::is_readable_range(k, k + 1)) return false;
+  if (!MetaspaceUtils::is_range_in_committed(k, k + 1)) return false;
+
+  if (!Symbol::is_valid(k->name())) return false;
+  return ClassLoaderDataGraph::is_valid(k->class_loader_data());
+}
+
 klassVtable Klass::vtable() const {
   return klassVtable(const_cast<Klass*>(this), start_of_vtable(), vtable_length() / vtableEntry::size());
 }
@@ -864,9 +880,18 @@ const char* Klass::class_in_module_of_loader(bool use_are, bool include_parent_l
   if (include_parent_loader &&
       !cld->is_builtin_class_loader_data()) {
     oop parent_loader = java_lang_ClassLoader::parent(class_loader());
-    ClassLoaderData *parent_cld = ClassLoaderData::class_loader_data(parent_loader);
-    assert(parent_cld != NULL, "parent's class loader data should not be null");
-    parent_loader_name_and_id = parent_cld->loader_name_and_id();
+    ClassLoaderData *parent_cld = ClassLoaderData::class_loader_data_or_null(parent_loader);
+    // The parent loader's ClassLoaderData could be null if it is
+    // a delegating class loader that has never defined a class.
+    // In this case the loader's name must be obtained via the parent loader's oop.
+    if (parent_cld == NULL) {
+      oop cl_name_and_id = java_lang_ClassLoader::nameAndId(parent_loader);
+      if (cl_name_and_id != NULL) {
+        parent_loader_name_and_id = java_lang_String::as_utf8_string(cl_name_and_id);
+      }
+    } else {
+      parent_loader_name_and_id = parent_cld->loader_name_and_id();
+    }
     parent_loader_phrase = ", parent loader ";
     len += strlen(parent_loader_phrase) + strlen(parent_loader_name_and_id);
   }

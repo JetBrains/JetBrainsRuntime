@@ -1309,6 +1309,20 @@ bool ClassLoaderDataGraph::contains_loader_data(ClassLoaderData* loader_data) {
 }
 #endif // PRODUCT
 
+bool ClassLoaderDataGraph::is_valid(ClassLoaderData* loader_data) {
+  if (loader_data != NULL) {
+    if (loader_data == ClassLoaderData::the_null_class_loader_data()) {
+      return true;
+    }
+    for (ClassLoaderData* data = _head; data != NULL; data = data->next()) {
+      if (loader_data == data) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 #if INCLUDE_JFR
 static Ticks class_unload_time;
 static void post_class_unload_event(Klass* const k) {
@@ -1389,11 +1403,6 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
   if (seen_dead_loader) {
     data = _head;
     while (data != NULL) {
-      // Remove entries in the dictionary of live class loader that have
-      // initiated loading classes in a dead class loader.
-      if (data->dictionary() != NULL) {
-        data->dictionary()->do_unloading();
-      }
       // Walk a ModuleEntry's reads, and a PackageEntry's exports
       // lists to determine if there are modules on those lists that are now
       // dead and should be removed.  A module's life cycle is equivalent

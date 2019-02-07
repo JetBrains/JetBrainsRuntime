@@ -894,14 +894,19 @@ void CompileBroker::possibly_add_compiler_threads() {
   EXCEPTION_MARK;
 
   julong available_memory = os::available_memory();
+  // If SegmentedCodeCache is off, both values refer to the single heap (with type CodeBlobType::All).
+  size_t available_cc_np  = CodeCache::unallocated_capacity(CodeBlobType::MethodNonProfiled),
+         available_cc_p   = CodeCache::unallocated_capacity(CodeBlobType::MethodProfiled);
+
   // Only do attempt to start additional threads if the lock is free.
   if (!CompileThread_lock->try_lock()) return;
 
   if (_c2_compile_queue != NULL) {
     int old_c2_count = _compilers[1]->num_compiler_threads();
-    int new_c2_count = MIN3(_c2_count,
+    int new_c2_count = MIN4(_c2_count,
         _c2_compile_queue->size() / 2,
-        (int)(available_memory / 200*M));
+        (int)(available_memory / (200*M)),
+        (int)(available_cc_np / (128*K)));
 
     for (int i = old_c2_count; i < new_c2_count; i++) {
       JavaThread *ct = make_thread(compiler2_object(i), _c2_compile_queue, _compilers[1], true, CHECK);
@@ -910,17 +915,18 @@ void CompileBroker::possibly_add_compiler_threads() {
       if (TraceCompilerThreads) {
         ResourceMark rm;
         MutexLocker mu(Threads_lock);
-        tty->print_cr("Added compiler thread %s (available memory: %dMB)",
-                      ct->get_thread_name(), (int)(available_memory/M));
+        tty->print_cr("Added compiler thread %s (available memory: %dMB, available non-profiled code cache: %dMB)",
+                      ct->get_thread_name(), (int)(available_memory/M), (int)(available_cc_np/M));
       }
     }
   }
 
   if (_c1_compile_queue != NULL) {
     int old_c1_count = _compilers[0]->num_compiler_threads();
-    int new_c1_count = MIN3(_c1_count,
+    int new_c1_count = MIN4(_c1_count,
         _c1_compile_queue->size() / 4,
-        (int)(available_memory / 100*M));
+        (int)(available_memory / (100*M)),
+        (int)(available_cc_p / (128*K)));
 
     for (int i = old_c1_count; i < new_c1_count; i++) {
       JavaThread *ct = make_thread(compiler1_object(i), _c1_compile_queue, _compilers[0], true, CHECK);
@@ -929,8 +935,8 @@ void CompileBroker::possibly_add_compiler_threads() {
       if (TraceCompilerThreads) {
         ResourceMark rm;
         MutexLocker mu(Threads_lock);
-        tty->print_cr("Added compiler thread %s (available memory: %dMB)",
-                      ct->get_thread_name(), (int)(available_memory/M));
+        tty->print_cr("Added compiler thread %s (available memory: %dMB, available profiled code cache: %dMB)",
+                      ct->get_thread_name(), (int)(available_memory/M), (int)(available_cc_p/M));
       }
     }
   }
@@ -1781,36 +1787,38 @@ void CompileBroker::compiler_thread_loop() {
           return; // Stop this thread.
         }
       }
-      continue;
-    }
+    } else {
 
-    if (UseDynamicNumberOfCompilerThreads) {
-      possibly_add_compiler_threads();
-    }
+      // Give compiler threads an extra quanta.  They tend to be bursty and
+      // this helps the compiler to finish up the job.
+      if (CompilerThreadHintNoPreempt) {
+        os::hint_no_preempt();
+      }
 
-    // Give compiler threads an extra quanta.  They tend to be bursty and
-    // this helps the compiler to finish up the job.
-    if (CompilerThreadHintNoPreempt) {
-      os::hint_no_preempt();
-    }
+      // Assign the task to the current thread.  Mark this compilation
+      // thread as active for the profiler.
+      // CompileTaskWrapper also keeps the Method* from being deallocated if redefinition
+      // occurs after fetching the compile task off the queue.
+      CompileTaskWrapper ctw(task);
+      nmethodLocker result_handle;  // (handle for the nmethod produced by this task)
+      task->set_code_handle(&result_handle);
+      methodHandle method(thread, task->method());
 
-    // Assign the task to the current thread.  Mark this compilation
-    // thread as active for the profiler.
-    CompileTaskWrapper ctw(task);
-    nmethodLocker result_handle;  // (handle for the nmethod produced by this task)
-    task->set_code_handle(&result_handle);
-    methodHandle method(thread, task->method());
+      // Never compile a method if breakpoints are present in it
+      if (method()->number_of_breakpoints() == 0) {
+        // Compile the method.
+        if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
+          invoke_compiler_on_method(task);
+          thread->start_idle_timer();
+        } else {
+          // After compilation is disabled, remove remaining methods from queue
+          method->clear_queued_for_compilation();
+          task->set_failure_reason("compilation is disabled");
+        }
+      }
 
-    // Never compile a method if breakpoints are present in it
-    if (method()->number_of_breakpoints() == 0) {
-      // Compile the method.
-      if ((UseCompiler || AlwaysCompileLoopMethods) && CompileBroker::should_compile_new_jobs()) {
-        invoke_compiler_on_method(task);
-        thread->start_idle_timer();
-      } else {
-        // After compilation is disabled, remove remaining methods from queue
-        method->clear_queued_for_compilation();
-        task->set_failure_reason("compilation is disabled");
+      if (UseDynamicNumberOfCompilerThreads) {
+        possibly_add_compiler_threads();
       }
     }
   }
@@ -1942,7 +1950,8 @@ static void codecache_print(outputStream* out, bool detailed) {
   }
 }
 
-void CompileBroker::post_compile(CompilerThread* thread, CompileTask* task, bool success, ciEnv* ci_env) {
+void CompileBroker::post_compile(CompilerThread* thread, CompileTask* task, bool success, ciEnv* ci_env,
+                                 int compilable, const char* failure_reason) {
   if (success) {
     task->mark_success();
     if (ci_env != NULL) {
@@ -1953,6 +1962,13 @@ void CompileBroker::post_compile(CompilerThread* thread, CompileTask* task, bool
       if (code != NULL) {
         _compilation_log->log_nmethod(thread, code);
       }
+    }
+  } else if (AbortVMOnCompilationFailure) {
+    if (compilable == ciEnv::MethodCompilable_not_at_tier) {
+      fatal("Not compilable at tier %d: %s", task->comp_level(), failure_reason);
+    }
+    if (compilable == ciEnv::MethodCompilable_never) {
+      fatal("Never compilable: %s", failure_reason);
     }
   }
   // simulate crash during compilation
@@ -2064,7 +2080,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
           compilable = ciEnv::MethodCompilable_not_at_tier;
         }
     }
-    post_compile(thread, task, task->code() != NULL, NULL);
+    post_compile(thread, task, task->code() != NULL, NULL, compilable, failure_reason);
     if (event.should_commit()) {
       post_compilation_event(&event, task);
     }
@@ -2124,7 +2140,7 @@ void CompileBroker::invoke_compiler_on_method(CompileTask* task) {
       ci_env.report_failure(failure_reason);
     }
 
-    post_compile(thread, task, !ci_env.failing(), &ci_env);
+    post_compile(thread, task, !ci_env.failing(), &ci_env, compilable, failure_reason);
     if (event.should_commit()) {
       post_compilation_event(&event, task);
     }
