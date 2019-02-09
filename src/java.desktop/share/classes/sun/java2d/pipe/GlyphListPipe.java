@@ -140,4 +140,8 @@ public abstract class GlyphListPipe implements TextPipe {
                                  int aaHint) {
         drawGlyphList(sg2d, gl);
     }
+
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }

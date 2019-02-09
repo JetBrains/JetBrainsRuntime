@@ -324,9 +324,13 @@ public class Blit extends GraphicsPrimitive
                          int srcx, int srcy, int dstx, int dsty,
                          int width, int height)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.Blit(src, dst, comp, clip,
                         srcx, srcy, dstx, dsty, width, height);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }

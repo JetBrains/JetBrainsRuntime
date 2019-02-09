@@ -75,6 +75,7 @@ JNIEXPORT jfieldID path2DWindingRuleID;
 JNIEXPORT jfieldID path2DFloatCoordsID;
 JNIEXPORT jfieldID sg2dStrokeHintID;
 JNIEXPORT jint sunHints_INTVAL_STROKE_PURE;
+JNIEXPORT jint graphicsPrimitive_traceflags = 0;
 
 /*
  * Class:     sun_java2d_loops_GraphicsPrimitiveMgr
@@ -146,6 +147,13 @@ Java_sun_java2d_loops_GraphicsPrimitiveMgr_initIDs
     CHECK_NULL(fid =
         (*env)->GetStaticFieldID(env, SHints, "INTVAL_STROKE_PURE", "I"));
     sunHints_INTVAL_STROKE_PURE = (*env)->GetStaticIntField(env, SHints, fid);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_loops_GraphicsPrimitiveMgr_setTraceFlags
+    (JNIEnv *env, jclass GPMgr, jint traceflags)
+{
+    graphicsPrimitive_traceflags = traceflags;
 }
 
 void GrPrim_RefineBounds(SurfaceDataBounds *bounds, jint transX, jint transY,

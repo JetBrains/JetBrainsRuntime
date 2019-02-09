@@ -146,10 +146,14 @@ public class ScaledBlit extends GraphicsPrimitive
                           double dx1, double dy1,
                           double dx2, double dy2)
         {
-            tracePrimitive(target);
+            if ((traceflags & TRACEPTIME) == 0) {
+                tracePrimitive(target);
+            }
+            long time = System.nanoTime();
             target.Scale(src, dst, comp, clip,
                          sx1, sy1, sx2, sy2,
                          dx1, dy1, dx2, dy2);
+            tracePrimitiveTime(target, System.nanoTime() - time);
         }
     }
 }
