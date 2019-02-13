@@ -122,6 +122,7 @@ java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html              
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 macosx-all,linux-all,windows-all
 java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all
+java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.html        8194045 generic-all
 java/awt/Choice/PopupPosTest/PopupPosTest.html                                      8192930 windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java                        8047703 generic-all
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8014503,8192929 windows-all,linux-all
@@ -1112,6 +1113,8 @@ com/sun/jdi/NashornPopFrameTest.java                                            
 
 ############################################################################
 
+java/util/zip/ZipFile/TestCleaner.java                                              8204868 generic-all
+
 # jdk_instrument
 
 ############################################################################
@@ -1137,16 +1140,18 @@ com/apple/eawt/DefaultMenuBar/DefaultMenuBarTest.java                           
 #
 # Java EE Module Removal
 #
-com/sun/jdi/RedefineCrossEvent.java                                                 8194308    generic-all  Java EE Module Removal
+com/sun/jdi/RedefineCrossEvent.java                                                 8194308 generic-all  Java EE Module Removal
 
 ############################################################################
 
 # jdk_jfr
 
-jdk/jfr/event/io/TestInstrumentation.java                                           8202142    generic-all
-jdk/jfr/event/sampling/TestNative.java                                              8202142    generic-all
-jdk/jfr/event/oldobject/TestLargeRootSet.java                                       8205651    generic-all
-jdk/jfr/event/os/TestSystemProcess.java                                             8202835    linux-all
+jdk/jfr/event/io/TestInstrumentation.java                                           8202142 generic-all
+jdk/jfr/event/sampling/TestNative.java                                              8202142 generic-all
+jdk/jfr/event/oldobject/TestLargeRootSet.java                                       8205651 generic-all
+jdk/jfr/event/os/TestSystemProcess.java                                             8202835 linux-all
+
+sun/nio/ch/TestMaxCachedBufferSize.java                                             8212812 generic-all
 
 demo/jfc/J2Ddemo/J2DdemoTest.java                                                   8213118 generic-all
 
