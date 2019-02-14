@@ -32,7 +32,6 @@
 ./legal/java.base/public_suffix.md
 ./legal/java.base/unicode.md
 ./legal/java.desktop/colorimaging.md
-./legal/java.desktop/freetype.md
 ./legal/java.desktop/giflib.md
 ./legal/java.desktop/harfbuzz.md
 ./legal/java.desktop/jpeg.md
