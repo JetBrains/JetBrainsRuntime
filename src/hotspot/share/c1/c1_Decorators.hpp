@@ -38,5 +38,7 @@ const DecoratorSet C1_MASK_BOOLEAN   = DECORATOR_LAST << 2;
 const DecoratorSet C1_WRITE_ACCESS   = DECORATOR_LAST << 3;
 // The C1_READ_ACCESS decorator is used to mark reading accesses.
 const DecoratorSet C1_READ_ACCESS    = DECORATOR_LAST << 4;
+// Use the C1_UNSAFE_ACCESS decorator to mark unsafe accesses.
+const DecoratorSet C1_UNSAFE_ACCESS  = DECORATOR_LAST << 5;
 
 #endif // SHARE_VM_C1_C1_DECORATORS_HPP
