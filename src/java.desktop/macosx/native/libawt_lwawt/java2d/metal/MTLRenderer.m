@@ -104,10 +104,6 @@ void MTLRenderer_FillParallelogramMetal(
     }};
 
 
-    id<MTLBuffer>  mtlVertexBuffer = [ctx->mtlDevice newBufferWithBytes:verts
-                                         length:sizeof(verts)
-                                        options:
-                                                MTLResourceCPUCacheModeDefaultCache];
     // Encode render command.
     if (!ctx->mtlRenderPassDesc) {
         ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
@@ -126,13 +122,12 @@ void MTLRenderer_FillParallelogramMetal(
         id<MTLRenderCommandEncoder>  mtlEncoder =
             [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
         MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-        //fprintf(stderr, "%f %f \n", ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height);
         [mtlEncoder setViewport:vp];
         [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
         [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
                           offset:0 atIndex:FrameUniformBuffer];
 
-        [mtlEncoder setVertexBuffer:mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
         [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
         [mtlEncoder endEncoding];
     }

@@ -170,13 +170,9 @@ public class MTLRenderQueue extends RenderQueue {
         }
 
         public synchronized void flushNow() {
-            flushNow(true);
-        }
-
-        public synchronized void flushNow(boolean latency) {
             // wake up the flusher
             needsFlush = true;
-            if (!latency) notify();
+            notify();
 
             // wait for flush to complete
             while (needsFlush) {
