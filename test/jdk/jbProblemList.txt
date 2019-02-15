@@ -157,7 +157,7 @@ java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java        
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest.html                   JRE-898,6862004 macosx-all,linux-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java                6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java             6848407 generic-all
-java/awt/Focus/Cause/FocusCauseTest.java                                            JRE-898 macosx-all
+java/awt/Focus/Cause/FocusCauseTest.java                                            JRE-898 macosx-all,windows-all (windows: commit testing)
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.html                       8047703 windows-all,macosx-all,linux-all
 java/awt/Focus/ChoiceFocus/ChoiceFocus.java                                         8169103 windows-all,macosx-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java             JRE-898 macosx-all
@@ -198,7 +198,7 @@ java/awt/Frame/InvisibleOwner/InvisibleOwner.java                               
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java                       8169472 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java                       8022302 generic-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java                                     8079267 windows-all,linux-all
-java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           8196006 windows-all
+java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           8196006 macosx-all,windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java                       8144030 macosx-all
 java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java 8208290 macosx-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java                                   8169470 generic-all
@@ -220,7 +220,7 @@ java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                          
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              8197814 macosx-all,windows-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                            8000171 windows-all
 java/awt/JAWT/JAWT.sh                                                               8197798 windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.html JRE-898 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.html JRE-898 macosx-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java 8198623 macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java                  8198623 macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.html        8198624 macosx-all,linux-all,windows-all
@@ -586,7 +586,7 @@ java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java    
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999,8198690 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                        8078999 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java                  8078999,8198690 macosx-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450 macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450 macosx-all, windows-all (windows: commit testing time out)
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8198690,8165218 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8194129 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java             8194129 macosx-all,windows-all,linux-all
@@ -1177,7 +1177,7 @@ java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemoni
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.html JRE-948 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JRE-948 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JRE-948 macosx-all
-java/awt/List/EmptyListEventTest/EmptyListEventTest.java                            JRE-948 macosx-all
+java/awt/List/EmptyListEventTest/EmptyListEventTest.java                            JRE-948 macosx-all,windows-all (windows: commit testing)
 java/awt/event/KeyEvent/8020209/bug8020209.java                                     JRE-948 macosx-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JRE-948 macosx-all
 java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                  JRE-948 macosx-all
