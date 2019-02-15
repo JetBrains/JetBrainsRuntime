@@ -33,8 +33,7 @@
 ./bin/management_agent.dll
 ./bin/management_ext.dll
 ./bin/mlib_image.dll
-./bin/msvcp120.dll
-./bin/msvcr120.dll
+./bin/msvcp140.dll
 ./bin/net.dll
 ./bin/nio.dll
 ./bin/pack200.exe
