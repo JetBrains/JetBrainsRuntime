@@ -758,6 +758,7 @@ java/nio/channels/DatagramChannel/ChangingAddress.java                          
 java/nio/channels/DatagramChannel/MulticastSendReceiveTests.java                    8044365 macosx-all
 java/nio/channels/Selector/Wakeup.java                                              6963118 windows-all
 java/nio/channels/Selector/RacyDeregister.java                                      8201765 windows-all
+java/nio/channels/FileChannel/Transfer4GBFile.java                                  JRE-1224 macosx-all
 
 java/nio/file/WatchService/Basic.java                                               7158947 solaris-all Solaris 11
 java/nio/file/WatchService/MayFlies.java                                            7158947 solaris-all Solaris 11
