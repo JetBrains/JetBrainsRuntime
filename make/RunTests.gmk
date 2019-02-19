@@ -165,6 +165,8 @@ langtools_JTREG_PROBLEM_LIST += $(TOPDIR)/test/langtools/ProblemList.txt
 nashorn_JTREG_PROBLEM_LIST += $(TOPDIR)/test/nashorn/ProblemList.txt
 hotspot_JTREG_PROBLEM_LIST += $(TOPDIR)/test/hotspot/jtreg/ProblemList.txt
 
+langtools_JTREG_MAX_MEM := 768m
+
 ################################################################################
 # Parse test selection
 #
