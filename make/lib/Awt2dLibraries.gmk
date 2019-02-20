@@ -924,6 +924,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework JavaNativeFoundation \
           -framework JavaRuntimeSupport \
           -framework OpenGL \
+          -framework Metal \
           -framework QuartzCore -ljava, \
   ))
 

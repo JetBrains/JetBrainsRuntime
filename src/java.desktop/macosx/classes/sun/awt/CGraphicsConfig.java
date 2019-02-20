@@ -33,6 +33,7 @@ import java.awt.image.ColorModel;
 
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.CGLLayer;
+import sun.java2d.metal.MetalLayer;
 import sun.lwawt.LWGraphicsConfig;
 import sun.lwawt.macosx.CPlatformView;
 
@@ -88,6 +89,9 @@ public abstract class CGraphicsConfig extends GraphicsConfiguration
      * CGLLayer.
      */
     public abstract SurfaceData createSurfaceData(CGLLayer layer);
+
+
+    public abstract SurfaceData createSurfaceData(MetalLayer layer);
 
     @Override
     public final boolean isTranslucencyCapable() {

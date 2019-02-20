@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import sun.awt.image.ToolkitImage;
 
 import sun.java2d.SunGraphics2D;
 import sun.java2d.opengl.OGLRenderQueue;
+import sun.java2d.metal.MetalRenderQueue;
 import sun.java2d.pipe.Region;
 
 import sun.util.logging.PlatformLogger;
@@ -1418,14 +1419,38 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-        final OGLRenderQueue rq = OGLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            rq.flushNow();
-        } finally {
-            rq.unlock();
+
+        // Check for metal
+        boolean isMetal = false;
+        String str = System.getProperty("sun.java2d.metal");
+
+        if (str != null) {
+           //System.out.println("Property : sun.java2d.metal=" + str);
+            if (str.equals("true")) {
+                isMetal = true;
+            }
+        }
+
+        if (isMetal) {
+            final MetalRenderQueue rq = MetalRenderQueue.getInstance();
+            rq.lock();
+            try {
+                rq.flushNow();
+            } finally {
+                rq.unlock();
+            }
+        } else {
+
+            final OGLRenderQueue rq = OGLRenderQueue.getInstance();
+            rq.lock();
+            try {
+                rq.flushNow();
+            } finally {
+                rq.unlock();
+            }
         }
     }
+
 
     /**
      * Used by ContainerPeer to skip all the paint events during layout.

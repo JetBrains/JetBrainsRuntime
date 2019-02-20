@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,11 +33,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsEnvironment;
+import sun.java2d.metal.MetalLayer;
+import sun.java2d.metal.MetalSurfaceData;
 import sun.lwawt.LWWindowPeer;
 
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.CGLLayer;
 import sun.java2d.opengl.CGLSurfaceData;
+import sun.java2d.NullSurfaceData;
+
 
 public class CPlatformView extends CFRetainedResource {
     private native long nativeCreateView(int x, int y, int width, int height, long windowLayerPtr);
@@ -49,25 +53,54 @@ public class CPlatformView extends CFRetainedResource {
     private LWWindowPeer peer;
     private SurfaceData surfaceData;
     private CGLLayer windowLayer;
+    private MetalLayer windowMetalLayer; //hack : will be null if opengl is used
+    //private CFRetainedResource windowLayer;
+    //Todo: Have to verify how we can replace CGL layer with more common CFRetaindedResource
     private CPlatformResponder responder;
 
     public CPlatformView() {
         super(0, true);
     }
 
+    
     public void initialize(LWWindowPeer peer, CPlatformResponder responder) {
         initializeBase(peer, responder);
 
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            this.windowLayer = createCGLayer();
+            
+            if (isMetalSystemProperty()) {
+                this.windowMetalLayer = createMetalLayer();
+            } else {
+                this.windowLayer = createCGLayer();
+            }
         }
         setPtr(nativeCreateView(0, 0, 0, 0, getWindowLayerPtr()));
-    }
 
+        // TODO : We should not simply validate view directly here.
+        //if (isMetalSystemProperty()) {
+            //windowMetalLayer.validate(getAWTView());
+        //}
+    }
+    
+    private boolean isMetalSystemProperty() {
+        String str = System.getProperty("sun.java2d.metal");
+        
+        if (str != null) {
+            System.out.println("Property : sun.java2d.metal=" + str);
+            if (str.equals("true")) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     public CGLLayer createCGLayer() {
         return new CGLLayer(peer);
     }
 
+    public MetalLayer createMetalLayer() {
+        return new MetalLayer(peer);
+    }
     protected void initializeBase(LWWindowPeer peer, CPlatformResponder responder) {
         this.peer = peer;
         this.responder = responder;
@@ -87,6 +120,11 @@ public class CPlatformView extends CFRetainedResource {
      */
     public void setBounds(int x, int y, int width, int height) {
         execute(ptr->CWrapper.NSView.setFrame(ptr, x, y, width, height));
+
+        // TODO : Check the use case that why below code is added.
+        //if (windowMetalLayer != null) {
+                //windowMetalLayer.validate(getAWTView());
+            //}
     }
 
     // REMIND: CGLSurfaceData expects top-level's size
@@ -107,7 +145,20 @@ public class CPlatformView extends CFRetainedResource {
     // ----------------------------------------------------------------------
     public SurfaceData replaceSurfaceData() {
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            surfaceData = windowLayer.replaceSurfaceData();
+            
+            if (isMetalSystemProperty()) {
+                surfaceData = windowMetalLayer.replaceSurfaceData();
+
+                // TODO : Why we are checking about NullSurfaceData here
+                //if (surfaceData != NullSurfaceData.theInstance) {
+                    //validateSurface();
+                    //windowMetalLayer.drawInMetalContext(getAWTView());
+                //}
+        
+            } else {
+                surfaceData = windowLayer.replaceSurfaceData();
+            }
+
         } else {
             if (surfaceData == null) {
                 CGraphicsConfig graphicsConfig = (CGraphicsConfig)getGraphicsConfiguration();
@@ -120,8 +171,16 @@ public class CPlatformView extends CFRetainedResource {
     }
 
     private void validateSurface() {
+
         if (surfaceData != null) {
-            ((CGLSurfaceData)surfaceData).validate();
+            // TODO : Why we are validating with View here
+            if (isMetalSystemProperty()) {
+                //((MetalSurfaceData)surfaceData).validate();
+                //windowMetalLayer.validate(getAWTView());
+                ((MetalSurfaceData)surfaceData).validate();
+            } else {
+                ((CGLSurfaceData)surfaceData).validate();
+            }
         }
     }
 
@@ -136,14 +195,22 @@ public class CPlatformView extends CFRetainedResource {
     @Override
     public void dispose() {
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            windowLayer.dispose();
+            if (isMetalSystemProperty()) {
+                windowMetalLayer.dispose();
+            } else {
+                windowLayer.dispose();
+            }
         }
         super.dispose();
     }
 
     public long getWindowLayerPtr() {
         if (!LWCToolkit.getSunAwtDisableCALayers()) {
-            return windowLayer.getPointer();
+            if (isMetalSystemProperty()) {
+                return windowMetalLayer.getPointer();
+            } else {
+                return windowLayer.getPointer();
+            }
         } else {
             return 0;
         }

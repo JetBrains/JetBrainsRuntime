@@ -51,6 +51,7 @@ import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.OGLContext.OGLContextCaps;
+import sun.java2d.metal.MetalLayer;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
@@ -266,6 +267,11 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     @Override
     public SurfaceData createSurfaceData(CGLLayer layer) {
         return CGLSurfaceData.createData(layer);
+    }
+
+    @Override
+    public SurfaceData createSurfaceData(MetalLayer layer) {
+        return null;
     }
 
     @Override

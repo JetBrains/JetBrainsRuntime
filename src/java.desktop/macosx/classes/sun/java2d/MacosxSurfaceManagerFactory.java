@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2012, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ package sun.java2d;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
+import sun.java2d.metal.MetalVolatileSurfaceManager;
+
 
 /**
  * This is a factory class with static methods for creating a
@@ -49,6 +51,23 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage vImg,
                                                         Object context)
     {
-        return new CGLVolatileSurfaceManager(vImg, context);
+        if (isMetalSystemProperty()) {
+            return new MetalVolatileSurfaceManager(vImg, context);
+        } else {
+            return new CGLVolatileSurfaceManager(vImg, context);
+        }
+    }
+
+
+    private boolean isMetalSystemProperty() {
+        String str = System.getProperty("sun.java2d.metal");
+
+        if (str != null) {
+            System.out.println("Property : sun.java2d.metal=" + str);
+            if (str.equals("true")) {
+                return true;
+            }
+        }
+        return false;
     }
 }
