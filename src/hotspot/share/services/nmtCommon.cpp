@@ -44,6 +44,7 @@ const char* NMTUtil::_memory_type_names[] = {
   "Logging",
   "Arguments",
   "Module",
+  "Synchronizer",
   "Safepoint",
   "Unknown"
 };
