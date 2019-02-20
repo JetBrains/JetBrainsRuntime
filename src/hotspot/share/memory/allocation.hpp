@@ -133,6 +133,7 @@ enum MemoryType {
   mtLogging,           // memory for logging
   mtArguments,         // memory for argument processing
   mtModule,            // memory for module processing
+  mtSynchronizer,      // memory for synchronization primitives
   mtSafepoint,         // memory for safepoint support
   mtNone,              // undefined
   mt_number_of_types   // number of memory types (mtDontTrack

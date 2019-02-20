@@ -281,7 +281,7 @@ class Solaris {
 
 };
 
-class PlatformEvent : public CHeapObj<mtInternal> {
+class PlatformEvent : public CHeapObj<mtSynchronizer> {
  private:
   double CachePad[4];   // increase odds that _mutex is sole occupant of cache line
   volatile int _Event;
@@ -317,7 +317,7 @@ class PlatformEvent : public CHeapObj<mtInternal> {
   void unpark();
 };
 
-class PlatformParker : public CHeapObj<mtInternal> {
+class PlatformParker : public CHeapObj<mtSynchronizer> {
  protected:
   mutex_t _mutex[1];
   cond_t  _cond[1];
