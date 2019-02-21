@@ -71,7 +71,7 @@ public:
 
     // Prevent KB Q102552 race.
     virtual MsgRouting WmMouseDown(UINT flags, int x, int y, int button);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
 
     virtual MsgRouting HandleEvent(MSG *msg, BOOL synthetic);
 
