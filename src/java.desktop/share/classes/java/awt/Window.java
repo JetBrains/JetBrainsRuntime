@@ -3933,6 +3933,18 @@ public class Window extends Container implements Accessible {
         }
     }
 
+    private volatile boolean hasCustomDecoration;
+
+    boolean hasCustomDecoration() {
+        return hasCustomDecoration;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setHasCustomDecoration() {
+        hasCustomDecoration = true;
+    }
 
     // ************************** MIXING CODE *******************************
 
