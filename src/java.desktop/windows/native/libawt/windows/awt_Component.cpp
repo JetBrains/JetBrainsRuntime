@@ -1863,7 +1863,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
           mr = WmNcPaint((HRGN)wParam);
           break;
       case WM_NCHITTEST:
-          mr = WmNcHitTest(LOWORD(lParam), HIWORD(lParam), retValue);
+          mr = WmNcHitTest(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), retValue);
           break;
 
       case WM_AWT_RESHAPE_COMPONENT: {
@@ -4603,7 +4603,7 @@ MsgRouting AwtComponent::WmNcPaint(HRGN hrgn)
     return mrDoDefault;
 }
 
-MsgRouting AwtComponent::WmNcHitTest(UINT x, UINT y, LRESULT &retVal)
+MsgRouting AwtComponent::WmNcHitTest(int x, int y, LRESULT &retVal)
 {
     return mrDoDefault;
 }
