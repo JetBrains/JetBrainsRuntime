@@ -138,7 +138,7 @@ AwtTextArea::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 }
 
 MsgRouting
-AwtTextArea::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+AwtTextArea::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     if (::IsWindow(AwtWindow::GetModalBlocker(AwtComponent::GetTopLevelParentForWindow(GetHWnd())))) {
         retVal = HTCLIENT;
