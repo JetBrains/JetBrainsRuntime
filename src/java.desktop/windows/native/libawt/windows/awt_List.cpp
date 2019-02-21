@@ -415,7 +415,7 @@ AwtList::OwnerMeasureItem(UINT /*ctrlId*/, MEASUREITEMSTRUCT& measureInfo)
 }
 
 MsgRouting
-AwtList::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+AwtList::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     if (::IsWindow(AwtWindow::GetModalBlocker(AwtComponent::GetTopLevelParentForWindow(GetHWnd())))) {
         retVal = HTCLIENT;
