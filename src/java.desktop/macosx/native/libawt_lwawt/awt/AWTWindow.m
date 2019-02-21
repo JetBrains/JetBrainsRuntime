@@ -319,6 +319,12 @@ AWT_ASSERT_APPKIT_THREAD;
         [self.nsWindow setCollectionBehavior:(1 << 8) /*NSWindowCollectionBehaviorFullScreenAuxiliary*/];
     }
 
+    if (IS(self.styleBits, DARK)) {
+       [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+    } else {
+        [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+    }
+
     return self;
 }
 
