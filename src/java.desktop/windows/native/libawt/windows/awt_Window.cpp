@@ -1496,7 +1496,7 @@ MsgRouting AwtWindow::WmNcCalcSize(BOOL fCalcValidRects,
     return mrRetVal;
 }
 
-MsgRouting AwtWindow::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+MsgRouting AwtWindow::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     // If this window is blocked by modal dialog, return HTCLIENT for any point of it.
     // That prevents it to be moved or resized using the mouse. Disabling these
