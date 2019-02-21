@@ -359,7 +359,7 @@ void AwtScrollPane::PostScrollEvent(int orient, int scrollCode, int pos) {
 }
 
 MsgRouting
-AwtScrollPane::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+AwtScrollPane::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     if (::IsWindow(AwtWindow::GetModalBlocker(AwtComponent::GetTopLevelParentForWindow(GetHWnd())))) {
         retVal = HTCLIENT;
