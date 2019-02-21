@@ -176,7 +176,7 @@ public:
     virtual MsgRouting WmSettingChange(UINT wFlag, LPCTSTR pszSection);
     virtual MsgRouting WmNcCalcSize(BOOL fCalcValidRects,
                                     LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     virtual MsgRouting WmNcMouseDown(WPARAM hitTest, int x, int y, int button);
     virtual MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     virtual LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
@@ -256,6 +256,8 @@ public:
 
     inline HWND GetOverriddenHWnd() { return m_overriddenHwnd; }
     inline void OverrideHWnd(HWND hwnd) { m_overriddenHwnd = hwnd; }
+
+    virtual BOOL HasCustomDecoration() { return FALSE; }
 
 private:
     static int ms_instanceCounter;
