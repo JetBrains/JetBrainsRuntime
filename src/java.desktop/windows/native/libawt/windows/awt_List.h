@@ -110,7 +110,7 @@ public:
     /*
      * Windows message handler functions
      */
-    MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     MsgRouting WmMouseDown(UINT flags, int x, int y, int button);
     MsgRouting WmMouseUp(UINT flags, int x, int y, int button);
     MsgRouting WmNotify(UINT notifyCode);
