@@ -75,7 +75,7 @@ public:
     /*
      * Windows message handler functions
      */
-    virtual MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT& retVal);
+    virtual MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
     virtual MsgRouting WmHScroll(UINT scrollCode, UINT pos, HWND hScrollBar);
     virtual MsgRouting WmVScroll(UINT scrollCode, UINT pos, HWND hScrollBar);
 
