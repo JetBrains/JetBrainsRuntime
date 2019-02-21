@@ -57,6 +57,7 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AppContext;
@@ -985,5 +986,19 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
             }
         }
         return err;
+    }
+
+    private volatile List<Rectangle> hitTestSpots;
+
+    private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
+        this.hitTestSpots = new CopyOnWriteArrayList<>(hitTestSpots);
+    }
+
+    private boolean hitTestCustomDecoration(int x, int y) {
+        if (hitTestSpots == null) return false;
+        for (Rectangle spot : hitTestSpots) {
+            if (spot.contains(x, y)) return true;
+        }
+        return false;
     }
 }
