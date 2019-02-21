@@ -59,7 +59,7 @@ public:
     LRESULT WindowProc(UINT message, WPARAM wParam, LPARAM lParam);
 
     MsgRouting WmEnable(BOOL fEnabled);
-    MsgRouting WmNcHitTest(UINT x, UINT y, LRESULT &retVal);
+    MsgRouting WmNcHitTest(int x, int y, LRESULT &retVal);
     MsgRouting HandleEvent(MSG *msg, BOOL synthetic);
 
     virtual BOOL InheritsNativeMouseWheelBehavior();
