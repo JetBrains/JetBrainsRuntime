@@ -117,6 +117,8 @@ public:
     MsgRouting WmGetIcon(WPARAM iconType, LRESULT& retVal);
     MsgRouting WmShowWindow(BOOL show, UINT status);
     MsgRouting WmDPIChanged(UINT xDPI, UINT yDPI, RECT* bounds);
+    MsgRouting WmNcCalcSize(BOOL fCalcValidRects, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal);
+    MsgRouting WmNcHitTest(int x, int y, LRESULT& retVal);
 
     virtual MsgRouting WmSysCommand(UINT uCmdType, int xPos, int yPos);
 
@@ -160,6 +162,9 @@ public:
 
     INLINE HWND GetImeTargetComponent() { return m_imeTargetComponent; }
     INLINE void SetImeTargetComponent(HWND hwnd) { m_imeTargetComponent = hwnd; }
+
+    BOOL* m_pHasCustomDecoration;
+    BOOL HasCustomDecoration();
 
 protected:
     /* The frame is undecorated. */
