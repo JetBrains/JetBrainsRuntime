@@ -223,7 +223,7 @@ AwtScrollbar::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 MsgRouting
-AwtScrollbar::WmNcHitTest(UINT x, UINT y, LRESULT& retVal)
+AwtScrollbar::WmNcHitTest(int x, int y, LRESULT& retVal)
 {
     if (::IsWindow(AwtWindow::GetModalBlocker(AwtComponent::GetTopLevelParentForWindow(GetHWnd())))) {
         retVal = HTCLIENT;
