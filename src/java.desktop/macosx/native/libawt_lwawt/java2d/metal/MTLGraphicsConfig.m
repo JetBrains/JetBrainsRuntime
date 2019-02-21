@@ -133,13 +133,13 @@ Java_sun_java2d_metal_MTLGraphicsConfig_getMTLConfigInfo
 }
 
 
-static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
-    {{-1.0, 1.0, 0.0}, {0, 0, 0, 0}, {0.0, 0.0}},
-    {{1.0, 1.0, 0.0}, {0, 0, 0, 0}, {1.0, 0.0}},
-    {{1.0, -1.0, 0.0}, {0, 0, 0, 0}, {1.0, 1.0}},
-    {{1.0, -1.0, 0.0}, {0, 0, 0, 0}, {1.0, 1.0}},
-    {{-1.0, -1.0, 0.0}, {0, 0, 0, 0}, {0.0, 1.0}},
-    {{-1.0, 1.0, 0.0}, {0, 0, 0, 0}, {0.0, 0.0}}
+static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
+    {{-1.0, 1.0, 0.0}, {0.0, 0.0}},
+    {{1.0, 1.0, 0.0}, {1.0, 0.0}},
+    {{1.0, -1.0, 0.0}, {1.0, 1.0}},
+    {{1.0, -1.0, 0.0}, {1.0, 1.0}},
+    {{-1.0, -1.0, 0.0}, {0.0, 1.0}},
+    {{-1.0, 1.0, 0.0}, {0.0, 0.0}}
 };
 
 
@@ -214,8 +214,9 @@ static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
         NSLog(@"Failed to load library. error %@", error);
         exit(0);
     }
-    id <MTLFunction> vertFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert"];
-    id <MTLFunction> fragFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag"];
+    id <MTLFunction> vertColFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert_col"];
+    id <MTLFunction> vertTxtFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert_txt"];
+    id <MTLFunction> fragColFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag_col"];
     id <MTLFunction> fragTxtFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag_txt"];
 
     // Create depth state.
@@ -227,12 +228,6 @@ static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
     vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat3;
     vertDesc.attributes[VertexAttributePosition].offset = 0;
     vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
-    vertDesc.attributes[VertexAttributeColor].format = MTLVertexFormatUChar4;
-    vertDesc.attributes[VertexAttributeColor].offset = 3*sizeof(float);
-    vertDesc.attributes[VertexAttributeColor].bufferIndex = MeshVertexBuffer;
-    vertDesc.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
-    vertDesc.attributes[VertexAttributeTexPos].offset = 3*sizeof(float) + 4*sizeof(char);
-    vertDesc.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
     vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
     vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
     vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
@@ -240,8 +235,8 @@ static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
     // Create pipeline state.
     MTLRenderPipelineDescriptor *pipelineDesc = [MTLRenderPipelineDescriptor new];
     pipelineDesc.sampleCount = 1;
-    pipelineDesc.vertexFunction = vertFunc;
-    pipelineDesc.fragmentFunction = fragFunc;
+    pipelineDesc.vertexFunction = vertColFunc;
+    pipelineDesc.fragmentFunction = fragColFunc;
     pipelineDesc.vertexDescriptor = vertDesc;
     pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
     ctxinfo->mtlPipelineState = [ctxinfo->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
@@ -250,10 +245,20 @@ static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
         exit(0);
     }
 
+    vertDesc = [MTLVertexDescriptor new];
+    vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat3;
+    vertDesc.attributes[VertexAttributePosition].offset = 0;
+    vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
+    vertDesc.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+    vertDesc.attributes[VertexAttributeTexPos].offset = 3*sizeof(float);
+    vertDesc.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+    vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
+    vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
+    vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
     // Create pipeline state.
     pipelineDesc = [MTLRenderPipelineDescriptor new];
     pipelineDesc.sampleCount = 1;
-    pipelineDesc.vertexFunction = vertFunc;
+    pipelineDesc.vertexFunction = vertTxtFunc;
     pipelineDesc.fragmentFunction = fragTxtFunc;
     pipelineDesc.vertexDescriptor = vertDesc;
     pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
@@ -263,8 +268,6 @@ static struct Vertex verts[PGRAM_VERTEX_COUNT] = {
         exit(0);
     }
 
-    ctxinfo->mtlUniformBuffer = [ctxinfo->mtlDevice newBufferWithLength:sizeof(struct FrameUniforms)
-                                          options:MTLResourceCPUCacheModeWriteCombined];
     ctxinfo->mtlCommandBuffer = nil;
 
     // Create command queue

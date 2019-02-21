@@ -6,32 +6,45 @@ using namespace metal;
 
 struct VertexInput {
     float3 position [[attribute(VertexAttributePosition)]];
-    half4 color [[attribute(VertexAttributeColor)]];
+};
+
+struct TxtVertexInput {
+    float3 position [[attribute(VertexAttributePosition)]];
     float2 texCoords [[attribute(VertexAttributeTexPos)]];
 };
 
-struct ShaderInOut {
+struct ColShaderInOut {
     float4 position [[position]];
     half4  color;
+};
+
+struct TxtShaderInOut {
+    float4 position [[position]];
     float2 texCoords;
 };
 
-vertex ShaderInOut vert(VertexInput in [[stage_in]],
+vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
 	   constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]]) {
-    ShaderInOut out;
-    float4 pos4 = float4(in.position, 1.0);
-    out.position = uniforms.projectionViewModel * pos4;
-    out.color = in.color / 255.0;
+    ColShaderInOut out;
+    out.position = float4(in.position, 1.0);
+    out.color = half4(uniforms.color.r, uniforms.color.g, uniforms.color.b, uniforms.color.a);
+    return out;
+}
+
+vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]],
+	   constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]]) {
+    TxtShaderInOut out;
+    out.position = float4(in.position, 1.0);
     out.texCoords = in.texCoords;
     return out;
 }
 
-fragment half4 frag(ShaderInOut in [[stage_in]]) {
+fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
     return in.color;
 }
 
 fragment half4 frag_txt(
-        ShaderInOut vert  [[stage_in]],
+        TxtShaderInOut vert [[stage_in]],
         texture2d<float, access::sample> renderTexture [[texture(0)]]
         )
 {

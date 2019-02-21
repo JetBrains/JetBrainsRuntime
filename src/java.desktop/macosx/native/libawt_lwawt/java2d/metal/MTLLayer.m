@@ -111,9 +111,6 @@
 
             [mtlEncoder setViewport:vp];
             [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
-            [mtlEncoder setVertexBuffer:ctx->mtlUniformBuffer
-                              offset:0 atIndex:FrameUniformBuffer];
-
             [mtlEncoder setFragmentTexture: ctx->mtlFrameBuffer atIndex: 0];
             [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];

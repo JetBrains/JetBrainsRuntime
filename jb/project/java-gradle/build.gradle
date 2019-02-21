@@ -86,6 +86,8 @@ test {
     outputs.upToDateWhen { false }
     executable = test_jvm()
 
+//  Enable async/dtrace profiler      
+    jvmArgs  "-XX:+PreserveFramePointer"
 //  Enable native J2D logging (only in debug build)
 //  Can be turned on for J2D by adding "#define DEBUG 1" into jdk/src/share/native/sun/java2d/Trace.h
 

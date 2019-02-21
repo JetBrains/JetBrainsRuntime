@@ -7,8 +7,7 @@
 
 enum VertexAttributes {
     VertexAttributePosition = 0,
-    VertexAttributeColor = 1,
-    VertexAttributeTexPos = 2
+    VertexAttributeTexPos = 1
 };
 
 enum BufferIndex  {
@@ -17,12 +16,15 @@ enum BufferIndex  {
 };
 
 struct FrameUniforms {
-    matrix_float4x4 projectionViewModel;
+    vector_float4 color;
 };
 
 struct Vertex {
     float position[3];
-    unsigned char color[4];
+};
+
+struct TxtVertex {
+    float position[3];
     float txtpos[2];
 };
 
