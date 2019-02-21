@@ -32,6 +32,8 @@
 #include "ComCtl32Util.h"
 
 #include <windowsx.h>
+#include <uxtheme.h>
+#include <dwmapi.h>
 
 #include <java_lang_Integer.h>
 #include <sun_awt_windows_WEmbeddedFrame.h>
@@ -125,6 +127,7 @@ AwtFrame::AwtFrame() {
     m_zoomed = FALSE;
     m_maxBoundsSet = FALSE;
     m_forceResetZoomed = FALSE;
+    m_pHasCustomDecoration = NULL;
 
     isInManualMoveOrSize = FALSE;
     grabbedHitTest = 0;
@@ -1658,6 +1661,118 @@ ret:
 
     delete nmbs;
 }
+
+// {start} Custom Decoration Support
+
+BOOL AwtFrame::HasCustomDecoration()
+{
+    if (!m_pHasCustomDecoration) {
+        m_pHasCustomDecoration = new BOOL;
+        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        *m_pHasCustomDecoration = JNU_CallMethodByName(env, NULL, GetTarget(env), "hasCustomDecoration", "()Z").z;
+    }
+    return *m_pHasCustomDecoration;
+}
+
+void GetSysInsets(RECT* insets) {
+    static RECT* sysInsets = NULL;
+
+    if (!sysInsets) {
+        sysInsets = new RECT;
+        sysInsets->left = sysInsets->right = ::GetSystemMetrics(SM_CXSIZEFRAME);
+        sysInsets->top = sysInsets->bottom = ::GetSystemMetrics(SM_CYSIZEFRAME);
+        sysInsets->top += ::GetSystemMetrics(SM_CYCAPTION);
+    }
+    ::CopyRect(insets, sysInsets);
+}
+
+LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
+    RECT rcWindow;
+    RECT insets;
+
+    GetSysInsets(&insets);
+    GetWindowRect(frame->GetHWnd(), &rcWindow);
+
+    // Get the frame rectangle, adjusted for the style without a caption.
+    RECT rcFrame = {0};
+    AdjustWindowRectEx(&rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
+
+    USHORT uRow = 1;
+    USHORT uCol = 1;
+    BOOL fOnResizeBorder = FALSE;
+
+    if (y >= rcWindow.top &&
+        y < rcWindow.top + insets.top)
+    {
+        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        if (JNU_CallMethodByName(env, NULL, frame->GetPeer(env),
+                                 "hitTestCustomDecoration", "(II)Z",
+                                 frame->ScaleDownX(x - rcWindow.left),
+                                 frame->ScaleDownY(y - rcWindow.top)).z)
+        {
+            return HTNOWHERE;
+        }
+        fOnResizeBorder = (y < (rcWindow.top - rcFrame.top));
+        uRow = 0;
+    } else if (y < rcWindow.bottom &&
+               y >= rcWindow.bottom - insets.bottom) {
+        uRow = 2;
+    }
+
+    if (x >= rcWindow.left &&
+        x < rcWindow.left + insets.left)
+    {
+        uCol = 0;
+    } else if (x < rcWindow.right &&
+               x >= rcWindow.right - insets.right)
+    {
+        uCol = 2;
+    }
+
+    LRESULT hitTests[3][3] = {
+            {HTTOPLEFT, fOnResizeBorder ? HTTOP : HTCAPTION, HTTOPRIGHT},
+            {HTLEFT, HTNOWHERE, HTRIGHT},
+            {HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT},
+    };
+
+    return hitTests[uRow][uCol];
+}
+
+MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESULT& retVal)
+{
+    if (!wParam || !HasCustomDecoration()) {
+        return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
+    }
+    if (::IsZoomed(GetHWnd())) {
+        RECT insets;
+        GetSysInsets(&insets);
+        static int xBorder = ::GetSystemMetrics(SM_CXBORDER);
+        static int yBorder = ::GetSystemMetrics(SM_CYBORDER);
+
+        // When maximized we should include insets or otherwise the client area edges get out of a screen
+        lpncsp->rgrc[0].left = lpncsp->rgrc[0].left + insets.left - xBorder;
+        lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + insets.bottom - yBorder; // do not count caption
+        lpncsp->rgrc[0].right = lpncsp->rgrc[0].right - insets.right + xBorder;
+        lpncsp->rgrc[0].bottom = lpncsp->rgrc[0].bottom - insets.bottom + yBorder;
+    }
+    retVal = 0L;
+    return mrConsume;
+}
+
+MsgRouting AwtFrame::WmNcHitTest(int x, int y, LRESULT& retVal)
+{
+    if (!HasCustomDecoration()) {
+        return AwtWindow::WmNcHitTest(x, y, retVal);
+    }
+    if (::IsWindow(GetModalBlocker(GetHWnd()))) {
+        retVal = HTCLIENT;
+        return mrConsume;
+    }
+    retVal = HitTestNCA(this, x, y);
+    return retVal == HTNOWHERE ? mrDoDefault : mrConsume;
+}
+
+// {end} Custom Decoration Support
 
 /************************************************************************
  * WFramePeer native methods
