@@ -320,9 +320,9 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 
     if (IS(self.styleBits, DARK)) {
-       [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+        [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
     } else {
-       [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+        [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
     }
 
     return self;
