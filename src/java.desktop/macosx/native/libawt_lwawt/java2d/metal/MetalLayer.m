@@ -234,7 +234,7 @@ JNF_COCOA_ENTER(env);
     // ------------------------------------------------------------------------------------------------
     // Load shader library
     NSError *error = nil;
-    mtlLayer.mtlLibrary = [mtlLayer.device newLibraryWithFile: @"/tmp/MyShader.metallib" error:&error];
+    mtlLayer.mtlLibrary = [mtlLayer.device newLibraryWithFile: @"/tmp/BaseShader.metallib" error:&error];
     if (!mtlLayer.mtlLibrary) {
         NSLog(@"Failed to load library. error %@", error);
         //exit(0);
