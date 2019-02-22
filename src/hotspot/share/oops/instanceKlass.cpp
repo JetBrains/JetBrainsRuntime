@@ -53,6 +53,7 @@
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
 #include "oops/fieldStreams.hpp"
+#include "oops/constantPool.hpp"
 #include "oops/instanceClassLoaderKlass.hpp"
 #include "oops/instanceKlass.inline.hpp"
 #include "oops/instanceMirrorKlass.hpp"
@@ -182,8 +183,14 @@ bool InstanceKlass::has_nest_member(InstanceKlass* k, TRAPS) const {
       if (name == k->name()) {
         log_trace(class, nestmates)("- Found it at nest_members[%d] => cp[%d]", i, cp_index);
 
-        // names match so check actual klass - this may trigger class loading if
-        // it doesn't match (but that should be impossible)
+        // Names match so check actual klass - this may trigger class loading if
+        // it doesn't match (though that should be impossible). But to be safe we
+        // have to check for a compiler thread executing here.
+        if (!THREAD->can_call_java() && !_constants->tag_at(cp_index).is_klass()) {
+          log_trace(class, nestmates)("- validation required resolution in an unsuitable thread");
+          return false;
+        }
+
         Klass* k2 = _constants->klass_at(cp_index, CHECK_false);
         if (k2 == k) {
           log_trace(class, nestmates)("- class is listed as a nest member");
@@ -295,7 +302,7 @@ InstanceKlass* InstanceKlass::nest_host(Symbol* validationException, TRAPS) {
            error);
       }
 
-      if (validationException != NULL) {
+      if (validationException != NULL && THREAD->can_call_java()) {
         ResourceMark rm(THREAD);
         Exceptions::fthrow(THREAD_AND_LOCATION,
                            validationException,
@@ -2346,6 +2353,7 @@ void InstanceKlass::remove_unshareable_info() {
 #if INCLUDE_JVMTI
   guarantee(_breakpoints == NULL, "must be");
   guarantee(_previous_versions == NULL, "must be");
+  _cached_class_file = NULL;
 #endif
 
   _init_thread = NULL;
@@ -2502,7 +2510,7 @@ void InstanceKlass::release_C_heap_structures() {
   }
 
   // deallocate the cached class file
-  if (_cached_class_file != NULL && !MetaspaceShared::is_in_shared_metaspace(_cached_class_file)) {
+  if (_cached_class_file != NULL) {
     os::free(_cached_class_file);
     _cached_class_file = NULL;
   }
@@ -3963,12 +3971,7 @@ Method* InstanceKlass::method_with_orig_idnum(int idnum, int version) {
 
 #if INCLUDE_JVMTI
 JvmtiCachedClassFileData* InstanceKlass::get_cached_class_file() {
-  if (MetaspaceShared::is_in_shared_metaspace(_cached_class_file)) {
-    // Ignore the archived class stream data
-    return NULL;
-  } else {
-    return _cached_class_file;
-  }
+  return _cached_class_file;
 }
 
 jint InstanceKlass::get_cached_class_file_len() {
@@ -3978,19 +3981,4 @@ jint InstanceKlass::get_cached_class_file_len() {
 unsigned char * InstanceKlass::get_cached_class_file_bytes() {
   return VM_RedefineClasses::get_cached_class_file_bytes(_cached_class_file);
 }
-
-#if INCLUDE_CDS
-JvmtiCachedClassFileData* InstanceKlass::get_archived_class_data() {
-  if (DumpSharedSpaces) {
-    return _cached_class_file;
-  } else {
-    assert(this->is_shared(), "class should be shared");
-    if (MetaspaceShared::is_in_shared_metaspace(_cached_class_file)) {
-      return _cached_class_file;
-    } else {
-      return NULL;
-    }
-  }
-}
-#endif
 #endif
