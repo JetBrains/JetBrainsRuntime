@@ -105,11 +105,21 @@ class CharacterData00 extends CharacterData {
     }
 
     boolean isJavaIdentifierStart(int ch) {
+        // isJavaIdentifierStart strictly conforms to code points assigned
+        // in Unicode 10.0. Since code point {32FF} is not from Unicode 10.0,
+        // return false.
+        if(ch == 0x32FF)
+            return false;
         int props = getProperties(ch);
         return ((props & $$maskIdentifierInfo) >= $$lowJavaStart);
     }
 
     boolean isJavaIdentifierPart(int ch) {
+        // isJavaIdentifierPart strictly conforms to code points assigned
+        // in Unicode 10.0. Since code point {32FF} is not from Unicode 10.0,
+        // return false.
+        if(ch == 0x32FF)
+            return false;
         int props = getProperties(ch);
         return ((props & $$nonzeroJavaPart) != 0);
     }
