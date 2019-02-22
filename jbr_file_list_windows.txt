@@ -1,3 +1,4 @@
+bin/attach.dll
 bin/awt.dll
 bin/dt_socket.dll
 bin/fontmanager.dll
