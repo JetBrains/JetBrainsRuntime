@@ -34,7 +34,7 @@ java/awt/Frame/MiscUndecorated/FrameCloseTest.java                              
 java/awt/Frame/MiscUndecorated/RepaintTest.java                                             nobug macosx-all,windows-all
 java/awt/Frame/NormalToIconified/NormalToIconifiedTest.java                                 nobug linux-all,windows-all
 java/awt/Frame/ObscuredFrame/ObscuredFrameTest.java                                         nobug linux-all
-java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java nobug linux-all,windows-all
+java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java nobug linux-all,windows-all,macosx-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java                               nobug macosx-all,windows-all
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java            nobug macosx-all,linux-all,windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java                                                nobug windows-all
@@ -142,7 +142,8 @@ javax/swing/JComboBox/4523758/bug4523758.java                                   
 javax/swing/JDialog/Transparency/TransparencyTest.java                                      nobug macosx-all,windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java                nobug windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
-jjavax/swing/JFileChooser/8041694/bug8041694.java                                           nobug macosx-all
+javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
+javax/swing/JFileChooser/8041694/bug8041694.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
