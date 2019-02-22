@@ -5739,21 +5739,16 @@ void ClassFileParser::prepend_host_package_name(const InstanceKlass* host_klass,
     ClassLoader::package_from_name(host_klass->name()->as_C_string(), NULL);
 
   if (host_pkg_name != NULL) {
-    size_t host_pkg_len = strlen(host_pkg_name);
+    int host_pkg_len = (int)strlen(host_pkg_name);
     int class_name_len = _class_name->utf8_length();
-    char* new_anon_name =
-      NEW_RESOURCE_ARRAY(char, host_pkg_len + 1 + class_name_len);
-    // Copy host package name and trailing /.
-    strncpy(new_anon_name, host_pkg_name, host_pkg_len);
-    new_anon_name[host_pkg_len] = '/';
-    // Append anonymous class name. The anonymous class name can contain odd
-    // characters.  So, do a strncpy instead of using sprintf("%s...").
-    strncpy(new_anon_name + host_pkg_len + 1, (char *)_class_name->base(), class_name_len);
+    int symbol_len = host_pkg_len + 1 + class_name_len;
+    char* new_anon_name = NEW_RESOURCE_ARRAY(char, symbol_len + 1);
+    int n = snprintf(new_anon_name, symbol_len + 1, "%s/%.*s",
+                     host_pkg_name, class_name_len, _class_name->base());
+    assert(n == symbol_len, "Unexpected number of characters in string");
 
     // Create a symbol and update the anonymous class name.
-    _class_name = SymbolTable::new_symbol(new_anon_name,
-                                          (int)host_pkg_len + 1 + class_name_len,
-                                          CHECK);
+    _class_name = SymbolTable::new_symbol(new_anon_name, symbol_len, CHECK);
   }
 }
 
