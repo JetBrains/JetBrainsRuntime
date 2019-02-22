@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import sun.util.logging.PlatformLogger;
 
@@ -95,6 +96,10 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
                 return null;
             }
         });
+    }
+
+    protected Consumer<KeyEvent> getOnTypeaheadFinishedHandler () {
+        return ke -> {};
     }
 
     private static class TypeAheadMarker {
@@ -833,6 +838,9 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
             case KeyEvent.KEY_TYPED:
             case KeyEvent.KEY_PRESSED:
             case KeyEvent.KEY_RELEASED:
+                if (typeAheadMarkers.isEmpty()) {
+                    getOnTypeaheadFinishedHandler().accept((KeyEvent)e);
+                }
                 return typeAheadAssertions(null, e);
 
             default:
@@ -1088,6 +1096,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
 
     @SuppressWarnings("deprecation")
     private boolean preDispatchKeyEvent(KeyEvent ke) {
+        getOnTypeaheadFinishedHandler().accept(ke);
         if (((AWTEvent) ke).isPosted) {
             Component focusOwner = getFocusOwner();
             ke.setSource(((focusOwner != null) ? focusOwner : getFocusedWindow()));
