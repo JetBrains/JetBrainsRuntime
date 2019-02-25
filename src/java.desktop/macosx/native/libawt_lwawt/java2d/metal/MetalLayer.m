@@ -233,10 +233,40 @@ JNF_COCOA_ENTER(env);
     //        Need to complete build changes - to build it and read from some other location within jdk
     // ------------------------------------------------------------------------------------------------
     // Load shader library
-    NSError *error = nil;
+    /*NSError *error = nil;
     mtlLayer.mtlLibrary = [mtlLayer.device newLibraryWithFile: @"/tmp/BaseShader.metallib" error:&error];
     if (!mtlLayer.mtlLibrary) {
         NSLog(@"Failed to load library. error %@", error);
+        //exit(0);
+    }*/
+
+    NSError* error = nil;
+    NSString* content = @"#include <metal_stdlib>\n"
+    "#include <simd/simd.h>\n"
+    "using namespace metal;\n"
+    "struct MetalVertex"
+    "{"
+    "vector_float4 position;"
+    "vector_float4 color;"
+    "};\n"
+    "struct VertexOut {"
+    "float4 color;"
+    "float4 pos [[position]];"
+    "};\n"
+    "vertex VertexOut vertexShader(device MetalVertex *vertices [[buffer(0)]], uint vid [[vertex_id]]) {"
+    "VertexOut out;"
+    "\n"
+    "out.pos = vertices[vid].position;"
+    "out.color = vertices[vid].color;"
+    "return out;"
+    "}\n"
+    "fragment float4 fragmentShader(MetalVertex in [[stage_in]]) {"
+    "return in.color;"
+    "}";
+
+    mtlLayer.mtlLibrary = [mtlLayer.device newLibraryWithSource:content options:nil error:&error];
+    if (!mtlLayer.mtlLibrary) {
+        NSLog(@"Failed to create shader library from source. error %@", error);
         //exit(0);
     }
 
