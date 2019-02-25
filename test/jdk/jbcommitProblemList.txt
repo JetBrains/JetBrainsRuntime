@@ -143,7 +143,6 @@ javax/swing/JDialog/Transparency/TransparencyTest.java                          
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java                nobug windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
-javax/swing/JFileChooser/8041694/bug8041694.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
