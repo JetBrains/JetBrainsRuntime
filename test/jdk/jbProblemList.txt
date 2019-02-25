@@ -1151,6 +1151,7 @@ com/sun/jdi/RedefineCrossEvent.java                                             
 
 # jdk_jfr
 
+jdk/jfr/api/recording/event/TestPeriod.java                                         8215890 macosx-all
 jdk/jfr/event/io/TestInstrumentation.java                                           8202142 generic-all
 jdk/jfr/event/sampling/TestNative.java                                              8202142 generic-all
 jdk/jfr/event/oldobject/TestLargeRootSet.java                                       8205651 generic-all
