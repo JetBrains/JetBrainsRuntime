@@ -261,8 +261,10 @@ void VM_Version::get_processor_features() {
   if (FLAG_IS_DEFAULT(UseCRC32)) {
     UseCRC32 = (auxv & HWCAP_CRC32) != 0;
   }
+
   if (UseCRC32 && (auxv & HWCAP_CRC32) == 0) {
     warning("UseCRC32 specified, but not supported on this CPU");
+    FLAG_SET_DEFAULT(UseCRC32, false);
   }
 
   if (FLAG_IS_DEFAULT(UseAdler32Intrinsics)) {
@@ -280,6 +282,7 @@ void VM_Version::get_processor_features() {
   } else {
     if (UseLSE) {
       warning("UseLSE specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseLSE, false);
     }
   }
 
@@ -294,9 +297,11 @@ void VM_Version::get_processor_features() {
   } else {
     if (UseAES) {
       warning("UseAES specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseAES, false);
     }
     if (UseAESIntrinsics) {
       warning("UseAESIntrinsics specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseAESIntrinsics, false);
     }
   }
 
