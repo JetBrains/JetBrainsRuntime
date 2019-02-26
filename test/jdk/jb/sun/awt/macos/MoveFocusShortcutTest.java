@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o.
+ * Copyright 2000-2019 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,9 +36,9 @@ import java.util.concurrent.TimeUnit;
  * Description: Test checks that Command+` macOS system shortcut successively switches focus between three Java Frames.
  *
  * Note: Please check that Command+` macOS system shortcut is enabled before launching this test
- * (use system Preferences -> Keyboard -> Shortcuts tab -> Keyboard -> mark 'Move focus to next window' checkbox)
- * MacOS accessibility permission should also be granted on macOS > for the application launching this test, so
- * Java Robot is able to access the keyboard (use System Preferences -> Security&Privacy -> Accessibility -> Privacy).
+ * (use System Preferences -> Keyboard -> Shortcuts tab -> Keyboard -> mark 'Move focus to next window' checkbox)
+ * On MacOS 10.14 and later accessibility permission should be granted for the application launching this test, so
+ * Java Robot is able to access keyboard (use System Preferences -> Security & Privacy -> Privacy tab -> Accessibility).
  */
 
 public class MoveFocusShortcutTest {
@@ -52,6 +52,20 @@ public class MoveFocusShortcutTest {
     private static WindowAdapter frameFocusListener;
 
     private static Robot robot;
+
+    private static class TestFrame extends Frame {
+
+        private final CountDownLatch frameGainedFocus;
+
+        private TestFrame(String title) {
+            super(title);
+            frameGainedFocus = new CountDownLatch(2);
+        }
+
+        private CountDownLatch getLatch() {
+            return frameGainedFocus;
+        }
+    }
 
     /*
      * Checks that pressing Command+` successively switches focus between three Java Frames
@@ -184,19 +198,5 @@ public class MoveFocusShortcutTest {
         frame1.dispose();
         frame2.dispose();
         frame3.dispose();
-    }
-
-    private static class TestFrame extends Frame {
-
-        private final CountDownLatch frameGainedFocus;
-
-        private TestFrame(String title) {
-            super(title);
-            frameGainedFocus = new CountDownLatch(2);
-        }
-
-        private CountDownLatch getLatch() {
-            return frameGainedFocus;
-        }
     }
 }
