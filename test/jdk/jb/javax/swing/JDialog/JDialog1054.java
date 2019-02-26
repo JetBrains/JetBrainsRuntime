@@ -1,5 +1,5 @@
 /*
- * Copyright 2000-2018 JetBrains s.r.o.
+ * Copyright 2000-2019 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,19 @@
  */
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
+import java.awt.AWTException;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Robot;
+import java.awt.Window;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -25,6 +35,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @test
@@ -39,8 +50,8 @@ import java.util.concurrent.CountDownLatch;
  * Test captures part of the screen where non-modal dialog is located and checks if it is colored with the sample color.
  *
  * Note: In case of running the test on remote desktop or vm use the same screen resolution as for your primary monitor.
- * MacOS accessibility permission should also be granted for the application launching this test,
- * so Robot is able to access keyboard (use System Preferences->Security&Privacy->Accessibility->Privacy).
+ * On MacOS 10.14 and later accessibility permission should be granted for the application launching this test, so
+ * Java Robot is able to access keyboard (use System Preferences -> Security & Privacy -> Privacy tab -> Accessibility).
  */
 
 public class JDialog1054 {
@@ -79,6 +90,7 @@ public class JDialog1054 {
 
         final int size = 100;
         final int pause = 2000;
+        final int timeout = pause*10;
         final int indent = size/4;
         // Use black color trying to avoid transparency effects
         final Color sampleColor = Color.BLACK;
@@ -100,15 +112,18 @@ public class JDialog1054 {
 
         final CountDownLatch nonModalDialogGainedFocus = new CountDownLatch(1);
         final CountDownLatch modalDialogGainedFocus = new CountDownLatch(1);
+        final CountDownLatch ownerGainedFocus = new CountDownLatch(1);
 
-        final WindowAdapter dialogListener = new WindowAdapter() {
+        final WindowAdapter focusListener = new WindowAdapter() {
             @Override
             public void windowGainedFocus(WindowEvent e) {
-                if (e.getWindow() == nonModalDialog) {
+                Window window = e.getWindow();
+                if (window == nonModalDialog) {
                     nonModalDialogGainedFocus.countDown();
-                }
-                if (e.getWindow() == modalDialog) {
+                } else if (window == modalDialog) {
                     modalDialogGainedFocus.countDown();
+                } else if (window == owner) {
+                    ownerGainedFocus.countDown();
                 }
             }
         };
@@ -120,7 +135,7 @@ public class JDialog1054 {
             nonModalDialog.setLocation(nonModalLoc);
             nonModalDialog.setSize(nonModalDim);
             nonModalDialog.getContentPane().add(nonModalDialogButton,  BorderLayout.CENTER);
-            nonModalDialog.addWindowFocusListener(dialogListener);
+            nonModalDialog.addWindowFocusListener(focusListener);
             nonModalDialog.setVisible(true);
         };
 
@@ -129,13 +144,19 @@ public class JDialog1054 {
             modalDialog.setSize(modalDim);
             // Paint the whole non-modal dialog pane over with the same sample color
             modalDialog.getContentPane().setBackground(sampleColor);
-            modalDialog.addWindowFocusListener(dialogListener);
+            modalDialog.addWindowFocusListener(focusListener);
             modalDialog.setVisible(true);
         };
 
+        final Runnable frameFocusRequester = () -> {
+            owner.addWindowFocusListener(focusListener);
+            owner.requestFocus();
+        };
+
         final Runnable disposeRunner = () -> {
-            modalDialog.removeWindowListener(dialogListener);
-            nonModalDialog.removeWindowFocusListener(dialogListener);
+            owner.removeWindowFocusListener(focusListener);
+            modalDialog.removeWindowFocusListener(focusListener);
+            nonModalDialog.removeWindowFocusListener(focusListener);
             modalDialog.dispose();
             nonModalDialog.dispose();
             owner.dispose();
@@ -144,14 +165,19 @@ public class JDialog1054 {
         try {
             System.out.println("Open owner frame and non-modal dialog");
             SwingUtilities.invokeLater(frameRunner);
-            nonModalDialogGainedFocus.await();
+            if(!nonModalDialogGainedFocus.await(timeout, TimeUnit.MILLISECONDS)) {
+                throw new RuntimeException("Test ERROR: Cannot focus on non-modal dialog");
+            }
             System.out.println("Non-modal dialog gained focus");
             // Wait for a while to improve the visibility of the test run
             Thread.sleep(pause);
 
             if (!nonModalDialogIsFocused) {
                 System.out.println("Request focus to the owner frame");
-                SwingUtilities.invokeLater(owner::requestFocus);
+                SwingUtilities.invokeLater(frameFocusRequester);
+                if(!ownerGainedFocus.await(timeout, TimeUnit.MILLISECONDS)) {
+                    throw new RuntimeException("Test ERROR: Cannot focus on owner frame");
+                }
                 System.out.println("Owner frame gained focus");
                 // Wait for a while to improve the visibility of the test run
                 Thread.sleep(pause);
@@ -159,7 +185,9 @@ public class JDialog1054 {
 
             System.out.println("Open modal dialog");
             SwingUtilities.invokeLater(modalDialogRunner);
-            modalDialogGainedFocus.await();
+            if(!modalDialogGainedFocus.await(timeout, TimeUnit.MILLISECONDS)) {
+                throw new RuntimeException("Test ERROR: Cannot focus on modal dialog");
+            }
             System.out.println("Modal dialog gained focus");
             // Wait for a while before screen capture so any graphic effects appear
             Thread.sleep(pause);
