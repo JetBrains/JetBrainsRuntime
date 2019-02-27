@@ -2,3 +2,4 @@ JTwork
 JTreport
 *.class
 .idea/workspace.xml
+build/
