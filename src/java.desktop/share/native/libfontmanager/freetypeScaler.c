@@ -1213,9 +1213,8 @@ Java_sun_font_FreetypeFontScaler_getGlyphImageNative(
         return ptr_to_jlong(getNullGlyphImage());
     }
 
-    /* if algorithmic styling is required then we do not request bitmap */
-    if (context->doBold || context->doItalize) {
-        context->loadFlags =  FT_LOAD_DEFAULT;
+    if (!context->useSbits) {
+        context->loadFlags |=  FT_LOAD_NO_BITMAP;
     }
 
     /* NB: in case of non identity transform
