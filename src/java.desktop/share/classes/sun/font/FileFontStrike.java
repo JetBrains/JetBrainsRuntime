@@ -259,6 +259,20 @@ public class FileFontStrike extends PhysicalStrike {
             pScalerContext = NullFontScaler.getNullScalerContext();
             return;
         }
+
+        /* Always get the image and the advance together for smaller sizes
+         * that are likely to be important to rendering performance.
+         * The pixel size of 48.0 can be thought of as
+         * "maximumSizeForGetImageWithAdvance".
+         * This should be no greater than OutlineTextRender.THRESHOLD.
+         */
+        double maxSz = 48.0;
+        getImageWithAdvance =
+                Math.abs(at.getScaleX()) <= maxSz &&
+                        Math.abs(at.getScaleY()) <= maxSz &&
+                        Math.abs(at.getShearX()) <= maxSz &&
+                        Math.abs(at.getShearY()) <= maxSz;
+
         /* First, see if native code should be used to create the glyph.
          * GDI will return the integer metrics, not fractional metrics, which
          * may be requested for this strike, so we would require here that :
@@ -282,6 +296,7 @@ public class FileFontStrike extends PhysicalStrike {
             }
             intPtSize = (int) pts;
             useNatives = (rotation == 0 || rotation > 0 && useNativesForRotatedText) && pts >= 3.0 && pts <= 100.0 &&
+                    (getImageWithAdvance || desc.fmHint == INTVAL_FRACTIONALMETRICS_ON) &&
                     !((TrueTypeFont)fileFont).useEmbeddedBitmapsForSize(intPtSize);
         }
         if (FontUtilities.isLogging() && FontUtilities.isWindows) {
@@ -294,19 +309,6 @@ public class FileFontStrike extends PhysicalStrike {
                  useEmbeddedBitmapsForSize(intPtSize));
         }
         this.disposer = new FontStrikeDisposer(fileFont, desc, pScalerContext);
-
-        /* Always get the image and the advance together for smaller sizes
-         * that are likely to be important to rendering performance.
-         * The pixel size of 48.0 can be thought of as
-         * "maximumSizeForGetImageWithAdvance".
-         * This should be no greater than OutlineTextRender.THRESHOLD.
-         */
-        double maxSz = 48.0;
-        getImageWithAdvance =
-            Math.abs(at.getScaleX()) <= maxSz &&
-            Math.abs(at.getScaleY()) <= maxSz &&
-            Math.abs(at.getShearX()) <= maxSz &&
-            Math.abs(at.getShearY()) <= maxSz;
 
         /* Some applications request advance frequently during layout.
          * If we are not getting and caching the image with the advance,
@@ -389,19 +391,14 @@ public class FileFontStrike extends PhysicalStrike {
             }
         }
         if (ptr == 0) {
-            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode,
-                    desc.fmHint == INTVAL_FRACTIONALMETRICS_ON, rotation, charset,
-                    ((TrueTypeFont)fileFont).fontDataSize);
-            if (ptr != 0 && (rotation == 0 || rotation == 2)) {
-                /* Get the advance from the JDK rasterizer. This is mostly
-                 * necessary for the fractional metrics case, but there are
-                 * also some very small number (<0.25%) of marginal cases where
-                 * there is some rounding difference between windows and JDK.
-                 * After these are resolved, we can restrict this extra
-                 * work to the FM case.
-                 */
-                float advance = getGlyphAdvance(glyphCode, false);
-                StrikeCache.setGlyphXAdvance(ptr, advance);
+            boolean fm = desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
+            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode, fm,
+                    rotation, charset, ((TrueTypeFont)fileFont).fontDataSize);
+            if (ptr != 0 && fm) {
+                Point2D.Float metrics = new Point2D.Float();
+                fileFont.getGlyphMetrics(pScalerContext, glyphCode, metrics);
+                StrikeCache.setGlyphXAdvance(ptr, metrics.x);
+                StrikeCache.setGlyphYAdvance(ptr, metrics.y);
             }
         }
         if (ptr == 0) {
