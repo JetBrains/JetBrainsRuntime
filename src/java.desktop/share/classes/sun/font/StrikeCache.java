@@ -169,6 +169,13 @@ public final class StrikeCache {
     }
 
     @SuppressWarnings("restricted")
+    static final void setGlyphYAdvance(long ptr, float val) {
+        MemorySegment seg = MemorySegment.ofAddress(ptr);
+        seg = seg.reinterpret(GLYPHIMAGESIZE);
+        yAdvanceHandle.set(seg, val);
+    }
+
+    @SuppressWarnings("restricted")
     static final char getGlyphWidth(long ptr) {
         MemorySegment seg = MemorySegment.ofAddress(ptr);
         seg = seg.reinterpret(GLYPHIMAGESIZE);
