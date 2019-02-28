@@ -42,6 +42,7 @@ public class ComponentIsNotDrawnAfterRemoveAddTest {
     private final Frame frame;
     private final Panel panel;
     private final ArrayList<Testable> compList = new ArrayList<Testable>();
+    private final int PAUSE = 3000;
 
     public ComponentIsNotDrawnAfterRemoveAddTest() {
         frame = new Frame("ComponentIsNotDrawnAfterRemoveAddTest");
@@ -93,7 +94,7 @@ public class ComponentIsNotDrawnAfterRemoveAddTest {
 
     private void runTest() {
         try {
-            doSleep(1500);
+            doSleep(PAUSE);
             checkTestableComponents();
 
             for (int i = 0; i < 5; i++) {
@@ -104,7 +105,7 @@ public class ComponentIsNotDrawnAfterRemoveAddTest {
                 frame.validate();
                 frame.add(panel);
 
-                doSleep(1500);
+                doSleep(PAUSE);
                 checkTestableComponents();
             }
         } finally {
