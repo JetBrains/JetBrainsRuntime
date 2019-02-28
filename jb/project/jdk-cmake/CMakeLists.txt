@@ -4,6 +4,8 @@ project(jdk)
 include(../java-common.cmake)
 
 include_directories(
+        ../../../src/java.base/share/native/include
+        ../../../src/java.base/share/native/libjava
         ../../../src/java.desktop/share/native/common
         ../../../src/java.desktop/share/native/common/awt/debug
         ../../../src/java.desktop/share/native/common/font
@@ -46,6 +48,9 @@ include_directories(
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     include_directories(
+            ../../../src/hotspot/os/posix/include
+            ../../../src/java.base/unix/native/include
+            ../../../src/java.base/unix/native/libjava
             ../../../src/java.desktop/unix/native/common/awt
             ../../../src/java.desktop/unix/native/common/awt/medialib
             ../../../src/java.desktop/unix/native/common/awt/systemscale
@@ -71,9 +76,11 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     include_directories(
-            ../../../build/linux-x86_64-normal-server-release/jdk/gensrc_headers)
+            ../../../build/linux-x86_64-normal-server-release/support/headers/java.desktop)
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
     include_directories(
+            ../../../src/java.base/windows/native/include
+            ../../../src/java.base/windows/native/libjava
             ../../../src/java.desktop/windows/native/common/awt/systemscale
             ../../../src/java.desktop/windows/native/common/awt/utility
             ../../../src/java.desktop/windows/native/include
@@ -1429,4 +1436,8 @@ add_executable(jdk ${SOURCE_FILES})
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     target_link_libraries(jdk ${JAVA_NATIVE_FOUNDATION})
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    target_link_libraries(jdk ${CMAKE_DL_LIBS})
 endif()
