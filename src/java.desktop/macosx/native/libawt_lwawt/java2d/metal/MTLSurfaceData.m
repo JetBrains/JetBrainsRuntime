@@ -119,8 +119,6 @@ MTLSD_MakeMTLContextCurrent(JNIEnv *env, BMTLSDOps *srcOps, BMTLSDOps *dstOps)
         return NULL;
     }
 
-    MTLCtxInfo *ctxinfo = (MTLCtxInfo *)mtlc->ctxInfo;
-
     // it seems to be necessary to explicitly flush between context changes
     MTLContext *currentContext = MTLRenderQueue_GetCurrentContext();
 
@@ -265,7 +263,6 @@ Java_sun_java2d_metal_MTLSurfaceData_validate
         // drawable has changed size
         MTLSDOps *cglsdo = (MTLSDOps *)mtlsdo->privOps;
         MTLContext *mtlc = cglsdo->configInfo->context;
-        MTLCtxInfo *ctxinfo = (MTLCtxInfo *)mtlc->ctxInfo;
 
     }
 }

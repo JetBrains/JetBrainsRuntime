@@ -37,7 +37,7 @@
 #include "MTLSurfaceData.h"
 #import "MTLLayer.h"
 
-void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer) {
+void MTLRenderer_BeginFrame(MTLContext* ctx, MTLLayer* layer) {
     if (ctx == NULL) {
         return;
     }
@@ -52,7 +52,7 @@ void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer) {
 }
 
 void MTLRenderer_FillParallelogramMetal(
-    MTLCtxInfo* ctx, jfloat x, jfloat y, jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
+    MTLContext* ctx, jfloat x, jfloat y, jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
 {
     if (ctx == NULL) {
         return;
@@ -424,7 +424,7 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
         if (dstOps != NULL) {
             MTLSDOps *dstCGLOps = (MTLSDOps *) dstOps->privOps;
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                MTLCtxInfo* ctx = dstCGLOps->configInfo->context->ctxInfo;
+                MTLContext* ctx = dstCGLOps->configInfo->context;
                     if (ctx == NULL) {
                         return;
                     }
@@ -529,7 +529,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
         MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
         [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
          MTLRenderer_FillParallelogramMetal(
-            dstCGLOps->configInfo->context->ctxInfo,
+            dstCGLOps->configInfo->context,
             fx11, fy11, dx21, dy21, dx12, dy12);
          }];
     } else {

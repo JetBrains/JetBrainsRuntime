@@ -72,6 +72,6 @@ void MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
 
 void MTLRenderer_EnableAAParallelogramProgram();
 void MTLRenderer_DisableAAParallelogramProgram();
-void MTLRenderer_BeginFrame(MTLCtxInfo* ctx, MTLLayer* layer);
+void MTLRenderer_BeginFrame(MTLContext* ctx, MTLLayer* layer);
 
 #endif /* MTLRenderer_h_Included */

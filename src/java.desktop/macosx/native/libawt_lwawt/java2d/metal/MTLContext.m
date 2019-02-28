@@ -337,6 +337,9 @@ MTLContext_DestroyContextResources(MTLContext *mtlc)
         free(mtlc->xformMatrix);
     }
 
+    NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+    [mtlc->mtlDevice release];
+    [pool drain];
     if (mtlc->blitTextureID != 0) {
   //      j2d_glDeleteTextures(1, &mtlc->blitTextureID);
     }

@@ -28,6 +28,7 @@
 #include "sun_java2d_metal_MTLContext.h"
 #include "sun_java2d_metal_MTLContext_MTLContextCaps.h"
 
+#import <Metal/Metal.h>
 #include "j2d_md.h"
 #include "MTLSurfaceDataBase.h"
 
@@ -66,7 +67,6 @@ typedef struct {
  * MTLC_UPDATE_TEXTURE_FUNCTION() macro.
  */
 typedef struct {
-    void       *ctxInfo;
     jint       caps;
     jint       compState;
     jfloat     extraAlpha;
@@ -82,6 +82,18 @@ typedef struct {
     jint     blitTextureID;
     jint      textureFunction;
     jboolean   vertexCacheEnabled;
+
+    id<MTLDevice>               mtlDevice;
+    id<MTLLibrary>              mtlLibrary;
+    id<MTLRenderPipelineState>  mtlPipelineState;
+    id<MTLRenderPipelineState>  mtlBlitPipelineState;
+    id<MTLCommandQueue>         mtlCommandQueue;
+    id<MTLCommandBuffer>        mtlCommandBuffer;
+    id<MTLTexture>              mtlFrameBuffer;
+    BOOL                        mtlEmptyCommandBuffer;
+    id<MTLBuffer>               mtlVertexBuffer;
+    jint                        mtlColor;
+    MTLRenderPassDescriptor*    mtlRenderPassDesc;
 } MTLContext;
 
 /**

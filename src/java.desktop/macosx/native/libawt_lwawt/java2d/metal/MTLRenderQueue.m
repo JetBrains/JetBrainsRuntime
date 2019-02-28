@@ -461,7 +461,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
                     MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
                     [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        MTLRenderer_BeginFrame(dstCGLOps->configInfo->context->ctxInfo, layer);
+                        MTLRenderer_BeginFrame(dstCGLOps->configInfo->context, layer);
                     }];
                 }
             }
@@ -592,7 +592,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 if (dstOps != NULL) {
                     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
                     [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        ((MTLCtxInfo*)(dstCGLOps->configInfo->context->ctxInfo))->mtlColor = pixel;
+                        dstCGLOps->configInfo->context->mtlColor = pixel;
                     }];
                 }
                 MTLPaints_SetColor(mtlc, pixel);

@@ -420,7 +420,7 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFBObject
 
     if (mtlsdo->configInfo) {
         if (mtlsdo->configInfo->context != NULL) {
-            MTLCtxInfo* ctx = mtlsdo->configInfo->context->ctxInfo;
+            MTLContext* ctx = mtlsdo->configInfo->context;
             if (ctx == NULL) {
               NSLog(@"ctx is NULL");
             } else {

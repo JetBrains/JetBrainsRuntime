@@ -176,7 +176,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.bufferWidth = bmtlsdo->width;
         layer.bufferHeight = bmtlsdo->height;
-        layer.ctx = (MTLCtxInfo*)(((MTLSDOps *)bmtlsdo->privOps)->configInfo->context->ctxInfo);
+        layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx->mtlDevice;
     } else {
         layer.ctx = NULL;

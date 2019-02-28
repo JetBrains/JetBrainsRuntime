@@ -52,22 +52,9 @@ MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo)
         return;
     }
 
-
-    MTLContext *oglc = (MTLContext*)mtlinfo->context;
-    if (oglc != NULL) {
-        MTLContext_DestroyContextResources(oglc);
-
-        MTLCtxInfo *ctxinfo = (MTLCtxInfo *)oglc->ctxInfo;
-        if (ctxinfo != NULL) {
-            NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-            [ctxinfo->mtlDevice release];
-            if (ctxinfo->scratchSurface != 0) {
-                [ctxinfo->scratchSurface release];
-            }
-            [pool drain];
-            free(ctxinfo);
-            oglc->ctxInfo = NULL;
-        }
+    MTLContext *mtlc = (MTLContext*)mtlinfo->context;
+    if (mtlc != NULL) {
+        MTLContext_DestroyContextResources(mtlc);
         mtlinfo->context = NULL;
     }
     free(mtlinfo);
@@ -190,34 +177,33 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
                    (caps & CAPS_DOUBLEBUFFERED) != 0);
 
 
-    MTLCtxInfo *ctxinfo = (MTLCtxInfo *)malloc(sizeof(MTLCtxInfo));
-    if (ctxinfo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not allocate memory for ctxinfo");
-        [NSOpenGLContext clearCurrentContext];
+    MTLContext *mtlc = (MTLContext *)malloc(sizeof(MTLContext));
+    if (mtlc == 0L) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not allocate memory for mtlc");
         [argValue addObject: [NSNumber numberWithLong: 0L]];
         return;
     }
-    memset(ctxinfo, 0, sizeof(MTLCtxInfo));
-    ctxinfo->scratchSurface = scratchSurface;
-    ctxinfo->mtlDevice = [CGDirectDisplayCopyCurrentMetalDevice(displayID) retain];
-    ctxinfo->mtlShadersLib = [mtlShadersLib retain];
+    memset(mtlc, 0, sizeof(MTLContext));
 
-    ctxinfo->mtlVertexBuffer = [[ctxinfo->mtlDevice  newBufferWithBytes:verts
+
+    mtlc->mtlDevice = [CGDirectDisplayCopyCurrentMetalDevice(displayID) retain];
+
+    mtlc->mtlVertexBuffer = [[mtlc->mtlDevice  newBufferWithBytes:verts
                                                            length:sizeof(verts)
                                                            options:MTLResourceCPUCacheModeDefaultCache] retain];
 
     NSError *error = nil;
     NSLog(@"Load shader library from %@", mtlShadersLib);
 
-    ctxinfo->mtlLibrary = [ctxinfo->mtlDevice newLibraryWithFile: mtlShadersLib error:&error];
-    if (!ctxinfo->mtlLibrary) {
+    mtlc->mtlLibrary = [mtlc->mtlDevice newLibraryWithFile: mtlShadersLib error:&error];
+    if (!mtlc->mtlLibrary) {
         NSLog(@"Failed to load library. error %@", error);
         exit(0);
     }
-    id <MTLFunction> vertColFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert_col"];
-    id <MTLFunction> vertTxtFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"vert_txt"];
-    id <MTLFunction> fragColFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag_col"];
-    id <MTLFunction> fragTxtFunc = [ctxinfo->mtlLibrary newFunctionWithName:@"frag_txt"];
+    id <MTLFunction> vertColFunc = [mtlc->mtlLibrary newFunctionWithName:@"vert_col"];
+    id <MTLFunction> vertTxtFunc = [mtlc->mtlLibrary newFunctionWithName:@"vert_txt"];
+    id <MTLFunction> fragColFunc = [mtlc->mtlLibrary newFunctionWithName:@"frag_col"];
+    id <MTLFunction> fragTxtFunc = [mtlc->mtlLibrary newFunctionWithName:@"frag_txt"];
 
     // Create depth state.
     MTLDepthStencilDescriptor *depthDesc = [MTLDepthStencilDescriptor new];
@@ -239,8 +225,8 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     pipelineDesc.fragmentFunction = fragColFunc;
     pipelineDesc.vertexDescriptor = vertDesc;
     pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    ctxinfo->mtlPipelineState = [ctxinfo->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
-    if (!ctxinfo->mtlPipelineState) {
+    mtlc->mtlPipelineState = [mtlc->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!mtlc->mtlPipelineState) {
         NSLog(@"Failed to create pipeline state, error %@", error);
         exit(0);
     }
@@ -262,37 +248,25 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     pipelineDesc.fragmentFunction = fragTxtFunc;
     pipelineDesc.vertexDescriptor = vertDesc;
     pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-    ctxinfo->mtlBlitPipelineState = [ctxinfo->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
-    if (!ctxinfo->mtlBlitPipelineState) {
+    mtlc->mtlBlitPipelineState = [mtlc->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!mtlc->mtlBlitPipelineState) {
         NSLog(@"Failed to create pipeline state, error %@", error);
         exit(0);
     }
 
-    ctxinfo->mtlCommandBuffer = nil;
+    mtlc->mtlCommandBuffer = nil;
 
     // Create command queue
-    ctxinfo->mtlCommandQueue = [ctxinfo->mtlDevice newCommandQueue];
-    ctxinfo->mtlEmptyCommandBuffer = YES;
+    mtlc->mtlCommandQueue = [mtlc->mtlDevice newCommandQueue];
+    mtlc->mtlEmptyCommandBuffer = YES;
 
-    MTLContext *mtlc = (MTLContext *)malloc(sizeof(MTLContext));
-    if (mtlc == 0L) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not allocate memory for mtlc");
-        [NSOpenGLContext clearCurrentContext];
-        free(ctxinfo);
-        [argValue addObject: [NSNumber numberWithLong: 0L]];
-        return;
-    }
-    memset(mtlc, 0, sizeof(MTLContext));
-    mtlc->ctxInfo = ctxinfo;
     mtlc->caps = caps;
 
     // create the MTLGraphicsConfigInfo record for this config
     MTLGraphicsConfigInfo *mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
     if (mtlinfo == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGraphicsConfig_getMTLConfigInfo: could not allocate memory for mtlinfo");
-        [NSOpenGLContext clearCurrentContext];
         free(mtlc);
-        free(ctxinfo);
         [argValue addObject: [NSNumber numberWithLong: 0L]];
         return;
     }

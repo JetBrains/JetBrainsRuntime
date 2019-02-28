@@ -35,13 +35,13 @@
     JNFWeakJObjectWrapper *javaLayer;
 
     // intermediate buffer, used the RQ lock to synchronize
-    MTLCtxInfo* ctx;
+    MTLContext* ctx;
     float bufferWidth;
     float bufferHeight;
 }
 
 @property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
-@property (readwrite, assign) MTLCtxInfo* ctx;
+@property (readwrite, assign) MTLContext* ctx;
 @property (readwrite, assign) float bufferWidth;
 @property (readwrite, assign) float bufferHeight;
 

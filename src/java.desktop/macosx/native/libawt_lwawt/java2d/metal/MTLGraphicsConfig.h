@@ -67,7 +67,7 @@
  *     NSOpenGLPixelFormat *pixfmt;
  * The pixel format of the native NSOpenGL context.
  *
- *     OGLContext *context;
+ *     MTLContext *context;
  * The context associated with this CGLGraphicsConfig.
  */
 typedef struct _MTLGraphicsConfigInfo {
@@ -75,23 +75,5 @@ typedef struct _MTLGraphicsConfigInfo {
     NSOpenGLPixelFormat *pixfmt;
     MTLContext          *context;
 } MTLGraphicsConfigInfo;
-
-/**
- */
-typedef struct _MTLCtxInfo {
-    id<MTLDevice>               mtlDevice;
-    id<MTLLibrary>              mtlLibrary;
-    id<MTLRenderPipelineState>  mtlPipelineState;
-    id<MTLRenderPipelineState>  mtlBlitPipelineState;
-    id<MTLCommandQueue>         mtlCommandQueue;
-    id<MTLCommandBuffer>        mtlCommandBuffer;
-    id<MTLTexture>              mtlFrameBuffer;
-    BOOL                        mtlEmptyCommandBuffer;
-    id<MTLBuffer>               mtlVertexBuffer;
-    NSView*                     scratchSurface;
-    NSString*                   mtlShadersLib;
-    jint                        mtlColor;
-    MTLRenderPassDescriptor*    mtlRenderPassDesc;
-} MTLCtxInfo;
 
 #endif /* MTLGraphicsConfig_h_Included */
