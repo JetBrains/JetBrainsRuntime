@@ -64,7 +64,6 @@ java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java                             
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                        nobug macosx-all,windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java                                          nobug macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                         nobug macosx-all,windows-all
-java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java nobug macosx-all,windows-all
 java/awt/Paint/ExposeOnEDT.java                                                             nobug windows-all
 java/awt/PopupMenu/PopupMenuLocation.java                                                   nobug macosx-all,linux-all,windows-all
 java/awt/Robot/HiDPIMouseClick/HiDPIRobotMouseClick.java                                    nobug windows-all
@@ -197,5 +196,4 @@ jb/javax/swing/JDialog/JDialog1054.java                                         
 jb/javax/swing/JDialog/JDialog705.java                                                      nobug macosx-all,linux-all,windows-all
 jb/javax/swing/JDialog/JDialog741/JDialog741.html                                           nobug macosx-all,linux-all,windows-all
 jb/sun/awt/macos/KeyPressAndHoldTest.java                                                   nobug macosx-all
-jb/sun/awt/macos/MoveFocusShortcutTest.java                                                 nobug macosx-all
 jb/sun/lwawt/macosx/NSEvent/nsevent422.sh                                                   nobug macosx-all
