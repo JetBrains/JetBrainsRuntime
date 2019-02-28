@@ -107,7 +107,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y1 = NEXT_INT(b);
                 jint x2 = NEXT_INT(b);
                 jint y2 = NEXT_INT(b);
-                //MTLRenderer_DrawLine(mtlc, x1, y1, x2, y2);
+                MTLRenderer_DrawLine(mtlc, x1, y1, x2, y2);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT:
@@ -116,7 +116,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y = NEXT_INT(b);
                 jint w = NEXT_INT(b);
                 jint h = NEXT_INT(b);
-                //MTLRenderer_DrawRect(mtlc, x, y, w, h);
+                MTLRenderer_DrawRect(mtlc, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
@@ -127,9 +127,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint transY       = NEXT_INT(b);
                 jint *xPoints = (jint *)b;
                 jint *yPoints = ((jint *)b) + nPoints;
-               // MTLRenderer_DrawPoly(mtlc, nPoints, isClosed,
-               //                      transX, transY,
-               //                      xPoints, yPoints);
+                MTLRenderer_DrawPoly(mtlc, nPoints, isClosed, transX, transY, xPoints, yPoints);
                 SKIP_BYTES(b, nPoints * BYTES_PER_POLY_POINT);
             }
             break;

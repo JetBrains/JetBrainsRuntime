@@ -51,6 +51,51 @@ void MTLRenderer_BeginFrame(MTLContext* ctx, MTLLayer* layer) {
     ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
 }
 
+void _prepareRenderPassDescriptor(MTLContext* ctx) {
+    if (ctx == NULL || ctx->mtlRenderPassDesc != NULL)
+        return;
+
+    ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
+    if (ctx->mtlRenderPassDesc) {
+        MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
+        colorAttachment.texture = ctx->mtlFrameBuffer;
+
+        colorAttachment.loadAction = MTLLoadActionLoad;
+        colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+
+        colorAttachment.storeAction = MTLStoreActionStore;
+    }
+}
+
+id<MTLRenderCommandEncoder> _prepareEncoder(MTLContext* ctx) {
+    _prepareRenderPassDescriptor(ctx);
+    if (ctx == NULL || ctx->mtlRenderPassDesc == NULL)
+        return nil;
+
+    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
+
+    // set viewport and pipeline state
+    MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
+    [mtlEncoder setViewport:vp];
+    [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
+
+    // set color from ctx
+    int r = (ctx->mtlColor >> 16) & (0xFF);
+    int g = (ctx->mtlColor >> 8) & 0xFF;
+    int b = (ctx->mtlColor) & 0xFF;
+    int a = (ctx->mtlColor >> 24) & 0xFF;
+
+    vector_float4 color = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
+    struct FrameUniforms uf = {color};
+    [mtlEncoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+    return mtlEncoder;
+}
+
+jfloat _screen2mtlX(MTLContext* ctx, jfloat x) { return (2.0*x/ctx->mtlFrameBuffer.width) - 1.0; }
+
+jfloat _screen2mtlY(MTLContext* ctx, jfloat y) { return 2.0*(1.0 - y/ctx->mtlFrameBuffer.height) - 1.0; }
+
 void MTLRenderer_FillParallelogramMetal(
     MTLContext* ctx, jfloat x, jfloat y, jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
 {
@@ -81,42 +126,13 @@ void MTLRenderer_FillParallelogramMetal(
     }};
 
     // Encode render command.
-    if (!ctx->mtlRenderPassDesc) {
-        ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
-        if (ctx->mtlRenderPassDesc) {
-          MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-          colorAttachment.texture = ctx->mtlFrameBuffer;
+    id<MTLRenderCommandEncoder> mtlEncoder = _prepareEncoder(ctx);
+    if (mtlEncoder == nil)
+        return;
 
-          colorAttachment.loadAction = MTLLoadActionLoad;
-          colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
-
-          colorAttachment.storeAction = MTLStoreActionStore;
-        }
-    }
-
-    if (ctx->mtlRenderPassDesc) {
-        id<MTLRenderCommandEncoder>  mtlEncoder =
-            [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
-        MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-        [mtlEncoder setViewport:vp];
-        [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
-
-        int r = (ctx->mtlColor >> 16)&(0xFF);
-        int g = (ctx->mtlColor >> 8)&0xFF;
-        int b = (ctx->mtlColor)&0xFF;
-        int a = (ctx->mtlColor >> 24)&0xFF;
-
-        vector_float4 color =
-            {r/255.0f, g/255.0f, b/255.0f, a/255.0f};
-        struct FrameUniforms uf = {color};
-
-        [mtlEncoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-
-        [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
-        [mtlEncoder endEncoding];
-    }
-
+    [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
+    [mtlEncoder endEncoding];
 }
 
 /**
@@ -146,177 +162,157 @@ void MTLRenderer_FillParallelogramMetal(
  * hardware to ensure consistent rendering everywhere.
  */
 
-void
-MTLRenderer_DrawLine(MTLContext *mtlc, jint x1, jint y1, jint x2, jint y2)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawLine");
-/*
-    RETURN_IF_NULL(mtlc);
-
-    CHECK_PREVIOUS_OP(GL_LINES);
-
-    if (y1 == y2) {
-        // horizontal
-        GLfloat fx1 = (GLfloat)x1;
-        GLfloat fx2 = (GLfloat)x2;
-        GLfloat fy  = ((GLfloat)y1) + 0.2f;
-
-        if (x1 > x2) {
-            GLfloat t = fx1; fx1 = fx2; fx2 = t;
-        }
-
-        j2d_glVertex2f(fx1+0.2f, fy);
-        j2d_glVertex2f(fx2+1.2f, fy);
-    } else if (x1 == x2) {
-        // vertical
-        GLfloat fx  = ((GLfloat)x1) + 0.2f;
-        GLfloat fy1 = (GLfloat)y1;
-        GLfloat fy2 = (GLfloat)y2;
-
-        if (y1 > y2) {
-            GLfloat t = fy1; fy1 = fy2; fy2 = t;
-        }
-
-        j2d_glVertex2f(fx, fy1+0.2f);
-        j2d_glVertex2f(fx, fy2+1.2f);
-    } else {
-        // diagonal
-        GLfloat fx1 = (GLfloat)x1;
-        GLfloat fy1 = (GLfloat)y1;
-        GLfloat fx2 = (GLfloat)x2;
-        GLfloat fy2 = (GLfloat)y2;
-
-        if (x1 < x2) {
-            fx1 += 0.2f;
-            fx2 += 1.0f;
-        } else {
-            fx1 += 0.8f;
-            fx2 -= 0.2f;
-        }
-
-        if (y1 < y2) {
-            fy1 += 0.2f;
-            fy2 += 1.0f;
-        } else {
-            fy1 += 0.8f;
-            fy2 -= 0.2f;
-        }
-
-        j2d_glVertex2f(fx1, fy1);
-        j2d_glVertex2f(fx2, fy2);
-    }
-    */
-}
-
-void
-MTLRenderer_DrawRect(MTLContext *mtlc, jint x, jint y, jint w, jint h)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawRect");
-/*
-    if (w < 0 || h < 0) {
+void MTLRenderer_DrawLineMetal(MTLContext *ctx, jfloat x1, jfloat y1, jfloat x2, jfloat y2) {
+    id<MTLRenderCommandEncoder> mtlEncoder = _prepareEncoder(ctx);
+    if (mtlEncoder == nil)
         return;
-    }
 
-    RETURN_IF_NULL(mtlc);
+    ctx->mtlEmptyCommandBuffer = NO;
 
-    if (w < 2 || h < 2) {
-        // If one dimension is less than 2 then there is no
-        // gap in the middle - draw a solid filled rectangle.
-        CHECK_PREVIOUS_OP(GL_QUADS);
-        GLRECT_BODY_XYWH(x, y, w+1, h+1);
-    } else {
-        GLfloat fx1 = ((GLfloat)x) + 0.2f;
-        GLfloat fy1 = ((GLfloat)y) + 0.2f;
-        GLfloat fx2 = fx1 + ((GLfloat)w);
-        GLfloat fy2 = fy1 + ((GLfloat)h);
+    struct Vertex verts[2] = {
+            {{_screen2mtlX(ctx, x1), _screen2mtlY(ctx, y1), 0.0}},
+            {{_screen2mtlX(ctx, x2), _screen2mtlY(ctx, y2), 0.0}}
+    };
 
-        // Avoid drawing the endpoints twice.
-        // Also prefer including the endpoints in the
-        // horizontal sections which draw pixels faster.
-
-        CHECK_PREVIOUS_OP(GL_LINES);
-        // top
-        j2d_glVertex2f(fx1,      fy1);
-        j2d_glVertex2f(fx2+1.0f, fy1);
-        // right
-        j2d_glVertex2f(fx2,      fy1+1.0f);
-        j2d_glVertex2f(fx2,      fy2);
-        // bottom
-        j2d_glVertex2f(fx1,      fy2);
-        j2d_glVertex2f(fx2+1.0f, fy2);
-        // left
-        j2d_glVertex2f(fx1,      fy1+1.0f);
-        j2d_glVertex2f(fx1,      fy2);
-    }
-    */
+    [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
+    [mtlEncoder endEncoding];
 }
 
-void
-MTLRenderer_DrawPoly(MTLContext *mtlc,
+void MTLRenderer_DrawLine(MTLContext *mtlc, jint x1, jint y1, jint x2, jint y2) {
+    J2dTraceLn4(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%d y1=%d x2=%d y2=%d)", x1, y1, x2, y2);
+
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+
+    if (dstOps != NULL) {
+        MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+            MTLRenderer_DrawLineMetal(dstCGLOps->configInfo->context, x1, y1, x2, y2);
+        }];
+    }
+}
+
+void MTLRenderer_DrawRectMetal(MTLContext *ctx, jint x, jint y, jint w, jint h) {
+    // TODO: use DrawParallelogram(x, y, w, h, lw=1, lh=1)
+    id<MTLRenderCommandEncoder> mtlEncoder = _prepareEncoder(ctx);
+    if (mtlEncoder == nil)
+        return;
+
+    ctx->mtlEmptyCommandBuffer = NO;
+
+    const int verticesCount = 5;
+    struct Vertex vertices[verticesCount] = {
+            {{_screen2mtlX(ctx, x), _screen2mtlY(ctx, y), 0.0}},
+            {{_screen2mtlX(ctx, x + w), _screen2mtlY(ctx, y), 0.0}},
+            {{_screen2mtlX(ctx, x + w), _screen2mtlY(ctx, y + h), 0.0}},
+            {{_screen2mtlX(ctx, x), _screen2mtlY(ctx, y + h), 0.0}},
+            {{_screen2mtlX(ctx, x), _screen2mtlY(ctx, y), 0.0}},
+    };
+    [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:verticesCount];
+    [mtlEncoder endEncoding];
+}
+
+void MTLRenderer_DrawRect(MTLContext *mtlc, jint x, jint y, jint w, jint h) {
+    J2dTraceLn4(J2D_TRACE_INFO, "MTLRenderer_DrawRect (x=%d y=%d w=%d h=%d)", x, y, w, h);
+
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+
+    if (dstOps != NULL) {
+        MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+            MTLRenderer_DrawRectMetal(dstCGLOps->configInfo->context, x, y, w, h);
+        }];
+    }
+}
+
+void _tracePoints(jint nPoints, jint *xPoints, jint *yPoints) {
+    for (int i = 0; i < nPoints; i++)
+        J2dTraceLn2(J2D_TRACE_INFO, "\t(%d, %d)", *(xPoints++), *(yPoints++));
+}
+
+const int POLYLINE_BUF_SIZE = 64;
+
+void _fillVertex(MTLContext* ctx, struct Vertex * vertex, int x, int y) {
+    vertex->position[0] = _screen2mtlX(ctx, x);
+    vertex->position[1] = _screen2mtlY(ctx, y);
+    vertex->position[2] = 0;
+}
+
+void MTLRenderer_DrawPoly(MTLContext *mtlc,
                      jint nPoints, jint isClosed,
                      jint transX, jint transY,
                      jint *xPoints, jint *yPoints)
 {
-    jboolean isEmpty = JNI_TRUE;
-    jint mx, my;
-    jint i;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawPoly");
-/*
-    if (xPoints == NULL || yPoints == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "MTLRenderer_DrawPoly: points array is null");
-        return;
-    }
-
-    RETURN_IF_NULL(mtlc);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLRenderer_DrawPoly (%d points, transX=%d, transY=%d)", nPoints, transX, transY);
 
     // Note that BufferedRenderPipe.drawPoly() has already rejected polys
     // with nPoints<2, so we can be certain here that we have nPoints>=2.
-
-    mx = xPoints[0];
-    my = yPoints[0];
-
-    CHECK_PREVIOUS_OP(GL_LINE_STRIP);
-    for (i = 0; i < nPoints; i++) {
-        jint x = xPoints[i];
-        jint y = yPoints[i];
-
-        isEmpty = isEmpty && (x == mx && y == my);
-
-        // Translate each vertex by a fraction so that we hit pixel centers.
-        j2d_glVertex2f((GLfloat)(x + transX) + 0.5f,
-                       (GLfloat)(y + transY) + 0.5f);
+    if (xPoints == NULL || yPoints == NULL || nPoints < 2) { // just for insurance
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawPoly: points array is empty");
+        return;
     }
 
-    if (isClosed && !isEmpty &&
-        (xPoints[nPoints-1] != mx ||
-         yPoints[nPoints-1] != my))
-    {
-        // In this case, the polyline's start and end positions are
-        // different and need to be closed manually; we do this by adding
-        // one more segment back to the starting position.  Note that we
-        // do not need to fill in the last pixel (as we do in the following
-        // block) because we are returning to the starting pixel, which
-        // has already been filled in.
-        j2d_glVertex2f((GLfloat)(mx + transX) + 0.5f,
-                       (GLfloat)(my + transY) + 0.5f);
-        RESET_PREVIOUS_OP(); // so that we don't leave the line strip open
-    } else if (!isClosed || isEmpty) {
-        // OpenGL omits the last pixel in a polyline, so we fix this by
-        // adding a one-pixel segment at the end.  Also, if the polyline
-        // never went anywhere (isEmpty is true), we need to use this
-        // workaround to ensure that a single pixel is touched.
-        CHECK_PREVIOUS_OP(GL_LINES); // this closes the line strip first
-        mx = xPoints[nPoints-1] + transX;
-        my = yPoints[nPoints-1] + transY;
-        j2d_glVertex2i(mx, my);
-        j2d_glVertex2i(mx+1, my+1);
-        // no need for RESET_PREVIOUS_OP, as the line strip is no longer open
-    } else {
-        RESET_PREVIOUS_OP(); // so that we don't leave the line strip open
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+    if (dstOps == NULL || dstOps->privOps == NULL)
+        return;
+    MTLSDOps *dstCGLOps = (MTLSDOps *) dstOps->privOps;
+    MTLContext* ctx = dstCGLOps->configInfo;
+    if (ctx == NULL)
+        return;
+
+    ctx->mtlEmptyCommandBuffer = NO;
+
+    jint prevX = *(xPoints++);
+    jint prevY = *(yPoints++);
+    --nPoints;
+    const jint firstX = prevX;
+    const jint firstY = prevY;
+    while (nPoints > 0) {
+        __block struct {
+            struct Vertex verts[POLYLINE_BUF_SIZE];
+        } pointsChunk;
+
+        _fillVertex(ctx, pointsChunk.verts, prevX + transX, prevY + transY);
+
+        const bool isLastChunk = nPoints + 1 <= POLYLINE_BUF_SIZE;
+        __block int chunkSize = isLastChunk ? nPoints : POLYLINE_BUF_SIZE - 1;
+
+        for (int i = 1; i < chunkSize; i++) {
+            prevX = *(xPoints++);
+            prevY = *(yPoints++);
+            _fillVertex(ctx, pointsChunk.verts + i, prevX + transX, prevY + transY);
+        }
+
+        bool drawCloseSegment = false;
+        if (isClosed && isLastChunk) {
+            if (chunkSize + 2 <= POLYLINE_BUF_SIZE) {
+                _fillVertex(ctx, pointsChunk.verts + chunkSize, firstX + transX, firstY + transY);
+                ++chunkSize;
+            } else
+                drawCloseSegment = true;
+        }
+
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+            id<MTLRenderCommandEncoder> mtlEncoder = _prepareEncoder(ctx);
+            if (mtlEncoder == nil)
+                return;
+
+            [mtlEncoder setVertexBytes:pointsChunk.verts length:sizeof(pointsChunk.verts) atIndex:MeshVertexBuffer];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize + 1];
+            if (drawCloseSegment) {
+                struct Vertex vertices[2] = {
+                        {{_screen2mtlX(ctx, prevX + transX),     _screen2mtlY(ctx, prevY + transY), 0.0}},
+                        {{_screen2mtlX(ctx, firstX + transX),    _screen2mtlY(ctx, firstY + transY), 0.0}},
+                };
+                [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
+                [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
+            }
+            [mtlEncoder endEncoding];
+        }];
+
+        nPoints -= chunkSize;
     }
-    */
 }
 
 JNIEXPORT void JNICALL
@@ -431,68 +427,40 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
 
                     ctx->mtlEmptyCommandBuffer = NO;
 
-                    // Encode render command.
-                    if (!ctx->mtlRenderPassDesc) {
-                        ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
-                        if (ctx->mtlRenderPassDesc) {
-                          MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-                          colorAttachment.texture = ctx->mtlFrameBuffer;
+                    id<MTLRenderCommandEncoder> mtlEncoder = _prepareEncoder(ctx);
+                    if (mtlEncoder == nil)
+                        return;
 
-                          colorAttachment.loadAction = MTLLoadActionLoad;
-                          colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
+                    for (int i = 0; i < sc; i++) {
+                        jfloat x1 = spanStruct.spns[i * 4];
+                        jfloat y1 = spanStruct.spns[i * 4 + 1];
+                        jfloat x2 = spanStruct.spns[i * 4 + 2];
+                        jfloat y2 = spanStruct.spns[i * 4 + 3];
 
-                          colorAttachment.storeAction = MTLStoreActionStore;
-                        }
+                        struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+                            {{(2.0 * x1 / ctx->mtlFrameBuffer.width) - 1.0,
+                            2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
+
+                            {{2.0 * (x2) / ctx->mtlFrameBuffer.width - 1.0,
+                            2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
+
+                            {{2.0 * x1 / ctx->mtlFrameBuffer.width - 1.0,
+                            2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
+
+                            {{2.0 * x2 / ctx->mtlFrameBuffer.width - 1.0,
+                            2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
+
+                            {{2.0 * (x2) / ctx->mtlFrameBuffer.width - 1.0,
+                            2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
+
+                            {{2.0 * (x1) / ctx->mtlFrameBuffer.width - 1.0,
+                            2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0},
+                        }};
+
+                        [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+                        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
                     }
-
-                    if (ctx->mtlRenderPassDesc) {
-                        id<MTLRenderCommandEncoder>  mtlEncoder =
-                            [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
-                        MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-                        [mtlEncoder setViewport:vp];
-                        [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
-
-                        int r = (ctx->mtlColor >> 16)&(0xFF);
-                        int g = (ctx->mtlColor >> 8)&0xFF;
-                        int b = (ctx->mtlColor)&0xFF;
-                        int a = (ctx->mtlColor >> 24)&0xFF;
-
-                        vector_float4 color =
-                            {r/255.0f, g/255.0f, b/255.0f, a/255.0f};
-                        struct FrameUniforms uf = {color};
-
-                        [mtlEncoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-                        for (int i = 0; i < sc; i++) {
-                            jfloat x1 = spanStruct.spns[i * 4];
-                            jfloat y1 = spanStruct.spns[i * 4 + 1];
-                            jfloat x2 = spanStruct.spns[i * 4 + 2];
-                            jfloat y2 = spanStruct.spns[i * 4 + 3];
-
-                            struct Vertex verts[PGRAM_VERTEX_COUNT] = {
-                                {{(2.0 * x1 / ctx->mtlFrameBuffer.width) - 1.0,
-                                2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
-
-                                {{2.0 * (x2) / ctx->mtlFrameBuffer.width - 1.0,
-                                2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
-
-                                {{2.0 * x1 / ctx->mtlFrameBuffer.width - 1.0,
-                                2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
-
-                                {{2.0 * x2 / ctx->mtlFrameBuffer.width - 1.0,
-                                2.0 * (1.0 - y1 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
-
-                                {{2.0 * (x2) / ctx->mtlFrameBuffer.width - 1.0,
-                                2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0}},
-
-                                {{2.0 * (x1) / ctx->mtlFrameBuffer.width - 1.0,
-                                2.0 * (1.0 - y2 / ctx->mtlFrameBuffer.height) - 1.0, 0.0},
-                            }};
-
-                            [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-                            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
-                        }
-                        [mtlEncoder endEncoding];
-                    }
+                    [mtlEncoder endEncoding];
                 }];
         }
         spanCount -= sc;
