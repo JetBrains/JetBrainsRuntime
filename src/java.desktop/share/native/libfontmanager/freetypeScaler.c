@@ -892,7 +892,7 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
         jlong pScalerContext, jlong pScaler) {
 
     jobject metrics;
-    jfloat ax, ay, dx, dy, bx, by, lx, ly, mx, my, txx, txy, tyx, tyy;
+    jfloat ax, ay, dx, dy, bx, by, lx, ly, mx, my;
     jfloat f0 = 0.0;
     FTScalerContext *context =
         (FTScalerContext*) jlong_to_ptr(pScalerContext);
@@ -960,20 +960,6 @@ Java_sun_font_FreetypeFontScaler_getFontMetricsNative(
                      scalerInfo->face->size->metrics.max_advance +
                      OBLIQUE_MODIFIER(scalerInfo->face->size->metrics.height));
     my = 0;
-
-    // apply transformation matrix
-    txx = (jfloat)  FTFixedToFloat(context->transform.xx);
-    txy = (jfloat) -FTFixedToFloat(context->transform.xy);
-    tyx = (jfloat) -FTFixedToFloat(context->transform.yx);
-    tyy = (jfloat)  FTFixedToFloat(context->transform.yy);
-    ax = txy * ay;
-    ay = tyy * ay;
-    dx = txy * dy;
-    dy = tyy * dy;
-    lx = txy * ly;
-    ly = tyy * ly;
-    my = tyx * mx;
-    mx = txx * mx;
 
     metrics = (*env)->NewObject(env,
                                 sunFontIDs.strikeMetricsClass,
