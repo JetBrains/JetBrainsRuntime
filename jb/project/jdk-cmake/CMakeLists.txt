@@ -79,6 +79,8 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
             ../../../build/linux-x86_64-normal-server-release/support/headers/java.desktop)
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
     include_directories(
+            ../../../build/windows-x86_64-normal-server-release/support/headers/java.desktop
+            ../../../src/hotspot/os/windows/include
             ../../../src/java.base/windows/native/include
             ../../../src/java.base/windows/native/libjava
             ../../../src/java.desktop/windows/native/common/awt/systemscale
@@ -93,9 +95,6 @@ elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
             ../../../src/java.desktop/windows/native/libjsound
             ../../../src/java.desktop/windows/native/libsplashscreen)
 endif()
-
-find_package(Freetype REQUIRED)
-include_directories(${FREETYPE_INCLUDE_DIRS})
 
 set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libjsound/DirectAudio.h
@@ -1204,9 +1203,9 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
 elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN")
     set(SOURCE_FILES
             ${SOURCE_FILES}
+            ../../../src/hotspot/os/windows/include/jvm_md.h
+            ../../../src/java.base/windows/native/include/jni_md.h
             ../../../src/java.desktop/windows/native/include/jawt_md.h
-            ../../../src/java.desktop/windows/native/include/jni_md.h
-            ../../../src/java.desktop/windows/native/include/jvm_md.h
 
             ../../../src/java.desktop/windows/native/libjsound/PLATFORM_API_WinOS_Util.c
             ../../../src/java.desktop/windows/native/libjsound/PLATFORM_API_WinOS_MidiOut.c
