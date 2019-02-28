@@ -1029,6 +1029,7 @@ javax/swing/SwingUtilities/TestBadBreak/TestBadBreak.java                       
 javax/swing/SwingWorker/6432565/bug6432565.java                                     8199077 generic-all
 javax/swing/SwingWorker/6493680/bug6493680.java                                     8198410 windows-all
 javax/swing/SwingWorker/6880336/NestedWorkers.java                                  8199049 windows-all
+javax/swing/ToolTipManager/7123767/bug7123767.java                                  8019920 macosx-all,linux-all,windows-all (linux,windows: commit testing)
 javax/swing/ToolTipManager/Test6256140.java                                         8197552,8167009,8072110 macosx-all,windows-all,linux-all
 javax/swing/UIDefaults/6302464/bug6302464.java                                      8199079 generic-all
 javax/swing/UIDefaults/8133926/InternalFrameIcon.java                               8199075 generic-all
