@@ -61,7 +61,7 @@ public class FontFamily {
      */
     static void remove(Font2D font2D) {
 
-        String name = font2D.getFamilyName(Locale.ENGLISH);
+        String name = font2D.familyName;
         FontFamily family = getFamily(name);
         if (family == null) {
             return;
