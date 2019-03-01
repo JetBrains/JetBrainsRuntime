@@ -602,7 +602,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   HANDLE interrupt_event = CreateEvent(NULL, true, false, NULL);
   if (interrupt_event == NULL) {
     delete osthread;
-    return NULL;
+    return false;
   }
   osthread->set_interrupt_event(interrupt_event);
   osthread->set_interrupted(false);
@@ -676,7 +676,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
     CloseHandle(osthread->interrupt_event());
     thread->set_osthread(NULL);
     delete osthread;
-    return NULL;
+    return false;
   }
 
   Atomic::inc(&os::win32::_os_thread_count);
@@ -5320,27 +5320,6 @@ void Parker::unpark() {
 
 // Platform Monitor implementation
 
-os::PlatformMonitor::PlatformMonitor() {
-  InitializeConditionVariable(&_cond);
-  InitializeCriticalSection(&_mutex);
-}
-
-os::PlatformMonitor::~PlatformMonitor() {
-  DeleteCriticalSection(&_mutex);
-}
-
-void os::PlatformMonitor::lock() {
-  EnterCriticalSection(&_mutex);
-}
-
-void os::PlatformMonitor::unlock() {
-  LeaveCriticalSection(&_mutex);
-}
-
-bool os::PlatformMonitor::try_lock() {
-  return TryEnterCriticalSection(&_mutex);
-}
-
 // Must already be locked
 int os::PlatformMonitor::wait(jlong millis) {
   assert(millis >= 0, "negative timeout");
@@ -5357,14 +5336,6 @@ int os::PlatformMonitor::wait(jlong millis) {
   }
   #endif
   return ret;
-}
-
-void os::PlatformMonitor::notify() {
-  WakeConditionVariable(&_cond);
-}
-
-void os::PlatformMonitor::notify_all() {
-  WakeAllConditionVariable(&_cond);
 }
 
 // Run the specified command in a separate process. Return its exit value,

@@ -168,7 +168,8 @@ void ConstantPoolCacheEntry::set_parameter_size(int value) {
 void ConstantPoolCacheEntry::set_direct_or_vtable_call(Bytecodes::Code invoke_code,
                                                        const methodHandle& method,
                                                        int vtable_index,
-                                                       bool sender_is_interface) {
+                                                       bool sender_is_interface,
+                                                       InstanceKlass* pool_holder) {
   bool is_vtable_call = (vtable_index >= 0);  // FIXME: split this method on this boolean
   assert(method->interpreter_entry() != NULL, "should have been set at this point");
   assert(!method->is_obsolete(),  "attempt to write obsolete method to cpCache");
@@ -263,11 +264,17 @@ void ConstantPoolCacheEntry::set_direct_or_vtable_call(Bytecodes::Code invoke_co
     }
     // Don't mark invokestatic to method as resolved if the holder class has not yet completed
     // initialization. An invokestatic must only proceed if the class is initialized, but if
-    // we resolve it before then that class initialization check is skipped.
-    if (invoke_code == Bytecodes::_invokestatic && !method->method_holder()->is_initialized()) {
+    // we resolve it before then that class initialization check is skipped. However if the call
+    // is from the same class we can resolve as we must be executing with <clinit> on our call stack.
+    if (invoke_code == Bytecodes::_invokestatic &&
+        !method->method_holder()->is_initialized() &&
+        method->method_holder() != pool_holder) {
       do_resolve = false;
     }
     if (do_resolve) {
+      assert(method->method_holder()->is_initialized() ||
+             method->method_holder()->is_reentrant_initialization(Thread::current()),
+             "invalid class initalization state");
       set_bytecode_1(invoke_code);
     }
   } else if (byte_no == 2)  {
@@ -310,17 +317,17 @@ void ConstantPoolCacheEntry::set_direct_or_vtable_call(Bytecodes::Code invoke_co
 }
 
 void ConstantPoolCacheEntry::set_direct_call(Bytecodes::Code invoke_code, const methodHandle& method,
-                                             bool sender_is_interface) {
+                                             bool sender_is_interface, InstanceKlass* pool_holder) {
   int index = Method::nonvirtual_vtable_index;
   // index < 0; FIXME: inline and customize set_direct_or_vtable_call
-  set_direct_or_vtable_call(invoke_code, method, index, sender_is_interface);
+  set_direct_or_vtable_call(invoke_code, method, index, sender_is_interface, pool_holder);
 }
 
 void ConstantPoolCacheEntry::set_vtable_call(Bytecodes::Code invoke_code, const methodHandle& method, int index) {
   // either the method is a miranda or its holder should accept the given index
   assert(method->method_holder()->is_interface() || method->method_holder()->verify_vtable_index(index), "");
   // index >= 0; FIXME: inline and customize set_direct_or_vtable_call
-  set_direct_or_vtable_call(invoke_code, method, index, false);
+  set_direct_or_vtable_call(invoke_code, method, index, false, NULL /* not used */);
 }
 
 void ConstantPoolCacheEntry::set_itable_call(Bytecodes::Code invoke_code,
@@ -591,7 +598,7 @@ void ConstantPoolCacheEntry::adjust_method_entry(Method* old_method,
 
 // a constant pool cache entry should never contain old or obsolete methods
 bool ConstantPoolCacheEntry::check_no_old_or_obsolete_entries() {
-  Method* m = get_interesting_method_entry(NULL);
+  Method* m = get_interesting_method_entry();
   // return false if m refers to a non-deleted old or obsolete method
   if (m != NULL) {
     assert(m->is_valid() && m->is_method(), "m is a valid method");
@@ -601,7 +608,7 @@ bool ConstantPoolCacheEntry::check_no_old_or_obsolete_entries() {
   }
 }
 
-Method* ConstantPoolCacheEntry::get_interesting_method_entry(Klass* k) {
+Method* ConstantPoolCacheEntry::get_interesting_method_entry() {
   if (!is_method_entry()) {
     // not a method entry so not interesting by default
     return NULL;
@@ -622,12 +629,9 @@ Method* ConstantPoolCacheEntry::get_interesting_method_entry(Klass* k) {
     }
   }
   assert(m != NULL && m->is_method(), "sanity check");
-  if (m == NULL || !m->is_method() || (k != NULL && m->method_holder() != k)) {
-    // robustness for above sanity checks or method is not in
-    // the interesting class
+  if (m == NULL || !m->is_method()) {
     return NULL;
   }
-  // the method is in the interesting class so the entry is interesting
   return m;
 }
 #endif // INCLUDE_JVMTI
@@ -777,10 +781,10 @@ void ConstantPoolCache::set_archived_references(oop o) {
 // RedefineClasses() API support:
 // If any entry of this ConstantPoolCache points to any of
 // old_methods, replace it with the corresponding new_method.
-void ConstantPoolCache::adjust_method_entries(InstanceKlass* holder, bool * trace_name_printed) {
+void ConstantPoolCache::adjust_method_entries(bool * trace_name_printed) {
   for (int i = 0; i < length(); i++) {
     ConstantPoolCacheEntry* entry = entry_at(i);
-    Method* old_method = entry->get_interesting_method_entry(holder);
+    Method* old_method = entry->get_interesting_method_entry();
     if (old_method == NULL || !old_method->is_old()) {
       continue; // skip uninteresting entries
     }
@@ -789,11 +793,7 @@ void ConstantPoolCache::adjust_method_entries(InstanceKlass* holder, bool * trac
       entry->initialize_entry(entry->constant_pool_index());
       continue;
     }
-    Method* new_method = holder->method_with_idnum(old_method->orig_method_idnum());
-
-    assert(new_method != NULL, "method_with_idnum() should not be NULL");
-    assert(old_method != new_method, "sanity check");
-
+    Method* new_method = old_method->get_new_method();
     entry_at(i)->adjust_method_entry(old_method, new_method, trace_name_printed);
   }
 }
@@ -801,7 +801,7 @@ void ConstantPoolCache::adjust_method_entries(InstanceKlass* holder, bool * trac
 // the constant pool cache should never contain old or obsolete methods
 bool ConstantPoolCache::check_no_old_or_obsolete_entries() {
   for (int i = 1; i < length(); i++) {
-    if (entry_at(i)->get_interesting_method_entry(NULL) != NULL &&
+    if (entry_at(i)->get_interesting_method_entry() != NULL &&
         !entry_at(i)->check_no_old_or_obsolete_entries()) {
       return false;
     }
@@ -811,7 +811,7 @@ bool ConstantPoolCache::check_no_old_or_obsolete_entries() {
 
 void ConstantPoolCache::dump_cache() {
   for (int i = 1; i < length(); i++) {
-    if (entry_at(i)->get_interesting_method_entry(NULL) != NULL) {
+    if (entry_at(i)->get_interesting_method_entry() != NULL) {
       entry_at(i)->print(tty, i);
     }
   }

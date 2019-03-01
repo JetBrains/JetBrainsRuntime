@@ -191,10 +191,6 @@ int os::create_file_for_heap(const char* dir) {
 
   os::native_path(fullname);
 
-  sigset_t set, oldset;
-  int ret = sigfillset(&set);
-  assert_with_errno(ret == 0, "sigfillset returned error");
-
   // set the file creation mask.
   mode_t file_mode = S_IRUSR | S_IWUSR;
 
@@ -208,7 +204,7 @@ int os::create_file_for_heap(const char* dir) {
   }
 
   // delete the name from the filesystem. When 'fd' is closed, the file (and space) will be deleted.
-  ret = unlink(fullname);
+  int ret = unlink(fullname);
   assert_with_errno(ret == 0, "unlink returned error");
 
   os::free(fullname);
@@ -2219,22 +2215,6 @@ os::PlatformMonitor::~PlatformMonitor() {
   assert_status(status == 0, status, "mutex_destroy");
 }
 
-void os::PlatformMonitor::lock() {
-  int status = pthread_mutex_lock(&_mutex);
-  assert_status(status == 0, status, "mutex_lock");
-}
-
-void os::PlatformMonitor::unlock() {
-  int status = pthread_mutex_unlock(&_mutex);
-  assert_status(status == 0, status, "mutex_unlock");
-}
-
-bool os::PlatformMonitor::try_lock() {
-  int status = pthread_mutex_trylock(&_mutex);
-  assert_status(status == 0 || status == EBUSY, status, "mutex_trylock");
-  return status == 0;
-}
-
 // Must already be locked
 int os::PlatformMonitor::wait(jlong millis) {
   assert(millis >= 0, "negative timeout");
@@ -2261,16 +2241,6 @@ int os::PlatformMonitor::wait(jlong millis) {
     assert_status(status == 0, status, "cond_wait");
     return OS_OK;
   }
-}
-
-void os::PlatformMonitor::notify() {
-  int status = pthread_cond_signal(&_cond);
-  assert_status(status == 0, status, "cond_signal");
-}
-
-void os::PlatformMonitor::notify_all() {
-  int status = pthread_cond_broadcast(&_cond);
-  assert_status(status == 0, status, "cond_broadcast");
 }
 
 #endif // !SOLARIS

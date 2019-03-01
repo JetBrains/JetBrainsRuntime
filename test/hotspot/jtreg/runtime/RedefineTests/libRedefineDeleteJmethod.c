@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,21 +19,29 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#ifndef SHARE_CLASSFILE_DICTIONARY_INLINE_HPP
-#define SHARE_CLASSFILE_DICTIONARY_INLINE_HPP
+#include <jni.h>
 
-#include "classfile/dictionary.hpp"
-#include "runtime/orderAccess.hpp"
+jmethodID mid;
+jclass cls;
+static int count = 0;
 
-inline ProtectionDomainEntry* DictionaryEntry::pd_set_acquire() const {
-  return OrderAccess::load_acquire(&_pd_set);
+JNIEXPORT jint JNICALL
+Java_RedefineDeleteJmethod_jniCallDeleteMe(JNIEnv* env, jobject obj) {
+
+    if (count == 0) {
+      count++;
+      cls = (*env)->FindClass(env, "B");
+      if (NULL == cls) {
+          (*env)->FatalError(env, "could not find class");
+      }
+
+      mid = (*env)->GetStaticMethodID(env, cls, "deleteMe", "()I");
+      if (NULL == mid) {
+          (*env)->FatalError(env, "could not find method");
+      }
+    }
+
+    return (*env)->CallStaticIntMethod(env, cls, mid);
 }
-
-inline void DictionaryEntry::release_set_pd_set(ProtectionDomainEntry* new_head) {
-  OrderAccess::release_store(&_pd_set, new_head);
-}
-
-#endif // SHARE_CLASSFILE_DICTIONARY_INLINE_HPP

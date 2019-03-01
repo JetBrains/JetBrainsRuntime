@@ -230,14 +230,16 @@ class ConstantPoolCacheEntry {
     Bytecodes::Code invoke_code,                 // the bytecode used for invoking the method
     const methodHandle& method,                  // the method/prototype if any (NULL, otherwise)
     int             vtable_index,                // the vtable index if any, else negative
-    bool            sender_is_interface
+    bool            sender_is_interface,         // 'logical' sender (may be host of VMAC)
+    InstanceKlass*  pool_holder                  // class from which the call is made
   );
 
  public:
   void set_direct_call(                          // sets entry to exact concrete method entry
     Bytecodes::Code invoke_code,                 // the bytecode used for invoking the method
     const methodHandle& method,                  // the method to call
-    bool            sender_is_interface
+    bool            sender_is_interface,         // 'logical' sender (may be host of VMAC)
+    InstanceKlass*  pool_holder                  // class from which the call is made
   );
 
   void set_vtable_call(                          // sets entry to vtable index
@@ -376,7 +378,7 @@ class ConstantPoolCacheEntry {
   void adjust_method_entry(Method* old_method, Method* new_method,
          bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
-  Method* get_interesting_method_entry(Klass* k);
+  Method* get_interesting_method_entry();
 #endif // INCLUDE_JVMTI
 
   // Debugging & Printing
@@ -496,7 +498,7 @@ class ConstantPoolCache: public MetaspaceObj {
   // trace_name_printed is set to true if the current call has
   // printed the klass name so that other routines in the adjust_*
   // group don't print the klass name.
-  void adjust_method_entries(InstanceKlass* holder, bool* trace_name_printed);
+  void adjust_method_entries(bool* trace_name_printed);
   bool check_no_old_or_obsolete_entries();
   void dump_cache();
 #endif // INCLUDE_JVMTI

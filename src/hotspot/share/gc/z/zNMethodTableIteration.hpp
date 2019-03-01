@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2010, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,34 +19,30 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- *
  */
 
-#include "precompiled.hpp"
-#include "utilities/debug.hpp"
+#ifndef SHARE_GC_Z_ZNMETHODTABLEITERATION_HPP
+#define SHARE_GC_Z_ZNMETHODTABLEITERATION_HPP
 
-// This file contains definitions for functions that exist
-// in the ExactVM, but not in HotSpot. They are stubbed out
-// here to prevent linker errors when attempting to use HotSpot
-// with the ExactVM jdk.
+#include "gc/z/zGlobals.hpp"
 
-extern "C" void JVM_Process_DestroyProcess(void);
-extern "C" void JVM_Process_ForkAndExec(void);
-extern "C" void JVM_Process_WaitForProcessExit(void);
-extern "C" void gc(void);
+class NMethodClosure;
+class ZNMethodTableEntry;
 
-void JVM_Process_DestroyProcess(void) {
-  ShouldNotReachHere();
-}
+class ZNMethodTableIteration {
+private:
+  ZNMethodTableEntry* _table;
+  size_t              _size;
+  volatile size_t     _claimed ATTRIBUTE_ALIGNED(ZCacheLineSize);
 
-void JVM_Process_ForkAndExec(void) {
-  ShouldNotReachHere();
-}
+public:
+  ZNMethodTableIteration();
 
-void JVM_Process_WaitForProcessExit(void) {
-  ShouldNotReachHere();
-}
+  bool in_progress() const;
 
-void gc(void) {
-  ShouldNotReachHere();
-}
+  void nmethods_do_begin(ZNMethodTableEntry* table, size_t size);
+  void nmethods_do_end();
+  void nmethods_do(NMethodClosure* cl);
+};
+
+#endif // SHARE_GC_Z_ZNMETHODTABLEITERATION_HPP
