@@ -862,7 +862,7 @@ HeapWord* CompactibleSpace::forward_with_rescue(HeapWord* q, size_t size,
   size_t forward_size = size;
 
   // (DCEVM) There is a new version of the class of q => different size
-  if (oop(q)->klass()->new_version() != NULL && oop(q)->klass()->new_version()->update_information() != NULL) {
+  if (oop(q)->klass()->new_version() != NULL) {
 
     size_t new_size = oop(q)->size_given_klass(oop(q)->klass()->new_version());
     // assert(size != new_size, "instances without changed size have to be updated prior to GC run");
