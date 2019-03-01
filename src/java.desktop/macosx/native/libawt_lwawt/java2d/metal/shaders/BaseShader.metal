@@ -35,10 +35,26 @@ struct VertexOut {
 };
 
 
-vertex VertexOut vertexShader(device MetalVertex *vertices [[buffer(0)]], uint vid [[vertex_id]]) {
-    VertexOut out;
+/*
+    Java2D coordinate system : Top Left (0, 0) : Bottom Right (width and height)
+    Metal coordinate system is : 
+    Center is (0.0, 0.0)
+    Bottom Left (-1.0, -1.0) : Top Right (1.0, 1.0)
+    Top Left (-1.0, 1.0) : Bottom Right (1.0, -1.0)
+*/
 
+vertex VertexOut vertexShader(device MetalVertex *vertices [[buffer(0)]], 
+                              constant unsigned int *viewportSize [[buffer(1)]],
+                              uint vid [[vertex_id]]) {
+    VertexOut out;
     out.pos = vertices[vid].position;
+
+    float halfViewWidth = (float)(viewportSize[0] >> 1);
+    float halfViewHeight = (float)(viewportSize[1] >> 1);
+
+    out.pos.x = (out.pos.x - halfViewWidth) / halfViewWidth;
+    out.pos.y = (halfViewHeight - out.pos.y) / halfViewHeight;
+   
     out.color = vertices[vid].color;
 
     return out;

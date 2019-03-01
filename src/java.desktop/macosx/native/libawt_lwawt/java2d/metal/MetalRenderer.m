@@ -44,6 +44,8 @@
 // TODO : Current Color, Gradient etc should have its own class
 static float drawColor[4] = {0.0, 0.0, 0.0, 0.0};
 static int ClipRectangle[4] = {0, 0, 0, 0};
+// The current size of our view so we can use this in our render pipeline
+// static unsigned int viewportSize[2] = {0, 0};
 
 void
 MetalRenderer_DrawLine(MetalContext *mtlc, jint x1, jint y1, jint x2, jint y2)
@@ -110,14 +112,9 @@ MetalRenderer_DrawLine(MetalContext *mtlc, jint x1, jint y1, jint x2, jint y2)
 
         P1_X = fx1;
         P1_Y = fy1;
-        P2_X = fx2; 
+        P2_X = fx2;
         P2_Y = fy2;
     }
-
-    
-    MetalSDOps* dstOps = MetalRenderQueue_GetCurrentDestination();
-   
-    MetalLayer* layer = dstOps->layer;
     
     // The (x1, y1) & (x2, y2) are in coordinate system :
     //     Top Left (0, 0) : Bottom Right (width and height)
@@ -125,37 +122,12 @@ MetalRenderer_DrawLine(MetalContext *mtlc, jint x1, jint y1, jint x2, jint y2)
     // Metal rendering coordinate system is :
     //     Top Left (-1.0, 1.0) : Bottom Right (1.0, -1.0)
     //
-    // Todo : This coordinate transformation should be moved to shader code.
-    float halfWidth = layer.textureWidth / 2.0;
-    float halfHeight = layer.textureHeight / 2.0;
-    if (x1 <= halfWidth) {
-        x1 = -1 * (halfWidth - x1);
-    } else {
-        x1 = x1 - halfWidth;
-    }
-    
-    if (x2 <= halfWidth) {
-        x2 = -1 * (halfWidth - x2);
-    } else {
-        x2 = x2 - halfWidth;
-    }
-    
-    if (y1 >= halfHeight) {
-        y1 = -1 * (y1 - halfHeight);
-    } else {
-        y1 = halfHeight - y1;
-    }
-    
-    if (y2 >= halfHeight) {
-        y2 = -1 * (y2 - halfHeight);
-    } else {
-        y2 = halfHeight - y2;
-    }
-    
+    // This coordinate transformation happens in shader code.
+       
     MetalVertex lineVertexData[] =
     {
-        { {x1/halfWidth, y1/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
-        { {x2/halfWidth, y2/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} }
+        { {P1_X, P1_Y, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
+        { {P2_X, P2_Y, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} }
     };
     
     //NSLog(@"Drawline ----- x1 : %f, y1 : %f------ x2 : %f, y2 = %f", x1/halfWidth, y1/halfHeight,  x2/halfWidth, y2/halfHeight); 
@@ -296,76 +268,21 @@ void FILL_PGRAM(float fx11, float fy11, float dx21, float dy21, float dx12, floa
 void MetalRenderer_DrawQuad(float x1, float y1, float x2, float y2, float x3, float y3, float x4, float y4) {
    
     // Draw two triangles with given 4 vertices
-    
-    MetalSDOps* dstOps = MetalRenderQueue_GetCurrentDestination();
-    
-    MetalLayer* layer = dstOps->layer;
-
-
+  
     // The (x1, y1) & (x2, y2) are in coordinate system : 
     //     Top Left (0, 0) : Bottom Right (width and height)
     //
     // Metal rendering coordinate system is :
     //     Top Left (-1.0, 1.0) : Bottom Right (1.0, -1.0)
     //
-    // Todo : This coordinate transformation should be moved to shader code. 
-    float halfWidth = layer.textureWidth / 2.0;
-    float halfHeight = layer.textureHeight / 2.0;
-
-    if (x1 <= halfWidth) {
-        x1 = -1 * (halfWidth - x1);
-    } else {
-        x1 = x1 - halfWidth;
-    }
-
-    if (x2 <= halfWidth) {
-        x2 = -1 * (halfWidth - x2);
-    } else {
-        x2 = x2 - halfWidth;
-    }
-
-    if (y1 >= halfHeight) {
-        y1 = -1 * (y1 - halfHeight);
-    } else {
-        y1 = halfHeight - y1;
-    }
-
-    if (y2 >= halfHeight) {
-        y2 = -1 * (y2 - halfHeight);
-    } else {
-        y2 = halfHeight - y2;
-    }
-
-    if (x3 <= halfWidth) {
-        x3 = -1 * (halfWidth - x3);
-    } else {
-        x3 = x3 - halfWidth;
-    }
-
-    if (x4 <= halfWidth) {
-        x4 = -1 * (halfWidth - x4);
-    } else {
-        x4 = x4 - halfWidth;
-    }
-
-    if (y3 >= halfHeight) {
-        y3 = -1 * (y3 - halfHeight);
-    } else {
-        y3 = halfHeight - y3;
-    }
-
-    if (y4 >= halfHeight) {
-        y4 = -1 * (y4 - halfHeight);
-    } else {
-        y4 = halfHeight - y4;
-    }
+    // This coordinate transformation happens in shader code. 
 
     MetalVertex QuadVertexData[] =
     {
-        { {x1/halfWidth, y1/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
-        { {x2/halfWidth, y2/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
-        { {x3/halfWidth, y3/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
-        { {x4/halfWidth, y4/halfHeight, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
+        { {x1, y1, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
+        { {x2, y2, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
+        { {x3, y3, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
+        { {x4, y4, 0.0, 1.0}, {drawColor[0], drawColor[1], drawColor[2], drawColor[3]} },
     };
 
     VertexDataManager_addQuadVertexData(QuadVertexData[0], QuadVertexData[1], QuadVertexData[2], QuadVertexData[3]);
@@ -494,7 +411,9 @@ void MetalRenderer_Flush() {
 
     MetalSDOps* dstOps = MetalRenderQueue_GetCurrentDestination();  
     MetalLayer* mtlLayer = dstOps->layer;
-       
+
+    unsigned int viewportSize[2] = {mtlLayer.textureWidth, mtlLayer.textureHeight};
+
     //Create a render pass descriptor
     MTLRenderPassDescriptor* mtlRenderPassDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
         
@@ -520,7 +439,11 @@ void MetalRenderer_Flush() {
     // ---------------------------------------------------------
     // DRAW primitives from VertexDataManager
     // ---------------------------------------------------------    
-    [renderEncoder setVertexBuffer:VertexDataManager_getVertexBuffer() offset:0 atIndex:0];
+    [renderEncoder setVertexBuffer:VertexDataManager_getVertexBuffer() offset:0 atIndex:0]; // 0th index 
+    
+    [renderEncoder setVertexBytes: &viewportSize
+                           length: sizeof(viewportSize)
+                          atIndex: 1]; // 1st index
 
     MetalPrimitiveData** allPrimitives = VertexDataManager_getAllPrimitives();
 
