@@ -511,7 +511,9 @@ static void registerFontW(GdiFontMapInfo *fmi, jobject fontToFileMap,
     DeleteLocalReference(env, fileStr);
 }
 
-static void populateFontFileNameFromRegistryKey(HKEY regKey, GdiFontMapInfo *fmi, jobject fontToFileMap)
+static void populateFontFileNameFromRegistryKey(HKEY regKey,
+                                                GdiFontMapInfo *fmi,
+                                                jobject fontToFileMap)
 {
 #define MAX_BUFFER (FILENAME_MAX+1)
     const wchar_t wname[MAX_BUFFER];
@@ -655,12 +657,12 @@ Java_sun_awt_Win32FontManager_populateFontFileNameMap0
     EnumFontFamiliesExW(screenDC, &lfw,
                         (FONTENUMPROCW)EnumFamilyNamesW,
                         (LPARAM)(&fmi), 0L);
-
-    populateFontFileNameFromRegistryKey(HKEY_LOCAL_MACHINE, &fmi, fontToFileMap);
-    /* Starting from Windows 10 Preview Build 17704 fonts are installed into user's home folder by default,
+    /* Starting from Windows 10 Preview Build 17704
+     * fonts are installed into user's home folder by default,
      * and are listed in user's registry section
      */
     populateFontFileNameFromRegistryKey(HKEY_CURRENT_USER, &fmi, fontToFileMap);
+    populateFontFileNameFromRegistryKey(HKEY_LOCAL_MACHINE, &fmi, fontToFileMap);
 
     ReleaseDC(NULL, screenDC);
     screenDC = NULL;
