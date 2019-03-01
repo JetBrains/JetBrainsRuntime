@@ -29,22 +29,27 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.QuadCurve2D;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MetalPerfTest {
-    private final static int N = 50;
+    private final static int N = 500;
     private final static float WIDTH = 800;
     private final static float HEIGHT = 800;
     private final static float R = 25;
     private final static int BW = 50;
     private final static int BH = 50;
-    private final static int COUNT = 100;
+    private final static int COUNT = 300;
     private final static int DELAY = 10;
     private final static int RESOLUTION = 5;
     private final static int COLOR_TOLERANCE = 10;
 
 
+    interface Renderable {
+        void render(Graphics2D g2d);
+        void update();
+    }
 
     static class Particles {
         private float[] bx;
@@ -81,7 +86,7 @@ public class MetalPerfTest {
 
         void render(Graphics2D g2d, ParticleRenderer renderer) {
             for (int i = 0; i < n; i++) {
-                renderer.render(g2d, i, bx[i], by[i]);
+                renderer.render(g2d, i, bx, by, vx, vy);
             }
         }
 
@@ -97,12 +102,14 @@ public class MetalPerfTest {
     }
 
     interface ParticleRenderer {
-        void render(Graphics2D g2d, int id, float x, float y);
+        void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy);
+
     }
 
     static class FlatParticleRenderer implements ParticleRenderer {
         Color[] colors;
         float r;
+
         FlatParticleRenderer(int n, float r) {
             colors = new Color[n];
             this.r = r;
@@ -113,29 +120,101 @@ public class MetalPerfTest {
         }
 
         @Override
-        public void render(Graphics2D g2d, int id, float x, float y) {
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
             g2d.setColor(colors[id % colors.length]);
-            g2d.fillOval((int)(x - r), (int)(y - r), (int)(2*r), (int)(2*r));
+            g2d.fillOval((int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r));
         }
-    }
 
+    }
     static class FlatBoxParticleRenderer extends FlatParticleRenderer {
+
 
         FlatBoxParticleRenderer(int n, float r) {
             super(n, r);
         }
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.setColor(colors[id % colors.length]);
+            g2d.fillRect((int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r));
+
+        }
+
+    }
+    static class WiredParticleRenderer extends FlatParticleRenderer {
+
+
+        WiredParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.setColor(colors[id % colors.length]);
+            g2d.drawOval((int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r));
+        }
+
+    }
+    static class WiredBoxParticleRenderer extends FlatParticleRenderer {
+
+        WiredBoxParticleRenderer(int n, float r) {
+            super(n, r);
+        }
 
         @Override
-        public void render(Graphics2D g2d, int id, float x, float y) {
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
             g2d.setColor(colors[id % colors.length]);
-            g2d.fillRect((int)(x - r), (int)(y - r), (int)(2*r), (int)(2*r));
+            g2d.drawRect((int)(x[id] - r), (int)(y[id] - r), (int)(2*r), (int)(2*r));
+        }
+
+    }
+    static class SegParticleRenderer extends FlatParticleRenderer {
+
+        SegParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            double v = Math.sqrt(vx[id]*vx[id]+vy[id]*vy[id]);
+            float nvx = (float) (vx[id]/v);
+            float nvy = (float) (vy[id]/v);
+            g2d.setColor(colors[id % colors.length]);
+            g2d.drawLine((int)(x[id] - r*nvx), (int)(y[id] - r*nvy),
+                    (int)(x[id] + 2*r*nvx), (int)(y[id] + 2*r*nvy));
+        }
+
+    }
+
+
+    static class WiredQuadParticleRenderer extends FlatParticleRenderer {
+
+        WiredQuadParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if (id > 2 && (id % 3) == 0) {
+                g2d.setColor(colors[id % colors.length]);
+                g2d.draw(new QuadCurve2D.Float(x[id-3], y[id-3], x[id-2], y[id-2], x[id-1], y[id-1]));
+            }
 
         }
     }
 
-    interface Renderable {
-        void render(Graphics2D g2d);
-        void update();
+    static class FlatQuadParticleRenderer extends FlatParticleRenderer {
+
+        FlatQuadParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            if (id > 2 && (id % 3) == 0) {
+                g2d.setColor(colors[id % colors.length]);
+                g2d.fill(new QuadCurve2D.Float(x[id-3], y[id-3], x[id-2], y[id-2], x[id-1], y[id-1]));
+            }
+
+        }
     }
 
     class PerfMeter {
@@ -244,8 +323,14 @@ public class MetalPerfTest {
     }
 
     private static final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
-    private static final FlatParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
-    private static final FlatBoxParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
+    private static final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
+    private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
+    private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
+    private static final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
+    private static final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
+    private static final ParticleRenderer flatQuadRenderer = new FlatQuadParticleRenderer(N, R);
+    private static final ParticleRenderer wiredQuadRenderer = new WiredQuadParticleRenderer(N, R);
+
 
     @Test
     public void testFlatBubbles() throws Exception {
@@ -282,4 +367,95 @@ public class MetalPerfTest {
 
         System.out.println(fps);
     }
+
+    @Test
+    public void testWiredBubbles() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, wiredRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+    @Test
+    public void testWiredBoxBubbles() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, wiredBoxRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+    @Test
+    public void testLines() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, segRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+    @Test
+    public void testFlatQuad() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, flatQuadRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+    @Test
+    public void testWiredQuad() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, wiredQuadRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
 }

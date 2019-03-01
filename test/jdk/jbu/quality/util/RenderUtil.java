@@ -28,7 +28,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class RenderUtil {
-    final static int TOLERANCE = 40;
+    final static int TOLERANCE = 1;
 
     public static BufferedImage capture(int width, int height, Consumer<Graphics2D> painter)
             throws Exception
