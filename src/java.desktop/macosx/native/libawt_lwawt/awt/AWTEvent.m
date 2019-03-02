@@ -241,6 +241,8 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0,0}
 };
 
+static BOOL RIGHT_ALT_AS_ALT_GRAPH = YES; // to provide ability to switch off the AltGr mapping if needed
+
 // TODO: some constants below are part of CGS (private interfaces)...
 // for now we will look at the raw key code to determine left/right status
 // but not sure this is foolproof...
@@ -251,16 +253,20 @@ static struct _nsKeyToJavaModifier
     //NSUInteger cgsRightMask;
     unsigned short leftKeyCode;
     unsigned short rightKeyCode;
+    BOOL leftKeyPressed;
+    BOOL rightKeyPressed;
     jint javaExtMask;
     jint javaMask;
     jint javaKey;
 }
-const nsKeyToJavaModifierTable[] =
+nsKeyToJavaModifierTable[] =
 {
     {
         NSAlphaShiftKeyMask,
         0,
         0,
+        NO,
+        NO,
         0, // no Java equivalent
         0, // no Java equivalent
         java_awt_event_KeyEvent_VK_CAPS_LOCK
@@ -271,6 +277,8 @@ const nsKeyToJavaModifierTable[] =
         //kCGSFlagsMaskAppleRightShiftKey,
         56,
         60,
+        NO,
+        NO,
         java_awt_event_InputEvent_SHIFT_DOWN_MASK,
         java_awt_event_InputEvent_SHIFT_MASK,
         java_awt_event_KeyEvent_VK_SHIFT
@@ -281,6 +289,8 @@ const nsKeyToJavaModifierTable[] =
         //kCGSFlagsMaskAppleRightControlKey,
         59,
         62,
+        NO,
+        NO,
         java_awt_event_InputEvent_CTRL_DOWN_MASK,
         java_awt_event_InputEvent_CTRL_MASK,
         java_awt_event_KeyEvent_VK_CONTROL
@@ -291,6 +301,8 @@ const nsKeyToJavaModifierTable[] =
         //kCGSFlagsMaskAppleRightCommandKey,
         55,
         54,
+        NO,
+        NO,
         java_awt_event_InputEvent_META_DOWN_MASK,
         java_awt_event_InputEvent_META_MASK,
         java_awt_event_KeyEvent_VK_META
@@ -300,34 +312,27 @@ const nsKeyToJavaModifierTable[] =
         //kCGSFlagsMaskAppleLeftAlternateKey,
         //kCGSFlagsMaskAppleRightAlternateKey,
         58,
-        0,
+        61,
+        NO,
+        NO,
         java_awt_event_InputEvent_ALT_DOWN_MASK,
         java_awt_event_InputEvent_ALT_MASK,
         java_awt_event_KeyEvent_VK_ALT
-    },
-    {
-        NSAlternateKeyMask,
-        0,
-        61,
-        java_awt_event_InputEvent_ALT_DOWN_MASK | java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK,
-        java_awt_event_InputEvent_ALT_MASK | java_awt_event_InputEvent_ALT_GRAPH_MASK,
-        java_awt_event_KeyEvent_VK_ALT | java_awt_event_KeyEvent_VK_ALT_GRAPH
     },
     // NSNumericPadKeyMask
     {
         NSHelpKeyMask,
         0,
         0,
+        NO,
+        NO,
         0, // no Java equivalent
         0, // no Java equivalent
         java_awt_event_KeyEvent_VK_HELP
     },
     // NSFunctionKeyMask
-    {0, 0, 0, 0, 0, 0}
+    {0, 0, 0, NO, NO, 0, 0, 0}
 };
-
-static BOOL leftAltKeyPressed;
-static BOOL altGRPressed = NO;
 
 /*
  * Almost all unicode characters just go from NS to Java with no translation.
@@ -720,7 +725,7 @@ NsKeyModifiersToJavaKeyInfo(NSUInteger nsFlags, unsigned short eventKeyCode,
 {
     static NSUInteger sPreviousNSFlags = 0;
 
-    const struct _nsKeyToJavaModifier* cur;
+    struct _nsKeyToJavaModifier* cur;
     NSUInteger oldNSFlags = sPreviousNSFlags;
     NSUInteger changedNSFlags = oldNSFlags ^ nsFlags;
     sPreviousNSFlags = nsFlags;
@@ -730,27 +735,41 @@ NsKeyModifiersToJavaKeyInfo(NSUInteger nsFlags, unsigned short eventKeyCode,
     *javaKeyType = java_awt_event_KeyEvent_KEY_PRESSED;
 
     for (cur = nsKeyToJavaModifierTable; cur->nsMask != 0; ++cur) {
+        if (eventKeyCode != 0) {
+            // if key code is specified we are able to determine its location
+            // also it is possible to track the pressed state of the corresponding key
+            if (cur->leftKeyCode == eventKeyCode) {
+                // specified key code switches the pressed state only if the current mask is set
+                cur->leftKeyPressed = !cur->leftKeyPressed && (cur->nsMask & nsFlags);
+                *javaKeyCode = cur->javaKey;
+                *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_LEFT;
+                *javaKeyType = cur->leftKeyPressed
+                        ? java_awt_event_KeyEvent_KEY_PRESSED
+                        : java_awt_event_KeyEvent_KEY_RELEASED;
+                break;
+            }
+            if (cur->rightKeyCode == eventKeyCode) {
+                // specified key code switches the pressed state only if the current mask is set
+                cur->rightKeyPressed = !cur->rightKeyPressed && (cur->nsMask & nsFlags);
+                *javaKeyCode = cur->javaKey;
+                if (RIGHT_ALT_AS_ALT_GRAPH && cur->nsMask == NSAlternateKeyMask) {
+                    // special case - consider right Alt as AltGr:
+                    *javaKeyCode = java_awt_event_KeyEvent_VK_ALT_GRAPH;
+                }
+                *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_RIGHT;
+                *javaKeyType = cur->rightKeyPressed
+                        ? java_awt_event_KeyEvent_KEY_PRESSED
+                        : java_awt_event_KeyEvent_KEY_RELEASED;
+                break;
+            }
+        }
+        // skip current record in the table if current mask is not changed
         if (changedNSFlags & cur->nsMask) {
             *javaKeyCode = cur->javaKey;
             *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_STANDARD;
-            // TODO: uses SPI...
-            //if (changedNSFlags & cur->cgsLeftMask) {
-            //    *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_LEFT;
-            //} else if (changedNSFlags & cur->cgsRightMask) {
-            //    *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_RIGHT;
-            //}
-            if (eventKeyCode == cur->leftKeyCode) {
-                leftAltKeyPressed = YES;
-                *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_LEFT;
-            } else if (eventKeyCode == cur->rightKeyCode) {
-                *javaKeyLocation = java_awt_event_KeyEvent_KEY_LOCATION_RIGHT;
-            } else if (cur->nsMask == NSAlternateKeyMask) {
-                leftAltKeyPressed = NO;
-                continue;
-            }
-            *javaKeyType = (cur->nsMask & nsFlags) ?
-            java_awt_event_KeyEvent_KEY_PRESSED :
-            java_awt_event_KeyEvent_KEY_RELEASED;
+            *javaKeyType = (cur->nsMask & nsFlags)
+                    ? java_awt_event_KeyEvent_KEY_PRESSED
+                    : java_awt_event_KeyEvent_KEY_RELEASED;
             break;
         }
     }
@@ -762,22 +781,17 @@ NsKeyModifiersToJavaKeyInfo(NSUInteger nsFlags, unsigned short eventKeyCode,
 jint NsKeyModifiersToJavaModifiers(NSUInteger nsFlags, BOOL isExtMods)
 {
     jint javaModifiers = 0;
-    const struct _nsKeyToJavaModifier* cur;
+    struct _nsKeyToJavaModifier* cur;
 
     for (cur = nsKeyToJavaModifierTable; cur->nsMask != 0; ++cur) {
-        if ((cur->nsMask & nsFlags) != 0) {
-
-            if (cur->nsMask == NSAlternateKeyMask) {
-                if (leftAltKeyPressed == YES) {
-                    javaModifiers |= isExtMods? cur->javaExtMask : cur->javaMask;
-                    if (altGRPressed == NO)
-                        break;
-                    } else {
-                        leftAltKeyPressed = YES;
-                        altGRPressed = YES;
-                        continue;
-                    }
-                }
+        if (cur->nsMask & nsFlags) {
+            if (RIGHT_ALT_AS_ALT_GRAPH && cur->nsMask == NSAlternateKeyMask && cur->rightKeyPressed) {
+                // special case - consider right Alt as AltGr:
+                javaModifiers |= isExtMods
+                        ? java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK
+                        : java_awt_event_InputEvent_ALT_GRAPH_MASK;
+                if (!cur->leftKeyPressed) continue; // ignore Alt mask
+            }
             javaModifiers |= isExtMods ? cur->javaExtMask : cur->javaMask;
         }
     }
@@ -791,7 +805,7 @@ jint NsKeyModifiersToJavaModifiers(NSUInteger nsFlags, BOOL isExtMods)
 NSUInteger JavaModifiersToNsKeyModifiers(jint javaModifiers, BOOL isExtMods)
 {
     NSUInteger nsFlags = 0;
-    const struct _nsKeyToJavaModifier* cur;
+    struct _nsKeyToJavaModifier* cur;
 
     for (cur = nsKeyToJavaModifierTable; cur->nsMask != 0; ++cur) {
         jint mask = isExtMods? cur->javaExtMask : cur->javaMask;
@@ -799,15 +813,16 @@ NSUInteger JavaModifiersToNsKeyModifiers(jint javaModifiers, BOOL isExtMods)
             nsFlags |= cur->nsMask;
         }
     }
+    if (RIGHT_ALT_AS_ALT_GRAPH) {
+        // special case - consider right Alt as AltGr:
+        jint mask = isExtMods
+                ? java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK
+                : java_awt_event_InputEvent_ALT_GRAPH_MASK;
 
-    // special case
-    jint mask = isExtMods? java_awt_event_InputEvent_ALT_GRAPH_DOWN_MASK :
-                           java_awt_event_InputEvent_ALT_GRAPH_MASK;
-
-    if ((mask & javaModifiers) != 0) {
-        nsFlags |= NSAlternateKeyMask;
+        if ((mask & javaModifiers) != 0) {
+            nsFlags |= NSAlternateKeyMask;
+        }
     }
-
     return nsFlags;
 }
 
