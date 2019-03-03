@@ -78,8 +78,11 @@ gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
 
 # :hotspot_runtime
 
-runtime/CompressedOops/UseCompressedOops.java 8079353 generic-all
-runtime/SharedArchiveFile/SASymbolTableTest.java 8193639 solaris-all
+runtime/CompressedOops/UseCompressedOops.java                                       8079353 generic-all
+runtime/NMT/MallocStressTest.java                                                   8079353 generic-all
+runtime/SharedArchiveFile/SASymbolTableTest.java                                    8193639 solaris-all
+vmTestbase/nsk/jdi/BScenarios/hotswap/tc10x001/TestDescription.java                 8013728 generic-all
+runtime/memory/ReadFromNoaccessArea.java                                            nobug   generic-all crash is the expected behaviour
 
 #############################################################################
 
