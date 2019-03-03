@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -126,49 +128,8 @@ static GLhandleARB convolvePrograms[8];
 static GLhandleARB
 MTLBufImgOps_CreateConvolveProgram(jint flags)
 {
-  /*  GLhandleARB convolveProgram;
-    GLint loc;
-    char *kernelMax = IS_SET(CONVOLVE_5X5) ? "25" : "9";
-    char *target = IS_SET(CONVOLVE_RECT) ? "2DRect" : "2D";
-    char edge[100];
-    char finalSource[2000];
-
-    J2dTraceLn1(J2D_TRACE_INFO,
-                "MTLBufImgOps_CreateConvolveProgram: flags=%d",
-                flags);
-
-    if (IS_SET(CONVOLVE_EDGE_ZERO_FILL)) {
-        // EDGE_ZERO_FILL: fill in zero at the edges
-        sprintf(edge, "sum = vec4(0.0);");
-    } else {
-        // EDGE_NO_OP: use the source pixel color at the edges
-        sprintf(edge,
-                "sum = texture%s(baseImage, gl_TexCoord[0].st);",
-                target);
-    }
-
-    // compose the final source code string from the various pieces
-    sprintf(finalSource, convolveShaderSource,
-            kernelMax, target, edge, target);
-
-    convolveProgram = MTLContext_CreateFragmentProgram(finalSource);
-    if (convolveProgram == 0) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLBufImgOps_CreateConvolveProgram: error creating program");
-        return 0;
-    }
-
-    // "use" the program object temporarily so that we can set the uniforms
-    j2d_glUseProgramObjectARB(convolveProgram);
-
-    // set the "uniform" texture unit binding
-    loc = j2d_glGetUniformLocationARB(convolveProgram, "baseImage");
-    j2d_glUniform1iARB(loc, 0); // texture unit 0
-
-    // "unuse" the program object; it will be re-bound later as needed
-    j2d_glUseProgramObjectARB(0);
-
-    return convolveProgram;*/
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_CreateConvolveProgram");
     return NULL;
 }
 
@@ -178,100 +139,16 @@ MTLBufImgOps_EnableConvolveOp(MTLContext *mtlc, jlong pSrcOps,
                               jint kernelWidth, jint kernelHeight,
                               unsigned char *kernel)
 {
-  /*  MTLSDOps *srcOps = (MTLSDOps *)jlong_to_ptr(pSrcOps);
-    jint kernelSize = kernelWidth * kernelHeight;
-    GLhandleARB convolveProgram;
-    GLfloat xoff, yoff;
-    GLfloat edgeX, edgeY, minX, minY, maxX, maxY;
-    GLfloat kernelVals[MAX_KERNEL_SIZE*3];
-    jint i, j, kIndex;
-    GLint loc;
-    jint flags = 0;
-
-    J2dTraceLn2(J2D_TRACE_INFO,
-                "MTLBufImgOps_EnableConvolveOp: kernelW=%d kernelH=%d",
-                kernelWidth, kernelHeight);
-
-    RETURN_IF_NULL(mtlc);
-    RETURN_IF_NULL(srcOps);
-    RESET_PREVIOUS_OP();
-
-    if (srcOps->textureTarget == GL_TEXTURE_RECTANGLE_ARB) {
-        flags |= CONVOLVE_RECT;
-
-        // for GL_TEXTURE_RECTANGLE_ARB, texcoords are specified in the
-        // range [0,srcw] and [0,srch], so to achieve an x/y offset of
-        // exactly one pixel we simply use the value 1 here
-        xoff = 1.0f;
-        yoff = 1.0f;
-    } else {
-        // for GL_TEXTURE_2D, texcoords are specified in the range [0,1],
-        // so to achieve an x/y offset of approximately one pixel we have
-        // to normalize to that range here
-        xoff = 1.0f / srcOps->textureWidth;
-        yoff = 1.0f / srcOps->textureHeight;
-    }
-    if (edgeZeroFill) {
-        flags |= CONVOLVE_EDGE_ZERO_FILL;
-    }
-    if (kernelWidth == 5 && kernelHeight == 5) {
-        flags |= CONVOLVE_5X5;
-    }
-
-    // locate/initialize the shader program for the given flags
-    if (convolvePrograms[flags] == 0) {
-        convolvePrograms[flags] = MTLBufImgOps_CreateConvolveProgram(flags);
-        if (convolvePrograms[flags] == 0) {
-            // shouldn't happen, but just in case...
-            return;
-        }
-    }
-    convolveProgram = convolvePrograms[flags];
-
-    // enable the convolve shader
-    j2d_glUseProgramObjectARB(convolveProgram);
-
-    // update the "uniform" image min/max values
-    edgeX = (kernelWidth/2) * xoff;
-    edgeY = (kernelHeight/2) * yoff;
-    minX = edgeX;
-    minY = edgeY;
-    if (srcOps->textureTarget == GL_TEXTURE_RECTANGLE_ARB) {
-        // texcoords are in the range [0,srcw] and [0,srch]
-        maxX = ((GLfloat)srcOps->width)  - edgeX;
-        maxY = ((GLfloat)srcOps->height) - edgeY;
-    } else {
-        // texcoords are in the range [0,1]
-        maxX = (((GLfloat)srcOps->width) / srcOps->textureWidth) - edgeX;
-        maxY = (((GLfloat)srcOps->height) / srcOps->textureHeight) - edgeY;
-    }
-    loc = j2d_glGetUniformLocationARB(convolveProgram, "imgEdge");
-    j2d_glUniform4fARB(loc, minX, minY, maxX, maxY);
-
-    // update the "uniform" kernel offsets and values
-    loc = j2d_glGetUniformLocationARB(convolveProgram, "kernelVals");
-    kIndex = 0;
-    for (i = -kernelHeight/2; i < kernelHeight/2+1; i++) {
-        for (j = -kernelWidth/2; j < kernelWidth/2+1; j++) {
-            kernelVals[kIndex+0] = j*xoff;
-            kernelVals[kIndex+1] = i*yoff;
-            kernelVals[kIndex+2] = NEXT_FLOAT(kernel);
-            kIndex += 3;
-        }
-    }
-    j2d_glUniform3fvARB(loc, kernelSize, kernelVals);*/
-
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_EnableConvolveOp");
 }
 
 void
 MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_EnableConvolveOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableConvolveOp");
-
- //   RETURN_IF_NULL(mtlc);
-
-    // disable the ConvolveOp shader
-   // j2d_glUseProgramObjectARB(0);
 }
 
 /**************************** RescaleOp support *****************************/
@@ -343,44 +220,8 @@ static GLhandleARB rescalePrograms[4];
 static GLhandleARB
 MTLBufImgOps_CreateRescaleProgram(jint flags)
 {
-  /*  GLhandleARB rescaleProgram;
-    GLint loc;
-    char *target = IS_SET(RESCALE_RECT) ? "2DRect" : "2D";
-    char *preRescale = "";
-    char *postRescale = "";
-    char finalSource[2000];
-
-    J2dTraceLn1(J2D_TRACE_INFO,
-                "MTLBufImgOps_CreateRescaleProgram: flags=%d",
-                flags);
-
-    if (IS_SET(RESCALE_NON_PREMULT)) {
-        preRescale  = "srcColor.rgb /= srcColor.a;";
-        postRescale = "result.rgb *= result.a;";
-    }
-
-    // compose the final source code string from the various pieces
-    sprintf(finalSource, rescaleShaderSource,
-            target, target, preRescale, postRescale);
-
-    rescaleProgram = MTLContext_CreateFragmentProgram(finalSource);
-    if (rescaleProgram == 0) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLBufImgOps_CreateRescaleProgram: error creating program");
-        return 0;
-    }
-
-    // "use" the program object temporarily so that we can set the uniforms
-    j2d_glUseProgramObjectARB(rescaleProgram);
-
-    // set the "uniform" values
-    loc = j2d_glGetUniformLocationARB(rescaleProgram, "baseImage");
-    j2d_glUniform1iARB(loc, 0); // texture unit 0
-
-    // "unuse" the program object; it will be re-bound later as needed
-    j2d_glUseProgramObjectARB(0);
-
-    return rescaleProgram;*/
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_CreateRescaleProgram");
     return NULL;
 }
 
@@ -390,73 +231,17 @@ MTLBufImgOps_EnableRescaleOp(MTLContext *mtlc, jlong pSrcOps,
                              unsigned char *scaleFactors,
                              unsigned char *offsets)
 {
- /*   MTLSDOps *srcOps = (MTLSDOps *)jlong_to_ptr(pSrcOps);
-    GLhandleARB rescaleProgram;
-    GLint loc;
-    jint flags = 0;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_EnableRescaleOp");
-
-    RETURN_IF_NULL(mtlc);
-    RETURN_IF_NULL(srcOps);
-    RESET_PREVIOUS_OP();
-
-    // choose the appropriate shader, depending on the source texture target
-    if (srcOps->textureTarget == GL_TEXTURE_RECTANGLE_ARB) {
-        flags |= RESCALE_RECT;
-    }
-    if (nonPremult) {
-        flags |= RESCALE_NON_PREMULT;
-    }
-
-    // locate/initialize the shader program for the given flags
-    if (rescalePrograms[flags] == 0) {
-        rescalePrograms[flags] = MTLBufImgOps_CreateRescaleProgram(flags);
-        if (rescalePrograms[flags] == 0) {
-            // shouldn't happen, but just in case...
-            return;
-        }
-    }
-    rescaleProgram = rescalePrograms[flags];
-
-    // enable the rescale shader
-    j2d_glUseProgramObjectARB(rescaleProgram);
-
-    // update the "uniform" scale factor values (note that the Java-level
-    // dispatching code always passes down 4 values here, regardless of
-    // the original source image type)
-    loc = j2d_glGetUniformLocationARB(rescaleProgram, "scaleFactors");
-    {
-        GLfloat sf1 = NEXT_FLOAT(scaleFactors);
-        GLfloat sf2 = NEXT_FLOAT(scaleFactors);
-        GLfloat sf3 = NEXT_FLOAT(scaleFactors);
-        GLfloat sf4 = NEXT_FLOAT(scaleFactors);
-        j2d_glUniform4fARB(loc, sf1, sf2, sf3, sf4);
-    }
-
-    // update the "uniform" offset values (note that the Java-level
-    // dispatching code always passes down 4 values here, and that the
-    // offsets will have already been normalized to the range [0,1])
-    loc = j2d_glGetUniformLocationARB(rescaleProgram, "offsets");
-    {
-        GLfloat off1 = NEXT_FLOAT(offsets);
-        GLfloat off2 = NEXT_FLOAT(offsets);
-        GLfloat off3 = NEXT_FLOAT(offsets);
-        GLfloat off4 = NEXT_FLOAT(offsets);
-        j2d_glUniform4fARB(loc, off1, off2, off3, off4);
-    }
-    */
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_EnableRescaleOp");
 }
 
 void
 MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_DisableRescaleOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableRescaleOp");
-
     RETURN_IF_NULL(mtlc);
-
-    // disable the RescaleOp shader
-//    j2d_glUseProgramObjectARB(0);
 }
 
 /**************************** LookupOp support ******************************/
@@ -566,57 +351,9 @@ static GLuint lutTextureID = 0;
 static GLhandleARB
 MTLBufImgOps_CreateLookupProgram(jint flags)
 {
- /*   GLhandleARB lookupProgram;
-    GLint loc;
-    char *target = IS_SET(LOOKUP_RECT) ? "2DRect" : "2D";
-    char *alpha;
-    char *preLookup = "";
-    char *postLookup = "";
-    char finalSource[2000];
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_CreateLookupProgram");
 
-    J2dTraceLn1(J2D_TRACE_INFO,
-                "MTLBufImgOps_CreateLookupProgram: flags=%d",
-                flags);
-
-    if (IS_SET(LOOKUP_USE_SRC_ALPHA)) {
-        // when numComps is 1 or 3, the alpha is not looked up in the table;
-        // just keep the alpha from the source fragment
-        alpha = "result.a = srcColor.a;";
-    } else {
-        // when numComps is 4, the alpha is looked up in the table, just
-        // like the other color components from the source fragment
-        alpha =
-            "result.a = texture2D(lookupTable, vec2(srcIndex.a, 0.875)).r;";
-    }
-    if (IS_SET(LOOKUP_NON_PREMULT)) {
-        preLookup  = "srcColor.rgb /= srcColor.a;";
-        postLookup = "result.rgb *= result.a;";
-    }
-
-    // compose the final source code string from the various pieces
-    sprintf(finalSource, lookupShaderSource,
-            target, target, preLookup, alpha, postLookup);
-
-    lookupProgram = MTLContext_CreateFragmentProgram(finalSource);
-    if (lookupProgram == 0) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLBufImgOps_CreateLookupProgram: error creating program");
-        return 0;
-    }
-
-    // "use" the program object temporarily so that we can set the uniforms
-    j2d_glUseProgramObjectARB(lookupProgram);
-
-    // set the "uniform" values
-    loc = j2d_glGetUniformLocationARB(lookupProgram, "baseImage");
-    j2d_glUniform1iARB(loc, 0); // texture unit 0
-    loc = j2d_glGetUniformLocationARB(lookupProgram, "lookupTable");
-    j2d_glUniform1iARB(loc, 1); // texture unit 1
-
-    // "unuse" the program object; it will be re-bound later as needed
-    j2d_glUseProgramObjectARB(0);
-
-    return lookupProgram;*/
     return NULL;
 }
 
@@ -626,12 +363,15 @@ MTLBufImgOps_EnableLookupOp(MTLContext *mtlc, jlong pSrcOps,
                             jint numBands, jint bandLength, jint offset,
                             void *tableValues)
 {
-
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_EnableLookupOp");
 }
 
 void
 MTLBufImgOps_DisableLookupOp(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLBufImgOps_DisableLookupOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableLookupOp");
 }
 

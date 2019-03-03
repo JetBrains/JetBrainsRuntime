@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -135,22 +137,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             {
                 jint x = NEXT_INT(b);
                 jint y = NEXT_INT(b);
-                // Note that we could use GL_POINTS here, but the common
-                // use case for DRAW_PIXEL is when rendering a Path2D,
-                // which will consist of a mix of DRAW_PIXEL and DRAW_LINE
-                // calls.  So to improve batching we use GL_LINES here,
-                // even though it requires an extra vertex per pixel.
                 CONTINUE_IF_NULL(mtlc);
-//                CHECK_PREVIOUS_OP(GL_LINES);
-                CHECK_PREVIOUS_OP(0x0001);
-            //    j2d_glVertex2i(x, y);
-            //    j2d_glVertex2i(x+1, y+1);
+                //TODO
+                J2dTracePrimitive("MTLRenderQueue_DRAW_PIXEL");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
             {
                 jint count = NEXT_INT(b);
-                //MTLRenderer_DrawScanlines(mtlc, count, (jint *)b);
+                MTLRenderer_DrawScanlines(mtlc, count, (jint *)b);
 
                 SKIP_BYTES(b, count * BYTES_PER_SCANLINE);
             }
@@ -166,11 +161,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jfloat lwr21 = NEXT_FLOAT(b);
                 jfloat lwr12 = NEXT_FLOAT(b);
 
-              //  MTLRenderer_DrawParallelogram(mtlc,
-              //                                x11, y11,
-              //                                dx21, dy21,
-              //                                dx12, dy12,
-              //                                lwr21, lwr12);
+                MTLRenderer_DrawParallelogram(mtlc,
+                                              x11, y11,
+                                              dx21, dy21,
+                                              dx12, dy12,
+                                              lwr21, lwr12);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
@@ -184,11 +179,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jfloat lwr21 = NEXT_FLOAT(b);
                 jfloat lwr12 = NEXT_FLOAT(b);
 
-                //MTLRenderer_DrawAAParallelogram(mtlc, dstOps,
-                //                                x11, y11,
-                //                                dx21, dy21,
-                //                                dx12, dy12,
-                //                                lwr21, lwr12);
+                MTLRenderer_DrawAAParallelogram(mtlc, dstOps,
+                                                x11, y11,
+                                                dx21, dy21,
+                                                dx12, dy12,
+                                                lwr21, lwr12);
             }
             break;
 
@@ -199,7 +194,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y = NEXT_INT(b);
                 jint w = NEXT_INT(b);
                 jint h = NEXT_INT(b);
-               // MTLRenderer_FillRect(mtlc, x, y, w, h);
+                MTLRenderer_FillRect(mtlc, x, y, w, h);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
@@ -231,10 +226,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jfloat dy21 = NEXT_FLOAT(b);
                 jfloat dx12 = NEXT_FLOAT(b);
                 jfloat dy12 = NEXT_FLOAT(b);
-                //MTLRenderer_FillAAParallelogram(mtlc, dstOps,
-                //                                x11, y11,
-                //                                dx21, dy21,
-                //                                dx12, dy12);
+                MTLRenderer_FillAAParallelogram(mtlc, dstOps,
+                                                x11, y11,
+                                                dx21, dy21,
+                                                dx12, dy12);
             }
             break;
 
@@ -263,11 +258,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     positions = NULL;
                     bytesPerGlyph = BYTES_PER_GLYPH_IMAGE;
                 }
-              //  MTLTR_DrawGlyphList(env, mtlc, dstOps,
-              //                      numGlyphs, usePositions,
-              //                      subPixPos, rgbOrder, lcdContrast,
-              //                      glyphListOrigX, glyphListOrigY,
-              //                      images, positions);
+                MTLTR_DrawGlyphList(env, mtlc, dstOps,
+                                    numGlyphs, usePositions,
+                                    subPixPos, rgbOrder, lcdContrast,
+                                    glyphListOrigX, glyphListOrigY,
+                                    images, positions);
                 SKIP_BYTES(b, numGlyphs * bytesPerGlyph);
             }
             break;
@@ -471,8 +466,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 if (mtlc != NULL) {
                     RESET_PREVIOUS_OP();
                 }
-                mtlc = MTLSD_SetScratchSurface(env, pConfigInfo);
-                dstOps = NULL;
+                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                    mtlc = MTLSD_SetScratchSurface(env, pConfigInfo);
+                    dstOps = NULL;
+                }];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
@@ -489,7 +486,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE");
+                J2dTracePrimitive("MTLRenderQueue_DISPOSE_SURFACE");
                 jlong pData = NEXT_LONG(b);
                 BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                 if (mtlsdo != NULL) {
@@ -504,10 +501,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG:
             {
+                J2dTracePrimitive("MTLRenderQueue_DISPOSE_CONFIG");
                 jlong pConfigInfo = NEXT_LONG(b);
                 CONTINUE_IF_NULL(mtlc);
                 RESET_PREVIOUS_OP();
-                MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                    MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
+                }];
+
 
                 // the previous method will call glX/wglMakeCurrent(None),
                 // so we should nullify the current mtlc and dstOps to avoid
@@ -518,11 +519,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT:
             {
+                //TODO
+                J2dTracePrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
                 // flush just in case there are any pending operations in
                 // the hardware pipe
                 if (mtlc != NULL) {
                     RESET_PREVIOUS_OP();
-              //      j2d_glFlush();
                 }
                 // invalidate the references to the current context and
                 // destination surface that are maintained at the native level
@@ -532,28 +534,16 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
             {
-                //j2d_glPushAttrib(GL_ALL_ATTRIB_BITS);
-                //j2d_glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-                //j2d_glMatrixMode(GL_MODELVIEW);
-                //j2d_glPushMatrix();
-                //j2d_glMatrixMode(GL_PROJECTION);
-                //j2d_glPushMatrix();
-                //j2d_glMatrixMode(GL_TEXTURE);
-                //j2d_glPushMatrix();
-
+                //TODO
+                J2dTracePrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
             }
             break;
 
         case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
             {
-               // j2d_glPopAttrib();
-               // j2d_glPopClientAttrib();
-               // j2d_glMatrixMode(GL_MODELVIEW);
-               // j2d_glPopMatrix();
-               // j2d_glMatrixMode(GL_PROJECTION);
-               // j2d_glPopMatrix();
-               // j2d_glMatrixMode(GL_TEXTURE);
-               // j2d_glPopMatrix();
+                //TODO
+                J2dTracePrimitive("MTLRenderQueue_RESTORE_STATE");
+
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SYNC:
@@ -740,11 +730,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     MTLTR_DisableGlyphModeState();
     if (mtlc != NULL) {
         RESET_PREVIOUS_OP();
-        if (sync) {
-       //     j2d_glFinish();
-        } else {
-         //   j2d_glFlush();
-        }
+        //if (sync) {
+        //} else {
+        //}
         MTLSD_Flush(env);
     }
 }
@@ -773,126 +761,12 @@ MTLRenderQueue_GetCurrentDestination()
  * Used to track whether we are within a series of simple primitive operations
  * or texturing operations.  The op parameter determines the nature of the
  * operation that is to follow.  Valid values for this op parameter are:
- *
- *     GL_QUADS
- *     GL_LINES
- *     GL_LINE_LOOP
- *     GL_LINE_STRIP
- *     (basically any of the valid parameters for glBegin())
- *
- *     GL_TEXTURE_2D
- *     GL_TEXTURE_RECTANGLE_ARB
- *
- *     MTL_STATE_RESET
- *     MTL_STATE_CHANGE
- *     MTL_STATE_MASK_OP
- *     MTL_STATE_GLYPH_OP
- *
- * Note that the above constants are guaranteed to be unique values.  The
- * last few are defined to be negative values to differentiate them from
- * the core GL* constants, which are defined to be non-negative.
- *
- * For simple primitives, this method allows us to batch similar primitives
- * within the same glBegin()/glEnd() pair.  For example, if we have 100
- * consecutive FILL_RECT operations, we only have to call glBegin(GL_QUADS)
- * for the first op, and then subsequent operations will consist only of
- * glVertex*() calls, which helps improve performance.  The glEnd() call
- * only needs to be issued before an operation that cannot happen within a
- * glBegin()/glEnd() pair (e.g. updating the clip), or one that requires a
- * different primitive mode (e.g. GL_LINES).
- *
- * For operations that involve texturing, this method helps us to avoid
- * calling glEnable(GL_TEXTURE_2D) and glDisable(GL_TEXTURE_2D) around each
- * operation.  For example, if we have an alternating series of ISO_BLIT
- * and MASK_BLIT operations (both of which involve texturing), we need
- * only to call glEnable(GL_TEXTURE_2D) before the first ISO_BLIT operation.
- * The glDisable(GL_TEXTURE_2D) call only needs to be issued before an
- * operation that cannot (or should not) happen while texturing is enabled
- * (e.g. a context change, or a simple primitive operation like GL_QUADS).
  */
 void
 MTLRenderQueue_CheckPreviousOp(jint op)
 {
-/*
-    if (previousOp == op) {
-        // The op is the same as last time, so we can return immediately.
-        return;
-    }
-
-    J2dTraceLn1(J2D_TRACE_VERBOSE,
-                "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
-
-    switch (previousOp) {
-    case GL_TEXTURE_2D:
-    case GL_TEXTURE_RECTANGLE_ARB:
-        if (op == MTL_STATE_CHANGE) {
-            // Optimization: Certain state changes (those marked as
-            // MTL_STATE_CHANGE) are allowed while texturing is enabled.
-            // In this case, we can allow previousOp to remain as it is and
-            // then return early.
-            return;
-        } else {
-            // Otherwise, op must be a primitive operation, or a reset, so
-            // we will disable texturing.
-            j2d_glDisable(previousOp);
-            // This next step of binding to zero should not be strictly
-            // necessary, but on some older Nvidia boards (e.g. GeForce 2)
-            // problems will arise if GL_TEXTURE_2D and
-            // GL_TEXTURE_RECTANGLE_ARB are bound at the same time, so we
-            // will do this just to be safe.
-            j2d_glBindTexture(previousOp, 0);
-        }
-        break;
-    case MTL_STATE_MASK_OP:
-        MTLVertexCache_DisableMaskCache(mtlc);
-        break;
-    case MTL_STATE_GLYPH_OP:
-        MTLTR_DisableGlyphVertexCache(mtlc);
-        break;
-    case MTL_STATE_PGRAM_OP:
-        MTLRenderer_DisableAAParallelogramProgram();
-        break;
-    case MTL_STATE_RESET:
-    case MTL_STATE_CHANGE:
-        // No-op
-        break;
-    default:
-        // In this case, op must be one of:
-        //     - the start of a different primitive type (glBegin())
-        //     - a texturing operation
-        //     - a state change (not allowed within glBegin()/glEnd() pairs)
-        //     - a reset
-        // so we must first complete the previous primitive operation.
-        j2d_glEnd();
-        break;
-    }
-
-    switch (op) {
-    case GL_TEXTURE_2D:
-    case GL_TEXTURE_RECTANGLE_ARB:
-        // We are starting a texturing operation, so enable texturing.
-        j2d_glEnable(op);
-        break;
-    case MTL_STATE_MASK_OP:
-        MTLVertexCache_EnableMaskCache(mtlc);
-        break;
-    case MTL_STATE_GLYPH_OP:
-        MTLTR_EnableGlyphVertexCache(mtlc);
-        break;
-    case MTL_STATE_PGRAM_OP:
-        MTLRenderer_EnableAAParallelogramProgram();
-        break;
-    case MTL_STATE_RESET:
-    case MTL_STATE_CHANGE:
-        // No-op
-        break;
-    default:
-        // We are starting a primitive operation, so call glBegin() with
-        // the given primitive type.
-        j2d_glBegin(op);
-        break;
-    }
-*/
+    //TODO
+    J2dTracePrimitive("MTLRenderQueue_CheckPreviousOp");
     previousOp = op;
 }
 

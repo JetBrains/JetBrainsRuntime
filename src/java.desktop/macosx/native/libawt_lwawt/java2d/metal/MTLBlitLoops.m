@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -55,6 +57,7 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitSurfaceToSurface");
 }
 
@@ -76,6 +79,7 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitTextureToSurface");
 }
 
@@ -96,6 +100,7 @@ MTLBlitSwToSurface(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
                    jint sx1, jint sy1, jint sx2, jint sy2,
                    jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitSwToSurface");
 }
 
@@ -127,6 +132,7 @@ MTLBlitToSurfaceViaTexture(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
                            jint sx1, jint sy1, jint sx2, jint sy2,
                            jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitToSurfaceViaTexture");
 }
 
@@ -148,6 +154,7 @@ MTLBlitSwToTexture(SurfaceDataRasInfo *srcInfo, MTPixelFormat *pf,
                    MTLSDOps *dstOps,
                    jint dx1, jint dy1, jint dx2, jint dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitSwToTexture");
 }
 
@@ -170,6 +177,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
                      jint sx1, jint sy1, jint sx2, jint sy2,
                      jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitLoops_IsoBlit");
 }
 
@@ -187,6 +195,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
                   jint sx1, jint sy1, jint sx2, jint sy2,
                   jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitLoops_Blit");
 }
 
@@ -200,6 +209,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                              jint srcx, jint srcy, jint dstx, jint dsty,
                              jint width, jint height)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitLoops_SurfaceToSwBlit");
 }
 
@@ -209,6 +219,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                       jint x, jint y, jint width, jint height,
                       jint dx, jint dy)
 {
+    //TODO
     J2dTracePrimitive("MTLBlitLoops_CopyArea");
 }
 

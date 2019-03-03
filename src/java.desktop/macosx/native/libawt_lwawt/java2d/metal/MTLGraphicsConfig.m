@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -167,16 +169,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     }
     [window setContentView: scratchSurface];
 
-    jint caps = CAPS_EMPTY;
-    MTLContext_GetExtensionInfo(env, &caps);
-
-    caps |= CAPS_DOUBLEBUFFERED;
-
-    J2dRlsTraceLn1(J2D_TRACE_INFO,
-                   "MTLGraphicsConfig_getMTLConfigInfo: db=%d",
-                   (caps & CAPS_DOUBLEBUFFERED) != 0);
-
-
     MTLContext *mtlc = (MTLContext *)malloc(sizeof(MTLContext));
     if (mtlc == 0L) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLGC_InitMTLContext: could not allocate memory for mtlc");
@@ -193,7 +185,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
                                                            options:MTLResourceCPUCacheModeDefaultCache] retain];
 
     NSError *error = nil;
-    NSLog(@"Load shader library from %@", mtlShadersLib);
 
     mtlc->mtlLibrary = [mtlc->mtlDevice newLibraryWithFile: mtlShadersLib error:&error];
     if (!mtlc->mtlLibrary) {
@@ -260,8 +251,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     mtlc->mtlCommandQueue = [mtlc->mtlDevice newCommandQueue];
     mtlc->mtlEmptyCommandBuffer = YES;
 
-    mtlc->caps = caps;
-
     // create the MTLGraphicsConfigInfo record for this config
     MTLGraphicsConfigInfo *mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
     if (mtlinfo == NULL) {
@@ -274,26 +263,11 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
     mtlinfo->screen = displayID;
     mtlinfo->context = mtlc;
 
-  //  [NSOpenGLContext clearCurrentContext];
     [argValue addObject: [NSNumber numberWithLong:ptr_to_jlong(mtlinfo)]];
     [pool drain];
 }
 @end //GraphicsConfigUtil
 
-JNIEXPORT jint JNICALL
-Java_sun_java2d_metal_MTLGraphicsConfig_getMTLCapabilities
-    (JNIEnv *env, jclass mtlgc, jlong configInfo)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLGraphicsConfig_getMTLCapabilities");
-
-    MTLGraphicsConfigInfo *mtlinfo =
-        (MTLGraphicsConfigInfo *)jlong_to_ptr(configInfo);
-    if ((mtlinfo == NULL) || (mtlinfo->context == NULL)) {
-        return CAPS_EMPTY;
-    } else {
-        return mtlinfo->context->caps;
-    }
-}
 
 JNIEXPORT jint JNICALL
 Java_sun_java2d_metal_MTLGraphicsConfig_nativeGetMaxTextureSize

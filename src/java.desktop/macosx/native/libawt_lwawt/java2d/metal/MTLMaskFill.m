@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -87,42 +89,9 @@ MTLMaskFill_MaskFill(MTLContext *mtlc,
                      jint maskoff, jint maskscan, jint masklen,
                      unsigned char *pMask)
 {
+    //TODO
+    J2dTracePrimitive("MTLMaskFill_MaskFill");
     J2dTraceLn(J2D_TRACE_INFO, "MTLMaskFill_MaskFill");
-/*
-    RETURN_IF_NULL(mtlc);
-    CHECK_PREVIOUS_OP(MTL_STATE_MASK_OP);
-
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "  x=%d y=%d w=%d h=%d", x, y, w, h);
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "  maskoff=%d maskscan=%d",
-                maskoff, maskscan);
-
-    {
-        jint tw, th, x0;
-        jint sx1, sy1, sx2, sy2;
-        jint sx, sy, sw, sh;
-
-        x0 = x;
-        tw = MTLVC_MASK_CACHE_TILE_WIDTH;
-        th = MTLVC_MASK_CACHE_TILE_HEIGHT;
-        sx1 = maskoff % maskscan;
-        sy1 = maskoff / maskscan;
-        sx2 = sx1 + w;
-        sy2 = sy1 + h;
-
-        for (sy = sy1; sy < sy2; sy += th, y += th) {
-            x = x0;
-            sh = ((sy + th) > sy2) ? (sy2 - sy) : th;
-
-            for (sx = sx1; sx < sx2; sx += tw, x += tw) {
-                sw = ((sx + tw) > sx2) ? (sx2 - sx) : tw;
-
-                MTLVertexCache_AddMaskQuad(mtlc,
-                                           sx, sy, x, y, sw, sh,
-                                           maskscan, pMask);
-            }
-        }
-    }
-    */
 }
 
 JNIEXPORT void JNICALL
@@ -134,30 +103,9 @@ Java_sun_java2d_metal_MTLMaskFill_maskFill
 {
     MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
     unsigned char *mask;
-
+    //TODO
+    J2dTracePrimitive("MTLMaskFill_maskFill");
     J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_maskFill");
-/*
-    if (maskArray != NULL) {
-        mask = (unsigned char *)
-            (*env)->GetPrimitiveArrayCritical(env, maskArray, NULL);
-    } else {
-        mask = NULL;
-    }
-
-    MTLMaskFill_MaskFill(mtlc,
-                         x, y, w, h,
-                         maskoff, maskscan, masklen, mask);
-
-    // 6358147: reset current state, and ensure rendering is flushed to dest
-    if (mtlc != NULL) {
-        RESET_PREVIOUS_OP();
-        j2d_glFlush();
-    }
-
-    if (mask != NULL) {
-        (*env)->ReleasePrimitiveArrayCritical(env, maskArray, mask, JNI_ABORT);
-    }
-    */
 }
 
 #endif /* !HEADLESS */

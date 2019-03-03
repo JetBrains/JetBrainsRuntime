@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -151,7 +153,6 @@ public class MTLContext extends BufferedContext {
 
     public static class MTLContextCaps extends ContextCapabilities {
         /**
-         * Indicates the presence of the GL_EXT_framebuffer_object extension.
          * This cap will only be set if the fbobject system property has been
          * enabled and we are able to create an FBO with depth buffer.
          */
@@ -162,21 +163,18 @@ public class MTLContext extends BufferedContext {
         @Native
         public static final int CAPS_DOUBLEBUFFERED   = (FIRST_PRIVATE_CAP << 0);
         /**
-         * Indicates the presence of the GL_ARB_fragment_shader extension.
          * This cap will only be set if the lcdshader system property has been
          * enabled and the hardware supports the minimum number of texture units
          */
         @Native
         static final int CAPS_EXT_LCD_SHADER   = (FIRST_PRIVATE_CAP << 1);
         /**
-         * Indicates the presence of the GL_ARB_fragment_shader extension.
          * This cap will only be set if the biopshader system property has been
          * enabled and the hardware meets our minimum requirements.
          */
         @Native
         static final int CAPS_EXT_BIOP_SHADER  = (FIRST_PRIVATE_CAP << 2);
         /**
-         * Indicates the presence of the GL_ARB_fragment_shader extension.
          * This cap will only be set if the gradshader system property has been
          * enabled and the hardware meets our minimum requirements.
          */

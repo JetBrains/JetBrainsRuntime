@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -46,10 +48,9 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 
-import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
-import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
-import static sun.java2d.opengl.OGLSurfaceData.FBOBJECT;
 import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
+import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
+import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
     implements MTLGraphicsConfigBase
@@ -76,7 +77,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
 
     private static native boolean initMTL();
     private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
-    private static native int getMTLCapabilities(long configInfo);
 
     /**
      * Returns GL_MAX_TEXTURE_SIZE from the shared opengl context. Must be
@@ -158,8 +158,11 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
             return null;
         }
 
-        int oglCaps = getMTLCapabilities(cfginfo);
-        ContextCapabilities caps = new MTLContext.MTLContextCaps(oglCaps, ids[0]);
+        ContextCapabilities caps = new MTLContext.MTLContextCaps(
+                CAPS_PS30 | CAPS_PS20 | CAPS_RT_PLAIN_ALPHA |
+                        CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
+                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE,
+                ids[0]);
         return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
     }
 
@@ -243,7 +246,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     }
 
     public boolean isDoubleBuffered() {
-        return isCapPresent(CAPS_DOUBLEBUFFERED);
+        return true;
     }
 
     private static class MTLGCDisposerRecord implements DisposerRecord {
@@ -396,11 +399,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     public VolatileImage createCompatibleVolatileImage(int width, int height,
                                                        int transparency,
                                                        int type) {
-        if ((type != FBOBJECT && type != TEXTURE)
-                || transparency == Transparency.BITMASK
-                || type == FBOBJECT && !isCapPresent(CAPS_EXT_FBOBJECT)) {
+        if (type != RT_TEXTURE && type != TEXTURE) {
             return null;
         }
+
         SunVolatileImage vi = new AccelTypedVolatileImage(this, width, height,
                                                           transparency, type);
         Surface sd = vi.getDestSurface();

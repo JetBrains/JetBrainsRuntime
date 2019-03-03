@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -38,10 +40,6 @@
 
 #include "jvm.h"
 
-/**
- * The following methods are implemented in the windowing system (i.e. GLX
- * and WGL) source files.
- */
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern MTLContext *MTLSD_MakeMTLContextCurrent(JNIEnv *env,
                                                MTLSDOps *srcOps,
@@ -69,15 +67,10 @@ MTLBlendRule MTStdBlendRules[] = {
 static void
 MTLContext_SetViewport(BMTLSDOps *srcOps,BMTLSDOps *dstOps)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_SetViewport");
     jint width = dstOps->width;
     jint height = dstOps->height;
-
-/*    J2dTraceLn4(J2D_TRACE_INFO,
-                "MTLContext_SetViewport: w=%d h=%d read=%s draw=%s",
-                width, height,
-                MTLC_ACTIVE_BUFFER_NAME(srcOps->activeBuffer),
-                MTLC_ACTIVE_BUFFER_NAME(dstOps->activeBuffer));
-*/
 }
 
 /**
@@ -87,6 +80,8 @@ MTLContext_SetViewport(BMTLSDOps *srcOps,BMTLSDOps *dstOps)
 static void
 MTLContext_InitAlphaChannel()
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_InitAlphaChannel");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitAlphaChannel");
 }
 
@@ -100,7 +95,7 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
 {
     BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrc);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
-    MTLContext *oglc = NULL;
+    MTLContext *mtlc = NULL;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetSurfaces");
 
@@ -129,8 +124,8 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
     }
 
     // make the context current
-    oglc = MTLSD_MakeMTLContextCurrent(env, srcOps, dstOps);
-    if (oglc == NULL) {
+    mtlc = MTLSD_MakeMTLContextCurrent(env, srcOps, dstOps);
+    if (mtlc == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLContext_SetSurfaces: could not make context current");
         return NULL;
@@ -150,7 +145,7 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
         dstOps->needsInit = JNI_FALSE;
     }
 
-    return oglc;
+    return mtlc;
 }
 
 /**
@@ -159,24 +154,24 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
 void
 MTLContext_ResetClip(MTLContext *mtlc)
 {
+    J2dTracePrimitive("MTLContext_ResetClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetClip");
 }
 
 /**
- * Sets the OpenGL scissor bounds to the provided rectangular clip bounds.
+ * Sets the Metal scissor bounds to the provided rectangular clip bounds.
  */
 void
 MTLContext_SetRectClip(MTLContext *mtlc, BMTLSDOps *dstOps,
                        jint x1, jint y1, jint x2, jint y2)
 {
+    J2dTracePrimitive("MTLContext_SetRectClip");
     jint width = x2 - x1;
     jint height = y2 - y1;
 
     J2dTraceLn4(J2D_TRACE_INFO,
                 "MTLContext_SetRectClip: x=%d y=%d w=%d h=%d",
                 x1, y1, width, height);
-
-
 }
 
 /**
@@ -193,9 +188,9 @@ MTLContext_SetRectClip(MTLContext *mtlc, BMTLSDOps *dstOps,
 void
 MTLContext_BeginShapeClip(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_BeginShapeClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_BeginShapeClip");
-
-
 }
 
 /**
@@ -206,9 +201,9 @@ MTLContext_BeginShapeClip(MTLContext *mtlc)
 void
 MTLContext_EndShapeClip(MTLContext *mtlc, BMTLSDOps *dstOps)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_EndShapeClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_EndShapeClip");
-
-
 }
 
 /**
@@ -221,9 +216,9 @@ MTLContext_EndShapeClip(MTLContext *mtlc, BMTLSDOps *dstOps)
 void
 MTLContext_SetExtraAlpha(jfloat ea)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_SetExtraAlpha");
     J2dTraceLn1(J2D_TRACE_INFO, "MTLContext_SetExtraAlpha: ea=%f", ea);
-
-
 }
 
 /**
@@ -233,8 +228,9 @@ MTLContext_SetExtraAlpha(jfloat ea)
 void
 MTLContext_ResetComposite(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_ResetComposite");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetComposite");
-
 }
 
 /**
@@ -246,10 +242,10 @@ void
 MTLContext_SetAlphaComposite(MTLContext *mtlc,
                              jint rule, jfloat extraAlpha, jint flags)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_SetAlphaComposite");
     J2dTraceLn1(J2D_TRACE_INFO,
                 "MTLContext_SetAlphaComposite: flags=%d", flags);
-
-
 }
 
 /**
@@ -260,6 +256,8 @@ MTLContext_SetAlphaComposite(MTLContext *mtlc,
 void
 MTLContext_SetXorComposite(MTLContext *mtlc, jint xorPixel)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_SetXorComposite");
     J2dTraceLn1(J2D_TRACE_INFO,
                 "MTLContext_SetXorComposite: xorPixel=%08x", xorPixel);
 
@@ -271,6 +269,8 @@ MTLContext_SetXorComposite(MTLContext *mtlc, jint xorPixel)
 void
 MTLContext_ResetTransform(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_ResetTransform");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
 }
 
@@ -288,6 +288,8 @@ MTLContext_SetTransform(MTLContext *mtlc,
                         jdouble m01, jdouble m11,
                         jdouble m02, jdouble m12)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_SetTransform");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
 }
 
@@ -301,7 +303,8 @@ jint
 MTLContext_CreateBlitTexture(jint internalFormat, jint pixelFormat,
                              jint width, jint height)
 {
-
+    //TODO
+    J2dTracePrimitive("MTLContext_CreateBlitTexture");
     return 0;
 }
 
@@ -318,6 +321,8 @@ MTLContext_CreateBlitTexture(jint internalFormat, jint pixelFormat,
 jboolean
 MTLContext_InitBlitTileTexture(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_InitBlitTileTexture");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture");
 
     return JNI_TRUE;
@@ -331,6 +336,8 @@ MTLContext_InitBlitTileTexture(MTLContext *mtlc)
 void
 MTLContext_DestroyContextResources(MTLContext *mtlc)
 {
+    //TODO
+    J2dTracePrimitive("MTLContext_DestroyContextResources");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_DestroyContextResources");
 
     if (mtlc->xformMatrix != NULL) {
@@ -339,205 +346,11 @@ MTLContext_DestroyContextResources(MTLContext *mtlc)
 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     [mtlc->mtlDevice release];
+    mtlc->mtlDevice = nil;
+
     [pool drain];
-    if (mtlc->blitTextureID != 0) {
-  //      j2d_glDeleteTextures(1, &mtlc->blitTextureID);
-    }
-}
-
-/**
- * Returns JNI_TRUE if the given extension name is available for the current
- * GraphicsConfig; JNI_FALSE otherwise.  An extension is considered available
- * if its identifier string is found amongst the space-delimited GL_EXTENSIONS
- * string.
- *
- * Adapted from the OpenGL Red Book, pg. 506.
- */
-jboolean
-MTLContext_IsExtensionAvailable(const char *extString, char *extName)
-{
-    jboolean ret = JNI_FALSE;
-    char *p = (char *)extString;
-    char *end;
-
-    if (extString == NULL) {
-        J2dTraceLn(J2D_TRACE_INFO, "MTLContext_IsExtensionAvailable");
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLContext_IsExtensionAvailable: extension string is null");
-        return JNI_FALSE;
-    }
-
-    end = p + strlen(p);
-
-    while (p < end) {
-        size_t n = strcspn(p, " ");
-
-        if ((strlen(extName) == n) && (strncmp(extName, p, n) == 0)) {
-            ret = JNI_TRUE;
-            break;
-        }
-
-        p += (n + 1);
-    }
-
-    J2dRlsTraceLn2(J2D_TRACE_INFO,
-                   "MTLContext_IsExtensionAvailable: %s=%s",
-                   extName, ret ? "true" : "false");
-
-    return ret;
-}
-
-/**
- * Returns JNI_TRUE only if all of the following conditions are met:
- *   - the GL_EXT_framebuffer_object extension is available
- *   - FBO support has been enabled via the system property
- *   - we can successfully create an FBO with depth capabilities
- */
-static jboolean
-MTLContext_IsFBObjectExtensionAvailable(JNIEnv *env,
-                                        const char *extString)
-{
-    return JNI_TRUE;
-}
-
-/**
- * Returns JNI_TRUE only if all of the following conditions are met:
- *   - the GL_ARB_fragment_shader extension is available
- *   - the LCD text shader codepath has been enabled via the system property
- *   - the hardware supports the minimum number of texture units
- */
-static jboolean
-MTLContext_IsLCDShaderSupportAvailable(JNIEnv *env,
-                                       jboolean fragShaderAvailable)
-{
-    return JNI_TRUE;
-}
-
-/**
- * Returns JNI_TRUE only if all of the following conditions are met:
- *   - the GL_ARB_fragment_shader extension is available
- *   - the BufferedImageOp shader codepath has been enabled via the
- *     system property
- */
-static jboolean
-MTLContext_IsBIOpShaderSupportAvailable(JNIEnv *env,
-                                        jboolean fragShaderAvailable)
-{
-    jboolean isBIOpShaderEnabled = JNI_FALSE;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_IsBIOpShaderSupportAvailable");
-
-    // first see if the fragment shader extension is available
-    if (!fragShaderAvailable) {
-        return JNI_FALSE;
-    }
-
-    // next see if the biopshader system property has been enabled
-    isBIOpShaderEnabled =
-        JNU_GetStaticFieldByName(env, NULL,
-                                 "sun/java2d/metal/MTLSurfaceData",
-                                 "isBIOpShaderEnabled", "Z").z;
-    if (!isBIOpShaderEnabled) {
-        J2dRlsTraceLn(J2D_TRACE_INFO,
-            "MTLContext_IsBIOpShaderSupportAvailable: disabled via flag");
-        return JNI_FALSE;
-    }
-
-    /*
-     * Note: In theory we should probably do some other checks here, like
-     * linking a sample shader to see if the hardware truly supports our
-     * shader programs.  However, our current BufferedImageOp shaders were
-     * designed to support first-generation shader-level hardware, so the
-     * assumption is that if our shaders work on those GPUs, then they'll
-     * work on newer ones as well.  Also, linking a fragment program can
-     * cost valuable CPU cycles, which is another reason to avoid these
-     * checks at startup.
-     */
-
-    J2dRlsTraceLn(J2D_TRACE_INFO,
-        "MTLContext_IsBIOpShaderSupportAvailable: BufferedImageOp shader supported");
-
-    return JNI_TRUE;
-}
-
-/**
- * Returns JNI_TRUE only if all of the following conditions are met:
- *   - the GL_ARB_fragment_shader extension is available
- *   - the Linear/RadialGradientPaint shader codepath has been enabled via the
- *     system property
- */
-static jboolean
-MTLContext_IsGradShaderSupportAvailable(JNIEnv *env,
-                                        jboolean fragShaderAvailable)
-{
-    jboolean isGradShaderEnabled = JNI_FALSE;
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_IsGradShaderSupportAvailable");
-
-    // first see if the fragment shader extension is available
-    if (!fragShaderAvailable) {
-        return JNI_FALSE;
-    }
-
-    // next see if the gradshader system property has been enabled
-    isGradShaderEnabled =
-        JNU_GetStaticFieldByName(env, NULL,
-                                 "sun/java2d/metal/MTLSurfaceData",
-                                 "isGradShaderEnabled", "Z").z;
-    if (!isGradShaderEnabled) {
-        J2dRlsTraceLn(J2D_TRACE_INFO,
-            "MTLContext_IsGradShaderSupportAvailable: disabled via flag");
-        return JNI_FALSE;
-    }
-
-    J2dRlsTraceLn(J2D_TRACE_INFO,
-        "MTLContext_IsGradShaderSupportAvailable: Linear/RadialGradientPaint shader supported");
-
-    return JNI_TRUE;
-}
-
-/**
- * Checks for the presence of the optional extensions used by
- * the Java 2D OpenGL pipeline.  The given caps bitfield is updated
- * to reflect the availability of these extensions.
- */
-void
-MTLContext_GetExtensionInfo(JNIEnv *env, jint *caps)
-{
-    jint vcap = MTLC_VENDOR_OTHER;
-
-}
-
-/**
- * Returns JNI_TRUE if the given GL_VERSION string meets the minimum
- * requirements (>= 1.2); JNI_FALSE otherwise.
- */
-jboolean
-MTLContext_IsVersionSupported(const unsigned char *versionstr)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_IsVersionSupported");
-
-    if (versionstr == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLContext_IsVersionSupported: version string is null");
-        return JNI_FALSE;
-    }
-
-    // note that this check allows for OpenGL 2.x
-    return ((versionstr[0] == '1' && versionstr[2] >= '2') ||
-            (versionstr[0] >= '2'));
-}
-
-/**
- * Compiles and links the given fragment shader program.  If
- * successful, this function returns a handle to the newly created shader
- * program; otherwise returns 0.
- */
-GLhandleARB
-MTLContext_CreateFragmentProgram(const char *fragmentShaderSource)
-{
-
-    return NULL;
+    //if (mtlc->blitTextureID != 0) {
+    //}
 }
 
 /*

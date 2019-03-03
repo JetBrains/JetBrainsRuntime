@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -50,30 +52,6 @@ void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo, jint w, jint h);
  * an OpenGL "Surface" (via glDrawPixels()) or "Texture" (via glTexImage2D()).
  */
 MTLPixelFormat MTPixelFormats[] = {};
- //   { GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV,
- //     4, 1, 0,                                     }, /* 0 - IntArgb      */
- //   { GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV,
- //     4, 1, 1,                                     }, /* 1 - IntArgbPre   */
- //   { GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV,
- //     4, 0, 1,                                     }, /* 2 - IntRgb       */
- //   { GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
- //     4, 0, 1,                                     }, /* 3 - IntRgbx      */
- //   { GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
- //     4, 0, 1,                                     }, /* 4 - IntBgr       */
- //   { GL_BGRA, GL_UNSIGNED_INT_8_8_8_8,
- //     4, 0, 1,                                     }, /* 5 - IntBgrx      */
- //   { GL_RGB,  GL_UNSIGNED_SHORT_5_6_5,
- //     2, 0, 1,                                     }, /* 6 - Ushort565Rgb */
- //   { GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV,
- //     2, 0, 1,                                     }, /* 7 - Ushort555Rgb */
- //   { GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1,
- //     2, 0, 1,                                     }, /* 8 - Ushort555Rgbx*/
- //   { GL_LUMINANCE, GL_UNSIGNED_BYTE,
- //     1, 0, 1,                                     }, /* 9 - ByteGray     */
- //   { GL_LUMINANCE, GL_UNSIGNED_SHORT,
- //     2, 0, 1,                                     }, /*10 - UshortGray   */
- //   { GL_BGR,  GL_UNSIGNED_BYTE,
- //     1, 0, 1,                                     }, /*11 - ThreeByteBgr */};
 
 /**
  * Given a starting value and a maximum limit, returns the first power-of-two
@@ -135,101 +113,7 @@ MTLSD_InitTextureObject(MTLSDOps *mtlsdo,
                         jboolean texNonPow2, jboolean texRect,
                         jint width, jint height)
 {
- /*   GLenum texTarget, texProxyTarget;
-    GLint format = GL_RGBA;
-    GLint size = GL_UNSIGNED_INT_8_8_8_8;
-    GLuint texID;
-    GLsizei texWidth, texHeight, realWidth, realHeight;
-    GLint texMax;
 
-    J2dTraceLn4(J2D_TRACE_INFO,
-                "MTLSD_InitTextureObject: w=%d h=%d opq=%d nonpow2=%d",
-                width, height, isOpaque, texNonPow2);
-
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "MTLSD_InitTextureObject: ops are null");
-        return JNI_FALSE;
-    }
-
-    if (texNonPow2) {
-        // use non-pow2 dimensions with GL_TEXTURE_2D target
-        j2d_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texMax);
-        texWidth = (width <= texMax) ? width : 0;
-        texHeight = (height <= texMax) ? height : 0;
-        texTarget = GL_TEXTURE_2D;
-        texProxyTarget = GL_PROXY_TEXTURE_2D;
-    } else if (texRect) {
-        // use non-pow2 dimensions with GL_TEXTURE_RECTANGLE_ARB target
-        j2d_glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_ARB, &texMax);
-        texWidth = (width <= texMax) ? width : 0;
-        texHeight = (height <= texMax) ? height : 0;
-        texTarget = GL_TEXTURE_RECTANGLE_ARB;
-        texProxyTarget = GL_PROXY_TEXTURE_RECTANGLE_ARB;
-    } else {
-        // find the appropriate power-of-two dimensions
-        j2d_glGetIntegerv(GL_MAX_TEXTURE_SIZE, &texMax);
-        texWidth = MTLSD_NextPowerOfTwo(width, texMax);
-        texHeight = MTLSD_NextPowerOfTwo(height, texMax);
-        texTarget = GL_TEXTURE_2D;
-        texProxyTarget = GL_PROXY_TEXTURE_2D;
-    }
-
-    J2dTraceLn3(J2D_TRACE_VERBOSE,
-                "  desired texture dimensions: w=%d h=%d max=%d",
-                texWidth, texHeight, texMax);
-
-    // if either dimension is 0, we cannot allocate a texture with the
-    // requested dimensions
-    if ((texWidth == 0) || (texHeight == 0)) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSD_InitTextureObject: texture dimensions too large");
-        return JNI_FALSE;
-    }
-
-    // now use a proxy to determine whether we can create a texture with
-    // the calculated power-of-two dimensions and the given internal format
-    j2d_glTexImage2D(texProxyTarget, 0, format,
-                     texWidth, texHeight, 0,
-                     format, size, NULL);
-    j2d_glGetTexLevelParameteriv(texProxyTarget, 0,
-                                 GL_TEXTURE_WIDTH, &realWidth);
-    j2d_glGetTexLevelParameteriv(texProxyTarget, 0,
-                                 GL_TEXTURE_HEIGHT, &realHeight);
-
-    // if the requested dimensions and proxy dimensions don't match,
-    // we shouldn't attempt to create the texture
-    if ((realWidth != texWidth) || (realHeight != texHeight)) {
-        J2dRlsTraceLn2(J2D_TRACE_ERROR,
-            "MTLSD_InitTextureObject: actual (w=%d h=%d) != requested",
-                       realWidth, realHeight);
-        return JNI_FALSE;
-    }
-
-    // initialize the texture with some dummy data (this allows us to create
-    // a texture object once with 2^n dimensions, and then use
-    // glTexSubImage2D() to provide further updates)
-    j2d_glGenTextures(1, &texID);
-    j2d_glBindTexture(texTarget, texID);
-    j2d_glTexImage2D(texTarget, 0, format,
-                     texWidth, texHeight, 0,
-                     format, size, NULL);
-
-    mtlsdo->isOpaque = isOpaque;
-    mtlsdo->xOffset = 0;
-    mtlsdo->yOffset = 0;
-    mtlsdo->width = width;
-    mtlsdo->height = height;
-    mtlsdo->textureID = texID;
-    mtlsdo->textureWidth = texWidth;
-    mtlsdo->textureHeight = texHeight;
-    mtlsdo->textureTarget = texTarget;
-    MTLSD_INIT_TEXTURE_FILTER(mtlsdo, GL_NEAREST);
-    MTLSD_RESET_TEXTURE_WRAP(texTarget);
-
-    J2dTraceLn3(J2D_TRACE_VERBOSE, "  created texture: w=%d h=%d id=%d",
-                width, height, texID);
-*/
     return JNI_TRUE;
 }
 
@@ -280,109 +164,6 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initTexture
     return JNI_TRUE;
 }
 
-/**
- * Initializes a framebuffer object based on the given textureID and its
- * width/height.  This method will iterate through all possible depth formats
- * to find one that is supported by the drivers/hardware.  (Since our use of
- * the depth buffer is fairly simplistic, we hope to find a depth format that
- * uses as little VRAM as possible.)  If an appropriate depth buffer is found
- * and all attachments are successful (i.e. the framebuffer object is
- * "complete"), then this method will return JNI_TRUE and will initialize
- * the values of fbobjectID and depthID using the IDs created by this method.
- * Otherwise, this method returns JNI_FALSE.  Note that the caller is only
- * responsible for deleting the allocated fbobject and depth renderbuffer
- * resources if this method returned JNI_TRUE.
- */
- /*
-jboolean
-MTLSD_InitFBObject(GLuint *fbobjectID, GLuint *depthID,
-                   GLuint textureID, GLenum textureTarget,
-                   jint textureWidth, jint textureHeight)
-{
-    GLenum depthFormats[] = {
-        GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT32
-    };
-    GLuint fboTmpID, depthTmpID;
-    jboolean foundDepth = JNI_FALSE;
-    int i;
-
-    J2dTraceLn3(J2D_TRACE_INFO, "MTLSD_InitFBObject: w=%d h=%d texid=%d",
-                textureWidth, textureHeight, textureID);
-
-    // initialize framebuffer object
-    j2d_glGenFramebuffersEXT(1, &fboTmpID);
-    j2d_glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboTmpID);
-
-    // attach color texture to framebuffer object
-    j2d_glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT,
-                                  GL_COLOR_ATTACHMENT0_EXT,
-                                  textureTarget, textureID, 0);
-
-    // attempt to create a depth renderbuffer of a particular format; we
-    // will start with the smallest size and then work our way up
-    for (i = 0; i < 3; i++) {
-        GLenum error, status;
-        GLenum depthFormat = depthFormats[i];
-        int depthSize = 16 + (i * 8);
-
-        // initialize depth renderbuffer
-        j2d_glGenRenderbuffersEXT(1, &depthTmpID);
-        j2d_glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, depthTmpID);
-        j2d_glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, depthFormat,
-                                     textureWidth, textureHeight);
-
-        // creation of depth buffer could potentially fail, so check for error
-        error = j2d_glGetError();
-        if (error != GL_NO_ERROR) {
-            J2dTraceLn2(J2D_TRACE_VERBOSE,
-                "MTLSD_InitFBObject: could not create depth buffer: depth=%d error=%x",
-                           depthSize, error);
-            j2d_glDeleteRenderbuffersEXT(1, &depthTmpID);
-            continue;
-        }
-
-        // attach depth renderbuffer to framebuffer object
-        j2d_glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT,
-                                         GL_DEPTH_ATTACHMENT_EXT,
-                                         GL_RENDERBUFFER_EXT, depthTmpID);
-
-        // now check for framebuffer "completeness"
-        status = j2d_glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-
-        if (status == GL_FRAMEBUFFER_COMPLETE_EXT) {
-            // we found a valid format, so break out of the loop
-            J2dTraceLn1(J2D_TRACE_VERBOSE,
-                        "  framebuffer is complete: depth=%d", depthSize);
-            foundDepth = JNI_TRUE;
-            break;
-        } else {
-            // this depth format didn't work, so delete and try another format
-            J2dTraceLn2(J2D_TRACE_VERBOSE,
-                        "  framebuffer is incomplete: depth=%d status=%x",
-                        depthSize, status);
-            j2d_glDeleteRenderbuffersEXT(1, &depthTmpID);
-        }
-    }
-
-    // unbind the texture and framebuffer objects (they will be bound again
-    // later as needed)
-    j2d_glBindTexture(textureTarget, 0);
-    j2d_glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
-    j2d_glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-    if (!foundDepth) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSD_InitFBObject: could not find valid depth format");
-        j2d_glDeleteFramebuffersEXT(1, &fboTmpID);
-        return JNI_FALSE;
-    }
-
-    *fbobjectID = fboTmpID;
-    *depthID = depthTmpID;
-
-    return JNI_TRUE;
-}
-*/
 /**
  * Initializes a framebuffer object, using the given width and height as
  * a guide.  See MTLSD_InitTextureObject() and MTLSD_InitFBObject()
@@ -437,40 +218,6 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFBObject
      }
 
 
-/*
-    // initialize color texture object
-    if (!MTLSD_InitTextureObject(mtlsdo, isOpaque, texNonPow2, texRect,
-                                 width, height))
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFBObject: could not init texture object");
-        return JNI_FALSE;
-    }
-
-    // initialize framebuffer object using color texture created above
-    if (!MTLSD_InitFBObject(&fbobjectID, &depthID,
-                            mtlsdo->textureID, mtlsdo->textureTarget,
-                            mtlsdo->textureWidth, mtlsdo->textureHeight))
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFBObject: could not init fbobject");
-        j2d_glDeleteTextures(1, &mtlsdo->textureID);
-        return JNI_FALSE;
-    }
-
-    mtlsdo->drawableType = MTLSD_FBOBJECT;
-    // other fields (e.g. width, height) are set in MTLSD_InitTextureObject()
-    mtlsdo->fbobjectID = fbobjectID;
-    mtlsdo->depthID = depthID;
-
-    MTLSD_SetNativeDimensions(env, mtlsdo,
-                              mtlsdo->textureWidth, mtlsdo->textureHeight);
-
-    // framebuffer objects differ from other OpenGL surfaces in that the
-    // value passed to glRead/DrawBuffer() must be GL_COLOR_ATTACHMENTn_EXT,
-    // rather than GL_FRONT (or GL_BACK)
-    mtlsdo->activeBuffer = GL_COLOR_ATTACHMENT0_EXT;
-*/
     bmtlsdo->drawableType = MTLSD_FBOBJECT;
 
     return JNI_TRUE;
@@ -490,35 +237,6 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFlipBackbuffer
     MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initFlipBackbuffer");
-/*
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFlipBackbuffer: ops are null");
-        return JNI_FALSE;
-    }
-
-    if (mtlsdo->drawableType == MTLSD_UNDEFINED) {
-        if (!MTLSD_InitMTLWindow(env, mtlsdo)) {
-            J2dRlsTraceLn(J2D_TRACE_ERROR,
-                "MTLSurfaceData_initFlipBackbuffer: could not init window");
-            return JNI_FALSE;
-        }
-    }
-
-    if (mtlsdo->drawableType != MTLSD_WINDOW) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFlipBackbuffer: drawable is not a window");
-        return JNI_FALSE;
-    }
-
-    mtlsdo->drawableType = MTLSD_FLIP_BACKBUFFER;
-    // x/yOffset have already been set in MTLSD_InitMTLWindow()...
-    // REMIND: for some reason, flipping won't work properly on IFB unless we
-    //         explicitly use BACK_LEFT rather than BACK...
-    mtlsdo->activeBuffer = GL_BACK_LEFT;
-
-    MTLSD_SetNativeDimensions(env, mtlsdo, mtlsdo->width, mtlsdo->height);
-*/
     return JNI_TRUE;
 }
 
@@ -573,30 +291,6 @@ MTLSD_Delete(JNIEnv *env, BMTLSDOps *mtlsdo)
 {
     J2dTraceLn1(J2D_TRACE_INFO, "MTLSD_Delete: type=%d",
                 mtlsdo->drawableType);
-/*
-    if (mtlsdo->drawableType == MTLSD_TEXTURE) {
-        if (mtlsdo->textureID != 0) {
-            j2d_glDeleteTextures(1, &mtlsdo->textureID);
-            mtlsdo->textureID = 0;
-        }
-    } else if (mtlsdo->drawableType == MTLSD_FBOBJECT) {
-        if (mtlsdo->textureID != 0) {
-            j2d_glDeleteTextures(1, &mtlsdo->textureID);
-            mtlsdo->textureID = 0;
-        }
-        if (mtlsdo->depthID != 0) {
-            j2d_glDeleteRenderbuffersEXT(1, &mtlsdo->depthID);
-            mtlsdo->depthID = 0;
-        }
-        if (mtlsdo->fbobjectID != 0) {
-            j2d_glDeleteFramebuffersEXT(1, &mtlsdo->fbobjectID);
-            mtlsdo->fbobjectID = 0;
-        }
-    } else {
-        // dispose windowing system resources (pbuffer, pixmap, etc)
-        MTLSD_DestroyMTLSurface(env, mtlsdo);
-    }
-    */
 }
 
 /**

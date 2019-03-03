@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -67,42 +69,16 @@ static jint maskCacheIndex = 0;
 jboolean
 MTLVertexCache_InitVertexCache(MTLContext *mtlc)
 {
+    //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache");
-
-  /*  if (vertexCache == NULL) {
-        vertexCache = (J2DVertex *)malloc(MTLVC_MAX_INDEX * sizeof(J2DVertex));
-        if (vertexCache == NULL) {
-            return JNI_FALSE;
-        }
-    }
-
-    if (!mtlc->vertexCacheEnabled) {
-        j2d_glTexCoordPointer(2, GL_FLOAT,
-                              sizeof(J2DVertex), vertexCache);
-        j2d_glColorPointer(4, GL_UNSIGNED_BYTE,
-                           sizeof(J2DVertex), ((jfloat *)vertexCache) + 2);
-        j2d_glVertexPointer(2, GL_FLOAT,
-                            sizeof(J2DVertex), ((jfloat *)vertexCache) + 3);
-
-        j2d_glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-        j2d_glEnableClientState(GL_COLOR_ARRAY);
-        j2d_glEnableClientState(GL_VERTEX_ARRAY);
-
-        mtlc->vertexCacheEnabled = JNI_TRUE;
-    }
-*/
     return JNI_TRUE;
 }
 
 void
 MTLVertexCache_FlushVertexCache()
 {
+    // TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
-/*
-    if (vertexCacheIndex > 0) {
-        j2d_glDrawArrays(GL_QUADS, 0, vertexCacheIndex);
-    }
-    */
     vertexCacheIndex = 0;
 }
 

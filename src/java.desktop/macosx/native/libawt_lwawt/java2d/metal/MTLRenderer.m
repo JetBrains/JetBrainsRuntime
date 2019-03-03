@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -323,76 +325,26 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
      jint transX, jint transY)
 {
     jint *xPoints, *yPoints;
-
+    //TODO
+    J2dTracePrimitive("MTLRenderer_drawPoly");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly");
-/*
-    xPoints = (jint *)
-        (*env)->GetPrimitiveArrayCritical(env, xpointsArray, NULL);
-    if (xPoints != NULL) {
-        yPoints = (jint *)
-            (*env)->GetPrimitiveArrayCritical(env, ypointsArray, NULL);
-        if (yPoints != NULL) {
-            MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
-
-            MTLRenderer_DrawPoly(mtlc,
-                                 nPoints, isClosed,
-                                 transX, transY,
-                                 xPoints, yPoints);
-
-            // 6358147: reset current state, and ensure rendering is
-            // flushed to dest
-            if (mtlc != NULL) {
-                RESET_PREVIOUS_OP();
-                j2d_glFlush();
-            }
-
-            (*env)->ReleasePrimitiveArrayCritical(env, ypointsArray, yPoints,
-                                                  JNI_ABORT);
-        }
-        (*env)->ReleasePrimitiveArrayCritical(env, xpointsArray, xPoints,
-                                              JNI_ABORT);
-    }
-    */
 }
 
 void
 MTLRenderer_DrawScanlines(MTLContext *mtlc,
                           jint scanlineCount, jint *scanlines)
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_DrawScanlines");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawScanlines");
-/*
-    RETURN_IF_NULL(mtlc);
-    RETURN_IF_NULL(scanlines);
-
-    CHECK_PREVIOUS_OP(GL_LINES);
-    while (scanlineCount > 0) {
-        // Translate each vertex by a fraction so
-        // that we hit pixel centers.
-        GLfloat x1 = ((GLfloat)*(scanlines++)) + 0.2f;
-        GLfloat x2 = ((GLfloat)*(scanlines++)) + 1.2f;
-        GLfloat y  = ((GLfloat)*(scanlines++)) + 0.5f;
-        j2d_glVertex2f(x1, y);
-        j2d_glVertex2f(x2, y);
-        scanlineCount--;
-    }
-    */
 }
 
 void
 MTLRenderer_FillRect(MTLContext *mtlc, jint x, jint y, jint w, jint h)
 {
-
+    //TODO
+    J2dTracePrimitive("MTLRenderer_FillRect");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_FillRect");
-/*
-    if (w <= 0 || h <= 0) {
-        return;
-    }
-
-    RETURN_IF_NULL(mtlc);
-
-    CHECK_PREVIOUS_OP(GL_QUADS);
-    GLRECT_BODY_XYWH(x, y, w, h);
-    */
 }
 
 const int SPAN_BUF_SIZE=64;
@@ -467,20 +419,13 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
     }
 }
 
-#define FILL_PGRAM(fx11, fy11, dx21, dy21, dx12, dy12) \
-    do { \
-        j2d_glVertex2f(fx11,               fy11); \
-        j2d_glVertex2f(fx11 + dx21,        fy11 + dy21); \
-        j2d_glVertex2f(fx11 + dx21 + dx12, fy11 + dy21 + dy12); \
-        j2d_glVertex2f(fx11 + dx12,        fy11 + dy12); \
-    } while (0)
-
 void
 MTLRenderer_FillParallelogram(MTLContext *mtlc,
                               jfloat fx11, jfloat fy11,
                               jfloat dx21, jfloat dy21,
                               jfloat dx12, jfloat dy12)
 {
+    J2dTracePrimitive("MTLRenderer_FillParallelogram");
     J2dTraceLn6(J2D_TRACE_INFO,
                 "MTLRenderer_FillParallelogram "
                 "(x=%6.2f y=%6.2f "
@@ -500,18 +445,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
             dstCGLOps->configInfo->context,
             fx11, fy11, dx21, dy21, dx12, dy12);
          }];
-    } else {
-//        fprintf(stderr, "MTLRenderer_FillParallelogram: dstOps=NULL\n");
     }
-
-/*
-
-    RETURN_IF_NULL(mtlc);
-
-    CHECK_PREVIOUS_OP(GL_QUADS);
-
-    FILL_PGRAM(fx11, fy11, dx21, dy21, dx12, dy12);
-    */
 }
 
 void
@@ -521,6 +455,8 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc,
                               jfloat dx12, jfloat dy12,
                               jfloat lwr21, jfloat lwr12)
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_DrawParallelogram");
     // dx,dy for line width in the "21" and "12" directions.
     jfloat ldx21 = dx21 * lwr21;
     jfloat ldy21 = dy21 * lwr21;
@@ -539,73 +475,7 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc,
                 fx11, fy11,
                 dx21, dy21, lwr21,
                 dx12, dy12, lwr12);
-/*
-    RETURN_IF_NULL(mtlc);
 
-    CHECK_PREVIOUS_OP(GL_QUADS);
-
-    // Only need to generate 4 quads if the interior still
-    // has a hole in it (i.e. if the line width ratio was
-    // less than 1.0)
-    if (lwr21 < 1.0f && lwr12 < 1.0f) {
-        // Note: "TOP", "BOTTOM", "LEFT" and "RIGHT" here are
-        // relative to whether the dxNN variables are positive
-        // and negative.  The math works fine regardless of
-        // their signs, but for conceptual simplicity the
-        // comments will refer to the sides as if the dxNN
-        // were all positive.  "TOP" and "BOTTOM" segments
-        // are defined by the dxy21 deltas.  "LEFT" and "RIGHT"
-        // segments are defined by the dxy12 deltas.
-
-        // Each segment includes its starting corner and comes
-        // to just short of the following corner.  Thus, each
-        // corner is included just once and the only lengths
-        // needed are the original parallelogram delta lengths
-        // and the "line width deltas".  The sides will cover
-        // the following relative territories:
-        //
-        //     T T T T T R
-        //      L         R
-        //       L         R
-        //        L         R
-        //         L         R
-        //          L B B B B B
-
-        // TOP segment, to left side of RIGHT edge
-        // "width" of original pgram, "height" of hor. line size
-        fx11 = ox11;
-        fy11 = oy11;
-        FILL_PGRAM(fx11, fy11, dx21, dy21, ldx12, ldy12);
-
-        // RIGHT segment, to top of BOTTOM edge
-        // "width" of vert. line size , "height" of original pgram
-        fx11 = ox11 + dx21;
-        fy11 = oy11 + dy21;
-        FILL_PGRAM(fx11, fy11, ldx21, ldy21, dx12, dy12);
-
-        // BOTTOM segment, from right side of LEFT edge
-        // "width" of original pgram, "height" of hor. line size
-        fx11 = ox11 + dx12 + ldx21;
-        fy11 = oy11 + dy12 + ldy21;
-        FILL_PGRAM(fx11, fy11, dx21, dy21, ldx12, ldy12);
-
-        // LEFT segment, from bottom of TOP edge
-        // "width" of vert. line size , "height" of inner pgram
-        fx11 = ox11 + ldx12;
-        fy11 = oy11 + ldy12;
-        FILL_PGRAM(fx11, fy11, ldx21, ldy21, dx12, dy12);
-    } else {
-        // The line width ratios were large enough to consume
-        // the entire hole in the middle of the parallelogram
-        // so we can just issue one large quad for the outer
-        // parallelogram.
-        dx21 += ldx21;
-        dy21 += ldy21;
-        dx12 += ldx12;
-        dy12 += ldy12;
-        FILL_PGRAM(ox11, oy11, dx21, dy21, dx12, dy12);
-    }
-    */
 }
 
 static GLhandleARB aaPgramProgram = 0;
@@ -748,6 +618,8 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                                 jfloat dx21, jfloat dy21,
                                 jfloat dx12, jfloat dy12)
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_FillAAParallelogram");
     DECLARE_MATRIX(om);
     // parameters for parallelogram bounding box
     jfloat bx11, by11, bx22, by22;
@@ -762,46 +634,7 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                 fx11, fy11,
                 dx21, dy21,
                 dx12, dy12);
-/*
-    RETURN_IF_NULL(mtlc);
-    RETURN_IF_NULL(dstOps);
 
-    GET_INVERTED_MATRIX(om, fx11, fy11, dx21, dy21, dx12, dy12,
-                        return);
-
-    CHECK_PREVIOUS_OP(MTL_STATE_PGRAM_OP);
-
-    bx11 = bx22 = fx11;
-    by11 = by22 = fy11;
-    ADJUST_PGRAM(bx11, dx21, bx22);
-    ADJUST_PGRAM(by11, dy21, by22);
-    ADJUST_PGRAM(bx11, dx12, bx22);
-    ADJUST_PGRAM(by11, dy12, by22);
-    bx11 = (jfloat) floor(bx11);
-    by11 = (jfloat) floor(by11);
-    bx22 = (jfloat) ceil(bx22);
-    by22 = (jfloat) ceil(by22);
-
-    TRANSFORM(om, u11, v11, bx11, by11);
-    TRANSFORM(om, u21, v21, bx22, by11);
-    TRANSFORM(om, u12, v12, bx11, by22);
-    TRANSFORM(om, u22, v22, bx22, by22);
-
-    j2d_glBegin(GL_QUADS);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u11, v11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, 5.f, 5.f);
-    j2d_glVertex2f(bx11, by11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u21, v21);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, 6.f, 5.f);
-    j2d_glVertex2f(bx22, by11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u22, v22);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, 6.f, 6.f);
-    j2d_glVertex2f(bx22, by22);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, u12, v12);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, 5.f, 6.f);
-    j2d_glVertex2f(bx11, by22);
-    j2d_glEnd();
-    */
 }
 
 void
@@ -813,69 +646,8 @@ MTLRenderer_FillAAParallelogramInnerOuter(MTLContext *mtlc, MTLSDOps *dstOps,
                                           jfloat ix21, jfloat iy21,
                                           jfloat ix12, jfloat iy12)
 {
-/*
-    DECLARE_MATRIX(om);
-    DECLARE_MATRIX(im);
-    // parameters for parallelogram bounding box
-    jfloat bx11, by11, bx22, by22;
-    // parameters for uv texture coordinates of outer parallelogram corners
-    jfloat ou11, ov11, ou12, ov12, ou21, ov21, ou22, ov22;
-    // parameters for uv texture coordinates of inner parallelogram corners
-    jfloat iu11, iv11, iu12, iv12, iu21, iv21, iu22, iv22;
-
-    RETURN_IF_NULL(mtlc);
-    RETURN_IF_NULL(dstOps);
-
-    GET_INVERTED_MATRIX(im, ix11, iy11, ix21, iy21, ix12, iy12,
-                        // inner parallelogram is degenerate
-                        // therefore it encloses no area
-                        // fill outer
-                        MTLRenderer_FillAAParallelogram(mtlc, dstOps,
-                                                        ox11, oy11,
-                                                        ox21, oy21,
-                                                        ox12, oy12);
-                        return);
-    GET_INVERTED_MATRIX(om, ox11, oy11, ox21, oy21, ox12, oy12,
-                        return);
-
-    CHECK_PREVIOUS_OP(MTL_STATE_PGRAM_OP);
-
-    bx11 = bx22 = ox11;
-    by11 = by22 = oy11;
-    ADJUST_PGRAM(bx11, ox21, bx22);
-    ADJUST_PGRAM(by11, oy21, by22);
-    ADJUST_PGRAM(bx11, ox12, bx22);
-    ADJUST_PGRAM(by11, oy12, by22);
-    bx11 = (jfloat) floor(bx11);
-    by11 = (jfloat) floor(by11);
-    bx22 = (jfloat) ceil(bx22);
-    by22 = (jfloat) ceil(by22);
-
-    TRANSFORM(om, ou11, ov11, bx11, by11);
-    TRANSFORM(om, ou21, ov21, bx22, by11);
-    TRANSFORM(om, ou12, ov12, bx11, by22);
-    TRANSFORM(om, ou22, ov22, bx22, by22);
-
-    TRANSFORM(im, iu11, iv11, bx11, by11);
-    TRANSFORM(im, iu21, iv21, bx22, by11);
-    TRANSFORM(im, iu12, iv12, bx11, by22);
-    TRANSFORM(im, iu22, iv22, bx22, by22);
-
-    j2d_glBegin(GL_QUADS);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, ou11, ov11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, iu11, iv11);
-    j2d_glVertex2f(bx11, by11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, ou21, ov21);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, iu21, iv21);
-    j2d_glVertex2f(bx22, by11);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, ou22, ov22);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, iu22, iv22);
-    j2d_glVertex2f(bx22, by22);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, ou12, ov12);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, iu12, iv12);
-    j2d_glVertex2f(bx11, by22);
-    j2d_glEnd();
-    */
+    //TODO
+    J2dTracePrimitive("MTLRenderer_FillAAParallelogramInnerOuter");
 }
 
 void
@@ -885,6 +657,8 @@ MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                                 jfloat dx12, jfloat dy12,
                                 jfloat lwr21, jfloat lwr12)
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_DrawAAParallelogram");
     // dx,dy for line width in the "21" and "12" directions.
     jfloat ldx21, ldy21, ldx12, ldy12;
     // parameters for "outer" parallelogram
@@ -906,12 +680,16 @@ MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
 void
 MTLRenderer_EnableAAParallelogramProgram()
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_EnableAAParallelogramProgram");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_EnableAAParallelogramProgram");
 }
 
 void
 MTLRenderer_DisableAAParallelogramProgram()
 {
+    //TODO
+    J2dTracePrimitive("MTLRenderer_DisableAAParallelogramProgram");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DisableAAParallelogramProgram");
 }
 

@@ -54,6 +54,8 @@ jboolean metalEnabled = JNI_FALSE;
 //#define IM_DEBUG TRUE
 //#define EXTRA_DEBUG
 
+#define METAL_DEBUG
+
 static BOOL shouldUsePressAndHold() {
     static int shouldUsePressAndHold = -1;
     if (shouldUsePressAndHold != -1) return shouldUsePressAndHold;
@@ -1512,5 +1514,7 @@ Java_sun_java2d_macos_MacOSFlags_initNativeFlags(JNIEnv *env,
                                                      jclass flagsClass)
 {
   metalEnabled = GetStaticBoolean(env, flagsClass, "metalEnabled");
+#ifdef METAL_DEBUG
   fprintf(stderr, "metalEnabled=%d\n", metalEnabled);
+#endif
 }

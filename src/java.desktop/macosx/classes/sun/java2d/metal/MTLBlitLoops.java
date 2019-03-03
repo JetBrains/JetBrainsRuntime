@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -533,10 +535,10 @@ final class MTLSurfaceToSwBlit extends Blit {
             cachedSrc = srcTmp.get();
         }
 
-        // We can convert argb_pre data from OpenGL surface in two places:
-        // - During OpenGL surface -> SW blit
+        // We can convert argb_pre data from MTL surface in two places:
+        // - During MTL surface -> SW blit
         // - During SW -> SW blit
-        // The first one is faster when we use opaque OGL surface, because in
+        // The first one is faster when we use opaque MTL surface, because in
         // this case we simply skip conversion and use color components as is.
         // Because of this we align intermediate buffer type with type of
         // destination not source.

@@ -48,7 +48,6 @@ Java_sun_java2d_loops_FillParallelogram_FillParallelogram
     CompositeInfo compInfo;
     jint pixel;
     jint ix1, iy1, ix2, iy2;
-fprintf(stderr, "---Java_sun_java2d_loops_FillParallelogram_FillParallelogram---\n");
     if ((dy1 == 0 && dx1 == 0) || (dy2 == 0 && dx2 == 0)) {
         return;
     }

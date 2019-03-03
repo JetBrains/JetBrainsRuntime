@@ -1,10 +1,12 @@
 /*
- * Copyright 2018 JetBrains s.r.o.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -37,7 +39,7 @@ class MTLBufImgOps extends BufferedBufImgOps {
     /**
      * This method is called from MTLDrawImage.transformImage() only.  It
      * validates the provided BufferedImageOp to determine whether the op
-     * is one that can be accelerated by the OGL pipeline.  If the operation
+     * is one that can be accelerated by the MTL pipeline.  If the operation
      * cannot be completed for any reason, this method returns false;
      * otherwise, the given BufferedImage is rendered to the destination
      * using the provided BufferedImageOp and this method returns true.
@@ -87,9 +89,9 @@ class MTLBufImgOps extends BufferedBufImgOps {
 
         // Verify that the source surface is actually a texture and
         // that the operation is supported
-        MTLSurfaceDataBase oglSrc = (MTLSurfaceDataBase)srcData;
-        MTLGraphicsConfigBase gc = oglSrc.getMTLGraphicsConfig();
-        if (oglSrc.getType() != MTLSurfaceDataBase.TEXTURE ||
+        MTLSurfaceDataBase mtlSrc = (MTLSurfaceDataBase)srcData;
+        MTLGraphicsConfigBase gc = mtlSrc.getMTLGraphicsConfig();
+        if (mtlSrc.getType() != MTLSurfaceDataBase.TEXTURE ||
             !gc.isCapPresent(CAPS_EXT_BIOP_SHADER))
         {
             return false;

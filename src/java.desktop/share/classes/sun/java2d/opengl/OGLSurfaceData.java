@@ -206,8 +206,8 @@ public abstract class OGLSurfaceData extends SurfaceData
             oglRenderPipe = new OGLRenderer(rq);
             if (GraphicsPrimitive.tracingEnabled()) {
                 oglTextPipe = oglTextPipe.traceWrap();
-                //The wrapped mtlRenderPipe will wrap the AA pipe as well...
-                //oglAAPgramPipe = mtlRenderPipe.traceWrap();
+                //The wrapped oglRenderPipe will wrap the AA pipe as well...
+                //oglAAPgramPipe = oglRenderPipe.traceWrap();
             }
             oglAAPgramPipe = oglRenderPipe.getAAParallelogramPipe();
             oglTxRenderPipe =
@@ -581,7 +581,7 @@ public abstract class OGLSurfaceData extends SurfaceData
      * also pass a reference to the native GLX/WGLGraphicsConfigInfo
      * (pConfigInfo) for the purposes of making a context current.
      */
-    public static void dispose(long pData, long pConfigInfo) {
+    static void dispose(long pData, long pConfigInfo) {
         OGLRenderQueue rq = OGLRenderQueue.getInstance();
         rq.lock();
         try {
@@ -648,7 +648,7 @@ public abstract class OGLSurfaceData extends SurfaceData
      *
      * Needed by Mac OS X port.
      */
-    public boolean isOnScreen() {
+    boolean isOnScreen() {
         return getType() == WINDOW;
     }
 }
