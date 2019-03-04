@@ -627,7 +627,14 @@ AwtFileDialog::Show(void *p)
         }
 //      DASSERT(awtParent);
         title = (jstring)(env)->GetObjectField(target, AwtDialog::titleID);
-        HWND hwndOwner = awtParent ? awtParent->GetHWnd() : NULL;
+        /*
+              Fix for 6488834.
+              To disable Win32 native parent modality we have to set
+              hwndOwner field to either NULL or some hidden window. For
+              parentless dialogs we use NULL to show them in the taskbar,
+              and for all other dialogs AwtToolkit's HWND is used.
+            */
+        HWND hwndOwner = awtParent ? AwtToolkit::GetInstance().GetHWnd() : NULL;
 
         if (title == NULL || env->GetStringLength(title)==0) {
             title = JNU_NewStringPlatform(env, L" ");
@@ -744,7 +751,7 @@ AwtFileDialog::Show(void *p)
 
         if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
             if (mode == java_awt_FileDialog_LOAD) {
-                result = SUCCEEDED(pfd->Show(NULL)) && data.result;
+                result = SUCCEEDED(pfd->Show(hwndOwner)) && data.result;
                 if (!result) {
                     OLE_NEXT_TRY
                     OLE_HRT(pfd->GetResult(&psiResult));
@@ -757,7 +764,7 @@ AwtFileDialog::Show(void *p)
                     result = SUCCEEDED(OLE_HR);
                 }
             } else {
-                result = SUCCEEDED(pfd->Show(NULL));
+                result = SUCCEEDED(pfd->Show(hwndOwner));
                 if (result) {
                     OLE_NEXT_TRY
                     OLE_HRT(pfd->GetResult(&psiResult));
