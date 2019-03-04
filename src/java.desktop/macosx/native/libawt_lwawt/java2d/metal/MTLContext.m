@@ -68,7 +68,7 @@ static void
 MTLContext_SetViewport(BMTLSDOps *srcOps,BMTLSDOps *dstOps)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_SetViewport");
+    J2dTraceNotImplPrimitive("MTLContext_SetViewport");
     jint width = dstOps->width;
     jint height = dstOps->height;
 }
@@ -81,7 +81,7 @@ static void
 MTLContext_InitAlphaChannel()
 {
     //TODO
-    J2dTracePrimitive("MTLContext_InitAlphaChannel");
+    J2dTraceNotImplPrimitive("MTLContext_InitAlphaChannel");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitAlphaChannel");
 }
 
@@ -154,7 +154,8 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
 void
 MTLContext_ResetClip(MTLContext *mtlc)
 {
-    J2dTracePrimitive("MTLContext_ResetClip");
+    //TODO
+    J2dTraceNotImplPrimitive("MTLContext_ResetClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetClip");
 }
 
@@ -165,7 +166,8 @@ void
 MTLContext_SetRectClip(MTLContext *mtlc, BMTLSDOps *dstOps,
                        jint x1, jint y1, jint x2, jint y2)
 {
-    J2dTracePrimitive("MTLContext_SetRectClip");
+    //TODO
+    J2dTraceNotImplPrimitive("MTLContext_SetRectClip");
     jint width = x2 - x1;
     jint height = y2 - y1;
 
@@ -189,7 +191,7 @@ void
 MTLContext_BeginShapeClip(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_BeginShapeClip");
+    J2dTraceNotImplPrimitive("MTLContext_BeginShapeClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_BeginShapeClip");
 }
 
@@ -202,7 +204,7 @@ void
 MTLContext_EndShapeClip(MTLContext *mtlc, BMTLSDOps *dstOps)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_EndShapeClip");
+    J2dTraceNotImplPrimitive("MTLContext_EndShapeClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_EndShapeClip");
 }
 
@@ -217,7 +219,7 @@ void
 MTLContext_SetExtraAlpha(jfloat ea)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_SetExtraAlpha");
+    J2dTraceNotImplPrimitive("MTLContext_SetExtraAlpha");
     J2dTraceLn1(J2D_TRACE_INFO, "MTLContext_SetExtraAlpha: ea=%f", ea);
 }
 
@@ -229,7 +231,7 @@ void
 MTLContext_ResetComposite(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_ResetComposite");
+    J2dTraceNotImplPrimitive("MTLContext_ResetComposite");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetComposite");
 }
 
@@ -243,7 +245,7 @@ MTLContext_SetAlphaComposite(MTLContext *mtlc,
                              jint rule, jfloat extraAlpha, jint flags)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_SetAlphaComposite");
+    J2dTraceNotImplPrimitive("MTLContext_SetAlphaComposite");
     J2dTraceLn1(J2D_TRACE_INFO,
                 "MTLContext_SetAlphaComposite: flags=%d", flags);
 }
@@ -257,7 +259,7 @@ void
 MTLContext_SetXorComposite(MTLContext *mtlc, jint xorPixel)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_SetXorComposite");
+    J2dTraceNotImplPrimitive("MTLContext_SetXorComposite");
     J2dTraceLn1(J2D_TRACE_INFO,
                 "MTLContext_SetXorComposite: xorPixel=%08x", xorPixel);
 
@@ -270,7 +272,7 @@ void
 MTLContext_ResetTransform(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_ResetTransform");
+    J2dTraceNotImplPrimitive("MTLContext_ResetTransform");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
 }
 
@@ -289,7 +291,7 @@ MTLContext_SetTransform(MTLContext *mtlc,
                         jdouble m02, jdouble m12)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_SetTransform");
+    J2dTraceNotImplPrimitive("MTLContext_SetTransform");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
 }
 
@@ -304,7 +306,7 @@ MTLContext_CreateBlitTexture(jint internalFormat, jint pixelFormat,
                              jint width, jint height)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_CreateBlitTexture");
+    J2dTraceNotImplPrimitive("MTLContext_CreateBlitTexture");
     return 0;
 }
 
@@ -322,7 +324,7 @@ jboolean
 MTLContext_InitBlitTileTexture(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_InitBlitTileTexture");
+    J2dTraceNotImplPrimitive("MTLContext_InitBlitTileTexture");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture");
 
     return JNI_TRUE;
@@ -337,7 +339,7 @@ void
 MTLContext_DestroyContextResources(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLContext_DestroyContextResources");
+    J2dTraceNotImplPrimitive("MTLContext_DestroyContextResources");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_DestroyContextResources");
 
     if (mtlc->xformMatrix != NULL) {

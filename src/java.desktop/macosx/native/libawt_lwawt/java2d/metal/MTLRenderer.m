@@ -326,7 +326,7 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
 {
     jint *xPoints, *yPoints;
     //TODO
-    J2dTracePrimitive("MTLRenderer_drawPoly");
+    J2dTraceNotImplPrimitive("MTLRenderer_drawPoly");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly");
 }
 
@@ -335,7 +335,7 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc,
                           jint scanlineCount, jint *scanlines)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_DrawScanlines");
+    J2dTraceNotImplPrimitive("MTLRenderer_DrawScanlines");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawScanlines");
 }
 
@@ -343,7 +343,7 @@ void
 MTLRenderer_FillRect(MTLContext *mtlc, jint x, jint y, jint w, jint h)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_FillRect");
+    J2dTraceNotImplPrimitive("MTLRenderer_FillRect");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_FillRect");
 }
 
@@ -456,7 +456,7 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc,
                               jfloat lwr21, jfloat lwr12)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_DrawParallelogram");
+    J2dTraceNotImplPrimitive("MTLRenderer_DrawParallelogram");
     // dx,dy for line width in the "21" and "12" directions.
     jfloat ldx21 = dx21 * lwr21;
     jfloat ldy21 = dy21 * lwr21;
@@ -619,7 +619,7 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                                 jfloat dx12, jfloat dy12)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_FillAAParallelogram");
+    J2dTraceNotImplPrimitive("MTLRenderer_FillAAParallelogram");
     DECLARE_MATRIX(om);
     // parameters for parallelogram bounding box
     jfloat bx11, by11, bx22, by22;
@@ -647,7 +647,7 @@ MTLRenderer_FillAAParallelogramInnerOuter(MTLContext *mtlc, MTLSDOps *dstOps,
                                           jfloat ix12, jfloat iy12)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_FillAAParallelogramInnerOuter");
+    J2dTraceNotImplPrimitive("MTLRenderer_FillAAParallelogramInnerOuter");
 }
 
 void
@@ -658,7 +658,7 @@ MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
                                 jfloat lwr21, jfloat lwr12)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_DrawAAParallelogram");
+    J2dTraceNotImplPrimitive("MTLRenderer_DrawAAParallelogram");
     // dx,dy for line width in the "21" and "12" directions.
     jfloat ldx21, ldy21, ldx12, ldy12;
     // parameters for "outer" parallelogram
@@ -681,7 +681,7 @@ void
 MTLRenderer_EnableAAParallelogramProgram()
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_EnableAAParallelogramProgram");
+    J2dTraceNotImplPrimitive("MTLRenderer_EnableAAParallelogramProgram");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_EnableAAParallelogramProgram");
 }
 
@@ -689,7 +689,7 @@ void
 MTLRenderer_DisableAAParallelogramProgram()
 {
     //TODO
-    J2dTracePrimitive("MTLRenderer_DisableAAParallelogramProgram");
+    J2dTraceNotImplPrimitive("MTLRenderer_DisableAAParallelogramProgram");
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DisableAAParallelogramProgram");
 }
 

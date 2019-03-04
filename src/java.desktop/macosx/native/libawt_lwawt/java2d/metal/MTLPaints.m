@@ -40,7 +40,7 @@ void
 MTLPaints_ResetPaint(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_ResetPaint");
+    J2dTraceNotImplPrimitive("MTLPaints_ResetPaint");
     J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_ResetPaint");
 }
 
@@ -48,7 +48,7 @@ void
 MTLPaints_SetColor(MTLContext *mtlc, jint pixel)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetColor");
+    J2dTraceNotImplPrimitive("MTLPaints_SetColor");
     J2dTraceLn1(J2D_TRACE_INFO, "MTLPaints_SetColor: pixel=%08x", pixel);
 }
 
@@ -60,7 +60,7 @@ static void
 MTLPaints_InitGradientTexture()
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_InitGradientTexture");
+    J2dTraceNotImplPrimitive("MTLPaints_InitGradientTexture");
     J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_InitGradientTexture");
 }
 
@@ -71,7 +71,7 @@ MTLPaints_SetGradientPaint(MTLContext *mtlc,
                            jint pixel1, jint pixel2)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetGradientPaint");
+    J2dTraceNotImplPrimitive("MTLPaints_SetGradientPaint");
     J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_SetGradientPaint");
 }
 
@@ -85,7 +85,7 @@ MTLPaints_SetTexturePaint(MTLContext *mtlc,
                           jdouble yp0, jdouble yp1, jdouble yp3)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetTexturePaint");
+    J2dTraceNotImplPrimitive("MTLPaints_SetTexturePaint");
 }
 
 /****************** Shared MultipleGradientPaint support ********************/
@@ -297,7 +297,7 @@ static void
 MTLPaints_InitMultiGradientTexture()
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_InitMultiGradientTexture");
+    J2dTraceNotImplPrimitive("MTLPaints_InitMultiGradientTexture");
 }
 
 /**
@@ -311,7 +311,7 @@ MTLPaints_CreateMultiGradProgram(jint flags,
 {
 
     //TODO
-    J2dTracePrimitive("MTLPaints_CreateMultiGradProgram");
+    J2dTraceNotImplPrimitive("MTLPaints_CreateMultiGradProgram");
     return NULL;
 }
 
@@ -325,7 +325,7 @@ MTLPaints_SetMultiGradientPaint(GLhandleARB multiGradProgram,
                                 void *pFractions, void *pPixels)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetMultiGradientPaint");
+    J2dTraceNotImplPrimitive("MTLPaints_SetMultiGradientPaint");
 
 }
 
@@ -385,7 +385,7 @@ MTLPaints_SetLinearGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
                                  void *fractions, void *pixels)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetMultiGradientPaint");
+    J2dTraceNotImplPrimitive("MTLPaints_SetMultiGradientPaint");
 }
 
 /********************** RadialGradientPaint support *************************/
@@ -465,7 +465,7 @@ MTLPaints_SetRadialGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
                                  void *fractions, void *pixels)
 {
     //TODO
-    J2dTracePrimitive("MTLPaints_SetRadialGradientPaint");
+    J2dTraceNotImplPrimitive("MTLPaints_SetRadialGradientPaint");
 }
 
 #endif /* !HEADLESS */

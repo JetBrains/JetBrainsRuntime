@@ -129,7 +129,7 @@ static GLhandleARB
 MTLBufImgOps_CreateConvolveProgram(jint flags)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_CreateConvolveProgram");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_CreateConvolveProgram");
     return NULL;
 }
 
@@ -140,14 +140,14 @@ MTLBufImgOps_EnableConvolveOp(MTLContext *mtlc, jlong pSrcOps,
                               unsigned char *kernel)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_EnableConvolveOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_EnableConvolveOp");
 }
 
 void
 MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_EnableConvolveOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_EnableConvolveOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableConvolveOp");
 }
 
@@ -221,7 +221,7 @@ static GLhandleARB
 MTLBufImgOps_CreateRescaleProgram(jint flags)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_CreateRescaleProgram");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_CreateRescaleProgram");
     return NULL;
 }
 
@@ -232,14 +232,14 @@ MTLBufImgOps_EnableRescaleOp(MTLContext *mtlc, jlong pSrcOps,
                              unsigned char *offsets)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_EnableRescaleOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_EnableRescaleOp");
 }
 
 void
 MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_DisableRescaleOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_DisableRescaleOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableRescaleOp");
     RETURN_IF_NULL(mtlc);
 }
@@ -352,7 +352,7 @@ static GLhandleARB
 MTLBufImgOps_CreateLookupProgram(jint flags)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_CreateLookupProgram");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_CreateLookupProgram");
 
     return NULL;
 }
@@ -364,14 +364,14 @@ MTLBufImgOps_EnableLookupOp(MTLContext *mtlc, jlong pSrcOps,
                             void *tableValues)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_EnableLookupOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_EnableLookupOp");
 }
 
 void
 MTLBufImgOps_DisableLookupOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTracePrimitive("MTLBufImgOps_DisableLookupOp");
+    J2dTraceNotImplPrimitive("MTLBufImgOps_DisableLookupOp");
     J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableLookupOp");
 }
 

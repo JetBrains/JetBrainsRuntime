@@ -189,6 +189,19 @@ J2dTraceInit();
             (*env)->DeleteLocalRef(env, jstr); \
         } \
     }
+
+#define J2dTraceNotImplPrimitive(string) { \
+        if (graphicsPrimitive_traceflags && jvm) { \
+            JNIEnv *env; \
+            jstring jstr; \
+            (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
+            jstr = (*env)->NewStringUTF(env, string); \
+            JNU_CallStaticMethodByName(env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
+                                       "traceNotImplPrimitive", "(Ljava/lang/Object;)V", jstr); \
+            (*env)->DeleteLocalRef(env, jstr); \
+        } \
+    }
+
 #ifdef __cplusplus
 };
 #endif /* __cplusplus */

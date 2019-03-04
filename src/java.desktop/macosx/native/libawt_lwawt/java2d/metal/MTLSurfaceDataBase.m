@@ -113,7 +113,8 @@ MTLSD_InitTextureObject(MTLSDOps *mtlsdo,
                         jboolean texNonPow2, jboolean texRect,
                         jint width, jint height)
 {
-
+    //TODO
+    J2dTraceNotImplPrimitive("MTLSD_InitTextureObject");
     return JNI_TRUE;
 }
 
@@ -234,6 +235,8 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_initFlipBackbuffer
     (JNIEnv *env, jobject mtlsd,
      jlong pData)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLSurfaceDataBase_initFlipBackbuffer");
     MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initFlipBackbuffer");
@@ -245,6 +248,8 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_getTextureTarget
     (JNIEnv *env, jobject mtlsd,
      jlong pData)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLSurfaceDataBase_getTextureTarget");
     MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_getTextureTarget");
@@ -257,6 +262,8 @@ Java_sun_java2d_metal_MTLSurfaceDataBase_getTextureID
     (JNIEnv *env, jobject mtlsd,
      jlong pData)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLSurfaceDataBase_getTextureID");
     return 0;
 }
 
@@ -289,6 +296,8 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
 void
 MTLSD_Delete(JNIEnv *env, BMTLSDOps *mtlsdo)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLSD_Delete");
     J2dTraceLn1(J2D_TRACE_INFO, "MTLSD_Delete: type=%d",
                 mtlsdo->drawableType);
 }

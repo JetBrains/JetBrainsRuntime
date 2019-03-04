@@ -40,6 +40,7 @@ import java.lang.reflect.Field;
 import java.util.StringTokenizer;
 import java.util.Iterator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.io.PrintStream;
 import java.io.OutputStream;
@@ -319,6 +320,7 @@ public abstract class GraphicsPrimitive {
     public abstract GraphicsPrimitive traceWrap();
 
     static HashMap<Object, int[]> traceMap;
+    static HashSet<String> traceNotImplSet;
 
     public static int traceflags;
     public static String tracefile;
@@ -332,6 +334,7 @@ public abstract class GraphicsPrimitive {
     public static final int TRACECOUNTS = 4;
     public static final int TRACEPTIME = 8;
     public static final int TRACEPNAME = 16;
+    public static final int TRACENOTIMPL = 32;
 
     static void showTraceUsage() {
         System.err.println("usage: -Dsun.java2d.trace="+
@@ -355,6 +358,8 @@ public abstract class GraphicsPrimitive {
                     traceflags |= GraphicsPrimitive.TRACETIMESTAMP;
                 } else if (tok.equalsIgnoreCase("ptime")) {
                     traceflags |=GraphicsPrimitive.TRACEPTIME;
+                } else if (tok.equalsIgnoreCase("notimpl")) {
+                    traceflags |=GraphicsPrimitive.TRACENOTIMPL;
                 } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
                     traceflags |=GraphicsPrimitive.TRACEPNAME;
                     pname = tok.substring(6);
@@ -438,7 +443,12 @@ public abstract class GraphicsPrimitive {
     }
 
     public static class TraceReporter implements Runnable {
-        public static void setShutdownHook() {
+        private static boolean hookEnabled = false;
+
+        public static synchronized void setShutdownHook() {
+            if (hookEnabled) return;
+            hookEnabled = true;
+
             AccessController.doPrivileged((PrivilegedAction<Void>) () -> {
                 TraceReporter t = new TraceReporter();
                 Thread thread = new Thread(
@@ -452,28 +462,38 @@ public abstract class GraphicsPrimitive {
 
         public void run() {
             PrintStream ps = getTraceOutputFile();
-            Iterator<Map.Entry<Object, int[]>> iterator =
-                traceMap.entrySet().iterator();
-            long total = 0;
-            int numprims = 0;
-            while (iterator.hasNext()) {
-                Map.Entry<Object, int[]> me = iterator.next();
-                Object prim = me.getKey();
-                int[] count = me.getValue();
-                if (count[0] == 1) {
-                    ps.print("1 call to ");
-                } else {
-                    ps.print(count[0]+" calls to ");
+            if (traceMap != null) {
+                Iterator<Map.Entry<Object, int[]>> iterator =
+                        traceMap.entrySet().iterator();
+                long total = 0;
+                int numprims = 0;
+                while (iterator.hasNext()) {
+                    Map.Entry<Object, int[]> me = iterator.next();
+                    Object prim = me.getKey();
+                    int[] count = me.getValue();
+                    if (count[0] == 1) {
+                        ps.print("1 call to ");
+                    } else {
+                        ps.print(count[0] + " calls to ");
+                    }
+                    ps.println(prim);
+                    numprims++;
+                    total += count[0];
                 }
-                ps.println(prim);
-                numprims++;
-                total += count[0];
+                if (numprims == 0) {
+                    ps.println("No graphics primitives executed");
+                } else if (numprims > 1) {
+                    ps.println(total + " total calls to " +
+                            numprims + " different primitives");
+                }
             }
-            if (numprims == 0) {
-                ps.println("No graphics primitives executed");
-            } else if (numprims > 1) {
-                ps.println(total+" total calls to "+
-                           numprims+" different primitives");
+
+            if (traceNotImplSet != null) {
+                ps.println("Not implemented graphics primitives:");
+
+                for (String name : traceNotImplSet) {
+                    ps.println(name);
+                }
             }
         }
     }
@@ -499,6 +519,27 @@ public abstract class GraphicsPrimitive {
             PrintStream ps = getTraceOutputFile();
             if ((traceflags & TRACETIMESTAMP) != 0) {
                 ps.print(System.currentTimeMillis()+": ");
+            }
+            ps.println(prim);
+        }
+    }
+
+    public synchronized static void traceNotImplPrimitive(Object prim) {
+        if ((traceflags & TRACEPNAME) != 0) {
+            if (!prim.toString().contains(pname)) return;
+        }
+
+        if ((traceflags & TRACECOUNTS) != 0) {
+            if (traceNotImplSet == null) {
+                traceNotImplSet = new HashSet<String>();
+                TraceReporter.setShutdownHook();
+            }
+            traceNotImplSet.add(prim.toString());
+        }
+        if ((traceflags & TRACELOG) != 0) {
+            PrintStream ps = getTraceOutputFile();
+            if ((traceflags & TRACETIMESTAMP) != 0) {
+                ps.print(System.currentTimeMillis()+":[NOT IMPL] ");
             }
             ps.println(prim);
         }

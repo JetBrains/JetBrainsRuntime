@@ -139,7 +139,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y = NEXT_INT(b);
                 CONTINUE_IF_NULL(mtlc);
                 //TODO
-                J2dTracePrimitive("MTLRenderQueue_DRAW_PIXEL");
+                J2dTraceNotImplPrimitive("MTLRenderQueue_DRAW_PIXEL");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
@@ -520,7 +520,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT:
             {
                 //TODO
-                J2dTracePrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
+                J2dTraceNotImplPrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
                 // flush just in case there are any pending operations in
                 // the hardware pipe
                 if (mtlc != NULL) {
@@ -535,14 +535,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
             {
                 //TODO
-                J2dTracePrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
+                J2dTraceNotImplPrimitive("MTLRenderQueue_INVALIDATE_CONTEXT");
             }
             break;
 
         case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
             {
                 //TODO
-                J2dTracePrimitive("MTLRenderQueue_RESTORE_STATE");
+                J2dTraceNotImplPrimitive("MTLRenderQueue_RESTORE_STATE");
 
             }
             break;
@@ -766,7 +766,7 @@ void
 MTLRenderQueue_CheckPreviousOp(jint op)
 {
     //TODO
-    J2dTracePrimitive("MTLRenderQueue_CheckPreviousOp");
+    J2dTraceNotImplPrimitive("MTLRenderQueue_CheckPreviousOp");
     previousOp = op;
 }
 

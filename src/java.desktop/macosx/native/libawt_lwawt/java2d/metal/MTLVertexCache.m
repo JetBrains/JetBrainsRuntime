@@ -70,6 +70,7 @@ jboolean
 MTLVertexCache_InitVertexCache(MTLContext *mtlc)
 {
     //TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_InitVertexCache");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache");
     return JNI_TRUE;
 }
@@ -78,6 +79,7 @@ void
 MTLVertexCache_FlushVertexCache()
 {
     // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_FlushVertexCache");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
     vertexCacheIndex = 0;
 }
@@ -116,6 +118,8 @@ MTLVertexCache_FlushVertexCache()
 void
 MTLVertexCache_RestoreColorState(MTLContext *mtlc)
 {
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_RestoreColorState");
     if (mtlc->paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         MTLPaints_SetColor(mtlc, mtlc->pixel);
     }
@@ -124,65 +128,26 @@ MTLVertexCache_RestoreColorState(MTLContext *mtlc)
 static jboolean
 MTLVertexCache_InitMaskCache()
 {
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_InitMaskCache");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitMaskCache");
-/*
-    maskCacheTexID =
-        MTLContext_CreateBlitTexture(GL_INTENSITY8, GL_LUMINANCE,
-                                     MTLVC_MASK_CACHE_WIDTH_IN_TEXELS,
-                                     MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
-
-    // init special fully opaque tile in the upper-right corner of
-    // the mask cache texture
-    {
-        GLubyte allOnes[MTLVC_MASK_CACHE_TILE_SIZE];
-        memset(allOnes, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
-        j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
-                            MTLVC_MASK_CACHE_SPECIAL_TILE_X,
-                            MTLVC_MASK_CACHE_SPECIAL_TILE_Y,
-                            MTLVC_MASK_CACHE_TILE_WIDTH,
-                            MTLVC_MASK_CACHE_TILE_HEIGHT,
-                            GL_LUMINANCE, GL_UNSIGNED_BYTE, allOnes);
-    }
-*/
     return JNI_TRUE;
 }
 
 void
 MTLVertexCache_EnableMaskCache(MTLContext *mtlc)
 {
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_EnableMaskCache");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_EnableMaskCache");
-/*
-    if (!MTLVertexCache_InitVertexCache(mtlc)) {
-        return;
-    }
-
-    if (maskCacheTexID == 0) {
-        if (!MTLVertexCache_InitMaskCache()) {
-            return;
-        }
-    }
-
-    j2d_glEnable(GL_TEXTURE_2D);
-    j2d_glBindTexture(GL_TEXTURE_2D, maskCacheTexID);
-    MTLC_UPDATE_TEXTURE_FUNCTION(mtlc, GL_MODULATE);
-    j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    */
 }
 
 void
 MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_DisableMaskCache");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
-/*
-    MTLVertexCache_FlushVertexCache();
-    MTLVertexCache_RestoreColorState(mtlc);
-
-    j2d_glDisable(GL_TEXTURE_2D);
-    j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-    j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-*/
     maskCacheIndex = 0;
 }
 
@@ -193,60 +158,8 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                            jint width, jint height,
                            jint maskscan, void *mask)
 {
-/*
-    jfloat tx1, ty1, tx2, ty2;
-    jfloat dx1, dy1, dx2, dy2;
-
-    J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_AddMaskQuad: %d",
-                maskCacheIndex);
-
-    if (maskCacheIndex >= MTLVC_MASK_CACHE_MAX_INDEX ||
-        vertexCacheIndex >= MTLVC_MAX_INDEX)
-    {
-        MTLVertexCache_FlushVertexCache();
-        maskCacheIndex = 0;
-    }
-
-    if (mask != NULL) {
-        jint texx = MTLVC_MASK_CACHE_TILE_WIDTH *
-            (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
-        jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT *
-            (maskCacheIndex / MTLVC_MASK_CACHE_WIDTH_IN_TILES);
-
-        // update the source pointer offsets
-        j2d_glPixelStorei(GL_UNPACK_SKIP_PIXELS, srcx);
-        j2d_glPixelStorei(GL_UNPACK_SKIP_ROWS, srcy);
-        j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, maskscan);
-
-        // copy alpha mask into texture tile
-        j2d_glTexSubImage2D(GL_TEXTURE_2D, 0,
-                            texx, texy, width, height,
-                            GL_LUMINANCE, GL_UNSIGNED_BYTE, mask);
-
-        tx1 = ((jfloat)texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
-        ty1 = ((jfloat)texy) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
-
-        maskCacheIndex++;
-    } else {
-        // use special fully opaque tile
-        tx1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_X) /
-            MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
-        ty1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_Y) /
-            MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
-    }
-
-    tx2 = tx1 + (((jfloat)width) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
-    ty2 = ty1 + (((jfloat)height) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
-
-    dx1 = (jfloat)dstx;
-    dy1 = (jfloat)dsty;
-    dx2 = dx1 + width;
-    dy2 = dy1 + height;
-
-    MTLVC_ADD_QUAD(tx1, ty1, tx2, ty2,
-                   dx1, dy1, dx2, dy2,
-                   mtlc->r, mtlc->g, mtlc->b, mtlc->a);
-                   */
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_AddMaskQuad");
 }
 
 void
@@ -254,16 +167,9 @@ MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
                             jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
                             jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
 {
+    // TODO
+    J2dTraceNotImplPrimitive("MTLVertexCache_AddGlyphQuad");
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphQuad");
-/*
-    if (vertexCacheIndex >= MTLVC_MAX_INDEX) {
-        MTLVertexCache_FlushVertexCache();
-    }
-
-    MTLVC_ADD_QUAD(tx1, ty1, tx2, ty2,
-                   dx1, dy1, dx2, dy2,
-                   mtlc->r, mtlc->g, mtlc->b, mtlc->a);
-                   */
 }
 
 #endif /* !HEADLESS */

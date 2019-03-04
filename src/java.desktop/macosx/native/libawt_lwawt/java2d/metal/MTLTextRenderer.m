@@ -174,7 +174,7 @@ static jboolean
 MTLTR_InitGlyphCache(jboolean lcdCache)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_InitGlyphCache");
+    J2dTraceNotImplPrimitive("MTLTR_InitGlyphCache");
 
     return JNI_TRUE;
 }
@@ -187,6 +187,8 @@ static void
 MTLTR_AddTmTLyphCache(GlyphInfo *glyph, GLenum pixelFormat)
 {
     //TODO
+    J2dTraceNotImplPrimitive("MTLTR_AddTmTLyphCache");
+
     CacheCellInfo *ccinfo;
     GlyphCacheInfo *gcinfo;
 
@@ -204,7 +206,7 @@ static jboolean
 MTLTR_UpdateLCDTextContrast(jint contrast)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_UpdateLCDTextContrast");
+    J2dTraceNotImplPrimitive("MTLTR_UpdateLCDTextContrast");
     return JNI_TRUE;
 }
 
@@ -220,6 +222,8 @@ MTLTR_UpdateLCDTextContrast(jint contrast)
 static jboolean
 MTLTR_UpdateLCDTextColor(jint contrast)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLTR_UpdateLCDTextColor");
     return JNI_TRUE;
 }
 
@@ -232,20 +236,24 @@ MTLTR_EnableLCDGlyphModeState(GLuint glyphTextureID,
                               GLuint dstTextureID,
                               jint contrast)
 {
+    //TODO
+    J2dTraceNotImplPrimitive("MTLTR_EnableLCDGlyphModeState");
     return JNI_TRUE;
 }
 
 void
 MTLTR_EnableGlyphVertexCache(MTLContext *mtlc)
 {
-    J2dTracePrimitive("MTLTR_EnableGlyphVertexCache");
+    //TODO
+    J2dTraceNotImplPrimitive("MTLTR_EnableGlyphVertexCache");
 }
 
 void
 MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
 {
+    //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DisableGlyphVertexCache");
-    J2dTracePrimitive("MTLTR_DisableGlyphVertexCache");
+    J2dTraceNotImplPrimitive("MTLTR_DisableGlyphVertexCache");
 
 }
 
@@ -256,7 +264,7 @@ void
 MTLTR_DisableGlyphModeState()
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DisableGlyphModeState");
+    J2dTraceNotImplPrimitive("MTLTR_DisableGlyphModeState");
     J2dTraceLn1(J2D_TRACE_VERBOSE,
                 "MTLTR_DisableGlyphModeState: mode=%d", glyphMode);
 }
@@ -265,7 +273,8 @@ static jboolean
 MTLTR_DrawGrayscaleGlyphViaCache(MTLContext *mtlc,
                                  GlyphInfo *ginfo, jint x, jint y)
 {
-    J2dTracePrimitive("MTLTR_DisableGlyphVertexCache");
+    //TODO
+    J2dTraceNotImplPrimitive("MTLTR_DisableGlyphVertexCache");
     return JNI_TRUE;
 }
 
@@ -298,7 +307,7 @@ MTLTR_UpdateCachedDestination(MTLSDOps *dstOps, GlyphInfo *ginfo,
                               jint glyphIndex, jint totalGlyphs)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_UpdateCachedDestination");
+    J2dTraceNotImplPrimitive("MTLTR_UpdateCachedDestination");
 }
 
 static jboolean
@@ -309,7 +318,7 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, MTLSDOps *dstOps,
                            jint dstTextureID, jboolean * opened)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DrawLCDGlyphViaCache");
+    J2dTraceNotImplPrimitive("MTLTR_DrawLCDGlyphViaCache");
     return JNI_TRUE;
 }
 
@@ -318,7 +327,7 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
                                 GlyphInfo *ginfo, jint x, jint y)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DrawGrayscaleGlyphNoCache");
+    J2dTraceNotImplPrimitive("MTLTR_DrawGrayscaleGlyphNoCache");
     return JNI_TRUE;
 }
 
@@ -330,7 +339,7 @@ MTLTR_DrawLCDGlyphNoCache(MTLContext *mtlc, MTLSDOps *dstOps,
                           jint dstTextureID)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DrawLCDGlyphNoCache");
+    J2dTraceNotImplPrimitive("MTLTR_DrawLCDGlyphNoCache");
     return JNI_TRUE;
 }
 
@@ -338,7 +347,7 @@ static jboolean
 MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc, GlyphInfo *ginfo, jint x, jint y)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DrawColorGlyphNoCache");
+    J2dTraceNotImplPrimitive("MTLTR_DrawColorGlyphNoCache");
     return JNI_TRUE;
 }
 
@@ -355,7 +364,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, MTLSDOps *dstOps,
                     unsigned char *images, unsigned char *positions)
 {
     //TODO
-    J2dTracePrimitive("MTLTR_DrawGlyphList");
+    J2dTraceNotImplPrimitive("MTLTR_DrawGlyphList");
 }
 
 JNIEXPORT void JNICALL
@@ -367,7 +376,7 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
      jlongArray imgArray, jfloatArray posArray)
 {
     //TODO
-    J2dTracePrimitive("MTLTextRenderer_drawGlyphList");
+    J2dTraceNotImplPrimitive("MTLTextRenderer_drawGlyphList");
 }
 
 #endif /* !HEADLESS */

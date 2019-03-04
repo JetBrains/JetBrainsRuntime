@@ -44,7 +44,7 @@ MTLMaskBlit_MaskBlit(JNIEnv *env, MTLContext *mtlc,
                      void *pPixels)
 {
     //TODO
-    J2dTracePrimitive("MTLMaskBlit_MaskBlit");
+    J2dTraceNotImplPrimitive("MTLMaskBlit_MaskBlit");
     J2dTraceLn(J2D_TRACE_INFO, "MTLMaskBlit_MaskBlit");
 
     if (width <= 0 || height <= 0) {

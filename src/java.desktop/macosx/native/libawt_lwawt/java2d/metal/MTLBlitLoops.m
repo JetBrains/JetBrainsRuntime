@@ -58,7 +58,7 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitSurfaceToSurface");
+    J2dTraceNotImplPrimitive("MTLBlitSurfaceToSurface");
 }
 
 /**
@@ -80,7 +80,7 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitTextureToSurface");
+    J2dTraceNotImplPrimitive("MTLBlitTextureToSurface");
 }
 
 /**
@@ -101,7 +101,7 @@ MTLBlitSwToSurface(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
                    jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitSwToSurface");
+    J2dTraceNotImplPrimitive("MTLBlitSwToSurface");
 }
 
 /**
@@ -133,7 +133,7 @@ MTLBlitToSurfaceViaTexture(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
                            jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitToSurfaceViaTexture");
+    J2dTraceNotImplPrimitive("MTLBlitToSurfaceViaTexture");
 }
 
 /**
@@ -155,7 +155,7 @@ MTLBlitSwToTexture(SurfaceDataRasInfo *srcInfo, MTPixelFormat *pf,
                    jint dx1, jint dy1, jint dx2, jint dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitSwToTexture");
+    J2dTraceNotImplPrimitive("MTLBlitSwToTexture");
 }
 
 /**
@@ -178,7 +178,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
                      jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitLoops_IsoBlit");
+    J2dTraceNotImplPrimitive("MTLBlitLoops_IsoBlit");
 }
 
 /**
@@ -196,7 +196,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
                   jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitLoops_Blit");
+    J2dTraceNotImplPrimitive("MTLBlitLoops_Blit");
 }
 
 /**
@@ -210,7 +210,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                              jint width, jint height)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitLoops_SurfaceToSwBlit");
+    J2dTraceNotImplPrimitive("MTLBlitLoops_SurfaceToSwBlit");
 }
 
 void
@@ -220,7 +220,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                       jint dx, jint dy)
 {
     //TODO
-    J2dTracePrimitive("MTLBlitLoops_CopyArea");
+    J2dTraceNotImplPrimitive("MTLBlitLoops_CopyArea");
 }
 
 #endif /* !HEADLESS */
