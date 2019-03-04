@@ -897,11 +897,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLPaints.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLVertexCache.m
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLLayer.h
-            ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLFuncs_md.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLRenderQueue.m
-            ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLSurfaceDataBase.m
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLMaskFill.m
-            ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLFuncMacros.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLTextRenderer.m
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLBlitLoops.h
             ../../../src/java.desktop/macosx/native/libawt_lwawt/java2d/metal/MTLSurfaceData.m
