@@ -555,7 +555,7 @@ HRESULT CDialogEventHandler_CreateInstance(FileDialogData *data, REFIID riid, vo
     OLE_RETURN_HR
 }
 
-HRESULT CreateShellItem(LPTSTR path, IShellItem *shellItem) {
+HRESULT CreateShellItem(LPTSTR path, IShellItemPtr& shellItem) {
     size_t pathLength = _tcslen(path);
     for (size_t index = 0; index < pathLength; index++) {
         if (path[index] == _T('/'))
@@ -599,7 +599,7 @@ AwtFileDialog::Show(void *p)
     IFileDialogEventsPtr pfde;
     IShellItemPtr psiResult;
     FileDialogData data;
-    DWORD dwCookie;
+    DWORD dwCookie = OLE_BAD_COOKIE;
 
     OPENFILENAME ofn;
     memset(&ofn, 0, sizeof(ofn));
@@ -721,9 +721,11 @@ AwtFileDialog::Show(void *p)
             OLE_HRT(pfd->SetFileTypeIndex(1));
 
             IShellItemPtr directoryItem;
-            if (SUCCEEDED(CreateShellItem(directoryBuffer, directoryItem))) {
-                pfd->SetFolder(directoryItem);
-            }
+            OLE_NEXT_TRY
+            OLE_HRT(CreateShellItem(directoryBuffer, directoryItem));
+            OLE_HRT(pfd->SetFolder(directoryItem));
+            OLE_CATCH
+
             CoTaskStringHolder shortName = GetShortName(fileBuffer);
             if (shortName) {
                 OLE_HRT(pfd->SetFileName(shortName));
@@ -822,7 +824,7 @@ AwtFileDialog::Show(void *p)
     } catch (...) {
 
         if (useCommonItemDialog) {
-            if (pfd) {
+            if (pfd && dwCookie != OLE_BAD_COOKIE) {
                 pfd->Unadvise(dwCookie);
             }
         }
@@ -842,7 +844,7 @@ AwtFileDialog::Show(void *p)
     }
 
     if (useCommonItemDialog) {
-        if (pfd) {
+        if (pfd && dwCookie != OLE_BAD_COOKIE) {
             pfd->Unadvise(dwCookie);
         }
     }
