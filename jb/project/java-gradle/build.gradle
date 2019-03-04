@@ -81,6 +81,7 @@ test {
 //    systemProperty "gentestdata", ""
 
 //  Enable Java2D logging (https://confluence.jetbrains.com/display/JRE/Java2D+Rendering+Logging)
+//  systemProperty "sun.java2d.trace", "count,notimpl
 //  systemProperty "sun.java2d.trace", "log"
 
     outputs.upToDateWhen { false }
