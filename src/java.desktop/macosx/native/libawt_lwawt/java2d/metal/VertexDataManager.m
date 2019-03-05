@@ -152,5 +152,15 @@ void VertexDataManager_freeAllPrimitives() {
     free(AllPrimitives);
 }
 
+void VertexDataManager_reset(id<MTLDevice> device) {
+    VertexDataManager_freeAllPrimitives();
+    VertexBuffer = NULL;
+    IndexBuffer = NULL;
+    no_of_vertices = 0;
+    no_of_indices = 0;
+    no_of_primitives = 0;
+    AllPrimitives = NULL;
+    VertexDataManager_init(device);
+}
 
 #endif /* !HEADLESS */

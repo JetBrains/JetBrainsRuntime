@@ -27,6 +27,7 @@ package sun.java2d.metal;
 
 import java.awt.*;
 
+import sun.awt.image.PixelConverter;
 import sun.java2d.SurfaceData;
 
 import java.awt.Composite;
@@ -65,6 +66,15 @@ public class MetalSurfaceData extends SurfaceData
     protected static MetalRenderer mtlRenderPipe;
     protected static PixelToParallelogramConverter mtlTxRenderPipe;
 
+    /**
+     * SurfaceTypes
+     */
+    private static final String DESC_METAL_SURFACE = "Metal Surface";
+
+    static final SurfaceType MetalSurface =
+            SurfaceType.Any.deriveSubType(DESC_METAL_SURFACE,
+                    PixelConverter.ArgbPre.instance);
+
     private native int getTextureTarget(long pData);
     private native int getTextureID(long pData);
     protected native boolean initTexture(long pData,
@@ -83,6 +93,7 @@ public class MetalSurfaceData extends SurfaceData
                 new PixelToParallelogramConverter(mtlRenderPipe,
                                                   mtlRenderPipe,
                                                   1.0, 0.25, true);
+            MetalBlitLoops.register();
         }
     }
 
@@ -95,7 +106,8 @@ public class MetalSurfaceData extends SurfaceData
                      int width, int height) {
         // TODO : Map the coming type to proper custom type and call super()
         //super(gc, cm, type);
-        super(SurfaceType.Any3Byte, cm );
+        //super(SurfaceType.Any3Byte, cm );
+        super(MetalSurface, cm );
         // TEXTURE shouldn't be scaled, it is used for managed BufferedImages.
         // TODO : We need to set scale factor
         //scale = type == TEXTURE ? 1 : gc.getDevice().getScaleFactor();

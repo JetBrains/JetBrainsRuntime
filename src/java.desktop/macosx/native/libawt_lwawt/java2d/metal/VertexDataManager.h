@@ -55,6 +55,7 @@ MetalPrimitiveData** VertexDataManager_getAllPrimitives();
 unsigned int VertexDataManager_getNoOfPrimitives();
 
 void VertexDataManager_freeAllPrimitives();
+void VertexDataManager_reset(id<MTLDevice> device);
 
 // should be private
 void addVertex(MetalVertex vert);

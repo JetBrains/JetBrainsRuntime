@@ -344,6 +344,8 @@ Java_sun_java2d_metal_MetalLayer_validate
         layer.textureWidth = metalsdo->width;
         layer.textureHeight = metalsdo->height;
 
+        VertexDataManager_reset(metalsdo->configInfo->device);
+
         NSLog(@"Validate : Width : %f", layer.textureWidth);
         NSLog(@"Validate : height : %f", layer.textureHeight);
 
