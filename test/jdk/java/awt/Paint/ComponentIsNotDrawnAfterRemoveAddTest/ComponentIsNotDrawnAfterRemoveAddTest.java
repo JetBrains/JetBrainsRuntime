@@ -42,7 +42,7 @@ public class ComponentIsNotDrawnAfterRemoveAddTest {
     private final Frame frame;
     private final Panel panel;
     private final ArrayList<Testable> compList = new ArrayList<Testable>();
-    private final int PAUSE = 2000;
+    private final int PAUSE = 3000;
 
     public ComponentIsNotDrawnAfterRemoveAddTest() {
         frame = new Frame("ComponentIsNotDrawnAfterRemoveAddTest");
