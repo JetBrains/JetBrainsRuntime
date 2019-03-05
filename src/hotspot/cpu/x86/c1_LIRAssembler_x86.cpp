@@ -649,7 +649,7 @@ void LIR_Assembler::const2reg(LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_cod
 
     case T_FLOAT: {
       if (dest->is_single_xmm()) {
-        if (LP64_ONLY(UseAVX < 2 &&) c->is_zero_float()) {
+        if (LP64_ONLY(UseAVX <= 2 &&) c->is_zero_float()) {
           __ xorps(dest->as_xmm_float_reg(), dest->as_xmm_float_reg());
         } else {
           __ movflt(dest->as_xmm_float_reg(),
@@ -671,7 +671,7 @@ void LIR_Assembler::const2reg(LIR_Opr src, LIR_Opr dest, LIR_PatchCode patch_cod
 
     case T_DOUBLE: {
       if (dest->is_double_xmm()) {
-        if (LP64_ONLY(UseAVX < 2 &&) c->is_zero_double()) {
+        if (LP64_ONLY(UseAVX <= 2 &&) c->is_zero_double()) {
           __ xorpd(dest->as_xmm_double_reg(), dest->as_xmm_double_reg());
         } else {
           __ movdbl(dest->as_xmm_double_reg(),
@@ -2552,7 +2552,7 @@ void LIR_Assembler::arithmetic_idiv(LIR_Code code, LIR_Opr left, LIR_Opr right, 
   Register dreg = result->as_register();
 
   if (right->is_constant()) {
-    int divisor = right->as_constant_ptr()->as_jint();
+    jint divisor = right->as_constant_ptr()->as_jint();
     assert(divisor > 0 && is_power_of_2(divisor), "must be");
     if (code == lir_idiv) {
       assert(lreg == rax, "must be rax,");
@@ -2564,7 +2564,7 @@ void LIR_Assembler::arithmetic_idiv(LIR_Code code, LIR_Opr left, LIR_Opr right, 
         __ andl(rdx, divisor - 1);
         __ addl(lreg, rdx);
       }
-      __ sarl(lreg, log2_intptr(divisor));
+      __ sarl(lreg, log2_jint(divisor));
       move_regs(lreg, dreg);
     } else if (code == lir_irem) {
       Label done;

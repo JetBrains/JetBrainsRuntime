@@ -420,6 +420,9 @@ LONG WINAPI topLevelExceptionFilter(struct _EXCEPTION_POINTERS* exceptionInfo);
 
 // Thread start routine for all newly created threads
 static unsigned __stdcall thread_native_entry(Thread* thread) {
+
+  thread->record_stack_base_and_size();
+
   // Try to randomize the cache line index of hot stack frames.
   // This helps when threads of the same stack traces evict each other's
   // cache lines. The threads can be either from the same JVM instance, or
@@ -453,11 +456,14 @@ static unsigned __stdcall thread_native_entry(Thread* thread) {
   // by VM, so VM can generate error dump when an exception occurred in non-
   // Java thread (e.g. VM thread).
   __try {
-    thread->run();
+    thread->call_run();
   } __except(topLevelExceptionFilter(
                                      (_EXCEPTION_POINTERS*)_exception_info())) {
     // Nothing to do.
   }
+
+  // Note: at this point the thread object may already have deleted itself.
+  // Do not dereference it from here on out.
 
   log_info(os, thread)("Thread finished (tid: " UINTX_FORMAT ").", os::current_thread_id());
 
@@ -466,15 +472,6 @@ static unsigned __stdcall thread_native_entry(Thread* thread) {
   // which frees the CodeHeap containing the Atomic::add code
   if (thread != VMThread::vm_thread() && VMThread::vm_thread() != NULL) {
     Atomic::dec(&os::win32::_os_thread_count);
-  }
-
-  // If a thread has not deleted itself ("delete this") as part of its
-  // termination sequence, we have to ensure thread-local-storage is
-  // cleared before we actually terminate. No threads should ever be
-  // deleted asynchronously with respect to their termination.
-  if (Thread::current_or_null_safe() != NULL) {
-    assert(Thread::current_or_null_safe() == thread, "current thread is wrong");
-    thread->clear_thread_current();
   }
 
   // Thread must not return from exit_process_or_thread(), but if it does,
@@ -1692,7 +1689,13 @@ void os::win32::print_windows_version(outputStream* st) {
     if (is_workstation) {
       st->print("10");
     } else {
-      st->print("Server 2016");
+      // distinguish Windows Server 2016 and 2019 by build number
+      // Windows server 2019 GA 10/2018 build number is 17763
+      if (build_number > 17762) {
+        st->print("Server 2019");
+      } else {
+        st->print("Server 2016");
+      }
     }
     break;
 

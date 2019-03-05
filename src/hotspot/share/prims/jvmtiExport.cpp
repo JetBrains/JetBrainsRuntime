@@ -1468,6 +1468,18 @@ void JvmtiExport::post_object_free(JvmtiEnv* env, jlong tag) {
 }
 
 void JvmtiExport::post_resource_exhausted(jint resource_exhausted_flags, const char* description) {
+
+  JavaThread *thread  = JavaThread::current();
+
+  // JDK-8213834: handlers of ResourceExhausted may attempt some analysis
+  // which often requires running java.
+  // This will cause problems on threads not able to run java, e.g. compiler
+  // threads. To forestall these problems, we therefore suppress sending this
+  // event from threads which are not able to run java.
+  if (!thread->can_call_java()) {
+    return;
+  }
+
   EVT_TRIG_TRACE(JVMTI_EVENT_RESOURCE_EXHAUSTED, ("Trg resource exhausted event triggered" ));
 
   JvmtiEnvIterator it;
@@ -1475,7 +1487,6 @@ void JvmtiExport::post_resource_exhausted(jint resource_exhausted_flags, const c
     if (env->is_enabled(JVMTI_EVENT_RESOURCE_EXHAUSTED)) {
       EVT_TRACE(JVMTI_EVENT_RESOURCE_EXHAUSTED, ("Evt resource exhausted event sent" ));
 
-      JavaThread *thread  = JavaThread::current();
       JvmtiThreadEventMark jem(thread);
       JvmtiJavaThreadEventTransition jet(thread);
       jvmtiEventResourceExhausted callback = env->callbacks()->ResourceExhausted;

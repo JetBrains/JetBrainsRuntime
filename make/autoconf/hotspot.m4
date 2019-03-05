@@ -340,29 +340,25 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
 
   # Only enable Shenandoah on supported arches
   AC_MSG_CHECKING([if shenandoah can be built])
-  if HOTSPOT_CHECK_JVM_VARIANT(zero); then
-    DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
-    AC_MSG_RESULT([no, this JVM variant not supported])
+  if test "x$OPENJDK_TARGET_CPU" = "xx86_64" || test "x$OPENJDK_TARGET_CPU" = "xaarch64" ; then
+    AC_MSG_RESULT([yes])
   else
-    if test "x$OPENJDK_TARGET_CPU" = "xx86_64" || test "x$OPENJDK_TARGET_CPU" = "xaarch64" || test "x$OPENJDK_TARGET_CPU" == "xx86"; then
-      AC_MSG_RESULT([yes])
-    else
-      DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
-      AC_MSG_RESULT([no, platform not supported])
-    fi
+    DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES shenandoahgc"
+    AC_MSG_RESULT([no, platform not supported])
   fi
 
-  # Only enable ZGC on Linux x86_64
-  AC_MSG_CHECKING([if zgc should be built])
-  if HOTSPOT_CHECK_JVM_FEATURE(zgc); then
-    if test "x$OPENJDK_TARGET_OS" = "xlinux" && test "x$OPENJDK_TARGET_CPU" = "xx86_64"; then
-      AC_MSG_RESULT([yes])
-    else
-      DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES zgc"
-      AC_MSG_RESULT([no, platform not supported])
-    fi
+  # Only enable ZGC on supported platforms
+  AC_MSG_CHECKING([if zgc can be built])
+  if test "x$OPENJDK_TARGET_OS" = "xlinux" && test "x$OPENJDK_TARGET_CPU" = "xx86_64"; then
+    AC_MSG_RESULT([yes])
   else
-    AC_MSG_RESULT([no])
+    DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES zgc"
+    AC_MSG_RESULT([no, platform not supported])
+  fi
+
+  # Disable unsupported GCs for Zero
+  if HOTSPOT_CHECK_JVM_VARIANT(zero); then
+    DISABLED_JVM_FEATURES="$DISABLED_JVM_FEATURES epsilongc g1gc zgc"
   fi
 
   # Turn on additional features based on other parts of configure
@@ -496,7 +492,7 @@ AC_DEFUN_ONCE([HOTSPOT_SETUP_JVM_FEATURES],
   fi
 
   # All variants but minimal (and custom) get these features
-  NON_MINIMAL_FEATURES="$NON_MINIMAL_FEATURES cmsgc g1gc parallelgc serialgc epsilongc shenandoahgc jni-check jvmti management nmt services vm-structs"
+  NON_MINIMAL_FEATURES="$NON_MINIMAL_FEATURES cmsgc g1gc parallelgc serialgc epsilongc shenandoahgc jni-check jvmti management nmt services vm-structs zgc"
 
   AC_MSG_CHECKING([if cds should be enabled])
   if test "x$ENABLE_CDS" = "xtrue"; then

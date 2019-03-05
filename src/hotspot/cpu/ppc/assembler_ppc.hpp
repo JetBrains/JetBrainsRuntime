@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2002, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2017 SAP SE. All rights reserved.
+ * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -299,6 +299,8 @@ class Assembler : public AbstractAssembler {
     CMPI_OPCODE   = (11u << OPCODE_SHIFT),
     CMPL_OPCODE   = (31u << OPCODE_SHIFT |  32u << 1),
     CMPLI_OPCODE  = (10u << OPCODE_SHIFT),
+    CMPRB_OPCODE  = (31u << OPCODE_SHIFT | 192u << 1),
+    CMPEQB_OPCODE = (31u << OPCODE_SHIFT | 224u << 1),
 
     ISEL_OPCODE   = (31u << OPCODE_SHIFT |  15u << 1),
 
@@ -336,6 +338,7 @@ class Assembler : public AbstractAssembler {
     MTCRF_OPCODE  = (31u << OPCODE_SHIFT | 144u << 1),
     MFCR_OPCODE   = (31u << OPCODE_SHIFT | 19u << 1),
     MCRF_OPCODE   = (19u << OPCODE_SHIFT | 0u << 1),
+    SETB_OPCODE   = (31u << OPCODE_SHIFT | 128u << 1),
 
     // condition register logic instructions
     CRAND_OPCODE  = (19u << OPCODE_SHIFT | 257u << 1),
@@ -397,6 +400,7 @@ class Assembler : public AbstractAssembler {
     LWAX_OPCODE   = (31u << OPCODE_SHIFT | 341u << XO_21_30_SHIFT), // X-FORM
 
     CNTLZW_OPCODE = (31u << OPCODE_SHIFT |  26u << XO_21_30_SHIFT), // X-FORM
+    CNTTZW_OPCODE = (31u << OPCODE_SHIFT | 538u << XO_21_30_SHIFT), // X-FORM
 
     // 64 bit opcode encodings
 
@@ -428,6 +432,7 @@ class Assembler : public AbstractAssembler {
     DIVD_OPCODE   = (31u << OPCODE_SHIFT | 489u << 1),              // XO-FORM
 
     CNTLZD_OPCODE = (31u << OPCODE_SHIFT |  58u << XO_21_30_SHIFT), // X-FORM
+    CNTTZD_OPCODE = (31u << OPCODE_SHIFT | 570u << XO_21_30_SHIFT), // X-FORM
     NAND_OPCODE   = (31u << OPCODE_SHIFT | 476u << XO_21_30_SHIFT), // X-FORM
     NOR_OPCODE    = (31u << OPCODE_SHIFT | 124u << XO_21_30_SHIFT), // X-FORM
 
@@ -521,6 +526,9 @@ class Assembler : public AbstractAssembler {
     XXLOR_OPCODE   = (60u << OPCODE_SHIFT |  146u << 3),
     XXLXOR_OPCODE  = (60u << OPCODE_SHIFT |  154u << 3),
     XXLEQV_OPCODE  = (60u << OPCODE_SHIFT |  186u << 3),
+
+    // Deliver A Random Number (introduced with POWER9)
+    DARN_OPCODE    = (31u << OPCODE_SHIFT |  755u << 1),
 
     // Vector Permute and Formatting
     VPKPX_OPCODE   = (4u  << OPCODE_SHIFT |  782u     ),
@@ -1051,7 +1059,8 @@ class Assembler : public AbstractAssembler {
   static int frs(      int         x)  { return  opp_u_field(x,             10,  6); }
   static int frt(      int         x)  { return  opp_u_field(x,             10,  6); }
   static int fxm(      int         x)  { return  opp_u_field(x,             19, 12); }
-  static int l10(      int         x)  { return  opp_u_field(x,             10, 10); }
+  static int l10(      int         x)  { assert(x == 0 || x == 1,  "must be 0 or 1"); return opp_u_field(x, 10, 10); }
+  static int l14(      int         x)  { return  opp_u_field(x,             15, 14); }
   static int l15(      int         x)  { return  opp_u_field(x,             15, 15); }
   static int l910(     int         x)  { return  opp_u_field(x,             10,  9); }
   static int e1215(    int         x)  { return  opp_u_field(x,             15, 12); }
@@ -1417,6 +1426,10 @@ class Assembler : public AbstractAssembler {
   inline void cmplw( ConditionRegister crx, Register a, Register b);
   inline void cmpld( ConditionRegister crx, Register a, Register b);
 
+  // >= Power9
+  inline void cmprb( ConditionRegister bf, int l, Register a, Register b);
+  inline void cmpeqb(ConditionRegister bf, Register a, Register b);
+
   inline void isel(   Register d, Register a, Register b, int bc);
   // Convenient version which takes: Condition register, Condition code and invert flag. Omit b to keep old value.
   inline void isel(   Register d, ConditionRegister cr, Condition cc, bool inv, Register a, Register b = noreg);
@@ -1476,6 +1489,10 @@ class Assembler : public AbstractAssembler {
   inline void cntlzw_( Register a, Register s);
   inline void cntlzd(  Register a, Register s);
   inline void cntlzd_( Register a, Register s);
+  inline void cnttzw(  Register a, Register s);
+  inline void cnttzw_( Register a, Register s);
+  inline void cnttzd(  Register a, Register s);
+  inline void cnttzd_( Register a, Register s);
 
   // PPC 1, section 3.3.12, Fixed-Point Rotate and Shift Instructions
   inline void sld(     Register a, Register s, Register b);
@@ -1612,6 +1629,8 @@ class Assembler : public AbstractAssembler {
   inline void mfcr( Register d);
   inline void mcrf( ConditionRegister crd, ConditionRegister cra);
   inline void mtcr( Register s);
+  // >= Power9
+  inline void setb( Register d, ConditionRegister cra);
 
   // Special purpose registers
   // Exception Register
@@ -2179,6 +2198,9 @@ class Assembler : public AbstractAssembler {
   inline void mtfprd(   FloatRegister   d, Register a);
   inline void mtfprwa(  FloatRegister   d, Register a);
   inline void mffprd(   Register        a, FloatRegister d);
+
+  // Deliver A Random Number (introduced with POWER9)
+  inline void darn( Register d, int l = 1 /*L=CRN*/);
 
   // AES (introduced with Power 8)
   inline void vcipher(     VectorRegister d, VectorRegister a, VectorRegister b);

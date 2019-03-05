@@ -63,7 +63,9 @@ void VM_Version::initialize() {
 
   // If PowerArchitecturePPC64 hasn't been specified explicitly determine from features.
   if (FLAG_IS_DEFAULT(PowerArchitecturePPC64)) {
-    if (VM_Version::has_lqarx()) {
+    if (VM_Version::has_darn()) {
+      FLAG_SET_ERGO(uintx, PowerArchitecturePPC64, 9);
+    } else if (VM_Version::has_lqarx()) {
       FLAG_SET_ERGO(uintx, PowerArchitecturePPC64, 8);
     } else if (VM_Version::has_popcntw()) {
       FLAG_SET_ERGO(uintx, PowerArchitecturePPC64, 7);
@@ -78,6 +80,7 @@ void VM_Version::initialize() {
 
   bool PowerArchitecturePPC64_ok = false;
   switch (PowerArchitecturePPC64) {
+    case 9: if (!VM_Version::has_darn()   ) break;
     case 8: if (!VM_Version::has_lqarx()  ) break;
     case 7: if (!VM_Version::has_popcntw()) break;
     case 6: if (!VM_Version::has_cmpb()   ) break;
@@ -126,17 +129,34 @@ void VM_Version::initialize() {
     }
   }
   MaxVectorSize = SuperwordUseVSX ? 16 : 8;
+
+  if (PowerArchitecturePPC64 >= 9) {
+    if (FLAG_IS_DEFAULT(UseCountTrailingZerosInstructionsPPC64)) {
+      FLAG_SET_ERGO(bool, UseCountTrailingZerosInstructionsPPC64, true);
+    }
+    if (FLAG_IS_DEFAULT(UseCharacterCompareIntrinsics)) {
+      FLAG_SET_ERGO(bool, UseCharacterCompareIntrinsics, true);
+    }
+  } else {
+    if (UseCountTrailingZerosInstructionsPPC64) {
+      warning("UseCountTrailingZerosInstructionsPPC64 specified, but needs at least Power9.");
+      FLAG_SET_DEFAULT(UseCountTrailingZerosInstructionsPPC64, false);
+    }
+    if (UseCharacterCompareIntrinsics) {
+      warning("UseCharacterCompareIntrinsics specified, but needs at least Power9.");
+      FLAG_SET_DEFAULT(UseCharacterCompareIntrinsics, false);
+    }
+  }
 #endif
 
   // Create and print feature-string.
   char buf[(num_features+1) * 16]; // Max 16 chars per feature.
   jio_snprintf(buf, sizeof(buf),
-               "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+               "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
                (has_fsqrt()   ? " fsqrt"   : ""),
                (has_isel()    ? " isel"    : ""),
                (has_lxarxeh() ? " lxarxeh" : ""),
                (has_cmpb()    ? " cmpb"    : ""),
-               //(has_mftgpr()? " mftgpr"  : ""),
                (has_popcntb() ? " popcntb" : ""),
                (has_popcntw() ? " popcntw" : ""),
                (has_fcfids()  ? " fcfids"  : ""),
@@ -149,7 +169,8 @@ void VM_Version::initialize() {
                (has_ldbrx()   ? " ldbrx"   : ""),
                (has_stdbrx()  ? " stdbrx"  : ""),
                (has_vshasig() ? " sha"     : ""),
-               (has_tm()      ? " rtm"     : "")
+               (has_tm()      ? " rtm"     : ""),
+               (has_darn()    ? " darn"    : "")
                // Make sure number of %s matches num_features!
               );
   _features_string = os::strdup(buf);
@@ -663,6 +684,8 @@ void VM_Version::determine_features() {
   a->ldbrx(R7, R3_ARG1, R4_ARG2);              // code[14] -> ldbrx
   a->stdbrx(R7, R3_ARG1, R4_ARG2);             // code[15] -> stdbrx
   a->vshasigmaw(VR0, VR1, 1, 0xF);             // code[16] -> vshasig
+  // rtm is determined by OS
+  a->darn(R7);                                 // code[17] -> darn
   a->blr();
 
   // Emit function to set one cache line to zero. Emit function descriptor and get pointer to it.
@@ -714,6 +737,8 @@ void VM_Version::determine_features() {
   if (code[feature_cntr++]) features |= ldbrx_m;
   if (code[feature_cntr++]) features |= stdbrx_m;
   if (code[feature_cntr++]) features |= vshasig_m;
+  // feature rtm_m is determined by OS
+  if (code[feature_cntr++]) features |= darn_m;
 
   // Print the detection code.
   if (PrintAssembly) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,8 @@ import javax.lang.model.element.PackageElement;
 import javax.tools.Diagnostic;
 import javax.tools.DocumentationTool;
 
+import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Symbol.ModuleSymbol;
 import jdk.javadoc.doclet.Reporter;
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
 
@@ -269,6 +271,12 @@ public class Extern {
             ModuleElement moduleElement = configuration.utils.containingModule(packageElement);
             Map<String, Item> pkgMap = packageItems.get(configuration.utils.getModuleName(moduleElement));
             item = (pkgMap != null) ? pkgMap.get(configuration.utils.getPackageName(packageElement)) : null;
+            if (item == null && isAutomaticModule(moduleElement)) {
+                pkgMap = packageItems.get(configuration.utils.getModuleName(null));
+                if (pkgMap != null) {
+                    item = pkgMap.get(configuration.utils.getPackageName(packageElement));
+                }
+            }
         }
         return item;
     }
@@ -399,6 +407,16 @@ public class Extern {
         }
     }
 
+    // The following should be replaced by a new method such as Elements.isAutomaticModule
+    private boolean isAutomaticModule(ModuleElement me) {
+        if (me == null) {
+            return false;
+        } else {
+            ModuleSymbol msym = (ModuleSymbol) me;
+            return (msym.flags() & Flags.AUTOMATIC_MODULE) != 0;
+        }
+    }
+
     public boolean isUrl (String urlCandidate) {
         try {
             URL ignore = new URL(urlCandidate);
@@ -419,8 +437,11 @@ public class Extern {
                     throw new Fault(configuration.getText("doclet.linkMismatch_PackagedLinkedtoModule",
                             path), null);
             } else if (moduleName == null)
-                throw new Fault(configuration.getText("doclet.linkMismatch_ModuleLinkedtoPackage",
-                        path), null);
+                // suppress the error message in the case of automatic modules
+                if (!isAutomaticModule(me)) {
+                    throw new Fault(configuration.getText("doclet.linkMismatch_ModuleLinkedtoPackage",
+                            path), null);
+                }
         }
     }
 }

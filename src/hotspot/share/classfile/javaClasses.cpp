@@ -1339,6 +1339,26 @@ void java_lang_Class::set_module(oop java_class, oop module) {
   java_class->obj_field_put(_module_offset, module);
 }
 
+oop java_lang_Class::name(Handle java_class, TRAPS) {
+  assert(_name_offset != 0, "must be set");
+  oop o = java_class->obj_field(_name_offset);
+  if (o == NULL) {
+    o = StringTable::intern(java_lang_Class::as_external_name(java_class()), THREAD);
+    java_class->obj_field_put(_name_offset, o);
+  }
+  return o;
+}
+
+oop java_lang_Class::source_file(oop java_class) {
+  assert(_source_file_offset != 0, "must be set");
+  return java_class->obj_field(_source_file_offset);
+}
+
+void java_lang_Class::set_source_file(oop java_class, oop source_file) {
+  assert(_source_file_offset != 0, "must be set");
+  java_class->obj_field_put(_source_file_offset, source_file);
+}
+
 oop java_lang_Class::create_basic_type_mirror(const char* basic_type_name, BasicType type, TRAPS) {
   // This should be improved by adding a field at the Java level or by
   // introducing a new VM klass (see comment in ClassFileParser)
@@ -1508,7 +1528,8 @@ int  java_lang_Class::classRedefinedCount_offset = -1;
   macro(classRedefinedCount_offset, k, "classRedefinedCount", int_signature,         false) ; \
   macro(_class_loader_offset,       k, "classLoader",         classloader_signature, false); \
   macro(_component_mirror_offset,   k, "componentType",       class_signature,       false); \
-  macro(_module_offset,             k, "module",              module_signature,      false)
+  macro(_module_offset,             k, "module",              module_signature,      false); \
+  macro(_name_offset,               k, "name",                string_signature,      false); \
 
 void java_lang_Class::compute_offsets() {
   if (offsets_computed) {
@@ -2554,12 +2575,14 @@ void java_lang_StackTraceElement::fill_in(Handle element,
                                           int version, int bci, Symbol* name, TRAPS) {
   assert(element->is_a(SystemDictionary::StackTraceElement_klass()), "sanity check");
 
-  // Fill in class name
   ResourceMark rm(THREAD);
-  const char* str = holder->external_name();
-  oop classname = StringTable::intern((char*) str, CHECK);
+  HandleMark hm(THREAD);
+
+  // Fill in class name
+  Handle java_class(THREAD, holder->java_mirror());
+  oop classname = java_lang_Class::name(java_class, CHECK);
   java_lang_StackTraceElement::set_declaringClass(element(), classname);
-  java_lang_StackTraceElement::set_declaringClassObject(element(), holder->java_mirror());
+  java_lang_StackTraceElement::set_declaringClassObject(element(), java_class());
 
   oop loader = holder->class_loader();
   if (loader != NULL) {
@@ -2593,10 +2616,26 @@ void java_lang_StackTraceElement::fill_in(Handle element,
   } else {
     // Fill in source file name and line number.
     Symbol* source = Backtrace::get_source_file_name(holder, version);
-    if (ShowHiddenFrames && source == NULL)
-      source = vmSymbols::unknown_class_name();
-    oop filename = StringTable::intern(source, CHECK);
-    java_lang_StackTraceElement::set_fileName(element(), filename);
+    oop source_file = java_lang_Class::source_file(java_class());
+    if (source != NULL) {
+      // Class was not redefined. We can trust its cache if set,
+      // else we have to initialize it.
+      if (source_file == NULL) {
+        source_file = StringTable::intern(source, CHECK);
+        java_lang_Class::set_source_file(java_class(), source_file);
+      }
+    } else {
+      // Class was redefined. Dump the cache if it was set.
+      if (source_file != NULL) {
+        source_file = NULL;
+        java_lang_Class::set_source_file(java_class(), source_file);
+      }
+      if (ShowHiddenFrames) {
+        source = vmSymbols::unknown_class_name();
+        source_file = StringTable::intern(source, CHECK);
+      }
+    }
+    java_lang_StackTraceElement::set_fileName(element(), source_file);
 
     int line_number = Backtrace::get_line_number(method, bci);
     java_lang_StackTraceElement::set_lineNumber(element(), line_number);
@@ -4141,8 +4180,19 @@ const char* java_lang_ClassLoader::describe_external(const oop loader) {
   ss.print("%s (instance of %s", name, loader->klass()->external_name());
   if (!well_known_loader) {
     oop pl = java_lang_ClassLoader::parent(loader);
-    ClassLoaderData *pl_cld = ClassLoaderData::class_loader_data(pl);
-    const char* parentName = pl_cld->loader_name_and_id();
+    const char* parentName = "";
+    ClassLoaderData *parent_cld = ClassLoaderData::class_loader_data_or_null(pl);
+    // The parent loader's ClassLoaderData could be null if it is
+    // a delegating class loader that has never defined a class.
+    // In this case the loader's name must be obtained via the parent loader's oop.
+    if (parent_cld == NULL) {
+      oop cl_name_and_id = java_lang_ClassLoader::nameAndId(pl);
+      if (cl_name_and_id != NULL) {
+        parentName = java_lang_String::as_utf8_string(cl_name_and_id);
+      }
+    } else {
+      parentName = parent_cld->loader_name_and_id();
+    }
     if (pl != NULL) {
       ss.print(", child of %s %s", parentName, pl->klass()->external_name());
     } else {
@@ -4195,6 +4245,8 @@ int java_lang_Class::_protection_domain_offset;
 int java_lang_Class::_component_mirror_offset;
 int java_lang_Class::_init_lock_offset;
 int java_lang_Class::_signers_offset;
+int java_lang_Class::_name_offset;
+int java_lang_Class::_source_file_offset;
 GrowableArray<Klass*>* java_lang_Class::_fixup_mirror_list = NULL;
 GrowableArray<Klass*>* java_lang_Class::_fixup_module_field_list = NULL;
 int java_lang_Throwable::backtrace_offset;

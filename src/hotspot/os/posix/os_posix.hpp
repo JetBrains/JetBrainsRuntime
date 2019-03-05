@@ -116,6 +116,10 @@ public:
   // Returns true if either given uid is effective uid and given gid is
   // effective gid, or if given uid is root.
   static bool matches_effective_uid_and_gid_or_root(uid_t uid, gid_t gid);
+
+  static void print_umask(outputStream* st, mode_t umsk);
+
+  static void print_user_info(outputStream* st);
 };
 
 // On POSIX platforms the signal handler is global so we just do the write.

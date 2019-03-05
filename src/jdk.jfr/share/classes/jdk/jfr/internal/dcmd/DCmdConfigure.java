@@ -70,7 +70,7 @@ final class DCmdConfigure extends AbstractDCmd {
             Boolean sampleThreads
 
     ) throws DCmdException {
-        if (LogTag.JFR_DCMD.shouldLog(LogLevel.DEBUG)) {
+        if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
             Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdConfigure: repositorypath=" + repositoryPath +
                     ", dumppath=" + dumpPath +
                     ", stackdepth=" + stackDepth +
@@ -193,25 +193,25 @@ final class DCmdConfigure extends AbstractDCmd {
 
     private void printGlobalBufferSize() {
         print("Global buffer size: ");
-        printBytes(Options.getGlobalBufferSize(), " ");
+        printBytes(Options.getGlobalBufferSize());
         println();
     }
 
     private void printThreadBufferSize() {
         print("Thread buffer size: ");
-        printBytes(Options.getThreadBufferSize(), " ");
+        printBytes(Options.getThreadBufferSize());
         println();
     }
 
     private void printMemorySize() {
         print("Memory size: ");
-        printBytes(Options.getMemorySize(), " ");
+        printBytes(Options.getMemorySize());
         println();
     }
 
     private void printMaxChunkSize() {
         print("Max chunk size: ");
-        printBytes(Options.getMaxChunkSize(), " ");
+        printBytes(Options.getMaxChunkSize());
         println();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -218,7 +218,8 @@ char* os::iso8601_time(char* buffer, size_t buffer_length, bool utc) {
 OSReturn os::set_priority(Thread* thread, ThreadPriority p) {
   debug_only(Thread::check_for_dangling_thread_pointer(thread);)
 
-  if (p >= MinPriority && p <= MaxPriority) {
+  if ((p >= MinPriority && p <= MaxPriority) ||
+      (p == CriticalPriority && thread->is_ConcurrentGC_thread())) {
     int priority = java_to_os_priority[p];
     return set_native_priority(thread, priority);
   } else {
@@ -885,11 +886,15 @@ void os::print_hex_dump(outputStream* st, address start, address end, int unitsi
   address p = start;
   st->print(PTR_FORMAT ":   ", p2i(start));
   while (p < end) {
-    switch (unitsize) {
-      case 1: st->print("%02x", *(u1*)p); break;
-      case 2: st->print("%04x", *(u2*)p); break;
-      case 4: st->print("%08x", *(u4*)p); break;
-      case 8: st->print("%016" FORMAT64_MODIFIER "x", *(u8*)p); break;
+    if (is_readable_pointer(p)) {
+      switch (unitsize) {
+        case 1: st->print("%02x", *(u1*)p); break;
+        case 2: st->print("%04x", *(u2*)p); break;
+        case 4: st->print("%08x", *(u4*)p); break;
+        case 8: st->print("%016" FORMAT64_MODIFIER "x", *(u8*)p); break;
+      }
+    } else {
+      st->print("%*.*s", 2*unitsize, 2*unitsize, "????????????????");
     }
     p += unitsize;
     cols++;
@@ -1361,7 +1366,7 @@ char** os::split_path(const char* path, int* n) {
 }
 
 void os::set_memory_serialize_page(address page) {
-  int count = log2_intptr(sizeof(class JavaThread)) - log2_intptr(64);
+  int count = log2_intptr(sizeof(class JavaThread)) - log2_int(64);
   _mem_serialize_page = (volatile int32_t *)page;
   // We initialize the serialization page shift count here
   // We assume a cache line size of 64 bytes

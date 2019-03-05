@@ -39,6 +39,7 @@ import jdk.jfr.SettingDescriptor;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
+import jdk.jfr.internal.Utils;
 
 /**
  * JFR.check - invoked from native
@@ -63,7 +64,7 @@ final class DCmdCheck extends AbstractDCmd {
     }
 
     private void executeInternal(String name, Boolean verbose) throws DCmdException {
-        if (LogTag.JFR_DCMD.shouldLog(LogLevel.DEBUG)) {
+        if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
             Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdCheck: name=" + name + ", verbose=" + verbose);
         }
 
@@ -117,7 +118,7 @@ final class DCmdCheck extends AbstractDCmd {
         long maxSize = recording.getMaxSize();
         if (maxSize != 0) {
             print(" maxsize=");
-            printBytes(maxSize, "");
+            print(Utils.formatBytesCompact(maxSize));
         }
         Duration maxAge = recording.getMaxAge();
         if (maxAge != null) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -649,6 +649,9 @@ bool os::Linux::manually_expand_stack(JavaThread * t, address addr) {
 
 // Thread start routine for all newly created threads
 static void *thread_native_entry(Thread *thread) {
+
+  thread->record_stack_base_and_size();
+
   // Try to randomize the cache line index of hot stack frames.
   // This helps when threads of the same stack traces evict each other's
   // cache lines. The threads can be either from the same JVM instance, or
@@ -695,19 +698,14 @@ static void *thread_native_entry(Thread *thread) {
   }
 
   // call one more level start routine
-  thread->run();
+  thread->call_run();
+
+  // Note: at this point the thread object may already have deleted itself.
+  // Prevent dereferencing it from here on out.
+  thread = NULL;
 
   log_info(os, thread)("Thread finished (tid: " UINTX_FORMAT ", pthread id: " UINTX_FORMAT ").",
     os::current_thread_id(), (uintx) pthread_self());
-
-  // If a thread has not deleted itself ("delete this") as part of its
-  // termination sequence, we have to ensure thread-local-storage is
-  // cleared before we actually terminate. No threads should ever be
-  // deleted asynchronously with respect to their termination.
-  if (Thread::current_or_null_safe() != NULL) {
-    assert(Thread::current_or_null_safe() == thread, "current thread is wrong");
-    thread->clear_thread_current();
-  }
 
   return 0;
 }
@@ -1943,7 +1941,7 @@ int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *pa
       char name[PATH_MAX + 1];
 
       // Parse fields from line
-      sscanf(line, UINT64_FORMAT_X "-" UINT64_FORMAT_X " %4s " UINT64_FORMAT_X " %5s " INT64_FORMAT " %s",
+      sscanf(line, UINT64_FORMAT_X "-" UINT64_FORMAT_X " %4s " UINT64_FORMAT_X " %7s " INT64_FORMAT " %s",
              &base, &top, permissions, &offset, device, &inode, name);
 
       // Filter by device id '00:00' so that we only get file system mapped files.
@@ -4159,7 +4157,8 @@ void os::naked_yield() {
 // not the entire user process, and user level threads are 1:1 mapped to kernel
 // threads. It has always been the case, but could change in the future. For
 // this reason, the code should not be used as default (ThreadPriorityPolicy=0).
-// It is only used when ThreadPriorityPolicy=1 and requires root privilege.
+// It is only used when ThreadPriorityPolicy=1 and may require system level permission
+// (e.g., root privilege or CAP_SYS_NICE capability).
 
 int os::java_to_os_priority[CriticalPriority + 1] = {
   19,              // 0 Entry should never be used
@@ -4183,14 +4182,12 @@ int os::java_to_os_priority[CriticalPriority + 1] = {
 
 static int prio_init() {
   if (ThreadPriorityPolicy == 1) {
-    // Only root can raise thread priority. Don't allow ThreadPriorityPolicy=1
-    // if effective uid is not root. Perhaps, a more elegant way of doing
-    // this is to test CAP_SYS_NICE capability, but that will require libcap.so
     if (geteuid() != 0) {
       if (!FLAG_IS_DEFAULT(ThreadPriorityPolicy)) {
-        warning("-XX:ThreadPriorityPolicy requires root privilege on Linux");
+        warning("-XX:ThreadPriorityPolicy=1 may require system level permission, " \
+                "e.g., being the root user. If the necessary permission is not " \
+                "possessed, changes to priority will be silently ignored.");
       }
-      ThreadPriorityPolicy = 0;
     }
   }
   if (UseCriticalJavaThreadPriority) {

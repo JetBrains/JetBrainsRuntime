@@ -510,8 +510,8 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Time out and warn or fail after SafepointTimeoutDelay "          \
           "milliseconds if failed to reach safepoint")                      \
                                                                             \
-  develop(bool, DieOnSafepointTimeout, false,                               \
-          "Die upon failure to reach safepoint (see SafepointTimeout)")     \
+  diagnostic(bool, AbortVMOnSafepointTimeout, false,                        \
+          "Abort upon failure to reach safepoint (see SafepointTimeout)")   \
                                                                             \
   /* 50 retries * (5 * current_retry_count) millis = ~6.375 seconds */      \
   /* typically, at most a few retries are needed                    */      \
@@ -1298,6 +1298,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "If an error occurs, save the error data to this file "           \
           "[default: ./hs_err_pid%p.log] (%p replaced with pid)")           \
                                                                             \
+  product(bool, ExtensiveErrorReports,                                      \
+                 PRODUCT_ONLY(false) NOT_PRODUCT(true),                     \
+                 "Error reports are more extensive.")                       \
+                                                                            \
   product(bool, DisplayVMOutputToStderr, false,                             \
           "If DisplayVMOutput is true, display all VM output to stderr")    \
                                                                             \
@@ -2055,6 +2059,9 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   notproduct(bool, CIObjectFactoryVerify, false,                            \
           "enable potentially expensive verification in ciObjectFactory")   \
                                                                             \
+  diagnostic(bool, AbortVMOnCompilationFailure, false,                      \
+          "Abort VM when method had failed to compile.")                    \
+                                                                            \
   /* Priorities */                                                          \
   product_pd(bool, UseThreadPriorities,  "Use native thread priorities")    \
                                                                             \
@@ -2078,7 +2085,8 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "    to higher native thread priorities. This policy should be   "\
           "    used with care, as sometimes it can cause performance       "\
           "    degradation in the application and/or the entire system. On "\
-          "    Linux this policy requires root privilege.")                 \
+          "    Linux/BSD/macOS this policy requires root privilege or an   "\
+          "    extended capability.")                                       \
           range(0, 1)                                                       \
                                                                             \
   product(bool, ThreadPriorityVerbose, false,                               \

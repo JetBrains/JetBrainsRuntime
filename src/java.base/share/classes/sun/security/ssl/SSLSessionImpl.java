@@ -154,6 +154,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         this.useExtendedMasterSecret = false;
         this.creationTime = System.currentTimeMillis();
         this.identificationProtocol = null;
+        this.boundValues = new ConcurrentHashMap<>();
     }
 
     /*
@@ -175,7 +176,11 @@ final class SSLSessionImpl extends ExtendedSSLSession {
 
     /*
      * Record a new session, using a given cipher spec, session ID,
-     * and creation time
+     * and creation time.
+     * Note: For the unmodifiable collections and lists we are creating new
+     * collections as inputs to avoid potential deep nesting of
+     * unmodifiable collections that can cause StackOverflowErrors
+     * (see JDK-6323374).
      */
     SSLSessionImpl(HandshakeContext hc,
             CipherSuite cipherSuite, SessionId id, long creationTime) {
@@ -186,10 +191,11 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         this.port = hc.conContext.transport.getPeerPort();
         this.localSupportedSignAlgs = hc.localSupportedSignAlgs == null ?
                 Collections.emptySet() :
-                Collections.unmodifiableCollection(hc.localSupportedSignAlgs);
+                Collections.unmodifiableCollection(
+                        new ArrayList<>(hc.localSupportedSignAlgs));
         this.serverNameIndication = hc.negotiatedServerName;
-        this.requestedServerNames = Collections.<SNIServerName>unmodifiableList(
-                hc.getRequestedServerNames());
+        this.requestedServerNames = Collections.unmodifiableList(
+                new ArrayList<>(hc.getRequestedServerNames()));
         if (hc.sslConfig.isClientMode) {
             this.useExtendedMasterSecret =
                 (hc.handshakeExtensions.get(
@@ -204,6 +210,39 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         }
         this.creationTime = creationTime;
         this.identificationProtocol = hc.sslConfig.identificationProtocol;
+        this.boundValues = new ConcurrentHashMap<>();
+
+        if (SSLLogger.isOn && SSLLogger.isOn("session")) {
+             SSLLogger.finest("Session initialized:  " + this);
+        }
+    }
+
+    SSLSessionImpl(SSLSessionImpl baseSession, SessionId newId) {
+        this.protocolVersion = baseSession.getProtocolVersion();
+        this.cipherSuite = baseSession.cipherSuite;
+        this.sessionId = newId;
+        this.host = baseSession.getPeerHost();
+        this.port = baseSession.getPeerPort();
+        this.localSupportedSignAlgs =
+                baseSession.localSupportedSignAlgs == null ?
+                Collections.emptySet() : baseSession.localSupportedSignAlgs;
+        this.peerSupportedSignAlgs =
+                baseSession.getPeerSupportedSignatureAlgorithms();
+        this.serverNameIndication = baseSession.serverNameIndication;
+        this.requestedServerNames = baseSession.getRequestedServerNames();
+        this.masterSecret = baseSession.getMasterSecret();
+        this.useExtendedMasterSecret = baseSession.useExtendedMasterSecret;
+        this.creationTime = baseSession.getCreationTime();
+        this.lastUsedTime = System.currentTimeMillis();
+        this.identificationProtocol = baseSession.getIdentificationProtocol();
+        this.localCerts = baseSession.localCerts;
+        this.peerCerts = baseSession.peerCerts;
+        this.statusResponses = baseSession.statusResponses;
+        this.resumptionMasterSecret = baseSession.resumptionMasterSecret;
+        this.context = baseSession.context;
+        this.negotiatedMaxFragLen = baseSession.negotiatedMaxFragLen;
+        this.maximumPacketSize = baseSession.maximumPacketSize;
+        this.boundValues = baseSession.boundValues;
 
         if (SSLLogger.isOn && SSLLogger.isOn("session")) {
              SSLLogger.finest("Session initialized:  " + this);
@@ -267,13 +306,6 @@ final class SSLSessionImpl extends ExtendedSSLSession {
 
     String getIdentificationProtocol() {
         return this.identificationProtocol;
-    }
-
-    /*
-     * Get the PSK identity. Take care not to use it in multiple connections.
-     */
-    synchronized Optional<byte[]> getPskIdentity() {
-        return Optional.ofNullable(pskIdentity);
     }
 
     /* PSK identities created from new_session_ticket messages should only
@@ -772,8 +804,7 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * key and the calling security context. This is important since
      * sessions can be shared across different protection domains.
      */
-    private final ConcurrentHashMap<SecureKey, Object> boundValues =
-            new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<SecureKey, Object> boundValues;
 
     /**
      * Assigns a session value.  Session change events are given if

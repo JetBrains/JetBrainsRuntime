@@ -207,7 +207,7 @@ void ShenandoahArguments::initialize() {
 #ifdef ASSERT
   FLAG_SET_DEFAULT(SafepointTimeout, true);
   FLAG_SET_DEFAULT(SafepointTimeoutDelay, 10000);
-  FLAG_SET_DEFAULT(DieOnSafepointTimeout, true);
+  FLAG_SET_DEFAULT(AbortVMOnSafepointTimeout, true);
 #endif
 }
 
