@@ -4688,7 +4688,7 @@ void Threads::print_on_error(outputStream* st, Thread* current, char* buf,
   print_threads_compiling(st, buf, buflen);
 }
 
-void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen) {
+void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen, bool short_form) {
   ALL_JAVA_THREADS(thread) {
     if (thread->is_Compiler_thread()) {
       CompilerThread* ct = (CompilerThread*) thread;
@@ -4700,7 +4700,7 @@ void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen) {
       CompileTask* task = ct->task();
       if (task != NULL) {
         thread->print_name_on_error(st, buf, buflen);
-        task->print(st, NULL, true, true);
+        task->print(st, NULL, short_form, true);
       }
     }
   }
