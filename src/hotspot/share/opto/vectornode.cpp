@@ -190,6 +190,18 @@ int VectorNode::opcode(int sopc, BasicType bt) {
   case Op_XorI:
   case Op_XorL:
     return Op_XorV;
+  case Op_MinF:
+    assert(bt == T_FLOAT, "must be");
+    return Op_MinV;
+  case Op_MinD:
+    assert(bt == T_DOUBLE, "must be");
+    return Op_MinV;
+  case Op_MaxF:
+    assert(bt == T_FLOAT, "must be");
+    return Op_MaxV;
+  case Op_MaxD:
+    assert(bt == T_DOUBLE, "must be");
+    return Op_MaxV;
 
   case Op_LoadB:
   case Op_LoadUB:
@@ -371,6 +383,9 @@ VectorNode* VectorNode::make(int opc, Node* n1, Node* n2, uint vlen, BasicType b
   case Op_AndV: return new AndVNode(n1, n2, vt);
   case Op_OrV:  return new OrVNode (n1, n2, vt);
   case Op_XorV: return new XorVNode(n1, n2, vt);
+
+  case Op_MinV: return new MinVNode(n1, n2, vt);
+  case Op_MaxV: return new MaxVNode(n1, n2, vt);
   default:
     fatal("Missed vector creation for '%s'", NodeClassNames[vopc]);
     return NULL;
@@ -575,6 +590,22 @@ int ReductionNode::opcode(int opc, BasicType bt) {
       assert(bt == T_DOUBLE, "must be");
       vopc = Op_MulReductionVD;
       break;
+    case Op_MinF:
+      assert(bt == T_FLOAT, "must be");
+      vopc = Op_MinReductionV;
+      break;
+    case Op_MinD:
+      assert(bt == T_DOUBLE, "must be");
+      vopc = Op_MinReductionV;
+      break;
+    case Op_MaxF:
+      assert(bt == T_FLOAT, "must be");
+      vopc = Op_MaxReductionV;
+      break;
+    case Op_MaxD:
+      assert(bt == T_DOUBLE, "must be");
+      vopc = Op_MaxReductionV;
+      break;
     // TODO: add MulL for targets that support it
     default:
       break;
@@ -599,6 +630,8 @@ ReductionNode* ReductionNode::make(int opc, Node *ctrl, Node* n1, Node* n2, Basi
   case Op_MulReductionVL: return new MulReductionVLNode(ctrl, n1, n2);
   case Op_MulReductionVF: return new MulReductionVFNode(ctrl, n1, n2);
   case Op_MulReductionVD: return new MulReductionVDNode(ctrl, n1, n2);
+  case Op_MinReductionV: return new MinReductionVNode(ctrl, n1, n2);
+  case Op_MaxReductionV: return new MaxReductionVNode(ctrl, n1, n2);
   default:
     fatal("Missed vector creation for '%s'", NodeClassNames[vopc]);
     return NULL;
