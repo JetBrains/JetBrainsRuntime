@@ -40,9 +40,9 @@ import static sun.java2d.pipe.BufferedOpCodes.*;
  */
 public class MTLContext extends BufferedContext {
 
-    private final MTLGraphicsConfigBase config;
+    private final MTLGraphicsConfig config;
 
-    public MTLContext(RenderQueue rq, MTLGraphicsConfigBase config) {
+    public MTLContext(RenderQueue rq, MTLGraphicsConfig config) {
         super(rq);
         this.config = config;
     }
@@ -50,7 +50,7 @@ public class MTLContext extends BufferedContext {
     /**
      * Convenience method that delegates to setScratchSurface() below.
      */
-    static void setScratchSurface(MTLGraphicsConfigBase gc) {
+    static void setScratchSurface(MTLGraphicsConfig gc) {
         setScratchSurface(gc.getNativeConfigInfo());
     }
 

@@ -42,4 +42,4 @@ typedef struct _MTLSDOps {
     MTLGraphicsConfigInfo *configInfo;
 } MTLSDOps;
 
-#endif /* CGLSurfaceData_h_Included */
+#endif /* MTLSurfaceData_h_Included */

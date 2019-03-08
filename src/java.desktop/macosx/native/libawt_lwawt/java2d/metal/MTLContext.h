@@ -95,6 +95,7 @@ typedef struct {
     id<MTLBuffer>               mtlVertexBuffer;
     jint                        mtlColor;
     MTLRenderPassDescriptor*    mtlRenderPassDesc;
+    dispatch_semaphore_t 	    mtlRenderSemaphore;
 } MTLContext;
 
 /**

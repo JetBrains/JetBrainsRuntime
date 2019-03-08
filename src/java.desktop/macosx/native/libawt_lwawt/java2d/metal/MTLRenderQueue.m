@@ -32,15 +32,12 @@
 #include "jlong.h"
 #include "MTLBlitLoops.h"
 #include "MTLBufImgOps.h"
-#include "MTLContext.h"
 #include "MTLMaskBlit.h"
 #include "MTLMaskFill.h"
 #include "MTLPaints.h"
 #include "MTLRenderQueue.h"
 #include "MTLRenderer.h"
-#include "MTLSurfaceData.h"
 #include "MTLTextRenderer.h"
-#include "MTLVertexCache.h"
 
 /**
  * Used to track whether we are in a series of a simple primitive operations
@@ -60,7 +57,6 @@ static BMTLSDOps *dstOps = NULL;
  * The following methods are implemented in the windowing system (i.e. GLX
  * and WGL) source files.
  */
-extern MTLContext *MTLSD_SetScratchSurface(JNIEnv *env, jlong pConfigInfo);
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 extern void MTLSD_SwapBuffers(JNIEnv *env, jlong window);
 extern void MTLSD_Flush(JNIEnv *env);
@@ -282,7 +278,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BLIT:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_BLIT");
+                J2dTracePrimitive("MTLRenderQueue_BLIT");
 
                 jint packedParams = NEXT_INT(b);
                 jint sx1          = NEXT_INT(b);
@@ -320,7 +316,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT");
+                J2dTracePrimitive("MTLRenderQueue_SURFACE_TO_SW_BLIT");
 
                 jint sx      = NEXT_INT(b);
                 jint sy      = NEXT_INT(b);
@@ -338,7 +334,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_MASK_FILL");
+                J2dTracePrimitive("MTLRenderQueue_MASK_FILL");
 
                 jint x        = NEXT_INT(b);
                 jint y        = NEXT_INT(b);
@@ -355,7 +351,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_MASK_BLIT:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_MASK_BLIT");
+                J2dTracePrimitive("MTLRenderQueue_MASK_BLIT");
 
                 jint dstx     = NEXT_INT(b);
                 jint dsty     = NEXT_INT(b);
@@ -439,7 +435,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         // context-related ops
         case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_SET_SURFACES");
+                J2dTracePrimitive("MTLRenderQueue_SET_SURFACES");
 
                 jlong pSrc = NEXT_LONG(b);
                 jlong pDst = NEXT_LONG(b);
@@ -461,20 +457,33 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE");
+                J2dTracePrimitive("MTLRenderQueue_SET_SCRATCH_SURFACE");
                 jlong pConfigInfo = NEXT_LONG(b);
-                if (mtlc != NULL) {
-                    RESET_PREVIOUS_OP();
+                MTLGraphicsConfigInfo *mtlInfo =
+                        (MTLGraphicsConfigInfo *)jlong_to_ptr(pConfigInfo);
+
+                if (mtlInfo == NULL) {
+                    J2dTraceImplPrimitive(
+                            "MTLRenderQueue_SET_SCRATCH_SURFACE",
+                            "ERROR: mtl config info is null");
+                } else {
+                    MTLContext *newMtlc = mtlInfo->context;
+                    if (newMtlc == NULL) {
+                        J2dTraceImplPrimitive(
+                                "MTLRenderQueue_SET_SCRATCH_SURFACE",
+                                "ERROR: mtl context is null");
+                    } else {
+                        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                            mtlc = newMtlc;
+                            dstOps = NULL;
+                        }];
+                    }
                 }
-                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                    mtlc = MTLSD_SetScratchSurface(env, pConfigInfo);
-                    dstOps = NULL;
-                }];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
             {
-                J2dTracePrimitive("sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE");
+                J2dTracePrimitive("MTLRenderQueue_FLUSH_SURFACE");
                 jlong pData = NEXT_LONG(b);
                 BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                 if (mtlsdo != NULL) {

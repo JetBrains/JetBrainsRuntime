@@ -68,7 +68,7 @@
 }
 
 - (void) blitTexture {
-    if (self.ctx == NULL || self.javaLayer == NULL) {
+    if (self.ctx == NULL || self.javaLayer == NULL || ctx->mtlEmptyCommandBuffer) {
         return;
     }
 
@@ -84,13 +84,6 @@
 
             id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
             if (mtlDrawable == nil) {
-                [ctx->mtlCommandBuffer release];
-                ctx->mtlCommandBuffer = nil;
-                ctx->mtlEmptyCommandBuffer = YES;
-                if (ctx->mtlRenderPassDesc) {
-                    [ctx->mtlRenderPassDesc release];
-                    ctx->mtlRenderPassDesc = nil;
-                }
                 return;
             }
 
@@ -117,18 +110,23 @@
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
             [mtlEncoder endEncoding];
 
+            dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
-            if (!ctx->mtlEmptyCommandBuffer) {
-                [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
-                [ctx->mtlCommandBuffer commit];
-            }
+            [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
 
-            [ctx->mtlRenderPassDesc release];
+            __block MTLRenderPassDescriptor* blockRenderPassDesc = ctx->mtlRenderPassDesc;
+
+            [ctx->mtlCommandBuffer addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
+                    [blockRenderPassDesc release];
+                    [cmdBuff release];
+            }];
+
+            [ctx->mtlCommandBuffer commit];
+
             ctx->mtlRenderPassDesc = nil;
-
-            [ctx->mtlCommandBuffer release];
             ctx->mtlCommandBuffer = nil;
             ctx->mtlEmptyCommandBuffer = YES;
+            dispatch_semaphore_signal(ctx->mtlRenderSemaphore);
         }
     }
 }
@@ -182,17 +180,6 @@ Java_sun_java2d_metal_MTLLayer_validate
     } else {
         layer.ctx = NULL;
     }
-}
-
-// Must be called on the AppKit thread and under the RQ lock.
-JNIEXPORT void JNICALL
-Java_sun_java2d_metal_MTLLayer_blitTexture
-(JNIEnv *env, jclass cls, jlong layerPtr)
-{
-    MTLLayer *layer = jlong_to_ptr(layerPtr);
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        [layer blitTexture];
-    }];
 }
 
 JNIEXPORT void JNICALL

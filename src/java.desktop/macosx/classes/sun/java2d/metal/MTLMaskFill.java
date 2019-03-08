@@ -58,7 +58,7 @@ class MTLMaskFill extends BufferedMaskFill {
 
     protected MTLMaskFill(SurfaceType srcType, CompositeType compType) {
         super(MTLRenderQueue.getInstance(),
-              srcType, compType, MTLSurfaceDataBase.MTLSurface);
+              srcType, compType, MTLSurfaceData.MTLSurface);
     }
 
     @Override
@@ -70,9 +70,9 @@ class MTLMaskFill extends BufferedMaskFill {
     protected void validateContext(SunGraphics2D sg2d,
                                    Composite comp, int ctxflags)
     {
-        MTLSurfaceDataBase dstData;
+        MTLSurfaceData dstData;
         try {
-            dstData = (MTLSurfaceDataBase) sg2d.surfaceData;
+            dstData = (MTLSurfaceData) sg2d.surfaceData;
         } catch (ClassCastException e) {
             throw new InvalidPipeException("wrong surface data type: " +
                                            sg2d.surfaceData);

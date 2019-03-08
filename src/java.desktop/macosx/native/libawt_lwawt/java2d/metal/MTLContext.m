@@ -124,7 +124,9 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
     }
 
     // make the context current
-    mtlc = MTLSD_MakeMTLContextCurrent(env, srcOps, dstOps);
+    MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
+    mtlc = dstCGLOps->configInfo->context;
+
     if (mtlc == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
                       "MTLContext_SetSurfaces: could not make context current");

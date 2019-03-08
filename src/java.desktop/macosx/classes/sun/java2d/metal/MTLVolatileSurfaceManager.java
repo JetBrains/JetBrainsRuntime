@@ -108,7 +108,7 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
                 ColorModel cm = gc.getColorModel(vImg.getTransparency());
                 int type = vImg.getForcedAccelSurfaceType();
                 // if acceleration type is forced (type != UNDEFINED) then
-                // use the forced type, otherwise choose FBOBJECT
+                // use the forced type, otherwise choose RT_TEXTURE
                 if (type == OGLSurfaceData.UNDEFINED) {
                     type = OGLSurfaceData.FBOBJECT;
                 }

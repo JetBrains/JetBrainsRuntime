@@ -48,9 +48,9 @@ class MTLRenderer extends BufferedRenderPipe {
         int ctxflags =
             sg2d.paint.getTransparency() == Transparency.OPAQUE ?
                 MTLContext.SRC_IS_OPAQUE : MTLContext.NO_CONTEXT_FLAGS;
-        MTLSurfaceDataBase dstData;
+        MTLSurfaceData dstData;
         try {
-            dstData = (MTLSurfaceDataBase)sg2d.surfaceData;
+            dstData = (MTLSurfaceData)sg2d.surfaceData;
         } catch (ClassCastException e) {
             throw new InvalidPipeException("wrong surface data type: " + sg2d.surfaceData);
         }
@@ -62,9 +62,9 @@ class MTLRenderer extends BufferedRenderPipe {
     @Override
     protected void validateContextAA(SunGraphics2D sg2d) {
         int ctxflags = MTLContext.NO_CONTEXT_FLAGS;
-        MTLSurfaceDataBase dstData;
+        MTLSurfaceData dstData;
         try {
-            dstData = (MTLSurfaceDataBase)sg2d.surfaceData;
+            dstData = (MTLSurfaceData)sg2d.surfaceData;
         } catch (ClassCastException e) {
             throw new InvalidPipeException("wrong surface data type: " + sg2d.surfaceData);
         }
@@ -81,9 +81,9 @@ class MTLRenderer extends BufferedRenderPipe {
             int ctxflags =
                 sg2d.surfaceData.getTransparency() == Transparency.OPAQUE ?
                     MTLContext.SRC_IS_OPAQUE : MTLContext.NO_CONTEXT_FLAGS;
-            MTLSurfaceDataBase dstData;
+            MTLSurfaceData dstData;
             try {
-                dstData = (MTLSurfaceDataBase)sg2d.surfaceData;
+                dstData = (MTLSurfaceData)sg2d.surfaceData;
             } catch (ClassCastException e) {
                 throw new InvalidPipeException("wrong surface data type: " + sg2d.surfaceData);
             }

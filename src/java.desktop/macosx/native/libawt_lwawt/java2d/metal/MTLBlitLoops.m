@@ -31,7 +31,7 @@
 #include "SurfaceData.h"
 #include "MTLBlitLoops.h"
 #include "MTLRenderQueue.h"
-#include "MTLSurfaceDataBase.h"
+#include "MTLSurfaceData.h"
 #include "GraphicsPrimitiveMgr.h"
 
 #include <stdlib.h> // malloc

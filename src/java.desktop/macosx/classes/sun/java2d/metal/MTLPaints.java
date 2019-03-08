@@ -105,7 +105,7 @@ abstract class MTLPaints {
         @Override
         boolean isPaintValid(SunGraphics2D sg2d) {
             TexturePaint paint = (TexturePaint)sg2d.paint;
-            MTLSurfaceDataBase dstData = (MTLSurfaceDataBase)sg2d.surfaceData;
+            MTLSurfaceData dstData = (MTLSurfaceData)sg2d.surfaceData;
             BufferedImage bi = paint.getImage();
 
             // see if texture-non-pow2 extension is available
@@ -123,7 +123,7 @@ abstract class MTLPaints {
                 dstData.getSourceSurfaceData(bi,
                                              SunGraphics2D.TRANSFORM_ISIDENT,
                                              CompositeType.SrcOver, null);
-            if (!(srcData instanceof MTLSurfaceDataBase)) {
+            if (!(srcData instanceof MTLSurfaceData)) {
                 // REMIND: this is a hack that attempts to cache the system
                 //         memory image from the TexturePaint instance into an
                 //         OpenGL texture...
@@ -131,14 +131,14 @@ abstract class MTLPaints {
                     dstData.getSourceSurfaceData(bi,
                                                  SunGraphics2D.TRANSFORM_ISIDENT,
                                                  CompositeType.SrcOver, null);
-                if (!(srcData instanceof MTLSurfaceDataBase)) {
+                if (!(srcData instanceof MTLSurfaceData)) {
                     return false;
                 }
             }
 
             // verify that the source surface is actually a texture
-            MTLSurfaceDataBase oglData = (MTLSurfaceDataBase)srcData;
-            if (oglData.getType() != MTLSurfaceDataBase.TEXTURE) {
+            MTLSurfaceData oglData = (MTLSurfaceData)srcData;
+            if (oglData.getType() != MTLSurfaceData.TEXTURE) {
                 return false;
             }
 
@@ -168,8 +168,8 @@ abstract class MTLPaints {
                 return false;
             }
 
-            MTLSurfaceDataBase dstData = (MTLSurfaceDataBase)sg2d.surfaceData;
-            MTLGraphicsConfigBase gc = dstData.getMTLGraphicsConfig();
+            MTLSurfaceData dstData = (MTLSurfaceData)sg2d.surfaceData;
+            MTLGraphicsConfig gc = dstData.getMTLGraphicsConfig();
             if (!gc.isCapPresent(CAPS_EXT_GRAD_SHADER)) {
                 return false;
             }

@@ -34,7 +34,6 @@
 #include "Trace.h"
 #include "MTLFuncs.h"
 
-typedef struct _BMTLSDOps BMTLSDOps;
 
 /**
  * The MTLPixelFormat structure contains all the information OpenGL needs to
@@ -160,7 +159,7 @@ typedef struct {
  * associated with this surface.  These fields are only used when
  * drawableType is MTLSD_FBOBJECT, otherwise they are zero.
  */
-struct _BMTLSDOps {
+typedef struct {
     SurfaceDataOps               sdOps;
     void                         *privOps;
     jint                         drawableType;
@@ -178,50 +177,13 @@ struct _BMTLSDOps {
    /* GLint  */ jint                      textureFilter;
    /* GLuint */ jint                      fbobjectID;
    /* GLuint  */ jint                     depthID;
-};
+} BMTLSDOps;
 
-/**
- * The following convenience macros are used when rendering rectangles (either
- * a single rectangle, or a whole series of them).  To render a single
- * rectangle, simply invoke the GLRECT() macro.  To render a whole series of
- * rectangles, such as spans in a complex shape, first invoke GLRECT_BEGIN(),
- * then invoke the appropriate inner loop macro (either XYXY or XYWH) for
- * each rectangle, and finally invoke GLRECT_END() to notify OpenGL that the
- * vertex list is complete.  Care should be taken to avoid calling OpenGL
- * commands (besides GLRECT_BODY_*()) inside the BEGIN/END pair.
- */
-
-#define GLRECT_BEGIN j2d_glBegin(GL_QUADS)
-
-#define GLRECT_BODY_XYXY(x1, y1, x2, y2) \
-    do { \
-        j2d_glVertex2i(x1, y1); \
-        j2d_glVertex2i(x2, y1); \
-        j2d_glVertex2i(x2, y2); \
-        j2d_glVertex2i(x1, y2); \
-    } while (0)
-
-#define GLRECT_BODY_XYWH(x, y, w, h) \
-    GLRECT_BODY_XYXY(x, y, (x) + (w), (y) + (h))
-
-#define GLRECT_END j2d_glEnd()
-
-#define GLRECT(x, y, w, h) \
-    do { \
-        GLRECT_BEGIN; \
-        GLRECT_BODY_XYWH(x, y, w, h); \
-        GLRECT_END; \
-    } while (0)
-
-/**
- * These are shorthand names for the surface type constants defined in
- * MTLSurfaceData.java.
- */
 #define MTLSD_UNDEFINED       sun_java2d_pipe_hw_AccelSurface_UNDEFINED
 #define MTLSD_WINDOW          sun_java2d_pipe_hw_AccelSurface_WINDOW
 #define MTLSD_TEXTURE         sun_java2d_pipe_hw_AccelSurface_TEXTURE
 #define MTLSD_FLIP_BACKBUFFER sun_java2d_pipe_hw_AccelSurface_FLIP_BACKBUFFER
-#define MTLSD_FBOBJECT        sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
+#define MTLSD_RT_TEXTURE        sun_java2d_pipe_hw_AccelSurface_RT_TEXTURE
 
 /**
  * These are shorthand names for the filtering method constants used by
@@ -232,48 +194,6 @@ struct _BMTLSDOps {
     java_awt_image_AffineTransformOp_TYPE_NEAREST_NEIGHBOR
 #define MTLSD_XFORM_BILINEAR \
     java_awt_image_AffineTransformOp_TYPE_BILINEAR
-
-/**
- * Helper macros that update the current texture filter state only when
- * it needs to be changed, which helps reduce overhead for small texturing
- * operations.  The filter state is set on a per-texture (not per-context)
- * basis; for example, it is possible for one texture to be using GL_NEAREST
- * while another texture uses GL_LINEAR under the same context.
- */
-#define MTLSD_INIT_TEXTURE_FILTER(mtlSDOps, filter)                          \
-    do {                                                                     \
-        j2d_glTexParameteri((mtlSDOps)->textureTarget,                       \
-                            GL_TEXTURE_MAG_FILTER, (filter));                \
-        j2d_glTexParameteri((mtlSDOps)->textureTarget,                       \
-                            GL_TEXTURE_MIN_FILTER, (filter));                \
-        (mtlSDOps)->textureFilter = (filter);                                \
-    } while (0)
-
-#define MTLSD_UPDATE_TEXTURE_FILTER(mtlSDOps, filter)    \
-    do {                                                 \
-        if ((mtlSDOps)->textureFilter != (filter)) {     \
-            MTLSD_INIT_TEXTURE_FILTER(mtlSDOps, filter); \
-        }                                                \
-    } while (0)
-
-/**
- * Convenience macros for setting the texture wrap mode for a given target.
- * The texture wrap mode should be reset to our default value of
- * GL_CLAMP_TO_EDGE by calling MTLSD_RESET_TEXTURE_WRAP() when a texture
- * is first created.  If another mode is needed (e.g. GL_REPEAT in the case
- * of TexturePaint acceleration), one can call the MTLSD_UPDATE_TEXTURE_WRAP()
- * macro to easily set up the new wrap mode.  However, it is important to
- * restore the wrap mode back to its default value (by calling the
- * MTLSD_RESET_TEXTURE_WRAP() macro) when the operation is finished.
- */
-#define MTLSD_UPDATE_TEXTURE_WRAP(target, wrap)                   \
-    do {                                                          \
-        j2d_glTexParameteri((target), GL_TEXTURE_WRAP_S, (wrap)); \
-        j2d_glTexParameteri((target), GL_TEXTURE_WRAP_T, (wrap)); \
-    } while (0)
-
-#define MTLSD_RESET_TEXTURE_WRAP(target) \
-    MTLSD_UPDATE_TEXTURE_WRAP(target, GL_CLAMP_TO_EDGE)
 
 /**
  * Exported methods.
@@ -288,9 +208,5 @@ void MTLSD_Unlock(JNIEnv *env,
 void MTLSD_Dispose(JNIEnv *env, SurfaceDataOps *ops);
 void MTLSD_Delete(JNIEnv *env, BMTLSDOps *mtlsdo);
 jint MTLSD_NextPowerOfTwo(jint val, jint max);
-
-/*jboolean MTLSD_InitFBObject(GLuint *fbobjectID, GLuint *depthID,
-                            GLuint textureID, GLenum textureTarget,
-                            jint textureWidth, jint textureHeight);*/
 
 #endif /* MTLSurfaceDataBase_h_Included */

@@ -320,7 +320,6 @@ public abstract class GraphicsPrimitive {
     public abstract GraphicsPrimitive traceWrap();
 
     static HashMap<Object, int[]> traceMap;
-    static HashSet<String> traceNotImplSet;
 
     public static int traceflags;
     public static String tracefile;
@@ -334,11 +333,11 @@ public abstract class GraphicsPrimitive {
     public static final int TRACECOUNTS = 4;
     public static final int TRACEPTIME = 8;
     public static final int TRACEPNAME = 16;
-    public static final int TRACENOTIMPL = 32;
+    public static final int TRACEPIMPL = 32;
 
     static void showTraceUsage() {
         System.err.println("usage: -Dsun.java2d.trace="+
-                "[log[,timestamp]],[count],[ptime],[name:<substr pattern>],"+
+                "[log[,timestamp]],[count],[ptime],[pimpl],[name:<substr pattern>],"+
                 "[out:<filename>],[td=<treshold>],[help],[verbose]");
     }
 
@@ -358,8 +357,8 @@ public abstract class GraphicsPrimitive {
                     traceflags |= GraphicsPrimitive.TRACETIMESTAMP;
                 } else if (tok.equalsIgnoreCase("ptime")) {
                     traceflags |=GraphicsPrimitive.TRACEPTIME;
-                } else if (tok.equalsIgnoreCase("notimpl")) {
-                    traceflags |=GraphicsPrimitive.TRACENOTIMPL;
+                } else if (tok.equalsIgnoreCase("pimpl")) {
+                    traceflags |=GraphicsPrimitive.TRACEPIMPL;
                 } else if (tok.regionMatches(true, 0, "name:", 0, 5)) {
                     traceflags |=GraphicsPrimitive.TRACEPNAME;
                     pname = tok.substring(6);
@@ -487,14 +486,6 @@ public abstract class GraphicsPrimitive {
                             numprims + " different primitives");
                 }
             }
-
-            if (traceNotImplSet != null) {
-                ps.println("Not implemented graphics primitives:");
-
-                for (String name : traceNotImplSet) {
-                    ps.println(name);
-                }
-            }
         }
     }
 
@@ -524,26 +515,20 @@ public abstract class GraphicsPrimitive {
         }
     }
 
-    public synchronized static void traceNotImplPrimitive(Object prim) {
+    public synchronized static void traceImplPrimitive(Object prim, Object msg) {
         if ((traceflags & TRACEPNAME) != 0) {
             if (!prim.toString().contains(pname)) return;
         }
 
-        if ((traceflags & TRACECOUNTS) != 0) {
-            if (traceNotImplSet == null) {
-                traceNotImplSet = new HashSet<String>();
-                TraceReporter.setShutdownHook();
-            }
-            traceNotImplSet.add(prim.toString());
-        }
-        if ((traceflags & TRACELOG) != 0) {
+        if ((traceflags & TRACEPIMPL) != 0) {
             PrintStream ps = getTraceOutputFile();
             if ((traceflags & TRACETIMESTAMP) != 0) {
-                ps.print(System.currentTimeMillis()+":[NOT IMPL] ");
+                ps.print(System.currentTimeMillis());
             }
-            ps.println(prim);
+            ps.println(prim + " : " + msg);
         }
     }
+
 
     public synchronized static void tracePrimitiveTime(Object prim, long time) {
         if ((traceflags & TRACEPNAME) != 0) {

@@ -37,7 +37,6 @@ public class MTLLayer extends CFRetainedResource {
     private native long nativeCreateLayer();
     private static native void nativeSetScale(long layerPtr, double scale);
     private static native void validate(long layerPtr, MTLSurfaceData cglsd);
-    private static native void blitTexture(long layerPtr);
 
     private LWWindowPeer peer;
     private int scale = 1;
@@ -120,22 +119,6 @@ public class MTLLayer extends CFRetainedResource {
         if (scale != _scale) {
             scale = _scale;
             execute(ptr -> nativeSetScale(ptr, scale));
-        }
-    }
-
-    // ----------------------------------------------------------------------
-    // NATIVE CALLBACKS
-    // ----------------------------------------------------------------------
-
-    private void drawInCGLContext() {
-        // tell the flusher thread not to update the intermediate buffer
-        // until we are done blitting from it
-        MTLRenderQueue rq = MTLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            execute(ptr -> blitTexture(ptr));
-        } finally {
-            rq.unlock();
         }
     }
 }

@@ -29,10 +29,12 @@ import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
+import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
@@ -53,7 +55,7 @@ import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
 public final class MTLGraphicsConfig extends CGraphicsConfig
-    implements MTLGraphicsConfigBase
+    implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
     //private static final int kOpenGLSwapInterval =
     // RuntimeOptions.getCurrentOptions().OpenGLSwapInterval;
@@ -114,7 +116,6 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         return this;
     }
 
-    @Override
     public SurfaceData createManagedSurface(int w, int h, int transparency) {
         return MTLSurfaceData.createData(this, w, h,
                                          getColorModel(transparency),
@@ -197,12 +198,10 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
      * Returns true if the provided capability bit is present for this config.
      * See MTLContext.java for a list of supported capabilities.
      */
-    @Override
     public boolean isCapPresent(int cap) {
         return ((mtlCaps.getCaps() & cap) != 0);
     }
 
-    @Override
     public long getNativeConfigInfo() {
         return pConfigInfo;
     }

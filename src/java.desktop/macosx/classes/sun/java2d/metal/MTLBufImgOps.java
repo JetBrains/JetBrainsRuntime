@@ -67,7 +67,7 @@ class MTLBufImgOps extends BufferedBufImgOps {
         }
 
         SurfaceData dstData = sg.surfaceData;
-        if (!(dstData instanceof MTLSurfaceDataBase) ||
+        if (!(dstData instanceof MTLSurfaceData) ||
             (sg.interpolationType == AffineTransformOp.TYPE_BICUBIC) ||
             (sg.compositeState > SunGraphics2D.COMP_ALPHA))
         {
@@ -77,21 +77,21 @@ class MTLBufImgOps extends BufferedBufImgOps {
         SurfaceData srcData =
             dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
                                          CompositeType.SrcOver, null);
-        if (!(srcData instanceof MTLSurfaceDataBase)) {
+        if (!(srcData instanceof MTLSurfaceData)) {
             // REMIND: this hack tries to ensure that we have a cached texture
             srcData =
                 dstData.getSourceSurfaceData(img, SunGraphics2D.TRANSFORM_ISIDENT,
                                              CompositeType.SrcOver, null);
-            if (!(srcData instanceof MTLSurfaceDataBase)) {
+            if (!(srcData instanceof MTLSurfaceData)) {
                 return false;
             }
         }
 
         // Verify that the source surface is actually a texture and
         // that the operation is supported
-        MTLSurfaceDataBase mtlSrc = (MTLSurfaceDataBase)srcData;
-        MTLGraphicsConfigBase gc = mtlSrc.getMTLGraphicsConfig();
-        if (mtlSrc.getType() != MTLSurfaceDataBase.TEXTURE ||
+        MTLSurfaceData mtlSrc = (MTLSurfaceData)srcData;
+        MTLGraphicsConfig gc = mtlSrc.getMTLGraphicsConfig();
+        if (mtlSrc.getType() != MTLSurfaceData.TEXTURE ||
             !gc.isCapPresent(CAPS_EXT_BIOP_SHADER))
         {
             return false;

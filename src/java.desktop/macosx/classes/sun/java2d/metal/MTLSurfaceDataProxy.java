@@ -38,9 +38,9 @@ import java.awt.*;
  */
 public class MTLSurfaceDataProxy extends SurfaceDataProxy {
     public static SurfaceDataProxy createProxy(SurfaceData srcData,
-                                               MTLGraphicsConfigBase dstConfig)
+                                               MTLGraphicsConfig dstConfig)
     {
-        if (srcData instanceof MTLSurfaceDataBase) {
+        if (srcData instanceof MTLSurfaceData) {
             // srcData must be a VolatileImage which either matches
             // our pixel format or not - either way we do not cache it...
             return UNCACHED;
@@ -49,10 +49,10 @@ public class MTLSurfaceDataProxy extends SurfaceDataProxy {
         return new MTLSurfaceDataProxy(dstConfig, srcData.getTransparency());
     }
 
-    MTLGraphicsConfigBase oglgc;
+    MTLGraphicsConfig oglgc;
     int transparency;
 
-    public MTLSurfaceDataProxy(MTLGraphicsConfigBase oglgc, int transparency) {
+    public MTLSurfaceDataProxy(MTLGraphicsConfig oglgc, int transparency) {
         this.oglgc = oglgc;
         this.transparency = transparency;
     }

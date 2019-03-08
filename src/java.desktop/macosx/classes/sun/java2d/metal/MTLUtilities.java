@@ -41,14 +41,14 @@ class MTLUtilities {
 
     /**
      * These OGL-specific surface type constants are the same as those
-     * defined in the MTLSurfaceDataBase class and are duplicated here so that
+     * defined in the MTLSurfaceData class and are duplicated here so that
      * clients of this API can access them more easily via reflection.
      */
-    public static final int UNDEFINED       = MTLSurfaceDataBase.UNDEFINED;
-    public static final int WINDOW          = MTLSurfaceDataBase.WINDOW;
-    public static final int TEXTURE         = MTLSurfaceDataBase.TEXTURE;
-    public static final int FLIP_BACKBUFFER = MTLSurfaceDataBase.FLIP_BACKBUFFER;
-    public static final int FBOBJECT        = MTLSurfaceDataBase.FBOBJECT;
+    public static final int UNDEFINED       = MTLSurfaceData.UNDEFINED;
+    public static final int WINDOW          = MTLSurfaceData.WINDOW;
+    public static final int TEXTURE         = MTLSurfaceData.TEXTURE;
+    public static final int FLIP_BACKBUFFER = MTLSurfaceData.FLIP_BACKBUFFER;
+    public static final int RT_TEXTURE      = MTLSurfaceData.RT_TEXTURE;
 
     private MTLUtilities() {
     }
@@ -89,12 +89,12 @@ class MTLUtilities {
                     return false;
                 }
                 SurfaceData sData = ((SunGraphics2D)g).surfaceData;
-                if (!(sData instanceof MTLSurfaceDataBase)) {
+                if (!(sData instanceof MTLSurfaceData)) {
                     return false;
                 }
 
                 // make a context current to the destination surface
-                MTLContext.validateContext((MTLSurfaceDataBase)sData);
+                MTLContext.validateContext((MTLSurfaceData)sData);
             }
 
             // invoke the given runnable on the QFT
@@ -137,7 +137,7 @@ class MTLUtilities {
     invokeWithMTLSharedContextCurrent(GraphicsConfiguration config,
                                       Runnable r)
     {
-        if (!(config instanceof MTLGraphicsConfigBase)) {
+        if (!(config instanceof MTLGraphicsConfig)) {
             return false;
         }
 
@@ -145,7 +145,7 @@ class MTLUtilities {
         rq.lock();
         try {
             // make the "shared" context current for the given GraphicsConfig
-            MTLContext.setScratchSurface((MTLGraphicsConfigBase)config);
+            MTLContext.setScratchSurface((MTLGraphicsConfig)config);
 
             // invoke the given runnable on the QFT
             rq.flushAndInvokeNow(r);
@@ -293,10 +293,10 @@ class MTLUtilities {
             return UNDEFINED;
         }
         SurfaceData sData = ((SunGraphics2D)g).surfaceData;
-        if (!(sData instanceof MTLSurfaceDataBase)) {
+        if (!(sData instanceof MTLSurfaceData)) {
             return UNDEFINED;
         }
-        return ((MTLSurfaceDataBase)sData).getType();
+        return ((MTLSurfaceData)sData).getType();
     }
 
     /**
@@ -304,7 +304,7 @@ class MTLUtilities {
      * or GL_TEXTURE_RECTANGLE_ARB) for the surface associated with the
      * given Graphics object.  This method is only useful for those surface
      * types that are backed by an MTL texture, namely {@code TEXTURE},
-     * {@code FBOBJECT}, and (on Windows only) {@code PBUFFER}.
+     * {@code RT_TEXTURE}, and (on Windows only) {@code PBUFFER}.
      *
      * @param g the Graphics object for the corresponding destination surface;
      * cannot be null
@@ -318,9 +318,9 @@ class MTLUtilities {
             return 0;
         }
         SurfaceData sData = ((SunGraphics2D)g).surfaceData;
-        if (!(sData instanceof MTLSurfaceDataBase)) {
+        if (!(sData instanceof MTLSurfaceData)) {
             return 0;
         }
-        return ((MTLSurfaceDataBase)sData).getTextureTarget();
+        return ((MTLSurfaceData)sData).getTextureTarget();
     }
 }

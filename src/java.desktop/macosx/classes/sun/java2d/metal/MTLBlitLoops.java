@@ -30,6 +30,7 @@ import sun.java2d.loops.*;
 import sun.java2d.pipe.Region;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.RenderQueue;
+import sun.java2d.pipe.hw.AccelSurface;
 
 import java.awt.*;
 import java.awt.geom.AffineTransform;
@@ -47,16 +48,16 @@ final class MTLBlitLoops {
     static void register() {
         Blit blitIntArgbPreToSurface =
             new MTLSwToSurfaceBlit(SurfaceType.IntArgbPre,
-                                   MTLSurfaceDataBase.PF_INT_ARGB_PRE);
+                    MTLSurfaceData.PF_INT_ARGB_PRE);
         Blit blitIntArgbPreToTexture =
             new MTLSwToTextureBlit(SurfaceType.IntArgbPre,
-                                   MTLSurfaceDataBase.PF_INT_ARGB_PRE);
+                    MTLSurfaceData.PF_INT_ARGB_PRE);
         TransformBlit transformBlitIntArgbPreToSurface =
             new MTLSwToSurfaceTransform(SurfaceType.IntArgbPre,
-                                        MTLSurfaceDataBase.PF_INT_ARGB_PRE);
+                    MTLSurfaceData.PF_INT_ARGB_PRE);
         MTLSurfaceToSwBlit blitSurfaceToIntArgbPre =
             new MTLSurfaceToSwBlit(SurfaceType.IntArgbPre,
-                                   MTLSurfaceDataBase.PF_INT_ARGB_PRE);
+                    MTLSurfaceData.PF_INT_ARGB_PRE);
 
         GraphicsPrimitive[] primitives = {
             // surface->surface ops
@@ -71,36 +72,36 @@ final class MTLBlitLoops {
 
             // surface->sw ops
             new MTLSurfaceToSwBlit(SurfaceType.IntArgb,
-                                   MTLSurfaceDataBase.PF_INT_ARGB),
+                    MTLSurfaceData.PF_INT_ARGB),
             blitSurfaceToIntArgbPre,
 
             // sw->surface ops
             blitIntArgbPreToSurface,
             new MTLSwToSurfaceBlit(SurfaceType.IntRgb,
-                                   MTLSurfaceDataBase.PF_INT_RGB),
+                    MTLSurfaceData.PF_INT_RGB),
             new MTLSwToSurfaceBlit(SurfaceType.IntRgbx,
-                                   MTLSurfaceDataBase.PF_INT_RGBX),
+                    MTLSurfaceData.PF_INT_RGBX),
             new MTLSwToSurfaceBlit(SurfaceType.IntBgr,
-                                   MTLSurfaceDataBase.PF_INT_BGR),
+                    MTLSurfaceData.PF_INT_BGR),
             new MTLSwToSurfaceBlit(SurfaceType.IntBgrx,
-                                   MTLSurfaceDataBase.PF_INT_BGRX),
+                    MTLSurfaceData.PF_INT_BGRX),
             new MTLSwToSurfaceBlit(SurfaceType.ThreeByteBgr,
-                                   MTLSurfaceDataBase.PF_3BYTE_BGR),
+                    MTLSurfaceData.PF_3BYTE_BGR),
             new MTLSwToSurfaceBlit(SurfaceType.Ushort565Rgb,
-                                   MTLSurfaceDataBase.PF_USHORT_565_RGB),
+                    MTLSurfaceData.PF_USHORT_565_RGB),
             new MTLSwToSurfaceBlit(SurfaceType.Ushort555Rgb,
-                                   MTLSurfaceDataBase.PF_USHORT_555_RGB),
+                    MTLSurfaceData.PF_USHORT_555_RGB),
             new MTLSwToSurfaceBlit(SurfaceType.Ushort555Rgbx,
-                                   MTLSurfaceDataBase.PF_USHORT_555_RGBX),
+                    MTLSurfaceData.PF_USHORT_555_RGBX),
             new MTLSwToSurfaceBlit(SurfaceType.ByteGray,
-                                   MTLSurfaceDataBase.PF_BYTE_GRAY),
+                    MTLSurfaceData.PF_BYTE_GRAY),
             new MTLSwToSurfaceBlit(SurfaceType.UshortGray,
-                                   MTLSurfaceDataBase.PF_USHORT_GRAY),
-            new MTLGeneralBlit(MTLSurfaceDataBase.MTLSurface,
+                    MTLSurfaceData.PF_USHORT_GRAY),
+            new MTLGeneralBlit(MTLSurfaceData.MTLSurface,
                                CompositeType.AnyAlpha,
                                blitIntArgbPreToSurface),
 
-            new MTLAnyCompositeBlit(MTLSurfaceDataBase.MTLSurface,
+            new MTLAnyCompositeBlit(MTLSurfaceData.MTLSurface,
                                     blitSurfaceToIntArgbPre,
                                     blitSurfaceToIntArgbPre,
                                     blitIntArgbPreToSurface),
@@ -110,48 +111,48 @@ final class MTLBlitLoops {
                                     blitIntArgbPreToSurface),
 
             new MTLSwToSurfaceScale(SurfaceType.IntRgb,
-                                    MTLSurfaceDataBase.PF_INT_RGB),
+                    MTLSurfaceData.PF_INT_RGB),
             new MTLSwToSurfaceScale(SurfaceType.IntRgbx,
-                                    MTLSurfaceDataBase.PF_INT_RGBX),
+                    MTLSurfaceData.PF_INT_RGBX),
             new MTLSwToSurfaceScale(SurfaceType.IntBgr,
-                                    MTLSurfaceDataBase.PF_INT_BGR),
+                    MTLSurfaceData.PF_INT_BGR),
             new MTLSwToSurfaceScale(SurfaceType.IntBgrx,
-                                    MTLSurfaceDataBase.PF_INT_BGRX),
+                    MTLSurfaceData.PF_INT_BGRX),
             new MTLSwToSurfaceScale(SurfaceType.ThreeByteBgr,
-                                    MTLSurfaceDataBase.PF_3BYTE_BGR),
+                    MTLSurfaceData.PF_3BYTE_BGR),
             new MTLSwToSurfaceScale(SurfaceType.Ushort565Rgb,
-                                    MTLSurfaceDataBase.PF_USHORT_565_RGB),
+                    MTLSurfaceData.PF_USHORT_565_RGB),
             new MTLSwToSurfaceScale(SurfaceType.Ushort555Rgb,
-                                    MTLSurfaceDataBase.PF_USHORT_555_RGB),
+                    MTLSurfaceData.PF_USHORT_555_RGB),
             new MTLSwToSurfaceScale(SurfaceType.Ushort555Rgbx,
-                                    MTLSurfaceDataBase.PF_USHORT_555_RGBX),
+                    MTLSurfaceData.PF_USHORT_555_RGBX),
             new MTLSwToSurfaceScale(SurfaceType.ByteGray,
-                                    MTLSurfaceDataBase.PF_BYTE_GRAY),
+                    MTLSurfaceData.PF_BYTE_GRAY),
             new MTLSwToSurfaceScale(SurfaceType.UshortGray,
-                                    MTLSurfaceDataBase.PF_USHORT_GRAY),
+                    MTLSurfaceData.PF_USHORT_GRAY),
             new MTLSwToSurfaceScale(SurfaceType.IntArgbPre,
-                                    MTLSurfaceDataBase.PF_INT_ARGB_PRE),
+                    MTLSurfaceData.PF_INT_ARGB_PRE),
 
             new MTLSwToSurfaceTransform(SurfaceType.IntRgb,
-                                        MTLSurfaceDataBase.PF_INT_RGB),
+                    MTLSurfaceData.PF_INT_RGB),
             new MTLSwToSurfaceTransform(SurfaceType.IntRgbx,
-                                        MTLSurfaceDataBase.PF_INT_RGBX),
+                    MTLSurfaceData.PF_INT_RGBX),
             new MTLSwToSurfaceTransform(SurfaceType.IntBgr,
-                                        MTLSurfaceDataBase.PF_INT_BGR),
+                    MTLSurfaceData.PF_INT_BGR),
             new MTLSwToSurfaceTransform(SurfaceType.IntBgrx,
-                                        MTLSurfaceDataBase.PF_INT_BGRX),
+                    MTLSurfaceData.PF_INT_BGRX),
             new MTLSwToSurfaceTransform(SurfaceType.ThreeByteBgr,
-                                        MTLSurfaceDataBase.PF_3BYTE_BGR),
+                    MTLSurfaceData.PF_3BYTE_BGR),
             new MTLSwToSurfaceTransform(SurfaceType.Ushort565Rgb,
-                                        MTLSurfaceDataBase.PF_USHORT_565_RGB),
+                    MTLSurfaceData.PF_USHORT_565_RGB),
             new MTLSwToSurfaceTransform(SurfaceType.Ushort555Rgb,
-                                        MTLSurfaceDataBase.PF_USHORT_555_RGB),
+                    MTLSurfaceData.PF_USHORT_555_RGB),
             new MTLSwToSurfaceTransform(SurfaceType.Ushort555Rgbx,
-                                        MTLSurfaceDataBase.PF_USHORT_555_RGBX),
+                    MTLSurfaceData.PF_USHORT_555_RGBX),
             new MTLSwToSurfaceTransform(SurfaceType.ByteGray,
-                                        MTLSurfaceDataBase.PF_BYTE_GRAY),
+                    MTLSurfaceData.PF_BYTE_GRAY),
             new MTLSwToSurfaceTransform(SurfaceType.UshortGray,
-                                        MTLSurfaceDataBase.PF_USHORT_GRAY),
+                    MTLSurfaceData.PF_USHORT_GRAY),
             transformBlitIntArgbPreToSurface,
 
             new MTLGeneralTransformedBlit(transformBlitIntArgbPreToSurface),
@@ -164,26 +165,26 @@ final class MTLBlitLoops {
             // sw->texture ops
             blitIntArgbPreToTexture,
             new MTLSwToTextureBlit(SurfaceType.IntRgb,
-                                   MTLSurfaceDataBase.PF_INT_RGB),
+                    MTLSurfaceData.PF_INT_RGB),
             new MTLSwToTextureBlit(SurfaceType.IntRgbx,
-                                   MTLSurfaceDataBase.PF_INT_RGBX),
+                    MTLSurfaceData.PF_INT_RGBX),
             new MTLSwToTextureBlit(SurfaceType.IntBgr,
-                                   MTLSurfaceDataBase.PF_INT_BGR),
+                    MTLSurfaceData.PF_INT_BGR),
             new MTLSwToTextureBlit(SurfaceType.IntBgrx,
-                                   MTLSurfaceDataBase.PF_INT_BGRX),
+                    MTLSurfaceData.PF_INT_BGRX),
             new MTLSwToTextureBlit(SurfaceType.ThreeByteBgr,
-                                   MTLSurfaceDataBase.PF_3BYTE_BGR),
+                    MTLSurfaceData.PF_3BYTE_BGR),
             new MTLSwToTextureBlit(SurfaceType.Ushort565Rgb,
-                                   MTLSurfaceDataBase.PF_USHORT_565_RGB),
+                    MTLSurfaceData.PF_USHORT_565_RGB),
             new MTLSwToTextureBlit(SurfaceType.Ushort555Rgb,
-                                   MTLSurfaceDataBase.PF_USHORT_555_RGB),
+                    MTLSurfaceData.PF_USHORT_555_RGB),
             new MTLSwToTextureBlit(SurfaceType.Ushort555Rgbx,
-                                   MTLSurfaceDataBase.PF_USHORT_555_RGBX),
+                    MTLSurfaceData.PF_USHORT_555_RGBX),
             new MTLSwToTextureBlit(SurfaceType.ByteGray,
-                                   MTLSurfaceDataBase.PF_BYTE_GRAY),
+                    MTLSurfaceData.PF_BYTE_GRAY),
             new MTLSwToTextureBlit(SurfaceType.UshortGray,
-                                   MTLSurfaceDataBase.PF_USHORT_GRAY),
-            new MTLGeneralBlit(MTLSurfaceDataBase.MTLTexture,
+                    MTLSurfaceData.PF_USHORT_GRAY),
+            new MTLGeneralBlit(MTLSurfaceData.MTLTexture,
                                CompositeType.SrcNoEa,
                                blitIntArgbPreToTexture),
         };
@@ -266,11 +267,11 @@ final class MTLBlitLoops {
             // disposed while the operation is processed on the QFT
             rq.addReference(srcData);
 
-            MTLSurfaceDataBase oglDst = (MTLSurfaceDataBase)dstData;
+            MTLSurfaceData oglDst = (MTLSurfaceData)dstData;
             if (texture) {
                 // make sure we have a current context before uploading
                 // the sysmem data to the texture object
-                MTLGraphicsConfigBase gc = oglDst.getMTLGraphicsConfig();
+                MTLGraphicsConfig gc = oglDst.getMTLGraphicsConfig();
                 MTLContext.setScratchSurface(gc);
             } else {
                 MTLContext.validateContext(oglDst, oglDst,
@@ -318,12 +319,12 @@ final class MTLBlitLoops {
         MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            MTLSurfaceDataBase oglSrc = (MTLSurfaceDataBase)srcData;
-            MTLSurfaceDataBase oglDst = (MTLSurfaceDataBase)dstData;
+            MTLSurfaceData oglSrc = (MTLSurfaceData)srcData;
+            MTLSurfaceData oglDst = (MTLSurfaceData)dstData;
             int srctype = oglSrc.getType();
             boolean rtt;
-            MTLSurfaceDataBase srcCtxData;
-            if (srctype == MTLSurfaceDataBase.TEXTURE) {
+            MTLSurfaceData srcCtxData;
+            if (srctype == MTLSurfaceData.TEXTURE) {
                 // the source is a regular texture object; we substitute
                 // the destination surface for the purposes of making a
                 // context current
@@ -334,7 +335,7 @@ final class MTLBlitLoops {
                 // surface; we set rtt to true to differentiate this kind
                 // of surface from a regular texture object
                 rtt = true;
-                if (srctype == MTLSurfaceDataBase.FBOBJECT) {
+                if (srctype == AccelSurface.RT_TEXTURE) {
                     srcCtxData = oglDst;
                 } else {
                     srcCtxData = oglSrc;
@@ -376,9 +377,9 @@ final class MTLBlitLoops {
 class MTLSurfaceToSurfaceBlit extends Blit {
 
     MTLSurfaceToSurfaceBlit() {
-        super(MTLSurfaceDataBase.MTLSurface,
+        super(MTLSurfaceData.MTLSurface,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Blit(SurfaceData src, SurfaceData dst,
@@ -398,9 +399,9 @@ class MTLSurfaceToSurfaceBlit extends Blit {
 class MTLSurfaceToSurfaceScale extends ScaledBlit {
 
     MTLSurfaceToSurfaceScale() {
-        super(MTLSurfaceDataBase.MTLSurface,
+        super(MTLSurfaceData.MTLSurface,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Scale(SurfaceData src, SurfaceData dst,
@@ -423,9 +424,9 @@ class MTLSurfaceToSurfaceScale extends ScaledBlit {
 class MTLSurfaceToSurfaceTransform extends TransformBlit {
 
     MTLSurfaceToSurfaceTransform() {
-        super(MTLSurfaceDataBase.MTLSurface,
+        super(MTLSurfaceData.MTLSurface,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Transform(SurfaceData src, SurfaceData dst,
@@ -446,9 +447,9 @@ class MTLSurfaceToSurfaceTransform extends TransformBlit {
 class MTLRTTSurfaceToSurfaceBlit extends Blit {
 
     MTLRTTSurfaceToSurfaceBlit() {
-        super(MTLSurfaceDataBase.MTLSurfaceRTT,
+        super(MTLSurfaceData.MTLSurfaceRTT,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Blit(SurfaceData src, SurfaceData dst,
@@ -468,9 +469,9 @@ class MTLRTTSurfaceToSurfaceBlit extends Blit {
 class MTLRTTSurfaceToSurfaceScale extends ScaledBlit {
 
     MTLRTTSurfaceToSurfaceScale() {
-        super(MTLSurfaceDataBase.MTLSurfaceRTT,
+        super(MTLSurfaceData.MTLSurfaceRTT,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Scale(SurfaceData src, SurfaceData dst,
@@ -493,9 +494,9 @@ class MTLRTTSurfaceToSurfaceScale extends ScaledBlit {
 class MTLRTTSurfaceToSurfaceTransform extends TransformBlit {
 
     MTLRTTSurfaceToSurfaceTransform() {
-        super(MTLSurfaceDataBase.MTLSurfaceRTT,
+        super(MTLSurfaceData.MTLSurfaceRTT,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Transform(SurfaceData src, SurfaceData dst,
@@ -519,7 +520,7 @@ final class MTLSurfaceToSwBlit extends Blit {
 
     // destination will actually be ArgbPre or Argb
     MTLSurfaceToSwBlit(final SurfaceType dstType, final int typeval) {
-        super(MTLSurfaceDataBase.MTLSurface,
+        super(MTLSurfaceData.MTLSurface,
               CompositeType.SrcNoEa,
               dstType);
         this.typeval = typeval;
@@ -542,7 +543,7 @@ final class MTLSurfaceToSwBlit extends Blit {
         // this case we simply skip conversion and use color components as is.
         // Because of this we align intermediate buffer type with type of
         // destination not source.
-        final int type = typeval == MTLSurfaceDataBase.PF_INT_ARGB_PRE ?
+        final int type = typeval == MTLSurfaceData.PF_INT_ARGB_PRE ?
                          BufferedImage.TYPE_INT_ARGB_PRE :
                          BufferedImage.TYPE_INT_ARGB;
 
@@ -594,7 +595,7 @@ final class MTLSurfaceToSwBlit extends Blit {
             rq.addReference(dst);
 
             RenderBuffer buf = rq.getBuffer();
-            MTLContext.validateContext((MTLSurfaceDataBase)src);
+            MTLContext.validateContext((MTLSurfaceData)src);
 
             rq.ensureCapacityAndAlignment(48, 32);
             buf.putInt(SURFACE_TO_SW_BLIT);
@@ -620,7 +621,7 @@ class MTLSwToSurfaceBlit extends Blit {
     MTLSwToSurfaceBlit(SurfaceType srcType, int typeval) {
         super(srcType,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
         this.typeval = typeval;
     }
 
@@ -644,7 +645,7 @@ class MTLSwToSurfaceScale extends ScaledBlit {
     MTLSwToSurfaceScale(SurfaceType srcType, int typeval) {
         super(srcType,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
         this.typeval = typeval;
     }
 
@@ -671,7 +672,7 @@ class MTLSwToSurfaceTransform extends TransformBlit {
     MTLSwToSurfaceTransform(SurfaceType srcType, int typeval) {
         super(srcType,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
         this.typeval = typeval;
     }
 
@@ -695,7 +696,7 @@ class MTLSwToTextureBlit extends Blit {
     MTLSwToTextureBlit(SurfaceType srcType, int typeval) {
         super(srcType,
               CompositeType.SrcNoEa,
-              MTLSurfaceDataBase.MTLTexture);
+                MTLSurfaceData.MTLTexture);
         this.typeval = typeval;
     }
 
@@ -715,9 +716,9 @@ class MTLSwToTextureBlit extends Blit {
 class MTLTextureToSurfaceBlit extends Blit {
 
     MTLTextureToSurfaceBlit() {
-        super(MTLSurfaceDataBase.MTLTexture,
+        super(MTLSurfaceData.MTLTexture,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Blit(SurfaceData src, SurfaceData dst,
@@ -737,9 +738,9 @@ class MTLTextureToSurfaceBlit extends Blit {
 class MTLTextureToSurfaceScale extends ScaledBlit {
 
     MTLTextureToSurfaceScale() {
-        super(MTLSurfaceDataBase.MTLTexture,
+        super(MTLSurfaceData.MTLTexture,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Scale(SurfaceData src, SurfaceData dst,
@@ -762,9 +763,9 @@ class MTLTextureToSurfaceScale extends ScaledBlit {
 class MTLTextureToSurfaceTransform extends TransformBlit {
 
     MTLTextureToSurfaceTransform() {
-        super(MTLSurfaceDataBase.MTLTexture,
+        super(MTLSurfaceData.MTLTexture,
               CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
     }
 
     public void Transform(SurfaceData src, SurfaceData dst,
@@ -844,7 +845,7 @@ final class MTLGeneralTransformedBlit extends TransformBlit {
 
     MTLGeneralTransformedBlit(final TransformBlit performop) {
         super(SurfaceType.Any, CompositeType.AnyAlpha,
-              MTLSurfaceDataBase.MTLSurface);
+                MTLSurfaceData.MTLSurface);
         this.performop = performop;
     }
 
@@ -890,7 +891,7 @@ final class MTLAnyCompositeBlit extends Blit {
 
     MTLAnyCompositeBlit(SurfaceType srctype, Blit convertsrc, Blit convertdst,
                         Blit convertresult) {
-        super(srctype, CompositeType.Any, MTLSurfaceDataBase.MTLSurface);
+        super(srctype, CompositeType.Any, MTLSurfaceData.MTLSurface);
         this.convertsrc = convertsrc;
         this.convertdst = convertdst;
         this.convertresult = convertresult;

@@ -57,14 +57,14 @@ class MTLMaskBlit extends BufferedMaskBlit {
                         CompositeType compType)
     {
         super(MTLRenderQueue.getInstance(),
-              srcType, compType, MTLSurfaceDataBase.MTLSurface);
+              srcType, compType, MTLSurfaceData.MTLSurface);
     }
 
     @Override
     protected void validateContext(SurfaceData dstData,
                                    Composite comp, Region clip)
     {
-        MTLSurfaceDataBase oglDst = (MTLSurfaceDataBase)dstData;
+        MTLSurfaceData oglDst = (MTLSurfaceData)dstData;
         MTLContext.validateContext(oglDst, oglDst,
                                    clip, comp, null, null, null,
                                    MTLContext.NO_CONTEXT_FLAGS);

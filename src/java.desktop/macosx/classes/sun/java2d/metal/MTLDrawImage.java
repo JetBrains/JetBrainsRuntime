@@ -66,8 +66,8 @@ public class MTLDrawImage extends DrawImage {
 
             if (srcData != null &&
                 !isBgOperation(srcData, bgColor) &&
-                (srcData.getSurfaceType() == MTLSurfaceDataBase.MTLTexture ||
-                 srcData.getSurfaceType() == MTLSurfaceDataBase.MTLSurfaceRTT ||
+                (srcData.getSurfaceType() == MTLSurfaceData.MTLTexture ||
+                 srcData.getSurfaceType() == MTLSurfaceData.MTLSurfaceRTT ||
                  interpType == AffineTransformOp.TYPE_NEAREST_NEIGHBOR))
             {
                 SurfaceType srcType = srcData.getSurfaceType();

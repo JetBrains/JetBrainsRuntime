@@ -190,17 +190,46 @@ J2dTraceInit();
         } \
     }
 
-#define J2dTraceNotImplPrimitive(string) { \
+#define J2dTraceNotImplPrimitive(prim) { \
         if (graphicsPrimitive_traceflags && jvm) { \
+            char cbuf[255]; \
             JNIEnv *env; \
-            jstring jstr; \
+            jstring jprim; \
+            jstring jmsg; \
+            snprintf(cbuf, 255, "[NOT IMPL] at %s:%d", __FILE__, __LINE__); \
             (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
-            jstr = (*env)->NewStringUTF(env, string); \
-            JNU_CallStaticMethodByName(env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
-                                       "traceNotImplPrimitive", "(Ljava/lang/Object;)V", jstr); \
-            (*env)->DeleteLocalRef(env, jstr); \
+            jprim = (*env)->NewStringUTF(env, prim); \
+            jmsg = (*env)->NewStringUTF(env, cbuf); \
+            JNU_CallStaticMethodByName(env, NULL, \
+                                       "sun/java2d/loops/GraphicsPrimitive", \
+                                       "traceImplPrimitive", \
+                                       "(Ljava/lang/Object;Ljava/lang/Object;)V", \
+                                       jprim, jmsg); \
+            (*env)->DeleteLocalRef(env, jprim); \
+            (*env)->DeleteLocalRef(env, jmsg); \
         } \
     }
+
+#define J2dTraceImplPrimitive(prim, msg) { \
+        if (graphicsPrimitive_traceflags && jvm) { \
+            char cbuf[255]; \
+            JNIEnv *env; \
+            jstring jprim; \
+            jstring jmsg; \
+            snprintf(cbuf, 255, "%s at %s:%d", msg, __FILE__, __LINE__); \
+            (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
+            jprim = (*env)->NewStringUTF(env, prim); \
+            jmsg = (*env)->NewStringUTF(env, cbuf); \
+            JNU_CallStaticMethodByName(env, NULL, \
+                                       "sun/java2d/loops/GraphicsPrimitive", \
+                                       "traceImplPrimitive", \
+                                       "(Ljava/lang/Object;Ljava/lang/Object;)V", \
+                                       jprim, jmsg); \
+            (*env)->DeleteLocalRef(env, jprim); \
+            (*env)->DeleteLocalRef(env, jmsg); \
+        } \
+    }
+
 
 #ifdef __cplusplus
 };
