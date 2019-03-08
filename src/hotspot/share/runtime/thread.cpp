@@ -1311,7 +1311,9 @@ void NonJavaThread::remove_from_the_list() {
 }
 
 void NonJavaThread::pre_run() {
+  // Initialize BarrierSet-related data before adding to list.
   assert(BarrierSet::barrier_set() != NULL, "invariant");
+  BarrierSet::barrier_set()->on_thread_attach(this);
   add_to_the_list();
 
   // This is slightly odd in that NamedThread is a subclass, but
@@ -1322,6 +1324,8 @@ void NonJavaThread::pre_run() {
 
 void NonJavaThread::post_run() {
   JFR_ONLY(Jfr::on_thread_exit(this);)
+  // Clean up BarrierSet data before removing from list.
+  BarrierSet::barrier_set()->on_thread_detach(this);
   remove_from_the_list();
   // Ensure thread-local-storage is cleared before termination.
   Thread::clear_thread_current();
@@ -4769,7 +4773,7 @@ void Threads::print_on_error(outputStream* st, Thread* current, char* buf,
   print_threads_compiling(st, buf, buflen);
 }
 
-void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen) {
+void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen, bool short_form) {
   ALL_JAVA_THREADS(thread) {
     if (thread->is_Compiler_thread()) {
       CompilerThread* ct = (CompilerThread*) thread;
@@ -4782,7 +4786,7 @@ void Threads::print_threads_compiling(outputStream* st, char* buf, int buflen) {
       if (task != NULL) {
         thread->print_name_on_error(st, buf, buflen);
         st->print("  ");
-        task->print(st, NULL, true, true);
+        task->print(st, NULL, short_form, true);
       }
     }
   }

@@ -266,15 +266,17 @@ void ConstantPoolCacheEntry::set_direct_or_vtable_call(Bytecodes::Code invoke_co
     // initialization. An invokestatic must only proceed if the class is initialized, but if
     // we resolve it before then that class initialization check is skipped. However if the call
     // is from the same class we can resolve as we must be executing with <clinit> on our call stack.
-    if (invoke_code == Bytecodes::_invokestatic &&
-        !method->method_holder()->is_initialized() &&
-        method->method_holder() != pool_holder) {
-      do_resolve = false;
+    if (invoke_code == Bytecodes::_invokestatic) {
+      if (!method->method_holder()->is_initialized() &&
+          method->method_holder() != pool_holder) {
+        do_resolve = false;
+      } else {
+        assert(method->method_holder()->is_initialized() ||
+               method->method_holder()->is_reentrant_initialization(Thread::current()),
+               "invalid class initialization state for invoke_static");
+      }
     }
     if (do_resolve) {
-      assert(method->method_holder()->is_initialized() ||
-             method->method_holder()->is_reentrant_initialization(Thread::current()),
-             "invalid class initalization state");
       set_bytecode_1(invoke_code);
     }
   } else if (byte_no == 2)  {
