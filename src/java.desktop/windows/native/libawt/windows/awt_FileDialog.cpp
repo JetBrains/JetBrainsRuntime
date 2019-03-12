@@ -525,10 +525,9 @@ private:
         HWND hdlg;
         OLE_HRT(pWindow->GetWindow(&hdlg));
 
-        HWND parent = ::GetParent(hdlg);
         jobject peer = data->peer;
-        env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong)parent);
-        ::SetProp(parent, ModalDialogPeerProp, reinterpret_cast<HANDLE>(peer));
+        env->CallVoidMethod(peer, AwtFileDialog::setHWndMID, (jlong)hdlg);
+        ::SetProp(hdlg, ModalDialogPeerProp, reinterpret_cast<HANDLE>(peer));
 
         // fix for 4508670 - disable CS_SAVEBITS
         DWORD style = ::GetClassLong(hdlg, GCL_STYLE);
@@ -537,13 +536,13 @@ private:
         // set appropriate icon for parentless dialogs
         jobject awtParent = env->GetObjectField(peer, AwtFileDialog::parentID);
         if (awtParent == NULL) {
-            ::SendMessage(parent, WM_SETICON, (WPARAM)ICON_BIG,
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_BIG,
                           (LPARAM)AwtToolkit::GetInstance().GetAwtIcon());
         } else {
             AwtWindow *awtWindow = (AwtWindow *)JNI_GET_PDATA(awtParent);
-            ::SendMessage(parent, WM_SETICON, (WPARAM)ICON_BIG,
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_BIG,
                           (LPARAM)(awtWindow->GetHIcon()));
-            ::SendMessage(parent, WM_SETICON, (WPARAM)ICON_SMALL,
+            ::SendMessage(hdlg, WM_SETICON, (WPARAM)ICON_SMALL,
                           (LPARAM)(awtWindow->GetHIconSm()));
             env->DeleteLocalRef(awtParent);
         }
@@ -798,7 +797,7 @@ AwtFileDialog::Show(void *p)
 
         AwtDialog::ModalActivateNextWindow(NULL, target, peer);
 
-        if (useCommonItemDialog) {
+        if (!useCommonItemDialog) {
             VERIFY(::SetCurrentDirectory(currentDirectory));
         }
 
