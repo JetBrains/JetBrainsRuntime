@@ -84,6 +84,7 @@ java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java      
 java/awt/Window/FindOwner/FindOwnerTest.html                                                nobug macosx-all,windows-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                                nobug macosx-all,linux-all,windows-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                                    nobug macosx-all
+java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                                nobug macosx-all,linux-all
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
@@ -144,8 +145,10 @@ javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java    
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
+javax/swing/JFrame/4962534/bug4962534.html                                                  nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
+javax/swing/JInternalFrame/6725409/bug6725409.java                                          nobug windows-all
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,windows-all
 javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
