@@ -94,8 +94,9 @@ typedef struct {
     BOOL                        mtlEmptyCommandBuffer;
     id<MTLBuffer>               mtlVertexBuffer;
     jint                        mtlColor;
-    MTLRenderPassDescriptor*    mtlRenderPassDesc;
     dispatch_semaphore_t 	    mtlRenderSemaphore;
+
+    id<MTLTexture>              mtlCurrentBuffer;
 } MTLContext;
 
 /**
@@ -137,5 +138,13 @@ jint MTLContext_CreateBlitTexture(jint internalFormat, jint pixelFormat,
                                     jint width, jint height);
 
 void MTLContext_DestroyContextResources(MTLContext *mtlc);
+
+void MTLContext_SetColor(MTLContext *ctx, int r, int g, int b, int a);
+
+id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc);
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc, id<MTLTexture> dest); // TODO use MTLBlitCommandEncoder
+
+jfloat MTLContext_normalizeX(MTLContext* ctx, jfloat x);
+jfloat MTLContext_normalizeY(MTLContext* ctx, jfloat y);
 
 #endif /* MTLContext_h_Included */

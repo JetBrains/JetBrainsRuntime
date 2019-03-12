@@ -305,6 +305,14 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                          xform, hint, texture, rtt,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
+                    BMTLSDOps * bmtldst = (BMTLSDOps*)pDst;
+                    MTLSDOps * mtldst = (MTLSDOps *)dstOps->privOps;
+                    if (mtldst->layer != NULL) {
+                        // TODO: fix paint finishing
+                        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+                            MTLRenderer_BeginFrame(mtldst->configInfo->context, mtldst->layer);
+                        }];
+                    }
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
                     MTLBlitLoops_Blit(env, mtlc, pSrc, pDst,
@@ -442,7 +450,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 if (mtlc != NULL) {
                     RESET_PREVIOUS_OP();
                 }
-                mtlc = MTLContext_SetSurfaces(env, pSrc, pDst);
 
                 dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
 
@@ -450,7 +457,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
                     MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
                     [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        MTLRenderer_BeginFrame(dstCGLOps->configInfo->context, layer);
+                        MTLContext_SetSurfaces(env, pSrc, pDst);
                     }];
                 }
             }

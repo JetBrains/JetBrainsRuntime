@@ -82,45 +82,8 @@ MTLSD_IsPowerOfTwo(jint width, jint height)
 }
 
 /**
- * Initializes an OpenGL texture object.
- *
- * If the isOpaque parameter is JNI_FALSE, then the texture will have a
- * full alpha channel; otherwise, the texture will be opaque (this can
- * help save VRAM when translucency is not needed).
- *
- * If the GL_ARB_texture_non_power_of_two extension is present (texNonPow2
- * is JNI_TRUE), the actual texture is allowed to have non-power-of-two
- * dimensions, and therefore width==textureWidth and height==textureHeight.
- *
- * Failing that, if the GL_ARB_texture_rectangle extension is present
- * (texRect is JNI_TRUE), the actual texture is allowed to have
- * non-power-of-two dimensions, except that instead of using the usual
- * GL_TEXTURE_2D target, we need to use the GL_TEXTURE_RECTANGLE_ARB target.
- * Note that the GL_REPEAT wrapping mode is not allowed with this target,
- * so if that mode is needed (e.g. as is the case in the TexturePaint code)
- * one should pass JNI_FALSE to avoid using this extension.  Also note that
- * when the texture target is GL_TEXTURE_RECTANGLE_ARB, texture coordinates
- * must be specified in the range [0,width] and [0,height] rather than
- * [0,1] as is the case with the usual GL_TEXTURE_2D target (so take care)!
- *
- * Otherwise, the actual texture must have power-of-two dimensions, and
- * therefore the textureWidth and textureHeight will be the next
- * power-of-two greater than (or equal to) the requested width and height.
- */
-static jboolean
-MTLSD_InitTextureObject(MTLSDOps *mtlsdo,
-                        jboolean isOpaque,
-                        jboolean texNonPow2, jboolean texRect,
-                        jint width, jint height)
-{
-    //TODO
-    J2dTraceNotImplPrimitive("MTLSD_InitTextureObject");
-    return JNI_TRUE;
-}
-
-/**
  * Initializes an MTL texture, using the given width and height as
- * a guide.  See MTLSD_InitTextureObject() for more information.
+ * a guide.
  */
 JNIEXPORT jboolean JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_initTexture
@@ -129,38 +92,41 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture
      jboolean texNonPow2, jboolean texRect,
      jint width, jint height)
 {
-    BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
-    J2dTraceLn2(J2D_TRACE_INFO, "MTLSurfaceData_initTexture: w=%d h=%d",
-                width, height);
+    BMTLSDOps *bmtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initTexture: w=%d h=%d pData=%p", width, height, bmtlsdo);
 
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initTexture: ops are null");
+    if (bmtlsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
         return JNI_FALSE;
     }
 
-    /*
-     * We only use the GL_ARB_texture_rectangle extension if it is available
-     * and the requested bounds are not pow2 (it is probably faster to use
-     * GL_TEXTURE_2D for pow2 textures, and besides, our TexturePaint
-     * code relies on GL_REPEAT, which is not allowed for
-     * GL_TEXTURE_RECTANGLE_ARB targets).
-     */
-    texRect = texRect && !MTLSD_IsPowerOfTwo(width, height);
-
-    if (!MTLSD_InitTextureObject(mtlsdo, isOpaque, texNonPow2, texRect,
-                                 width, height))
-    {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initTexture: could not init texture object");
+    if (width <= 0 || height <= 0) {
+        J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: texture dimensions is incorrect, w=%d, h=%d", width, height);
         return JNI_FALSE;
     }
 
-    MTLSD_SetNativeDimensions(env, mtlsdo,
-                              mtlsdo->textureWidth, mtlsdo->textureHeight);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
+        MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
+        if (mtlsdo->configInfo != NULL && mtlsdo->configInfo->context != NULL) {
+            MTLContext* ctx = mtlsdo->configInfo->context;
 
-    mtlsdo->drawableType = MTLSD_TEXTURE;
-    // other fields (e.g. width, height) are set in MTLSD_InitTextureObject()
+            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm width: width height: height mipmapped: NO];
+            id<MTLTexture> texture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
+
+            bmtlsdo->isOpaque = isOpaque;
+            bmtlsdo->xOffset = 0;
+            bmtlsdo->yOffset = 0;
+            bmtlsdo->width = width;
+            bmtlsdo->height = height;
+            bmtlsdo->pTexture = texture;
+            bmtlsdo->textureWidth = width;
+            bmtlsdo->textureHeight = height;
+            bmtlsdo->textureTarget = -1;
+
+            MTLSD_SetNativeDimensions(env, bmtlsdo, bmtlsdo->textureWidth, bmtlsdo->textureHeight);
+            bmtlsdo->drawableType = MTLSD_TEXTURE;
+        }
+    }];
 
     return JNI_TRUE;
 }
@@ -194,32 +160,32 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
         return JNI_FALSE;
     }
 
-    J2dTraceLn2(J2D_TRACE_INFO,
-                "MTLSurfaceData_initFBObject: w=%d h=%d",
-                width, height);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initFBObject: w=%d h=%d pData=%p", width, height, bmtlsdo);
 
-
-
-    if (mtlsdo->configInfo) {
-        if (mtlsdo->configInfo->context != NULL) {
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if (mtlsdo->configInfo != NULL && mtlsdo->configInfo->context != NULL) {
             MTLContext* ctx = mtlsdo->configInfo->context;
-            if (ctx == NULL) {
-              NSLog(@"ctx is NULL");
-            } else {
-                [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-                        MTLTextureDescriptor *textureDescriptor =
-                                    [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm
-                                                                                       width: width
-                                                                                      height: height
-                                                                                   mipmapped: NO];
-                        ctx->mtlFrameBuffer = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
-                }];
-            }
+
+            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm width: width height: height mipmapped: NO];
+            id<MTLTexture> texture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
+
+            bmtlsdo->isOpaque = isOpaque;
+            bmtlsdo->xOffset = 0;
+            bmtlsdo->yOffset = 0;
+            bmtlsdo->width = width;
+            bmtlsdo->height = height;
+            bmtlsdo->pTexture = texture;
+            bmtlsdo->textureWidth = width;
+            bmtlsdo->textureHeight = height;
+            bmtlsdo->textureTarget = -1;
+
+            bmtlsdo->drawableType = MTLSD_RT_TEXTURE;
+
+            // TODO: fix mtlFrameBuffer initialization
+            J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initFBObject: SET FRAME BUFFER: w=%d h=%d pData=%p", width, height, bmtlsdo);
+            ctx->mtlFrameBuffer = texture;
         }
-     }
-
-
-    bmtlsdo->drawableType = MTLSD_RT_TEXTURE;
+    }];
 
     return JNI_TRUE;
 }
@@ -431,14 +397,14 @@ Java_sun_java2d_metal_MTLSurfaceData_initOps
      jlong pConfigInfo, jlong pPeerData, jlong layerPtr,
      jint xoff, jint yoff, jboolean isOpaque)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initOps");
+    BMTLSDOps *bmtlsdo = (BMTLSDOps *)SurfaceData_InitOps(env, cglsd, sizeof(BMTLSDOps));
+    MTLSDOps *mtlsdo = (MTLSDOps *)malloc(sizeof(MTLSDOps));
+
+    J2dTraceLn1(J2D_TRACE_INFO, "MTLSurfaceData_initOps p=%p", bmtlsdo);
     J2dTraceLn1(J2D_TRACE_INFO, "  pPeerData=%p", jlong_to_ptr(pPeerData));
+    J2dTraceLn1(J2D_TRACE_INFO, "  layerPtr=%p", jlong_to_ptr(layerPtr));
     J2dTraceLn2(J2D_TRACE_INFO, "  xoff=%d, yoff=%d", (int)xoff, (int)yoff);
 
-
-    BMTLSDOps *bmtlsdo = (BMTLSDOps *)
-        SurfaceData_InitOps(env, cglsd, sizeof(BMTLSDOps));
-    MTLSDOps *mtlsdo = (MTLSDOps *)malloc(sizeof(MTLSDOps));
     if (mtlsdo == NULL) {
         JNU_ThrowOutOfMemoryError(env, "creating native cgl ops");
         return;
@@ -497,6 +463,7 @@ Java_sun_java2d_metal_MTLSurfaceData_validate
     mtlsdo->isOpaque = isOpaque;
 
     if (mtlsdo->drawableType == MTLSD_WINDOW) {
+        // J2dTraceLn4(J2D_TRACE_INFO, "MTLContext_SetSurfaces: w=%d h=%d src=%p dst=%p", width, height, mtlsdo, mtlsdo);
         MTLContext_SetSurfaces(env, ptr_to_jlong(mtlsdo), ptr_to_jlong(mtlsdo));
 
         // we have to explicitly tell the NSOpenGLContext that its target

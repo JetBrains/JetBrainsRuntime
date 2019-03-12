@@ -29,6 +29,7 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 
+extern jboolean MTLContext_EncodeBlitFrameBuffer(MTLContext *ctx, id<MTLTexture> dest);
 
 @implementation MTLLayer
 
@@ -87,43 +88,19 @@
                 return;
             }
 
-            if (!ctx->mtlRenderPassDesc) {
-                ctx->mtlRenderPassDesc = [[MTLRenderPassDescriptor renderPassDescriptor] retain];
-            }
-            MTLRenderPassColorAttachmentDescriptor *colorAttachment = ctx->mtlRenderPassDesc.colorAttachments[0];
-
-            colorAttachment.texture = mtlDrawable.texture;
-
-            colorAttachment.loadAction = MTLLoadActionLoad;
-            colorAttachment.clearColor = MTLClearColorMake(0.0f, 0.0f, 0.0f, 1.0f);
-
-            colorAttachment.storeAction = MTLStoreActionStore;
-
-            id<MTLRenderCommandEncoder>  mtlEncoder =
-                [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:ctx->mtlRenderPassDesc];
-            MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-
-            [mtlEncoder setViewport:vp];
-            [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
-            [mtlEncoder setFragmentTexture: ctx->mtlFrameBuffer atIndex: 0];
-            [mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
-            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
-            [mtlEncoder endEncoding];
+            if (!MTLContext_EncodeBlitFrameBuffer(ctx, mtlDrawable.texture))
+                return;
 
             dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
             [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
 
-            __block MTLRenderPassDescriptor* blockRenderPassDesc = ctx->mtlRenderPassDesc;
-
             [ctx->mtlCommandBuffer addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
-                    [blockRenderPassDesc release];
                     [cmdBuff release];
             }];
 
             [ctx->mtlCommandBuffer commit];
 
-            ctx->mtlRenderPassDesc = nil;
             ctx->mtlCommandBuffer = nil;
             ctx->mtlEmptyCommandBuffer = YES;
             dispatch_semaphore_signal(ctx->mtlRenderSemaphore);

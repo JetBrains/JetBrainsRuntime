@@ -170,7 +170,7 @@ typedef struct {
     jint                         yOffset;
     jint                         width;
     jint                         height;
-   /* GLuint */ jint                      textureID;
+    void*                        pTexture;
     jint                         textureWidth;
     jint                         textureHeight;
    /* GLenum */ jint                      textureTarget;
