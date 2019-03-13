@@ -647,7 +647,12 @@ AwtFileDialog::Show(void *p)
               parentless dialogs we use NULL to show them in the taskbar,
               and for all other dialogs AwtToolkit's HWND is used.
             */
-        HWND hwndOwner = awtParent ? AwtToolkit::GetInstance().GetHWnd() : NULL;
+        /* [moklev] This fix does not needed anymore
+         * Tested on Windows 10 with example from JDK-4080029
+         * Revert the fix and set the proper parent to keep correct position of modal dialogs
+         */
+//        HWND hwndOwner = awtParent ? AwtToolkit::GetInstance().GetHWnd() : NULL;
+        HWND hwndOwner = awtParent ? awtParent->GetHWnd() : NULL;
 
         if (title == NULL || env->GetStringLength(title)==0) {
             title = JNU_NewStringPlatform(env, L" ");
