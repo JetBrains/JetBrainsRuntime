@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 # @test
 # @bug 6336885 7196799 7197573 7198834 8000245 8000615 8001440 8008577
 #      8010666 8013086 8013233 8013903 8015960 8028771 8054482 8062006
-#      8150432
+#      8150432 8220227
 # @summary tests for "java.locale.providers" system property
 # @modules java.base/sun.util.locale
 #          java.base/sun.util.locale.provider
@@ -364,6 +364,17 @@ if [ "${DEFFMTLANG}" = "zh" ] && [ "${DEFFMTCTRY}" = "CN" ]; then
   runTest
   PREFLIST=HOST
   PARAM1=00A5
+  runTest
+fi
+
+# testing 8220227 fix. (Windows only)
+if [ "${DEFFMTLANG}" != "en" ]; then
+  METHODNAME=bug8220227Test
+  PREFLIST=HOST
+  PARAM1=
+  PARAM2=
+  PARAM3=
+  SPICLASSES=
   runTest
 fi
 
