@@ -241,7 +241,7 @@ static const struct CharToVKEntry charToDeadVKTable[] = {
     {0,0}
 };
 
-static BOOL RIGHT_ALT_AS_ALT_GRAPH = YES; // to provide ability to switch off the AltGr mapping if needed
+static BOOL RIGHT_ALT_AS_ALT_GRAPH = NO; // to provide ability to switch off the AltGr mapping if needed
 
 // TODO: some constants below are part of CGS (private interfaces)...
 // for now we will look at the raw key code to determine left/right status
