@@ -123,8 +123,10 @@ protected:
     T* m_pointer;
 
     virtual void Clean() {
-        if (m_pointer)
+        if (m_pointer) {
             delete m_pointer;
+            m_pointer = NULL;
+        }
     }
 };
 
@@ -135,8 +137,10 @@ class SmartHolder : public SmartHolderBase<T> {
 template <typename T>
 class SmartHolder<T[]> : public SmartHolderBase<T> {
     virtual void Clean() {
-        if (m_pointer)
+        if (m_pointer) {
             delete [] m_pointer;
+            m_pointer = NULL;
+        }
     }
 };
 
