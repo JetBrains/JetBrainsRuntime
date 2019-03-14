@@ -56,6 +56,7 @@ java/awt/Mixing/LWPopupMenu.java                                                
 java/awt/Mixing/MixingInHwPanel.java                                                        nobug macosx-all,windows-all
 java/awt/Mixing/ValidBounds.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/Validating.java                                                             nobug macosx-all,windows-all
+java/awt/Modal/LWModalTest/LWModalTest.java                                                 nobug macosx-all,windows-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java                         nobug macosx-all,windows-all
 java/awt/Modal/ToBack/ToBackModeless6Test.java                                              nobug macosx-all,linux-all,windows-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                                     nobug macosx-all,windows-all
@@ -83,6 +84,7 @@ java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java      
 java/awt/Window/FindOwner/FindOwnerTest.html                                                nobug macosx-all,windows-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                                nobug macosx-all,linux-all,windows-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                                    nobug macosx-all
+java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                                nobug macosx-all,linux-all
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
@@ -143,10 +145,13 @@ javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java    
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
+javax/swing/JFrame/4962534/bug4962534.html                                                  nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
+javax/swing/JInternalFrame/6725409/bug6725409.java                                          nobug windows-all
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,windows-all
+javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
 javax/swing/JMenu/6538132/bug6538132.java                                                   nobug windows-all
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                                  nobug macosx-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                            nobug windows-all

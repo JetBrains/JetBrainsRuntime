@@ -564,7 +564,7 @@ HRESULT CDialogEventHandler_CreateInstance(FileDialogData *data, REFIID riid, vo
     OLE_RETURN_HR
 }
 
-HRESULT CreateShellItem(LPTSTR path, IShellItem *shellItem) {
+HRESULT CreateShellItem(LPTSTR path, IShellItemPtr& shellItem) {
     size_t pathLength = _tcslen(path);
     for (size_t index = 0; index < pathLength; index++) {
         if (path[index] == _T('/'))
@@ -608,7 +608,7 @@ AwtFileDialog::Show(void *p)
     IFileDialogEventsPtr pfde;
     IShellItemPtr psiResult;
     FileDialogData data;
-    DWORD dwCookie;
+    DWORD dwCookie = OLE_BAD_COOKIE;
 
     OPENFILENAME ofn;
     memset(&ofn, 0, sizeof(ofn));
@@ -627,7 +627,14 @@ AwtFileDialog::Show(void *p)
         }
 //      DASSERT(awtParent);
         title = (jstring)(env)->GetObjectField(target, AwtDialog::titleID);
-        HWND hwndOwner = awtParent ? awtParent->GetHWnd() : NULL;
+        /*
+              Fix for 6488834.
+              To disable Win32 native parent modality we have to set
+              hwndOwner field to either NULL or some hidden window. For
+              parentless dialogs we use NULL to show them in the taskbar,
+              and for all other dialogs AwtToolkit's HWND is used.
+            */
+        HWND hwndOwner = awtParent ? AwtToolkit::GetInstance().GetHWnd() : NULL;
 
         if (title == NULL || env->GetStringLength(title)==0) {
             title = JNU_NewStringPlatform(env, L" ");
@@ -667,18 +674,7 @@ AwtFileDialog::Show(void *p)
             ofn.lStructSize = sizeof(ofn);
             ofn.lpstrFilter = s_fileFilterString;
             ofn.nFilterIndex = 1;
-            /*
-              Fix for 6488834.
-              To disable Win32 native parent modality we have to set
-              hwndOwner field to either NULL or some hidden window. For
-              parentless dialogs we use NULL to show them in the taskbar,
-              and for all other dialogs AwtToolkit's HWND is used.
-            */
-            if (awtParent != NULL) {
-                ofn.hwndOwner = AwtToolkit::GetInstance().GetHWnd();
-            } else {
-                ofn.hwndOwner = NULL;
-            }
+            ofn.hwndOwner = hwndOwner;
             ofn.lpstrFile = fileBuffer;
             ofn.nMaxFile = bufferLimit;
             ofn.lpstrTitle = titleBuffer;
@@ -730,9 +726,11 @@ AwtFileDialog::Show(void *p)
             OLE_HRT(pfd->SetFileTypeIndex(1));
 
             IShellItemPtr directoryItem;
-            if (SUCCEEDED(CreateShellItem(directoryBuffer, directoryItem))) {
-                pfd->SetFolder(directoryItem);
-            }
+            OLE_NEXT_TRY
+            OLE_HRT(CreateShellItem(directoryBuffer, directoryItem));
+            OLE_HRT(pfd->SetFolder(directoryItem));
+            OLE_CATCH
+
             CoTaskStringHolder shortName = GetShortName(fileBuffer);
             if (shortName) {
                 OLE_HRT(pfd->SetFileName(shortName));
@@ -742,7 +740,7 @@ AwtFileDialog::Show(void *p)
 
         if (useCommonItemDialog && SUCCEEDED(OLE_HR)) {
             if (mode == java_awt_FileDialog_LOAD) {
-                result = SUCCEEDED(pfd->Show(NULL)) && data.result;
+                result = SUCCEEDED(pfd->Show(hwndOwner)) && data.result;
                 if (!result) {
                     OLE_NEXT_TRY
                     OLE_HRT(pfd->GetResult(&psiResult));
@@ -755,7 +753,7 @@ AwtFileDialog::Show(void *p)
                     result = SUCCEEDED(OLE_HR);
                 }
             } else {
-                result = SUCCEEDED(pfd->Show(NULL));
+                result = SUCCEEDED(pfd->Show(hwndOwner));
                 if (result) {
                     OLE_NEXT_TRY
                     OLE_HRT(pfd->GetResult(&psiResult));
@@ -831,7 +829,7 @@ AwtFileDialog::Show(void *p)
     } catch (...) {
 
         if (useCommonItemDialog) {
-            if (pfd) {
+            if (pfd && dwCookie != OLE_BAD_COOKIE) {
                 pfd->Unadvise(dwCookie);
             }
         }
@@ -851,7 +849,7 @@ AwtFileDialog::Show(void *p)
     }
 
     if (useCommonItemDialog) {
-        if (pfd) {
+        if (pfd && dwCookie != OLE_BAD_COOKIE) {
             pfd->Unadvise(dwCookie);
         }
     }
