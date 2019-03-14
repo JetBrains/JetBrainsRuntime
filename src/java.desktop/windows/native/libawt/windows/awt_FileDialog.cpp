@@ -58,7 +58,13 @@ class CoTaskStringHolder {
 public:
     CoTaskStringHolder() : m_str(NULL) {}
 
+    CoTaskStringHolder(CoTaskStringHolder& other) {
+        m_str = other.m_str;
+        other.m_str = NULL;
+    }
+
     CoTaskStringHolder& operator=(CoTaskStringHolder& other) {
+        if (m_str == other.m_str) return *this;
         Clean();
         m_str = other.m_str;
         other.m_str = NULL;
@@ -84,8 +90,10 @@ private:
     LPTSTR m_str;
 
     void Clean() {
-        if (m_str)
+        if (m_str) {
             ::CoTaskMemFree(m_str);
+            m_str = NULL;
+        }
     }
 };
 
@@ -97,6 +105,7 @@ public:
     SmartHolderBase& operator=(const SmartHolderBase&) = delete;
 
     void Attach(T* other) {
+        if (m_pointer == other) return;
         Clean();
         m_pointer = other;
     }
@@ -116,8 +125,10 @@ protected:
     T* m_pointer;
 
     virtual void Clean() {
-        if (m_pointer)
+        if (m_pointer) {
             delete m_pointer;
+            m_pointer = NULL;
+        }
     }
 };
 
@@ -128,8 +139,10 @@ class SmartHolder : public SmartHolderBase<T> {
 template <typename T>
 class SmartHolder<T[]> : public SmartHolderBase<T> {
     virtual void Clean() {
-        if (m_pointer)
+        if (m_pointer) {
             delete [] m_pointer;
+            m_pointer = NULL;
+        }
     }
 };
 
