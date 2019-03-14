@@ -58,6 +58,11 @@ class CoTaskStringHolder {
 public:
     CoTaskStringHolder() : m_str(NULL) {}
 
+    CoTaskStringHolder(CoTaskStringHolder& other) {
+        m_str = other.m_str;
+        other.m_str = NULL;
+    }
+
     CoTaskStringHolder& operator=(CoTaskStringHolder& other) {
         Clean();
         m_str = other.m_str;
@@ -84,8 +89,10 @@ private:
     LPTSTR m_str;
 
     void Clean() {
-        if (m_str)
+        if (m_str) {
             ::CoTaskMemFree(m_str);
+            m_str = NULL;
+        }
     }
 };
 
