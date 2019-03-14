@@ -749,16 +749,23 @@ AwtFileDialog::Show(void *p)
             OLE_HRT(pfd->SetFileTypes(s_fileFilterCount, s_fileFilterSpec));
             OLE_HRT(pfd->SetFileTypeIndex(1));
 
-            IShellItemPtr directoryItem;
-            OLE_NEXT_TRY
-            OLE_HRT(CreateShellItem(directoryBuffer, directoryItem));
-            OLE_HRT(pfd->SetFolder(directoryItem));
-            OLE_CATCH
-
-            CoTaskStringHolder shortName = GetShortName(fileBuffer);
-            if (shortName) {
-                OLE_HRT(pfd->SetFileName(shortName));
+            {
+                IShellItemPtr directoryItem;
+                OLE_TRY
+                OLE_HRT(CreateShellItem(directoryBuffer, directoryItem));
+                OLE_HRT(pfd->SetFolder(directoryItem));
+                OLE_CATCH
             }
+
+            {
+                CoTaskStringHolder shortName = GetShortName(fileBuffer);
+                if (shortName) {
+                    OLE_TRY
+                    OLE_HRT(pfd->SetFileName(shortName));
+                    OLE_CATCH
+                }
+            }
+
             OLE_CATCH
         }
 
