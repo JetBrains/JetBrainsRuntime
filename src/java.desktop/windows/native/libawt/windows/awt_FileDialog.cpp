@@ -64,6 +64,7 @@ public:
     }
 
     CoTaskStringHolder& operator=(CoTaskStringHolder& other) {
+        if (m_str == other.m_str) return *this;
         Clean();
         m_str = other.m_str;
         other.m_str = NULL;
@@ -104,6 +105,7 @@ public:
     SmartHolderBase& operator=(const SmartHolderBase&) = delete;
 
     void Attach(T* other) {
+        if (m_pointer == other) return;
         Clean();
         m_pointer = other;
     }
