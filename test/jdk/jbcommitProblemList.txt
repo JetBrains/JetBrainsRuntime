@@ -5,7 +5,7 @@ java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java              
 java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                            nobug macosx-all,windows-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                        nobug macosx-all,windows-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                        nobug macosx-all,windows-all,linux-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                                nobug macosx-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                             nobug macosx-all,windows-all
 java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java              nobug windows-all
@@ -20,7 +20,6 @@ java/awt/Focus/DisposedWindow/DisposeDialogNotActivateOwnerTest/DisposeDialogNot
 java/awt/Focus/FocusEmbeddedFrameTest/FocusEmbeddedFrameTest.java                           nobug windows-all
 java/awt/Focus/FocusTransitionTest/FocusTransitionTest.java                                 nobug macosx-all,windows-all
 java/awt/Focus/InputVerifierTest3/InputVerifierTest3.java                                   nobug macosx-all
-java/awt/Focus/ModalExcludedWindowClickTest/ModalExcludedWindowClickTest.html               nobug macosx-all,windows-all
 java/awt/Focus/NonFocusableResizableTooSmall/NonFocusableResizableTooSmall.java             nobug windows-all
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java                            nobug macosx-all,windows-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                                   nobug macosx-all
@@ -31,11 +30,9 @@ java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                   
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                                   nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/FrameCloseTest.java                                          nobug macosx-all,windows-all
-java/awt/Frame/MiscUndecorated/RepaintTest.java                                             nobug macosx-all,windows-all
 java/awt/Frame/NormalToIconified/NormalToIconifiedTest.java                                 nobug linux-all,windows-all
 java/awt/Frame/ObscuredFrame/ObscuredFrameTest.java                                         nobug linux-all
 java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java nobug linux-all,windows-all,macosx-all
-java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java                               nobug macosx-all,windows-all
 java/awt/FullScreen/BufferStrategyExceptionTest/BufferStrategyExceptionTest.java            nobug macosx-all,linux-all,windows-all
 java/awt/FullScreen/SetFSWindow/FSFrame.java                                                nobug windows-all
 java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                                nobug windows-all
@@ -88,6 +85,7 @@ java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                    
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
+java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                                     nobug linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java          nobug macosx-all
@@ -137,7 +135,6 @@ java/awt/image/multiresolution/MenuMultiresolutionIconTest.java                 
 java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsTest.java    nobug windows-all
 java/awt/print/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java                         nobug windows-all
 
-javax/swing/JButton/8151303/PressedIconTest.java                                            nobug windows-all
 javax/swing/JComboBox/4199622/bug4199622.java                                               nobug windows-all
 javax/swing/JComboBox/4523758/bug4523758.java                                               nobug macosx-all,windows-all
 javax/swing/JDialog/Transparency/TransparencyTest.java                                      nobug macosx-all,windows-all
@@ -167,7 +164,6 @@ javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                     
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
-javax/swing/JSplitPane/4885629/bug4885629.java                                              nobug windows-all
 javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java                                      nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java                                                nobug macosx-all,windows-all
