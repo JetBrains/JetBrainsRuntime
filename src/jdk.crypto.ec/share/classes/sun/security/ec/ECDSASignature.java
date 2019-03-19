@@ -361,10 +361,10 @@ abstract class ECDSASignature extends SignatureSpi {
         ECParameterSpec params = privateKey.getParams();
         // DER OID
         byte[] encodedParams = ECUtil.encodeECParameterSpec(null, params);
-        int keySize = params.getCurve().getField().getFieldSize();
+        int orderLength = params.getOrder().bitLength();
 
-        // seed is twice the key size (in bytes) plus 1
-        byte[] seed = new byte[(((keySize + 7) >> 3) + 1) * 2];
+        // seed is twice the order length (in bytes) plus 1
+        byte[] seed = new byte[(((orderLength + 7) >> 3) + 1) * 2];
         if (random == null) {
             random = JCAUtil.getSecureRandom();
         }
