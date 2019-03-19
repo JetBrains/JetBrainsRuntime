@@ -30,6 +30,7 @@ import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -134,9 +135,14 @@ public class MetalPerfTest {
         FlatOvalRotParticleRenderer(int n, float r) {
             super(n, r);
         }
+
+        void setPaint(Graphics2D g2d, int id) {
+            g2d.setColor(colors[id % colors.length]);
+        }
+
         @Override
         public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
-            g2d.setColor(colors[id % colors.length]);
+            setPaint(g2d, id);
             if (Math.abs(vx[id] + vy[id]) > 0.001) {
                 AffineTransform t = (AffineTransform) g2d.getTransform().clone();
                 double l = vx[id] / Math.sqrt(vx[id] * vx[id] + vy[id] * vy[id]);
@@ -151,6 +157,25 @@ public class MetalPerfTest {
                 g2d.fillOval((int)(x[id] - r), (int)(y[id] - 0.5*r),
                         (int) (2 * r), (int) r);
             }
+        }
+    }
+
+    static class LinGradOvalRotParticleRenderer extends FlatOvalRotParticleRenderer {
+
+
+        LinGradOvalRotParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+
+        @Override
+        void setPaint(Graphics2D g2d, int id) {
+            Point2D start = new Point2D.Double(- r,  - 0.5*r);
+            Point2D end = new Point2D.Double( 2 * r, r);
+            float[] dist = {0.0f, 1.0f};
+            Color[] cls = {colors[id %colors.length], Color.WHITE};
+            LinearGradientPaint p =
+                    new LinearGradientPaint(start, end, dist, cls);
+            g2d.setPaint(p);
         }
     }
 
@@ -382,6 +407,7 @@ public class MetalPerfTest {
     private static final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
+    private static final ParticleRenderer linGradOvalRotRenderer = new LinGradOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
     private static final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
     private static final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
@@ -461,6 +487,23 @@ public class MetalPerfTest {
         System.out.println(fps);
     }
 
+    @Test
+    public void testLinGradOvalRotBubbles() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, linGradOvalRotRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
 
 
     @Test
