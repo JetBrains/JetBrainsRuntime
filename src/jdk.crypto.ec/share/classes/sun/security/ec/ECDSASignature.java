@@ -412,11 +412,19 @@ abstract class ECDSASignature extends SignatureSpi {
 
         // DER OID
         byte[] encodedParams = ECUtil.encodeECParameterSpec(null, params);
-        int keySize = params.getCurve().getField().getFieldSize();
+        int orderLength = params.getOrder().bitLength();
 
+<<<<<<< HEAD
         // seed is twice the key size (in bytes) plus 1
         byte[] seed = new byte[(((keySize + 7) >> 3) + 1) * 2];
 
+=======
+        // seed is twice the order length (in bytes) plus 1
+        byte[] seed = new byte[(((orderLength + 7) >> 3) + 1) * 2];
+        if (random == null) {
+            random = JCAUtil.getSecureRandom();
+        }
+>>>>>>> e13284c... 8147502: Digest is incorrectly truncated for ECDSA signatures when the bit length of n is less than the field size
         random.nextBytes(seed);
 
         // random bits needed for timing countermeasures
