@@ -29,6 +29,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.QuadCurve2D;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,6 +127,33 @@ public class MetalPerfTest {
         }
 
     }
+
+    static class FlatOvalRotParticleRenderer extends FlatParticleRenderer {
+
+
+        FlatOvalRotParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.setColor(colors[id % colors.length]);
+            if (Math.abs(vx[id] + vy[id]) > 0.001) {
+                AffineTransform t = (AffineTransform) g2d.getTransform().clone();
+                double l = vx[id] / Math.sqrt(vx[id] * vx[id] + vy[id] * vy[id]);
+                if (vy[id] < 0) {
+                    l = -l;
+                }
+                g2d.translate(x[id], y[id]);
+                g2d.rotate(Math.acos(l));
+                g2d.fillOval(-(int)r, (int)(-0.5*r), (int) (2 * r), (int)r);
+                g2d.setTransform(t);
+            } else {
+                g2d.fillOval((int)(x[id] - r), (int)(y[id] - 0.5*r),
+                        (int) (2 * r), (int) r);
+            }
+        }
+    }
+
     static class FlatBoxParticleRenderer extends FlatParticleRenderer {
 
 
@@ -140,6 +168,33 @@ public class MetalPerfTest {
         }
 
     }
+
+    static class FlatBoxRotParticleRenderer extends FlatParticleRenderer {
+
+
+        FlatBoxRotParticleRenderer(int n, float r) {
+            super(n, r);
+        }
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.setColor(colors[id % colors.length]);
+            if (Math.abs(vx[id] + vy[id]) > 0.001) {
+                AffineTransform t = (AffineTransform) g2d.getTransform().clone();
+                double l = vx[id] / Math.sqrt(vx[id] * vx[id] + vy[id] * vy[id]);
+                if (vy[id] < 0) {
+                    l = -l;
+                }
+                g2d.translate(x[id], y[id]);
+                g2d.rotate(Math.acos(l));
+                g2d.fillRect(-(int)r, -(int)r, (int) (2 * r), (int) (2 * r));
+                g2d.setTransform(t);
+            } else {
+                g2d.fillRect((int)(x[id] - r), (int)(y[id] - r),
+                        (int) (2 * r), (int) (2 * r));
+            }
+        }
+    }
+
     static class WiredParticleRenderer extends FlatParticleRenderer {
 
 
@@ -324,7 +379,9 @@ public class MetalPerfTest {
 
     private static final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
     private static final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
+    private static final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
+    private static final ParticleRenderer flatBoxRotRenderer = new FlatBoxRotParticleRenderer(N, R);
     private static final ParticleRenderer wiredRenderer = new WiredParticleRenderer(N, R);
     private static final ParticleRenderer wiredBoxRenderer = new WiredBoxParticleRenderer(N, R);
     private static final ParticleRenderer segRenderer = new SegParticleRenderer(N, R);
@@ -367,6 +424,44 @@ public class MetalPerfTest {
 
         System.out.println(fps);
     }
+
+    @Test
+    public void testFlatBoxRotBubbles() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, flatBoxRotRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+    @Test
+    public void testFlatOvalRotBubbles() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, flatOvalRotRenderer);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        System.out.println(fps);
+    }
+
+
 
     @Test
     public void testWiredBubbles() throws Exception {
