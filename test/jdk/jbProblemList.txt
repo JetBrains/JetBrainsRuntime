@@ -537,6 +537,7 @@ java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java                    
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.html                                 8169534 macosx-all,windows-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java                8168388 windows-all,macosx-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8196017 windows-all
+java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             8052166 linux-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java                                 8080676,8129775 generic-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java                          8013428 generic-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java                 8157147 macosx-all,linux-all,solaris-all,windows-all
@@ -584,7 +585,7 @@ java/awt/Window/Grab/GrabTest.java                                              
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132,8194941 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999,8198690 macosx-all,linux-all,windows-all
@@ -945,6 +946,7 @@ javax/swing/JFrame/8016356/bug8016356.java                                      
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                           8193942 generic-all
 javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all,linux-all
+javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 windows-all,linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
 javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      8168135 macosx-all,linux-all
