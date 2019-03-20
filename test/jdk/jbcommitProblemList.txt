@@ -83,7 +83,6 @@ java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                        
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
-java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                                     nobug linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java          nobug macosx-all
@@ -144,6 +143,8 @@ javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java               
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,windows-all
+javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all
+javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
 javax/swing/JMenu/6538132/bug6538132.java                                                   nobug windows-all
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                                  nobug macosx-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                            nobug windows-all
