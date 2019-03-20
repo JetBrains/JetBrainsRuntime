@@ -812,6 +812,15 @@ address MacroAssembler::emit_trampoline_stub(int insts_call_instruction_offset,
   return stub_start_addr;
 }
 
+void MacroAssembler::c2bool(Register x) {
+  // implements x == 0 ? 0 : 1
+  // note: must only look at least-significant byte of x
+  //       since C-style booleans are stored in one byte
+  //       only! (was bug)
+  tst(x, 0xff);
+  cset(x, Assembler::NE);
+}
+
 address MacroAssembler::ic_call(address entry, jint method_index) {
   RelocationHolder rh = virtual_call_Relocation::spec(pc(), method_index);
   // address const_ptr = long_constant((jlong)Universe::non_oop_word());
@@ -2348,21 +2357,18 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
                              bool weak,
                              Register result) {
   if (result == noreg)  result = rscratch1;
+  BLOCK_COMMENT("cmpxchg {");
   if (UseLSE) {
     mov(result, expected);
     lse_cas(result, new_val, addr, size, acquire, release, /*not_pair*/ true);
-    cmp(result, expected);
+    compare_eq(result, expected, size);
   } else {
-    BLOCK_COMMENT("cmpxchg {");
     Label retry_load, done;
     if ((VM_Version::features() & VM_Version::CPU_STXR_PREFETCH))
       prfm(Address(addr), PSTL1STRM);
     bind(retry_load);
     load_exclusive(result, addr, size, acquire);
-    if (size == xword)
-      cmp(result, expected);
-    else
-      cmpw(result, expected);
+    compare_eq(result, expected, size);
     br(Assembler::NE, done);
     store_exclusive(rscratch1, new_val, addr, size, release);
     if (weak) {
@@ -2371,9 +2377,27 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
       cbnzw(rscratch1, retry_load);
     }
     bind(done);
-    BLOCK_COMMENT("} cmpxchg");
+  }
+  BLOCK_COMMENT("} cmpxchg");
+}
+
+// A generic comparison. Only compares for equality, clobbers rscratch1.
+void MacroAssembler::compare_eq(Register rm, Register rn, enum operand_size size) {
+  if (size == xword) {
+    cmp(rm, rn);
+  } else if (size == word) {
+    cmpw(rm, rn);
+  } else if (size == halfword) {
+    eorw(rscratch1, rm, rn);
+    ands(zr, rscratch1, 0xffff);
+  } else if (size == byte) {
+    eorw(rscratch1, rm, rn);
+    ands(zr, rscratch1, 0xff);
+  } else {
+    ShouldNotReachHere();
   }
 }
+
 
 static bool different(Register a, RegisterOrConstant b, Register c) {
   if (b.is_constant())
