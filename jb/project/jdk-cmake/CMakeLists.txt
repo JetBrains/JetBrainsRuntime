@@ -95,7 +95,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     find_library(JAVA_NATIVE_FOUNDATION JavaNativeFoundation)
     include_directories(
             ../../../src/java.desktop/macosx/native/libosxapp
-            ../../../build/macosx-x86_64-normal-server-release/support/headers/java.desktop
+            ../../../build/macosx-x86_64-server-release/support/headers/java.desktop
     )
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
