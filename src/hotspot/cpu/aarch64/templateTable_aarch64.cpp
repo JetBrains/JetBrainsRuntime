@@ -2884,7 +2884,7 @@ void TemplateTable::putfield_or_static(int byte_no, bool is_static, RewriteContr
   {
     Label notVolatile;
     __ tbz(r5, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-    __ membar(MacroAssembler::StoreLoad);
+    __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
     __ bind(notVolatile);
   }
 }
@@ -3027,7 +3027,7 @@ void TemplateTable::fast_storefield(TosState state)
   {
     Label notVolatile;
     __ tbz(r3, ConstantPoolCacheEntry::is_volatile_shift, notVolatile);
-    __ membar(MacroAssembler::StoreLoad);
+    __ membar(MacroAssembler::StoreLoad | MacroAssembler::StoreStore);
     __ bind(notVolatile);
   }
 }
