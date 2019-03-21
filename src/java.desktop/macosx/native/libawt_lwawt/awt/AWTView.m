@@ -302,7 +302,9 @@ static BOOL shouldUsePressAndHold() {
                    break;
             }
         }
-        return;
+        if ([event keyCode] != kVK_Delete) {
+            return;
+        }
     }
 
     NSString *eventCharacters = [event characters];
