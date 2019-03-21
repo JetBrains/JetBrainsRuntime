@@ -88,7 +88,7 @@ public:
 
   // Called from java_lang_invoke_ResolvedMethodName
   static oop find_method(Method* method);
-  static oop add_method(Handle rmethod_name);
+  static oop add_method(const methodHandle& method, Handle rmethod_name);
 
 #if INCLUDE_JVMTI
   // It is called at safepoint only for RedefineClasses
