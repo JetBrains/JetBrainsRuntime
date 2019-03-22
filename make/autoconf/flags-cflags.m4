@@ -524,7 +524,7 @@ AC_DEFUN([FLAGS_SETUP_CFLAGS_HELPER],
     fi
   elif test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     TOOLCHAIN_CFLAGS_JDK="-mt"
-    TOOLCHAIN_CFLAGS_JDK_CONLY="-xc99=%none -xCC -Xa -v -W0,-noglobal" # C only
+    TOOLCHAIN_CFLAGS_JDK_CONLY="-xCC -Xa -v -W0,-noglobal" # C only
     TOOLCHAIN_CFLAGS_JDK_CXXONLY="-features=no%except -norunpath -xnolib" # CXX only
     TOOLCHAIN_CFLAGS_JVM="-template=no%extdef -features=no%split_init \
         -library=stlport4 -mt -features=no%except"
