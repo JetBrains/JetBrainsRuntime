@@ -276,6 +276,7 @@ static BOOL shouldUsePressAndHold() {
     if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
         fInputMethodLOCKABLE)
     {
+        BOOL skipProcessingCancelKeys = YES;
         fProcessingKeystroke = NO;
         if (!fInPressAndHold) {
             fInPressAndHold = YES;
@@ -285,21 +286,24 @@ static BOOL shouldUsePressAndHold() {
             // input accented symbols
 
             switch([event keyCode]) {
-                case kVK_Escape:
-                case kVK_Delete:
-                case kVK_Return:
                 case kVK_ForwardDelete:
+                case kVK_Delete:
+                    skipProcessingCancelKeys = NO;
+                case kVK_Return:
+                case kVK_Escape:
                 case kVK_PageUp:
                 case kVK_PageDown:
                 case kVK_DownArrow:
                 case kVK_UpArrow:
                 case kVK_Home:
                 case kVK_End:
-                   [self abandonInput];
-                   break;
+                    // Abandon input to reset IM and unblock input after
+                    // canceling input accented symbols
+                    [self abandonInput];
+                    break;
             }
         }
-        if ([event keyCode] != kVK_Delete) {
+        if (skipProcessingCancelKeys) {
             return;
         }
     }
