@@ -844,15 +844,7 @@ class VirtualMachineImpl extends MirrorImpl
                 throw new InternalException("Invalid reference type tag");
         }
 
-        /*
-         * If a signature was specified, make sure to set it ASAP, to
-         * prevent any needless JDWP command to retrieve it. (for example,
-         * typesBySignature.add needs the signature, to maintain proper
-         * ordering.
-         */
-        if (signature != null) {
-            type.setSignature(signature);
-        } else if (retrievedAllTypes) {
+        if (signature == null && retrievedAllTypes) {
             // do not cache if signature is not provided
             return type;
         }
@@ -972,6 +964,9 @@ class VirtualMachineImpl extends MirrorImpl
                 }
                 if (retType == null) {
                     retType = addReferenceType(id, tag, signature);
+                }
+                if (signature != null) {
+                    retType.setSignature(signature);
                 }
             }
             return retType;
