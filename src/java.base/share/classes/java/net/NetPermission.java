@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -142,6 +142,15 @@ import java.util.StringTokenizer;
  *   <td>Malicious code getting access to the local response cache
  *   could access security sensitive information, or create false
  *   entries in the response cache.</td>
+ *   </tr>
+ *
+ * <tr>
+ *   <th scope="row">setSocketImpl</th>
+ *   <td>The ability to create a sub-class of Socket or ServerSocket with a
+ *   user specified SocketImpl.</td>
+ *   <td>Malicious user-defined SocketImpls can change the behavior of
+ *   Socket and ServerSocket in surprising ways, by virtue of their
+ *   ability to access the protected fields of SocketImpl.</td>
  *   </tr>
  *
  * <tr>
