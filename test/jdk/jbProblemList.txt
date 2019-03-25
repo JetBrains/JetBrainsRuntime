@@ -145,7 +145,7 @@ java/awt/FileDialog/8003399/bug8003399.java                                     
 java/awt/FileDialog/FileDialogIconTest/FileDialogIconTest.java                      8160558 windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                      8202882 linux-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                        8194751 linux-all
-java/awt/Focus/8013611/JDK8013611.java                                              8175366 windows-all,macosx-all
+java/awt/Focus/8013611/JDK8013611.java                                              8175366,8213522 windows-all,macosx-all,linux-all
 java/awt/Focus/6378278/InputVerifierTest.java                                       8198616,8047703 macosx-all,linux-4.15,windows-all
 java/awt/Focus/6382144/EndlessLoopTest.java                                         8198617,8047703 generic-all
 java/awt/Focus/6401036/InputVerifierTest2.java                                      JRE-898 macosx-all
@@ -160,9 +160,9 @@ java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java            
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java             6848407 generic-all
 java/awt/Focus/Cause/FocusCauseTest.java                                            JRE-898 macosx-all,windows-all (windows: commit testing)
 java/awt/Focus/ChildWindowFocusTest/ChildWindowFocusTest.html                       8047703 windows-all,macosx-all,linux-all
-java/awt/Focus/ChoiceFocus/ChoiceFocus.java                                         8169103 windows-all,macosx-all
+java/awt/Focus/ChoiceFocus/ChoiceFocus.java                                         8169103,8213522 windows-all,macosx-all,linux-all
 java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java             JRE-898 macosx-all
-java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java                     8198618 macosx-all,windows-all
+java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java                     8198618,8213522 macosx-all,windows-all,linux-all
 java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java       7124555 macosx-all,linux-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252 macosx-all
 java/awt/Focus/DeiconifiedFrameLoosesFocus/DeiconifiedFrameLoosesFocus.html         8015886 macosx-all
@@ -189,7 +189,7 @@ java/awt/Focus/ToFrontFocusTest/ToFrontFocus.html                               
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java                       6848810 macosx-all,linux-all,windows-all
 java/awt/Focus/TypeAhead/TestFocusFreeze.java                                       8198622,6447537,8213522 macosx-all,linux-all,windows-all
 java/awt/Focus/WindowInitialFocusTest/WindowInitialFocusTest.html                   8169100 windows-all,macosx-all
-java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java 8169099 windows-all
+java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java 8169099 windows-all,linux-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096,8213522 macosx-all,linux-all,windows-all
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
@@ -702,6 +702,8 @@ java/beans/XMLEncoder/Test6570354.java                                          
 # jdk_lang
 
 java/lang/StringCoding/CheckEncodings.sh                                            7008363 generic-all
+java/lang/System/LoggerFinder/modules/JDKLoggerForImageTest.java                    nobug windows-6.1 fails on Windows 7 only
+java/lang/System/LoggerFinder/modules/UnnamedLoggerForImageTest.java                nobug windows-6.1 fails on Windows 7 only
 
 ############################################################################
 
@@ -756,6 +758,7 @@ java/net/httpclient/ProxyAuthDisabledSchemesSSL.java                            
 java/net/httpclient/UnknownBodyLengthTest.java                                      8210130 macosx-all,windows-all
 
 com/sun/net/httpserver/bugs/B6361557.java                                           8196070 windows-all
+sun/net/www/protocol/jar/jarbug/TestDriver.java                                     nobug windows-6.1 fails on Windows 7 only
 
 ############################################################################
 
@@ -1217,5 +1220,18 @@ javax/swing/text/TableView/TableViewLayoutTest.java                             
 javax/swing/JComboBox/4199622/bug4199622.java                                       JRE-948 macosx-all
 java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.html JRE-948 macosx-all
 
+tools/jlink/DefaultProviderTest.java                                                nobug windows-6.1 fails on Windows 7 only
 tools/jlink/JLinkTest.java                                                          nobug windows-6.1 fails on Windows 7 only
+tools/jlink/JLink2Test.java                                                         nobug windows-6.1 fails on Windows 7 only
+tools/jlink/JLinkNegativeTest.java                                                  nobug windows-6.1 fails on Windows 7 only
+tools/jlink/JLinkPluginsTest.java                                                   nobug windows-6.1 fails on Windows 7 only
+tools/jlink/JLinkPostProcessingTest.java                                            nobug windows-6.1 fails on Windows 7 only
+tools/jlink/NativeTest.java                                                         nobug windows-6.1 fails on Windows 7 only
+tools/jlink/basic/AllModulePath.java                                                nobug windows-6.1 fails on Windows 7 only
+tools/jlink/basic/BasicTest.java                                                    nobug windows-6.1 fails on Windows 7 only
+tools/jlink/bindservices/BindServices.java                                          nobug windows-6.1 fails on Windows 7 only
+tools/jlink/multireleasejar/JLinkMRJavaBaseVersionTest.java                         nobug windows-6.1 fails on Windows 7 only
 tools/jlink/plugins/IncludeLocalesPluginTest.java                                   nobug windows-6.1 fails on Windows 7 only
+tools/jlink/plugins/SystemModuleDescriptors/CompiledVersionTest.java                nobug windows-6.1 fails on Windows 7 only
+tools/jlink/plugins/SystemModuleDescriptors/UserModuleTest.java                     nobug windows-6.1 fails on Windows 7 only
+tools/launcher/modules/patch/systemmodules/PatchSystemModules.java                  nobug windows-6.1 fails on Windows 7 only
