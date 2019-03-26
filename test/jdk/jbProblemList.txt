@@ -165,7 +165,7 @@ java/awt/Focus/ClearGlobalFocusOwnerTest/ClearGlobalFocusOwnerTest.java         
 java/awt/Focus/ClearLwQueueBreakTest/ClearLwQueueBreakTest.java                     8198618,8213522 macosx-all,windows-all,linux-all
 java/awt/Focus/CloseDialogActivateOwnerTest/CloseDialogActivateOwnerTest.java       7124555 macosx-all,linux-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java 6986252 macosx-all
-java/awt/Focus/DeiconifiedFrameLoosesFocus/DeiconifiedFrameLoosesFocus.html         8015886 macosx-all
+java/awt/Focus/DeiconifiedFrameLoosesFocus/DeiconifiedFrameLoosesFocus.html         8015886 macosx-all,linux-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java                   8081489 generic-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.html                         JRE-898 macosx-all,windows-all
 java/awt/Focus/FocusTraversalPolicy/ButtonGroupLayoutTraversal/ButtonGroupLayoutTraversalTest.java 8198619,8213522 macosx-all,linux-all,windows-all
@@ -250,7 +250,7 @@ java/awt/Mixing/AWT_Mixing/JListOverlapping.java                                
 java/awt/Mixing/AWT_Mixing/JMenuBarOverlapping.java                                 8159451,8194045 linux-all,windows-all,macosx-all
 java/awt/Mixing/AWT_Mixing/JPanelInGlassPaneOverlapping.java                        8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JPanelOverlapping.java                                   8158801 windows-all,macosx-all,linux-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java                               8158801 windows-all,macosx-all,linux-all
+java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java                               8158801,8049405 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JProgressBarInGlassPaneOverlapping.java                  8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JProgressBarOverlapping.java                             8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JScrollBarInGlassPaneOverlapping.java                    8158801 windows-all,macosx-all,linux-all
@@ -271,7 +271,6 @@ java/awt/Mixing/AWT_Mixing/JToggleButtonInGlassPaneOverlapping.java             
 java/awt/Mixing/AWT_Mixing/JToggleButtonOverlapping.java                            8158801 windows-all,macosx-all,linux-all
 java/awt/Mixing/AWT_Mixing/JInternalFrameMoveOverlapping.java                       6986109 windows-all
 java/awt/Mixing/AWT_Mixing/JComboBoxOverlapping.java                                8049405 macosx-all,windows-all
-java/awt/Mixing/AWT_Mixing/JPopupMenuOverlapping.java                               8049405 macosx-all,windows-all
 java/awt/Mixing/AWT_Mixing/MixingFrameResizing.java                                 8049405 generic-all
 java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java                                8049405 generic-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                   8194045 generic-all
@@ -555,7 +554,7 @@ java/awt/Robot/ModifierRobotKey/ModifierRobotKeyTest.java                       
 java/awt/Robot/RobotWheelTest/RobotWheelTest.java                                   8129827 generic-all
 java/awt/ScrollPane/ScrollPanePreferredSize/ScrollPanePreferredSize.java            JRE-898 macosx-all
 java/awt/Scrollbar/ScrollbarMouseWheelTest/ScrollbarMouseWheelTest.java             8196018 windows-all,linux-all
-java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8061235,8159592,8134231 macosx-all,windows-all
+java/awt/SplashScreen/MultiResolutionSplash/MultiResolutionSplashTest.java          8061235,8159592,8134231 macosx-all,windows-all,linux-all
 java/awt/SplashScreen/MultiResolutionSplash/unix/UnixMultiResolutionSplashTest.java 8203004 linux-all
 java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java      8213120 macosx-all
 java/awt/TextArea/TextAreaScrolling/TextAreaScrolling.java                          8196300 windows-all
@@ -612,6 +611,7 @@ java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html           
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java                        8029680 macosx-all,linux-all,windows-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java                        8028998,8159694 macosx-all,windows-all,linux-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java                               8176556 generic-all
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.html
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java                 8030121 macosx-all,windows-all,linux-all
 java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java         8164464 linux-all,macosx-all,windows-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.html                             8214221 windows-all,linux-all,macosx-all
