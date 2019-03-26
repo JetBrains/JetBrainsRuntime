@@ -1721,9 +1721,13 @@ BOOL AwtFrame::HasCustomDecoration()
     return *m_pHasCustomDecoration;
 }
 
-void GetSysInsets(RECT* insets) {
+void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
     static RECT* sysInsets = NULL;
 
+    if (pFrame->IsUndecorated()) {
+        ::SetRect(insets, 0, 0, 0, 0);
+        return;
+    }
     if (!sysInsets) {
         sysInsets = new RECT;
         sysInsets->left = sysInsets->right = ::GetSystemMetrics(SM_CXSIZEFRAME);
@@ -1737,7 +1741,7 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     RECT rcWindow;
     RECT insets;
 
-    GetSysInsets(&insets);
+    GetSysInsets(&insets, frame);
     GetWindowRect(frame->GetHWnd(), &rcWindow);
 
     // Get the frame rectangle, adjusted for the style without a caption.
@@ -1790,9 +1794,8 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (!wParam || !HasCustomDecoration()) {
         return AwtWindow::WmNcCalcSize(wParam, lpncsp, retVal);
     }
-
     RECT insets;
-    GetSysInsets(&insets);
+    GetSysInsets(&insets, this);
     RECT* rect = &lpncsp->rgrc[0];
 
     rect->left = rect->left + insets.left;
