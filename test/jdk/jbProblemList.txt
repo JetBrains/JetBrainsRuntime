@@ -330,12 +330,12 @@ java/awt/Modal/ModalBlockingTests/BlockingDFWModeless2Test.java                 
 java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal1Test.java                     8198665 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingDFWNonModal2Test.java                     8198665 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingDocModalTest.java                         8198665 macosx-all,windows-all,linux-all
-java/awt/Modal/ModalBlockingTests/BlockingFDAppModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all, linux-all
-java/awt/Modal/ModalBlockingTests/BlockingFDDocModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all, linux-all
+java/awt/Modal/ModalBlockingTests/BlockingFDAppModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all,linux-all
+java/awt/Modal/ModalBlockingTests/BlockingFDDocModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingFDModelessTest.java                       8198665 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingFDNonModalTest.java                       8198665 macosx-all,windows-all,linux-all
-java/awt/Modal/ModalBlockingTests/BlockingFDSetModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all, linux-all
-java/awt/Modal/ModalBlockingTests/BlockingFDToolkitModalTest.java                   8208512,8213530,8198282 macosx-all,windows-all, linux-all
+java/awt/Modal/ModalBlockingTests/BlockingFDSetModalTest.java                       8208512,8213530,8198282 macosx-all,windows-all,linux-all
+java/awt/Modal/ModalBlockingTests/BlockingFDToolkitModalTest.java                   8208512,8213530,8198282 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingFDWDocModal1Test.java                     8198665 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingFDWDocModal2Test.java                     8198665 macosx-all,windows-all,linux-all
 java/awt/Modal/ModalBlockingTests/BlockingFDWDocModal3Test.java                     8198665 macosx-all,windows-all,linux-all
@@ -483,14 +483,14 @@ java/awt/Modal/ToBack/ToBackModal1Test.java                                     
 java/awt/Modal/ToBack/ToBackModal2Test.java                                         8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModal3Test.java                                         8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModal4Test.java                                         8196441 macosx-all,windows-all,linux-all
-java/awt/Modal/ToBack/ToBackModal5Test.java                                         8208512 macosx-all,windows-all
-java/awt/Modal/ToBack/ToBackModal6Test.java                                         8208512 macosx-all,windows-all
+java/awt/Modal/ToBack/ToBackModal5Test.java                                         8208512 macosx-all,windows-all,linux-all
+java/awt/Modal/ToBack/ToBackModal6Test.java                                         8208512 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModeless1Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModeless2Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModeless3Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModeless4Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackModeless5Test.java                                      8196441 macosx-all,windows-all,linux-all
-java/awt/Modal/ToBack/ToBackModeless6Test.java                                      8208512 macosx-all,windows-all
+java/awt/Modal/ToBack/ToBackModeless6Test.java                                      8208512 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackNonModal1Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackNonModal2Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackNonModal3Test.java                                      8196441,8198347 macosx-all,windows-all,linux-all
@@ -502,7 +502,7 @@ java/awt/Modal/ToBack/ToBackTKModal2Test.java                                   
 java/awt/Modal/ToBack/ToBackTKModal3Test.java                                       8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackTKModal4Test.java                                       8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToBack/ToBackTKModal5Test.java                                       8196441 macosx-all,windows-all,linux-all
-java/awt/Modal/ToBack/ToBackTKModal6Test.java                                       8208512 macosx-all,windows-all
+java/awt/Modal/ToBack/ToBackTKModal6Test.java                                       8208512 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontAppModalTest.java                               8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontDocModalTest.java                               8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/DialogToFrontModalTest.java                                  8196441 macosx-all,windows-all,linux-all
@@ -535,7 +535,7 @@ java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java                           
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java                        8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.html                                 8169534 macosx-all,windows-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java                8168388 windows-all,macosx-all
-java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8196017 windows-all
+java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8196017 windows-all,linux-all (linux: NPE commit testing)
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             8052166 linux-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java                                 8080676,8129775 generic-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java                          8013428 generic-all
@@ -546,7 +546,7 @@ java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                     
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
-java/awt/Paint/bug8024864.java                                                      8176512 macosx-all
+java/awt/Paint/bug8024864.java                                                      8176512 macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 linux-all,macosx-all,windows-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            8215105 macosx-all,windows-all
