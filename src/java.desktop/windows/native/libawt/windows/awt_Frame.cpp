@@ -1722,19 +1722,13 @@ BOOL AwtFrame::HasCustomDecoration()
 }
 
 void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
-    static RECT* sysInsets = NULL;
-
     if (pFrame->IsUndecorated()) {
         ::SetRect(insets, 0, 0, 0, 0);
         return;
     }
-    if (!sysInsets) {
-        sysInsets = new RECT;
-        sysInsets->left = sysInsets->right = ::GetSystemMetrics(SM_CXSIZEFRAME);
-        sysInsets->top = sysInsets->bottom = ::GetSystemMetrics(SM_CYSIZEFRAME);
-        sysInsets->top += ::GetSystemMetrics(SM_CYCAPTION);
-    }
-    ::CopyRect(insets, sysInsets);
+    insets->left = insets->right = ::GetSystemMetrics(pFrame->IsResizable() ? SM_CXSIZEFRAME : SM_CXFIXEDFRAME);
+    insets->top = insets->bottom = ::GetSystemMetrics(pFrame->IsResizable() ? SM_CYSIZEFRAME : SM_CYFIXEDFRAME);
+    insets->top += ::GetSystemMetrics(SM_CYCAPTION);
 }
 
 LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
