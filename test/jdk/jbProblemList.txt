@@ -585,7 +585,7 @@ java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                        
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999,8198690 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                        8078999 macosx-all,linux-all,windows-all
@@ -1145,6 +1145,7 @@ java/util/zip/ZipFile/TestCleaner.java                                          
 # svc_tools
 
 sun/tools/jstat/jstatClassloadOutput1.sh                                            8173942 generic-all
+sun/tools/jstatd/TestJstatdExternalRegistry.java                                    8165727 windows-all,linux-all
 sun/tools/jstatd/TestJstatdPortAndServer.java                                       8081569 generic-all
 sun/tools/jstatd/TestJstatdDefaults.java                                            8081569 generic-all
 sun/tools/jstatd/TestJstatdServer.java                                              8081569 generic-all
