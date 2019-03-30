@@ -47,7 +47,6 @@ java/awt/List/ItemEventTest/ItemEventTest.java                                  
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java                          nobug macosx-all,windows-all
 java/awt/List/ListGarbageCollectionTest/AwtListGarbageCollectionTest.java                   nobug linux-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                           nobug macosx-all,windows-all
-java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                         nobug macosx-all,windows-all
 java/awt/Mixing/HWDisappear.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/JButtonInGlassPane.java                                                     nobug macosx-all,linux-all,windows-all
 java/awt/Mixing/LWPopupMenu.java                                                            nobug macosx-all,windows-all
@@ -145,6 +144,7 @@ javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.jav
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
 javax/swing/JFrame/4962534/bug4962534.html                                                  nobug macosx-all,windows-all
+javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java                           nobug macosx-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6725409/bug6725409.java                                          nobug windows-all
