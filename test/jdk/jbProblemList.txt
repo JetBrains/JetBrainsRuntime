@@ -950,8 +950,7 @@ javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                       
 javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 windows-all,linux-all
-javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
-javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all
+javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all,linux-all
 javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                      8168135 macosx-all,linux-all
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  8186513 generic-all
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java                     8208289 macosx-all
