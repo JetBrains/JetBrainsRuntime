@@ -280,7 +280,7 @@ java/awt/Mixing/MixingOnDialog.java                                             
 java/awt/Mixing/MixingOnShrinkingHWButton.java                                      7124549 macosx-all,windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java                                         7124549 macosx-all,windows-all
 java/awt/Mixing/OpaqueTest.java                                                     7124549 macosx-all,windows-all
-java/awt/Mixing/OverlappingButtons.java                                             7124549 macosx-all,windows-all
+java/awt/Mixing/OverlappingButtons.java                                             7124549 macosx-all,windows-all,linux-all
 java/awt/Mixing/Validating.java                                                     8198002 windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java                              7186009,8198664 macosx-all,windows-all,linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java                              7186009,8198664 macosx-all,windows-all,linux-all
