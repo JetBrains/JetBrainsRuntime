@@ -280,7 +280,7 @@ java/awt/Mixing/MixingOnDialog.java                                             
 java/awt/Mixing/MixingOnShrinkingHWButton.java                                      7124549 macosx-all,windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java                                         7124549 macosx-all,windows-all
 java/awt/Mixing/OpaqueTest.java                                                     7124549 macosx-all,windows-all
-java/awt/Mixing/OverlappingButtons.java                                             7124549 macosx-all,windows-all
+java/awt/Mixing/OverlappingButtons.java                                             7124549 macosx-all,windows-all,linux-all
 java/awt/Mixing/Validating.java                                                     8198002 windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java                              7186009,8198664 macosx-all,windows-all,linux-all
 java/awt/Modal/FileDialog/FileDialogAppModal2Test.java                              7186009,8198664 macosx-all,windows-all,linux-all
@@ -546,7 +546,7 @@ java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                     
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
-java/awt/Paint/bug8024864.java                                                      8176512 macosx-all
+java/awt/Paint/bug8024864.java                                                      8176512 macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
 java/awt/Robot/AcceptExtraMouseButtons/AcceptExtraMouseButtons.java                 7107528 linux-all,macosx-all,windows-all
 java/awt/Robot/HiDPIScreenCapture/ScreenCaptureTest.java                            8215105 macosx-all,windows-all
