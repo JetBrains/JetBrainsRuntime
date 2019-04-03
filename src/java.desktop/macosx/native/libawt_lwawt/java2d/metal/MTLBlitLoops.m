@@ -40,25 +40,52 @@
 
 extern MTLPixelFormat PixelFormats[];
 
-const int QUAD_VERTEX_COUNT = 6;
-struct TxtVertex g_quadTxVertices[QUAD_VERTEX_COUNT] = {
-        {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}},
-        {{1.0f, 1.0f, 0.0}, {1.0, 0.0}},
-        {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-        {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-        {{-1.0f, -1.0f, 0.0}, {0.0, 1.0}},
-        {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}}
-};
+void _fillTxQuad(
+        struct TxtVertex * txQuadVerts,
+        jint sx1, jint sy1, jint sx2, jint sy2, jint sw, jint sh,
+        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2
+) {
+    const float nsx1 = sx1/(float)sw;
+    const float nsy1 = sy1/(float)sh;
+    const float nsx2 = sx2/(float)sw;
+    const float nsy2 = sy2/(float)sh;
 
-//struct TxtVertex g_quadTxVertices[QUAD_VERTEX_COUNT] = {
-//        {{-0.95f, 0.95f, 0.0}, {0.0, 0.0}},
-//        {{0.95f, 0.95f, 0.0}, {1.0, 0.0}},
-//        {{0.95f, -0.95f, 0.0}, {1.0, 1.0}},
-//        {{0.95f, -0.95f, 0.0}, {1.0, 1.0}},
-//        {{-0.95f, -0.95f, 0.0}, {0.0, 1.0}},
-//        {{-0.95f, 0.95f, 0.0}, {0.0, 0.0}}
-//};
+    txQuadVerts[0].position[0] = dx1;
+    txQuadVerts[0].position[1] = dy1;
+    txQuadVerts[0].position[2] = 0;
+    txQuadVerts[0].txtpos[0]   = nsx1;
+    txQuadVerts[0].txtpos[1]   = nsy1;
 
+    txQuadVerts[1].position[0] = dx2;
+    txQuadVerts[1].position[1] = dy1;
+    txQuadVerts[1].position[2] = 0;
+    txQuadVerts[1].txtpos[0]   = nsx2;
+    txQuadVerts[1].txtpos[1]   = nsy1;
+
+    txQuadVerts[2].position[0] = dx2;
+    txQuadVerts[2].position[1] = dy2;
+    txQuadVerts[2].position[2] = 0;
+    txQuadVerts[2].txtpos[0]   = nsx2;
+    txQuadVerts[2].txtpos[1]   = nsy2;
+
+    txQuadVerts[3].position[0] = dx2;
+    txQuadVerts[3].position[1] = dy2;
+    txQuadVerts[3].position[2] = 0;
+    txQuadVerts[3].txtpos[0]   = nsx2;
+    txQuadVerts[3].txtpos[1]   = nsy2;
+
+    txQuadVerts[4].position[0] = dx1;
+    txQuadVerts[4].position[1] = dy2;
+    txQuadVerts[4].position[2] = 0;
+    txQuadVerts[4].txtpos[0]   = nsx1;
+    txQuadVerts[4].txtpos[1]   = nsy2;
+
+    txQuadVerts[5].position[0] = dx1;
+    txQuadVerts[5].position[1] = dy1;
+    txQuadVerts[5].position[2] = 0;
+    txQuadVerts[5].txtpos[0]   = nsx1;
+    txQuadVerts[5].txtpos[1]   = nsy1;
+}
 
 //
 // DEBUG funcs, will be removed later
@@ -115,7 +142,7 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
 
 /**
  * Inner loop used for copying a source MTL "Texture" to a destination
- * OpenGL "Surface".  This method is invoked from MTLBlitLoops_IsoBlit().
+ * MTL "Surface".  This method is invoked from MTLBlitLoops_IsoBlit().
  *
  * This method will copy, scale, or transform the source texture into the
  * destination depending on the transform state, as established in
@@ -131,14 +158,23 @@ MTLBlitTextureToSurface(MTLContext *ctx,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit: src=%p [tex=%p], dst=%p [tex=%p]", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture);
+    id<MTLTexture> srcTex = srcOps->pTexture;
+
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit [texture->surface]: src=%p [tex=%p], dst=%p [tex=%p]", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture);
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", srcTex.width, srcTex.height, dstOps->width, dstOps->height);
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+
     id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(ctx, dstOps->pTexture);
 
     ctx->mtlEmptyCommandBuffer = NO;
 
-    [encoder setVertexBytes:g_quadTxVertices length:sizeof(g_quadTxVertices) atIndex:MeshVertexBuffer];
-    [encoder setFragmentTexture: srcOps->pTexture atIndex: 0];
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
+    struct TxtVertex quadTxVerticesBuffer[6];
+    _fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, srcTex.width, srcTex.height, dx1, dy1, dx2, dy2);
+
+    [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
+    [encoder setFragmentTexture:srcTex atIndex: 0];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
     [encoder endEncoding];
 
     // _drawDebugMarkers(ctx, dstOps);
@@ -165,7 +201,7 @@ MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo,
     const int width = sx2 - sx1;
     const int height = sy2 - sy1;
 
-    // J2dTraceLn5(J2D_TRACE_INFO, "MTLBlitSwToSurface: w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
+    J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLBlitSwToSurface: w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
 
     MTLRegion region = MTLRegionMake2D(0, 0, width, height);
     [ctx->mtlCurrentBuffer replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
@@ -246,56 +282,58 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
 {
     BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
-    SurfaceDataRasInfo srcInfo;
-    jint sw    = sx2 - sx1;
-    jint sh    = sy2 - sy1;
-    jdouble dw = dx2 - dx1;
-    jdouble dh = dy2 - dy1;
-
-
-    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
-        J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_IsoBlit: invalid dimensions");
-        return;
-    }
 
     RETURN_IF_NULL(srcOps);
     RETURN_IF_NULL(dstOps);
 
+    const jint sw    = sx2 - sx1;
+    const jint sh    = sy2 - sy1;
+    const jdouble dw = dx2 - dx1;
+    const jdouble dh = dy2 - dy1;
+
+    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
+        J2dTraceLn4(J2D_TRACE_WARNING, "MTLBlitLoops_IsoBlit: invalid dimensions: sw=%d, sh%d, dw=%d, dh=%d", sw, sh, dw, dh);
+        return;
+    }
+
+    SurfaceDataRasInfo srcInfo;
     srcInfo.bounds.x1 = sx1;
     srcInfo.bounds.y1 = sy1;
     srcInfo.bounds.x2 = sx2;
     srcInfo.bounds.y2 = sy2;
+    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds, 0, 0, srcOps->width, srcOps->height);
 
-    if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
-        if (srcInfo.bounds.x1 != sx1) {
-            dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
-            sx1 = srcInfo.bounds.x1;
-        }
-        if (srcInfo.bounds.y1 != sy1) {
-            dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
-            sy1 = srcInfo.bounds.y1;
-        }
-        if (srcInfo.bounds.x2 != sx2) {
-            dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
-            sx2 = srcInfo.bounds.x2;
-        }
-        if (srcInfo.bounds.y2 != sy2) {
-            dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
-            sy2 = srcInfo.bounds.y2;
-        }
-
-//        J2dTraceLn2(J2D_TRACE_VERBOSE, "  texture=%d hint=%d", texture, hint);
-//        J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
-//        J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
-
-        // TODO: support other flags and coords
-        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-            MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, 0/*TODO: support hints*/,
-                                    sx1, sy1, sx2, sy2,
-                                    dx1, dy1, dx2, dy2);
-        }];
-
+    if (srcInfo.bounds.x2 <= srcInfo.bounds.x1 || srcInfo.bounds.y2 <= srcInfo.bounds.y1) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit: source rectangle doesn't intersect with source surface bounds");
+        J2dTraceLn6(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d sw=%d sh=%d", sx1, sy1, sx2, sy2, srcOps->width, srcOps->height);
+        J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+        return;
     }
+
+    if (srcInfo.bounds.x1 != sx1) {
+        dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
+        sx1 = srcInfo.bounds.x1;
+    }
+    if (srcInfo.bounds.y1 != sy1) {
+        dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
+        sy1 = srcInfo.bounds.y1;
+    }
+    if (srcInfo.bounds.x2 != sx2) {
+        dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
+        sx2 = srcInfo.bounds.x2;
+    }
+    if (srcInfo.bounds.y2 != sy2) {
+        dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
+        sy2 = srcInfo.bounds.y2;
+    }
+
+    // TODO: support other flags
+    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+        MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint,
+                                sx1, sy1, sx2, sy2,
+                                dx1, dy1, dx2, dy2);
+
+    }];
 }
 
 /**
@@ -339,6 +377,8 @@ MTLBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit [replaceRegion]: src=%p dst=%p", jlong_to_ptr(pSrcOps), jlong_to_ptr(pDstOps));
+
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
         if (srcInfo.rasBase) {
@@ -364,14 +404,10 @@ MTLBlitLoops_Blit(JNIEnv *env,
             J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-                J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit: src=%p dst=%p", jlong_to_ptr(pSrcOps), jlong_to_ptr(pDstOps));
+
                 MTLRegion region = MTLRegionMake2D(0, 0, sx2 - sx1, sy2 - sy1);
                 id<MTLTexture> dest = dstOps->pTexture;
                 [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride];
-                // TODO: implement MTLBlitSwToSurface
-//                MTLBlitSwToSurface(mtlc, &srcInfo, &pf,
-//                                   sx1, sy1, sx2, sy2,
-//                                   dx1, dy1, dx2, dy2);
             }];
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);

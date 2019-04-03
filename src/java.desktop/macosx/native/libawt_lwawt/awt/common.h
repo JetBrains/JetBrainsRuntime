@@ -44,6 +44,10 @@ struct FrameUniforms {
     vector_float4 color;
 };
 
+struct FrameUniformsTransform {
+    matrix_float4x4 transformMatrix;
+};
+
 struct Vertex {
     float position[3];
 };

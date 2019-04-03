@@ -282,9 +282,20 @@ MTLContext_SetXorComposite(MTLContext *mtlc, jint xorPixel)
 void
 MTLContext_ResetTransform(MTLContext *mtlc)
 {
-    //TODO
-    J2dTraceNotImplPrimitive("MTLContext_ResetTransform");
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
+    J2dTracePrimitive("MTLContext_ResetTransform");
+
+    // NOTE: rendering commands encoding are done in AppKit-thread => to keep sync do the same
+    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+        J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
+        mtlc->useTransform = JNI_FALSE;
+    }];
+}
+
+void _traceMatrix(simd_float4x4 * mtx) {
+    for (int row = 0; row < 4; ++row) {
+        J2dTraceLn4(J2D_TRACE_VERBOSE, "  [%lf %lf %lf %lf]",
+                    mtx->columns[0][row], mtx->columns[1][row], mtx->columns[2][row], mtx->columns[3][row]);
+    }
 }
 
 /**
@@ -301,9 +312,41 @@ MTLContext_SetTransform(MTLContext *mtlc,
                         jdouble m01, jdouble m11,
                         jdouble m02, jdouble m12)
 {
-    //TODO
-    J2dTraceNotImplPrimitive("MTLContext_SetTransform");
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
+    J2dTracePrimitive("MTLContext_SetTransform");
+
+    // NOTE: rendering commands encoding are done in AppKit-thread => to keep sync do the same
+    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
+        J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
+
+        simd_float4x4 transform;
+        memset(&transform, 0, sizeof(transform));
+        transform.columns[0][0] = m00;
+        transform.columns[0][1] = m10;
+        transform.columns[1][0] = m01;
+        transform.columns[1][1] = m11;
+        transform.columns[3][0] = m02;
+        transform.columns[3][1] = m12;
+        transform.columns[3][3] = 1.0;
+        transform.columns[4][4] = 1.0;
+
+        double dw = mtlc->mtlCurrentBuffer.width;
+        double dh = mtlc->mtlCurrentBuffer.height;
+        simd_float4x4 normalize;
+        memset(&normalize, 0, sizeof(normalize));
+        normalize.columns[0][0] = 2/dw;
+        normalize.columns[1][1] = -2/dh;
+        normalize.columns[3][0] = -1.f;
+        normalize.columns[3][1] = 1.f;
+        normalize.columns[3][3] = 1.0;
+        normalize.columns[4][4] = 1.0;
+
+        mtlc->transform4x4 = simd_mul(normalize, transform);
+        mtlc->useTransform = JNI_TRUE;
+
+//        _traceMatrix(&(transform));
+//        _traceMatrix(&(normalize));
+//        _traceMatrix(&(mtlc->transform4x4));
+    }];
 }
 
 /**
@@ -352,10 +395,6 @@ MTLContext_DestroyContextResources(MTLContext *mtlc)
     //TODO
     J2dTraceNotImplPrimitive("MTLContext_DestroyContextResources");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_DestroyContextResources");
-
-    if (mtlc->xformMatrix != NULL) {
-        free(mtlc->xformMatrix);
-    }
 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     [mtlc->mtlDevice release];
@@ -509,7 +548,41 @@ id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder2(MTLContext * ctx, id<M
 }
 
 id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext * ctx, id<MTLTexture> dest) {
+    if (ctx->useTransform)
+        return MTLContext_CreateBlitTransformEncoder(ctx, dest);
     return MTLContext_CreateBlitEncoder2(ctx, dest, -1);
+}
+
+// NOTE: internal func with debug parameners (will be removed soon)
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder2(MTLContext * ctx, id<MTLTexture> dest, int clearRed) {
+    MTLContext_refreshCmdBuffer(ctx);
+    if (ctx == NULL || ctx->mtlCommandBuffer == nil)
+        return nil;
+
+    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(ctx, dest);
+    if (rpd == nil)
+        return nil;
+
+    if (clearRed > 0) {//dbg
+        MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
+        ca.loadAction = MTLLoadActionClear;
+        ca.clearColor = MTLClearColorMake(clearRed/255.f, 0.0f, clearRed/255.f, 1.0f);
+    }
+
+    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:rpd];
+    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit-transform encoder to draw on %p", dest);
+
+    // set viewport and pipeline state
+    MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
+    [mtlEncoder setViewport:vp];
+    [mtlEncoder setRenderPipelineState:ctx->mtlBlitMatrixPipelineState];
+    [mtlEncoder setVertexBytes:&(ctx->transform4x4) length:sizeof(ctx->transform4x4) atIndex:FrameUniformBuffer];
+
+    return mtlEncoder;
+}
+
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder(MTLContext * ctx, id<MTLTexture> dest) {
+    return MTLContext_CreateBlitTransformEncoder2(ctx, dest, -1);
 }
 
 jboolean MTLContext_EncodeBlitFrameBuffer(MTLContext *ctx, id<MTLTexture> dest) {

@@ -64,6 +64,17 @@ vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]],
     return out;
 }
 
+vertex TxtShaderInOut vert_txt_matrix(TxtVertexInput in [[stage_in]],
+       constant FrameUniformsTransform& uniforms [[buffer(FrameUniformBuffer)]]) {
+    TxtShaderInOut out;
+    float4 pos4 = float4(in.position, 1.0);
+    out.position = simd::operator*(uniforms.transformMatrix, pos4);
+    out.position[2] = 0;
+    out.position[3] = 1.f;
+    out.texCoords = in.texCoords;
+    return out;
+}
+
 fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
     return in.color;
 }

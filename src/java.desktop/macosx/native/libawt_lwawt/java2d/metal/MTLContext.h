@@ -26,6 +26,8 @@
 #ifndef MTLContext_h_Included
 #define MTLContext_h_Included
 
+#include <simd/simd.h>
+
 #include "sun_java2d_pipe_BufferedContext.h"
 #include "sun_java2d_metal_MTLContext.h"
 #include "sun_java2d_metal_MTLContext_MTLContextCaps.h"
@@ -79,7 +81,8 @@ typedef struct {
     jubyte     a;
     jint       paintState;
     jboolean   useMask;
-    jdouble   *xformMatrix;
+    jboolean   useTransform;
+    simd_float4x4 transform4x4;
     jint     blitTextureID;
     jint      textureFunction;
     jboolean   vertexCacheEnabled;
@@ -88,6 +91,7 @@ typedef struct {
     id<MTLLibrary>              mtlLibrary;
     id<MTLRenderPipelineState>  mtlPipelineState;
     id<MTLRenderPipelineState>  mtlBlitPipelineState;
+    id<MTLRenderPipelineState>  mtlBlitMatrixPipelineState;
     id<MTLCommandQueue>         mtlCommandQueue;
     id<MTLCommandBuffer>        mtlCommandBuffer;
     id<MTLTexture>              mtlFrameBuffer;
@@ -143,6 +147,9 @@ void MTLContext_SetColor(MTLContext *ctx, int r, int g, int b, int a);
 
 id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc);
 id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc, id<MTLTexture> dest); // TODO use MTLBlitCommandEncoder
+
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder2(MTLContext * ctx, id<MTLTexture> dest, int clearRed);
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder(MTLContext * ctx, id<MTLTexture> dest);
 
 jfloat MTLContext_normalizeX(MTLContext* ctx, jfloat x);
 jfloat MTLContext_normalizeY(MTLContext* ctx, jfloat y);

@@ -93,7 +93,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture
      jint width, jint height)
 {
     BMTLSDOps *bmtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
-    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initTexture: w=%d h=%d pData=%p", width, height, bmtlsdo);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initTexture: w=%d h=%d p=%p", width, height, bmtlsdo);
 
     if (bmtlsdo == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
@@ -105,26 +105,29 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture
         return JNI_FALSE;
     }
 
+    bmtlsdo->isOpaque = isOpaque;
+    bmtlsdo->xOffset = 0;
+    bmtlsdo->yOffset = 0;
+    bmtlsdo->width = width;
+    bmtlsdo->height = height;
+    bmtlsdo->textureWidth = width;
+    bmtlsdo->textureHeight = height;
+    bmtlsdo->textureTarget = -1;
+    bmtlsdo->drawableType = MTLSD_TEXTURE;
+
+
     [ThreadUtilities performOnMainThreadWaiting:NO block:^() {
         MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
         if (mtlsdo->configInfo != NULL && mtlsdo->configInfo->context != NULL) {
             MTLContext* ctx = mtlsdo->configInfo->context;
 
-            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm width: width height: height mipmapped: NO];
+            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
             id<MTLTexture> texture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
 
-            bmtlsdo->isOpaque = isOpaque;
-            bmtlsdo->xOffset = 0;
-            bmtlsdo->yOffset = 0;
-            bmtlsdo->width = width;
-            bmtlsdo->height = height;
             bmtlsdo->pTexture = texture;
-            bmtlsdo->textureWidth = width;
-            bmtlsdo->textureHeight = height;
-            bmtlsdo->textureTarget = -1;
 
             MTLSD_SetNativeDimensions(env, bmtlsdo, bmtlsdo->textureWidth, bmtlsdo->textureHeight);
-            bmtlsdo->drawableType = MTLSD_TEXTURE;
+            // J2dTraceLn4(J2D_TRACE_VERBOSE, "\tcreated MTLTexture: w=%d h=%d p=%p [tex=%p]", width, height, bmtlsdo, texture);
         }
     }];
 
@@ -160,7 +163,17 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
         return JNI_FALSE;
     }
 
-    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initFBObject: w=%d h=%d pData=%p", width, height, bmtlsdo);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initFBObject: w=%d h=%d p=%p", width, height, bmtlsdo);
+
+    bmtlsdo->isOpaque = isOpaque;
+    bmtlsdo->xOffset = 0;
+    bmtlsdo->yOffset = 0;
+    bmtlsdo->width = width;
+    bmtlsdo->height = height;
+    bmtlsdo->textureWidth = width;
+    bmtlsdo->textureHeight = height;
+    bmtlsdo->textureTarget = -1;
+    bmtlsdo->drawableType = MTLSD_RT_TEXTURE;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
         if (mtlsdo->configInfo != NULL && mtlsdo->configInfo->context != NULL) {
@@ -169,20 +182,10 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
             MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm width: width height: height mipmapped: NO];
             id<MTLTexture> texture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
 
-            bmtlsdo->isOpaque = isOpaque;
-            bmtlsdo->xOffset = 0;
-            bmtlsdo->yOffset = 0;
-            bmtlsdo->width = width;
-            bmtlsdo->height = height;
             bmtlsdo->pTexture = texture;
-            bmtlsdo->textureWidth = width;
-            bmtlsdo->textureHeight = height;
-            bmtlsdo->textureTarget = -1;
-
-            bmtlsdo->drawableType = MTLSD_RT_TEXTURE;
 
             // TODO: fix mtlFrameBuffer initialization
-            J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initFBObject: SET FRAME BUFFER: w=%d h=%d pData=%p", width, height, bmtlsdo);
+            // J2dTraceLn4(J2D_TRACE_VERBOSE, "\t NEW FRAME BUFFER: w=%d h=%d p=%p [tex=%p]", width, height, bmtlsdo, texture);
             ctx->mtlFrameBuffer = texture;
         }
     }];
