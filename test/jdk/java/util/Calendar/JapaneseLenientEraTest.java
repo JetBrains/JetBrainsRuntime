@@ -47,7 +47,7 @@ public class JapaneseLenientEraTest {
             // lenient era/year, strict era/year
             { "Meiji 123", "Heisei 2" },
             { "Sh\u014dwa 65", "Heisei 2" },
-            { "Heisei 32", "NewEra 2" }, // NewEra
+            { "Heisei 32", "Reiwa 2" },
         };
     }
 
