@@ -23,16 +23,16 @@
 
 /*
  * @test
- * @summary run CTW for all classes from java.management.rmi module
+ * @summary run CTW for all classes from jdk.management.jfr module
  *
  * @library /test/lib / /testlibrary/ctw/src
  * @modules java.base/jdk.internal.jimage
  *          java.base/jdk.internal.misc
  *          java.base/jdk.internal.reflect
- * @modules java.management.rmi
+ * @modules jdk.management.jfr
  *
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
  *                                sun.hotspot.WhiteBox$WhiteBoxPermission
- * @run driver/timeout=7200 sun.hotspot.tools.ctw.CtwRunner modules:java.management.rmi
+ * @run driver/timeout=7200 sun.hotspot.tools.ctw.CtwRunner modules:jdk.management.jfr
  */
