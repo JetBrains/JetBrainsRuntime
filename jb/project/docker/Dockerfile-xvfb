@@ -35,7 +35,9 @@ RUN \
         libxi6:${ARCH} \
         libxrender-dev:${ARCH} \
         libxtst6:${ARCH} \
-        xvfb:${ARCH} \
+        libxrandr2:${ARCH} \
+        libfreetype6:${ARCH} \
+        fontconfig:${ARCH} \
         libnss3:${ARCH} \
         libatk-bridge2.0-0:${ARCH} \
         libgbm1:${ARCH} \
@@ -45,9 +47,9 @@ RUN \
 
 ENV DISPLAY=:0
 
-ADD run_xvfb.sh /run_xvfb.sh
-RUN chmod a+x /run_xvfb.sh
-CMD /run_xvfb.sh
+#ADD run_xvfb.sh /run_xvfb.sh
+#RUN chmod a+x /run_xvfb.sh
+#CMD /run_xvfb.sh
 
 #        fontconfig:i386 \
 #        x11-apps:i386; \
