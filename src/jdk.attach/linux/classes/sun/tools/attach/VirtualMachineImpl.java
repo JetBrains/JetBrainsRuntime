@@ -222,16 +222,19 @@ public class VirtualMachineImpl extends HotSpotVirtualMachine {
     // checks for the file.
     private File createAttachFile(int pid, int ns_pid) throws IOException {
         String fn = ".attach_pid" + ns_pid;
-        String path = "/proc/" + pid + "/cwd/" + fn;
-        File f = new File(path);
-        try {
-            // Do not canonicalize the file path, or we will fail to attach to a VM in a container.
-            f.createNewFile();
-        } catch (IOException x) {
-            String root = findTargetProcessTmpDirectory(pid, ns_pid);
-            f = new File(root, fn);
-            f.createNewFile();
+        if (!attachOnlyInTmp()) {
+            String path = "/proc/" + pid + "/cwd/" + fn;
+            File f = new File(path);
+            try {
+                // Do not canonicalize the file path, or we will fail to attach to a VM in a container.
+                f.createNewFile();
+                return f;
+            } catch (IOException x) {
+            }
         }
+        String root = findTargetProcessTmpDirectory(pid, ns_pid);
+        File f = new File(root, fn);
+        f.createNewFile();
         return f;
     }
 
