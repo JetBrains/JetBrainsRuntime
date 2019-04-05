@@ -498,4 +498,8 @@ public abstract class HotSpotVirtualMachine extends VirtualMachine {
             }
         }
     }
+
+    boolean attachOnlyInTmp() {
+        return Boolean.getBoolean("sun.tools.attach.tmp.only");
+    }
 }
