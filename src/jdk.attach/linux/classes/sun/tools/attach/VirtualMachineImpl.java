@@ -237,15 +237,18 @@ public class VirtualMachineImpl extends HotSpotVirtualMachine {
     // checks for the file.
     private File createAttachFile(long pid, long ns_pid) throws AttachNotSupportedException, IOException {
         Path fn   = Path.of(".attach_pid" + ns_pid);
-        Path path = PROC.resolve(Path.of(Long.toString(pid), "cwd")).resolve(fn);
-        File f    = new File(path.toString());
-        try {
-            // Do not canonicalize the file path, or we will fail to attach to a VM in a container.
-            f.createNewFile();
-        } catch (IOException _) {
-            f = new File(findTargetProcessTmpDirectory(pid, ns_pid), fn.toString());
-            f.createNewFile();
+        if (!attachOnlyInTmp()) {
+            Path path = PROC.resolve(Path.of(Long.toString(pid), "cwd")).resolve(fn);
+            File f    = new File(path.toString());
+            try {
+                // Do not canonicalize the file path, or we will fail to attach to a VM in a container.
+                f.createNewFile();
+                return f;
+            } catch (IOException _) {
+            }
         }
+        File f = new File(findTargetProcessTmpDirectory(pid, ns_pid), fn.toString());
+        f.createNewFile();
         return f;
     }
 
