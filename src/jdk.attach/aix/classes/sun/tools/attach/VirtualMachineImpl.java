@@ -219,14 +219,17 @@ public class VirtualMachineImpl extends HotSpotVirtualMachine {
     // checks for the file.
     private File createAttachFile(int pid) throws IOException {
         String fn = ".attach_pid" + pid;
-        String path = "/proc/" + pid + "/cwd/" + fn;
-        File f = new File(path);
-        try {
-            f.createNewFile();
-        } catch (IOException x) {
-            f = new File(tmpdir, fn);
-            f.createNewFile();
+        if (!attachOnlyInTmp()) {
+            String path = "/proc/" + pid + "/cwd/" + fn;
+            File f = new File(path);
+            try {
+                f.createNewFile();
+                return f;
+            } catch (IOException x) {
+            }
         }
+        File f = new File(tmpdir, fn);
+        f.createNewFile();
         return f;
     }
 
