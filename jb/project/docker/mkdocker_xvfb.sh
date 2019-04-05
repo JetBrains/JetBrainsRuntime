@@ -9,13 +9,14 @@ echo "Building image for "$machine" arch"
 
 case "$machine" in
   "aarch64" | "arm64v8" | "arm64")
-    arch=arm64v8
+    arch=arm64
+    arch_from=arm64v8
     ;;
   "x86_64" | "amd64")
     arch=amd64
+    arch_from=amd64
     ;;
 esac
-arch_from=$arch
 
 
 # This script creates Docker images for testing JBR executables
@@ -40,8 +41,8 @@ function build {
   return 0
 }
 
-build $arch "ubuntu" "20.04"
+build $arch "ubuntu" "20.04" ${arch_from}
 if [ "$arch" == "amd64" ]; then
   build "i386" "ubuntu" "20.04" $arch
 fi
-build $arch "ubuntu" "22.04"
+build $arch "ubuntu" "22.04" ${arch_from}
