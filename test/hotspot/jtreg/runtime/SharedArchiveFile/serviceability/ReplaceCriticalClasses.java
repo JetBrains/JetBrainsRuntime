@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,15 @@ import sun.hotspot.WhiteBox;
 public class ReplaceCriticalClasses {
     public static void main(String args[]) throws Throwable {
         if (args.length == 0) {
+            // Dump the shared archive in case it was not generated during the JDK build.
+            // Put the archive at separate file to avoid clashes with concurrent tests.
+            CDSOptions opts = new CDSOptions()
+                .setXShareMode("dump")
+                .setArchiveName(ReplaceCriticalClasses.class.getName() + ".jsa")
+                .setUseVersion(false)
+                .addSuffix("-showversion");
+            CDSTestUtils.run(opts).assertNormalExit("");
+
             launchChildProcesses();
         } else if (args.length == 3 && args[0].equals("child")) {
             Class klass = Class.forName(args[2].replace("/", "."));
@@ -132,7 +141,7 @@ public class ReplaceCriticalClasses {
 
         CDSOptions opts = (new CDSOptions())
             .setXShareMode("auto")
-            .setUseSystemArchive(true)
+            .setArchiveName(ReplaceCriticalClasses.class.getName() + ".jsa")
             .setUseVersion(false)
             .addSuffix("-showversion",
                        "-Xlog:cds",
