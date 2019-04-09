@@ -54,6 +54,7 @@ typedef enum _PROCESS_DPI_AWARENESS {
 
 //#ifndef _WIN32_WINNT_WIN10
 typedef BOOL(WINAPI EnableNonClientDpiScalingFunc)(HWND);
+typedef BOOL(WINAPI AdjustWindowRectExForDpiFunc)(LPRECT, DWORD, BOOL, DWORD, UINT);
 //#endif
 
 class AwtObject;
