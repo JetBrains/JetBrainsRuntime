@@ -142,6 +142,7 @@ extern "C" JNIEXPORT jboolean JNICALL AWTIsHeadless() {
 #define IDT_AWT_MOUSECHECK 0x101
 
 EnableNonClientDpiScalingFunc* AwtToolkit::lpEnableNonClientDpiScaling = NULL;
+AdjustWindowRectExForDpiFunc* AwtToolkit::lpAdjustWindowRectExForDpi = NULL;
 
 static LPCTSTR szAwtToolkitClassName = TEXT("SunAwtToolkit");
 
@@ -674,8 +675,8 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
 
     HMODULE hLibUser32Dll = JDK_LoadSystemLibrary("User32.dll");
     if (hLibUser32Dll != NULL) {
-        lpEnableNonClientDpiScaling =
-                (EnableNonClientDpiScalingFunc*)GetProcAddress(hLibUser32Dll, "EnableNonClientDpiScaling");
+        lpEnableNonClientDpiScaling = (EnableNonClientDpiScalingFunc*)GetProcAddress(hLibUser32Dll, "EnableNonClientDpiScaling");
+        lpAdjustWindowRectExForDpi = (AdjustWindowRectExForDpiFunc*)GetProcAddress(hLibUser32Dll, "AdjustWindowRectExForDpi");
         ::FreeLibrary(hLibUser32Dll);
     }
 
