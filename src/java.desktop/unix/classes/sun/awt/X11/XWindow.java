@@ -422,13 +422,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         return false;
     }
 
-    static void sendEvent(final AWTEvent e) {
+    static void sendEvent(final AWTEvent e, Runnable lightweigtRequestRunnable) {
         // The uses of this method imply that the incoming event is system-generated
         SunToolkit.setSystemGenerated(e);
         PeerEvent pe = new PeerEvent(Toolkit.getDefaultToolkit(), new Runnable() {
                 public void run() {
                     AWTAccessor.getAWTEventAccessor().setPosted(e);
                     ((Component)e.getSource()).dispatchEvent(e);
+                    lightweigtRequestRunnable.run();
                 }
             }, PeerEvent.ULTIMATE_PRIORITY_EVENT);
         if (focusLog.isLoggable(PlatformLogger.Level.FINER) && (e instanceof FocusEvent)) {
@@ -437,6 +438,9 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         XToolkit.postEvent(XToolkit.targetToAppContext(e.getSource()), pe);
     }
 
+    static void sendEvent(final AWTEvent e) {
+        sendEvent(e, () -> {});
+    }
 
 /*
  * Post an event to the event queue.
