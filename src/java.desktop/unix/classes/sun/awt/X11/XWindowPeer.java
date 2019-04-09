@@ -44,16 +44,19 @@ import java.awt.SystemColor;
 import java.awt.Window;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
+import java.awt.event.InvocationEvent;
 import java.awt.event.WindowEvent;
 import java.awt.peer.ComponentPeer;
 import java.awt.peer.WindowPeer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import sun.awt.AWTAccessor;
 import sun.awt.AWTAccessor.ComponentAccessor;
@@ -623,11 +626,10 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
             target.dispatchEvent(we);
         }
     }
-
-    public void handleWindowFocusInSync(long serial) {
+    public void handleWindowFocusInSync(long serial, Runnable lightweigtRequest) {
         WindowEvent we = new WindowEvent((Window)target, WindowEvent.WINDOW_GAINED_FOCUS);
         XKeyboardFocusManagerPeer.getInstance().setCurrentFocusedWindow((Window) target);
-        sendEvent(we);
+        sendEvent(we, lightweigtRequest);
     }
     // NOTE: This method may be called by privileged threads.
     //       DO NOT INVOKE CLIENT CODE ON THIS THREAD!
@@ -848,7 +850,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("Requesting window focus");
         }
-        requestWindowFocus(time, timeProvided);
+        requestWindowFocus(time, timeProvided, () -> {}, () -> {});
     }
 
     public final boolean focusAllowedFor() {
@@ -1318,7 +1320,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         if (isSimpleWindow()) {
             if (target == XKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow()) {
                 Window owner = getDecoratedOwner((Window)target);
-                ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(owner)).requestWindowFocus();
+                ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(owner)).
+                        requestWindowFocus(() -> {}, () -> {});
             }
         }
     }
@@ -1949,16 +1952,25 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         return window;
     }
 
-    public boolean requestWindowFocus(XWindowPeer actualFocusedWindow) {
+    public boolean requestWindowFocus(XWindowPeer actualFocusedWindow, Runnable lightweigtRequest, Runnable rejectFocusRequest) {
         setActualFocusedWindow(actualFocusedWindow);
-        return requestWindowFocus();
+        return requestWindowFocus(lightweigtRequest, rejectFocusRequest);
     }
 
     public boolean requestWindowFocus() {
-        return requestWindowFocus(0, false);
+        return requestWindowFocus(() -> {}, () -> {});
+    }
+
+    public boolean requestWindowFocus(Runnable lightweigtRequest, Runnable rejectFocusRequest) {
+        return requestWindowFocus(0, false, lightweigtRequest, rejectFocusRequest);
     }
 
     public boolean requestWindowFocus(long time, boolean timeProvided) {
+        return requestWindowFocus(time, timeProvided, () -> {}, () -> {});
+    }
+
+    public boolean requestWindowFocus(long time, boolean timeProvided,
+                                      Runnable lightweigtRequest, Runnable rejectFocusRequest) {
         focusLog.fine("Request for window focus");
         // If this is Frame or Dialog we can't assure focus request success - but we still can try
         // If this is Window and its owner Frame is active we can be sure request succedded.
@@ -1968,11 +1980,12 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
 
         if (isWMStateNetHidden()) {
             focusLog.fine("The window is unmapped, so rejecting the request");
+            rejectFocusRequest.run();
             return false;
         }
         if (activeWindow == ownerWindow) {
             focusLog.fine("Parent window is active - generating focus for this window");
-            handleWindowFocusInSync(-1);
+            handleWindowFocusInSync(-1, lightweigtRequest);
             return true;
         }
         focusLog.fine("Parent window is not active");
@@ -1980,9 +1993,11 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         XDecoratedPeer wpeer = AWTAccessor.getComponentAccessor().getPeer(ownerWindow);
         if (wpeer != null && wpeer.requestWindowFocus(this, time, timeProvided)) {
             focusLog.fine("Parent window accepted focus request - generating focus for this window");
+            handleWindowFocusInSync(-1, lightweigtRequest);
             return true;
         }
         focusLog.fine("Denied - parent window is not active and didn't accept focus request");
+        rejectFocusRequest.run();
         return false;
     }
 
