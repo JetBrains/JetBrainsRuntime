@@ -1248,7 +1248,7 @@ abstract class XDecoratedPeer extends XWindowPeer {
             if (target == activeWindow && target != focusedWindow) {
                 // Happens when an owned window is currently focused
                 focusLog.fine("Focus is on child window - transferring it back to the owner");
-                handleWindowFocusInSync(-1);
+                handleWindowFocusInSync(-1, () -> {});
                 return true;
             }
             Window realNativeFocusedWindow = XWindowPeer.getNativeFocusedWindow();
