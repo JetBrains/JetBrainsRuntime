@@ -171,7 +171,7 @@ class PangoFonts {
         }
         if (value instanceof Integer) {
             dpi = ((Integer)value).intValue() / 1024;
-            if (dpi == -1 || SunGraphicsEnvironment.isUIScaleEnabled()) {
+            if (dpi == -1 || SunGraphicsEnvironment.isUIScaleEnabled(dpi)) {
               dpi = 96;
             }
             if (dpi < 50) { /* 50 dpi is the minimum value gnome allows */
