@@ -164,4 +164,3 @@ jdk/Contents/Home/jmods/jdk.packager.jmod
 jdk/Contents/Home/jmods/javafx.web.jmod
 jdk/Contents/Home/jmods/javafx.fxml.jmod
 jdk/Contents/Home/jmods/javafx.graphics.jmod
-jdk/Contents/MacOS/libjli.dylib
