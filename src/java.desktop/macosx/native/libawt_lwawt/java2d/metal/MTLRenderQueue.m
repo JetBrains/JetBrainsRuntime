@@ -452,14 +452,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
 
                 dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
-
-                if (dstOps != NULL) {
-                    MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-                    MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-                    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        MTLContext_SetSurfaces(env, pSrc, pDst);
-                    }];
-                }
+                MTLContext_SetSurfaces(env, pSrc, pDst);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:

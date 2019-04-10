@@ -67,4 +67,6 @@ void MTLBlitLoops_CopyArea(JNIEnv *env,
                            jint width, jint height,
                            jint dx, jint dy);
 
+void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest);
+
 #endif /* MTLBlitLoops_h_Included */

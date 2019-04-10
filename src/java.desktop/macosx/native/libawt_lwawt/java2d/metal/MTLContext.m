@@ -97,16 +97,12 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
     MTLContext *mtlc = NULL;
 
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetSurfaces");
-
     if (srcOps == NULL || dstOps == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-                      "MTLContext_SetSurfaces: ops are null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_SetSurfaces: ops are null");
         return NULL;
     }
 
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "  srctype=%d dsttype=%d",
-                srcOps->drawableType, dstOps->drawableType);
+    J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLContext_SetSurfaces: bsrc=%p (tex=%p type=%d), bdst=%p (tex=%p type=%d)", srcOps, srcOps->pTexture, srcOps->drawableType, dstOps, dstOps->pTexture, dstOps->drawableType);
 
     if (dstOps->drawableType == MTLSD_TEXTURE) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
@@ -123,12 +119,6 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
         }
     }
 
-
-    if (dstOps->pTexture == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_SetSurfaces: dest surface is null");
-        return NULL;
-    }
-
     // make the context current
     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
     mtlc = dstCGLOps->configInfo->context;
@@ -138,9 +128,6 @@ MTLContext_SetSurfaces(JNIEnv *env, jlong pSrc, jlong pDst)
                       "MTLContext_SetSurfaces: could not make context current");
         return NULL;
     }
-
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLContext_SetSurfaces: current surface %p [pTexture=%p]", dstOps, dstOps->pTexture);
-    mtlc->mtlCurrentBuffer = dstOps->pTexture;
 
     // update the viewport
     MTLContext_SetViewport(srcOps, dstOps);
@@ -314,9 +301,20 @@ MTLContext_SetTransform(MTLContext *mtlc,
 {
     J2dTracePrimitive("MTLContext_SetTransform");
 
-    // NOTE: rendering commands encoding are done in AppKit-thread => to keep sync do the same
+    const BMTLSDOps * bmtlsdOps = MTLRenderQueue_GetCurrentDestination();
+    if (bmtlsdOps == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLContext_SetTransform: current dest is null");
+        return;
+    }
+
+    // NOTE: called from RQ thread
+    // rendering commands encoding are done in AppKit-thread => to keep sync do the same
     [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
         J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
+
+        id<MTLTexture> dest = bmtlsdOps->pTexture;
+        const double dw = dest.width;
+        const double dh = dest.height;
 
         simd_float4x4 transform;
         memset(&transform, 0, sizeof(transform));
@@ -329,8 +327,7 @@ MTLContext_SetTransform(MTLContext *mtlc,
         transform.columns[3][3] = 1.0;
         transform.columns[4][4] = 1.0;
 
-        double dw = mtlc->mtlCurrentBuffer.width;
-        double dh = mtlc->mtlCurrentBuffer.height;
+
         simd_float4x4 normalize;
         memset(&normalize, 0, sizeof(normalize));
         normalize.columns[0][0] = 2/dw;
@@ -422,31 +419,15 @@ JNIEXPORT jstring JNICALL Java_sun_java2d_metal_MTLContext_getMTLIdString
     return NULL;
 }
 
-id<MTLTexture> _getDestination(MTLContext *ctx) {
-    if (ctx->mtlCurrentBuffer != nil)
-        return ctx->mtlCurrentBuffer;
-
-    // FIXME
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext: ctx->mtlCurrentBuffer is null (frameBuffer will be used)");
-    if (ctx->mtlFrameBuffer != nil)
-        return ctx->mtlFrameBuffer;
-
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext: ctx->mtlFrameBuffer wasn't initialized");
-    return nil;
-}
-
-MTLRenderPassDescriptor * _createRenderPassDesc(MTLContext *ctx, id<MTLTexture> dest) {
-    if (ctx == NULL)
-        return nil;
-
+MTLRenderPassDescriptor * _createRenderPassDesc(id<MTLTexture> dest) {
     MTLRenderPassDescriptor * result = [MTLRenderPassDescriptor renderPassDescriptor];
     if (result == nil)
         return nil;
 
-    if (dest == nil)
-        dest = _getDestination(ctx);
-    if (dest == nil)
+    if (dest == nil) {
+        J2dTraceLn(J2D_TRACE_ERROR, "_createRenderPassDesc: destination texture is null");
         return nil;
+    }
 
     MTLRenderPassColorAttachmentDescriptor * ca = result.colorAttachments[0];
     ca.texture = dest;
@@ -456,53 +437,55 @@ MTLRenderPassDescriptor * _createRenderPassDesc(MTLContext *ctx, id<MTLTexture> 
     return result;
 }
 
-void MTLContext_SetColor(MTLContext *ctx, int r, int g, int b, int a) {
-    ctx->mtlColor = 0;
-    ctx->mtlColor |= (r & (0xFF)) << 16;
-    ctx->mtlColor |= (g & (0xFF)) << 8;
-    ctx->mtlColor |= b & (0xFF);
-    ctx->mtlColor |= (a & (0xFF)) << 24;
+void MTLContext_SetColor(MTLContext *mtlc, int r, int g, int b, int a) {
+    mtlc->mtlColor = 0;
+    mtlc->mtlColor |= (r & (0xFF)) << 16;
+    mtlc->mtlColor |= (g & (0xFF)) << 8;
+    mtlc->mtlColor |= b & (0xFF);
+    mtlc->mtlColor |= (a & (0xFF)) << 24;
 }
 
-void MTLContext_refreshCmdBuffer(MTLContext *ctx) {
-    if (ctx == NULL || ctx->mtlCommandBuffer != nil)
-        return;
-
-    // J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext: created command buffer (outside BeginFrame)");
-    ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
+static id<MTLCommandBuffer> _getCommandBuffer(MTLContext *mtlc) {
+    if (mtlc == NULL)
+        return nil;
+    if (mtlc->mtlCommandBuffer == nil) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext: created command buffer (outside BeginFrame)");
+        mtlc->mtlCommandBuffer = [[mtlc->mtlCommandQueue commandBuffer] retain];
+    }
+    return mtlc->mtlCommandBuffer;
 }
 
-// NOTE: internal func with debug parameners (will be removed soon)
-id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder3(MTLContext *ctx, id<MTLTexture> dest, int clearRed) {
-    MTLContext_refreshCmdBuffer(ctx);
-    if (ctx == NULL || ctx->mtlCommandBuffer == nil)
+// NOTE: debug parameners will be removed soon
+id<MTLRenderCommandEncoder> _createRenderEncoder(MTLContext *mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
+    id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
+    if (cb == nil)
         return nil;
 
-    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(ctx, dest);
+    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(dest);
     if (rpd == nil)
         return nil;
 
-    if (clearRed > 0) {
+    if (clearRed > 0) {//dbg
         MTLRenderPassColorAttachmentDescriptor * ca = rpd.colorAttachments[0];
         ca.loadAction = MTLLoadActionClear;
         ca.clearColor = MTLClearColorMake(clearRed/255.0f, 0.0f, 0.0f, 1.0f);
     }
 
-    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on %p", ctx->mtlCurrentBuffer);
+    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on tex=%p", dest);
 
-    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:rpd];
+    id <MTLRenderCommandEncoder> mtlEncoder = [cb renderCommandEncoderWithDescriptor:rpd];
 
     // set viewport and pipeline state
     dest = rpd.colorAttachments[0].texture;
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:ctx->mtlPipelineState];
+    [mtlEncoder setRenderPipelineState:mtlc->mtlPipelineState];
 
     // set color from ctx
-    int r = (ctx->mtlColor >> 16) & (0xFF);
-    int g = (ctx->mtlColor >> 8) & 0xFF;
-    int b = (ctx->mtlColor) & 0xFF;
-    int a = (ctx->mtlColor >> 24) & 0xFF;
+    int r = (mtlc->mtlColor >> 16) & (0xFF);
+    int g = (mtlc->mtlColor >> 8) & 0xFF;
+    int b = (mtlc->mtlColor) & 0xFF;
+    int a = (mtlc->mtlColor >> 24) & 0xFF;
 
     vector_float4 color = {r / 255.0f, g / 255.0f, b / 255.0f, a / 255.0f};
     struct FrameUniforms uf = {color};
@@ -511,122 +494,69 @@ id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder3(MTLContext *ctx, id<
     return mtlEncoder;
 }
 
-// NOTE: internal func with debug parameners (will be removed soon)
-id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder2(MTLContext *ctx, int clearRed) {
-    return MTLContext_CreateRenderEncoder3(ctx, nil, clearRed);
+id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc, id<MTLTexture> dest) {
+    return _createRenderEncoder(mtlc, dest, -1);
 }
 
-id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *ctx) {
-    return MTLContext_CreateRenderEncoder2(ctx, -1);
-}
-
-// NOTE: internal func with debug parameners (will be removed soon)
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder2(MTLContext * ctx, id<MTLTexture> dest, int clearRed) {
-    MTLContext_refreshCmdBuffer(ctx);
-    if (ctx == NULL || ctx->mtlCommandBuffer == nil)
+// NOTE: debug parameners will be removed soon
+id<MTLRenderCommandEncoder> _createBlitEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
+    id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
+    if (cb == nil)
         return nil;
 
-    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(ctx, dest);
+    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(dest);
     if (rpd == nil)
         return nil;
 
     if (clearRed > 0) {//dbg
         MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
         ca.loadAction = MTLLoadActionClear;
-        ca.clearColor = MTLClearColorMake(clearRed/255.f, 0.0f, clearRed/255.f, 1.0f);
+        ca.clearColor = MTLClearColorMake(clearRed/255.f, 0.0f, 0.0f, 1.0f);
     }
 
-    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:rpd];
-    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit encoder to draw on %p", dest);
+    id <MTLRenderCommandEncoder> mtlEncoder = [cb renderCommandEncoderWithDescriptor:rpd];
+    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit encoder to draw on tex=%p", dest);
 
     // set viewport and pipeline state
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
+    [mtlEncoder setRenderPipelineState:mtlc->mtlBlitPipelineState];
 
     return mtlEncoder;
 }
 
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext * ctx, id<MTLTexture> dest) {
-    if (ctx->useTransform)
-        return MTLContext_CreateBlitTransformEncoder(ctx, dest);
-    return MTLContext_CreateBlitEncoder2(ctx, dest, -1);
-}
-
-// NOTE: internal func with debug parameners (will be removed soon)
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder2(MTLContext * ctx, id<MTLTexture> dest, int clearRed) {
-    MTLContext_refreshCmdBuffer(ctx);
-    if (ctx == NULL || ctx->mtlCommandBuffer == nil)
+// NOTE: debug parameners will be removed soon
+id<MTLRenderCommandEncoder> _createBlitTransformEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
+    id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
+    if (cb == nil)
         return nil;
 
-    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(ctx, dest);
+    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(dest);
     if (rpd == nil)
         return nil;
 
     if (clearRed > 0) {//dbg
         MTLRenderPassColorAttachmentDescriptor *ca = rpd.colorAttachments[0];
         ca.loadAction = MTLLoadActionClear;
-        ca.clearColor = MTLClearColorMake(clearRed/255.f, 0.0f, clearRed/255.f, 1.0f);
+        ca.clearColor = MTLClearColorMake(clearRed/255.f, 0.0f, 0.0f, 1.0f);
     }
 
-    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:rpd];
-    J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit-transform encoder to draw on %p", dest);
+    id <MTLRenderCommandEncoder> mtlEncoder = [cb renderCommandEncoderWithDescriptor:rpd];
+    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit-transform encoder to draw on %p", dest);
 
     // set viewport and pipeline state
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:ctx->mtlBlitMatrixPipelineState];
-    [mtlEncoder setVertexBytes:&(ctx->transform4x4) length:sizeof(ctx->transform4x4) atIndex:FrameUniformBuffer];
+    [mtlEncoder setRenderPipelineState:mtlc->mtlBlitMatrixPipelineState];
+    [mtlEncoder setVertexBytes:&(mtlc->transform4x4) length:sizeof(mtlc->transform4x4) atIndex:FrameUniformBuffer];
 
     return mtlEncoder;
 }
 
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder(MTLContext * ctx, id<MTLTexture> dest) {
-    return MTLContext_CreateBlitTransformEncoder2(ctx, dest, -1);
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext * mtlc, id<MTLTexture> dest) {
+    if (mtlc->useTransform)
+        return _createBlitTransformEncoder(mtlc, dest, -1);
+    return _createBlitEncoder(mtlc, dest, -1);
 }
-
-jboolean MTLContext_EncodeBlitFrameBuffer(MTLContext *ctx, id<MTLTexture> dest) {
-    MTLContext_refreshCmdBuffer(ctx);
-    if (ctx == NULL || ctx->mtlCommandBuffer == nil)
-        return JNI_FALSE;
-
-    MTLRenderPassDescriptor * rpd = _createRenderPassDesc(ctx, dest);
-    if (rpd == nil)
-        return JNI_FALSE;
-
-    MTLRenderPassColorAttachmentDescriptor * ca = rpd.colorAttachments[0];
-    ca.loadAction = MTLLoadActionClear;
-    ca.clearColor = MTLClearColorMake(0.2f, 0.9f, 0.2f, 1.0f);
-
-    J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLContext: blit framebuffer %p (w=%d, h=%d) on window (w=%d, h=%d)", ctx->mtlFrameBuffer, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, dest.width, dest.height);
-
-    // TODO: use MTLBlitCommandEncoder instead of MTLRenderCommandEncoder
-    id <MTLRenderCommandEncoder> mtlEncoder = [ctx->mtlCommandBuffer renderCommandEncoderWithDescriptor:rpd];
-
-    // set viewport and pipeline state
-    MTLViewport vp = {0, 0, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height, 0, 1};
-    [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:ctx->mtlBlitPipelineState];
-
-    [mtlEncoder setFragmentTexture: ctx->mtlFrameBuffer atIndex: 0];
-    //[mtlEncoder setVertexBuffer:ctx->mtlVertexBuffer offset:0 atIndex:MeshVertexBuffer];
-    struct TxtVertex verts[6] = {
-            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}},
-            {{1.0f, 1.0f, 0.0}, {1.0, 0.0}},
-            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-            {{-1.0f, -1.0f, 0.0}, {0.0, 1.0}},
-            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}}
-    };
-    [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-    [mtlEncoder endEncoding];
-
-    return JNI_TRUE;
-}
-
-jfloat MTLContext_normalizeX(MTLContext* ctx, jfloat x) { return (2.0*x/ctx->mtlCurrentBuffer.width) - 1.0; }
-jfloat MTLContext_normalizeY(MTLContext* ctx, jfloat y) { return 2.0*(1.0 - y/ctx->mtlCurrentBuffer.height) - 1.0; }
-
 
 #endif /* !HEADLESS */

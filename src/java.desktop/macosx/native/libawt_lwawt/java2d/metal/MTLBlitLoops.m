@@ -32,6 +32,7 @@
 #include "MTLBlitLoops.h"
 #include "MTLRenderQueue.h"
 #include "MTLSurfaceData.h"
+#include "MTLUtils.h"
 #include "GraphicsPrimitiveMgr.h"
 
 #include <stdlib.h> // malloc
@@ -91,14 +92,13 @@ void _fillTxQuad(
 // DEBUG funcs, will be removed later
 //
 
-extern id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder3(MTLContext *ctx, id<MTLTexture> dest, int clearRed);
 void _drawDebugMarkers(MTLContext *ctx, BMTLSDOps *dstOps) {
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "draw debug markers onto dest %p [tex=%p]", dstOps, dstOps->pTexture);
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "draw debug markers onto bdst %p [tex=%p]", dstOps, dstOps->pTexture);
     MTLContext_SetColor(ctx, 0, 0, 255, 255);
-    id <MTLRenderCommandEncoder> encoder = MTLContext_CreateRenderEncoder3(ctx, dstOps->pTexture, 255);
+    id <MTLRenderCommandEncoder> encoder = MTLContext_CreateRenderEncoder(ctx, dstOps->pTexture);
     struct Vertex vvv[2] = {
-            {{MTLContext_normalizeX(ctx, 2),   MTLContext_normalizeY(ctx, 2),   0.0}},
-            {{MTLContext_normalizeX(ctx, 30), MTLContext_normalizeY(ctx, 100), 0.0}},
+            {{MTLUtils_normalizeX(dstOps->pTexture, 2), MTLUtils_normalizeY(dstOps->pTexture, 2), 0.0}},
+            {{MTLUtils_normalizeX(dstOps->pTexture, 30), MTLUtils_normalizeY(dstOps->pTexture, 100), 0.0}},
     };
     [encoder setVertexBytes:vvv length:sizeof(vvv) atIndex:MeshVertexBuffer];
     [encoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
@@ -140,6 +140,59 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
     J2dTraceNotImplPrimitive("MTLBlitSurfaceToSurface");
 }
 
+static void _drawTex2Tex(MTLContext *mtlc,
+                        id<MTLTexture> src, id<MTLTexture> dst,
+                        jboolean rtt, jint hint,
+                        jint sx1, jint sy1, jint sx2, jint sy2,
+                        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
+{
+    if (mtlc == NULL || src == nil || dst == nil)
+        return;
+
+//    J2dTraceLn2(J2D_TRACE_VERBOSE, "_drawTex2Tex: src tex=%p, dst tex=%p", src, dst);
+//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dst.width, dst.height);
+//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
+//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+
+    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dst);
+    mtlc->mtlEmptyCommandBuffer = NO;
+
+    struct TxtVertex quadTxVerticesBuffer[6];
+    _fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2);
+
+    [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
+    [encoder setFragmentTexture:src atIndex: 0];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [encoder endEncoding];
+
+    // _drawDebugMarkers(ctx, dst);
+}
+
+void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest) {
+    if (mtlc == NULL || src == nil || dest == nil)
+        return;
+
+//    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitTex2Tex: src tex=%p, dst tex=%p", src, dest);
+//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dest.width, dest.height);
+
+    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dest);
+    mtlc->mtlEmptyCommandBuffer = NO;
+
+    // TODO: use blit encoder and add dimension check
+    [encoder setFragmentTexture: src atIndex: 0];
+    struct TxtVertex verts[6] = {
+            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}},
+            {{1.0f, 1.0f, 0.0}, {1.0, 0.0}},
+            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
+            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
+            {{-1.0f, -1.0f, 0.0}, {0.0, 1.0}},
+            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}}
+    };
+    [encoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [encoder endEncoding];
+}
+
 /**
  * Inner loop used for copying a source MTL "Texture" to a destination
  * MTL "Surface".  This method is invoked from MTLBlitLoops_IsoBlit().
@@ -152,7 +205,7 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
  * GL_LINEAR).
  */
 static void
-MTLBlitTextureToSurface(MTLContext *ctx,
+MTLBlitTextureToSurface(MTLContext *mtlc,
                         BMTLSDOps *srcOps, BMTLSDOps *dstOps,
                         jboolean rtt, jint hint,
                         jint sx1, jint sy1, jint sx2, jint sy2,
@@ -160,24 +213,12 @@ MTLBlitTextureToSurface(MTLContext *ctx,
 {
     id<MTLTexture> srcTex = srcOps->pTexture;
 
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit [texture->surface]: src=%p [tex=%p], dst=%p [tex=%p]", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture);
+    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit [texture->surface]: bsrc=%p [tex=%p], bdst=%p [tex=%p]", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", srcTex.width, srcTex.height, dstOps->width, dstOps->height);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
     J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
-    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(ctx, dstOps->pTexture);
-
-    ctx->mtlEmptyCommandBuffer = NO;
-
-    struct TxtVertex quadTxVerticesBuffer[6];
-    _fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, srcTex.width, srcTex.height, dx1, dy1, dx2, dy2);
-
-    [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
-    [encoder setFragmentTexture:srcTex atIndex: 0];
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-    [encoder endEncoding];
-
-    // _drawDebugMarkers(ctx, dstOps);
+    _drawTex2Tex(mtlc, srcOps->pTexture, dstOps->pTexture, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -193,18 +234,24 @@ MTLBlitTextureToSurface(MTLContext *ctx,
  */
 
 static void
-MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo,
+MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
                    MTPixelFormat *pf,
                    jint sx1, jint sy1, jint sx2, jint sy2,
                    jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
+    if (bmtlsdOps == NULL || bmtlsdOps->pTexture == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurface: dest is null");
+        return;
+    }
+
     const int width = sx2 - sx1;
     const int height = sy2 - sy1;
 
-    J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLBlitSwToSurface: w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
+    id<MTLTexture> dest = bmtlsdOps->pTexture;
+    J2dTraceLn7(J2D_TRACE_VERBOSE, "MTLBlitSwToSurface [replaceRegion]: bdst=%p [tex=%p], w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", bmtlsdOps, dest, width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
 
     MTLRegion region = MTLRegionMake2D(0, 0, width, height);
-    [ctx->mtlCurrentBuffer replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
+    [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
 }
 
 /**
@@ -377,7 +424,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit [replaceRegion]: src=%p dst=%p", jlong_to_ptr(pSrcOps), jlong_to_ptr(pDstOps));
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit: src=%p bdst=%p", jlong_to_ptr(pSrcOps), jlong_to_ptr(pDstOps));
 
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
@@ -404,10 +451,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
             J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
             [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-
-                MTLRegion region = MTLRegionMake2D(0, 0, sx2 - sx1, sy2 - sy1);
-                id<MTLTexture> dest = dstOps->pTexture;
-                [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride];
+                MTLBlitSwToSurface(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
             }];
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);

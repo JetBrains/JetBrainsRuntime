@@ -99,8 +99,6 @@ typedef struct {
     id<MTLBuffer>               mtlVertexBuffer;
     jint                        mtlColor;
     dispatch_semaphore_t 	    mtlRenderSemaphore;
-
-    id<MTLTexture>              mtlCurrentBuffer;
 } MTLContext;
 
 /**
@@ -145,13 +143,7 @@ void MTLContext_DestroyContextResources(MTLContext *mtlc);
 
 void MTLContext_SetColor(MTLContext *ctx, int r, int g, int b, int a);
 
-id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc);
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc, id<MTLTexture> dest); // TODO use MTLBlitCommandEncoder
-
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder2(MTLContext * ctx, id<MTLTexture> dest, int clearRed);
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitTransformEncoder(MTLContext * ctx, id<MTLTexture> dest);
-
-jfloat MTLContext_normalizeX(MTLContext* ctx, jfloat x);
-jfloat MTLContext_normalizeY(MTLContext* ctx, jfloat y);
+id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc, id<MTLTexture> dest);
+id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc, id<MTLTexture> dest);
 
 #endif /* MTLContext_h_Included */

@@ -29,7 +29,7 @@
 #import "LWCToolkit.h"
 #import "MTLSurfaceData.h"
 
-extern jboolean MTLContext_EncodeBlitFrameBuffer(MTLContext *ctx, id<MTLTexture> dest);
+#import "MTLBlitLoops.h"
 
 @implementation MTLLayer
 
@@ -87,9 +87,8 @@ extern jboolean MTLContext_EncodeBlitFrameBuffer(MTLContext *ctx, id<MTLTexture>
             if (mtlDrawable == nil) {
                 return;
             }
-
-            if (!MTLContext_EncodeBlitFrameBuffer(ctx, mtlDrawable.texture))
-                return;
+            J2dTraceLn4(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p, dst tex=%p (w=%d, h=%d)", ctx->mtlFrameBuffer, mtlDrawable.texture, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height);
+            MTLBlitTex2Tex(ctx, ctx->mtlFrameBuffer, mtlDrawable.texture);
 
             dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
