@@ -40,22 +40,6 @@
 #include "MTLUtils.h"
 #import "MTLLayer.h"
 
-void MTLRenderer_BeginFrame(MTLContext* ctx, MTLLayer* layer) {
-    if (ctx == NULL) {
-        return;
-    }
-
-    if (ctx->mtlCommandBuffer && layer != NULL) {
-        [layer blitTexture];
-        return;
-    }
-
-    // Create a command buffer.
-    if (ctx->mtlCommandBuffer == nil)
-        ctx->mtlCommandBuffer = [[ctx->mtlCommandQueue commandBuffer] retain];
-}
-
-
 void MTLRenderer_FillParallelogramMetal(
     MTLContext* mtlc, id<MTLTexture> dest, jfloat x, jfloat y, jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
 {

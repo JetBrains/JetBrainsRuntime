@@ -79,6 +79,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         return;
     }
 
+    jboolean isLayerModified = JNI_FALSE;
+
     INIT_PREVIOUS_OP();
     end = b + limit;
 
@@ -305,14 +307,9 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                          xform, hint, texture, rtt,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
-                    BMTLSDOps * bmtldst = (BMTLSDOps*)pDst;
                     MTLSDOps * mtldst = (MTLSDOps *)dstOps->privOps;
-                    if (mtldst->layer != NULL) {
-                        // TODO: fix paint finishing
-                        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-                            MTLRenderer_BeginFrame(mtldst->configInfo->context, mtldst->layer);
-                        }];
-                    }
+                    if (mtldst->layer != NULL)
+                        isLayerModified = JNI_TRUE;
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
                     MTLBlitLoops_Blit(env, mtlc, pSrc, pDst,
@@ -737,12 +734,12 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     }
 
     MTLTR_DisableGlyphModeState();
-    if (mtlc != NULL) {
+    isLayerModified |= mtlc != NULL && dstOps != NULL && dstOps->privOps != NULL && ((MTLSDOps *)dstOps->privOps)->layer != NULL;
+    if (isLayerModified) {
         RESET_PREVIOUS_OP();
-        //if (sync) {
-        //} else {
-        //}
-        MTLSD_Flush(env);
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+            [((MTLSDOps *)dstOps->privOps)->layer blitTexture];
+        }];
     }
 }
 

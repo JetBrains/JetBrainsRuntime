@@ -369,23 +369,6 @@ MTLSD_SwapBuffers(JNIEnv *env, jlong pPeerData)
     J2dTraceLn(J2D_TRACE_INFO, "OGLSD_SwapBuffers");
 }
 
-void
-MTLSD_Flush(JNIEnv *env)
-{
-    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
-    if (dstOps != NULL) {
-        MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-        MTLLayer *layer = (MTLLayer*)dstCGLOps->layer;
-        if (layer != NULL) {
-            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                [layer blitTexture];
-            }];
-        }
-    } else {
- //   fprintf(stderr, "MTLSD_Flush: dstOps=NULL\n");
-    }
-}
-
 #pragma mark -
 #pragma mark "--- CGLSurfaceData methods ---"
 
