@@ -548,11 +548,12 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return (int)Math.round(getNativeScaleFactor(screen));
     }
 
-    public static void setGlobalScale(int scale) {
-        globalScale = scale;
+    public static void setGlobalDPI(int dpi) {
+        boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled(dpi);
+        globalScale = uiScaleEnabled ? (int)Math.round(dpi / 96.0) : 1;
         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
             X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
-            if (x11gd.isNativeScaleDefault) {
+            if (x11gd.isNativeScaleDefault || !uiScaleEnabled) {
                 x11gd.scale = globalScale;
                 x11gd.isNativeScaleDefault = false;
             }
