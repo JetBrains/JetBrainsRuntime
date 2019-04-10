@@ -67,7 +67,9 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     public static boolean isOpenSolaris;
     private static Font defaultFont;
 
-    private static final boolean uiScaleEnabled;
+    private static final Object UI_SCALE_LOCK = new Object();
+    private static boolean uiScaleEnabled;
+    private static Boolean uiScaleEnabled_overridden;
     private static final double debugScale;
 
     static {
@@ -370,7 +372,27 @@ public abstract class SunGraphicsEnvironment extends GraphicsEnvironment
     }
 
     public static boolean isUIScaleEnabled() {
-        return uiScaleEnabled;
+        Boolean enabledOverridden = uiScaleEnabled_overridden;
+        return enabledOverridden != null ? enabledOverridden : uiScaleEnabled;
+    }
+
+    /**
+     * Overrides isUIScaleEnabled() to false for fractional scale on Linux.
+     *
+     * [tav] todo: temp until fract scale is supported on Linux
+     */
+    public static boolean isUIScaleEnabled(int dpi) {
+        if (FontUtilities.isLinux) {
+            if (uiScaleEnabled_overridden == null) {
+                synchronized (UI_SCALE_LOCK) {
+                    if (uiScaleEnabled_overridden == null) {
+                        uiScaleEnabled_overridden =
+                            Double.compare(dpi / 96.0, Math.floor(dpi / 96.0)) == 0 && uiScaleEnabled;
+                    }
+                }
+            }
+        }
+        return isUIScaleEnabled();
     }
 
     public static double getDebugScale() {
