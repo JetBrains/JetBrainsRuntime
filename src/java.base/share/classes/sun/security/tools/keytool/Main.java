@@ -75,6 +75,7 @@ import sun.security.provider.X509Factory;
 import sun.security.provider.certpath.ssl.SSLServerCertStore;
 import sun.security.util.Password;
 import sun.security.util.SecurityProviderConstants;
+import sun.security.util.SignatureUtil;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -1406,11 +1407,12 @@ public final class Main {
             sigAlgName = getCompatibleSigAlgName(privateKey);
         }
         Signature signature = Signature.getInstance(sigAlgName);
-        signature.initSign(privateKey);
-
-        X509CertInfo info = new X509CertInfo();
         AlgorithmParameterSpec params = AlgorithmId
                 .getDefaultAlgorithmParameterSpec(sigAlgName, privateKey);
+
+        SignatureUtil.initSignWithParam(signature, privateKey, params, null);
+
+        X509CertInfo info = new X509CertInfo();
         AlgorithmId algID = AlgorithmId.getWithParameterSpec(sigAlgName, params);
         info.set(X509CertInfo.VALIDITY, interval);
         info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(
@@ -1564,12 +1566,9 @@ public final class Main {
         }
 
         Signature signature = Signature.getInstance(sigAlgName);
-        signature.initSign(privKey);
         AlgorithmParameterSpec params = AlgorithmId
                 .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        if (params != null) {
-            signature.setParameter(params);
-        }
+        SignatureUtil.initSignWithParam(signature, privKey, params, null);
 
         X500Name subject = dname == null?
                 new X500Name(((X509Certificate)cert).getSubjectDN().toString()):
