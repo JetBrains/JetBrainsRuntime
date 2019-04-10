@@ -62,7 +62,6 @@ lib/jfr/profile.jfc
 lib/jli/libjli.so
 lib/jrt-fs.jar
 lib/jvm.cfg
-lib/libattach.so
 lib/libawt.so
 lib/libawt_headless.so
 lib/libawt_xawt.so

@@ -65,7 +65,6 @@ jdk/Contents/Home/lib/jli/libjli.dylib
 jdk/Contents/Home/lib/jrt-fs.jar
 jdk/Contents/Home/lib/jspawnhelper
 jdk/Contents/Home/lib/jvm.cfg
-jdk/Contents/Home/lib/libattach.dylib
 jdk/Contents/Home/lib/libawt.dylib
 jdk/Contents/Home/lib/libawt_lwawt.dylib
 jdk/Contents/Home/lib/libdt_socket.dylib
