@@ -526,7 +526,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
 
     public static void setGlobalDPI(int dpi) {
         boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled(dpi);
-        globalScale = uiScaleEnabled ? Math.round(dpi / 96) : 1;
+        globalScale = uiScaleEnabled ? (int)Math.round(dpi / 96.0) : 1;
         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
             X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
             if (x11gd.isNativeScaleDefault || !uiScaleEnabled) {
