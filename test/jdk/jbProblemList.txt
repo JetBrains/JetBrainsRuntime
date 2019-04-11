@@ -155,7 +155,7 @@ java/awt/Focus/8073453/SwingFocusTransitionTest.java                            
 java/awt/Focus/6981400/Test3.java 8173264                                           generic-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java         8168408 windows-all,macosx-all,linux-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowRetaining.java            6829264 generic-all
-java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest.html                   JRE-898,6862004 macosx-all,linux-all
+java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest.html                   JRE-898,6862004 macosx-all,linux-all,windows-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusToFrontTest.java                6848406 generic-all
 java/awt/Focus/AutoRequestFocusTest/AutoRequestFocusSetVisibleTest.java             6848407 generic-all
 java/awt/Focus/Cause/FocusCauseTest.java                                            JRE-898 macosx-all,windows-all (windows: commit testing)
@@ -540,7 +540,7 @@ java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                         
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java                                 8080676,8129775 generic-all
 java/awt/Mouse/MouseModifiersUnitTest/ExtraButtonDrag.java                          8013428 generic-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersInKeyEvent.java                 8157147 macosx-all,linux-all,solaris-all,windows-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java          7124407 macosx-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Standard.java          7124407 macosx-all,windows-all,linux-all
 java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java     8157170 macosx-all,windows-all
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
@@ -585,7 +585,7 @@ java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                        
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64,linux-all (linux-all timeout reproduced with Adopt)
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/Shaped.java                             8078999,8198690 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                        8078999 macosx-all,linux-all,windows-all
@@ -1073,19 +1073,18 @@ javax/swing/text/CSSBorder/6796710/bug6796710.java                              
 javax/swing/text/DefaultCaret/6938583/bug6938583.java                               8199058 generic-all
 javax/swing/text/DefaultCaret/HidingSelection/HidingSelectionTest.java              8194048,8194941 windows-all,linux-all
 javax/swing/text/DefaultCaret/HidingSelection/MultiSelectionTest.java               8213562 linux-all
-javax/swing/text/DefaultEditorKit/4278839/bug4278839.java                           8196099,7190589 windows-all,macosx-all
-javax/swing/tree/DefaultTreeCellRenderer/6225504/bug6225504.java                    8194045 generic-all
-javax/swing/tree/DefaultTreeCellRenderer/7142955/bug7142955.java                    8199076 generic-all
+javax/swing/text/DefaultEditorKit/4278839/bug4278839.java                           8196099,7190589 windows-all,macosx-all,linux-all
 javax/swing/text/DevanagariEditor.java                                              8198397 generic-all
 javax/swing/text/GlyphPainter2/6427244/bug6427244.java                              8050988 generic-all
 javax/swing/text/JTextComponent/5074573/bug5074573.java                             7153690,8196100,8196100,8072110 macosx-all,windows-all,linux-all
-javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8214220,8172887 macosx-all,windows-all
+javax/swing/text/StyledEditorKit/4506788/bug4506788.java                            8214220,8172887 macosx-all,windows-all,linux-all
 javax/swing/text/StyledEditorKit/8016833/bug8016833.java                            8199055 generic-all
+javax/swing/text/TableView/TableViewLayoutTest.java                                 8194936 linux-all
 javax/swing/text/Utilities/8134721/bug8134721.java                                  8199062 generic-all
 javax/swing/text/Utilities/8142966/SwingFontMetricsTest.java                        8199529 windows-all
 javax/swing/text/View/8014863/bug8014863.java                                       8072110 windows-all,linux-all
 javax/swing/text/html/CSS/4530474/bug4530474.java                                   8194941 linux-all
-javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110 windows-all
+javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         8072110 windows-all,linux-all
 javax/swing/text/html/StyleSheet/BackgroundImage/BackgroundImagePosition.java       8198409 generic-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                    8208569 macosx-all
 javax/swing/text/html/parser/Parser/6836089/bug6836089.java                         8198401 generic-all
@@ -1093,6 +1092,8 @@ javax/swing/text/html/parser/Test8017492.java                                   
 javax/swing/text/html/parser/Parser/6990651/bug6990651.java                         8199060 generic-all
 javax/swing/text/html/parser/Parser/8078268/bug8078268.java                         8199092 generic-all
 javax/swing/text/html/parser/Parser/HtmlCommentTagParseTest/HtmlCommentTagParseTest.java 8199073 generic-all
+javax/swing/tree/DefaultTreeCellRenderer/6225504/bug6225504.java                    8194045 generic-all
+javax/swing/tree/DefaultTreeCellRenderer/7142955/bug7142955.java                    8199076 generic-all
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java                            8198920 macosx-all,linux-all,windows-all
 
@@ -1197,28 +1198,6 @@ javax/print/attribute/AttributeTest.java                                        
 javax/print/attribute/GetCopiesSupported.java                                       generic-all
 javax/print/attribute/SidesPageRangesTest.java                                      generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  generic-all
-
-# https://youtrack.jetbrains.com/issue/JRE-948
-
-java/awt/Component/F10TopToplevel/F10TopToplevel.html
-java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html JRE-948 macosx-all
-java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.html JRE-948 macosx-all
-java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JRE-948 macosx-all
-java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JRE-948 macosx-all
-java/awt/List/EmptyListEventTest/EmptyListEventTest.java                            JRE-948 macosx-all,windows-all (windows: commit testing)
-java/awt/event/KeyEvent/8020209/bug8020209.java                                     JRE-948 macosx-all
-java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JRE-948 macosx-all
-java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                  JRE-948 macosx-all
-javax/swing/JComboBox/4515752/DefaultButtonTest.java                                JRE-948 macosx-all
-javax/swing/JTabbedPane/7161568/bug7161568.java                                     JRE-948 macosx-all
-javax/swing/JTable/4220171/bug4220171.java                                          JRE-948 macosx-all
-javax/swing/JTable/7055065/bug7055065.java                                          JRE-948 macosx-all
-javax/swing/JTextArea/4697612/bug4697612.java                                       JRE-948,8159253 macosx-all,windows-all,linux-all
-javax/swing/JTree/6578666/bug6578666.java                                           JRE-948 macosx-all
-javax/swing/text/DefaultStyledDocument/6636983/bug6636983.java                      JRE-948 macosx-all
-javax/swing/text/TableView/TableViewLayoutTest.java                                 JRE-948,8194936 macosx-all,linux-all
-javax/swing/JComboBox/4199622/bug4199622.java                                       JRE-948 macosx-all
-java/awt/event/MouseEvent/MouseWheelEventAbsoluteCoordsTest/MouseWheelEventAbsoluteCoordsTest.html JRE-948 macosx-all
 
 tools/jlink/DefaultProviderTest.java                                                nobug windows-6.1 fails on Windows 7 only
 tools/jlink/JLinkTest.java                                                          nobug windows-6.1 fails on Windows 7 only
