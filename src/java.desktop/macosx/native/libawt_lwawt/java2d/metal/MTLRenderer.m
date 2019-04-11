@@ -663,4 +663,31 @@ MTLRenderer_DisableAAParallelogramProgram()
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DisableAAParallelogramProgram");
 }
 
+void debugDraw(MTLContext *ctx, id<MTLTexture> dst, int red/*othrewise blue*/, int freq) {
+    J2dTraceLn1(J2D_TRACE_VERBOSE, "draw debug onto dst tex=%p", dst);
+    MTLContext_SetColor(ctx, red > 0 ? red : 0, 0, red <= 0 ? 255 : 0, 255);
+    id <MTLRenderCommandEncoder> encoder = MTLContext_CreateRenderEncoder(ctx, dst);
+    const int w = dst.width;
+    const int h = dst.height;
+    int x = 2;
+    int y = 2;
+    do {
+        struct Vertex vvv[2] = {
+                {{MTLUtils_normalizeX(dst,x), MTLUtils_normalizeY(dst, y), 0.0}},
+                {{MTLUtils_normalizeX(dst, dst.width - x), MTLUtils_normalizeY(dst, dst.height - y), 0.0}},
+        };
+        [encoder setVertexBytes:vvv length:sizeof(vvv) atIndex:MeshVertexBuffer];
+        [encoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
+
+        if (freq == 0)
+            break;
+        if (freq > 0)
+            x += (w - 3)/freq;
+        else
+            y += (h - 3)/freq;
+    } while (x < w && y < h);
+
+    [encoder endEncoding];
+}
+
 #endif /* !HEADLESS */

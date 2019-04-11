@@ -38,6 +38,7 @@
 @synthesize ctx;
 @synthesize bufferWidth;
 @synthesize bufferHeight;
+@synthesize buffer;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
@@ -69,7 +70,8 @@
 }
 
 - (void) blitTexture {
-    if (self.ctx == NULL || self.javaLayer == NULL || ctx->mtlEmptyCommandBuffer) {
+    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || ctx->mtlEmptyCommandBuffer) {
+        J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p)", self.ctx, self.javaLayer, self.buffer);
         return;
     }
 
@@ -80,15 +82,15 @@
             self.framebufferOnly = NO;
 
             self.drawableSize =
-                CGSizeMake(ctx->mtlFrameBuffer.width,
-                           ctx->mtlFrameBuffer.height);
+                CGSizeMake(self.buffer.width,
+                           self.buffer.height);
 
             id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
             if (mtlDrawable == nil) {
                 return;
             }
-            J2dTraceLn4(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p, dst tex=%p (w=%d, h=%d)", ctx->mtlFrameBuffer, mtlDrawable.texture, ctx->mtlFrameBuffer.width, ctx->mtlFrameBuffer.height);
-            MTLBlitTex2Tex(ctx, ctx->mtlFrameBuffer, mtlDrawable.texture);
+            J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
+            MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
 
             dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
@@ -151,6 +153,7 @@ Java_sun_java2d_metal_MTLLayer_validate
         BMTLSDOps *bmtlsdo = (BMTLSDOps*) SurfaceData_GetOps(env, surfaceData);
         layer.bufferWidth = bmtlsdo->width;
         layer.bufferHeight = bmtlsdo->height;
+        layer.buffer = bmtlsdo->pTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx->mtlDevice;
     } else {

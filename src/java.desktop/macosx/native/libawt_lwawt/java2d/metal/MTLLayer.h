@@ -40,12 +40,14 @@
     MTLContext* ctx;
     float bufferWidth;
     float bufferHeight;
+    id<MTLTexture> buffer;
 }
 
 @property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
 @property (readwrite, assign) MTLContext* ctx;
 @property (readwrite, assign) float bufferWidth;
 @property (readwrite, assign) float bufferHeight;
+@property (readwrite, assign) id<MTLTexture> buffer;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
 

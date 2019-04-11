@@ -278,11 +278,55 @@ MTLContext_ResetTransform(MTLContext *mtlc)
     }];
 }
 
-void _traceMatrix(simd_float4x4 * mtx) {
+static void _traceMatrix(simd_float4x4 * mtx) {
     for (int row = 0; row < 4; ++row) {
         J2dTraceLn4(J2D_TRACE_VERBOSE, "  [%lf %lf %lf %lf]",
                     mtx->columns[0][row], mtx->columns[1][row], mtx->columns[2][row], mtx->columns[3][row]);
     }
+}
+
+static void _setTransform(MTLContext *mtlc, id<MTLTexture> dest,
+                        jdouble m00, jdouble m10,
+                        jdouble m01, jdouble m11,
+                        jdouble m02, jdouble m12
+) {
+    if (dest == nil) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLContext_SetTransformMetal: current dest is null");
+        return;
+    }
+
+    const double dw = dest.width;
+    const double dh = dest.height;
+
+    simd_float4x4 transform;
+    memset(&transform, 0, sizeof(transform));
+    transform.columns[0][0] = m00;
+    transform.columns[0][1] = m10;
+    transform.columns[1][0] = m01;
+    transform.columns[1][1] = m11;
+    transform.columns[3][0] = m02;
+    transform.columns[3][1] = m12;
+    transform.columns[3][3] = 1.0;
+    transform.columns[4][4] = 1.0;
+
+
+    simd_float4x4 normalize;
+    memset(&normalize, 0, sizeof(normalize));
+    normalize.columns[0][0] = 2/dw;
+    normalize.columns[1][1] = -2/dh;
+    normalize.columns[3][0] = -1.f;
+    normalize.columns[3][1] = 1.f;
+    normalize.columns[3][3] = 1.0;
+    normalize.columns[4][4] = 1.0;
+
+    mtlc->transform4x4 = simd_mul(normalize, transform);
+    mtlc->useTransform = JNI_TRUE;
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
+//    _traceMatrix(&(transform));
+//    _traceMatrix(&(normalize));
+//    _traceMatrix(&(mtlc->transform4x4));
+
 }
 
 /**
@@ -307,42 +351,10 @@ MTLContext_SetTransform(MTLContext *mtlc,
         return;
     }
 
-    // NOTE: called from RQ thread
+    // called from RQ thread
     // rendering commands encoding are done in AppKit-thread => to keep sync do the same
     [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-        J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
-
-        id<MTLTexture> dest = bmtlsdOps->pTexture;
-        const double dw = dest.width;
-        const double dh = dest.height;
-
-        simd_float4x4 transform;
-        memset(&transform, 0, sizeof(transform));
-        transform.columns[0][0] = m00;
-        transform.columns[0][1] = m10;
-        transform.columns[1][0] = m01;
-        transform.columns[1][1] = m11;
-        transform.columns[3][0] = m02;
-        transform.columns[3][1] = m12;
-        transform.columns[3][3] = 1.0;
-        transform.columns[4][4] = 1.0;
-
-
-        simd_float4x4 normalize;
-        memset(&normalize, 0, sizeof(normalize));
-        normalize.columns[0][0] = 2/dw;
-        normalize.columns[1][1] = -2/dh;
-        normalize.columns[3][0] = -1.f;
-        normalize.columns[3][1] = 1.f;
-        normalize.columns[3][3] = 1.0;
-        normalize.columns[4][4] = 1.0;
-
-        mtlc->transform4x4 = simd_mul(normalize, transform);
-        mtlc->useTransform = JNI_TRUE;
-
-//        _traceMatrix(&(transform));
-//        _traceMatrix(&(normalize));
-//        _traceMatrix(&(mtlc->transform4x4));
+        _setTransform(mtlc, bmtlsdOps->pTexture, m00, m10, m01, m11, m02, m12);
     }];
 }
 

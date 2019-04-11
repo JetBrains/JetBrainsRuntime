@@ -183,10 +183,6 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
             id<MTLTexture> texture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];
 
             bmtlsdo->pTexture = texture;
-
-            // TODO: fix mtlFrameBuffer initialization
-            // J2dTraceLn4(J2D_TRACE_VERBOSE, "\t NEW FRAME BUFFER: w=%d h=%d p=%p [tex=%p]", width, height, bmtlsdo, texture);
-            ctx->mtlFrameBuffer = texture;
         }
     }];
 

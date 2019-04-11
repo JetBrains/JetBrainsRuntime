@@ -94,7 +94,6 @@ typedef struct {
     id<MTLRenderPipelineState>  mtlBlitMatrixPipelineState;
     id<MTLCommandQueue>         mtlCommandQueue;
     id<MTLCommandBuffer>        mtlCommandBuffer;
-    id<MTLTexture>              mtlFrameBuffer;
     BOOL                        mtlEmptyCommandBuffer;
     id<MTLBuffer>               mtlVertexBuffer;
     jint                        mtlColor;

@@ -42,14 +42,21 @@
 extern MTLPixelFormat PixelFormats[];
 
 void _fillTxQuad(
-        struct TxtVertex * txQuadVerts,
+        struct TxtVertex * txQuadVerts, jboolean normalizeDst,
         jint sx1, jint sy1, jint sx2, jint sy2, jint sw, jint sh,
-        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2
+        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2, jdouble dw, jdouble dh
 ) {
     const float nsx1 = sx1/(float)sw;
     const float nsy1 = sy1/(float)sh;
     const float nsx2 = sx2/(float)sw;
     const float nsy2 = sy2/(float)sh;
+
+    if (normalizeDst) {
+        dx1 = (2.0*dx1/dw) - 1.0;
+        dy1 = 2.0*(1.0 - dy1/dh) - 1.0;
+        dx2 = (2.0*dx2/dw) - 1.0;
+        dy2 = 2.0*(1.0 - dy2/dh) - 1.0;
+    }
 
     txQuadVerts[0].position[0] = dx1;
     txQuadVerts[0].position[1] = dy1;
@@ -91,19 +98,6 @@ void _fillTxQuad(
 //
 // DEBUG funcs, will be removed later
 //
-
-void _drawDebugMarkers(MTLContext *ctx, BMTLSDOps *dstOps) {
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "draw debug markers onto bdst %p [tex=%p]", dstOps, dstOps->pTexture);
-    MTLContext_SetColor(ctx, 0, 0, 255, 255);
-    id <MTLRenderCommandEncoder> encoder = MTLContext_CreateRenderEncoder(ctx, dstOps->pTexture);
-    struct Vertex vvv[2] = {
-            {{MTLUtils_normalizeX(dstOps->pTexture, 2), MTLUtils_normalizeY(dstOps->pTexture, 2), 0.0}},
-            {{MTLUtils_normalizeX(dstOps->pTexture, 30), MTLUtils_normalizeY(dstOps->pTexture, 100), 0.0}},
-    };
-    [encoder setVertexBytes:vvv length:sizeof(vvv) atIndex:MeshVertexBuffer];
-    [encoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
-    [encoder endEncoding];
-}
 
 void _traceRaster(SurfaceDataRasInfo *srcInfo, int width, int height) {
     char * p = srcInfo->rasBase;
@@ -157,15 +151,14 @@ static void _drawTex2Tex(MTLContext *mtlc,
     id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dst);
     mtlc->mtlEmptyCommandBuffer = NO;
 
+    const jboolean normalize = !mtlc->useTransform;
     struct TxtVertex quadTxVerticesBuffer[6];
-    _fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2);
+    _fillTxQuad(quadTxVerticesBuffer, normalize, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2, dst.width, dst.height);
 
     [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
     [encoder setFragmentTexture:src atIndex: 0];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
     [encoder endEncoding];
-
-    // _drawDebugMarkers(ctx, dst);
 }
 
 void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest) {
