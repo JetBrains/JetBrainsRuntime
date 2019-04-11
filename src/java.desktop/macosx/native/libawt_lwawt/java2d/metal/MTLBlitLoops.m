@@ -243,7 +243,7 @@ MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmt
     id<MTLTexture> dest = bmtlsdOps->pTexture;
     J2dTraceLn7(J2D_TRACE_VERBOSE, "MTLBlitSwToSurface [replaceRegion]: bdst=%p [tex=%p], w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", bmtlsdOps, dest, width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
 
-    MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+    MTLRegion region = MTLRegionMake2D(sx1, sy1, width, height);
     [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
 }
 
