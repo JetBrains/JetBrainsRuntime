@@ -470,10 +470,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                 "MTLRenderQueue_SET_SCRATCH_SURFACE",
                                 "ERROR: mtl context is null");
                     } else {
-                        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                            mtlc = newMtlc;
-                            dstOps = NULL;
-                        }];
+                        mtlc = newMtlc;
+                        dstOps = NULL;
                     }
                 }
             }
@@ -585,9 +583,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                 if (dstOps != NULL) {
                     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-                    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                        dstCGLOps->configInfo->context->mtlColor = pixel;
-                    }];
+                    dstCGLOps->configInfo->context->mtlColor = pixel;
                 }
                 MTLPaints_SetColor(mtlc, pixel);
             }

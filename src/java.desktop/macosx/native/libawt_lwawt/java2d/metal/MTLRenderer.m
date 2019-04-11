@@ -144,9 +144,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, jint x1, jint y1, jint x2, jint y2) 
     }
 
     MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-        MTLRenderer_DrawLineMetal(dstCGLOps->configInfo->context, dstOps->pTexture, x1, y1, x2, y2);
-    }];
+    MTLRenderer_DrawLineMetal(dstCGLOps->configInfo->context, dstOps->pTexture, x1, y1, x2, y2);
 }
 
 void MTLRenderer_DrawRectMetal(MTLContext *mtlc, id<MTLTexture> dest, jint x, jint y, jint w, jint h) {
@@ -183,9 +181,7 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, jint x, jint y, jint w, jint h) {
     }
 
     MTLSDOps *dstCGLOps = (MTLSDOps *)bmtldst->privOps;
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-        MTLRenderer_DrawRectMetal(dstCGLOps->configInfo->context, bmtldst->pTexture, x, y, w, h);
-    }];
+    MTLRenderer_DrawRectMetal(dstCGLOps->configInfo->context, bmtldst->pTexture, x, y, w, h);
 }
 
 void _tracePoints(jint nPoints, jint *xPoints, jint *yPoints) {
@@ -233,7 +229,6 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc,
     __block struct {
         struct Vertex verts[POLYLINE_BUF_SIZE];
     } pointsChunk;
-    __block id<MTLRenderCommandEncoder> mtlEncoder = nil;
 
     jint prevX = *(xPoints++);
     jint prevY = *(yPoints++);
@@ -262,25 +257,22 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc,
         }
 
         nPoints -= chunkSize;
+        id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(ctx, dstOps->pTexture);
+        if (mtlEncoder == nil)
+            return;
 
-        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-            id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(ctx, dstOps->pTexture);
-            if (mtlEncoder == nil)
-                return;
+        [mtlEncoder setVertexBytes:pointsChunk.verts length:sizeof(pointsChunk.verts) atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize + 1];
+        if (drawCloseSegment) {
+            struct Vertex vertices[2] = {
+                    {{MTLUtils_normalizeX(dstOps->pTexture, prevX + transX),     MTLUtils_normalizeY(dstOps->pTexture, prevY + transY), 0.0}},
+                    {{MTLUtils_normalizeX(dstOps->pTexture, firstX + transX),    MTLUtils_normalizeY(dstOps->pTexture, firstY + transY), 0.0}},
+            };
+            [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
+        }
 
-            [mtlEncoder setVertexBytes:pointsChunk.verts length:sizeof(pointsChunk.verts) atIndex:MeshVertexBuffer];
-            [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize + 1];
-            if (drawCloseSegment) {
-                struct Vertex vertices[2] = {
-                        {{MTLUtils_normalizeX(dstOps->pTexture, prevX + transX),     MTLUtils_normalizeY(dstOps->pTexture, prevY + transY), 0.0}},
-                        {{MTLUtils_normalizeX(dstOps->pTexture, firstX + transX),    MTLUtils_normalizeY(dstOps->pTexture, firstY + transY), 0.0}},
-                };
-                [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
-                [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
-            }
-
-            [mtlEncoder endEncoding];
-        }];
+        [mtlEncoder endEncoding];
     }
 }
 
@@ -348,46 +340,44 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
 
         spanCount -= sc;
 
-        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-            id<MTLTexture> dest = dstOps->pTexture;
-            id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(ctx, dest);
-            if (mtlEncoder == nil)
-                return;
+        id<MTLTexture> dest = dstOps->pTexture;
+        id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(ctx, dest);
+        if (mtlEncoder == nil)
+            return;
 
-            ctx->mtlEmptyCommandBuffer = NO;
+        ctx->mtlEmptyCommandBuffer = NO;
 
-            for (int i = 0; i < sc; i++) {
-                jfloat x1 = spanStruct.spns[i * 4];
-                jfloat y1 = spanStruct.spns[i * 4 + 1];
-                jfloat x2 = spanStruct.spns[i * 4 + 2];
-                jfloat y2 = spanStruct.spns[i * 4 + 3];
+        for (int i = 0; i < sc; i++) {
+            jfloat x1 = spanStruct.spns[i * 4];
+            jfloat y1 = spanStruct.spns[i * 4 + 1];
+            jfloat x2 = spanStruct.spns[i * 4 + 2];
+            jfloat y2 = spanStruct.spns[i * 4 + 3];
 
-                struct Vertex verts[PGRAM_VERTEX_COUNT] = {
-                    {{(2.0 * x1 / dest.width) - 1.0,
-                    2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
+            struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+                {{(2.0 * x1 / dest.width) - 1.0,
+                2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
 
-                    {{2.0 * (x2) / dest.width - 1.0,
-                    2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
+                {{2.0 * (x2) / dest.width - 1.0,
+                2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
 
-                    {{2.0 * x1 / dest.width - 1.0,
-                    2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0}},
+                {{2.0 * x1 / dest.width - 1.0,
+                2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0}},
 
-                    {{2.0 * x2 / dest.width - 1.0,
-                    2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
+                {{2.0 * x2 / dest.width - 1.0,
+                2.0 * (1.0 - y1 / dest.height) - 1.0, 0.0}},
 
-                    {{2.0 * (x2) / dest.width - 1.0,
-                    2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0}},
+                {{2.0 * (x2) / dest.width - 1.0,
+                2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0}},
 
-                    {{2.0 * (x1) / dest.width - 1.0,
-                    2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0},
-                }};
+                {{2.0 * (x1) / dest.width - 1.0,
+                2.0 * (1.0 - y2 / dest.height) - 1.0, 0.0},
+            }};
 
-                [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-                [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
-            }
+            [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
+        }
 
-            [mtlEncoder endEncoding];
-        }];
+        [mtlEncoder endEncoding];
     }
 }
 
@@ -411,11 +401,9 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
         return;
     }
 
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-         MTLRenderer_FillParallelogramMetal(
-            dstCGLOps->configInfo->context, dstOps->pTexture,
-            fx11, fy11, dx21, dy21, dx12, dy12);
-     }];
+     MTLRenderer_FillParallelogramMetal(
+        dstCGLOps->configInfo->context, dstOps->pTexture,
+        fx11, fy11, dx21, dy21, dx12, dy12);
 }
 
 void

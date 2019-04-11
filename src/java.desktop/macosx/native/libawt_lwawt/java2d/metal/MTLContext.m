@@ -270,12 +270,8 @@ void
 MTLContext_ResetTransform(MTLContext *mtlc)
 {
     J2dTracePrimitive("MTLContext_ResetTransform");
-
-    // NOTE: rendering commands encoding are done in AppKit-thread => to keep sync do the same
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-        J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
-        mtlc->useTransform = JNI_FALSE;
-    }];
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
+    mtlc->useTransform = JNI_FALSE;
 }
 
 static void _traceMatrix(simd_float4x4 * mtx) {
@@ -351,11 +347,7 @@ MTLContext_SetTransform(MTLContext *mtlc,
         return;
     }
 
-    // called from RQ thread
-    // rendering commands encoding are done in AppKit-thread => to keep sync do the same
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-        _setTransform(mtlc, bmtlsdOps->pTexture, m00, m10, m01, m11, m02, m12);
-    }];
+    _setTransform(mtlc, bmtlsdOps->pTexture, m00, m10, m01, m11, m02, m12);
 }
 
 /**

@@ -368,12 +368,9 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     }
 
     // TODO: support other flags
-    [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-        MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint,
-                                sx1, sy1, sx2, sy2,
-                                dx1, dy1, dx2, dy2);
-
-    }];
+    MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint,
+                            sx1, sy1, sx2, sy2,
+                            dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -443,9 +440,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
             J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
             J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
-            [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^() {
-                MTLBlitSwToSurface(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-            }];
+            MTLBlitSwToSurface(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
     }
