@@ -499,6 +499,16 @@ void CheckFontSmoothingSettings(HWND hWnd) {
     }
 }
 
+BOOL ColorizationColorAffectsBorders() {
+    DWORD result = 0;
+    DWORD bufSize(sizeof(DWORD));
+    HKEY hKey = NULL;
+    if (::RegOpenKeyEx(HKEY_CURRENT_USER, _T("Software\\Microsoft\\Windows\\DWM"), 0, KEY_READ, &hKey) != ERROR_SUCCESS) return TRUE;
+    if (::RegQueryValueEx(hKey, _T("ColorPrevalence"), NULL, NULL, reinterpret_cast<LPBYTE>(&result), &bufSize) != ERROR_SUCCESS) return TRUE;
+    RegCloseKey(hKey);
+    return result == 0 ? FALSE : TRUE;
+}
+
 void AwtDesktopProperties::GetColorParameters() {
 
     SetColorProperty(TEXT("win.frame.activeCaptionGradientColor"),
@@ -525,6 +535,7 @@ void AwtDesktopProperties::GetColorParameters() {
         // [tav] todo: listen WM_DWMCOLORIZATIONCOLORCHANGED
         DwmGetColorizationColor(&color, &opaque);
         SetColorProperty(TEXT("win.dwm.colorizationColor"), RGB(GetBValue(color), GetGValue(color), GetRValue(color)));
+        SetBooleanProperty(TEXT("win.dwm.colorizationColor.affects.borders"), ColorizationColorAffectsBorders());
     }
 
     // ?? ?? ??
