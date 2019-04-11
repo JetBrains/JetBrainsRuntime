@@ -163,10 +163,6 @@ class FreetypeFontScaler extends FontScaler {
             .getNullScaler().getGlyphVectorOutline(0L, glyphs, numGlyphs, x, y);
     }
 
-    synchronized long getLayoutTableCache() throws FontScalerException {
-        return getLayoutTableCacheNative(nativeScaler);
-    }
-
     /* This method should not be called directly, in case
      * it is being invoked from a thread with a native context.
      */
@@ -260,8 +256,6 @@ class FreetypeFontScaler extends FontScaler {
             int[] glyphs, int numGlyphs, float x, float y);
     private native Point2D.Float getGlyphPointNative(Font2D font,
             long pScalerContext, long pScaler, int glyphCode, int ptNumber);
-
-    private native long getLayoutTableCacheNative(long pScaler);
 
     private native void disposeNativeScaler(Font2D font2D, long pScaler);
 
