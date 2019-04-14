@@ -49,7 +49,8 @@ MTLPaints_SetColor(MTLContext *mtlc, jint pixel)
 {
     //TODO
     J2dTraceNotImplPrimitive("MTLPaints_SetColor");
-    J2dTraceLn1(J2D_TRACE_INFO, "MTLPaints_SetColor: pixel=%08x", pixel);
+    mtlc->mtlColor = pixel;
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLPaints_SetColor: pixel=%08x [r=%d g=%d b=%d a=%d]", pixel, (pixel >> 16) & (0xFF), (pixel >> 8) & 0xFF, (pixel) & 0xFF, (pixel >> 24) & 0xFF);
 }
 
 /************************* GradientPaint support ****************************/

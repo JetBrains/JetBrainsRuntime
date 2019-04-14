@@ -97,6 +97,8 @@ typedef struct {
     BOOL                        mtlEmptyCommandBuffer;
     id<MTLBuffer>               mtlVertexBuffer;
     jint                        mtlColor;
+    MTLScissorRect              mtlClipRect;
+    jboolean                    useClip;
     dispatch_semaphore_t 	    mtlRenderSemaphore;
 } MTLContext;
 

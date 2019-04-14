@@ -155,6 +155,7 @@ MTLContext_ResetClip(MTLContext *mtlc)
     //TODO
     J2dTraceNotImplPrimitive("MTLContext_ResetClip");
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetClip");
+    mtlc->useClip = JNI_FALSE;
 }
 
 /**
@@ -169,9 +170,13 @@ MTLContext_SetRectClip(MTLContext *mtlc, BMTLSDOps *dstOps,
     jint width = x2 - x1;
     jint height = y2 - y1;
 
-    J2dTraceLn4(J2D_TRACE_INFO,
-                "MTLContext_SetRectClip: x=%d y=%d w=%d h=%d",
-                x1, y1, width, height);
+    J2dTraceLn4(J2D_TRACE_INFO, "MTLContext_SetRectClip: x=%d y=%d w=%d h=%d", x1, y1, width, height);
+
+    mtlc->mtlClipRect.x = x1;
+    mtlc->mtlClipRect.y = y1;
+    mtlc->mtlClipRect.width = width;
+    mtlc->mtlClipRect.height = height;
+    mtlc->useClip = JNI_TRUE;
 }
 
 /**
@@ -484,6 +489,9 @@ id<MTLRenderCommandEncoder> _createRenderEncoder(MTLContext *mtlc, id<MTLTexture
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
     [mtlEncoder setRenderPipelineState:mtlc->mtlPipelineState];
+
+    if (mtlc->useClip)
+        [mtlEncoder setScissorRect:mtlc->mtlClipRect];
 
     // set color from ctx
     int r = (mtlc->mtlColor >> 16) & (0xFF);
