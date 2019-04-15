@@ -52,10 +52,9 @@ public class MoveFocusShortcutTest {
 
     private static final int PAUSE = 2000;
 
-    private static TestFrame frame1;
-    private static TestFrame frame2;
-    private static TestFrame frame3;
+    private static final int framesCount = 3;
 
+    private static TestFrame[] frames;
     private static WindowAdapter frameFocusListener;
 
     private static Robot robot;
@@ -83,9 +82,7 @@ public class MoveFocusShortcutTest {
             throw new RuntimeException("ERROR: Cannot execute the test in headless environment");
         }
 
-        frame1 = new TestFrame("TestFrame1");
-        frame2 = new TestFrame("TestFrame2");
-        frame3 = new TestFrame("TestFrame3");
+        frames = new TestFrame[framesCount];
 
         frameFocusListener = new WindowAdapter() {
             @Override
@@ -106,67 +103,60 @@ public class MoveFocusShortcutTest {
             robot.setAutoDelay(50);
 
             System.out.println("Open test frames");
-            showGUI();
-
-            Thread.sleep(PAUSE);
-            robot.waitForIdle();
-
-            boolean check1 = (frame1.getLatch().getCount() == 1);
-            boolean check2 = (frame2.getLatch().getCount() == 1);
-            boolean check3 = (frame3.getLatch().getCount() == 1);
-
-            if (check1 && check2 && check3) {
-                System.out.println("All frames were opened");
-            } else {
-                throw new RuntimeException("Test ERROR: Cannot focus the TestFrame(s): "
-                        + getFailedChecksString(check1, check2, check3));
+            for(int i = 0; i < framesCount; i++) {
+                showFrame(i);
+                Thread.sleep(PAUSE);
+                robot.waitForIdle();
             }
 
-            moveFocusToNextWindow();
-            Thread.sleep(PAUSE);
-            robot.waitForIdle();
+            String check = "";
+            for(int i = 0; i < framesCount; i++) {
+                if(frames[i].getLatch().getCount() != 1) {
+                    check += check.isEmpty() ? i : (", " + i);
+                }
+            }
+            if (check.isEmpty()) {
+                System.out.println("All frames were opened");
+            } else {
+                throw new RuntimeException("Test ERROR: Cannot focus the TestFrame(s): " + check);
+            }
 
-            moveFocusToNextWindow();
-            Thread.sleep(PAUSE);
-            robot.waitForIdle();
+            for(int i = 0; i < framesCount; i++) {
+                moveFocusToNextWindow();
+                Thread.sleep(PAUSE);
+                robot.waitForIdle();
+            }
 
-            moveFocusToNextWindow();
-            Thread.sleep(PAUSE);
-            robot.waitForIdle();
-
-            boolean result1 = frame1.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
-            boolean result2 = frame2.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
-            boolean result3 = frame3.getLatch().await(PAUSE, TimeUnit.MILLISECONDS);
-
-            if(result1 && result2 && result3) {
+            String result = "";
+            for(int i = 0; i < framesCount; i++) {
+                if(!frames[i].getLatch().await(PAUSE, TimeUnit.MILLISECONDS)) {
+                    result += result.isEmpty() ? i : (", " + i);
+                }
+            }
+            if(result.isEmpty()) {
                 System.out.println("Test PASSED");
             } else {
                 throw new RuntimeException("Test FAILED: Command+` shortcut cannot move focus to the TestFrame(s): "
-                        + getFailedChecksString(result1 , result2 , result3));
+                        + result);
             }
         } finally {
-            destroyGUI();
+            for(int i = 0; i < framesCount; i++) {
+                destroyFrame(i);
+            }
             /* Waiting for EDT auto-shutdown */
             Thread.sleep(PAUSE);
         }
     }
 
     /*
-     * Opens test frames
+     * Opens a test frame
      */
-    private static void showGUI() {
-        frame1.setSize(400, 200);
-        frame2.setSize(400, 200);
-        frame3.setSize(400, 200);
-        frame1.setLocation(50, 50);
-        frame2.setLocation(100, 100);
-        frame3.setLocation(150, 150);
-        frame1.addWindowFocusListener(frameFocusListener);
-        frame2.addWindowFocusListener(frameFocusListener);
-        frame3.addWindowFocusListener(frameFocusListener);
-        frame1.setVisible(true);
-        frame2.setVisible(true);
-        frame3.setVisible(true);
+    private static void showFrame(int num) {
+        frames[num] = new TestFrame("TestFrame" + num);
+        frames[num].setSize(400, 200);
+        frames[num].setLocation(50*(num+1), 50*(num+1));
+        frames[num].addWindowFocusListener(frameFocusListener);
+        frames[num].setVisible(true);
     }
 
     /*
@@ -181,29 +171,12 @@ public class MoveFocusShortcutTest {
     }
 
     /*
-     * Returns string containing positions of the false values
+     * Disposes a test frame
      */
-    private static String getFailedChecksString(boolean ... values) {
-        int i = 0;
-        String result = "";
-        for (boolean value : values) {
-            i++;
-            if(!value) {
-                result += result.isEmpty() ? i : (", " + i);
-            }
+    private static void destroyFrame(int num) {
+        if(frames[num] != null) {
+            frames[num].removeWindowFocusListener(frameFocusListener);
+            frames[num].dispose();
         }
-        return result;
-    }
-
-    /*
-     * Disposes test frames
-     */
-    private static void destroyGUI() {
-        frame1.removeWindowFocusListener(frameFocusListener);
-        frame2.removeWindowFocusListener(frameFocusListener);
-        frame3.removeWindowFocusListener(frameFocusListener);
-        frame1.dispose();
-        frame2.dispose();
-        frame3.dispose();
     }
 }
