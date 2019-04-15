@@ -139,6 +139,9 @@ public class JDialog1054 {
             owner.setLocation(ownerLoc);
             owner.setSize(ownerDim);
             owner.setVisible(true);
+        };
+
+        final Runnable nonModalDialogRunner = () -> {
             nonModalDialog.setLocation(nonModalLoc);
             nonModalDialog.setSize(nonModalDim);
             nonModalDialog.getContentPane().add(nonModalDialogButton,  BorderLayout.CENTER);
@@ -172,6 +175,9 @@ public class JDialog1054 {
         try {
             System.out.println("Open owner frame and non-modal dialog");
             SwingUtilities.invokeLater(frameRunner);
+            // Wait for a while to improve the visibility of the test run
+            Thread.sleep(pause);
+            SwingUtilities.invokeLater(nonModalDialogRunner);
             if(!nonModalDialogGainedFocus.await(timeout, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Test ERROR: Cannot focus on non-modal dialog");
             }
