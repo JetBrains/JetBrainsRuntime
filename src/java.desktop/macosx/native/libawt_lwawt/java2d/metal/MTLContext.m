@@ -452,6 +452,7 @@ void MTLContext_SetColor(MTLContext *mtlc, int r, int g, int b, int a) {
     mtlc->mtlColor |= (g & (0xFF)) << 8;
     mtlc->mtlColor |= b & (0xFF);
     mtlc->mtlColor |= (a & (0xFF)) << 24;
+    J2dTraceLn4(J2D_TRACE_INFO, "MTLContext_SetColor (%d, %d, %d) %d", r,g,b,a);
 }
 
 static id<MTLCommandBuffer> _getCommandBuffer(MTLContext *mtlc) {

@@ -397,7 +397,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc,
     MTLSDOps *dstCGLOps = (MTLSDOps *) dstOps->privOps;
     MTLContext* ctx = dstCGLOps->configInfo->context;
     if (ctx == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillSpans: current mtlContext os null");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillParallelogram: current mtlContext os null");
         return;
     }
 

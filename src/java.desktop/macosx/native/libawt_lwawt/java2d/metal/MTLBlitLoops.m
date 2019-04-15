@@ -40,6 +40,7 @@
 #include "IntArgbPre.h"
 
 extern MTLPixelFormat PixelFormats[];
+extern void J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 
 void _fillTxQuad(
         struct TxtVertex * txQuadVerts, jboolean normalizeDst,
@@ -206,10 +207,9 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
 {
     id<MTLTexture> srcTex = srcOps->pTexture;
 
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit [texture->surface]: bsrc=%p [tex=%p], bdst=%p [tex=%p]", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture);
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", srcTex.width, srcTex.height, dstOps->width, dstOps->height);
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+#ifdef DEBUG
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [texture->surface]: bsrc=%p [tex=%p], bdst=%p [tex=%p] | s (%dx%d) -> d (%dx%d) | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture, srcTex.width, srcTex.height, dstOps->width, dstOps->height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+#endif //DEBUG
 
     _drawTex2Tex(mtlc, srcOps->pTexture, dstOps->pTexture, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
@@ -241,7 +241,10 @@ MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmt
     const int height = sy2 - sy1;
 
     id<MTLTexture> dest = bmtlsdOps->pTexture;
-    J2dTraceLn7(J2D_TRACE_VERBOSE, "MTLBlitSwToSurface [replaceRegion]: bdst=%p [tex=%p], w=%d, h=%d, Sstride=%d, Pstride=%d, offset=%d", bmtlsdOps, dest, width, height, srcInfo->scanStride, srcInfo->pixelStride, srcInfo->pixelBitOffset);
+
+#ifdef DEBUG
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitSwToSurface [replaceRegion]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, width, height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+#endif //DEBUG
 
     MTLRegion region = MTLRegionMake2D(sx1, sy1, width, height);
     [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
@@ -414,8 +417,6 @@ MTLBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
-    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit: src=%p bdst=%p", jlong_to_ptr(pSrcOps), jlong_to_ptr(pDstOps));
-
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
         if (srcInfo.rasBase) {
@@ -435,10 +436,6 @@ MTLBlitLoops_Blit(JNIEnv *env,
                 dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
                 sy2 = srcInfo.bounds.y2;
             }
-
-            J2dTraceLn3(J2D_TRACE_VERBOSE, "  texture=%d srctype=%d hint=%d", texture, srctype, hint);
-            J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
-            J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
             MTLBlitSwToSurface(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
         }
