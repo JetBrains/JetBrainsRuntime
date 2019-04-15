@@ -562,7 +562,7 @@ java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java           
 java/awt/Toolkit/DesktopProperties/rfe4758438.java                                  8193547 linux-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java                       8208514 windows-all
 java/awt/Toolkit/RealSync/Test.java                                                 6849383 generic-all
-java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                             6829250 windows-all,macosx-all
+java/awt/Toolkit/ScreenInsetsTest/ScreenInsetsTest.java                             6829250 windows-all,linux-all,macosx-all
 java/awt/Toolkit/ToolkitPropertyTest/ToolkitPropertyTest_Enable.java                6847163 generic-all
 java/awt/TrayIcon/ActionCommand/ActionCommand.java                                  8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/ActionEventMask/ActionEventMask.java                              8197575,8150540 macosx-all,windows-all
@@ -645,7 +645,7 @@ java/awt/font/TextLayout/OSXLigatureTest.java                                   
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
 java/awt/font/StyledMetrics/BoldSpace.java                                          8198422 linux-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150 macosx-all
-java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 windows-all
+java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 windows-all,linux-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 linux-all,solaris-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java                              8056077 generic-all
 java/awt/image/DrawImage/IncorrectBounds.java                                       8169473 windows-all
@@ -1023,7 +1023,7 @@ javax/swing/JTree/8003400/Test8003400.java                                      
 javax/swing/JTree/8003830/bug8003830.java                                           8199057 generic-all
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java                                    8159131 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java      8081476 windows-all,macosx-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java       8194128 macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java       8194128 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8198667 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8079254 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java          8013450 macosx-all,windows-all
@@ -1181,7 +1181,9 @@ jdk/jfr/event/oldobject/TestLargeRootSet.java                                   
 jdk/jfr/event/os/TestSystemProcess.java                                             8202835 linux-all
 jdk/jfr/startupargs/TestMemoryOptions.java                                          8207970 linux-all
 
-sun/nio/ch/TestMaxCachedBufferSize.java                                             8212812 generic-all
+lib/security/cacerts/VerifyCACerts.java                                             8212812 generic-all
+
+sun/nio/ch/TestMaxCachedBufferSize.java                                             8207321 generic-all
 
 demo/jfc/J2Ddemo/J2DdemoTest.java                                                   8213118 generic-all
 
