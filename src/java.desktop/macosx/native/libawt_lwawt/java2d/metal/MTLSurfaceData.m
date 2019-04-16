@@ -138,11 +138,11 @@ Java_sun_java2d_metal_MTLSurfaceData_initTexture
 
 /**
  * Initializes a framebuffer object, using the given width and height as
- * a guide.  See MTLSD_InitTextureObject() and MTLSD_InitFBObject()
+ * a guide.  See MTLSD_InitTextureObject() and MTLSD_initRTexture()
  * for more information.
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_java2d_metal_MTLSurfaceData_initFBObject
+Java_sun_java2d_metal_MTLSurfaceData_initRTexture
     (JNIEnv *env, jobject mtlsd,
      jlong pData, jboolean isOpaque,
      jboolean texNonPow2, jboolean texRect,
@@ -153,7 +153,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
 
     if (bmtlsdo == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFBObject: BMTLSDOps are null");
+            "MTLSurfaceData_initRTexture: BMTLSDOps are null");
         return JNI_FALSE;
     }
 
@@ -161,12 +161,12 @@ Java_sun_java2d_metal_MTLSurfaceData_initFBObject
 
     if (mtlsdo == NULL) {
         J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initFBObject: MTLSDOps are null");
+            "MTLSurfaceData_initRTexture: MTLSDOps are null");
         return JNI_FALSE;
     }
 
     if (mtlsdo->configInfo == NULL || mtlsdo->configInfo->context == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initFBObject: MTLSDOps wasn't initialized (context is null)");
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initRTexture: MTLSDOps wasn't initialized (context is null)");
         return JNI_FALSE;
     }
 

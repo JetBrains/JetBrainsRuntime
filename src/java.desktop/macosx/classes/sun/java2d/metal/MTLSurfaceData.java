@@ -330,7 +330,7 @@ public abstract class MTLSurfaceData extends SurfaceData
                                          boolean texRect,
                                          int width, int height);
 
-    protected native boolean initFBObject(long pData,
+    protected native boolean initRTexture(long pData,
                                           boolean isOpaque, boolean texNonPow2,
                                           boolean texRect,
                                           int width, int height);
@@ -360,7 +360,7 @@ public abstract class MTLSurfaceData extends SurfaceData
             break;
 
         case RT_TEXTURE:
-            success = initFBObject(getNativeOps(),
+            success = initRTexture(getNativeOps(),
                                    isOpaque, isTexNonPow2Available(),
                                    isTexRectAvailable(),
                                    width, height);
