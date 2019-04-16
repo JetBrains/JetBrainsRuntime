@@ -249,8 +249,7 @@ MTLContext_SetAlphaComposite(MTLContext *mtlc,
 {
     //TODO
     J2dTraceNotImplPrimitive("MTLContext_SetAlphaComposite");
-    J2dTraceLn1(J2D_TRACE_INFO,
-                "MTLContext_SetAlphaComposite: flags=%d", flags);
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLContext_SetAlphaComposite: rule=%d, extraAlpha=%1.2f, flags=%d", rule, extraAlpha, flags);
 }
 
 /**
@@ -464,7 +463,6 @@ static id<MTLCommandBuffer> _getCommandBuffer(MTLContext *mtlc) {
     if (mtlc == NULL)
         return nil;
     if (mtlc->mtlCommandBuffer == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext: created command buffer (outside BeginFrame)");
         mtlc->mtlCommandBuffer = [[mtlc->mtlCommandQueue commandBuffer] retain];
     }
     return mtlc->mtlCommandBuffer;
