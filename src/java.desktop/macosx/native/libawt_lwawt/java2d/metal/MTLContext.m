@@ -455,6 +455,11 @@ void MTLContext_SetColor(MTLContext *mtlc, int r, int g, int b, int a) {
     J2dTraceLn4(J2D_TRACE_INFO, "MTLContext_SetColor (%d, %d, %d) %d", r,g,b,a);
 }
 
+void MTLContext_SetColorInt(MTLContext *mtlc, int pixel) {
+    mtlc->mtlColor = pixel;
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLContext_SetColorInt: pixel=%08x [r=%d g=%d b=%d a=%d]", pixel, (pixel >> 16) & (0xFF), (pixel >> 8) & 0xFF, (pixel) & 0xFF, (pixel >> 24) & 0xFF);
+}
+
 static id<MTLCommandBuffer> _getCommandBuffer(MTLContext *mtlc) {
     if (mtlc == NULL)
         return nil;
