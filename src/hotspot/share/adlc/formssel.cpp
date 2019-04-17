@@ -774,6 +774,10 @@ bool InstructForm::captures_bottom_type(FormDict &globals) const {
        !strcmp(_matrule->_rChild->_opType,"CheckCastPP")  ||
        !strcmp(_matrule->_rChild->_opType,"GetAndSetP")   ||
        !strcmp(_matrule->_rChild->_opType,"GetAndSetN")   ||
+#if INCLUDE_ZGC
+       !strcmp(_matrule->_rChild->_opType,"LoadBarrierSlowReg") ||
+       !strcmp(_matrule->_rChild->_opType,"LoadBarrierWeakSlowReg") ||
+#endif
        !strcmp(_matrule->_rChild->_opType,"CompareAndExchangeP") ||
        !strcmp(_matrule->_rChild->_opType,"CompareAndExchangeN")))  return true;
   else if ( is_ideal_load() == Form::idealP )                return true;
