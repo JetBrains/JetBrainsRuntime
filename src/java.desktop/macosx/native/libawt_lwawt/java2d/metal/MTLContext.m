@@ -406,6 +406,7 @@ MTLContext_DestroyContextResources(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_DestroyContextResources");
 
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+    [mtlc->mtlTexturePool release];
     [mtlc->mtlDevice release];
     mtlc->mtlDevice = nil;
 

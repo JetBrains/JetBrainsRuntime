@@ -179,6 +179,7 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 
 
     mtlc->mtlDevice = [CGDirectDisplayCopyCurrentMetalDevice(displayID) retain];
+    mtlc->mtlTexturePool = [[[MTLTexturePool alloc] initWithDevice:mtlc->mtlDevice] retain];
 
     mtlc->mtlVertexBuffer = [[mtlc->mtlDevice  newBufferWithBytes:verts
                                                            length:sizeof(verts)

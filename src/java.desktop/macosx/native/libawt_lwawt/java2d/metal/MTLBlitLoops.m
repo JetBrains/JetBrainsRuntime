@@ -226,27 +226,33 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
  */
 
 static void
-MTLBlitSwToSurface(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
+MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
                    MTPixelFormat *pf,
                    jint sx1, jint sy1, jint sx2, jint sy2,
                    jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     if (bmtlsdOps == NULL || bmtlsdOps->pTexture == NULL) {
-        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurface: dest is null");
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: dest is null");
         return;
     }
 
-    const int width = sx2 - sx1;
-    const int height = sy2 - sy1;
-
+    const int sw = sx2 - sx1;
+    const int sh = sy2 - sy1;
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
 #ifdef DEBUG
-    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitSwToSurface [replaceRegion]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, width, height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitSwToSurfaceViaTexture: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
-    MTLRegion region = MTLRegionMake2D(sx1, sy1, width, height);
-    [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride];
+    id<MTLTexture> texBuff = [ctx->mtlTexturePool getTexture:sw height:sh format:MTLPixelFormatBGRA8Unorm];
+    if (texBuff == nil) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: can't obtain temporary texture object from pool");
+        return;
+    }
+    MTLRegion region = MTLRegionMake2D(0, 0, sw, sh);
+    [texBuff replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride]; // texBuff is locked for current frame
+
+    _drawTex2Tex(ctx, texBuff, dest, 0, 0, 0, 0, sw, sh, dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -395,7 +401,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
     SurfaceDataRasInfo srcInfo;
-    MTLPixelFormat pf = PixelFormats[srctype];
+    MTLPixelFormat pf = MTLPixelFormatBGRA8Unorm;//PixelFormats[srctype];
     jint sw    = sx2 - sx1;
     jint sh    = sy2 - sy1;
     jdouble dw = dx2 - dx1;
@@ -403,6 +409,10 @@ MTLBlitLoops_Blit(JNIEnv *env,
 
     if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0 || srctype < 0) {
         J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: invalid dimensions or srctype");
+        return;
+    }
+    if (dstOps == NULL || dstOps->pTexture == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
         return;
     }
 
@@ -415,6 +425,8 @@ MTLBlitLoops_Blit(JNIEnv *env,
         J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: could not acquire lock");
         return;
     }
+
+    J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit:  pf=%d texture=%d srctype=%d xform=%d hint=%d", pf, texture, srctype, xform, hint);
 
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
@@ -436,7 +448,17 @@ MTLBlitLoops_Blit(JNIEnv *env,
                 sy2 = srcInfo.bounds.y2;
             }
 
-            MTLBlitSwToSurface(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+            const jboolean useReplaceRegion = MTLContext_IsBlendingDisabled(mtlc) && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f; // blending disabled and dimensions are equal
+            if (useReplaceRegion) {
+                id<MTLTexture> dest = dstOps->pTexture;
+                MTLRegion region = MTLRegionMake2D(dx1, dy1, dx2 - dx1, dy2 - dy1);
+#ifdef DEBUG
+                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "\treplaceRegion: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dest, dest.width, dest.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+#endif //DEBUG
+                [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride]; // executed at CPU (sync)
+            } else {
+                MTLBlitSwToSurfaceViaTexture(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+            }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
     }

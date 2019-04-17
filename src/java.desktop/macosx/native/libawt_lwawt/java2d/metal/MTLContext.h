@@ -35,6 +35,7 @@
 #import <Metal/Metal.h>
 #include "j2d_md.h"
 #include "MTLSurfaceDataBase.h"
+#include "MTLTexturePool.h"
 
 /**
  * The MTLBlendRule structure encapsulates the two enumerated values that
@@ -101,6 +102,8 @@ typedef struct {
     jint                        mtlColor;
     MTLScissorRect              mtlClipRect;
     jboolean                    useClip;
+
+    MTLTexturePool*             mtlTexturePool;
 } MTLContext;
 
 /**
