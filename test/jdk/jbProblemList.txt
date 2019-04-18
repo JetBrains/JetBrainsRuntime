@@ -121,11 +121,11 @@ java/awt/Choice/ChoiceGeneratesItemEvents/ChoiceGeneratesItemEvents.html        
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html                  6849922 macosx-all,windows-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 macosx-all,linux-all,windows-all
-java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all
+java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all,linux-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.html        8194045 generic-all
 java/awt/Choice/PopupPosTest/PopupPosTest.html                                      8192930 windows-all
 java/awt/Choice/RemoveAllShrinkTest/RemoveAllShrinkTest.java                        8047703 generic-all
-java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8014503,8192929 windows-all,linux-all
+java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                    8014503,8192929 windows-all,macosx-all,linux-all
 java/awt/Clipboard/ClipboardSecurityTest/ClipboardSecurity.html                     8194045 generic-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.html                           8017454 macosx-all
 java/awt/Color/AlphaColorTest.java                                                  8211286 windows-all,macosx-all,linux-all
@@ -279,7 +279,7 @@ java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                             
 java/awt/Mixing/MixingOnDialog.java                                                 7124549 macosx-all,windows-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java                                      7124549 macosx-all,windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java                                         7124549 macosx-all,windows-all
-java/awt/Mixing/OpaqueTest.java                                                     7124549 macosx-all,windows-all
+java/awt/Mixing/OpaqueTest.java                                                     7124549,8169457 macosx-all,windows-all,linux-all
 java/awt/Mixing/OverlappingButtons.java                                             7124549 macosx-all,windows-all,linux-all
 java/awt/Mixing/Validating.java                                                     8198002 windows-all
 java/awt/Modal/FileDialog/FileDialogAppModal1Test.java                              7186009,8198664 macosx-all,windows-all,linux-all
@@ -534,7 +534,7 @@ java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java              
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java                               8005021 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java                        8051455 macosx-all
 java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.html                                 8169534 macosx-all,windows-all
-java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java                8168388 windows-all,macosx-all
+java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java                8168388 windows-all,macosx-all,linux-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8196017 windows-all,linux-all (linux: NPE commit testing)
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             8052166 linux-all
 java/awt/Mouse/MouseDragEvent/MouseDraggedTest.java                                 8080676,8129775 generic-all
@@ -545,6 +545,7 @@ java/awt/Mouse/RemovedComponentMouseListener/RemovedComponentMouseListener.java 
 java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                         8148041 linux-all
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
+java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java           8155744 windows-all,linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/Paint/bug8024864.java                                                      8176512 windows-all,macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
@@ -639,11 +640,12 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java       
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.html           8204200,8060176 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           8204200 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                     8169475 windows-all,linux-all
+java/awt/font/Rotate/RotatedTextTest.java                                           8219641 linux-all
+java/awt/font/StyledMetrics/BoldSpace.java                                          8198422 linux-all
 java/awt/font/TextLayout/CombiningPerf.java                                         8192931 generic-all
 java/awt/font/TextLayout/LigatureCaretTest.java                                     8197821 generic-all
 java/awt/font/TextLayout/OSXLigatureTest.java                                       JRE-865 macosx-all
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
-java/awt/font/StyledMetrics/BoldSpace.java                                          8198422 linux-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150 macosx-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 windows-all
 java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 linux-all,solaris-all
@@ -989,6 +991,7 @@ javax/swing/JRadioButton/8033699/bug8033699.java                                
 javax/swing/JRadioButton/8041561/bug8041561.java                                    8194941 linux-all
 javax/swing/JRadioButton/8075609/bug8075609.java                                    8197552 macosx-all,windows-all,linux-all
 javax/swing/JRadioButton/ButtonGroupFocus/ButtonGroupFocusTest.java                 8197552 macosx-all,windows-all,linux-all
+javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                         8221902 windows-all,linux-all (windows: commit testing)
 javax/swing/JRootPane/4670486/bug4670486.java                                       8197552 macosx-all,windows-all,linux-all
 javax/swing/JScrollBar/4708809/bug4708809.java                                      8169957,8072110 macosx-all,windows-all,linux-all
 javax/swing/JScrollBar/6924059/bug6924059.java                                      8199078 generic-all
@@ -1119,6 +1122,7 @@ tools/jimage/JImageExtractTest.java                                             
 
 com/sun/jdi/BasicJDWPConnectionTest.java                                            8195703 generic-all
 com/sun/jdi/RedefineImplementor.sh                                                  8004127 generic-all
+com/sun/jdi/FieldWatchpoints.java                                                   8206438 generic-all
 com/sun/jdi/Frames2Test.java                                                        JRE-1165 generic-all
 com/sun/jdi/JdbExprTest.sh                                                          8203393 solaris-all
 com/sun/jdi/JdbMethodExitTest.sh                                                    8203393 solaris-all
@@ -1171,6 +1175,8 @@ com/apple/eawt/DefaultMenuBar/DefaultMenuBarTest.java                           
 com/sun/jdi/RedefineCrossEvent.java                                                 8194308 generic-all  Java EE Module Removal
 
 ############################################################################
+
+jdk/internal/platform/cgroup/TestCgroupMetrics.java                                 8222533 linux-all
 
 # jdk_jfr
 
