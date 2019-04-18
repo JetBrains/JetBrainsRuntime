@@ -549,6 +549,8 @@ static BOOL shouldUsePressAndHold() {
 
     if (status == noErr && isDeadKeyPressed != 0) {
 
+        UInt32 isDeadKeyPressedForSpace;
+
         status = UCKeyTranslate(
                     keyboardLayout,
                     kVK_Space,
@@ -556,7 +558,7 @@ static BOOL shouldUsePressAndHold() {
                     0,
                     LMGetKbdType(),
                     0,
-                    &isDeadKeyPressed,
+                    &isDeadKeyPressedForSpace,
                     lengthOfBuffer,
                     &actualLength,
                     stringWithChars);
