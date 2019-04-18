@@ -1,8 +1,8 @@
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java                                  nobug macosx-all,linux-all,windows-all
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                          nobug macosx-all,windows-all
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
-java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all
-java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                            nobug macosx-all,windows-all
+java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
+java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
@@ -174,7 +174,6 @@ javax/swing/JPopupMenu/6544309/bug6544309.java                                  
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all
 javax/swing/JRadioButton/8041561/bug8041561.java                                            nobug windows-all
-javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                                 nobug windows-all
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
@@ -202,7 +201,7 @@ javax/swing/plaf/windows/6921687/bug6921687.java                                
 javax/swing/reliability/TaskUndJFrameProperties.java                                        nobug windows-all
 javax/swing/reliability/TaskZoomJFrameChangeState.java                                      nobug linux-all,windows-all
 javax/swing/reliability/TaskZoomJFrameRepaint.java                                          nobug linux-all,windows-all
-javax/swing/text/CSSBorder/6796710/bug6796710.java                                          nobug windows-all
+javax/swing/text/Caret/TestCaretPosition.java                                               nobug linux-all
 javax/swing/text/FlowView/LayoutTest.java                                                   nobug windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java                                           nobug windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                            nobug macosx-all,windows-all
