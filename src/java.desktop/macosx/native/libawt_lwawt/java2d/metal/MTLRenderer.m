@@ -55,8 +55,6 @@ void MTLRenderer_FillParallelogramMetal(
                 dx1, dy1,
                 dx2, dy2, dest);
 
-    mtlc->mtlEmptyCommandBuffer = NO;
-
     struct Vertex verts[PGRAM_VERTEX_COUNT] = {
     { {(2.0*x/dest.width) - 1.0,
        2.0*(1.0 - y/dest.height) - 1.0, 0.0}},
@@ -124,8 +122,6 @@ void MTLRenderer_DrawLineMetal(MTLContext *mtlc, id<MTLTexture> dest, jfloat x1,
     if (mtlEncoder == nil)
         return;
 
-    mtlc->mtlEmptyCommandBuffer = NO;
-
     struct Vertex verts[2] = {
             {{MTLUtils_normalizeX(dest, x1), MTLUtils_normalizeY(dest, y1), 0.0}},
             {{MTLUtils_normalizeX(dest, x2), MTLUtils_normalizeY(dest, y2), 0.0}}
@@ -157,8 +153,6 @@ void MTLRenderer_DrawRectMetal(MTLContext *mtlc, id<MTLTexture> dest, jint x, ji
     id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(mtlc, dest);
     if (mtlEncoder == nil)
         return;
-
-    mtlc->mtlEmptyCommandBuffer = NO;
 
     const int verticesCount = 5;
     struct Vertex vertices[verticesCount] = {
@@ -223,8 +217,6 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc,
     }
 
     J2dTraceLn4(J2D_TRACE_INFO, "MTLRenderer_DrawPoly: %d points, transX=%d, transY=%d, dst tex=%p", nPoints, transX, transY, dstOps->pTexture);
-
-    ctx->mtlEmptyCommandBuffer = NO;
 
     __block struct {
         struct Vertex verts[POLYLINE_BUF_SIZE];
@@ -344,8 +336,6 @@ MTLRenderer_FillSpans(MTLContext *mtlc, jint spanCount, jint *spans)
         id<MTLRenderCommandEncoder> mtlEncoder = MTLContext_CreateRenderEncoder(ctx, dest);
         if (mtlEncoder == nil)
             return;
-
-        ctx->mtlEmptyCommandBuffer = NO;
 
         for (int i = 0; i < sc; i++) {
             jfloat x1 = spanStruct.spns[i * 4];

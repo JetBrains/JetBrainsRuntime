@@ -150,7 +150,7 @@ static void _drawTex2Tex(MTLContext *mtlc,
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
     id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dst);
-    mtlc->mtlEmptyCommandBuffer = NO;
+
 
     const jboolean normalize = !mtlc->useTransform;
     struct TxtVertex quadTxVerticesBuffer[6];
@@ -170,7 +170,6 @@ void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest) {
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dest.width, dest.height);
 
     id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dest);
-    mtlc->mtlEmptyCommandBuffer = NO;
 
     // TODO: use blit encoder and add dimension check
     [encoder setFragmentTexture: src atIndex: 0];

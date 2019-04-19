@@ -70,42 +70,44 @@
 }
 
 - (void) blitTexture {
-    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || ctx->mtlEmptyCommandBuffer) {
-        J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p)", self.ctx, self.javaLayer, self.buffer);
+    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || ctx->mtlDevice == nil) {
+        J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx, self.javaLayer, self.buffer, ctx->mtlDevice);
+        return;
+    }
+
+    if (ctx->mtlCommandBuffer == nil) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nothing to do (mtlCommandBuffer is null)");
         return;
     }
 
     @autoreleasepool {
-        if (ctx->mtlCommandBuffer && ctx->mtlDevice) {
-            self.device = ctx->mtlDevice;
-            self.pixelFormat = MTLPixelFormatBGRA8Unorm;
-            self.framebufferOnly = NO;
+        self.device = ctx->mtlDevice;
+        self.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        self.framebufferOnly = NO;
 
-            self.drawableSize =
-                CGSizeMake(self.buffer.width,
-                           self.buffer.height);
+        self.drawableSize =
+            CGSizeMake(self.buffer.width,
+                       self.buffer.height);
 
-            id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
-            if (mtlDrawable == nil) {
-                return;
-            }
-            J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
-            MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
-
-            dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
-
-            [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
-
-            [ctx->mtlCommandBuffer addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
-                    [cmdBuff release];
-            }];
-
-            [ctx->mtlCommandBuffer commit];
-
-            ctx->mtlCommandBuffer = nil;
-            ctx->mtlEmptyCommandBuffer = YES;
-            dispatch_semaphore_signal(ctx->mtlRenderSemaphore);
+        id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
+        if (mtlDrawable == nil) {
+            return;
         }
+        J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
+        MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
+
+        dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
+
+        [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
+
+        [ctx->mtlCommandBuffer addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
+                    [cmdBuff release];
+        }];
+
+        [ctx->mtlCommandBuffer commit];
+
+        ctx->mtlCommandBuffer = nil;
+        dispatch_semaphore_signal(ctx->mtlRenderSemaphore);
     }
 }
 

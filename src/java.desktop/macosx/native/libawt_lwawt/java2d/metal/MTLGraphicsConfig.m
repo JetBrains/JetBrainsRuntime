@@ -264,7 +264,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
 
     // Create command queue
     mtlc->mtlCommandQueue = [mtlc->mtlDevice newCommandQueue];
-    mtlc->mtlEmptyCommandBuffer = YES;
 
     // create the MTLGraphicsConfigInfo record for this config
     MTLGraphicsConfigInfo *mtlinfo = (MTLGraphicsConfigInfo *)malloc(sizeof(MTLGraphicsConfigInfo));
