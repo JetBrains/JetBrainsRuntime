@@ -967,7 +967,7 @@ javax/swing/JMenu/4692443/bug4692443.java                                       
 javax/swing/JMenu/6359669/bug6359669.java                                           8050988 generic-all
 javax/swing/JMenu/6470128/bug6470128.java                                           8050988 generic-all
 javax/swing/JMenu/6538132/6538132.java                                              8197552 macosx-all,windows-all,linux-all
-javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java                            8204073 macosx-all,windows-all
+javax/swing/JMenu/8072900/WrongSelectionOnMouseOver.java                            8204073 macosx-all,windows-all,linux-all
 javax/swing/JMenuBar/4750590/bug4750590.java                                        8197552 macosx-all,windows-all,linux-all
 javax/swing/JMenuItem/4171437/bug4171437.java                                       8197552 macosx-all,windows-all,linux-all
 javax/swing/JMenuItem/4654927/bug4654927.java                                       8172536 macosx-all,windows-all,linux-all
@@ -1141,6 +1141,7 @@ com/sun/jdi/NashornPopFrameTest.java                                            
 
 ############################################################################
 
+java/util/concurrent/tck/JSR166TestCase.java                                        8186076 windows-all
 java/util/zip/ZipFile/TestCleaner.java                                              8204868 generic-all
 
 # jdk_instrument
