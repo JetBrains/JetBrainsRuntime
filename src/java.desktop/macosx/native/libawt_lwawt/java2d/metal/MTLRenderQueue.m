@@ -59,7 +59,76 @@ static BMTLSDOps *dstOps = NULL;
  */
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 extern void MTLSD_SwapBuffers(JNIEnv *env, jlong window);
-extern void MTLSD_Flush(JNIEnv *env);
+
+/**
+ * Helper methods to manage modified layers
+ */
+static MTLLayer ** g_modifiedLayers = NULL;
+static int g_modifiedLayersCount = 0;
+static int g_modifiedLayersAllocatedCount = 0;
+
+static void _markLayerModified(MTLLayer * modifiedLayer) {
+    if (modifiedLayer == NULL)
+        return;
+    if (g_modifiedLayers == NULL) {
+        g_modifiedLayersAllocatedCount = 3;
+        g_modifiedLayers = malloc(g_modifiedLayersAllocatedCount * sizeof(MTLLayer *));
+    }
+    for (int c = 0; c < g_modifiedLayersCount; ++c) {
+        if (g_modifiedLayers[c] == modifiedLayer)
+            return;
+    }
+    ++g_modifiedLayersCount;
+    if (g_modifiedLayersCount > g_modifiedLayersAllocatedCount) {
+        g_modifiedLayersAllocatedCount = g_modifiedLayersCount;
+        g_modifiedLayers = realloc(g_modifiedLayers, g_modifiedLayersAllocatedCount * sizeof(MTLLayer *));
+    }
+    g_modifiedLayers[g_modifiedLayersCount - 1] = modifiedLayer;
+}
+
+static void _scheduleBlitAllModifiedLayers() {
+    for (int c = 0; c < g_modifiedLayersCount; ++c) {
+        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+            [g_modifiedLayers[c] blitTexture];
+        }];
+    }
+    g_modifiedLayersCount = 0;
+}
+
+static void _onSurfaceModified(BMTLSDOps *bmtldst) {
+    if (bmtldst != NULL && bmtldst->privOps != NULL && ((MTLSDOps *)bmtldst->privOps)->layer != NULL)
+        _markLayerModified(((MTLSDOps *)bmtldst->privOps)->layer);
+}
+
+static const jint g_drawOpcodes[] = {
+        sun_java2d_pipe_BufferedOpCodes_DRAW_LINE,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_RECT,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_POLY,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM,
+        sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM,
+
+        sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST,
+
+        sun_java2d_pipe_BufferedOpCodes_FILL_RECT,
+        sun_java2d_pipe_BufferedOpCodes_FILL_SPANS,
+        sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM,
+        sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM,
+
+        sun_java2d_pipe_BufferedOpCodes_COPY_AREA,
+        sun_java2d_pipe_BufferedOpCodes_MASK_FILL,
+        sun_java2d_pipe_BufferedOpCodes_MASK_BLIT,
+        sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS
+};
+
+static jboolean _isDrawOpcode(jint opcode) {
+    for (int c = 0; c < sizeof(g_drawOpcodes)/sizeof(g_drawOpcodes[0]); ++c) {
+        if (opcode == g_drawOpcodes[c])
+            return JNI_TRUE;
+    }
+    return JNI_FALSE;
+}
 
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
@@ -78,8 +147,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             "MTLRenderQueue_flushBuffer: cannot get direct buffer address");
         return;
     }
-
-    jboolean isLayerModified = JNI_FALSE;
 
     INIT_PREVIOUS_OP();
     end = b + limit;
@@ -307,9 +374,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                          xform, hint, texture, rtt,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
-                    MTLSDOps * mtldst = (MTLSDOps *)dstOps->privOps;
-                    if (mtldst->layer != NULL)
-                        isLayerModified = JNI_TRUE;
                 } else {
                     jint srctype = EXTRACT_BYTE(packedParams, OFFSET_SRCTYPE);
                     MTLBlitLoops_Blit(env, mtlc, pSrc, pDst,
@@ -317,6 +381,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                       sx1, sy1, sx2, sy2,
                                       dx1, dy1, dx2, dy2);
                 }
+                _onSurfaceModified(jlong_to_ptr(pDst));
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
@@ -727,16 +792,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
             return;
         }
+
+        if (_isDrawOpcode(opcode)) // performed rendering operation on dstOps
+            _onSurfaceModified(dstOps);
     }
 
     MTLTR_DisableGlyphModeState();
-    isLayerModified |= mtlc != NULL && dstOps != NULL && dstOps->privOps != NULL && ((MTLSDOps *)dstOps->privOps)->layer != NULL;
-    if (isLayerModified) {
-        RESET_PREVIOUS_OP();
-        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-            [((MTLSDOps *)dstOps->privOps)->layer blitTexture];
-        }];
-    }
+    _scheduleBlitAllModifiedLayers();
 }
 
 /**
