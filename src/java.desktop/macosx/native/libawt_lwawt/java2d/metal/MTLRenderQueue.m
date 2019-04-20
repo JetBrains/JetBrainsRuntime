@@ -88,9 +88,16 @@ static void _markLayerModified(MTLLayer * modifiedLayer) {
 
 static void _scheduleBlitAllModifiedLayers() {
     for (int c = 0; c < g_modifiedLayersCount; ++c) {
+        MTLLayer * layer = g_modifiedLayers[c];
+        MTLContext * ctx = layer.ctx;
+        if (layer == NULL || ctx == NULL)
+            continue;
+        id<MTLCommandBuffer> bufferToCommit = ctx->mtlCommandBuffer;
         [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-            [g_modifiedLayers[c] blitTexture];
+            [layer blitTexture:bufferToCommit];
         }];
+
+        ctx->mtlCommandBuffer = nil;
     }
     g_modifiedLayersCount = 0;
 }

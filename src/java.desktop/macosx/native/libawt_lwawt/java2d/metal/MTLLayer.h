@@ -51,7 +51,7 @@
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
 
-- (void) blitTexture;
+- (void) blitTexture:(id<MTLCommandBuffer>)commandBuf;
 - (void) fillParallelogramCtxX:(jfloat)x
                              Y:(jfloat)y
                            DX1:(jfloat)dx1

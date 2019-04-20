@@ -69,14 +69,14 @@
     return self;
 }
 
-- (void) blitTexture {
+- (void) blitTexture:(id<MTLCommandBuffer>)commandBuf {
     if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || ctx->mtlDevice == nil) {
         J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx, self.javaLayer, self.buffer, ctx->mtlDevice);
         return;
     }
 
-    if (ctx->mtlCommandBuffer == nil) {
-        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nothing to do (mtlCommandBuffer is null)");
+    if (commandBuf == nil) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nothing to do (commandBuf is null)");
         return;
     }
 
@@ -96,17 +96,14 @@
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
         MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
 
+        [commandBuf presentDrawable:mtlDrawable];
         dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
-        [ctx->mtlCommandBuffer presentDrawable:mtlDrawable];
-
-        [ctx->mtlCommandBuffer addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
+        [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
                     [cmdBuff release];
         }];
 
-        [ctx->mtlCommandBuffer commit];
-
-        ctx->mtlCommandBuffer = nil;
+        [commandBuf commit];
         dispatch_semaphore_signal(ctx->mtlRenderSemaphore);
     }
 }
