@@ -243,13 +243,17 @@ MTLContext_ResetComposite(MTLContext *mtlc)
  * appropriate blend functions are setup based on the AlphaComposite rule
  * constant.
  */
-void
-MTLContext_SetAlphaComposite(MTLContext *mtlc,
-                             jint rule, jfloat extraAlpha, jint flags)
-{
-    //TODO
-    J2dTraceNotImplPrimitive("MTLContext_SetAlphaComposite");
+void MTLContext_SetAlphaComposite(MTLContext *mtlc, jint rule, jfloat extraAlpha, jint flags) {
+    J2dTracePrimitive("MTLContext_SetAlphaComposite");
     J2dTraceLn3(J2D_TRACE_INFO, "MTLContext_SetAlphaComposite: rule=%d, extraAlpha=%1.2f, flags=%d", rule, extraAlpha, flags);
+
+    mtlc->extraAlpha = extraAlpha;
+    mtlc->alphaCompositeRule = rule;
+}
+
+jboolean MTLContext_IsBlendingDisabled(MTLContext *mtlc) {
+    // TODO: hold case mtlc->alphaCompositeRule == RULE_SrcOver && sun_java2d_pipe_BufferedContext_SRC_IS_OPAQUE
+    return mtlc->alphaCompositeRule == RULE_Src && (mtlc->extraAlpha - 1.0f < 0.001f);
 }
 
 /**
@@ -532,12 +536,19 @@ id<MTLRenderCommandEncoder> _createBlitEncoder(MTLContext * mtlc, id<MTLTexture>
     }
 
     id <MTLRenderCommandEncoder> mtlEncoder = [cb renderCommandEncoderWithDescriptor:rpd];
-    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit encoder to draw on tex=%p", dest);
+    //J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created sampling encoder to draw on tex=%p", dest);
 
     // set viewport and pipeline state
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:mtlc->mtlBlitPipelineState];
+    if (mtlc->alphaCompositeRule == RULE_Src)
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitPipelineState];
+    else if (mtlc->alphaCompositeRule == RULE_SrcOver)
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitSrcOverPipelineState];
+    else {
+        J2dTraceLn2(J2D_TRACE_ERROR, "MTLContext: alpha-composite rule %d isn't implemented (draw on %p)", mtlc->alphaCompositeRule, dest);
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitPipelineState];
+    }
 
     return mtlEncoder;
 }
@@ -559,12 +570,20 @@ id<MTLRenderCommandEncoder> _createBlitTransformEncoder(MTLContext * mtlc, id<MT
     }
 
     id <MTLRenderCommandEncoder> mtlEncoder = [cb renderCommandEncoderWithDescriptor:rpd];
-    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created blit-transform encoder to draw on %p", dest);
+    //J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created sampling-transform encoder to draw on tex=%p", dest);
 
     // set viewport and pipeline state
     MTLViewport vp = {0, 0, dest.width, dest.height, 0, 1};
     [mtlEncoder setViewport:vp];
-    [mtlEncoder setRenderPipelineState:mtlc->mtlBlitMatrixPipelineState];
+    if (mtlc->alphaCompositeRule == RULE_Src)
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitMatrixPipelineState];
+    else if (mtlc->alphaCompositeRule == RULE_SrcOver)
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitMatrixSrcOverPipelineState];
+    else {
+        J2dTraceLn2(J2D_TRACE_ERROR, "MTLContext: alpha-composite rule %d isn't implemented (draw on %p with transform)", mtlc->alphaCompositeRule, dest);
+        [mtlEncoder setRenderPipelineState:mtlc->mtlBlitMatrixPipelineState];
+    }
+
     [mtlEncoder setVertexBytes:&(mtlc->transform4x4) length:sizeof(mtlc->transform4x4) atIndex:FrameUniformBuffer];
 
     return mtlEncoder;

@@ -258,6 +258,36 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         exit(0);
     }
 
+    pipelineDesc.vertexFunction = vertTxtFunc;
+    pipelineDesc.colorAttachments[0].blendingEnabled = YES;
+    //RGB = Source.rgb * SBF + Dest.rgb * DBF
+    //A = Source.a * SBF + Dest.a * DBF
+    //
+    //default SRC:
+    //DBF=0
+    //SBF=1
+    //
+    // SRC_OVER (Porter-Duff Source Over Destination rule):
+    // Ar = As + Ad*(1-As)
+    // Cr = Cs + Cd*(1-As)
+    pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    const bool isSourcePremultilied = NO; // <==> Cs = Cs_raw * As_raw
+    if (!isSourcePremultilied)
+        pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+    mtlc->mtlBlitSrcOverPipelineState = [mtlc->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!mtlc->mtlBlitSrcOverPipelineState) {
+        NSLog(@"Failed to create blit pipeline state (SrcOver), error %@", error);
+        exit(0);
+    }
+
+    pipelineDesc.vertexFunction = vertTxtMatrixFunc;
+    mtlc->mtlBlitMatrixSrcOverPipelineState = [mtlc->mtlDevice newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+    if (!mtlc->mtlBlitMatrixSrcOverPipelineState) {
+        NSLog(@"Failed to create blit with matrix pipeline state (SrcOver), error %@", error);
+        exit(0);
+    }
+
     mtlc->mtlCommandBuffer = nil;
 
     // Create command queue

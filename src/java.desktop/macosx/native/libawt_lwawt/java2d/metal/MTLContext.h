@@ -73,6 +73,7 @@ typedef struct {
 typedef struct {
     jint       compState;
     jfloat     extraAlpha;
+    jint       alphaCompositeRule;
     jint       xorPixel;
     jint       pixel;
     jubyte     r;
@@ -92,6 +93,8 @@ typedef struct {
     id<MTLRenderPipelineState>  mtlPipelineState;
     id<MTLRenderPipelineState>  mtlBlitPipelineState;
     id<MTLRenderPipelineState>  mtlBlitMatrixPipelineState;
+    id<MTLRenderPipelineState>  mtlBlitSrcOverPipelineState;
+    id<MTLRenderPipelineState>  mtlBlitMatrixSrcOverPipelineState; // TODO: implement PipelineStateFactory
     id<MTLCommandQueue>         mtlCommandQueue;
     id<MTLCommandBuffer>        mtlCommandBuffer;
     id<MTLBuffer>               mtlVertexBuffer;
@@ -128,6 +131,7 @@ void MTLContext_ResetComposite(MTLContext *mtlc);
 void MTLContext_SetAlphaComposite(MTLContext *mtlc,
                                   jint rule, jfloat extraAlpha, jint flags);
 void MTLContext_SetXorComposite(MTLContext *mtlc, jint xorPixel);
+jboolean MTLContext_IsBlendingDisabled(MTLContext *mtlc);
 void MTLContext_ResetTransform(MTLContext *mtlc);
 void MTLContext_SetTransform(MTLContext *mtlc,
                              jdouble m00, jdouble m10,
