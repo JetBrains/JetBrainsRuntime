@@ -184,8 +184,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
                                                            length:sizeof(verts)
                                                            options:MTLResourceCPUCacheModeDefaultCache] retain];
 
-    mtlc->mtlRenderSemaphore = dispatch_semaphore_create(2);
-
     NSError *error = nil;
 
     mtlc->mtlLibrary = [mtlc->mtlDevice newLibraryWithFile: mtlShadersLib error:&error];

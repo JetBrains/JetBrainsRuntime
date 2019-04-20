@@ -98,7 +98,6 @@ typedef struct {
     jint                        mtlColor;
     MTLScissorRect              mtlClipRect;
     jboolean                    useClip;
-    dispatch_semaphore_t 	    mtlRenderSemaphore;
 } MTLContext;
 
 /**

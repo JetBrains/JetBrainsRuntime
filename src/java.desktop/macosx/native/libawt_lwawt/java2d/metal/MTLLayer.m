@@ -97,14 +97,12 @@
         MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
 
         [commandBuf presentDrawable:mtlDrawable];
-        dispatch_semaphore_wait(ctx->mtlRenderSemaphore, DISPATCH_TIME_FOREVER);
 
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
                     [cmdBuff release];
         }];
 
         [commandBuf commit];
-        dispatch_semaphore_signal(ctx->mtlRenderSemaphore);
     }
 }
 
