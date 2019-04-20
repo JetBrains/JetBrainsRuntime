@@ -521,7 +521,7 @@ id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc, id<
 }
 
 // NOTE: debug parameners will be removed soon
-id<MTLRenderCommandEncoder> _createBlitEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
+id<MTLRenderCommandEncoder> _createSamplingEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
     id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
     if (cb == nil)
         return nil;
@@ -555,7 +555,7 @@ id<MTLRenderCommandEncoder> _createBlitEncoder(MTLContext * mtlc, id<MTLTexture>
 }
 
 // NOTE: debug parameners will be removed soon
-id<MTLRenderCommandEncoder> _createBlitTransformEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
+id<MTLRenderCommandEncoder> _createSamplingTransformEncoder(MTLContext * mtlc, id<MTLTexture> dest, int clearRed/*debug param*/) {
     id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
     if (cb == nil)
         return nil;
@@ -590,10 +590,15 @@ id<MTLRenderCommandEncoder> _createBlitTransformEncoder(MTLContext * mtlc, id<MT
     return mtlEncoder;
 }
 
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext * mtlc, id<MTLTexture> dest) {
+id<MTLRenderCommandEncoder> MTLContext_CreateSamplingEncoder(MTLContext * mtlc, id<MTLTexture> dest) {
     if (mtlc->useTransform)
-        return _createBlitTransformEncoder(mtlc, dest, -1);
-    return _createBlitEncoder(mtlc, dest, -1);
+        return _createSamplingTransformEncoder(mtlc, dest, -1);
+    return _createSamplingEncoder(mtlc, dest, -1);
+}
+
+id<MTLBlitCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc) {
+    id<MTLCommandBuffer> cb = _getCommandBuffer(mtlc);
+    return cb == nil ? nil : [cb blitCommandEncoder];
 }
 
 #endif /* !HEADLESS */

@@ -149,7 +149,7 @@ static void _drawTex2Tex(MTLContext *mtlc,
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
-    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dst);
+    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateSamplingEncoder(mtlc, dst);
 
 
     const jboolean normalize = !mtlc->useTransform;
@@ -158,30 +158,6 @@ static void _drawTex2Tex(MTLContext *mtlc,
 
     [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
     [encoder setFragmentTexture:src atIndex: 0];
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-    [encoder endEncoding];
-}
-
-void MTLBlitTex2Tex(MTLContext *mtlc, id<MTLTexture> src, id<MTLTexture> dest) {
-    if (mtlc == NULL || src == nil || dest == nil)
-        return;
-
-//    J2dTraceLn2(J2D_TRACE_VERBOSE, "MTLBlitTex2Tex: src tex=%p, dst tex=%p", src, dest);
-//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dest.width, dest.height);
-
-    id<MTLRenderCommandEncoder> encoder = MTLContext_CreateBlitEncoder(mtlc, dest);
-
-    // TODO: use blit encoder and add dimension check
-    [encoder setFragmentTexture: src atIndex: 0];
-    struct TxtVertex verts[6] = {
-            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}},
-            {{1.0f, 1.0f, 0.0}, {1.0, 0.0}},
-            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-            {{1.0f, -1.0f, 0.0}, {1.0, 1.0}},
-            {{-1.0f, -1.0f, 0.0}, {0.0, 1.0}},
-            {{-1.0f, 1.0f, 0.0}, {0.0, 0.0}}
-    };
-    [encoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
     [encoder endEncoding];
 }
@@ -207,7 +183,7 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
     id<MTLTexture> srcTex = srcOps->pTexture;
 
 #ifdef DEBUG
-    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [texture->surface]: bsrc=%p [tex=%p], bdst=%p [tex=%p] | s (%dx%d) -> d (%dx%d) | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture, srcTex.width, srcTex.height, dstOps->width, dstOps->height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via sampling]: bsrc=%p [tex=%p], bdst=%p [tex=%p] | s (%dx%d) -> d (%dx%d) | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture, srcTex.width, srcTex.height, dstOps->width, dstOps->height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
     _drawTex2Tex(mtlc, srcOps->pTexture, dstOps->pTexture, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
@@ -241,7 +217,7 @@ MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLS
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
 #ifdef DEBUG
-    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitSwToSurfaceViaTexture: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [via pooled texture]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
     id<MTLTexture> texBuff = [ctx->mtlTexturePool getTexture:sw height:sh format:MTLPixelFormatBGRA8Unorm];
@@ -334,6 +310,13 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
     RETURN_IF_NULL(srcOps);
     RETURN_IF_NULL(dstOps);
 
+    id<MTLTexture> srcTex = srcOps->pTexture;
+    id<MTLTexture> dstTex = dstOps->pTexture;
+    if (mtlc == NULL || srcTex == nil || srcTex == nil) {
+        J2dTraceLn2(J2D_TRACE_ERROR, "MTLBlitLoops_IsoBlit: surface is null (stex=%p, dtex=%p)", srcTex, dstTex);
+        return;
+    }
+
     const jint sw    = sx2 - sx1;
     const jint sh    = sy2 - sy1;
     const jdouble dw = dx2 - dx1;
@@ -375,10 +358,21 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
         sy2 = srcInfo.bounds.y2;
     }
 
-    // TODO: support other flags
-    MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint,
-                            sx1, sy1, sx2, sy2,
-                            dx1, dy1, dx2, dy2);
+    const jboolean useBlitEncoder =
+            MTLContext_IsBlendingDisabled(mtlc)
+            && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f // dimensions are equal (TODO: check that dx1,dy1 is integer)
+            && !mtlc->useTransform; // TODO: check whether transform is simple translate (and use blitEncoder in this case)
+    if (useBlitEncoder) {
+#ifdef DEBUG
+        J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via blitEncoder]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dstTex, dstTex.width, dstTex.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+#endif //DEBUG
+        id <MTLBlitCommandEncoder> blitEncoder = MTLContext_CreateBlitEncoder(mtlc);
+        [blitEncoder copyFromTexture:srcTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(sx1, sy1, 0) sourceSize:MTLSizeMake(sx2 - sx1, sy2 - sy1, 1) toTexture:dstTex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+        [blitEncoder endEncoding];
+    } else {
+        // TODO: support other flags
+        MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+    }
 }
 
 /**
@@ -402,6 +396,28 @@ MTLBlitLoops_Blit(JNIEnv *env,
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
     SurfaceDataRasInfo srcInfo;
     MTLPixelFormat pf = MTLPixelFormatBGRA8Unorm;//PixelFormats[srctype];
+
+    if (dstOps == NULL || dstOps->pTexture == NULL) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
+        return;
+    }
+    id<MTLTexture> dest = dstOps->pTexture;
+    if (dx1 < 0) {
+        sx1 += dx1;
+        dx1 = 0;
+    }
+    if (dx2 > dest.width) {
+        sx2 -= dx2 - dest.width;
+        dx2 = dest.width;
+    }
+    if (dy1 < 0) {
+        sy1 += dy1;
+        dy1 = 0;
+    }
+    if (dy2 > dest.height) {
+        sy2 -= dy2 - dest.height;
+        dy2 = dest.height;
+    }
     jint sw    = sx2 - sx1;
     jint sh    = sy2 - sy1;
     jdouble dw = dx2 - dx1;
@@ -409,10 +425,6 @@ MTLBlitLoops_Blit(JNIEnv *env,
 
     if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0 || srctype < 0) {
         J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: invalid dimensions or srctype");
-        return;
-    }
-    if (dstOps == NULL || dstOps->pTexture == NULL) {
-        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
         return;
     }
 
@@ -448,14 +460,16 @@ MTLBlitLoops_Blit(JNIEnv *env,
                 sy2 = srcInfo.bounds.y2;
             }
 
-            const jboolean useReplaceRegion = MTLContext_IsBlendingDisabled(mtlc) && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f; // blending disabled and dimensions are equal
+            const jboolean useReplaceRegion =
+                    MTLContext_IsBlendingDisabled(mtlc)
+                    && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f // dimensions are equal (TODO: check that dx1,dy1 is integer)
+                    && !mtlc->useTransform; // TODO: check whether transform is simple translate (and use replaceRegion in this case)
             if (useReplaceRegion) {
-                id<MTLTexture> dest = dstOps->pTexture;
                 MTLRegion region = MTLRegionMake2D(dx1, dy1, dx2 - dx1, dy2 - dy1);
 #ifdef DEBUG
-                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "\treplaceRegion: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dest, dest.width, dest.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [replaceRegion]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dest, dest.width, dest.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
-                [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride]; // executed at CPU (sync)
+                [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride]; // executed at CPU (sync), TODO: lock dest for current frame
             } else {
                 MTLBlitSwToSurfaceViaTexture(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
             }

@@ -94,7 +94,11 @@
             return;
         }
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
-        MTLBlitTex2Tex(ctx, self.buffer, mtlDrawable.texture);
+        id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+        [blitEncoder
+                copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(self.buffer.width, self.buffer.height, 1)
+                toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+        [blitEncoder endEncoding];
 
         [commandBuf presentDrawable:mtlDrawable];
 

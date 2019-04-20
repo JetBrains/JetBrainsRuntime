@@ -151,6 +151,7 @@ void MTLContext_SetColor(MTLContext *ctx, int r, int g, int b, int a);
 void MTLContext_SetColorInt(MTLContext *ctx, int pixel);
 
 id<MTLRenderCommandEncoder> MTLContext_CreateRenderEncoder(MTLContext *mtlc, id<MTLTexture> dest);
-id<MTLRenderCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc, id<MTLTexture> dest);
+id<MTLRenderCommandEncoder> MTLContext_CreateSamplingEncoder(MTLContext *mtlc, id<MTLTexture> dest);
+id<MTLBlitCommandEncoder> MTLContext_CreateBlitEncoder(MTLContext *mtlc);
 
 #endif /* MTLContext_h_Included */
