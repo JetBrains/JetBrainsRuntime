@@ -37,7 +37,7 @@ import javax.swing.WindowConstants;
 
 public class JDialog186 {
 
-    private static JFrame frame = new JFrame("JDialog186");
+    private static JFrame frame = new JFrame("This frame is supposed to be shown first");
     private static JDialog dialog;
     private static Process process;
     static final Object lock = new Object();
@@ -45,11 +45,11 @@ public class JDialog186 {
     private static Runnable modalDialogThread = new Runnable() {
         @Override
         public void run() {
-            dialog = new JDialog(frame, true);
-            dialog.setTitle("Modal input");
+            dialog = new JDialog(frame, "This is a modal dialog, it is not supposed to steal the focus", true);
             dialog.getContentPane().add(new JTextArea());
             dialog.setLocation(new Point(20, 100));
             dialog.setSize(350, 100);
+            dialog.setAutoRequestFocus(false);
             dialog.setVisible(true);
         }
     };
@@ -90,12 +90,10 @@ public class JDialog186 {
 
             process.getErrorStream();
             String line;
-            BufferedReader input = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-            try {
+            try (BufferedReader input = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 while ((line = input.readLine()) != null) {
                     System.out.println(line);
                 }
-                input.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -122,7 +120,6 @@ public class JDialog186 {
                 }
             }
 
-            System.out.println("launching helper");
             process = Runtime.getRuntime().exec(new String[]{javaExecutable, "-classpath",
                     System.getProperty("java.class.path"), "JDialog186Aux"});
             checkAuxProcess();
@@ -159,7 +156,7 @@ class JDialog186Aux {
         Robot robot = new Robot();
         robot.setAutoDelay(100);
 
-        JFrame frame = new JFrame("JDialog186Aux");
+        JFrame frame = new JFrame("This frame takes focus from the first frame");
         frame.addWindowFocusListener(focusListener);
         JEditorPane editorPane = new JEditorPane();
 
