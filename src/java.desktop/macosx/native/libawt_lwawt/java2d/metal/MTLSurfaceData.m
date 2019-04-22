@@ -171,7 +171,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initRTexture
     }
 
     const MTLContext* ctx = mtlsdo->configInfo->context;
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatRGBA8Unorm width: width height: height mipmapped: NO];
+    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
     bmtlsdo->pTexture = [[ctx->mtlDevice newTextureWithDescriptor: textureDescriptor] retain];;
 
     bmtlsdo->isOpaque = isOpaque;
