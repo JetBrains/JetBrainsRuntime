@@ -29,8 +29,7 @@
 #include <jni_util.h>
 #include <math.h>
 
-
-#define DEBUG 0
+//#define DEBUG 1
 
 #include "sun_java2d_metal_MTLRenderer.h"
 
