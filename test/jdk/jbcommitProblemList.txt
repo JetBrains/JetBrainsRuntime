@@ -56,6 +56,7 @@ java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                               
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                         nobug macosx-all,windows-all
 java/awt/Mixing/HWDisappear.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/JButtonInGlassPane.java                                                     nobug macosx-all,linux-all,windows-all
+java/awt/Mixing/LWComboBox.java                                                             nobug macosx-all,linux-all,windows-all
 java/awt/Mixing/LWPopupMenu.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/MixingInHwPanel.java                                                        nobug macosx-all,windows-all
 java/awt/Mixing/ValidBounds.java                                                            nobug macosx-all,windows-all
