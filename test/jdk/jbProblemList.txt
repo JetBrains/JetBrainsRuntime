@@ -533,7 +533,7 @@ java/awt/Mouse/EnterExitEvents/DragWindowTest.java                              
 java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java                  JRE-898 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java                               8005021 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java                        8051455 macosx-all
-java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.html                                 8169534 macosx-all,windows-all
+java/awt/Mouse/ExtraMouseClick/ExtraMouseClick.html                                 8169534 macosx-all,windows-all,linux-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithOverlay.java                8168388 windows-all,macosx-all,linux-all
 java/awt/Mouse/GetMousePositionTest/GetMousePositionWithPopup.java                  8196017 windows-all,linux-all (linux: NPE commit testing)
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             8052166 linux-all
@@ -584,7 +584,7 @@ java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java              
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132,8194941 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
-java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64,linux-all (linux-all timeout reproduced with Adopt)
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java        8013450,8197936 macosx-all,linux-all,windows-all
