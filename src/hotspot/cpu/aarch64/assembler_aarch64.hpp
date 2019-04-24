@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2015, Red Hat Inc. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -316,29 +316,6 @@ namespace ext
 {
   enum operation { uxtb, uxth, uxtw, uxtx, sxtb, sxth, sxtw, sxtx };
 };
-
-// abs methods which cannot overflow and so are well-defined across
-// the entire domain of integer types.
-static inline unsigned int uabs(unsigned int n) {
-  union {
-    unsigned int result;
-    int value;
-  };
-  result = n;
-  if (value < 0) result = -result;
-  return result;
-}
-static inline unsigned long uabs(unsigned long n) {
-  union {
-    unsigned long result;
-    long value;
-  };
-  result = n;
-  if (value < 0) result = -result;
-  return result;
-}
-static inline unsigned long uabs(long n) { return uabs((unsigned long)n); }
-static inline unsigned long uabs(int n) { return uabs((unsigned int)n); }
 
 // Addressing modes
 class Address {
@@ -1142,7 +1119,7 @@ public:
     Register Rn, enum operand_size sz, int op, bool ordered) {
     starti;
     f(sz, 31, 30), f(0b001000, 29, 24), f(op, 23, 21);
-    rf(Rs, 16), f(ordered, 15), rf(Rt2, 10), rf(Rn, 5), rf(Rt1, 0);
+    rf(Rs, 16), f(ordered, 15), rf(Rt2, 10), srf(Rn, 5), zrf(Rt1, 0);
   }
 
   void load_exclusive(Register dst, Register addr,

@@ -812,6 +812,15 @@ address MacroAssembler::emit_trampoline_stub(int insts_call_instruction_offset,
   return stub_start_addr;
 }
 
+void MacroAssembler::c2bool(Register x) {
+  // implements x == 0 ? 0 : 1
+  // note: must only look at least-significant byte of x
+  //       since C-style booleans are stored in one byte
+  //       only! (was bug)
+  tst(x, 0xff);
+  cset(x, Assembler::NE);
+}
+
 address MacroAssembler::ic_call(address entry, jint method_index) {
   RelocationHolder rh = virtual_call_Relocation::spec(pc(), method_index);
   // address const_ptr = long_constant((jlong)Universe::non_oop_word());
@@ -2348,21 +2357,18 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
                              bool weak,
                              Register result) {
   if (result == noreg)  result = rscratch1;
+  BLOCK_COMMENT("cmpxchg {");
   if (UseLSE) {
     mov(result, expected);
     lse_cas(result, new_val, addr, size, acquire, release, /*not_pair*/ true);
-    cmp(result, expected);
+    compare_eq(result, expected, size);
   } else {
-    BLOCK_COMMENT("cmpxchg {");
     Label retry_load, done;
     if ((VM_Version::features() & VM_Version::CPU_STXR_PREFETCH))
       prfm(Address(addr), PSTL1STRM);
     bind(retry_load);
     load_exclusive(result, addr, size, acquire);
-    if (size == xword)
-      cmp(result, expected);
-    else
-      cmpw(result, expected);
+    compare_eq(result, expected, size);
     br(Assembler::NE, done);
     store_exclusive(rscratch1, new_val, addr, size, release);
     if (weak) {
@@ -2371,9 +2377,27 @@ void MacroAssembler::cmpxchg(Register addr, Register expected,
       cbnzw(rscratch1, retry_load);
     }
     bind(done);
-    BLOCK_COMMENT("} cmpxchg");
+  }
+  BLOCK_COMMENT("} cmpxchg");
+}
+
+// A generic comparison. Only compares for equality, clobbers rscratch1.
+void MacroAssembler::compare_eq(Register rm, Register rn, enum operand_size size) {
+  if (size == xword) {
+    cmp(rm, rn);
+  } else if (size == word) {
+    cmpw(rm, rn);
+  } else if (size == halfword) {
+    eorw(rscratch1, rm, rn);
+    ands(zr, rscratch1, 0xffff);
+  } else if (size == byte) {
+    eorw(rscratch1, rm, rn);
+    ands(zr, rscratch1, 0xff);
+  } else {
+    ShouldNotReachHere();
   }
 }
+
 
 static bool different(Register a, RegisterOrConstant b, Register c) {
   if (b.is_constant())
@@ -4856,7 +4880,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
 
   // A very short string
   cmpw(cnt2, minCharsInWord);
-  br(Assembler::LT, SHORT_STRING);
+  br(Assembler::LE, SHORT_STRING);
 
   // Compare longwords
   // load first parts of strings and finish initialization while loading
@@ -4880,8 +4904,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
       ldr(tmp2, Address(str2));
       cmp(cnt2, STUB_THRESHOLD);
       br(GE, STUB);
-      subsw(cnt2, cnt2, 4);
-      br(EQ, TAIL_CHECK);
+      subw(cnt2, cnt2, 4);
       eor(vtmpZ, T16B, vtmpZ, vtmpZ);
       lea(str1, Address(str1, cnt2, Address::uxtw(str1_chr_shift)));
       lea(str2, Address(str2, cnt2, Address::uxtw(str2_chr_shift)));
@@ -4897,8 +4920,7 @@ void MacroAssembler::string_compare(Register str1, Register str2,
       ldrs(vtmp, Address(str2));
       cmp(cnt2, STUB_THRESHOLD);
       br(GE, STUB);
-      subsw(cnt2, cnt2, 4);
-      br(EQ, TAIL_CHECK);
+      subw(cnt2, cnt2, 4);
       lea(str1, Address(str1, cnt2, Address::uxtw(str1_chr_shift)));
       eor(vtmpZ, T16B, vtmpZ, vtmpZ);
       lea(str2, Address(str2, cnt2, Address::uxtw(str2_chr_shift)));
@@ -5609,12 +5631,12 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
           orr(v5, T16B, Vtmp3, Vtmp4);
           uzp1(Vtmp1, T16B, Vtmp1, Vtmp2);
           uzp1(Vtmp3, T16B, Vtmp3, Vtmp4);
-          stpq(Vtmp1, Vtmp3, dst);
           uzp2(v5, T16B, v4, v5); // high bytes
           umov(tmp2, v5, D, 1);
           fmovd(tmp1, v5);
           orr(tmp1, tmp1, tmp2);
           cbnz(tmp1, LOOP_8);
+          stpq(Vtmp1, Vtmp3, dst);
           sub(len, len, 32);
           add(dst, dst, 32);
           add(src, src, 64);
@@ -5632,7 +5654,6 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
       prfm(Address(src, SoftwarePrefetchHintDistance));
       uzp1(v4, T16B, Vtmp1, Vtmp2);
       uzp1(v5, T16B, Vtmp3, Vtmp4);
-      stpq(v4, v5, dst);
       orr(Vtmp1, T16B, Vtmp1, Vtmp2);
       orr(Vtmp3, T16B, Vtmp3, Vtmp4);
       uzp2(Vtmp1, T16B, Vtmp1, Vtmp3); // high bytes
@@ -5640,6 +5661,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
       fmovd(tmp1, Vtmp1);
       orr(tmp1, tmp1, tmp2);
       cbnz(tmp1, LOOP_8);
+      stpq(v4, v5, dst);
       sub(len, len, 32);
       add(dst, dst, 32);
       add(src, src, 64);
@@ -5654,9 +5676,9 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
       ld1(Vtmp1, T8H, src);
       uzp1(Vtmp2, T16B, Vtmp1, Vtmp1); // low bytes
       uzp2(Vtmp3, T16B, Vtmp1, Vtmp1); // high bytes
-      strd(Vtmp2, dst);
       fmovd(tmp1, Vtmp3);
       cbnz(tmp1, NEXT_1);
+      strd(Vtmp2, dst);
 
       sub(len, len, 8);
       add(dst, dst, 8);
@@ -5669,9 +5691,9 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
     cbz(len, DONE);
     BIND(NEXT_1);
       ldrh(tmp1, Address(post(src, 2)));
-      strb(tmp1, Address(post(dst, 1)));
       tst(tmp1, 0xff00);
       br(NE, SET_RESULT);
+      strb(tmp1, Address(post(dst, 1)));
       subs(len, len, 1);
       br(GT, NEXT_1);
 

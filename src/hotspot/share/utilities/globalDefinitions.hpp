@@ -238,15 +238,20 @@ const int NANOUNITS     = 1000000000;   // nano units per base unit
 const jlong NANOSECS_PER_SEC      = CONST64(1000000000);
 const jint  NANOSECS_PER_MILLISEC = 1000000;
 
+// Proper units routines try to maintain at least three significant digits.
+// In worst case, it would print five significant digits with lower prefix.
+// G is close to MAX_SIZE on 32-bit platforms, so its product can easily overflow,
+// and therefore we need to be careful.
+
 inline const char* proper_unit_for_byte_size(size_t s) {
 #ifdef _LP64
-  if (s >= 10*G) {
+  if (s >= 100*G) {
     return "G";
   }
 #endif
-  if (s >= 10*M) {
+  if (s >= 100*M) {
     return "M";
-  } else if (s >= 10*K) {
+  } else if (s >= 100*K) {
     return "K";
   } else {
     return "B";
@@ -256,13 +261,13 @@ inline const char* proper_unit_for_byte_size(size_t s) {
 template <class T>
 inline T byte_size_in_proper_unit(T s) {
 #ifdef _LP64
-  if (s >= 10*G) {
+  if (s >= 100*G) {
     return (T)(s/G);
   }
 #endif
-  if (s >= 10*M) {
+  if (s >= 100*M) {
     return (T)(s/M);
-  } else if (s >= 10*K) {
+  } else if (s >= 100*K) {
     return (T)(s/K);
   } else {
     return s;
@@ -1041,12 +1046,11 @@ inline bool is_power_of_2_long(jlong x) {
 }
 
 // Returns largest i such that 2^i <= x.
-// If x < 0, the function returns 31 on a 32-bit machine and 63 on a 64-bit machine.
 // If x == 0, the function returns -1.
-inline int log2_intptr(intptr_t x) {
+inline int log2_intptr(uintptr_t x) {
   int i = -1;
   uintptr_t p = 1;
-  while (p != 0 && p <= (uintptr_t)x) {
+  while (p != 0 && p <= x) {
     // p = 2^(i+1) && p <= x (i.e., 2^(i+1) <= x)
     i++; p *= 2;
   }
@@ -1056,17 +1060,42 @@ inline int log2_intptr(intptr_t x) {
 }
 
 //* largest i such that 2^i <= x
-//  A negative value of 'x' will return '63'
-inline int log2_long(jlong x) {
+inline int log2_long(julong x) {
   int i = -1;
   julong p =  1;
-  while (p != 0 && p <= (julong)x) {
+  while (p != 0 && p <= x) {
     // p = 2^(i+1) && p <= x (i.e., 2^(i+1) <= x)
     i++; p *= 2;
   }
   // p = 2^(i+1) && x < p (i.e., 2^i <= x < 2^(i+1))
   // (if p = 0 then overflow occurred and i = 63)
   return i;
+}
+
+// If x < 0, the function returns 31 on a 32-bit machine and 63 on a 64-bit machine.
+inline int log2_intptr(intptr_t x) {
+  return log2_intptr((uintptr_t)x);
+}
+
+inline int log2_int(int x) {
+  STATIC_ASSERT(sizeof(int) <= sizeof(uintptr_t));
+  return log2_intptr((uintptr_t)x);
+}
+
+inline int log2_jint(jint x) {
+  STATIC_ASSERT(sizeof(jint) <= sizeof(uintptr_t));
+  return log2_intptr((uintptr_t)x);
+}
+
+inline int log2_uint(uint x) {
+  STATIC_ASSERT(sizeof(uint) <= sizeof(uintptr_t));
+  return log2_intptr((uintptr_t)x);
+}
+
+//  A negative value of 'x' will return '63'
+inline int log2_jlong(jlong x) {
+  STATIC_ASSERT(sizeof(jlong) <= sizeof(julong));
+  return log2_long((julong)x);
 }
 
 //* the argument must be exactly a power of 2
@@ -1083,6 +1112,29 @@ inline int exact_log2_long(jlong x) {
 
 inline bool is_odd (intx x) { return x & 1;      }
 inline bool is_even(intx x) { return !is_odd(x); }
+
+// abs methods which cannot overflow and so are well-defined across
+// the entire domain of integer types.
+static inline unsigned int uabs(unsigned int n) {
+  union {
+    unsigned int result;
+    int value;
+  };
+  result = n;
+  if (value < 0) result = 0-result;
+  return result;
+}
+static inline julong uabs(julong n) {
+  union {
+    julong result;
+    jlong value;
+  };
+  result = n;
+  if (value < 0) result = 0-result;
+  return result;
+}
+static inline julong uabs(jlong n) { return uabs((julong)n); }
+static inline unsigned int uabs(int n) { return uabs((unsigned int)n); }
 
 // "to" should be greater than "from."
 inline intx byte_size(void* from, void* to) {
