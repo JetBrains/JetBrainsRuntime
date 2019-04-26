@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1606,7 +1606,6 @@ int java_lang_Thread::_stackSize_offset = 0;
 int java_lang_Thread::_tid_offset = 0;
 int java_lang_Thread::_thread_status_offset = 0;
 int java_lang_Thread::_park_blocker_offset = 0;
-int java_lang_Thread::_park_event_offset = 0 ;
 
 #define THREAD_FIELDS_DO(macro) \
   macro(_name_offset,          k, vmSymbols::name_name(), string_signature, false); \
@@ -1620,8 +1619,7 @@ int java_lang_Thread::_park_event_offset = 0 ;
   macro(_stackSize_offset,     k, "stackSize", long_signature, false); \
   macro(_tid_offset,           k, "tid", long_signature, false); \
   macro(_thread_status_offset, k, "threadStatus", int_signature, false); \
-  macro(_park_blocker_offset,  k, "parkBlocker", object_signature, false); \
-  macro(_park_event_offset,    k, "nativeParkEventPointer", long_signature, false)
+  macro(_park_blocker_offset,  k, "parkBlocker", object_signature, false)
 
 void java_lang_Thread::compute_offsets() {
   assert(_group_offset == 0, "offsets should be initialized only once");
@@ -1767,22 +1765,6 @@ oop java_lang_Thread::park_blocker(oop java_thread) {
 
   return NULL;
 }
-
-jlong java_lang_Thread::park_event(oop java_thread) {
-  if (_park_event_offset > 0) {
-    return java_thread->long_field(_park_event_offset);
-  }
-  return 0;
-}
-
-bool java_lang_Thread::set_park_event(oop java_thread, jlong ptr) {
-  if (_park_event_offset > 0) {
-    java_thread->long_field_put(_park_event_offset, ptr);
-    return true;
-  }
-  return false;
-}
-
 
 const char* java_lang_Thread::thread_status_name(oop java_thread) {
   assert(_thread_status_offset != 0, "Must have thread status");
