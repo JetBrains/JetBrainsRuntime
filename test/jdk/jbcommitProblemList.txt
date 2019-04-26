@@ -28,7 +28,6 @@ java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                       
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
-java/awt/FontClass/GlyphRotationTest.java                                                   nobug windows-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
