@@ -1999,6 +1999,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                 font = findDeferredFont(name, style);
             }
             if (font == null) {
+                font = findFontFromPlatform(lowerCaseName, style);
+            }
+            if (font == null) {
                 font = family.getFont(style);
             }
             if (font == null) {
