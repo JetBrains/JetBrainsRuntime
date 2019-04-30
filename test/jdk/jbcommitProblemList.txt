@@ -41,6 +41,7 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                    
 java/awt/Graphics/LineClipTest.java                                                         nobug macosx-all,windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                                    nobug macosx-all,linux-all,windows-all
 java/awt/JAWT/JAWT.sh                                                                       nobug linux-all,windows-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html nobug macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html    nobug windows-all reproduced with Adopt
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                              nobug windows-all
@@ -126,7 +127,6 @@ java/awt/event/SequencedEvent/SequencedEventTest.java                           
 java/awt/font/Emoji/EmojiDrawingTest.java                                                   nobug macosx-all
 java/awt/font/Outline/OutlineInvarianceTest.java                                            nobug linux-all,windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                                    nobug macosx-all,windows-all
-java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java                      nobug macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java                                            nobug macosx-all,windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java                                             nobug windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java                                                 nobug windows-all
@@ -179,7 +179,6 @@ javax/swing/JToolTip/6219960/bug6219960.java                                    
 javax/swing/JTree/4633594/JTreeFocusTest.java                                               nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java                    nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java            nobug windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java               nobug macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java                   nobug macosx-all,windows-all
