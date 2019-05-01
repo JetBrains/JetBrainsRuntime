@@ -28,6 +28,7 @@ java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                       
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
+java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                                   nobug macosx-all,windows-all
@@ -91,16 +92,19 @@ java/awt/Window/ChangeWindowResizabilty/ChangeWindowResizabiltyTest.java        
 java/awt/Window/FindOwner/FindOwnerTest.html                                                nobug macosx-all,windows-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                                nobug macosx-all,linux-all,windows-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                                    nobug macosx-all
+java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                                nobug macosx-all,linux-all
 java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                                      nobug linux-all
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
+java/awt/Window/TopLevelLocation/TopLevelLocation.java                                      nobug linux-all,macosx-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java          nobug macosx-all
 java/awt/Window/WindowResizing/DoubleClickTitleBarTest.java                                 nobug macosx-all
 java/awt/datatransfer/Independence/IndependenceAWTTest.java                                 nobug linux-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.html                          nobug macosx-all,windows-all
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java                         nobug linux-all
+java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java                           nobug macosx-all,windows-all,linux-all
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html                       nobug macosx-all,linux-all,windows-all
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java                                        nobug macosx-all,windows-all,linux-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                           nobug macosx-all,linux-all,windows-all
@@ -150,12 +154,15 @@ javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java    
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
 javax/swing/JFileChooser/8194044/FileSystemRootTest.java                                    nobug windows-all
+javax/swing/JFrame/4962534/bug4962534.html                                                  nobug macosx-all,windows-all
+javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java                           nobug macosx-all
 javax/swing/JInternalFrame/6288609/TestJInternalFrameDispose.java                           nobug macosx-all,windows-all
 javax/swing/JInternalFrame/6647340/bug6647340.java                                          nobug macosx-all,windows-all
+javax/swing/JInternalFrame/6725409/bug6725409.java                                          nobug windows-all
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,linux-all,windows-all
 javax/swing/JInternalFrame/InternalFrameIsNotCollectedTest.java                             nobug macosx-all
-javax/swing/JInternalFrame/Test6802868.java                                                 nobug macosx-all
+javax/swing/JInternalFrame/Test6802868.java                                                 nobug macosx-all,linux-all
 javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all
 javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all,macosx-all,windows-all
 javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
@@ -165,7 +172,6 @@ javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                
 javax/swing/JOptionPane/6428694/bug6428694.java                                             nobug windows-all
 javax/swing/JPopupMenu/4458079/bug4458079.java                                              nobug windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
-javax/swing/JPopupMenu/6217905/bug6217905.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all
@@ -181,7 +187,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java        
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java            nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug macosx-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java                   nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java            nobug windows-all
 javax/swing/event/RightAltKeyTest.java                                                      nobug windows-all
