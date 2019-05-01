@@ -977,6 +977,7 @@ javax/swing/JPopupMenu/4458079/bug4458079.java                                  
 javax/swing/JPopupMenu/4769039/bug4769039.java                                      8194045 generic-all
 javax/swing/JPopupMenu/4870644/bug4870644.java                                      8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java                                      8064915,7151826 macosx-all,linux-all
+javax/swing/JPopupMenu/6217905/bug6217905.java                                      8205518 windows-all
 javax/swing/JPopupMenu/6415145/bug6415145.java                                      8197552 macosx-all,windows-all,linux-all
 javax/swing/JPopupMenu/6495920/bug6495920.java                                      8072110 macosx-all,linux-all
 javax/swing/JPopupMenu/6515446/bug6515446.java                                      8197552 macosx-all,windows-all,linux-all
@@ -1030,7 +1031,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java   
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8198667 macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8079254 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java          8013450 macosx-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java           8024627 macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java           8024627 macosx-all,windows-all
 javax/swing/LookAndFeel/8145547/DemandGTK2.sh                                       8193546,8212903 linux-all
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh                                       8215539,8212903 linux-all
 javax/swing/MultiUIDefaults/4300666/bug4300666.java                                 7105119 macosx-all
