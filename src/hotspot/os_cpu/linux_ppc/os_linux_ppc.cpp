@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -500,8 +500,10 @@ JVM_handle_linux_signal(int sig,
     // It write enables the page immediately after protecting it
     // so we can just return to retry the write.
     if ((sig == SIGSEGV) &&
-        // Si_addr may not be valid due to a bug in the linux-ppc64 kernel (see comment above).
-        // Use is_memory_serialization instead of si_addr.
+        // si_addr may not be valid due to a bug in the linux-ppc64 kernel (see comments above).
+        // So first check if it's indeed a "Data Storage Interrupt" (DSI), caused by load/store,
+        // and only then use is_memory_serialization instead of si_addr.
+        (ucontext_get_trap(uc) & 0x0F00 == 0x0300) &&
         ((NativeInstruction*)pc)->is_memory_serialization(thread, ucVoid)) {
       // Synchronization problem in the pseudo memory barrier code (bug id 6546278)
       // Block current thread until the memory serialize page permission restored.
