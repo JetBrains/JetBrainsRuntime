@@ -89,6 +89,7 @@ runtime/jni/terminatedThread/TestTerminatedThread.java 8219652 aix-ppc64
 serviceability/sa/ClhsdbAttach.java 8193639 solaris-all
 serviceability/sa/ClhsdbCDSCore.java 8207832 linux-x64
 serviceability/sa/ClhsdbCDSJstackPrintAll.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
+serviceability/sa/CDSJMapClstats.java 8193639 solaris-all
 serviceability/sa/ClhsdbField.java 8193639 solaris-all
 serviceability/sa/ClhsdbFindPC.java 8193639,8211767 solaris-all,linux-ppc64le,linux-ppc64
 serviceability/sa/ClhsdbFlags.java 8193639 solaris-all
