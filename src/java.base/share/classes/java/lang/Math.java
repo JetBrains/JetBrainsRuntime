@@ -1343,6 +1343,7 @@ public final class Math {
      * @param   a   the argument whose absolute value is to be determined
      * @return  the absolute value of the argument.
      */
+    @HotSpotIntrinsicCandidate
     public static int abs(int a) {
         return (a < 0) ? -a : a;
     }
@@ -1360,6 +1361,7 @@ public final class Math {
      * @param   a   the argument whose absolute value is to be determined
      * @return  the absolute value of the argument.
      */
+    @HotSpotIntrinsicCandidate
     public static long abs(long a) {
         return (a < 0) ? -a : a;
     }
@@ -1384,6 +1386,7 @@ public final class Math {
      * @param   a   the argument whose absolute value is to be determined
      * @return  the absolute value of the argument.
      */
+    @HotSpotIntrinsicCandidate
     public static float abs(float a) {
         return (a <= 0.0F) ? 0.0F - a : a;
     }
