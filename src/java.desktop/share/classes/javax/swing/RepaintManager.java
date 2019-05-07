@@ -1138,8 +1138,15 @@ public class RepaintManager
                     GraphicsConfiguration gc = gd.getDefaultConfiguration();
                     virtualBounds = virtualBounds.union(gc.getBounds());
                 }
-                doubleBufferMaxSize = new Dimension(virtualBounds.width,
-                                                    virtualBounds.height);
+                doubleBufferMaxSize =
+                        // Sometimes underlying desktop environment reports
+                        // incorrect gc bounds (w=0,h=0). Replace them with
+                        // maximum values (as we do for headless mode)
+                    new Dimension(
+                            virtualBounds.width == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.width,
+                            virtualBounds.height == 0 ?
+                                    Integer.MAX_VALUE : virtualBounds.height);
             } catch (HeadlessException e) {
                 doubleBufferMaxSize = new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE);
             }
