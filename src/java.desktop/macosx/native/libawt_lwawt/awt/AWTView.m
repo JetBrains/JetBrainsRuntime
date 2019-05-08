@@ -351,8 +351,6 @@ static BOOL shouldUsePressAndHold() {
     AWTToolkit.latestPerformKeyEquivalentEvent = event;
     [event retain];
 
-    if ([event keyCode] == 0) return NO;
-
     if ([event keyCode] == 24 && [[event characters] isEqual:@"+"]) {
         return 0;
     }
