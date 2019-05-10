@@ -121,7 +121,7 @@ public class SubSystem {
         try {
             List<String> lines = subsystem.readMatchingLines(param);
             for (String line: lines) {
-                if (line.contains(match)) {
+                if (line.startsWith(match)) {
                     retval = conversion.apply(line);
                     break;
                 }
