@@ -516,7 +516,7 @@ static BOOL shouldUsePressAndHold() {
     const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
 
     UInt32 isDeadKeyPressed;
-    UInt32 lengthOfBuffer = 4;
+    UInt32 lengthOfBuffer = 8;
     UniChar stringWithChars[lengthOfBuffer];
     UniCharCount actualLength;
 
