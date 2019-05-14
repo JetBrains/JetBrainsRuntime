@@ -163,7 +163,7 @@ javax/swing/JInternalFrame/8020708/bug8020708.java                              
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,linux-all,windows-all
 javax/swing/JInternalFrame/InternalFrameIsNotCollectedTest.java                             nobug macosx-all
 javax/swing/JInternalFrame/Test6802868.java                                                 nobug macosx-all,linux-all
-javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all
+javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all,linux-all
 javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all,macosx-all,windows-all
 javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
 javax/swing/JMenu/6538132/bug6538132.java                                                   nobug windows-all
