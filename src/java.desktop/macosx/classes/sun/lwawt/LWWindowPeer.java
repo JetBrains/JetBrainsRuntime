@@ -61,16 +61,8 @@ import java.util.List;
 
 import javax.swing.JComponent;
 
-import sun.awt.AWTAccessor;
+import sun.awt.*;
 import sun.awt.AWTAccessor.ComponentAccessor;
-import sun.awt.AppContext;
-import sun.awt.CGraphicsDevice;
-import sun.awt.DisplayChangedListener;
-import sun.awt.ExtendedKeyCodes;
-import sun.awt.FullScreenCapable;
-import sun.awt.SunToolkit;
-import sun.awt.TimedWindowEvent;
-import sun.awt.UngrabEvent;
 import sun.java2d.NullSurfaceData;
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SunGraphicsEnvironment;
@@ -298,14 +290,24 @@ public class LWWindowPeer
                 if (!getTarget().isAutoRequestFocus()) {
                     return;
                 } else {
-                    requestWindowFocus(FocusEvent.Cause.ACTIVATION);
+                    requestWindowFocus(FocusEvent.Cause.ACTIVATION, () -> {}, () -> {});
                 }
             // Focus the owner in case this window is focused.
             } else if (kfmPeer.getCurrentFocusedWindow() == getTarget()) {
                 // Transfer focus to the owner.
-                LWWindowPeer owner = getOwnerFrameDialog(LWWindowPeer.this);
-                if (owner != null) {
-                    owner.requestWindowFocus(FocusEvent.Cause.ACTIVATION);
+                Window targetOwner = LWWindowPeer.this.getTarget().getOwner();
+
+                while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
+                    targetOwner = targetOwner.getOwner();
+                }
+
+                if (targetOwner != null) {
+
+                    LWWindowPeer owner = (LWWindowPeer) AWTAccessor.getComponentAccessor().getPeer(targetOwner);
+
+                    if (owner != null) {
+                        owner.requestWindowFocus(FocusEvent.Cause.ACTIVATION, () -> {}, () -> {});
+                    }
                 }
             }
         }
@@ -777,7 +779,7 @@ public class LWWindowPeer
     @Override
     public void notifyActivation(boolean activation, LWWindowPeer opposite) {
         Window oppositeWindow = (opposite == null)? null : opposite.getTarget();
-        changeFocusedWindow(activation, oppositeWindow);
+        changeFocusedWindow(activation, oppositeWindow, () -> {});
     }
 
     // MouseDown in non-client area
@@ -894,7 +896,7 @@ public class LWWindowPeer
                 // 2. An active but not focused owner frame/dialog is clicked.
                 // The mouse event then will trigger a focus request "in window" to the component, so the window
                 // should gain focus before.
-                requestWindowFocus(FocusEvent.Cause.MOUSE_EVENT);
+                requestWindowFocus(FocusEvent.Cause.MOUSE_EVENT, () -> {}, () -> {});
 
                 mouseDownTarget[targetIdx] = targetPeer;
             } else if (id == MouseEvent.MOUSE_DRAGGED) {
@@ -1245,17 +1247,19 @@ public class LWWindowPeer
      * Requests platform to set native focus on a frame/dialog.
      * In case of a simple window, triggers appropriate java focus change.
      */
-    public boolean requestWindowFocus(FocusEvent.Cause cause) {
+    public boolean requestWindowFocus(FocusEvent.Cause cause, Runnable rejectFocusRequest, Runnable lightweightRequest) {
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine("requesting native focus to " + this);
         }
 
         if (!focusAllowedFor()) {
             focusLog.fine("focus is not allowed");
+            rejectFocusRequest.run();
             return false;
         }
 
         if (platformWindow.rejectFocusRequest(cause)) {
+            rejectFocusRequest.run();
             return false;
         }
 
@@ -1270,13 +1274,19 @@ public class LWWindowPeer
 
         // In case the toplevel is active but not focused, change focus directly,
         // as requesting native focus on it will not have effect.
-        if (getTarget() == currentActive && !getTarget().hasFocus()) {
-
-            changeFocusedWindow(true, opposite);
+        if (getTarget() == currentActive && !getTarget().isFocused()) {
+            changeFocusedWindow(true, opposite, lightweightRequest);
             return true;
         }
 
-        return platformWindow.requestWindowFocus();
+        focusLog.fine("platformWindow.requestWindowFocus()");
+        boolean requestFocusResult  = platformWindow.requestWindowFocus();
+
+        if (requestFocusResult) {
+            lightweightRequest.run();
+            return true;
+        }
+        return false;
     }
 
     protected boolean focusAllowedFor() {
@@ -1304,7 +1314,7 @@ public class LWWindowPeer
 
     @Override
     public void emulateActivation(boolean activate) {
-        changeFocusedWindow(activate, null);
+        changeFocusedWindow(activate, null, () -> {});
     }
 
     @SuppressWarnings("deprecation")
@@ -1323,7 +1333,7 @@ public class LWWindowPeer
     /*
      * Changes focused window on java level.
      */
-    protected void changeFocusedWindow(boolean becomesFocused, Window opposite) {
+    protected void changeFocusedWindow(boolean becomesFocused, Window opposite, Runnable lightweightRequestRunnable) {
         if (focusLog.isLoggable(PlatformLogger.Level.FINE)) {
             focusLog.fine((becomesFocused?"gaining":"loosing") + " focus window: " + this);
         }
@@ -1362,19 +1372,22 @@ public class LWWindowPeer
         }
 
         KeyboardFocusManagerPeer kfmPeer = LWKeyboardFocusManagerPeer.getInstance();
-
-        if (!becomesFocused && kfmPeer.getCurrentFocusedWindow() != getTarget()) {
-            // late window focus lost event - ingoring
-            return;
-        }
-
         kfmPeer.setCurrentFocusedWindow(becomesFocused ? getTarget() : null);
 
         int eventID = becomesFocused ? WindowEvent.WINDOW_GAINED_FOCUS : WindowEvent.WINDOW_LOST_FOCUS;
         WindowEvent windowEvent = new TimedWindowEvent(getTarget(), eventID, opposite, System.currentTimeMillis());
 
+        SunToolkit.setSystemGenerated(windowEvent);
+        AWTAccessor.getAWTEventAccessor().setPosted(windowEvent);
+        PeerEvent pe = new PeerEvent(getTarget(), () -> {
+            ((Component)windowEvent.getSource()).dispatchEvent(windowEvent);
+            if (becomesFocused) {
+                lightweightRequestRunnable.run();
+            }
+        }, PeerEvent.ULTIMATE_PRIORITY_EVENT);
+
         // TODO: wrap in SequencedEvent
-        postEvent(windowEvent);
+        postEvent(pe);
     }
 
     /*

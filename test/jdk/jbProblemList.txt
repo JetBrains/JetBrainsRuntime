@@ -908,3 +908,6 @@ javax/print/attribute/AttributeTest.java                                        
 javax/print/attribute/GetCopiesSupported.java                                       nobug generic-all
 javax/print/attribute/SidesPageRangesTest.java                                      nobug generic-all
 javax/print/attribute/SupportedPrintableAreas.java                                  nobug generic-all
+
+############################################################################
+jb/java/awt/Focus/ModalDialogFromMenuTest.java                                      JBR-2768 macosx-all
