@@ -61,18 +61,18 @@ public class LWLightweightFramePeer extends LWWindowPeer implements OverrideNati
     }
 
     @Override
-    public boolean requestWindowFocus(FocusEvent.Cause cause) {
+    public boolean requestWindowFocus(FocusEvent.Cause cause, Runnable r,  Runnable lightweightRequest) {
         if (!focusAllowedFor()) {
             return false;
         }
-        if (getPlatformWindow().rejectFocusRequest(cause)) {
+        /*if (getPlatformWindow().rejectFocusRequest(cause)) {
             return false;
-        }
+        }*/
 
         Window opposite = LWKeyboardFocusManagerPeer.getInstance().
             getCurrentFocusedWindow();
 
-        changeFocusedWindow(true, opposite);
+        changeFocusedWindow(true, opposite, () -> {});
 
         return true;
     }
