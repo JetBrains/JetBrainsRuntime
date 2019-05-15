@@ -915,8 +915,10 @@ Java_java_net_PlainDatagramSocketImpl_datagramSocketCreate(JNIEnv *env,
         return;
     }
 
-    /* Disable IPV6_V6ONLY to ensure dual-socket support */
-    if (domain == AF_INET6) {
+    /*
+     * If IPv4 is available, disable IPV6_V6ONLY to ensure dual-socket support.
+     */
+    if (domain == AF_INET6 && ipv4_available()) {
         arg = 0;
         if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (char*)&arg,
                        sizeof(int)) < 0) {
@@ -1496,6 +1498,7 @@ jobject getMulticastInterface(JNIEnv *env, jobject this, int fd, jint opt) {
             CHECK_NULL_RETURN(ni_class, NULL);
         }
         ni = Java_java_net_NetworkInterface_getByInetAddress0(env, ni_class, addr);
+        JNU_CHECK_EXCEPTION_RETURN(env, NULL);
         if (ni) {
             return ni;
         }

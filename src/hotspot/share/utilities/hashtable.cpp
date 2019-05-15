@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,7 +129,7 @@ static int literal_size(oop obj) {
   }
 }
 
-static int literal_size(ClassLoaderWeakHandle v) {
+static int literal_size(WeakHandle<vm_class_loader_data> v) {
   return literal_size(v.peek());
 }
 
@@ -191,18 +191,7 @@ template <MEMFLAGS F> bool BasicHashtable<F>::maybe_grow(int max_size, int load_
   }
 }
 
-// Dump footprint and bucket length statistics
-//
-// Note: if you create a new subclass of Hashtable<MyNewType, F>, you will need to
-// add a new function static int literal_size(MyNewType lit)
-// because I can't get template <class T> int literal_size(T) to pick the specializations for Symbol and oop.
-//
-// The StringTable and SymbolTable dumping print how much footprint is used by the String and Symbol
-// literals.
-
-template <class T, MEMFLAGS F> void Hashtable<T, F>::print_table_statistics(outputStream* st,
-                                                                            const char *table_name,
-                                                                            T (*literal_load_barrier)(HashtableEntry<T, F>*)) {
+template <class T, MEMFLAGS F> TableStatistics Hashtable<T, F>::statistics_calculate(T (*literal_load_barrier)(HashtableEntry<T, F>*)) {
   NumberSeq summary;
   int literal_bytes = 0;
   for (int i = 0; i < this->table_size(); ++i) {
@@ -215,28 +204,19 @@ template <class T, MEMFLAGS F> void Hashtable<T, F>::print_table_statistics(outp
     }
     summary.add((double)count);
   }
-  double num_buckets = summary.num();
-  double num_entries = summary.sum();
+  return TableStatistics(this->_stats_rate, summary, literal_bytes, sizeof(HashtableBucket<F>), sizeof(HashtableEntry<T, F>));
+}
 
-  int bucket_bytes = (int)num_buckets * sizeof(HashtableBucket<F>);
-  int entry_bytes  = (int)num_entries * sizeof(HashtableEntry<T, F>);
-  int total_bytes = literal_bytes +  bucket_bytes + entry_bytes;
-
-  int bucket_size  = (num_buckets <= 0) ? 0 : (bucket_bytes  / num_buckets);
-  int entry_size   = (num_entries <= 0) ? 0 : (entry_bytes   / num_entries);
-
-  st->print_cr("%s statistics:", table_name);
-  st->print_cr("Number of buckets       : %9d = %9d bytes, each %d", (int)num_buckets, bucket_bytes,  bucket_size);
-  st->print_cr("Number of entries       : %9d = %9d bytes, each %d", (int)num_entries, entry_bytes,   entry_size);
-  if (literal_bytes != 0) {
-    double literal_avg = (num_entries <= 0) ? 0 : (literal_bytes / num_entries);
-    st->print_cr("Number of literals      : %9d = %9d bytes, avg %7.3f", (int)num_entries, literal_bytes, literal_avg);
-  }
-  st->print_cr("Total footprint         : %9s = %9d bytes", "", total_bytes);
-  st->print_cr("Average bucket size     : %9.3f", summary.avg());
-  st->print_cr("Variance of bucket size : %9.3f", summary.variance());
-  st->print_cr("Std. dev. of bucket size: %9.3f", summary.sd());
-  st->print_cr("Maximum bucket size     : %9d", (int)summary.maximum());
+// Dump footprint and bucket length statistics
+//
+// Note: if you create a new subclass of Hashtable<MyNewType, F>, you will need to
+// add a new function static int literal_size(MyNewType lit)
+// because I can't get template <class T> int literal_size(T) to pick the specializations for Symbol and oop.
+template <class T, MEMFLAGS F> void Hashtable<T, F>::print_table_statistics(outputStream* st,
+                                                                            const char *table_name,
+                                                                            T (*literal_load_barrier)(HashtableEntry<T, F>*)) {
+  TableStatistics ts = statistics_calculate(literal_load_barrier);
+  ts.print(st, table_name);
 }
 
 #ifndef PRODUCT
@@ -244,7 +224,7 @@ template <class T> void print_literal(T l) {
   l->print();
 }
 
-static void print_literal(ClassLoaderWeakHandle l) {
+static void print_literal(WeakHandle<vm_class_loader_data> l) {
   l.print();
 }
 
@@ -308,15 +288,14 @@ template class Hashtable<ConstantPool*, mtClass>;
 template class Hashtable<Symbol*, mtSymbol>;
 template class Hashtable<Klass*, mtClass>;
 template class Hashtable<InstanceKlass*, mtClass>;
-template class Hashtable<ClassLoaderWeakHandle, mtClass>;
+template class Hashtable<WeakHandle<vm_class_loader_data>, mtClass>;
 template class Hashtable<Symbol*, mtModule>;
 template class Hashtable<oop, mtSymbol>;
-template class Hashtable<ClassLoaderWeakHandle, mtSymbol>;
 template class Hashtable<Symbol*, mtClass>;
 template class HashtableEntry<Symbol*, mtSymbol>;
 template class HashtableEntry<Symbol*, mtClass>;
 template class HashtableEntry<oop, mtSymbol>;
-template class HashtableEntry<ClassLoaderWeakHandle, mtSymbol>;
+template class HashtableEntry<WeakHandle<vm_class_loader_data>, mtClass>;
 template class HashtableBucket<mtClass>;
 template class BasicHashtableEntry<mtSymbol>;
 template class BasicHashtableEntry<mtCode>;

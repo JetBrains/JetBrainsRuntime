@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2015, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -30,6 +30,8 @@
 #include "gc/shenandoah/shenandoahHeap.hpp"
 #include "gc/shenandoah/shenandoahPhaseTimings.hpp"
 #include "gc/shared/strongRootsScope.hpp"
+#include "gc/shared/weakProcessor.hpp"
+#include "gc/shared/weakProcessorPhaseTimes.hpp"
 #include "gc/shared/workgroup.hpp"
 #include "memory/allocation.hpp"
 #include "memory/iterator.hpp"
@@ -43,7 +45,6 @@ public:
 enum Shenandoah_process_roots_tasks {
   SHENANDOAH_RP_PS_Universe_oops_do,
   SHENANDOAH_RP_PS_JNIHandles_oops_do,
-  SHENANDOAH_RP_PS_JNIHandles_weak_oops_do,
   SHENANDOAH_RP_PS_ObjectSynchronizer_oops_do,
   SHENANDOAH_RP_PS_Management_oops_do,
   SHENANDOAH_RP_PS_SystemDictionary_oops_do,
@@ -55,11 +56,13 @@ enum Shenandoah_process_roots_tasks {
 class ShenandoahRootProcessor : public StackObj {
   SubTasksDone* _process_strong_tasks;
   StrongRootsScope _srs;
-  OopStorage::ParState<false, false> _par_state_string;
   ShenandoahPhaseTimings::Phase _phase;
-  ParallelCLDRootIterator   _cld_iterator;
+  ParallelCLDRootIterator _cld_iterator;
   ShenandoahAllCodeRootsIterator _coderoots_all_iterator;
   CodeBlobClosure* _threads_nmethods_cl;
+  WeakProcessorPhaseTimes _weak_processor_timings;
+  WeakProcessor::Task     _weak_processor_task;
+  bool                    _processed_weak_roots;
 
   void process_java_roots(OopClosure* scan_non_heap_roots,
                           CLDClosure* scan_strong_clds,
@@ -69,29 +72,40 @@ class ShenandoahRootProcessor : public StackObj {
                           uint worker_i);
 
   void process_vm_roots(OopClosure* scan_non_heap_roots,
-                        OopClosure* scan_non_heap_weak_roots,
-                        OopClosure* weak_jni_roots,
                         uint worker_i);
+
+  void weak_processor_timing_to_shenandoah_timing(const WeakProcessorPhases::Phase wpp,
+                                                  const ShenandoahPhaseTimings::GCParPhases spp,
+                                                  ShenandoahWorkerTimings* worker_times) const;
 
 public:
   ShenandoahRootProcessor(ShenandoahHeap* heap, uint n_workers,
                           ShenandoahPhaseTimings::Phase phase);
   ~ShenandoahRootProcessor();
 
-  // Apply oops, clds and blobs to all strongly reachable roots in the system
-  void process_strong_roots(OopClosure* oops, OopClosure* weak_oops,
+  // Apply oops, clds and blobs to all strongly reachable roots in the system.
+  // Optionally, apply class loader closure to weak clds, depending on class unloading
+  // for the particular GC cycles.
+  void process_strong_roots(OopClosure* oops,
                             CLDClosure* clds,
-                            CLDClosure* weak_clds,
                             CodeBlobClosure* blobs,
                             ThreadClosure* thread_cl,
                             uint worker_id);
 
-  // Apply oops, clds and blobs to strongly and weakly reachable roots in the system
-  void process_all_roots(OopClosure* oops, OopClosure* weak_oops,
+  // Apply oops, clds and blobs to strongly reachable roots in the system
+  void process_all_roots(OopClosure* oops,
                          CLDClosure* clds,
                          CodeBlobClosure* blobs,
                          ThreadClosure* thread_cl,
                          uint worker_id);
+
+  // Apply oops, clds and blobs to strongly and weakly reachable roots in the system
+  template <typename IsAlive>
+  void update_all_roots(OopClosure* oops,
+                        CLDClosure* clds,
+                        CodeBlobClosure* blobs,
+                        ThreadClosure* thread_cl,
+                        uint worker_id);
 
   // For slow debug/verification code
   void process_all_roots_slow(OopClosure* oops);
@@ -105,11 +119,19 @@ class ShenandoahRootEvacuator : public StackObj {
   StrongRootsScope _srs;
   ShenandoahPhaseTimings::Phase _phase;
   ShenandoahCsetCodeRootsIterator _coderoots_cset_iterator;
+  ParallelCLDRootIterator _cld_iterator;
+  WeakProcessorPhaseTimes _weak_processor_timings;
+  WeakProcessor::Task     _weak_processor_task;
 
   enum Shenandoah_evacuate_roots_tasks {
-      SHENANDOAH_EVAC_jvmti_oops_do,
-      // Leave this one last.
-      SHENANDOAH_EVAC_NumElements
+    SHENANDOAH_EVAC_Universe_oops_do,
+    SHENANDOAH_EVAC_ObjectSynchronizer_oops_do,
+    SHENANDOAH_EVAC_Management_oops_do,
+    SHENANDOAH_EVAC_SystemDictionary_oops_do,
+    SHENANDOAH_EVAC_jvmti_oops_do,
+    SHENANDOAH_EVAC_JNIHandles_oops_do,
+    // Leave this one last.
+    SHENANDOAH_EVAC_NumElements
   };
 public:
   ShenandoahRootEvacuator(ShenandoahHeap* heap, uint n_workers,

@@ -51,36 +51,27 @@ class DebugInformationRecorder;
 //  - handler entry point array
 //  [Implicit Null Pointer exception table]
 //  - implicit null table array
+//  [Speculations]
+//  - encoded speculations array
+//  [JVMCINMethodData]
+//  - meta data for JVMCI compiled nmethod
+
+#if INCLUDE_JVMCI
+class FailedSpeculation;
+class JVMCINMethodData;
+#endif
 
 class nmethod : public CompiledMethod {
   friend class VMStructs;
   friend class JVMCIVMStructs;
   friend class NMethodSweeper;
   friend class CodeCache;  // scavengable oops
+  friend class JVMCINMethodData;
  private:
 
   // Shared fields for all nmethod's
   int       _entry_bci;        // != InvocationEntryBci if this nmethod is an on-stack replacement method
   jmethodID _jmethod_id;       // Cache of method()->jmethod_id()
-
-#if INCLUDE_JVMCI
-  // A weak reference to an InstalledCode object associated with
-  // this nmethod.
-  jweak     _jvmci_installed_code;
-
-  // A weak reference to a SpeculationLog object associated with
-  // this nmethod.
-  jweak     _speculation_log;
-
-  // Determines whether this nmethod is unloaded when the
-  // referent in _jvmci_installed_code is cleared. This
-  // will be false if the referent is initialized to a
-  // HotSpotNMethod object whose isDefault field is true.
-  // That is, installed code other than a "default"
-  // HotSpotNMethod causes nmethod unloading.
-  // This field is ignored once _jvmci_installed_code is NULL.
-  bool _jvmci_installed_code_triggers_invalidation;
-#endif
 
   // To support simple linked-list chaining of nmethods:
   nmethod*  _osr_link;         // from InstanceKlass::osr_nmethods_head
@@ -107,6 +98,10 @@ class nmethod : public CompiledMethod {
   int _dependencies_offset;
   int _handler_table_offset;
   int _nul_chk_table_offset;
+#if INCLUDE_JVMCI
+  int _speculations_offset;
+  int _jvmci_data_offset;
+#endif
   int _nmethod_end_offset;
 
   int code_offset() const { return (address) code_begin() - header_begin(); }
@@ -130,8 +125,6 @@ class nmethod : public CompiledMethod {
 #ifdef ASSERT
   bool _oops_are_stale;  // indicates that it's no longer safe to access oops section
 #endif
-
-  jbyte _scavenge_root_state;
 
 #if INCLUDE_RTM_OPT
   // RTM state at compile time. Used during deoptimization to decide
@@ -209,8 +202,9 @@ class nmethod : public CompiledMethod {
           AbstractCompiler* compiler,
           int comp_level
 #if INCLUDE_JVMCI
-          , jweak installed_code,
-          jweak speculation_log
+          , char* speculations,
+          int speculations_len,
+          int jvmci_data_size
 #endif
           );
 
@@ -253,8 +247,11 @@ class nmethod : public CompiledMethod {
                               AbstractCompiler* compiler,
                               int comp_level
 #if INCLUDE_JVMCI
-                              , jweak installed_code = NULL,
-                              jweak speculation_log = NULL
+                              , char* speculations = NULL,
+                              int speculations_len = 0,
+                              int nmethod_mirror_index = -1,
+                              const char* nmethod_mirror_name = NULL,
+                              FailedSpeculation** failed_speculations = NULL
 #endif
   );
 
@@ -301,12 +298,24 @@ class nmethod : public CompiledMethod {
   address handler_table_begin   () const          { return           header_begin() + _handler_table_offset ; }
   address handler_table_end     () const          { return           header_begin() + _nul_chk_table_offset ; }
   address nul_chk_table_begin   () const          { return           header_begin() + _nul_chk_table_offset ; }
+#if INCLUDE_JVMCI
+  address nul_chk_table_end     () const          { return           header_begin() + _speculations_offset  ; }
+  address speculations_begin    () const          { return           header_begin() + _speculations_offset  ; }
+  address speculations_end      () const          { return           header_begin() + _jvmci_data_offset   ; }
+  address jvmci_data_begin      () const          { return           header_begin() + _jvmci_data_offset    ; }
+  address jvmci_data_end        () const          { return           header_begin() + _nmethod_end_offset   ; }
+#else
   address nul_chk_table_end     () const          { return           header_begin() + _nmethod_end_offset   ; }
+#endif
 
   // Sizes
   int oops_size         () const                  { return (address)  oops_end         () - (address)  oops_begin         (); }
   int metadata_size     () const                  { return (address)  metadata_end     () - (address)  metadata_begin     (); }
   int dependencies_size () const                  { return            dependencies_end () -            dependencies_begin (); }
+#if INCLUDE_JVMCI
+  int speculations_size () const                  { return            speculations_end () -            speculations_begin (); }
+  int jvmci_data_size   () const                  { return            jvmci_data_end   () -            jvmci_data_begin   (); }
+#endif
 
   int     oops_count() const { assert(oops_size() % oopSize == 0, "");  return (oops_size() / oopSize) + 1; }
   int metadata_count() const { assert(metadata_size() % wordSize == 0, ""); return (metadata_size() / wordSize) + 1; }
@@ -410,24 +419,6 @@ public:
   void fix_oop_relocations(address begin, address end) { fix_oop_relocations(begin, end, false); }
   void fix_oop_relocations()                           { fix_oop_relocations(NULL, NULL, false); }
 
-  // Scavengable oop support
-  bool  on_scavenge_root_list() const                  { return (_scavenge_root_state & 1) != 0; }
- protected:
-  enum { sl_on_list = 0x01, sl_marked = 0x10 };
-  void  set_on_scavenge_root_list()                    { _scavenge_root_state = sl_on_list; }
-  void  clear_on_scavenge_root_list()                  { _scavenge_root_state = 0; }
-  // assertion-checking and pruning logic uses the bits of _scavenge_root_state
-#ifndef PRODUCT
-  void  set_scavenge_root_marked()                     { _scavenge_root_state |= sl_marked; }
-  void  clear_scavenge_root_marked()                   { _scavenge_root_state &= ~sl_marked; }
-  bool  scavenge_root_not_marked()                     { return (_scavenge_root_state &~ sl_on_list) == 0; }
-  // N.B. there is no positive marked query, and we only use the not_marked query for asserts.
-#endif //PRODUCT
-  nmethod* scavenge_root_link() const                  { return _scavenge_root_link; }
-  void     set_scavenge_root_link(nmethod *n)          { _scavenge_root_link = n; }
-
- public:
-
   // Sweeper support
   long  stack_traversal_mark()                    { return _stack_traversal_mark; }
   void  set_stack_traversal_mark(long l)          { _stack_traversal_mark = l; }
@@ -466,46 +457,24 @@ public:
   void set_method(Method* method) { _method = method; }
 
 #if INCLUDE_JVMCI
-  // Gets the InstalledCode object associated with this nmethod
-  // which may be NULL if this nmethod was not compiled by JVMCI
-  // or the weak reference has been cleared.
-  oop jvmci_installed_code();
+  // Gets the JVMCI name of this nmethod.
+  const char* jvmci_name();
 
-  // Copies the value of the name field in the InstalledCode
-  // object (if any) associated with this nmethod into buf.
-  // Returns the value of buf if it was updated otherwise NULL.
-  char* jvmci_installed_code_name(char* buf, size_t buflen) const;
+  // Records the pending failed speculation in the
+  // JVMCI speculation log associated with this nmethod.
+  void update_speculation(JavaThread* thread);
 
-  // Updates the state of the InstalledCode (if any) associated with
-  // this nmethod based on the current value of _state.
-  void maybe_invalidate_installed_code();
-
-  // Deoptimizes the nmethod (if any) in the address field of a given
-  // InstalledCode object. The address field is zeroed upon return.
-  static void invalidate_installed_code(Handle installed_code, TRAPS);
-
-  // Gets the SpeculationLog object associated with this nmethod
-  // which may be NULL if this nmethod was not compiled by JVMCI
-  // or the weak reference has been cleared.
-  oop speculation_log();
-
- private:
-  // Deletes the weak reference (if any) to the InstalledCode object
-  // associated with this nmethod.
-  void clear_jvmci_installed_code();
-
-  // Deletes the weak reference (if any) to the SpeculationLog object
-  // associated with this nmethod.
-  void clear_speculation_log();
-
- public:
+  // Gets the data specific to a JVMCI compiled method.
+  // This returns a non-NULL value iff this nmethod was
+  // compiled by the JVMCI compiler.
+  JVMCINMethodData* jvmci_nmethod_data() const {
+    return jvmci_data_size() == 0 ? NULL : (JVMCINMethodData*) jvmci_data_begin();
+  }
 #endif
 
  public:
   void oops_do(OopClosure* f) { oops_do(f, false); }
   void oops_do(OopClosure* f, bool allow_zombie);
-  bool detect_scavenge_root_oops();
-  void verify_scavenge_root_oops() PRODUCT_RETURN;
 
   bool test_set_oops_do_mark();
   static void oops_do_marking_prologue();
@@ -587,11 +556,6 @@ public:
   // and the changes have invalidated it
   bool check_dependency_on(DepChange& changes);
 
-  // Evolution support. Tells if this compiled method is dependent on any of
-  // redefined methods, such that if m() is replaced,
-  // this compiled method will have to be deoptimized.
-  bool is_evol_dependent();
-
   // Fast breakpoint support. Tells if this compiled method is
   // dependent on the given method. Returns true if this nmethod
   // corresponds to the given method as well.
@@ -613,7 +577,7 @@ public:
   static int osr_entry_point_offset()             { return offset_of(nmethod, _osr_entry_point); }
   static int state_offset()                       { return offset_of(nmethod, _state); }
 
-  virtual void metadata_do(void f(Metadata*));
+  virtual void metadata_do(MetadataClosure* f);
 
   NativeCallWrapper* call_wrapper_at(address call) const;
   NativeCallWrapper* call_wrapper_before(address return_pc) const;

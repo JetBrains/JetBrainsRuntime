@@ -35,6 +35,8 @@
 #include "jvmci/compilerRuntime.hpp"
 #include "jvmci/jvmciRuntime.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/universe.hpp"
+#include "oops/compressedOops.hpp"
 #include "oops/method.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/os.hpp"
@@ -577,8 +579,8 @@ void AOTCodeHeap::link_global_lib_symbols() {
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_heap_top_address", address, (heap->supports_inline_contig_alloc() ? heap->top_addr() : NULL));
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_heap_end_address", address, (heap->supports_inline_contig_alloc() ? heap->end_addr() : NULL));
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_polling_page", address, os::get_polling_page());
-    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_narrow_klass_base_address", address, Universe::narrow_klass_base());
-    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_narrow_oop_base_address", address, Universe::narrow_oop_base());
+    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_narrow_klass_base_address", address, CompressedKlassPointers::base());
+    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_narrow_oop_base_address", address, CompressedOops::base());
 #if INCLUDE_G1GC
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_log_of_heap_region_grain_bytes", int, HeapRegion::LogOfHRGrainBytes);
 #endif
@@ -931,13 +933,13 @@ void AOTCodeHeap::oops_do(OopClosure* f) {
 // Scan only klasses_got cells which should have only Klass*,
 // metadata_got cells are scanned only for alive AOT methods
 // by AOTCompiledMethod::metadata_do().
-void AOTCodeHeap::got_metadata_do(void f(Metadata*)) {
+void AOTCodeHeap::got_metadata_do(MetadataClosure* f) {
   for (int i = 1; i < _klasses_got_size; i++) {
     Metadata** p = &_klasses_got[i];
     Metadata* md = *p;
     if (md == NULL)  continue;  // skip non-oops
     if (Metaspace::contains(md)) {
-      f(md);
+      f->do_metadata(md);
     } else {
       intptr_t meta = (intptr_t)md;
       fatal("Invalid value in _klasses_got[%d] = " INTPTR_FORMAT, i, meta);
@@ -969,7 +971,7 @@ int AOTCodeHeap::verify_icholder_relocations() {
 }
 #endif
 
-void AOTCodeHeap::metadata_do(void f(Metadata*)) {
+void AOTCodeHeap::metadata_do(MetadataClosure* f) {
   for (int index = 0; index < _method_count; index++) {
     if (_code_to_aot[index]._state != in_use) {
       continue; // Skip uninitialized entries.

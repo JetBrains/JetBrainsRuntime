@@ -42,17 +42,13 @@
 #include "opto/superword.hpp"
 
 //=============================================================================
-//------------------------------is_loop_iv-------------------------------------
-// Determine if a node is Counted loop induction variable.
-// The method is declared in node.hpp.
-const Node* Node::is_loop_iv() const {
-  if (this->is_Phi() && !this->as_Phi()->is_copy() &&
-      this->as_Phi()->region()->is_CountedLoop() &&
-      this->as_Phi()->region()->as_CountedLoop()->phi() == this) {
-    return this;
-  } else {
-    return NULL;
-  }
+//--------------------------is_cloop_ind_var-----------------------------------
+// Determine if a node is a counted loop induction variable.
+// NOTE: The method is declared in "node.hpp".
+bool Node::is_cloop_ind_var() const {
+  return (is_Phi() && !as_Phi()->is_copy() &&
+          as_Phi()->region()->is_CountedLoop() &&
+          as_Phi()->region()->as_CountedLoop()->phi() == this);
 }
 
 //=============================================================================
@@ -1593,12 +1589,17 @@ void OuterStripMinedLoopNode::adjust_strip_mined_loop(PhaseIterGVN* igvn) {
     } else {
       new_limit = igvn->transform(new SubINode(iv_phi, min));
     }
-    Node* cmp = inner_cle->cmp_node()->clone();
-    igvn->replace_input_of(cmp, 2, new_limit);
-    Node* bol = inner_cle->in(CountedLoopEndNode::TestValue)->clone();
-    cmp->set_req(2, limit);
-    bol->set_req(1, igvn->transform(cmp));
-    igvn->replace_input_of(outer_loop_end(), 1, igvn->transform(bol));
+    Node* inner_cmp = inner_cle->cmp_node();
+    Node* inner_bol = inner_cle->in(CountedLoopEndNode::TestValue);
+    Node* outer_bol = inner_bol;
+    // cmp node for inner loop may be shared
+    inner_cmp = inner_cmp->clone();
+    inner_cmp->set_req(2, new_limit);
+    inner_bol = inner_bol->clone();
+    inner_bol->set_req(1, igvn->transform(inner_cmp));
+    igvn->replace_input_of(inner_cle, CountedLoopEndNode::TestValue, igvn->transform(inner_bol));
+    // Set the outer loop's exit condition too
+    igvn->replace_input_of(outer_loop_end(), 1, outer_bol);
   } else {
     assert(false, "should be able to adjust outer loop");
     IfNode* outer_le = outer_loop_end();
@@ -2937,14 +2938,15 @@ void PhaseIdealLoop::build_and_optimize(LoopOptsMode mode) {
   }
 
   if (ReassociateInvariants) {
+    AutoNodeBudget node_budget(this, AutoNodeBudget::NO_BUDGET_CHECK);
     // Reassociate invariants and prep for split_thru_phi
     for (LoopTreeIterator iter(_ltree_root); !iter.done(); iter.next()) {
       IdealLoopTree* lpt = iter.current();
       bool is_counted = lpt->is_counted();
-      if (!is_counted || !lpt->is_inner()) continue;
+      if (!is_counted || !lpt->is_innermost()) continue;
 
       // check for vectorized loops, any reassociation of invariants was already done
-      if (is_counted && lpt->_head->as_CountedLoop()->do_unroll_only()) continue;
+      if (is_counted && lpt->_head->as_CountedLoop()->is_unroll_only()) continue;
 
       lpt->reassociate_invariants(this);
 
@@ -3966,7 +3968,7 @@ Node *PhaseIdealLoop::get_late_ctrl( Node *n, Node *early ) {
     }
     while(worklist.size() != 0 && LCA != early) {
       Node* s = worklist.pop();
-      if (s->is_Load() || s->is_ShenandoahBarrier() || s->Opcode() == Op_SafePoint ||
+      if (s->is_Load() || s->Opcode() == Op_SafePoint ||
           (s->is_CallStaticJava() && s->as_CallStaticJava()->uncommon_trap_request() != 0)) {
         continue;
       } else if (s->is_MergeMem()) {

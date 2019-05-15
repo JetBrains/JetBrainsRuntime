@@ -24,15 +24,11 @@
 
 package org.graalvm.compiler.hotspot.meta;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -42,6 +38,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
+import jdk.vm.ci.hotspot.HotSpotConstantPool;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -87,43 +84,17 @@ public final class HotSpotClassInitializationPlugin implements ClassInitializati
         return false;
     }
 
-    private static final Class<? extends ConstantPool> hscp;
-    private static final MethodHandle loadReferencedTypeIIZMH;
-
-    static {
-        MethodHandle m = null;
-        Class<? extends ConstantPool> c = null;
-        try {
-            c = Class.forName("jdk.vm.ci.hotspot.HotSpotConstantPool").asSubclass(ConstantPool.class);
-            m = MethodHandles.lookup().findVirtual(c, "loadReferencedType", MethodType.methodType(void.class, int.class, int.class, boolean.class));
-        } catch (Exception e) {
-        }
-        loadReferencedTypeIIZMH = m;
-        hscp = c;
-    }
-
-    private static boolean isHotSpotConstantPool(ConstantPool cp) {
-        // jdk.vm.ci.hotspot.HotSpotConstantPool is final, so we can
-        // directly compare Classes.
-        return cp.getClass() == hscp;
-    }
-
     @Override
     public boolean supportsLazyInitialization(ConstantPool cp) {
-        if (loadReferencedTypeIIZMH != null && isHotSpotConstantPool(cp)) {
-            return true;
-        }
-        return false;
+        // jdk.vm.ci.hotspot.HotSpotConstantPool is final, so we can
+        // directly compare Classes.
+        return (cp instanceof HotSpotConstantPool);
     }
 
     @Override
     public void loadReferencedType(GraphBuilderContext builder, ConstantPool cp, int cpi, int opcode) {
-        if (loadReferencedTypeIIZMH != null && isHotSpotConstantPool(cp)) {
-            try {
-                loadReferencedTypeIIZMH.invoke(cp, cpi, opcode, false);
-            } catch (Throwable t) {
-                throw GraalError.shouldNotReachHere(t);
-            }
+        if (cp instanceof HotSpotConstantPool) {
+            ((HotSpotConstantPool) cp).loadReferencedType(cpi, opcode, false);
         } else {
             cp.loadReferencedType(cpi, opcode);
         }

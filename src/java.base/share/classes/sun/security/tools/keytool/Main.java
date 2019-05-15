@@ -37,6 +37,7 @@ import java.security.MessageDigest;
 import java.security.Key;
 import java.security.PublicKey;
 import java.security.PrivateKey;
+import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.Timestamp;
 import java.security.UnrecoverableEntryException;
@@ -83,6 +84,7 @@ import sun.security.provider.certpath.ssl.SSLServerCertStore;
 import sun.security.util.Password;
 import sun.security.util.SecurityProperties;
 import sun.security.util.SecurityProviderConstants;
+import sun.security.util.SignatureUtil;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -174,6 +176,8 @@ public final class Main {
     private Set<char[]> passwords = new HashSet<>();
     private String startDate = null;
 
+    private boolean tlsInfo = false;
+
     private List<String> ids = new ArrayList<>();   // used in GENCRL
     private List<String> v3ext = new ArrayList<>();
 
@@ -259,6 +263,8 @@ public final class Main {
         STOREPASSWD("Changes.the.store.password.of.a.keystore",
             NEW, KEYSTORE, CACERTS, STOREPASS, STORETYPE, PROVIDERNAME,
             ADDPROVIDER, PROVIDERCLASS, PROVIDERPATH, V),
+        SHOWINFO("showinfo.command.help",
+            TLS, V),
 
         // Undocumented start here, KEYCLONE is used a marker in -help;
 
@@ -364,6 +370,7 @@ public final class Main {
         STARTDATE("startdate", "<date>", "certificate.validity.start.date.time"),
         STOREPASS("storepass", "<arg>", "keystore.password"),
         STORETYPE("storetype", "<type>", "keystore.type"),
+        TLS("tls", null, "tls.option.help"),
         TRUSTCACERTS("trustcacerts", null, "trust.certificates.from.cacerts"),
         V("v", null, "verbose.output"),
         VALIDITY("validity", "<days>", "validity.number.of.days");
@@ -677,6 +684,8 @@ public final class Main {
                 protectedPath = true;
             } else if (collator.compare(flags, "-srcprotected") == 0) {
                 srcprotectedPath = true;
+            } else if (collator.compare(flags, "-tls") == 0) {
+                tlsInfo = true;
             } else  {
                 System.err.println(rb.getString("Illegal.option.") + flags);
                 tinyHelp();
@@ -704,7 +713,7 @@ public final class Main {
     }
 
     boolean isKeyStoreRelated(Command cmd) {
-        return cmd != PRINTCERT && cmd != PRINTCERTREQ;
+        return cmd != PRINTCERT && cmd != PRINTCERTREQ && cmd != SHOWINFO;
     }
 
     /**
@@ -873,8 +882,7 @@ public final class Main {
         // Check if keystore exists.
         // If no keystore has been specified at the command line, try to use
         // the default, which is located in $HOME/.keystore.
-        // If the command is "genkey", "identitydb", "import", or "printcert",
-        // it is OK not to have a keystore.
+        // No need to check if isKeyStoreRelated(command) is false.
 
         // DO NOT open the existing keystore if this is an in-place import.
         // The keystore should be created as brand new.
@@ -888,6 +896,9 @@ public final class Main {
                 }
                 ksStream = new FileInputStream(ksfile);
             } catch (FileNotFoundException e) {
+                // These commands do not need the keystore to be existing.
+                // Either it will create a new one or the keystore is
+                // optional (i.e. PRINTCRL).
                 if (command != GENKEYPAIR &&
                         command != GENSECKEY &&
                         command != IDENTITYDB &&
@@ -1310,6 +1321,8 @@ public final class Main {
             }
         } else if (command == PRINTCRL) {
             doPrintCRL(filename, out);
+        } else if (command == SHOWINFO) {
+            doShowInfo();
         }
 
         // If we need to save the keystore, do so.
@@ -1429,15 +1442,16 @@ public final class Main {
             sigAlgName = getCompatibleSigAlgName(privateKey);
         }
         Signature signature = Signature.getInstance(sigAlgName);
-        signature.initSign(privateKey);
-
-        X509CertInfo info = new X509CertInfo();
         AlgorithmParameterSpec params = AlgorithmId
                 .getDefaultAlgorithmParameterSpec(sigAlgName, privateKey);
+
+        SignatureUtil.initSignWithParam(signature, privateKey, params, null);
+
+        X509CertInfo info = new X509CertInfo();
         AlgorithmId algID = AlgorithmId.getWithParameterSpec(sigAlgName, params);
         info.set(X509CertInfo.VALIDITY, interval);
-        info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(
-                    new java.util.Random().nextInt() & 0x7fffffff));
+        info.set(X509CertInfo.SERIAL_NUMBER,
+                CertificateSerialNumber.newRandom64bit(new SecureRandom()));
         info.set(X509CertInfo.VERSION,
                     new CertificateVersion(CertificateVersion.V3));
         info.set(X509CertInfo.ALGORITHM_ID,
@@ -1587,12 +1601,9 @@ public final class Main {
         }
 
         Signature signature = Signature.getInstance(sigAlgName);
-        signature.initSign(privKey);
         AlgorithmParameterSpec params = AlgorithmId
                 .getDefaultAlgorithmParameterSpec(sigAlgName, privKey);
-        if (params != null) {
-            signature.setParameter(params);
-        }
+        SignatureUtil.initSignWithParam(signature, privKey, params, null);
 
         X500Name subject = dname == null?
                 new X500Name(((X509Certificate)cert).getSubjectDN().toString()):
@@ -2706,6 +2717,14 @@ public final class Main {
         }
     }
 
+    private void doShowInfo() throws Exception {
+        if (tlsInfo) {
+            ShowInfo.tls(verbose);
+        } else {
+            System.out.println(rb.getString("showinfo.no.option"));
+        }
+    }
+
     private Collection<? extends Certificate> generateCertificates(InputStream in)
             throws CertificateException, IOException {
         byte[] data = in.readAllBytes();
@@ -2947,8 +2966,8 @@ public final class Main {
         certInfo.set(X509CertInfo.VALIDITY, interval);
 
         // Make new serial number
-        certInfo.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(
-                    new java.util.Random().nextInt() & 0x7fffffff));
+        certInfo.set(X509CertInfo.SERIAL_NUMBER,
+                CertificateSerialNumber.newRandom64bit(new SecureRandom()));
 
         // Set owner and issuer fields
         X500Name owner;
@@ -3558,6 +3577,11 @@ public final class Main {
         throws Exception
     {
         Key key = null;
+
+        if (KeyStoreUtil.isWindowsKeyStore(storetype)) {
+            key = keyStore.getKey(alias, null);
+            return Pair.of(key, null);
+        }
 
         if (keyStore.containsAlias(alias) == false) {
             MessageFormat form = new MessageFormat

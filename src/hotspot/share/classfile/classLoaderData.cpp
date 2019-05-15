@@ -1,5 +1,5 @@
  /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,8 +108,7 @@ void ClassLoaderData::initialize_name(Handle class_loader) {
     const char* cl_instance_name = java_lang_String::as_utf8_string(cl_name);
 
     if (cl_instance_name != NULL && cl_instance_name[0] != '\0') {
-      // Can't throw InternalError and SymbolTable doesn't throw OOM anymore.
-      _name = SymbolTable::new_symbol(cl_instance_name, CATCH);
+      _name = SymbolTable::new_symbol(cl_instance_name);
     }
   }
 
@@ -125,8 +124,7 @@ void ClassLoaderData::initialize_name(Handle class_loader) {
                   (cl_name_and_id == NULL) ? _class_loader_klass->external_name() :
                                              java_lang_String::as_utf8_string(cl_name_and_id);
   assert(cl_instance_name_and_id != NULL && cl_instance_name_and_id[0] != '\0', "class loader has no name and id");
-  // Can't throw InternalError and SymbolTable doesn't throw OOM anymore.
-  _name_and_id = SymbolTable::new_symbol(cl_instance_name_and_id, CATCH);
+  _name_and_id = SymbolTable::new_symbol(cl_instance_name_and_id);
 }
 
 ClassLoaderData::ClassLoaderData(Handle h_class_loader, bool is_unsafe_anonymous) :
@@ -288,7 +286,7 @@ bool ClassLoaderData::try_claim(int claim) {
 // it is being defined, therefore _keep_alive is not volatile or atomic.
 void ClassLoaderData::inc_keep_alive() {
   if (is_unsafe_anonymous()) {
-    assert(_keep_alive >= 0, "Invalid keep alive increment count");
+    assert(_keep_alive > 0, "Invalid keep alive increment count");
     _keep_alive++;
   }
 }
@@ -449,7 +447,7 @@ void ClassLoaderData::record_dependency(const Klass* k) {
 
 void ClassLoaderData::add_class(Klass* k, bool publicize /* true */) {
   {
-    MutexLockerEx ml(metaspace_lock(), Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(metaspace_lock(), Mutex::_no_safepoint_check_flag);
     Klass* old_value = _klasses;
     k->set_next_link(old_value);
     // Link the new item into the list, making sure the linked class is stable
@@ -549,7 +547,7 @@ ModuleEntryTable* ClassLoaderData::modules() {
       modules = new ModuleEntryTable(ModuleEntryTable::_moduletable_entry_size);
 
       {
-        MutexLockerEx m1(metaspace_lock(), Mutex::_no_safepoint_check_flag);
+        MutexLocker m1(metaspace_lock(), Mutex::_no_safepoint_check_flag);
         // Ensure _modules is stable, since it is examined without a lock
         OrderAccess::release_store(&_modules, modules);
       }
@@ -743,7 +741,7 @@ ClassLoaderMetaspace* ClassLoaderData::metaspace_non_null() {
   // Lock-free access requires load_acquire.
   ClassLoaderMetaspace* metaspace = OrderAccess::load_acquire(&_metaspace);
   if (metaspace == NULL) {
-    MutexLockerEx ml(_metaspace_lock,  Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(_metaspace_lock,  Mutex::_no_safepoint_check_flag);
     // Check if _metaspace got allocated while we were waiting for this lock.
     if ((metaspace = _metaspace) == NULL) {
       if (this == the_null_class_loader_data()) {
@@ -764,7 +762,7 @@ ClassLoaderMetaspace* ClassLoaderData::metaspace_non_null() {
 }
 
 OopHandle ClassLoaderData::add_handle(Handle h) {
-  MutexLockerEx ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
   record_modified_oops();
   return OopHandle(_handles.add(h()));
 }
@@ -779,7 +777,7 @@ void ClassLoaderData::remove_handle(OopHandle h) {
 }
 
 void ClassLoaderData::init_handle_locked(OopHandle& dest, Handle h) {
-  MutexLockerEx ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
   if (dest.resolve() != NULL) {
     return;
   } else {
@@ -792,7 +790,7 @@ void ClassLoaderData::init_handle_locked(OopHandle& dest, Handle h) {
 void ClassLoaderData::add_to_deallocate_list(Metadata* m) {
   // Metadata in shared region isn't deleted.
   if (!m->is_shared()) {
-    MutexLockerEx ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(metaspace_lock(),  Mutex::_no_safepoint_check_flag);
     if (_deallocate_list == NULL) {
       _deallocate_list = new (ResourceObj::C_HEAP, mtClass) GrowableArray<Metadata*>(100, true);
     }
@@ -915,6 +913,8 @@ void ClassLoaderData::print_value_on(outputStream* out) const {
   }
 }
 
+void ClassLoaderData::print_value() const { print_value_on(tty); }
+
 #ifndef PRODUCT
 void ClassLoaderData::print_on(outputStream* out) const {
   out->print("ClassLoaderData CLD: " PTR_FORMAT ", loader: " PTR_FORMAT ", loader_klass: %s {",
@@ -932,6 +932,8 @@ void ClassLoaderData::print_on(outputStream* out) const {
   out->print_cr("}");
 }
 #endif // PRODUCT
+
+void ClassLoaderData::print() const { print_on(tty); }
 
 void ClassLoaderData::verify() {
   assert_locked_or_safepoint(_metaspace_lock);

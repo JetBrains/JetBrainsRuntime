@@ -179,7 +179,7 @@ public class DocFilesHandlerImpl implements DocFilesHandler {
         Content localTagsContent = docletWriter.commentTagsToContent(null, dfElement, localTags, false);
 
         String title = getWindowTitle(docletWriter, dfElement).trim();
-        HtmlTree htmlContent = docletWriter.getBody(true, title);
+        HtmlTree htmlContent = docletWriter.getBody(title);
         docletWriter.addTop(htmlContent);
         PackageElement pkg = (PackageElement) element;
         this.navBar = new Navigation(pkg, configuration, docletWriter.fixedNavDiv,
@@ -191,21 +191,21 @@ public class DocFilesHandlerImpl implements DocFilesHandler {
         navBar.setNavLinkPackage(pkgLinkContent);
         navBar.setUserHeader(docletWriter.getUserHeaderFooter(true));
         Content header = HtmlTree.HEADER();
-        header.addContent(navBar.getContent(true));
-        htmlContent.addContent(header);
+        header.add(navBar.getContent(true));
+        htmlContent.add(header);
 
         List<? extends DocTree> fullBody = utils.getFullBody(dfElement);
         Content bodyContent = docletWriter.commentTagsToContent(null, dfElement, fullBody, false);
         docletWriter.addTagsInfo(dfElement, bodyContent);
         Content main = HtmlTree.MAIN();
-        main.addContent(bodyContent);
-        htmlContent.addContent(main);
+        main.add(bodyContent);
+        htmlContent.add(main);
 
         navBar.setUserFooter(docletWriter.getUserHeaderFooter(false));
         Content footer = HtmlTree.FOOTER();
-        footer.addContent(navBar.getContent(false));
+        footer.add(navBar.getContent(false));
         docletWriter.addBottom(footer);
-        htmlContent.addContent(footer);
+        htmlContent.add(footer);
         docletWriter.printHtmlDocument(Collections.emptyList(), null, localTagsContent, htmlContent);
     }
 

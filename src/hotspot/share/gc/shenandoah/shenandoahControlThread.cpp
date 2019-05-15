@@ -462,9 +462,11 @@ void ShenandoahControlThread::service_stw_degenerated_cycle(GCCause::Cause cause
 void ShenandoahControlThread::service_uncommit(double shrink_before) {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
-  // Scan through the heap and determine if there is work to do. This avoids taking
-  // heap lock if there is no work available, avoids spamming logs with superfluous
-  // logging messages, and minimises the amount of work while locks are taken.
+  // Determine if there is work to do. This avoids taking heap lock if there is
+  // no work available, avoids spamming logs with superfluous logging messages,
+  // and minimises the amount of work while locks are taken.
+
+  if (heap->committed() <= heap->min_capacity()) return;
 
   bool has_work = false;
   for (size_t i = 0; i < heap->num_regions(); i++) {
@@ -506,7 +508,7 @@ void ShenandoahControlThread::request_gc(GCCause::Cause cause) {
 void ShenandoahControlThread::handle_requested_gc(GCCause::Cause cause) {
   _requested_gc_cause = cause;
   _gc_requested.set();
-  MonitorLockerEx ml(&_gc_waiters_lock);
+  MonitorLocker ml(&_gc_waiters_lock);
   while (_gc_requested.is_set()) {
     ml.wait();
   }
@@ -526,7 +528,7 @@ void ShenandoahControlThread::handle_alloc_failure(size_t words) {
     heap->cancel_gc(GCCause::_allocation_failure);
   }
 
-  MonitorLockerEx ml(&_alloc_failure_waiters_lock);
+  MonitorLocker ml(&_alloc_failure_waiters_lock);
   while (is_alloc_failure_gc()) {
     ml.wait();
   }
@@ -547,7 +549,7 @@ void ShenandoahControlThread::handle_alloc_failure_evac(size_t words) {
 
 void ShenandoahControlThread::notify_alloc_failure_waiters() {
   _alloc_failure_gc.unset();
-  MonitorLockerEx ml(&_alloc_failure_waiters_lock);
+  MonitorLocker ml(&_alloc_failure_waiters_lock);
   ml.notify_all();
 }
 
@@ -561,7 +563,7 @@ bool ShenandoahControlThread::is_alloc_failure_gc() {
 
 void ShenandoahControlThread::notify_gc_waiters() {
   _gc_requested.unset();
-  MonitorLockerEx ml(&_gc_waiters_lock);
+  MonitorLocker ml(&_gc_waiters_lock);
   ml.notify_all();
 }
 

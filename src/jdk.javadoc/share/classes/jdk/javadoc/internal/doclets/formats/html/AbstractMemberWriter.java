@@ -25,10 +25,10 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
-
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.Element;
@@ -39,18 +39,26 @@ import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.sun.source.doctree.DocTree;
+
 import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
+import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.Links;
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
 import jdk.javadoc.internal.doclets.toolkit.Resources;
 import jdk.javadoc.internal.doclets.toolkit.taglets.DeprecatedTaglet;
 import jdk.javadoc.internal.doclets.toolkit.util.Utils;
 
-import static javax.lang.model.element.Modifier.*;
+import static javax.lang.model.element.Modifier.ABSTRACT;
+import static javax.lang.model.element.Modifier.NATIVE;
+import static javax.lang.model.element.Modifier.PUBLIC;
+import static javax.lang.model.element.Modifier.STRICTFP;
+import static javax.lang.model.element.Modifier.SYNCHRONIZED;
 
 /**
  * The base class for member writers.
@@ -218,7 +226,7 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
      * @param htmltree the content tree to which the name will be added.
      */
     protected void addName(String name, Content htmltree) {
-        htmltree.addContent(name);
+        htmltree.add(name);
     }
 
     /**
@@ -255,8 +263,8 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
         }
         if (!set.isEmpty()) {
             String mods = set.stream().map(Modifier::toString).collect(Collectors.joining(" "));
-            htmltree.addContent(mods);
-            htmltree.addContent(Contents.SPACE);
+            htmltree.add(mods);
+            htmltree.add(Entity.NO_BREAK_SPACE);
         }
     }
 
@@ -283,8 +291,8 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
         HtmlTree code = new HtmlTree(HtmlTag.CODE);
         addModifier(member, code);
         if (type == null) {
-            code.addContent(utils.isClass(member) ? "class" : "interface");
-            code.addContent(Contents.SPACE);
+            code.add(utils.isClass(member) ? "class" : "interface");
+            code.add(Entity.NO_BREAK_SPACE);
         } else {
             List<? extends TypeParameterElement> list = utils.isExecutableElement(member)
                     ? ((ExecutableElement)member).getTypeParameters()
@@ -292,24 +300,24 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
             if (list != null && !list.isEmpty()) {
                 Content typeParameters = ((AbstractExecutableMemberWriter) this)
                         .getTypeParameters((ExecutableElement)member);
-                    code.addContent(typeParameters);
+                    code.add(typeParameters);
                 //Code to avoid ugly wrapping in member summary table.
                 if (typeParameters.charCount() > 10) {
-                    code.addContent(new HtmlTree(HtmlTag.BR));
+                    code.add(new HtmlTree(HtmlTag.BR));
                 } else {
-                    code.addContent(Contents.SPACE);
+                    code.add(Entity.NO_BREAK_SPACE);
                 }
-                code.addContent(
+                code.add(
                         writer.getLink(new LinkInfoImpl(configuration,
                         LinkInfoImpl.Kind.SUMMARY_RETURN_TYPE, type)));
             } else {
-                code.addContent(
+                code.add(
                         writer.getLink(new LinkInfoImpl(configuration,
                         LinkInfoImpl.Kind.SUMMARY_RETURN_TYPE, type)));
             }
 
         }
-        tdSummaryType.addContent(code);
+        tdSummaryType.add(code);
     }
 
     /**
@@ -320,24 +328,24 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
      */
     private void addModifier(Element member, Content code) {
         if (utils.isProtected(member)) {
-            code.addContent("protected ");
+            code.add("protected ");
         } else if (utils.isPrivate(member)) {
-            code.addContent("private ");
+            code.add("private ");
         } else if (!utils.isPublic(member)) { // Package private
-            code.addContent(resources.getText("doclet.Package_private"));
-            code.addContent(" ");
+            code.add(resources.getText("doclet.Package_private"));
+            code.add(" ");
         }
         boolean isAnnotatedTypeElement = utils.isAnnotationType(member.getEnclosingElement());
         if (!isAnnotatedTypeElement && utils.isMethod(member)) {
             if (!utils.isInterface(member.getEnclosingElement()) && utils.isAbstract(member)) {
-                code.addContent("abstract ");
+                code.add("abstract ");
             }
             if (utils.isDefault(member)) {
-                code.addContent("default ");
+                code.add("default ");
             }
         }
         if (utils.isStatic(member)) {
-            code.addContent("static ");
+            code.add("static ");
         }
     }
 
@@ -353,7 +361,7 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
         if (!output.isEmpty()) {
             Content deprecatedContent = output;
             Content div = HtmlTree.DIV(HtmlStyle.deprecationBlock, deprecatedContent);
-            contentTree.addContent(div);
+            contentTree.add(div);
         }
     }
 
@@ -424,8 +432,8 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
                         && !utils.isAnnotationType(element)) {
                     HtmlTree name = new HtmlTree(HtmlTag.SPAN);
                     name.setStyle(HtmlStyle.typeNameLabel);
-                    name.addContent(name(te) + ".");
-                    typeContent.addContent(name);
+                    name.add(name(te) + ".");
+                    typeContent.add(name);
                 }
                 addSummaryLink(utils.isClass(element) || utils.isInterface(element)
                         ? LinkInfoImpl.Kind.CLASS_USE
@@ -435,7 +443,7 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
                 writer.addSummaryLinkComment(this, element, desc);
                 useTable.addRow(summaryType, typeContent, desc);
             }
-            contentTree.addContent(useTable.toContent());
+            contentTree.add(useTable.toContent());
         }
     }
 
@@ -498,7 +506,7 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
      */
     @Override
     public Content getInheritedSummaryHeader(TypeElement tElement) {
-        Content inheritedTree = writer.getMemberTreeHeader();
+        Content inheritedTree = writer.getMemberInheritedTree();
         writer.addInheritedSummaryHeader(this, tElement, inheritedTree);
         return inheritedTree;
     }
@@ -551,8 +559,8 @@ public abstract class AbstractMemberWriter implements MemberSummaryWriter {
      */
     public Content getMemberTree(Content memberTree, boolean isLastContent) {
         if (isLastContent)
-            return HtmlTree.UL(HtmlStyle.blockListLast, memberTree);
+            return HtmlTree.LI(HtmlStyle.blockListLast, memberTree);
         else
-            return HtmlTree.UL(HtmlStyle.blockList, memberTree);
+            return HtmlTree.LI(HtmlStyle.blockList, memberTree);
     }
 }

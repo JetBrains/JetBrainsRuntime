@@ -24,7 +24,9 @@
 
 #include "precompiled.hpp"
 #include "jvm.h"
+#include "classfile/classFileStream.hpp"
 #include "classfile/classLoader.inline.hpp"
+#include "classfile/classLoaderData.inline.hpp"
 #include "classfile/classLoaderExt.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionaryShared.hpp"
@@ -39,6 +41,7 @@
 #include "memory/metaspaceClosure.hpp"
 #include "memory/metaspaceShared.hpp"
 #include "memory/oopFactory.hpp"
+#include "memory/universe.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/objArrayOop.hpp"
 #include "oops/oop.inline.hpp"
@@ -182,12 +185,12 @@ void FileMapHeader::populate(FileMapInfo* mapinfo, size_t alignment) {
   _alignment = alignment;
   _obj_alignment = ObjectAlignmentInBytes;
   _compact_strings = CompactStrings;
-  _narrow_oop_mode = Universe::narrow_oop_mode();
-  _narrow_oop_base = Universe::narrow_oop_base();
-  _narrow_oop_shift = Universe::narrow_oop_shift();
+  _narrow_oop_mode = CompressedOops::mode();
+  _narrow_oop_base = CompressedOops::base();
+  _narrow_oop_shift = CompressedOops::shift();
   _max_heap_size = MaxHeapSize;
-  _narrow_klass_base = Universe::narrow_klass_base();
-  _narrow_klass_shift = Universe::narrow_klass_shift();
+  _narrow_klass_base = CompressedKlassPointers::base();
+  _narrow_klass_shift = CompressedKlassPointers::shift();
   _shared_path_table_size = mapinfo->_shared_path_table_size;
   _shared_path_table = mapinfo->_shared_path_table;
   _shared_path_entry_size = mapinfo->_shared_path_entry_size;
@@ -636,7 +639,7 @@ void FileMapInfo::write_region(int region, char* base, size_t size,
     si->_file_offset = _file_offset;
   }
   if (HeapShared::is_heap_region(region)) {
-    assert((base - (char*)Universe::narrow_oop_base()) % HeapWordSize == 0, "Sanity");
+    assert((base - (char*)CompressedOops::base()) % HeapWordSize == 0, "Sanity");
     if (base != NULL) {
       si->_addr._offset = (intx)CompressedOops::encode_not_null((oop)base);
     } else {
@@ -804,13 +807,14 @@ bool FileMapInfo::remap_shared_readonly_as_readwrite() {
                                 addr, size, false /* !read_only */,
                                 si->_allow_exec);
   close();
+  // These have to be errors because the shared region is now unmapped.
   if (base == NULL) {
-    fail_continue("Unable to remap shared readonly space (errno=%d).", errno);
-    return false;
+    log_error(cds)("Unable to remap shared readonly space (errno=%d).", errno);
+    vm_exit(1);
   }
   if (base != addr) {
-    fail_continue("Unable to remap shared readonly space at required address.");
-    return false;
+    log_error(cds)("Unable to remap shared readonly space (errno=%d).", errno);
+    vm_exit(1);
   }
   si->_read_only = false;
   return true;
@@ -847,10 +851,17 @@ char* FileMapInfo::map_region(int i, char** top_ret) {
   size_t size = align_up(used, alignment);
   char *requested_addr = region_addr(i);
 
-  // If a tool agent is in use (debugging enabled), we must map the address space RW
-  if (JvmtiExport::can_modify_any_class() || JvmtiExport::can_walk_any_space()) {
+#ifdef _WINDOWS
+  // Windows cannot remap read-only shared memory to read-write when required for
+  // RedefineClasses, which is also used by JFR.  Always map windows regions as RW.
+  si->_read_only = false;
+#else
+  // If a tool agent is in use (debugging enabled), or JFR, we must map the address space RW
+  if (JvmtiExport::can_modify_any_class() || JvmtiExport::can_walk_any_space() ||
+      Arguments::has_jfr_option()) {
     si->_read_only = false;
   }
+#endif // _WINDOWS
 
   // map the contents of the CDS archive in this memory
   char *base = os::map_memory(_fd, _full_path, si->_file_offset,
@@ -866,8 +877,7 @@ char* FileMapInfo::map_region(int i, char** top_ret) {
   MemTracker::record_virtual_memory_type((address)base, mtClassShared);
 #endif
 
-
-  if (!verify_region_checksum(i)) {
+  if (VerifySharedSpaces && !verify_region_checksum(i)) {
     return NULL;
   }
 
@@ -967,19 +977,19 @@ void FileMapInfo::map_heap_regions_impl() {
   log_info(cds)("The current max heap size = " SIZE_FORMAT "M, HeapRegion::GrainBytes = " SIZE_FORMAT,
                 heap_reserved.byte_size()/M, HeapRegion::GrainBytes);
   log_info(cds)("    narrow_klass_base = " PTR_FORMAT ", narrow_klass_shift = %d",
-                p2i(Universe::narrow_klass_base()), Universe::narrow_klass_shift());
+                p2i(CompressedKlassPointers::base()), CompressedKlassPointers::shift());
   log_info(cds)("    narrow_oop_mode = %d, narrow_oop_base = " PTR_FORMAT ", narrow_oop_shift = %d",
-                Universe::narrow_oop_mode(), p2i(Universe::narrow_oop_base()), Universe::narrow_oop_shift());
+                CompressedOops::mode(), p2i(CompressedOops::base()), CompressedOops::shift());
 
-  if (narrow_klass_base() != Universe::narrow_klass_base() ||
-      narrow_klass_shift() != Universe::narrow_klass_shift()) {
+  if (narrow_klass_base() != CompressedKlassPointers::base() ||
+      narrow_klass_shift() != CompressedKlassPointers::shift()) {
     log_info(cds)("CDS heap data cannot be used because the archive was created with an incompatible narrow klass encoding mode.");
     return;
   }
 
-  if (narrow_oop_mode() != Universe::narrow_oop_mode() ||
-      narrow_oop_base() != Universe::narrow_oop_base() ||
-      narrow_oop_shift() != Universe::narrow_oop_shift()) {
+  if (narrow_oop_mode() != CompressedOops::mode() ||
+      narrow_oop_base() != CompressedOops::base() ||
+      narrow_oop_shift() != CompressedOops::shift()) {
     log_info(cds)("CDS heap data need to be relocated because the archive was created with an incompatible oop encoding mode.");
     _heap_pointers_need_patching = true;
   } else {
@@ -1133,9 +1143,11 @@ bool FileMapInfo::map_heap_data(MemRegion **heap_mem, int first,
 
 bool FileMapInfo::verify_mapped_heap_regions(int first, int num) {
   assert(num > 0, "sanity");
-  for (int i = first; i < first + num; i++) {
-    if (!verify_region_checksum(i)) {
-      return false;
+  if (VerifySharedSpaces) {
+    for (int i = first; i < first + num; i++) {
+      if (!verify_region_checksum(i)) {
+        return false;
+      }
     }
   }
   return true;
@@ -1194,9 +1206,7 @@ void FileMapInfo::dealloc_archive_heap_regions(MemRegion* regions, int num, bool
 #endif // INCLUDE_CDS_JAVA_HEAP
 
 bool FileMapInfo::verify_region_checksum(int i) {
-  if (!VerifySharedSpaces) {
-    return true;
-  }
+  assert(VerifySharedSpaces, "sanity");
 
   size_t sz = space_at(i)->_used;
 
@@ -1489,7 +1499,7 @@ ClassPathEntry* FileMapInfo::get_classpath_entry_for_jvmti(int i, TRAPS) {
   return ent;
 }
 
-ClassFileStream* FileMapInfo::open_stream_for_jvmti(InstanceKlass* ik, TRAPS) {
+ClassFileStream* FileMapInfo::open_stream_for_jvmti(InstanceKlass* ik, Handle class_loader, TRAPS) {
   int path_index = ik->shared_classpath_index();
   assert(path_index >= 0, "should be called for shared built-in classes only");
   assert(path_index < (int)_shared_path_table_size, "sanity");
@@ -1501,7 +1511,12 @@ ClassFileStream* FileMapInfo::open_stream_for_jvmti(InstanceKlass* ik, TRAPS) {
   const char* const class_name = name->as_C_string();
   const char* const file_name = ClassLoader::file_name_for_class_name(class_name,
                                                                       name->utf8_length());
-  return cpe->open_stream(file_name, THREAD);
+  ClassLoaderData* loader_data = ClassLoaderData::class_loader_data(class_loader());
+  ClassFileStream* cfs = cpe->open_stream_for_loader(file_name, loader_data, THREAD);
+  assert(cfs != NULL, "must be able to read the classfile data of shared classes for built-in loaders.");
+  log_debug(cds, jvmti)("classfile data for %s [%d: %s] = %d bytes", class_name, path_index,
+                        cfs->source(), cfs->length());
+  return cfs;
 }
 
 #endif

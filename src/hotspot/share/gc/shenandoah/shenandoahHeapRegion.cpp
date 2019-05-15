@@ -23,7 +23,7 @@
 
 #include "precompiled.hpp"
 #include "memory/allocation.hpp"
-#include "gc/shenandoah/shenandoahBrooksPointer.hpp"
+#include "gc/shenandoah/shenandoahForwarding.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionSet.inline.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeapRegion.hpp"
@@ -452,12 +452,12 @@ void ShenandoahHeapRegion::oop_iterate(OopIterateClosure* blk) {
 
 void ShenandoahHeapRegion::oop_iterate_objects(OopIterateClosure* blk) {
   assert(! is_humongous(), "no humongous region here");
-  HeapWord* obj_addr = bottom() + ShenandoahBrooksPointer::word_size();
+  HeapWord* obj_addr = bottom() + ShenandoahForwarding::word_size();
   HeapWord* t = top();
   // Could call objects iterate, but this is easier.
   while (obj_addr < t) {
     oop obj = oop(obj_addr);
-    obj_addr += obj->oop_iterate_size(blk) + ShenandoahBrooksPointer::word_size();
+    obj_addr += obj->oop_iterate_size(blk) + ShenandoahForwarding::word_size();
   }
 }
 
@@ -466,7 +466,7 @@ void ShenandoahHeapRegion::oop_iterate_humongous(OopIterateClosure* blk) {
   // Find head.
   ShenandoahHeapRegion* r = humongous_start_region();
   assert(r->is_humongous_start(), "need humongous head here");
-  oop obj = oop(r->bottom() + ShenandoahBrooksPointer::word_size());
+  oop obj = oop(r->bottom() + ShenandoahForwarding::word_size());
   obj->oop_iterate(blk, MemRegion(bottom(), top()));
 }
 
@@ -505,18 +505,18 @@ HeapWord* ShenandoahHeapRegion::block_start_const(const void* p) const {
   if (p >= top()) {
     return top();
   } else {
-    HeapWord* last = bottom() + ShenandoahBrooksPointer::word_size();
+    HeapWord* last = bottom() + ShenandoahForwarding::word_size();
     HeapWord* cur = last;
     while (cur <= p) {
       last = cur;
-      cur += oop(cur)->size() + ShenandoahBrooksPointer::word_size();
+      cur += oop(cur)->size() + ShenandoahForwarding::word_size();
     }
     shenandoah_assert_correct(NULL, oop(last));
     return last;
   }
 }
 
-void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap_size) {
+void ShenandoahHeapRegion::setup_sizes(size_t max_heap_size) {
   // Absolute minimums we should not ever break.
   static const size_t MIN_REGION_SIZE = 256*K;
 
@@ -526,10 +526,10 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
 
   size_t region_size;
   if (FLAG_IS_DEFAULT(ShenandoahHeapRegionSize)) {
-    if (ShenandoahMinRegionSize > initial_heap_size / MIN_NUM_REGIONS) {
-      err_msg message("Initial heap size (" SIZE_FORMAT "K) is too low to afford the minimum number "
+    if (ShenandoahMinRegionSize > max_heap_size / MIN_NUM_REGIONS) {
+      err_msg message("Max heap size (" SIZE_FORMAT "K) is too low to afford the minimum number "
                       "of regions (" SIZE_FORMAT ") of minimum region size (" SIZE_FORMAT "K).",
-                      initial_heap_size/K, MIN_NUM_REGIONS, ShenandoahMinRegionSize/K);
+                      max_heap_size/K, MIN_NUM_REGIONS, ShenandoahMinRegionSize/K);
       vm_exit_during_initialization("Invalid -XX:ShenandoahMinRegionSize option", message);
     }
     if (ShenandoahMinRegionSize < MIN_REGION_SIZE) {
@@ -562,10 +562,10 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
     region_size = MIN2(ShenandoahMaxRegionSize, region_size);
 
   } else {
-    if (ShenandoahHeapRegionSize > initial_heap_size / MIN_NUM_REGIONS) {
-      err_msg message("Initial heap size (" SIZE_FORMAT "K) is too low to afford the minimum number "
+    if (ShenandoahHeapRegionSize > max_heap_size / MIN_NUM_REGIONS) {
+      err_msg message("Max heap size (" SIZE_FORMAT "K) is too low to afford the minimum number "
                               "of regions (" SIZE_FORMAT ") of requested size (" SIZE_FORMAT "K).",
-                      initial_heap_size/K, MIN_NUM_REGIONS, ShenandoahHeapRegionSize/K);
+                      max_heap_size/K, MIN_NUM_REGIONS, ShenandoahHeapRegionSize/K);
       vm_exit_during_initialization("Invalid -XX:ShenandoahHeapRegionSize option", message);
     }
     if (ShenandoahHeapRegionSize < ShenandoahMinRegionSize) {
@@ -619,6 +619,7 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
 
   guarantee(HumongousThresholdWords == 0, "we should only set it once");
   HumongousThresholdWords = RegionSizeWords * ShenandoahHumongousThreshold / 100;
+  HumongousThresholdWords = align_down(HumongousThresholdWords, MinObjAlignment);
   assert (HumongousThresholdWords <= RegionSizeWords, "sanity");
 
   guarantee(HumongousThresholdBytes == 0, "we should only set it once");
@@ -643,12 +644,13 @@ void ShenandoahHeapRegion::setup_sizes(size_t initial_heap_size, size_t max_heap
   //
   // The whole thing is mitigated if Elastic TLABs are enabled.
   //
-  guarantee(MaxTLABSizeBytes == 0, "we should only set it once");
-  MaxTLABSizeBytes = MIN2(ShenandoahElasticTLAB ? RegionSizeBytes : (RegionSizeBytes / 8), HumongousThresholdBytes);
-  assert (MaxTLABSizeBytes > MinTLABSize, "should be larger");
-
   guarantee(MaxTLABSizeWords == 0, "we should only set it once");
-  MaxTLABSizeWords = MaxTLABSizeBytes / HeapWordSize;
+  MaxTLABSizeWords = MIN2(ShenandoahElasticTLAB ? RegionSizeWords : (RegionSizeWords / 8), HumongousThresholdWords);
+  MaxTLABSizeWords = align_down(MaxTLABSizeWords, MinObjAlignment);
+
+  guarantee(MaxTLABSizeBytes == 0, "we should only set it once");
+  MaxTLABSizeBytes = MaxTLABSizeWords * HeapWordSize;
+  assert (MaxTLABSizeBytes > MinTLABSize, "should be larger");
 
   log_info(gc, init)("Regions: " SIZE_FORMAT " x " SIZE_FORMAT "%s",
                      RegionCount, byte_size_in_proper_unit(RegionSizeBytes), proper_unit_for_byte_size(RegionSizeBytes));

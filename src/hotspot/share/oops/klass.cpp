@@ -27,6 +27,7 @@
 #include "classfile/classLoaderDataGraph.inline.hpp"
 #include "classfile/dictionary.hpp"
 #include "classfile/javaClasses.hpp"
+#include "classfile/moduleEntry.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
@@ -38,6 +39,7 @@
 #include "memory/metaspaceShared.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/klass.inline.hpp"
@@ -732,8 +734,9 @@ void Klass::print_on(outputStream* st) const {
   st->cr();
 }
 
+#define BULLET  " - "
+
 void Klass::oop_print_on(oop obj, outputStream* st) {
-  ResourceMark rm;
   // print title
   st->print_cr("%s ", internal_name());
   obj->print_address_on(st);
@@ -741,10 +744,13 @@ void Klass::oop_print_on(oop obj, outputStream* st) {
   if (WizardMode) {
      // print header
      obj->mark()->print_on(st);
+     st->cr();
+     st->print(BULLET"prototype_header: " INTPTR_FORMAT, p2i(_prototype_header));
+     st->cr();
   }
 
   // print class
-  st->print(" - klass: ");
+  st->print(BULLET"klass: ");
   obj->klass()->print_value_on(st);
   st->cr();
 }
@@ -802,17 +808,12 @@ void Klass::oop_verify_on(oop obj, outputStream* st) {
   guarantee(obj->klass()->is_klass(), "klass field is not a klass");
 }
 
-Klass* Klass::decode_klass_raw(narrowKlass narrow_klass) {
-  return (Klass*)(void*)( (uintptr_t)Universe::narrow_klass_base() +
-                         ((uintptr_t)narrow_klass << Universe::narrow_klass_shift()));
-}
-
 bool Klass::is_valid(Klass* k) {
   if (!is_aligned(k, sizeof(MetaWord))) return false;
   if ((size_t)k < os::min_page_size()) return false;
 
   if (!os::is_readable_range(k, k + 1)) return false;
-  if (!MetaspaceUtils::is_range_in_committed(k, k + 1)) return false;
+  if (!Metaspace::contains(k)) return false;
 
   if (!Symbol::is_valid(k->name())) return false;
   return ClassLoaderDataGraph::is_valid(k->class_loader_data());

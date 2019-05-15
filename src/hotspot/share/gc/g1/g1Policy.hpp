@@ -25,10 +25,9 @@
 #ifndef SHARE_GC_G1_G1POLICY_HPP
 #define SHARE_GC_G1_G1POLICY_HPP
 
-#include "gc/g1/g1CollectorPolicy.hpp"
 #include "gc/g1/g1CollectorState.hpp"
 #include "gc/g1/g1GCPhaseTimes.hpp"
-#include "gc/g1/g1InCSetState.hpp"
+#include "gc/g1/g1HeapRegionAttr.hpp"
 #include "gc/g1/g1InitialMarkToMixedTimeTracker.hpp"
 #include "gc/g1/g1MMUTracker.hpp"
 #include "gc/g1/g1RemSetTrackingPolicy.hpp"
@@ -44,6 +43,7 @@
 
 class HeapRegion;
 class G1CollectionSet;
+class G1CollectionSetCandidates;
 class G1CollectionSetChooser;
 class G1IHOPControl;
 class G1Analytics;
@@ -283,11 +283,11 @@ private:
   void abort_time_to_mixed_tracking();
 public:
 
-  G1Policy(G1CollectorPolicy* policy, STWGCTimer* gc_timer);
+  G1Policy(STWGCTimer* gc_timer);
 
   virtual ~G1Policy();
 
-  static G1Policy* create_policy(G1CollectorPolicy* policy, STWGCTimer* gc_timer_stw);
+  static G1Policy* create_policy(STWGCTimer* gc_timer_stw);
 
   G1CollectorState* collector_state() const;
 
@@ -344,7 +344,21 @@ public:
   bool next_gc_should_be_mixed(const char* true_action_str,
                                const char* false_action_str) const;
 
-  void finalize_collection_set(double target_pause_time_ms, G1SurvivorRegions* survivor);
+  // Calculate and return the number of initial and optional old gen regions from
+  // the given collection set candidates and the remaining time.
+  void calculate_old_collection_set_regions(G1CollectionSetCandidates* candidates,
+                                            double time_remaining_ms,
+                                            uint& num_initial_regions,
+                                            uint& num_optional_regions);
+
+  // Calculate the number of optional regions from the given collection set candidates,
+  // the remaining time and the maximum number of these regions and return the number
+  // of actually selected regions in num_optional_regions.
+  void calculate_optional_collection_set_regions(G1CollectionSetCandidates* candidates,
+                                                 uint const max_optional_regions,
+                                                 double time_remaining_ms,
+                                                 uint& num_optional_regions);
+
 private:
   // Set the state to start a concurrent marking cycle and clear
   // _initiate_conc_mark_if_possible because it has now been
@@ -384,7 +398,7 @@ public:
     return _young_list_max_length;
   }
 
-  bool adaptive_young_list_length() const;
+  bool use_adaptive_young_list_length() const;
 
   void transfer_survivors_to_cset(const G1SurvivorRegions* survivors);
 
@@ -403,11 +417,13 @@ private:
   AgeTable _survivors_age_table;
 
   size_t desired_survivor_size(uint max_regions) const;
-public:
+
   // Fraction used when predicting how many optional regions to include in
   // the CSet. This fraction of the available time is used for optional regions,
   // the rest is used to add old regions to the normal CSet.
   double optional_prediction_fraction() { return 0.2; }
+
+public:
   // Fraction used when evacuating the optional regions. This fraction of the
   // remaining time is used to choose what regions to include in the evacuation.
   double optional_evacuation_fraction() { return 0.75; }

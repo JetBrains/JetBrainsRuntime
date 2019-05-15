@@ -333,8 +333,6 @@ class Arguments : AllStatic {
   // Value of the conservative maximum heap alignment needed
   static size_t  _conservative_max_heap_alignment;
 
-  static size_t  _min_heap_size;
-
   // -Xrun arguments
   static AgentLibraryList _libraryList;
   static void add_init_library(const char* name, char* options);
@@ -548,10 +546,6 @@ class Arguments : AllStatic {
   // -Dsun.java.launcher.pid
   static int sun_java_launcher_pid()        { return _sun_java_launcher_pid; }
 
-  // -Xms
-  static size_t min_heap_size()             { return _min_heap_size; }
-  static void  set_min_heap_size(size_t v)  { _min_heap_size = v;  }
-
   // -Xrun
   static AgentLibrary* libraries()          { return _libraryList.first(); }
   static bool init_libraries_at_startup()   { return !_libraryList.is_empty(); }
@@ -649,6 +643,8 @@ class Arguments : AllStatic {
   static bool check_unsupported_cds_runtime_properties() NOT_CDS_RETURN0;
 
   static bool atojulong(const char *s, julong* result);
+
+  static bool has_jfr_option() NOT_JFR_RETURN_(false);
 };
 
 // Disable options not supported in this release, with a warning if they

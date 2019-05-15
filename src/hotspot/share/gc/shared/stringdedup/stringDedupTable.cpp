@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "logging/log.hpp"
 #include "memory/padded.inline.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/arrayOop.inline.hpp"
 #include "oops/oop.inline.hpp"
@@ -269,21 +270,13 @@ void StringDedupTable::transfer(StringDedupEntry** pentry, StringDedupTable* des
   *list = entry;
 }
 
-bool StringDedupTable::equals(typeArrayOop value1, typeArrayOop value2) {
-  return (oopDesc::equals(value1, value2) ||
-          (value1->length() == value2->length() &&
-          (!memcmp(value1->base(T_BYTE),
-                    value2->base(T_BYTE),
-                    value1->length() * sizeof(jbyte)))));
-}
-
 typeArrayOop StringDedupTable::lookup(typeArrayOop value, bool latin1, unsigned int hash,
                                       StringDedupEntry** list, uintx &count) {
   for (StringDedupEntry* entry = *list; entry != NULL; entry = entry->next()) {
     if (entry->hash() == hash && entry->latin1() == latin1) {
       oop* obj_addr = (oop*)entry->obj_addr();
       oop obj = NativeAccess<ON_PHANTOM_OOP_REF | AS_NO_KEEPALIVE>::oop_load(obj_addr);
-      if (equals(value, static_cast<typeArrayOop>(obj))) {
+      if (java_lang_String::value_equals(value, static_cast<typeArrayOop>(obj))) {
         obj = NativeAccess<ON_PHANTOM_OOP_REF>::oop_load(obj_addr);
         return static_cast<typeArrayOop>(obj);
       }
@@ -359,19 +352,14 @@ void StringDedupTable::deduplicate(oop java_string, StringDedupStat* stat) {
   unsigned int hash = 0;
 
   if (use_java_hash()) {
-    // Get hash code from cache
-    hash = java_lang_String::hash(java_string);
-  }
-
-  if (hash == 0) {
+    if (!java_lang_String::hash_is_set(java_string)) {
+      stat->inc_hashed();
+    }
+    hash = java_lang_String::hash_code(java_string);
+  } else {
     // Compute hash
     hash = hash_code(value, latin1);
     stat->inc_hashed();
-
-    if (use_java_hash() && hash != 0) {
-      // Store hash code in cache
-      java_lang_String::set_hash(java_string, hash);
-    }
   }
 
   typeArrayOop existing_value = lookup_or_add(value, latin1, hash);
@@ -490,7 +478,7 @@ void StringDedupTable::unlink_or_oops_do(StringDedupUnlinkOrOopsDoClosure* cl, u
 
   // Delayed update to avoid contention on the table lock
   if (removed > 0) {
-    MutexLockerEx ml(StringDedupTable_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(StringDedupTable_lock, Mutex::_no_safepoint_check_flag);
     _table->_entries -= removed;
     _entries_removed += removed;
   }
@@ -633,7 +621,7 @@ void StringDedupTable::verify() {
       while (*entry2 != NULL) {
         typeArrayOop value2 = (*entry2)->obj();
         bool latin1_2 = (*entry2)->latin1();
-        guarantee(latin1_1 != latin1_2 || !equals(value1, value2), "Table entries must not have identical arrays");
+        guarantee(latin1_1 != latin1_2 || !java_lang_String::value_equals(value1, value2), "Table entries must not have identical arrays");
         entry2 = (*entry2)->next_addr();
       }
       entry1 = (*entry1)->next_addr();

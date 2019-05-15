@@ -72,15 +72,12 @@ void G1BarrierSetAssembler::gen_write_ref_array_pre_barrier(MacroAssembler* masm
 }
 
 void G1BarrierSetAssembler::gen_write_ref_array_post_barrier(MacroAssembler* masm, DecoratorSet decorators,
-                                                             Register start, Register end, Register scratch, RegSet saved_regs) {
+                                                             Register start, Register count, Register scratch, RegSet saved_regs) {
   __ push(saved_regs, sp);
-  // must compute element count unless barrier set interface is changed (other platforms supply count)
-  assert_different_registers(start, end, scratch);
-  __ lea(scratch, Address(end, BytesPerHeapOop));
-  __ sub(scratch, scratch, start);               // subtract start to get #bytes
-  __ lsr(scratch, scratch, LogBytesPerHeapOop);  // convert to element count
+  assert_different_registers(start, count, scratch);
+  assert_different_registers(c_rarg0, count);
   __ mov(c_rarg0, start);
-  __ mov(c_rarg1, scratch);
+  __ mov(c_rarg1, count);
   __ call_VM_leaf(CAST_FROM_FN_PTR(address, G1BarrierSetRuntime::write_ref_array_post_entry), 2);
   __ pop(saved_regs, sp);
 }
@@ -193,7 +190,6 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   BarrierSet* bs = BarrierSet::barrier_set();
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
-  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
 
   Label done;
   Label runtime;
@@ -211,7 +207,6 @@ void G1BarrierSetAssembler::g1_write_barrier_post(MacroAssembler* masm,
   // storing region crossing non-NULL, is card already dirty?
 
   ExternalAddress cardtable((address) ct->byte_map_base());
-  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
   const Register card_addr = tmp;
 
   __ lsr(card_addr, store_addr, CardTable::card_shift);
@@ -417,7 +412,6 @@ void G1BarrierSetAssembler::generate_c1_post_barrier_runtime_stub(StubAssembler*
   BarrierSet* bs = BarrierSet::barrier_set();
   CardTableBarrierSet* ctbs = barrier_set_cast<CardTableBarrierSet>(bs);
   CardTable* ct = ctbs->card_table();
-  assert(sizeof(*ct->byte_map_base()) == sizeof(jbyte), "adjust this code");
 
   Label done;
   Label runtime;

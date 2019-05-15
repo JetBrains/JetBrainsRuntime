@@ -23,26 +23,17 @@
  */
 
 #include "precompiled.hpp"
-#include "code/codeBlob.hpp"
-#include "compiler/abstractCompiler.hpp"
 #include "compiler/compileBroker.hpp"
 #include "gc/shared/collectedHeap.hpp"
 #include "jvmci/jvmciCodeInstaller.hpp"
 #include "jvmci/jvmciCompilerToVM.hpp"
-#include "jvmci/jvmciEnv.hpp"
 #include "jvmci/jvmciRuntime.hpp"
 #include "jvmci/vmStructs_compiler_runtime.hpp"
 #include "jvmci/vmStructs_jvmci.hpp"
-#include "oops/oop.hpp"
-#include "oops/oopHandle.hpp"
 #include "oops/objArrayKlass.hpp"
-#include "runtime/flags/jvmFlag.hpp"
-#include "runtime/globals.hpp"
+#include "runtime/deoptimization.hpp"
 #include "runtime/sharedRuntime.hpp"
-#include "runtime/thread.hpp"
-#include "runtime/vm_version.hpp"
 #if INCLUDE_G1GC
-#include "gc/g1/g1BarrierSet.hpp"
 #include "gc/g1/g1CardTable.hpp"
 #include "gc/g1/heapRegion.hpp"
 #include "gc/g1/g1ThreadLocalData.hpp"
@@ -171,6 +162,11 @@
   volatile_nonstatic_field(JavaFrameAnchor,    _last_Java_sp,                                 intptr_t*)                             \
   volatile_nonstatic_field(JavaFrameAnchor,    _last_Java_pc,                                 address)                               \
                                                                                                                                      \
+  nonstatic_field(JVMCICompileState,           _jvmti_can_hotswap_or_post_breakpoint,         jbyte)                                 \
+  nonstatic_field(JVMCICompileState,           _jvmti_can_access_local_variables,             jbyte)                                 \
+  nonstatic_field(JVMCICompileState,           _jvmti_can_post_on_exceptions,                 jbyte)                                 \
+  nonstatic_field(JVMCICompileState,           _jvmti_can_pop_frame,                          jbyte)                                 \
+                                                                                                                                     \
   nonstatic_field(JavaThread,                  _threadObj,                                    oop)                                   \
   nonstatic_field(JavaThread,                  _anchor,                                       JavaFrameAnchor)                       \
   nonstatic_field(JavaThread,                  _vm_result,                                    oop)                                   \
@@ -179,7 +175,7 @@
   volatile_nonstatic_field(JavaThread,         _is_method_handle_return,                      int)                                   \
   nonstatic_field(JavaThread,                  _osthread,                                     OSThread*)                             \
   nonstatic_field(JavaThread,                  _pending_deoptimization,                       int)                                   \
-  nonstatic_field(JavaThread,                  _pending_failed_speculation,                   long)                                  \
+  nonstatic_field(JavaThread,                  _pending_failed_speculation,                   jlong)                                 \
   nonstatic_field(JavaThread,                  _pending_transfer_to_interpreter,              bool)                                  \
   nonstatic_field(JavaThread,                  _jvmci_counters,                               jlong*)                                \
   nonstatic_field(JavaThread,                  _should_post_on_exceptions_flag,               int)                                   \
@@ -187,12 +183,6 @@
                                                                                                                                      \
   static_field(java_lang_Class,                _klass_offset,                                 int)                                   \
   static_field(java_lang_Class,                _array_klass_offset,                           int)                                   \
-                                                                                                                                     \
-  nonstatic_field(JVMCIEnv,                    _task,                                         CompileTask*)                          \
-  nonstatic_field(JVMCIEnv,                    _jvmti_can_hotswap_or_post_breakpoint,         jbyte)                                 \
-  nonstatic_field(JVMCIEnv,                    _jvmti_can_access_local_variables,             jbyte)                                 \
-  nonstatic_field(JVMCIEnv,                    _jvmti_can_post_on_exceptions,                 jbyte)                                 \
-  nonstatic_field(JVMCIEnv,                    _jvmti_can_pop_frame,                          jbyte)                                 \
                                                                                                                                      \
   nonstatic_field(InvocationCounter,           _counter,                                      unsigned int)                          \
                                                                                                                                      \
@@ -208,6 +198,7 @@
   nonstatic_field(Klass,                       _java_mirror,                                  OopHandle)                             \
   nonstatic_field(Klass,                       _modifier_flags,                               jint)                                  \
   nonstatic_field(Klass,                       _access_flags,                                 AccessFlags)                           \
+  nonstatic_field(Klass,                       _class_loader_data,                            ClassLoaderData*)                      \
                                                                                                                                      \
   nonstatic_field(LocalVariableTableElement,   start_bci,                                     u2)                                    \
   nonstatic_field(LocalVariableTableElement,   length,                                        u2)                                    \
@@ -260,6 +251,10 @@
   nonstatic_field(nmethod,                     _comp_level,                                   int)                                   \
                                                                                                                                      \
   nonstatic_field(ObjArrayKlass,               _element_klass,                                Klass*)                                \
+                                                                                                                                     \
+  volatile_nonstatic_field(ObjectMonitor,      _cxq,                                   ObjectWaiter*)                                \
+  volatile_nonstatic_field(ObjectMonitor,      _EntryList,                             ObjectWaiter*)                                \
+  volatile_nonstatic_field(ObjectMonitor,      _succ,                                  Thread*)                                      \
                                                                                                                                      \
   volatile_nonstatic_field(oopDesc,            _mark,                                         markOop)                               \
   volatile_nonstatic_field(oopDesc,            _metadata._klass,                              Klass*)                                \
@@ -358,9 +353,11 @@
   declare_toplevel_type(JVMFlag)                                          \
   declare_toplevel_type(JVMFlag*)                                         \
   declare_toplevel_type(InvocationCounter)                                \
+  declare_toplevel_type(JVMCICompileState)                                \
   declare_toplevel_type(JVMCIEnv)                                         \
   declare_toplevel_type(LocalVariableTableElement)                        \
   declare_toplevel_type(narrowKlass)                                      \
+  declare_toplevel_type(ObjectWaiter)                                     \
   declare_toplevel_type(Symbol*)                                          \
   declare_toplevel_type(vtableEntry)                                      \
                                                                           \
@@ -400,6 +397,7 @@
   declare_preprocessor_constant("JVM_ACC_ANNOTATION", JVM_ACC_ANNOTATION) \
   declare_preprocessor_constant("JVM_ACC_ENUM", JVM_ACC_ENUM)             \
   declare_preprocessor_constant("JVM_ACC_SYNTHETIC", JVM_ACC_SYNTHETIC)   \
+  declare_preprocessor_constant("JVM_ACC_INTERFACE", JVM_ACC_INTERFACE)   \
                                                                           \
   declare_constant(JVM_CONSTANT_Utf8)                                     \
   declare_constant(JVM_CONSTANT_Unicode)                                  \
@@ -416,6 +414,8 @@
   declare_constant(JVM_CONSTANT_MethodHandle)                             \
   declare_constant(JVM_CONSTANT_MethodType)                               \
   declare_constant(JVM_CONSTANT_InvokeDynamic)                            \
+  declare_constant(JVM_CONSTANT_Module)                                   \
+  declare_constant(JVM_CONSTANT_Package)                                  \
   declare_constant(JVM_CONSTANT_ExternalMax)                              \
                                                                           \
   declare_constant(JVM_CONSTANT_Invalid)                                  \
@@ -541,11 +541,11 @@
   declare_constant(JumpData::taken_off_set)                               \
   declare_constant(JumpData::displacement_off_set)                        \
                                                                           \
-  declare_constant(JVMCIEnv::ok)                                          \
-  declare_constant(JVMCIEnv::dependencies_failed)                         \
-  declare_constant(JVMCIEnv::dependencies_invalid)                        \
-  declare_constant(JVMCIEnv::cache_full)                                  \
-  declare_constant(JVMCIEnv::code_too_large)                              \
+  declare_preprocessor_constant("JVMCIEnv::ok",                   JVMCI::ok)                      \
+  declare_preprocessor_constant("JVMCIEnv::dependencies_failed",  JVMCI::dependencies_failed)     \
+  declare_preprocessor_constant("JVMCIEnv::dependencies_invalid", JVMCI::dependencies_invalid)    \
+  declare_preprocessor_constant("JVMCIEnv::cache_full",           JVMCI::cache_full)              \
+  declare_preprocessor_constant("JVMCIEnv::code_too_large",       JVMCI::code_too_large)          \
   declare_constant(JVMCIRuntime::none)                                    \
   declare_constant(JVMCIRuntime::by_holder)                               \
   declare_constant(JVMCIRuntime::by_full_signature)                       \

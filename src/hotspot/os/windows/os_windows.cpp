@@ -36,6 +36,7 @@
 #include "compiler/disassembler.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
+#include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/filemap.hpp"
 #include "oops/oop.inline.hpp"
@@ -200,7 +201,7 @@ void os::init_system_properties_values() {
     char *home_path;
     char *dll_path;
     char *pslash;
-    char *bin = "\\bin";
+    const char *bin = "\\bin";
     char home_dir[MAX_PATH + 1];
     char *alt_home_dir = ::getenv("_ALT_JAVA_HOME_DIR");
 
@@ -669,6 +670,10 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
   } else {
     log_warning(os, thread)("Failed to start thread - _beginthreadex failed (%s) for attributes: %s.",
       os::errno_name(errno), describe_beginthreadex_attributes(buf, sizeof(buf), stack_size, initflag));
+    // Log some OS information which might explain why creating the thread failed.
+    log_info(os, thread)("Number of threads approx. running in the VM: %d", Threads::number_of_threads());
+    LogStream st(Log(os, thread)::info());
+    os::print_memory_info(&st);
   }
 
   if (thread_handle == NULL) {
@@ -1596,6 +1601,10 @@ void os::print_os_info(outputStream* st) {
 #endif
   st->print("OS:");
   os::win32::print_windows_version(st);
+
+#ifdef _LP64
+  VM_Version::print_platform_virtualization_info(st);
+#endif
 }
 
 void os::win32::print_windows_version(outputStream* st) {
@@ -2176,7 +2185,7 @@ extern "C" void events();
 
 #define def_excpt(val) { #val, (val) }
 
-static const struct { char* name; uint number; } exceptlabels[] = {
+static const struct { const char* name; uint number; } exceptlabels[] = {
     def_excpt(EXCEPTION_ACCESS_VIOLATION),
     def_excpt(EXCEPTION_DATATYPE_MISALIGNMENT),
     def_excpt(EXCEPTION_BREAKPOINT),
@@ -3549,41 +3558,19 @@ void os::naked_short_sleep(jlong ms) {
   Sleep(ms);
 }
 
+// Windows does not provide sleep functionality with nanosecond resolution, so we
+// try to approximate this with spinning combined with yielding if another thread
+// is ready to run on the current processor.
 void os::naked_short_nanosleep(jlong ns) {
   assert(ns > -1 && ns < NANOUNITS, "Un-interruptable sleep, short time use only");
-  LARGE_INTEGER hundreds_nanos = { 0 };
-  HANDLE wait_timer = ::CreateWaitableTimer(NULL /* attributes*/,
-                                            true /* manual reset */,
-                                            NULL /* name */ );
-  if (wait_timer == NULL) {
-    log_warning(os)("Failed to CreateWaitableTimer: %u", GetLastError());
-    return;
-  }
 
-  // We need a minimum of one hundred nanos.
-  ns = ns > 100 ? ns : 100;
-
-  // Round ns to the nearst hundred of nanos.
-  // Negative values indicate relative time.
-  hundreds_nanos.QuadPart = -((ns + 50) / 100);
-
-  if (::SetWaitableTimer(wait_timer /* handle */,
-                         &hundreds_nanos /* due time */,
-                         0 /* period */,
-                         NULL /* comp func */,
-                         NULL /* comp func args */,
-                         FALSE /* resume */)) {
-    DWORD res = ::WaitForSingleObject(wait_timer /* handle */, INFINITE /* timeout */);
-    if (res != WAIT_OBJECT_0) {
-      if (res == WAIT_FAILED) {
-        log_warning(os)("Failed to WaitForSingleObject: %u", GetLastError());
-      } else {
-        log_warning(os)("Unexpected return from WaitForSingleObject: %s",
-                        res == WAIT_ABANDONED ? "WAIT_ABANDONED" : "WAIT_TIMEOUT");
-      }
+  int64_t start = os::javaTimeNanos();
+  do {
+    if (SwitchToThread() == 0) {
+      // Nothing else is ready to run on this cpu, spin a little
+      SpinPause();
     }
-  }
-  ::CloseHandle(wait_timer /* handle */);
+  } while (os::javaTimeNanos() - start < ns);
 }
 
 // Sleep forever; naked call to OS-specific sleep; use with CAUTION
@@ -4991,17 +4978,13 @@ char* os::pd_remap_memory(int fd, const char* file_name, size_t file_offset,
                           char *addr, size_t bytes, bool read_only,
                           bool allow_exec) {
   // This OS does not allow existing memory maps to be remapped so we
-  // have to unmap the memory before we remap it.
-  if (!os::unmap_memory(addr, bytes)) {
-    return NULL;
-  }
+  // would have to unmap the memory before we remap it.
 
-  // There is a very small theoretical window between the unmap_memory()
-  // call above and the map_memory() call below where a thread in native
-  // code may be able to access an address that is no longer mapped.
-
-  return os::map_memory(fd, file_name, file_offset, addr, bytes,
-                        read_only, allow_exec);
+  // Because there is a small window between unmapping memory and mapping
+  // it in again with different protections, CDS archives are mapped RW
+  // on windows, so this function isn't called.
+  ShouldNotReachHere();
+  return NULL;
 }
 
 
@@ -5352,7 +5335,7 @@ int os::fork_and_exec(char* cmd, bool use_vfork_if_available) {
   DWORD exit_code;
 
   char * cmd_string;
-  char * cmd_prefix = "cmd /C ";
+  const char * cmd_prefix = "cmd /C ";
   size_t len = strlen(cmd) + strlen(cmd_prefix) + 1;
   cmd_string = NEW_C_HEAP_ARRAY_RETURN_NULL(char, len, mtInternal);
   if (cmd_string == NULL) {
@@ -5691,8 +5674,8 @@ void TestReserveMemorySpecial_test() {
 */
 int os::get_signal_number(const char* name) {
   static const struct {
-    char* name;
-    int   number;
+    const char* name;
+    int         number;
   } siglabels [] =
     // derived from version 6.0 VC98/include/signal.h
   {"ABRT",      SIGABRT,        // abnormal termination triggered by abort cl

@@ -29,7 +29,6 @@
 #include "jvmtifiles/jvmti.h"
 #include "oops/oop.hpp"
 #include "runtime/os.hpp"
-#include "utilities/utf8.hpp"
 
 // Interface for manipulating the basic Java classes.
 //
@@ -82,6 +81,7 @@
   f(java_lang_StackFrameInfo) \
   f(java_lang_LiveStackFrameInfo) \
   f(java_util_concurrent_locks_AbstractOwnableSynchronizer) \
+  f(jdk_internal_misc_UnsafeConstants) \
   //end
 
 #define BASIC_JAVA_CLASSES_DO(f) \
@@ -94,6 +94,7 @@ class java_lang_String : AllStatic {
  private:
   static int value_offset;
   static int hash_offset;
+  static int hashIsZero_offset;
   static int coder_offset;
 
   static bool initialized;
@@ -132,6 +133,10 @@ class java_lang_String : AllStatic {
     assert(initialized && (hash_offset > 0), "Must be initialized");
     return hash_offset;
   }
+  static int hashIsZero_offset_in_bytes()   {
+    assert(initialized && (hashIsZero_offset > 0), "Must be initialized");
+    return hashIsZero_offset;
+  }
   static int coder_offset_in_bytes()   {
     assert(initialized && (coder_offset > 0), "Must be initialized");
     return coder_offset;
@@ -139,12 +144,11 @@ class java_lang_String : AllStatic {
 
   static inline void set_value_raw(oop string, typeArrayOop buffer);
   static inline void set_value(oop string, typeArrayOop buffer);
-  static inline void set_hash(oop string, unsigned int hash);
 
   // Accessors
   static inline typeArrayOop value(oop java_string);
   static inline typeArrayOop value_no_keepalive(oop java_string);
-  static inline unsigned int hash(oop java_string);
+  static inline bool hash_is_set(oop string);
   static inline bool is_latin1(oop java_string);
   static inline int length(oop java_string);
   static inline int length(oop java_string, typeArrayOop string_value);
@@ -194,13 +198,14 @@ class java_lang_String : AllStatic {
 
   static bool equals(oop java_string, const jchar* chars, int len);
   static bool equals(oop str1, oop str2);
+  static inline bool value_equals(typeArrayOop str_value1, typeArrayOop str_value2);
 
   // Conversion between '.' and '/' formats
   static Handle externalize_classname(Handle java_string, TRAPS) { return char_converter(java_string, '/', '.', THREAD); }
   static Handle internalize_classname(Handle java_string, TRAPS) { return char_converter(java_string, '.', '/', THREAD); }
 
   // Conversion
-  static Symbol* as_symbol(oop java_string, TRAPS);
+  static Symbol* as_symbol(oop java_string);
   static Symbol* as_symbol_or_null(oop java_string);
 
   // Testers
@@ -286,7 +291,7 @@ class java_lang_Class : AllStatic {
   static Klass* as_Klass_raw(oop java_class);
   static void set_klass(oop java_class, Klass* klass);
   static BasicType as_BasicType(oop java_class, Klass** reference_klass = NULL);
-  static Symbol* as_signature(oop java_class, bool intern_if_not_found, TRAPS);
+  static Symbol* as_signature(oop java_class, bool intern_if_not_found);
   static void print_signature(oop java_class, outputStream *st);
   static const char* as_external_name(oop java_class);
   // Testing
@@ -366,7 +371,6 @@ class java_lang_Thread : AllStatic {
   static int _tid_offset;
   static int _thread_status_offset;
   static int _park_blocker_offset;
-  static int _park_event_offset ;
 
   static void compute_offsets();
 
@@ -407,12 +411,6 @@ class java_lang_Thread : AllStatic {
 
   // Blocker object responsible for thread parking
   static oop park_blocker(oop java_thread);
-
-  // Pointer to type-stable park handler, encoded as jlong.
-  // Should be set when apparently null
-  // For details, see unsafe.cpp Unsafe_Unpark
-  static jlong park_event(oop java_thread);
-  static bool set_park_event(oop java_thread, jlong ptr);
 
   // Java Thread Status for JVMTI and M&M use.
   // This thread status info is saved in threadStatus field of
@@ -1058,6 +1056,8 @@ class java_lang_invoke_ResolvedMethodName : AllStatic {
   static Method* vmtarget(oop resolved_method);
   static void set_vmtarget(oop resolved_method, Method* method);
 
+  static void set_vmholder(oop resolved_method, oop holder);
+
   // find or create resolved member name
   static oop find_resolved_method(const methodHandle& m, TRAPS);
 
@@ -1166,7 +1166,7 @@ class java_lang_invoke_MethodType: AllStatic {
   static int            ptype_slot_count(oop mt);  // extra counts for long/double
   static int            rtype_slot_count(oop mt);  // extra counts for long/double
 
-  static Symbol*        as_signature(oop mt, bool intern_if_not_found, TRAPS);
+  static Symbol*        as_signature(oop mt, bool intern_if_not_found);
   static void           print_signature(oop mt, outputStream* st);
 
   static bool is_instance(oop obj);
@@ -1368,6 +1368,11 @@ class java_lang_StackTraceElement: AllStatic {
   static void compute_offsets();
   static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
 
+#if INCLUDE_JVMCI
+  static void decode(Handle mirror, int method, int version, int bci, int cpref, Symbol*& methodName, Symbol*& fileName, int& lineNumber);
+  static void decode(Handle mirror, methodHandle method, int bci, Symbol*& methodName, Symbol*& fileName, int& lineNumber);
+#endif
+
   // Debugging
   friend class JavaClasses;
 };
@@ -1481,6 +1486,15 @@ class java_util_concurrent_locks_AbstractOwnableSynchronizer : AllStatic {
   static void compute_offsets();
   static oop  get_owner_threadObj(oop obj);
   static void serialize_offsets(SerializeClosure* f) NOT_CDS_RETURN;
+};
+
+ // Interface to jdk.internal.misc.UnsafeConsants
+
+class jdk_internal_misc_UnsafeConstants : AllStatic {
+ public:
+  static void set_unsafe_constants();
+  static void compute_offsets() { }
+  static void serialize_offsets(SerializeClosure* f) { }
 };
 
 // Use to declare fields that need to be injected into Java classes

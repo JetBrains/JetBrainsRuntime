@@ -1171,7 +1171,7 @@ void MacroAssembler::load_narrow_oop(Register t, narrowOop a) {
 // Load narrow klass constant, compression required.
 void MacroAssembler::load_narrow_klass(Register t, Klass* k) {
   assert(UseCompressedClassPointers, "must be on to call this method");
-  narrowKlass encoded_k = Klass::encode_klass(k);
+  narrowKlass encoded_k = CompressedKlassPointers::encode(k);
   load_const_32to64(t, encoded_k, false /*sign_extend*/);
 }
 
@@ -1189,7 +1189,7 @@ void MacroAssembler::compare_immediate_narrow_oop(Register oop1, narrowOop oop2)
 // Compare narrow oop in reg with narrow oop constant, no decompression.
 void MacroAssembler::compare_immediate_narrow_klass(Register klass1, Klass* klass2) {
   assert(UseCompressedClassPointers, "must be on to call this method");
-  narrowKlass encoded_k = Klass::encode_klass(klass2);
+  narrowKlass encoded_k = CompressedKlassPointers::encode(klass2);
 
   Assembler::z_clfi(klass1, encoded_k);
 }
@@ -1285,7 +1285,7 @@ int MacroAssembler::patch_load_narrow_oop(address pos, oop o) {
 int MacroAssembler::patch_load_narrow_klass(address pos, Klass* k) {
   assert(UseCompressedClassPointers, "Can only patch compressed klass pointers");
 
-  narrowKlass nk = Klass::encode_klass(k);
+  narrowKlass nk = CompressedKlassPointers::encode(k);
   return patch_load_const_32to64(pos, nk);
 }
 
@@ -1303,7 +1303,7 @@ int MacroAssembler::patch_compare_immediate_narrow_oop(address pos, oop o) {
 int MacroAssembler::patch_compare_immediate_narrow_klass(address pos, Klass* k) {
   assert(UseCompressedClassPointers, "Can only patch compressed klass pointers");
 
-  narrowKlass nk = Klass::encode_klass(k);
+  narrowKlass nk = CompressedKlassPointers::encode(k);
   return patch_compare_immediate_32(pos, nk);
 }
 
@@ -3606,8 +3606,8 @@ void MacroAssembler::null_check(Register reg, Register tmp, int64_t offset) {
 // Klass oop manipulations if compressed.
 void MacroAssembler::encode_klass_not_null(Register dst, Register src) {
   Register current = (src != noreg) ? src : dst; // Klass is in dst if no src provided. (dst == src) also possible.
-  address  base    = Universe::narrow_klass_base();
-  int      shift   = Universe::narrow_klass_shift();
+  address  base    = CompressedKlassPointers::base();
+  int      shift   = CompressedKlassPointers::shift();
   assert(UseCompressedClassPointers, "only for compressed klass ptrs");
 
   BLOCK_COMMENT("cKlass encoder {");
@@ -3655,8 +3655,8 @@ void MacroAssembler::encode_klass_not_null(Register dst, Register src) {
 // when (Universe::heap() != NULL). Hence, if the instructions
 // it generates change, then this method needs to be updated.
 int MacroAssembler::instr_size_for_decode_klass_not_null() {
-  address  base    = Universe::narrow_klass_base();
-  int shift_size   = Universe::narrow_klass_shift() == 0 ? 0 : 6; /* sllg */
+  address  base    = CompressedKlassPointers::base();
+  int shift_size   = CompressedKlassPointers::shift() == 0 ? 0 : 6; /* sllg */
   int addbase_size = 0;
   assert(UseCompressedClassPointers, "only for compressed klass ptrs");
 
@@ -3685,8 +3685,8 @@ int MacroAssembler::instr_size_for_decode_klass_not_null() {
 // This variant of decode_klass_not_null() must generate predictable code!
 // The code must only depend on globally known parameters.
 void MacroAssembler::decode_klass_not_null(Register dst) {
-  address  base    = Universe::narrow_klass_base();
-  int      shift   = Universe::narrow_klass_shift();
+  address  base    = CompressedKlassPointers::base();
+  int      shift   = CompressedKlassPointers::shift();
   int      beg_off = offset();
   assert(UseCompressedClassPointers, "only for compressed klass ptrs");
 
@@ -3728,8 +3728,8 @@ void MacroAssembler::decode_klass_not_null(Register dst) {
 //  1) the size of the generated instructions may vary
 //  2) the result is (potentially) stored in a register different from the source.
 void MacroAssembler::decode_klass_not_null(Register dst, Register src) {
-  address base  = Universe::narrow_klass_base();
-  int     shift = Universe::narrow_klass_shift();
+  address base  = CompressedKlassPointers::base();
+  int     shift = CompressedKlassPointers::shift();
   assert(UseCompressedClassPointers, "only for compressed klass ptrs");
 
   BLOCK_COMMENT("cKlass decoder {");
@@ -3829,8 +3829,8 @@ void MacroAssembler::compare_klass_ptr(Register Rop1, int64_t disp, Register Rba
   BLOCK_COMMENT("compare klass ptr {");
 
   if (UseCompressedClassPointers) {
-    const int shift = Universe::narrow_klass_shift();
-    address   base  = Universe::narrow_klass_base();
+    const int shift = CompressedKlassPointers::shift();
+    address   base  = CompressedKlassPointers::base();
 
     assert((shift == 0) || (shift == LogKlassAlignmentInBytes), "cKlass encoder detected bad shift");
     assert_different_registers(Rop1, Z_R0);
@@ -3963,8 +3963,8 @@ void MacroAssembler::compare_heap_oop(Register Rop1, Address mem, bool maybeNULL
   Register Rindex = mem.indexOrR0();
   int64_t  disp   = mem.disp();
 
-  const int shift = Universe::narrow_oop_shift();
-  address   base  = Universe::narrow_oop_base();
+  const int shift = CompressedOops::shift();
+  address   base  = CompressedOops::base();
 
   assert(UseCompressedOops, "must be on to call this method");
   assert(Universe::heap() != NULL, "java heap must be initialized to call this method");
@@ -4075,9 +4075,9 @@ void MacroAssembler::store_heap_oop(Register Roop, const Address &a,
 void MacroAssembler::oop_encoder(Register Rdst, Register Rsrc, bool maybeNULL,
                                  Register Rbase, int pow2_offset, bool only32bitValid) {
 
-  const address oop_base  = Universe::narrow_oop_base();
-  const int     oop_shift = Universe::narrow_oop_shift();
-  const bool    disjoint  = Universe::narrow_oop_base_disjoint();
+  const address oop_base  = CompressedOops::base();
+  const int     oop_shift = CompressedOops::shift();
+  const bool    disjoint  = CompressedOops::base_disjoint();
 
   assert(UseCompressedOops, "must be on to call this method");
   assert(Universe::heap() != NULL, "java heap must be initialized to call this encoder");
@@ -4210,9 +4210,9 @@ void MacroAssembler::oop_encoder(Register Rdst, Register Rsrc, bool maybeNULL,
 //  - avoid Z_R1 for Rdst if Rdst == Rbase.
 void MacroAssembler::oop_decoder(Register Rdst, Register Rsrc, bool maybeNULL, Register Rbase, int pow2_offset) {
 
-  const address oop_base  = Universe::narrow_oop_base();
-  const int     oop_shift = Universe::narrow_oop_shift();
-  const bool    disjoint  = Universe::narrow_oop_base_disjoint();
+  const address oop_base  = CompressedOops::base();
+  const int     oop_shift = CompressedOops::shift();
+  const bool    disjoint  = CompressedOops::base_disjoint();
 
   assert(UseCompressedOops, "must be on to call this method");
   assert(Universe::heap() != NULL, "java heap must be initialized to call this decoder");
@@ -4355,12 +4355,9 @@ void MacroAssembler::load_mirror(Register mirror, Register method) {
 // Emitter does not KILL cnt and base arguments, since they need to be copied to
 // work registers anyway.
 // Actually, only r0, r1, and r5 are killed.
-unsigned int MacroAssembler::Clear_Array(Register cnt_arg, Register base_pointer_arg, Register src_addr, Register src_len) {
-  // Src_addr is evenReg.
-  // Src_len is odd_Reg.
+unsigned int MacroAssembler::Clear_Array(Register cnt_arg, Register base_pointer_arg, Register odd_tmp_reg) {
 
   int      block_start = offset();
-  Register tmp_reg  = src_len; // Holds target instr addr for EX.
   Register dst_len  = Z_R1;    // Holds dst len  for MVCLE.
   Register dst_addr = Z_R0;    // Holds dst addr for MVCLE.
 
@@ -4369,7 +4366,7 @@ unsigned int MacroAssembler::Clear_Array(Register cnt_arg, Register base_pointer
   BLOCK_COMMENT("Clear_Array {");
 
   // Check for zero len and convert to long.
-  z_ltgfr(src_len, cnt_arg);      // Remember casted value for doSTG case.
+  z_ltgfr(odd_tmp_reg, cnt_arg);
   z_bre(done);                    // Nothing to do if len == 0.
 
   // Prefetch data to be cleared.
@@ -4378,16 +4375,17 @@ unsigned int MacroAssembler::Clear_Array(Register cnt_arg, Register base_pointer
     z_pfd(0x02, 256, Z_R0, base_pointer_arg);
   }
 
-  z_sllg(dst_len, src_len, 3);    // #bytes to clear.
-  z_cghi(src_len, 32);            // Check for len <= 256 bytes (<=32 DW).
-  z_brnh(doXC);                   // If so, use executed XC to clear.
+  z_sllg(dst_len, odd_tmp_reg, 3); // #bytes to clear.
+  z_cghi(odd_tmp_reg, 32);         // Check for len <= 256 bytes (<=32 DW).
+  z_brnh(doXC);                    // If so, use executed XC to clear.
 
   // MVCLE: initialize long arrays (general case).
   bind(doMVCLE);
   z_lgr(dst_addr, base_pointer_arg);
-  clear_reg(src_len, true, false); // Src len of MVCLE is zero.
-
-  MacroAssembler::move_long_ext(dst_addr, src_addr, 0);
+  // Pass 0 as source length to MVCLE: destination will be filled with padding byte 0.
+  // The even register of the register pair is not killed.
+  clear_reg(odd_tmp_reg, true, false);
+  MacroAssembler::move_long_ext(dst_addr, as_Register(odd_tmp_reg->encoding()-1), 0);
   z_bru(done);
 
   // XC: initialize short arrays.
@@ -4396,12 +4394,12 @@ unsigned int MacroAssembler::Clear_Array(Register cnt_arg, Register base_pointer
     z_xc(0,0,base_pointer_arg,0,base_pointer_arg);
 
   bind(doXC);
-    add2reg(dst_len, -1);             // Get #bytes-1 for EXECUTE.
+    add2reg(dst_len, -1);               // Get #bytes-1 for EXECUTE.
     if (VM_Version::has_ExecuteExtensions()) {
-      z_exrl(dst_len, XC_template);   // Execute XC with var. len.
+      z_exrl(dst_len, XC_template);     // Execute XC with var. len.
     } else {
-      z_larl(tmp_reg, XC_template);
-      z_ex(dst_len,0,Z_R0,tmp_reg);   // Execute XC with var. len.
+      z_larl(odd_tmp_reg, XC_template);
+      z_ex(dst_len,0,Z_R0,odd_tmp_reg); // Execute XC with var. len.
     }
     // z_bru(done);      // fallthru
 
@@ -4463,7 +4461,7 @@ unsigned int MacroAssembler::Clear_Array_Const(long cnt, Register base) {
 // Compiler ensures base is doubleword aligned and cnt is #doublewords.
 // Emitter does not KILL cnt and base arguments, since they need to be copied to
 // work registers anyway.
-// Actually, only r0, r1, r4, and r5 (which are work registers) are killed.
+// Actually, only r0, r1, (which are work registers) and odd_tmp_reg are killed.
 //
 // For very large arrays, exploit MVCLE H/W support.
 // MVCLE instruction automatically exploits H/W-optimized page mover.
@@ -4471,9 +4469,7 @@ unsigned int MacroAssembler::Clear_Array_Const(long cnt, Register base) {
 // - All full pages are cleared with the page mover H/W assist.
 // - Remaining bytes are again cleared by a series of XC to self.
 //
-unsigned int MacroAssembler::Clear_Array_Const_Big(long cnt, Register base_pointer_arg, Register src_addr, Register src_len) {
-  // Src_addr is evenReg.
-  // Src_len is odd_Reg.
+unsigned int MacroAssembler::Clear_Array_Const_Big(long cnt, Register base_pointer_arg, Register odd_tmp_reg) {
 
   int      block_start = offset();
   Register dst_len  = Z_R1;      // Holds dst len  for MVCLE.
@@ -4486,11 +4482,10 @@ unsigned int MacroAssembler::Clear_Array_Const_Big(long cnt, Register base_point
 
   // Prepare other args to MVCLE.
   z_lgr(dst_addr, base_pointer_arg);
-  // Indicate unused result.
-  (void) clear_reg(src_len, true, false);  // Src len of MVCLE is zero.
-
-  // Clear.
-  MacroAssembler::move_long_ext(dst_addr, src_addr, 0);
+  // Pass 0 as source length to MVCLE: destination will be filled with padding byte 0.
+  // The even register of the register pair is not killed.
+  (void) clear_reg(odd_tmp_reg, true, false);  // Src len of MVCLE is zero.
+  MacroAssembler::move_long_ext(dst_addr, as_Register(odd_tmp_reg->encoding() - 1), 0);
   BLOCK_COMMENT("} Clear_Array_Const_Big");
 
   int block_end = offset();

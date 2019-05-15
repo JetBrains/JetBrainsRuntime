@@ -60,13 +60,11 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   _gc_par_phases[SystemDictionaryRoots] = new WorkerDataArray<double>(max_gc_threads, "SystemDictionary Roots (ms):");
   _gc_par_phases[CLDGRoots] = new WorkerDataArray<double>(max_gc_threads, "CLDG Roots (ms):");
   _gc_par_phases[JVMTIRoots] = new WorkerDataArray<double>(max_gc_threads, "JVMTI Roots (ms):");
-#if INCLUDE_AOT
-  _gc_par_phases[AOTCodeRoots] = new WorkerDataArray<double>(max_gc_threads, "AOT Root Scan (ms):");
-#endif
+  AOT_ONLY(_gc_par_phases[AOTCodeRoots] = new WorkerDataArray<double>(max_gc_threads, "AOT Root Scan (ms):");)
+  JVMCI_ONLY(_gc_par_phases[JVMCIRoots] = new WorkerDataArray<double>(max_gc_threads, "JVMCI Root Scan (ms):");)
   _gc_par_phases[CMRefRoots] = new WorkerDataArray<double>(max_gc_threads, "CM RefProcessor Roots (ms):");
   _gc_par_phases[WaitForStrongCLD] = new WorkerDataArray<double>(max_gc_threads, "Wait For Strong CLD (ms):");
   _gc_par_phases[WeakCLDRoots] = new WorkerDataArray<double>(max_gc_threads, "Weak CLD Roots (ms):");
-  _gc_par_phases[SATBFiltering] = new WorkerDataArray<double>(max_gc_threads, "SATB Filtering (ms):");
 
   _gc_par_phases[UpdateRS] = new WorkerDataArray<double>(max_gc_threads, "Update RS (ms):");
   if (G1HotCardCache::default_use_cache()) {
@@ -76,10 +74,12 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   }
   _gc_par_phases[ScanRS] = new WorkerDataArray<double>(max_gc_threads, "Scan RS (ms):");
   _gc_par_phases[OptScanRS] = new WorkerDataArray<double>(max_gc_threads, "Optional Scan RS (ms):");
-  _gc_par_phases[CodeRoots] = new WorkerDataArray<double>(max_gc_threads, "Code Root Scanning (ms):");
+  _gc_par_phases[CodeRoots] = new WorkerDataArray<double>(max_gc_threads, "Code Root Scan (ms):");
+  _gc_par_phases[OptCodeRoots] = new WorkerDataArray<double>(max_gc_threads, "Optional Code Root Scan (ms):");
   _gc_par_phases[ObjCopy] = new WorkerDataArray<double>(max_gc_threads, "Object Copy (ms):");
   _gc_par_phases[OptObjCopy] = new WorkerDataArray<double>(max_gc_threads, "Optional Object Copy (ms):");
   _gc_par_phases[Termination] = new WorkerDataArray<double>(max_gc_threads, "Termination (ms):");
+  _gc_par_phases[OptTermination] = new WorkerDataArray<double>(max_gc_threads, "Optional Termination (ms):");
   _gc_par_phases[GCWorkerTotal] = new WorkerDataArray<double>(max_gc_threads, "GC Worker Total (ms):");
   _gc_par_phases[GCWorkerEnd] = new WorkerDataArray<double>(max_gc_threads, "GC Worker End (ms):");
   _gc_par_phases[Other] = new WorkerDataArray<double>(max_gc_threads, "GC Worker Other (ms):");
@@ -91,14 +91,16 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   _scan_rs_skipped_cards = new WorkerDataArray<size_t>(max_gc_threads, "Skipped Cards:");
   _gc_par_phases[ScanRS]->link_thread_work_items(_scan_rs_skipped_cards, ScanRSSkippedCards);
 
-  _opt_cset_scanned_cards = new WorkerDataArray<size_t>(max_gc_threads, "Scanned Cards:");
-  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_cset_scanned_cards, OptCSetScannedCards);
-  _opt_cset_claimed_cards = new WorkerDataArray<size_t>(max_gc_threads, "Claimed Cards:");
-  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_cset_claimed_cards, OptCSetClaimedCards);
-  _opt_cset_skipped_cards = new WorkerDataArray<size_t>(max_gc_threads, "Skipped Cards:");
-  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_cset_skipped_cards, OptCSetSkippedCards);
-  _opt_cset_used_memory = new WorkerDataArray<size_t>(max_gc_threads, "Used Memory:");
-  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_cset_used_memory, OptCSetUsedMemory);
+  _opt_scan_rs_scanned_cards = new WorkerDataArray<size_t>(max_gc_threads, "Scanned Cards:");
+  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_scan_rs_scanned_cards, ScanRSScannedCards);
+  _opt_scan_rs_claimed_cards = new WorkerDataArray<size_t>(max_gc_threads, "Claimed Cards:");
+  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_scan_rs_claimed_cards, ScanRSClaimedCards);
+  _opt_scan_rs_skipped_cards = new WorkerDataArray<size_t>(max_gc_threads, "Skipped Cards:");
+  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_scan_rs_skipped_cards, ScanRSSkippedCards);
+  _opt_scan_rs_scanned_opt_refs = new WorkerDataArray<size_t>(max_gc_threads, "Scanned Refs:");
+  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_scan_rs_scanned_opt_refs, ScanRSScannedOptRefs);
+  _opt_scan_rs_used_memory = new WorkerDataArray<size_t>(max_gc_threads, "Used Memory:");
+  _gc_par_phases[OptScanRS]->link_thread_work_items(_opt_scan_rs_used_memory, ScanRSUsedMemory);
 
   _update_rs_processed_buffers = new WorkerDataArray<size_t>(max_gc_threads, "Processed Buffers:");
   _gc_par_phases[UpdateRS]->link_thread_work_items(_update_rs_processed_buffers, UpdateRSProcessedBuffers);
@@ -112,8 +114,16 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
   _obj_copy_lab_undo_waste = new WorkerDataArray<size_t>(max_gc_threads, "LAB Undo Waste");
   _gc_par_phases[ObjCopy]->link_thread_work_items(_obj_copy_lab_undo_waste, ObjCopyLABUndoWaste);
 
+  _opt_obj_copy_lab_waste = new WorkerDataArray<size_t>(max_gc_threads, "LAB Waste");
+  _gc_par_phases[OptObjCopy]->link_thread_work_items(_obj_copy_lab_waste, ObjCopyLABWaste);
+  _opt_obj_copy_lab_undo_waste  = new WorkerDataArray<size_t>(max_gc_threads, "LAB Undo Waste");
+  _gc_par_phases[OptObjCopy]->link_thread_work_items(_obj_copy_lab_undo_waste, ObjCopyLABUndoWaste);
+
   _termination_attempts = new WorkerDataArray<size_t>(max_gc_threads, "Termination Attempts:");
   _gc_par_phases[Termination]->link_thread_work_items(_termination_attempts);
+
+  _opt_termination_attempts = new WorkerDataArray<size_t>(max_gc_threads, "Optional Termination Attempts:");
+  _gc_par_phases[OptTermination]->link_thread_work_items(_opt_termination_attempts);
 
   if (UseStringDeduplication) {
     _gc_par_phases[StringDedupQueueFixup] = new WorkerDataArray<double>(max_gc_threads, "Queue Fixup (ms):");
@@ -134,7 +144,7 @@ G1GCPhaseTimes::G1GCPhaseTimes(STWGCTimer* gc_timer, uint max_gc_threads) :
 }
 
 void G1GCPhaseTimes::reset() {
-  _cur_collection_par_time_ms = 0.0;
+  _cur_collection_initial_evac_time_ms = 0.0;
   _cur_optional_evac_ms = 0.0;
   _cur_collection_code_root_fixup_time_ms = 0.0;
   _cur_strong_code_root_purge_time_ms = 0.0;
@@ -160,7 +170,7 @@ void G1GCPhaseTimes::reset() {
   _recorded_total_free_cset_time_ms = 0.0;
   _recorded_serial_free_cset_time_ms = 0.0;
   _cur_fast_reclaim_humongous_time_ms = 0.0;
-  _cur_fast_reclaim_humongous_register_time_ms = 0.0;
+  _cur_region_register_time = 0.0;
   _cur_fast_reclaim_humongous_total = 0;
   _cur_fast_reclaim_humongous_candidates = 0;
   _cur_fast_reclaim_humongous_reclaimed = 0;
@@ -251,12 +261,20 @@ void G1GCPhaseTimes::record_or_add_time_secs(GCParPhases phase, uint worker_i, d
   }
 }
 
+double G1GCPhaseTimes::get_time_secs(GCParPhases phase, uint worker_i) {
+  return _gc_par_phases[phase]->get(worker_i);
+}
+
 void G1GCPhaseTimes::record_thread_work_item(GCParPhases phase, uint worker_i, size_t count, uint index) {
   _gc_par_phases[phase]->set_thread_work_item(worker_i, count, index);
 }
 
 void G1GCPhaseTimes::record_or_add_thread_work_item(GCParPhases phase, uint worker_i, size_t count, uint index) {
   _gc_par_phases[phase]->set_or_add_thread_work_item(worker_i, count, index);
+}
+
+size_t G1GCPhaseTimes::get_thread_work_item(GCParPhases phase, uint worker_i, uint index) {
+  return _gc_par_phases[phase]->get_thread_work_item(worker_i, index);
 }
 
 // return the average time for a phase in milliseconds
@@ -346,7 +364,7 @@ double G1GCPhaseTimes::print_pre_evacuate_collection_set() const {
   const double sum_ms = _root_region_scan_wait_time_ms +
                         _recorded_young_cset_choice_time_ms +
                         _recorded_non_young_cset_choice_time_ms +
-                        _cur_fast_reclaim_humongous_register_time_ms +
+                        _cur_region_register_time +
                         _recorded_clear_claimed_marks_time_ms;
 
   info_time("Pre Evacuate Collection Set", sum_ms);
@@ -356,8 +374,8 @@ double G1GCPhaseTimes::print_pre_evacuate_collection_set() const {
   }
   debug_time("Prepare TLABs", _cur_prepare_tlab_time_ms);
   debug_time("Choose Collection Set", (_recorded_young_cset_choice_time_ms + _recorded_non_young_cset_choice_time_ms));
+  debug_time("Region Register", _cur_region_register_time);
   if (G1EagerReclaimHumongousObjects) {
-    debug_time("Humongous Register", _cur_fast_reclaim_humongous_register_time_ms);
     trace_count("Humongous Total", _cur_fast_reclaim_humongous_total);
     trace_count("Humongous Candidate", _cur_fast_reclaim_humongous_candidates);
   }
@@ -374,18 +392,20 @@ double G1GCPhaseTimes::print_evacuate_optional_collection_set() const {
     info_time("Evacuate Optional Collection Set", sum_ms);
     debug_phase(_gc_par_phases[OptScanRS]);
     debug_phase(_gc_par_phases[OptObjCopy]);
+    debug_phase(_gc_par_phases[OptCodeRoots]);
+    debug_phase(_gc_par_phases[OptTermination]);
   }
   return sum_ms;
 }
 
 double G1GCPhaseTimes::print_evacuate_collection_set() const {
-  const double sum_ms = _cur_collection_par_time_ms;
+  const double sum_ms = _cur_collection_initial_evac_time_ms;
 
   info_time("Evacuate Collection Set", sum_ms);
 
   trace_phase(_gc_par_phases[GCWorkerStart], false);
   debug_phase(_gc_par_phases[ExtRootScan]);
-  for (int i = ExtRootScanSubPhasesStart; i <= ExtRootScanSubPhasesEnd; i++) {
+  for (int i = ExtRootScanSubPhasesFirst; i <= ExtRootScanSubPhasesLast; i++) {
     trace_phase(_gc_par_phases[i]);
   }
   if (G1HotCardCache::default_use_cache()) {
@@ -505,21 +525,21 @@ const char* G1GCPhaseTimes::phase_name(GCParPhases phase) {
       "SystemDictionaryRoots",
       "CLDGRoots",
       "JVMTIRoots",
-#if INCLUDE_AOT
-      "AOTCodeRoots",
-#endif
+      AOT_ONLY("AOTCodeRoots" COMMA)
+      JVMCI_ONLY("JVMCIRoots" COMMA)
       "CMRefRoots",
       "WaitForStrongCLD",
       "WeakCLDRoots",
-      "SATBFiltering",
       "UpdateRS",
       "ScanHCC",
       "ScanRS",
       "OptScanRS",
       "CodeRoots",
+      "OptCodeRoots",
       "ObjCopy",
       "OptObjCopy",
       "Termination",
+      "OptTermination",
       "Other",
       "GCWorkerTotal",
       "GCWorkerEnd",

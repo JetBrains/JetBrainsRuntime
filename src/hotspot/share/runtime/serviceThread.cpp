@@ -27,6 +27,7 @@
 #include "classfile/stringTable.hpp"
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
+#include "memory/universe.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
@@ -138,7 +139,7 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
 
       ThreadBlockInVM tbivm(jt);
 
-      MonitorLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+      MonitorLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
       // Process all available work on each (outer) iteration, rather than
       // only the first recognized bit of work, to avoid frequently true early
       // tests from potentially starving later work.  Hence the use of
@@ -157,7 +158,7 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
 
              == 0) {
         // Wait until notified that there is some work to do.
-        ml.wait(Mutex::_no_safepoint_check_flag);
+        ml.wait();
       }
 
       if (has_jvmti_events) {
@@ -190,7 +191,7 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
     }
 
     if (resolved_method_table_work) {
-      ResolvedMethodTable::unlink();
+      ResolvedMethodTable::do_concurrent_work(jt);
     }
 
     if (protection_domain_table_work) {

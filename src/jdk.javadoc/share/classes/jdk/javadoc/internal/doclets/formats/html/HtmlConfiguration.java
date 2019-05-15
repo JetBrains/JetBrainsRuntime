@@ -41,8 +41,6 @@ import com.sun.tools.doclint.DocLint;
 
 import jdk.javadoc.doclet.Doclet;
 import jdk.javadoc.doclet.DocletEnvironment;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
-import jdk.javadoc.internal.doclets.formats.html.markup.HtmlVersion;
 import jdk.javadoc.internal.doclets.toolkit.BaseConfiguration;
 import jdk.javadoc.internal.doclets.toolkit.DocletException;
 import jdk.javadoc.internal.doclets.toolkit.Messages;
@@ -51,7 +49,6 @@ import jdk.javadoc.internal.doclets.toolkit.WriterFactory;
 import jdk.javadoc.internal.doclets.toolkit.util.DocFile;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPath;
 import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
-import jdk.javadoc.internal.doclets.toolkit.util.Utils;
 
 import static javax.tools.Diagnostic.Kind.*;
 
@@ -198,12 +195,6 @@ public class HtmlConfiguration extends BaseConfiguration {
      * used and number of packages is more than one.
      */
     public boolean createoverview = false;
-
-    /**
-     * Specifies whether or not frames should be generated.
-     * Defaults to false; can be set to true by --frames; can be set to false by --no-frames; last one wins.
-     */
-    public boolean frames = false;
 
     /**
      * Collected set of doclint options
@@ -356,11 +347,10 @@ public class HtmlConfiguration extends BaseConfiguration {
                 }
             }
         }
-        docPaths = new DocPaths(utils, useModuleDirectories);
+        docPaths = new DocPaths(utils);
         setCreateOverview();
         setTopFile(docEnv);
-        workArounds.initDocLint(doclintOpts.values(), tagletManager.getAllTagletNames(),
-                Utils.toLowerCase(HtmlVersion.HTML5.name()));
+        workArounds.initDocLint(doclintOpts.values(), tagletManager.getAllTagletNames());
         return true;
     }
 
@@ -379,7 +369,7 @@ public class HtmlConfiguration extends BaseConfiguration {
             return;
         }
         if (createoverview) {
-            topFile = DocPaths.overviewSummary(frames);
+            topFile = DocPaths.INDEX;
         } else {
             if (showModules) {
                 topFile = DocPath.empty.resolve(docPaths.moduleSummary(modules.first()));
@@ -644,21 +634,6 @@ public class HtmlConfiguration extends BaseConfiguration {
                     return true;
                 }
             },
-            new Option(resources, "--frames") {
-                @Override
-                public boolean process(String opt,  List<String> args) {
-                    reporter.print(WARNING, resources.getText("doclet.Frames_specified", helpfile));
-                    frames = true;
-                    return true;
-                }
-            },
-            new Option(resources, "--no-frames") {
-                @Override
-                public boolean process(String opt,  List<String> args) {
-                    frames = false;
-                    return true;
-                }
-            },
             new Hidden(resources, "-packagesheader", 1) {
                 @Override
                 public boolean process(String opt,  List<String> args) {
@@ -751,6 +726,13 @@ public class HtmlConfiguration extends BaseConfiguration {
                         reporter.print(ERROR, resources.getText("doclet.Option_doclint_package_invalid_arg"));
                         return false;
                     }
+                    return true;
+                }
+            },
+            new XOption(resources, "--no-frames") {
+                @Override
+                public boolean process(String opt, List<String> args) {
+                    reporter.print(WARNING, resources.getText("doclet.NoFrames_specified"));
                     return true;
                 }
             }

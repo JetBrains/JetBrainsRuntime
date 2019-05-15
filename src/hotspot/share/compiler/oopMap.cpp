@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,8 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
+#include "oops/compressedOops.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/signature.hpp"
@@ -338,7 +340,7 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
       // Protect the operation on the derived pointers.  This
       // protects the addition of derived pointers to the shared
       // derived pointer table in DerivedPointerTable::add().
-      MutexLockerEx x(DerivedPointerTableGC_lock, Mutex::_no_safepoint_check_flag);
+      MutexLocker x(DerivedPointerTableGC_lock, Mutex::_no_safepoint_check_flag);
       do {
         omv = oms.current();
         oop* loc = fr->oopmapreg_to_location(omv.reg(),reg_map);
@@ -346,11 +348,11 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
         oop *derived_loc = loc;
         oop *base_loc    = fr->oopmapreg_to_location(omv.content_reg(), reg_map);
         // Ignore NULL oops and decoded NULL narrow oops which
-        // equal to Universe::narrow_oop_base when a narrow oop
+        // equal to CompressedOops::base() when a narrow oop
         // implicit null check is used in compiled code.
         // The narrow_oop_base could be NULL or be the address
         // of the page below heap depending on compressed oops mode.
-        if (base_loc != NULL && *base_loc != NULL && !Universe::is_narrow_oop_base(*base_loc)) {
+        if (base_loc != NULL && *base_loc != NULL && !CompressedOops::is_base(*base_loc)) {
           derived_oop_fn(base_loc, derived_loc);
         }
         oms.next();
@@ -371,9 +373,9 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
       guarantee(loc != NULL, "missing saved register");
       if ( omv.type() == OopMapValue::oop_value ) {
         oop val = *loc;
-        if (val == NULL || Universe::is_narrow_oop_base(val)) {
+        if (val == NULL || CompressedOops::is_base(val)) {
           // Ignore NULL oops and decoded NULL narrow oops which
-          // equal to Universe::narrow_oop_base when a narrow oop
+          // equal to CompressedOops::base() when a narrow oop
           // implicit null check is used in compiled code.
           // The narrow_oop_base could be NULL or be the address
           // of the page below heap depending on compressed oops mode.
@@ -508,6 +510,8 @@ void OopMapValue::print_on(outputStream* st) const {
   st->print(" ");
 }
 
+void OopMapValue::print() const { print_on(tty); }
+
 void ImmutableOopMap::print_on(outputStream* st) const {
   OopMapValue omv;
   st->print("ImmutableOopMap{");
@@ -518,6 +522,8 @@ void ImmutableOopMap::print_on(outputStream* st) const {
   st->print("}");
 }
 
+void ImmutableOopMap::print() const { print_on(tty); }
+
 void OopMap::print_on(outputStream* st) const {
   OopMapValue omv;
   st->print("OopMap{");
@@ -527,6 +533,8 @@ void OopMap::print_on(outputStream* st) const {
   }
   st->print("off=%d}", (int) offset());
 }
+
+void OopMap::print() const { print_on(tty); }
 
 void ImmutableOopMapSet::print_on(outputStream* st) const {
   const ImmutableOopMap* last = NULL;
@@ -543,6 +551,8 @@ void ImmutableOopMapSet::print_on(outputStream* st) const {
   }
 }
 
+void ImmutableOopMapSet::print() const { print_on(tty); }
+
 void OopMapSet::print_on(outputStream* st) const {
   int i, len = om_count();
 
@@ -555,6 +565,8 @@ void OopMapSet::print_on(outputStream* st) const {
     st->cr();
   }
 }
+
+void OopMapSet::print() const { print_on(tty); }
 
 bool OopMap::equals(const OopMap* other) const {
   if (other->_omv_count != _omv_count) {

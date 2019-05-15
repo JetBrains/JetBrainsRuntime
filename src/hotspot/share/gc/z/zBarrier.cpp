@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,27 +98,13 @@ uintptr_t ZBarrier::mark(uintptr_t addr) {
 uintptr_t ZBarrier::remap(uintptr_t addr) {
   assert(!ZAddress::is_good(addr), "Should not be good");
   assert(!ZAddress::is_weak_good(addr), "Should not be weak good");
-
-  if (ZHeap::heap()->is_relocating(addr)) {
-    // Forward
-    return ZHeap::heap()->forward_object(addr);
-  }
-
-  // Remap
-  return ZAddress::good(addr);
+  return ZHeap::heap()->remap_object(addr);
 }
 
 uintptr_t ZBarrier::relocate(uintptr_t addr) {
   assert(!ZAddress::is_good(addr), "Should not be good");
   assert(!ZAddress::is_weak_good(addr), "Should not be weak good");
-
-  if (ZHeap::heap()->is_relocating(addr)) {
-    // Relocate
-    return ZHeap::heap()->relocate_object(addr);
-  }
-
-  // Remap
-  return ZAddress::good(addr);
+  return ZHeap::heap()->relocate_object(addr);
 }
 
 uintptr_t ZBarrier::relocate_or_mark(uintptr_t addr) {
@@ -137,7 +123,7 @@ uintptr_t ZBarrier::load_barrier_on_oop_slow_path(uintptr_t addr) {
 }
 
 void ZBarrier::load_barrier_on_oop_fields(oop o) {
-  assert(ZOop::is_good(o), "Should be good");
+  assert(ZAddress::is_good(ZOop::to_address(o)), "Should be good");
   ZLoadBarrierOopClosure cl;
   o->oop_iterate(&cl);
 }

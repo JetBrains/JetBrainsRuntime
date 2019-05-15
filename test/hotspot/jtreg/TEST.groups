@@ -43,6 +43,7 @@ hotspot_gc = \
   gc \
   -gc/nvdimm
 
+# By design this group should include ALL tests under runtime sub-directory
 hotspot_runtime = \
   runtime
 
@@ -64,6 +65,9 @@ hotspot_misc = \
 
 hotspot_native_sanity = \
   native_sanity
+
+hotspot_containers = \
+  containers
 
 tier1_common = \
   sanity/BasicVMTest.java \
@@ -281,11 +285,6 @@ tier1_runtime = \
  -runtime/modules/ModuleStress/ExportModuleStressTest.java \
  -runtime/modules/ModuleStress/ModuleStressGC.java \
  -runtime/NMT \
- -runtime/RedefineObject/TestRedefineObject.java \
- -runtime/RedefineTests/RedefineLeak.java \
- -runtime/RedefineTests/RedefinePreviousVersions.java \
- -runtime/RedefineTests/RedefineRunningMethods.java \
- -runtime/RedefineTests/RedefineRunningMethodsWithBacktrace.java \
  -runtime/ReservedStack \
  -runtime/SelectionResolution/AbstractMethodErrorTest.java \
  -runtime/SelectionResolution/IllegalAccessErrorTest.java \
@@ -301,7 +300,6 @@ tier1_runtime = \
  -runtime/Thread/CancellableThreadTest.java \
  -runtime/Thread/TestThreadDumpMonitorContention.java \
  -runtime/Unsafe/RangeCheck.java \
- -runtime/containers/ \
   sanity/ \
   testlibrary_tests/TestMutuallyExclusivePlatformPredicates.java \
  -:tier1_runtime_appcds_exclude \
@@ -326,9 +324,30 @@ tier1_runtime_appcds_exclude = \
   runtime/appcds/ \
   -:tier1_runtime_appcds
 
+# This group should be executed with "jtreg -Dtest.cds.run.with.jfr=true ..."
+# to test interaction between AppCDS and JFR. It also has the side effect of
+# testing JVMTI ClassFileLoadHook.
+#
+# The excluded tests disallow the jdk.jfr module, which is required to
+# run with JFR.
+hotspot_appcds_with_jfr = \
+  runtime/appcds/ \
+ -runtime/appcds/cacheObject/ArchivedModuleCompareTest.java \
+ -runtime/appcds/jigsaw/classpathtests/BootAppendTests.java \
+ -runtime/appcds/jigsaw/classpathtests/ClassPathTests.java \
+ -runtime/appcds/jigsaw/classpathtests/EmptyClassInBootClassPath.java \
+ -runtime/appcds/jigsaw/JigsawOptionsCombo.java \
+ -runtime/appcds/jigsaw/modulepath/MainModuleOnly.java
+
 tier1_serviceability = \
   serviceability/dcmd/compiler \
   -serviceability/dcmd/compiler/CompilerQueueTest.java \
+  serviceability/jvmti/RedefineClasses \
+  -serviceability/jvmti/RedefineClasses/RedefineLeak.java \
+  -serviceability/jvmti/RedefineClasses/RedefinePreviousVersions.java \
+  -serviceability/jvmti/RedefineClasses/RedefineRunningMethods.java \
+  -serviceability/jvmti/RedefineClasses/RedefineRunningMethodsWithBacktrace.java \
+  -serviceability/jvmti/RedefineClasses/TestRedefineObject.java \
   serviceability/logging \
   serviceability/sa \
   -serviceability/sa/ClhsdbScanOops.java \
@@ -349,7 +368,6 @@ hotspot_tier2_runtime = \
  -runtime/CommandLine/OptionsValidation/TestOptionsWithRanges.java \
  -runtime/CompressedOops/UseCompressedOops.java \
  -runtime/Thread/TestThreadDumpMonitorContention.java \
- -runtime/containers/ \
  -:tier1_runtime \
  -:tier1_serviceability \
  -:hotspot_tier2_runtime_platform_agnostic \
@@ -363,7 +381,6 @@ hotspot_tier2_runtime_platform_agnostic = \
 hotspot_tier3_runtime = \
   runtime/ \
   serviceability/ \
- -runtime/containers/ \
  -:tier1_runtime \
  -:tier1_serviceability \
  -:hotspot_tier2_runtime_platform_agnostic \
@@ -421,7 +438,8 @@ vmTestbase_vm_metaspace = \
 
 # JVMTI tests
 vmTestbase_nsk_jvmti = \
-  vmTestbase/nsk/jvmti
+  vmTestbase/nsk/jvmti \
+  vmTestbase/nsk/share/ExceptionCheckingJniEnv
 
 # JDWP tests
 vmTestbase_nsk_jdwp = \

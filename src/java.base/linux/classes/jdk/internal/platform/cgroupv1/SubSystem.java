@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class SubSystem {
@@ -48,7 +49,7 @@ public class SubSystem {
     public void setPath(String cgroupPath) {
         if (root != null && cgroupPath != null) {
             if (root.equals("/")) {
-                if (cgroupPath.equals("/")) {
+                if (!cgroupPath.equals("/")) {
                     path = mountPoint + cgroupPath;
                 }
                 else {
@@ -60,7 +61,7 @@ public class SubSystem {
                     path = mountPoint;
                 }
                 else {
-                    if (root.indexOf(cgroupPath) == 0) {
+                    if (cgroupPath.startsWith(root)) {
                         if (cgroupPath.length() > root.length()) {
                             String cgroupSubstr = cgroupPath.substring(root.length());
                             path = mountPoint + cgroupSubstr;
@@ -99,10 +100,32 @@ public class SubSystem {
 
     }
 
+    public static long getLongValueMatchingLine(SubSystem subsystem,
+                                                     String param,
+                                                     String match,
+                                                     Function<String, Long> conversion) {
+        long retval = Metrics.unlimited_minimum + 1; // default unlimited
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(subsystem.path(), param));
+            for (String line: lines) {
+                if (line.startsWith(match)) {
+                    retval = conversion.apply(line);
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            // Ignore. Default is unlimited.
+        }
+        return retval;
+    }
+
     public static long getLongValue(SubSystem subsystem, String parm) {
         String strval = getStringValue(subsystem, parm);
-        long retval = 0;
+        return convertStringToLong(strval);
+    }
 
+    public static long convertStringToLong(String strval) {
+        long retval = 0;
         if (strval == null) return 0L;
 
         try {
@@ -214,5 +237,23 @@ public class SubSystem {
         }
 
         return ints;
+    }
+
+    public static class MemorySubSystem extends SubSystem {
+
+        private boolean hierarchical;
+
+        public MemorySubSystem(String root, String mountPoint) {
+            super(root, mountPoint);
+        }
+
+        boolean isHierarchical() {
+            return hierarchical;
+        }
+
+        void setHierarchical(boolean hierarchical) {
+            this.hierarchical = hierarchical;
+        }
+
     }
 }

@@ -189,7 +189,7 @@ private:
     // Protect the table from concurrent access. Also note that this lock
     // acts as a fence for _table, which could have been replaced by a new
     // instance if the table was resized or rehashed.
-    MutexLockerEx ml(StringDedupTable_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(StringDedupTable_lock, Mutex::_no_safepoint_check_flag);
     return _table->lookup_or_add_inner(value, latin1, hash);
   }
 
@@ -198,8 +198,6 @@ private:
   static bool use_java_hash() {
     return _table->_hash_seed == 0;
   }
-
-  static bool equals(typeArrayOop value1, typeArrayOop value2);
 
   // Computes the hash code for the given character array, using the
   // currently active hash function and hash seed.

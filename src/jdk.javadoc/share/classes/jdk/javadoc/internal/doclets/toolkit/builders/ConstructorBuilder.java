@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -135,8 +135,9 @@ public class ConstructorBuilder extends AbstractMemberBuilder {
             return;
         }
         if (hasMembersToDocument()) {
-            Content constructorDetailsTree = writer.getConstructorDetailsTreeHeader(typeElement,
+            Content constructorDetailsTreeHeader = writer.getConstructorDetailsTreeHeader(typeElement,
                     memberDetailsTree);
+            Content constructorDetailsTree = writer.getMemberTreeHeader();
 
             Element lastElement = constructors.get(constructors.size() - 1);
             for (Element contructor : constructors) {
@@ -148,11 +149,11 @@ public class ConstructorBuilder extends AbstractMemberBuilder {
                 buildConstructorComments(constructorDocTree);
                 buildTagInfo(constructorDocTree);
 
-                constructorDetailsTree.addContent(writer.getConstructorDoc(constructorDocTree,
+                constructorDetailsTree.add(writer.getConstructorDoc(constructorDocTree,
                         currentConstructor == lastElement));
             }
-            memberDetailsTree.addContent(
-                    writer.getConstructorDetails(constructorDetailsTree));
+            memberDetailsTree.add(
+                    writer.getConstructorDetails(constructorDetailsTreeHeader, constructorDetailsTree));
         }
     }
 
@@ -162,7 +163,7 @@ public class ConstructorBuilder extends AbstractMemberBuilder {
      * @param constructorDocTree the content tree to which the documentation will be added
      */
     protected void buildSignature(Content constructorDocTree) {
-        constructorDocTree.addContent(writer.getSignature(currentConstructor));
+        constructorDocTree.add(writer.getSignature(currentConstructor));
     }
 
     /**

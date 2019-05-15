@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public class StringContent extends Content {
      */
     public StringContent(CharSequence initialContent) {
         stringContent = new StringBuilder();
-        appendChars(initialContent);
+        Entity.escapeHtmlChars(initialContent, stringContent);
     }
 
     /**
@@ -69,7 +69,7 @@ public class StringContent extends Content {
      * @throws UnsupportedOperationException always
      */
     @Override
-    public void addContent(Content content) {
+    public void add(Content content) {
         throw new UnsupportedOperationException();
     }
 
@@ -80,8 +80,8 @@ public class StringContent extends Content {
      * @param strContent string content to be added
      */
     @Override
-    public void addContent(CharSequence strContent) {
-        appendChars(strContent);
+    public void add(CharSequence strContent) {
+        Entity.escapeHtmlChars(strContent, stringContent);
     }
 
     /**
@@ -113,17 +113,5 @@ public class StringContent extends Content {
         String s = stringContent.toString();
         out.write(s);
         return s.endsWith(DocletConstants.NL);
-    }
-
-    private void appendChars(CharSequence s) {
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-            switch (ch) {
-                case '<': stringContent.append("&lt;");  break;
-                case '>': stringContent.append("&gt;");  break;
-                case '&': stringContent.append("&amp;"); break;
-                default:  stringContent.append(ch);      break;
-            }
-        }
     }
 }

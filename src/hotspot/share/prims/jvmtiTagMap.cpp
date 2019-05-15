@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,11 @@
 #include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
-#include "code/codeCache.hpp"
 #include "jvmtifiles/jvmtiEnv.hpp"
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/arrayOop.inline.hpp"
 #include "oops/constantPool.inline.hpp"
@@ -62,6 +62,9 @@
 #include "utilities/macros.hpp"
 #if INCLUDE_ZGC
 #include "gc/z/zGlobals.hpp"
+#endif
+#if INCLUDE_JVMCI
+#include "jvmci/jvmci.hpp"
 #endif
 
 // JvmtiTagHashmapEntry
@@ -182,17 +185,9 @@ class JvmtiTagHashmap : public CHeapObj<mtInternal> {
 
   // hash a given key (oop) with the specified size
   static unsigned int hash(oop key, int size) {
-    ZGC_ONLY(assert(ZAddressMetadataShift >= sizeof(unsigned int) * BitsPerByte, "cast removes the metadata bits");)
-
-    // shift right to get better distribution (as these bits will be zero
-    // with aligned addresses)
-    key = Access<>::resolve(key);
-    unsigned int addr = (unsigned int)(cast_from_oop<intptr_t>(key));
-#ifdef _LP64
-    return (addr >> 3) % size;
-#else
-    return (addr >> 2) % size;
-#endif
+    const oop obj = Access<>::resolve(key);
+    const unsigned int hash = Universe::heap()->hash_oop(obj);
+    return hash % size;
   }
 
   // hash a given key (oop)
@@ -451,7 +446,7 @@ JvmtiTagMap::JvmtiTagMap(JvmtiEnv* env) :
   _hashmap = new JvmtiTagHashmap();
 
   // finally add us to the environment
-  ((JvmtiEnvBase *)env)->set_tag_map(this);
+  ((JvmtiEnvBase *)env)->release_set_tag_map(this);
 }
 
 
@@ -520,7 +515,7 @@ void JvmtiTagMap::destroy_entry(JvmtiTagHashmapEntry* entry) {
 // returns the tag map for the given environments. If the tag map
 // doesn't exist then it is created.
 JvmtiTagMap* JvmtiTagMap::tag_map_for(JvmtiEnv* env) {
-  JvmtiTagMap* tag_map = ((JvmtiEnvBase*)env)->tag_map();
+  JvmtiTagMap* tag_map = ((JvmtiEnvBase*)env)->tag_map_acquire();
   if (tag_map == NULL) {
     MutexLocker mu(JvmtiThreadState_lock);
     tag_map = ((JvmtiEnvBase*)env)->tag_map();
@@ -3043,11 +3038,17 @@ inline bool VM_HeapWalkOperation::collect_simple_roots() {
   // exceptions) will be visible.
   blk.set_kind(JVMTI_HEAP_REFERENCE_OTHER);
   Universe::oops_do(&blk);
+  if (blk.stopped()) {
+    return false;
+  }
 
-  // If there are any non-perm roots in the code cache, visit them.
+#if INCLUDE_JVMCI
   blk.set_kind(JVMTI_HEAP_REFERENCE_OTHER);
-  CodeBlobToOopClosure look_in_blobs(&blk, !CodeBlobToOopClosure::FixRelocations);
-  CodeCache::scavenge_root_nmethods_do(&look_in_blobs);
+  JVMCI::oops_do(&blk);
+  if (blk.stopped()) {
+    return false;
+  }
+#endif
 
   return true;
 }
@@ -3318,7 +3319,7 @@ void JvmtiTagMap::weak_oops_do(BoolObjectClosure* is_alive, OopClosure* f) {
   if (JvmtiEnv::environments_might_exist()) {
     JvmtiEnvIterator it;
     for (JvmtiEnvBase* env = it.first(); env != NULL; env = it.next(env)) {
-      JvmtiTagMap* tag_map = env->tag_map();
+      JvmtiTagMap* tag_map = env->tag_map_acquire();
       if (tag_map != NULL && !tag_map->is_empty()) {
         tag_map->do_weak_oops(is_alive, f);
       }

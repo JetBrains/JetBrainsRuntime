@@ -35,7 +35,9 @@
 #include "gc/shared/collectedHeap.hpp"
 #include "gc/shared/barrierSet.hpp"
 #include "gc/shared/cardTableBarrierSet.hpp"
+#include "memory/universe.hpp"
 #include "nativeInst_ppc.hpp"
+#include "oops/compressedOops.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/safepointMechanism.inline.hpp"
@@ -1237,7 +1239,7 @@ void LIR_Assembler::reg2mem(LIR_Opr from_reg, LIR_Opr dest, BasicType type,
   int disp_value = addr->disp();
   bool needs_patching = (patch_code != lir_patch_none);
   bool compress_oop = (type == T_ARRAY || type == T_OBJECT) && UseCompressedOops && !wide &&
-                      Universe::narrow_oop_mode() != Universe::UnscaledNarrowOop;
+                      CompressedOops::mode() != CompressedOops::UnscaledNarrowOop;
   bool load_disp = addr->index()->is_illegal() && !Assembler::is_simm16(disp_value);
   bool use_R29 = compress_oop && load_disp; // Avoid register conflict, also do null check before killing R29.
   // Null check for large offsets in LIRGenerator::do_StoreField.
@@ -1455,13 +1457,11 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
           break;
       }
     } else {
-      if (opr2->is_address()) {
-        DEBUG_ONLY( Unimplemented(); ) // Seems to be unused at the moment.
-        LIR_Address *addr = opr2->as_address_ptr();
-        BasicType type = addr->type();
-        if (type == T_OBJECT) { __ ld(R0, index_or_disp(addr), addr->base()->as_register()); }
-        else                  { __ lwa(R0, index_or_disp(addr), addr->base()->as_register()); }
-        __ cmpd(BOOL_RESULT, opr1->as_register(), R0);
+      assert(opr1->type() != T_ADDRESS && opr2->type() != T_ADDRESS, "currently unsupported");
+      if (opr1->type() == T_OBJECT || opr1->type() == T_ARRAY) {
+        // There are only equal/notequal comparisons on objects.
+        assert(condition == lir_cond_equal || condition == lir_cond_notEqual, "oops");
+        __ cmpd(BOOL_RESULT, opr1->as_register(), opr2->as_register());
       } else {
         if (unsigned_comp) {
           __ cmplw(BOOL_RESULT, opr1->as_register(), opr2->as_register());
@@ -1497,14 +1497,6 @@ void LIR_Assembler::comp_op(LIR_Condition condition, LIR_Opr opr1, LIR_Opr opr2,
     } else {
       ShouldNotReachHere();
     }
-  } else if (opr1->is_address()) {
-    DEBUG_ONLY( Unimplemented(); ) // Seems to be unused at the moment.
-    LIR_Address * addr = opr1->as_address_ptr();
-    BasicType type = addr->type();
-    assert (opr2->is_constant(), "Checking");
-    if (type == T_OBJECT) { __ ld(R0, index_or_disp(addr), addr->base()->as_register()); }
-    else                  { __ lwa(R0, index_or_disp(addr), addr->base()->as_register()); }
-    __ cmpdi(BOOL_RESULT, R0, opr2->as_constant_ptr()->as_jint());
   } else {
     ShouldNotReachHere();
   }

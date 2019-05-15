@@ -91,19 +91,6 @@ public:
   virtual bool is_thread_safe() { return false; }
 };
 
-class ShenandoahUpdateRefsClosure: public OopClosure {
-private:
-  ShenandoahHeap* _heap;
-
-  template <class T>
-  inline void do_oop_work(T* p);
-
-public:
-  ShenandoahUpdateRefsClosure();
-  inline void do_oop(oop* p);
-  inline void do_oop(narrowOop* p);
-};
-
 #ifdef ASSERT
 class ShenandoahAssertToSpaceClosure : public OopClosure {
 private:
@@ -115,34 +102,6 @@ public:
 };
 #endif
 
-class ShenandoahAlwaysTrueClosure : public BoolObjectClosure {
-public:
-  bool do_object_b(oop p) { return true; }
-};
-
-class ShenandoahForwardedIsAliveClosure: public BoolObjectClosure {
-private:
-  ShenandoahMarkingContext* const _mark_context;
-public:
-  ShenandoahForwardedIsAliveClosure();
-  bool do_object_b(oop obj);
-};
-
-class ShenandoahIsAliveClosure: public BoolObjectClosure {
-private:
-  ShenandoahMarkingContext* const _mark_context;
-public:
-  ShenandoahIsAliveClosure();
-  bool do_object_b(oop obj);
-};
-
-class ShenandoahIsAliveSelector : public StackObj {
-private:
-  ShenandoahIsAliveClosure _alive_cl;
-  ShenandoahForwardedIsAliveClosure _fwd_alive_cl;
-public:
-  BoolObjectClosure* is_alive_closure();
-};
 
 // Shenandoah GC is low-pause concurrent GC that uses Brooks forwarding pointers
 // to encode forwarding data. See BrooksPointer for details on forwarding data encoding.
@@ -198,6 +157,7 @@ public:
 //
 private:
            size_t _initial_size;
+           size_t _minimum_size;
   DEFINE_PAD_MINUS_SIZE(0, DEFAULT_CACHE_LINE_SIZE, sizeof(volatile size_t));
   volatile size_t _used;
   volatile size_t _committed;
@@ -216,6 +176,7 @@ public:
   size_t bytes_allocated_since_gc_start();
   void reset_bytes_allocated_since_gc_start();
 
+  size_t min_capacity()     const;
   size_t max_capacity()     const;
   size_t initial_capacity() const;
   size_t capacity()         const;
@@ -270,20 +231,20 @@ public:
 //
 public:
   enum GCStateBitPos {
-    // Heap has forwarded objects: need RB, ACMP, CAS barriers.
+    // Heap has forwarded objects: needs LRB barriers.
     HAS_FORWARDED_BITPOS   = 0,
 
     // Heap is under marking: needs SATB barriers.
     MARKING_BITPOS    = 1,
 
-    // Heap is under evacuation: needs WB barriers. (Set together with UNSTABLE)
+    // Heap is under evacuation: needs LRB barriers. (Set together with HAS_FORWARDED)
     EVACUATION_BITPOS = 2,
 
-    // Heap is under updating: needs SVRB/SVWB barriers.
+    // Heap is under updating: needs no additional barriers.
     UPDATEREFS_BITPOS = 3,
 
     // Heap is under traversal collection
-    TRAVERSAL_BITPOS  = 4,
+    TRAVERSAL_BITPOS  = 4
   };
 
   enum GCState {
@@ -292,7 +253,7 @@ public:
     MARKING       = 1 << MARKING_BITPOS,
     EVACUATION    = 1 << EVACUATION_BITPOS,
     UPDATEREFS    = 1 << UPDATEREFS_BITPOS,
-    TRAVERSAL     = 1 << TRAVERSAL_BITPOS,
+    TRAVERSAL     = 1 << TRAVERSAL_BITPOS
   };
 
 private:
@@ -342,7 +303,7 @@ public:
     _degenerated_mark,
     _degenerated_evac,
     _degenerated_updaterefs,
-    _DEGENERATED_LIMIT,
+    _DEGENERATED_LIMIT
   };
 
   static const char* degen_point_to_string(ShenandoahDegenPoint point) {
@@ -505,6 +466,8 @@ private:
   ConcurrentGCTimer*           _gc_timer;
   SoftRefPolicy                _soft_ref_policy;
 
+  // For exporting to SA
+  int                          _log_min_obj_alignment_in_bytes;
 public:
   ShenandoahMonitoringSupport* monitoring_support() { return _monitoring_support;    }
   GCMemoryManager* cycle_memory_manager()           { return &_cycle_memory_manager; }
@@ -516,7 +479,6 @@ public:
   MemoryUsage memory_usage();
   GCTracer* tracer();
   GCTimer* gc_timer() const;
-  CollectorPolicy* collector_policy() const;
 
 // ---------- Reference processing
 //
@@ -559,15 +521,11 @@ public:
   size_t obj_size(oop obj) const;
   virtual ptrdiff_t cell_header_size() const;
 
-  // All objects can potentially move
-  bool is_scavengable(oop obj) { return true; };
-
   void collect(GCCause::Cause cause);
   void do_full_collection(bool clear_all_soft_refs);
 
   // Used for parsing heap during error printing
   HeapWord* block_start(const void* addr) const;
-  size_t block_size(const HeapWord* addr) const;
   bool block_is_obj(const HeapWord* addr) const;
 
   // Used for native heap walkers: heap dumpers, mostly
@@ -588,6 +546,8 @@ public:
 public:
   void register_nmethod(nmethod* nm);
   void unregister_nmethod(nmethod* nm);
+  void flush_nmethod(nmethod* nm) {}
+  void verify_nmethod(nmethod* nm) {}
 
 // ---------- Pinning hooks
 //
@@ -745,8 +705,6 @@ public:
   void deduplicate_string(oop str);
 
   void stop_concurrent_marking();
-
-  void roots_iterate(OopClosure* cl);
 
 private:
   void trash_cset_regions();

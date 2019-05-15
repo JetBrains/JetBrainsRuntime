@@ -39,6 +39,7 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
+#include "oops/compressedOops.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.inline.hpp"
 #include "oops/weakHandle.inline.hpp"
@@ -52,6 +53,7 @@
 #include "utilities/concurrentHashTable.inline.hpp"
 #include "utilities/concurrentHashTableTasks.inline.hpp"
 #include "utilities/macros.hpp"
+#include "utilities/utf8.hpp"
 
 // We prefer short chains of avg 2
 const double PREF_AVG_LIST_LEN = 2.0;
@@ -241,7 +243,7 @@ size_t StringTable::table_size() {
 }
 
 void StringTable::trigger_concurrent_work() {
-  MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
   the_table()->_has_work = true;
   Service_lock->notify_all();
 }
@@ -578,6 +580,13 @@ struct SizeFunc : StackObj {
   };
 };
 
+TableStatistics StringTable::get_table_statistics() {
+  static TableStatistics ts;
+  SizeFunc sz;
+  ts = _local_table->statistics_get(Thread::current(), sz, ts);
+  return ts;
+}
+
 void StringTable::print_table_statistics(outputStream* st,
                                          const char* table_name) {
   SizeFunc sz;
@@ -760,12 +769,6 @@ struct CopyToArchive : StackObj {
       return true;
     }
     unsigned int hash = java_lang_String::hash_code(s);
-    if (hash == 0) {
-      // We do not archive Strings with a 0 hashcode because ......
-      return true;
-    }
-
-    java_lang_String::set_hash(s, hash);
     oop new_s = StringTable::create_archived_string(s, Thread::current());
     if (new_s == NULL) {
       return true;

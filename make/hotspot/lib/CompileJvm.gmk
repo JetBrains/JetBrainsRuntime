@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -166,6 +166,9 @@ JVM_OPTIMIZATION ?= HIGHEST_JVM
 # default.
 JVM_STRIPFLAGS ?= $(STRIPFLAGS)
 
+# This source set is reused so save in cache.
+$(call FillFindCache, $(JVM_SRC_DIRS))
+
 ################################################################################
 # Now set up the actual compilation of the main hotspot native library
 
@@ -199,6 +202,7 @@ $(eval $(call SetupNativeCompilation, BUILD_LIBJVM, \
     VERSIONINFO_RESOURCE := $(TOPDIR)/src/hotspot/os/windows/version.rc, \
     PRECOMPILED_HEADER := $(JVM_PRECOMPILED_HEADER), \
     PRECOMPILED_HEADER_EXCLUDE := $(JVM_PRECOMPILED_HEADER_EXCLUDE), \
+    DEFINE_THIS_FILE := false, \
 ))
 
 # Always recompile vm_version.cpp if libjvm needs to be relinked. This ensures

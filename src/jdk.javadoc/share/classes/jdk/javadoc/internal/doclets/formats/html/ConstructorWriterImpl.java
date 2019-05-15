@@ -25,25 +25,27 @@
 
 package jdk.javadoc.internal.doclets.formats.html;
 
-import jdk.javadoc.internal.doclets.formats.html.markup.Table;
-import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
-
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
+import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTree;
 import jdk.javadoc.internal.doclets.formats.html.markup.StringContent;
+import jdk.javadoc.internal.doclets.formats.html.markup.Table;
+import jdk.javadoc.internal.doclets.formats.html.markup.TableHeader;
 import jdk.javadoc.internal.doclets.toolkit.ConstructorWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.MemberSummaryWriter;
 import jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable;
 
-import static jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable.Kind.*;
+import static jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable.Kind.CONSTRUCTORS;
 
 
 /**
@@ -97,8 +99,8 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
     @Override
     public Content getMemberSummaryHeader(TypeElement typeElement,
             Content memberSummaryTree) {
-        memberSummaryTree.addContent(MarkerComments.START_OF_CONSTRUCTOR_SUMMARY);
-        Content memberTree = writer.getMemberTreeHeader();
+        memberSummaryTree.add(MarkerComments.START_OF_CONSTRUCTOR_SUMMARY);
+        Content memberTree = new ContentBuilder();
         writer.addSummaryHeader(this, typeElement, memberTree);
         return memberTree;
     }
@@ -108,7 +110,7 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
      */
     @Override
     public void addMemberTree(Content memberSummaryTree, Content memberTree) {
-        writer.addMemberTree(memberSummaryTree, memberTree);
+        writer.addMemberTree(HtmlStyle.constructorSummary, memberSummaryTree, memberTree);
     }
 
     /**
@@ -117,13 +119,13 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
     @Override
     public Content getConstructorDetailsTreeHeader(TypeElement typeElement,
             Content memberDetailsTree) {
-        memberDetailsTree.addContent(MarkerComments.START_OF_CONSTRUCTOR_DETAILS);
-        Content constructorDetailsTree = writer.getMemberTreeHeader();
-        constructorDetailsTree.addContent(links.createAnchor(
-                SectionName.CONSTRUCTOR_DETAIL));
+        memberDetailsTree.add(MarkerComments.START_OF_CONSTRUCTOR_DETAILS);
+        Content constructorDetailsTree = new ContentBuilder();
         Content heading = HtmlTree.HEADING(Headings.TypeDeclaration.DETAILS_HEADING,
                 contents.constructorDetailsLabel);
-        constructorDetailsTree.addContent(heading);
+        constructorDetailsTree.add(heading);
+        constructorDetailsTree.add(links.createAnchor(
+                SectionName.CONSTRUCTOR_DETAIL));
         return constructorDetailsTree;
     }
 
@@ -134,15 +136,15 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
     public Content getConstructorDocTreeHeader(ExecutableElement constructor,
             Content constructorDetailsTree) {
         String erasureAnchor;
-        if ((erasureAnchor = getErasureAnchor(constructor)) != null) {
-            constructorDetailsTree.addContent(links.createAnchor((erasureAnchor)));
-        }
-        constructorDetailsTree.addContent(links.createAnchor(writer.getAnchor(constructor)));
-        Content constructorDocTree = writer.getMemberTreeHeader();
+        Content constructorDocTree = new ContentBuilder();
         Content heading = new HtmlTree(Headings.TypeDeclaration.MEMBER_HEADING);
-        heading.addContent(name(constructor));
-        constructorDocTree.addContent(heading);
-        return constructorDocTree;
+        heading.add(name(constructor));
+        constructorDocTree.add(heading);
+        if ((erasureAnchor = getErasureAnchor(constructor)) != null) {
+            constructorDocTree.add(links.createAnchor((erasureAnchor)));
+        }
+        constructorDocTree.add(links.createAnchor(writer.getAnchor(constructor)));
+        return HtmlTree.SECTION(HtmlStyle.detail, constructorDocTree);
     }
 
     /**
@@ -194,8 +196,9 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
      * {@inheritDoc}
      */
     @Override
-    public Content getConstructorDetails(Content constructorDetailsTree) {
-        return HtmlTree.SECTION(getMemberTree(constructorDetailsTree));
+    public Content getConstructorDetails(Content constructorDetailsTreeHeader, Content constructorDetailsTree) {
+        Content constructorDetails = new ContentBuilder(constructorDetailsTreeHeader, constructorDetailsTree);
+        return getMemberTree(HtmlTree.SECTION(HtmlStyle.constructorDetails, constructorDetails));
     }
 
     /**
@@ -224,7 +227,7 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
     public void addSummaryLabel(Content memberTree) {
         Content label = HtmlTree.HEADING(Headings.TypeDeclaration.SUMMARY_HEADING,
                 contents.constructorSummaryLabel);
-        memberTree.addContent(label);
+        memberTree.add(label);
     }
 
     /**
@@ -266,7 +269,7 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
      */
     @Override
     public void addSummaryAnchor(TypeElement typeElement, Content memberTree) {
-        memberTree.addContent(links.createAnchor(SectionName.CONSTRUCTOR_SUMMARY));
+        memberTree.add(links.createAnchor(SectionName.CONSTRUCTOR_SUMMARY));
     }
 
     /**
@@ -291,16 +294,21 @@ public class ConstructorWriterImpl extends AbstractExecutableMemberWriter
         if (foundNonPubConstructor) {
             Content code = new HtmlTree(HtmlTag.CODE);
             if (utils.isProtected(member)) {
-                code.addContent("protected ");
+                code.add("protected ");
             } else if (utils.isPrivate(member)) {
-                code.addContent("private ");
+                code.add("private ");
             } else if (utils.isPublic(member)) {
-                code.addContent(Contents.SPACE);
+                code.add(Entity.NO_BREAK_SPACE);
             } else {
-                code.addContent(
+                code.add(
                         resources.getText("doclet.Package_private"));
             }
-            tdSummaryType.addContent(code);
+            tdSummaryType.add(code);
         }
+    }
+
+    @Override
+    public Content getMemberTreeHeader(){
+        return writer.getMemberTreeHeader();
     }
 }

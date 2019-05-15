@@ -42,22 +42,21 @@ ShenandoahCompactHeuristics::ShenandoahCompactHeuristics() : ShenandoahHeuristic
   SHENANDOAH_ERGO_OVERRIDE_DEFAULT(ShenandoahGarbageThreshold,     10);
 
   // Final configuration checks
+  SHENANDOAH_CHECK_FLAG_SET(ShenandoahLoadRefBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahSATBBarrier);
-  SHENANDOAH_CHECK_FLAG_SET(ShenandoahReadBarrier);
-  SHENANDOAH_CHECK_FLAG_SET(ShenandoahWriteBarrier);
-  SHENANDOAH_CHECK_FLAG_SET(ShenandoahStoreValReadBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahKeepAliveBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahCASBarrier);
-  SHENANDOAH_CHECK_FLAG_SET(ShenandoahAcmpBarrier);
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahCloneBarrier);
 }
 
 bool ShenandoahCompactHeuristics::should_start_normal_gc() const {
   ShenandoahHeap* heap = ShenandoahHeap::heap();
 
+  size_t capacity = heap->max_capacity();
   size_t available = heap->free_set()->available();
-  size_t threshold_bytes_allocated = heap->capacity() * ShenandoahAllocationThreshold / 100;
-  size_t min_threshold = ShenandoahMinFreeThreshold * heap->capacity() / 100;
+
+  size_t threshold_bytes_allocated = capacity / 100 * ShenandoahAllocationThreshold;
+  size_t min_threshold = capacity / 100 * ShenandoahMinFreeThreshold;
 
   if (available < min_threshold) {
     log_info(gc)("Trigger: Free (" SIZE_FORMAT "M) is below minimum threshold (" SIZE_FORMAT "M)",

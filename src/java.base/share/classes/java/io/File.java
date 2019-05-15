@@ -128,7 +128,7 @@ import sun.security.action.GetPropertyAction;
  * created, the abstract pathname represented by a <code>File</code> object
  * will never change.
  *
- * <h3>Interoperability with {@code java.nio.file} package</h3>
+ * <h2>Interoperability with {@code java.nio.file} package</h2>
  *
  * <p> The <a href="../../java/nio/file/package-summary.html">{@code java.nio.file}</a>
  * package defines interfaces and classes for the Java virtual machine to access
@@ -1869,7 +1869,7 @@ public class File
      *
      * <p> The returned number of available bytes is a hint, but not a
      * guarantee, that it is possible to use most or any of these bytes.  The
-     * number of unallocated bytes is most likely to be accurate immediately
+     * number of available bytes is most likely to be accurate immediately
      * after this call.  It is likely to be made inaccurate by any external
      * I/O operations including those made on the system outside of this
      * virtual machine.  This method makes no guarantee that write operations

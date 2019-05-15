@@ -28,6 +28,7 @@
 #include "classfile/classLoader.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/stringTable.hpp"
+#include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "code/codeCache.hpp"
 #include "compiler/compileBroker.hpp"
@@ -36,8 +37,7 @@
 #include "jfr/jfrEvents.hpp"
 #include "jfr/support/jfrThreadId.hpp"
 #if INCLUDE_JVMCI
-#include "jvmci/jvmciCompiler.hpp"
-#include "jvmci/jvmciRuntime.hpp"
+#include "jvmci/jvmci.hpp"
 #endif
 #include "logging/log.hpp"
 #include "logging/logStream.hpp"
@@ -302,7 +302,7 @@ void print_statistics() {
   }
 
   if (PrintCodeCache) {
-    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     CodeCache::print();
   }
 
@@ -315,7 +315,7 @@ void print_statistics() {
   }
 
   if (PrintCodeCache2) {
-    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     CodeCache::print_internals();
   }
 
@@ -370,7 +370,7 @@ void print_statistics() {
   }
 
   if (PrintCodeCache) {
-    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     CodeCache::print();
   }
 
@@ -419,14 +419,14 @@ void before_exit(JavaThread* thread) {
   // A CAS or OSMutex would work just fine but then we need to manipulate
   // thread state for Safepoint. Here we use Monitor wait() and notify_all()
   // for synchronization.
-  { MutexLocker ml(BeforeExit_lock);
+  { MonitorLocker ml(BeforeExit_lock);
     switch (_before_exit_status) {
     case BEFORE_EXIT_NOT_RUN:
       _before_exit_status = BEFORE_EXIT_RUNNING;
       break;
     case BEFORE_EXIT_RUNNING:
       while (_before_exit_status == BEFORE_EXIT_RUNNING) {
-        BeforeExit_lock->wait();
+        ml.wait();
       }
       assert(_before_exit_status == BEFORE_EXIT_DONE, "invalid state");
       return;
@@ -439,15 +439,7 @@ void before_exit(JavaThread* thread) {
   }
 
 #if INCLUDE_JVMCI
-  // We are not using CATCH here because we want the exit to continue normally.
-  Thread* THREAD = thread;
-  JVMCIRuntime::shutdown(THREAD);
-  if (HAS_PENDING_EXCEPTION) {
-    HandleMark hm(THREAD);
-    Handle exception(THREAD, PENDING_EXCEPTION);
-    CLEAR_PENDING_EXCEPTION;
-    java_lang_Throwable::java_printStackTrace(exception, THREAD);
-  }
+  JVMCI::shutdown();
 #endif
 
   // Hang forever on exit if we're reporting an error.
@@ -535,11 +527,31 @@ void vm_exit(int code) {
     vm_direct_exit(code);
   }
 
+  // We'd like to add an entry to the XML log to show that the VM is
+  // terminating, but we can't safely do that here. The logic to make
+  // XML termination logging safe is tied to the termination of the
+  // VMThread, and it doesn't terminate on this exit path. See 8222534.
+
   if (VMThread::vm_thread() != NULL) {
+    if (thread->is_Java_thread()) {
+      // We must be "in_vm" for the code below to work correctly.
+      // Historically there must have been some exit path for which
+      // that was not the case and so we set it explicitly - even
+      // though we no longer know what that path may be.
+      ((JavaThread*)thread)->set_thread_state(_thread_in_vm);
+    }
+
     // Fire off a VM_Exit operation to bring VM to a safepoint and exit
     VM_Exit op(code);
-    if (thread->is_Java_thread())
-      ((JavaThread*)thread)->set_thread_state(_thread_in_vm);
+
+    // 4945125 The vm thread comes to a safepoint during exit.
+    // GC vm_operations can get caught at the safepoint, and the
+    // heap is unparseable if they are caught. Grab the Heap_lock
+    // to prevent this. The GC vm_operations will not be able to
+    // queue until after we release it, but we never do that as we
+    // are terminating the VM process.
+    MutexLocker ml(Heap_lock);
+
     VMThread::execute(&op);
     // should never reach here; but in case something wrong with VM Thread.
     vm_direct_exit(code);
@@ -698,14 +710,7 @@ void JDK_Version::initialize() {
   int security = JDK_VERSION_SECURITY(info.jdk_version);
   int build = JDK_VERSION_BUILD(info.jdk_version);
 
-  // Incompatible with pre-4243978 JDK.
-  if (info.pending_list_uses_discovered_field == 0) {
-    vm_exit_during_initialization(
-      "Incompatible JDK is not using Reference.discovered field for pending list");
-  }
-  _current = JDK_Version(major, minor, security, info.patch_version, build,
-                         info.thread_park_blocker == 1,
-                         info.post_vm_init_hook_enabled == 1);
+  _current = JDK_Version(major, minor, security, info.patch_version, build);
 }
 
 void JDK_Version_init() {

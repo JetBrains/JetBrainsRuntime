@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 #include "gc/shared/oopStorage.inline.hpp"
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
@@ -309,6 +310,8 @@ void JNIHandles::print_on(outputStream* st) {
   st->flush();
 }
 
+void JNIHandles::print() { print_on(tty); }
+
 class VerifyJNIHandles: public OopClosure {
 public:
   virtual void do_oop(oop* root) {
@@ -371,8 +374,8 @@ JNIHandleBlock* JNIHandleBlock::allocate_block(Thread* thread)  {
     // - we would hold JNIHandleBlockFreeList_lock and then Threads_lock
     // - another would hold Threads_lock (jni_AttachCurrentThread) and then
     //   JNIHandleBlockFreeList_lock (JNIHandleBlock::allocate_block)
-    MutexLockerEx ml(JNIHandleBlockFreeList_lock,
-                     Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(JNIHandleBlockFreeList_lock,
+                   Mutex::_no_safepoint_check_flag);
     if (_block_free_list == NULL) {
       // Allocate new block
       block = new JNIHandleBlock();
@@ -427,8 +430,8 @@ void JNIHandleBlock::release_block(JNIHandleBlock* block, Thread* thread) {
     // - we would hold JNIHandleBlockFreeList_lock and then Threads_lock
     // - another would hold Threads_lock (jni_AttachCurrentThread) and then
     //   JNIHandleBlockFreeList_lock (JNIHandleBlock::allocate_block)
-    MutexLockerEx ml(JNIHandleBlockFreeList_lock,
-                     Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(JNIHandleBlockFreeList_lock,
+                   Mutex::_no_safepoint_check_flag);
     while (block != NULL) {
       block->zap();
       JNIHandleBlock* next = block->_next;

@@ -27,8 +27,8 @@
 #include "gc/parallel/adjoiningGenerations.hpp"
 #include "gc/parallel/adjoiningGenerationsForHeteroHeap.hpp"
 #include "gc/parallel/adjoiningVirtualSpaces.hpp"
+#include "gc/parallel/parallelArguments.hpp"
 #include "gc/parallel/gcTaskManager.hpp"
-#include "gc/parallel/generationSizer.hpp"
 #include "gc/parallel/objectStartArray.inline.hpp"
 #include "gc/parallel/parallelScavengeHeap.inline.hpp"
 #include "gc/parallel/psAdaptiveSizePolicy.hpp"
@@ -41,8 +41,11 @@
 #include "gc/shared/gcHeapSummary.hpp"
 #include "gc/shared/gcLocker.hpp"
 #include "gc/shared/gcWhen.hpp"
+#include "gc/shared/genArguments.hpp"
+#include "gc/shared/scavengableNMethods.hpp"
 #include "logging/log.hpp"
 #include "memory/metaspaceCounters.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/java.hpp"
@@ -59,14 +62,14 @@ PSGCAdaptivePolicyCounters* ParallelScavengeHeap::_gc_policy_counters = NULL;
 GCTaskManager* ParallelScavengeHeap::_gc_task_manager = NULL;
 
 jint ParallelScavengeHeap::initialize() {
-  size_t heap_size = _collector_policy->heap_reserved_size_bytes();
+  const size_t reserved_heap_size = ParallelArguments::heap_reserved_size_bytes();
 
-  ReservedSpace heap_rs = Universe::reserve_heap(heap_size, _collector_policy->heap_alignment());
+  ReservedSpace heap_rs = Universe::reserve_heap(reserved_heap_size, HeapAlignment);
 
   os::trace_page_sizes("Heap",
-                       _collector_policy->min_heap_byte_size(),
-                       heap_size,
-                       generation_alignment(),
+                       MinHeapSize,
+                       reserved_heap_size,
+                       GenAlignment,
                        heap_rs.base(),
                        heap_rs.size());
 
@@ -87,7 +90,7 @@ jint ParallelScavengeHeap::initialize() {
   double max_gc_pause_sec = ((double) MaxGCPauseMillis)/1000.0;
   double max_gc_minor_pause_sec = ((double) MaxGCMinorPauseMillis)/1000.0;
 
-  _gens = AdjoiningGenerations::create_adjoining_generations(heap_rs, _collector_policy, generation_alignment());
+  _gens = AdjoiningGenerations::create_adjoining_generations(heap_rs);
 
   _old_gen = _gens->old_gen();
   _young_gen = _gens->young_gen();
@@ -99,13 +102,13 @@ jint ParallelScavengeHeap::initialize() {
     new PSAdaptiveSizePolicy(eden_capacity,
                              initial_promo_size,
                              young_gen()->to_space()->capacity_in_bytes(),
-                             _collector_policy->gen_alignment(),
+                             GenAlignment,
                              max_gc_pause_sec,
                              max_gc_minor_pause_sec,
                              GCTimeRatio
                              );
 
-  assert(_collector_policy->is_hetero_heap() || !UseAdaptiveGCBoundary ||
+  assert(ParallelArguments::is_heterogeneous_heap() || !UseAdaptiveGCBoundary ||
     (old_gen()->virtual_space()->high_boundary() ==
      young_gen()->virtual_space()->low_boundary()),
     "Boundaries must meet");
@@ -150,6 +153,14 @@ void ParallelScavengeHeap::initialize_serviceability() {
 
 }
 
+class PSIsScavengable : public BoolObjectClosure {
+  bool do_object_b(oop obj) {
+    return ParallelScavengeHeap::heap()->is_in_young(obj);
+  }
+};
+
+static PSIsScavengable _is_scavengable;
+
 void ParallelScavengeHeap::post_initialize() {
   CollectedHeap::post_initialize();
   // Need to init the tenuring threshold
@@ -160,6 +171,8 @@ void ParallelScavengeHeap::post_initialize() {
     PSMarkSweepProxy::initialize();
   }
   PSPromotionManager::initialize();
+
+  ScavengableNMethods::initialize(&_is_scavengable);
 }
 
 void ParallelScavengeHeap::update_counters() {
@@ -532,10 +545,6 @@ HeapWord* ParallelScavengeHeap::block_start(const void* addr) const {
   return 0;
 }
 
-size_t ParallelScavengeHeap::block_size(const HeapWord* addr) const {
-  return oop(addr)->size();
-}
-
 bool ParallelScavengeHeap::block_is_obj(const HeapWord* addr) const {
   return block_start(addr) == addr;
 }
@@ -697,16 +706,24 @@ void ParallelScavengeHeap::gen_mangle_unused_area() {
 }
 #endif
 
-bool ParallelScavengeHeap::is_scavengable(oop obj) {
-  return is_in_young(obj);
+void ParallelScavengeHeap::register_nmethod(nmethod* nm) {
+  ScavengableNMethods::register_nmethod(nm);
 }
 
-void ParallelScavengeHeap::register_nmethod(nmethod* nm) {
-  CodeCache::register_scavenge_root_nmethod(nm);
+void ParallelScavengeHeap::unregister_nmethod(nmethod* nm) {
+  ScavengableNMethods::unregister_nmethod(nm);
 }
 
 void ParallelScavengeHeap::verify_nmethod(nmethod* nm) {
-  CodeCache::verify_scavenge_root_nmethod(nm);
+  ScavengableNMethods::verify_nmethod(nm);
+}
+
+void ParallelScavengeHeap::flush_nmethod(nmethod* nm) {
+  // nothing particular
+}
+
+void ParallelScavengeHeap::prune_scavengable_nmethods() {
+  ScavengableNMethods::prune_nmethods();
 }
 
 GrowableArray<GCMemoryManager*> ParallelScavengeHeap::memory_managers() {

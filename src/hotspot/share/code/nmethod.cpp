@@ -42,6 +42,7 @@
 #include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/method.inline.hpp"
 #include "oops/methodData.hpp"
@@ -64,7 +65,7 @@
 #include "utilities/resourceHash.hpp"
 #include "utilities/xmlstream.hpp"
 #if INCLUDE_JVMCI
-#include "jvmci/jvmciJavaClasses.hpp"
+#include "jvmci/jvmciRuntime.hpp"
 #endif
 
 #ifdef DTRACE_ENABLED
@@ -112,6 +113,10 @@ struct java_nmethod_stats_struct {
   int dependencies_size;
   int handler_table_size;
   int nul_chk_table_size;
+#if INCLUDE_JVMCI
+  int speculations_size;
+  int jvmci_data_size;
+#endif
   int oops_size;
   int metadata_size;
 
@@ -129,6 +134,10 @@ struct java_nmethod_stats_struct {
     dependencies_size   += nm->dependencies_size();
     handler_table_size  += nm->handler_table_size();
     nul_chk_table_size  += nm->nul_chk_table_size();
+#if INCLUDE_JVMCI
+    speculations_size   += nm->speculations_size();
+    jvmci_data_size     += nm->jvmci_data_size();
+#endif
   }
   void print_nmethod_stats(const char* name) {
     if (nmethod_count == 0)  return;
@@ -146,6 +155,10 @@ struct java_nmethod_stats_struct {
     if (dependencies_size != 0)   tty->print_cr(" dependencies   = %d", dependencies_size);
     if (handler_table_size != 0)  tty->print_cr(" handler table  = %d", handler_table_size);
     if (nul_chk_table_size != 0)  tty->print_cr(" nul chk table  = %d", nul_chk_table_size);
+#if INCLUDE_JVMCI
+    if (speculations_size != 0)   tty->print_cr(" speculations   = %d", speculations_size);
+    if (jvmci_data_size != 0)     tty->print_cr(" JVMCI data     = %d", jvmci_data_size);
+#endif
   }
 };
 
@@ -423,15 +436,8 @@ void nmethod::init_defaults() {
   _oops_do_mark_link       = NULL;
   _jmethod_id              = NULL;
   _osr_link                = NULL;
-  _scavenge_root_link      = NULL;
-  _scavenge_root_state     = 0;
 #if INCLUDE_RTM_OPT
   _rtm_state               = NoRTM;
-#endif
-#if INCLUDE_JVMCI
-  _jvmci_installed_code   = NULL;
-  _speculation_log        = NULL;
-  _jvmci_installed_code_triggers_invalidation = false;
 #endif
 }
 
@@ -448,7 +454,7 @@ nmethod* nmethod::new_native_nmethod(const methodHandle& method,
   // create nmethod
   nmethod* nm = NULL;
   {
-    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     int native_nmethod_size = CodeBlob::allocation_size(code_buffer, sizeof(nmethod));
     CodeOffsets offsets;
     offsets.set_value(CodeOffsets::Verified_Entry, vep_offset);
@@ -485,8 +491,11 @@ nmethod* nmethod::new_nmethod(const methodHandle& method,
   AbstractCompiler* compiler,
   int comp_level
 #if INCLUDE_JVMCI
-  , jweak installed_code,
-  jweak speculationLog
+  , char* speculations,
+  int speculations_len,
+  int nmethod_mirror_index,
+  const char* nmethod_mirror_name,
+  FailedSpeculation** failed_speculations
 #endif
 )
 {
@@ -494,13 +503,20 @@ nmethod* nmethod::new_nmethod(const methodHandle& method,
   code_buffer->finalize_oop_references(method);
   // create nmethod
   nmethod* nm = NULL;
-  { MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+  { MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+#if INCLUDE_JVMCI
+    int jvmci_data_size = !compiler->is_jvmci() ? 0 : JVMCINMethodData::compute_size(nmethod_mirror_name);
+#endif
     int nmethod_size =
       CodeBlob::allocation_size(code_buffer, sizeof(nmethod))
       + adjust_pcs_size(debug_info->pcs_size())
       + align_up((int)dependencies->size_in_bytes(), oopSize)
       + align_up(handler_table->size_in_bytes()    , oopSize)
       + align_up(nul_chk_table->size_in_bytes()    , oopSize)
+#if INCLUDE_JVMCI
+      + align_up(speculations_len                  , oopSize)
+      + align_up(jvmci_data_size                   , oopSize)
+#endif
       + align_up(debug_info->data_size()           , oopSize);
 
     nm = new (nmethod_size, comp_level)
@@ -512,12 +528,19 @@ nmethod* nmethod::new_nmethod(const methodHandle& method,
             compiler,
             comp_level
 #if INCLUDE_JVMCI
-            , installed_code,
-            speculationLog
+            , speculations,
+            speculations_len,
+            jvmci_data_size
 #endif
             );
 
     if (nm != NULL) {
+#if INCLUDE_JVMCI
+      if (compiler->is_jvmci()) {
+        // Initialize the JVMCINMethodData object inlined into nm
+        nm->jvmci_nmethod_data()->initialize(nmethod_mirror_index, nmethod_mirror_name, failed_speculations);
+      }
+#endif
       // To make dependency checking during class loading fast, record
       // the nmethod dependencies in the classes it is dependent on.
       // This allows the dependency checking code to simply walk the
@@ -593,7 +616,13 @@ nmethod::nmethod(
     _dependencies_offset     = _scopes_pcs_offset;
     _handler_table_offset    = _dependencies_offset;
     _nul_chk_table_offset    = _handler_table_offset;
+#if INCLUDE_JVMCI
+    _speculations_offset     = _nul_chk_table_offset;
+    _jvmci_data_offset       = _speculations_offset;
+    _nmethod_end_offset      = _jvmci_data_offset;
+#else
     _nmethod_end_offset      = _nul_chk_table_offset;
+#endif
     _compile_id              = compile_id;
     _comp_level              = CompLevel_none;
     _entry_point             = code_begin()          + offsets->value(CodeOffsets::Entry);
@@ -611,10 +640,10 @@ nmethod::nmethod(
     code_buffer->copy_values_to(this);
 
     clear_unloading_state();
-    if (ScavengeRootsInCode) {
-      Universe::heap()->register_nmethod(this);
-    }
+
+    Universe::heap()->register_nmethod(this);
     debug_only(Universe::heap()->verify_nmethod(this));
+
     CodeCache::commit(this);
   }
 
@@ -669,8 +698,9 @@ nmethod::nmethod(
   AbstractCompiler* compiler,
   int comp_level
 #if INCLUDE_JVMCI
-  , jweak installed_code,
-  jweak speculation_log
+  , char* speculations,
+  int speculations_len,
+  int jvmci_data_size
 #endif
   )
   : CompiledMethod(method, "nmethod", type, nmethod_size, sizeof(nmethod), code_buffer, offsets->value(CodeOffsets::Frame_Complete), frame_size, oop_maps, false),
@@ -699,15 +729,6 @@ nmethod::nmethod(
     set_ctable_begin(header_begin() + _consts_offset);
 
 #if INCLUDE_JVMCI
-    _jvmci_installed_code = installed_code;
-    _speculation_log = speculation_log;
-    oop obj = JNIHandles::resolve(installed_code);
-    if (obj == NULL || (obj->is_a(HotSpotNmethod::klass()) && HotSpotNmethod::isDefault(obj))) {
-      _jvmci_installed_code_triggers_invalidation = false;
-    } else {
-      _jvmci_installed_code_triggers_invalidation = true;
-    }
-
     if (compiler->is_jvmci()) {
       // JVMCI might not produce any stub sections
       if (offsets->value(CodeOffsets::Exceptions) != -1) {
@@ -737,10 +758,10 @@ nmethod::nmethod(
       _deopt_mh_handler_begin  = (address) this + _stub_offset          + offsets->value(CodeOffsets::DeoptMH);
     } else {
       _deopt_mh_handler_begin  = NULL;
+    }
 #if INCLUDE_JVMCI
     }
 #endif
-    }
     if (offsets->value(CodeOffsets::UnwindHandler) != -1) {
       _unwind_handler_offset = code_offset()         + offsets->value(CodeOffsets::UnwindHandler);
     } else {
@@ -755,7 +776,13 @@ nmethod::nmethod(
     _dependencies_offset     = _scopes_pcs_offset    + adjust_pcs_size(debug_info->pcs_size());
     _handler_table_offset    = _dependencies_offset  + align_up((int)dependencies->size_in_bytes (), oopSize);
     _nul_chk_table_offset    = _handler_table_offset + align_up(handler_table->size_in_bytes(), oopSize);
+#if INCLUDE_JVMCI
+    _speculations_offset     = _nul_chk_table_offset + align_up(nul_chk_table->size_in_bytes(), oopSize);
+    _jvmci_data_offset       = _speculations_offset  + align_up(speculations_len, oopSize);
+    _nmethod_end_offset      = _jvmci_data_offset    + align_up(jvmci_data_size, oopSize);
+#else
     _nmethod_end_offset      = _nul_chk_table_offset + align_up(nul_chk_table->size_in_bytes(), oopSize);
+#endif
     _entry_point             = code_begin()          + offsets->value(CodeOffsets::Entry);
     _verified_entry_point    = code_begin()          + offsets->value(CodeOffsets::Verified_Entry);
     _osr_entry_point         = code_begin()          + offsets->value(CodeOffsets::OSR_Entry);
@@ -771,9 +798,8 @@ nmethod::nmethod(
     debug_info->copy_to(this);
     dependencies->copy_to(this);
     clear_unloading_state();
-    if (ScavengeRootsInCode) {
-      Universe::heap()->register_nmethod(this);
-    }
+
+    Universe::heap()->register_nmethod(this);
     debug_only(Universe::heap()->verify_nmethod(this));
 
     CodeCache::commit(this);
@@ -781,6 +807,13 @@ nmethod::nmethod(
     // Copy contents of ExceptionHandlerTable to nmethod
     handler_table->copy_to(this);
     nul_chk_table->copy_to(this);
+
+#if INCLUDE_JVMCI
+    // Copy speculations to nmethod
+    if (speculations_size() != 0) {
+      memcpy(speculations_begin(), speculations, speculations_len);
+    }
+#endif
 
     // we use the information of entry points to find out if a method is
     // static or non static
@@ -801,13 +834,14 @@ void nmethod::log_identity(xmlStream* log) const {
     log->print(" level='%d'", comp_level());
   }
 #if INCLUDE_JVMCI
-    char buffer[O_BUFLEN];
-    char* jvmci_name = jvmci_installed_code_name(buffer, O_BUFLEN);
+  if (jvmci_nmethod_data() != NULL) {
+    const char* jvmci_name = jvmci_nmethod_data()->name();
     if (jvmci_name != NULL) {
-      log->print(" jvmci_installed_code_name='");
+      log->print(" jvmci_mirror_name='");
       log->text("%s", jvmci_name);
       log->print("'");
     }
+  }
 #endif
 }
 
@@ -1092,7 +1126,6 @@ void nmethod::make_unloaded() {
     if (_method->code() == this) {
       _method->clear_code(); // Break a cycle
     }
-    _method = NULL;            // Clear the method of this dead nmethod
   }
 
   // Make the class unloaded - i.e., change state and notify sweeper
@@ -1107,20 +1140,17 @@ void nmethod::make_unloaded() {
 
   // Unregister must be done before the state change
   {
-    MutexLockerEx ml(SafepointSynchronize::is_at_safepoint() ? NULL : CodeCache_lock,
+    MutexLocker ml(SafepointSynchronize::is_at_safepoint() ? NULL : CodeCache_lock,
                      Mutex::_no_safepoint_check_flag);
     Universe::heap()->unregister_nmethod(this);
+    CodeCache::unregister_old_nmethod(this);
   }
+
+  // Clear the method of this dead nmethod
+  set_method(NULL);
 
   // Log the unloading.
   log_state_change();
-
-#if INCLUDE_JVMCI
-  // The method can only be unloaded after the pointer to the installed code
-  // Java wrapper is no longer alive. Here we need to clear out this weak
-  // reference to the dead object.
-  maybe_invalidate_installed_code();
-#endif
 
   // The Method* is gone at this point
   assert(_method == NULL, "Tautology");
@@ -1134,6 +1164,15 @@ void nmethod::make_unloaded() {
   // concurrent nmethod unloading. Therefore, there is no need for
   // acquire on the loader side.
   OrderAccess::release_store(&_state, (signed char)unloaded);
+
+#if INCLUDE_JVMCI
+  // Clear the link between this nmethod and a HotSpotNmethod mirror
+  JVMCINMethodData* nmethod_data = jvmci_nmethod_data();
+  if (nmethod_data != NULL) {
+    nmethod_data->invalidate_nmethod_mirror(this);
+    nmethod_data->clear_nmethod_mirror(this);
+  }
+#endif
 }
 
 void nmethod::invalidate_osr_method() {
@@ -1222,7 +1261,7 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
     }
 
     // Enter critical section.  Does not block for safepoint.
-    MutexLockerEx pl(Patching_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker pl(Patching_lock, Mutex::_no_safepoint_check_flag);
 
     if (_state == state) {
       // another thread already performed this transition so nothing
@@ -1265,12 +1304,17 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
     // Log the transition once
     log_state_change();
 
-    // Invalidate while holding the patching lock
-    JVMCI_ONLY(maybe_invalidate_installed_code());
-
     // Remove nmethod from method.
     unlink_from_method(false /* already owns Patching_lock */);
   } // leave critical region under Patching_lock
+
+#if INCLUDE_JVMCI
+  // Invalidate can't occur while holding the Patching lock
+  JVMCINMethodData* nmethod_data = jvmci_nmethod_data();
+  if (nmethod_data != NULL) {
+    nmethod_data->invalidate_nmethod_mirror(this);
+  }
+#endif
 
 #ifdef ASSERT
   if (is_osr_method() && method() != NULL) {
@@ -1289,12 +1333,21 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
       // Flushing dependencies must be done before any possible
       // safepoint can sneak in, otherwise the oops used by the
       // dependency logic could have become stale.
-      MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+      MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
       if (nmethod_needs_unregister) {
         Universe::heap()->unregister_nmethod(this);
+        CodeCache::unregister_old_nmethod(this);
       }
       flush_dependencies(/*delete_immediately*/true);
     }
+
+#if INCLUDE_JVMCI
+    // Now that the nmethod has been unregistered, it's
+    // safe to clear the HotSpotNmethod mirror oop.
+    if (nmethod_data != NULL) {
+      nmethod_data->clear_nmethod_mirror(this);
+    }
+#endif
 
     // Clear ICStubs to prevent back patching stubs of zombie or flushed
     // nmethods during the next safepoint (see ICStub::finalize), as well
@@ -1323,7 +1376,7 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
     assert(state == not_entrant, "other cases may need to be handled differently");
   }
 
-  if (TraceCreateZombies) {
+  if (TraceCreateZombies && state == zombie) {
     ResourceMark m;
     tty->print_cr("nmethod <" INTPTR_FORMAT "> %s code made %s", p2i(this), this->method() ? this->method()->name_and_sig_as_C_string() : "null", (state == not_entrant) ? "not entrant" : "zombie");
   }
@@ -1333,7 +1386,7 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
 }
 
 void nmethod::flush() {
-  MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+  MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
   // Note that there are no valid oops in the nmethod anymore.
   assert(!is_osr_method() || is_unloaded() || is_zombie(),
          "osr nmethod must be unloaded or zombie before flushing");
@@ -1360,15 +1413,6 @@ void nmethod::flush() {
     delete ec;
     ec = next;
   }
-
-  if (on_scavenge_root_list()) {
-    CodeCache::drop_scavenge_root_nmethod(this);
-  }
-
-#if INCLUDE_JVMCI
-  assert(_jvmci_installed_code == NULL, "should have been nulled out when transitioned to zombie");
-  assert(_speculation_log == NULL, "should have been nulled out when transitioned to zombie");
-#endif
 
   Universe::heap()->flush_nmethod(this);
 
@@ -1455,7 +1499,7 @@ void nmethod::post_compiled_method_load_event() {
 
   if (JvmtiExport::should_post_compiled_method_load()) {
     // Let the Service thread (which is a real Java thread) post the event
-    MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
     JvmtiDeferredEventQueue::enqueue(
       JvmtiDeferredEvent::compiled_method_load_event(this));
   }
@@ -1493,7 +1537,7 @@ void nmethod::post_compiled_method_unload() {
     JvmtiDeferredEvent event =
       JvmtiDeferredEvent::compiled_method_unload_event(this,
           _jmethod_id, insts_begin());
-    MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
     JvmtiDeferredEventQueue::enqueue(event);
   }
 
@@ -1506,12 +1550,12 @@ void nmethod::post_compiled_method_unload() {
 }
 
 // Iterate over metadata calling this function.   Used by RedefineClasses
-void nmethod::metadata_do(void f(Metadata*)) {
+void nmethod::metadata_do(MetadataClosure* f) {
   {
     // Visit all immediate references that are embedded in the instruction stream.
     RelocIterator iter(this, oops_reloc_begin());
     while (iter.next()) {
-      if (iter.type() == relocInfo::metadata_type ) {
+      if (iter.type() == relocInfo::metadata_type) {
         metadata_Relocation* r = iter.metadata_reloc();
         // In this metadata, we must only follow those metadatas directly embedded in
         // the code.  Other metadatas (oop_index>0) are seen as part of
@@ -1521,7 +1565,7 @@ void nmethod::metadata_do(void f(Metadata*)) {
                "metadata must be found in exactly one place");
         if (r->metadata_is_immediate() && r->metadata_value() != NULL) {
           Metadata* md = r->metadata_value();
-          if (md != _method) f(md);
+          if (md != _method) f->do_metadata(md);
         }
       } else if (iter.type() == relocInfo::virtual_call_type) {
         // Check compiledIC holders associated with this nmethod
@@ -1529,12 +1573,12 @@ void nmethod::metadata_do(void f(Metadata*)) {
         CompiledIC *ic = CompiledIC_at(&iter);
         if (ic->is_icholder_call()) {
           CompiledICHolder* cichk = ic->cached_icholder();
-          f(cichk->holder_metadata());
-          f(cichk->holder_klass());
+          f->do_metadata(cichk->holder_metadata());
+          f->do_metadata(cichk->holder_klass());
         } else {
           Metadata* ic_oop = ic->cached_metadata();
           if (ic_oop != NULL) {
-            f(ic_oop);
+            f->do_metadata(ic_oop);
           }
         }
       }
@@ -1545,11 +1589,11 @@ void nmethod::metadata_do(void f(Metadata*)) {
   for (Metadata** p = metadata_begin(); p < metadata_end(); p++) {
     if (*p == Universe::non_oop_word() || *p == NULL)  continue;  // skip non-oops
     Metadata* md = *p;
-    f(md);
+    f->do_metadata(md);
   }
 
   // Visit metadata not embedded in the other places.
-  if (_method != NULL) f(_method);
+  if (_method != NULL) f->do_metadata(_method);
 }
 
 // The _is_unloading_state encodes a tuple comprising the unloading cycle
@@ -1663,17 +1707,6 @@ void nmethod::do_unloading(bool unloading_occurred) {
   if (is_unloading()) {
     make_unloaded();
   } else {
-#if INCLUDE_JVMCI
-    if (_jvmci_installed_code != NULL) {
-      if (JNIHandles::is_global_weak_cleared(_jvmci_installed_code)) {
-        if (_jvmci_installed_code_triggers_invalidation) {
-          make_not_entrant();
-        }
-        clear_jvmci_installed_code();
-      }
-    }
-#endif
-
     guarantee(unload_nmethod_caches(unloading_occurred),
               "Should not need transition stubs");
   }
@@ -1776,44 +1809,6 @@ void nmethod::oops_do_marking_epilogue() {
   nmethod* observed = Atomic::cmpxchg((nmethod*)NULL, &_oops_do_mark_nmethods, required);
   guarantee(observed == required, "no races in this sequential code");
   log_trace(gc, nmethod)("oops_do_marking_epilogue");
-}
-
-class DetectScavengeRoot: public OopClosure {
-  bool     _detected_scavenge_root;
-  nmethod* _print_nm;
-public:
-  DetectScavengeRoot(nmethod* nm) : _detected_scavenge_root(false), _print_nm(nm) {}
-
-  bool detected_scavenge_root() { return _detected_scavenge_root; }
-  virtual void do_oop(oop* p) {
-    if ((*p) != NULL && Universe::heap()->is_scavengable(*p)) {
-      NOT_PRODUCT(maybe_print(p));
-      _detected_scavenge_root = true;
-    }
-  }
-  virtual void do_oop(narrowOop* p) { ShouldNotReachHere(); }
-
-#ifndef PRODUCT
-  void maybe_print(oop* p) {
-    LogTarget(Trace, gc, nmethod) lt;
-    if (lt.is_enabled()) {
-      LogStream ls(lt);
-      if (!_detected_scavenge_root) {
-        CompileTask::print(&ls, _print_nm, "new scavenge root", /*short_form:*/ true);
-      }
-      ls.print("" PTR_FORMAT "[offset=%d] detected scavengable oop " PTR_FORMAT " (found at " PTR_FORMAT ") ",
-               p2i(_print_nm), (int)((intptr_t)p - (intptr_t)_print_nm),
-               p2i(*p), p2i(p));
-      ls.cr();
-    }
-  }
-#endif //PRODUCT
-};
-
-bool nmethod::detect_scavenge_root_oops() {
-  DetectScavengeRoot detect_scavenge_root(this);
-  oops_do(&detect_scavenge_root);
-  return detect_scavenge_root.detected_scavenge_root();
 }
 
 inline bool includes(void* p, void* from, void* to) {
@@ -2031,32 +2026,6 @@ bool nmethod::check_dependency_on(DepChange& changes) {
   return found_check;
 }
 
-bool nmethod::is_evol_dependent() {
-  for (Dependencies::DepStream deps(this); deps.next(); ) {
-    if (deps.type() == Dependencies::evol_method) {
-      Method* method = deps.method_argument(0);
-      if (method->is_old()) {
-        if (log_is_enabled(Debug, redefine, class, nmethod)) {
-          ResourceMark rm;
-          log_debug(redefine, class, nmethod)
-            ("Found evol dependency of nmethod %s.%s(%s) compile_id=%d on method %s.%s(%s)",
-             _method->method_holder()->external_name(),
-             _method->name()->as_C_string(),
-             _method->signature()->as_C_string(),
-             compile_id(),
-             method->method_holder()->external_name(),
-             method->name()->as_C_string(),
-             method->signature()->as_C_string());
-        }
-        if (TraceDependencies || LogCompilation)
-          deps.log_dependency(method->method_holder());
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // Called from mark_for_deoptimization, when dependee is invalidated.
 bool nmethod::is_dependent_on_method(Method* dependee) {
   for (Dependencies::DepStream deps(this); deps.next(); ) {
@@ -2133,7 +2102,7 @@ void nmethodLocker::lock_nmethod(CompiledMethod* cm, bool zombie_ok) {
   if (cm->is_aot()) return;  // FIXME: Revisit once _lock_count is added to aot_method
   nmethod* nm = cm->as_nmethod();
   Atomic::inc(&nm->_lock_count);
-  assert(zombie_ok || !nm->is_zombie(), "cannot lock a zombie method");
+  assert(zombie_ok || !nm->is_zombie(), "cannot lock a zombie method: %p", nm);
 }
 
 void nmethodLocker::unlock_nmethod(CompiledMethod* cm) {
@@ -2267,41 +2236,6 @@ void nmethod::verify_scopes() {
 
 
 // -----------------------------------------------------------------------------
-// Non-product code
-#ifndef PRODUCT
-
-class DebugScavengeRoot: public OopClosure {
-  nmethod* _nm;
-  bool     _ok;
-public:
-  DebugScavengeRoot(nmethod* nm) : _nm(nm), _ok(true) { }
-  bool ok() { return _ok; }
-  virtual void do_oop(oop* p) {
-    if ((*p) == NULL || !Universe::heap()->is_scavengable(*p))  return;
-    if (_ok) {
-      _nm->print_nmethod(true);
-      _ok = false;
-    }
-    tty->print_cr("*** scavengable oop " PTR_FORMAT " found at " PTR_FORMAT " (offset %d)",
-                  p2i(*p), p2i(p), (int)((intptr_t)p - (intptr_t)_nm));
-    (*p)->print();
-  }
-  virtual void do_oop(narrowOop* p) { ShouldNotReachHere(); }
-};
-
-void nmethod::verify_scavenge_root_oops() {
-  if (!on_scavenge_root_list()) {
-    // Actually look inside, to verify the claim that it's clean.
-    DebugScavengeRoot debug_scavenge_root(this);
-    oops_do(&debug_scavenge_root);
-    if (!debug_scavenge_root.ok())
-      fatal("found an unadvertised bad scavengable oop in the code cache");
-  }
-  assert(scavenge_root_not_marked(), "");
-}
-
-#endif // PRODUCT
-
 // Printing operations
 
 void nmethod::print() const {
@@ -2327,7 +2261,6 @@ void nmethod::print() const {
     tty->print(" for method " INTPTR_FORMAT , p2i(method()));
     tty->print(" { ");
     tty->print_cr("%s ", state());
-    if (on_scavenge_root_list())  tty->print("scavenge_root ");
     tty->print_cr("}:");
   }
   if (size              () > 0) tty->print_cr(" total in heap  [" INTPTR_FORMAT "," INTPTR_FORMAT "] = %d",
@@ -2378,6 +2311,16 @@ void nmethod::print() const {
                                               p2i(nul_chk_table_begin()),
                                               p2i(nul_chk_table_end()),
                                               nul_chk_table_size());
+#if INCLUDE_JVMCI
+  if (speculations_size () > 0) tty->print_cr(" speculations   [" INTPTR_FORMAT "," INTPTR_FORMAT "] = %d",
+                                              p2i(speculations_begin()),
+                                              p2i(speculations_end()),
+                                              speculations_size());
+  if (jvmci_data_size   () > 0) tty->print_cr(" JVMCI data     [" INTPTR_FORMAT "," INTPTR_FORMAT "] = %d",
+                                              p2i(jvmci_data_begin()),
+                                              p2i(jvmci_data_end()),
+                                              jvmci_data_size());
+#endif
 }
 
 #ifndef PRODUCT
@@ -2960,115 +2903,18 @@ void nmethod::print_statistics() {
 #endif // !PRODUCT
 
 #if INCLUDE_JVMCI
-void nmethod::clear_jvmci_installed_code() {
-  assert_locked_or_safepoint(Patching_lock);
-  if (_jvmci_installed_code != NULL) {
-    JNIHandles::destroy_weak_global(_jvmci_installed_code);
-    _jvmci_installed_code = NULL;
+void nmethod::update_speculation(JavaThread* thread) {
+  jlong speculation = thread->pending_failed_speculation();
+  if (speculation != 0) {
+    guarantee(jvmci_nmethod_data() != NULL, "failed speculation in nmethod without failed speculation list");
+    jvmci_nmethod_data()->add_failed_speculation(this, speculation);
+    thread->set_pending_failed_speculation(0);
   }
 }
 
-void nmethod::clear_speculation_log() {
-  assert_locked_or_safepoint(Patching_lock);
-  if (_speculation_log != NULL) {
-    JNIHandles::destroy_weak_global(_speculation_log);
-    _speculation_log = NULL;
-  }
-}
-
-void nmethod::maybe_invalidate_installed_code() {
-  if (!is_compiled_by_jvmci()) {
-    return;
-  }
-
-  assert(Patching_lock->is_locked() ||
-         SafepointSynchronize::is_at_safepoint(), "should be performed under a lock for consistency");
-  oop installed_code = JNIHandles::resolve(_jvmci_installed_code);
-  if (installed_code != NULL) {
-    // Update the values in the InstalledCode instance if it still refers to this nmethod
-    nmethod* nm = (nmethod*)InstalledCode::address(installed_code);
-    if (nm == this) {
-      if (!is_alive() || is_unloading()) {
-        // Break the link between nmethod and InstalledCode such that the nmethod
-        // can subsequently be flushed safely.  The link must be maintained while
-        // the method could have live activations since invalidateInstalledCode
-        // might want to invalidate all existing activations.
-        InstalledCode::set_address(installed_code, 0);
-        InstalledCode::set_entryPoint(installed_code, 0);
-      } else if (is_not_entrant()) {
-        // Remove the entry point so any invocation will fail but keep
-        // the address link around that so that existing activations can
-        // be invalidated.
-        InstalledCode::set_entryPoint(installed_code, 0);
-      }
-    }
-  }
-  if (!is_alive() || is_unloading()) {
-    // Clear these out after the nmethod has been unregistered and any
-    // updates to the InstalledCode instance have been performed.
-    clear_jvmci_installed_code();
-    clear_speculation_log();
-  }
-}
-
-void nmethod::invalidate_installed_code(Handle installedCode, TRAPS) {
-  if (installedCode() == NULL) {
-    THROW(vmSymbols::java_lang_NullPointerException());
-  }
-  jlong nativeMethod = InstalledCode::address(installedCode);
-  nmethod* nm = (nmethod*)nativeMethod;
-  if (nm == NULL) {
-    // Nothing to do
-    return;
-  }
-
-  nmethodLocker nml(nm);
-#ifdef ASSERT
-  {
-    MutexLockerEx pl(Patching_lock, Mutex::_no_safepoint_check_flag);
-    // This relationship can only be checked safely under a lock
-    assert(!nm->is_alive() || nm->is_unloading() || nm->jvmci_installed_code() == installedCode(), "sanity check");
-  }
-#endif
-
-  if (nm->is_alive()) {
-    // Invalidating the InstalledCode means we want the nmethod
-    // to be deoptimized.
-    nm->mark_for_deoptimization();
-    VM_Deoptimize op;
-    VMThread::execute(&op);
-  }
-
-  // Multiple threads could reach this point so we now need to
-  // lock and re-check the link to the nmethod so that only one
-  // thread clears it.
-  MutexLockerEx pl(Patching_lock, Mutex::_no_safepoint_check_flag);
-  if (InstalledCode::address(installedCode) == nativeMethod) {
-      InstalledCode::set_address(installedCode, 0);
-  }
-}
-
-oop nmethod::jvmci_installed_code() {
-  return JNIHandles::resolve(_jvmci_installed_code);
-}
-
-oop nmethod::speculation_log() {
-  return JNIHandles::resolve(_speculation_log);
-}
-
-char* nmethod::jvmci_installed_code_name(char* buf, size_t buflen) const {
-  if (!this->is_compiled_by_jvmci()) {
-    return NULL;
-  }
-  oop installed_code = JNIHandles::resolve(_jvmci_installed_code);
-  if (installed_code != NULL) {
-    oop installed_code_name = NULL;
-    if (installed_code->is_a(InstalledCode::klass())) {
-      installed_code_name = InstalledCode::name(installed_code);
-    }
-    if (installed_code_name != NULL) {
-      return java_lang_String::as_utf8_string(installed_code_name, buf, (int)buflen);
-    }
+const char* nmethod::jvmci_name() {
+  if (jvmci_nmethod_data() != NULL) {
+    return jvmci_nmethod_data()->name();
   }
   return NULL;
 }

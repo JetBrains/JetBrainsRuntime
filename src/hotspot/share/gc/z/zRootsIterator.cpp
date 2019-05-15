@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
 #include "prims/jvmtiExport.hpp"
+#include "prims/resolvedMethodTable.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/jniHandles.hpp"
 #include "runtime/thread.hpp"
@@ -80,6 +81,7 @@ static const ZStatSubPhase ZSubPhaseConcurrentWeakRoots("Concurrent Weak Roots")
 static const ZStatSubPhase ZSubPhaseConcurrentWeakRootsVMWeakHandles("Concurrent Weak Roots VMWeakHandles");
 static const ZStatSubPhase ZSubPhaseConcurrentWeakRootsJNIWeakHandles("Concurrent Weak Roots JNIWeakHandles");
 static const ZStatSubPhase ZSubPhaseConcurrentWeakRootsStringTable("Concurrent Weak Roots StringTable");
+static const ZStatSubPhase ZSubPhaseConcurrentWeakRootsResolvedMethodTable("Concurrent Weak Roots ResolvedMethodTable");
 
 template <typename T, void (T::*F)(ZRootsIteratorClosure*)>
 ZSerialOopsDo<T, F>::ZSerialOopsDo(T* iter) :
@@ -179,7 +181,7 @@ ZRootsIterator::ZRootsIterator() :
     _code_cache(this) {
   assert(SafepointSynchronize::is_at_safepoint(), "Should be at safepoint");
   ZStatTimer timer(ZSubPhasePauseRootsSetup);
-  Threads::change_thread_claim_parity();
+  Threads::change_thread_claim_token();
   COMPILER2_PRESENT(DerivedPointerTable::clear());
   if (ClassUnloading) {
     nmethod::oops_do_marking_prologue();
@@ -341,14 +343,18 @@ ZConcurrentWeakRootsIterator::ZConcurrentWeakRootsIterator() :
     _vm_weak_handles_iter(SystemDictionary::vm_weak_oop_storage()),
     _jni_weak_handles_iter(JNIHandles::weak_global_handles()),
     _string_table_iter(StringTable::weak_storage()),
+    _resolved_method_table_iter(ResolvedMethodTable::weak_storage()),
     _vm_weak_handles(this),
     _jni_weak_handles(this),
-    _string_table(this) {
+    _string_table(this),
+    _resolved_method_table(this) {
   StringTable::reset_dead_counter();
+  ResolvedMethodTable::reset_dead_counter();
 }
 
 ZConcurrentWeakRootsIterator::~ZConcurrentWeakRootsIterator() {
   StringTable::finish_dead_counter();
+  ResolvedMethodTable::finish_dead_counter();
 }
 
 void ZConcurrentWeakRootsIterator::do_vm_weak_handles(ZRootsIteratorClosure* cl) {
@@ -361,18 +367,19 @@ void ZConcurrentWeakRootsIterator::do_jni_weak_handles(ZRootsIteratorClosure* cl
   _jni_weak_handles_iter.oops_do(cl);
 }
 
-class ZStringTableDeadCounterClosure : public ZRootsIteratorClosure  {
+template <class Container>
+class ZDeadCounterClosure : public ZRootsIteratorClosure  {
 private:
   ZRootsIteratorClosure* const _cl;
   size_t                       _ndead;
 
 public:
-  ZStringTableDeadCounterClosure(ZRootsIteratorClosure* cl) :
+  ZDeadCounterClosure(ZRootsIteratorClosure* cl) :
       _cl(cl),
       _ndead(0) {}
 
-  ~ZStringTableDeadCounterClosure() {
-    StringTable::inc_dead_counter(_ndead);
+  ~ZDeadCounterClosure() {
+    Container::inc_dead_counter(_ndead);
   }
 
   virtual void do_oop(oop* p) {
@@ -389,8 +396,14 @@ public:
 
 void ZConcurrentWeakRootsIterator::do_string_table(ZRootsIteratorClosure* cl) {
   ZStatTimer timer(ZSubPhaseConcurrentWeakRootsStringTable);
-  ZStringTableDeadCounterClosure counter_cl(cl);
+  ZDeadCounterClosure<StringTable> counter_cl(cl);
   _string_table_iter.oops_do(&counter_cl);
+}
+
+void ZConcurrentWeakRootsIterator::do_resolved_method_table(ZRootsIteratorClosure* cl) {
+  ZStatTimer timer(ZSubPhaseConcurrentWeakRootsResolvedMethodTable);
+  ZDeadCounterClosure<ResolvedMethodTable> counter_cl(cl);
+  _resolved_method_table_iter.oops_do(&counter_cl);
 }
 
 void ZConcurrentWeakRootsIterator::oops_do(ZRootsIteratorClosure* cl) {
@@ -398,13 +411,14 @@ void ZConcurrentWeakRootsIterator::oops_do(ZRootsIteratorClosure* cl) {
   _vm_weak_handles.oops_do(cl);
   _jni_weak_handles.oops_do(cl);
   _string_table.oops_do(cl);
+  _resolved_method_table.oops_do(cl);
 }
 
 ZThreadRootsIterator::ZThreadRootsIterator() :
     _threads(this) {
   assert(SafepointSynchronize::is_at_safepoint(), "Should be at safepoint");
   ZStatTimer timer(ZSubPhasePauseRootsSetup);
-  Threads::change_thread_claim_parity();
+  Threads::change_thread_claim_token();
 }
 
 ZThreadRootsIterator::~ZThreadRootsIterator() {

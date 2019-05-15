@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -188,6 +188,11 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
 
     private final Context context;
 
+    /**
+     * Support for preview language features.
+     */
+    private final Preview preview;
+
     /** Get the JavacProcessingEnvironment instance for this context. */
     public static JavacProcessingEnvironment instance(Context context) {
         JavacProcessingEnvironment instance = context.get(JavacProcessingEnvironment.class);
@@ -236,6 +241,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
         enter = Enter.instance(context);
         initialCompleter = ClassFinder.instance(context).getCompleter();
         chk = Check.instance(context);
+        preview = Preview.instance(context);
         initProcessorLoader();
     }
 
@@ -438,7 +444,14 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
             } catch(ServiceConfigurationError sce) {
                 log.error(Errors.ProcBadConfigFile(sce.getLocalizedMessage()));
                 throw new Abort(sce);
+            } catch (UnsupportedClassVersionError ucve) {
+                log.error(Errors.ProcCantLoadClass(ucve.getLocalizedMessage()));
+                throw new Abort(ucve);
+            } catch (ClassFormatError cfe) {
+                log.error(Errors.ProcCantLoadClass(cfe.getLocalizedMessage()));
+                throw new Abort(cfe);
             } catch (Throwable t) {
+                log.error(Errors.ProcBadConfigFile(t.getLocalizedMessage()));
                 throw new Abort(t);
             }
         }
@@ -455,6 +468,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
                 log.error(Errors.ProcBadConfigFile(sce.getLocalizedMessage()));
                 throw new Abort(sce);
             } catch (Throwable t) {
+                log.error(Errors.ProcBadConfigFile(t.getLocalizedMessage()));
                 throw new Abort(t);
             }
         }
@@ -1673,6 +1687,11 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
     @DefinedBy(Api.ANNOTATION_PROCESSING)
     public Locale getLocale() {
         return messages.getCurrentLocale();
+    }
+
+    @DefinedBy(Api.ANNOTATION_PROCESSING)
+    public boolean isPreviewEnabled() {
+        return preview.isEnabled();
     }
 
     public Set<Symbol.PackageSymbol> getSpecifiedPackages() {

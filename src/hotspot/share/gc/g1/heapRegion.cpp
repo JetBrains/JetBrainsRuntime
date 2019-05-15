@@ -117,6 +117,7 @@ void HeapRegion::hr_clear(bool keep_remset, bool clear_space, bool locked) {
          "Should not clear heap region %u in the collection set", hrm_index());
 
   set_young_index_in_cset(-1);
+  clear_index_in_opt_cset();
   uninstall_surv_rate_group();
   set_free();
   reset_pre_dummy_top();
@@ -241,7 +242,7 @@ HeapRegion::HeapRegion(uint hrm_index,
     _containing_set(NULL),
 #endif
     _prev_marked_bytes(0), _next_marked_bytes(0), _gc_efficiency(0.0),
-    _index_in_opt_cset(G1OptionalCSet::InvalidCSetIndex), _young_index_in_cset(-1),
+    _index_in_opt_cset(InvalidCSetIndex), _young_index_in_cset(-1),
     _surv_rate_group(NULL), _age_index(-1),
     _prev_top_at_mark_start(NULL), _next_top_at_mark_start(NULL),
     _recorded_rs_length(0), _predicted_elapsed_time_ms(0)
@@ -514,15 +515,15 @@ public:
     if (!CompressedOops::is_null(heap_oop)) {
       oop obj = CompressedOops::decode_not_null(heap_oop);
       bool failed = false;
-      if (!_g1h->is_in_closed_subset(obj) || _g1h->is_obj_dead_cond(obj, _vo)) {
-        MutexLockerEx x(ParGCRareEvent_lock,
+      if (!_g1h->is_in(obj) || _g1h->is_obj_dead_cond(obj, _vo)) {
+        MutexLocker x(ParGCRareEvent_lock,
           Mutex::_no_safepoint_check_flag);
 
         if (!_failures) {
           log.error("----------");
         }
         ResourceMark rm;
-        if (!_g1h->is_in_closed_subset(obj)) {
+        if (!_g1h->is_in(obj)) {
           HeapRegion* from = _g1h->heap_region_containing((HeapWord*)p);
           log.error("Field " PTR_FORMAT " of live obj " PTR_FORMAT " in region " HR_FORMAT,
                     p2i(p), p2i(_containing_obj), HR_FORMAT_PARAMS(from));
@@ -587,7 +588,7 @@ public:
                 cv_field == dirty :
                 cv_obj == dirty || cv_field == dirty));
         if (is_bad) {
-          MutexLockerEx x(ParGCRareEvent_lock,
+          MutexLocker x(ParGCRareEvent_lock,
             Mutex::_no_safepoint_check_flag);
 
           if (!_failures) {

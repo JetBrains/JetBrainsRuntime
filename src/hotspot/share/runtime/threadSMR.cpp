@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -590,12 +590,9 @@ ThreadsList *ThreadsList::add_thread(ThreadsList *list, JavaThread *java_thread)
 }
 
 void ThreadsList::dec_nested_handle_cnt() {
-  // The decrement needs to be MO_ACQ_REL. At the moment, the Atomic::dec
-  // backend on PPC does not yet conform to these requirements. Therefore
-  // the decrement is simulated with an Atomic::sub(1, &addr).
-  // Without this MO_ACQ_REL Atomic::dec simulation, the nested SMR mechanism
-  // is not generally safe to use.
-  Atomic::sub(1, &_nested_handle_cnt);
+  // The decrement only needs to be MO_ACQ_REL since the reference
+  // counter is volatile (and the hazard ptr is already NULL).
+  Atomic::dec(&_nested_handle_cnt);
 }
 
 int ThreadsList::find_index_of_JavaThread(JavaThread *target) {
@@ -626,19 +623,9 @@ JavaThread* ThreadsList::find_JavaThread_from_java_tid(jlong java_tid) const {
 }
 
 void ThreadsList::inc_nested_handle_cnt() {
-  // The increment needs to be MO_SEQ_CST. At the moment, the Atomic::inc
-  // backend on PPC does not yet conform to these requirements. Therefore
-  // the increment is simulated with a load phi; cas phi + 1; loop.
-  // Without this MO_SEQ_CST Atomic::inc simulation, the nested SMR mechanism
-  // is not generally safe to use.
-  intx sample = OrderAccess::load_acquire(&_nested_handle_cnt);
-  for (;;) {
-    if (Atomic::cmpxchg(sample + 1, &_nested_handle_cnt, sample) == sample) {
-      return;
-    } else {
-      sample = OrderAccess::load_acquire(&_nested_handle_cnt);
-    }
-  }
+  // The increment needs to be MO_SEQ_CST so that the reference counter
+  // update is seen before the subsequent hazard ptr update.
+  Atomic::inc(&_nested_handle_cnt);
 }
 
 bool ThreadsList::includes(const JavaThread * const p) const {
@@ -912,7 +899,7 @@ void ThreadsSMRSupport::release_stable_list_wake_up(bool is_nested) {
   // safepoint which means this thread can't take too long to get to
   // a safepoint because of being blocked on delete_lock.
   //
-  MonitorLockerEx ml(ThreadsSMRSupport::delete_lock(), Monitor::_no_safepoint_check_flag);
+  MonitorLocker ml(ThreadsSMRSupport::delete_lock(), Monitor::_no_safepoint_check_flag);
   if (ThreadsSMRSupport::delete_notify()) {
     // Notify any exiting JavaThreads that are waiting in smr_delete()
     // that we've released a ThreadsList.
@@ -957,8 +944,8 @@ void ThreadsSMRSupport::smr_delete(JavaThread *thread) {
     {
       // No safepoint check because this JavaThread is not on the
       // Threads list.
-      MutexLockerEx ml(Threads_lock, Mutex::_no_safepoint_check_flag);
-      // Cannot use a MonitorLockerEx helper here because we have
+      MutexLocker ml(Threads_lock, Mutex::_no_safepoint_check_flag);
+      // Cannot use a MonitorLocker helper here because we have
       // to drop the Threads_lock first if we wait.
       ThreadsSMRSupport::delete_lock()->lock_without_safepoint_check();
       // Set the delete_notify flag after we grab delete_lock
@@ -998,8 +985,7 @@ void ThreadsSMRSupport::smr_delete(JavaThread *thread) {
     // Wait for a release_stable_list() call before we check again. No
     // safepoint check, no timeout, and not as suspend equivalent flag
     // because this JavaThread is not on the Threads list.
-    ThreadsSMRSupport::delete_lock()->wait(Mutex::_no_safepoint_check_flag, 0,
-                                     !Mutex::_as_suspend_equivalent_flag);
+    ThreadsSMRSupport::delete_lock()->wait_without_safepoint_check();
     if (EnableThreadSMRStatistics) {
       _delete_lock_wait_cnt--;
     }
@@ -1091,7 +1077,7 @@ void ThreadsSMRSupport::print_info_on(outputStream* st) {
   // block during error reporting or a nested error could leave the
   // Threads_lock held. The classic no win scenario.
   //
-  MutexLockerEx ml((Threads_lock->owned_by_self() || VMError::is_error_reported()) ? NULL : Threads_lock);
+  MutexLocker ml((Threads_lock->owned_by_self() || VMError::is_error_reported()) ? NULL : Threads_lock);
 
   st->print_cr("Threads class SMR info:");
   st->print_cr("_java_thread_list=" INTPTR_FORMAT ", length=%u, "

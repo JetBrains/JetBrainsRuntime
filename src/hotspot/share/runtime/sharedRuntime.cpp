@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1376,18 +1376,12 @@ methodHandle SharedRuntime::resolve_sub_helper(JavaThread *thread,
   }
 #endif
 
-  // Do not patch call site for static call to another class
-  // when the class is not fully initialized.
-  if (invoke_code == Bytecodes::_invokestatic) {
-    if (!callee_method->method_holder()->is_initialized() &&
-        callee_method->method_holder() != caller_nm->method()->method_holder()) {
-      assert(callee_method->method_holder()->is_linked(), "must be");
-      return callee_method;
-    } else {
-      assert(callee_method->method_holder()->is_initialized() ||
-             callee_method->method_holder()->is_reentrant_initialization(thread),
-             "invalid class initialization state for invoke_static");
-    }
+  // Do not patch call site for static call when the class is not
+  // fully initialized.
+  if (invoke_code == Bytecodes::_invokestatic &&
+      !callee_method->method_holder()->is_initialized()) {
+    assert(callee_method->method_holder()->is_linked(), "must be");
+    return callee_method;
   }
 
   // JSR 292 key invariant:
@@ -1918,7 +1912,7 @@ bool SharedRuntime::should_fixup_call_destination(address destination, address e
 // where we went int -> i2c -> c2i and so the caller could in fact be
 // interpreted. If the caller is compiled we attempt to patch the caller
 // so he no longer calls into the interpreter.
-IRT_LEAF(void, SharedRuntime::fixup_callers_callsite(Method* method, address caller_pc))
+JRT_LEAF(void, SharedRuntime::fixup_callers_callsite(Method* method, address caller_pc))
   Method* moop(method);
 
   address entry_point = moop->from_compiled_entry_no_trampoline();
@@ -1987,7 +1981,7 @@ IRT_LEAF(void, SharedRuntime::fixup_callers_callsite(Method* method, address cal
       }
     }
   }
-IRT_END
+JRT_END
 
 
 // same as JVM_Arraycopy, but called directly from compiled code
@@ -2256,7 +2250,7 @@ class MethodArityHistogram {
 
  public:
   MethodArityHistogram() {
-    MutexLockerEx mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu(CodeCache_lock, Mutex::_no_safepoint_check_flag);
     _max_arity = _max_size = 0;
     for (int i = 0; i < MAX_ARITY; i++) _arity_histogram[i] = _size_histogram[i] = 0;
     CodeCache::nmethods_do(add_method_to_histogram);

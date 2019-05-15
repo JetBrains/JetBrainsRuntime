@@ -31,6 +31,8 @@
 #include "logging/logConfiguration.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
+#include "oops/compressedOops.hpp"
 #include "prims/whitebox.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/atomic.hpp"
@@ -291,14 +293,14 @@ static void print_oom_reasons(outputStream* st) {
   st->print_cr("#   Decrease Java thread stack sizes (-Xss)");
   st->print_cr("#   Set larger code cache with -XX:ReservedCodeCacheSize=");
   if (UseCompressedOops) {
-    switch (Universe::narrow_oop_mode()) {
-      case Universe::UnscaledNarrowOop:
+    switch (CompressedOops::mode()) {
+      case CompressedOops::UnscaledNarrowOop:
         st->print_cr("#   JVM is running with Unscaled Compressed Oops mode in which the Java heap is");
         st->print_cr("#     placed in the first 4GB address space. The Java Heap base address is the");
         st->print_cr("#     maximum limit for the native heap growth. Please use -XX:HeapBaseMinAddress");
         st->print_cr("#     to set the Java Heap base and to place the Java Heap above 4GB virtual address.");
         break;
-      case Universe::ZeroBasedNarrowOop:
+      case CompressedOops::ZeroBasedNarrowOop:
         st->print_cr("#   JVM is running with Zero Based Compressed Oops mode in which the Java heap is");
         st->print_cr("#     placed in the first 32GB address space. The Java Heap base address is the");
         st->print_cr("#     maximum limit for the native heap growth. Please use -XX:HeapBaseMinAddress");
@@ -882,7 +884,7 @@ void VMError::report(outputStream* st, bool _verbose) {
   STEP("printing compressed oops mode")
 
      if (_verbose && UseCompressedOops) {
-       Universe::print_compressed_oops_mode(st);
+       CompressedOops::print_mode(st);
        if (UseCompressedClassPointers) {
          Metaspace::print_compressed_class_space(st);
        }
@@ -1083,7 +1085,7 @@ void VMError::print_vm_info(outputStream* st) {
   // STEP("printing compressed oops mode")
 
   if (UseCompressedOops) {
-    Universe::print_compressed_oops_mode(st);
+    CompressedOops::print_mode(st);
     if (UseCompressedClassPointers) {
       Metaspace::print_compressed_class_space(st);
     }
@@ -1196,8 +1198,7 @@ volatile intptr_t VMError::first_error_tid = -1;
 static int expand_and_open(const char* pattern, char* buf, size_t buflen, size_t pos) {
   int fd = -1;
   if (Arguments::copy_expand_pid(pattern, strlen(pattern), &buf[pos], buflen - pos)) {
-    // the O_EXCL flag will cause the open to fail if the file exists
-    fd = open(buf, O_RDWR | O_CREAT | O_EXCL, 0666);
+    fd = open(buf, O_RDWR | O_CREAT, 0666);
   }
   return fd;
 }
@@ -1445,9 +1446,13 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
     }
   }
 
-  // print to screen
+  // Part 1: print an abbreviated version (the '#' section) to stdout.
   if (!out_done) {
-    report(&out, false);
+    // Suppress this output if we plan to print Part 2 to stdout too.
+    // No need to have the "#" section twice.
+    if (!(ErrorFileToStdout && out.fd() == 1)) {
+      report(&out, false);
+    }
 
     out_done = true;
 
@@ -1455,21 +1460,27 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
     _current_step_info = "";
   }
 
+  // Part 2: print a full error log file (optionally to stdout or stderr).
   // print to error log file
   if (!log_done) {
     // see if log file is already open
     if (!log.is_open()) {
       // open log file
-      fd_log = prepare_log_file(ErrorFile, "hs_err_pid%p.log", buffer, sizeof(buffer));
-      if (fd_log != -1) {
-        out.print_raw("# An error report file with more information is saved as:\n# ");
-        out.print_raw_cr(buffer);
-
-        log.set_fd(fd_log);
+      if (ErrorFileToStdout) {
+        fd_log = 1;
+      } else if (ErrorFileToStderr) {
+        fd_log = 2;
       } else {
-        out.print_raw_cr("# Can not save log file, dump to screen..");
-        log.set_fd(fd_out);
+        fd_log = prepare_log_file(ErrorFile, "hs_err_pid%p.log", buffer, sizeof(buffer));
+        if (fd_log != -1) {
+          out.print_raw("# An error report file with more information is saved as:\n# ");
+          out.print_raw_cr(buffer);
+        } else {
+          out.print_raw_cr("# Can not save log file, dump to screen..");
+          fd_log = 1;
+        }
       }
+      log.set_fd(fd_log);
     }
 
     report(&log, true);
@@ -1477,7 +1488,7 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
     _current_step = 0;
     _current_step_info = "";
 
-    if (fd_log != -1) {
+    if (fd_log > 3) {
       close(fd_log);
       fd_log = -1;
     }
@@ -1725,7 +1736,16 @@ void VMError::controlled_crash(int how) {
   const char* const eol = os::line_separator();
   const char* const msg = "this message should be truncated during formatting";
   char * const dataPtr = NULL;  // bad data pointer
-  const void (*funcPtr)(void) = (const void(*)()) 0xF;  // bad function pointer
+  const void (*funcPtr)(void);  // bad function pointer
+
+#if defined(PPC64) && !defined(ABI_ELFv2)
+  struct FunctionDescriptor functionDescriptor;
+
+  functionDescriptor.set_entry((address) 0xF);
+  funcPtr = (const void(*)()) &functionDescriptor;
+#else
+  funcPtr = (const void(*)()) 0xF;
+#endif
 
   // Keep this in sync with test/hotspot/jtreg/runtime/ErrorHandling/ErrorHandler.java
   // which tests cases 1 thru 13.
@@ -1738,7 +1758,7 @@ void VMError::controlled_crash(int how) {
   // from racing with Threads::add() or Threads::remove() as we
   // generate the hs_err_pid file. This makes our ErrorHandling tests
   // more stable.
-  MutexLockerEx ml(Threads_lock->owned_by_self() ? NULL : Threads_lock, Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(Threads_lock->owned_by_self() ? NULL : Threads_lock, Mutex::_no_safepoint_check_flag);
 
   switch (how) {
     case  1: vmassert(str == NULL, "expected null"); break;
@@ -1785,4 +1805,3 @@ void VMError::controlled_crash(int how) {
   ShouldNotReachHere();
 }
 #endif // !PRODUCT
-

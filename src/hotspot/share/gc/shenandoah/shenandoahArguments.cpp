@@ -23,7 +23,7 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shared/gcArguments.inline.hpp"
+#include "gc/shared/gcArguments.hpp"
 #include "gc/shared/workerPolicy.hpp"
 #include "gc/shenandoah/shenandoahArguments.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
@@ -45,14 +45,13 @@ void ShenandoahArguments::initialize() {
   FLAG_SET_DEFAULT(ShenandoahGCHeuristics,           "passive");
 
   FLAG_SET_DEFAULT(ShenandoahSATBBarrier,            false);
+  FLAG_SET_DEFAULT(ShenandoahLoadRefBarrier,         false);
   FLAG_SET_DEFAULT(ShenandoahKeepAliveBarrier,       false);
-  FLAG_SET_DEFAULT(ShenandoahWriteBarrier,           false);
-  FLAG_SET_DEFAULT(ShenandoahReadBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahStoreValEnqueueBarrier, false);
-  FLAG_SET_DEFAULT(ShenandoahStoreValReadBarrier,    false);
   FLAG_SET_DEFAULT(ShenandoahCASBarrier,             false);
-  FLAG_SET_DEFAULT(ShenandoahAcmpBarrier,            false);
   FLAG_SET_DEFAULT(ShenandoahCloneBarrier,           false);
+
+  FLAG_SET_DEFAULT(ShenandoahVerifyOptoBarriers,     false);
 #endif
 
 #ifdef _LP64
@@ -110,13 +109,10 @@ void ShenandoahArguments::initialize() {
   // C2 barrier verification is only reliable when all default barriers are enabled
   if (ShenandoahVerifyOptoBarriers &&
           (!FLAG_IS_DEFAULT(ShenandoahSATBBarrier)            ||
+           !FLAG_IS_DEFAULT(ShenandoahLoadRefBarrier)         ||
            !FLAG_IS_DEFAULT(ShenandoahKeepAliveBarrier)       ||
-           !FLAG_IS_DEFAULT(ShenandoahWriteBarrier)           ||
-           !FLAG_IS_DEFAULT(ShenandoahReadBarrier)            ||
            !FLAG_IS_DEFAULT(ShenandoahStoreValEnqueueBarrier) ||
-           !FLAG_IS_DEFAULT(ShenandoahStoreValReadBarrier)    ||
            !FLAG_IS_DEFAULT(ShenandoahCASBarrier)             ||
-           !FLAG_IS_DEFAULT(ShenandoahAcmpBarrier)            ||
            !FLAG_IS_DEFAULT(ShenandoahCloneBarrier)
           )) {
     warning("Unusual barrier configuration, disabling C2 barrier verification");
@@ -135,18 +131,6 @@ void ShenandoahArguments::initialize() {
     FLAG_SET_DEFAULT(ShenandoahAlwaysPreTouch, true);
   }
 
-  // Shenandoah C2 optimizations apparently dislike the shape of thread-local handshakes.
-  // Disable it by default, unless we enable it specifically for debugging.
-  if (FLAG_IS_DEFAULT(ThreadLocalHandshakes)) {
-    if (ThreadLocalHandshakes) {
-      FLAG_SET_DEFAULT(ThreadLocalHandshakes, false);
-    }
-  } else {
-    if (ThreadLocalHandshakes) {
-      warning("Thread-local handshakes are not working correctly with Shenandoah at the moment. Enable at your own risk.");
-    }
-  }
-
   // Record more information about previous cycles for improved debugging pleasure
   if (FLAG_IS_DEFAULT(LogEventsBufferEntries)) {
     FLAG_SET_DEFAULT(LogEventsBufferEntries, 250);
@@ -156,6 +140,11 @@ void ShenandoahArguments::initialize() {
     if (!FLAG_IS_DEFAULT(ShenandoahUncommit)) {
       warning("AlwaysPreTouch is enabled, disabling ShenandoahUncommit");
     }
+    FLAG_SET_DEFAULT(ShenandoahUncommit, false);
+  }
+
+  if ((InitialHeapSize == MaxHeapSize) && ShenandoahUncommit) {
+    log_info(gc)("Min heap equals to max heap, disabling ShenandoahUncommit");
     FLAG_SET_DEFAULT(ShenandoahUncommit, false);
   }
 
@@ -175,13 +164,6 @@ void ShenandoahArguments::initialize() {
     }
     FLAG_SET_DEFAULT(UseAOT, false);
   }
-
-  // JNI fast get field stuff is not currently supported by Shenandoah.
-  // It would introduce another heap memory access for reading the forwarding
-  // pointer, which would have to be guarded by the signal handler machinery.
-  // See:
-  // http://mail.openjdk.java.net/pipermail/hotspot-dev/2018-June/032763.html
-  FLAG_SET_DEFAULT(UseFastJNIAccessors, false);
 
   // TLAB sizing policy makes resizing decisions before each GC cycle. It averages
   // historical data, assigning more recent data the weight according to TLABAllocationWeight.
@@ -220,6 +202,19 @@ size_t ShenandoahArguments::conservative_max_heap_alignment() {
   return align;
 }
 
+void ShenandoahArguments::initialize_alignments() {
+  // Need to setup sizes early to get correct alignments.
+  ShenandoahHeapRegion::setup_sizes(MaxHeapSize);
+
+  // This is expected by our algorithm for ShenandoahHeap::heap_region_containing().
+  size_t align = ShenandoahHeapRegion::region_size_bytes();
+  if (UseLargePages) {
+    align = MAX2(align, os::large_page_size());
+  }
+  SpaceAlignment = align;
+  HeapAlignment = align;
+}
+
 CollectedHeap* ShenandoahArguments::create_heap() {
-  return create_heap_with_policy<ShenandoahHeap, ShenandoahCollectorPolicy>();
+  return new ShenandoahHeap(new ShenandoahCollectorPolicy());
 }

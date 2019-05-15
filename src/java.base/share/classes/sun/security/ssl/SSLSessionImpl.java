@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantLock;
 import javax.crypto.SecretKey;
 import javax.net.ssl.ExtendedSSLSession;
 import javax.net.ssl.SNIServerName;
@@ -134,7 +134,9 @@ final class SSLSessionImpl extends ExtendedSSLSession {
 
     // The endpoint identification algorithm used to check certificates
     // in this session.
-    private final String              identificationProtocol;
+    private final String        identificationProtocol;
+
+    private final ReentrantLock sessionLock = new ReentrantLock();
 
     /*
      * Create a new non-rejoinable session, using the default (null)
@@ -286,18 +288,27 @@ final class SSLSessionImpl extends ExtendedSSLSession {
         return masterSecret;
     }
 
-    Optional<SecretKey> getResumptionMasterSecret() {
-        return Optional.ofNullable(resumptionMasterSecret);
+    SecretKey getResumptionMasterSecret() {
+        return resumptionMasterSecret;
     }
 
-    synchronized Optional<SecretKey> getPreSharedKey() {
-        return Optional.ofNullable(preSharedKey);
+    SecretKey getPreSharedKey() {
+        sessionLock.lock();
+        try {
+            return preSharedKey;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
-    synchronized Optional<SecretKey> consumePreSharedKey() {
-        Optional<SecretKey> result = Optional.ofNullable(preSharedKey);
-        preSharedKey = null;
-        return result;
+    SecretKey consumePreSharedKey() {
+        sessionLock.lock();
+        try {
+            return preSharedKey;
+        } finally {
+            preSharedKey = null;
+            sessionLock.unlock();
+        }
     }
 
     int getTicketAgeAdd() {
@@ -312,10 +323,14 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * be used once. This method will return the identity and then clear it
      * so it cannot be used again.
      */
-    synchronized Optional<byte[]> consumePskIdentity() {
-        Optional<byte[]> result = Optional.ofNullable(pskIdentity);
-        pskIdentity = null;
-        return result;
+    byte[] consumePskIdentity() {
+        sessionLock.lock();
+        try {
+            return pskIdentity;
+        } finally {
+            pskIdentity = null;
+            sessionLock.unlock();
+        }
     }
 
     void setPeerCertificates(X509Certificate[] peer) {
@@ -390,8 +405,13 @@ final class SSLSessionImpl extends ExtendedSSLSession {
     }
 
     @Override
-    public synchronized boolean isValid() {
-        return isRejoinable();
+    public boolean isValid() {
+        sessionLock.lock();
+        try {
+            return isRejoinable();
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
     /**
@@ -597,7 +617,8 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      *  Use {@code getPeerCertificates()} instead.
      */
     @Override
-    @Deprecated
+    @SuppressWarnings("removal")
+    @Deprecated(since="9", forRemoval=true)
     public javax.security.cert.X509Certificate[] getPeerCertificateChain()
             throws SSLPeerUnverifiedException {
         //
@@ -773,29 +794,35 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * no connections will be able to rejoin this session.
      */
     @Override
-    public synchronized void invalidate() {
-        //
-        // Can't invalidate the NULL session -- this would be
-        // attempted when we get a handshaking error on a brand
-        // new connection, with no "real" session yet.
-        //
-        if (this == nullSession) {
-            return;
-        }
+    public void invalidate() {
+        sessionLock.lock();
+        try {
+            //
+            // Can't invalidate the NULL session -- this would be
+            // attempted when we get a handshaking error on a brand
+            // new connection, with no "real" session yet.
+            //
+            if (this == nullSession) {
+                return;
+            }
 
-        if (context != null) {
-            context.remove(sessionId);
-            context = null;
-        }
-        if (invalidated) {
-            return;
-        }
-        invalidated = true;
-        if (SSLLogger.isOn && SSLLogger.isOn("session")) {
-             SSLLogger.finest("Invalidated session:  " + this);
-        }
-        for (SSLSessionImpl child : childSessions) {
-            child.invalidate();
+            if (context != null) {
+                context.remove(sessionId);
+                context = null;
+            }
+
+            if (invalidated) {
+                return;
+            }
+            invalidated = true;
+            if (SSLLogger.isOn && SSLLogger.isOn("session")) {
+                 SSLLogger.finest("Invalidated session:  " + this);
+            }
+            for (SSLSessionImpl child : childSessions) {
+                child.invalidate();
+            }
+        } finally {
+            sessionLock.unlock();
         }
     }
 
@@ -908,8 +935,13 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * Expand the buffer size of both SSL/TLS network packet and
      * application data.
      */
-    protected synchronized void expandBufferSizes() {
-        acceptLargeFragments = true;
+    protected void expandBufferSizes() {
+        sessionLock.lock();
+        try {
+            acceptLargeFragments = true;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
     /**
@@ -917,30 +949,35 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * when using this session.
      */
     @Override
-    public synchronized int getPacketBufferSize() {
-        // Use the bigger packet size calculated from maximumPacketSize
-        // and negotiatedMaxFragLen.
-        int packetSize = 0;
-        if (negotiatedMaxFragLen > 0) {
-            packetSize = cipherSuite.calculatePacketSize(
-                    negotiatedMaxFragLen, protocolVersion,
-                    protocolVersion.isDTLS);
-        }
+    public int getPacketBufferSize() {
+        sessionLock.lock();
+        try {
+            // Use the bigger packet size calculated from maximumPacketSize
+            // and negotiatedMaxFragLen.
+            int packetSize = 0;
+            if (negotiatedMaxFragLen > 0) {
+                packetSize = cipherSuite.calculatePacketSize(
+                        negotiatedMaxFragLen, protocolVersion,
+                        protocolVersion.isDTLS);
+            }
 
-        if (maximumPacketSize > 0) {
-            return (maximumPacketSize > packetSize) ?
-                    maximumPacketSize : packetSize;
-        }
+            if (maximumPacketSize > 0) {
+                return (maximumPacketSize > packetSize) ?
+                        maximumPacketSize : packetSize;
+            }
 
-        if (packetSize != 0) {
-           return packetSize;
-        }
+            if (packetSize != 0) {
+               return packetSize;
+            }
 
-        if (protocolVersion.isDTLS) {
-            return DTLSRecord.maxRecordSize;
-        } else {
-            return acceptLargeFragments ?
-                    SSLRecord.maxLargeRecordSize : SSLRecord.maxRecordSize;
+            if (protocolVersion.isDTLS) {
+                return DTLSRecord.maxRecordSize;
+            } else {
+                return acceptLargeFragments ?
+                        SSLRecord.maxLargeRecordSize : SSLRecord.maxRecordSize;
+            }
+        } finally {
+            sessionLock.unlock();
         }
     }
 
@@ -949,31 +986,36 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * expected when using this session.
      */
     @Override
-    public synchronized int getApplicationBufferSize() {
-        // Use the bigger fragment size calculated from maximumPacketSize
-        // and negotiatedMaxFragLen.
-        int fragmentSize = 0;
-        if (maximumPacketSize > 0) {
-            fragmentSize = cipherSuite.calculateFragSize(
-                    maximumPacketSize, protocolVersion,
-                    protocolVersion.isDTLS);
-        }
+    public int getApplicationBufferSize() {
+        sessionLock.lock();
+        try {
+            // Use the bigger fragment size calculated from maximumPacketSize
+            // and negotiatedMaxFragLen.
+            int fragmentSize = 0;
+            if (maximumPacketSize > 0) {
+                fragmentSize = cipherSuite.calculateFragSize(
+                        maximumPacketSize, protocolVersion,
+                        protocolVersion.isDTLS);
+            }
 
-        if (negotiatedMaxFragLen > 0) {
-            return (negotiatedMaxFragLen > fragmentSize) ?
-                    negotiatedMaxFragLen : fragmentSize;
-        }
+            if (negotiatedMaxFragLen > 0) {
+                return (negotiatedMaxFragLen > fragmentSize) ?
+                        negotiatedMaxFragLen : fragmentSize;
+            }
 
-        if (fragmentSize != 0) {
-            return fragmentSize;
-        }
+            if (fragmentSize != 0) {
+                return fragmentSize;
+            }
 
-        if (protocolVersion.isDTLS) {
-            return Record.maxDataSize;
-        } else {
-            int maxPacketSize = acceptLargeFragments ?
-                        SSLRecord.maxLargeRecordSize : SSLRecord.maxRecordSize;
-            return (maxPacketSize - SSLRecord.headerSize);
+            if (protocolVersion.isDTLS) {
+                return Record.maxDataSize;
+            } else {
+                int maxPacketSize = acceptLargeFragments ?
+                            SSLRecord.maxLargeRecordSize : SSLRecord.maxRecordSize;
+                return (maxPacketSize - SSLRecord.headerSize);
+            }
+        } finally {
+            sessionLock.unlock();
         }
     }
 
@@ -985,10 +1027,14 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      *         the negotiated maximum fragment length, or {@code -1} if
      *         no such length has been negotiated.
      */
-    synchronized void setNegotiatedMaxFragSize(
+    void setNegotiatedMaxFragSize(
             int negotiatedMaxFragLen) {
-
-        this.negotiatedMaxFragLen = negotiatedMaxFragLen;
+        sessionLock.lock();
+        try {
+            this.negotiatedMaxFragLen = negotiatedMaxFragLen;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
     /**
@@ -998,16 +1044,31 @@ final class SSLSessionImpl extends ExtendedSSLSession {
      * @return the negotiated maximum fragment length, or {@code -1} if
      *         no such length has been negotiated.
      */
-    synchronized int getNegotiatedMaxFragSize() {
-        return negotiatedMaxFragLen;
+    int getNegotiatedMaxFragSize() {
+        sessionLock.lock();
+        try {
+            return negotiatedMaxFragLen;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
-    synchronized void setMaximumPacketSize(int maximumPacketSize) {
-        this.maximumPacketSize = maximumPacketSize;
+    void setMaximumPacketSize(int maximumPacketSize) {
+        sessionLock.lock();
+        try {
+            this.maximumPacketSize = maximumPacketSize;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
-    synchronized int getMaximumPacketSize() {
-        return maximumPacketSize;
+    int getMaximumPacketSize() {
+        sessionLock.lock();
+        try {
+            return maximumPacketSize;
+        } finally {
+            sessionLock.unlock();
+        }
     }
 
     /**

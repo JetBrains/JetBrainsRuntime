@@ -51,11 +51,12 @@ JRT_LEAF(void, ShenandoahRuntime::write_ref_field_pre_entry(oopDesc* orig, JavaT
   }
   shenandoah_assert_correct(NULL, orig);
   // store the original value that was in the field reference
-  ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue(orig);
+  assert(ShenandoahThreadLocalData::satb_mark_queue(thread).is_active(), "Shouldn't be here otherwise");
+  ShenandoahThreadLocalData::satb_mark_queue(thread).enqueue_known_active(orig);
 JRT_END
 
-JRT_LEAF(oopDesc*, ShenandoahRuntime::write_barrier_JRT(oopDesc* src))
-  oop result = ShenandoahBarrierSet::barrier_set()->write_barrier_mutator(src);
+JRT_LEAF(oopDesc*, ShenandoahRuntime::load_reference_barrier_JRT(oopDesc* src))
+  oop result = ShenandoahBarrierSet::barrier_set()->load_reference_barrier_mutator(src);
   return (oopDesc*) result;
 JRT_END
 

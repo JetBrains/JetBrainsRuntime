@@ -295,12 +295,6 @@ public abstract class BaseConfiguration {
      // A list of pairs containing urls and package list
     private final List<Pair<String, String>> linkOfflineList = new ArrayList<>();
 
-    /**
-     * Flag to enable/disable use of module directories when generating docs for modules
-     * Default: on (module directories are enabled).
-     */
-    public boolean useModuleDirectories = true;
-
     public boolean dumpOnError = false;
 
     private List<Pair<String, String>> groupPairs;
@@ -748,13 +742,6 @@ public abstract class BaseConfiguration {
                         showTaglets = true;
                         return true;
                     }
-                },
-                new XOption(resources, "--no-module-directories") {
-                    @Override
-                    public boolean process(String option, List<String> args) {
-                        useModuleDirectories = false;
-                        return true;
-                    }
                 }
         };
         Set<Doclet.Option> set = new TreeSet<>();
@@ -837,39 +824,47 @@ public abstract class BaseConfiguration {
         tagletManager = tagletManager == null ?
                 new TagletManager(nosince, showversion, showauthor, javafx, this) :
                 tagletManager;
-        for (List<String> args : customTagStrs) {
-            if (args.get(0).equals("-taglet")) {
-                tagletManager.addCustomTag(args.get(1), getFileManager(), tagletpath);
-                continue;
+        JavaFileManager fileManager = getFileManager();
+        Messages messages = getMessages();
+        try {
+            tagletManager.initTagletPath(fileManager, tagletpath);
+            tagletManager.loadTaglets(fileManager);
+
+            for (List<String> args : customTagStrs) {
+                if (args.get(0).equals("-taglet")) {
+                    tagletManager.addCustomTag(args.get(1), fileManager);
+                    continue;
+                }
+                List<String> tokens = tokenize(args.get(1), TagletManager.SIMPLE_TAGLET_OPT_SEPARATOR, 3);
+                switch (tokens.size()) {
+                    case 1:
+                        String tagName = args.get(1);
+                        if (tagletManager.isKnownCustomTag(tagName)) {
+                            //reorder a standard tag
+                            tagletManager.addNewSimpleCustomTag(tagName, null, "");
+                        } else {
+                            //Create a simple tag with the heading that has the same name as the tag.
+                            StringBuilder heading = new StringBuilder(tagName + ":");
+                            heading.setCharAt(0, Character.toUpperCase(tagName.charAt(0)));
+                            tagletManager.addNewSimpleCustomTag(tagName, heading.toString(), "a");
+                        }
+                        break;
+
+                    case 2:
+                        //Add simple taglet without heading, probably to excluding it in the output.
+                        tagletManager.addNewSimpleCustomTag(tokens.get(0), tokens.get(1), "");
+                        break;
+
+                    case 3:
+                        tagletManager.addNewSimpleCustomTag(tokens.get(0), tokens.get(2), tokens.get(1));
+                        break;
+
+                    default:
+                        messages.error("doclet.Error_invalid_custom_tag_argument", args.get(1));
+                }
             }
-            List<String> tokens = tokenize(args.get(1), TagletManager.SIMPLE_TAGLET_OPT_SEPARATOR, 3);
-            switch (tokens.size()) {
-                case 1:
-                    String tagName = args.get(1);
-                    if (tagletManager.isKnownCustomTag(tagName)) {
-                        //reorder a standard tag
-                        tagletManager.addNewSimpleCustomTag(tagName, null, "");
-                    } else {
-                        //Create a simple tag with the heading that has the same name as the tag.
-                        StringBuilder heading = new StringBuilder(tagName + ":");
-                        heading.setCharAt(0, Character.toUpperCase(tagName.charAt(0)));
-                        tagletManager.addNewSimpleCustomTag(tagName, heading.toString(), "a");
-                    }
-                    break;
-
-                case 2:
-                    //Add simple taglet without heading, probably to excluding it in the output.
-                    tagletManager.addNewSimpleCustomTag(tokens.get(0), tokens.get(1), "");
-                    break;
-
-                case 3:
-                    tagletManager.addNewSimpleCustomTag(tokens.get(0), tokens.get(2), tokens.get(1));
-                    break;
-
-                default:
-                    Messages messages = getMessages();
-                    messages.error("doclet.Error_invalid_custom_tag_argument", args.get(1));
-            }
+        } catch (IOException e) {
+            messages.error("doclet.taglet_could_not_set_location", e.toString());
         }
     }
 

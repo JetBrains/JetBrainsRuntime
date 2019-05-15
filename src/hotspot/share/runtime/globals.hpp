@@ -324,9 +324,6 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Maximum number of pages to include in the page scan procedure")  \
           range(0, max_uintx)                                               \
                                                                             \
-  product_pd(bool, NeedsDeoptSuspend,                                       \
-          "True for register window machines (sparc/ia64)")                 \
-                                                                            \
   product(intx, UseSSE, 99,                                                 \
           "Highest supported SSE instructions set on x86/x64")              \
           range(0, 99)                                                      \
@@ -369,6 +366,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                             \
   diagnostic(bool, SafepointALot, false,                                    \
           "Generate a lot of safepoints. This works with "                  \
+          "GuaranteedSafepointInterval")                                    \
+                                                                            \
+  diagnostic(bool, HandshakeALot, false,                                    \
+          "Generate a lot of handshakes. This works with "                  \
           "GuaranteedSafepointInterval")                                    \
                                                                             \
   product_pd(bool, BackgroundCompilation,                                   \
@@ -541,10 +542,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Number of ring buffer event logs")                               \
           range(1, NOT_LP64(1*K) LP64_ONLY(1*M))                            \
                                                                             \
-  product(bool, BytecodeVerificationRemote, true,                           \
+  diagnostic(bool, BytecodeVerificationRemote, true,                        \
           "Enable the Java bytecode verifier for remote classes")           \
                                                                             \
-  product(bool, BytecodeVerificationLocal, false,                           \
+  diagnostic(bool, BytecodeVerificationLocal, false,                        \
           "Enable the Java bytecode verifier for local classes")            \
                                                                             \
   develop(bool, ForceFloatExceptions, trueInDebug,                          \
@@ -861,7 +862,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "by the application (Solaris & Linux only)")                      \
                                                                             \
   product(bool, AllowJNIEnvProxy, false,                                    \
-          "Allow JNIEnv proxies for jdbx")                                  \
+          "(Deprecated) Allow JNIEnv proxies for jdbx")                     \
                                                                             \
   product(bool, RestoreMXCSROnJNICalls, false,                              \
           "Restore MXCSR when returning from JNI calls")                    \
@@ -973,6 +974,10 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
   /* change to false by default sometime after Mustang */                   \
   product(bool, VerifyMergedCPBytecodes, true,                              \
           "Verify bytecodes after RedefineClasses constant pool merging")   \
+                                                                            \
+  product(bool, AllowRedefinitionToAddDeleteMethods, false,                 \
+          "(Deprecated) Allow redefinition to add and delete private "      \
+          "static or final methods for compatibility with old releases")    \
                                                                             \
   develop(bool, TraceBytecodes, false,                                      \
           "Trace bytecode execution")                                       \
@@ -1234,7 +1239,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "exit")                                                           \
                                                                             \
   product(bool, PrintFlagsRanges, false,                                    \
-          "Print VM flags and their ranges and exit VM")                    \
+          "Print VM flags and their ranges")                                \
                                                                             \
   diagnostic(bool, SerializeVMOutput, true,                                 \
           "Use a mutex to serialize output to tty and LogFile")             \
@@ -1262,6 +1267,12 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                             \
   product(bool, DisplayVMOutputToStdout, false,                             \
           "If DisplayVMOutput is true, display all VM output to stdout")    \
+                                                                            \
+  product(bool, ErrorFileToStderr, false,                                   \
+          "If true, error data is printed to stderr instead of a file")     \
+                                                                            \
+  product(bool, ErrorFileToStdout, false,                                   \
+          "If true, error data is printed to stdout instead of a file")     \
                                                                             \
   product(bool, UseHeavyMonitors, false,                                    \
           "use heavyweight instead of lightweight Java monitors")           \
@@ -2338,8 +2349,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Use shared spaces for metadata")                                 \
                                                                             \
   product(bool, VerifySharedSpaces, false,                                  \
-          "Verify shared spaces (false for default archive, true for "      \
-          "archive specified by -XX:SharedArchiveFile)")                    \
+          "Verify integrity of shared spaces")                              \
                                                                             \
   product(bool, RequireSharedSpaces, false,                                 \
           "Require shared spaces for metadata")                             \

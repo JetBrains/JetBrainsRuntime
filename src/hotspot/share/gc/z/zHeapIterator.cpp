@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,13 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/z/zAddressRangeMap.inline.hpp"
 #include "gc/z/zBarrier.inline.hpp"
 #include "gc/z/zGlobals.hpp"
+#include "gc/z/zGranuleMap.inline.hpp"
 #include "gc/z/zHeapIterator.hpp"
 #include "gc/z/zOop.inline.hpp"
 #include "gc/z/zRootsIterator.hpp"
+#include "gc/z/zStat.hpp"
 #include "memory/iterator.inline.hpp"
 #include "utilities/bitMap.inline.hpp"
 #include "utilities/stack.inline.hpp"
@@ -123,13 +124,13 @@ ZHeapIterator::~ZHeapIterator() {
 }
 
 static size_t object_index_max() {
-  return ZPageSizeMin >> ZObjectAlignmentSmallShift;
+  return ZGranuleSize >> ZObjectAlignmentSmallShift;
 }
 
 static size_t object_index(oop obj) {
   const uintptr_t addr = ZOop::to_address(obj);
   const uintptr_t offset = ZAddress::offset(addr);
-  const uintptr_t mask = (1 << ZPageSizeMinShift) - 1;
+  const uintptr_t mask = ZGranuleSize - 1;
   return (offset & mask) >> ZObjectAlignmentSmallShift;
 }
 
@@ -170,6 +171,7 @@ void ZHeapIterator::objects_do(ObjectClosure* cl) {
   // If we didn't do this the application would have expected to see
   // ObjectFree events for phantom reachable objects in the tag map.
 
+  ZStatTimerDisable disable;
   ZHeapIteratorRootOopClosure root_cl(this);
 
   // Push strong roots onto stack

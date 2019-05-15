@@ -38,6 +38,7 @@
 #include "logging/log.hpp"
 #include "memory/metaspace.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/instanceMirrorKlass.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/handles.inline.hpp"
@@ -65,7 +66,7 @@ void GCHeapLog::log_heap(CollectedHeap* heap, bool before) {
   }
 
   double timestamp = fetch_timestamp();
-  MutexLockerEx ml(&_mutex, Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(&_mutex, Mutex::_no_safepoint_check_flag);
   int index = compute_log_index();
   _records[index].thread = NULL; // Its the GC thread so it's not that interesting.
   _records[index].timestamp = timestamp;
@@ -79,6 +80,11 @@ void GCHeapLog::log_heap(CollectedHeap* heap, bool before) {
 
   heap->print_on(&st);
   st.print_cr("}");
+}
+
+size_t CollectedHeap::unused() const {
+  MutexLocker ml(Heap_lock);
+  return capacity() - used();
 }
 
 VirtualSpaceSummary CollectedHeap::create_heap_space_summary() {
@@ -129,6 +135,8 @@ void CollectedHeap::print_heap_after_gc() {
     _gc_heap_log->log_heap_after(this);
   }
 }
+
+void CollectedHeap::print() const { print_on(tty); }
 
 void CollectedHeap::print_on_error(outputStream* st) const {
   st->print_cr("Heap:");
@@ -574,4 +582,9 @@ void CollectedHeap::deduplicate_string(oop str) {
 
 size_t CollectedHeap::obj_size(oop obj) const {
   return obj->size();
+}
+
+uint32_t CollectedHeap::hash_oop(oop obj) const {
+  const uintptr_t addr = cast_from_oop<uintptr_t>(obj);
+  return static_cast<uint32_t>(addr >> LogMinObjAlignment);
 }

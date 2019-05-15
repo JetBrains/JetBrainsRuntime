@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,9 +47,7 @@ public class FixedStringContent extends Content {
      * @param content content for the object
      */
     public FixedStringContent(CharSequence content) {
-        string = needEscape(content)
-                ? escape(content)
-                : content.toString();
+        string = Entity.escapeHtmlChars(content);
     }
 
     /**
@@ -59,7 +57,7 @@ public class FixedStringContent extends Content {
      * @throws UnsupportedOperationException always
      */
     @Override
-    public void addContent(Content content) {
+    public void add(Content content) {
         throw new UnsupportedOperationException();
     }
 
@@ -71,7 +69,7 @@ public class FixedStringContent extends Content {
      * @throws UnsupportedOperationException always
      */
     @Override
-    public void addContent(CharSequence strContent) {
+    public void add(CharSequence strContent) {
         throw new UnsupportedOperationException();
     }
 
@@ -103,31 +101,6 @@ public class FixedStringContent extends Content {
     public boolean write(Writer out, boolean atNewline) throws IOException {
         out.write(string);
         return string.endsWith(DocletConstants.NL);
-    }
-
-    private boolean needEscape(CharSequence cs) {
-        for (int i = 0; i < cs.length(); i++) {
-            switch (cs.charAt(i)) {
-                case '<':
-                case '>':
-                case '&':
-                    return true;
-            }
-        }
-        return false;
-    }
-    private String escape(CharSequence s) {
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < s.length(); i++) {
-            char ch = s.charAt(i);
-            switch (ch) {
-                case '<': sb.append("&lt;");  break;
-                case '>': sb.append("&gt;");  break;
-                case '&': sb.append("&amp;"); break;
-                default:  sb.append(ch);      break;
-            }
-        }
-        return sb.toString();
     }
 
 }

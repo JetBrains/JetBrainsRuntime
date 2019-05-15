@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ package jdk.javadoc.internal.doclets.toolkit.builders;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.toolkit.AnnotationTypeWriter;
 import jdk.javadoc.internal.doclets.toolkit.Content;
 import jdk.javadoc.internal.doclets.toolkit.DocFilesHandler;
@@ -149,14 +150,13 @@ public class AnnotationTypeBuilder extends AbstractBuilder {
      */
     protected void buildAnnotationTypeInfo(Content annotationContentTree)
             throws DocletException {
-        Content annotationInfoTree = writer.getAnnotationInfoTreeHeader();
-
+        Content annotationInfoTree = new ContentBuilder();
         buildAnnotationTypeSignature(annotationInfoTree);
         buildDeprecationInfo(annotationInfoTree);
         buildAnnotationTypeDescription(annotationInfoTree);
         buildAnnotationTypeTagInfo(annotationInfoTree);
 
-        annotationContentTree.addContent(writer.getAnnotationInfo(annotationInfoTree));
+        annotationContentTree.add(writer.getAnnotationInfo(annotationInfoTree));
     }
 
     /**
@@ -205,7 +205,7 @@ public class AnnotationTypeBuilder extends AbstractBuilder {
     protected void buildMemberSummary(Content annotationContentTree) throws DocletException {
         Content memberSummaryTree = writer.getMemberTreeHeader();
         builderFactory.getMemberSummaryBuilder(writer).build(memberSummaryTree);
-        annotationContentTree.addContent(writer.getMemberSummaryTree(memberSummaryTree));
+        annotationContentTree.add(writer.getMemberSummaryTree(memberSummaryTree));
     }
 
     /**
@@ -223,7 +223,7 @@ public class AnnotationTypeBuilder extends AbstractBuilder {
         buildAnnotationTypeOptionalMemberDetails(memberDetailsTree);
 
         if (memberDetailsTree.isValid()) {
-            annotationContentTree.addContent(writer.getMemberDetailsTree(memberDetailsTree));
+            annotationContentTree.add(writer.getMemberDetailsTree(memberDetailsTree));
         }
     }
 

@@ -97,8 +97,7 @@ class DatagramChannelImpl
     private static final int ST_UNCONNECTED = 0;
     private static final int ST_CONNECTED = 1;
     private static final int ST_CLOSING = 2;
-    private static final int ST_KILLPENDING = 3;
-    private static final int ST_KILLED = 4;
+    private static final int ST_CLOSED = 3;
     private int state;
 
     // IDs of native threads doing reads and writes, for signalling
@@ -386,9 +385,8 @@ class DatagramChannelImpl
         if (blocking) {
             synchronized (stateLock) {
                 readerThread = 0;
-                // notify any thread waiting in implCloseSelectableChannel
                 if (state == ST_CLOSING) {
-                    stateLock.notifyAll();
+                    tryFinishClose();
                 }
             }
             // remove hook for Thread.interrupt
@@ -414,21 +412,29 @@ class DatagramChannelImpl
                 SecurityManager sm = System.getSecurityManager();
                 if (connected || (sm == null)) {
                     // connected or no security manager
-                    do {
-                        n = receive(fd, dst, connected);
-                    } while ((n == IOStatus.INTERRUPTED) && isOpen());
-                    if (n == IOStatus.UNAVAILABLE)
+                    n = receive(fd, dst, connected);
+                    if (blocking) {
+                        while (IOStatus.okayToRetry(n) && isOpen()) {
+                            park(Net.POLLIN);
+                            n = receive(fd, dst, connected);
+                        }
+                    } else if (n == IOStatus.UNAVAILABLE) {
                         return null;
+                    }
                 } else {
                     // Cannot receive into user's buffer when running with a
                     // security manager and not connected
                     bb = Util.getTemporaryDirectBuffer(dst.remaining());
                     for (;;) {
-                        do {
-                            n = receive(fd, bb, connected);
-                        } while ((n == IOStatus.INTERRUPTED) && isOpen());
-                        if (n == IOStatus.UNAVAILABLE)
+                        n = receive(fd, bb, connected);
+                        if (blocking) {
+                            while (IOStatus.okayToRetry(n) && isOpen()) {
+                                park(Net.POLLIN);
+                                n = receive(fd, bb, connected);
+                            }
+                        } else if (n == IOStatus.UNAVAILABLE) {
                             return null;
+                        }
                         InetSocketAddress isa = (InetSocketAddress)sender;
                         try {
                             sm.checkAccept(isa.getAddress().getHostAddress(),
@@ -493,6 +499,7 @@ class DatagramChannelImpl
         return n;
     }
 
+    @Override
     public int send(ByteBuffer src, SocketAddress target)
         throws IOException
     {
@@ -510,9 +517,13 @@ class DatagramChannelImpl
                     if (!target.equals(remote)) {
                         throw new AlreadyConnectedException();
                     }
-                    do {
-                        n = IOUtil.write(fd, src, -1, nd);
-                    } while ((n == IOStatus.INTERRUPTED) && isOpen());
+                    n = IOUtil.write(fd, src, -1, nd);
+                    if (blocking) {
+                        while (IOStatus.okayToRetry(n) && isOpen()) {
+                            park(Net.POLLOUT);
+                            n = IOUtil.write(fd, src, -1, nd);
+                        }
+                    }
                 } else {
                     // not connected
                     SecurityManager sm = System.getSecurityManager();
@@ -524,9 +535,13 @@ class DatagramChannelImpl
                             sm.checkConnect(ia.getHostAddress(), isa.getPort());
                         }
                     }
-                    do {
-                        n = send(fd, src, isa);
-                    } while ((n == IOStatus.INTERRUPTED) && isOpen());
+                    n = send(fd, src, isa);
+                    if (blocking) {
+                        while (IOStatus.okayToRetry(n) && isOpen()) {
+                            park(Net.POLLOUT);
+                            n = send(fd, src, isa);
+                        }
+                    }
                 }
             } finally {
                 endWrite(blocking, n > 0);
@@ -602,10 +617,13 @@ class DatagramChannelImpl
             int n = 0;
             try {
                 beginRead(blocking, true);
-                do {
-                    n = IOUtil.read(fd, buf, -1, nd);
-                } while ((n == IOStatus.INTERRUPTED) && isOpen());
-
+                n = IOUtil.read(fd, buf, -1, nd);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLIN);
+                        n = IOUtil.read(fd, buf, -1, nd);
+                    }
+                }
             } finally {
                 endRead(blocking, n > 0);
                 assert IOStatus.check(n);
@@ -628,10 +646,13 @@ class DatagramChannelImpl
             long n = 0;
             try {
                 beginRead(blocking, true);
-                do {
-                    n = IOUtil.read(fd, dsts, offset, length, nd);
-                } while ((n == IOStatus.INTERRUPTED) && isOpen());
-
+                n = IOUtil.read(fd, dsts, offset, length, nd);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLIN);
+                        n = IOUtil.read(fd, dsts, offset, length, nd);
+                    }
+                }
             } finally {
                 endRead(blocking, n > 0);
                 assert IOStatus.check(n);
@@ -683,9 +704,8 @@ class DatagramChannelImpl
         if (blocking) {
             synchronized (stateLock) {
                 writerThread = 0;
-                // notify any thread waiting in implCloseSelectableChannel
                 if (state == ST_CLOSING) {
-                    stateLock.notifyAll();
+                    tryFinishClose();
                 }
             }
             // remove hook for Thread.interrupt
@@ -703,9 +723,13 @@ class DatagramChannelImpl
             int n = 0;
             try {
                 beginWrite(blocking, true);
-                do {
-                    n = IOUtil.write(fd, buf, -1, nd);
-                } while ((n == IOStatus.INTERRUPTED) && isOpen());
+                n = IOUtil.write(fd, buf, -1, nd);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLOUT);
+                        n = IOUtil.write(fd, buf, -1, nd);
+                    }
+                }
             } finally {
                 endWrite(blocking, n > 0);
                 assert IOStatus.check(n);
@@ -728,9 +752,13 @@ class DatagramChannelImpl
             long n = 0;
             try {
                 beginWrite(blocking, true);
-                do {
-                    n = IOUtil.write(fd, srcs, offset, length, nd);
-                } while ((n == IOStatus.INTERRUPTED) && isOpen());
+                n = IOUtil.write(fd, srcs, offset, length, nd);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLOUT);
+                        n = IOUtil.write(fd, srcs, offset, length, nd);
+                    }
+                }
             } finally {
                 endWrite(blocking, n > 0);
                 assert IOStatus.check(n);
@@ -793,7 +821,7 @@ class DatagramChannelImpl
     }
 
     private void bindInternal(SocketAddress local) throws IOException {
-        assert Thread.holdsLock(stateLock) && (localAddress == null);
+        assert Thread.holdsLock(stateLock )&& (localAddress == null);
 
         InetSocketAddress isa;
         if (local == null) {
@@ -865,7 +893,7 @@ class DatagramChannelImpl
                     }
                     try {
                         ByteBuffer buf = ByteBuffer.allocate(100);
-                        while (receive(buf) != null) {
+                        while (receive(fd, buf, false) > 0) {
                             buf.clear();
                         }
                     } finally {
@@ -1124,29 +1152,75 @@ class DatagramChannelImpl
     }
 
     /**
-     * Invoked by implCloseChannel to close the channel.
-     *
-     * This method waits for outstanding I/O operations to complete. When in
-     * blocking mode, the socket is pre-closed and the threads in blocking I/O
-     * operations are signalled to ensure that the outstanding I/O operations
-     * complete quickly.
-     *
-     * The socket is closed by this method when it is not registered with a
-     * Selector. Note that a channel configured blocking may be registered with
-     * a Selector. This arises when a key is canceled and the channel configured
-     * to blocking mode before the key is flushed from the Selector.
+     * Closes the socket if there are no I/O operations in progress and the
+     * channel is not registered with a Selector.
      */
-    @Override
-    protected void implCloseSelectableChannel() throws IOException {
-        assert !isOpen();
+    private boolean tryClose() throws IOException {
+        assert Thread.holdsLock(stateLock) && state == ST_CLOSING;
+        if ((readerThread == 0) && (writerThread == 0) && !isRegistered()) {
+            state = ST_CLOSED;
+            try {
+                nd.close(fd);
+            } finally {
+                // notify resource manager
+                ResourceManager.afterUdpClose();
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
 
-        boolean blocking;
-        boolean interrupted = false;
+    /**
+     * Invokes tryClose to attempt to close the socket.
+     *
+     * This method is used for deferred closing by I/O and Selector operations.
+     */
+    private void tryFinishClose() {
+        try {
+            tryClose();
+        } catch (IOException ignore) { }
+    }
 
-        // set state to ST_CLOSING and invalid membership keys
+    /**
+     * Closes this channel when configured in blocking mode.
+     *
+     * If there is an I/O operation in progress then the socket is pre-closed
+     * and the I/O threads signalled, in which case the final close is deferred
+     * until all I/O operations complete.
+     */
+    private void implCloseBlockingMode() throws IOException {
         synchronized (stateLock) {
             assert state < ST_CLOSING;
-            blocking = isBlocking();
+            state = ST_CLOSING;
+
+            // if member of any multicast groups then invalidate the keys
+            if (registry != null)
+                registry.invalidateAll();
+
+            if (!tryClose()) {
+                long reader = readerThread;
+                long writer = writerThread;
+                if (reader != 0 || writer != 0) {
+                    nd.preClose(fd);
+                    if (reader != 0)
+                        NativeThread.signal(reader);
+                    if (writer != 0)
+                        NativeThread.signal(writer);
+                }
+            }
+        }
+    }
+
+    /**
+     * Closes this channel when configured in non-blocking mode.
+     *
+     * If the channel is registered with a Selector then the close is deferred
+     * until the channel is flushed from all Selectors.
+     */
+    private void implCloseNonBlockingMode() throws IOException {
+        synchronized (stateLock) {
+            assert state < ST_CLOSING;
             state = ST_CLOSING;
 
             // if member of any multicast groups then invalidate the keys
@@ -1154,67 +1228,36 @@ class DatagramChannelImpl
                 registry.invalidateAll();
         }
 
-        // wait for any outstanding I/O operations to complete
-        if (blocking) {
-            synchronized (stateLock) {
-                assert state == ST_CLOSING;
-                long reader = readerThread;
-                long writer = writerThread;
-                if (reader != 0 || writer != 0) {
-                    nd.preClose(fd);
-
-                    if (reader != 0)
-                        NativeThread.signal(reader);
-                    if (writer != 0)
-                        NativeThread.signal(writer);
-
-                    // wait for blocking I/O operations to end
-                    while (readerThread != 0 || writerThread != 0) {
-                        try {
-                            stateLock.wait();
-                        } catch (InterruptedException e) {
-                            interrupted = true;
-                        }
-                    }
-                }
-            }
-        } else {
-            // non-blocking mode: wait for read/write to complete
-            readLock.lock();
-            try {
-                writeLock.lock();
-                writeLock.unlock();
-            } finally {
-                readLock.unlock();
-            }
-        }
-
-        // set state to ST_KILLPENDING
+        // wait for any read/write operations to complete before trying to close
+        readLock.lock();
+        readLock.unlock();
+        writeLock.lock();
+        writeLock.unlock();
         synchronized (stateLock) {
-            assert state == ST_CLOSING;
-            state = ST_KILLPENDING;
+            if (state == ST_CLOSING) {
+                tryClose();
+            }
         }
+    }
 
-        // close socket if not registered with Selector
-        if (!isRegistered())
-            kill();
-
-        // restore interrupt status
-        if (interrupted)
-            Thread.currentThread().interrupt();
+    /**
+     * Invoked by implCloseChannel to close the channel.
+     */
+    @Override
+    protected void implCloseSelectableChannel() throws IOException {
+        assert !isOpen();
+        if (isBlocking()) {
+            implCloseBlockingMode();
+        } else {
+            implCloseNonBlockingMode();
+        }
     }
 
     @Override
-    public void kill() throws IOException {
+    public void kill() {
         synchronized (stateLock) {
-            if (state == ST_KILLPENDING) {
-                state = ST_KILLED;
-                try {
-                    nd.close(fd);
-                } finally {
-                    // notify resource manager
-                    ResourceManager.afterUdpClose();
-                }
+            if (state == ST_CLOSING) {
+                tryFinishClose();
             }
         }
     }

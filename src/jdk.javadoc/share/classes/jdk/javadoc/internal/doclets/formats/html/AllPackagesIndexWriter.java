@@ -83,12 +83,12 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
      */
     protected void buildAllPackagesFile() throws DocFileIOException {
         String label = resources.getText("doclet.All_Packages");
-        HtmlTree bodyTree = getBody(true, getWindowTitle(label));
+        HtmlTree bodyTree = getBody(getWindowTitle(label));
         HtmlTree header = HtmlTree.HEADER();
         addTop(header);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        header.addContent(navBar.getContent(true));
-        bodyTree.addContent(header);
+        header.add(navBar.getContent(true));
+        bodyTree.add(header);
         HtmlTree div = new HtmlTree(HtmlTag.DIV);
         div.setStyle(HtmlStyle.allPackagesContainer);
         addPackages(div);
@@ -96,14 +96,14 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
         Content pHeading = HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING, true,
                 HtmlStyle.title, titleContent);
         Content headerDiv = HtmlTree.DIV(HtmlStyle.header, pHeading);
-        mainTree.addContent(headerDiv);
-        mainTree.addContent(div);
-        bodyTree.addContent(mainTree);
+        mainTree.add(headerDiv);
+        mainTree.add(div);
+        bodyTree.add(mainTree);
         Content footer = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
-        footer.addContent(navBar.getContent(false));
+        footer.add(navBar.getContent(false));
         addBottom(footer);
-        bodyTree.addContent(footer);
+        bodyTree.add(footer);
         printHtmlDocument(null, "package index", bodyTree);
     }
 
@@ -125,7 +125,6 @@ public class AllPackagesIndexWriter extends HtmlDocletWriter {
                 table.addRow(pkg, packageLinkContent, summaryContent);
             }
         }
-        HtmlTree li = HtmlTree.LI(HtmlStyle.blockList, table.toContent());
-        content.addContent(HtmlTree.UL(HtmlStyle.blockList, li));
+        content.add(table.toContent());
     }
 }

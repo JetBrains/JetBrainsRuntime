@@ -12,11 +12,10 @@ also an alternate target `exploded-test` that uses the exploded image
 instead. Not all tests will run successfully on the exploded image, but using
 this target can greatly improve rebuild times for certain workflows.
 
-Previously, `make test` was used invoke an old system for running test, and
+Previously, `make test` was used to invoke an old system for running tests, and
 `make run-test` was used for the new test framework. For backward compatibility
 with scripts and muscle memory, `run-test` (and variants like
-`exploded-run-test` or `run-test-tier1`) are kept as aliases. The old system
-can still be accessed for some time using `cd test && make`.
+`exploded-run-test` or `run-test-tier1`) are kept as aliases.
 
 Some example command-lines:
 
@@ -373,6 +372,32 @@ Additional VM arguments to provide to forked off VMs. Same as `-jvmArgs <args>`
 
 #### OPTIONS
 Additional arguments to send to JMH.
+
+## Notes for Specific Tests
+
+### Docker Tests
+
+Docker tests with default parameters may fail on systems with glibc versions not
+compatible with the one used in the default docker image (e.g., Oracle Linux 7.6 for x86).
+For example, they pass on Ubuntu 16.04 but fail on Ubuntu 18.04 if run like this on x86:
+
+    $ make test TEST="jtreg:test/hotspot/jtreg/containers/docker"
+
+To run these tests correctly, additional parameters for the correct docker image are
+required on Ubuntu 18.04 by using `JAVA_OPTIONS`.
+
+    $ make test TEST="jtreg:test/hotspot/jtreg/containers/docker" JTREG="JAVA_OPTIONS=-Djdk.test.docker.image.name=ubuntu -Djdk.test.docker.image.version=latest"
+
+### Non-US locale
+
+If your locale is non-US, some tests are likely to fail. To work around this you can
+set the locale to US. On Unix platforms simply setting `LANG="en_US"` in the
+environment before running tests should work. On Windows, setting
+`JTREG="VM_OPTIONS=-Duser.language=en -Duser.country=US"` helps for most, but not all test cases.
+For example:
+
+    $ export LANG="en_US" && make test TEST=...
+    $ make test JTREG="VM_OPTIONS=-Duser.language=en -Duser.country=US" TEST=...
 
 ---
 # Override some definitions in the global css file that are not optimal for

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
 import sun.net.ConnectionResetException;
 import sun.net.NetHooks;
+import sun.net.PlatformSocketImpl;
 import sun.net.ResourceManager;
 import sun.net.util.SocketExceptions;
 
@@ -46,7 +50,7 @@ import sun.net.util.SocketExceptions;
  *
  * @author  Steven B. Byrne
  */
-abstract class AbstractPlainSocketImpl extends SocketImpl {
+abstract class AbstractPlainSocketImpl extends SocketImpl implements PlatformSocketImpl {
     /* instance variable for SO_TIMEOUT */
     int timeout;   // timeout in millisec
     // traffic class
@@ -69,6 +73,12 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
 
     /* indicates connection reset state */
     private volatile boolean connectionReset;
+
+    /* indicates whether impl is bound  */
+    boolean isBound;
+
+    /* indicates whether impl is connected  */
+    volatile boolean isConnected;
 
    /* whether this Socket is a stream (TCP) socket or not (UDP)
     */
@@ -99,6 +109,10 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
             checkedReusePort = true;
         }
         return isReusePortAvailable;
+    }
+
+    AbstractPlainSocketImpl(boolean isServer) {
+        super(isServer);
     }
 
     /**
@@ -144,10 +158,6 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
             socketCreate(true);
             SocketCleanable.register(fd);
         }
-        if (socket != null)
-            socket.setCreated();
-        if (serverSocket != null)
-            serverSocket.setCreated();
     }
 
     /**
@@ -176,6 +186,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
                        it will be passed up the call stack */
                 }
             }
+            isConnected = connected;
         }
     }
 
@@ -191,6 +202,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
 
         try {
             connectToAddress(address, port, timeout);
+            isConnected = true;
             return;
         } catch (IOException e) {
             // everything failed
@@ -232,6 +244,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
                        it will be passed up the call stack */
                 }
             }
+            isConnected = connected;
         }
     }
 
@@ -389,7 +402,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
 
     synchronized void doConnect(InetAddress address, int port, int timeout) throws IOException {
         synchronized (fdLock) {
-            if (!closePending && (socket == null || !socket.isBound())) {
+            if (!closePending && !isBound) {
                 NetHooks.beforeTcpConnect(fd, address, port);
             }
         }
@@ -402,14 +415,6 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
                     if (closePending) {
                         throw new SocketException ("Socket closed");
                     }
-                }
-                // If we have a ref. to the Socket, then sets the flags
-                // created, bound & connected to true.
-                // This is normally done in Socket.connect() but some
-                // subclasses of Socket may call impl.connect() directly!
-                if (socket != null) {
-                    socket.setBound();
-                    socket.setConnected();
                 }
             } finally {
                 releaseFD();
@@ -429,15 +434,12 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
         throws IOException
     {
        synchronized (fdLock) {
-            if (!closePending && (socket == null || !socket.isBound())) {
+            if (!closePending && !isBound) {
                 NetHooks.beforeTcpBind(fd, address, lport);
             }
         }
         socketBind(address, lport);
-        if (socket != null)
-            socket.setBound();
-        if (serverSocket != null)
-            serverSocket.setBound();
+        isBound = true;
     }
 
     /**
@@ -450,15 +452,17 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
 
     /**
      * Accepts connections.
-     * @param s the connection
+     * @param si the socket impl
      */
-    protected void accept(SocketImpl s) throws IOException {
+    protected void accept(SocketImpl si) throws IOException {
+        si.fd = new FileDescriptor();
         acquireFD();
         try {
-            socketAccept(s);
+            socketAccept(si);
         } finally {
             releaseFD();
         }
+        SocketCleanable.register(si.fd);
     }
 
     /**
@@ -470,8 +474,14 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
                 throw new IOException("Socket Closed");
             if (shut_rd)
                 throw new IOException("Socket input is shutdown");
-            if (socketInputStream == null)
-                socketInputStream = new SocketInputStream(this);
+            if (socketInputStream == null) {
+                PrivilegedExceptionAction<SocketInputStream> pa = () -> new SocketInputStream(this);
+                try {
+                    socketInputStream = AccessController.doPrivileged(pa);
+                } catch (PrivilegedActionException e) {
+                    throw (IOException) e.getCause();
+                }
+            }
         }
         return socketInputStream;
     }
@@ -489,8 +499,14 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
                 throw new IOException("Socket Closed");
             if (shut_wr)
                 throw new IOException("Socket output is shutdown");
-            if (socketOutputStream == null)
-                socketOutputStream = new SocketOutputStream(this);
+            if (socketOutputStream == null) {
+                PrivilegedExceptionAction<SocketOutputStream> pa = () -> new SocketOutputStream(this);
+                try {
+                    socketOutputStream = AccessController.doPrivileged(pa);
+                } catch (PrivilegedActionException e) {
+                    throw (IOException) e.getCause();
+                }
+            }
         }
         return socketOutputStream;
     }
@@ -589,14 +605,9 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
         }
     }
 
-    void reset() throws IOException {
-        if (fd != null) {
-            socketClose();
-        }
-        fd = null;
-        super.reset();
+    void reset() {
+        throw new InternalError("should not get here");
     }
-
 
     /**
      * Shutdown read-half of the socket connection;
@@ -714,7 +725,7 @@ abstract class AbstractPlainSocketImpl extends SocketImpl {
         socketClose0(false);
     }
 
-    abstract void socketCreate(boolean isServer) throws IOException;
+    abstract void socketCreate(boolean stream) throws IOException;
     abstract void socketConnect(InetAddress address, int port, int timeout)
         throws IOException;
     abstract void socketBind(InetAddress address, int port)

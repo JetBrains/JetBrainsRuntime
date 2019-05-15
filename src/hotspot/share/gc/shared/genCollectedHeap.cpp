@@ -42,11 +42,13 @@
 #include "gc/shared/gcPolicyCounters.hpp"
 #include "gc/shared/gcTrace.hpp"
 #include "gc/shared/gcTraceTime.inline.hpp"
+#include "gc/shared/genArguments.hpp"
 #include "gc/shared/gcVMOperations.hpp"
 #include "gc/shared/genCollectedHeap.hpp"
 #include "gc/shared/genOopClosures.inline.hpp"
 #include "gc/shared/generationSpec.hpp"
 #include "gc/shared/oopStorageParState.inline.hpp"
+#include "gc/shared/scavengableNMethods.hpp"
 #include "gc/shared/space.hpp"
 #include "gc/shared/strongRootsScope.hpp"
 #include "gc/shared/weakProcessor.hpp"
@@ -54,6 +56,7 @@
 #include "memory/filemap.hpp"
 #include "memory/metaspaceCounters.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/biasedLocking.hpp"
 #include "runtime/flags/flagSetting.hpp"
@@ -68,22 +71,23 @@
 #include "utilities/macros.hpp"
 #include "utilities/stack.inline.hpp"
 #include "utilities/vmError.hpp"
+#if INCLUDE_JVMCI
+#include "jvmci/jvmci.hpp"
+#endif
 
-GenCollectedHeap::GenCollectedHeap(GenCollectorPolicy *policy,
-                                   Generation::Name young,
+GenCollectedHeap::GenCollectedHeap(Generation::Name young,
                                    Generation::Name old,
                                    const char* policy_counters_name) :
   CollectedHeap(),
   _young_gen_spec(new GenerationSpec(young,
-                                     policy->initial_young_size(),
-                                     policy->max_young_size(),
-                                     policy->gen_alignment())),
+                                     NewSize,
+                                     MaxNewSize,
+                                     GenAlignment)),
   _old_gen_spec(new GenerationSpec(old,
-                                   policy->initial_old_size(),
-                                   policy->max_old_size(),
-                                   policy->gen_alignment())),
+                                   OldSize,
+                                   MaxOldSize,
+                                   GenAlignment)),
   _rem_set(NULL),
-  _gen_policy(policy),
   _soft_ref_gen_policy(),
   _gc_policy_counters(new GCPolicyCounters(policy_counters_name, 2, 2)),
   _full_collections_completed(0),
@@ -103,9 +107,7 @@ jint GenCollectedHeap::initialize() {
   char* heap_address;
   ReservedSpace heap_rs;
 
-  size_t heap_alignment = collector_policy()->heap_alignment();
-
-  heap_address = allocate(heap_alignment, &heap_rs);
+  heap_address = allocate(HeapAlignment, &heap_rs);
 
   if (!heap_rs.is_reserved()) {
     vm_shutdown_during_initialization(
@@ -166,7 +168,7 @@ char* GenCollectedHeap::allocate(size_t alignment,
   *heap_rs = Universe::reserve_heap(total_reserved, alignment);
 
   os::trace_page_sizes("Heap",
-                       collector_policy()->min_heap_byte_size(),
+                       MinHeapSize,
                        total_reserved,
                        alignment,
                        heap_rs->base(),
@@ -174,6 +176,15 @@ char* GenCollectedHeap::allocate(size_t alignment,
 
   return heap_rs->base();
 }
+
+class GenIsScavengable : public BoolObjectClosure {
+public:
+  bool do_object_b(oop obj) {
+    return GenCollectedHeap::heap()->is_in_young(obj);
+  }
+};
+
+static GenIsScavengable _is_scavengable;
 
 void GenCollectedHeap::post_initialize() {
   CollectedHeap::post_initialize();
@@ -186,6 +197,8 @@ void GenCollectedHeap::post_initialize() {
                          def_new_gen->from()->capacity());
 
   MarkSweep::initialize();
+
+  ScavengableNMethods::initialize(&_is_scavengable);
 }
 
 void GenCollectedHeap::ref_processing_init() {
@@ -221,7 +234,7 @@ size_t GenCollectedHeap::max_capacity() const {
 // Update the _full_collections_completed counter
 // at the end of a stop-world full GC.
 unsigned int GenCollectedHeap::update_full_collections_completed() {
-  MonitorLockerEx ml(FullGCCount_lock, Mutex::_no_safepoint_check_flag);
+  MonitorLocker ml(FullGCCount_lock, Mutex::_no_safepoint_check_flag);
   assert(_full_collections_completed <= _total_full_collections,
          "Can't complete more collections than were started");
   _full_collections_completed = _total_full_collections;
@@ -235,7 +248,7 @@ unsigned int GenCollectedHeap::update_full_collections_completed() {
 // without synchronizing in any manner with the VM thread (which
 // may already have initiated a STW full collection "concurrently").
 unsigned int GenCollectedHeap::update_full_collections_completed(unsigned int count) {
-  MonitorLockerEx ml(FullGCCount_lock, Mutex::_no_safepoint_check_flag);
+  MonitorLocker ml(FullGCCount_lock, Mutex::_no_safepoint_check_flag);
   assert((_full_collections_completed <= _total_full_collections) &&
          (count <= _total_full_collections),
          "Can't complete more collections than were started");
@@ -699,11 +712,23 @@ bool GenCollectedHeap::should_do_full_collection(size_t size, bool full, bool is
 }
 
 void GenCollectedHeap::register_nmethod(nmethod* nm) {
-  CodeCache::register_scavenge_root_nmethod(nm);
+  ScavengableNMethods::register_nmethod(nm);
+}
+
+void GenCollectedHeap::unregister_nmethod(nmethod* nm) {
+  ScavengableNMethods::unregister_nmethod(nm);
 }
 
 void GenCollectedHeap::verify_nmethod(nmethod* nm) {
-  CodeCache::verify_scavenge_root_nmethod(nm);
+  ScavengableNMethods::verify_nmethod(nm);
+}
+
+void GenCollectedHeap::flush_nmethod(nmethod* nm) {
+  // Do nothing.
+}
+
+void GenCollectedHeap::prune_scavengable_nmethods() {
+  ScavengableNMethods::prune_nmethods();
 }
 
 HeapWord* GenCollectedHeap::satisfy_failed_allocation(size_t size, bool is_tlab) {
@@ -800,7 +825,6 @@ void GenCollectedHeap::process_roots(StrongRootsScope* scope,
                                      CLDClosure* weak_cld_closure,
                                      CodeBlobToOopClosure* code_roots) {
   // General roots.
-  assert(Threads::thread_claim_parity() != 0, "must have called prologue code");
   assert(code_roots != NULL, "code root closure should always be set");
   // _n_termination for _process_strong_tasks should be set up stream
   // in a method not running in a GC worker.  Otherwise the GC worker
@@ -834,10 +858,16 @@ void GenCollectedHeap::process_roots(StrongRootsScope* scope,
   if (_process_strong_tasks->try_claim_task(GCH_PS_jvmti_oops_do)) {
     JvmtiExport::oops_do(strong_roots);
   }
+#if INCLUDE_AOT
   if (UseAOT && _process_strong_tasks->try_claim_task(GCH_PS_aot_oops_do)) {
     AOTLoader::oops_do(strong_roots);
   }
-
+#endif
+#if INCLUDE_JVMCI
+  if (EnableJVMCI && _process_strong_tasks->try_claim_task(GCH_PS_jvmci_oops_do)) {
+    JVMCI::oops_do(strong_roots);
+  }
+#endif
   if (_process_strong_tasks->try_claim_task(GCH_PS_SystemDictionary_oops_do)) {
     SystemDictionary::oops_do(strong_roots);
   }
@@ -847,7 +877,7 @@ void GenCollectedHeap::process_roots(StrongRootsScope* scope,
       assert(code_roots != NULL, "must supply closure for code cache");
 
       // We only visit parts of the CodeCache when scavenging.
-      CodeCache::scavenge_root_nmethods_do(code_roots);
+      ScavengableNMethods::nmethods_do(code_roots);
     }
     if (so & SO_AllCodeCache) {
       assert(code_roots != NULL, "must supply closure for code cache");
@@ -859,7 +889,7 @@ void GenCollectedHeap::process_roots(StrongRootsScope* scope,
     // Verify that the code cache contents are not subject to
     // movement by a scavenging collection.
     DEBUG_ONLY(CodeBlobToOopClosure assert_code_is_non_scavengable(&assert_is_non_scavengable_closure, !CodeBlobToOopClosure::FixRelocations));
-    DEBUG_ONLY(CodeCache::asserted_non_scavengable_nmethods_do(&assert_code_is_non_scavengable));
+    DEBUG_ONLY(ScavengableNMethods::asserted_non_scavengable_nmethods_do(&assert_code_is_non_scavengable));
   }
 }
 
@@ -1062,18 +1092,6 @@ HeapWord* GenCollectedHeap::block_start(const void* addr) const {
   assert(_old_gen->is_in_reserved(addr), "Some generation should contain the address");
   assert(_old_gen->is_in(addr), "addr should be in allocated part of generation");
   return _old_gen->block_start(addr);
-}
-
-size_t GenCollectedHeap::block_size(const HeapWord* addr) const {
-  assert(is_in_reserved(addr), "block_size of address outside of heap");
-  if (_young_gen->is_in_reserved(addr)) {
-    assert(_young_gen->is_in(addr), "addr should be in allocated part of generation");
-    return _young_gen->block_size(addr);
-  }
-
-  assert(_old_gen->is_in_reserved(addr), "Some generation should contain the address");
-  assert(_old_gen->is_in(addr), "addr should be in allocated part of generation");
-  return _old_gen->block_size(addr);
 }
 
 bool GenCollectedHeap::block_is_obj(const HeapWord* addr) const {

@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/stringTable.hpp"
+#include "classfile/symbolTable.hpp"
 #include "code/codeCache.hpp"
 #include "code/dependencyContext.hpp"
 #include "compiler/compileBroker.hpp"
@@ -34,6 +35,8 @@
 #include "memory/allocation.inline.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
+#include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/typeArrayOop.inline.hpp"
@@ -316,7 +319,7 @@ oop MethodHandles::init_method_MemberName(Handle mname, CallInfo& info) {
   }
 
   Handle resolved_method = info.resolved_method_name();
-  assert(java_lang_invoke_ResolvedMethodName::vmtarget(resolved_method()) == m(),
+  assert(java_lang_invoke_ResolvedMethodName::vmtarget(resolved_method()) == m() || m->is_old(),
          "Should not change after link resolution");
 
   oop mname_oop = mname();
@@ -516,12 +519,12 @@ bool MethodHandles::is_signature_polymorphic_public_name(Klass* klass, Symbol* n
 // convert the external string or reflective type to an internal signature
 Symbol* MethodHandles::lookup_signature(oop type_str, bool intern_if_not_found, TRAPS) {
   if (java_lang_invoke_MethodType::is_instance(type_str)) {
-    return java_lang_invoke_MethodType::as_signature(type_str, intern_if_not_found, THREAD);
+    return java_lang_invoke_MethodType::as_signature(type_str, intern_if_not_found);
   } else if (java_lang_Class::is_instance(type_str)) {
-    return java_lang_Class::as_signature(type_str, false, THREAD);
+    return java_lang_Class::as_signature(type_str, false);
   } else if (java_lang_String::is_instance_inlined(type_str)) {
     if (intern_if_not_found) {
-      return java_lang_String::as_symbol(type_str, THREAD);
+      return java_lang_String::as_symbol(type_str);
     } else {
       return java_lang_String::as_symbol_or_null(type_str);
     }
@@ -599,7 +602,7 @@ Symbol* MethodHandles::lookup_basic_type_signature(Symbol* sig, bool keep_last_a
     }
     const char* sigstr =       buffer.base();
     int         siglen = (int) buffer.size();
-    bsig = SymbolTable::new_symbol(sigstr, siglen, THREAD);
+    bsig = SymbolTable::new_symbol(sigstr, siglen);
   }
   assert(is_basic_type_signature(bsig) ||
          // detune assert in case the injected argument is not a basic type:
@@ -1098,7 +1101,7 @@ void MethodHandles::flush_dependent_nmethods(Handle call_site, Handle target) {
   CallSiteDepChange changes(call_site, target);
   {
     NoSafepointVerifier nsv;
-    MutexLockerEx mu2(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+    MutexLocker mu2(CodeCache_lock, Mutex::_no_safepoint_check_flag);
 
     oop context = java_lang_invoke_CallSite::context_no_keepalive(call_site());
     DependencyContext deps = java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(context);
@@ -1497,7 +1500,7 @@ JVM_ENTRY(void, MHN_clearCallSiteContext(JNIEnv* env, jobject igcls, jobject con
     int marked = 0;
     {
       NoSafepointVerifier nsv;
-      MutexLockerEx mu2(CodeCache_lock, Mutex::_no_safepoint_check_flag);
+      MutexLocker mu2(CodeCache_lock, Mutex::_no_safepoint_check_flag);
       DependencyContext deps = java_lang_invoke_MethodHandleNatives_CallSiteContext::vmdependencies(context());
       marked = deps.remove_all_dependents();
     }

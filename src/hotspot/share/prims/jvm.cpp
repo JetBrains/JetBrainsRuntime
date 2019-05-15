@@ -33,6 +33,7 @@
 #include "classfile/modules.hpp"
 #include "classfile/packageEntry.hpp"
 #include "classfile/stringTable.hpp"
+#include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
@@ -137,9 +138,9 @@ static void trace_class_resolution_impl(Klass* to_class, TRAPS) {
     vframeStream vfst(jthread);
 
     // scan up the stack skipping ClassLoader, AccessController and PrivilegedAction frames
-    TempNewSymbol access_controller = SymbolTable::new_symbol("java/security/AccessController", CHECK);
+    TempNewSymbol access_controller = SymbolTable::new_symbol("java/security/AccessController");
     Klass* access_controller_klass = SystemDictionary::resolve_or_fail(access_controller, false, CHECK);
-    TempNewSymbol privileged_action = SymbolTable::new_symbol("java/security/PrivilegedAction", CHECK);
+    TempNewSymbol privileged_action = SymbolTable::new_symbol("java/security/PrivilegedAction");
     Klass* privileged_action_klass = SystemDictionary::resolve_or_fail(privileged_action, false, CHECK);
 
     Method* last_caller = NULL;
@@ -508,12 +509,7 @@ JVM_END
 
 JVM_ENTRY_NO_ENV(jlong, JVM_FreeMemory(void))
   JVMWrapper("JVM_FreeMemory");
-  CollectedHeap* ch = Universe::heap();
-  size_t n;
-  {
-     MutexLocker x(Heap_lock);
-     n = ch->capacity() - ch->used();
-  }
+  size_t n = Universe::heap()->unused();
   return convert_size_t_to_jlong(n);
 JVM_END
 
@@ -790,7 +786,7 @@ JVM_ENTRY(jclass, JVM_FindClassFromBootLoader(JNIEnv* env,
     return NULL;
   }
 
-  TempNewSymbol h_name = SymbolTable::new_symbol(name, CHECK_NULL);
+  TempNewSymbol h_name = SymbolTable::new_symbol(name);
   Klass* k = SystemDictionary::resolve_or_null(h_name, CHECK_NULL);
   if (k == NULL) {
     return NULL;
@@ -814,7 +810,7 @@ JVM_ENTRY(jclass, JVM_FindClassFromCaller(JNIEnv* env, const char* name,
     THROW_MSG_0(vmSymbols::java_lang_ClassNotFoundException(), name);
   }
 
-  TempNewSymbol h_name = SymbolTable::new_symbol(name, CHECK_NULL);
+  TempNewSymbol h_name = SymbolTable::new_symbol(name);
 
   oop loader_oop = JNIHandles::resolve(loader);
   oop from_class = JNIHandles::resolve(caller);
@@ -856,7 +852,7 @@ JVM_ENTRY(jclass, JVM_FindClassFromClass(JNIEnv *env, const char *name,
                        name);
     return 0;
   }
-  TempNewSymbol h_name = SymbolTable::new_symbol(name, CHECK_NULL);
+  TempNewSymbol h_name = SymbolTable::new_symbol(name);
   oop from_class_oop = JNIHandles::resolve(from);
   Klass* from_class = (from_class_oop == NULL)
                            ? (Klass*)NULL
@@ -937,7 +933,7 @@ static jclass jvm_define_class_common(JNIEnv *env, const char *name,
                          name);
       return 0;
     }
-    class_name = SymbolTable::new_symbol(name, str_len, CHECK_NULL);
+    class_name = SymbolTable::new_symbol(name, str_len);
   }
 
   ResourceMark rm(THREAD);
@@ -993,7 +989,7 @@ JVM_ENTRY(jclass, JVM_FindLoadedClass(JNIEnv *env, jobject loader, jstring name)
     // into the constant pool.
     return NULL;
   }
-  TempNewSymbol klass_name = SymbolTable::new_symbol(str, str_len, CHECK_NULL);
+  TempNewSymbol klass_name = SymbolTable::new_symbol(str, str_len);
 
   // Security Note:
   //   The Java level wrapper will perform the necessary security check allowing
@@ -2868,7 +2864,7 @@ JVM_ENTRY(void, JVM_SuspendThread(JNIEnv* env, jobject jthread))
   if (is_alive) {
     // jthread refers to a live JavaThread.
     {
-      MutexLockerEx ml(receiver->SR_lock(), Mutex::_no_safepoint_check_flag);
+      MutexLocker ml(receiver->SR_lock(), Mutex::_no_safepoint_check_flag);
       if (receiver->is_external_suspend()) {
         // Don't allow nested external suspend requests. We can't return
         // an error from this interface so just ignore the problem.
@@ -3173,7 +3169,7 @@ JVM_END
 JVM_ENTRY(jobject, JVM_GetAndClearReferencePendingList(JNIEnv* env))
   JVMWrapper("JVM_GetAndClearReferencePendingList");
 
-  MonitorLockerEx ml(Heap_lock);
+  MonitorLocker ml(Heap_lock);
   oop ref = Universe::reference_pending_list();
   if (ref != NULL) {
     Universe::set_reference_pending_list(NULL);
@@ -3183,13 +3179,13 @@ JVM_END
 
 JVM_ENTRY(jboolean, JVM_HasReferencePendingList(JNIEnv* env))
   JVMWrapper("JVM_HasReferencePendingList");
-  MonitorLockerEx ml(Heap_lock);
+  MonitorLocker ml(Heap_lock);
   return Universe::has_reference_pending_list();
 JVM_END
 
 JVM_ENTRY(void, JVM_WaitForReferencePendingList(JNIEnv* env))
   JVMWrapper("JVM_WaitForReferencePendingList");
-  MonitorLockerEx ml(Heap_lock);
+  MonitorLocker ml(Heap_lock);
   while (!Universe::has_reference_pending_list()) {
     ml.wait();
   }

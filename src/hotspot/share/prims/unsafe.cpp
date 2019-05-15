@@ -26,6 +26,7 @@
 #include "jni.h"
 #include "jvm.h"
 #include "classfile/classFileStream.hpp"
+#include "classfile/classLoader.hpp"
 #include "classfile/vmSymbols.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "memory/allocation.inline.hpp"
@@ -291,18 +292,6 @@ UNSAFE_ENTRY(jobject, Unsafe_GetUncompressedObject(JNIEnv *env, jobject unsafe, 
   return JNIHandles::make_local(env, v);
 } UNSAFE_END
 
-UNSAFE_LEAF(jboolean, Unsafe_isBigEndian0(JNIEnv *env, jobject unsafe)) {
-#ifdef VM_LITTLE_ENDIAN
-  return false;
-#else
-  return true;
-#endif
-} UNSAFE_END
-
-UNSAFE_LEAF(jint, Unsafe_unalignedAccess0(JNIEnv *env, jobject unsafe)) {
-  return UseUnalignedAccesses;
-} UNSAFE_END
-
 #define DEFINE_GETSETOOP(java_type, Type) \
  \
 UNSAFE_ENTRY(java_type, Unsafe_Get##Type(JNIEnv *env, jobject unsafe, jobject obj, jlong offset)) { \
@@ -444,14 +433,6 @@ UNSAFE_LEAF(void, Unsafe_CopySwapMemory0(JNIEnv *env, jobject unsafe, jobject sr
 } UNSAFE_END
 
 ////// Random queries
-
-UNSAFE_LEAF(jint, Unsafe_AddressSize0(JNIEnv *env, jobject unsafe)) {
-  return sizeof(void*);
-} UNSAFE_END
-
-UNSAFE_LEAF(jint, Unsafe_PageSize()) {
-  return os::vm_page_size();
-} UNSAFE_END
 
 static jlong find_field_offset(jclass clazz, jstring name, TRAPS) {
   assert(clazz != NULL, "clazz must not be NULL");
@@ -968,27 +949,16 @@ UNSAFE_ENTRY(void, Unsafe_Unpark(JNIEnv *env, jobject unsafe, jobject jthread)) 
     (void) tlh.cv_internal_thread_to_JavaThread(jthread, &thr, &java_thread);
     if (java_thread != NULL) {
       // This is a valid oop.
-      jlong lp = java_lang_Thread::park_event(java_thread);
-      if (lp != 0) {
-        // This cast is OK even though the jlong might have been read
-        // non-atomically on 32bit systems, since there, one word will
-        // always be zero anyway and the value set is always the same
-        p = (Parker*)addr_from_java(lp);
-      } else {
-        // Not cached in the java.lang.Thread oop yet (could be an
-        // older version of library).
-        if (thr != NULL) {
-          // The JavaThread is alive.
-          p = thr->parker();
-          if (p != NULL) {
-            // Cache the Parker in the java.lang.Thread oop for next time.
-            java_lang_Thread::set_park_event(java_thread, addr_to_java(p));
-          }
-        }
+      if (thr != NULL) {
+        // The JavaThread is alive.
+        p = thr->parker();
       }
     }
   } // ThreadsListHandle is destroyed here.
 
+  // 'p' points to type-stable-memory if non-NULL. If the target
+  // thread terminates before we get here the new user of this
+  // Parker will get a 'spurious' unpark - which is perfectly valid.
   if (p != NULL) {
     HOTSPOT_THREAD_UNPARK((uintptr_t) p);
     p->unpark();
@@ -1072,8 +1042,6 @@ static JNINativeMethod jdk_internal_misc_Unsafe_methods[] = {
     {CC "ensureClassInitialized0", CC "(" CLS ")V",      FN_PTR(Unsafe_EnsureClassInitialized0)},
     {CC "arrayBaseOffset0",   CC "(" CLS ")I",           FN_PTR(Unsafe_ArrayBaseOffset0)},
     {CC "arrayIndexScale0",   CC "(" CLS ")I",           FN_PTR(Unsafe_ArrayIndexScale0)},
-    {CC "addressSize0",       CC "()I",                  FN_PTR(Unsafe_AddressSize0)},
-    {CC "pageSize",           CC "()I",                  FN_PTR(Unsafe_PageSize)},
 
     {CC "defineClass0",       CC "(" DC_Args ")" CLS,    FN_PTR(Unsafe_DefineClass0)},
     {CC "allocateInstance",   CC "(" CLS ")" OBJ,        FN_PTR(Unsafe_AllocateInstance)},
@@ -1101,9 +1069,6 @@ static JNINativeMethod jdk_internal_misc_Unsafe_methods[] = {
     {CC "loadFence",          CC "()V",                  FN_PTR(Unsafe_LoadFence)},
     {CC "storeFence",         CC "()V",                  FN_PTR(Unsafe_StoreFence)},
     {CC "fullFence",          CC "()V",                  FN_PTR(Unsafe_FullFence)},
-
-    {CC "isBigEndian0",       CC "()Z",                  FN_PTR(Unsafe_isBigEndian0)},
-    {CC "unalignedAccess0",   CC "()Z",                  FN_PTR(Unsafe_unalignedAccess0)}
 };
 
 #undef CC

@@ -35,14 +35,14 @@
 #include "runtime/threadSMR.hpp"
 #include "runtime/vmThread.hpp"
 
-SATBMarkQueue::SATBMarkQueue(SATBMarkQueueSet* qset, bool permanent) :
+SATBMarkQueue::SATBMarkQueue(SATBMarkQueueSet* qset) :
   // SATB queues are only active during marking cycles. We create
   // them with their active field set to false. If a thread is
   // created during a cycle and its SATB queue needs to be activated
   // before the thread starts running, we'll need to set its active
   // field to true. This must be done in the collector-specific
   // BarrierSet thread attachment protocol.
-  PtrQueue(qset, permanent, false /* active */)
+  PtrQueue(qset, false /* active */)
 { }
 
 void SATBMarkQueue::flush() {
@@ -170,7 +170,11 @@ void SATBMarkQueueSet::set_active_all_threads(bool active, bool expected_active)
 #ifdef ASSERT
   verify_active_states(expected_active);
 #endif // ASSERT
-  _all_active = active;
+  // Update the global state, synchronized with threads list management.
+  {
+    MutexLocker ml(NonJavaThreadsList_lock, Mutex::_no_safepoint_check_flag);
+    _all_active = active;
+  }
 
   class SetThreadActiveClosure : public ThreadClosure {
     SATBMarkQueueSet* _qset;
@@ -182,18 +186,6 @@ void SATBMarkQueueSet::set_active_all_threads(bool active, bool expected_active)
       _qset->satb_queue_for_thread(t).set_active(_active);
     }
   } closure(this, active);
-  Threads::threads_do(&closure);
-}
-
-void SATBMarkQueueSet::filter_thread_buffers() {
-  class FilterThreadBufferClosure : public ThreadClosure {
-    SATBMarkQueueSet* _qset;
-  public:
-    FilterThreadBufferClosure(SATBMarkQueueSet* qset) : _qset(qset) {}
-    virtual void do_thread(Thread* t) {
-      _qset->satb_queue_for_thread(t).filter();
-    }
-  } closure(this);
   Threads::threads_do(&closure);
 }
 

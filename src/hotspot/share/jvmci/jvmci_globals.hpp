@@ -25,7 +25,7 @@
 #ifndef SHARE_JVMCI_JVMCI_GLOBALS_HPP
 #define SHARE_JVMCI_JVMCI_GLOBALS_HPP
 
-#include "runtime/globals.hpp"
+#include "utilities/ostream.hpp"
 
 //
 // Defines all global flags used by the JVMCI compiler. Only flags that need
@@ -53,7 +53,10 @@
           "Prints properties used by the JVMCI compiler and exits")         \
                                                                             \
   experimental(bool, BootstrapJVMCI, false,                                 \
-          "Bootstrap JVMCI before running Java main method")                \
+          "Bootstrap JVMCI before running Java main method. This "          \
+          "initializes the compile queue with a small set of methods "      \
+          "and processes the queue until it is empty. Combining this with " \
+          "-XX:-TieredCompilation makes JVMCI compile more of itself.")     \
                                                                             \
   experimental(bool, EagerJVMCI, false,                                     \
           "Force eager JVMCI initialization")                               \
@@ -62,11 +65,13 @@
           "Print JVMCI bootstrap progress and summary")                     \
                                                                             \
   experimental(intx, JVMCIThreads, 1,                                       \
-          "Force number of JVMCI compiler threads to use")                  \
+          "Force number of JVMCI compiler threads to use. Ignored if "      \
+          "UseJVMCICompiler is false.")                                     \
           range(1, max_jint)                                                \
                                                                             \
   experimental(intx, JVMCIHostThreads, 1,                                   \
-          "Force number of compiler threads for JVMCI host compiler")       \
+          "Force number of C1 compiler threads. Ignored if "                \
+          "UseJVMCICompiler is false.")                                     \
           range(1, max_jint)                                                \
                                                                             \
   NOT_COMPILER2(product(intx, MaxVectorSize, 64,                            \
@@ -97,8 +102,17 @@
   experimental(intx, MethodProfileWidth, 0,                                 \
           "Number of methods to record in call profile")                    \
                                                                             \
-  develop(bool, TraceUncollectedSpeculations, false,                        \
-          "Print message when a failed speculation was not collected")      \
+  experimental(ccstr, JVMCILibPath, NULL,                                   \
+          "LD path for loading the JVMCI shared library")                   \
+                                                                            \
+  experimental(ccstr, JVMCILibDumpJNIConfig, NULL,                          \
+          "Dumps to the given file a description of the classes, fields "   \
+          "and methods the JVMCI shared library must provide")              \
+                                                                            \
+  experimental(bool, UseJVMCINativeLibrary, false,                          \
+          "Execute JVMCI Java code from a shared library "                  \
+          "instead of loading it from class files and executing it "        \
+          "on the HotSpot heap")                                            \
                                                                             \
   NOT_COMPILER2(diagnostic(bool, UseMultiplyToLenIntrinsic, false,          \
           "Enables intrinsification of BigInteger.multiplyToLen()"))        \
@@ -130,14 +144,22 @@ JVMCI_FLAGS(DECLARE_DEVELOPER_FLAG, \
             IGNORE_CONSTRAINT, \
             IGNORE_WRITEABLE)
 
+// The base name for the shared library containing the JVMCI based compiler
+#define JVMCI_SHARED_LIBRARY_NAME "jvmcicompiler"
+
 class JVMCIGlobals {
+ private:
+  static fileStream* _jni_config_file;
  public:
-  // Return true if jvmci flags are consistent. If not consistent,
+
+  // Returns true if jvmci flags are consistent. If not consistent,
   // an error message describing the inconsistency is printed before
   // returning false.
   static bool check_jvmci_flags_are_consistent();
 
   // Check and exit VM with error if selected GC is not supported by JVMCI.
   static void check_jvmci_supported_gc();
+
+  static fileStream* get_jni_config_file() { return _jni_config_file; }
 };
 #endif // SHARE_JVMCI_JVMCI_GLOBALS_HPP

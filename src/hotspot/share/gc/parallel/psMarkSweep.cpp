@@ -50,6 +50,7 @@
 #include "gc/shared/referenceProcessorPhaseTimes.hpp"
 #include "gc/shared/spaceDecorator.hpp"
 #include "gc/shared/weakProcessor.hpp"
+#include "memory/universe.hpp"
 #include "logging/log.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/biasedLocking.hpp"
@@ -62,6 +63,9 @@
 #include "utilities/align.hpp"
 #include "utilities/events.hpp"
 #include "utilities/stack.inline.hpp"
+#if INCLUDE_JVMCI
+#include "jvmci/jvmci.hpp"
+#endif
 
 elapsedTimer        PSMarkSweep::_accumulated_time;
 jlong               PSMarkSweep::_time_of_last_gc   = 0;
@@ -85,7 +89,7 @@ void PSMarkSweep::initialize() {
 // Note that this method should only be called from the vm_thread while
 // at a safepoint!
 //
-// Note that the all_soft_refs_clear flag in the collector policy
+// Note that the all_soft_refs_clear flag in the soft ref policy
 // may be true because this method can be called without intervening
 // activity.  For example when the heap space is tight and full measure
 // are being taken to free space.
@@ -132,7 +136,7 @@ bool PSMarkSweep::invoke_no_policy(bool clear_all_softrefs) {
   PSAdaptiveSizePolicy* size_policy = heap->size_policy();
 
   // The scope of casr should end after code that can change
-  // CollectorPolicy::_should_clear_all_soft_refs.
+  // SoftRefolicy::_should_clear_all_soft_refs.
   ClearedAllSoftRefs casr(clear_all_softrefs, heap->soft_ref_policy());
 
   PSYoungGen* young_gen = heap->young_gen();
@@ -187,7 +191,6 @@ bool PSMarkSweep::invoke_no_policy(bool clear_all_softrefs) {
     // Let the size policy know we're starting
     size_policy->major_collection_begin();
 
-    CodeCache::gc_prologue();
     BiasedLocking::preserve_marks();
 
     // Capture metadata size before collection for sizing.
@@ -255,7 +258,7 @@ bool PSMarkSweep::invoke_no_policy(bool clear_all_softrefs) {
     MetaspaceUtils::verify_metrics();
 
     BiasedLocking::restore_marks();
-    CodeCache::gc_epilogue();
+    heap->prune_scavengable_nmethods();
     JvmtiExport::gc_epilogue();
 
 #if COMPILER2_OR_JVMCI
@@ -316,8 +319,7 @@ bool PSMarkSweep::invoke_no_policy(bool clear_all_softrefs) {
                                                     max_eden_size,
                                                     true /* full gc*/);
 
-        size_policy->check_gc_overhead_limit(young_live,
-                                             eden_live,
+        size_policy->check_gc_overhead_limit(eden_live,
                                              max_old_gen_size,
                                              max_eden_size,
                                              true /* full gc*/,
@@ -525,8 +527,9 @@ void PSMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
     SystemDictionary::oops_do(mark_and_push_closure());
     ClassLoaderDataGraph::always_strong_cld_do(follow_cld_closure());
     // Do not treat nmethods as strong roots for mark/sweep, since we can unload them.
-    //CodeCache::scavenge_root_nmethods_do(CodeBlobToOopClosure(mark_and_push_closure()));
-    AOTLoader::oops_do(mark_and_push_closure());
+    //ScavengableNMethods::scavengable_nmethods_do(CodeBlobToOopClosure(mark_and_push_closure()));
+    AOT_ONLY(AOTLoader::oops_do(mark_and_push_closure());)
+    JVMCI_ONLY(JVMCI::oops_do(mark_and_push_closure());)
   }
 
   // Flush marking stack.
@@ -564,6 +567,9 @@ void PSMarkSweep::mark_sweep_phase1(bool clear_all_softrefs) {
 
     // Prune dead klasses from subklass/sibling/implementor lists.
     Klass::clean_weak_klass_links(purged_class);
+
+    // Clean JVMCI metadata handles.
+    JVMCI_ONLY(JVMCI::do_unloading(purged_class));
   }
 
   _gc_tracer->report_object_count_after_gc(is_alive_closure());
@@ -617,7 +623,10 @@ void PSMarkSweep::mark_sweep_phase3() {
 
   CodeBlobToOopClosure adjust_from_blobs(adjust_pointer_closure(), CodeBlobToOopClosure::FixRelocations);
   CodeCache::blobs_do(&adjust_from_blobs);
-  AOTLoader::oops_do(adjust_pointer_closure());
+  AOT_ONLY(AOTLoader::oops_do(adjust_pointer_closure());)
+
+  JVMCI_ONLY(JVMCI::oops_do(adjust_pointer_closure());)
+
   ref_processor()->weak_oops_do(adjust_pointer_closure());
   PSScavenge::reference_processor()->weak_oops_do(adjust_pointer_closure());
 

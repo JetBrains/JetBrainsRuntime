@@ -45,13 +45,13 @@ int ProtectionDomainCacheTable::index_for(Handle protection_domain) {
 }
 
 ProtectionDomainCacheTable::ProtectionDomainCacheTable(int table_size)
-  : Hashtable<ClassLoaderWeakHandle, mtClass>(table_size, sizeof(ProtectionDomainCacheEntry))
+  : Hashtable<WeakHandle<vm_class_loader_data>, mtClass>(table_size, sizeof(ProtectionDomainCacheEntry))
 {   _dead_entries = false;
     _total_oops_removed = 0;
 }
 
 void ProtectionDomainCacheTable::trigger_cleanup() {
-  MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+  MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
   _dead_entries = true;
   Service_lock->notify_all();
 }
@@ -180,8 +180,8 @@ ProtectionDomainCacheEntry* ProtectionDomainCacheTable::add_entry(int index, uns
     protection_domain->print_value_on(&ls);
     ls.cr();
   }
-  ClassLoaderWeakHandle w = ClassLoaderWeakHandle::create(protection_domain);
+  WeakHandle<vm_class_loader_data> w = WeakHandle<vm_class_loader_data>::create(protection_domain);
   ProtectionDomainCacheEntry* p = new_entry(hash, w);
-  Hashtable<ClassLoaderWeakHandle, mtClass>::add_entry(index, p);
+  Hashtable<WeakHandle<vm_class_loader_data>, mtClass>::add_entry(index, p);
   return p;
 }

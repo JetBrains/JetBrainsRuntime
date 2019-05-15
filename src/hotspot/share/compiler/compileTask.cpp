@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -182,8 +182,10 @@ void CompileTask::set_code(nmethod* nm) {
 }
 
 void CompileTask::mark_on_stack() {
+  if (is_unloaded()) {
+    return;
+  }
   // Mark these methods as something redefine classes cannot remove.
-  assert(!is_unloaded(), "unloaded method on the stack");
   _method->set_on_stack(true);
   if (_hot_method != NULL) {
     _hot_method->set_on_stack(true);
@@ -195,13 +197,13 @@ bool CompileTask::is_unloaded() const {
 }
 
 // RedefineClasses support
-void CompileTask::metadata_do(void f(Metadata*)) {
+void CompileTask::metadata_do(MetadataClosure* f) {
   if (is_unloaded()) {
     return;
   }
-  f(method());
+  f->do_metadata(method());
   if (hot_method() != NULL && hot_method() != method()) {
-    f(hot_method());
+    f->do_metadata(hot_method());
   }
 }
 
@@ -394,6 +396,7 @@ void CompileTask::log_task_done(CompileLog* log) {
   ResourceMark rm(thread);
 
   if (!_is_success) {
+    assert(_failure_reason != NULL, "missing");
     const char* reason = _failure_reason != NULL ? _failure_reason : "unknown";
     log->elem("failure reason='%s'", reason);
   }

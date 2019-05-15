@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import java.io.OutputStream;
 import java.io.FileDescriptor;
 import java.util.Set;
 
+import sun.net.PlatformSocketImpl;
+
 /**
  * The abstract class {@code SocketImpl} is a common superclass
  * of all classes that actually implement sockets. It is used to
@@ -43,11 +45,14 @@ import java.util.Set;
  * @since   1.0
  */
 public abstract class SocketImpl implements SocketOptions {
+
     /**
-     * The actual Socket object.
+     * Creates an instance of platform's SocketImpl
      */
-    Socket socket = null;
-    ServerSocket serverSocket = null;
+    @SuppressWarnings("unchecked")
+    static <S extends SocketImpl & PlatformSocketImpl> S createPlatformSocketImpl(boolean server) {
+        return (S) new PlainSocketImpl(server);
+    }
 
     /**
      * The file descriptor object for this socket.
@@ -68,6 +73,23 @@ public abstract class SocketImpl implements SocketOptions {
      * The local port number to which this socket is connected.
      */
     protected int localport;
+
+    /**
+     * Whether this is a server or not.
+     */
+    final boolean isServer;
+
+
+    SocketImpl(boolean isServer) {
+        this.isServer = isServer;
+    }
+
+    /**
+     * Initialize a new instance of this class
+     */
+    public SocketImpl() {
+        this.isServer = false;
+    }
 
     /**
      * Creates either a stream or a datagram socket.
@@ -178,6 +200,15 @@ public abstract class SocketImpl implements SocketOptions {
     protected abstract void close() throws IOException;
 
     /**
+     * Closes this socket, ignoring any IOException that is thrown by close.
+     */
+    void closeQuietly() {
+        try {
+            close();
+        } catch (IOException ignore) { }
+    }
+
+    /**
      * Places the input stream for this socket at "end of stream".
      * Any data sent to this socket is acknowledged and then
      * silently discarded.
@@ -280,22 +311,6 @@ public abstract class SocketImpl implements SocketOptions {
         return localport;
     }
 
-    void setSocket(Socket soc) {
-        this.socket = soc;
-    }
-
-    Socket getSocket() {
-        return socket;
-    }
-
-    void setServerSocket(ServerSocket soc) {
-        this.serverSocket = soc;
-    }
-
-    ServerSocket getServerSocket() {
-        return serverSocket;
-    }
-
     /**
      * Returns the address and port of this socket as a {@code String}.
      *
@@ -306,7 +321,8 @@ public abstract class SocketImpl implements SocketOptions {
             ",port=" + getPort() + ",localport=" + getLocalPort()  + "]";
     }
 
-    void reset() throws IOException {
+    void reset() {
+        fd = null;
         address = null;
         port = 0;
         localport = 0;
@@ -374,11 +390,9 @@ public abstract class SocketImpl implements SocketOptions {
      * @since 9
      */
     protected <T> void setOption(SocketOption<T> name, T value) throws IOException {
-        if (name == StandardSocketOptions.SO_KEEPALIVE &&
-                (getSocket() != null)) {
+        if (name == StandardSocketOptions.SO_KEEPALIVE && !isServer) {
             setOption(SocketOptions.SO_KEEPALIVE, value);
-        } else if (name == StandardSocketOptions.SO_SNDBUF &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.SO_SNDBUF && !isServer) {
             setOption(SocketOptions.SO_SNDBUF, value);
         } else if (name == StandardSocketOptions.SO_RCVBUF) {
             setOption(SocketOptions.SO_RCVBUF, value);
@@ -387,13 +401,11 @@ public abstract class SocketImpl implements SocketOptions {
         } else if (name == StandardSocketOptions.SO_REUSEPORT &&
             supportedOptions().contains(name)) {
             setOption(SocketOptions.SO_REUSEPORT, value);
-        } else if (name == StandardSocketOptions.SO_LINGER &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.SO_LINGER && !isServer) {
             setOption(SocketOptions.SO_LINGER, value);
         } else if (name == StandardSocketOptions.IP_TOS) {
             setOption(SocketOptions.IP_TOS, value);
-        } else if (name == StandardSocketOptions.TCP_NODELAY &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.TCP_NODELAY && !isServer) {
             setOption(SocketOptions.TCP_NODELAY, value);
         } else {
             throw new UnsupportedOperationException("unsupported option");
@@ -417,11 +429,9 @@ public abstract class SocketImpl implements SocketOptions {
      */
     @SuppressWarnings("unchecked")
     protected <T> T getOption(SocketOption<T> name) throws IOException {
-        if (name == StandardSocketOptions.SO_KEEPALIVE &&
-                (getSocket() != null)) {
+        if (name == StandardSocketOptions.SO_KEEPALIVE && !isServer) {
             return (T)getOption(SocketOptions.SO_KEEPALIVE);
-        } else if (name == StandardSocketOptions.SO_SNDBUF &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.SO_SNDBUF && !isServer) {
             return (T)getOption(SocketOptions.SO_SNDBUF);
         } else if (name == StandardSocketOptions.SO_RCVBUF) {
             return (T)getOption(SocketOptions.SO_RCVBUF);
@@ -430,17 +440,28 @@ public abstract class SocketImpl implements SocketOptions {
         } else if (name == StandardSocketOptions.SO_REUSEPORT &&
             supportedOptions().contains(name)) {
             return (T)getOption(SocketOptions.SO_REUSEPORT);
-        } else if (name == StandardSocketOptions.SO_LINGER &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.SO_LINGER && !isServer) {
             return (T)getOption(SocketOptions.SO_LINGER);
         } else if (name == StandardSocketOptions.IP_TOS) {
             return (T)getOption(SocketOptions.IP_TOS);
-        } else if (name == StandardSocketOptions.TCP_NODELAY &&
-                (getSocket() != null)) {
+        } else if (name == StandardSocketOptions.TCP_NODELAY && !isServer) {
             return (T)getOption(SocketOptions.TCP_NODELAY);
         } else {
             throw new UnsupportedOperationException("unsupported option");
         }
+    }
+
+    /**
+     * Attempts to copy socket options from this SocketImpl to a target SocketImpl.
+     * At this time, only the SO_TIMEOUT make sense to copy.
+     */
+    void copyOptionsTo(SocketImpl target) {
+        try {
+            Object timeout = getOption(SocketOptions.SO_TIMEOUT);
+            if (timeout instanceof Integer) {
+                target.setOption(SocketOptions.SO_TIMEOUT, timeout);
+            }
+        } catch (IOException ignore) { }
     }
 
     private static final Set<SocketOption<?>> socketOptions;
@@ -470,7 +491,7 @@ public abstract class SocketImpl implements SocketOptions {
      * @since 9
      */
     protected Set<SocketOption<?>> supportedOptions() {
-        if (getSocket() != null) {
+        if (!isServer) {
             return socketOptions;
         } else {
             return serverSocketOptions;

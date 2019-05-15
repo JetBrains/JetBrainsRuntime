@@ -28,6 +28,7 @@
 #include "classfile/classFileStream.hpp"
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/metadataOnStackMark.hpp"
+#include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/verifier.hpp"
 #include "code/codeCache.hpp"
@@ -90,14 +91,14 @@ static inline InstanceKlass* get_ik(jclass def) {
 // If any of the classes are being redefined, wait
 // Parallel constant pool merging leads to indeterminate constant pools.
 void VM_RedefineClasses::lock_classes() {
-  MutexLocker ml(RedefineClasses_lock);
+  MonitorLocker ml(RedefineClasses_lock);
   bool has_redefined;
   do {
     has_redefined = false;
     // Go through classes each time until none are being redefined.
     for (int i = 0; i < _class_count; i++) {
       if (get_ik(_class_defs[i].klass)->is_being_redefined()) {
-        RedefineClasses_lock->wait();
+        ml.wait();
         has_redefined = true;
         break;  // for loop
       }
@@ -106,17 +107,17 @@ void VM_RedefineClasses::lock_classes() {
   for (int i = 0; i < _class_count; i++) {
     get_ik(_class_defs[i].klass)->set_is_being_redefined(true);
   }
-  RedefineClasses_lock->notify_all();
+  ml.notify_all();
 }
 
 void VM_RedefineClasses::unlock_classes() {
-  MutexLocker ml(RedefineClasses_lock);
+  MonitorLocker ml(RedefineClasses_lock);
   for (int i = 0; i < _class_count; i++) {
     assert(get_ik(_class_defs[i].klass)->is_being_redefined(),
            "should be being redefined to get here");
     get_ik(_class_defs[i].klass)->set_is_being_redefined(false);
   }
-  RedefineClasses_lock->notify_all();
+  ml.notify_all();
 }
 
 bool VM_RedefineClasses::doit_prologue() {
@@ -207,7 +208,7 @@ void VM_RedefineClasses::doit() {
 
   // Mark methods seen on stack and everywhere else so old methods are not
   // cleaned up if they're on the stack.
-  MetadataOnStackMark md_on_stack(true);
+  MetadataOnStackMark md_on_stack(/*walk_all_metadata*/true, /*redefinition_walk*/true);
   HandleMark hm(thread);   // make sure any handles created are deleted
                            // before the stack walk again.
 
@@ -787,6 +788,12 @@ static jvmtiError check_nest_attributes(InstanceKlass* the_class,
   return JVMTI_ERROR_NONE;
 }
 
+static bool can_add_or_delete(Method* m) {
+      // Compatibility mode
+  return (AllowRedefinitionToAddDeleteMethods &&
+          (m->is_private() && (m->is_static() || m->is_final())));
+}
+
 jvmtiError VM_RedefineClasses::compare_and_normalize_class_versions(
              InstanceKlass* the_class,
              InstanceKlass* scratch_class) {
@@ -992,12 +999,7 @@ jvmtiError VM_RedefineClasses::compare_and_normalize_class_versions(
       break;
     case added:
       // method added, see if it is OK
-      new_flags = (jushort) k_new_method->access_flags().get_flags();
-      if ((new_flags & JVM_ACC_PRIVATE) == 0
-           // hack: private should be treated as final, but alas
-          || (new_flags & (JVM_ACC_FINAL|JVM_ACC_STATIC)) == 0
-         ) {
-        // new methods must be private
+      if (!can_add_or_delete(k_new_method)) {
         return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_METHOD_ADDED;
       }
       {
@@ -1026,12 +1028,7 @@ jvmtiError VM_RedefineClasses::compare_and_normalize_class_versions(
       break;
     case deleted:
       // method deleted, see if it is OK
-      old_flags = (jushort) k_old_method->access_flags().get_flags();
-      if ((old_flags & JVM_ACC_PRIVATE) == 0
-           // hack: private should be treated as final, but alas
-          || (old_flags & (JVM_ACC_FINAL|JVM_ACC_STATIC)) == 0
-         ) {
-        // deleted methods must be private
+      if (!can_add_or_delete(k_old_method)) {
         return JVMTI_ERROR_UNSUPPORTED_REDEFINITION_METHOD_DELETED;
       }
       log_trace(redefine, class, normalize)
@@ -3842,7 +3839,7 @@ void VM_RedefineClasses::flush_dependent_code() {
   // This is the first redefinition, mark all the nmethods for deoptimization
   if (!JvmtiExport::all_dependencies_are_recorded()) {
     log_debug(redefine, class, nmethod)("Marked all nmethods for deopt");
-    CodeCache::mark_all_nmethods_for_deoptimization();
+    CodeCache::mark_all_nmethods_for_evol_deoptimization();
     deopt_needed = true;
   } else {
     int deopt = CodeCache::mark_dependents_for_evol_deoptimization();

@@ -28,7 +28,6 @@
 #include "memory/allocation.hpp"
 #include "utilities/exceptions.hpp"
 #include "utilities/macros.hpp"
-#include "utilities/utf8.hpp"
 
 // A Symbol is a canonicalized string.
 // All Symbols reside in global SymbolTable and are reference counted.
@@ -133,8 +132,8 @@ class Symbol : public MetaspaceObj {
   }
 
   Symbol(const u1* name, int length, int refcount);
-  void* operator new(size_t size, int len, TRAPS) throw();
-  void* operator new(size_t size, int len, Arena* arena, TRAPS) throw();
+  void* operator new(size_t size, int len) throw();
+  void* operator new(size_t size, int len, Arena* arena) throw();
 
   void  operator delete(void* p);
 
@@ -170,6 +169,7 @@ class Symbol : public MetaspaceObj {
   bool is_permanent() {
     return (refcount() == PERM_REFCOUNT);
   }
+  void make_permanent();
 
   // Function char_at() returns the Symbol's selected u1 byte as a char type.
   //
@@ -229,6 +229,15 @@ class Symbol : public MetaspaceObj {
   const char* as_klass_external_name() const;
   const char* as_klass_external_name(char* buf, int size) const;
 
+  // Treating the symbol as a signature, print the return
+  // type to the outputStream. Prints external names as 'double' or
+  // 'java.lang.Object[][]'.
+  void print_as_signature_external_return_type(outputStream *os);
+  // Treating the symbol as a signature, print the parameter types
+  // seperated by ', ' to the outputStream.  Prints external names as
+  //  'double' or 'java.lang.Object[][]'.
+  void print_as_signature_external_parameters(outputStream *os);
+
   void metaspace_pointers_do(MetaspaceClosure* it);
   MetaspaceObj::Type type() const { return SymbolType; }
 
@@ -239,8 +248,8 @@ class Symbol : public MetaspaceObj {
   void print_value_on(outputStream* st) const;   // Second level print.
 
   // printing on default output stream
-  void print()         { print_on(tty);       }
-  void print_value()   { print_value_on(tty); }
+  void print() const;
+  void print_value() const;
 
   static bool is_valid(Symbol* s);
 

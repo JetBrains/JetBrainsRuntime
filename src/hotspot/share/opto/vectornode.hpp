@@ -224,6 +224,14 @@ class SubVDNode : public VectorNode {
   virtual int Opcode() const;
 };
 
+//------------------------------MulVBNode--------------------------------------
+// Vector multiply byte
+class MulVBNode : public VectorNode {
+ public:
+  MulVBNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
+
 //------------------------------MulVSNode--------------------------------------
 // Vector multiply short
 class MulVSNode : public VectorNode {
@@ -357,6 +365,38 @@ class DivVFNode : public VectorNode {
 class DivVDNode : public VectorNode {
  public:
   DivVDNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1,in2,vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------AbsVBNode--------------------------------------
+// Vector Abs byte
+class AbsVBNode : public VectorNode {
+public:
+  AbsVBNode(Node* in, const TypeVect* vt) : VectorNode(in, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------AbsVSNode--------------------------------------
+// Vector Abs short
+class AbsVSNode : public VectorNode {
+public:
+  AbsVSNode(Node* in, const TypeVect* vt) : VectorNode(in, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------AbsVINode--------------------------------------
+// Vector Abs int
+class AbsVINode : public VectorNode {
+public:
+  AbsVINode(Node* in, const TypeVect* vt) : VectorNode(in, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------AbsVLNode--------------------------------------
+// Vector Abs long
+class AbsVLNode : public VectorNode {
+public:
+  AbsVLNode(Node* in, const TypeVect* vt) : VectorNode(in, vt) {}
   virtual int Opcode() const;
 };
 
@@ -553,6 +593,78 @@ class XorVNode : public VectorNode {
  public:
   XorVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1,in2,vt) {}
   virtual int Opcode() const;
+};
+
+//------------------------------MinVNode--------------------------------------
+// Vector min
+class MinVNode : public VectorNode {
+public:
+  MinVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------MaxVNode--------------------------------------
+// Vector max
+class MaxVNode : public VectorNode {
+public:
+  MaxVNode(Node* in1, Node* in2, const TypeVect* vt) : VectorNode(in1, in2, vt) {}
+  virtual int Opcode() const;
+};
+
+//------------------------------MinReductionVNode--------------------------------------
+// Vector min as a reduction
+class MinReductionVNode : public ReductionNode {
+public:
+  MinReductionVNode(Node *ctrl, Node* in1, Node* in2) : ReductionNode(ctrl, in1, in2) {}
+  virtual int Opcode() const;
+  virtual const Type* bottom_type() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Type::FLOAT;
+    } else if (bt == T_DOUBLE) {
+      return Type::DOUBLE;
+    }
+    assert(false, "unsupported basic type");
+    return NULL;
+  }
+  virtual uint ideal_reg() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Op_RegF;
+    } else if (bt == T_DOUBLE) {
+      return Op_RegD;
+    }
+    assert(false, "unsupported basic type");
+    return 0;
+  }
+};
+
+//------------------------------MaxReductionVNode--------------------------------------
+// Vector max as a reduction
+class MaxReductionVNode : public ReductionNode {
+public:
+  MaxReductionVNode(Node *ctrl, Node* in1, Node* in2) : ReductionNode(ctrl, in1, in2) {}
+  virtual int Opcode() const;
+  virtual const Type* bottom_type() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Type::FLOAT;
+    } else {
+      return Type::DOUBLE;
+    }
+    assert(false, "unsupported basic type");
+    return NULL;
+  }
+  virtual uint ideal_reg() const {
+    BasicType bt = in(1)->bottom_type()->basic_type();
+    if (bt == T_FLOAT) {
+      return Op_RegF;
+    } else {
+      return Op_RegD;
+    }
+    assert(false, "unsupported basic type");
+    return 0;
+  }
 };
 
 //================================= M E M O R Y ===============================

@@ -173,10 +173,6 @@ class CompileBroker: AllStatic {
   static volatile jint _compilation_id;
   static volatile jint _osr_compilation_id;
 
-  static int  _last_compile_type;
-  static int  _last_compile_level;
-  static char _last_method_compiled[name_buffer_length];
-
   static CompileQueue* _c2_compile_queue;
   static CompileQueue* _c1_compile_queue;
 
@@ -233,7 +229,6 @@ class CompileBroker: AllStatic {
   static JavaThread* make_thread(jobject thread_oop, CompileQueue* queue, AbstractCompiler* comp, TRAPS);
   static void init_compiler_sweeper_threads();
   static void possibly_add_compiler_threads();
-  static bool compilation_is_complete  (const methodHandle& method, int osr_bci, int comp_level);
   static bool compilation_is_prohibited(const methodHandle& method, int osr_bci, int comp_level, bool excluded);
   static void preload_classes          (const methodHandle& method, TRAPS);
 
@@ -254,7 +249,8 @@ class CompileBroker: AllStatic {
   static void invoke_compiler_on_method(CompileTask* task);
   static void post_compile(CompilerThread* thread, CompileTask* task, bool success, ciEnv* ci_env,
                            int compilable, const char* failure_reason);
-  static void set_last_compile(CompilerThread *thread, const methodHandle& method, bool is_osr, int comp_level);
+  static void update_compile_perf_data(CompilerThread *thread, const methodHandle& method, bool is_osr);
+
   static void push_jni_handle_block();
   static void pop_jni_handle_block();
   static void collect_statistics(CompilerThread* thread, elapsedTimer time, CompileTask* task);
@@ -288,6 +284,7 @@ public:
     return NULL;
   }
 
+  static bool compilation_is_complete(const methodHandle& method, int osr_bci, int comp_level);
   static bool compilation_is_in_queue(const methodHandle& method);
   static void print_compile_queues(outputStream* st);
   static void print_directives(outputStream* st);
@@ -381,9 +378,6 @@ public:
 
   // Print a detailed accounting of compilation time
   static void print_times(bool per_compiler = true, bool aggregate = true);
-
-  // Debugging output for failure
-  static void print_last_compile();
 
   // compiler name for debugging
   static const char* compiler_name(int comp_level);

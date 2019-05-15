@@ -27,7 +27,9 @@
 #include "classfile/javaClasses.inline.hpp"
 #include "memory/heapShared.inline.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
+#include "oops/compressedOops.inline.hpp"
 #include "oops/oop.inline.hpp"
 #include "oops/verifyOopClosure.hpp"
 #include "runtime/handles.inline.hpp"
@@ -122,12 +124,6 @@ bool oopDesc::is_oop_or_null(oop obj, bool ignore_mark_word) {
 }
 
 #ifndef PRODUCT
-// used only for asserts
-bool oopDesc::is_unlocked_oop() const {
-  if (!Universe::heap()->is_in_reserved(this)) return false;
-  return mark()->is_unlocked();
-}
-
 #if INCLUDE_CDS_JAVA_HEAP
 bool oopDesc::is_archived_object(oop p) {
   return HeapShared::is_archived_object(p);
@@ -156,16 +152,11 @@ bool oopDesc::has_klass_gap() {
   return UseCompressedClassPointers;
 }
 
-oop oopDesc::decode_oop_raw(narrowOop narrow_oop) {
-  return (oop)(void*)( (uintptr_t)Universe::narrow_oop_base() +
-                      ((uintptr_t)narrow_oop << Universe::narrow_oop_shift()));
-}
-
 void* oopDesc::load_klass_raw(oop obj) {
   if (UseCompressedClassPointers) {
     narrowKlass narrow_klass = *(obj->compressed_klass_addr());
     if (narrow_klass == 0) return NULL;
-    return (void*)Klass::decode_klass_raw(narrow_klass);
+    return (void*)CompressedKlassPointers::decode_raw(narrow_klass);
   } else {
     return *(void**)(obj->klass_addr());
   }
@@ -176,7 +167,7 @@ void* oopDesc::load_oop_raw(oop obj, int offset) {
   if (UseCompressedOops) {
     narrowOop narrow_oop = *(narrowOop*)addr;
     if (narrow_oop == 0) return NULL;
-    return (void*)decode_oop_raw(narrow_oop);
+    return (void*)CompressedOops::decode_raw(narrow_oop);
   } else {
     return *(void**)addr;
   }
@@ -191,9 +182,7 @@ bool oopDesc::is_valid(oop obj) {
   if (!Universe::heap()->is_in(obj)) return false;
 
   Klass* k = (Klass*)load_klass_raw(obj);
-
-  if (!os::is_readable_range(k, k + 1)) return false;
-  return MetaspaceUtils::is_range_in_committed(k, k + 1);
+  return Klass::is_valid(k);
 }
 
 oop oopDesc::oop_or_null(address addr) {

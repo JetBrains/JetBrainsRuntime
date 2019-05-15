@@ -36,18 +36,16 @@
 
 #include <new>
 
-PtrQueue::PtrQueue(PtrQueueSet* qset, bool permanent, bool active) :
+PtrQueue::PtrQueue(PtrQueueSet* qset, bool active) :
   _qset(qset),
   _active(active),
-  _permanent(permanent),
   _index(0),
   _capacity_in_bytes(0),
-  _buf(NULL),
-  _lock(NULL)
+  _buf(NULL)
 {}
 
 PtrQueue::~PtrQueue() {
-  assert(_permanent || (_buf == NULL), "queue must be flushed before delete");
+  assert(_buf == NULL, "queue must be flushed before delete");
 }
 
 void PtrQueue::flush_impl() {
@@ -96,7 +94,7 @@ BufferNode::Allocator::Allocator(const char* name, size_t buffer_size) :
   _free_count(0),
   _transfer_lock(false)
 {
-  strncpy(_name, name, sizeof(_name));
+  strncpy(_name, name, sizeof(_name) - 1);
   _name[sizeof(_name) - 1] = '\0';
 }
 
@@ -271,23 +269,13 @@ void PtrQueue::handle_zero_index() {
       return;
     }
 
-    if (_lock) {
-      assert(_lock->owned_by_self(), "Required.");
-
-      BufferNode* node = BufferNode::make_node_from_buffer(_buf, index());
-      _buf = NULL;         // clear shared _buf field
-
-      qset()->enqueue_completed_buffer(node);
-      assert(_buf == NULL, "multiple enqueuers appear to be racing");
-    } else {
-      BufferNode* node = BufferNode::make_node_from_buffer(_buf, index());
-      if (qset()->process_or_enqueue_completed_buffer(node)) {
-        // Recycle the buffer. No allocation.
-        assert(_buf == BufferNode::make_buffer_from_node(node), "invariant");
-        assert(capacity() == qset()->buffer_size(), "invariant");
-        reset();
-        return;
-      }
+    BufferNode* node = BufferNode::make_node_from_buffer(_buf, index());
+    if (qset()->process_or_enqueue_completed_buffer(node)) {
+      // Recycle the buffer. No allocation.
+      assert(_buf == BufferNode::make_buffer_from_node(node), "invariant");
+      assert(capacity() == qset()->buffer_size(), "invariant");
+      reset();
+      return;
     }
   }
   // Set capacity in case this is the first allocation.
@@ -317,7 +305,7 @@ bool PtrQueueSet::process_or_enqueue_completed_buffer(BufferNode* node) {
 }
 
 void PtrQueueSet::enqueue_completed_buffer(BufferNode* cbn) {
-  MutexLockerEx x(_cbl_mon, Mutex::_no_safepoint_check_flag);
+  MutexLocker x(_cbl_mon, Mutex::_no_safepoint_check_flag);
   cbn->set_next(NULL);
   if (_completed_buffers_tail == NULL) {
     assert(_completed_buffers_head == NULL, "Well-formedness");
@@ -340,7 +328,7 @@ void PtrQueueSet::enqueue_completed_buffer(BufferNode* cbn) {
 }
 
 BufferNode* PtrQueueSet::get_completed_buffer(size_t stop_at) {
-  MutexLockerEx x(_cbl_mon, Mutex::_no_safepoint_check_flag);
+  MutexLocker x(_cbl_mon, Mutex::_no_safepoint_check_flag);
 
   if (_n_completed_buffers <= stop_at) {
     return NULL;
@@ -366,7 +354,7 @@ BufferNode* PtrQueueSet::get_completed_buffer(size_t stop_at) {
 void PtrQueueSet::abandon_completed_buffers() {
   BufferNode* buffers_to_delete = NULL;
   {
-    MutexLockerEx x(_cbl_mon, Mutex::_no_safepoint_check_flag);
+    MutexLocker x(_cbl_mon, Mutex::_no_safepoint_check_flag);
     buffers_to_delete = _completed_buffers_head;
     _completed_buffers_head = NULL;
     _completed_buffers_tail = NULL;
@@ -401,7 +389,7 @@ void PtrQueueSet::assert_completed_buffers_list_len_correct_locked() {
 // must share the monitor.
 void PtrQueueSet::merge_bufferlists(PtrQueueSet *src) {
   assert(_cbl_mon == src->_cbl_mon, "Should share the same lock");
-  MutexLockerEx x(_cbl_mon, Mutex::_no_safepoint_check_flag);
+  MutexLocker x(_cbl_mon, Mutex::_no_safepoint_check_flag);
   if (_completed_buffers_tail == NULL) {
     assert(_completed_buffers_head == NULL, "Well-formedness");
     _completed_buffers_head = src->_completed_buffers_head;
@@ -427,7 +415,7 @@ void PtrQueueSet::merge_bufferlists(PtrQueueSet *src) {
 }
 
 void PtrQueueSet::notify_if_necessary() {
-  MutexLockerEx x(_cbl_mon, Mutex::_no_safepoint_check_flag);
+  MutexLocker x(_cbl_mon, Mutex::_no_safepoint_check_flag);
   if (_n_completed_buffers > _process_completed_buffers_threshold) {
     _process_completed_buffers = true;
     if (_notify_when_complete)

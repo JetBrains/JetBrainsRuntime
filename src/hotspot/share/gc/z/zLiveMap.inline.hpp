@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,7 +92,7 @@ inline BitMap::idx_t ZLiveMap::segment_size() const {
 }
 
 inline BitMap::idx_t ZLiveMap::index_to_segment(BitMap::idx_t index) const {
-  return index >> _shift;
+  return index >> _segment_shift;
 }
 
 inline bool ZLiveMap::get(size_t index) const {
@@ -144,7 +144,7 @@ inline void ZLiveMap::iterate_segment(ObjectClosure* cl, BitMap::idx_t segment, 
     const uintptr_t addr = page_start + ((index / 2) << page_object_alignment_shift);
 
     // Apply closure
-    cl->do_object(ZOop::to_oop(addr));
+    cl->do_object(ZOop::from_address(addr));
 
     // Find next bit after this object
     const size_t size = ZUtils::object_size(addr);

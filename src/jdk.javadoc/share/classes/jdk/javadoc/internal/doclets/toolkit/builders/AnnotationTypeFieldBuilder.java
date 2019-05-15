@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,12 +139,12 @@ public class AnnotationTypeFieldBuilder extends AbstractMemberBuilder {
         }
         if (hasMembersToDocument()) {
             writer.addAnnotationFieldDetailsMarker(memberDetailsTree);
+            Content annotationDetailsTreeHeader = writer.getAnnotationDetailsTreeHeader(typeElement);
+            Content detailsTree = writer.getMemberTreeHeader();
 
             Element lastElement = members.get(members.size() - 1);
             for (Element member : members) {
                 currentMember = member;
-                Content detailsTree = writer.getMemberTreeHeader();
-                writer.addAnnotationDetailsTreeHeader(typeElement, detailsTree);
                 Content annotationDocTree = writer.getAnnotationDocTreeHeader(currentMember,
                         detailsTree);
 
@@ -153,10 +153,10 @@ public class AnnotationTypeFieldBuilder extends AbstractMemberBuilder {
                 buildMemberComments(annotationDocTree);
                 buildTagInfo(annotationDocTree);
 
-                detailsTree.addContent(writer.getAnnotationDoc(
+                detailsTree.add(writer.getAnnotationDoc(
                         annotationDocTree, currentMember == lastElement));
-                memberDetailsTree.addContent(writer.getAnnotationDetails(detailsTree));
             }
+            memberDetailsTree.add(writer.getAnnotationDetails(annotationDetailsTreeHeader, detailsTree));
         }
     }
 
@@ -166,7 +166,7 @@ public class AnnotationTypeFieldBuilder extends AbstractMemberBuilder {
      * @param annotationDocTree the content tree to which the documentation will be added
      */
     protected void buildSignature(Content annotationDocTree) {
-        annotationDocTree.addContent(
+        annotationDocTree.add(
                 writer.getSignature(currentMember));
     }
 

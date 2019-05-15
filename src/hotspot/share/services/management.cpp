@@ -24,12 +24,14 @@
 
 #include "precompiled.hpp"
 #include "jmm.h"
+#include "classfile/classLoader.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "compiler/compileBroker.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/iterator.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
+#include "memory/universe.hpp"
 #include "oops/klass.hpp"
 #include "oops/objArrayKlass.hpp"
 #include "oops/objArrayOop.inline.hpp"
@@ -843,7 +845,7 @@ void VmThreadCountClosure::do_thread(Thread* thread) {
 static jint get_vm_thread_count() {
   VmThreadCountClosure vmtcc;
   {
-    MutexLockerEx ml(Threads_lock);
+    MutexLocker ml(Threads_lock);
     Threads::threads_do(&vmtcc);
   }
 
@@ -1703,7 +1705,7 @@ JVM_ENTRY(jint, jmm_GetInternalThreadTimes(JNIEnv *env,
 
   ThreadTimesClosure ttc(names_ah, times_ah);
   {
-    MutexLockerEx ml(Threads_lock);
+    MutexLocker ml(Threads_lock);
     Threads::threads_do(&ttc);
   }
   ttc.do_unlocked();

@@ -1082,11 +1082,6 @@ static bool merge_point_safe(Node* region) {
         Node* m = n->fast_out(j);
         if (m->is_FastLock())
           return false;
-#if INCLUDE_SHENANDOAHGC
-        if (m->is_ShenandoahBarrier() && m->has_out_with(Op_FastLock)) {
-          return false;
-        }
-#endif
 #ifdef _LP64
         if (m->Opcode() == Op_ConvI2L)
           return false;
@@ -2667,7 +2662,7 @@ int PhaseIdealLoop::clone_for_use_outside_loop( IdealLoopTree *loop, Node* n, No
     assert(!loop->is_member(get_loop(use_c)), "should be outside loop");
     get_loop(use_c)->_body.push(n_clone);
     _igvn.register_new_node_with_optimizer(n_clone);
-#if !defined(PRODUCT)
+#ifndef PRODUCT
     if (TracePartialPeeling) {
       tty->print_cr("loop exit cloning old: %d new: %d newbb: %d", n->_idx, n_clone->_idx, get_ctrl(n_clone)->_idx);
     }
@@ -2705,7 +2700,7 @@ void PhaseIdealLoop::clone_for_special_use_inside_loop( IdealLoopTree *loop, Nod
     set_ctrl(n_clone, get_ctrl(n));
     sink_list.push(n_clone);
     not_peel <<= n_clone->_idx;  // add n_clone to not_peel set.
-#if !defined(PRODUCT)
+#ifndef PRODUCT
     if (TracePartialPeeling) {
       tty->print_cr("special not_peeled cloning old: %d new: %d", n->_idx, n_clone->_idx);
     }
@@ -3051,7 +3046,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
         opc == Op_CatchProj ||
         opc == Op_Jump      ||
         opc == Op_JumpProj) {
-#if !defined(PRODUCT)
+#ifndef PRODUCT
       if (TracePartialPeeling) {
         tty->print_cr("\nExit control too complex: lp: %d", head->_idx);
       }
@@ -3107,7 +3102,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
     return false;
   }
 
-#if !defined(PRODUCT)
+#ifndef PRODUCT
   if (TraceLoopOpts) {
     tty->print("PartialPeel  ");
     loop->dump_head();
@@ -3135,6 +3130,10 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   Node_List peel_list(area);
   Node_List worklist(area);
   Node_List sink_list(area);
+
+  if (!may_require_nodes(est_loop_clone_sz(2, loop->_body.size()))) {
+    return false;
+  }
 
   // Set of cfg nodes to peel are those that are executable from
   // the head through last_peel.
@@ -3184,7 +3183,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
     if (use->is_Phi()) old_phi_cnt++;
   }
 
-#if !defined(PRODUCT)
+#ifndef PRODUCT
   if (TracePartialPeeling) {
     tty->print_cr("\npeeled list");
   }
@@ -3195,7 +3194,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   uint cloned_for_outside_use = 0;
   for (i = 0; i < peel_list.size();) {
     Node* n = peel_list.at(i);
-#if !defined(PRODUCT)
+#ifndef PRODUCT
   if (TracePartialPeeling) n->dump();
 #endif
     bool incr = true;
@@ -3210,14 +3209,14 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
 
           // if not pinned and not a load (which maybe anti-dependent on a store)
           // and not a CMove (Matcher expects only bool->cmove).
-          if (n->in(0) == NULL && !n->is_Load() && !n->is_CMove() && n->Opcode() != Op_ShenandoahWBMemProj) {
+          if (n->in(0) == NULL && !n->is_Load() && !n->is_CMove()) {
             cloned_for_outside_use += clone_for_use_outside_loop( loop, n, worklist );
             sink_list.push(n);
             peel     >>= n->_idx; // delete n from peel set.
             not_peel <<= n->_idx; // add n to not_peel set.
             peel_list.remove(i);
             incr = false;
-#if !defined(PRODUCT)
+#ifndef PRODUCT
             if (TracePartialPeeling) {
               tty->print_cr("sink to not_peeled region: %d newbb: %d",
                             n->_idx, get_ctrl(n)->_idx);
@@ -3236,7 +3235,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   }
 
   if (new_phi_cnt > old_phi_cnt + PartialPeelNewPhiDelta) {
-#if !defined(PRODUCT)
+#ifndef PRODUCT
     if (TracePartialPeeling) {
       tty->print_cr("\nToo many new phis: %d  old %d new cmpi: %c",
                     new_phi_cnt, old_phi_cnt, new_peel_if != NULL?'T':'F');
@@ -3394,7 +3393,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   C->set_major_progress();
   loop->record_for_igvn();
 
-#if !defined(PRODUCT)
+#ifndef PRODUCT
   if (TracePartialPeeling) {
     tty->print_cr("\nafter partial peel one iteration");
     Node_List wl(area);
@@ -3434,10 +3433,10 @@ void PhaseIdealLoop::reorg_offsets(IdealLoopTree *loop) {
   Node *exit = cle->proj_out(false);
   Node *phi = cl->phi();
 
-  // Check for the special case of folks using the pre-incremented
-  // trip-counter on the fall-out path (forces the pre-incremented
-  // and post-incremented trip counter to be live at the same time).
-  // Fix this by adjusting to use the post-increment trip counter.
+  // Check for the special case when using the pre-incremented trip-counter on
+  // the fall-out  path (forces the pre-incremented  and post-incremented trip
+  // counter to be live  at the same time).  Fix this by  adjusting to use the
+  // post-increment trip counter.
 
   bool progress = true;
   while (progress) {

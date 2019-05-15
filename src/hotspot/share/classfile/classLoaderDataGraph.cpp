@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ volatile size_t ClassLoaderDataGraph::_num_array_classes = 0;
 volatile size_t ClassLoaderDataGraph::_num_instance_classes = 0;
 
 void ClassLoaderDataGraph::clear_claimed_marks() {
+  assert_locked_or_safepoint_weak(ClassLoaderDataGraph_lock);
   for (ClassLoaderData* cld = _head; cld != NULL; cld = cld->next()) {
     cld->clear_claim();
   }
@@ -163,7 +164,7 @@ void ClassLoaderDataGraph::walk_metadata_and_clean_metaspaces() {
   // TODO: have redefinition clean old methods out of the code cache.  They still exist in some places.
   bool walk_all_metadata = InstanceKlass::has_previous_versions_and_reset();
 
-  MetadataOnStackMark md_on_stack(walk_all_metadata);
+  MetadataOnStackMark md_on_stack(walk_all_metadata, /*redefinition_walk*/false);
   clean_deallocate_lists(walk_all_metadata);
 }
 
@@ -442,7 +443,7 @@ void ClassLoaderDataGraph::print_dictionary(outputStream* st) {
   }
 }
 
-void ClassLoaderDataGraph::print_dictionary_statistics(outputStream* st) {
+void ClassLoaderDataGraph::print_table_statistics(outputStream* st) {
   FOR_ALL_DICTIONARY(cld) {
     ResourceMark rm;
     stringStream tempst;
@@ -706,3 +707,5 @@ void ClassLoaderDataGraph::print_on(outputStream * const out) {
   }
 }
 #endif // PRODUCT
+
+void ClassLoaderDataGraph::print() { print_on(tty); }

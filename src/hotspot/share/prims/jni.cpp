@@ -88,10 +88,6 @@
 #include "utilities/histogram.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/vmError.hpp"
-#if INCLUDE_JVMCI
-#include "jvmci/jvmciCompiler.hpp"
-#include "jvmci/jvmciRuntime.hpp"
-#endif
 
 static jint CurrentVersion = JNI_VERSION_10;
 
@@ -333,7 +329,7 @@ JNI_ENTRY(jclass, jni_DefineClass(JNIEnv *env, const char *name, jobject loaderR
                          name);
       return 0;
     }
-    class_name = SymbolTable::new_symbol(name, CHECK_NULL);
+    class_name = SymbolTable::new_symbol(name);
   }
   ResourceMark rm(THREAD);
   ClassFileStream st((u1*)buf, bufLen, NULL, ClassFileStream::verify);
@@ -420,7 +416,7 @@ JNI_ENTRY(jclass, jni_FindClass(JNIEnv *env, const char *name))
     }
   }
 
-  TempNewSymbol sym = SymbolTable::new_symbol(name, CHECK_NULL);
+  TempNewSymbol sym = SymbolTable::new_symbol(name);
   result = find_class_from_class_loader(env, sym, true, loader,
                                         protection_domain, true, thread);
 
@@ -1318,13 +1314,14 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
     THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), name_str);
   }
 
+  Klass* klass = java_lang_Class::as_Klass(JNIHandles::resolve_non_null(clazz));
+
   // Throw a NoSuchMethodError exception if we have an instance of a
   // primitive java.lang.Class
   if (java_lang_Class::is_primitive(JNIHandles::resolve_non_null(clazz))) {
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), name_str);
+    ResourceMark rm;
+    THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), err_msg("%s%s.%s%s", is_static ? "static " : "", klass->signature_name(), name_str, sig));
   }
-
-  Klass* klass = java_lang_Class::as_Klass(JNIHandles::resolve_non_null(clazz));
 
   // Make sure class is linked and initialized before handing id's out to
   // Method*s.
@@ -1346,7 +1343,8 @@ static jmethodID get_method_id(JNIEnv *env, jclass clazz, const char *name_str,
     }
   }
   if (m == NULL || (m->is_static() != is_static)) {
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), name_str);
+    ResourceMark rm;
+    THROW_MSG_0(vmSymbols::java_lang_NoSuchMethodError(), err_msg("%s%s.%s%s", is_static ? "static " : "", klass->signature_name(), name_str, sig));
   }
   return m->jmethod_id();
 }
@@ -2014,22 +2012,26 @@ JNI_ENTRY(jfieldID, jni_GetFieldID(JNIEnv *env, jclass clazz,
   jfieldID ret = 0;
   DT_RETURN_MARK(GetFieldID, jfieldID, (const jfieldID&)ret);
 
+  Klass* k = java_lang_Class::as_Klass(JNIHandles::resolve_non_null(clazz));
+
   // The class should have been loaded (we have an instance of the class
   // passed in) so the field and signature should already be in the symbol
   // table.  If they're not there, the field doesn't exist.
   TempNewSymbol fieldname = SymbolTable::probe(name, (int)strlen(name));
   TempNewSymbol signame = SymbolTable::probe(sig, (int)strlen(sig));
   if (fieldname == NULL || signame == NULL) {
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), (char*) name);
+    ResourceMark rm;
+    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), err_msg("%s.%s %s", k->external_name(), name, sig));
   }
-  Klass* k = java_lang_Class::as_Klass(JNIHandles::resolve_non_null(clazz));
+
   // Make sure class is initialized before handing id's out to fields
   k->initialize(CHECK_NULL);
 
   fieldDescriptor fd;
   if (!k->is_instance_klass() ||
       !InstanceKlass::cast(k)->find_field(fieldname, signame, false, &fd)) {
-    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), (char*) name);
+    ResourceMark rm;
+    THROW_MSG_0(vmSymbols::java_lang_NoSuchFieldError(), err_msg("%s.%s %s", k->external_name(), name, sig));
   }
 
   // A jfieldID for a non-static field is simply the offset of the field within the instanceOop
@@ -2955,8 +2957,9 @@ static bool register_native(Klass* k, Symbol* name, Symbol* signature, address e
   if (method == NULL) {
     ResourceMark rm;
     stringStream st;
-    st.print("Method %s name or signature does not match",
-             Method::name_and_sig_as_C_string(k, name, signature));
+    st.print("Method '");
+    Method::print_external_name(&st, k, name, signature);
+    st.print("' name or signature does not match");
     THROW_MSG_(vmSymbols::java_lang_NoSuchMethodError(), st.as_string(), false);
   }
   if (!method->is_native()) {
@@ -2965,8 +2968,9 @@ static bool register_native(Klass* k, Symbol* name, Symbol* signature, address e
     if (method == NULL) {
       ResourceMark rm;
       stringStream st;
-      st.print("Method %s is not declared as native",
-               Method::name_and_sig_as_C_string(k, name, signature));
+      st.print("Method '");
+      Method::print_external_name(&st, k, name, signature);
+      st.print("' is not declared as native");
       THROW_MSG_(vmSymbols::java_lang_NoSuchMethodError(), st.as_string(), false);
     }
   }
@@ -3284,7 +3288,7 @@ static jclass lookupOne(JNIEnv* env, const char* name, TRAPS) {
   Handle loader;            // null (bootstrap) loader
   Handle protection_domain; // null protection domain
 
-  TempNewSymbol sym = SymbolTable::new_symbol(name, CHECK_NULL);
+  TempNewSymbol sym = SymbolTable::new_symbol(name);
   jclass result =  find_class_from_class_loader(env, sym, true, loader, protection_domain, true, CHECK_NULL);
 
   if (log_is_enabled(Debug, class, resolve) && result != NULL) {
@@ -3969,7 +3973,7 @@ static jint JNI_CreateJavaVM_inner(JavaVM **vm, void **penv, void *args) {
 #endif
 
     // Since this is not a JVM_ENTRY we have to set the thread state manually before leaving.
-    ThreadStateTransition::transition_and_fence(thread, _thread_in_vm, _thread_in_native);
+    ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
   } else {
     // If create_vm exits because of a pending exception, exit with that
     // exception.  In the future when we figure out how to reclaim memory,
@@ -4071,7 +4075,7 @@ static jint JNICALL jni_DestroyJavaVM_inner(JavaVM *vm) {
     res = JNI_OK;
     return res;
   } else {
-    ThreadStateTransition::transition_and_fence(thread, _thread_in_vm, _thread_in_native);
+    ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
     res = JNI_ERR;
     return res;
   }
@@ -4166,7 +4170,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
 
   if (attach_failed) {
     // Added missing cleanup
-    thread->cleanup_failed_attach_current_thread();
+    thread->cleanup_failed_attach_current_thread(daemon);
     return JNI_ERR;
   }
 
@@ -4193,7 +4197,7 @@ static jint attach_current_thread(JavaVM *vm, void **penv, void *_args, bool dae
   // using ThreadStateTransition::transition, we do a callback to the safepoint code if
   // needed.
 
-  ThreadStateTransition::transition_and_fence(thread, _thread_in_vm, _thread_in_native);
+  ThreadStateTransition::transition(thread, _thread_in_vm, _thread_in_native);
 
   // Perform any platform dependent FPU setup
   os::setup_fpu();

@@ -96,7 +96,7 @@ import java.util.function.Function;
  *      }
  *
  *      // test methods...
- *      @Test
+ *      {@literal @}Test
  *      void test() {
  *          javadoc(<i>args</i>);
  *          checkExit(Exit.OK);
@@ -772,7 +772,7 @@ public abstract class JavadocTester {
         return readFile(new File(baseDir), fileName);
     }
 
-    private String readFile(Path file) {
+    protected String readFile(Path file) {
         File baseDir;
         if (file.startsWith(outputDir.toPath())) {
             baseDir = outputDir;

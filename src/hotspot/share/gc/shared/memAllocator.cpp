@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,20 +198,27 @@ void MemAllocator::Allocation::notify_allocation_jvmti_sampler() {
     return;
   }
 
-  if (JvmtiExport::should_post_sampled_object_alloc()) {
-    // If we want to be sampling, protect the allocated object with a Handle
-    // before doing the callback. The callback is done in the destructor of
-    // the JvmtiSampledObjectAllocEventCollector.
+  // If we want to be sampling, protect the allocated object with a Handle
+  // before doing the callback. The callback is done in the destructor of
+  // the JvmtiSampledObjectAllocEventCollector.
+  size_t bytes_since_last = 0;
+
+  {
     PreserveObj obj_h(_thread, _obj_ptr);
     JvmtiSampledObjectAllocEventCollector collector;
     size_t size_in_bytes = _allocator._word_size * HeapWordSize;
     ThreadLocalAllocBuffer& tlab = _thread->tlab();
-    size_t bytes_since_last = _allocated_outside_tlab ? 0 : tlab.bytes_since_last_sample_point();
+
+    if (!_allocated_outside_tlab) {
+      bytes_since_last = tlab.bytes_since_last_sample_point();
+    }
+
     _thread->heap_sampler().check_for_sampling(obj_h(), size_in_bytes, bytes_since_last);
   }
 
   if (_tlab_end_reset_for_sample || _allocated_tlab_size != 0) {
-    _thread->tlab().set_sample_end();
+    // Tell tlab to forget bytes_since_last if we passed it to the heap sampler.
+    _thread->tlab().set_sample_end(bytes_since_last != 0);
   }
 }
 
@@ -253,12 +260,12 @@ void MemAllocator::Allocation::notify_allocation() {
 
 HeapWord* MemAllocator::allocate_outside_tlab(Allocation& allocation) const {
   allocation._allocated_outside_tlab = true;
-  HeapWord* mem = _heap->mem_allocate(_word_size, &allocation._overhead_limit_exceeded);
+  HeapWord* mem = Universe::heap()->mem_allocate(_word_size, &allocation._overhead_limit_exceeded);
   if (mem == NULL) {
     return mem;
   }
 
-  NOT_PRODUCT(_heap->check_for_non_bad_heap_word_value(mem, _word_size));
+  NOT_PRODUCT(Universe::heap()->check_for_non_bad_heap_word_value(mem, _word_size));
   size_t size_in_bytes = _word_size * HeapWordSize;
   _thread->incr_allocated_bytes(size_in_bytes);
 
@@ -283,12 +290,14 @@ HeapWord* MemAllocator::allocate_inside_tlab_slow(Allocation& allocation) const 
   ThreadLocalAllocBuffer& tlab = _thread->tlab();
 
   if (JvmtiExport::should_post_sampled_object_alloc()) {
-    // Try to allocate the sampled object from TLAB, it is possible a sample
-    // point was put and the TLAB still has space.
     tlab.set_back_allocation_end();
     mem = tlab.allocate(_word_size);
+
+    // We set back the allocation sample point to try to allocate this, reset it
+    // when done.
+    allocation._tlab_end_reset_for_sample = true;
+
     if (mem != NULL) {
-      allocation._tlab_end_reset_for_sample = true;
       return mem;
     }
   }
@@ -313,7 +322,7 @@ HeapWord* MemAllocator::allocate_inside_tlab_slow(Allocation& allocation) const 
   // Allocate a new TLAB requesting new_tlab_size. Any size
   // between minimal and new_tlab_size is accepted.
   size_t min_tlab_size = ThreadLocalAllocBuffer::compute_min_size(_word_size);
-  mem = _heap->allocate_new_tlab(min_tlab_size, new_tlab_size, &allocation._allocated_tlab_size);
+  mem = Universe::heap()->allocate_new_tlab(min_tlab_size, new_tlab_size, &allocation._allocated_tlab_size);
   if (mem == NULL) {
     assert(allocation._allocated_tlab_size == 0,
            "Allocation failed, but actual size was updated. min: " SIZE_FORMAT

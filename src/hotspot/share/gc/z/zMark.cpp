@@ -56,9 +56,9 @@ static const ZStatSubPhase ZSubPhaseConcurrentMarkIdle("Concurrent Mark Idle");
 static const ZStatSubPhase ZSubPhaseConcurrentMarkTryTerminate("Concurrent Mark Try Terminate");
 static const ZStatSubPhase ZSubPhaseMarkTryComplete("Pause Mark Try Complete");
 
-ZMark::ZMark(ZWorkers* workers, ZPageTable* pagetable) :
+ZMark::ZMark(ZWorkers* workers, ZPageTable* page_table) :
     _workers(workers),
-    _pagetable(pagetable),
+    _page_table(page_table),
     _allocator(),
     _stripes(),
     _terminate(),
@@ -200,7 +200,7 @@ void ZMark::finish_work() {
 }
 
 bool ZMark::is_array(uintptr_t addr) const {
-  return ZOop::to_oop(addr)->is_objArray();
+  return ZOop::from_address(addr)->is_objArray();
 }
 
 void ZMark::push_partial_array(uintptr_t addr, size_t size, bool finalizable) {
@@ -307,7 +307,7 @@ void ZMark::follow_object(oop obj, bool finalizable) {
 }
 
 bool ZMark::try_mark_object(ZMarkCache* cache, uintptr_t addr, bool finalizable) {
-  ZPage* const page = _pagetable->get(addr);
+  ZPage* const page = _page_table->get(addr);
   if (page->is_allocating()) {
     // Newly allocated objects are implicitly marked
     return false;
@@ -347,9 +347,9 @@ void ZMark::mark_and_follow(ZMarkCache* cache, ZMarkStackEntry entry) {
   }
 
   if (is_array(addr)) {
-    follow_array_object(objArrayOop(ZOop::to_oop(addr)), finalizable);
+    follow_array_object(objArrayOop(ZOop::from_address(addr)), finalizable);
   } else {
-    follow_object(ZOop::to_oop(addr), finalizable);
+    follow_object(ZOop::from_address(addr), finalizable);
   }
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,16 @@
 
 package jdk.internal.platform.cgroupv1;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.stream.Stream;
 
+import jdk.internal.platform.cgroupv1.SubSystem.MemorySubSystem;
+
 public class Metrics implements jdk.internal.platform.Metrics {
-    private SubSystem memory;
+    private MemorySubSystem memory;
     private SubSystem cpu;
     private SubSystem cpuacct;
     private SubSystem cpuset;
@@ -124,24 +125,19 @@ public class Metrics implements jdk.internal.platform.Metrics {
     /**
      * createSubSystem objects and initialize mount points
      */
-    private static void createSubSystem(Metrics metric, String [] mountentry) {
+    private static void createSubSystem(Metrics metric, String[] mountentry) {
         if (mountentry.length < 5) return;
 
         Path p = Paths.get(mountentry[4]);
-        String subsystemName = p.getFileName().toString();
+        String[] subsystemNames = p.getFileName().toString().split(",");
 
-        if (subsystemName != null) {
+        for (String subsystemName: subsystemNames) {
             switch (subsystemName) {
                 case "memory":
-                    metric.setMemorySubSystem(new SubSystem(mountentry[3], mountentry[4]));
+                    metric.setMemorySubSystem(new MemorySubSystem(mountentry[3], mountentry[4]));
                     break;
                 case "cpuset":
                     metric.setCpuSetSubSystem(new SubSystem(mountentry[3], mountentry[4]));
-                    break;
-                case "cpu,cpuacct":
-                case "cpuacct,cpu":
-                    metric.setCpuSubSystem(new SubSystem(mountentry[3], mountentry[4]));
-                    metric.setCpuAcctSubSystem(new SubSystem(mountentry[3], mountentry[4]));
                     break;
                 case "cpuacct":
                     metric.setCpuAcctSubSystem(new SubSystem(mountentry[3], mountentry[4]));
@@ -162,7 +158,7 @@ public class Metrics implements jdk.internal.platform.Metrics {
     /**
      * setSubSystemPath based on the contents of /proc/self/cgroup
      */
-    private static void setSubSystemPath(Metrics metric, String [] entry) {
+    private static void setSubSystemPath(Metrics metric, String[] entry) {
         String controller;
         String base;
         SubSystem subsystem = null;
@@ -200,6 +196,11 @@ public class Metrics implements jdk.internal.platform.Metrics {
 
         if (subsystem != null) {
             subsystem.setPath(base);
+            if (subsystem instanceof MemorySubSystem) {
+                MemorySubSystem memorySubSystem = (MemorySubSystem)subsystem;
+                boolean isHierarchial = getHierarchical(memorySubSystem);
+                memorySubSystem.setHierarchical(isHierarchial);
+            }
             metric.setActiveSubSystems();
         }
         if (subsystem2 != null) {
@@ -207,6 +208,11 @@ public class Metrics implements jdk.internal.platform.Metrics {
         }
     }
 
+
+    private static boolean getHierarchical(MemorySubSystem subsystem) {
+        long hierarchical = SubSystem.getLongValue(subsystem, "memory.use_hierarchy");
+        return hierarchical > 0;
+    }
 
     private void setActiveSubSystems() {
         activeSubSystems = true;
@@ -216,7 +222,7 @@ public class Metrics implements jdk.internal.platform.Metrics {
         return activeSubSystems;
     }
 
-    private void setMemorySubSystem(SubSystem memory) {
+    private void setMemorySubSystem(MemorySubSystem memory) {
         this.memory = memory;
     }
 
@@ -298,15 +304,15 @@ public class Metrics implements jdk.internal.platform.Metrics {
 
 
     public long getCpuPeriod() {
-        return SubSystem.getLongValue(cpuacct, "cpu.cfs_period_us");
+        return SubSystem.getLongValue(cpu, "cpu.cfs_period_us");
     }
 
     public long getCpuQuota() {
-        return SubSystem.getLongValue(cpuacct, "cpu.cfs_quota_us");
+        return SubSystem.getLongValue(cpu, "cpu.cfs_quota_us");
     }
 
     public long getCpuShares() {
-        long retval = SubSystem.getLongValue(cpuacct, "cpu.shares");
+        long retval = SubSystem.getLongValue(cpu, "cpu.shares");
         if (retval == 0 || retval == 1024)
             return -1;
         else
@@ -314,15 +320,15 @@ public class Metrics implements jdk.internal.platform.Metrics {
     }
 
     public long getCpuNumPeriods() {
-        return SubSystem.getLongEntry(cpuacct, "cpu.stat", "nr_periods");
+        return SubSystem.getLongEntry(cpu, "cpu.stat", "nr_periods");
     }
 
     public long getCpuNumThrottled() {
-        return SubSystem.getLongEntry(cpuacct, "cpu.stat", "nr_throttled");
+        return SubSystem.getLongEntry(cpu, "cpu.stat", "nr_throttled");
     }
 
     public long getCpuThrottledTime() {
-        return SubSystem.getLongEntry(cpuacct, "cpu.stat", "throttled_time");
+        return SubSystem.getLongEntry(cpu, "cpu.stat", "throttled_time");
     }
 
     public long getEffectiveCpuCount() {
@@ -371,7 +377,27 @@ public class Metrics implements jdk.internal.platform.Metrics {
 
     public long getMemoryLimit() {
         long retval = SubSystem.getLongValue(memory, "memory.limit_in_bytes");
+        if (retval > unlimited_minimum) {
+            if (memory.isHierarchical()) {
+                // memory.limit_in_bytes returned unlimited, attempt
+                // hierarchical memory limit
+                String match = "hierarchical_memory_limit";
+                retval = SubSystem.getLongValueMatchingLine(memory,
+                                                            "memory.stat",
+                                                            match,
+                                                            Metrics::convertHierachicalLimitLine);
+            }
+        }
         return retval > unlimited_minimum ? -1L : retval;
+    }
+
+    public static long convertHierachicalLimitLine(String line) {
+        String[] tokens = line.split("\\s");
+        if (tokens.length == 2) {
+            String strVal = tokens[1];
+            return SubSystem.convertStringToLong(strVal);
+        }
+        return unlimited_minimum + 1; // unlimited
     }
 
     public long getMemoryMaxUsage() {
@@ -422,6 +448,17 @@ public class Metrics implements jdk.internal.platform.Metrics {
 
     public long getMemoryAndSwapLimit() {
         long retval = SubSystem.getLongValue(memory, "memory.memsw.limit_in_bytes");
+        if (retval > unlimited_minimum) {
+            if (memory.isHierarchical()) {
+                // memory.memsw.limit_in_bytes returned unlimited, attempt
+                // hierarchical memory limit
+                String match = "hierarchical_memsw_limit";
+                retval = SubSystem.getLongValueMatchingLine(memory,
+                                                            "memory.stat",
+                                                            match,
+                                                            Metrics::convertHierachicalLimitLine);
+            }
+        }
         return retval > unlimited_minimum ? -1L : retval;
     }
 

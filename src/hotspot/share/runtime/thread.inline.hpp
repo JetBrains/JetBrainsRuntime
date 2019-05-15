@@ -108,13 +108,6 @@ inline void JavaThread::clear_external_suspend() {
   clear_suspend_flag(_external_suspend);
 }
 
-inline void JavaThread::set_deopt_suspend() {
-  set_suspend_flag(_deopt_suspend);
-}
-inline void JavaThread::clear_deopt_suspend() {
-  clear_suspend_flag(_deopt_suspend);
-}
-
 inline void JavaThread::set_pending_async_exception(oop e) {
   _pending_async_exception = e;
   _special_runtime_exit_condition = _async_exception;
@@ -139,6 +132,11 @@ inline void JavaThread::set_thread_state(JavaThreadState s) {
 #else
   _thread_state = s;
 #endif
+}
+
+inline void JavaThread::set_thread_state_fence(JavaThreadState s) {
+  set_thread_state(s);
+  OrderAccess::fence();
 }
 
 ThreadSafepointState* JavaThread::safepoint_state() const  {

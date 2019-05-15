@@ -87,6 +87,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.runtime.JVMCIBackend;
+import jdk.vm.ci.services.Services;
 
 //JaCoCo Exclude
 
@@ -94,6 +95,8 @@ import jdk.vm.ci.runtime.JVMCIBackend;
  * Singleton class holding the instance of the {@link GraalRuntime}.
  */
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
+
+    private static final boolean IS_AOT = Boolean.parseBoolean(Services.getSavedProperties().get("com.oracle.graalvm.isaot"));
 
     private static boolean checkArrayIndexScaleInvariants(MetaAccessProvider metaAccess) {
         assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1;
@@ -159,9 +162,13 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         compilerConfigurationName = compilerConfigurationFactory.getName();
 
         compiler = new HotSpotGraalCompiler(jvmciRuntime, this, options);
-        management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
-        if (management != null) {
-            management.initialize(this);
+        if (IS_AOT) {
+            management = null;
+        } else {
+            management = GraalServices.loadSingle(HotSpotGraalManagementRegistration.class, false);
+            if (management != null) {
+                management.initialize(this);
+            }
         }
 
         BackendMap backendMap = compilerConfigurationFactory.createBackendMap();
@@ -571,7 +578,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         EconomicMap<OptionKey<?>, Object> extra = EconomicMap.create();
         extra.put(DebugOptions.Dump, filter);
         extra.put(DebugOptions.PrintGraphHost, host);
-        extra.put(DebugOptions.PrintBinaryGraphPort, port);
+        extra.put(DebugOptions.PrintGraphPort, port);
         OptionValues compileOptions = new OptionValues(getOptions(), extra);
         compiler.compileMethod(new HotSpotCompilationRequest(hotSpotMethod, -1, 0L), false, compileOptions);
     }

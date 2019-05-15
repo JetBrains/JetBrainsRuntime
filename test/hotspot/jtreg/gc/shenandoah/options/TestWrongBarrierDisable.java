@@ -24,7 +24,7 @@
 /* @test TestWrongBarrierDisable
  * @summary Test that disabling wrong barriers fails early
  * @key gc
- * @requires vm.gc.Shenandoah
+ * @requires vm.gc.Shenandoah & !vm.graal.enabled
  * @library /test/lib
  * @run main/othervm TestWrongBarrierDisable
  */
@@ -38,21 +38,16 @@ public class TestWrongBarrierDisable {
 
     public static void main(String[] args) throws Exception {
         String[] concurrent = {
-                "ShenandoahReadBarrier",
-                "ShenandoahWriteBarrier",
+                "ShenandoahLoadRefBarrier",
                 "ShenandoahCASBarrier",
-                "ShenandoahAcmpBarrier",
                 "ShenandoahCloneBarrier",
                 "ShenandoahSATBBarrier",
                 "ShenandoahKeepAliveBarrier",
-                "ShenandoahStoreValReadBarrier",
         };
 
         String[] traversal = {
-                "ShenandoahReadBarrier",
-                "ShenandoahWriteBarrier",
+                "ShenandoahLoadRefBarrier",
                 "ShenandoahCASBarrier",
-                "ShenandoahAcmpBarrier",
                 "ShenandoahCloneBarrier",
         };
 
