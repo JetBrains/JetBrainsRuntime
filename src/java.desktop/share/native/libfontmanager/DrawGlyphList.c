@@ -532,7 +532,17 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
      * heterogenous
      */
     if (subPixPos && len > 0) {
+<<<<<<< HEAD
         ginfo = (GlyphInfo*)imagePtrs[fromGlyph];
+=======
+        ginfo = (GlyphInfo*)imagePtrs[0];
+        if (ginfo == NULL) {
+            (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+            free(gbv);
+            return (GlyphBlitVector*)NULL;
+        }
+>>>>>>> a93b121... 8222690: Better Glyph Images
         /* rowBytes==width tests if its a B&W or LCD glyph */
         if (ginfo->width == ginfo->rowBytes) {
             subPixPos = JNI_FALSE;
@@ -554,7 +564,17 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
         for (g=0; g<len; g++) {
             jfloat px, py;
 
+<<<<<<< HEAD
             ginfo = (GlyphInfo*)imagePtrs[g + fromGlyph];
+=======
+            ginfo = (GlyphInfo*)imagePtrs[g];
+            if (ginfo == NULL) {
+                (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+                free(gbv);
+                return (GlyphBlitVector*)NULL;
+            }
+>>>>>>> a93b121... 8222690: Better Glyph Images
             gbv->glyphs[g].glyphInfo = ginfo;
             gbv->glyphs[g].pixels = ginfo->image;
             gbv->glyphs[g].width = ginfo->width;
@@ -634,9 +654,19 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
                                               positions, JNI_ABORT);
     } else {
         for (g=0; g<len; g++) {
+<<<<<<< HEAD
             jfloat px = x;
             jfloat py = y;
             ginfo = (GlyphInfo*)imagePtrs[g + fromGlyph];
+=======
+            ginfo = (GlyphInfo*)imagePtrs[g];
+            if (ginfo == NULL) {
+                (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+                free(gbv);
+                return (GlyphBlitVector*)NULL;
+            }
+>>>>>>> a93b121... 8222690: Better Glyph Images
             gbv->glyphs[g].glyphInfo = ginfo;
             gbv->glyphs[g].pixels = ginfo->image;
             gbv->glyphs[g].width = ginfo->width;
