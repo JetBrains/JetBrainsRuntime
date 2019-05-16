@@ -773,7 +773,7 @@ public final class CInputMethod extends InputMethodAdapter {
                         }
                     }
                 }}
-            }, fAwtFocussedComponent);
+            }, fAwtFocussedComponent, true); // [tav] avoid deadlock with javafx
         } catch (InvocationTargetException ite) { ite.printStackTrace(); }
 
         synchronized(rect) { return rect; }
@@ -794,7 +794,7 @@ public final class CInputMethod extends InputMethodAdapter {
                     offsetInfo[0] = fIMContext.getLocationOffset(screenX, screenY);
                     insertPositionOffset[0] = fIMContext.getInsertPositionOffset();
                 }}
-            }, fAwtFocussedComponent);
+            }, fAwtFocussedComponent, true); // [tav] avoid deadlock with javafx
         } catch (InvocationTargetException ite) { ite.printStackTrace(); }
 
         // This bit of gymnastics ensures that the returned location is within the composed text.
