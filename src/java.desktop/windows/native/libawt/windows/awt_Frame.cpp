@@ -1826,18 +1826,21 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     GetSysInsets(&insets, this);
     RECT* rect = &lpncsp->rgrc[0];
 
-    rect->left = rect->left + insets.left;
+    rect->left += insets.left;
+    rect->right -= insets.right;
+    rect->bottom -= insets.bottom;
+
     if (::IsZoomed(GetHWnd())) {
-        lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + insets.bottom;
+        rect->top += insets.bottom;
+        // [moklev] Workaround for RIDER-27069, IDEA-211327
+        rect->right += this->ScaleUpX(1);
+        rect->bottom -= 1;
     }
     else {
         // this makes the native caption go uncovered
         // int yBorder = ::GetSystemMetrics(SM_CYBORDER);
-        // lpncsp->rgrc[0].top = lpncsp->rgrc[0].top + yBorder;
+        // rect->top += yBorder;
     }
-    rect->right = rect->right - insets.right;
-    rect->bottom = rect->bottom - insets.bottom;
-
     retVal = 0L;
     return mrConsume;
 }
