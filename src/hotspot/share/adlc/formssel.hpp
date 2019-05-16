@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1998, 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1998, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -191,7 +191,6 @@ public:
   // loads from memory, so must check for anti-dependence
   virtual bool        needs_anti_dependence_check(FormDict &globals) const;
   virtual int         memory_operand(FormDict &globals) const;
-          bool        is_wide_memory_kill(FormDict &globals) const;
 
   enum memory_operand_type {
     NO_MEMORY_OPERAND = -1,

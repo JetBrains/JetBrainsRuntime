@@ -33,6 +33,10 @@
 #include "opto/regmask.hpp"
 #include "opto/type.hpp"
 #include "utilities/vmError.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 //=============================================================================
 //------------------------------MultiNode--------------------------------------

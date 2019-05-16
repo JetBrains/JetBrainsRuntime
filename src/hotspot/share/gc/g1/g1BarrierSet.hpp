@@ -39,8 +39,8 @@ class G1CardTable;
 class G1BarrierSet: public CardTableBarrierSet {
   friend class VMStructs;
  private:
-  static SATBMarkQueueSet  _satb_mark_queue_set;
-  static DirtyCardQueueSet _dirty_card_queue_set;
+  static G1SATBMarkQueueSet _satb_mark_queue_set;
+  static DirtyCardQueueSet  _dirty_card_queue_set;
 
  public:
   G1BarrierSet(G1CardTable* table);

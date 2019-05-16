@@ -239,7 +239,7 @@ bool PhaseIdealLoop::split_up( Node *n, Node *blk1, Node *blk2 ) {
     if (rtype != NULL) x->as_Type()->set_type(rtype);
     if( n->in(0) && n->in(0) == blk1 )
       x->set_req( 0, blk1->in(j) );
-    for( uint i = 1; i < n->req(); i++ ) {
+    for( uint i = n->is_Proj() ? 0 : 1; i < n->req(); i++ ) {
       Node *m = n->in(i);
       if( get_ctrl(m) == blk1 ) {
         assert( m->in(0) == blk1, "" );
@@ -253,6 +253,7 @@ bool PhaseIdealLoop::split_up( Node *n, Node *blk1, Node *blk2 ) {
   register_new_node(phi, blk1);
 
   // Remove cloned-up value from optimizer; use phi instead
+  split_mem_thru_phi(n, blk1, phi);
   _igvn.replace_node( n, phi );
 
   // (There used to be a self-recursive call to split_up() here,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -74,7 +74,7 @@ private:
   ciMetadata* create_new_metadata(Metadata* o);
 
   static bool is_equal(NonPermObject* p, oop key) {
-    return p->object()->get_oop() == key;
+    return oopDesc::equals(p->object()->get_oop(), key);
   }
 
   NonPermObject* &find_non_perm(oop key);

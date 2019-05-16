@@ -36,6 +36,10 @@
 #include "opto/phaseX.hpp"
 #include "opto/subnode.hpp"
 #include "runtime/sharedRuntime.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -880,6 +884,11 @@ static inline Node* isa_java_mirror_load(PhaseGVN* phase, Node* n) {
   // Return the klass node for (indirect load from OopHandle)
   //   LoadP(LoadP(AddP(foo:Klass, #java_mirror)))
   //   or NULL if not matching.
+
+#if INCLUDE_SHENANDOAHGC
+  n = ShenandoahBarrierNode::skip_through_barrier(n);
+#endif
+
   if (n->Opcode() != Op_LoadP) return NULL;
 
   const TypeInstPtr* tp = phase->type(n)->isa_instptr();
@@ -932,6 +941,37 @@ static inline Node* isa_const_java_mirror(PhaseGVN* phase, Node* n) {
 // checking to see an unknown klass subtypes a known klass with no subtypes;
 // this only happens on an exact match.  We can shorten this test by 1 load.
 Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
+#if INCLUDE_SHENANDOAHGC
+  if (UseShenandoahGC) {
+    Node* in1 = in(1);
+    Node* in2 = in(2);
+    if (in1->bottom_type() == TypePtr::NULL_PTR) {
+      in2 = ShenandoahBarrierNode::skip_through_barrier(in2);
+    }
+    if (in2->bottom_type() == TypePtr::NULL_PTR) {
+      in1 = ShenandoahBarrierNode::skip_through_barrier(in1);
+    }
+    PhaseIterGVN* igvn = phase->is_IterGVN();
+    if (in1 != in(1)) {
+      if (igvn != NULL) {
+        set_req_X(1, in1, igvn);
+      } else {
+        set_req(1, in1);
+      }
+      assert(in2 == in(2), "only one change");
+      return this;
+    }
+    if (in2 != in(2)) {
+      if (igvn != NULL) {
+        set_req_X(2, in2, igvn);
+      } else {
+        set_req(2, in2);
+      }
+      return this;
+    }
+  }
+#endif
+
   // Normalize comparisons between Java mirrors into comparisons of the low-
   // level klass, where a dependent load could be shortened.
   //
@@ -952,8 +992,17 @@ Node *CmpPNode::Ideal( PhaseGVN *phase, bool can_reshape ) {
     if (k1 && (k2 || conk2)) {
       Node* lhs = k1;
       Node* rhs = (k2 != NULL) ? k2 : conk2;
-      this->set_req(1, lhs);
-      this->set_req(2, rhs);
+#if INCLUDE_SHENANDOAHGC
+      PhaseIterGVN* igvn = phase->is_IterGVN();
+      if (UseShenandoahGC && igvn != NULL) {
+        set_req_X(1, lhs, igvn);
+        set_req_X(2, rhs, igvn);
+      } else
+#endif
+      {
+        set_req(1, lhs);
+        set_req(2, rhs);
+      }
       return this;
     }
   }

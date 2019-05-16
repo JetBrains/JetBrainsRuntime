@@ -101,9 +101,23 @@ public:
 
   // General access
   oopDesc*  operator->() const        { return obj(); }
-  bool operator==(const oop o) const  { return obj() == o.obj(); }
+  bool operator==(const oop o) const  {
+#if INCLUDE_SHENANDOAHGC
+    if (ShenandoahVerifyObjectEquals) {
+      ShouldNotReachHere();
+    }
+#endif
+    return obj() == o.obj();
+  }
   bool operator==(void *p) const      { return obj() == p; }
-  bool operator!=(const volatile oop o) const  { return obj() != o.obj(); }
+  bool operator!=(const volatile oop o) const  {
+#if INCLUDE_SHENANDOAHGC
+    if (ShenandoahVerifyObjectEquals) {
+      ShouldNotReachHere();
+    }
+#endif
+    return obj() != o.obj();
+  }
   bool operator!=(void *p) const      { return obj() != p; }
 
   // Assignment

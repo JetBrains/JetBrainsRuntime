@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,9 @@
 #if INCLUDE_ZGC
 #include "gc/z/zBarrierSetRuntime.hpp"
 #endif // INCLUDE_ZGC
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 OptoReg::Name OptoReg::c_frame_pointer;
 
@@ -1002,6 +1005,9 @@ Node *Matcher::xform( Node *n, int max_stack ) {
             m = n->is_SafePoint() ? match_sfpt(n->as_SafePoint()):match_tree(n);
             if (C->failing())  return NULL;
             if (m == NULL) { Matcher::soft_match_failure(); return NULL; }
+            if (n->is_MemBar()) {
+              m->as_MachMemBar()->set_adr_type(n->adr_type());
+            }
           } else {                  // Nothing the matcher cares about
             if (n->is_Proj() && n->in(0) != NULL && n->in(0)->is_Multi()) {       // Projections?
               // Convert to machine-dependent projection
@@ -2154,6 +2160,15 @@ void Matcher::find_shared( Node *n ) {
       case Op_SafePoint:
         mem_op = true;
         break;
+#if INCLUDE_SHENANDOAHGC
+      case Op_ShenandoahReadBarrier:
+        if (n->in(ShenandoahBarrierNode::ValueIn)->is_DecodeNarrowPtr()) {
+          set_shared(n->in(ShenandoahBarrierNode::ValueIn)->in(1));
+        }
+        mem_op = true;
+        set_shared(n);
+        break;
+#endif
 #if INCLUDE_ZGC
       case Op_CallLeaf:
         if (UseZGC) {

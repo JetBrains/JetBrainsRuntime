@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2015, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2014, 2018, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -455,6 +455,8 @@ public:
   // 64 bits of each vector register.
   void push_call_clobbered_registers();
   void pop_call_clobbered_registers();
+  void push_call_clobbered_fp_registers();
+  void pop_call_clobbered_fp_registers();
 
   // now mov instructions for loading absolute addresses and 32 or
   // 64 bit integers
@@ -792,6 +794,9 @@ public:
   void resolve_oop_handle(Register result, Register tmp = r5);
   void load_mirror(Register dst, Register method, Register tmp = r5);
 
+  void resolve_for_read(DecoratorSet decorators, Register obj);
+  void resolve_for_write(DecoratorSet decorators, Register obj);
+
   void access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,
                       Register tmp1, Register tmp_thread);
 
@@ -1015,6 +1020,14 @@ public:
                enum operand_size size,
                bool acquire, bool release, bool weak,
                Register result);
+private:
+  void compare_eq(Register rn, Register rm, enum operand_size size);
+
+  void cmpxchg_oop(Register addr, Register expected, Register new_val,
+                   bool acquire, bool release, bool weak, bool encode,
+                   Register tmp1, Register tmp2, Register tmp3 = rscratch2,
+                   Register result = noreg);
+
 private:
   void compare_eq(Register rn, Register rm, enum operand_size size);
 

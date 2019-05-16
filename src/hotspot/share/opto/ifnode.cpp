@@ -35,6 +35,10 @@
 #include "opto/runtime.hpp"
 #include "opto/rootnode.hpp"
 #include "opto/subnode.hpp"
+#include "utilities/macros.hpp"
+#if INCLUDE_SHENANDOAHGC
+#include "gc/shenandoah/c2/shenandoahBarrierSetC2.hpp"
+#endif
 
 // Portions of code courtesy of Clifford Click
 
@@ -1460,6 +1464,10 @@ Node* IfNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     } else {
       dist = 4;               // Do not bother for random pointer tests
     }
+#if INCLUDE_SHENANDOAHGC
+  } else if (ShenandoahWriteBarrierNode::is_heap_stable_test(this)) {
+    dist = 16;
+#endif
   } else {
     dist = 4;                 // Limit for random junky scans
   }
@@ -1548,10 +1556,12 @@ Node* IfNode::search_identical(int dist) {
   Node* dom = in(0);
   Node* prev_dom = this;
   int op = Opcode();
+#if INCLUDE_SHENANDOAHGC
+  bool heap_stable = ShenandoahWriteBarrierNode::is_heap_stable_test(this);
+#endif
   // Search up the dominator tree for an If with an identical test
   while (dom->Opcode() != op    ||  // Not same opcode?
-         dom->in(1)    != in(1) ||  // Not same input 1?
-         (req() == 3 && dom->in(2) != in(2)) || // Not same input 2?
+         (dom->in(1) != in(1) SHENANDOAHGC_ONLY(&& (!heap_stable || !ShenandoahWriteBarrierNode::is_heap_stable_test(dom->as_If())))) ||  // Not same input 1?
          prev_dom->in(0) != dom) {  // One path of test does not dominate?
     if (dist < 0) return NULL;
 

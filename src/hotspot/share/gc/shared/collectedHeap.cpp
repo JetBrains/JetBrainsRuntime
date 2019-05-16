@@ -598,3 +598,18 @@ void CollectedHeap::unpin_object(JavaThread* thread, oop obj) {
 void CollectedHeap::deduplicate_string(oop str) {
   // Do nothing, unless overridden in subclass.
 }
+
+HeapWord* CollectedHeap::tlab_post_allocation_setup(HeapWord* obj) {
+  return obj;
+}
+
+uint CollectedHeap::oop_extra_words() {
+  // Default implementation doesn't need extra space for oops.
+  return 0;
+}
+
+#ifndef CC_INTERP
+void CollectedHeap::compile_prepare_oop(MacroAssembler* masm, Register obj) {
+  // Default implementation does nothing.
+}
+#endif

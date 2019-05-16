@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ enum CompilerPhaseType {
   PHASE_MATCHING,
   PHASE_INCREMENTAL_INLINE,
   PHASE_INCREMENTAL_BOXING_INLINE,
+  PHASE_BEFORE_BARRIER_EXPAND,
   PHASE_BEFORE_MACRO_EXPANSION,
   PHASE_END,
   PHASE_FAILURE,
@@ -89,6 +90,7 @@ class CompilerPhaseTypeHelper {
       case PHASE_MATCHING:                   return "After matching";
       case PHASE_INCREMENTAL_INLINE:         return "Incremental Inline";
       case PHASE_INCREMENTAL_BOXING_INLINE:  return "Incremental Boxing Inline";
+      case PHASE_BEFORE_BARRIER_EXPAND:      return "Before Barrier Expand";
       case PHASE_BEFORE_MACRO_EXPANSION:     return "Before macro expansion";
       case PHASE_END:                        return "End";
       case PHASE_FAILURE:                    return "Failure";

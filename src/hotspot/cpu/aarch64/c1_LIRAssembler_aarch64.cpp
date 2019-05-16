@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2000, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2014, 2018, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1572,17 +1572,11 @@ void LIR_Assembler::emit_compare_and_swap(LIR_OpCompareAndSwap* op) {
   Label succeed, fail, around;
 
   if (op->code() == lir_cas_obj) {
-    if (UseCompressedOops) {
-      Register t1 = op->tmp1()->as_register();
-      assert(op->tmp1()->is_valid(), "must be");
-      __ encode_heap_oop(t1, cmpval);
-      cmpval = t1;
-      __ encode_heap_oop(rscratch2, newval);
-      newval = rscratch2;
-      casw(addr, newval, cmpval);
-    } else {
-      casl(addr, newval, cmpval);
-    }
+    assert(op->tmp1()->is_valid(), "must be");
+    assert(op->tmp1()->is_register(), "tmp1 must be register");
+    Register t1 = op->tmp1()->as_register();
+    Register t2 = op->tmp2()->as_register();
+    __ cmpxchg_oop(addr, cmpval, newval, /*acquire*/ false, /*release*/ true, /*weak*/ false, true, t1, t2);
   } else if (op->code() == lir_cas_int) {
     casw(addr, newval, cmpval);
   } else {
@@ -2167,6 +2161,9 @@ void LIR_Assembler::emit_arraycopy(LIR_OpArrayCopy* op) {
   Register length  = op->length()->as_register();
   Register tmp = op->tmp()->as_register();
 
+  __ resolve_for_read(IN_HEAP, src);
+  __ resolve_for_write(IN_HEAP, dst);
+
   CodeStub* stub = op->stub();
   int flags = op->flags();
   BasicType basic_type = default_type != NULL ? default_type->element_type()->basic_type() : T_ILLEGAL;
@@ -2510,6 +2507,7 @@ void LIR_Assembler::emit_lock(LIR_OpLock* op) {
       scratch = op->scratch_opr()->as_register();
     }
     assert(BasicLock::displaced_header_offset_in_bytes() == 0, "lock_reg must point to the displaced header");
+    __ resolve_for_write(IN_HEAP, obj);
     // add debug info for NullPointerException only if one is possible
     int null_check_offset = __ lock_object(hdr, obj, lock, scratch, *op->stub()->entry());
     if (op->info() != NULL) {

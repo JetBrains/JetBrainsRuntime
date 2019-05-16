@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2014, 2018, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -710,9 +710,8 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
   LIR_Opr ill = LIR_OprFact::illegalOpr;  // for convenience
   new_value.load_item();
   cmp_value.load_item();
-  LIR_Opr result = new_register(T_INT);
   if (type == T_OBJECT || type == T_ARRAY) {
-    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT), result);
+    __ cas_obj(addr, cmp_value.result(), new_value.result(), new_register(T_INT), new_register(T_INT));
   } else if (type == T_INT) {
     __ cas_int(addr->as_address_ptr()->base(), cmp_value.result(), new_value.result(), ill, ill);
   } else if (type == T_LONG) {
@@ -721,7 +720,9 @@ LIR_Opr LIRGenerator::atomic_cmpxchg(BasicType type, LIR_Opr addr, LIRItem& cmp_
     ShouldNotReachHere();
     Unimplemented();
   }
-  __ logical_xor(FrameMap::r8_opr, LIR_OprFact::intConst(1), result);
+  LIR_Opr result = new_register(T_INT);
+  __ cmove(lir_cond_equal, LIR_OprFact::intConst(1), LIR_OprFact::intConst(0),
+           result, type);
   return result;
 }
 
@@ -939,6 +940,10 @@ void LIRGenerator::do_update_CRC32(Intrinsic* x) {
         LIR_Opr tmp = new_register(T_LONG);
         __ convert(Bytecodes::_i2l, index, tmp);
         index = tmp;
+      }
+
+      if (is_updateBytes) {
+        base_op = access_resolve_for_read(IN_HEAP, base_op, NULL);
       }
 
       if (offset) {

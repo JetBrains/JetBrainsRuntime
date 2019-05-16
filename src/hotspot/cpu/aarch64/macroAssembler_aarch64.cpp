@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2015, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2014, 2018, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2399,6 +2399,14 @@ void MacroAssembler::compare_eq(Register rm, Register rn, enum operand_size size
 }
 
 
+void MacroAssembler::cmpxchg_oop(Register addr, Register expected, Register new_val,
+                                 bool acquire, bool release, bool weak, bool encode,
+                                 Register tmp1, Register tmp2,
+                                 Register tmp3, Register result) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, addr, expected, new_val, acquire, release, weak, encode, tmp1, tmp2, tmp3, result);
+}
+
 static bool different(Register a, RegisterOrConstant b, Register c) {
   if (b.is_constant())
     return a != c;
@@ -2582,9 +2590,8 @@ void MacroAssembler::c_stub_prolog(int gp_arg_count, int fp_arg_count, int ret_t
 }
 #endif
 
-void MacroAssembler::push_call_clobbered_registers() {
+void MacroAssembler::push_call_clobbered_fp_registers() {
   int step = 4 * wordSize;
-  push(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
   sub(sp, sp, step);
   mov(rscratch1, -step);
   // Push v0-v7, v16-v31.
@@ -2597,13 +2604,21 @@ void MacroAssembler::push_call_clobbered_registers() {
       as_FloatRegister(3), T1D, Address(sp));
 }
 
-void MacroAssembler::pop_call_clobbered_registers() {
+void MacroAssembler::pop_call_clobbered_fp_registers() {
   for (int i = 0; i < 32; i += 4) {
     if (i <= v7->encoding() || i >= v16->encoding())
       ld1(as_FloatRegister(i), as_FloatRegister(i+1), as_FloatRegister(i+2),
           as_FloatRegister(i+3), T1D, Address(post(sp, 4 * wordSize)));
   }
+}
 
+void MacroAssembler::push_call_clobbered_registers() {
+  push(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
+  push_call_clobbered_fp_registers();
+}
+
+void MacroAssembler::pop_call_clobbered_registers() {
+  pop_call_clobbered_fp_registers();
   pop(RegSet::range(r0, r18) - RegSet::of(rscratch1, rscratch2), sp);
 }
 
@@ -3986,6 +4001,16 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   narrowKlass nk = Klass::encode_klass(k);
   movz(dst, (nk >> 16), 16);
   movk(dst, nk & 0xffff);
+}
+
+void MacroAssembler::resolve_for_read(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_read(this, decorators, obj);
+}
+
+void MacroAssembler::resolve_for_write(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_write(this, decorators, obj);
 }
 
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators,

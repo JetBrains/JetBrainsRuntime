@@ -78,6 +78,15 @@ public:
                              Register t1,
                              Label& slow_case);
 
+  virtual void resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+  virtual void resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj);
+
+  virtual void cmpxchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                           Register res, Address addr, Register oldval, Register newval,
+                           bool exchange, bool encode, Register tmp1, Register tmp2);
+  virtual void xchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                        Register obj, Address addr, Register tmp);
+
   virtual void barrier_stubs_init() {}
 };
 

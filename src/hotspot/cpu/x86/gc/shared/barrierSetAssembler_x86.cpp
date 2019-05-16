@@ -322,3 +322,58 @@ void BarrierSetAssembler::incr_allocated_bytes(MacroAssembler* masm, Register th
   __ adcl(Address(thread, in_bytes(JavaThread::allocated_bytes_offset())+4), 0);
 #endif
 }
+
+void BarrierSetAssembler::resolve_for_read(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op
+}
+
+void BarrierSetAssembler::resolve_for_write(MacroAssembler* masm, DecoratorSet decorators, Register obj) {
+  // Default to no-op
+}
+
+void BarrierSetAssembler::cmpxchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                                      Register res, Address addr, Register cmpval, Register newval,
+                                      bool exchange, bool encode, Register tmp1, Register tmp2) {
+#ifdef _LP64
+  if (UseCompressedOops) {
+    if (encode) {
+      __ encode_heap_oop(cmpval);
+      __ mov(rscratch1, newval);
+      __ encode_heap_oop(rscratch1);
+      newval = rscratch1;
+    }
+    if (os::is_MP()) {
+      __ lock();
+    }
+    // cmpval (rax) is implicitly used by this instruction
+    __ cmpxchgl(newval, addr);
+  } else
+#endif
+  {
+    if (os::is_MP()) {
+      __ lock();
+    }
+    __ cmpxchgptr(newval, addr);
+  }
+
+  if (!exchange) {
+    assert(res != NULL, "need result register");
+    __ setb(Assembler::equal, res);
+    __ movzbl(res, res);
+  }
+}
+
+void BarrierSetAssembler::xchg_oop(MacroAssembler* masm, DecoratorSet decorators,
+                                   Register obj, Address addr, Register tmp) {
+#ifdef _LP64
+    if (UseCompressedOops) {
+      __ encode_heap_oop(obj);
+      __ xchgl(obj, addr);
+      __ decode_heap_oop(obj);
+    } else {
+      __ xchgptr(obj, addr);
+    }
+#else
+    __ xchgl(obj, addr);
+#endif
+}

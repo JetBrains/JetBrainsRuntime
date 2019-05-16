@@ -190,6 +190,16 @@ public:
 
   virtual void clone(GraphKit* kit, Node* src, Node* dst, Node* size, bool is_array) const;
 
+  virtual Node* resolve_for_read(GraphKit* kit, Node* n) const {
+    return n;
+  }
+
+  virtual Node* resolve_for_write(GraphKit* kit, Node* n) const {
+    return n;
+  }
+
+  virtual Node* ideal_node(PhaseGVN *phase, Node* n, bool can_reshape) const { return NULL; }
+
   // These are general helper methods used by C2
   virtual bool array_copy_requires_gc_barriers(BasicType type) const { return false; }
 

@@ -160,7 +160,7 @@ static void generate_satb_log_enqueue(bool with_frame) {
 
   address handle_zero =
     CAST_FROM_FN_PTR(address,
-                     &SATBMarkQueueSet::handle_zero_index_for_thread);
+                     &G1SATBMarkQueueSet::handle_zero_index_for_thread);
   // This should be rare enough that we can afford to save all the
   // scratch registers that the calling context might be using.
   __ mov(G1_scratch, L0);
@@ -606,7 +606,7 @@ void G1BarrierSetAssembler::generate_c1_pre_barrier_runtime_stub(StubAssembler* 
 
   __ call_VM_leaf(L7_thread_cache,
                   CAST_FROM_FN_PTR(address,
-                                   SATBMarkQueueSet::handle_zero_index_for_thread),
+                                   G1SATBMarkQueueSet::handle_zero_index_for_thread),
                                    G2_thread);
 
   __ restore_live_registers(true);

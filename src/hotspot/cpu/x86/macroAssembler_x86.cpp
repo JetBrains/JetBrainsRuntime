@@ -3738,6 +3738,17 @@ void MacroAssembler::serialize_memory(Register thread, Register tmp) {
   movl(as_Address(ArrayAddress(page, index)), tmp);
 }
 
+void MacroAssembler::cmpxchg_oop(Register res, Address addr, Register cmpval, Register newval,
+                                 bool exchange, bool encode, Register tmp1, Register tmp2) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->cmpxchg_oop(this, IN_HEAP, res, addr, cmpval, newval, exchange, encode, tmp1, tmp2);
+}
+
+void MacroAssembler::xchg_oop(Register obj, Address addr, Register tmp) {
+  BarrierSetAssembler* bsa = BarrierSet::barrier_set()->barrier_set_assembler();
+  bsa->xchg_oop(this, IN_HEAP, obj, addr, tmp);
+}
+
 void MacroAssembler::safepoint_poll(Label& slow_path, Register thread_reg, Register temp_reg) {
   if (SafepointMechanism::uses_thread_local_poll()) {
 #ifdef _LP64
@@ -5274,6 +5285,16 @@ void MacroAssembler::store_klass(Register dst, Register src) {
   } else
 #endif
     movptr(Address(dst, oopDesc::klass_offset_in_bytes()), src);
+}
+
+void MacroAssembler::resolve_for_read(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_read(this, decorators, obj);
+}
+
+void MacroAssembler::resolve_for_write(DecoratorSet decorators, Register obj) {
+  BarrierSetAssembler* bs = BarrierSet::barrier_set()->barrier_set_assembler();
+  bs->resolve_for_write(this, decorators, obj);
 }
 
 void MacroAssembler::access_load_at(BasicType type, DecoratorSet decorators, Register dst, Address src,

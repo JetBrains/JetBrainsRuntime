@@ -46,7 +46,6 @@ class OopClosure;
 class ScanClosure;
 class FastScanClosure;
 class FilteringClosure;
-class BarrierSet;
 class CMSIsAliveClosure;
 
 class PSPromotionManager;
@@ -153,6 +152,14 @@ class oopDesc {
   }
 
   inline static bool equals(oop o1, oop o2) { return Access<>::equals(o1, o2); }
+
+  inline static bool unsafe_equals(oop o1, oop o2) {
+#ifdef CHECK_UNHANDLED_OOPS
+    return o1.obj() == o2.obj();
+#else
+    return o1 == o2;
+#endif
+  }
 
   // Access to fields in a instanceOop through these methods.
   template <DecoratorSet decorator>

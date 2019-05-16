@@ -1677,6 +1677,18 @@ LIR_Opr LIRGenerator::access_atomic_add_at(DecoratorSet decorators, BasicType ty
   }
 }
 
+LIR_Opr LIRGenerator::access_resolve_for_read(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info) {
+  decorators |= C1_READ_ACCESS;
+  LIRAccess access(this, decorators, obj, obj /* dummy */, T_OBJECT, NULL, info);
+  return _barrier_set->resolve_for_read(access);
+}
+
+LIR_Opr LIRGenerator::access_resolve_for_write(DecoratorSet decorators, LIR_Opr obj, CodeEmitInfo* info) {
+  decorators |= C1_WRITE_ACCESS;
+  LIRAccess access(this, decorators, obj, obj /* dummy */, T_OBJECT, NULL, info);
+  return _barrier_set->resolve_for_write(access);
+}
+
 void LIRGenerator::do_LoadField(LoadField* x) {
   bool needs_patching = x->needs_patching();
   bool is_volatile = x->field()->is_volatile();
@@ -1754,11 +1766,12 @@ void LIRGenerator::do_NIOCheckIndex(Intrinsic* x) {
   if (GenerateRangeChecks) {
     CodeEmitInfo* info = state_for(x);
     CodeStub* stub = new RangeCheckStub(info, index.result());
+    LIR_Opr buf_obj = access_resolve_for_read(IN_HEAP | IS_NOT_NULL, buf.result(), NULL);
     if (index.result()->is_constant()) {
-      cmp_mem_int(lir_cond_belowEqual, buf.result(), java_nio_Buffer::limit_offset(), index.result()->as_jint(), info);
+      cmp_mem_int(lir_cond_belowEqual, buf_obj, java_nio_Buffer::limit_offset(), index.result()->as_jint(), info);
       __ branch(lir_cond_belowEqual, T_INT, stub);
     } else {
-      cmp_reg_mem(lir_cond_aboveEqual, index.result(), buf.result(),
+      cmp_reg_mem(lir_cond_aboveEqual, index.result(), buf_obj,
                   java_nio_Buffer::limit_offset(), T_INT, info);
       __ branch(lir_cond_aboveEqual, T_INT, stub);
     }

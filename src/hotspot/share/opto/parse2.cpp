@@ -54,7 +54,7 @@ extern int explicit_null_checks_inserted,
 void Parse::array_load(BasicType bt) {
   const Type* elemtype = Type::TOP;
   bool big_val = bt == T_DOUBLE || bt == T_LONG;
-  Node* adr = array_addressing(bt, 0, &elemtype);
+  Node* adr = array_addressing(bt, 0, false, &elemtype);
   if (stopped())  return;     // guaranteed null or range check
 
   pop();                      // index (already used)
@@ -82,7 +82,7 @@ void Parse::array_load(BasicType bt) {
 void Parse::array_store(BasicType bt) {
   const Type* elemtype = Type::TOP;
   bool big_val = bt == T_DOUBLE || bt == T_LONG;
-  Node* adr = array_addressing(bt, big_val ? 2 : 1, &elemtype);
+  Node* adr = array_addressing(bt, big_val ? 2 : 1, true, &elemtype);
   if (stopped())  return;     // guaranteed null or range check
   if (bt == T_OBJECT) {
     array_store_check();
@@ -110,7 +110,7 @@ void Parse::array_store(BasicType bt) {
 
 //------------------------------array_addressing-------------------------------
 // Pull array and index from the stack.  Compute pointer-to-element.
-Node* Parse::array_addressing(BasicType type, int vals, const Type* *result2) {
+Node* Parse::array_addressing(BasicType type, int vals, bool is_store, const Type* *result2) {
   Node *idx   = peek(0+vals);   // Get from stack without popping
   Node *ary   = peek(1+vals);   // in case of exception
 
@@ -203,6 +203,12 @@ Node* Parse::array_addressing(BasicType type, int vals, const Type* *result2) {
   }
   // Check for always knowing you are throwing a range-check exception
   if (stopped())  return top();
+
+  if (is_store) {
+    ary = access_resolve_for_write(ary);
+  } else {
+    ary = access_resolve_for_read(ary);
+  }
 
   // Make array address computation control dependent to prevent it
   // from floating above the range check during loop optimizations.
@@ -2749,6 +2755,12 @@ void Parse::do_one_bytecode() {
     maybe_add_safepoint(iter().get_dest());
     a = pop();
     b = pop();
+#if INCLUDE_SHENANDOAHGC
+    if (UseShenandoahGC && ShenandoahAcmpBarrier) {
+      a = access_resolve_for_write(a);
+      b = access_resolve_for_write(b);
+    }
+#endif
     c = _gvn.transform( new CmpPNode(b, a) );
     c = optimize_cmp_with_klass(c);
     do_if(btest, c);
