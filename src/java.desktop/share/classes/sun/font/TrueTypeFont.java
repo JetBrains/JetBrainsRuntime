@@ -899,15 +899,6 @@ public class TrueTypeFont extends FileFont {
     }
 
     @Override
-    protected long getLayoutTableCache() {
-        try {
-          return getScaler().getLayoutTableCache();
-        } catch(FontScalerException fe) {
-            return 0L;
-        }
-    }
-
-    @Override
     protected byte[] getTableBytes(int tag) {
         ByteBuffer buffer = getTableBuffer(tag);
         if (buffer == null) {

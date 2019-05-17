@@ -31,10 +31,13 @@
 package sun.font;
 
 import sun.font.GlyphLayout.*;
+import sun.java2d.Disposer;
+import sun.java2d.DisposerRecord;
+
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Locale;
+import java.util.WeakHashMap;
 
 /*
  * different ways to do this
@@ -143,8 +146,10 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
     private SoftReference<ConcurrentHashMap<LayoutEngineKey, LayoutEngine>> cacheref =
         new SoftReference<>(null);
+    private static final WeakHashMap<Font2D, FaceRef> facePtr =
+            new WeakHashMap<>();
 
-    private boolean isAAT(Font2D font) {
+    private static boolean isAAT(Font2D font) {
        // CoreText layout code ignores fractional metrics font attribute
        // also, using CoreText layout in Harfbuzz code leads to wrong advances for emoji glyphs
        return false;
@@ -154,30 +159,67 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
         this.key = key;
     }
 
+    private long getFacePtr(Font2D font2D) {
+        FaceRef ref;
+        synchronized (facePtr) {
+            ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
+        }
+        return ref.getNativePtr();
+    }
+
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
                        int baseIndex, TextRecord tr, int typo_flags,
                        Point2D.Float pt, GVData data) {
         Font2D font = key.font();
         FontStrike strike = font.getStrike(desc);
-        long layoutTables = font.getLayoutTableCache();
         long pNativeFont = font.getPlatformNativeFontPtr(); // used on OSX
-        // pScaler probably not needed long term.
-        long pScaler = 0L;
-        if (font instanceof FileFont) {
-            pScaler = ((FileFont)font).getScaler().nativeScaler;
+        long pFace = getFacePtr(font);
+        if (pFace != 0) {
+            shape(font, strike, ptSize, mat, pNativeFont,
+                    pFace, isAAT(font),
+                    tr.text, data, key.script(),
+                    tr.start, tr.limit, baseIndex, pt,
+                    typo_flags, gmask);
         }
-        shape(font, strike, ptSize, mat, pScaler, pNativeFont,
-              layoutTables, isAAT(font),
-              tr.text, data, key.script(),
-              tr.start, tr.limit, baseIndex, pt,
-              typo_flags, gmask);
     }
 
     /* Native method to invoke harfbuzz layout engine */
     private static native boolean
         shape(Font2D font, FontStrike strike, float ptSize, float[] mat,
-              long pscaler, long pNativeFont, long layoutTables, boolean aat,
+              long pNativeFont, long pFace, boolean aat,
               char[] chars, GVData data,
               int script, int offset, int limit,
               int baseIndex, Point2D.Float pt, int typo_flags, int slot);
+
+    private static native long createFace(Font2D font,
+                                          boolean aat,
+                                          long platformNativeFontPtr);
+
+    private static native void disposeFace(long facePtr);
+
+    private static class FaceRef implements DisposerRecord {
+        private Font2D font;
+        private Long facePtr;
+
+        private FaceRef(Font2D font) {
+            this.font = font;
+        }
+
+        private synchronized long getNativePtr() {
+            if (facePtr == null) {
+                facePtr = createFace(font, isAAT(font),
+                        font.getPlatformNativeFontPtr());
+                if (facePtr != 0) {
+                    Disposer.addObjectRecord(font, this);
+                }
+                font = null;
+            }
+            return facePtr;
+        }
+
+        @Override
+        public void dispose() {
+            disposeFace(facePtr);
+        }
+    }
 }
