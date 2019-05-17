@@ -14,6 +14,8 @@ java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java  
 java/awt/FileDialog/FileDialogMemoryLeak/FileDialogLeakTest.java                            nobug windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                              nobug macosx-all
 java/awt/FileDialog/MoveToTrashTest.java                                                    nobug windows-all
+java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
+java/awt/Focus/6981400/Test2.java                                                           nobug linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html                          nobug linux-all,windows-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java   nobug macosx-all,linux-all,windows-all
@@ -28,7 +30,9 @@ java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                       
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
+java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
+java/awt/Frame/FrameSize/TestFrameSize.java                                                 nobug linux-all,mac-osx
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                                   nobug macosx-all,windows-all
