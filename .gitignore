@@ -3,3 +3,5 @@ JTreport
 *.class
 .idea/workspace.xml
 build/
+# Project exclude paths
+/jb/project/java-gradle/.gradle/
