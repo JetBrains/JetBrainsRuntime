@@ -38,6 +38,7 @@
 #include "OGLTextRenderer.h"
 #include "OGLVertexCache.h"
 #include "AccelGlyphCache.h"
+#include "jni_util.h"
 
 /**
  * The following constants define the inner and outer bounds of the
@@ -712,21 +713,14 @@ OGLTR_UpdateCachedDestination(OGLSDOps *dstOps, GlyphInfo *ginfo,
 }
 
 static jboolean
-OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
-                           GlyphInfo *ginfo, jint x, jint y,
-                           jint glyphIndex, jint totalGlyphs,
-                           jboolean rgbOrder, jint contrast,
-                           GLuint dstTextureID, jboolean * opened)
+OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps, GlyphInfo *ginfo, jint x, jint y, jint glyphIndex,
+                           jint totalGlyphs, jboolean rgbOrder, jint contrast, GLuint dstTextureID)
 {
     CacheCellInfo *cell;
     jint dx1, dy1, dx2, dy2;
     jfloat dtx1, dty1, dtx2, dty2;
 
     if (glyphMode != MODE_USE_CACHE_LCD) {
-        if (*opened) {
-            *opened = JNI_FALSE;
-            j2d_glEnd();
-        }
         OGLTR_DisableGlyphModeState();
         CHECK_PREVIOUS_OP(GL_TEXTURE_2D);
         j2d_glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -758,10 +752,6 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     }
 
     if (ginfo->cellInfo == NULL) {
-        if (*opened) {
-            *opened = JNI_FALSE;
-            j2d_glEnd();
-        }
         // rowBytes will always be a multiple of 3, so the following is safe
         j2d_glPixelStorei(GL_UNPACK_ROW_LENGTH, ginfo->rowBytes / 3);
 
@@ -787,10 +777,6 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     dy2 = dy1 + ginfo->height;
 
     if (dstTextureID == 0) {
-        if (*opened) {
-            *opened = JNI_FALSE;
-            j2d_glEnd();
-        }
         // copy destination into second cached texture, if necessary
         OGLTR_UpdateCachedDestination(dstOps, ginfo,
                                       dx1, dy1, dx2, dy2,
@@ -818,23 +804,12 @@ OGLTR_DrawLCDGlyphViaCache(OGLContext *oglc, OGLSDOps *dstOps,
     }
 
     // render composed texture to the destination surface
-    if (!*opened)  {
-        j2d_glBegin(GL_QUADS);
-        *opened = JNI_TRUE;
+    if (!OGLMTVertexCache_enable(oglc, dstTextureID != 0)) {
+        J2dTracePrimitive("OGLMTVertexCache_enable_failed");
+        return JNI_FALSE;
     }
-
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx1, cell->ty1);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty1);
-    j2d_glVertex2i(dx1, dy1);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx2, cell->ty1);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty1);
-    j2d_glVertex2i(dx2, dy1);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx2, cell->ty2);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx2, dty2);
-    j2d_glVertex2i(dx2, dy2);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE0_ARB, cell->tx1, cell->ty2);
-    j2d_glMultiTexCoord2fARB(GL_TEXTURE1_ARB, dtx1, dty2);
-    j2d_glVertex2i(dx1, dy2);
+    OGLMTVertexCache_addGlyphQuad(dx1, dy1, dx2, dy2, cell->tx1, cell->ty1,
+                                  cell->tx2, cell->ty2, dtx1, dty1, dtx2, dty2);
 
     return JNI_TRUE;
 }
@@ -1066,11 +1041,13 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
 {
     int glyphCounter;
     GLuint dstTextureID = 0;
-    jboolean hasLCDGlyphs = JNI_FALSE;
-    jboolean lcdOpened = JNI_FALSE;
-    jint ox1 = INT_MIN;
+    jlong time;
 
     J2dTraceLn(J2D_TRACE_INFO, "OGLTR_DrawGlyphList");
+    if (graphicsPrimitive_traceflags & J2D_PTRACE_TIME) {
+        J2dTracePrimitive("OGLTR_DrawGlyphList");
+        time = J2dTraceNanoTime();
+    }
 
     RETURN_IF_NULL(oglc);
     RETURN_IF_NULL(dstOps);
@@ -1138,10 +1115,7 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
         }
 
         if (ginfo->rowBytes == ginfo->width) {
-            if (lcdOpened) {
-                lcdOpened = JNI_FALSE;
-                j2d_glEnd();
-            }
+            OGLMTVertexCache_disable();
             // grayscale or monochrome glyph data
             if (ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
@@ -1151,22 +1125,12 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 ok = OGLTR_DrawGrayscaleGlyphNoCache(oglc, ginfo, x, y);
             }
         } else if (ginfo->rowBytes == ginfo->width * 4) {
-            if (lcdOpened) {
-                lcdOpened = JNI_FALSE;
-                j2d_glEnd();
-            }
+            OGLMTVertexCache_disable();
             // color glyph data
             ok = OGLTR_DrawColorGlyphNoCache(oglc, ginfo, x, y);
         } else {
             // LCD-optimized glyph data
             jint rowBytesOffset = 0;
-            if (!hasLCDGlyphs) {
-                // Flush GPU buffers before processing first LCD glyph
-                hasLCDGlyphs = JNI_TRUE;
-                if (dstTextureID != 0) {
-                    j2d_glTextureBarrierNV();
-                }
-            }
 
             if (subPixPos) {
                 jint frac = (jint)((glyphx - x) * 3);
@@ -1176,29 +1140,16 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                 }
             }
 
-            // Flush GPU buffers before processing overlapping LCD glyphs on OSX
-            if (dstTextureID != 0 && ox1 > x) {
-                if (lcdOpened) {
-                    lcdOpened = JNI_FALSE;
-                    j2d_glEnd();
-                }
-                j2d_glTextureBarrierNV();
-            }
-
             if (rowBytesOffset == 0 &&
                 ginfo->width <= OGLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= OGLTR_CACHE_CELL_HEIGHT)
             {
-                ok = OGLTR_DrawLCDGlyphViaCache(oglc, dstOps,
-                                                ginfo, x, y,
+                ok = OGLTR_DrawLCDGlyphViaCache(oglc, dstOps, ginfo, x, y,
                                                 glyphCounter, totalGlyphs,
                                                 rgbOrder, lcdContrast,
-                                                dstTextureID, &lcdOpened);
+                                                dstTextureID);
             } else {
-                if (lcdOpened) {
-                    lcdOpened = JNI_FALSE;
-                    j2d_glEnd();
-                }
+                OGLMTVertexCache_disable();
                 ok = OGLTR_DrawLCDGlyphNoCache(oglc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
@@ -1206,15 +1157,12 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
                                                dstTextureID);
             }
         }
-
-        ox1 = x + ginfo->width;
         if (!ok) {
             break;
         }
     }
-    if (lcdOpened) {
-        j2d_glEnd();
-    }
+    OGLMTVertexCache_disable();
+    J2dTracePrimitiveTime("OGLTR_DrawGlyphList", time);
 }
 
 JNIEXPORT void JNICALL

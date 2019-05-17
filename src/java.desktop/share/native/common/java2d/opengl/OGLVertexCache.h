@@ -30,9 +30,14 @@
 #include "OGLContext.h"
 
 /**
- * Constants that control the size of the vertex cache.
+ * Constants that control the size of the vertex caches.
  */
 #define OGLVC_MAX_INDEX         1024
+#define OGLMTVC_MAX_INDEX       2048
+#define ODD_LCD_GLYPHS_OFFSET   (OGLMTVC_MAX_INDEX >> 1)
+#define OGLMTVC_FLUSH_EVEN      1
+#define OGLMTVC_FLUSH_ODD       2
+#define OGLMTVC_FLUSH_ALL       3
 
 /**
  * Constants that control the size of the texture tile cache used for
@@ -82,5 +87,15 @@ void OGLVertexCache_AddGlyphQuad(OGLContext *oglc,
                                  jfloat tx2, jfloat ty2,
                                  jfloat dx1, jfloat dy1,
                                  jfloat dx2, jfloat dy2);
+
+jboolean OGLMTVertexCache_enable(OGLContext *oglc, jboolean useTxtBarrier);
+void OGLMTVertexCache_addGlyphQuad(jfloat dx1, jfloat dy1,
+                                   jfloat dx2, jfloat dy2,
+                                   jfloat tx1, jfloat ty1,
+                                   jfloat tx2, jfloat ty2,
+                                   jfloat dtx1, jfloat dty1,
+                                   jfloat dtx2, jfloat dty2);
+void OGLMTVertexCache_disable();
+
 
 #endif /* OGLVertexCache_h_Included */
