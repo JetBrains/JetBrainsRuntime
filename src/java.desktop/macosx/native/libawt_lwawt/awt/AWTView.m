@@ -507,8 +507,7 @@ static BOOL shouldUsePressAndHold() {
     JNIEnv *env = [ThreadUtilities getJNIEnv];
 
     TISInputSourceRef sourceRef = TISCopyCurrentKeyboardLayoutInputSource();
-    CFDataRef keyLayoutPtr = (CFDataRef)TISGetInputSourceProperty(
-    sourceRef, kTISPropertyUnicodeKeyLayoutData);
+    CFDataRef keyLayoutPtr = (CFDataRef)TISGetInputSourceProperty(sourceRef, kTISPropertyUnicodeKeyLayoutData);
     CFRelease( sourceRef);
 
     const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
@@ -525,7 +524,6 @@ static BOOL shouldUsePressAndHold() {
                    0,
                    LMGetKbdType(),
                    0,
-                   // ignore for now
                    &isDeadKeyPressed,
                    lengthOfBuffer,
                    &actualLength,
@@ -547,6 +545,8 @@ static BOOL shouldUsePressAndHold() {
 
     if (status == noErr && isDeadKeyPressed != 0) {
 
+        UInt32 isDeadKeyPressedIgnore = 0;
+
         status = UCKeyTranslate(
                     keyboardLayout,
                     kVK_Space,
@@ -554,7 +554,7 @@ static BOOL shouldUsePressAndHold() {
                     0,
                     LMGetKbdType(),
                     0,
-                    &isDeadKeyPressed,
+                    &isDeadKeyPressedIgnore,
                     lengthOfBuffer,
                     &actualLength,
                     stringWithChars);
