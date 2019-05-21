@@ -233,17 +233,17 @@ hb_ctz (T v)
  * Tiny stuff.
  */
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-align"
 template <typename T>
 static inline T* hb_addressof (T& arg)
 {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wcast-align"
   /* https://en.cppreference.com/w/cpp/memory/addressof */
   return reinterpret_cast<T*>(
            &const_cast<char&>(
               reinterpret_cast<const volatile char&>(arg)));
-#pragma GCC diagnostic pop
 }
+#pragma GCC diagnostic pop
 
 /* ASCII tag/character handling */
 static inline bool ISALPHA (unsigned char c)
