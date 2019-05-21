@@ -496,18 +496,21 @@ class BufferStrategyPaintManager extends RepaintManager.PaintManager {
                     }
                 }
 
-                if (isPaint && c == rootJ && x == 0 && y == 0 &&
-                      c.getWidth() == w && c.getHeight() == h) {
-
+                if (isPaint) {
                     // Fallback to normal painting in undecorated non-opaque dialogs
                     // and frames to resolve black background problem
-                    if ((root instanceof Dialog && ((Dialog)root).isUndecorated() ||
-                         root instanceof Frame && ((Frame)root).isUndecorated()) &&
-                            bsg != null && !c.isOpaque() &&
+                    Window window = SunToolkit.getContainingWindow(c);
+                    if ((window instanceof Dialog && ((Dialog)window).isUndecorated() ||
+                            window instanceof Frame && ((Frame)window).isUndecorated()) &&
+                            bsg != null && !window.isOpaque() &&
                             ((SunGraphics2D)bsg).getSurfaceData().getTransparency() ==
                                     Transparency.OPAQUE) {
                         return false;
                     }
+                }
+
+                if (isPaint && c == rootJ && x == 0 && y == 0 &&
+                      c.getWidth() == w && c.getHeight() == h) {
                     bufferInfo.setInSync(true);
                 }
                 else if (contentsLost) {
