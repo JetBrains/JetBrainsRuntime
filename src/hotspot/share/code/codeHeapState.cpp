@@ -91,7 +91,7 @@
     /* _anyst  name of the stream as used in the code */  \
     /* _outst  stream where final output will go to   */  \
     ResourceMark rm;                                      \
-    bufferedStream   _sstobj = bufferedStream(4*K);       \
+    bufferedStream   _sstobj(4*K);                        \
     bufferedStream*  _sstbuf = &_sstobj;                  \
     outputStream*    _outbuf = _outst;                    \
     bufferedStream*  _anyst  = &_sstobj; /* any stream. Use this to just print - no buffer flush.  */
