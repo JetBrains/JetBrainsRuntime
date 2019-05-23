@@ -2704,6 +2704,7 @@ bool os::pd_release_memory(char* addr, size_t bytes) {
 static bool solaris_mprotect(char* addr, size_t bytes, int prot) {
   assert(addr == (char*)align_down((uintptr_t)addr, os::vm_page_size()),
          "addr must be page aligned");
+  Events::log(NULL, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with protection modes %x", p2i(addr), p2i(addr+bytes), prot);
   int retVal = mprotect(addr, bytes, prot);
   return retVal == 0;
 }
@@ -4304,6 +4305,7 @@ jint os::init_2(void) {
 
 // Mark the polling page as unreadable
 void os::make_polling_page_unreadable(void) {
+  Events::log(NULL, "Protecting polling page " INTPTR_FORMAT " with PROT_NONE", p2i(_polling_page));
   if (mprotect((char *)_polling_page, page_size, PROT_NONE) != 0) {
     fatal("Could not disable polling page");
   }
@@ -4311,6 +4313,7 @@ void os::make_polling_page_unreadable(void) {
 
 // Mark the polling page as readable
 void os::make_polling_page_readable(void) {
+  Events::log(NULL, "Protecting polling page " INTPTR_FORMAT " with PROT_READ", p2i(_polling_page));
   if (mprotect((char *)_polling_page, page_size, PROT_READ) != 0) {
     fatal("Could not enable polling page");
   }

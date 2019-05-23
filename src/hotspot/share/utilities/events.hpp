@@ -205,7 +205,7 @@ class Events : AllStatic {
 };
 
 inline void Events::log(Thread* thread, const char* format, ...) {
-  if (LogEvents) {
+  if (LogEvents && _messages != NULL) {
     va_list ap;
     va_start(ap, format);
     _messages->logv(thread, format, ap);
@@ -214,7 +214,7 @@ inline void Events::log(Thread* thread, const char* format, ...) {
 }
 
 inline void Events::log_exception(Thread* thread, const char* format, ...) {
-  if (LogEvents) {
+  if (LogEvents && _exceptions != NULL) {
     va_list ap;
     va_start(ap, format);
     _exceptions->logv(thread, format, ap);
@@ -223,7 +223,7 @@ inline void Events::log_exception(Thread* thread, const char* format, ...) {
 }
 
 inline void Events::log_redefinition(Thread* thread, const char* format, ...) {
-  if (LogEvents) {
+  if (LogEvents && _redefinitions != NULL) {
     va_list ap;
     va_start(ap, format);
     _redefinitions->logv(thread, format, ap);
@@ -232,7 +232,7 @@ inline void Events::log_redefinition(Thread* thread, const char* format, ...) {
 }
 
 inline void Events::log_deopt_message(Thread* thread, const char* format, ...) {
-  if (LogEvents) {
+  if (LogEvents && _deopt_messages != NULL) {
     va_list ap;
     va_start(ap, format);
     _deopt_messages->logv(thread, format, ap);
