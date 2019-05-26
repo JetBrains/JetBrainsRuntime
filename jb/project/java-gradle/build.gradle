@@ -14,7 +14,7 @@ def test_jvm = {
         } else if (OperatingSystem.current().isLinux()) {
             file('../../../build/linux-x86_64-normal-server-release/images/jdk/bin/java').absolutePath
         } else {
-            file('../../../build/windows-x86_64-normal-server-release/images/j2sdk-image/bin/java.exe').absolutePath
+            file('../../../build/windows-x86_64-normal-server-release/images/jdk/bin/java.exe').absolutePath
         }
     }
 }
@@ -80,10 +80,16 @@ test {
 //  Generate golden images for DroidFontTest and MixedTextTest
 //    systemProperty "gentestdata", ""
 
+//  Enable Java2D logging (https://confluence.jetbrains.com/display/JRE/Java2D+Rendering+Logging)
+//  systemProperty "sun.java2d.trace", "log"
+//  systemProperty "sun.java2d.trace", "log,pimpl"
+
     outputs.upToDateWhen { false }
     executable = test_jvm()
 
-//  Enable J2D logging (only in debug build)
+//  Enable async/dtrace profiler
+    jvmArgs  "-XX:+PreserveFramePointer"
+//  Enable native J2D logging (only in debug build)
 //  Can be turned on for J2D by adding "#define DEBUG 1" into jdk/src/share/native/sun/java2d/Trace.h
 
 //    environment 'J2D_TRACE_LEVEL', '4'
@@ -96,24 +102,34 @@ if (OperatingSystem.current().isWindows()) {
     def cyg_make_cmd = new File("c:/cygwin64/bin/make.exe")
     if (cyg_make_cmd.exists()) make_cmd = cyg_make_cmd.absolutePath
 }
-
-task make_images << {
-    def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "images")
-    def proc = pb.redirectErrorStream(true).start()
-    proc.inputStream.eachLine {println it}
-    assert proc.waitFor() == 0
+def test_run = false
+task make_images {
+    doLast {
+        if (!test_run) {
+            def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "images")
+            def proc = pb.redirectErrorStream(true).start()
+            proc.inputStream.eachLine { println it }
+            assert proc.waitFor() == 0
+        }
+    }
 }
 
-task make_clean << {
-    def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "clean")
-    def proc = pb.redirectErrorStream(true).start()
-    proc.inputStream.eachLine {println it}
-    assert proc.waitFor() == 0
+task make_clean {
+    doLast {
+        def pb = new ProcessBuilder().command(make_cmd.toString(), "-C", buildDir.absolutePath, "clean")
+        def proc = pb.redirectErrorStream(true).start()
+        proc.inputStream.eachLine { println it }
+        assert proc.waitFor() == 0
+    }
 }
 
+task run_test {
+    doLast {
+        test_run = true
+    }
+}
 
-tasks.compileJava.enabled = false
-tasks.compileTestJava.dependsOn.clear()
+tasks.cleanTest.dependsOn tasks.run_test
 classes.dependsOn.clear()
 classes.dependsOn tasks.make_images
 tasks.cleanClasses.dependsOn tasks.make_clean
