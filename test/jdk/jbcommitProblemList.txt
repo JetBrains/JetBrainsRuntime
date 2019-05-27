@@ -3,6 +3,7 @@ java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java              
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
+java/awt/Component/PaintAll/PaintAll.java                                                   nobug linux-all
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
@@ -75,6 +76,7 @@ java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java                             
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                        nobug macosx-all,windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java                                          nobug macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                         nobug macosx-all,windows-all
+java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java nobug linux-all,macosx-all,windows-all
 java/awt/Paint/ExposeOnEDT.java                                                             nobug windows-all
 java/awt/Paint/ListRepaint.java                                                             nobug linux-all (java.lang.NullPointerException reproduced with Adopt)
 java/awt/PopupMenu/PopupMenuLocation.java                                                   nobug macosx-all,linux-all,windows-all
