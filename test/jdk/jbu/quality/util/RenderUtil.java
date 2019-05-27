@@ -95,7 +95,7 @@ public class RenderUtil {
 
         String[] testDataVariant = {
                 "osx_hardware_rendering", "osx_software_rendering",
-                "osx_sierra_rendering", "osx_lowres_rendering",
+                "osx_sierra_rendering", "osx_mojave_rendering", "osx_lowres_rendering",
                 "linux_rendering", "windows_rendering"};
 
         String testDataStr = System.getProperty("testdata");
