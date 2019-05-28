@@ -29,6 +29,8 @@
 #import "ThreadUtilities.h"
 #import "JNIUtilities.h"
 #import "CFileDialog.h"
+#import "CMenuBar.h"
+#import "ApplicationDelegate.h"
 
 #import "java_awt_FileDialog.h"
 #import "sun_lwawt_macosx_CFileDialog.h"
@@ -133,6 +135,8 @@ canChooseDirectories:(BOOL)inChooseDirectories
         fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
         inModalLoop = NO;
         [thePanel setDelegate:nil];
+        CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
+        [CMenuBar activate:menuBar modallyDisabled:NO];
 
         if ([self userClickedOK]) {
             if (fMode == java_awt_FileDialog_LOAD) {
