@@ -142,6 +142,7 @@ canChooseDirectories:(BOOL)inChooseDirectories
                  [thePanel setNameFieldStringValue:fFile];
             }
 
+            CMenuBar *menuBar = nil;
             if (fOwner != nil) {
 
                 // Finds appropriate menubar in our hierarchy,
@@ -150,7 +151,6 @@ canChooseDirectories:(BOOL)inChooseDirectories
                     awtWindow = awtWindow.ownerWindow;
                 }
 
-                CMenuBar *menuBar = nil;
                 BOOL isDisabled = NO;
                 if ([awtWindow.nsWindow isVisible]){
                     menuBar = awtWindow.javaMenuBar;
@@ -180,6 +180,9 @@ canChooseDirectories:(BOOL)inChooseDirectories
                     }
                     [fURLs retain];
                     [NSApp stopModal];
+                    if (menuBar != nil) {
+                        [CMenuBar activate:menuBar modallyDisabled:NO];
+                    }
                 }
             ];
 
