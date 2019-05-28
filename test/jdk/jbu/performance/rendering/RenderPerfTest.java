@@ -438,8 +438,9 @@ public class RenderPerfTest {
             Timer timer = new Timer(DELAY, e -> {
 
                 if (waiting.compareAndSet(false, true)) {
-                    Color c = robot.getPixelColor(panel.getTopLevelAncestor().getX() + 25,
-                            panel.getTopLevelAncestor().getY() + 25);
+                    Color c = robot.getPixelColor(
+                            panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
+                            panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
                     if (isAlmostEqual(c, Color.BLUE)) {
                         expColor = Color.RED;
                     } else {
@@ -451,8 +452,8 @@ public class RenderPerfTest {
                 } else {
                     while (!isAlmostEqual(
                             robot.getPixelColor(
-                                    panel.getTopLevelAncestor().getX() + BW / 2,
-                                    panel.getTopLevelAncestor().getY() + BH / 2),
+                                    panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW/2,
+                                    panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH/2),
                             expColor))
                     {
                         try {
