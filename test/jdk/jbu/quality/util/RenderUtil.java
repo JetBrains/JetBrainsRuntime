@@ -33,7 +33,7 @@ public class RenderUtil {
             throws Exception
     {
         JFrame[] f = new JFrame[1];
-        Point[] p = new Point[1];
+        int[] p = new int[2];
         double[] scale = new double[2];
         SwingUtilities.invokeAndWait(() -> {
             f[0] = new JFrame();
@@ -47,19 +47,22 @@ public class RenderUtil {
             // e.g. rounded frame
             c.setLocation(50, 50);
             f[0].setVisible(true);
-            p[0]= c.getLocationOnScreen();
+            p[0] = f[0].getLocationOnScreen().x + f[0].getInsets().left;
+            p[1] = f[0].getLocationOnScreen().y + f[0].getInsets().top;
             scale[0] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleX();
             scale[1] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleY();
         });
 
         Rectangle screenRect;
         Robot r = new Robot();
-        while (!Color.black.equals(r.getPixelColor(p[0].x+1, p[0].y))) {
+        while (!Color.black.equals(r.getPixelColor(p[0] + 1, p[1] + 1))) {
+            p[0] = f[0].getLocationOnScreen().x + f[0].getInsets().left;
+            p[1] = f[0].getLocationOnScreen().y + f[0].getInsets().top;
             Thread.sleep(100);
         }
         screenRect = new Rectangle(
-                p[0].x + 5,
-                p[0].y + 5,
+                p[0] + 5,
+                p[1] + 5,
                 (int)((width - 20)  * scale[0]), (int)((height - 30) * scale[1]));
 
         BufferedImage result = r.createScreenCapture(screenRect);
