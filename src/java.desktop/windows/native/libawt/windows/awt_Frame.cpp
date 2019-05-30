@@ -1833,8 +1833,10 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
     if (::IsZoomed(GetHWnd())) {
         rect->top += insets.bottom;
         // [moklev] Workaround for RIDER-27069, IDEA-211327
-        rect->right += this->ScaleUpX(1);
-        rect->bottom -= 1;
+        if (!this->IsUndecorated()) {
+            rect->right += this->ScaleUpX(1);
+            rect->bottom -= 1;
+        }
     }
     else {
         // this makes the native caption go uncovered
