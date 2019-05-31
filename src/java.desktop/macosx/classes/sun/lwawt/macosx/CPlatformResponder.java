@@ -361,7 +361,11 @@ final class CPlatformResponder {
                 characterToSendWithTypedEvent = stringWithChar == null ? KeyEvent.CHAR_UNDEFINED :  stringWithChar.charAt(0);
             }
 
-            if (!nsEvent.isHasDeadKey()) {
+            boolean nonInputMethodsModifiersAreNotPressed = (jmodifiers &
+                    (InputEvent.META_DOWN_MASK | InputEvent.CTRL_DOWN_MASK)
+            ) == 0;
+
+            if (nonInputMethodsModifiersAreNotPressed) {
                 eventNotifier.notifyKeyEvent(KeyEvent.KEY_TYPED, when, jmodifiers,
                         jkeyCode, characterToSendWithTypedEvent,
                         KeyEvent.KEY_LOCATION_UNKNOWN);
