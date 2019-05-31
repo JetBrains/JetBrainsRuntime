@@ -293,6 +293,24 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("droid serif3", "DroidSerif-BoldItalic.ttf");
         jreFontMap.put("droid serif bold1", "DroidSerif-Bold.ttf");
         jreFontMap.put("droid serif bold italic3", "DroidSerif-BoldItalic.ttf");
+
+        /* Idea bundled fonts */
+        jreFontMap.put("FiraCode bold", "FiraCode-Bold.ttf");
+        jreFontMap.put("FiraCode light", "FiraCode-Light.ttf");
+        jreFontMap.put("FiraCode medium", "FiraCode-Medium.ttf");
+        jreFontMap.put("FiraCode retina", "FiraCode-Retina.ttf");
+        jreFontMap.put("FiraCode regular", "FiraCode-Regular.ttf");
+
+        jreFontMap.put("SourceCodePro bold italic", "SourceCodePro-BoldIt.ttf");
+        jreFontMap.put("SourceCodePro regular", "SourceCodePro-Regular.ttf");
+        jreFontMap.put("SourceCodePro bold", "SourceCodePro-Bold.ttf");
+        jreFontMap.put("SourceCodePro italic", "SourceCodePro-It.ttf");
+
+        jreFontMap.put("Inconsolata", "Inconsolata.ttf");
+
+        jreFontMap.put("Roboto light", "Roboto-Light.ttf");
+        jreFontMap.put("Roboto thin", "Roboto-Thin.ttf");
+
         for (String ffile : jreFontMap.values()) {
             jreBundledFontFiles.add(ffile);
         }
