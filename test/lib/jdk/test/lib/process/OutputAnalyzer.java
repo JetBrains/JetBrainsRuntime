@@ -73,6 +73,20 @@ public final class OutputAnalyzer {
     }
 
     /**
+     * Create an OutputAnalyzer, a utility class for verifying output
+     *
+     * @param stdout stdout buffer to analyze
+     * @param stderr stderr buffer to analyze
+     * @param stderr exitValue result to analyze
+     */
+    public OutputAnalyzer(String stdout, String stderr, int exitValue)
+    {
+        this.stdout = stdout;
+        this.stderr = stderr;
+        this.exitValue = exitValue;
+    }
+
+    /**
      * Verify that the stdout contents of output buffer is empty
      *
      * @throws RuntimeException
