@@ -1102,6 +1102,8 @@ javax/swing/tree/DefaultTreeCellRenderer/7142955/bug7142955.java                
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java                            8198920 macosx-all,linux-all,windows-all
 
+sun/awt/dnd/8024061/bug8024061.java                                                 8142540 linux-all
+
 ############################################################################
 
 # jdk_text
