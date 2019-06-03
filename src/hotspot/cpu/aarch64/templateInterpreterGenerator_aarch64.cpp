@@ -557,7 +557,7 @@ address TemplateInterpreterGenerator::generate_result_handler_for(
         BasicType type) {
     address entry = __ pc();
   switch (type) {
-  case T_BOOLEAN: __ uxtb(r0, r0);        break;
+  case T_BOOLEAN: __ c2bool(r0);         break;
   case T_CHAR   : __ uxth(r0, r0);       break;
   case T_BYTE   : __ sxtb(r0, r0);        break;
   case T_SHORT  : __ sxth(r0, r0);        break;
@@ -1891,6 +1891,7 @@ void TemplateInterpreterGenerator::generate_throw_exception() {
   __ restore_locals();
   __ restore_constant_pool_cache();
   __ get_method(rmethod);
+  __ get_dispatch();
 
   // The method data pointer was incremented already during
   // call profiling. We have to restore the mdp for the current bcp.

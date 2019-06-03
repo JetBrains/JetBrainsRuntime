@@ -29,6 +29,9 @@
 #include <jni.h>
 #include "debug_trace.h"
 #include "jni_util.h"
+#ifdef __MACH__
+#include <mach/mach_time.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +55,8 @@ JNIEXPORT extern jint graphicsPrimitive_traceflags;
 #define J2D_TRACE_VERBOSE       4
 #define J2D_TRACE_VERBOSE2      5
 #define J2D_TRACE_MAX           (J2D_TRACE_VERBOSE2+1)
+
+#define J2D_PTRACE_TIME         8
 
 JNIEXPORT void JNICALL
 J2dTraceImpl(int level, jboolean cr, const char *string, ...);
@@ -182,13 +187,41 @@ J2dTraceInit();
         if (graphicsPrimitive_traceflags && jvm) { \
             void *env; \
             jstring jstr; \
-            (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
+            (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL); \
             jstr = (*(JNIEnv*)env)->NewStringUTF(env, string); \
-            JNU_CallStaticMethodByName(env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
-                                       "tracePrimitive", "(Ljava/lang/Object;)V", jstr); \
+            JNU_CallStaticMethodByName( \
+                    env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
+                    "tracePrimitive", "(Ljava/lang/Object;)V", jstr); \
             (*(JNIEnv*)env)->DeleteLocalRef(env, jstr); \
         } \
     }
+
+#ifdef __MACH__
+#define J2dTraceNanoTime() (mach_absolute_time())
+
+#define J2dTracePrimitiveTime(string,t0) { \
+        if ((graphicsPrimitive_traceflags & J2D_PTRACE_TIME) && jvm) { \
+            JNIEnv *env; \
+            jstring jstr; \
+            static mach_timebase_info_data_t ti; \
+            jlong t1; \
+            t1 = mach_absolute_time(); \
+            if (ti.denom == 0) { \
+                (void) mach_timebase_info(&ti); \
+            } \
+            (*jvm)->AttachCurrentThreadAsDaemon(jvm, &env, NULL); \
+            jstr = (*env)->NewStringUTF(env, string); \
+            JNU_CallStaticMethodByName(env, NULL, "sun/java2d/loops/GraphicsPrimitive", \
+                                       "tracePrimitiveTime", "(Ljava/lang/Object;J)V", jstr,\
+                                       (((t1-t0)*ti.numer)/ti.denom)); \
+            (*env)->DeleteLocalRef(env, jstr); \
+        } \
+    }
+#else
+#define J2dTracePrimitiveTime(string,t)
+#define J2dTraceNanoTime() (0)
+#endif
+
 #ifdef __cplusplus
 };
 #endif /* __cplusplus */

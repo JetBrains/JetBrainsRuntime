@@ -1,14 +1,12 @@
 package quality.text;
 
 import org.junit.Test;
-import quality.util.RenderUtil;
 
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.io.File;
 
@@ -40,7 +38,7 @@ public class DroidFontTest {
 
         String[] testDataVariant = {
                 "osx_hardware_rendering", "osx_software_rendering", "osx_sierra_rendering",
-                "linux_rendering"};
+                "osx_mojave_rendering", "linux_rendering"};
 
         String testDataStr = System.getProperty("testdata");
         assertNotNull("testdata property is not set", testDataStr);
@@ -70,7 +68,7 @@ public class DroidFontTest {
                 (int) bnd.getWidth(), (int) bnd.getHeight());
 
         String gfName = name.toLowerCase().replace(" ", "") +
-                Integer.toString(style) + "_" + Integer.toString(size) + ".png";
+                style + "_" + size + ".png";
 
         if (System.getProperty("gentestdata") == null) {
             boolean failed = true;
@@ -98,7 +96,7 @@ public class DroidFontTest {
                     for (int j = 0; j < gRaster.getHeight(); j++) {
                         gRaster.getPixel(i, j, gArr);
                         rRaster.getPixel(i, j, rArr);
-                        assertTrue(gArr.length == rArr.length);
+                        assertEquals(gArr.length, rArr.length);
                         for (int k = 0; k < gArr.length; k++) {
                             if (gArr[k] != rArr[k]) {
                                 failureReason.append(variant).append(" : Different pixels found ").append("at (").append(i).append(",").append(j).append(")");

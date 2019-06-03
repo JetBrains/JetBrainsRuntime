@@ -781,6 +781,9 @@ public:
 
   void resolve_jobject(Register value, Register thread, Register tmp);
 
+  // C 'boolean' to Java boolean: x == 0 ? 0 : 1
+  void c2bool(Register x);
+
   // oop manipulations
   void load_klass(Register dst, Register src);
   void store_klass(Register dst, Register src);
@@ -1012,7 +1015,10 @@ public:
                enum operand_size size,
                bool acquire, bool release, bool weak,
                Register result);
+private:
+  void compare_eq(Register rn, Register rm, enum operand_size size);
 
+public:
   // Calls
 
   address trampoline_call(Address entry, CodeBuffer *cbuf = NULL);

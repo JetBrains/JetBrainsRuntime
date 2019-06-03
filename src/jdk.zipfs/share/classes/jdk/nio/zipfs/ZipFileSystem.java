@@ -1061,9 +1061,8 @@ class ZipFileSystem extends FileSystem {
             if (pos + CENHDR + nlen > limit) {
                 zerror("invalid CEN header (bad header size)");
             }
-            IndexNode inode = new IndexNode(cen, pos + CENHDR, pos, nlen);
+            IndexNode inode = new IndexNode(cen, pos, nlen);
             inodes.put(inode, inode);
-
             // skip ext and comment
             pos += (CENHDR + nlen + elen + clen);
         }
@@ -1147,9 +1146,15 @@ class ZipFileSystem extends FileSystem {
                 size = 16;
         }
         // read loc, use the original loc.elen/nlen
-        if (readFullyAt(buf, 0, LOCHDR , locoff) != LOCHDR)
+        //
+        // an extra byte after loc is read, which should be the first byte of the
+        // 'name' field of the loc. if this byte is '/', which means the original
+        // entry has an absolute path in original zip/jar file, the e.writeLOC()
+        // is used to output the loc, in which the leading "/" will be removed
+        if (readFullyAt(buf, 0, LOCHDR + 1 , locoff) != LOCHDR + 1)
             throw new ZipException("loc: reading failed");
-        if (updateHeader) {
+
+        if (updateHeader || LOCNAM(buf) > 0 && buf[LOCHDR] == '/') {
             locoff += LOCHDR + LOCNAM(buf) + LOCEXT(buf);  // skip header
             size += e.csize;
             written = e.writeLOC(os) + size;
@@ -1239,6 +1244,10 @@ class ZipFileSystem extends FileSystem {
                 } else {                        // unchanged inode
                     if (inode.pos == -1) {
                         continue;               // pseudo directory node
+                    }
+                    if (inode.name.length == 1 && inode.name[0] == '/') {
+                        continue;               // no root '/' directory even it
+                                                // exits in original zip/jar file.
                     }
                     e = Entry.readCEN(this, inode);
                     try {
@@ -1766,15 +1775,20 @@ class ZipFileSystem extends FileSystem {
             this.pos = pos;
         }
 
-        // constructor for cenInit()
-        IndexNode(byte[] cen, int noff, int pos, int nlen) {
+        // constructor for cenInit() (1) remove trailing '/' (2) pad leading '/'
+        IndexNode(byte[] cen, int pos, int nlen) {
+            int noff = pos + CENHDR;
             if (cen[noff + nlen - 1] == '/') {
                 isdir = true;
                 nlen--;
             }
-            name = new byte[nlen + 1];
-            System.arraycopy(cen, pos + CENHDR, name, 1, nlen);
-            name[0] = '/';
+            if (nlen > 0 && cen[noff] == '/') {
+                name = Arrays.copyOfRange(cen, noff, noff + nlen);
+            } else {
+                name = new byte[nlen + 1];
+                System.arraycopy(cen, noff, name, 1, nlen);
+                name[0] = '/';
+            }
             name(name);
             this.pos = pos;
         }
@@ -2461,7 +2475,12 @@ class ZipFileSystem extends FileSystem {
     private void buildNodeTree() throws IOException {
         beginWrite();
         try {
-            IndexNode root = new IndexNode(ROOTPATH, true);
+            IndexNode root = inodes.get(LOOKUPKEY.as(ROOTPATH));
+            if (root == null) {
+                root = new IndexNode(ROOTPATH, true);
+            } else {
+                inodes.remove(root);
+            }
             IndexNode[] nodes = inodes.keySet().toArray(new IndexNode[0]);
             inodes.put(root, root);
             ParentLookup lookup = new ParentLookup();

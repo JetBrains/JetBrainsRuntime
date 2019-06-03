@@ -326,10 +326,7 @@ static BOOL shouldUsePressAndHold() {
         }
     }
 
-    NSString *eventCharacters = [event characters];
-    BOOL isDeadKey = (eventCharacters != nil && [eventCharacters length] == 0);
-
-    if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
+    if ((![self hasMarkedText] && fKeyEventsNeeded)) {
         [self deliverJavaKeyEventHelper: event];
     }
 
@@ -350,8 +347,6 @@ static BOOL shouldUsePressAndHold() {
     }
     AWTToolkit.latestPerformKeyEquivalentEvent = event;
     [event retain];
-
-    if ([event keyCode] == 0) return NO;
 
     if ([event keyCode] == 24 && [[event characters] isEqual:@"+"]) {
         return 0;
@@ -516,7 +511,7 @@ static BOOL shouldUsePressAndHold() {
     const UCKeyboardLayout *keyboardLayout =  (UCKeyboardLayout*)CFDataGetBytePtr(keyLayoutPtr);
 
     UInt32 isDeadKeyPressed;
-    UInt32 lengthOfBuffer = 4;
+    UInt32 lengthOfBuffer = 8;
     UniChar stringWithChars[lengthOfBuffer];
     UniCharCount actualLength;
 
@@ -527,7 +522,6 @@ static BOOL shouldUsePressAndHold() {
                    0,
                    LMGetKbdType(),
                    0,
-                   // ignore for now
                    &isDeadKeyPressed,
                    lengthOfBuffer,
                    &actualLength,

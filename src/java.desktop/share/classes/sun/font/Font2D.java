@@ -25,9 +25,6 @@
 
 package sun.font;
 
-import sun.java2d.Disposer;
-import sun.java2d.DisposerRecord;
-
 import java.awt.Font;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
@@ -79,8 +76,6 @@ public abstract class Font2D {
     protected int style = Font.PLAIN;
     protected FontFamily family;
     protected int fontRank = DEFAULT_RANK;
-
-    private HarfbuzzFaceRef harfbuzzFaceRef;
 
     /*
      * A mapper can be independent of the strike.
@@ -472,35 +467,11 @@ public abstract class Font2D {
         return null;
     }
 
-    /* implemented for fonts backed by an sfnt that has
-     * OpenType or AAT layout tables.
-     */
-    protected long getLayoutTableCache() {
-        return 0L;
-    }
-
     /* Used only on OS X.
      */
     protected long getPlatformNativeFontPtr() {
         return 0L;
     }
-
-    protected boolean isAAT() {
-        return false;
-    }
-
-    synchronized long getHarfbuzzFacePtr() {
-        if (harfbuzzFaceRef == null) {
-            long harfbuzzFaceNativePtr = createHarfbuzzFace(isAAT(), getPlatformNativeFontPtr());
-            if (harfbuzzFaceNativePtr == 0) return 0;
-            harfbuzzFaceRef = new HarfbuzzFaceRef(harfbuzzFaceNativePtr);
-            Disposer.addObjectRecord(this, harfbuzzFaceRef);
-        }
-        return harfbuzzFaceRef.harfbuzzFaceNativePtr;
-    }
-
-    private native long createHarfbuzzFace(boolean aat, long platformNativeFontPtr);
-    private static native void disposeHarfbuzzFace(long harfbuzzFaceNativePtr);
 
     /* for layout code */
     protected long getUnitsPerEm() {
@@ -587,17 +558,4 @@ public abstract class Font2D {
         }
     }
 
-
-    private static class HarfbuzzFaceRef implements DisposerRecord {
-        private final long harfbuzzFaceNativePtr;
-
-        private HarfbuzzFaceRef(long harfbuzzFaceNativePtr) {
-            this.harfbuzzFaceNativePtr = harfbuzzFaceNativePtr;
-        }
-
-        @Override
-        public void dispose() {
-            disposeHarfbuzzFace(harfbuzzFaceNativePtr);
-        }
-    }
 }

@@ -131,6 +131,7 @@ typedef void (GLAPIENTRY *glViewportType)(GLint x, GLint y, GLsizei width, GLsiz
  * extensions, which is why they are called out separately here)
  */
 typedef void (GLAPIENTRY *glActiveTextureARBType)(GLenum texture);
+typedef void (GLAPIENTRY *glClientActiveTextureType)(GLenum texture);
 typedef void (GLAPIENTRY *glMultiTexCoord2fARBType)(GLenum texture, GLfloat s, GLfloat t);
 typedef void (GLAPIENTRY *glTexImage3DType)(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
 
@@ -290,6 +291,7 @@ typedef void (GLAPIENTRY *glTextureBarrierNVType) (void);
 
 #define OGL_EXPRESS_EXT_FUNCS(action) \
     OGL_##action##_EXT_FUNC(glActiveTextureARB); \
+    OGL_##action##_EXT_FUNC(glClientActiveTexture); \
     OGL_##action##_EXT_FUNC(glMultiTexCoord2fARB); \
     OGL_##action##_EXT_FUNC(glTexImage3D); \
     OGL_##action##_EXT_FUNC(glBindRenderbufferEXT); \

@@ -1,17 +1,22 @@
 java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java                                  nobug macosx-all,linux-all,windows-all
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                          nobug macosx-all,windows-all
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
-java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all
-java/awt/Choice/SelectCurrentItemTest/SelectCurrentItemTest.html                            nobug macosx-all,windows-all
+java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
+java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
+java/awt/Component/PaintAll/PaintAll.java                                                   nobug linux-all
+java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                        nobug macosx-all,windows-all,linux-all
+java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java        nobug macosx-all,windows-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                                nobug macosx-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                             nobug macosx-all,windows-all
 java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java              nobug windows-all
 java/awt/FileDialog/FileDialogMemoryLeak/FileDialogLeakTest.java                            nobug windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                              nobug macosx-all
 java/awt/FileDialog/MoveToTrashTest.java                                                    nobug windows-all
+java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
+java/awt/Focus/6981400/Test2.java                                                           nobug linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html                          nobug linux-all,windows-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java   nobug macosx-all,linux-all,windows-all
@@ -26,8 +31,9 @@ java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                       
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
-java/awt/FontClass/GlyphRotationTest.java                                                   nobug windows-all
+java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
+java/awt/Frame/FrameSize/TestFrameSize.java                                                 nobug linux-all,mac-osx
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                                   nobug macosx-all,windows-all
@@ -41,16 +47,22 @@ java/awt/FullScreen/TranslucentWindow/TranslucentWindow.java                    
 java/awt/Graphics/LineClipTest.java                                                         nobug macosx-all,windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                                    nobug macosx-all,linux-all,windows-all
 java/awt/JAWT/JAWT.sh                                                                       nobug linux-all,windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html nobug macosx-all,windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all,linux-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html    nobug windows-all reproduced with Adopt
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                              nobug windows-all
 java/awt/List/ActionAfterRemove/ActionAfterRemove.java                                      nobug windows-all
+java/awt/List/ActionEventTest/ActionEventTest.java                                          nobug linux-all
+java/awt/List/EmptyListEventTest/EmptyListEventTest.java                                    nobug windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java                                              nobug macosx-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java                          nobug macosx-all,windows-all
 java/awt/List/ListGarbageCollectionTest/AwtListGarbageCollectionTest.java                   nobug linux-all
 java/awt/Menu/NullMenuLabelTest/NullMenuLabelTest.java                                      nobug linux-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                           nobug macosx-all,windows-all
+java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                         nobug macosx-all,windows-all
 java/awt/Mixing/HWDisappear.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/JButtonInGlassPane.java                                                     nobug macosx-all,linux-all,windows-all
+java/awt/Mixing/LWComboBox.java                                                             nobug macosx-all,linux-all,windows-all
 java/awt/Mixing/LWPopupMenu.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/MixingInHwPanel.java                                                        nobug macosx-all,windows-all
 java/awt/Mixing/ValidBounds.java                                                            nobug macosx-all,windows-all
@@ -58,12 +70,13 @@ java/awt/Mixing/Validating.java                                                 
 java/awt/Modal/LWModalTest/LWModalTest.java                                                 nobug macosx-all,windows-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java                         nobug macosx-all,windows-all
 java/awt/Modal/ToBack/ToBackModeless6Test.java                                              nobug macosx-all,linux-all,windows-all
-java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                                     nobug macosx-all,windows-all
-java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Extra.java                     nobug windows-all
+java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                                     nobug macosx-all,windows-all,linux-all
+java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Extra.java                     nobug macosx-all,linux-all,windows-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java                                         nobug macosx-all,windows-all
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                        nobug macosx-all,windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java                                          nobug macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                         nobug macosx-all,windows-all
+java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java nobug linux-all,macosx-all,windows-all
 java/awt/Paint/ExposeOnEDT.java                                                             nobug windows-all
 java/awt/Paint/ListRepaint.java                                                             nobug linux-all (java.lang.NullPointerException reproduced with Adopt)
 java/awt/PopupMenu/PopupMenuLocation.java                                                   nobug macosx-all,linux-all,windows-all
@@ -90,7 +103,6 @@ java/awt/Window/OwnedWindowsLeak/OwnedWindowsLeak.java                          
 java/awt/Window/ScreenLocation/ScreenLocationTest.java                                      nobug linux-all
 java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.java        nobug linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all
-java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                           nobug linux-all (timeout reproduced with Adopt)
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java                                      nobug linux-all,macosx-all
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java          nobug macosx-all
@@ -98,6 +110,7 @@ java/awt/Window/WindowResizing/DoubleClickTitleBarTest.java                     
 java/awt/datatransfer/Independence/IndependenceAWTTest.java                                 nobug linux-all
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.html                          nobug macosx-all,windows-all
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java                         nobug linux-all
+java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java                           nobug macosx-all,windows-all,linux-all
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html                       nobug macosx-all,linux-all,windows-all
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java                                        nobug macosx-all,windows-all,linux-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                           nobug macosx-all,linux-all,windows-all
@@ -118,12 +131,12 @@ java/awt/event/MouseEvent/EnterAsGrabbedEvent/EnterAsGrabbedEvent.java          
 java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java                            nobug macosx-all,linux-all,windows-all
 java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java            nobug macosx-all,windows-all
 java/awt/event/MouseEvent/RobotLWTest/RobotLWTest.html                                      nobug macosx-all,windows-all
+java/awt/event/MouseWheelEvent/DisabledComponent/DisabledComponent.java                     nobug windows-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                             nobug macosx-all,windows-all,linux-all
 java/awt/event/SequencedEvent/SequencedEventTest.java                                       nobug macosx-all,windows-all,linux-all
 java/awt/font/Emoji/EmojiDrawingTest.java                                                   nobug macosx-all
 java/awt/font/Outline/OutlineInvarianceTest.java                                            nobug linux-all,windows-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                                    nobug macosx-all,windows-all
-java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java                      nobug macosx-all,windows-all
 java/awt/grab/MenuDragEvents/MenuDragEvents.java                                            nobug macosx-all,windows-all
 java/awt/hidpi/ClientAreaOriginWindowsTest.java                                             nobug windows-all
 java/awt/hidpi/DrawOnFrameGraphicsTest.java                                                 nobug windows-all
@@ -155,8 +168,9 @@ javax/swing/JInternalFrame/6725409/bug6725409.java                              
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,linux-all,windows-all
 javax/swing/JInternalFrame/InternalFrameIsNotCollectedTest.java                             nobug macosx-all
-javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all
-javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all
+javax/swing/JInternalFrame/Test6802868.java                                                 nobug macosx-all,linux-all
+javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all,linux-all
+javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all,macosx-all,windows-all
 javax/swing/JList/BasicListTest.java                                                        nobug macosx-all
 javax/swing/JMenu/6538132/bug6538132.java                                                   nobug windows-all
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                                  nobug macosx-all
@@ -164,12 +178,10 @@ javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                
 javax/swing/JOptionPane/6428694/bug6428694.java                                             nobug windows-all
 javax/swing/JPopupMenu/4458079/bug4458079.java                                              nobug windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
-javax/swing/JPopupMenu/6217905/bug6217905.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all
 javax/swing/JRadioButton/8041561/bug8041561.java                                            nobug windows-all
-javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java                                 nobug windows-all
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
@@ -179,10 +191,8 @@ javax/swing/JToolTip/6219960/bug6219960.java                                    
 javax/swing/JTree/4633594/JTreeFocusTest.java                                               nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucent.java                    nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentGradient.java            nobug windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java               nobug macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java      nobug macosx-all,linux-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug macosx-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java                   nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java            nobug windows-all
 javax/swing/event/RightAltKeyTest.java                                                      nobug windows-all
@@ -197,7 +207,7 @@ javax/swing/plaf/windows/6921687/bug6921687.java                                
 javax/swing/reliability/TaskUndJFrameProperties.java                                        nobug windows-all
 javax/swing/reliability/TaskZoomJFrameChangeState.java                                      nobug linux-all,windows-all
 javax/swing/reliability/TaskZoomJFrameRepaint.java                                          nobug linux-all,windows-all
-javax/swing/text/CSSBorder/6796710/bug6796710.java                                          nobug windows-all
+javax/swing/text/Caret/TestCaretPosition.java                                               nobug linux-all
 javax/swing/text/FlowView/LayoutTest.java                                                   nobug windows-all
 javax/swing/text/html/CSS/4530474/bug4530474.java                                           nobug windows-all
 javax/swing/text/html/StyleSheet/bug4936917.java                                            nobug macosx-all,windows-all

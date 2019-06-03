@@ -43,31 +43,8 @@
     if (self) {
         fFont = [font retain];
         fNativeCGFont = CTFontCopyGraphicsFont((CTFontRef)font, NULL);
-        layoutTableCache = NULL;
     }
     return self;
-}
-
-static TTLayoutTableCache* newCFontLayoutTableCache() {
-  TTLayoutTableCache* ltc = calloc(1, sizeof(TTLayoutTableCache));
-  if (ltc) {
-    int i;
-    for(i=0;i<LAYOUTCACHE_ENTRIES;i++) {
-      ltc->entries[i].len = -1;
-    }
-  }
-  return ltc;
-}
-
-static void freeCFontLayoutTableCache(TTLayoutTableCache* ltc) {
-  if (ltc) {
-    int i;
-    for(i=0;i<LAYOUTCACHE_ENTRIES;i++) {
-      if(ltc->entries[i].ptr) free (ltc->entries[i].ptr);
-    }
-    if (ltc->kernPairs) free(ltc->kernPairs);
-    free(ltc);
-  }
 }
 
 - (void) dealloc {
@@ -77,10 +54,6 @@ static void freeCFontLayoutTableCache(TTLayoutTableCache* ltc) {
     if (fNativeCGFont) {
         CGFontRelease(fNativeCGFont);
     fNativeCGFont = NULL;
-    if (layoutTableCache != NULL) {
-        freeCFontLayoutTableCache(layoutTableCache);
-        layoutTableCache = NULL;
-    }
     }
 
     [super dealloc];
@@ -90,10 +63,6 @@ static void freeCFontLayoutTableCache(TTLayoutTableCache* ltc) {
     if (fNativeCGFont) {
         CGFontRelease(fNativeCGFont);
     fNativeCGFont = NULL;
-    }
-    if (layoutTableCache != NULL) {
-        freeCFontLayoutTableCache(layoutTableCache);
-        layoutTableCache = NULL;
     }
     [super finalize];
 }
@@ -474,23 +443,6 @@ Java_sun_font_CFont_getCGFontPtrNative
 {
     AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
     return (jlong)(awtFont->fNativeCGFont);
-}
-
-/*
- * Class:     sun_font_CFont
- * Method:    getLayoutTableCacheNative
- * Signature: (J)J
- */
-JNIEXPORT jlong JNICALL
-Java_sun_font_CFont_getLayoutTableCacheNative
-    (JNIEnv *env, jclass clazz,
-     jlong awtFontPtr)
-{
-    AWTFont *awtFont = (AWTFont *)jlong_to_ptr(awtFontPtr);
-    if (awtFont->layoutTableCache == NULL) {
-        awtFont->layoutTableCache = newCFontLayoutTableCache();
-    }
-    return (jlong)(awtFont->layoutTableCache);
 }
 
 /*

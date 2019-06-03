@@ -663,13 +663,6 @@ public class Dialog extends Window {
     public Dialog(Window owner, String title, ModalityType modalityType) {
         super(owner);
 
-        if ((owner != null) &&
-            !(owner instanceof Frame) &&
-            !(owner instanceof Dialog))
-        {
-            throw new IllegalArgumentException("Wrong parent window");
-        }
-
         this.title = title;
         setModalityType(modalityType);
         SunToolkit.checkAndSetPolicy(this);

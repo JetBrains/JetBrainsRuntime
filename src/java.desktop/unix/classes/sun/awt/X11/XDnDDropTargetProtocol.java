@@ -586,16 +586,19 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
             return false;
         }
 
+        x = (int)(xclient.get_data(2) >> 16);
+        y = (int)(xclient.get_data(2) & 0xFFFF);
+
         XWindow xwindow = null;
         {
             XBaseWindow xbasewindow = XToolkit.windowToXWindow(xclient.get_window());
             if (xbasewindow instanceof XWindow) {
                 xwindow = (XWindow)xbasewindow;
+                x = xbasewindow.scaleDown(x);
+                y = xbasewindow.scaleDown(y);
             }
         }
 
-        x = (int)(xclient.get_data(2) >> 16);
-        y = (int)(xclient.get_data(2) & 0xFFFF);
 
         if (xwindow == null) {
             long receiver =
@@ -620,7 +623,7 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
 
         /* Time stamp - new in XDnD version 1. */
         if (sourceProtocolVersion > 0) {
-            time_stamp = xclient.get_data(3);
+            time_stamp = xclient.get_data(3) & 0xFFFFFFFFL;
         }
 
         /* User action - new in XDnD version 2. */
@@ -867,7 +870,7 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
          */
         if (dropAction == DnDConstants.ACTION_MOVE && success) {
 
-            long time_stamp = xclient.get_data(2);
+            long time_stamp = xclient.get_data(2) & 0xFFFFFFFFL;
             long xdndSelectionAtom =
                 XDnDConstants.XDnDSelection.getSelectionAtom().getAtom();
 

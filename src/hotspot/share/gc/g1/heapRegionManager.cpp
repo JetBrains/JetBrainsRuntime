@@ -29,6 +29,7 @@
 #include "gc/g1/heapRegionManager.inline.hpp"
 #include "gc/g1/heapRegionSet.inline.hpp"
 #include "memory/allocation.hpp"
+#include "utilities/bitMap.inline.hpp"
 
 void HeapRegionManager::initialize(G1RegionToSpaceMapper* heap_storage,
                                G1RegionToSpaceMapper* prev_bitmap,
