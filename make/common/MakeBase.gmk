@@ -613,7 +613,8 @@ DirToDotDot = \
 # $2 - Directory to compute the relative path from
 RelativePath = \
     $(eval $1_prefix := $(call FindCommonPathPrefix, $1, $2)) \
-    $(eval $1_dotdots := $(call DirToDotDot, $(patsubst $($(strip $1)_prefix)/%, %, $2))) \
+    $(eval $1_dotdots := $(call DirToDotDot, $(patsubst $($(strip $1)_prefix)%, %, $2))) \
+    $(eval $1_dotdots := $(if $($(strip $1)_dotdots),$($(strip $1)_dotdots),.)) \
     $(eval $1_suffix := $(patsubst $($(strip $1)_prefix)/%, %, $1)) \
     $($(strip $1)_dotdots)/$($(strip $1)_suffix)
 
@@ -980,6 +981,22 @@ else
   # Use printf to get consistent behavior on all platforms.
   AppendFile = \
       $(shell $(PRINTF) "%s" $(call ShellQuote, $1) >> $2)
+endif
+
+################################################################################
+# FixPathList
+#
+# On Windows, converts a cygwin/unix style path list (colon-separated) into
+# the native format (mixed mode, semicolon-separated). On other platforms,
+# return the path list unchanged.
+################################################################################
+ifeq ($(OPENJDK_TARGET_OS), windows)
+  FixPathList = \
+      $(subst @,$(SPACE),$(subst $(SPACE),;,$(foreach entry,$(subst :,$(SPACE),\
+      $(subst $(SPACE),@,$(strip $1))),$(call FixPath, $(entry)))))
+else
+  FixPathList = \
+      $1
 endif
 
 ################################################################################
