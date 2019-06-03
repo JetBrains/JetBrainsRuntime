@@ -1645,6 +1645,24 @@ static void pthread_init_common(void) {
   }
 }
 
+#ifndef SOLARIS
+sigset_t sigs;
+struct sigaction sigact[NSIG];
+
+struct sigaction* os::Posix::get_preinstalled_handler(int sig) {
+  if (sigismember(&sigs, sig)) {
+    return &sigact[sig];
+  }
+  return NULL;
+}
+
+void os::Posix::save_preinstalled_handler(int sig, struct sigaction& oldAct) {
+  assert(sig > 0 && sig < NSIG, "vm signal out of expected range");
+  sigact[sig] = oldAct;
+  sigaddset(&sigs, sig);
+}
+#endif
+
 // Not all POSIX types and API's are available on all notionally "posix"
 // platforms. If we have build-time support then we will check for actual
 // runtime support via dlopen/dlsym lookup. This allows for running on an
@@ -1756,6 +1774,9 @@ void os::Posix::init_2(void) {
                (_pthread_condattr_setclock != NULL ? "" : " not"));
   log_info(os)("Relative timed-wait using pthread_cond_timedwait is associated with %s",
                _use_clock_monotonic_condattr ? "CLOCK_MONOTONIC" : "the default clock");
+#ifndef SOLARIS
+  sigemptyset(&sigs);
+#endif
 }
 
 #else // !SUPPORTS_CLOCK_MONOTONIC
@@ -1768,6 +1789,9 @@ void os::Posix::init_2(void) {
   log_info(os)("Use of CLOCK_MONOTONIC is not supported");
   log_info(os)("Use of pthread_condattr_setclock is not supported");
   log_info(os)("Relative timed-wait using pthread_cond_timedwait is associated with the default clock");
+#ifndef SOLARIS
+  sigemptyset(&sigs);
+#endif
 }
 
 #endif // SUPPORTS_CLOCK_MONOTONIC
