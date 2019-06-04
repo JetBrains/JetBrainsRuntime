@@ -326,7 +326,10 @@ static BOOL shouldUsePressAndHold() {
         }
     }
 
-    if ((![self hasMarkedText] && fKeyEventsNeeded)) {
+    NSString *eventCharacters = [event characters];
+    BOOL isDeadKey = (eventCharacters != nil && [eventCharacters length] == 0);
+
+    if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
         [self deliverJavaKeyEventHelper: event];
     }
 
