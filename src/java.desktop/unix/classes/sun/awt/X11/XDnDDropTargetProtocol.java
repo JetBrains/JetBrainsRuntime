@@ -586,19 +586,16 @@ class XDnDDropTargetProtocol extends XDropTargetProtocol {
             return false;
         }
 
-        x = (int)(xclient.get_data(2) >> 16);
-        y = (int)(xclient.get_data(2) & 0xFFFF);
-
         XWindow xwindow = null;
         {
             XBaseWindow xbasewindow = XToolkit.windowToXWindow(xclient.get_window());
             if (xbasewindow instanceof XWindow) {
                 xwindow = (XWindow)xbasewindow;
-                x = xbasewindow.scaleDown(x);
-                y = xbasewindow.scaleDown(y);
             }
         }
 
+        x = (int)(xclient.get_data(2) >> 16);
+        y = (int)(xclient.get_data(2) & 0xFFFF);
 
         if (xwindow == null) {
             long receiver =
