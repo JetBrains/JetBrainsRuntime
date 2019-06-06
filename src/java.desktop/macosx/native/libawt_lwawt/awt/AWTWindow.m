@@ -275,11 +275,13 @@ AWT_ASSERT_APPKIT_THREAD;
 
     NSUInteger styleMask = [AWTWindow styleMaskForStyleBits:bits];
 
-    if (IS(bits, TRANSPARENT_TITLEBAR)) {
+    BOOL isTransparentTitleBar = IS(bits, TRANSPARENT_TITLEBAR);
+
+    if (isTransparentTitleBar) {
         styleMask = styleMask | NSFullSizeContentViewWindowMask;
     }
 
-    NSRect contentRect = [NSWindow contentRectForFrameRect:rect styleMask:styleMask];
+    NSRect contentRect = isTransparentTitleBar ? [NSWindow contentRectForFrameRect:rect styleMask:styleMask] : rect;
     if (contentRect.size.width <= 0.0) {
         contentRect.size.width = 1.0;
     }
