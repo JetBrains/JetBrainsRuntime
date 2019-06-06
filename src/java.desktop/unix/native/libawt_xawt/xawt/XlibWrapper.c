@@ -648,6 +648,55 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XWindowEvent
     XWindowEvent( (Display *) jlong_to_ptr(display), (Window)window, event_mask, (XEvent *) jlong_to_ptr(event_return));
 }
 
+static int filteredEventsCount = 0;
+static int filteredEventsThreshold = -1;
+#define KeyPressEventType   2
+#define KeyReleaseEventType 3
+
+static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
+    if (filteredEventsThreshold < 0) {
+        filteredEventsThreshold = 0;
+
+        // read from VM-property
+        JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+        jclass systemCls = (*env)->FindClass(env, "java/lang/System");
+        CHECK_NULL(systemCls);
+        jmethodID mid = (*env)->GetStaticMethodID(env, systemCls, "getProperty", "(Ljava/lang/String;)Ljava/lang/String;");
+        CHECK_NULL(mid);
+        jstring name = (*env)->NewStringUTF(env, "recreate.x11.input.method");
+        CHECK_NULL(name);
+        jstring jvalue = (*env)->CallStaticObjectMethod(env, systemCls, mid, name);
+        if (jvalue != NULL) {
+            const char * utf8string = (*env)->GetStringUTFChars(env, jvalue, NULL);
+            if (utf8string != NULL) {
+                const int parsedVal = atoi(utf8string);
+                if (parsedVal > 0)
+                    filteredEventsThreshold = parsedVal;
+                else if (strncmp(utf8string, "true", 4) == 0)
+                    filteredEventsThreshold = 10;
+            }
+            (*env)->ReleaseStringUTFChars(env, jvalue, utf8string);
+        }
+        (*env)->DeleteLocalRef(env, name);
+    }
+    if (filteredEventsThreshold <= 0)
+        return;
+
+    if (event->type == KeyPressEventType || event->type == KeyReleaseEventType) {
+        if (isEventFiltered) {
+            filteredEventsCount++;
+        } else {
+            filteredEventsCount = 0;
+        }
+
+        if (filteredEventsCount > filteredEventsThreshold) {
+            JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+            JNU_CallStaticMethodByName(env, NULL, "sun/awt/X11InputMethod", "recreateAllXIC", "()V");
+            filteredEventsCount = 0;
+        }
+    }
+}
+
 /*
  * Class:     sun_awt_X11_XlibWrapper
  * Method:    XFilterEvent
@@ -662,7 +711,9 @@ JNIEXPORT jboolean JNICALL Java_sun_awt_X11_XlibWrapper_XFilterEvent
         return (jboolean)True;
     }
 #endif
-    return (jboolean) XFilterEvent((XEvent *) jlong_to_ptr(ptr), (Window) window);
+    jboolean isEventFiltered = (jboolean) XFilterEvent((XEvent *) jlong_to_ptr(ptr), (Window) window);
+    checkBrokenInputMethod((XEvent *)jlong_to_ptr(ptr), isEventFiltered);
+    return isEventFiltered;
 }
 
 /*
