@@ -25,6 +25,9 @@
 
 package sun.awt;
 
+import java.util.List;
+import java.util.ArrayList;
+
 import java.awt.AWTException;
 import java.awt.event.InputMethodEvent;
 import java.awt.font.TextAttribute;
@@ -40,6 +43,7 @@ import sun.util.logging.PlatformLogger;
  * @author JavaSoft International
  */
 public abstract class X11InputMethod extends X11InputMethodBase {
+    protected static final List<X11InputMethod> activeInputMethods = new ArrayList<X11InputMethod>();
 
     /**
      * Constructs an X11InputMethod instance. It initializes the XIM
@@ -87,6 +91,9 @@ public abstract class X11InputMethod extends X11InputMethodBase {
             if (!createXIC()) {
                 return;
             }
+            awtLock();
+            activeInputMethods.add(this);
+            awtUnlock();
             disposed = false;
         }
 
@@ -335,6 +342,7 @@ public abstract class X11InputMethod extends X11InputMethodBase {
     protected synchronized void disposeImpl() {
         disposeXIC();
         awtLock();
+        activeInputMethods.remove(this);
         composedText = null;
         committedText = null;
         rawFeedbacks = null;
@@ -360,4 +368,22 @@ public abstract class X11InputMethod extends X11InputMethodBase {
             savedCompositionState = enable;
         }
     }
+
+    static void recreateAllXIC() {
+        // NOTE: called from native within AWT_LOCK
+        for (X11InputMethod im : activeInputMethods)
+            im.releaseXIC();
+        if (!recreateX11InputMethod()) {
+            log.warning("can't recreate X11 InputMethod");
+            return;
+        }
+        for (X11InputMethod im : activeInputMethods) {
+            if (!im.recreateXIC())
+                log.warning("can't recreate XIC for " + im.toString());
+        }
+    }
+
+    protected abstract boolean recreateXIC();
+    protected abstract void releaseXIC();
+    private static native boolean recreateX11InputMethod();
 }
