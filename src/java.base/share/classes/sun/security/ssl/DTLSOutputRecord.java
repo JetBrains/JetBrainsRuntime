@@ -239,9 +239,8 @@ final class DTLSOutputRecord extends OutputRecord implements DTLSRecord {
             fragLen = Record.maxDataSize;
         }
 
-        if (fragmentSize > 0) {
-            fragLen = Math.min(fragLen, fragmentSize);
-        }
+        // Calculate more impact, for example TLS 1.3 padding.
+        fragLen = calculateFragmentSize(fragLen);
 
         int dstPos = destination.position();
         int dstLim = destination.limit();
@@ -459,9 +458,8 @@ final class DTLSOutputRecord extends OutputRecord implements DTLSRecord {
                 fragLen = Record.maxDataSize;
             }
 
-            if (fragmentSize > 0) {
-                fragLen = Math.min(fragLen, fragmentSize);
-            }
+            // Calculate more impact, for example TLS 1.3 padding.
+            fragLen = calculateFragmentSize(fragLen);
 
             int dstPos = dstBuf.position();
             int dstLim = dstBuf.limit();
