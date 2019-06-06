@@ -72,6 +72,17 @@ public class XInputMethod extends X11InputMethod {
         return createXICNative(peer.getContentWindow());
     }
 
+    protected boolean recreateXIC() {
+        final XComponentPeer peer = (XComponentPeer)getPeer(clientComponentWindow);
+        if (peer == null || pData == 0)
+            return true;
+        return recreateXICNative(peer.getContentWindow(), pData);
+    }
+    protected void releaseXIC() {
+        if (pData == 0)
+            return;
+        releaseXICNative(pData);
+    }
 
     private static volatile long xicFocus;
 
@@ -150,6 +161,8 @@ public class XInputMethod extends X11InputMethod {
      */
     private native boolean openXIMNative(long display);
     private native boolean createXICNative(long window);
+    private native boolean recreateXICNative(long window, long px11data);
+    private native void releaseXICNative(long px11data);
     private native void setXICFocusNative(long window,
                                     boolean value, boolean active);
     private native void adjustStatusWindow(long window);
