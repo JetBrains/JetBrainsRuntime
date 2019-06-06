@@ -644,7 +644,6 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XlibWrapper_XWindowEvent
     XWindowEvent( (Display *) jlong_to_ptr(display), (Window)window, event_mask, (XEvent *) jlong_to_ptr(event_return));
 }
 
-extern void reinitializeXInputMethod();
 static int filteredEventsCount = 0;
 static int filteredEventsThreshold = -1;
 #define KeyPressEventType   2
@@ -687,7 +686,8 @@ static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
         }
 
         if (filteredEventsCount > filteredEventsThreshold) {
-            reinitializeXInputMethod();
+            JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+            JNU_CallStaticMethodByName(env, NULL, "sun/awt/X11InputMethod", "recreateAllXIC", "()V");
             filteredEventsCount = 0;
         }
     }

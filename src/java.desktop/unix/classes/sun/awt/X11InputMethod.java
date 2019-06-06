@@ -364,6 +364,12 @@ public abstract class X11InputMethod extends X11InputMethodBase {
 
     static void recreateAllXIC() {
         // NOTE: called from native within AWT_LOCK
+        for (X11InputMethod im : activeInputMethods)
+            im.releaseXIC();
+        if (!recreateX11InputMethod()) {
+            log.warning("can't recreate X11 InputMethod");
+            return;
+        }
         for (X11InputMethod im : activeInputMethods) {
             if (!im.recreateXIC())
                 log.warning("can't recreate XIC for " + im.toString());
@@ -371,4 +377,6 @@ public abstract class X11InputMethod extends X11InputMethodBase {
     }
 
     protected abstract boolean recreateXIC();
+    protected abstract void releaseXIC();
+    private static native boolean recreateX11InputMethod();
 }
