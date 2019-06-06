@@ -1364,6 +1364,17 @@ finally:
     return (pX11IMData != NULL);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11_XInputMethod_recreateXICNative(JNIEnv *env,
+                                              jobject this,
+                                              jlong window, jlong pData)
+{
+    // NOTE: must be called under AWT_LOCK
+    X11InputMethodData * pX11IMData = (X11InputMethodData *)pData;
+    pX11IMData->current_ic = NULL;
+    return createXIC(env, pX11IMData, window);
+}
+
 JNIEXPORT void JNICALL
 Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
                                                 jobject this,
@@ -1616,3 +1627,25 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustStatusWindow
     AWT_UNLOCK();
 #endif
 }
+
+// NOTE: called within awt_lock
+void reinitializeXInputMethod() {
+     // 1. recreate X11im
+    if (X11im == NULL || dpy == NULL)
+        return;
+
+    Status retstat = XCloseIM(X11im);
+    X11im = XOpenIM(dpy, NULL, NULL, NULL);
+    if (X11im == NULL)
+        return;
+
+    XIMCallback ximCallback;
+    ximCallback.callback = (XIMProc)DestroyXIMCallback;
+    ximCallback.client_data = NULL;
+    XSetIMValues(X11im, XNDestroyCallback, &ximCallback, NULL);
+
+    // 2. recreate dependent input contexts
+    JNIEnv *env = (JNIEnv *)JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    JNU_CallStaticMethodByName(env, NULL, "sun/awt/X11InputMethod", "recreateAllXIC", "()V");
+}
+
