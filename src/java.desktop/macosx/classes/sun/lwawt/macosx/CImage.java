@@ -274,39 +274,33 @@ public class CImage extends CFRetainedResource {
 
         AtomicReference<Dimension2D> sizeRef = new AtomicReference<>();
         execute(ptr -> {
+            // This size is in points (user space): [NSImage size]
             sizeRef.set(nativeGetNSImageSize(ptr));
         });
         final Dimension2D size = sizeRef.get();
         if (size == null) {
             return null;
         }
-        final int baseWidth = (int)size.getWidth();
-        final int baseHeight = (int)size.getHeight();
+        int width = (int)size.getWidth();
+        int height = (int)size.getHeight();
         AtomicReference<Dimension2D[]> repRef = new AtomicReference<>();
         execute(ptr -> {
+            // These sizes are in pixels (device space): [NSImageRep pixelsWide/pixelsHigh].
             repRef.set(nativeGetNSImageRepresentationSizes(ptr, size.getWidth(),
                                                            size.getHeight()));
         });
         Dimension2D[] sizes = repRef.get();
 
-        // The image may be represented in the only size which differs from the base one.
-        // For instance, the app's dock icon is represented in a Retina-scaled size on Retina.
-        // Check if a single represenation has a bigger size and in that case use it as the dest size.
-        Dimension2D size0 = size;
-        if (sizes != null && sizes.length == 1 &&
-            (sizes[0].getWidth() > baseWidth && sizes[0].getHeight() > baseHeight))
-        {
-            size0 = sizes[0];
+        // The image may be represented in the only size (e.g. the app's dock icon is represented in a scaled
+        // size on Retina). In this case the representation size should be used as the base image size.
+        if (sizes != null && sizes.length == 1) {
+            width  = (int)sizes[0].getWidth();
+            height = (int)sizes[0].getHeight();
         }
-        final int dstWidth  = (int)size0.getWidth();
-        final int dstHeight = (int)size0.getHeight();
-
 
         return sizes == null || sizes.length < 2 ?
-                new MultiResolutionCachedImage(baseWidth, baseHeight, (width, height)
-                        -> toImage(dstWidth, dstHeight))
-                : new MultiResolutionCachedImage(baseWidth, baseHeight, sizes, (width, height)
-                        -> toImage(width, height));
+                new MultiResolutionCachedImage(width, height, this::toImage)
+                : new MultiResolutionCachedImage(width, height, sizes, this::toImage);
     }
 
     private BufferedImage toImage(int dstWidth, int dstHeight) {
