@@ -30,6 +30,7 @@
 
 #import "CMenuBar.h"
 #import "CMenu.h"
+#import "PropertiesUtilities.h"
 #import "ThreadUtilities.h"
 #import "ApplicationDelegate.h"
 
@@ -42,6 +43,7 @@ NSString *CMenuBarDidReuseItemNotification =
 static CMenuBar *sActiveMenuBar = nil;
 static NSMenu *sDefaultHelpMenu = nil;
 static BOOL sSetupHelpMenu = NO;
+static BOOL sUseSingleMenuBar = NO; // Equals YES when VM-property 'mac.system.menu.singleton' == true
 
 @interface CMenuBar (CMenuBar_Private)
 + (void) addDefaultHelpMenu;
@@ -98,7 +100,8 @@ static BOOL sSetupHelpMenu = NO;
     AWT_ASSERT_APPKIT_THREAD;
 
     if (!menubar) {
-        [CMenuBar clearMenuBarExcludingAppleMenu_OnAppKitThread:YES];
+        if (!sUseSingleMenuBar)
+            [CMenuBar clearMenuBarExcludingAppleMenu_OnAppKitThread:YES];
         return;
     }
 
@@ -107,6 +110,8 @@ static BOOL sSetupHelpMenu = NO;
 #endif
 
     @synchronized([CMenuBar class]) {
+        if (sUseSingleMenuBar && sActiveMenuBar == menubar && menubar->fModallyDisabled == modallyDisabled)
+            return;
         sActiveMenuBar = menubar;
     }
 
@@ -397,6 +402,8 @@ static BOOL sSetupHelpMenu = NO;
 
 @end
 
+static BOOL sUseSingleMenuBarCalculated = NO;
+
 /*
  * Class:     sun_lwawt_macosx_CMenuBar
  * Method:    nativeCreateMenuBar
@@ -421,6 +428,13 @@ Java_sun_lwawt_macosx_CMenuBar_nativeCreateMenuBar
     }
 
     JNF_COCOA_EXIT(env);
+
+    if (!sUseSingleMenuBarCalculated) {
+        NSString * sval = [PropertiesUtilities javaSystemPropertyForKey:@"mac.system.menu.singleton" withEnv:env];
+        sUseSingleMenuBar = sval != nil && ([@"true" caseInsensitiveCompare:sval] == 0);
+        sUseSingleMenuBarCalculated = YES;
+    }
+
     return ptr_to_jlong(aCMenuBar);
 }
 

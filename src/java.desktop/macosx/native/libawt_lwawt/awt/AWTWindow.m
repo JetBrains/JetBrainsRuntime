@@ -274,7 +274,14 @@ AWT_NS_WINDOW_IMPLEMENTATION
 AWT_ASSERT_APPKIT_THREAD;
 
     NSUInteger styleMask = [AWTWindow styleMaskForStyleBits:bits];
-    NSRect contentRect = rect; //[NSWindow contentRectForFrameRect:rect styleMask:styleMask];
+
+    BOOL isTransparentTitleBar = IS(bits, TRANSPARENT_TITLEBAR);
+
+    if (isTransparentTitleBar) {
+        styleMask = styleMask | NSFullSizeContentViewWindowMask;
+    }
+
+    NSRect contentRect = isTransparentTitleBar ? [NSWindow contentRectForFrameRect:rect styleMask:styleMask] : rect;
     if (contentRect.size.width <= 0.0) {
         contentRect.size.width = 1.0;
     }
@@ -317,6 +324,11 @@ AWT_ASSERT_APPKIT_THREAD;
 
     if (IS(self.styleBits, IS_POPUP)) {
         [self.nsWindow setCollectionBehavior:(1 << 8) /*NSWindowCollectionBehaviorFullScreenAuxiliary*/];
+    }
+
+    self.nsWindow.titlebarAppearsTransparent = IS(bits, TRANSPARENT_TITLEBAR);
+    if (self.nsWindow.titlebarAppearsTransparent) {
+        [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
     }
 
     if (IS(self.styleBits, DARK)) {

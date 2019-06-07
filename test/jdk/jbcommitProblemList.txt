@@ -3,6 +3,7 @@ java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java              
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
+java/awt/Component/PaintAll/PaintAll.java                                                   nobug linux-all
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
@@ -14,6 +15,8 @@ java/awt/EventDispatchThread/PreserveDispathThread/PreserveDispatchThread.java  
 java/awt/FileDialog/FileDialogMemoryLeak/FileDialogLeakTest.java                            nobug windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.html                              nobug macosx-all
 java/awt/FileDialog/MoveToTrashTest.java                                                    nobug windows-all
+java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
+java/awt/Focus/6981400/Test2.java                                                           nobug linux-all
 java/awt/Focus/AppletInitialFocusTest/AppletInitialFocusTest1.html                          nobug linux-all,windows-all
 java/awt/FileDialog/ModalFocus/FileDialogModalFocusTest.java                                nobug linux-all,windows-all
 java/awt/Focus/ConsumeNextKeyTypedOnModalShowTest/ConsumeNextKeyTypedOnModalShowTest.java   nobug macosx-all,linux-all,windows-all
@@ -28,7 +31,9 @@ java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                       
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
 java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
+java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
+java/awt/Frame/FrameSize/TestFrameSize.java                                                 nobug linux-all,mac-osx
 java/awt/Frame/MaximizedToIconified/MaximizedToIconified.java                               nobug linux-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveAWTWindowTest.java                                     nobug macosx-all,windows-all
 java/awt/Frame/MiscUndecorated/ActiveSwingWindowTest.java                                   nobug macosx-all,windows-all
@@ -43,7 +48,7 @@ java/awt/Graphics/LineClipTest.java                                             
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                                    nobug macosx-all,linux-all,windows-all
 java/awt/JAWT/JAWT.sh                                                                       nobug linux-all,windows-all
 java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.html nobug macosx-all,windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java    nobug macosx-all,windows-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html    nobug windows-all reproduced with Adopt
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                              nobug windows-all
 java/awt/List/ActionAfterRemove/ActionAfterRemove.java                                      nobug windows-all
@@ -71,6 +76,7 @@ java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java                             
 java/awt/MouseAdapter/MouseAdapterUnitTest/MouseAdapterUnitTest.java                        nobug macosx-all,windows-all
 java/awt/MouseInfo/ComponentMousePositionTest.java                                          nobug macosx-all,windows-all
 java/awt/MouseInfo/JContainerMousePositionTest.java                                         nobug macosx-all,windows-all
+java/awt/Paint/ComponentIsNotDrawnAfterRemoveAddTest/ComponentIsNotDrawnAfterRemoveAddTest.java nobug linux-all,macosx-all,windows-all
 java/awt/Paint/ExposeOnEDT.java                                                             nobug windows-all
 java/awt/Paint/ListRepaint.java                                                             nobug linux-all (java.lang.NullPointerException reproduced with Adopt)
 java/awt/PopupMenu/PopupMenuLocation.java                                                   nobug macosx-all,linux-all,windows-all

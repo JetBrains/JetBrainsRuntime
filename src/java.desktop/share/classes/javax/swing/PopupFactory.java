@@ -347,7 +347,7 @@ public class PopupFactory {
         private static final Object heavyWeightPopupCacheKey =
                  new StringBuffer("PopupFactory.heavyWeightPopupCache");
 
-        private volatile boolean isCacheEnabled = true;
+        private volatile boolean isCacheEnabled = false;
 
         /**
          * Returns either a new or recycled <code>Popup</code> containing

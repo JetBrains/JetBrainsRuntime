@@ -899,15 +899,6 @@ public class TrueTypeFont extends FileFont {
     }
 
     @Override
-    protected long getLayoutTableCache() {
-        try {
-          return getScaler().getLayoutTableCache();
-        } catch(FontScalerException fe) {
-            return 0L;
-        }
-    }
-
-    @Override
     protected byte[] getTableBytes(int tag) {
         ByteBuffer buffer = getTableBuffer(tag);
         if (buffer == null) {
@@ -997,12 +988,6 @@ public class TrueTypeFont extends FileFont {
     @Override
     public int getWeight() {
        return (fontWeight > 0) ? fontWeight : super.getWeight();
-    }
-
-    @Override
-    protected boolean isAAT() {
-        return getDirectoryEntry(TrueTypeFont.morxTag) != null ||
-               getDirectoryEntry(TrueTypeFont.mortTag) != null;
     }
 
     /* TrueTypeFont can use the fsSelection fields of OS/2 table

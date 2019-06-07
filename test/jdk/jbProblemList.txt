@@ -193,7 +193,7 @@ java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThr
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096,8213522 macosx-all,linux-all,windows-all
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
-java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786 macosx-all
+java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java                                   8169111 macosx-all,windows-all
@@ -529,7 +529,7 @@ java/awt/Modal/ToFront/FrameToFrontTKModal3Test.java                            
 java/awt/Modal/ToFront/FrameToFrontTKModal4Test.java                                8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/FrameToFrontTKModal5Test.java                                8196441 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java                        8177326 macosx-all,windows-all
-java/awt/Mouse/EnterExitEvents/DragWindowTest.java                                  8023562 macosx-all,windows-all
+java/awt/Mouse/EnterExitEvents/DragWindowTest.java                                  8023562 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java                  JRE-898 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java                               8005021 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/FullscreenEnterEventTest.java                        8051455 macosx-all
@@ -599,7 +599,7 @@ java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                  
 java/awt/Window/AlwaysOnTop/TestAlwaysOnTopBeforeShow.java                          8169530 macosx-all,windows-all
 java/awt/Window/GrabSequence/GrabSequence.java                                      6848409 macosx-all,windows-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java                  8203371 linux-all,solaris-all
-java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java                     JRE-1173 windows-all
+java/awt/Window/setLocRelativeTo/SetLocationRelativeToTest.java                     JRE-1173 windows-all,linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java  8202860 linux-all
 java/awt/datatransfer/DataFlavor/DataFlavorRemoteTest.java                          JRE-898 macosx-all
 java/awt/datatransfer/DragImage/MultiResolutionDragImageTest.java                   8080982 generic-all
@@ -618,6 +618,7 @@ java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java     
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.html                             8214221 windows-all,linux-all,macosx-all
 java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.html                     8171510 macosx-all
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.html 8194947 generic-all
+java/awt/event/ComponentEvent/MovedResizedTardyEventTest/MovedResizedTardyEventTest.html 6511207 generic-all
 java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
 java/awt/event/InputEvent/EventWhenTest/EventWhenTest.java                          8168646 generic-all
 java/awt/event/KeyEvent/CorrectTime/CorrectTime.java                                6626492 generic-all
@@ -984,7 +985,7 @@ javax/swing/JPopupMenu/6515446/bug6515446.java                                  
 javax/swing/JPopupMenu/6580930/bug6580930.java                                      8196096 windows-all,linux-all,macosx-all
 javax/swing/JPopupMenu/6583251/bug6583251.java                                      8213564 linux-all
 javax/swing/JPopupMenu/6675802/bug6675802.java                                      8196097 windows-all
-javax/swing/JPopupMenu/6800513/bug6800513.java                                      7184956,8080868 macosx-all,windows-all
+javax/swing/JPopupMenu/6800513/bug6800513.java                                      7184956,8080868 macosx-all,windows-all,linux-all
 javax/swing/JPopupMenu/6987844/bug6987844.java                                      8169956 macosx-all,windows-all
 javax/swing/JPopupMenu/7156657/bug7156657.java                                      8171381 macosx-all,windows-all
 javax/swing/JPopupMenu/8075063/ContextMenuScrollTest.java                           8202880 linux-all,windows-all,macosx-all

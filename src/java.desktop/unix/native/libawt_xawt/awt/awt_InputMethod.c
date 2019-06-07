@@ -342,13 +342,8 @@ static void setX11InputMethodData(JNIEnv * env, jobject imInstance, X11InputMeth
     JNU_SetLongFieldFromPtr(env, imInstance, x11InputMethodIDs.pData, pX11IMData);
 }
 
-/* this function should be called within AWT_LOCK() */
 static void
-destroyX11InputMethodData(JNIEnv *env, X11InputMethodData *pX11IMData)
-{
-    /*
-     * Destroy XICs
-     */
+destroyXInputContexts(X11InputMethodData *pX11IMData) {
     if (pX11IMData == NULL) {
         return;
     }
@@ -365,7 +360,20 @@ destroyX11InputMethodData(JNIEnv *env, X11InputMethodData *pX11IMData)
             pX11IMData->current_ic = (XIC)0;
         }
     }
+}
 
+/* this function should be called within AWT_LOCK() */
+static void
+destroyX11InputMethodData(JNIEnv *env, X11InputMethodData *pX11IMData)
+{
+    /*
+     * Destroy XICs
+     */
+    if (pX11IMData == NULL) {
+        return;
+    }
+
+    destroyXInputContexts(pX11IMData);
     freeX11InputMethodData(env, pX11IMData);
 }
 
@@ -1364,6 +1372,27 @@ finally:
     return (pX11IMData != NULL);
 }
 
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11_XInputMethod_recreateXICNative(JNIEnv *env,
+                                              jobject this,
+                                              jlong window, jlong pData)
+{
+    // NOTE: must be called under AWT_LOCK
+    return createXIC(env, (X11InputMethodData *)pData, window);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XInputMethod_releaseXICNative(JNIEnv *env,
+                                              jobject this,
+                                              jlong pData)
+{
+    // NOTE: must be called under AWT_LOCK
+    X11InputMethodData * pX11IMData = (X11InputMethodData *)pData;
+    pX11IMData->current_ic = NULL;
+    destroyXInputContexts(pX11IMData);
+}
+
+
 JNIEXPORT void JNICALL
 Java_sun_awt_X11_XInputMethod_setXICFocusNative(JNIEnv *env,
                                                 jobject this,
@@ -1615,4 +1644,22 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustStatusWindow
     adjustStatusWindow(window);
     AWT_UNLOCK();
 #endif
+}
+
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11InputMethod_recreateX11InputMethod(JNIEnv *env, jclass cls)
+{
+    if (X11im == NULL || dpy == NULL)
+        return JNI_FALSE;
+
+    Status retstat = XCloseIM(X11im);
+    X11im = XOpenIM(dpy, NULL, NULL, NULL);
+    if (X11im == NULL)
+        return JNI_FALSE;
+
+    XIMCallback ximCallback;
+    ximCallback.callback = (XIMProc)DestroyXIMCallback;
+    ximCallback.client_data = NULL;
+    XSetIMValues(X11im, XNDestroyCallback, &ximCallback, NULL);
+    return JNI_TRUE;
 }

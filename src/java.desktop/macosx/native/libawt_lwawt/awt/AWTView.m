@@ -326,10 +326,7 @@ static BOOL shouldUsePressAndHold() {
         }
     }
 
-    NSString *eventCharacters = [event characters];
-    BOOL isDeadKey = (eventCharacters != nil && [eventCharacters length] == 0);
-
-    if ((![self hasMarkedText] && fKeyEventsNeeded) || isDeadKey) {
+    if ((![self hasMarkedText] && fKeyEventsNeeded)) {
         [self deliverJavaKeyEventHelper: event];
     }
 
@@ -525,7 +522,6 @@ static BOOL shouldUsePressAndHold() {
                    0,
                    LMGetKbdType(),
                    0,
-                   // ignore for now
                    &isDeadKeyPressed,
                    lengthOfBuffer,
                    &actualLength,

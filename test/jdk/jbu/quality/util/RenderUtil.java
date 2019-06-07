@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 JetBrains s.r.o.
+ * Copyright 2019 JetBrains s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,81 +16,25 @@
 
 package quality.util;
 
-import com.sun.jna.Pointer;
-import org.apache.commons.lang3.SystemUtils;
-import quality.util.osx.Foundation;
-import quality.util.osx.FoundationLibrary;
-import quality.util.osx.ID;
-import quality.util.osx.MacUtil;
-
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
-import java.awt.image.ColorConvertOp;
 import java.awt.image.Raster;
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class RenderUtil {
-
-    private static BufferedImage captureScreen(Window belowWindow, Rectangle rect) {
-        ID pool = Foundation.invoke("NSAutoreleasePool", "new");
-        try {
-            ID windowId = belowWindow != null ? MacUtil.findWindowFromJavaWindow(belowWindow) : null;
-            Foundation.NSRect nsRect = new Foundation.NSRect(rect.x, rect.y, rect.width, rect.height);
-            ID cgWindowId = windowId != null ? Foundation.invoke(windowId, "windowNumber") : ID.NIL;
-            int windowListOptions = cgWindowId != null
-                    ? FoundationLibrary.kCGWindowListOptionIncludingWindow
-                    : FoundationLibrary.kCGWindowListOptionAll;
-            int windowImageOptions = FoundationLibrary.kCGWindowImageBestResolution |
-                    FoundationLibrary.kCGWindowImageShouldBeOpaque;
-            ID cgImageRef = Foundation.cgWindowListCreateImage(
-                    nsRect, windowListOptions, cgWindowId, windowImageOptions);
-
-            ID bitmapRep = Foundation.invoke(
-                    Foundation.invoke("NSBitmapImageRep", "alloc"),
-                    "initWithCGImage:", cgImageRef);
-            ID nsImage = Foundation.invoke(
-                    Foundation.invoke("NSImage", "alloc"),
-                    "init");
-            Foundation.invoke(nsImage, "addRepresentation:", bitmapRep);
-            ID data = Foundation.invoke(nsImage, "TIFFRepresentation");
-            ID bytes = Foundation.invoke(data, "bytes");
-            ID length = Foundation.invoke(data, "length");
-            Pointer ptr = new Pointer(bytes.longValue());
-            ByteBuffer byteBuffer = ptr.getByteBuffer(0, length.longValue());
-            Foundation.invoke(nsImage, "release");
-            byte[] b = new byte[byteBuffer.remaining()];
-            byteBuffer.get(b);
-
-            BufferedImage result = ImageIO.read(new ByteArrayInputStream(b));
-            if (result != null) {
-                ColorSpace ics = ColorSpace.getInstance(ColorSpace.CS_sRGB);
-                ColorConvertOp cco = new ColorConvertOp(ics, null);
-                return cco.filter(result, null);
-            }
-            return null;
-        }
-        catch (Throwable t) {
-            return null;
-        }
-        finally {
-            Foundation.invoke(pool, "release");
-        }
-    }
+    private final static int TOLERANCE = 1;
 
     public static BufferedImage capture(int width, int height, Consumer<Graphics2D> painter)
             throws Exception
     {
         JFrame[] f = new JFrame[1];
-        Point[] p = new Point[1];
+        int[] p = new int[2];
+        double[] scale = new double[2];
         SwingUtilities.invokeAndWait(() -> {
             f[0] = new JFrame();
 
@@ -99,22 +43,29 @@ public class RenderUtil {
             f[0].add(c);
             c.setSize(width + 10, height + 10);
             f[0].setSize(width + 100, height + 100); // giving some space
-                                                                 // for frame border effects,
-                                                                 // e.g. rounded frame
+            // for frame border effects,
+            // e.g. rounded frame
             c.setLocation(50, 50);
             f[0].setVisible(true);
-            p[0]= c.getLocationOnScreen();
+            p[0] = f[0].getLocationOnScreen().x + f[0].getInsets().left;
+            p[1] = f[0].getLocationOnScreen().y + f[0].getInsets().top;
+            scale[0] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleX();
+            scale[1] = f[0].getGraphicsConfiguration().getDefaultTransform().getScaleY();
         });
 
         Rectangle screenRect;
         Robot r = new Robot();
-        while (!Color.black.equals(r.getPixelColor(p[0].x, p[0].y))) {
+        while (!Color.black.equals(r.getPixelColor(p[0] + 1, p[1] + 1))) {
+            p[0] = f[0].getLocationOnScreen().x + f[0].getInsets().left;
+            p[1] = f[0].getLocationOnScreen().y + f[0].getInsets().top;
             Thread.sleep(100);
         }
-        screenRect = new Rectangle(p[0].x + 5, p[0].y + 5, width, height);
+        screenRect = new Rectangle(
+                p[0] + 5,
+                p[1] + 5,
+                (int)((width - 20)  * scale[0]), (int)((height - 30) * scale[1]));
 
-        BufferedImage result = SystemUtils.IS_OS_MAC ?
-                captureScreen(f[0], screenRect) : r.createScreenCapture(screenRect);
+        BufferedImage result = r.createScreenCapture(screenRect);
         SwingUtilities.invokeAndWait(f[0]::dispose);
         return result;
     }
@@ -129,14 +80,16 @@ public class RenderUtil {
 
         @Override
         protected void paintComponent(Graphics g) {
-            g.translate(5, 5);
             Shape savedClip = g.getClip();
-            g.clipRect(0, 0, getWidth() - 20, getHeight() - 20);
+            g.translate(5, 5);
             painter.accept((Graphics2D)g);
+            g.translate(-5, -5);
             g.setClip(savedClip);
             g.setColor(Color.black);
-            ((Graphics2D) g).setStroke(new BasicStroke(10));
-            g.drawRect(-5, -5, getWidth() - 5, getHeight() - 5);
+            g.fillRect(0, 0, getWidth() + 10, 5);
+            g.fillRect(0, getHeight()-5, getWidth() + 10, 5);
+            g.fillRect(getWidth() - 10, -10, getWidth() + 5, getHeight() + 5);
+            g.fillRect(-5, -10,  10, getHeight() + 5);
         }
     }
 
@@ -145,7 +98,7 @@ public class RenderUtil {
 
         String[] testDataVariant = {
                 "osx_hardware_rendering", "osx_software_rendering",
-                "osx_sierra_rendering", "osx_lowres_rendering",
+                "osx_sierra_rendering", "osx_mojave_rendering", "osx_lowres_rendering",
                 "linux_rendering", "windows_rendering"};
 
         String testDataStr = System.getProperty("testdata");
@@ -181,11 +134,12 @@ public class RenderUtil {
                     for (int j = 0; j < gRaster.getHeight(); j++) {
                         gRaster.getPixel(i, j, gArr);
                         rRaster.getPixel(i, j, rArr);
-                        assertTrue(gArr.length == rArr.length);
                         for (int k = 0; k < gArr.length; k++) {
-                            if (gArr[k] != rArr[k]) {
-                                failureReason.append(variant).append(" : Different pixels found ").
-                                        append("at (").append(i).append(",").append(j).append(")");
+                            int diff = Math.abs(gArr[k] - rArr[k]);
+                            if (diff > TOLERANCE) {
+                                failureReason.append(variant).append(" : Different pixels found (").
+                                        append("c[").append(k).append("]=").append(diff).
+                                        append(") at (").append(i).append(",").append(j).append(")");
                                 failed = true;
                                 break scan;
                             }

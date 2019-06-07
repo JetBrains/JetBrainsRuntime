@@ -103,6 +103,9 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     // for client properties
     public static final String WINDOW_BRUSH_METAL_LOOK = "apple.awt.brushMetalLook";
     public static final String WINDOW_DARK_APPEARANCE = "jetbrains.awt.windowDarkAppearance";
+    public static final String WINDOW_LIGHT_APPEARANCE = "jetbrains.awt.windowLightAppearance";
+    public static final String WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE = "jetbrains.awt.transparentTitleBarAppearance";
+    public static final String WINDOW_AQUA_APPEARANCE = "jetbrains.awt.windowAquaAppearance";
     public static final String WINDOW_DRAGGABLE_BACKGROUND = "apple.awt.draggableWindowBackground";
 
     public static final String WINDOW_ALPHA = "Window.alpha";
@@ -148,6 +151,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
     static final int RESIZABLE = 1 << 9; // both a style bit and prop bit
     static final int DARK = 1 << 28;
+    static final int LIGHT = 1 << 29;
+    static final int TRANSPARENT_TITLEBAR = 1 << 30;
     static final int NONACTIVATING = 1 << 24;
     static final int IS_DIALOG = 1 << 25;
     static final int IS_MODAL = 1 << 26;
@@ -193,6 +198,12 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             }},
             new Property<CPlatformWindow>(WINDOW_DARK_APPEARANCE) { public void applyProperty(final CPlatformWindow c, final Object value) {
                 c.setStyleBits(DARK, value == null ? true : Boolean.parseBoolean(value.toString()));
+            }},
+            new Property<CPlatformWindow>(WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE) { public void applyProperty(final CPlatformWindow c, final Object value) {
+                c.setStyleBits(TRANSPARENT_TITLEBAR, value == null ? true : Boolean.parseBoolean(value.toString()));
+            }},
+            new Property<CPlatformWindow>(WINDOW_LIGHT_APPEARANCE) { public void applyProperty(final CPlatformWindow c, final Object value) {
+                c.setStyleBits(LIGHT, value == null ? true : Boolean.parseBoolean(value.toString()));
             }},
             new Property<CPlatformWindow>(WINDOW_ALPHA) { public void applyProperty(final CPlatformWindow c, final Object value) {
                 c.target.setOpacity(value == null ? 1.0f : Float.parseFloat(value.toString()));
@@ -472,6 +483,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             prop = rootpane.getClientProperty(WINDOW_DARK_APPEARANCE);
             if (prop != null) {
                 styleBits = SET(styleBits, DARK, Boolean.parseBoolean(prop.toString()));
+            }
+
+            prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE);
+            if (prop != null) {
+                styleBits = SET(styleBits, TRANSPARENT_TITLEBAR, Boolean.parseBoolean(prop.toString()));
+            }
+
+            prop = rootpane.getClientProperty(WINDOW_LIGHT_APPEARANCE);
+            if (prop != null) {
+                styleBits = SET(styleBits, LIGHT, Boolean.parseBoolean(prop.toString()));
             }
 
             prop = rootpane.getClientProperty(WINDOW_ZOOMABLE);

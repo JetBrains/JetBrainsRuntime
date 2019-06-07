@@ -27,9 +27,11 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
+#include "jni_util.h"
 #include "OGLPaints.h"
 #include "OGLVertexCache.h"
 
@@ -39,11 +41,28 @@ typedef struct _J2DVertex {
     jfloat dx, dy;
 } J2DVertex;
 
+// Multitexture vertex
+typedef struct _J2DMTVertex {
+    jfloat dx, dy;
+    jfloat tx0, ty0;
+    jfloat tx1, ty1;
+} J2DMTVertex;
+
 static J2DVertex *vertexCache = NULL;
 static jint vertexCacheIndex = 0;
 
+static J2DMTVertex *mtVertexCache = NULL;
+static jboolean mtVertexCacheEnabled = JNI_FALSE;
+static jboolean mtUseTxtBarrier = JNI_FALSE;
+static jint evenLCDGlyphInd = 0;
+static jint oddLCDGlyphInd = ODD_LCD_GLYPHS_OFFSET;
+static jint lcdGlyphInd = 0;
+static jfloat evenOx2 = FLT_MIN;
+static jfloat oddOx2 = FLT_MIN;
+
 static GLuint maskCacheTexID = 0;
 static jint maskCacheIndex = 0;
+static void OGLMTVertexCache_flush(jint mask);
 
 #define OGLVC_ADD_VERTEX(TX, TY, R, G, B, A, DX, DY) \
     do { \
@@ -64,6 +83,25 @@ static jint maskCacheIndex = 0;
         OGLVC_ADD_VERTEX(TX2, TY1, R, G, B, A, DX2, DY1); \
         OGLVC_ADD_VERTEX(TX2, TY2, R, G, B, A, DX2, DY2); \
         OGLVC_ADD_VERTEX(TX1, TY2, R, G, B, A, DX1, DY2); \
+    } while (0)
+
+#define OGLMTVC_ADD_VERTEX(IND, DX, DY, TX0, TY0, TX1, TY1) \
+    do { \
+        J2DMTVertex *v = &mtVertexCache[IND++]; \
+        v->dx = DX; \
+        v->dy = DY; \
+        v->tx0 = TX0; \
+        v->ty0 = TY0; \
+        v->tx1 = TX1; \
+        v->ty1 = TY1; \
+    } while (0)
+
+#define OGLMTVC_ADD_QUAD(IND, DX1, DY1, DX2, DY2, TX1, TY1, TX2, TY2, DTX1, DTY1, DTX2, DTY2) \
+    do { \
+        OGLMTVC_ADD_VERTEX((IND), DX1, DY1, TX1, TY1, DTX1, DTY1); \
+        OGLMTVC_ADD_VERTEX((IND), DX2, DY1, TX2, TY1, DTX2, DTY1); \
+        OGLMTVC_ADD_VERTEX((IND), DX2, DY2, TX2, TY2, DTX2, DTY2); \
+        OGLMTVC_ADD_VERTEX((IND), DX1, DY2, TX1, TY2, DTX1, DTY2); \
     } while (0)
 
 jboolean
@@ -285,6 +323,99 @@ OGLVertexCache_AddGlyphQuad(OGLContext *oglc,
     OGLVC_ADD_QUAD(tx1, ty1, tx2, ty2,
                    dx1, dy1, dx2, dy2,
                    oglc->r, oglc->g, oglc->b, oglc->a);
+}
+
+jboolean OGLMTVertexCache_enable(OGLContext *oglc, jboolean useTxtBarrier) {
+     mtUseTxtBarrier = useTxtBarrier;
+    if (mtVertexCache == NULL) {
+        mtVertexCache = (J2DMTVertex *)malloc(OGLMTVC_MAX_INDEX * sizeof(J2DMTVertex));
+        if (mtVertexCache == NULL) {
+            return JNI_FALSE;
+        }
+    }
+
+    if (!mtVertexCacheEnabled) {
+        oglc->vertexCacheEnabled = JNI_FALSE;
+
+        j2d_glVertexPointer(2, GL_FLOAT, sizeof(J2DMTVertex), &mtVertexCache[0].dx);
+        j2d_glEnableClientState(GL_VERTEX_ARRAY);
+        j2d_glClientActiveTexture(GL_TEXTURE1_ARB);
+        j2d_glTexCoordPointer(2, GL_FLOAT, sizeof(J2DMTVertex), &mtVertexCache[0].tx1);
+        j2d_glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        j2d_glClientActiveTexture(GL_TEXTURE0_ARB);
+        j2d_glTexCoordPointer(2, GL_FLOAT, sizeof(J2DMTVertex), &mtVertexCache[0].tx0);
+        j2d_glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        mtVertexCacheEnabled = JNI_TRUE;
+        evenLCDGlyphInd = 0;
+        oddLCDGlyphInd = ODD_LCD_GLYPHS_OFFSET;
+        lcdGlyphInd = 0;
+    }
+
+    return JNI_TRUE;
+}
+void OGLMTVertexCache_disable() {
+    if (mtVertexCacheEnabled) {
+        OGLMTVertexCache_flush(OGLMTVC_FLUSH_ALL);
+        mtVertexCacheEnabled = JNI_FALSE;
+    }
+}
+
+void OGLMTVertexCache_flush(jint mask) {
+    if (mtVertexCacheEnabled) {
+        if ((mask & OGLMTVC_FLUSH_EVEN) && evenLCDGlyphInd > 0) {
+            if (mtUseTxtBarrier) {
+                // TextureBarrierNV() will guarantee that writes have completed
+                // and caches have been invalidated before subsequent Draws are
+                // executed
+                j2d_glTextureBarrierNV();
+                evenOx2 = FLT_MIN;
+            }
+            j2d_glDrawArrays(GL_QUADS, 0, evenLCDGlyphInd);
+            evenLCDGlyphInd = 0;
+        }
+
+        if ((mask & OGLMTVC_FLUSH_ODD) && oddLCDGlyphInd > ODD_LCD_GLYPHS_OFFSET) {
+            if (mtUseTxtBarrier) {
+                // See the comment above
+                j2d_glTextureBarrierNV();
+                oddOx2 = FLT_MIN;
+            }
+            j2d_glDrawArrays(GL_QUADS, ODD_LCD_GLYPHS_OFFSET,
+                             oddLCDGlyphInd - ODD_LCD_GLYPHS_OFFSET);
+            oddLCDGlyphInd = ODD_LCD_GLYPHS_OFFSET;
+        }
+    }
+}
+
+void OGLMTVertexCache_addGlyphQuad(jfloat dx1, jfloat dy1,
+                                   jfloat dx2, jfloat dy2,
+                                   jfloat tx1, jfloat ty1,
+                                   jfloat tx2, jfloat ty2,
+                                   jfloat dtx1, jfloat dty1,
+                                   jfloat dtx2, jfloat dty2)
+{
+    jint* ind;
+    if (lcdGlyphInd & 0x1) {
+        if (oddLCDGlyphInd >= OGLMTVC_MAX_INDEX ||
+            (mtUseTxtBarrier && oddOx2 >= dx1))
+        {
+            OGLMTVertexCache_flush(OGLMTVC_FLUSH_ODD);
+        } else if (mtUseTxtBarrier) {
+            oddOx2 = dx2;
+        }
+        ind = &oddLCDGlyphInd;
+    } else {
+        if (evenLCDGlyphInd >= ODD_LCD_GLYPHS_OFFSET ||
+            (mtUseTxtBarrier && evenOx2 >= dx1))
+        {
+            OGLMTVertexCache_flush(OGLMTVC_FLUSH_EVEN);
+        } else if (mtUseTxtBarrier) {
+            evenOx2 = dx2;
+        }
+        ind = &evenLCDGlyphInd;
+    }
+    lcdGlyphInd++;
+    OGLMTVC_ADD_QUAD(*ind, dx1, dy1, dx2, dy2, tx1, ty1, tx2, ty2, dtx1, dty1, dtx2, dty2);
 }
 
 #endif /* !HEADLESS */
