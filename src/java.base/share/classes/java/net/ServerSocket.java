@@ -472,6 +472,12 @@ class ServerSocket implements java.io.Closeable {
      * as its arguments to ensure the operation is allowed.
      * This could result in a SecurityException.
      *
+     * @implNote
+     * An instance of this class using a system-default {@code SocketImpl}
+     * accepts sockets with a {@code SocketImpl} of the same type, regardless
+     * of the {@linkplain Socket#setSocketImplFactory(SocketImplFactory)
+     * client socket implementation factory}, if one has been set.
+     *
      * @exception  IOException  if an I/O error occurs when waiting for a
      *               connection.
      * @exception  SecurityException  if a security manager exists and its
@@ -501,15 +507,33 @@ class ServerSocket implements java.io.Closeable {
     /**
      * Subclasses of ServerSocket use this method to override accept()
      * to return their own subclass of socket.  So a FooServerSocket
-     * will typically hand this method an <i>empty</i> FooSocket.  On
-     * return from implAccept the FooSocket will be connected to a client.
+     * will typically hand this method a newly created, unbound, FooSocket.
+     * On return from implAccept the FooSocket will be connected to a client.
+     *
+     * <p> The behavior of this method is unspecified when invoked with a
+     * socket that is not newly created and unbound. Any socket options set
+     * on the given socket prior to invoking this method may or may not be
+     * preserved when the connection is accepted. It may not be possible to
+     * accept a connection when this socket has a {@code SocketImpl} of one
+     * type and the given socket has a {@code SocketImpl} of a completely
+     * different type.
+     *
+     * @implNote
+     * An instance of this class using a system-default {@code SocketImpl}
+     * can accept a connection with a Socket using a {@code SocketImpl} of
+     * the same type: {@code IOException} is thrown if the Socket is using
+     * a custom {@code SocketImpl}. An instance of this class using a
+     * custom {@code SocketImpl} cannot accept a connection with a Socket
+     * using a system-default {@code SocketImpl}.
      *
      * @param s the Socket
      * @throws java.nio.channels.IllegalBlockingModeException
      *         if this socket has an associated channel,
      *         and the channel is in non-blocking mode
      * @throws IOException if an I/O error occurs when waiting
-     * for a connection.
+     *         for a connection, or if it is not possible for this socket
+     *         to accept a connection with the given socket
+     *
      * @since   1.1
      * @revised 1.4
      * @spec JSR-51
@@ -817,7 +841,8 @@ class ServerSocket implements java.io.Closeable {
      * Returns the implementation address and implementation port of
      * this socket as a {@code String}.
      * <p>
-     * If there is a security manager set, its {@code checkConnect} method is
+     * If there is a security manager set, and this socket is
+     * {@linkplain #isBound bound}, its {@code checkConnect} method is
      * called with the local address and {@code -1} as its arguments to see
      * if the operation is allowed. If the operation is not allowed,
      * an {@code InetAddress} representing the
@@ -831,7 +856,7 @@ class ServerSocket implements java.io.Closeable {
             return "ServerSocket[unbound]";
         InetAddress in;
         if (System.getSecurityManager() != null)
-            in = InetAddress.getLoopbackAddress();
+            in = getInetAddress();
         else
             in = impl.getInetAddress();
         return "ServerSocket[addr=" + in +
@@ -1025,6 +1050,9 @@ class ServerSocket implements java.io.Closeable {
     public <T> ServerSocket setOption(SocketOption<T> name, T value)
         throws IOException
     {
+        Objects.requireNonNull(name);
+        if (isClosed())
+            throw new SocketException("Socket is closed");
         getImpl().setOption(name, value);
         return this;
     }
@@ -1053,6 +1081,9 @@ class ServerSocket implements java.io.Closeable {
      * @since 9
      */
     public <T> T getOption(SocketOption<T> name) throws IOException {
+        Objects.requireNonNull(name);
+        if (isClosed())
+            throw new SocketException("Socket is closed");
         return getImpl().getOption(name);
     }
 

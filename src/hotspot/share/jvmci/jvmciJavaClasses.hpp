@@ -309,6 +309,7 @@
   end_class                                                                                                   \
   start_class(VirtualObject, jdk_vm_ci_code_VirtualObject)                                                    \
     int_field(VirtualObject, id)                                                                              \
+    boolean_field(VirtualObject, isAutoBox)                                                                   \
     object_field(VirtualObject, type, "Ljdk/vm/ci/meta/ResolvedJavaType;")                                    \
     objectarray_field(VirtualObject, values, "[Ljdk/vm/ci/meta/JavaValue;")                                   \
     objectarray_field(VirtualObject, slotKinds, "[Ljdk/vm/ci/meta/JavaKind;")                                 \
@@ -333,6 +334,7 @@
     primarray_field(HotSpotMetaData, scopesDescBytes, "[B")                                                   \
     primarray_field(HotSpotMetaData, relocBytes, "[B")                                                        \
     primarray_field(HotSpotMetaData, exceptionBytes, "[B")                                                    \
+    primarray_field(HotSpotMetaData, implicitExceptionBytes, "[B")                                            \
     primarray_field(HotSpotMetaData, oopMaps, "[B")                                                           \
     object_field(HotSpotMetaData, metadata, "[Ljava/lang/Object;")                                            \
   end_class                                                                                                   \

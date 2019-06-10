@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,16 +42,13 @@
  * or the {@linkplain java.util.ServiceLoader service loader} with the name
  * {@code "javadoc"}.
  *
- * <dl style="font-family:'DejaVu Sans', Arial, Helvetica, sans serif">
- * <dt class="simpleTagLabel">Tool Guides:
- * <dd>{@extLink javadoc_tool_reference javadoc}
- * </dl>
+ * @toolGuide javadoc
  *
  * @provides java.util.spi.ToolProvider
  * @provides javax.tools.DocumentationTool
  * @provides javax.tools.Tool
  *
- * @see <a href="{@docRoot}/../specs/doc-comment-spec.html">
+ * @see <a href="{@docRoot}/../specs/javadoc/doc-comment-spec.html">
  *      Documentation Comment Specification for the Standard Doclet</a>
  *
  * @moduleGraph

@@ -66,6 +66,7 @@
   LOG_TAG(defaultmethods) \
   LOG_TAG(director) \
   LOG_TAG(dump) \
+  LOG_TAG(dynamic) \
   LOG_TAG(ergo) \
   LOG_TAG(event) \
   LOG_TAG(exceptions) \
@@ -82,6 +83,7 @@
   LOG_TAG(iklass) \
   LOG_TAG(init) \
   LOG_TAG(inlining) \
+  LOG_TAG(install) \
   LOG_TAG(interpreter) \
   LOG_TAG(itables) \
   LOG_TAG(jfr) \

@@ -160,25 +160,26 @@ define SetupLogging
     SHELL = $$(warning $$(if $$@,Building $$@,Running shell command) $$(if $$<, (from $$<))$$(if $$?, ($$(wordlist 1, 20, $$?) $$(if $$(wordlist 21, 22, $$?), ... [in total $$(words $$?) files]) newer)))$$(SHELL_NO_RECURSE) -x
   endif
 
+  # The LOG_PREFIX is set for sub recursive calls like buildjdk and bootcycle.
   # The warn level can never be turned off
-  LogWarn = $$(info $$(strip $$1))
+  LogWarn = $$(info $(LOG_PREFIX)$$(strip $$1))
   LOG_WARN :=
   ifneq ($$(findstring $$(LOG_LEVEL), info debug trace),)
-    LogInfo = $$(info $$(strip $$1))
+    LogInfo = $$(info $(LOG_PREFIX)$$(strip $$1))
     LOG_INFO :=
   else
     LogInfo =
     LOG_INFO := > /dev/null
   endif
   ifneq ($$(findstring $$(LOG_LEVEL), debug trace),)
-    LogDebug = $$(info $$(strip $$1))
+    LogDebug = $$(info $(LOG_PREFIX)$$(strip $$1))
     LOG_DEBUG :=
   else
     LogDebug =
     LOG_DEBUG := > /dev/null
   endif
   ifneq ($$(findstring $$(LOG_LEVEL), trace),)
-    LogTrace = $$(info $$(strip $$1))
+    LogTrace = $$(info $(LOG_PREFIX)$$(strip $$1))
     LOG_TRACE :=
   else
     LogTrace =
@@ -468,6 +469,22 @@ ifeq ($(call isTargetOs, windows), true)
       $(shell $(CYGPATH) -m $1)
 else
   FixPath = \
+      $1
+endif
+
+################################################################################
+# FixPathList
+#
+# On Windows, converts a cygwin/unix style path list (colon-separated) into
+# the native format (mixed mode, semicolon-separated). On other platforms,
+# return the path list unchanged.
+################################################################################
+ifeq ($(call isTargetOs, windows), true)
+  FixPathList = \
+      $(subst @,$(SPACE),$(subst $(SPACE),;,$(foreach entry,$(subst :,$(SPACE),\
+      $(subst $(SPACE),@,$(strip $1))),$(call FixPath, $(entry)))))
+else
+  FixPathList = \
       $1
 endif
 

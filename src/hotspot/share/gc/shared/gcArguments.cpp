@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat, Inc. and/or its affiliates.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -54,12 +54,12 @@ void GCArguments::initialize() {
 
   if (MinHeapFreeRatio == 100) {
     // Keeping the heap 100% free is hard ;-) so limit it to 99%.
-    FLAG_SET_ERGO(uintx, MinHeapFreeRatio, 99);
+    FLAG_SET_ERGO(MinHeapFreeRatio, 99);
   }
 
   if (!ClassUnloading) {
     // If class unloading is disabled, also disable concurrent class unloading.
-    FLAG_SET_CMDLINE(bool, ClassUnloadingWithConcurrentMark, false);
+    FLAG_SET_CMDLINE(ClassUnloadingWithConcurrentMark, false);
   }
 
   if (!FLAG_IS_DEFAULT(AllocateOldGenAt)) {
@@ -172,10 +172,10 @@ void GCArguments::initialize_heap_flags_and_sizes() {
 
   // Write back to flags if the values changed
   if (aligned_initial_heap_size != InitialHeapSize) {
-    FLAG_SET_ERGO(size_t, InitialHeapSize, aligned_initial_heap_size);
+    FLAG_SET_ERGO(InitialHeapSize, aligned_initial_heap_size);
   }
   if (aligned_max_heap_size != MaxHeapSize) {
-    FLAG_SET_ERGO(size_t, MaxHeapSize, aligned_max_heap_size);
+    FLAG_SET_ERGO(MaxHeapSize, aligned_max_heap_size);
   }
 
   if (FLAG_IS_CMDLINE(InitialHeapSize) && MinHeapSize != 0 &&
@@ -183,15 +183,19 @@ void GCArguments::initialize_heap_flags_and_sizes() {
     vm_exit_during_initialization("Incompatible minimum and initial heap sizes specified");
   }
   if (!FLAG_IS_DEFAULT(InitialHeapSize) && InitialHeapSize > MaxHeapSize) {
-    FLAG_SET_ERGO(size_t, MaxHeapSize, InitialHeapSize);
+    FLAG_SET_ERGO(MaxHeapSize, InitialHeapSize);
   } else if (!FLAG_IS_DEFAULT(MaxHeapSize) && InitialHeapSize > MaxHeapSize) {
-    FLAG_SET_ERGO(size_t, InitialHeapSize, MaxHeapSize);
+    FLAG_SET_ERGO(InitialHeapSize, MaxHeapSize);
     if (InitialHeapSize < MinHeapSize) {
       MinHeapSize = InitialHeapSize;
     }
   }
 
-  FLAG_SET_ERGO(size_t, MinHeapDeltaBytes, align_up(MinHeapDeltaBytes, SpaceAlignment));
+  if (FLAG_IS_DEFAULT(SoftMaxHeapSize)) {
+    FLAG_SET_ERGO(SoftMaxHeapSize, MaxHeapSize);
+  }
+
+  FLAG_SET_ERGO(MinHeapDeltaBytes, align_up(MinHeapDeltaBytes, SpaceAlignment));
 
   DEBUG_ONLY(assert_flags();)
 }

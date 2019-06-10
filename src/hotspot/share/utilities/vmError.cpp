@@ -406,12 +406,16 @@ jlong VMError::get_step_start_time() {
   return Atomic::load(&_step_start_time);
 }
 
+void VMError::clear_step_start_time() {
+  return Atomic::store((jlong)0, &_step_start_time);
+}
+
 void VMError::report(outputStream* st, bool _verbose) {
 
 # define BEGIN if (_current_step == 0) { _current_step = __LINE__;
 # define STEP(s) } if (_current_step < __LINE__) { _current_step = __LINE__; _current_step_info = s; \
   record_step_start_time(); _step_did_timeout = false;
-# define END }
+# define END clear_step_start_time(); }
 
   // don't allocate large buffer on stack
   static char buf[O_BUFLEN];
@@ -451,6 +455,15 @@ void VMError::report(outputStream* st, bool _verbose) {
   // Step to global timeout ratio is 4:1, so in order to be absolutely sure we hit the
   // global timeout, let's execute the timeout step five times.
   // See corresponding test in test/runtime/ErrorHandling/TimeoutInErrorHandlingTest.java
+  STEP("setup for test unresponsive error reporting step")
+    if (_verbose && TestUnresponsiveErrorHandler) {
+      // We record reporting_start_time for this test here because we
+      // care about the time spent executing TIMEOUT_TEST_STEP and not
+      // about the time it took us to get here.
+      tty->print_cr("Recording reporting_start_time for TestUnresponsiveErrorHandler.");
+      record_reporting_start_time();
+    }
+
   #define TIMEOUT_TEST_STEP STEP("test unresponsive error reporting step") \
     if (_verbose && TestUnresponsiveErrorHandler) { os::infinite_sleep(); }
   TIMEOUT_TEST_STEP
@@ -1195,10 +1208,16 @@ void VMError::print_vm_info(outputStream* st) {
 volatile intptr_t VMError::first_error_tid = -1;
 
 /** Expand a pattern into a buffer starting at pos and open a file using constructed path */
-static int expand_and_open(const char* pattern, char* buf, size_t buflen, size_t pos) {
+static int expand_and_open(const char* pattern, bool overwrite_existing, char* buf, size_t buflen, size_t pos) {
   int fd = -1;
+  int mode = O_RDWR | O_CREAT;
+  if (overwrite_existing) {
+    mode |= O_TRUNC;
+  } else {
+    mode |= O_EXCL;
+  }
   if (Arguments::copy_expand_pid(pattern, strlen(pattern), &buf[pos], buflen - pos)) {
-    fd = open(buf, O_RDWR | O_CREAT, 0666);
+    fd = open(buf, mode, 0666);
   }
   return fd;
 }
@@ -1208,12 +1227,12 @@ static int expand_and_open(const char* pattern, char* buf, size_t buflen, size_t
  * Name and location depends on pattern, default_pattern params and access
  * permissions.
  */
-static int prepare_log_file(const char* pattern, const char* default_pattern, char* buf, size_t buflen) {
+static int prepare_log_file(const char* pattern, const char* default_pattern, bool overwrite_existing, char* buf, size_t buflen) {
   int fd = -1;
 
   // If possible, use specified pattern to construct log file name
   if (pattern != NULL) {
-    fd = expand_and_open(pattern, buf, buflen, 0);
+    fd = expand_and_open(pattern, overwrite_existing, buf, buflen, 0);
   }
 
   // Either user didn't specify, or the user's location failed,
@@ -1225,7 +1244,7 @@ static int prepare_log_file(const char* pattern, const char* default_pattern, ch
       int fsep_len = jio_snprintf(&buf[pos], buflen-pos, "%s", os::file_separator());
       pos += fsep_len;
       if (fsep_len > 0) {
-        fd = expand_and_open(default_pattern, buf, buflen, pos);
+        fd = expand_and_open(default_pattern, overwrite_existing, buf, buflen, pos);
       }
     }
   }
@@ -1236,7 +1255,7 @@ static int prepare_log_file(const char* pattern, const char* default_pattern, ch
      if (tmpdir != NULL && strlen(tmpdir) > 0) {
        int pos = jio_snprintf(buf, buflen, "%s%s", tmpdir, os::file_separator());
        if (pos > 0) {
-         fd = expand_and_open(default_pattern, buf, buflen, pos);
+         fd = expand_and_open(default_pattern, overwrite_existing, buf, buflen, pos);
        }
      }
    }
@@ -1352,7 +1371,14 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
     _error_reported = true;
 
     reporting_started();
-    record_reporting_start_time();
+    if (!TestUnresponsiveErrorHandler) {
+      // Record reporting_start_time unless we're running the
+      // TestUnresponsiveErrorHandler test. For that test we record
+      // reporting_start_time at the beginning of the test.
+      record_reporting_start_time();
+    } else {
+      out.print_raw_cr("Delaying recording reporting_start_time for TestUnresponsiveErrorHandler.");
+    }
 
     if (ShowMessageBoxOnError || PauseAtExit) {
       show_message_box(buffer, sizeof(buffer));
@@ -1471,7 +1497,8 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
       } else if (ErrorFileToStderr) {
         fd_log = 2;
       } else {
-        fd_log = prepare_log_file(ErrorFile, "hs_err_pid%p.log", buffer, sizeof(buffer));
+        fd_log = prepare_log_file(ErrorFile, "hs_err_pid%p.log", true,
+                 buffer, sizeof(buffer));
         if (fd_log != -1) {
           out.print_raw("# An error report file with more information is saved as:\n# ");
           out.print_raw_cr(buffer);
@@ -1501,7 +1528,8 @@ void VMError::report_and_die(int id, const char* message, const char* detail_fmt
     skip_replay = true;
     ciEnv* env = ciEnv::current();
     if (env != NULL) {
-      int fd = prepare_log_file(ReplayDataFile, "replay_pid%p.log", buffer, sizeof(buffer));
+      const bool overwrite = false; // We do not overwrite an existing replay file.
+      int fd = prepare_log_file(ReplayDataFile, "replay_pid%p.log", overwrite, buffer, sizeof(buffer));
       if (fd != -1) {
         FILE* replay_data_file = os::open(fd, "w");
         if (replay_data_file != NULL) {
@@ -1657,7 +1685,9 @@ bool VMError::check_timeout() {
   // Timestamp is stored in nanos.
   if (reporting_start_time_l > 0) {
     const jlong end = reporting_start_time_l + (jlong)ErrorLogTimeout * TIMESTAMP_TO_SECONDS_FACTOR;
-    if (end <= now) {
+    if (end <= now && !_reporting_did_timeout) {
+      // We hit ErrorLogTimeout and we haven't interrupted the reporting
+      // thread yet.
       _reporting_did_timeout = true;
       interrupt_reporting_thread();
       return true; // global timeout
@@ -1670,7 +1700,9 @@ bool VMError::check_timeout() {
     // hang for some reason, so this simple rule allows for three hanging step and still
     // hopefully leaves time enough for the rest of the steps to finish.
     const jlong end = step_start_time_l + (jlong)ErrorLogTimeout * TIMESTAMP_TO_SECONDS_FACTOR / 4;
-    if (end <= now) {
+    if (end <= now && !_step_did_timeout) {
+      // The step timed out and we haven't interrupted the reporting
+      // thread yet.
       _step_did_timeout = true;
       interrupt_reporting_thread();
       return false; // (Not a global timeout)

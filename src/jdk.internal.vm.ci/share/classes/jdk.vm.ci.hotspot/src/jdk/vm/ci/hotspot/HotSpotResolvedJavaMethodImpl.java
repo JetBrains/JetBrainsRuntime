@@ -241,7 +241,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public boolean canBeStaticallyBound() {
-        return (isFinal() || isPrivate() || isStatic() || holder.isLeaf()) && isConcrete();
+        return (isFinal() || isPrivate() || isStatic() || holder.isLeaf() || isConstructor()) && isConcrete();
     }
 
     @Override
@@ -406,6 +406,8 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public ResolvedJavaMethod uniqueConcreteMethod(HotSpotResolvedObjectType receiver) {
+        assert !canBeStaticallyBound() : this;
+
         if (receiver.isInterface()) {
             // Cannot trust interfaces. Because of:
             // interface I { void foo(); }
@@ -417,6 +419,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
             // seeing A.foo().
             return null;
         }
+        assert !receiver.isLinked() || isInVirtualMethodTable(receiver);
         if (this.isDefault()) {
             // CHA for default methods doesn't work and may crash the VM
             return null;
@@ -507,7 +510,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public Annotation[][] getParameterAnnotations() {
-        if ((getConstMethodFlags() & config().constMethodHasParameterAnnotations) == 0) {
+        if ((getConstMethodFlags() & config().constMethodHasParameterAnnotations) == 0 || isClassInitializer()) {
             return new Annotation[signature.getParameterCount(false)][0];
         }
         return runtime().reflection.getParameterAnnotations(this);
@@ -515,7 +518,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public Annotation[] getAnnotations() {
-        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0) {
+        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0 || isClassInitializer()) {
             return new Annotation[0];
         }
         return runtime().reflection.getMethodAnnotations(this);
@@ -523,7 +526,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public Annotation[] getDeclaredAnnotations() {
-        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0) {
+        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0 || isClassInitializer()) {
             return new Annotation[0];
         }
         return runtime().reflection.getMethodDeclaredAnnotations(this);
@@ -531,7 +534,7 @@ final class HotSpotResolvedJavaMethodImpl extends HotSpotMethod implements HotSp
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0) {
+        if ((getConstMethodFlags() & config().constMethodHasMethodAnnotations) == 0 || isClassInitializer()) {
             return null;
         }
         return runtime().reflection.getMethodAnnotation(this, annotationClass);

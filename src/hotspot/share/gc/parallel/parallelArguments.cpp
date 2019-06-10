@@ -113,11 +113,11 @@ void ParallelArguments::initialize_heap_flags_and_sizes_one_pass() {
   // default gc, which adds 2 to the ratio value. We need to
   // make sure the values are valid before using them.
   if (MinSurvivorRatio < 3) {
-    FLAG_SET_ERGO(uintx, MinSurvivorRatio, 3);
+    FLAG_SET_ERGO(MinSurvivorRatio, 3);
   }
 
   if (InitialSurvivorRatio < 3) {
-    FLAG_SET_ERGO(uintx, InitialSurvivorRatio, 3);
+    FLAG_SET_ERGO(InitialSurvivorRatio, 3);
   }
 }
 
@@ -212,6 +212,10 @@ size_t ParallelArguments::heap_reserved_size_bytes() {
   size_t max_old_size = MaxHeapSize - MinNewSize;
 
   return max_yg_size + max_old_size;
+}
+
+size_t ParallelArguments::heap_max_size_bytes() {
+  return MaxHeapSize;
 }
 
 CollectedHeap* ParallelArguments::create_heap() {

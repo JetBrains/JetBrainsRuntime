@@ -311,7 +311,7 @@ JRT_ENTRY_NO_ASYNC(static address, exception_handler_for_pc_helper(JavaThread* t
       tempst.print("compiled method <%s>\n"
                    " at PC" INTPTR_FORMAT " for thread " INTPTR_FORMAT,
                    cm->method()->print_value_string(), p2i(pc), p2i(thread));
-      Exceptions::log_exception(exception, tempst);
+      Exceptions::log_exception(exception, tempst.as_string());
     }
     // for AbortVMOnException flag
     NOT_PRODUCT(Exceptions::debug_check_abort(exception));
@@ -938,8 +938,6 @@ void JVMCIRuntime::describe_pending_hotspot_exception(JavaThread* THREAD, bool c
     if (exception->is_a(SystemDictionary::ThreadDeath_klass())) {
       // Don't print anything if we are being killed.
     } else {
-      java_lang_Throwable::print(exception(), tty);
-      tty->cr();
       java_lang_Throwable::print_stack_trace(exception, tty);
 
       // Clear and ignore any exceptions raised during printing
@@ -1397,11 +1395,18 @@ void JVMCIRuntime::compile_method(JVMCIEnv* JVMCIENV, JVMCICompiler* compiler, c
       assert(false, "JVMCICompiler.compileMethod should always return non-null");
     }
   } else {
-    // An uncaught exception was thrown during compilation. Generally these
-    // should be handled by the Java code in some useful way but if they leak
-    // through to here report them instead of dying or silently ignoring them.
-    JVMCIENV->describe_pending_exception(true);
-    compile_state->set_failure(false, "unexpected exception thrown");
+    // An uncaught exception here implies failure during compiler initialization.
+    // The only sensible thing to do here is to exit the VM.
+
+    // Only report initialization failure once
+    static volatile int report_init_failure = 0;
+    if (!report_init_failure && Atomic::cmpxchg(1, &report_init_failure, 0) == 0) {
+        tty->print_cr("Exception during JVMCI compiler initialization:");
+        JVMCIENV->describe_pending_exception(true);
+    }
+    JVMCIENV->clear_pending_exception();
+    before_exit((JavaThread*) THREAD);
+    vm_exit(-1);
   }
   if (compiler->is_bootstrapping()) {
     compiler->set_bootstrap_compilation_request_handled();
@@ -1420,6 +1425,7 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
                                 int frame_words,
                                 OopMapSet* oop_map_set,
                                 ExceptionHandlerTable* handler_table,
+                                ImplicitExceptionTable* implicit_exception_table,
                                 AbstractCompiler* compiler,
                                 DebugInformationRecorder* debug_info,
                                 Dependencies* dependencies,
@@ -1489,7 +1495,6 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
       // as in C2, then it must be freed.
       //code_buffer->free_blob();
     } else {
-      ImplicitExceptionTable implicit_tbl;
       nm =  nmethod::new_nmethod(method,
                                  compile_id,
                                  entry_bci,
@@ -1497,7 +1502,7 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
                                  orig_pc_offset,
                                  debug_info, dependencies, code_buffer,
                                  frame_words, oop_map_set,
-                                 handler_table, &implicit_tbl,
+                                 handler_table, implicit_exception_table,
                                  compiler, comp_level,
                                  speculations, speculations_len,
                                  nmethod_mirror_index, nmethod_mirror_name, failed_speculations);
@@ -1538,25 +1543,23 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
                 old->make_not_entrant();
               }
             }
-            if (TraceNMethodInstalls) {
+
+            LogTarget(Info, nmethod, install) lt;
+            if (lt.is_enabled()) {
               ResourceMark rm;
               char *method_name = method->name_and_sig_as_C_string();
-              ttyLocker ttyl;
-              tty->print_cr("Installing method (%d) %s [entry point: %p]",
-                            comp_level,
-                            method_name, nm->entry_point());
+              lt.print("Installing method (%d) %s [entry point: %p]",
+                        comp_level, method_name, nm->entry_point());
             }
             // Allow the code to be executed
             method->set_code(method, nm);
           } else {
-            if (TraceNMethodInstalls ) {
+            LogTarget(Info, nmethod, install) lt;
+            if (lt.is_enabled()) {
               ResourceMark rm;
               char *method_name = method->name_and_sig_as_C_string();
-              ttyLocker ttyl;
-              tty->print_cr("Installing osr method (%d) %s @ %d",
-                            comp_level,
-                            method_name,
-                            entry_bci);
+              lt.print("Installing osr method (%d) %s @ %d",
+                        comp_level, method_name, entry_bci);
             }
             InstanceKlass::cast(method->method_holder())->add_osr_nmethod(nm);
           }

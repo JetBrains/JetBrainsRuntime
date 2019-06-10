@@ -23,10 +23,11 @@
 
 /*
  * @test
- * @bug 8036979 8072384 8044773
+ * @bug 8036979 8072384 8044773 8225214
  * @library /test/lib
  * @requires !vm.graal.enabled
  * @run main/othervm -Xcheck:jni OptionsTest
+ * @run main/othervm -Djdk.net.usePlainSocketImpl OptionsTest
  * @run main/othervm -Xcheck:jni -Djava.net.preferIPv4Stack=true OptionsTest
  * @run main/othervm --limit-modules=java.base OptionsTest
  */
@@ -38,50 +39,61 @@ import jdk.test.lib.net.IPSupport;
 
 public class OptionsTest {
 
-    static class Test {
-        Test(SocketOption<?> option, Object testValue) {
+    static class Test<T> {
+        final SocketOption<T> option;
+        final T value;
+        Test(SocketOption<T> option, T value) {
             this.option = option;
-            this.testValue = testValue;
+            this.value = value;
         }
-        static Test create (SocketOption<?> option, Object testValue) {
-            return new Test(option, testValue);
+        static <T> Test<T> create(SocketOption<T> option, T value) {
+            return new Test<T>(option, value);
         }
-        Object option;
-        Object testValue;
+
     }
 
     // The tests set the option using the new API, read back the set value
-    // which could be diferent, and then use the legacy get API to check
+    // which could be different, and then use the legacy get API to check
     // these values are the same
 
-    static Test[] socketTests = new Test[] {
+    static Test<?>[] socketTests = new Test<?>[] {
         Test.create(StandardSocketOptions.SO_KEEPALIVE, Boolean.TRUE),
         Test.create(StandardSocketOptions.SO_SNDBUF, Integer.valueOf(10 * 100)),
         Test.create(StandardSocketOptions.SO_RCVBUF, Integer.valueOf(8 * 100)),
         Test.create(StandardSocketOptions.SO_REUSEADDR, Boolean.FALSE),
         Test.create(StandardSocketOptions.SO_REUSEPORT, Boolean.FALSE),
+        Test.create(StandardSocketOptions.SO_LINGER, Integer.valueOf(-1)),
+        Test.create(StandardSocketOptions.SO_LINGER, Integer.valueOf(0)),
         Test.create(StandardSocketOptions.SO_LINGER, Integer.valueOf(80)),
-        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100))
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(0)),  // lower-bound
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100)),
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(255))  //upper-bound
     };
 
-    static Test[] serverSocketTests = new Test[] {
+    static Test<?>[] serverSocketTests = new Test<?>[] {
         Test.create(StandardSocketOptions.SO_RCVBUF, Integer.valueOf(8 * 100)),
         Test.create(StandardSocketOptions.SO_REUSEADDR, Boolean.FALSE),
         Test.create(StandardSocketOptions.SO_REUSEPORT, Boolean.FALSE),
-        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100))
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(0)),  // lower-bound
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100)),
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(255))  //upper-bound
     };
 
-    static Test[] dgSocketTests = new Test[] {
+    static Test<?>[] datagramSocketTests = new Test<?>[] {
         Test.create(StandardSocketOptions.SO_SNDBUF, Integer.valueOf(10 * 100)),
         Test.create(StandardSocketOptions.SO_RCVBUF, Integer.valueOf(8 * 100)),
         Test.create(StandardSocketOptions.SO_REUSEADDR, Boolean.FALSE),
         Test.create(StandardSocketOptions.SO_REUSEPORT, Boolean.FALSE),
-        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100))
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(0)),  // lower-bound
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(100)),
+        Test.create(StandardSocketOptions.IP_TOS, Integer.valueOf(255))  //upper-bound
     };
 
-    static Test[] mcSocketTests = new Test[] {
+    static Test<?>[] multicastSocketTests = new Test<?>[] {
         Test.create(StandardSocketOptions.IP_MULTICAST_IF, getNetworkInterface()),
+        Test.create(StandardSocketOptions.IP_MULTICAST_TTL, Integer.valueOf(0)),   // lower-bound
         Test.create(StandardSocketOptions.IP_MULTICAST_TTL, Integer.valueOf(10)),
+        Test.create(StandardSocketOptions.IP_MULTICAST_TTL, Integer.valueOf(255)), //upper-bound
         Test.create(StandardSocketOptions.IP_MULTICAST_LOOP, Boolean.TRUE)
     };
 
@@ -89,7 +101,7 @@ public class OptionsTest {
         try {
             Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces();
             while (nifs.hasMoreElements()) {
-                NetworkInterface ni = (NetworkInterface)nifs.nextElement();
+                NetworkInterface ni = nifs.nextElement();
                 if (ni.supportsMulticast()) {
                     return ni;
                 }
@@ -99,99 +111,129 @@ public class OptionsTest {
         return null;
     }
 
+    static boolean okayToTest(Socket s, SocketOption<?> option) {
+        if (option == StandardSocketOptions.SO_REUSEPORT) {
+            // skip SO_REUSEPORT if option is not supported
+            return s.supportedOptions().contains(StandardSocketOptions.SO_REUSEPORT);
+        }
+        if (option == StandardSocketOptions.IP_TOS && s.isConnected()) {
+            // skip IP_TOS if connected
+            return false;
+        }
+        return true;
+    }
+
+    static <T> void testEqual(SocketOption<T> option, T value1, T value2) {
+        if (!value1.equals(value2)) {
+            throw new RuntimeException("Test of " + option.name() + " failed: "
+                    + value1 + " != " + value2);
+        }
+    }
+
+    static <T> void test(Socket s, Test<T> test) throws Exception {
+        SocketOption<T> option = test.option;
+        s.setOption(option, test.value);
+        T value1 = s.getOption(test.option);
+        T value2 = (T) legacyGetOption(Socket.class, s, test.option);
+        testEqual(option, value1, value2);
+    }
+
+    static <T> void test(ServerSocket ss, Test<T> test) throws Exception {
+        SocketOption<T> option = test.option;
+        ss.setOption(option, test.value);
+        T value1 = ss.getOption(test.option);
+        T value2 = (T) legacyGetOption(ServerSocket.class, ss, test.option);
+        testEqual(option, value1, value2);
+    }
+
+    static <T> void test(DatagramSocket ds, Test<T> test) throws Exception {
+        SocketOption<T> option = test.option;
+        ds.setOption(option, test.value);
+        T value1 = ds.getOption(test.option);
+        T value2 = (T) legacyGetOption(ds.getClass(), ds, test.option);
+        testEqual(option, value1, value2);
+    }
+
+    // Tests default and negative values of SO_LINGER. All negative values should
+    // retrieve as -1.
+    static void testSoLingerValues() throws Exception {
+        try (Socket s = new Socket()) {
+            // retrieve without set
+            int defaultValue = s.getOption(StandardSocketOptions.SO_LINGER);
+            testEqual(StandardSocketOptions.SO_LINGER, -1, defaultValue);
+
+            for (int v : List.of(-1, -2, -100, -65534, -65535, -65536, -100000)) {
+                System.out.println("Testing SO_LINGER with:" + v);
+                s.setOption(StandardSocketOptions.SO_LINGER, v);
+                int value = s.getOption(StandardSocketOptions.SO_LINGER);
+                testEqual(StandardSocketOptions.SO_LINGER, -1, value);
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
     static void doSocketTests() throws Exception {
-        try (
-            ServerSocket srv = new ServerSocket(0, 50, InetAddress.getLoopbackAddress());
-            Socket c = new Socket(InetAddress.getLoopbackAddress(), srv.getLocalPort());
-            Socket s = srv.accept();
-        ) {
-            Set<SocketOption<?>> options = c.supportedOptions();
-            boolean reuseport = options.contains(StandardSocketOptions.SO_REUSEPORT);
-            for (int i=0; i<socketTests.length; i++) {
-                Test test = socketTests[i];
-                if (!(test.option == StandardSocketOptions.SO_REUSEPORT && !reuseport)) {
-                    c.setOption((SocketOption)test.option, test.testValue);
-                    Object getval = c.getOption((SocketOption)test.option);
-                    Object legacyget = legacyGetOption(Socket.class, c,test.option);
-                    if (!getval.equals(legacyget)) {
-                        Formatter f = new Formatter();
-                        f.format("S Err %d: %s/%s", i, getval, legacyget);
-                        throw new RuntimeException(f.toString());
+        // unconnected socket
+        try (Socket s = new Socket()) {
+            for (Test<?> test : socketTests) {
+                if (okayToTest(s, test.option)) {
+                    test(s, test);
+                }
+            }
+        }
+
+        // connected socket
+        try (ServerSocket ss = new ServerSocket()) {
+            var loopback = InetAddress.getLoopbackAddress();
+            ss.bind(new InetSocketAddress(loopback, 0));
+            try (Socket s1 = new Socket()) {
+                s1.connect(ss.getLocalSocketAddress());
+                try (Socket s2 = ss.accept()) {
+                    for (Test<?> test : socketTests) {
+                        if (okayToTest(s1, test.option)) {
+                            test(s1, test);
+                        }
                     }
                 }
             }
         }
-    }
 
-    static void doDgSocketTests() throws Exception {
-        try (
-            DatagramSocket c = new DatagramSocket(0);
-        ) {
-            Set<SocketOption<?>> options = c.supportedOptions();
-            boolean reuseport = options.contains(StandardSocketOptions.SO_REUSEPORT);
-            for (int i=0; i<dgSocketTests.length; i++) {
-                Test test = dgSocketTests[i];
-                if (!(test.option == StandardSocketOptions.SO_REUSEPORT && !reuseport)) {
-                    c.setOption((SocketOption)test.option, test.testValue);
-                    Object getval = c.getOption((SocketOption)test.option);
-                    Object legacyget = legacyGetOption(DatagramSocket.class, c,test.option);
-                    if (!getval.equals(legacyget)) {
-                        Formatter f = new Formatter();
-                        f.format("DG Err %d: %s/%s", i, getval, legacyget);
-                        throw new RuntimeException(f.toString());
-                    }
-                }
-            }
-        }
-    }
-
-    static void doMcSocketTests() throws Exception {
-        try (
-            MulticastSocket c = new MulticastSocket(0);
-        ) {
-            for (int i=0; i<mcSocketTests.length; i++) {
-                Test test = mcSocketTests[i];
-                c.setOption((SocketOption)test.option, test.testValue);
-                Object getval = c.getOption((SocketOption)test.option);
-                Object legacyget = legacyGetOption(MulticastSocket.class, c,test.option);
-                if (!getval.equals(legacyget)) {
-                    Formatter f = new Formatter();
-                    f.format("MC Err %d: %s/%s", i, getval, legacyget);
-                    throw new RuntimeException(f.toString());
-                }
-            }
-        }
+        testSoLingerValues();
     }
 
     static void doServerSocketTests() throws Exception {
-        try (
-            ServerSocket c = new ServerSocket(0);
-        ) {
-            Set<SocketOption<?>> options = c.supportedOptions();
+        try (ServerSocket ss = new ServerSocket(0)) {
+            Set<SocketOption<?>> options = ss.supportedOptions();
             boolean reuseport = options.contains(StandardSocketOptions.SO_REUSEPORT);
-            for (int i=0; i<serverSocketTests.length; i++) {
-                Test test = serverSocketTests[i];
+            for (Test<?> test : serverSocketTests) {
                 if (!(test.option == StandardSocketOptions.SO_REUSEPORT && !reuseport)) {
-                    c.setOption((SocketOption)test.option, test.testValue);
-                    Object getval = c.getOption((SocketOption)test.option);
-                    Object legacyget = legacyGetOption(
-                        ServerSocket.class, c, test.option
-                    );
-                    if (!getval.equals(legacyget)) {
-                        Formatter f = new Formatter();
-                        f.format("SS Err %d: %s/%s", i, getval, legacyget);
-                        throw new RuntimeException(f.toString());
-                    }
+                    test(ss, test);
                 }
             }
         }
     }
 
-    static Object legacyGetOption(
-        Class<?> type, Object s, Object option)
+    static void doDatagramSocketTests() throws Exception {
+        try (DatagramSocket ds = new DatagramSocket(0)) {
+            Set<SocketOption<?>> options = ds.supportedOptions();
+            boolean reuseport = options.contains(StandardSocketOptions.SO_REUSEPORT);
+            for (Test<?> test : datagramSocketTests) {
+                if (!(test.option == StandardSocketOptions.SO_REUSEPORT && !reuseport)) {
+                    test(ds, test);
+                }
+            }
+        }
+    }
 
-        throws Exception
-    {
+    static void doMulticastSocketTests() throws Exception {
+        try (MulticastSocket ms = new MulticastSocket(0)) {
+            for (Test<?> test : multicastSocketTests) {
+                test(ms, test);
+            }
+        }
+    }
+
+    static Object legacyGetOption(Class<?> type, Object s, Object option) throws Exception {
         if (type.equals(Socket.class)) {
             Socket socket = (Socket)s;
             Set<SocketOption<?>> options = socket.supportedOptions();
@@ -214,7 +256,7 @@ public class OptionsTest {
             } else if (option.equals(StandardSocketOptions.TCP_NODELAY)) {
                 return Boolean.valueOf(socket.getTcpNoDelay());
             } else {
-                throw new RuntimeException("unexecpted socket option");
+                throw new RuntimeException("unexpected socket option");
             }
         } else if  (type.equals(ServerSocket.class)) {
             ServerSocket socket = (ServerSocket)s;
@@ -230,7 +272,7 @@ public class OptionsTest {
             } else if (option.equals(StandardSocketOptions.IP_TOS)) {
                 return getServerSocketTrafficClass(socket);
             } else {
-                throw new RuntimeException("unexecpted socket option");
+                throw new RuntimeException("unexpected socket option");
             }
         } else if  (type.equals(DatagramSocket.class)) {
             DatagramSocket socket = (DatagramSocket)s;
@@ -248,7 +290,7 @@ public class OptionsTest {
             } else if (option.equals(StandardSocketOptions.IP_TOS)) {
                 return Integer.valueOf(socket.getTrafficClass());
             } else {
-                throw new RuntimeException("unexecpted socket option");
+                throw new RuntimeException("unexpected socket option");
             }
 
         } else if  (type.equals(MulticastSocket.class)) {
@@ -273,18 +315,18 @@ public class OptionsTest {
             } else if (option.equals(StandardSocketOptions.IP_MULTICAST_LOOP)) {
                 return Boolean.valueOf(socket.getLoopbackMode());
             } else {
-                throw new RuntimeException("unexecpted socket option");
+                throw new RuntimeException("unexpected socket option");
             }
         }
-        throw new RuntimeException("unexecpted socket type");
+        throw new RuntimeException("unexpected socket type");
     }
 
     public static void main(String args[]) throws Exception {
         IPSupport.throwSkippedExceptionIfNonOperational();
         doSocketTests();
         doServerSocketTests();
-        doDgSocketTests();
-        doMcSocketTests();
+        doDatagramSocketTests();
+        doMulticastSocketTests();
     }
 
     // Reflectively access jdk.net.Sockets.getOption so that the test can run

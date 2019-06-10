@@ -518,6 +518,10 @@ class os: AllStatic {
   static void abort(bool dump_core = true);
 
   // Die immediately, no exit hook, no abort hook, no cleanup.
+  // Dump a core file, if possible, for debugging. os::abort() is the
+  // preferred means to abort the VM on error. os::die() should only
+  // be called if something has gone badly wrong. CreateCoredumpOnCrash
+  // is intentionally not honored by this function.
   static void die();
 
   // File i/o operations
@@ -591,6 +595,7 @@ class os: AllStatic {
   // Loads .dll/.so and
   // in case of error it checks if .dll/.so was built for the
   // same architecture as HotSpot is running on
+  // in case of an error NULL is returned and an error message is stored in ebuf
   static void* dll_load(const char *name, char *ebuf, int ebuflen);
 
   // lookup symbol in a shared library

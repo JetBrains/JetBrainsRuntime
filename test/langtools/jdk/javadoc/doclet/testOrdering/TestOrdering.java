@@ -515,11 +515,15 @@ public class TestOrdering extends JavadocTester {
             checkExit(Exit.OK);
 
             checkOrder("pkg5/AnnoFieldTest.html",
-                    "<h2>Field Detail</h2>",
-                    "<pre>static final&nbsp;int&nbsp;one</pre>",
-                    "<pre>static final&nbsp;int&nbsp;two</pre>",
-                    "<pre>static final&nbsp;int&nbsp;three</pre>",
-                    "<pre>static final&nbsp;int&nbsp;four</pre>");
+                    "<h2>Field Details</h2>",
+                    "<div class=\"memberSignature\"><span class=\"modifiers\">static final</span>&nbsp;"
+                    + "<span class=\"returnType\">int</span>&nbsp;<span class=\"memberName\">one</span></div>",
+                    "<div class=\"memberSignature\"><span class=\"modifiers\">static final</span>&nbsp;"
+                    + "<span class=\"returnType\">int</span>&nbsp;<span class=\"memberName\">two</span></div>",
+                    "<div class=\"memberSignature\"><span class=\"modifiers\">static final</span>&nbsp;"
+                    + "<span class=\"returnType\">int</span>&nbsp;<span class=\"memberName\">three</span></div>",
+                    "<div class=\"memberSignature\"><span class=\"modifiers\">static final</span>&nbsp;"
+                    + "<span class=\"returnType\">int</span>&nbsp;<span class=\"memberName\">four</span></div>");
 
             checkOrder("pkg5/AnnoOptionalTest.html",
                     "<h2>Optional Element Summary</h2>",
@@ -527,7 +531,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#one()\">one</a>",
                     "<a href=\"#three()\">three</a>",
                     "<a href=\"#two()\">two</a>",
-                    "<h2>Element Detail</h2>",
+                    "<h2>Element Details</h2>",
                     "<h3>one</h3>",
                     "<h3>two</h3>",
                     "<h3>three</h3>",
@@ -539,7 +543,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#one()\">one</a>",
                     "<a href=\"#three()\">three</a>",
                     "<a href=\"#two()\">two</a>",
-                    "<h2>Element Detail</h2>",
+                    "<h2>Element Details</h2>",
                     "<h3>one</h3>",
                     "<h3>two</h3>",
                     "<h3>three</h3>",
@@ -551,7 +555,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#%3Cinit%3E(int,int)\"",
                     "<a href=\"#%3Cinit%3E(int,int,int)\"",
                     "<a href=\"#%3Cinit%3E(int,int,int,int)\"",
-                    "<h2>Constructor Detail</h2>",
+                    "<h2>Constructor Details</h2>",
                     "<a id=\"&lt;init&gt;(int,int,int,int)\">",
                     "<a id=\"&lt;init&gt;(int,int,int)\">",
                     "<a id=\"&lt;init&gt;(int,int)\">",
@@ -563,7 +567,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#ONE\">ONE</a>",
                     "<a href=\"#THREE\">THREE</a>",
                     "<a href=\"#TWO\">TWO</a>",
-                    "<h2>Enum Constant Detail</h2>",
+                    "<h2>Enum Constant Details</h2>",
                     "<h3>ONE</h3>",
                     "<h3>TWO</h3>",
                     "<h3>THREE</h3>",
@@ -575,7 +579,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#one\">one</a>",
                     "<a href=\"#three\">three</a>",
                     "<a href=\"#two\">two</a>",
-                    "<h2>Field Detail</h2>",
+                    "<h2>Field Details</h2>",
                     "<h3>one</h3>",
                     "<h3>two</h3>",
                     "<h3>three</h3>",
@@ -587,7 +591,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#one()\">one</a>",
                     "<a href=\"#three()\">three</a>",
                     "<a href=\"#two()\">two</a>",
-                    "<h2>Method Detail</h2>",
+                    "<h2>Method Details</h2>",
                     "<h3>one</h3>",
                     "<h3>two</h3>",
                     "<h3>three</h3>",
@@ -599,7 +603,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#one()\">one</a>",
                     "<a href=\"#three()\">three</a>",
                     "<a href=\"#two()\">two</a>",
-                    "<h2>Method Detail</h2>",
+                    "<h2>Method Details</h2>",
                     "<h3>one</h3>",
                     "<h3>two</h3>",
                     "<h3>three</h3>",
@@ -611,7 +615,7 @@ public class TestOrdering extends JavadocTester {
                     "<a href=\"#oneProperty\">one</a>",
                     "<a href=\"#threeProperty\">three</a>",
                     "<a href=\"#twoProperty\">two</a>",
-                    "<h2>Property Detail</h2>",
+                    "<h2>Property Details</h2>",
                     "<h3>oneProperty</h3>",
                     "<h3>twoProperty</h3>",
                     "<h3>threeProperty</h3>",

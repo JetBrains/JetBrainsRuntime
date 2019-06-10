@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1195,11 +1195,11 @@ bool PhaseIdealLoop::can_split_if(Node* n_ctrl) {
 // Do the real work in a non-recursive function.  CFG hackery wants to be
 // in the post-order, so it can dirty the I-DOM info and not use the dirtied
 // info.
-void PhaseIdealLoop::split_if_with_blocks_post(Node *n, bool last_round) {
+void PhaseIdealLoop::split_if_with_blocks_post(Node *n) {
 
   // Cloning Cmp through Phi's involves the split-if transform.
   // FastLock is not used by an If
-  if (n->is_Cmp() && !n->is_FastLock() && !last_round) {
+  if (n->is_Cmp() && !n->is_FastLock()) {
     Node *n_ctrl = get_ctrl(n);
     // Determine if the Node has inputs from some local Phi.
     // Returns the block to clone thru.
@@ -1451,18 +1451,12 @@ void PhaseIdealLoop::split_if_with_blocks_post(Node *n, bool last_round) {
       get_loop(get_ctrl(n)) == get_loop(get_ctrl(n->in(1))) ) {
     _igvn.replace_node( n, n->in(1) );
   }
-
-#if INCLUDE_ZGC
-  if (UseZGC) {
-    ZBarrierSetC2::loop_optimize_gc_barrier(this, n, last_round);
-  }
-#endif
 }
 
 //------------------------------split_if_with_blocks---------------------------
 // Check for aggressive application of 'split-if' optimization,
 // using basic block level info.
-void PhaseIdealLoop::split_if_with_blocks(VectorSet &visited, Node_Stack &nstack, bool last_round) {
+void PhaseIdealLoop::split_if_with_blocks(VectorSet &visited, Node_Stack &nstack) {
   Node* root = C->root();
   visited.set(root->_idx); // first, mark root as visited
   // Do pre-visit work for root
@@ -1488,7 +1482,7 @@ void PhaseIdealLoop::split_if_with_blocks(VectorSet &visited, Node_Stack &nstack
       // All of n's children have been processed, complete post-processing.
       if (cnt != 0 && !n->is_Con()) {
         assert(has_node(n), "no dead nodes");
-        split_if_with_blocks_post(n, last_round);
+        split_if_with_blocks_post(n);
       }
       if (must_throttle_split_if()) {
         nstack.clear();
@@ -3029,16 +3023,16 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
 
   assert(!loop->_head->is_CountedLoop(), "Non-counted loop only");
   if (!loop->_head->is_Loop()) {
-    return false;  }
-
-  LoopNode *head  = loop->_head->as_Loop();
+    return false;
+  }
+  LoopNode *head = loop->_head->as_Loop();
 
   if (head->is_partial_peel_loop() || head->partial_peel_has_failed()) {
     return false;
   }
 
   // Check for complex exit control
-  for(uint ii = 0; ii < loop->_body.size(); ii++ ) {
+  for (uint ii = 0; ii < loop->_body.size(); ii++) {
     Node *n = loop->_body.at(ii);
     int opc = n->Opcode();
     if (n->is_Call()        ||
@@ -3065,12 +3059,12 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   IfNode *peel_if_cmpu = NULL;
 
   Node *iff = loop->tail();
-  while( iff != head ) {
-    if( iff->is_If() ) {
+  while (iff != head) {
+    if (iff->is_If()) {
       Node *ctrl = get_ctrl(iff->in(1));
       if (ctrl->is_top()) return false; // Dead test on live IF.
       // If loop-varying exit-test, check for induction variable
-      if( loop->is_member(get_loop(ctrl)) &&
+      if (loop->is_member(get_loop(ctrl)) &&
           loop->is_loop_exit(iff) &&
           is_possible_iv_test(iff)) {
         Node* cmp = iff->in(1)->in(1);
@@ -3084,6 +3078,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
     }
     iff = idom(iff);
   }
+
   // Prefer signed compare over unsigned compare.
   IfNode* new_peel_if = NULL;
   if (peel_if == NULL) {
@@ -3131,7 +3126,7 @@ bool PhaseIdealLoop::partial_peel( IdealLoopTree *loop, Node_List &old_new ) {
   Node_List worklist(area);
   Node_List sink_list(area);
 
-  if (!may_require_nodes(est_loop_clone_sz(2, loop->_body.size()))) {
+  if (!may_require_nodes(loop->est_loop_clone_sz(2))) {
     return false;
   }
 

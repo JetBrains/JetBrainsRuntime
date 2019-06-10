@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -500,5 +501,31 @@ public final class GraalServices {
             return null;
         }
         return jmx.getInputArguments();
+    }
+
+    /**
+     * Returns the fused multiply add of the three arguments; that is, returns the exact product of
+     * the first two arguments summed with the third argument and then rounded once to the nearest
+     * {@code float}.
+     */
+    public static float fma(float a, float b, float c) {
+        return Math.fma(a, b, c);
+    }
+
+    /**
+     * Returns the fused multiply add of the three arguments; that is, returns the exact product of
+     * the first two arguments summed with the third argument and then rounded once to the nearest
+     * {@code double}.
+     */
+    public static double fma(double a, double b, double c) {
+        return Math.fma(a, b, c);
+    }
+
+    /**
+     * Set the flag in the {@link VirtualObject} that indicates that it is a boxed primitive that
+     * was produced as a result of a call to a {@code valueOf} method.
+     */
+    public static void markVirtualObjectAsAutoBox(VirtualObject virtualObject) {
+       virtualObject.setIsAutoBox(true);
     }
 }

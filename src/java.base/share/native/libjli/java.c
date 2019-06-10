@@ -1169,13 +1169,13 @@ SelectVersion(int argc, char **argv, char **main_class)
      * Passing on splash screen info in environment variables
      */
     if (splash_file_name && !headlessflag) {
-        char* splash_file_entry = JLI_MemAlloc(JLI_StrLen(SPLASH_FILE_ENV_ENTRY "=")+JLI_StrLen(splash_file_name)+1);
+        splash_file_entry = JLI_MemAlloc(JLI_StrLen(SPLASH_FILE_ENV_ENTRY "=")+JLI_StrLen(splash_file_name)+1);
         JLI_StrCpy(splash_file_entry, SPLASH_FILE_ENV_ENTRY "=");
         JLI_StrCat(splash_file_entry, splash_file_name);
         putenv(splash_file_entry);
     }
     if (splash_jar_name && !headlessflag) {
-        char* splash_jar_entry = JLI_MemAlloc(JLI_StrLen(SPLASH_JAR_ENV_ENTRY "=")+JLI_StrLen(splash_jar_name)+1);
+        splash_jar_entry = JLI_MemAlloc(JLI_StrLen(SPLASH_JAR_ENV_ENTRY "=")+JLI_StrLen(splash_jar_name)+1);
         JLI_StrCpy(splash_jar_entry, SPLASH_JAR_ENV_ENTRY "=");
         JLI_StrCat(splash_jar_entry, splash_jar_name);
         putenv(splash_jar_entry);
@@ -1430,12 +1430,17 @@ ParseArguments(int *pargc, char ***pargv,
         } else if (JLI_StrCmp(arg, "-noclassgc") == 0) {
             AddOption("-Xnoclassgc", NULL);
         } else if (JLI_StrCmp(arg, "-Xfuture") == 0) {
+            JLI_ReportErrorMessage(ARG_DEPRECATED, "-Xfuture");
             AddOption("-Xverify:all", NULL);
         } else if (JLI_StrCmp(arg, "-verify") == 0) {
             AddOption("-Xverify:all", NULL);
         } else if (JLI_StrCmp(arg, "-verifyremote") == 0) {
             AddOption("-Xverify:remote", NULL);
         } else if (JLI_StrCmp(arg, "-noverify") == 0) {
+            /*
+             * Note that no 'deprecated' message is needed here because the VM
+             * issues 'deprecated' messages for -noverify and -Xverify:none.
+             */
             AddOption("-Xverify:none", NULL);
         } else if (JLI_StrCCmp(arg, "-ss") == 0 ||
                    JLI_StrCCmp(arg, "-oss") == 0 ||
@@ -2241,6 +2246,11 @@ ShowSplashScreen()
     if (file_name == NULL){
         return;
     }
+
+    if (!DoSplashInit()) {
+        goto exit;
+    }
+
     maxScaledImgNameLength = DoSplashGetScaledImgNameMaxPstfixLen(file_name);
 
     scaled_splash_name = JLI_MemAlloc(
@@ -2261,13 +2271,13 @@ ShowSplashScreen()
                             jar_name, file_name, &data_size);
         }
         if (image_data) {
-            DoSplashInit();
             DoSplashSetScaleFactor(scale_factor);
             DoSplashLoadMemory(image_data, data_size);
             JLI_MemFree(image_data);
+        } else {
+            DoSplashClose();
         }
     } else {
-        DoSplashInit();
         if (isImageScaled) {
             DoSplashSetScaleFactor(scale_factor);
             DoSplashLoadFile(scaled_splash_name);
@@ -2279,6 +2289,7 @@ ShowSplashScreen()
 
     DoSplashSetFileJarName(file_name, jar_name);
 
+    exit:
     /*
      * Done with all command line processing and potential re-execs so
      * clean up the environment.

@@ -114,7 +114,9 @@
 
 # jdk_awt
 
+java/awt/Color/AlphaColorTest.java 8224825 linux-all
 java/awt/event/MouseEvent/MouseClickTest/MouseClickTest.java 8168389 windows-all,macosx-all
+java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java 8224055 macosx-all
 java/awt/Focus/ActualFocusedWindowTest/ActualFocusedWindowBlockingTest.java 8168408 windows-all,macosx-all
 java/awt/Focus/FocusOwnerFrameOnClick/FocusOwnerFrameOnClick.java 8081489 generic-all
 java/awt/Focus/IconifiedFrameFocusChangeTest/IconifiedFrameFocusChangeTest.java 6849364 generic-all
@@ -203,7 +205,7 @@ java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 macosx-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java 8136517 macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
 java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
-java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474 windows-all
+java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java 6854300 generic-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
 java/awt/event/KeyEvent/KeyMaskTest/KeyMaskTest.java 8129778 generic-all
@@ -231,24 +233,18 @@ java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java 8150540 windows-all,
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java 8150540 windows-all
 java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java 8196440 linux-all
 java/awt/Window/Grab/GrabTest.java 8196019 windows-all
-java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8061236 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java 8197936 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeDynamicallyAndClick.java 8013450 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/Shaped.java 8078999 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8078999 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8078999 macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java 8013450 macosx-all
-java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218 macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java 8221901 linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java 8222323 windows-all
-java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all
-java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8222328 windows-all
+java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java 8222328 windows-all,linux-all,macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/Shaped.java  8222328 windows-all,linux-all,macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java 8222328 windows-all,linux-all,macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java 8222328 windows-all,linux-all,macosx-all
+java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java 8165218,8222328 windows-all,macosx-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java 8222328 windows-all,linux-all,macosx-all
-java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 macosx-all
+java/awt/Window/AlwaysOnTop/AutoTestOnTop.java 6847593 macosx-all,windows-all,linux-all
 java/awt/Window/GrabSequence/GrabSequence.java 6848409 macosx-all,linux-all
 java/awt/Window/LocationAtScreenCorner/LocationAtScreenCorner.java 8203371 linux-all,solaris-all
 java/awt/font/TextLayout/CombiningPerf.java 8192931 generic-all
@@ -284,11 +280,14 @@ java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java 8197796 ge
 java/awt/TextArea/TextAreaScrolling/TextAreaScrolling.java 8196300 windows-all
 java/awt/print/PrinterJob/PSQuestionMark.java 7003378 generic-all
 java/awt/print/PrinterJob/GlyphPositions.java 7003378 generic-all
+java/awt/print/PrinterJob/Margins.java 8196301 windows-all,macosx-all
+java/awt/PrintJob/PrinterException.java 8196301 windows-all,macosx-all
 java/awt/Choice/PopupPosTest/PopupPosTest.java  8197811 windows-all
 java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java 7100044 macosx-all,linux-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java 8214469 macosx-all
 java/awt/Component/CreateImage/CreateImage.java 8198334  windows-all
 java/awt/Component/GetScreenLocTest/GetScreenLocTest.java 4753654 generic-all
+java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java 8165863 macosx-all
 java/awt/Clipboard/HTMLTransferTest/HTMLTransferTest.java 8017454 macosx-all
 java/awt/Focus/NonFocusableWindowTest/NoEventsTest.java 8000171 windows-all
 java/awt/Frame/MiscUndecorated/RepaintTest.java 8079267 windows-all,linux-all
@@ -605,6 +604,9 @@ java/net/DatagramSocket/SendDatagramToBadAddress.java           7143960 macosx-a
 
 java/net/ServerSocket/AcceptInheritHandle.java                  8211854 aix-ppc64
 
+java/net/Inet6Address/B6206527.java                             8216417 macosx-all
+java/net/ipv6tests/B6521014.java                                8216417 macosx-all
+
 ############################################################################
 
 # jdk_nio
@@ -657,11 +659,17 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java             8141694 linux-al
 sun/security/pkcs11/ec/TestKeyFactory.java                      8026976 generic-all
 sun/security/pkcs11/Secmod/AddTrustedCert.java                  8180837 generic-all
 sun/security/pkcs11/tls/TestKeyMaterial.java                    8180837 generic-all
+sun/security/pkcs11/tls/tls12/FipsModeTLS12.java                8224954 windows-all
+sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java            8161536 generic-all
 
 sun/security/tools/keytool/ListKeychainStore.sh                 8156889 macosx-all
+sun/security/tools/keytool/KeyToolTest.java                     8224644 solaris-all
+sun/security/tools/keytool/WeakAlg.java                         8224644 solaris-all
 
 sun/security/tools/jarsigner/warnings/BadKeyUsageTest.java      8026393 generic-all
 
+javax/net/ssl/ServerName/SSLEngineExplorerMatchedSNI.java       8212096 generic-all
+javax/net/ssl/SSLSocket/Tls13PacketSize.java                    8224718 generic-all
 javax/net/ssl/DTLS/PacketLossRetransmission.java                8169086 macosx-x64
 javax/net/ssl/DTLS/RespondToRetransmit.java                     8169086 macosx-x64
 javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x64
@@ -669,6 +677,8 @@ javax/net/ssl/DTLS/CipherSuite.java                             8202059 macosx-x
 sun/security/provider/KeyStore/DKSTest.sh                       8180266 windows-all
 
 sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                 8209398 generic-all
+
+security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 
 ############################################################################
 
@@ -797,6 +807,10 @@ javax/swing/JTree/8003400/Test8003400.java 8197560 macosx-all,linux-all
 javax/swing/RepaintManager/IconifyTest/IconifyTest.java 8221903 linux-all
 javax/swing/JRadioButton/FocusTraversal/FocusTraversal.java 8221902 linux-all
 
+sanity/client/SwingSet/src/ColorChooserDemoTest.java 8221312 generic-all
+sanity/client/SwingSet/src/ToolTipDemoTest.java 8225012 windows-all
+sanity/client/SwingSet/src/ScrollPaneDemoTest.java 8225013 linux-all
+
 ############################################################################
 
 # jdk_text
@@ -859,3 +873,12 @@ javax/rmi/ssl/SSLSocketParametersTest.sh                        8162906 generic-
 
 jdk/jfr/event/io/TestInstrumentation.java                       8202142    generic-all
 jdk/jfr/api/recording/event/TestPeriod.java                     8215890    generic-all
+
+jdk/jfr/event/io/EvilInstrument.java                            8221331    generic-all
+
+############################################################################
+
+# jdk/internal/docker
+
+jdk/internal/platform/docker/TestDockerMemoryMetrics.java       8224506    generic-all
+jdk/internal/platform/docker/TestSystemMetrics.java             8224502    generic-all

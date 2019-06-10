@@ -1367,12 +1367,18 @@ static int _print_module(const char* fname, address base_address,
 void * os::dll_load(const char *name, char *ebuf, int ebuflen) {
   void * result = LoadLibrary(name);
   if (result != NULL) {
+    Events::log(NULL, "Loaded shared library %s", name);
     // Recalculate pdb search path if a DLL was loaded successfully.
     SymbolEngine::recalc_search_path();
     return result;
   }
-
   DWORD errcode = GetLastError();
+  // Read system error message into ebuf
+  // It may or may not be overwritten below (in the for loop and just above)
+  lasterror(ebuf, (size_t) ebuflen);
+  ebuf[ebuflen - 1] = '\0';
+  Events::log(NULL, "Loading shared library %s failed, error code %lu", name, errcode);
+
   if (errcode == ERROR_MOD_NOT_FOUND) {
     strncpy(ebuf, "Can't find dependent libraries", ebuflen - 1);
     ebuf[ebuflen - 1] = '\0';
@@ -1384,11 +1390,6 @@ void * os::dll_load(const char *name, char *ebuf, int ebuflen) {
   // for an architecture other than Hotspot is running in
   // - then print to buffer "DLL was built for a different architecture"
   // else call os::lasterror to obtain system error message
-
-  // Read system error message into ebuf
-  // It may or may not be overwritten below (in the for loop and just above)
-  lasterror(ebuf, (size_t) ebuflen);
-  ebuf[ebuflen - 1] = '\0';
   int fd = ::open(name, O_RDONLY | O_BINARY, 0);
   if (fd < 0) {
     return NULL;
@@ -4072,7 +4073,7 @@ void os::init(void) {
   init_page_sizes((size_t) win32::vm_page_size());
 
   // This may be overridden later when argument processing is done.
-  FLAG_SET_ERGO(bool, UseLargePagesIndividualAllocation, false);
+  FLAG_SET_ERGO(UseLargePagesIndividualAllocation, false);
 
   // Initialize main_process and main_thread
   main_process = GetCurrentProcess();  // Remember main_process is a pseudo handle
@@ -4909,6 +4910,9 @@ char* os::pd_map_memory(int fd, const char* file_name, size_t file_offset,
       CloseHandle(hFile);
       return NULL;
     }
+
+    // Record virtual memory allocation
+    MemTracker::record_virtual_memory_reserve_and_commit((address)addr, bytes, CALLER_PC);
 
     DWORD bytes_read;
     OVERLAPPED overlapped;

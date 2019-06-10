@@ -31,9 +31,6 @@
 #include "oops/oop.hpp"
 #include "runtime/atomic.hpp"
 #include "utilities/align.hpp"
-#if INCLUDE_JVMCI
-#include "jvmci/jvmci_globals.hpp"
-#endif
 
 class BytecodeStream;
 class KlassSizeStats;
@@ -561,8 +558,14 @@ public:
   }
 
   // Direct accessor
-  uint count() const {
-    return uint_at(count_off);
+  int count() const {
+    intptr_t raw_data = intptr_at(count_off);
+    if (raw_data > max_jint) {
+      raw_data = max_jint;
+    } else if (raw_data < min_jint) {
+      raw_data = min_jint;
+    }
+    return int(raw_data);
   }
 
   // Code generation support
@@ -573,8 +576,8 @@ public:
     return cell_offset(counter_cell_count);
   }
 
-  void set_count(uint count) {
-    set_uint_at(count_off, count);
+  void set_count(int count) {
+    set_int_at(count_off, count);
   }
 
   void print_data_on(outputStream* st, const char* extra = NULL) const;
@@ -2015,7 +2018,7 @@ public:
 
   // Whole-method sticky bits and flags
   enum {
-    _trap_hist_limit    = 24 JVMCI_ONLY(+5),   // decoupled from Deoptimization::Reason_LIMIT
+    _trap_hist_limit    = 25 JVMCI_ONLY(+5),   // decoupled from Deoptimization::Reason_LIMIT
     _trap_hist_mask     = max_jubyte,
     _extra_data_count   = 4     // extra DataLayout headers, for trap history
   }; // Public flag values
@@ -2389,7 +2392,7 @@ public:
   void inc_decompile_count() {
     _nof_decompiles += 1;
     if (decompile_count() > (uint)PerMethodRecompilationCutoff) {
-      method()->set_not_compilable(CompLevel_full_optimization, true, "decompile_count > PerMethodRecompilationCutoff");
+      method()->set_not_compilable("decompile_count > PerMethodRecompilationCutoff", CompLevel_full_optimization);
     }
   }
   uint tenure_traps() const {

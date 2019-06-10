@@ -764,18 +764,9 @@ void SharedRuntime::throw_StackOverflowError_common(JavaThread* thread, bool del
   throw_and_post_jvmti_exception(thread, exception);
 }
 
-#if INCLUDE_JVMCI
-address SharedRuntime::deoptimize_for_implicit_exception(JavaThread* thread, address pc, CompiledMethod* nm, int deopt_reason) {
-  assert(deopt_reason > Deoptimization::Reason_none && deopt_reason < Deoptimization::Reason_LIMIT, "invalid deopt reason");
-  thread->set_jvmci_implicit_exception_pc(pc);
-  thread->set_pending_deoptimization(Deoptimization::make_trap_request((Deoptimization::DeoptReason)deopt_reason, Deoptimization::Action_reinterpret));
-  return (SharedRuntime::deopt_blob()->implicit_exception_uncommon_trap());
-}
-#endif // INCLUDE_JVMCI
-
 address SharedRuntime::continuation_for_implicit_exception(JavaThread* thread,
                                                            address pc,
-                                                           SharedRuntime::ImplicitExceptionKind exception_kind)
+                                                           ImplicitExceptionKind exception_kind)
 {
   address target_pc = NULL;
 
@@ -876,19 +867,7 @@ address SharedRuntime::continuation_for_implicit_exception(JavaThread* thread,
 #ifndef PRODUCT
           _implicit_null_throws++;
 #endif
-#if INCLUDE_JVMCI
-          if (cm->is_compiled_by_jvmci() && cm->pc_desc_at(pc) != NULL) {
-            // If there's no PcDesc then we'll die way down inside of
-            // deopt instead of just getting normal error reporting,
-            // so only go there if it will succeed.
-            return deoptimize_for_implicit_exception(thread, pc, cm, Deoptimization::Reason_null_check);
-          } else {
-#endif // INCLUDE_JVMCI
-          assert (cm->is_nmethod(), "Expect nmethod");
-          target_pc = ((nmethod*)cm)->continuation_for_implicit_exception(pc);
-#if INCLUDE_JVMCI
-          }
-#endif // INCLUDE_JVMCI
+          target_pc = cm->continuation_for_implicit_null_exception(pc);
           // If there's an unexpected fault, target_pc might be NULL,
           // in which case we want to fall through into the normal
           // error handling code.
@@ -904,15 +883,7 @@ address SharedRuntime::continuation_for_implicit_exception(JavaThread* thread,
 #ifndef PRODUCT
         _implicit_div0_throws++;
 #endif
-#if INCLUDE_JVMCI
-        if (cm->is_compiled_by_jvmci() && cm->pc_desc_at(pc) != NULL) {
-          return deoptimize_for_implicit_exception(thread, pc, cm, Deoptimization::Reason_div0_check);
-        } else {
-#endif // INCLUDE_JVMCI
-        target_pc = cm->continuation_for_implicit_exception(pc);
-#if INCLUDE_JVMCI
-        }
-#endif // INCLUDE_JVMCI
+        target_pc = cm->continuation_for_implicit_div0_exception(pc);
         // If there's an unexpected fault, target_pc might be NULL,
         // in which case we want to fall through into the normal
         // error handling code.
@@ -1314,6 +1285,12 @@ bool SharedRuntime::resolve_sub_helper_internal(methodHandle callee_method, cons
           }
         }
       } else {
+        if (VM_Version::supports_fast_class_init_checks() &&
+            invoke_code == Bytecodes::_invokestatic &&
+            callee_method->needs_clinit_barrier() &&
+            callee != NULL && (callee->is_compiled_by_jvmci() || callee->is_aot())) {
+          return true; // skip patching for JVMCI or AOT code
+        }
         CompiledStaticCall* ssc = caller_nm->compiledStaticCall_before(caller_frame.pc());
         if (ssc->is_clean()) ssc->set(static_call_info);
       }
@@ -1376,12 +1353,20 @@ methodHandle SharedRuntime::resolve_sub_helper(JavaThread *thread,
   }
 #endif
 
-  // Do not patch call site for static call when the class is not
-  // fully initialized.
-  if (invoke_code == Bytecodes::_invokestatic &&
-      !callee_method->method_holder()->is_initialized()) {
-    assert(callee_method->method_holder()->is_linked(), "must be");
-    return callee_method;
+  if (invoke_code == Bytecodes::_invokestatic) {
+    assert(callee_method->method_holder()->is_initialized() ||
+           callee_method->method_holder()->is_reentrant_initialization(thread),
+           "invalid class initialization state for invoke_static");
+    if (!VM_Version::supports_fast_class_init_checks() && callee_method->needs_clinit_barrier()) {
+      // In order to keep class initialization check, do not patch call
+      // site for static call when the class is not fully initialized.
+      // Proper check is enforced by call site re-resolution on every invocation.
+      //
+      // When fast class initialization checks are supported (VM_Version::supports_fast_class_init_checks() == true),
+      // explicit class initialization check is put in nmethod entry (VEP).
+      assert(callee_method->method_holder()->is_linked(), "must be");
+      return callee_method;
+    }
   }
 
   // JSR 292 key invariant:

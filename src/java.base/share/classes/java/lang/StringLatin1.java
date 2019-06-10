@@ -35,20 +35,13 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import jdk.internal.HotSpotIntrinsicCandidate;
+import jdk.internal.util.ArraysSupport;
 
 import static java.lang.String.LATIN1;
 import static java.lang.String.UTF16;
 import static java.lang.String.checkOffset;
 
 final class StringLatin1 {
-
-    /**
-     * The maximum size of array to allocate (unless necessary).
-     * Some VMs reserve some header words in an array.
-     * Attempts to allocate larger arrays may result in
-     * OutOfMemoryError: Requested array size exceeds VM limit
-     */
-    private static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
 
     public static char charAt(byte[] value, int index) {
         if (index < 0 || index >= value.length) {
@@ -353,15 +346,7 @@ final class StringLatin1 {
         i += targLen;
         while ((j = indexOf(value, valLen, targ, targLen, i)) > 0) {
             if (++p == pos.length) {
-                int cap = p + (p >> 1);
-                // overflow-conscious code
-                if (cap - MAX_ARRAY_SIZE > 0) {
-                    if (p == MAX_ARRAY_SIZE) {
-                        throw new OutOfMemoryError();
-                    }
-                    cap = MAX_ARRAY_SIZE;
-                }
-                pos = Arrays.copyOf(pos, cap);
+                pos = Arrays.copyOf(pos, ArraysSupport.newLength(p, 1, p >> 1));
             }
             pos[p] = j;
             i = j + targLen;
@@ -747,76 +732,10 @@ final class StringLatin1 {
         static LinesSpliterator spliterator(byte[] value) {
             return new LinesSpliterator(value, 0, value.length);
         }
-
-        static LinesSpliterator spliterator(byte[] value, int leading, int trailing) {
-            int length = value.length;
-            int left = 0;
-            int index;
-            for (int l = 0; l < leading; l++) {
-                index = skipBlankForward(value, left, length);
-                if (index == left) {
-                    break;
-                }
-                left = index;
-            }
-            int right = length;
-            for (int t = 0; t < trailing; t++) {
-                index = skipBlankBackward(value, left, right);
-                if (index == right) {
-                    break;
-                }
-                right = index;
-            }
-            return new LinesSpliterator(value, left, right - left);
-        }
-
-        private static int skipBlankForward(byte[] value, int start, int length) {
-            int index = start;
-            while (index < length) {
-                char ch = getChar(value, index++);
-                if (ch == '\n') {
-                    return index;
-                }
-                if (ch == '\r') {
-                    if (index < length && getChar(value, index) == '\n') {
-                        return index + 1;
-                    }
-                    return index;
-                }
-                if (ch != ' ' && ch != '\t' && !Character.isWhitespace(ch)) {
-                    return start;
-                }
-            }
-            return length;
-        }
-
-        private static int skipBlankBackward(byte[] value, int start, int fence) {
-            int index = fence;
-            if (start < index && getChar(value, index - 1) == '\n') {
-                index--;
-            }
-            if (start < index && getChar(value, index - 1) == '\r') {
-                index--;
-            }
-            while (start < index) {
-                char ch = getChar(value, --index);
-                if (ch == '\r' || ch == '\n') {
-                    return index + 1;
-                }
-                if (ch != ' ' && ch != '\t' && !Character.isWhitespace(ch)) {
-                    return fence;
-                }
-            }
-            return start;
-        }
     }
 
-    static Stream<String> lines(byte[] value, int leading, int trailing) {
-        if (leading == 0 && trailing == 0) {
-            return StreamSupport.stream(LinesSpliterator.spliterator(value), false);
-        } else {
-            return StreamSupport.stream(LinesSpliterator.spliterator(value, leading, trailing), false);
-        }
+    static Stream<String> lines(byte[] value) {
+        return StreamSupport.stream(LinesSpliterator.spliterator(value), false);
     }
 
     public static void putChar(byte[] val, int index, int c) {
