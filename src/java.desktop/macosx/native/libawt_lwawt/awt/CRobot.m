@@ -295,7 +295,7 @@ Java_sun_lwawt_macosx_CRobot_nativeGetScreenPixels
 {
     JNF_COCOA_ENTER(env);
 
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+    [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
         jint picX = x;
         jint picY = y;
