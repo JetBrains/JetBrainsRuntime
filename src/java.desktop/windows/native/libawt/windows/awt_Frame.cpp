@@ -1720,7 +1720,7 @@ void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
     int dpi = device ? device->GetScaleX() * 96 : 96;
 
     // GetSystemMetricsForDpi gives incorrect values, use AdjustWindowRectExForDpi for border metrics instead
-    RECT rect = {0};
+    RECT rect = {};
     DWORD style = pFrame->IsResizable() ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME;
     AwtToolkit::AdjustWindowRectExForDpi(&rect, style, FALSE, NULL, dpi);
     ::SetRect(insets, -rect.left, -rect.top, rect.right, rect.bottom);
@@ -1734,7 +1734,7 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     GetWindowRect(frame->GetHWnd(), &rcWindow);
 
     // Get the frame rectangle, adjusted for the style without a caption.
-    RECT rcFrame = {0};
+    RECT rcFrame = {};
     AdjustWindowRectEx(&rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
 
     USHORT uRow = 1;
