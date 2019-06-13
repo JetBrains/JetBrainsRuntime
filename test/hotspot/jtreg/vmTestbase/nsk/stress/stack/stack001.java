@@ -51,7 +51,7 @@
  *     4254634     println() while catching StackOverflowError causes hotspot VM crash
  *     4302288 the second stack overflow causes Classic VM to exit on win32
  *
- * @run main/othervm nsk.stress.stack.stack001
+ * @run main/othervm/timeout=900 nsk.stress.stack.stack001
  */
 
 package nsk.stress.stack;
