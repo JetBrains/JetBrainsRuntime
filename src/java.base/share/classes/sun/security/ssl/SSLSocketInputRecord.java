@@ -327,7 +327,9 @@ final class SSLSocketInputRecord extends InputRecord implements SSLRecord {
                     handshakeBuffer.put(handshakeFrag);
                     handshakeBuffer.rewind();
                     break;
-                } if (remaining == handshakeMessageLen) {
+                }
+
+                if (remaining == handshakeMessageLen) {
                     if (handshakeHash.isHashable(handshakeType)) {
                         handshakeHash.receive(handshakeFrag);
                     }

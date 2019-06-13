@@ -466,6 +466,25 @@ enum SSLExtension implements SSLStringizer {
     final SSLHandshake handshakeType;
     final String name;
     final ProtocolVersion[] supportedProtocols;
+
+    /*
+     * networkProducer: produces outbound handshake data.
+     *
+     * onLoadConsumer:  parses inbound data.  It may not be appropriate
+     *                  to act until all of the message inputs have
+     *                  been parsed.  (e.g. parsing keyShares and choosing
+     *                  a local value without having seen the SupportedGroups
+     *                  extension.)
+     *
+     * onLoadAbsence:   if a missing message needs special handling
+     *                  during the load phase.
+     *
+     * onTradeConsumer: act on the parsed message once all inbound data has
+     *                  been traded and parsed.
+     *
+     * onTradeAbsence:  if a missing message needs special handling
+     *                  during the trade phase.
+     */
     final HandshakeProducer networkProducer;
     final ExtensionConsumer onLoadConsumer;
     final HandshakeAbsence  onLoadAbsence;
