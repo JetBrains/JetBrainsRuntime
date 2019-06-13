@@ -50,7 +50,7 @@
  *     4366625 (P4/S4) multiple stack overflow causes HS crash
  *
  * @ignore 8139875
- * @run main/othervm nsk.stress.stack.stack016 -eager
+ * @run main/othervm/timeout=900 nsk.stress.stack.stack016 -eager
  */
 
 package nsk.stress.stack;
