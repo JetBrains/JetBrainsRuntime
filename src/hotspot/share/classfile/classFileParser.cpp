@@ -4988,6 +4988,7 @@ void ClassFileParser::verify_legal_utf8(const unsigned char* buffer,
 bool ClassFileParser::verify_unqualified_name(const char* name,
                                               unsigned int length,
                                               int type) {
+  if (length == 0) return false;  // Must have at least one char.
   for (const char* p = name; p != name + length;) {
     jchar ch = *p;
     if (ch < 128) {
@@ -5152,7 +5153,7 @@ const char* ClassFileParser::skip_over_field_signature(const char* signature,
 
           bool legal = verify_unqualified_name(sig, newlen, LegalClass);
           if (!legal) {
-            classfile_parse_error("Class name contains illegal character "
+            classfile_parse_error("Class name is empty or contains illegal character "
                                   "in descriptor in class file %s",
                                   CHECK_0);
             return NULL;
