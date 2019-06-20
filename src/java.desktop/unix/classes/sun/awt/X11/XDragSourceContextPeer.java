@@ -524,8 +524,9 @@ public final class XDragSourceContextPeer
         updateTargetWindow(xmotion);
 
         if (dragProtocol != null) {
-            dragProtocol.sendMoveMessage(scaleDown(xmotion.get_x_root()),
-                                         scaleDown(xmotion.get_y_root()),
+            // XDnDDropTargetProtocol.processXdndPosition will scale x/y
+            dragProtocol.sendMoveMessage(xmotion.get_x_root(),
+                                         xmotion.get_y_root(),
                                          sourceAction, sourceActions,
                                          xmotion.get_time());
         }
@@ -533,8 +534,9 @@ public final class XDragSourceContextPeer
 
     private void processDrop(XButtonEvent xbutton) {
         try {
-            dragProtocol.initiateDrop(scaleDown(xbutton.get_x_root()),
-                                      scaleDown(xbutton.get_y_root()),
+            // XDnDDropTargetProtocol.processXdndPosition will scale x/y
+            dragProtocol.initiateDrop(xbutton.get_x_root(),
+                                      xbutton.get_y_root(),
                                       sourceAction, sourceActions,
                                       xbutton.get_time());
         } catch (XException e) {
