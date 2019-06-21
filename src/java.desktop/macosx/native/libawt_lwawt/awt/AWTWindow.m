@@ -1171,6 +1171,8 @@ JNF_COCOA_ENTER(env);
 JNF_COCOA_EXIT(env);
 }
 
+extern jboolean metalEnabled;
+
 /*
  * Class:     sun_lwawt_macosx_CPlatformWindow
  * Method:    nativeGetNSWindowInsets
@@ -1197,6 +1199,10 @@ JNF_COCOA_ENTER(env);
     jint left = (jint)(contentRect.origin.x - frame.origin.x);
     jint bottom = (jint)(contentRect.origin.y - frame.origin.y);
     jint right = (jint)(frame.size.width - (contentRect.size.width + left));
+    if (metalEnabled == JNI_TRUE) {
+        bottom -= top;
+        top = 0;
+    }
 
     static JNF_CLASS_CACHE(jc_Insets, "java/awt/Insets");
     static JNF_CTOR_CACHE(jc_Insets_ctor, jc_Insets, "(IIII)V");

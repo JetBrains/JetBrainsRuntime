@@ -36,8 +36,9 @@ import java.awt.geom.Rectangle2D;
 import java.util.Objects;
 
 import sun.java2d.SunGraphicsEnvironment;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLGraphicsConfig;
 import sun.java2d.opengl.CGLGraphicsConfig;
-import sun.java2d.metal.MetalGraphicsConfig;
 
 public final class CGraphicsDevice extends GraphicsDevice
         implements DisplayChangedListener {
@@ -61,25 +62,9 @@ public final class CGraphicsDevice extends GraphicsDevice
 
     public CGraphicsDevice(final int displayID) {
         this.displayID = displayID;
-
-        if (isMetalSystemProperty()) {
-            config = MetalGraphicsConfig.getConfig(this, displayID, 0);
-            System.out.println("Created MetalGraphicsConfig");
-        } else {
-            config = CGLGraphicsConfig.getConfig(this, displayID, 0);
-        }
-    }
-
-    private boolean isMetalSystemProperty() {
-           String str = System.getProperty("sun.java2d.metal");
-           
-           if (str != null) {
-               System.out.println("Property : sun.java2d.metal=" + str);
-               if (str.equals("true")) {
-                return true;    
-               }
-         }
-         return false;
+        config = MacOSFlags.isMetalEnabled() ?
+                MTLGraphicsConfig.getConfig(this, displayID, 0) :
+                CGLGraphicsConfig.getConfig(this, displayID, 0);
     }
 
     /**

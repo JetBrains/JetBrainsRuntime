@@ -246,6 +246,7 @@ $(eval $(call SetupJdkLibrary, BUILD_LIBAWT, \
     LIBS_macosx := -lmlib_image \
         -framework Cocoa \
         -framework OpenGL \
+        -framework Metal \
         -framework JavaNativeFoundation \
         -framework JavaRuntimeSupport \
         -framework ApplicationServices \
@@ -825,6 +826,7 @@ ifeq ($(ENABLE_HEADLESS_ONLY), false)
         -framework Foundation \
         -framework Security \
         -framework Cocoa \
+        -framework Metal \
         -framework JavaNativeFoundation
   else ifeq ($(call isTargetOs, windows), true)
     LIBSPLASHSCREEN_LIBS += kernel32.lib user32.lib gdi32.lib delayimp.lib $(WIN_JAVA_LIB) jvm.lib
@@ -887,6 +889,7 @@ ifeq ($(call isTargetOs, macosx), true)
       libawt_lwawt/awt \
       libawt_lwawt/font \
       libawt_lwawt/java2d/opengl \
+      libawt_lwawt/java2d/metal \
       include \
       common/awt/debug \
       common/java2d/opengl \
@@ -922,12 +925,12 @@ ifeq ($(call isTargetOs, macosx), true)
           -framework AudioToolbox \
           -framework Carbon \
           -framework Cocoa \
+          -framework Metal \
           -framework Security \
           -framework ExceptionHandling \
           -framework JavaNativeFoundation \
           -framework JavaRuntimeSupport \
           -framework OpenGL \
-          -framework Metal \
           -framework QuartzCore -ljava, \
   ))
 
@@ -946,6 +949,11 @@ endif
 ################################################################################
 
 ifeq ($(call isTargetOs, macosx), true)
+  XCODE_PATH := $(shell /usr/bin/xcode-select -p)
+  CompileMetalShaders :
+	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metal -O2 -std=osx-metal1.1 -o $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
+	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metal-ar r $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.metal-ar $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air
+	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metallib -o $(INSTALL_LIBRARIES_HERE)/shaders.metallib $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.metal-ar
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBOSXUI, \
       NAME := osxui, \
@@ -961,6 +969,7 @@ ifeq ($(call isTargetOs, macosx), true)
           -L$(INSTALL_LIBRARIES_HERE), \
       LIBS := -lawt -losxapp -lawt_lwawt \
           -framework Cocoa \
+          -framework Metal \
           -framework Carbon \
           -framework ApplicationServices \
           -framework JavaNativeFoundation \
@@ -969,6 +978,7 @@ ifeq ($(call isTargetOs, macosx), true)
   ))
 
   TARGETS += $(BUILD_LIBOSXUI)
+  $(BUILD_LIBOSXUI): CompileMetalShaders
 
   $(BUILD_LIBOSXUI): $(BUILD_LIBAWT)
 

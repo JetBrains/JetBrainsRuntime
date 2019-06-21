@@ -77,9 +77,11 @@ import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.ToolkitImage;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
-import sun.java2d.metal.MetalRenderQueue;
 import sun.java2d.pipe.Region;
+import sun.java2d.pipe.RenderQueue;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
@@ -1435,38 +1437,15 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-
-        // Check for metal
-        boolean isMetal = false;
-        String str = System.getProperty("sun.java2d.metal");
-
-        if (str != null) {
-           //System.out.println("Property : sun.java2d.metal=" + str);
-            if (str.equals("true")) {
-                isMetal = true;
-            }
-        }
-
-        if (isMetal) {
-            final MetalRenderQueue rq = MetalRenderQueue.getInstance();
-            rq.lock();
-            try {
-                rq.flushNow();
-            } finally {
-                rq.unlock();
-            }
-        } else {
-
-            final OGLRenderQueue rq = OGLRenderQueue.getInstance();
-            rq.lock();
-            try {
-                rq.flushNow();
-            } finally {
-                rq.unlock();
-            }
+        RenderQueue rq = MacOSFlags.isMetalEnabled() ?
+                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            rq.flushNow();
+        } finally {
+            rq.unlock();
         }
     }
-
 
     /**
      * Used by ContainerPeer to skip all the paint events during layout.

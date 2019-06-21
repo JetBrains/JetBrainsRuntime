@@ -109,6 +109,8 @@ import sun.awt.PlatformGraphicsInfo;
 import sun.awt.SunToolkit;
 import sun.awt.datatransfer.DataTransferer;
 import sun.awt.util.ThreadGroupUtils;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.lwawt.LWComponentPeer;
 import sun.lwawt.LWCursorManager;
@@ -148,21 +150,21 @@ public final class LWCToolkit extends LWToolkit {
 
         ResourceBundle platformResources = java.security.AccessController.doPrivileged(
                 new java.security.PrivilegedAction<ResourceBundle>() {
-            @Override
-            public ResourceBundle run() {
-                ResourceBundle platformResources = null;
-                try {
-                    platformResources = ResourceBundle.getBundle("sun.awt.resources.awtosx");
-                } catch (MissingResourceException e) {
-                    // No resource file; defaults will be used.
-                }
+                    @Override
+                    public ResourceBundle run() {
+                        ResourceBundle platformResources = null;
+                        try {
+                            platformResources = ResourceBundle.getBundle("sun.awt.resources.awtosx");
+                        } catch (MissingResourceException e) {
+                            // No resource file; defaults will be used.
+                        }
 
-                System.loadLibrary("awt");
-                System.loadLibrary("fontmanager");
+                        System.loadLibrary("awt");
+                        System.loadLibrary("fontmanager");
 
-                return platformResources;
-            }
-        });
+                        return platformResources;
+                    }
+                });
 
         if (!GraphicsEnvironment.isHeadless() &&
             !PlatformGraphicsInfo.isInAquaSession())
@@ -210,9 +212,9 @@ public final class LWCToolkit extends LWToolkit {
     public static final int INACTIVE_SELECTION_BACKGROUND_COLOR = 1;
     public static final int INACTIVE_SELECTION_FOREGROUND_COLOR = 2;
     private static int[] appleColors = {
-        0xFF808080, // keyboardFocusColor = Color.gray;
-        0xFFC0C0C0, // secondarySelectedControlColor
-        0xFF303030, // controlDarkShadowColor
+            0xFF808080, // keyboardFocusColor = Color.gray;
+            0xFFC0C0C0, // secondarySelectedControlColor
+            0xFF303030, // controlDarkShadowColor
     };
 
     private native void loadNativeColors(final int[] systemColors, final int[] appleColors);
@@ -485,7 +487,11 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public void sync() {
         // flush the OGL pipeline (this is a no-op if OGL is not enabled)
-        OGLRenderQueue.sync();
+        if (MacOSFlags.isMetalEnabled()) {
+            MTLRenderQueue.sync();
+        } else {
+            OGLRenderQueue.sync();
+        }
         // setNeedsDisplay() selector was sent to the appropriate CALayer so now
         // we have to flush the native selectors queue.
         flushNativeSelectors();
@@ -635,7 +641,7 @@ public final class LWCToolkit extends LWToolkit {
         final boolean[] ret = new boolean[1];
 
         try {  invokeAndWait(new Runnable() { @Override
-                                              public void run() { synchronized(ret) {
+        public void run() { synchronized(ret) {
             ret[0] = a.equals(b);
         }}}, c); } catch (Exception e) { e.printStackTrace(); }
 
@@ -856,7 +862,7 @@ public final class LWCToolkit extends LWToolkit {
     public static synchronized boolean getSunAwtDisableCALayers() {
         if (sunAwtDisableCALayers == null) {
             sunAwtDisableCALayers = AccessController.doPrivileged(
-                new GetBooleanAction("sun.awt.disableCALayers"));
+                    new GetBooleanAction("sun.awt.disableCALayers"));
         }
         return sunAwtDisableCALayers;
     }
@@ -915,9 +921,9 @@ public final class LWCToolkit extends LWToolkit {
     @Override
     public boolean isModalExclusionTypeSupported(Dialog.ModalExclusionType exclusionType) {
         return (exclusionType == null) ||
-            (exclusionType == Dialog.ModalExclusionType.NO_EXCLUDE) ||
-            (exclusionType == Dialog.ModalExclusionType.APPLICATION_EXCLUDE) ||
-            (exclusionType == Dialog.ModalExclusionType.TOOLKIT_EXCLUDE);
+                (exclusionType == Dialog.ModalExclusionType.NO_EXCLUDE) ||
+                (exclusionType == Dialog.ModalExclusionType.APPLICATION_EXCLUDE) ||
+                (exclusionType == Dialog.ModalExclusionType.TOOLKIT_EXCLUDE);
     }
 
     @Override
@@ -925,10 +931,10 @@ public final class LWCToolkit extends LWToolkit {
         //TODO: FileDialog blocks excluded windows...
         //TODO: Test: 2 file dialogs, separate AppContexts: a) Dialog 1 blocked, shouldn't be. Frame 4 blocked (shouldn't be).
         return (modalityType == null) ||
-            (modalityType == Dialog.ModalityType.MODELESS) ||
-            (modalityType == Dialog.ModalityType.DOCUMENT_MODAL) ||
-            (modalityType == Dialog.ModalityType.APPLICATION_MODAL) ||
-            (modalityType == Dialog.ModalityType.TOOLKIT_MODAL);
+                (modalityType == Dialog.ModalityType.MODELESS) ||
+                (modalityType == Dialog.ModalityType.DOCUMENT_MODAL) ||
+                (modalityType == Dialog.ModalityType.APPLICATION_MODAL) ||
+                (modalityType == Dialog.ModalityType.TOOLKIT_MODAL);
     }
 
     @Override

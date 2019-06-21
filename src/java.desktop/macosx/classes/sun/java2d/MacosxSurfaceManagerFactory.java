@@ -27,9 +27,9 @@ package sun.java2d;
 
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLVolatileSurfaceManager;
 import sun.java2d.opengl.CGLVolatileSurfaceManager;
-import sun.java2d.metal.MetalVolatileSurfaceManager;
-
 
 /**
  * This is a factory class with static methods for creating a
@@ -51,23 +51,7 @@ public class MacosxSurfaceManagerFactory extends SurfaceManagerFactory {
     public VolatileSurfaceManager createVolatileManager(SunVolatileImage vImg,
                                                         Object context)
     {
-        if (isMetalSystemProperty()) {
-            return new MetalVolatileSurfaceManager(vImg, context);
-        } else {
-            return new CGLVolatileSurfaceManager(vImg, context);
-        }
-    }
-
-
-    private boolean isMetalSystemProperty() {
-        String str = System.getProperty("sun.java2d.metal");
-
-        if (str != null) {
-            System.out.println("Property : sun.java2d.metal=" + str);
-            if (str.equals("true")) {
-                return true;
-            }
-        }
-        return false;
+        return MacOSFlags.isMetalEnabled() ? new MTLVolatileSurfaceManager(vImg, context) :
+                new CGLVolatileSurfaceManager(vImg, context);
     }
 }
