@@ -129,13 +129,7 @@ public class RepaintManager
     private static final Object repaintManagerKey = RepaintManager.class;
 
     // Whether or not a VolatileImage should be used for double-buffered painting
-    // TODO : We have not yet implemented MetalBlitLoops logic.
-    // Because once we draw into offline buffer we need blitloops
-    // logic to blit the content into destination buffer.
-    // When we have blitloops logic for Metal we can enable usage
-    // of offscreen volatile image
-    //static boolean volatileImageBufferEnabled = true;
-    static boolean volatileImageBufferEnabled = false;
+    static boolean volatileImageBufferEnabled = true;
     /**
      * Type of VolatileImage which should be used for double-buffered
      * painting.
@@ -217,14 +211,13 @@ public class RepaintManager
             }
         });
 
-        // TODO : Revert this change after we implement MetalBlitLoops
-        /*volatileImageBufferEnabled = "true".equals(AccessController.
+        volatileImageBufferEnabled = "true".equals(AccessController.
                 doPrivileged(new GetPropertyAction(
-                "swing.volatileImageBufferEnabled", "true")));*/
+                "swing.volatileImageBufferEnabled", "true")));
         boolean headless = GraphicsEnvironment.isHeadless();
-        /*if (volatileImageBufferEnabled && headless) {
+        if (volatileImageBufferEnabled && headless) {
             volatileImageBufferEnabled = false;
-        }*/
+        }
         nativeDoubleBuffering = "true".equals(AccessController.doPrivileged(
                     new GetPropertyAction("awt.nativeDoubleBuffering")));
         String bs = AccessController.doPrivileged(

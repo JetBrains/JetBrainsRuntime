@@ -70,13 +70,7 @@ static BOOL shouldUsePressAndHold() {
 @synthesize cglLayer;
 @synthesize mouseIsOver;
 
-/*
- * TODO : Eventhough the name of variable is cgllayer,
- * we are setting common CALayer properties, so we might not
- * to add one more variable for CAMetalLayer. Also have
- * to verify REMOTE_LAYER use case, if it is need then we
- * need to add CAMetalLayer specific logic.
- */
+
 // Note: Must be called on main (AppKit) thread only
 - (id) initWithRect: (NSRect) rect
        platformView: (jobject) cPlatformView

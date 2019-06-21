@@ -29,7 +29,6 @@
 
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 #import <QuartzCore/CATransaction.h>
-#import <QuartzCore/CAMetalLayer.h>
 
 @implementation AWTSurfaceLayers
 
@@ -70,10 +69,8 @@
 
 // Updates back buffer size of the layer if it's an OpenGL layer
 // including all OpenGL sublayers
-// TODO : Added check for CAMetalLayer also but this needs to be verified.
 + (void) repaintLayersRecursively:(CALayer*)aLayer {
-    if ([aLayer isKindOfClass:[CAOpenGLLayer class]] ||
-        [aLayer isKindOfClass:[CAMetalLayer class]]) {
+    if ([aLayer isKindOfClass:[CAOpenGLLayer class]]) {
         [aLayer setNeedsDisplay];
     }
     for(CALayer *child in aLayer.sublayers) {
