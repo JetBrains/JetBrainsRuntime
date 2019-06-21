@@ -700,11 +700,15 @@ void JVMCINMethodData::add_failed_speculation(nmethod* nm, jlong speculation) {
   FailedSpeculation::add_failed_speculation(nm, _failed_speculations, data, length);
 }
 
-oop JVMCINMethodData::get_nmethod_mirror(nmethod* nm) {
+oop JVMCINMethodData::get_nmethod_mirror(nmethod* nm, bool phantom_ref) {
   if (_nmethod_mirror_index == -1) {
     return NULL;
   }
-  return nm->oop_at(_nmethod_mirror_index);
+  if (phantom_ref) {
+    return nm->oop_at_phantom(_nmethod_mirror_index);
+  } else {
+    return nm->oop_at(_nmethod_mirror_index);
+  }
 }
 
 void JVMCINMethodData::set_nmethod_mirror(nmethod* nm, oop new_mirror) {
@@ -728,7 +732,7 @@ void JVMCINMethodData::clear_nmethod_mirror(nmethod* nm) {
 }
 
 void JVMCINMethodData::invalidate_nmethod_mirror(nmethod* nm) {
-  oop nmethod_mirror = get_nmethod_mirror(nm);
+  oop nmethod_mirror = get_nmethod_mirror(nm, /* phantom_ref */ true);
   if (nmethod_mirror == NULL) {
     return;
   }
@@ -1339,6 +1343,18 @@ JVMCI::CodeInstallResult JVMCIRuntime::validate_compile_task_dependencies(Depend
   return JVMCI::dependencies_invalid;
 }
 
+// Reports a pending exception and exits the VM.
+static void fatal_exception_in_compile(JVMCIEnv* JVMCIENV, JavaThread* thread, const char* msg) {
+  // Only report a fatal JVMCI compilation exception once
+  static volatile int report_init_failure = 0;
+  if (!report_init_failure && Atomic::cmpxchg(1, &report_init_failure, 0) == 0) {
+      tty->print_cr("%s:", msg);
+      JVMCIENV->describe_pending_exception(true);
+  }
+  JVMCIENV->clear_pending_exception();
+  before_exit(thread);
+  vm_exit(-1);
+}
 
 void JVMCIRuntime::compile_method(JVMCIEnv* JVMCIENV, JVMCICompiler* compiler, const methodHandle& method, int entry_bci) {
   JVMCI_EXCEPTION_CONTEXT
@@ -1360,9 +1376,7 @@ void JVMCIRuntime::compile_method(JVMCIEnv* JVMCIENV, JVMCICompiler* compiler, c
   HandleMark hm;
   JVMCIObject receiver = get_HotSpotJVMCIRuntime(JVMCIENV);
   if (JVMCIENV->has_pending_exception()) {
-    JVMCIENV->describe_pending_exception(true);
-    compile_state->set_failure(false, "exception getting HotSpotJVMCIRuntime object");
-    return;
+    fatal_exception_in_compile(JVMCIENV, thread, "Exception during HotSpotJVMCIRuntime initialization");
   }
   JVMCIObject jvmci_method = JVMCIENV->get_jvmci_method(method, JVMCIENV);
   if (JVMCIENV->has_pending_exception()) {
@@ -1397,16 +1411,7 @@ void JVMCIRuntime::compile_method(JVMCIEnv* JVMCIENV, JVMCICompiler* compiler, c
   } else {
     // An uncaught exception here implies failure during compiler initialization.
     // The only sensible thing to do here is to exit the VM.
-
-    // Only report initialization failure once
-    static volatile int report_init_failure = 0;
-    if (!report_init_failure && Atomic::cmpxchg(1, &report_init_failure, 0) == 0) {
-        tty->print_cr("Exception during JVMCI compiler initialization:");
-        JVMCIENV->describe_pending_exception(true);
-    }
-    JVMCIENV->clear_pending_exception();
-    before_exit((JavaThread*) THREAD);
-    vm_exit(-1);
+    fatal_exception_in_compile(JVMCIENV, thread, "Exception during JVMCI compiler initialization");
   }
   if (compiler->is_bootstrapping()) {
     compiler->set_bootstrap_compilation_request_handled();
@@ -1529,7 +1534,7 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
         JVMCINMethodData* data = nm->jvmci_nmethod_data();
         assert(data != NULL, "must be");
         if (install_default) {
-          assert(!nmethod_mirror.is_hotspot() || data->get_nmethod_mirror(nm) == NULL, "must be");
+          assert(!nmethod_mirror.is_hotspot() || data->get_nmethod_mirror(nm, /* phantom_ref */ false) == NULL, "must be");
           if (entry_bci == InvocationEntryBci) {
             if (TieredCompilation) {
               // If there is an old version we're done with it
@@ -1564,7 +1569,7 @@ JVMCI::CodeInstallResult JVMCIRuntime::register_method(JVMCIEnv* JVMCIENV,
             InstanceKlass::cast(method->method_holder())->add_osr_nmethod(nm);
           }
         } else {
-          assert(!nmethod_mirror.is_hotspot() || data->get_nmethod_mirror(nm) == HotSpotJVMCI::resolve(nmethod_mirror), "must be");
+          assert(!nmethod_mirror.is_hotspot() || data->get_nmethod_mirror(nm, /* phantom_ref */ false) == HotSpotJVMCI::resolve(nmethod_mirror), "must be");
         }
         nm->make_in_use();
       }
