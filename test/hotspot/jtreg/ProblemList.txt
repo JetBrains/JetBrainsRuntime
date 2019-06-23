@@ -51,9 +51,6 @@ compiler/tiered/LevelTransitionTest.java 8067651 generic-all
 compiler/types/correctness/CorrectnessTest.java 8066173 generic-all
 compiler/types/correctness/OffTest.java 8066173 generic-all
 
-compiler/uncommontrap/DeoptReallocFailure.java nobug generic-all causes Out of memory: Java heap space affects run status
-compiler/uncommontrap/TestDeoptOOM.java        nobug generic-all causes Out of memory: Java heap space affects run status
-
 compiler/c2/Test6852078.java 8194310 generic-all
 
 applications/ctw/modules/java_desktop.java 8189604 windows-all
