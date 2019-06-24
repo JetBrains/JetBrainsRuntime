@@ -209,6 +209,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     boolean loadedAllFontFiles = false;
     HashMap<String,String> jreFontMap;
     HashSet<String> jreBundledFontFiles;
+    HashSet<String> ideaFontSet;
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
@@ -242,6 +243,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private static final FilenameFilter ttFilter = new TTFilter();
     private static final FilenameFilter t1Filter = new T1Filter();
 
+    private FilenameFilter ttFilterIdea;
+    private FilenameFilter ttFilterJre;
     private Font[] allFonts;
     private String[] allFamilies; // cache for default locale only
     private Locale lastDefaultLocale;
@@ -340,21 +343,26 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("Roboto light", "Roboto-Light.ttf");
         jreFontMap.put("Roboto thin", "Roboto-Thin.ttf");
 
-        jreFontMap.put("JetBrains Mono 520 Bold", "JetBrainsMono520-Bold.ttf");
-        jreFontMap.put("JetBrains Mono 520 Regular", "JetBrainsMono520-Regular.ttf");
-        jreFontMap.put("JetBrains Mono 520 Thin", "JetBrainsMono520-Thin.ttf");
-        jreFontMap.put("JetBrains Mono Expanded Bold", "JetBrainsMonoExpanded-Bold.ttf");
-        jreFontMap.put("JetBrains Mono Expanded Regular", "JetBrainsMonoExpanded-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Expanded Thin", "JetBrainsMonoExpanded-Thin.ttf");
-        jreFontMap.put("JetBrains Mono Expanded 520 Bold", "JetBrainsMonoExpanded520-Bold.ttf");
-        jreFontMap.put("JetBrains Mono Expanded 520 Regular", "JetBrainsMonoExpanded520-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Expanded 520 Thin", "JetBrainsMonoExpanded520-Thin.ttf");
-        jreFontMap.put("JetBrains Mono Bold", "JetBrainsMono-Bold.ttf");
-        jreFontMap.put("JetBrains Mono Regular", "JetBrainsMono-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Italic", "JetBrainsMono-Italic.ttf");
-        jreFontMap.put("JetBrains Mono Bold Italic", "JetBrainsMono-BoldItalic.ttf");
+        ideaFontSet = new HashSet<>();
+        ideaFontSet.add("FiraCode-Bold.ttf");
+        ideaFontSet.add("FiraCode-Light.ttf");
+        ideaFontSet.add("FiraCode-Medium.ttf");
+        ideaFontSet.add("FiraCode-Retina.ttf");
+        ideaFontSet.add("FiraCode-Regular.ttf");
+        ideaFontSet.add("SourceCodePro-BoldIt.ttf");
+        ideaFontSet.add("SourceCodePro-Regular.ttf");
+        ideaFontSet.add("SourceCodePro-Bold.ttf");
+        ideaFontSet.add("SourceCodePro-It.ttf");
+        ideaFontSet.add("Inconsolata.ttf");
+        ideaFontSet.add("Roboto-Light.ttf");
+        ideaFontSet.add("Roboto-Thin.ttf");
 
-        jreBundledFontFiles.addAll(jreFontMap.values());
+        ttFilterIdea = new TTFilterIdea(true, ideaFontSet);
+        ttFilterJre = new TTFilterIdea(false, ideaFontSet);
+
+        for (String ffile : jreFontMap.values()) {
+            jreBundledFontFiles.add(ffile);
+        }
     }
 
     static {
@@ -435,8 +443,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
             /* Linux font configuration uses these fonts */
             registerFontDir(jreFontDirName);
         }
-        registerFontsInDir(jreFontDirName, true, Font2D.JRE_RANK,
-                           true, false);
+        registerJREFonts();
 
         /* Create the font configuration and get any font path
          * that might be specified.
@@ -3044,7 +3051,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     /* Called to register fall back fonts */
     public void registerFontsInDir(String dirName) {
-        registerFontsInDir(dirName, true, Font2D.JRE_RANK, true, false);
+        registerJREFonts();
     }
 
     // MACOSX begin -- need to access this in subclass
@@ -3063,6 +3070,18 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
                     fontRank==Font2D.UNKNOWN_RANK ?
                     Font2D.TYPE1_RANK : fontRank,
                     defer, resolveSymLinks);
+    }
+
+    protected void registerJREFonts() {
+        File pathFile = new File(jreFontDirName);
+        addDirFonts(jreFontDirName, pathFile, ttFilterIdea,
+                    FONTFORMAT_TRUETYPE, true,
+                    Font2D.IDEA_RANK,
+                    true, false);
+        addDirFonts(jreFontDirName, pathFile, ttFilterJre,
+                FONTFORMAT_TRUETYPE, true,
+                Font2D.JRE_RANK,
+                true, false);
     }
 
     protected void registerFontDir(String path) {
