@@ -313,9 +313,95 @@ MTLTR_DrawLCDGlyphViaCache(MTLContext *mtlc, MTLSDOps *dstOps,
 
 static jboolean
 MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
-                                GlyphInfo *ginfo, jint x, jint y)
+                                GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
 {
-    //TODO
+    jint tw, th;
+    jint sx, sy, sw, sh;
+    jfloat dx1, dy1, dx2, dy2;
+    jint x0;
+    jint w = ginfo->width;
+    jint h = ginfo->height;
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
+    /*
+     * TODO : We dont have vertex cache implementation or
+     * mask cache as we have in OpenGL. That needs to be done.
+     */
+    if (glyphMode != MODE_NO_CACHE_GRAY) {
+        glyphMode = MODE_NO_CACHE_GRAY;
+    }
+
+    x0 = x;
+    tw = MTLVC_MASK_CACHE_TILE_WIDTH;
+    th = MTLVC_MASK_CACHE_TILE_HEIGHT;
+
+    for (sy = 0; sy < h; sy += th, y += th) {
+        x = x0;
+        sh = ((sy + th) > h) ? (h - sy) : th;
+
+        for (sx = 0; sx < w; sx += tw, x += tw) {
+            sw = ((sx + tw) > w) ? (w - sx) : tw;
+
+            printf("sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d\n", sx, sy, x, y, sw, sh, w);fflush(stdout);
+            dx1 = (jfloat)x;
+            dy1 = (jfloat)y;
+            dx2 = x + sw;
+            dy2 = y + sh;
+            printf("Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f \n", dx1, dy1, dx2, dy2);fflush(stdout);
+            id<MTLTexture> texture = [mtlc.texturePool getTexture:sw height:sh format:MTLPixelFormatA8Unorm];
+            NSUInteger bytesPerRow = 1 * ginfo->width;
+
+            MTLRegion region = {
+                { 0, 0, 0 },                   // MTLOrigin
+                {ginfo->width, ginfo->height, 1} // MTLSize
+            };
+            [texture replaceRegion:region
+                     mipmapLevel:0
+                     withBytes:ginfo->image
+                     bytesPerRow:bytesPerRow];
+            id<MTLRenderCommandEncoder> encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
+            struct TxtVertex txQuadVerts[6];
+            txQuadVerts[0].position[0] = dx1;
+            txQuadVerts[0].position[1] = dy1;
+            txQuadVerts[0].position[2] = 0;
+            txQuadVerts[0].txtpos[0]   = 0;
+            txQuadVerts[0].txtpos[1]   = 0;
+
+            txQuadVerts[1].position[0] = dx2;
+            txQuadVerts[1].position[1] = dy1;
+            txQuadVerts[1].position[2] = 0;
+            txQuadVerts[1].txtpos[0]   = 1;
+            txQuadVerts[1].txtpos[1]   = 0;
+
+            txQuadVerts[2].position[0] = dx2;
+            txQuadVerts[2].position[1] = dy2;
+            txQuadVerts[2].position[2] = 0;
+            txQuadVerts[2].txtpos[0]   = 1;
+            txQuadVerts[2].txtpos[1]   = 1;
+
+            txQuadVerts[3].position[0] = dx2;
+            txQuadVerts[3].position[1] = dy2;
+            txQuadVerts[3].position[2] = 0;
+            txQuadVerts[3].txtpos[0]   = 1;
+            txQuadVerts[3].txtpos[1]   = 1;
+
+            txQuadVerts[4].position[0] = dx1;
+            txQuadVerts[4].position[1] = dy2;
+            txQuadVerts[4].position[2] = 0;
+            txQuadVerts[4].txtpos[0]   = 0;
+            txQuadVerts[4].txtpos[1]   = 1;
+
+            txQuadVerts[5].position[0] = dx1;
+            txQuadVerts[5].position[1] = dy1;
+            txQuadVerts[5].position[2] = 0;
+            txQuadVerts[5].txtpos[0]   = 0;
+            txQuadVerts[5].txtpos[1]   = 0;
+            [encoder setVertexBytes:txQuadVerts length:sizeof(txQuadVerts) atIndex:MeshVertexBuffer];
+            [encoder setFragmentTexture:texture atIndex: 0];
+            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+            [encoder endEncoding];
+        }
+    }
     return JNI_TRUE;
 }
 
@@ -343,13 +429,73 @@ MTLTR_DrawColorGlyphNoCache(MTLContext *mtlc, GlyphInfo *ginfo, jint x, jint y)
     if ((r)<0) (l) = ((int)floor(r)); else (l) = ((int)(r))
 
 void
-MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, MTLSDOps *dstOps,
+MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                     jint totalGlyphs, jboolean usePositions,
                     jboolean subPixPos, jboolean rgbOrder, jint lcdContrast,
                     jfloat glyphListOrigX, jfloat glyphListOrigY,
                     unsigned char *images, unsigned char *positions)
 {
-    //TODO
+    int glyphCounter;
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList");
+
+    RETURN_IF_NULL(mtlc);
+    RETURN_IF_NULL(dstOps);
+    RETURN_IF_NULL(images);
+    if (usePositions) {
+        RETURN_IF_NULL(positions);
+    }
+
+    glyphMode = MODE_NOT_INITED;
+    isCachedDestValid = JNI_FALSE;
+
+    for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
+        J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
+        jint x, y;
+        jfloat glyphx, glyphy;
+        jboolean grayscale, ok;
+        GlyphInfo *ginfo = (GlyphInfo *)jlong_to_ptr(NEXT_LONG(images));
+
+        if (ginfo == NULL) {
+            // this shouldn't happen, but if it does we'll just break out...
+            J2dRlsTraceLn(J2D_TRACE_ERROR,
+                          "MTLTR_DrawGlyphList: glyph info is null");
+            break;
+        }
+
+        grayscale = (ginfo->rowBytes == ginfo->width);
+
+        if (usePositions) {
+            jfloat posx = NEXT_FLOAT(positions);
+            jfloat posy = NEXT_FLOAT(positions);
+            glyphx = glyphListOrigX + posx + ginfo->topLeftX;
+            glyphy = glyphListOrigY + posy + ginfo->topLeftY;
+            FLOOR_ASSIGN(x, glyphx);
+            FLOOR_ASSIGN(y, glyphy);
+        } else {
+            glyphx = glyphListOrigX + ginfo->topLeftX;
+            glyphy = glyphListOrigY + ginfo->topLeftY;
+            FLOOR_ASSIGN(x, glyphx);
+            FLOOR_ASSIGN(y, glyphy);
+            glyphListOrigX += ginfo->advanceX;
+            glyphListOrigY += ginfo->advanceY;
+        }
+
+        if (ginfo->image == NULL) {
+            continue;
+        }
+
+        //TODO : Right now we have initial texture mapping logic
+        // as we implement LCD, cache usage add new selection condition.
+        J2dTraceLn(J2D_TRACE_INFO, "Grayscale no cache");
+        ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
+
+        if (!ok) {
+            break;
+        }
+    }
+
+    // TODO : Disable glyph state.
 }
 
 JNIEXPORT void JNICALL
@@ -360,7 +506,46 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
      jfloat glyphListOrigX, jfloat glyphListOrigY,
      jlongArray imgArray, jfloatArray posArray)
 {
-    //TODO
+    unsigned char *images;
+
+    J2dTraceLn(J2D_TRACE_INFO, "MTLTextRenderer_drawGlyphList");
+
+    images = (unsigned char *)
+        (*env)->GetPrimitiveArrayCritical(env, imgArray, NULL);
+    if (images != NULL) {
+        MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
+        BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+
+        if (usePositions) {
+            unsigned char *positions = (unsigned char *)
+                (*env)->GetPrimitiveArrayCritical(env, posArray, NULL);
+            if (positions != NULL) {
+                MTLTR_DrawGlyphList(env, mtlc, dstOps,
+                                    numGlyphs, usePositions,
+                                    subPixPos, rgbOrder, lcdContrast,
+                                    glyphListOrigX, glyphListOrigY,
+                                    images, positions);
+                (*env)->ReleasePrimitiveArrayCritical(env, posArray,
+                                                      positions, JNI_ABORT);
+            }
+        } else {
+            MTLTR_DrawGlyphList(env, mtlc, dstOps,
+                                numGlyphs, usePositions,
+                                subPixPos, rgbOrder, lcdContrast,
+                                glyphListOrigX, glyphListOrigY,
+                                images, NULL);
+        }
+
+        // TODO : We are flushing serially as of now
+        // no need for below logic.
+        //if (mtlc != NULL) {
+            //RESET_PREVIOUS_OP();
+            //j2d_glFlush();
+        //}
+
+        (*env)->ReleasePrimitiveArrayCritical(env, imgArray,
+                                              images, JNI_ABORT);
+    }
 }
 
 #endif /* !HEADLESS */
