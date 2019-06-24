@@ -45,8 +45,8 @@
  */
 #define MTLTR_CACHE_WIDTH       1024
 #define MTLTR_CACHE_HEIGHT      1024
-#define MTLTR_CACHE_CELL_WIDTH  64
-#define MTLTR_CACHE_CELL_HEIGHT 64
+#define MTLTR_CACHE_CELL_WIDTH  32
+#define MTLTR_CACHE_CELL_HEIGHT 32
 
 /**
  * The current "glyph mode" state.  This variable is used to track the
@@ -107,7 +107,7 @@ static jboolean lastRGBOrder = JNI_TRUE;
  * MTLTR_DrawLCDGlyphNoCache() method.  See below for more on why we
  * restrict this value to a particular size.
  */
-#define MTLTR_NOCACHE_TILE_SIZE 64
+#define MTLTR_NOCACHE_TILE_SIZE 32
 
 /**
  * These constants define the size of the "cached destination" texture.
@@ -315,12 +315,9 @@ static jboolean
 MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
                                 GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
 {
-    jint tw, th;
-    jint sx, sy, sw, sh;
     jfloat dx1, dy1, dx2, dy2;
-    jint x0;
-    jint w = ginfo->width;
-    jint h = ginfo->height;
+    jint width = ginfo->width;
+    jint height = ginfo->height;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
     /*
@@ -331,77 +328,63 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
         glyphMode = MODE_NO_CACHE_GRAY;
     }
 
-    x0 = x;
-    tw = MTLVC_MASK_CACHE_TILE_WIDTH;
-    th = MTLVC_MASK_CACHE_TILE_HEIGHT;
+    dx1 = (jfloat)x;
+    dy1 = (jfloat)y;
+    dx2 = x + width;
+    dy2 = y + height;
+    printf("Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f \n", dx1, dy1, dx2, dy2);fflush(stdout);
+    id<MTLTexture> texture = [mtlc.texturePool getTexture:width height:height format:MTLPixelFormatA8Unorm];
+    NSUInteger bytesPerRow = 1 * width;
 
-    for (sy = 0; sy < h; sy += th, y += th) {
-        x = x0;
-        sh = ((sy + th) > h) ? (h - sy) : th;
+    MTLRegion region = {
+        { 0, 0, 0 },
+        {width, height, 1}
+    };
+    [texture replaceRegion:region
+             mipmapLevel:0
+             withBytes:ginfo->image
+             bytesPerRow:bytesPerRow];
+    id<MTLRenderCommandEncoder> encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
+    struct TxtVertex txQuadVerts[6];
+    txQuadVerts[0].position[0] = dx1;
+    txQuadVerts[0].position[1] = dy1;
+    txQuadVerts[0].position[2] = 0;
+    txQuadVerts[0].txtpos[0]   = 0;
+    txQuadVerts[0].txtpos[1]   = 0;
 
-        for (sx = 0; sx < w; sx += tw, x += tw) {
-            sw = ((sx + tw) > w) ? (w - sx) : tw;
+    txQuadVerts[1].position[0] = dx2;
+    txQuadVerts[1].position[1] = dy1;
+    txQuadVerts[1].position[2] = 0;
+    txQuadVerts[1].txtpos[0]   = 1;
+    txQuadVerts[1].txtpos[1]   = 0;
 
-            printf("sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d\n", sx, sy, x, y, sw, sh, w);fflush(stdout);
-            dx1 = (jfloat)x;
-            dy1 = (jfloat)y;
-            dx2 = x + sw;
-            dy2 = y + sh;
-            printf("Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f \n", dx1, dy1, dx2, dy2);fflush(stdout);
-            id<MTLTexture> texture = [mtlc.texturePool getTexture:sw height:sh format:MTLPixelFormatA8Unorm];
-            NSUInteger bytesPerRow = 1 * ginfo->width;
+    txQuadVerts[2].position[0] = dx2;
+    txQuadVerts[2].position[1] = dy2;
+    txQuadVerts[2].position[2] = 0;
+    txQuadVerts[2].txtpos[0]   = 1;
+    txQuadVerts[2].txtpos[1]   = 1;
 
-            MTLRegion region = {
-                { 0, 0, 0 },                   // MTLOrigin
-                {ginfo->width, ginfo->height, 1} // MTLSize
-            };
-            [texture replaceRegion:region
-                     mipmapLevel:0
-                     withBytes:ginfo->image
-                     bytesPerRow:bytesPerRow];
-            id<MTLRenderCommandEncoder> encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
-            struct TxtVertex txQuadVerts[6];
-            txQuadVerts[0].position[0] = dx1;
-            txQuadVerts[0].position[1] = dy1;
-            txQuadVerts[0].position[2] = 0;
-            txQuadVerts[0].txtpos[0]   = 0;
-            txQuadVerts[0].txtpos[1]   = 0;
+    txQuadVerts[3].position[0] = dx2;
+    txQuadVerts[3].position[1] = dy2;
+    txQuadVerts[3].position[2] = 0;
+    txQuadVerts[3].txtpos[0]   = 1;
+    txQuadVerts[3].txtpos[1]   = 1;
 
-            txQuadVerts[1].position[0] = dx2;
-            txQuadVerts[1].position[1] = dy1;
-            txQuadVerts[1].position[2] = 0;
-            txQuadVerts[1].txtpos[0]   = 1;
-            txQuadVerts[1].txtpos[1]   = 0;
+    txQuadVerts[4].position[0] = dx1;
+    txQuadVerts[4].position[1] = dy2;
+    txQuadVerts[4].position[2] = 0;
+    txQuadVerts[4].txtpos[0]   = 0;
+    txQuadVerts[4].txtpos[1]   = 1;
 
-            txQuadVerts[2].position[0] = dx2;
-            txQuadVerts[2].position[1] = dy2;
-            txQuadVerts[2].position[2] = 0;
-            txQuadVerts[2].txtpos[0]   = 1;
-            txQuadVerts[2].txtpos[1]   = 1;
-
-            txQuadVerts[3].position[0] = dx2;
-            txQuadVerts[3].position[1] = dy2;
-            txQuadVerts[3].position[2] = 0;
-            txQuadVerts[3].txtpos[0]   = 1;
-            txQuadVerts[3].txtpos[1]   = 1;
-
-            txQuadVerts[4].position[0] = dx1;
-            txQuadVerts[4].position[1] = dy2;
-            txQuadVerts[4].position[2] = 0;
-            txQuadVerts[4].txtpos[0]   = 0;
-            txQuadVerts[4].txtpos[1]   = 1;
-
-            txQuadVerts[5].position[0] = dx1;
-            txQuadVerts[5].position[1] = dy1;
-            txQuadVerts[5].position[2] = 0;
-            txQuadVerts[5].txtpos[0]   = 0;
-            txQuadVerts[5].txtpos[1]   = 0;
-            [encoder setVertexBytes:txQuadVerts length:sizeof(txQuadVerts) atIndex:MeshVertexBuffer];
-            [encoder setFragmentTexture:texture atIndex: 0];
-            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-            [encoder endEncoding];
-        }
-    }
+    txQuadVerts[5].position[0] = dx1;
+    txQuadVerts[5].position[1] = dy1;
+    txQuadVerts[5].position[2] = 0;
+    txQuadVerts[5].txtpos[0]   = 0;
+    txQuadVerts[5].txtpos[1]   = 0;
+    [encoder setVertexBytes:txQuadVerts length:sizeof(txQuadVerts) atIndex:MeshVertexBuffer];
+    [encoder setFragmentTexture:texture atIndex: 0];
+    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
+    [encoder endEncoding];
     return JNI_TRUE;
 }
 
@@ -487,8 +470,54 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
 
         //TODO : Right now we have initial texture mapping logic
         // as we implement LCD, cache usage add new selection condition.
-        J2dTraceLn(J2D_TRACE_INFO, "Grayscale no cache");
-        ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
+
+        if (grayscale) {
+            // grayscale or monochrome glyph data
+            if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
+                ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
+            {
+                J2dTraceLn(J2D_TRACE_INFO, "Grayscale cache");
+                //ok = MTLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y);
+                // TODO: Replace no cache with cache rendering
+                ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
+            } else {
+                J2dTraceLn(J2D_TRACE_INFO, "Grayscale no cache");
+                ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
+            }
+        } else {
+            // LCD-optimized glyph data
+            jint rowBytesOffset = 0;
+
+            if (subPixPos) {
+                jint frac = (jint)((glyphx - x) * 3);
+                if (frac != 0) {
+                    rowBytesOffset = 3 - frac;
+                    x += 1;
+                }
+            }
+
+            // TODO: Implement LCD text rendering
+            if (rowBytesOffset == 0 &&
+                ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
+                ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
+            {
+                J2dTraceLn(J2D_TRACE_INFO, "LCD cache");
+                /*ok = MTLTR_DrawLCDGlyphViaCache(oglc, dstOps,
+                                                ginfo, x, y,
+                                                glyphCounter, totalGlyphs,
+                                                rgbOrder, lcdContrast,
+                                                dstTextureID);*/
+                ok = JNI_FALSE;
+            } else {
+                J2dTraceLn(J2D_TRACE_INFO, "LCD no cache");
+                /*ok = MTLTR_DrawLCDGlyphNoCache(oglc, dstOps,
+                                               ginfo, x, y,
+                                               rowBytesOffset,
+                                               rgbOrder, lcdContrast,
+                                               dstTextureID);*/
+                ok = JNI_FALSE;
+            }
+        }
 
         if (!ok) {
             break;
