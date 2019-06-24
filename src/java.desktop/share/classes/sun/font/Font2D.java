@@ -55,6 +55,7 @@ public abstract class Font2D {
     public static final int NATIVE_RANK  = 5;
     public static final int UNKNOWN_RANK = 6;
     public static final int DEFAULT_RANK = 4;
+    public static final int IDEA_RANK    = 7;
 
     private static final String[] boldNames = {
         "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", };
