@@ -82,6 +82,7 @@ test {
 
 //  Enable Java2D logging (https://confluence.jetbrains.com/display/JRE/Java2D+Rendering+Logging)
 //  systemProperty "sun.java2d.trace", "log"
+//  systemProperty "sun.java2d.debugfonts", "warn"
 //  systemProperty "sun.java2d.trace", "log,pimpl"
 
     outputs.upToDateWhen { false }

@@ -24,41 +24,25 @@
 package performance.rendering;
 
 import org.junit.Test;
+import util.Renderer;
 
 import javax.imageio.ImageIO;
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class RenderPerfTest {
     private final static int N = 1000;
-    private final static float WIDTH = 800;
-    private final static float HEIGHT = 800;
     private final static float R = 25;
-    private final static int BW = 50;
-    private final static int BH = 50;
     private final static int COUNT = 300;
-    private final static int DELAY = 10;
-    private final static int RESOLUTION = 5;
-    private final static int COLOR_TOLERANCE = 10;
 
-
-    interface Renderable {
-        void render(Graphics2D g2d);
-        void update();
-    }
 
     static class Particles {
         private float[] bx;
@@ -384,113 +368,7 @@ public class RenderPerfTest {
         }
     }
 
-    class PerfMeter {
-
-        private int frame = 0;
-
-        private JPanel panel;
-
-        private long time;
-        private double execTime = 0;
-        private Color expColor = Color.RED;
-        AtomicBoolean waiting = new AtomicBoolean(false);
-
-        double exec(final Renderable renderable) throws Exception {
-            final CountDownLatch latch = new CountDownLatch(COUNT);
-            final CountDownLatch latchFrame = new CountDownLatch(1);
-
-            final JFrame f = new JFrame();
-            f.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    latchFrame.countDown();
-                }
-            });
-
-            SwingUtilities.invokeAndWait(new Runnable() {
-                @Override
-                public void run() {
-
-                    panel = new JPanel()
-                    {
-                        @Override
-                        protected void paintComponent(Graphics g) {
-
-                            super.paintComponent(g);
-                            time = System.nanoTime();
-                            Graphics2D g2d = (Graphics2D) g;
-                            renderable.render(g2d);
-                            g2d.setColor(expColor);
-                            g.fillRect(0, 0, BW, BH);
-                        }
-                    };
-
-                    panel.setPreferredSize(new Dimension((int)(WIDTH + BW), (int)(HEIGHT + BH)));
-                    panel.setBackground(Color.BLACK);
-                    f.add(panel);
-                    f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-                    f.pack();
-                    f.setVisible(true);
-                }
-            });
-            Robot robot = new Robot();
-
-            Timer timer = new Timer(DELAY, e -> {
-
-                if (waiting.compareAndSet(false, true)) {
-                    Color c = robot.getPixelColor(
-                            panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW / 2,
-                            panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BW / 2);
-                    if (isAlmostEqual(c, Color.BLUE)) {
-                        expColor = Color.RED;
-                    } else {
-                        expColor = Color.BLUE;
-                    }
-                    renderable.update();
-                    panel.getParent().repaint();
-
-                } else {
-                    while (!isAlmostEqual(
-                            robot.getPixelColor(
-                                    panel.getTopLevelAncestor().getX() + panel.getTopLevelAncestor().getInsets().left + BW/2,
-                                    panel.getTopLevelAncestor().getY() + panel.getTopLevelAncestor().getInsets().top + BH/2),
-                            expColor))
-                    {
-                        try {
-                            Thread.sleep(RESOLUTION);
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                    time = System.nanoTime() - time;
-                    execTime += time;
-                    frame++;
-                    waiting.set(false);
-                }
-
-                latch.countDown();
-            });
-            timer.start();
-            latch.await();
-            SwingUtilities.invokeAndWait(() -> {
-                timer.stop();
-                f.setVisible(false);
-                f.dispose();
-            });
-
-            latchFrame.await();
-            return 1e9/(execTime / frame);
-        }
-
-        private boolean isAlmostEqual(Color c1, Color c2) {
-            return Math.abs(c1.getRed() - c2.getRed()) < COLOR_TOLERANCE ||
-                    Math.abs(c1.getGreen() - c2.getGreen()) < COLOR_TOLERANCE ||
-                    Math.abs(c1.getBlue() - c2.getBlue()) < COLOR_TOLERANCE;
-
-        }
-    }
-
-    private static final Particles balls = new Particles(N, R, BW, BH, WIDTH, HEIGHT);
+    private static final Particles balls = new Particles(N, R, 0, 0, Renderer.WIDTH, Renderer.HEIGHT);
     private static final ParticleRenderer flatRenderer = new FlatParticleRenderer(N, R);
     private static final ParticleRenderer flatOvalRotRenderer = new FlatOvalRotParticleRenderer(N, R);
     private static final ParticleRenderer flatBoxRenderer = new FlatBoxParticleRenderer(N, R);
@@ -520,7 +398,7 @@ public class RenderPerfTest {
     @Test
     public void testFlatBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.Renderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, flatRenderer);
@@ -530,6 +408,11 @@ public class RenderPerfTest {
             public void update() {
                 balls.update();
             }
+
+            @Override
+            public void screenShot(BufferedImage result) {
+                System.err.println();
+            }
         });
 
         report("FlatOval", fps);
@@ -538,7 +421,7 @@ public class RenderPerfTest {
     @Test
     public void testFlatBoxBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, flatBoxRenderer);
@@ -556,7 +439,7 @@ public class RenderPerfTest {
     @Test
     public void testImgBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, imgRenderer);
@@ -574,7 +457,7 @@ public class RenderPerfTest {
     @Test
     public void testFlatBoxRotBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, flatBoxRotRenderer);
@@ -592,7 +475,7 @@ public class RenderPerfTest {
     @Test
     public void testFlatOvalRotBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, flatOvalRotRenderer);
@@ -610,7 +493,7 @@ public class RenderPerfTest {
     @Test
     public void testLinGradOvalRotBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, linGradOvalRotRenderer);
@@ -629,7 +512,7 @@ public class RenderPerfTest {
     @Test
     public void testWiredBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, wiredRenderer);
@@ -647,7 +530,7 @@ public class RenderPerfTest {
     @Test
     public void testWiredBoxBubbles() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, wiredBoxRenderer);
@@ -665,7 +548,7 @@ public class RenderPerfTest {
     @Test
     public void testLines() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, segRenderer);
@@ -683,7 +566,7 @@ public class RenderPerfTest {
     @Test
     public void testFlatQuad() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, flatQuadRenderer);
@@ -701,7 +584,7 @@ public class RenderPerfTest {
     @Test
     public void testWiredQuad() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, wiredQuadRenderer);
@@ -719,7 +602,7 @@ public class RenderPerfTest {
     @Test
     public void testTextBubblesNoAA() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, textRendererNoAA);
@@ -737,7 +620,7 @@ public class RenderPerfTest {
     @Test
     public void testTextBubblesLCD() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, textRendererLCD);
@@ -755,7 +638,7 @@ public class RenderPerfTest {
     @Test
     public void testTextBubblesGray() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, textRendererGray);
@@ -773,7 +656,7 @@ public class RenderPerfTest {
     @Test
     public void testWhiteTextBubblesNoAA() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, whiteTextRendererNoAA);
@@ -791,7 +674,7 @@ public class RenderPerfTest {
     @Test
     public void testWhiteTextBubblesLCD() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new util.Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, whiteTextRendererLCD);
@@ -809,7 +692,7 @@ public class RenderPerfTest {
     @Test
     public void testWhiteTextBubblesGray() throws Exception {
 
-        double fps = (new PerfMeter()).exec(new Renderable() {
+        double fps = (new Renderer(COUNT)).exec(new Renderer.DefaultRenderable() {
             @Override
             public void render(Graphics2D g2d) {
                 balls.render(g2d, whiteTextRendererGray);
