@@ -512,4 +512,23 @@ public final class AquaImageFactory {
     public static Color getSelectedControlColorUIResource() {
         return new SystemColorProxy(LWCToolkit.getAppleColor(LWCToolkit.SELECTED_CONTROL_TEXT_COLOR));
     }
+
+    private static class EmptyImage {
+        static final BufferedImage INSTANCE;
+        static {
+            INSTANCE = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+            Graphics g = INSTANCE.createGraphics();
+            g.setColor(new Color(0, 0, 0, 0));
+            g.fillRect(0, 0, 16, 16);
+            g.dispose();
+        }
+    }
+
+    // [tav] a workaround for JBR-1492
+    private static Image checkValidOrStub(Image image) {
+        if (image == null || image.getWidth(null) <= 0 || image.getHeight(null) <= 0) {
+            return EmptyImage.INSTANCE;
+        }
+        return image;
+    }
 }
