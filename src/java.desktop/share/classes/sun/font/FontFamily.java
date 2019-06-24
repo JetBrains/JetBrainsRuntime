@@ -219,7 +219,7 @@ public class FontFamily {
             case Font.PLAIN:
             case Font.ITALIC:
                 return (newWeight <= Font2D.FWEIGHT_NORMAL &&
-                        newWeight > currFont.getWeight());
+                        newWeight >= currFont.getWeight());
 
             case Font.BOLD:
             case Font.BOLD|Font.ITALIC:
