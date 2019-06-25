@@ -155,7 +155,7 @@ java/awt/print/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java             
 
 javax/swing/JComboBox/4199622/bug4199622.java                                               nobug windows-all
 javax/swing/JComboBox/4523758/bug4523758.java                                               nobug macosx-all,windows-all
-javax/swing/JDialog/Transparency/TransparencyTest.java                                      nobug macosx-all,windows-all
+javax/swing/JDialog/Transparency/TransparencyTest.java                                      nobug linux-all,macosx-all,windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java                nobug windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
 javax/swing/JFileChooser/6489130/bug6489130.java                                            nobug macosx-all
