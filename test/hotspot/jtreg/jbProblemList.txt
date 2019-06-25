@@ -61,9 +61,6 @@ applications/ctw/modules/jdk_jconsole.java 8189604 windows-all
 
 compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
-compiler/uncommontrap/DeoptReallocFailure.java nobug generic-all causes Out of memory: Java heap space affects run status
-compiler/uncommontrap/TestDeoptOOM.java        nobug generic-all causes Out of memory: Java heap space affects run status
-
 #############################################################################
 
 # :hotspot_gc
