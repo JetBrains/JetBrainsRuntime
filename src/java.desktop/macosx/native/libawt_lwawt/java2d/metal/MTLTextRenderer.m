@@ -321,8 +321,8 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
     /*
-     * TODO : We dont have vertex cache implementation or
-     * mask cache as we have in OpenGL. That needs to be done.
+     * TODO : Glyph caching is not used yet we need to
+     * implement it.
      */
     if (glyphMode != MODE_NO_CACHE_GRAY) {
         glyphMode = MODE_NO_CACHE_GRAY;
@@ -332,59 +332,10 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
     dy1 = (jfloat)y;
     dx2 = x + width;
     dy2 = y + height;
-    printf("Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f \n", dx1, dy1, dx2, dy2);fflush(stdout);
-    id<MTLTexture> texture = [mtlc.texturePool getTexture:width height:height format:MTLPixelFormatA8Unorm];
-    NSUInteger bytesPerRow = 1 * width;
-
-    MTLRegion region = {
-        { 0, 0, 0 },
-        {width, height, 1}
-    };
-    [texture replaceRegion:region
-             mipmapLevel:0
-             withBytes:ginfo->image
-             bytesPerRow:bytesPerRow];
-    id<MTLRenderCommandEncoder> encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
-    struct TxtVertex txQuadVerts[6];
-    txQuadVerts[0].position[0] = dx1;
-    txQuadVerts[0].position[1] = dy1;
-    txQuadVerts[0].position[2] = 0;
-    txQuadVerts[0].txtpos[0]   = 0;
-    txQuadVerts[0].txtpos[1]   = 0;
-
-    txQuadVerts[1].position[0] = dx2;
-    txQuadVerts[1].position[1] = dy1;
-    txQuadVerts[1].position[2] = 0;
-    txQuadVerts[1].txtpos[0]   = 1;
-    txQuadVerts[1].txtpos[1]   = 0;
-
-    txQuadVerts[2].position[0] = dx2;
-    txQuadVerts[2].position[1] = dy2;
-    txQuadVerts[2].position[2] = 0;
-    txQuadVerts[2].txtpos[0]   = 1;
-    txQuadVerts[2].txtpos[1]   = 1;
-
-    txQuadVerts[3].position[0] = dx2;
-    txQuadVerts[3].position[1] = dy2;
-    txQuadVerts[3].position[2] = 0;
-    txQuadVerts[3].txtpos[0]   = 1;
-    txQuadVerts[3].txtpos[1]   = 1;
-
-    txQuadVerts[4].position[0] = dx1;
-    txQuadVerts[4].position[1] = dy2;
-    txQuadVerts[4].position[2] = 0;
-    txQuadVerts[4].txtpos[0]   = 0;
-    txQuadVerts[4].txtpos[1]   = 1;
-
-    txQuadVerts[5].position[0] = dx1;
-    txQuadVerts[5].position[1] = dy1;
-    txQuadVerts[5].position[2] = 0;
-    txQuadVerts[5].txtpos[0]   = 0;
-    txQuadVerts[5].txtpos[1]   = 0;
-    [encoder setVertexBytes:txQuadVerts length:sizeof(txQuadVerts) atIndex:MeshVertexBuffer];
-    [encoder setFragmentTexture:texture atIndex: 0];
-    [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-    [encoder endEncoding];
+    J2dTraceLn4(J2D_TRACE_INFO,
+        "Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f", dx1, dy1, dx2, dy2);
+    MTLVertexCache_AddGlyphTexture(mtlc, width, height, ginfo);
+    MTLVertexCache_AddVertexTriangles(dx1, dy1, dx2, dy2);
     return JNI_TRUE;
 }
 
@@ -431,6 +382,9 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
 
     glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
+    J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
+
+    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -472,11 +426,12 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         // as we implement LCD, cache usage add new selection condition.
 
         if (grayscale) {
+            MTLVertexCache_InitVertexCache(mtlc);
             // grayscale or monochrome glyph data
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "Grayscale cache");
+                J2dTraceLn(J2D_TRACE_INFO, "Forced Grayscale no cache");
                 //ok = MTLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y);
                 // TODO: Replace no cache with cache rendering
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
@@ -523,6 +478,8 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             break;
         }
     }
+
+    MTLVertexCache_FlushVertexCache(mtlc);
 
     // TODO : Disable glyph state.
 }

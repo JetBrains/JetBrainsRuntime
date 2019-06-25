@@ -32,11 +32,11 @@
 
 #include "MTLPaints.h"
 #include "MTLVertexCache.h"
+#include "common.h"
 
 typedef struct _J2DVertex {
-    jfloat tx, ty;
-    jubyte r, g, b, a;
-    jfloat dx, dy;
+    float position[3];
+    float txtpos[2];
 } J2DVertex;
 
 static J2DVertex *vertexCache = NULL;
@@ -45,41 +45,65 @@ static jint vertexCacheIndex = 0;
 static jint maskCacheTexID = 0;
 static jint maskCacheIndex = 0;
 
-#define MTLVC_ADD_VERTEX(TX, TY, R, G, B, A, DX, DY) \
+id<MTLRenderCommandEncoder> encoder;
+id<MTLTexture> texturePool[MTLVC_MAX_TEX_INDEX];
+static jint texturePoolIndex = 0;
+
+#define MTLVC_ADD_VERTEX(TX, TY, DX, DY, DZ) \
     do { \
         J2DVertex *v = &vertexCache[vertexCacheIndex++]; \
-        v->tx = TX; \
-        v->ty = TY; \
-        v->r  = R;  \
-        v->g  = G;  \
-        v->b  = B;  \
-        v->a  = A;  \
-        v->dx = DX; \
-        v->dy = DY; \
+        v->txtpos[0] = TX; \
+        v->txtpos[1] = TY; \
+        v->position[0]= DX; \
+        v->position[1] = DY; \
+        v->position[2] = DZ; \
     } while (0)
 
-#define MTLVC_ADD_QUAD(TX1, TY1, TX2, TY2, DX1, DY1, DX2, DY2, R, G, B, A) \
+#define MTLVC_ADD_TRIANGLES(DX1, DY1, DX2, DY2) \
     do { \
-        MTLVC_ADD_VERTEX(TX1, TY1, R, G, B, A, DX1, DY1); \
-        MTLVC_ADD_VERTEX(TX2, TY1, R, G, B, A, DX2, DY1); \
-        MTLVC_ADD_VERTEX(TX2, TY2, R, G, B, A, DX2, DY2); \
-        MTLVC_ADD_VERTEX(TX1, TY2, R, G, B, A, DX1, DY2); \
+        MTLVC_ADD_VERTEX(0, 0, DX1, DY1, 0); \
+        MTLVC_ADD_VERTEX(1, 0, DX2, DY1, 0); \
+        MTLVC_ADD_VERTEX(1, 1, DX2, DY2, 0); \
+        MTLVC_ADD_VERTEX(1, 1, DX2, DY2, 0); \
+        MTLVC_ADD_VERTEX(0, 1, DX1, DY2, 0); \
+        MTLVC_ADD_VERTEX(0, 0, DX1, DY1, 0); \
     } while (0)
 
 jboolean
 MTLVertexCache_InitVertexCache(MTLContext *mtlc)
 {
-    //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache");
+
+    if (vertexCache == NULL) {
+        vertexCache = (J2DVertex *)malloc(MTLVC_MAX_INDEX * sizeof(J2DVertex));
+        if (vertexCache == NULL) {
+            return JNI_FALSE;
+        }
+    }
+
     return JNI_TRUE;
 }
 
 void
-MTLVertexCache_FlushVertexCache()
+MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
 {
-    // TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
+
+    if (vertexCacheIndex > 0 ||
+        texturePoolIndex > 0) {
+        id<MTLBuffer>vertexBuffer = [mtlc.device newBufferWithBytes:vertexCache
+                                                 length:vertexCacheIndex * sizeof(J2DVertex)
+                                                 options:MTLResourceOptionCPUCacheModeDefault];
+        [encoder setVertexBuffer:vertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        for (int i = 0; i < texturePoolIndex; i++) {
+            J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
+            [encoder setFragmentTexture:texturePool[i] atIndex: 0];
+            [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
+        }
+        [encoder endEncoding];
+    }
     vertexCacheIndex = 0;
+    texturePoolIndex = 0;
 }
 
 /**
@@ -146,22 +170,43 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 }
 
 void
-MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
-                           jint srcx, jint srcy,
-                           jint dstx, jint dsty,
-                           jint width, jint height,
-                           jint maskscan, void *mask)
+MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
+                                  jfloat dx2, jfloat dy2)
 {
-    // TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddVertexTriangles");
+    MTLVC_ADD_TRIANGLES(dx1, dy1, dx2, dy2);
 }
 
 void
-MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
-                            jfloat tx1, jfloat ty1, jfloat tx2, jfloat ty2,
-                            jfloat dx1, jfloat dy1, jfloat dx2, jfloat dy2)
+MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
+                               jint width, jint height,
+                               GlyphInfo *ginfo)
 {
-    // TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphQuad");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture");
+    if (texturePoolIndex >= MTLVC_MAX_TEX_INDEX ||
+        vertexCacheIndex >= MTLVC_MAX_INDEX)
+    {
+        MTLVertexCache_FlushVertexCache(mtlc);
+    }
+    id<MTLTexture> texture = [mtlc.texturePool getTexture:width height:height format:MTLPixelFormatA8Unorm];
+    NSUInteger bytesPerRow = 1 * width;
+
+    MTLRegion region = {
+        { 0, 0, 0 },
+        {width, height, 1}
+    };
+    [texture replaceRegion:region
+             mipmapLevel:0
+             withBytes:ginfo->image
+             bytesPerRow:bytesPerRow];
+    texturePool[texturePoolIndex] = texture;
+    texturePoolIndex++;
+}
+
+void
+MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
+    encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
 }
 
 #endif /* !HEADLESS */

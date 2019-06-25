@@ -25,14 +25,19 @@
 
 #ifndef MTLVertexCache_h_Included
 #define MTLVertexCache_h_Included
-
 #include "j2d_md.h"
 #include "MTLContext.h"
+#include "fontscalerdefs.h"
 
 /**
  * Constants that control the size of the vertex cache.
  */
-#define MTLVC_MAX_INDEX         1024
+#define MTLVC_MAX_INDEX         960
+
+/**
+ * Constants that control the size of the texture pool.
+ */
+#define MTLVC_MAX_TEX_INDEX     32
 
 /**
  * Constants that control the size of the texture tile cache used for
@@ -66,7 +71,7 @@
  * Exported methods.
  */
 jboolean MTLVertexCache_InitVertexCache(MTLContext *mtlc);
-void MTLVertexCache_FlushVertexCache();
+void MTLVertexCache_FlushVertexCache(MTLContext *mtlc);
 void MTLVertexCache_RestoreColorState(MTLContext *mtlc);
 
 void MTLVertexCache_EnableMaskCache(MTLContext *mtlc);
@@ -77,10 +82,11 @@ void MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                                 jint width, jint height,
                                 jint maskscan, void *mask);
 
-void MTLVertexCache_AddGlyphQuad(MTLContext *mtlc,
-                                 jfloat tx1, jfloat ty1,
-                                 jfloat tx2, jfloat ty2,
-                                 jfloat dx1, jfloat dy1,
-                                 jfloat dx2, jfloat dy2);
+void MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
+                                    jint width, jint height,
+                                    GlyphInfo *ginfo);
+void MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
+                                       jfloat dx2, jfloat dy2);
+void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps);
 
 #endif /* MTLVertexCache_h_Included */
