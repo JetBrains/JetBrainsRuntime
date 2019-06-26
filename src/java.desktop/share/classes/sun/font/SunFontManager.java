@@ -3008,7 +3008,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     /* Called to register fall back fonts */
     public void registerFontsInDir(String dirName) {
-        registerJREFonts();
+        registerFontsInDir(dirName, true, Font2D.JRE_RANK, true, false);
     }
 
     // MACOSX begin -- need to access this in subclass
