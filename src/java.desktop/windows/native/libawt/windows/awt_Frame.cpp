@@ -1680,7 +1680,16 @@ void GetSysInsets(RECT* insets, AwtFrame* pFrame) {
         return;
     }
     Devices::InstanceAccess devices;
-    AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(pFrame->GetHWnd()));
+    HMONITOR hmon;
+    if (::IsZoomed(pFrame->GetHWnd())) {
+        WINDOWPLACEMENT wp;
+        ::GetWindowPlacement(pFrame->GetHWnd(), &wp);
+        hmon = ::MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+    } else {
+        // this method can return wrong monitor in a zoomed state in multi-dpi env
+        hmon = ::MonitorFromWindow(pFrame->GetHWnd(), MONITOR_DEFAULTTONEAREST);
+    }
+    AwtWin32GraphicsDevice* device = devices->GetDevice(AwtWin32GraphicsDevice::GetScreenFromHMONITOR(hmon));
     int dpi = device ? device->GetScaleX() * 96 : 96;
 
     // GetSystemMetricsForDpi gives incorrect values, use AdjustWindowRectExForDpi for border metrics instead
