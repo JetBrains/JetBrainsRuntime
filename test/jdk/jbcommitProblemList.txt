@@ -176,7 +176,6 @@ javax/swing/JMenu/6538132/bug6538132.java                                       
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                                  nobug macosx-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                            nobug windows-all
 javax/swing/JOptionPane/6428694/bug6428694.java                                             nobug windows-all
-javax/swing/JPopupMenu/4458079/bug4458079.java                                              nobug windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
