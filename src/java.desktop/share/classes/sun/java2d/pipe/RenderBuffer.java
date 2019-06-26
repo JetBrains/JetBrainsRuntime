@@ -115,8 +115,6 @@ public class RenderBuffer {
     }
 
     public final void clear() {
-
-        System.out.println("RenderBuffer : clear()");
         curAddress = baseAddress;
     }
 
@@ -193,8 +191,6 @@ public class RenderBuffer {
         // assert (baseAddress + pos % SIZEOF_INT == 0);
         unsafe.putInt(baseAddress + pos, x);
 
-        System.out.println("RenderBuffer : putInt() --- added :"+x);
-
         return this;
     }
 
@@ -202,8 +198,6 @@ public class RenderBuffer {
         // assert (position() % SIZEOF_INT == 0);
         unsafe.putInt(curAddress, x);
         curAddress += SIZEOF_INT;
-
-        System.out.println("RenderBuffer : putInt() --- added :"+x);
 
         return this;
     }

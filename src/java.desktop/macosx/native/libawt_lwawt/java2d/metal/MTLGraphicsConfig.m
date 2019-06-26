@@ -28,6 +28,7 @@
 #import "MTLGraphicsConfig.h"
 #import "MTLSurfaceData.h"
 #import "ThreadUtilities.h"
+#import "awt.h"
 
 #import <stdlib.h>
 #import <string.h>
