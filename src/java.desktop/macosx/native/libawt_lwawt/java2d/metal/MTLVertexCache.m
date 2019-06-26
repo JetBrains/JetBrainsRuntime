@@ -70,7 +70,7 @@ static jint texturePoolIndex = 0;
     } while (0)
 
 jboolean
-MTLVertexCache_InitVertexCache(MTLContext *mtlc)
+MTLVertexCache_InitVertexCache()
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache");
 
@@ -180,13 +180,15 @@ MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
 void
 MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
                                jint width, jint height,
-                               GlyphInfo *ginfo)
+                               GlyphInfo *ginfo,
+                               BMTLSDOps *dstOps)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture");
     if (texturePoolIndex >= MTLVC_MAX_TEX_INDEX ||
         vertexCacheIndex >= MTLVC_MAX_INDEX)
     {
         MTLVertexCache_FlushVertexCache(mtlc);
+        MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
     }
     id<MTLTexture> texture = [mtlc.texturePool getTexture:width height:height format:MTLPixelFormatA8Unorm];
     NSUInteger bytesPerRow = 1 * width;

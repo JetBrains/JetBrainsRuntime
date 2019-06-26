@@ -32,7 +32,7 @@
 /**
  * Constants that control the size of the vertex cache.
  */
-#define MTLVC_MAX_INDEX         960
+#define MTLVC_MAX_INDEX         192
 
 /**
  * Constants that control the size of the texture pool.
@@ -70,7 +70,7 @@
 /**
  * Exported methods.
  */
-jboolean MTLVertexCache_InitVertexCache(MTLContext *mtlc);
+jboolean MTLVertexCache_InitVertexCache();
 void MTLVertexCache_FlushVertexCache(MTLContext *mtlc);
 void MTLVertexCache_RestoreColorState(MTLContext *mtlc);
 
@@ -84,7 +84,8 @@ void MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
 
 void MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
                                     jint width, jint height,
-                                    GlyphInfo *ginfo);
+                                    GlyphInfo *ginfo,
+                                    BMTLSDOps *dstOps);
 void MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
                                        jfloat dx2, jfloat dy2);
 void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps);
