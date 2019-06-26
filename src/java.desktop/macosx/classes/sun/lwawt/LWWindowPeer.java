@@ -1262,9 +1262,10 @@ public class LWWindowPeer
             return false;
         }
 
-//        if (platformWindow.rejectFocusRequest(cause)) {
-//            return false;
-//        }
+        if (platformWindow.rejectFocusRequest(cause)) {
+            rejectFocusRequest.run();
+            return false;
+        }
 
         AppContext targetAppContext = AWTAccessor.getComponentAccessor().getAppContext(getTarget());
         KeyboardFocusManager kfm = AWTAccessor.getKeyboardFocusManagerAccessor()
@@ -1307,7 +1308,7 @@ public class LWWindowPeer
 
         // In case the toplevel is active but not focused, change focus directly,
         // as requesting native focus on it will not have effect.
-        } else if (getTarget() == currentActive && !getTarget().hasFocus()) {
+        } else if (getTarget() == currentActive && !getTarget().isFocused()) {
             changeFocusedWindow(true, opposite, lightweightRequest);
             return true;
         }
