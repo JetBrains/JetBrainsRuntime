@@ -58,8 +58,6 @@ java/awt/List/ItemEventTest/ItemEventTest.java                                  
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java                          nobug macosx-all,windows-all
 java/awt/List/ListGarbageCollectionTest/AwtListGarbageCollectionTest.java                   nobug linux-all
 java/awt/Menu/NullMenuLabelTest/NullMenuLabelTest.java                                      nobug linux-all
-java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                           nobug macosx-all,windows-all
-java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                         nobug macosx-all,windows-all
 java/awt/Mixing/HWDisappear.java                                                            nobug macosx-all,windows-all
 java/awt/Mixing/JButtonInGlassPane.java                                                     nobug macosx-all,linux-all,windows-all
 java/awt/Mixing/LWComboBox.java                                                             nobug macosx-all,linux-all,windows-all
@@ -70,6 +68,7 @@ java/awt/Mixing/Validating.java                                                 
 java/awt/Modal/LWModalTest/LWModalTest.java                                                 nobug macosx-all,windows-all
 java/awt/Modal/ModalDialogOrderingTest/ModalDialogOrderingTest.java                         nobug macosx-all,windows-all
 java/awt/Modal/ToBack/ToBackModeless6Test.java                                              nobug macosx-all,linux-all,windows-all
+java/awt/Mouse/MaximizedFrameTest/MaximizedFrameTest.java                                   nobug macosx-all,linux-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                                     nobug macosx-all,windows-all,linux-all
 java/awt/Mouse/MouseModifiersUnitTest/MouseModifiersUnitTest_Extra.java                     nobug macosx-all,linux-all,windows-all
 java/awt/Mouse/MouseWheelAbsXY/MouseWheelAbsXY.java                                         nobug macosx-all,windows-all
@@ -153,7 +152,8 @@ java/awt/keyboard/AltPlusNumberKeyCombinationsTest/AltPlusNumberKeyCombinationsT
 java/awt/print/PaintSetEnabledDeadlock/PaintSetEnabledDeadlock.java                         nobug windows-all,linux-all
 
 javax/swing/JComboBox/4199622/bug4199622.java                                               nobug windows-all
-javax/swing/JComboBox/4523758/bug4523758.java                                               nobug macosx-all,windows-all
+javax/swing/JComboBox/4523758/bug4523758.java                                               nobug macosx-all,windows-all,linux-all
+javax/swing/JComponent/6989617/bug6989617.java                                              nobug macosx-all
 javax/swing/JDialog/Transparency/TransparencyTest.java                                      nobug linux-all,macosx-all,windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest.java                nobug windows-all
 javax/swing/JEditorPane/JEditorPaneGCSwitchTest/JEditorPaneGCSwitchTest_i18n.java           nobug windows-all
@@ -175,7 +175,6 @@ javax/swing/JMenu/6538132/bug6538132.java                                       
 javax/swing/JMenuItem/8139169/ScreenMenuBarInputTwice.java                                  nobug macosx-all
 javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                            nobug windows-all
 javax/swing/JOptionPane/6428694/bug6428694.java                                             nobug windows-all
-javax/swing/JPopupMenu/4458079/bug4458079.java                                              nobug windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
@@ -185,6 +184,7 @@ javax/swing/JScrollBar/7163696/Test7163696.java                                 
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
 javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all
+javax/swing/JTabbedPane/7170310/bug7170310.java                                             nobug macosx-all,linux-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java                                      nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java                                                nobug macosx-all,windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java                                               nobug macosx-all,windows-all
