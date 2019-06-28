@@ -420,6 +420,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         }
 
         if (ginfo->image == NULL) {
+            J2dTraceLn(J2D_TRACE_INFO, "Glyph image is null");
             continue;
         }
 

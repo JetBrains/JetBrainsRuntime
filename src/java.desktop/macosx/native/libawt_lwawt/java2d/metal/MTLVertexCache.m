@@ -184,13 +184,16 @@ MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
                                BMTLSDOps *dstOps)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture");
+    J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d Glyph height = %d", width, height);
     if (texturePoolIndex >= MTLVC_MAX_TEX_INDEX ||
         vertexCacheIndex >= MTLVC_MAX_INDEX)
     {
         MTLVertexCache_FlushVertexCache(mtlc);
         MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
     }
-    id<MTLTexture> texture = [mtlc.texturePool getTexture:width height:height format:MTLPixelFormatA8Unorm];
+    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm width:width height:height mipmapped:NO];
+    id <MTLTexture> texture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
+    J2dTraceLn3(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture: created texture: tex=%p, w=%d h=%d", texture, width, height);
     NSUInteger bytesPerRow = 1 * width;
 
     MTLRegion region = {
