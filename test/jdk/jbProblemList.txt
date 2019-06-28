@@ -179,7 +179,7 @@ java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.html       7124275 macosx-all
 java/awt/Focus/NonFocusableWindowTest/NoEventsTest.java                             8000171 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java       8169110 macosx-all,windows-all,linux-all
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                     JRE-898 macosx-all,linux-all
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                     JRE-898 macosx-all,linux-all,windows-all
 java/awt/Focus/RequestFocusToDisabledCompTest/RequestFocusToDisabledCompTest.java   JRE-898 macosx-all
 java/awt/Focus/ResetMostRecentFocusOwnerTest/ResetMostRecentFocusOwnerTest.java     8168294 macosx-all,windows-all,linux-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JRE-898 macosx-all,linux-all
@@ -904,7 +904,7 @@ javax/sound/midi/Sequencer/Recording.java                                       
 # jdk_swing
 
 com/sun/java/swing/plaf/windows/Test8173145.java                                    8198334 windows-all
-javax/swing/AbstractButton/6711682/bug6711682.java                                  8060765 windows-all,macosx-all
+javax/swing/AbstractButton/6711682/bug6711682.java                                  8060765 windows-all,macosx-all,linux-all
 javax/swing/Action/8133039/bug8133039.java                                          8196089 windows-all,macosx-all
 javax/swing/JButton/4368790/bug4368790.java                                         8065582 macosx-all
 javax/swing/JButton/8151303/PressedIconTest.java                                    8198689 macosx-all,windows-all (windows: commit testing)
