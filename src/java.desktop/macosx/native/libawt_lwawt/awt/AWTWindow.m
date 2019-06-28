@@ -781,20 +781,7 @@ AWT_ASSERT_APPKIT_THREAD;
 #ifdef DEBUG
     NSLog(@"resigned key: %d %@ %@", [self.nsWindow isMainWindow], [self.nsWindow title], [self menuBarForWindow]);
 #endif
-    if (![self.nsWindow isMainWindow]) {
         [self deactivateWindow];
-    }
-}
-
-- (void) windowDidResignMain: (NSNotification *) notification {
-AWT_ASSERT_APPKIT_THREAD;
-    [AWTToolkit eventCountPlusPlus];
-#ifdef DEBUG
-    NSLog(@"resigned main: %d %@ %@", [self.nsWindow isKeyWindow], [self.nsWindow title], [self menuBarForWindow]);
-#endif
-    if (![self.nsWindow isKeyWindow]) {
-        [self deactivateWindow];
-    }
 }
 
 - (void) deactivateWindow {
@@ -807,12 +794,8 @@ AWT_ASSERT_APPKIT_THREAD;
     // the new key window
     NSWindow *keyWindow = [NSApp keyWindow];
     AWTWindow *opposite = nil;
-    if ([AWTWindow isAWTWindow: keyWindow]) {
-        opposite = (AWTWindow *)[keyWindow delegate];
-        [AWTWindow setLastKeyWindow: self];
-    } else {
-        [AWTWindow setLastKeyWindow: nil];
-    }
+    opposite = (AWTWindow *)[keyWindow delegate];
+    [AWTWindow setLastKeyWindow: self];
 
     [self _deliverWindowFocusEvent:NO oppositeWindow: opposite];
     [self orderChildWindows:NO];
