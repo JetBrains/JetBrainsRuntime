@@ -167,11 +167,9 @@ public final class ECDHKeyAgreement extends KeyAgreementSpi {
         }
 
         Optional<byte[]> resultOpt = deriveKeyImpl(privateKey, publicKey);
-        byte[] result = resultOpt.orElseGet(
+        return resultOpt.orElseGet(
             () -> deriveKeyNative(privateKey, publicKey)
         );
-        publicKey = null;
-        return result;
     }
 
     // see JCE spec
