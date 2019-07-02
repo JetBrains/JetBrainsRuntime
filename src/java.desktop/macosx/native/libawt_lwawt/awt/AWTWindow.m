@@ -687,7 +687,7 @@ AWT_ASSERT_APPKIT_THREAD;
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
     if (platformWindow != NULL) {
-        jobject oppositeWindow = [opposite.javaPlatformWindow jObjectWithEnv:env];
+        jobject oppositeWindow = [opposite respondsToSelector:@selector(javaPlatformWindow)] ? [opposite.javaPlatformWindow jObjectWithEnv:env] : NULL;
 
         static JNF_MEMBER_CACHE(jm_deliverWindowFocusEvent, jc_CPlatformWindow, "deliverWindowFocusEvent", "(ZLsun/lwawt/macosx/CPlatformWindow;)V");
         JNFCallVoidMethod(env, platformWindow, jm_deliverWindowFocusEvent, (jboolean)focused, oppositeWindow);
