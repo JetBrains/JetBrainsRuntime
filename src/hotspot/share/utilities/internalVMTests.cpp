@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ void InternalVMTests::run() {
   run_unit_test(TestReservedSpace_test);
   run_unit_test(TestReserveMemorySpecial_test);
   run_unit_test(TestVirtualSpace_test);
-  run_unit_test(TestMetaspaceUtils_test);
   run_unit_test(GCTimer_test);
   run_unit_test(ObjectMonitor_test);
   // These tests require the "C" locale to correctly parse decimal values
