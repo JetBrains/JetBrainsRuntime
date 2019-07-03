@@ -669,7 +669,7 @@ static void checkBrokenInputMethod(XEvent * event, jboolean isEventFiltered) {
                 if (parsedVal > 0)
                     filteredEventsThreshold = parsedVal;
                 else if (strncmp(utf8string, "true", 4) == 0)
-                    filteredEventsThreshold = 10;
+                    filteredEventsThreshold = 5;
             }
             (*env)->ReleaseStringUTFChars(env, jvalue, utf8string);
         }
