@@ -359,7 +359,12 @@ static BOOL shouldUsePressAndHold() {
         [self deliverJavaKeyEventHelper: event];
     }
 
-    return NO;
+    NSUInteger deviceIndependentModifierFlagsMask =
+        [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
+
+    return (deviceIndependentModifierFlagsMask == NSCommandKeyMask)
+        || (deviceIndependentModifierFlagsMask == (NSCommandKeyMask & NSShiftKeyMask))
+        && [[event characters] isEqualToString:@"`"];
 }
 
 /**
