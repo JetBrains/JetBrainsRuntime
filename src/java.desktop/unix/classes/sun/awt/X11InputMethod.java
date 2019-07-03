@@ -25,6 +25,7 @@
 
 package sun.awt;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -34,6 +35,7 @@ import java.awt.font.TextAttribute;
 import java.awt.font.TextHitInfo;
 import java.awt.peer.ComponentPeer;
 import java.text.AttributedString;
+import java.util.Map;
 
 import sun.util.logging.PlatformLogger;
 
@@ -371,19 +373,21 @@ public abstract class X11InputMethod extends X11InputMethodBase {
 
     static void recreateAllXIC() {
         // NOTE: called from native within AWT_LOCK
-        for (X11InputMethod im : activeInputMethods)
-            im.releaseXIC();
+        Map<X11InputMethod, Integer> im2ctxid = new HashMap<>(activeInputMethods.size());
+        for (X11InputMethod im : activeInputMethods) {
+            im2ctxid.put(im, im.releaseXIC());
+        }
         if (!recreateX11InputMethod()) {
             log.warning("can't recreate X11 InputMethod");
             return;
         }
         for (X11InputMethod im : activeInputMethods) {
-            if (!im.recreateXIC())
+            if (!im.recreateXIC(im2ctxid.get(im)))
                 log.warning("can't recreate XIC for " + im.toString());
         }
     }
 
-    protected abstract boolean recreateXIC();
-    protected abstract void releaseXIC();
+    protected abstract boolean recreateXIC(int ctxid);
+    protected abstract int releaseXIC();
     private static native boolean recreateX11InputMethod();
 }
