@@ -1426,21 +1426,35 @@ finally:
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11_XInputMethod_recreateXICNative(JNIEnv *env,
                                               jobject this,
-                                              jlong window, jlong pData)
+                                              jlong window, jlong pData, jint ctxid)
 {
     // NOTE: must be called under AWT_LOCK
-    return createXIC(env, (X11InputMethodData *)pData, window);
+    X11InputMethodData * pX11IMData = (X11InputMethodData *)pData;
+    jboolean result = createXIC(env, pX11IMData, window);
+    if (result) {
+        if (ctxid == 1)
+            pX11IMData->current_ic = pX11IMData->ic_active;
+        else if (ctxid == 2)
+            pX11IMData->current_ic = pX11IMData->ic_passive;
+    }
+    return result;
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT int JNICALL
 Java_sun_awt_X11_XInputMethod_releaseXICNative(JNIEnv *env,
                                               jobject this,
                                               jlong pData)
 {
     // NOTE: must be called under AWT_LOCK
     X11InputMethodData * pX11IMData = (X11InputMethodData *)pData;
+    int result = 0;
+    if (pX11IMData->current_ic == pX11IMData->ic_active)
+        result = 1;
+    else if (pX11IMData->current_ic == pX11IMData->ic_passive)
+        result = 2;
     pX11IMData->current_ic = NULL;
     destroyXInputContexts(pX11IMData);
+    return result;
 }
 
 
