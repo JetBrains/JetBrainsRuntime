@@ -362,8 +362,8 @@ static BOOL shouldUsePressAndHold() {
     NSUInteger deviceIndependentModifierFlagsMask =
         [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
 
-    return (deviceIndependentModifierFlagsMask == NSCommandKeyMask)
-        || (deviceIndependentModifierFlagsMask == (NSCommandKeyMask & NSShiftKeyMask))
+    return ((deviceIndependentModifierFlagsMask == NSCommandKeyMask)
+        || (deviceIndependentModifierFlagsMask == (NSCommandKeyMask & NSShiftKeyMask)))
         && [[event characters] isEqualToString:@"`"];
 }
 
