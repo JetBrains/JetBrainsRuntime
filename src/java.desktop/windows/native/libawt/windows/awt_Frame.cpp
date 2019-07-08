@@ -1752,6 +1752,7 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
                                                 frame->ScaleDownX(x - rcWindow.left),
                                                 frame->ScaleDownY(y - rcWindow.top)).i;
     if (titleHeight >= 0) {
+        titleHeight = frame->ScaleUpY(titleHeight);
         insets.top = titleHeight; // otherwise leave default
     }
 
