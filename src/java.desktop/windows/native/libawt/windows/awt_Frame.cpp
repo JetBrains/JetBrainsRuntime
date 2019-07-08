@@ -1757,6 +1757,16 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     RECT rcFrame = {};
     AdjustWindowRectEx(&rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
 
+    JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
+    int titleHeight = (int)JNU_CallMethodByName(env, NULL, frame->GetPeer(env),
+                                                "getCustomDecorationTitleBarHeight", "()I",
+                                                frame->ScaleDownX(x - rcWindow.left),
+                                                frame->ScaleDownY(y - rcWindow.top)).i;
+    if (titleHeight >= 0) {
+        titleHeight = frame->ScaleUpY(titleHeight);
+        insets.top = titleHeight; // otherwise leave default
+    }
+
     USHORT uRow = 1;
     USHORT uCol = 1;
     BOOL fOnResizeBorder = FALSE;
@@ -1764,7 +1774,6 @@ LRESULT HitTestNCA(AwtFrame* frame, int x, int y) {
     if (y >= rcWindow.top &&
         y < rcWindow.top + insets.top)
     {
-        JNIEnv *env = (JNIEnv *) JNU_GetEnv(jvm, JNI_VERSION_1_2);
         if (JNU_CallMethodByName(env, NULL, frame->GetPeer(env),
                                  "hitTestCustomDecoration", "(II)Z",
                                  frame->ScaleDownX(x - rcWindow.left),
