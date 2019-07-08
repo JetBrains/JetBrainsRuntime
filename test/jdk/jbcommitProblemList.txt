@@ -93,7 +93,7 @@ java/awt/Toolkit/RealSync/Test.java                                             
 java/awt/Toolkit/SunDisplayChangerLeakTest/SunDisplayChangerLeakTest.java                   nobug macosx-all,linux-all,windows-all
 java/awt/TrayIcon/SecurityCheck/FunctionalityCheck/FunctionalityCheck.java                  nobug macosx-all,windows-all
 java/awt/Window/ChangeWindowResizabilty/ChangeWindowResizabiltyTest.java                    nobug windows-all,linux-all
-java/awt/Window/FindOwner/FindOwnerTest.html                                                nobug macosx-all,windows-all
+java/awt/Window/FindOwner/FindOwnerTest.html                                                nobug macosx-all,windows-all,linux-all
 java/awt/Window/GetScreenLocation/GetScreenLocationTest.java                                nobug macosx-all,linux-all,windows-all
 java/awt/Window/MainKeyWindowTest/TestMainKeyWindow.java                                    nobug macosx-all
 java/awt/Window/MaximizeOffscreen/MaximizeOffscreenTest.java                                nobug macosx-all,linux-all
