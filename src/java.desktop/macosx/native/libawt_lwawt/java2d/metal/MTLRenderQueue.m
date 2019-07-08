@@ -461,7 +461,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP:
             {
                 //TODO
-                [mtlc endShapeClipDstOps:dstOps];
+                //[mtlc endShapeClipDstOps:dstOps];
+                [mtlc endShapeClip];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP:

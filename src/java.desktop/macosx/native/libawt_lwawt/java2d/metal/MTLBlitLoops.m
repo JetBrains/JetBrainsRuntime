@@ -342,7 +342,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
         J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via blitEncoder]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dstTex, dstTex.width, dstTex.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
         id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
-        [blitEncoder copyFromTexture:srcTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(sx1, sy1, 0) sourceSize:MTLSizeMake(sx2 - sx1, sy2 - sy1, 1) toTexture:dstTex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+        [blitEncoder copyFromTexture:srcTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(sx1, sy1, 0) sourceSize:MTLSizeMake(mtlc.clipRect.width, mtlc.clipRect.height, 1) toTexture:dstTex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
     } else {
         // TODO: support other flags

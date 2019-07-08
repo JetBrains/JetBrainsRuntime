@@ -220,13 +220,11 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
         return;
     }
 
-    struct Vertex verts[PGRAM_VERTEX_COUNT] = {
-            { {x, y, 0.0}},
-            { {x, y+h, 0.0}},
-            { {x+w, y+h, 0.0}},
-            { {x+w, y+h, 0.0}},
-            { {x+w, y, 0.0}},
-            { {x, y, 0.0},
+    struct Vertex verts[QUAD_VERTEX_COUNT] = {
+        { {x, y, 0.0}},
+        { {x, y+h, 0.0}},
+        { {x+w, y, 0.0}},
+        { {x+w, y+h, 0.0}
     }};
 
 
@@ -239,7 +237,7 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
         return;
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
     [mtlEncoder endEncoding];
 }
 
@@ -281,17 +279,15 @@ MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint
             jfloat x2 = spanStruct.spns[i * 4 + 2];
             jfloat y2 = spanStruct.spns[i * 4 + 3];
 
-            struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+            struct Vertex verts[QUAD_VERTEX_COUNT] = {
                 {{x1, y1, 0.0}},
-                {{x2, y1, 0.0}},
                 {{x1, y2, 0.0}},
                 {{x2, y1, 0.0}},
-                {{x2, y2, 0.0}},
-                {{x1, y2, 0.0},
+                {{x2, y2, 0.0}
             }};
 
             [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:PGRAM_VERTEX_COUNT];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:QUAD_VERTEX_COUNT];
         }
 
         [mtlEncoder endEncoding];
@@ -321,14 +317,12 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
                 dx21, dy21,
                 dx12, dy12, dest);
 
-    struct Vertex verts[PGRAM_VERTEX_COUNT] = {
+    struct Vertex verts[QUAD_VERTEX_COUNT] = {
             { {fx11, fy11, 0.0}},
             { {fx11+dx21, fy11+dy21, 0.0}},
             { {fx11+dx12, fy11+dy12, 0.0}},
-            { {fx11+dx21, fy11+dy21, 0.0}},
-            { {fx11 + dx21 + dx12, fy11+ dy21 + dy12, 0.0}},
-            { {fx11+dx12, fy11+dy12, 0.0},
-            }};
+            { {fx11 + dx21 + dx12, fy11+ dy21 + dy12, 0.0}
+        }};
 
     // Encode render command.
     id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dest];
@@ -336,7 +330,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
         return;
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount: PGRAM_VERTEX_COUNT];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
     [mtlEncoder endEncoding];
 }
 
