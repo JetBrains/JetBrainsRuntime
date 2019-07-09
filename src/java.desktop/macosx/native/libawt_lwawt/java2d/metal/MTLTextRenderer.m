@@ -315,27 +315,39 @@ static jboolean
 MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
                                 GlyphInfo *ginfo, jint x, jint y, BMTLSDOps *dstOps)
 {
-    jfloat dx1, dy1, dx2, dy2;
-    jint width = ginfo->width;
-    jint height = ginfo->height;
+    jint tw, th;
+    jint sx, sy, sw, sh;
+    jint x0;
+    jint w = ginfo->width;
+    jint h = ginfo->height;
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
-    /*
-     * TODO : Glyph caching is not used yet we need to
-     * implement it.
-     */
     if (glyphMode != MODE_NO_CACHE_GRAY) {
+        //OGLTR_DisableGlyphModeState();
+        //CHECK_PREVIOUS_OP(OGL_STATE_MASK_OP);
         glyphMode = MODE_NO_CACHE_GRAY;
     }
 
-    dx1 = (jfloat)x;
-    dy1 = (jfloat)y;
-    dx2 = x + width;
-    dy2 = y + height;
-    J2dTraceLn4(J2D_TRACE_INFO,
-        "Destination coordinates dx1 = %f dy1 = %f dx2 = %f dy2 = %f", dx1, dy1, dx2, dy2);
-    MTLVertexCache_AddGlyphTexture(mtlc, width, height, ginfo, dstOps);
-    MTLVertexCache_AddVertexTriangles(dx1, dy1, dx2, dy2);
+    x0 = x;
+    tw = MTLVC_MASK_CACHE_TILE_WIDTH;
+    th = MTLVC_MASK_CACHE_TILE_HEIGHT;
+
+    for (sy = 0; sy < h; sy += th, y += th) {
+        x = x0;
+        sh = ((sy + th) > h) ? (h - sy) : th;
+
+        for (sx = 0; sx < w; sx += tw, x += tw) {
+            sw = ((sx + tw) > w) ? (w - sx) : tw;
+
+            J2dTraceLn7(J2D_TRACE_INFO, "sx = %d sy = %d x = %d y = %d sw = %d sh = %d w = %d", sx, sy, x, y, sw, sh, w);
+            MTLVertexCache_AddMaskQuad(mtlc,
+                                       sx, sy, x, y, sw, sh,
+                                       w, ginfo->image,
+                                       dstOps,
+                                       ginfo->width);
+        }
+    }
+
     return JNI_TRUE;
 }
 
@@ -385,7 +397,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
 
     MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
-    MTLVertexCache_InitVertexCache();
+    MTLVertexCache_EnableMaskCache(mtlc);
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -424,9 +436,9 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             continue;
         }
 
+        J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d height = %d", ginfo->width, ginfo->height);
         //TODO : Right now we have initial texture mapping logic
         // as we implement LCD, cache usage add new selection condition.
-
         if (grayscale) {
             // grayscale or monochrome glyph data
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
@@ -457,7 +469,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "LCD cache");
+                J2dTraceLn(J2D_TRACE_INFO, "LCD cache not implemented");
                 /*ok = MTLTR_DrawLCDGlyphViaCache(oglc, dstOps,
                                                 ginfo, x, y,
                                                 glyphCounter, totalGlyphs,
@@ -465,7 +477,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                                                 dstTextureID);*/
                 ok = JNI_FALSE;
             } else {
-                J2dTraceLn(J2D_TRACE_INFO, "LCD no cache");
+                J2dTraceLn(J2D_TRACE_INFO, "LCD no cache not implemented");
                 /*ok = MTLTR_DrawLCDGlyphNoCache(oglc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,

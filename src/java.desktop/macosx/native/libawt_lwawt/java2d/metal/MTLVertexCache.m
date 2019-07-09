@@ -42,12 +42,10 @@ typedef struct _J2DVertex {
 static J2DVertex *vertexCache = NULL;
 static jint vertexCacheIndex = 0;
 
-static jint maskCacheTexID = 0;
+id<MTLTexture> maskCacheTex = NULL;
 static jint maskCacheIndex = 0;
 
-id<MTLRenderCommandEncoder> encoder;
-id<MTLTexture> texturePool[MTLVC_MAX_TEX_INDEX];
-static jint texturePoolIndex = 0;
+id<MTLRenderCommandEncoder> encoder = NULL;
 
 #define MTLVC_ADD_VERTEX(TX, TY, DX, DY, DZ) \
     do { \
@@ -59,14 +57,14 @@ static jint texturePoolIndex = 0;
         v->position[2] = DZ; \
     } while (0)
 
-#define MTLVC_ADD_TRIANGLES(DX1, DY1, DX2, DY2) \
+#define MTLVC_ADD_TRIANGLES(TX1, TY1, TX2, TY2, DX1, DY1, DX2, DY2) \
     do { \
-        MTLVC_ADD_VERTEX(0, 0, DX1, DY1, 0); \
-        MTLVC_ADD_VERTEX(1, 0, DX2, DY1, 0); \
-        MTLVC_ADD_VERTEX(1, 1, DX2, DY2, 0); \
-        MTLVC_ADD_VERTEX(1, 1, DX2, DY2, 0); \
-        MTLVC_ADD_VERTEX(0, 1, DX1, DY2, 0); \
-        MTLVC_ADD_VERTEX(0, 0, DX1, DY1, 0); \
+        MTLVC_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
+        MTLVC_ADD_VERTEX(TX2, TY1, DX2, DY1, 0); \
+        MTLVC_ADD_VERTEX(TX2, TY2, DX2, DY2, 0); \
+        MTLVC_ADD_VERTEX(TX2, TY2, DX2, DY2, 0); \
+        MTLVC_ADD_VERTEX(TX1, TY2, DX1, DY2, 0); \
+        MTLVC_ADD_VERTEX(TX1, TY1, DX1, DY1, 0); \
     } while (0)
 
 jboolean
@@ -90,20 +88,22 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
 
     if (vertexCacheIndex > 0 ||
-        texturePoolIndex > 0) {
+        maskCacheIndex > 0) {
         id<MTLBuffer>vertexBuffer = [mtlc.device newBufferWithBytes:vertexCache
                                                  length:vertexCacheIndex * sizeof(J2DVertex)
                                                  options:MTLResourceOptionCPUCacheModeDefault];
         [encoder setVertexBuffer:vertexBuffer offset:0 atIndex:MeshVertexBuffer];
-        for (int i = 0; i < texturePoolIndex; i++) {
+        for (int i = 0; i < maskCacheIndex; i++) {
             J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
-            [encoder setFragmentTexture:texturePool[i] atIndex: 0];
+            [encoder setFragmentTexture:maskCacheTex atIndex: 0];
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
         }
         [encoder endEncoding];
     }
     vertexCacheIndex = 0;
-    texturePoolIndex = 0;
+    maskCacheIndex = 0;
+    encoder = NULL;
+    maskCacheTex = NULL;
 }
 
 /**
@@ -147,18 +147,28 @@ MTLVertexCache_RestoreColorState(MTLContext *mtlc)
 }
 
 static jboolean
-MTLVertexCache_InitMaskCache()
+MTLVertexCache_InitMaskCache(MTLContext *mtlc)
 {
-    // TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitMaskCache");
+    J2dTraceLn(J2D_TRACE_INFO, "OGLVertexCache_InitMaskCache");
+    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS mipmapped:NO];
+    maskCacheTex = [mtlc.device newTextureWithDescriptor:textureDescriptor];
     return JNI_TRUE;
 }
 
 void
 MTLVertexCache_EnableMaskCache(MTLContext *mtlc)
 {
-    // TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_EnableMaskCache");
+
+    if (!MTLVertexCache_InitVertexCache()) {
+        return;
+    }
+
+    if (maskCacheTex == NULL) {
+        if (!MTLVertexCache_InitMaskCache(mtlc)) {
+            return;
+        }
+    }
 }
 
 void
@@ -170,48 +180,101 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 }
 
 void
-MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
-                                  jfloat dx2, jfloat dy2)
-{
-    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddVertexTriangles");
-    MTLVC_ADD_TRIANGLES(dx1, dy1, dx2, dy2);
+MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
+    encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
 }
 
 void
-MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
-                               jint width, jint height,
-                               GlyphInfo *ginfo,
-                               BMTLSDOps *dstOps)
+MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
+                           jint srcx, jint srcy,
+                           jint dstx, jint dsty,
+                           jint width, jint height,
+                           jint maskscan, void *mask,
+                           BMTLSDOps *dstOps,
+                           jint fullwidth)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture");
-    J2dTraceLn2(J2D_TRACE_INFO, "Glyph width = %d Glyph height = %d", width, height);
-    if (texturePoolIndex >= MTLVC_MAX_TEX_INDEX ||
+    jfloat tx1, ty1, tx2, ty2;
+    jfloat dx1, dy1, dx2, dy2;
+
+    J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_AddMaskQuad: %d",
+                maskCacheIndex);
+
+    if (maskCacheIndex >= MTLVC_MASK_CACHE_MAX_INDEX ||
         vertexCacheIndex >= MTLVC_MAX_INDEX)
     {
         MTLVertexCache_FlushVertexCache(mtlc);
         MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
+        // TODO : Since we are not committing command buffer
+        // in FlushVertexCache we need to create new maskcache
+        // after present cache is full. Check whether we can
+        // avoid multiple cache creation.
+        MTLVertexCache_EnableMaskCache(mtlc);
     }
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm width:width height:height mipmapped:NO];
-    id <MTLTexture> texture = [mtlc.device newTextureWithDescriptor:textureDescriptor];
-    J2dTraceLn3(J2D_TRACE_INFO, "MTLVertexCache_AddGlyphTexture: created texture: tex=%p, w=%d h=%d", texture, width, height);
-    NSUInteger bytesPerRow = 1 * width;
 
+    // TODO : Implement mask == null use case also
+    jint texx = MTLVC_MASK_CACHE_TILE_WIDTH *
+        (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
+    jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT *
+        (maskCacheIndex / MTLVC_MASK_CACHE_WIDTH_IN_TILES);
+    J2dTraceLn5(J2D_TRACE_INFO, "texx = %d texy = %d width = %d height = %d fullwidth = %d", texx, texy, width, height, fullwidth);
+    NSUInteger bytesPerRow = 1 * width;
+    NSUInteger slice = bytesPerRow * srcy + srcx;
     MTLRegion region = {
-        { 0, 0, 0 },
+        {texx, texy, 0 },
         {width, height, 1}
     };
-    [texture replaceRegion:region
-             mipmapLevel:0
-             withBytes:ginfo->image
-             bytesPerRow:bytesPerRow];
-    texturePool[texturePoolIndex] = texture;
-    texturePoolIndex++;
-}
 
-void
-MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
+    // Whenever we have source stride bigger that destination stride
+    // we need to pick appropriate source subtexture. In repalceRegion
+    // we can give destination subtexturing properly but we can't
+    // subtexture from system memory glyph we have. So in such
+    // cases we are creating seperate tile and scan the source
+    // stride into destination using memcpy. In case of OpenGL we
+    // can update source pointers, in case of D3D we ar doing memcpy.
+    // We can use MTLBuffer and then copy source subtexture but that
+    // adds extra blitting logic.
+    // TODO : Research more and try removing memcpy logic.
+    if (fullwidth <= width) {
+        int height_offset = bytesPerRow * srcy;
+        [maskCacheTex replaceRegion:region
+                      mipmapLevel:0
+                      withBytes:mask + height_offset
+                      bytesPerRow:bytesPerRow];
+    } else {
+        int dst_offset, src_offset;
+        int size = 1 * width * height;
+        void* tile = malloc(size);
+        dst_offset = 0;
+        for (int i = srcy ; i < srcy + height; i++) {
+            J2dTraceLn2(J2D_TRACE_INFO, "srcx = %d srcy = %d", srcx, srcy);
+            src_offset = fullwidth * i + srcx;
+            J2dTraceLn2(J2D_TRACE_INFO, "src_offset = %d dst_offset = %d", src_offset, dst_offset);
+            memcpy(tile + dst_offset, mask + src_offset, width);
+            dst_offset = dst_offset + width;
+        }
+        [maskCacheTex replaceRegion:region
+                      mipmapLevel:0
+                      withBytes:tile
+                      bytesPerRow:bytesPerRow];
+    }
+
+    tx1 = ((jfloat)texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
+    ty1 = ((jfloat)texy) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
+
+    maskCacheIndex++;
+
+    tx2 = tx1 + (((jfloat)width) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
+    ty2 = ty1 + (((jfloat)height) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS);
+
+    dx1 = (jfloat)dstx;
+    dy1 = (jfloat)dsty;
+    dx2 = dx1 + width;
+    dy2 = dy1 + height;
+
+    J2dTraceLn8(J2D_TRACE_INFO, "tx1 = %f ty1 = %f tx2 = %f ty2 = %f dx1 = %f dy1 = %f dx2 = %f dy2 = %f", tx1, ty1, tx2, ty2, dx1, dy1, dx2, dy2);
+    MTLVC_ADD_TRIANGLES(tx1, ty1, tx2, ty2,
+                        dx1, dy1, dx2, dy2);
 }
 
 #endif /* !HEADLESS */

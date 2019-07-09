@@ -80,14 +80,9 @@ void MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                                 jint srcx, jint srcy,
                                 jint dstx, jint dsty,
                                 jint width, jint height,
-                                jint maskscan, void *mask);
-
-void MTLVertexCache_AddGlyphTexture(MTLContext *mtlc,
-                                    jint width, jint height,
-                                    GlyphInfo *ginfo,
-                                    BMTLSDOps *dstOps);
-void MTLVertexCache_AddVertexTriangles(jfloat dx1, jfloat dy1,
-                                       jfloat dx2, jfloat dy2);
+                                jint maskscan, void *mask,
+                                BMTLSDOps *dstOps,
+                                jint fullwidth);
 void MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps);
 
 #endif /* MTLVertexCache_h_Included */
