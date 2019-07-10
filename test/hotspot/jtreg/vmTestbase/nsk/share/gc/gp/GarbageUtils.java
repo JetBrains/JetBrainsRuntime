@@ -26,6 +26,7 @@ package nsk.share.gc.gp;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.invoke.*;
 import java.util.*;
 import nsk.share.gc.gp.array.*;
 import nsk.share.gc.gp.string.*;
@@ -193,6 +194,36 @@ public final class GarbageUtils {
             return eatMemory(stresser, gp, initialFactor, minMemoryChunk, factor, OOM_TYPE.ANY);
         }
 
+         static int numberOfOOMEs = 0;
+
+         /**
+          * Minimal wrapper of the main implementation. Catches any OOM
+          * that might be thrown when rematerializing Objects when deoptimizing.
+          *
+          * It is Important that the impl is not inlined.
+          */
+
+         public static int eatMemory(ExecutionController stresser, GarbageProducer gp, long initialFactor, long minMemoryChunk, long factor, OOM_TYPE type) {
+            try {
+               // Using a methodhandle invoke of eatMemoryImpl to prevent inlining of it
+               MethodHandles.Lookup lookup = MethodHandles.lookup();
+               MethodType mt = MethodType.methodType(
+                     int.class,
+                     ExecutionController.class,
+                     GarbageProducer.class,
+                     long.class,
+                     long.class,
+                     long.class,
+                     OOM_TYPE.class);
+               MethodHandle eat = lookup.findStatic(GarbageUtils.class, "eatMemoryImpl", mt);
+               return (int) eat.invoke(stresser, gp, initialFactor, minMemoryChunk, factor, type);
+            } catch (OutOfMemoryError e) {
+               return numberOfOOMEs++;
+            } catch (Throwable t) {
+               throw new RuntimeException(t);
+            }
+         }
+
         /**
          * Eat memory using given garbage producer.
          *
@@ -210,8 +241,9 @@ public final class GarbageUtils {
          * @param type of OutOfMemory Exception: Java heap space or Metadata space
          * @return number of OOME occured
          */
-        public static int eatMemory(ExecutionController stresser, GarbageProducer gp, long initialFactor, long minMemoryChunk, long factor, OOM_TYPE type) {
-                int numberOfOOMEs = 0;
+
+         public static int eatMemoryImpl(ExecutionController stresser, GarbageProducer gp, long initialFactor, long minMemoryChunk, long factor, OOM_TYPE type) {
+                numberOfOOMEs = 0;
                 try {
                         StringWriter sw = new StringWriter(10000);
                         PrintWriter pw = new PrintWriter(sw);
