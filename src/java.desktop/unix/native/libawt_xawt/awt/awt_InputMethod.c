@@ -1740,7 +1740,6 @@ JNIEXPORT void JNICALL Java_sun_awt_X11_XInputMethod_adjustStatusWindow
 #endif
 }
 
-<<<<<<< HEAD
 JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11InputMethod_recreateX11InputMethod(JNIEnv *env, jclass cls)
 {
@@ -1758,7 +1757,7 @@ Java_sun_awt_X11InputMethod_recreateX11InputMethod(JNIEnv *env, jclass cls)
     XSetIMValues(X11im, XNDestroyCallback, &ximCallback, NULL);
     return JNI_TRUE;
 }
-=======
+
 #if defined(__linux__) || defined(MACOSX)
 static Window getParentWindow(Window w)
 {
@@ -1775,4 +1774,3 @@ static Window getParentWindow(Window w)
     return parent;
 }
 #endif
->>>>>>> 435b7d2... 8213232: Unix/X11 setCompositionEnableNative issue
