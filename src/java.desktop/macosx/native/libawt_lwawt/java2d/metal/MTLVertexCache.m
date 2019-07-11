@@ -93,17 +93,18 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
                                                  length:vertexCacheIndex * sizeof(J2DVertex)
                                                  options:MTLResourceOptionCPUCacheModeDefault];
         [encoder setVertexBuffer:vertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [encoder setFragmentTexture:maskCacheTex atIndex: 0];
         for (int i = 0; i < maskCacheIndex; i++) {
             J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
-            [encoder setFragmentTexture:maskCacheTex atIndex: 0];
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
         }
         [encoder endEncoding];
+        vertexBuffer = nil;
     }
     vertexCacheIndex = 0;
     maskCacheIndex = 0;
-    encoder = NULL;
-    maskCacheTex = NULL;
+    maskCacheTex = nil;
+    encoder = nil;
 }
 
 /**
@@ -149,7 +150,10 @@ MTLVertexCache_RestoreColorState(MTLContext *mtlc)
 static jboolean
 MTLVertexCache_InitMaskCache(MTLContext *mtlc)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLVertexCache_InitMaskCache");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitMaskCache");
+    // TODO : We are creating mask cache only of type MTLPixelFormatA8Unorm
+    // when we need more than 1 byte to store a pixel(LCD) we need to update
+    // below code.
     MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS mipmapped:NO];
     maskCacheTex = [mtlc.device newTextureWithDescriptor:textureDescriptor];
     return JNI_TRUE;
