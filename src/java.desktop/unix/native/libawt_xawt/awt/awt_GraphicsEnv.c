@@ -34,12 +34,9 @@
 #ifndef HEADLESS
 #include <X11/extensions/Xdbe.h>
 #include <X11/XKBlib.h>
-<<<<<<< HEAD
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
-=======
 #ifndef _AIX
->>>>>>> f668abb... 8213944: Fix AIX build after the removal of Xrandr.h and add a configure check for it
 #include <X11/extensions/Xrandr.h>
 #endif
 #include "GLXGraphicsConfig.h"
