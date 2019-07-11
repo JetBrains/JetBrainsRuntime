@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 JTwork
 JTreport
 *.class
@@ -10,7 +9,6 @@ JetBrainsRuntime.iml
 build/
 # Project exclude paths
 /jb/project/java-gradle/.gradle/
-=======
 /build/
 /dist/
 /.idea/
@@ -26,4 +24,3 @@ test/nashorn/lib
 NashornProfile.txt
 **/JTreport/**
 **/JTwork/**
->>>>>>> a6cdb6d... 8210283: Support git as an SCM alternative in the build
