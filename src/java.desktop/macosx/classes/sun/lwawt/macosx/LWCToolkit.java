@@ -87,26 +87,22 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.UndeclaredThrowableException;
 import java.net.MalformedURLException;
 import java.net.URL;
-<<<<<<< HEAD
+import java.net.MalformedURLException;
 import java.security.*;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.net.MalformedURLException;
-=======
-import java.security.AccessController;
-import java.security.PrivilegedAction;
+import java.util.concurrent.Callable;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
-import java.util.concurrent.Callable;
-
->>>>>>> e692057... 8208702: javax/swing/reliability/HangDuringStaticInitialization.java may hang on macos
 import javax.swing.UIManager;
 
 import com.apple.laf.AquaMenuBarUI;

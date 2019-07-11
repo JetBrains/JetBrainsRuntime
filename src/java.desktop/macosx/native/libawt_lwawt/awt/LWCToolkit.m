@@ -812,7 +812,6 @@ Java_sun_lwawt_macosx_LWCToolkit_isEmbedded
 
 /*
  * Class:     sun_lwawt_macosx_LWCToolkit
-<<<<<<< HEAD
  * Method:    getKeyboardLayoutNativeId
  * Signature: ()Ljava/lang/String;
  */
@@ -850,7 +849,9 @@ __block NSString* layoutId = [JNFJavaToNSString(env, jLayoutId) retain];
 }];
 JNF_COCOA_EXIT(env);
 }
-=======
+
+/*
+ * Class:     sun_lwawt_macosx_LWCToolkit
  * Method:    isInAquaSession
  * Signature: ()Z
  */
@@ -876,4 +877,4 @@ Java_sun_lwawt_macosx_LWCToolkit_isInAquaSession
     }
     return JNI_FALSE;
 }
->>>>>>> e692057... 8208702: javax/swing/reliability/HangDuringStaticInitialization.java may hang on macos
+
