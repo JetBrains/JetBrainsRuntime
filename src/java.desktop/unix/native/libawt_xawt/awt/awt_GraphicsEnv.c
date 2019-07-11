@@ -34,13 +34,9 @@
 #ifndef HEADLESS
 #include <X11/extensions/Xdbe.h>
 #include <X11/XKBlib.h>
-<<<<<<< HEAD
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
-#include "Xrandr.h"
-=======
 #include <X11/extensions/Xrandr.h>
->>>>>>> e4cef67... 8210863: Remove Xrandr include files from JDK sources
 #include "GLXGraphicsConfig.h"
 #endif /* !HEADLESS */
 
