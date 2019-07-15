@@ -40,6 +40,7 @@ import static javax.accessibility.AccessibleContext.ACCESSIBLE_ACTIVE_DESCENDANT
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_CARET_PROPERTY;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_SELECTION_PROPERTY;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_STATE_PROPERTY;
+import static javax.accessibility.AccessibleContext.ACCESSIBLE_TABLE_MODEL_CHANGED;
 import static javax.accessibility.AccessibleContext.ACCESSIBLE_TEXT_PROPERTY;
 import javax.accessibility.AccessibleRole;
 import javax.accessibility.AccessibleState;
@@ -125,6 +126,8 @@ class CAccessible extends CFRetainedResource implements Accessible {
                     valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_SELECTION_PROPERTY) == 0 ) {
                     selectionChanged(ptr);
+                } else if (name.compareTo(ACCESSIBLE_TABLE_MODEL_CHANGED) == 0) {
+                    valueChanged(ptr);
                 } else if (name.compareTo(ACCESSIBLE_ACTIVE_DESCENDANT_PROPERTY) == 0 ) {
                     if (newValue instanceof AccessibleContext) {
                         activeDescendant = (AccessibleContext)newValue;
