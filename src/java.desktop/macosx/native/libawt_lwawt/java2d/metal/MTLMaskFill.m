@@ -90,7 +90,7 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
                      unsigned char *pMask)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLMaskFill_MaskFill");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLMaskFill_MaskFill -- :TODO");
 }
 
 JNIEXPORT void JNICALL
@@ -103,7 +103,7 @@ Java_sun_java2d_metal_MTLMaskFill_maskFill
     MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
     unsigned char *mask;
     //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_maskFill");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_maskFill -- :TODO");
 }
 
 #endif /* !HEADLESS */

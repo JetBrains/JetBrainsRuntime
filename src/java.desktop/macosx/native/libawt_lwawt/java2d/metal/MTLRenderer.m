@@ -199,7 +199,7 @@ Java_sun_java2d_metal_MTLRenderer_drawPoly
 {
     jint *xPoints, *yPoints;
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_drawPoly -- :TODO");
 }
 
 void
@@ -207,7 +207,7 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint scanlineCount, jint *scanlines)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawScanlines");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DrawScanlines -- :TODO");
 }
 
 void
@@ -574,7 +574,7 @@ MTLRenderer_FillAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
     jfloat u11, v11, u12, v12, u21, v21, u22, v22;
 
     J2dTraceLn6(J2D_TRACE_INFO,
-                "MTLRenderer_FillAAParallelogram "
+                "MTLRenderer_FillAAParallelogram -- :TODO"
                 "(x=%6.2f y=%6.2f "
                 "dx1=%6.2f dy1=%6.2f "
                 "dx2=%6.2f dy2=%6.2f)",
@@ -594,6 +594,7 @@ MTLRenderer_FillAAParallelogramInnerOuter(MTLContext *mtlc, MTLSDOps *dstOps,
                                           jfloat ix12, jfloat iy12)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_FillAAParallelogramInnerOuter -- :TODO");
 }
 
 void
@@ -612,7 +613,7 @@ MTLRenderer_DrawAAParallelogram(MTLContext *mtlc, BMTLSDOps *dstOps,
     jfloat ifx11, ify11, idx21, idy21, idx12, idy12;
 
     J2dTraceLn8(J2D_TRACE_INFO,
-                "MTLRenderer_DrawAAParallelogram "
+                "MTLRenderer_DrawAAParallelogram -- :TODO"
                 "(x=%6.2f y=%6.2f "
                 "dx1=%6.2f dy1=%6.2f lwr1=%6.2f "
                 "dx2=%6.2f dy2=%6.2f lwr2=%6.2f)",
@@ -626,14 +627,14 @@ void
 MTLRenderer_EnableAAParallelogramProgram()
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_EnableAAParallelogramProgram");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_EnableAAParallelogramProgram -- :TODO");
 }
 
 void
 MTLRenderer_DisableAAParallelogramProgram()
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DisableAAParallelogramProgram");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_DisableAAParallelogramProgram -- :TODO");
 }
 
 #endif /* !HEADLESS */

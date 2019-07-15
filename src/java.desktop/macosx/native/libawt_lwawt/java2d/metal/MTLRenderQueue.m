@@ -211,6 +211,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y = NEXT_INT(b);
                 CONTINUE_IF_NULL(mtlc);
                 //TODO
+                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_DRAW_PIXEL -- :TODO");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
@@ -598,18 +599,25 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
             {
                 //TODO
+                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_SAVE_STATE -- :TODO");
+
             }
             break;
 
         case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
             {
                 //TODO
+                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_RESTORE_STATE -- :TODO");
 
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SYNC:
             {
                 sync = JNI_TRUE;
+
+                // TODO
+                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_SYNC -- :TODO");
+
             }
             break;
 

@@ -204,7 +204,7 @@ Java_sun_java2d_metal_MTLSurfaceData_initFlipBackbuffer
     //TODO
     MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
 
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initFlipBackbuffer");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_initFlipBackbuffer -- :TODO");
     return JNI_TRUE;
 }
 
@@ -216,7 +216,7 @@ Java_sun_java2d_metal_MTLSurfaceData_getTextureTarget
     //TODO
     MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
 
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_getTextureTarget");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_getTextureTarget -- :TODO");
 
     return 0;
 }
@@ -338,7 +338,7 @@ MTLSD_DestroyMTLSurface(JNIEnv *env, MTLSDOps *mtlsdo)
 jlong
 MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_GetNativeConfigInfo");
+    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_GetNativeConfigInfo -- :TODO");
 
     return 0;
 }
@@ -351,7 +351,7 @@ MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo)
 jboolean
 MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *oglsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_InitMTLWindow");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_InitMTLWindow -- :TODO");
 
     return JNI_TRUE;
 }
@@ -359,7 +359,7 @@ MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *oglsdo)
 void
 MTLSD_SwapBuffers(JNIEnv *env, jlong pPeerData)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_SwapBuffers");
+    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_SwapBuffers -- :TODO");
 }
 
 #pragma mark -

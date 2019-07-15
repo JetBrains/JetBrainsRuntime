@@ -129,6 +129,8 @@ static GLhandleARB
 MTLBufImgOps_CreateConvolveProgram(jint flags)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_CreateConvolveProgram -- :TODO");
+
     return NULL;
 }
 
@@ -139,13 +141,15 @@ MTLBufImgOps_EnableConvolveOp(MTLContext *mtlc, jlong pSrcOps,
                               unsigned char *kernel)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_EnableConvolveOp -- :TODO");
+
 }
 
 void
 MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableConvolveOp");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableConvolveOp -- :TODO");
 }
 
 /**************************** RescaleOp support *****************************/
@@ -218,6 +222,8 @@ static GLhandleARB
 MTLBufImgOps_CreateRescaleProgram(jint flags)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_CreateRescaleProgram -- :TODO");
+
     return NULL;
 }
 
@@ -234,7 +240,7 @@ void
 MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableRescaleOp");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableRescaleOp -- :TODO");
     RETURN_IF_NULL(mtlc);
 }
 
@@ -346,7 +352,7 @@ static GLhandleARB
 MTLBufImgOps_CreateLookupProgram(jint flags)
 {
     //TODO
-
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_CreateLookupProgram -- :TODO");
     return NULL;
 }
 
@@ -357,13 +363,14 @@ MTLBufImgOps_EnableLookupOp(MTLContext *mtlc, jlong pSrcOps,
                             void *tableValues)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_EnableLookupOp -- :TODO");
 }
 
 void
 MTLBufImgOps_DisableLookupOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableLookupOp");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableLookupOp -- :TODO");
 }
 
 #endif /* !HEADLESS */

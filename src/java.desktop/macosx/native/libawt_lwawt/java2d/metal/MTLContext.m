@@ -224,17 +224,17 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (void)beginShapeClip {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.beginShapeClip");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.beginShapeClip -- :TODO");
 }
 
 - (void)endShapeClip {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.endShapeClip");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.endShapeClip  -- :TODO");
 }
 
 - (void)resetComposite {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetComposite");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetComposite  -- :TODO");
 }
 
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)_extraAlpha
@@ -249,7 +249,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 - (void)setXorComposite:(jint)xp {
     //TODO
     J2dTraceLn1(J2D_TRACE_INFO,
-                "MTLContext.setXorComposite: xorPixel=%08x", xp);
+                "MTLContext.setXorComposite: xorPixel=%08x -- :TODO", xp);
 }
 
 - (jboolean)isBlendingDisabled {
@@ -284,13 +284,15 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (jboolean)initBlitTileTexture {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture -- :TODO");
 
     return JNI_TRUE;
 }
 
 - (jint)createBlitTextureFormat:(jint)internalFormat pixelFormat:(jint)pixelFormat
                           width:(jint)width height:(jint)height {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_InitBlitTileTexture -- :TODO");
+
     //TODO
     return 0;
 }

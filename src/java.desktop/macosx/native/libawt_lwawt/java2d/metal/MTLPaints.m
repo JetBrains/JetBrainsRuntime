@@ -40,7 +40,7 @@ void
 MTLPaints_ResetPaint(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_ResetPaint");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_ResetPaint -- :TODO");
 }
 
 void
@@ -59,7 +59,7 @@ static void
 MTLPaints_InitGradientTexture()
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_InitGradientTexture");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_InitGradientTexture -- :TODO");
 }
 
 
@@ -73,6 +73,7 @@ MTLPaints_SetTexturePaint(MTLContext *mtlc,
                           jdouble yp0, jdouble yp1, jdouble yp3)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_SetTexturePaint -- :TODO");
 }
 
 /****************** Shared MultipleGradientPaint support ********************/
@@ -283,7 +284,7 @@ static const char *repeatCode =
 static void
 MTLPaints_InitMultiGradientTexture()
 {
-    //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_InitMultiGradientTexture -- :TODO");
 }
 
 /**
@@ -297,6 +298,8 @@ MTLPaints_CreateMultiGradProgram(jint flags,
 {
 
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_CreateMultiGradProgram -- :TODO");
+
     return NULL;
 }
 
@@ -310,6 +313,7 @@ MTLPaints_SetMultiGradientPaint(GLhandleARB multiGradProgram,
                                 void *pFractions, void *pPixels)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_SetMultiGradientPaint -- :TODO");
 
 }
 
@@ -369,6 +373,8 @@ MTLPaints_SetLinearGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
                                  void *fractions, void *pixels)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_SetLinearGradientPaint -- :TODO");
+
 }
 
 /********************** RadialGradientPaint support *************************/
@@ -448,6 +454,8 @@ MTLPaints_SetRadialGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
                                  void *fractions, void *pixels)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_SetRadialGradientPaint -- :TODO");
+
 }
 
 #endif /* !HEADLESS */
