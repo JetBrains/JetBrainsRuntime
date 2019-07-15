@@ -1089,7 +1089,7 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
     }
 
     private volatile List<Rectangle> customDecorHitTestSpots;
-    private volatile int customDecorTitleBarHeight = -1;
+    private volatile int customDecorTitleBarHeight = -1; // 0 can be a legal value when no title bar is expected
 
     // called from client via reflection
     private void setCustomDecorationHitTestSpots(List<Rectangle> hitTestSpots) {
@@ -1103,8 +1103,9 @@ public class WWindowPeer extends WPanelPeer implements WindowPeer,
 
     // called from native
     private boolean hitTestCustomDecoration(int x, int y) {
-        if (customDecorHitTestSpots == null) return false;
-        for (Rectangle spot : customDecorHitTestSpots) {
+        List<Rectangle> spots = customDecorHitTestSpots;
+        if (spots == null) return false;
+        for (Rectangle spot : spots) {
             if (spot.contains(x, y)) return true;
         }
         return false;
