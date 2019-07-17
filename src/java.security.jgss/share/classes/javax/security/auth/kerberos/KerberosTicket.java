@@ -202,6 +202,10 @@ public class KerberosTicket implements Destroyable, Refreshable,
 
     private transient boolean destroyed = false;
 
+    transient KerberosPrincipal clientAlias = null;
+
+    transient KerberosPrincipal serverAlias = null;
+
     /**
      * Constructs a {@code KerberosTicket} using credentials information that a
      * client either receives from a KDC or reads from a cache.
@@ -598,7 +602,11 @@ public class KerberosTicket implements Destroyable, Refreshable,
         try {
             krb5Creds = new sun.security.krb5.Credentials(asn1Encoding,
                                                     client.getName(),
+                                                    (clientAlias != null ?
+                                                            clientAlias.getName() : null),
                                                     server.getName(),
+                                                    (serverAlias != null ?
+                                                            serverAlias.getName() : null),
                                                     sessionKey.getEncoded(),
                                                     sessionKey.getKeyType(),
                                                     flags,
