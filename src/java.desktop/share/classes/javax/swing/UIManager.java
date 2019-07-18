@@ -58,8 +58,8 @@ import java.util.HashMap;
 import java.util.Objects;
 import sun.awt.AppContext;
 import sun.awt.AWTAccessor;
-
 import sun.swing.SwingAccessor;
+import java.awt.GraphicsEnvironment;
 
 /**
  * {@code UIManager} manages the current look and feel, the set of
@@ -375,6 +375,11 @@ public class UIManager implements Serializable
         if (osType == OSInfo.OSType.WINDOWS) {
             iLAFs.add(new LookAndFeelInfo("Windows",
                         "com.sun.java.swing.plaf.windows.WindowsLookAndFeel"));
+            if (!GraphicsEnvironment.isHeadless()) {
+                // Force DPI settings in Win32GraphicsEnvironment.initDisplayWrapper()
+                // prior to font size settings in desktop properties.
+                GraphicsEnvironment.getLocalGraphicsEnvironment();
+            }
             if (Toolkit.getDefaultToolkit().getDesktopProperty(
                     "win.xpstyle.themeActive") != null) {
                 iLAFs.add(new LookAndFeelInfo("Windows Classic",
