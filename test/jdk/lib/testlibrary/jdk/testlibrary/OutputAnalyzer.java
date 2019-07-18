@@ -469,10 +469,11 @@ public final class OutputAnalyzer {
      * Check if there is a line matching {@code pattern} and return its index
      *
      * @param pattern Matching pattern
+     * @param fromIndex Start matching after so many lines skipped
      * @return Index of first matching line
      */
-    private int indexOf(List<String> lines, String pattern) {
-        for (int i = 0; i < lines.size(); i++) {
+    private int indexOf(List<String> lines, String pattern, int fromIndex) {
+        for (int i = fromIndex; i < lines.size(); i++) {
             if (lines.get(i).matches(pattern)) {
                 return i;
             }
@@ -514,10 +515,10 @@ public final class OutputAnalyzer {
      * just a subset of it.
      *
      * @param from
-     *            The line from where output will be matched.
+     *            The line (excluded) from where output will be matched.
      *            Set {@code from} to null for matching from the first line.
      * @param to
-     *            The line until where output will be matched.
+     *            The line (excluded) until where output will be matched.
      *            Set {@code to} to null for matching until the last line.
      * @param pattern
      *            Matching pattern
@@ -533,10 +534,10 @@ public final class OutputAnalyzer {
      * just a subset of it.
      *
      * @param from
-     *            The line from where stdout will be matched.
+     *            The line (excluded) from where stdout will be matched.
      *            Set {@code from} to null for matching from the first line.
      * @param to
-     *            The line until where stdout will be matched.
+     *            The line (excluded) until where stdout will be matched.
      *            Set {@code to} to null for matching until the last line.
      * @param pattern
      *            Matching pattern
@@ -551,19 +552,21 @@ public final class OutputAnalyzer {
 
         int fromIndex = 0;
         if (from != null) {
-            fromIndex = indexOf(lines, from);
-            assertGreaterThan(fromIndex, -1,
+            fromIndex = indexOf(lines, from, 0) + 1; // + 1 -> apply 'pattern' to lines after 'from' match
+            assertGreaterThan(fromIndex, 0,
                     "The line/pattern '" + from + "' from where the output should match can not be found");
         }
 
         int toIndex = lines.size();
         if (to != null) {
-            toIndex = indexOf(lines, to);
-            assertGreaterThan(toIndex, -1,
+            toIndex = indexOf(lines, to, fromIndex);
+            assertGreaterThan(toIndex, fromIndex,
                     "The line/pattern '" + to + "' until where the output should match can not be found");
         }
 
         List<String> subList = lines.subList(fromIndex, toIndex);
+        assertFalse(subList.isEmpty(), "There are no lines to check:"
+                + " range " + fromIndex + ".." + toIndex + ", subList = " + subList);
         int matchedCount = 0;
         for (String line : subList) {
             assertTrue(line.matches(pattern),
