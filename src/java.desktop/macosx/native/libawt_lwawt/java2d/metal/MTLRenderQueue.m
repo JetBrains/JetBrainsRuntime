@@ -801,7 +801,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             onSurfaceModified(dstOps);
     }
 
-    MTLTR_DisableGlyphModeState();
+    RESET_PREVIOUS_OP();
     scheduleBlitAllModifiedLayers();
 }
 
@@ -833,7 +833,35 @@ MTLRenderQueue_GetCurrentDestination()
 void
 MTLRenderQueue_CheckPreviousOp(jint op)
 {
-    //TODO
+    // TODO : This state management technique is same as OpenGL
+    // and this is used only for Text Rendering. If needed we can extend
+    // to all types.
+    if (previousOp == op) {
+        // The op is the same as last time, so we can return immediately.
+        return;
+    }
+
+    J2dTraceLn1(J2D_TRACE_VERBOSE,
+                "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
+
+    switch (previousOp) {
+    case MTL_STATE_MASK_OP:
+        MTLVertexCache_DisableMaskCache(mtlc);
+        break;
+    case MTL_STATE_GLYPH_OP:
+        MTLTR_DisableGlyphVertexCache(mtlc);
+        break;
+    }
+
+    switch (op) {
+    case MTL_STATE_MASK_OP:
+        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
+        break;
+    case MTL_STATE_GLYPH_OP:
+        MTLTR_EnableGlyphVertexCache(mtlc);
+        break;
+    }
+
     previousOp = op;
 }
 

@@ -28,6 +28,7 @@
 
 #include "MTLContext.h"
 #include "MTLSurfaceData.h"
+#include "MTLVertexCache.h"
 
 /*
  * The following macros are used to pick values (of the specified type) off
@@ -129,6 +130,5 @@ extern jint previousOp;
 MTLContext *MTLRenderQueue_GetCurrentContext();
 BMTLSDOps *MTLRenderQueue_GetCurrentDestination();
 void MTLRenderQueue_CheckPreviousOp(jint op);
-void MTLTR_DisableGlyphModeState();
 
 #endif /* MTLRenderQueue_h_Included */

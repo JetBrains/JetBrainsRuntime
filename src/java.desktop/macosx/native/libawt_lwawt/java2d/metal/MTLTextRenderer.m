@@ -256,9 +256,25 @@ MTLTR_DisableGlyphVertexCache(MTLContext *mtlc)
 void
 MTLTR_DisableGlyphModeState()
 {
-    //TODO
+    // TODO : This is similar to OpenGL implementation
+    // When LCD implementation is done weshould make
+    // more changes.
     J2dTraceLn1(J2D_TRACE_VERBOSE,
                 "MTLTR_DisableGlyphModeState: mode=%d", glyphMode);
+    switch (glyphMode) {
+    case MODE_NO_CACHE_LCD:
+        // TODO : Along with LCD implementation
+        // changes needs to be made
+    case MODE_USE_CACHE_LCD:
+        // TODO : Along with LCD implementation
+        // changes needs to be made
+        break;
+    case MODE_NO_CACHE_GRAY:
+    case MODE_USE_CACHE_GRAY:
+    case MODE_NOT_INITED:
+    default:
+        break;
+    }
 }
 
 static jboolean
@@ -323,8 +339,8 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
     if (glyphMode != MODE_NO_CACHE_GRAY) {
-        //OGLTR_DisableGlyphModeState();
-        //CHECK_PREVIOUS_OP(OGL_STATE_MASK_OP);
+        MTLTR_DisableGlyphModeState();
+        CHECK_PREVIOUS_OP(MTL_STATE_MASK_OP);
         glyphMode = MODE_NO_CACHE_GRAY;
     }
 
@@ -395,9 +411,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
-
-    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
-    MTLVertexCache_EnableMaskCache(mtlc);
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -492,9 +505,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
         }
     }
 
-    MTLVertexCache_FlushVertexCache(mtlc);
-
-    // TODO : Disable glyph state.
+    MTLTR_DisableGlyphModeState();
 }
 
 JNIEXPORT void JNICALL
@@ -535,12 +546,13 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
                                 images, NULL);
         }
 
-        // TODO : We are flushing serially as of now
-        // no need for below logic.
-        //if (mtlc != NULL) {
-            //RESET_PREVIOUS_OP();
-            //j2d_glFlush();
-        //}
+        // TODO : We can't flush draw calls here
+        // as it is done while blitting. It needs to
+        // be updated if start flushing right after
+        // rendering
+        if (mtlc != NULL) {
+            RESET_PREVIOUS_OP();
+        }
 
         (*env)->ReleasePrimitiveArrayCritical(env, imgArray,
                                               images, JNI_ABORT);

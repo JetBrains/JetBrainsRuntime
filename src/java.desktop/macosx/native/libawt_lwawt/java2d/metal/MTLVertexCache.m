@@ -42,10 +42,9 @@ typedef struct _J2DVertex {
 static J2DVertex *vertexCache = NULL;
 static jint vertexCacheIndex = 0;
 
-id<MTLTexture> maskCacheTex = NULL;
+static id<MTLTexture> maskCacheTex = NULL;
 static jint maskCacheIndex = 0;
-
-id<MTLRenderCommandEncoder> encoder = NULL;
+static id<MTLRenderCommandEncoder> encoder = NULL;
 
 #define MTLVC_ADD_VERTEX(TX, TY, DX, DY, DZ) \
     do { \
@@ -73,6 +72,7 @@ MTLVertexCache_InitVertexCache()
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache");
 
     if (vertexCache == NULL) {
+        J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_InitVertexCache : vertexCache == NULL");
         vertexCache = (J2DVertex *)malloc(MTLVC_MAX_INDEX * sizeof(J2DVertex));
         if (vertexCache == NULL) {
             return JNI_FALSE;
@@ -87,8 +87,7 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
 
-    if (vertexCacheIndex > 0 ||
-        maskCacheIndex > 0) {
+    if (vertexCacheIndex > 0) {
         id<MTLBuffer>vertexBuffer = [mtlc.device newBufferWithBytes:vertexCache
                                                  length:vertexCacheIndex * sizeof(J2DVertex)
                                                  options:MTLResourceOptionCPUCacheModeDefault];
@@ -99,12 +98,10 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
         }
         [encoder endEncoding];
+        encoder = nil;
         vertexBuffer = nil;
     }
     vertexCacheIndex = 0;
-    maskCacheIndex = 0;
-    maskCacheTex = nil;
-    encoder = nil;
 }
 
 /**
@@ -154,13 +151,17 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc)
     // TODO : We are creating mask cache only of type MTLPixelFormatA8Unorm
     // when we need more than 1 byte to store a pixel(LCD) we need to update
     // below code.
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS mipmapped:NO];
+    MTLTextureDescriptor *textureDescriptor =
+        [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm
+                                                           width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
+                                                          height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
+                                                       mipmapped:NO];
     maskCacheTex = [mtlc.device newTextureWithDescriptor:textureDescriptor];
     return JNI_TRUE;
 }
 
 void
-MTLVertexCache_EnableMaskCache(MTLContext *mtlc)
+MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_EnableMaskCache");
 
@@ -173,14 +174,21 @@ MTLVertexCache_EnableMaskCache(MTLContext *mtlc)
             return;
         }
     }
+    MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
 }
 
 void
 MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
-    // TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
+    MTLVertexCache_FlushVertexCache(mtlc);
+    MTLVertexCache_RestoreColorState(mtlc);
+
+    maskCacheTex = nil;
+    encoder = nil;
     maskCacheIndex = 0;
+    free(vertexCache);
+    vertexCache = NULL;
 }
 
 void
@@ -207,13 +215,15 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     if (maskCacheIndex >= MTLVC_MASK_CACHE_MAX_INDEX ||
         vertexCacheIndex >= MTLVC_MAX_INDEX)
     {
+        J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
         MTLVertexCache_FlushVertexCache(mtlc);
-        MTLVertexCache_CreateSamplingEncoder(mtlc, dstOps);
+        maskCacheTex = nil;
         // TODO : Since we are not committing command buffer
         // in FlushVertexCache we need to create new maskcache
         // after present cache is full. Check whether we can
         // avoid multiple cache creation.
-        MTLVertexCache_EnableMaskCache(mtlc);
+        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
+        maskCacheIndex = 0;
     }
 
     // TODO : Implement mask == null use case also
@@ -261,6 +271,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                       mipmapLevel:0
                       withBytes:tile
                       bytesPerRow:bytesPerRow];
+        free(tile);
     }
 
     tx1 = ((jfloat)texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
