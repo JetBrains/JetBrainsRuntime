@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -21,21 +19,24 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-package jdk.internal.access;
+#ifndef SHARE_GC_G1_G1CARDTABLEENTRYCLOSURE_HPP
+#define SHARE_GC_G1_G1CARDTABLEENTRYCLOSURE_HPP
 
-import java.net.ServerSocket;
-import java.net.SocketImpl;
+#include "gc/shared/cardTable.hpp"
+#include "memory/allocation.hpp"
 
-public interface JavaNetSocketAccess {
-    /**
-     * Creates a ServerSocket associated with the given SocketImpl.
-     */
-    ServerSocket newServerSocket(SocketImpl impl);
+// A closure class for processing card table entries.  Note that we don't
+// require these closure objects to be stack-allocated.
+class G1CardTableEntryClosure: public CHeapObj<mtGC> {
+public:
+  typedef CardTable::CardValue CardValue;
 
-    /*
-     * Constructs a SocketImpl instance of the given class.
-     */
-    SocketImpl newSocketImpl(Class<? extends SocketImpl> implClass);
-}
+  // Process the card whose card table entry is "card_ptr".  If returns
+  // "false", terminate the iteration early.
+  virtual bool do_card_ptr(CardValue* card_ptr, uint worker_id) = 0;
+};
+
+#endif // SHARE_GC_G1_G1CARDTABLEENTRYCLOSURE_HPP
