@@ -518,7 +518,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 }
 
                 dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
-                [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
+                mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
@@ -801,8 +801,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             onSurfaceModified(dstOps);
     }
 
-    RESET_PREVIOUS_OP();
-    scheduleBlitAllModifiedLayers();
+    if (mtlc != NULL) {
+        RESET_PREVIOUS_OP();
+        scheduleBlitAllModifiedLayers();
+    }
 }
 
 /**
