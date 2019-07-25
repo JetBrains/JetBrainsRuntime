@@ -342,6 +342,19 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("Roboto light", "Roboto-Light.ttf");
         jreFontMap.put("Roboto thin", "Roboto-Thin.ttf");
 
+        jreFontMap.put("JetBrains Mono 520 Bold", "JetBrainsMono520-Bold.ttf");
+        jreFontMap.put("JetBrains Mono 520 Regular", "JetBrainsMono520-Regular.ttf");
+        jreFontMap.put("JetBrains Mono 520 Thin", "JetBrainsMono520-Thin.ttf");
+        jreFontMap.put("JetBrains Mono Expanded Bold", "JetBrainsMonoExpanded-Bold.ttf");
+        jreFontMap.put("JetBrains Mono Expanded Regular", "JetBrainsMonoExpanded-Regular.ttf");
+        jreFontMap.put("JetBrains Mono Expanded Thin", "JetBrainsMonoExpanded-Thin.ttf");
+        jreFontMap.put("JetBrains Mono Expanded 520 Bold", "JetBrainsMonoExpanded520-Bold.ttf");
+        jreFontMap.put("JetBrains Mono Expanded 520 Regular", "JetBrainsMonoExpanded520-Regular.ttf");
+        jreFontMap.put("JetBrains Mono Expanded 520 Thin", "JetBrainsMonoExpanded520-Thin.ttf");
+        jreFontMap.put("JetBrains Mono Bold", "JetBrainsMono-Bold.ttf");
+        jreFontMap.put("JetBrains Mono Regular", "JetBrainsMono-Regular.ttf");
+        jreFontMap.put("JetBrains Mono Thin", "JetBrainsMono-Thin.ttf");
+
         ideaFontSet = new HashSet<>();
         ideaFontSet.add("FiraCode-Bold.ttf");
         ideaFontSet.add("FiraCode-Light.ttf");
@@ -355,6 +368,19 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         ideaFontSet.add("Inconsolata.ttf");
         ideaFontSet.add("Roboto-Light.ttf");
         ideaFontSet.add("Roboto-Thin.ttf");
+
+        ideaFontSet.add("JetBrainsMono-Bold.ttf");
+        ideaFontSet.add("JetBrainsMono-Regular.ttf");
+        ideaFontSet.add("JetBrainsMono-Thin.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded-Bold.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded-Regular.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded-Thin.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded520-Bold.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded520-Regular.ttf");
+        ideaFontSet.add("JetBrainsMonoExpanded520-Thin.ttf");
+        ideaFontSet.add("JetBrainsMono520-Bold.ttf");
+        ideaFontSet.add("JetBrainsMono520-Regular.ttf");
+        ideaFontSet.add("JetBrainsMono520-Thin.ttf");
 
         ttFilterIdea = new TTFilterIdea(true, ideaFontSet);
         ttFilterJre = new TTFilterIdea(false, ideaFontSet);
