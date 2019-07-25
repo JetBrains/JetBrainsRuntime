@@ -885,6 +885,10 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCreateGlyphSetNative
   return XRenderCreateGlyphSet(awt_display, (XRenderPictFormat *) jlong_to_ptr(format));
 }
 
+static jboolean fits16Bit(jint x) {
+    return (((x & 0xffff8000) + 0x8000) & 0xffff0000) == 0 ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_xr_XRBackendNative_XRenderCompositeTextNative
  (JNIEnv *env, jclass cls, jint op, jint src, jint dst,
@@ -898,6 +902,11 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCompositeTextNative
     XGlyphElt32 selts[24];
     unsigned int sids[256];
     int charCnt = 0;
+
+    if (fits16Bit(sx) == JNI_FALSE || fits16Bit(sy) == JNI_FALSE) {
+        // X Rendering Extension protocol supports only 16-bit initial coordinates
+        return;
+    }
 
     if ((MAX_PAYLOAD / sizeof(XGlyphElt32) < (unsigned)eltCnt)
         || (MAX_PAYLOAD / sizeof(unsigned int) < (unsigned)glyphCnt)
