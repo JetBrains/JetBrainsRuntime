@@ -1287,7 +1287,9 @@ bool FileMapInfo::initialize() {
   }
 
   init_from_file(_fd);
-  if (!validate_header()) {
+  // UseSharedSpaces could be disabled if the checking of some of the header fields in
+  // init_from_file has failed.
+  if (!UseSharedSpaces || !validate_header()) {
     return false;
   }
   return true;
