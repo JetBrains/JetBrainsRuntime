@@ -957,7 +957,7 @@ Java_sun_java2d_xr_XRBackendNative_XRenderCreateGlyphSetNative
 }
 
 static jboolean fits16Bit(jint x) {
-    return ((x & 0xffff8000) + 0x8000) & 0xffff0000 == 0 ? JNI_TRUE : JNI_FALSE;
+    return (((x & 0xffff8000) + 0x8000) & 0xffff0000) == 0 ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL
