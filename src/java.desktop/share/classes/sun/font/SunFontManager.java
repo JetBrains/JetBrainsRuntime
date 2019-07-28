@@ -79,6 +79,27 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
     }
 
+    private static class TTFilterIdea extends TTFilter {
+        final private boolean positive;
+        final private HashSet<String> ideaSet;
+
+        public TTFilterIdea(boolean positive, HashSet<String> ideaSet) {
+            this.positive = positive;
+            this.ideaSet = ideaSet;
+        }
+
+        @Override
+        public boolean accept(File dir, String name) {
+            if (super.accept(dir, name)) {
+                if (ideaSet.contains(name))
+                    return positive;
+                else
+                    return !positive;
+            }
+            return false;
+        }
+    }
+
     private static class T1Filter implements FilenameFilter {
         public boolean accept(File dir,String name) {
             if (noType1Font) {
