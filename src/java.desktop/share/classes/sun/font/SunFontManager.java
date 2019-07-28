@@ -93,10 +93,13 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
         @Override
         public boolean accept(File dir, String name) {
-            if (super.accept(dir, name) && ideaSet.contains(name)) {
-                return positive;
+            if (super.accept(dir, name)) {
+                if (ideaSet.contains(name))
+                    return positive;
+                else
+                    return !positive;
             }
-            return !positive;
+            return false;
         }
     }
 
