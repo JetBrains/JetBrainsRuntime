@@ -29,6 +29,7 @@
 #include <stdlib.h>
 
 double getNativeScaleFactor(char *output_name, double default_value);
+double getScaleEnvVar(const char* var_name, double default_value);
 
 #endif
 
