@@ -31,6 +31,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
+
+#ifdef __APPLE__
+# include <xlocale.h>
+#endif
 
 typedef void* g_settings_schema_source_get_default();
 typedef void* g_settings_schema_source_ref(void *);
@@ -204,16 +209,17 @@ static double getDesktopScale(char *output_name) {
 
 }
 
-static int getScale(const char *name) {
+double getScaleEnvVar(const char *name, double default_value) {
     char *uiScale = getenv(name);
     if (uiScale != NULL) {
-        double scale = strtod(uiScale, NULL);
-        if (scale < 1) {
-            return -1;
+        locale_t c_locale = newlocale(LC_NUMERIC_MASK, "C", NULL);
+        double scale = strtod_l(uiScale, NULL, c_locale);
+        freelocale(c_locale);
+        if (scale > 0) {
+            return scale;
         }
-        return (int) scale;
     }
-    return -1;
+    return default_value;
 }
 
 double getNativeScaleFactor(char *output_name, double default_value) {
@@ -222,7 +228,7 @@ double getNativeScaleFactor(char *output_name, double default_value) {
     int gdk_scale = 0;
 
     if (scale == -2) {
-        scale = getScale("J2D_UISCALE");
+        scale = (int)getScaleEnvVar("J2D_UISCALE", -1);
     }
 
     if (scale > 0) {
@@ -235,7 +241,5 @@ double getNativeScaleFactor(char *output_name, double default_value) {
         native_scale = default_value;
     }
 
-    gdk_scale = getScale("GDK_SCALE");
-
-    return gdk_scale > 0 ? (native_scale <= 0 ? 1 : native_scale) * gdk_scale : native_scale;
+    return native_scale;
 }
