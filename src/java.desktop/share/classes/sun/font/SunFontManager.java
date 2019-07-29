@@ -268,6 +268,14 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         return ttFilter;
     }
 
+    FilenameFilter getTrueTypeFilterIdea() {
+        return ttFilterIdea;
+    }
+
+    FilenameFilter getTrueTypeFilterJre() {
+        return ttFilterJre;
+    }
+
     public FilenameFilter getType1Filter() {
         return t1Filter;
     }
