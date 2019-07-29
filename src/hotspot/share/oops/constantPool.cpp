@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -807,9 +807,9 @@ constantTag ConstantPool::constant_tag_at(int which) {
   constantTag tag = tag_at(which);
   if (tag.is_dynamic_constant() ||
       tag.is_dynamic_constant_in_error()) {
-    // have to look at the signature for this one
-    Symbol* constant_type = uncached_signature_ref_at(which);
-    return constantTag::ofBasicType(FieldType::basic_type(constant_type));
+    BasicType bt = basic_type_for_constant_at(which);
+    // dynamic constant could return an array, treat as object
+    return constantTag::ofBasicType(is_reference_type(bt) ? T_OBJECT : bt);
   }
   return tag;
 }
@@ -999,14 +999,17 @@ oop ConstantPool::resolve_constant_at_impl(const constantPoolHandle& this_cp,
       if ((callee->is_interface() && m_tag.is_method()) ||
           ((!callee->is_interface() && m_tag.is_interface_method()))) {
         ResourceMark rm(THREAD);
-        char buf[400];
-        jio_snprintf(buf, sizeof(buf),
-          "Inconsistent constant pool data in classfile for class %s. "
-          "Method %s%s at index %d is %s and should be %s",
-          callee->name()->as_C_string(), name->as_C_string(), signature->as_C_string(), index,
-          callee->is_interface() ? "CONSTANT_MethodRef" : "CONSTANT_InterfaceMethodRef",
-          callee->is_interface() ? "CONSTANT_InterfaceMethodRef" : "CONSTANT_MethodRef");
-        THROW_MSG_NULL(vmSymbols::java_lang_IncompatibleClassChangeError(), buf);
+        stringStream ss;
+        ss.print("Inconsistent constant pool data in classfile for class %s. "
+                 "Method '", callee->name()->as_C_string());
+        signature->print_as_signature_external_return_type(&ss);
+        ss.print(" %s(", name->as_C_string());
+        signature->print_as_signature_external_parameters(&ss);
+        ss.print(")' at index %d is %s and should be %s",
+                 index,
+                 callee->is_interface() ? "CONSTANT_MethodRef" : "CONSTANT_InterfaceMethodRef",
+                 callee->is_interface() ? "CONSTANT_InterfaceMethodRef" : "CONSTANT_MethodRef");
+        THROW_MSG_NULL(vmSymbols::java_lang_IncompatibleClassChangeError(), ss.as_string());
       }
 
       Klass* klass = this_cp->pool_holder();

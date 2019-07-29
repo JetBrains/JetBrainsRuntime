@@ -1714,6 +1714,10 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public Tag getTag() {
             return NEWCLASS;
         }
+
+        public boolean classDeclRemoved() {
+            return false;
+        }
     }
 
     /**
@@ -2144,7 +2148,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
 
         public enum OverloadKind {
             OVERLOADED,
-            UNOVERLOADED
+            UNOVERLOADED,
+            ERROR
         }
 
         /**

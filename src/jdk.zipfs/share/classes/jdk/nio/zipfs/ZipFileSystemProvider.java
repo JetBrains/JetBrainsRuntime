@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,27 +25,30 @@
 
 package jdk.nio.zipfs;
 
-import java.io.*;
-import java.nio.channels.*;
-import java.nio.file.*;
-import java.nio.file.DirectoryStream.Filter;
-import java.nio.file.attribute.*;
-import java.nio.file.spi.FileSystemProvider;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.channels.AsynchronousFileChannel;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.*;
+import java.nio.file.DirectoryStream.Filter;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.FileAttributeView;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipException;
 import java.util.concurrent.ExecutorService;
+import java.util.zip.ZipException;
 
-/*
- *
- * @author  Xueming Shen, Rajendra Gutupalli, Jaya Hangal
+/**
+ * @author Xueming Shen, Rajendra Gutupalli, Jaya Hangal
  */
-
 public class ZipFileSystemProvider extends FileSystemProvider {
-
 
     private final Map<Path, ZipFileSystem> filesystems = new HashMap<>();
 
@@ -98,7 +101,7 @@ public class ZipFileSystemProvider extends FileSystemProvider {
                 if (filesystems.containsKey(realPath))
                     throw new FileSystemAlreadyExistsException();
             }
-            ZipFileSystem zipfs = null;
+            ZipFileSystem zipfs;
             try {
                 if (env.containsKey("multi-release")) {
                     zipfs = new JarFileSystem(this, path, env);
@@ -125,13 +128,13 @@ public class ZipFileSystemProvider extends FileSystemProvider {
         throws IOException
     {
         ensureFile(path);
-         try {
-             ZipFileSystem zipfs;
-             if (env.containsKey("multi-release")) {
-                 zipfs = new JarFileSystem(this, path, env);
-             } else {
-                 zipfs = new ZipFileSystem(this, path, env);
-             }
+        try {
+            ZipFileSystem zipfs;
+            if (env.containsKey("multi-release")) {
+                zipfs = new JarFileSystem(this, path, env);
+            } else {
+                zipfs = new ZipFileSystem(this, path, env);
+            }
             return zipfs;
         } catch (ZipException ze) {
             String pname = path.toString();
@@ -202,7 +205,6 @@ public class ZipFileSystemProvider extends FileSystemProvider {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <V extends FileAttributeView> V
         getFileAttributeView(Path path, Class<V> type, LinkOption... options)
     {

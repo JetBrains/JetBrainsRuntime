@@ -9,3 +9,18 @@ JetBrainsRuntime.iml
 build/
 # Project exclude paths
 /jb/project/java-gradle/.gradle/
+/build/
+/dist/
+/.idea/
+nbproject/private/
+/webrev
+/.src-rev
+/.jib/
+.DS_Store
+.metadata/
+.recommenders/
+test/nashorn/script/external
+test/nashorn/lib
+NashornProfile.txt
+**/JTreport/**
+**/JTwork/**

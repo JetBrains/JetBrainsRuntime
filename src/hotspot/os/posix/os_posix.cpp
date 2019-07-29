@@ -31,6 +31,7 @@
 #include "runtime/os.hpp"
 #include "services/memTracker.hpp"
 #include "utilities/align.hpp"
+#include "utilities/events.hpp"
 #include "utilities/formatBuffer.hpp"
 #include "utilities/macros.hpp"
 #include "utilities/vmError.hpp"
@@ -546,6 +547,21 @@ void os::flockfile(FILE* fp) {
 
 void os::funlockfile(FILE* fp) {
   ::funlockfile(fp);
+}
+
+DIR* os::opendir(const char* dirname) {
+  assert(dirname != NULL, "just checking");
+  return ::opendir(dirname);
+}
+
+struct dirent* os::readdir(DIR* dirp) {
+  assert(dirp != NULL, "just checking");
+  return ::readdir(dirp);
+}
+
+int os::closedir(DIR *dirp) {
+  assert(dirp != NULL, "just checking");
+  return ::closedir(dirp);
 }
 
 // Builds a platform dependent Agent_OnLoad_<lib_name> function name
@@ -1224,6 +1240,15 @@ static bool get_signal_code_description(const siginfo_t* si, enum_sigcode_desc_t
   return true;
 }
 
+bool os::signal_sent_by_kill(const void* siginfo) {
+  const siginfo_t* const si = (const siginfo_t*)siginfo;
+  return si->si_code == SI_USER || si->si_code == SI_QUEUE
+#ifdef SI_TKILL
+         || si->si_code == SI_TKILL
+#endif
+  ;
+}
+
 void os::print_siginfo(outputStream* os, const void* si0) {
 
   const siginfo_t* const si = (const siginfo_t*) si0;
@@ -1254,7 +1279,7 @@ void os::print_siginfo(outputStream* os, const void* si0) {
   // so it depends on the context which member to use. For synchronous error signals,
   // we print si_addr, unless the signal was sent by another process or thread, in
   // which case we print out pid or tid of the sender.
-  if (si->si_code == SI_USER || si->si_code == SI_QUEUE) {
+  if (signal_sent_by_kill(si)) {
     const pid_t pid = si->si_pid;
     os->print(", si_pid: %ld", (long) pid);
     if (IS_VALID_PID(pid)) {
@@ -1278,6 +1303,25 @@ void os::print_siginfo(outputStream* os, const void* si0) {
 #endif
   }
 
+}
+
+bool os::signal_thread(Thread* thread, int sig, const char* reason) {
+  OSThread* osthread = thread->osthread();
+  if (osthread) {
+#if defined (SOLARIS)
+    // Note: we cannot use pthread_kill on Solaris - not because
+    // its missing, but because we do not have the pthread_t id.
+    int status = thr_kill(osthread->thread_id(), sig);
+#else
+    int status = pthread_kill(osthread->pthread_id(), sig);
+#endif
+    if (status == 0) {
+      Events::log(Thread::current(), "sent signal %d to Thread " INTPTR_FORMAT " because %s.",
+                  sig, p2i(thread), reason);
+      return true;
+    }
+  }
+  return false;
 }
 
 int os::Posix::unblock_thread_signal_mask(const sigset_t *set) {

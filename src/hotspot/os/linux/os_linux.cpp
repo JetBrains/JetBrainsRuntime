@@ -128,8 +128,13 @@
 // for timer info max values which include all bits
 #define ALL_64_BITS CONST64(0xFFFFFFFFFFFFFFFF)
 
-#define LARGEPAGES_BIT (1 << 6)
-#define DAX_SHARED_BIT (1 << 8)
+enum CoredumpFilterBit {
+  FILE_BACKED_PVT_BIT = 1 << 2,
+  FILE_BACKED_SHARED_BIT = 1 << 3,
+  LARGEPAGES_BIT = 1 << 6,
+  DAX_SHARED_BIT = 1 << 8
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 // global variables
 julong os::Linux::_physical_memory = 0;
@@ -219,6 +224,82 @@ julong os::physical_memory() {
   phys_mem = Linux::physical_memory();
   log_trace(os)("total system memory: " JLONG_FORMAT, phys_mem);
   return phys_mem;
+}
+
+static uint64_t initial_total_ticks = 0;
+static uint64_t initial_steal_ticks = 0;
+static bool     has_initial_tick_info = false;
+
+static void next_line(FILE *f) {
+  int c;
+  do {
+    c = fgetc(f);
+  } while (c != '\n' && c != EOF);
+}
+
+bool os::Linux::get_tick_information(CPUPerfTicks* pticks, int which_logical_cpu) {
+  FILE*         fh;
+  uint64_t      userTicks, niceTicks, systemTicks, idleTicks;
+  // since at least kernel 2.6 : iowait: time waiting for I/O to complete
+  // irq: time  servicing interrupts; softirq: time servicing softirqs
+  uint64_t      iowTicks = 0, irqTicks = 0, sirqTicks= 0;
+  // steal (since kernel 2.6.11): time spent in other OS when running in a virtualized environment
+  uint64_t      stealTicks = 0;
+  // guest (since kernel 2.6.24): time spent running a virtual CPU for guest OS under the
+  // control of the Linux kernel
+  uint64_t      guestNiceTicks = 0;
+  int           logical_cpu = -1;
+  const int     required_tickinfo_count = (which_logical_cpu == -1) ? 4 : 5;
+  int           n;
+
+  memset(pticks, 0, sizeof(CPUPerfTicks));
+
+  if ((fh = fopen("/proc/stat", "r")) == NULL) {
+    return false;
+  }
+
+  if (which_logical_cpu == -1) {
+    n = fscanf(fh, "cpu " UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " "
+            UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " "
+            UINT64_FORMAT " " UINT64_FORMAT " ",
+            &userTicks, &niceTicks, &systemTicks, &idleTicks,
+            &iowTicks, &irqTicks, &sirqTicks,
+            &stealTicks, &guestNiceTicks);
+  } else {
+    // Move to next line
+    next_line(fh);
+
+    // find the line for requested cpu faster to just iterate linefeeds?
+    for (int i = 0; i < which_logical_cpu; i++) {
+      next_line(fh);
+    }
+
+    n = fscanf(fh, "cpu%u " UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " "
+               UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " " UINT64_FORMAT " "
+               UINT64_FORMAT " " UINT64_FORMAT " ",
+               &logical_cpu, &userTicks, &niceTicks,
+               &systemTicks, &idleTicks, &iowTicks, &irqTicks, &sirqTicks,
+               &stealTicks, &guestNiceTicks);
+  }
+
+  fclose(fh);
+  if (n < required_tickinfo_count || logical_cpu != which_logical_cpu) {
+    return false;
+  }
+  pticks->used       = userTicks + niceTicks;
+  pticks->usedKernel = systemTicks + irqTicks + sirqTicks;
+  pticks->total      = userTicks + niceTicks + systemTicks + idleTicks +
+                       iowTicks + irqTicks + sirqTicks + stealTicks + guestNiceTicks;
+
+  if (n > required_tickinfo_count + 3) {
+    pticks->steal = stealTicks;
+    pticks->has_steal_ticks = true;
+  } else {
+    pticks->steal = 0;
+    pticks->has_steal_ticks = false;
+  }
+
+  return true;
 }
 
 // Return true if user is running as root.
@@ -1398,6 +1479,9 @@ void os::shutdown() {
 void os::abort(bool dump_core, void* siginfo, const void* context) {
   os::shutdown();
   if (dump_core) {
+    if (DumpPrivateMappingsInCore) {
+      ClassLoader::close_jrt_image();
+    }
 #ifndef PRODUCT
     fdStream out(defaultStream::output_fd());
     out.print_raw("Current thread is ");
@@ -1634,9 +1718,6 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
         os::Linux::_stack_is_executable = true;
         // This is OK - No Java threads have been created yet, and hence no
         // stack guard pages to fix.
-        //
-        // This should happen only when you are building JDK7 using a very
-        // old version of JDK6 (e.g., with JPRT) and running test_gamma.
         //
         // Dynamic loader will make all stacks executable after
         // this function returns, and will not do that again.
@@ -1912,6 +1993,35 @@ static bool _print_ascii_file(const char* filename, outputStream* st, const char
   return true;
 }
 
+#if defined(S390) || defined(PPC64)
+// keywords_to_match - NULL terminated array of keywords
+static bool print_matching_lines_from_file(const char* filename, outputStream* st, const char* keywords_to_match[]) {
+  char* line = NULL;
+  size_t length = 0;
+  FILE* fp = fopen(filename, "r");
+  if (fp == NULL) {
+    return false;
+  }
+
+  st->print_cr("Virtualization information:");
+  while (getline(&line, &length, fp) != -1) {
+    int i = 0;
+    while (keywords_to_match[i] != NULL) {
+      if (strncmp(line, keywords_to_match[i], strlen(keywords_to_match[i])) == 0) {
+        st->print("%s", line);
+        break;
+      }
+      i++;
+    }
+  }
+
+  free(line);
+  fclose(fp);
+
+  return true;
+}
+#endif
+
 void os::print_dll_info(outputStream *st) {
   st->print_cr("Dynamic libraries:");
 
@@ -1995,6 +2105,10 @@ void os::print_os_info(outputStream* st) {
   os::Linux::print_ld_preload_file(st);
 
   os::Linux::print_container_info(st);
+
+  os::Linux::print_virtualization_info(st);
+
+  os::Linux::print_steal_info(st);
 }
 
 // Try to identify popular distros.
@@ -2208,6 +2322,58 @@ void os::Linux::print_container_info(outputStream* st) {
   st->cr();
 }
 
+void os::Linux::print_virtualization_info(outputStream* st) {
+#if defined(S390)
+  // /proc/sysinfo contains interesting information about
+  // - LPAR
+  // - whole "Box" (CPUs )
+  // - z/VM / KVM (VM<nn>); this is not available in an LPAR-only setup
+  const char* kw[] = { "LPAR", "CPUs", "VM", NULL };
+  const char* info_file = "/proc/sysinfo";
+
+  if (!print_matching_lines_from_file(info_file, st, kw)) {
+    st->print_cr("  <%s Not Available>", info_file);
+  }
+#elif defined(PPC64)
+  const char* info_file = "/proc/ppc64/lparcfg";
+  const char* kw[] = { "system_type=", // qemu indicates PowerKVM
+                       "partition_entitled_capacity=", // entitled processor capacity percentage
+                       "partition_max_entitled_capacity=",
+                       "capacity_weight=", // partition CPU weight
+                       "partition_active_processors=",
+                       "partition_potential_processors=",
+                       "entitled_proc_capacity_available=",
+                       "capped=", // 0 - uncapped, 1 - vcpus capped at entitled processor capacity percentage
+                       "shared_processor_mode=", // (non)dedicated partition
+                       "system_potential_processors=",
+                       "pool=", // CPU-pool number
+                       "pool_capacity=",
+                       "NumLpars=", // on non-KVM machines, NumLpars is not found for full partition mode machines
+                       NULL };
+  if (!print_matching_lines_from_file(info_file, st, kw)) {
+    st->print_cr("  <%s Not Available>", info_file);
+  }
+#endif
+}
+
+void os::Linux::print_steal_info(outputStream* st) {
+  if (has_initial_tick_info) {
+    CPUPerfTicks pticks;
+    bool res = os::Linux::get_tick_information(&pticks, -1);
+
+    if (res && pticks.has_steal_ticks) {
+      uint64_t steal_ticks_difference = pticks.steal - initial_steal_ticks;
+      uint64_t total_ticks_difference = pticks.total - initial_total_ticks;
+      double steal_ticks_perc = 0.0;
+      if (total_ticks_difference != 0) {
+        steal_ticks_perc = (double) steal_ticks_difference / total_ticks_difference;
+      }
+      st->print_cr("Steal ticks since vm start: " UINT64_FORMAT, steal_ticks_difference);
+      st->print_cr("Steal ticks percentage since vm start:%7.3f", steal_ticks_perc);
+    }
+  }
+}
+
 void os::print_memory_info(outputStream* st) {
 
   st->print("Memory:");
@@ -2283,7 +2449,7 @@ const char* search_string = "CPU";
 #elif defined(PPC64)
 const char* search_string = "cpu";
 #elif defined(S390)
-const char* search_string = "processor";
+const char* search_string = "machine =";
 #elif defined(SPARC)
 const char* search_string = "cpu";
 #else
@@ -3454,8 +3620,6 @@ bool os::Linux::hugetlbfs_sanity_check(bool warn, size_t page_size) {
   return result;
 }
 
-// Set the coredump_filter bits to include largepages in core dump (bit 6)
-//
 // From the coredump_filter documentation:
 //
 // - (bit 0) anonymous private memory
@@ -3469,10 +3633,9 @@ bool os::Linux::hugetlbfs_sanity_check(bool warn, size_t page_size) {
 // - (bit 7) dax private memory
 // - (bit 8) dax shared memory
 //
-static void set_coredump_filter(bool largepages, bool dax_shared) {
+static void set_coredump_filter(CoredumpFilterBit bit) {
   FILE *f;
   long cdm;
-  bool filter_changed = false;
 
   if ((f = fopen("/proc/self/coredump_filter", "r+")) == NULL) {
     return;
@@ -3483,17 +3646,11 @@ static void set_coredump_filter(bool largepages, bool dax_shared) {
     return;
   }
 
+  long saved_cdm = cdm;
   rewind(f);
+  cdm |= bit;
 
-  if (largepages && (cdm & LARGEPAGES_BIT) == 0) {
-    cdm |= LARGEPAGES_BIT;
-    filter_changed = true;
-  }
-  if (dax_shared && (cdm & DAX_SHARED_BIT) == 0) {
-    cdm |= DAX_SHARED_BIT;
-    filter_changed = true;
-  }
-  if (filter_changed) {
+  if (cdm != saved_cdm) {
     fprintf(f, "%#lx", cdm);
   }
 
@@ -3632,7 +3789,7 @@ void os::large_page_init() {
   size_t large_page_size = Linux::setup_large_page_size();
   UseLargePages          = Linux::setup_large_page_type(large_page_size);
 
-  set_coredump_filter(true /*largepages*/, false /*dax_shared*/);
+  set_coredump_filter(LARGEPAGES_BIT);
 }
 
 #ifndef SHM_HUGETLB
@@ -5000,6 +5157,15 @@ void os::init(void) {
 
   Linux::initialize_os_info();
 
+  os::Linux::CPUPerfTicks pticks;
+  bool res = os::Linux::get_tick_information(&pticks, -1);
+
+  if (res && pticks.has_steal_ticks) {
+    has_initial_tick_info = true;
+    initial_total_ticks = pticks.total;
+    initial_steal_ticks = pticks.steal;
+  }
+
   // _main_thread points to the thread that created/loaded the JVM.
   Linux::_main_thread = pthread_self();
 
@@ -5049,13 +5215,16 @@ jint os::init_2(void) {
     return JNI_ERR;
   }
 
+#if defined(IA32)
+  // Need to ensure we've determined the process's initial stack to
+  // perform the workaround
+  Linux::capture_initial_stack(JavaThread::stack_size_at_create());
+  workaround_expand_exec_shield_cs_limit();
+#else
   suppress_primordial_thread_resolution = Arguments::created_by_java_launcher();
   if (!suppress_primordial_thread_resolution) {
     Linux::capture_initial_stack(JavaThread::stack_size_at_create());
   }
-
-#if defined(IA32)
-  workaround_expand_exec_shield_cs_limit();
 #endif
 
   Linux::libpthread_init();
@@ -5134,8 +5303,17 @@ jint os::init_2(void) {
   prio_init();
 
   if (!FLAG_IS_DEFAULT(AllocateHeapAt)) {
-    set_coredump_filter(false /*largepages*/, true /*dax_shared*/);
+    set_coredump_filter(DAX_SHARED_BIT);
   }
+
+  if (DumpPrivateMappingsInCore) {
+    set_coredump_filter(FILE_BACKED_PVT_BIT);
+  }
+
+  if (DumpSharedMappingsInCore) {
+    set_coredump_filter(FILE_BACKED_SHARED_BIT);
+  }
+
   return JNI_OK;
 }
 
@@ -5409,8 +5587,7 @@ bool os::dir_is_empty(const char* path) {
 
   // Scan the directory
   bool result = true;
-  char buf[sizeof(struct dirent) + MAX_PATH];
-  while (result && (ptr = ::readdir(dir)) != NULL) {
+  while (result && (ptr = readdir(dir)) != NULL) {
     if (strcmp(ptr->d_name, ".") != 0 && strcmp(ptr->d_name, "..") != 0) {
       result = false;
     }

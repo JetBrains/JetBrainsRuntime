@@ -739,7 +739,8 @@ class GTKStyle extends SynthStyle implements GTKConstants {
               region == Region.TOOL_BAR_DRAG_WINDOW ||
               region == Region.TOOL_TIP ||
               region == Region.TREE ||
-              region == Region.VIEWPORT) {
+              region == Region.VIEWPORT ||
+              region == Region.TEXT_PANE) {
             return true;
         }
         if (!GTKLookAndFeel.is3()) {
@@ -747,8 +748,7 @@ class GTKStyle extends SynthStyle implements GTKConstants {
                   region == Region.FORMATTED_TEXT_FIELD ||
                   region == Region.PASSWORD_FIELD ||
                   region == Region.SPINNER ||
-                  region == Region.TEXT_FIELD ||
-                  region == Region.TEXT_PANE) {
+                  region == Region.TEXT_FIELD) {
                 return true;
             }
         }
@@ -1182,13 +1182,24 @@ class GTKStyle extends SynthStyle implements GTKConstants {
         ICONS_MAP = new HashMap<String, GTKStockIcon>();
         ICONS_MAP.put("FileChooser.cancelIcon", new GTKStockIcon("gtk-cancel", 4));
         ICONS_MAP.put("FileChooser.okIcon",     new GTKStockIcon("gtk-ok",     4));
-        ICONS_MAP.put("OptionPane.errorIcon", new GTKStockIcon("gtk-dialog-error", 6));
-        ICONS_MAP.put("OptionPane.informationIcon", new GTKStockIcon("gtk-dialog-info", 6));
-        ICONS_MAP.put("OptionPane.warningIcon", new GTKStockIcon("gtk-dialog-warning", 6));
-        ICONS_MAP.put("OptionPane.questionIcon", new GTKStockIcon("gtk-dialog-question", 6));
         ICONS_MAP.put("OptionPane.yesIcon", new GTKStockIcon("gtk-yes", 4));
         ICONS_MAP.put("OptionPane.noIcon", new GTKStockIcon("gtk-no", 4));
         ICONS_MAP.put("OptionPane.cancelIcon", new GTKStockIcon("gtk-cancel", 4));
         ICONS_MAP.put("OptionPane.okIcon", new GTKStockIcon("gtk-ok", 4));
+
+        //check whether the gtk version is >= 3.10 as the Icon names were
+        //changed from this version
+        UNIXToolkit tk = (UNIXToolkit)Toolkit.getDefaultToolkit();
+        if (tk.checkGtkVersion(3, 10, 0)) {
+            ICONS_MAP.put("OptionPane.errorIcon", new GTKStockIcon("dialog-error", 6));
+            ICONS_MAP.put("OptionPane.informationIcon", new GTKStockIcon("dialog-information", 6));
+            ICONS_MAP.put("OptionPane.warningIcon", new GTKStockIcon("dialog-warning", 6));
+            ICONS_MAP.put("OptionPane.questionIcon", new GTKStockIcon("dialog-question", 6));
+        } else {
+            ICONS_MAP.put("OptionPane.errorIcon", new GTKStockIcon("gtk-dialog-error", 6));
+            ICONS_MAP.put("OptionPane.informationIcon", new GTKStockIcon("gtk-dialog-info", 6));
+            ICONS_MAP.put("OptionPane.warningIcon", new GTKStockIcon("gtk-dialog-warning", 6));
+            ICONS_MAP.put("OptionPane.questionIcon", new GTKStockIcon("gtk-dialog-question", 6));
+        }
     }
 }

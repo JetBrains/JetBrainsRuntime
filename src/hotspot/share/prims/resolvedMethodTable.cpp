@@ -118,18 +118,21 @@ oop ResolvedMethodTable::find_method(Method* method) {
   return entry;
 }
 
-oop ResolvedMethodTable::add_method(Handle resolved_method_name) {
+oop ResolvedMethodTable::add_method(const methodHandle& m, Handle resolved_method_name) {
   MutexLocker ml(ResolvedMethodTable_lock);
   DEBUG_ONLY(NoSafepointVerifier nsv);
 
+  Method* method = m();
   // Check if method has been redefined while taking out ResolvedMethodTable_lock, if so
-  // use new method.
-  Method* method = (Method*)java_lang_invoke_ResolvedMethodName::vmtarget(resolved_method_name());
-  assert(method->is_method(), "must be method");
+  // use new method.  The old method won't be deallocated because it's passed in as a Handle.
   if (method->is_old()) {
     // Replace method with redefined version
     InstanceKlass* holder = method->method_holder();
     method = holder->method_with_idnum(method->method_idnum());
+    if (method == NULL) {
+      // Replace deleted method with NSME.
+      method = Universe::throw_no_such_method_error();
+    }
     java_lang_invoke_ResolvedMethodName::set_vmtarget(resolved_method_name(), method);
   }
   // Set flag in class to indicate this InstanceKlass has entries in the table
@@ -212,17 +215,16 @@ void ResolvedMethodTable::adjust_method_entries(bool * trace_name_printed) {
 
       if (old_method->is_old()) {
 
+        Method* new_method;
         if (old_method->is_deleted()) {
-          // leave deleted method in ResolvedMethod for now (this is a bug that we don't mark
-          // these on_stack)
-          continue;
+          new_method = Universe::throw_no_such_method_error();
+        } else {
+          InstanceKlass* holder = old_method->method_holder();
+          new_method = holder->method_with_idnum(old_method->orig_method_idnum());
+          assert(holder == new_method->method_holder(), "call after swapping redefined guts");
+          assert(new_method != NULL, "method_with_idnum() should not be NULL");
+          assert(old_method != new_method, "sanity check");
         }
-
-        InstanceKlass* holder = old_method->method_holder();
-        Method* new_method = holder->method_with_idnum(old_method->orig_method_idnum());
-        assert(holder == new_method->method_holder(), "call after swapping redefined guts");
-        assert(new_method != NULL, "method_with_idnum() should not be NULL");
-        assert(old_method != new_method, "sanity check");
 
         java_lang_invoke_ResolvedMethodName::set_vmtarget(mem_name, new_method);
 

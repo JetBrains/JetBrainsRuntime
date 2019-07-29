@@ -1710,7 +1710,11 @@ static void gtk3_paint_expander(WidgetType widget_type, GtkStateType state_type,
 
     GtkStateFlags flags = get_gtk_flags(state_type);
     if (expander_style == GTK_EXPANDER_EXPANDED) {
-        flags |= GTK_STATE_FLAG_ACTIVE;
+        if (gtk3_version_3_14) {
+            flags |= GTK_STATE_FLAG_CHECKED;
+        } else {
+            flags |= GTK_STATE_FLAG_ACTIVE;
+        }
     }
 
     fp_gtk_style_context_set_state(context, flags);
@@ -1775,13 +1779,18 @@ static void gtk3_paint_flat_box(WidgetType widget_type, GtkStateType state_type,
         (widget_type == CHECK_BOX || widget_type == RADIO_BUTTON)) {
         return;
     }
-    gtk3_widget = gtk3_get_widget(widget_type);
 
-    GtkStyleContext* context = fp_gtk_widget_get_style_context (gtk3_widget);
-    fp_gtk_style_context_save (context);
-
-    if (detail != 0) {
-        transform_detail_string(detail, context);
+    GtkStyleContext* context = NULL;
+    if (widget_type == TOOL_TIP) {
+        context = get_style(widget_type, detail);
+        fp_gtk_style_context_add_class(context, "background");
+    } else {
+        gtk3_widget = gtk3_get_widget(widget_type);
+        context = fp_gtk_widget_get_style_context (gtk3_widget);
+        fp_gtk_style_context_save (context);
+        if (detail != 0) {
+            transform_detail_string(detail, context);
+        }
     }
 
     GtkStateFlags flags = get_gtk_flags(state_type);
@@ -1797,8 +1806,11 @@ static void gtk3_paint_flat_box(WidgetType widget_type, GtkStateType state_type,
     }
 
     fp_gtk_render_background (context, cr, x, y, width, height);
-
-    fp_gtk_style_context_restore (context);
+    if (widget_type == TOOL_TIP) {
+        disposeOrRestoreContext(context);
+    } else {
+        fp_gtk_style_context_restore (context);
+    }
 }
 
 static void gtk3_paint_focus(WidgetType widget_type, GtkStateType state_type,
@@ -2358,12 +2370,19 @@ static gint gtk3_get_color_for_state(JNIEnv *env, WidgetType widget_type,
 
     init_containers();
 
-    gtk3_widget = gtk3_get_widget(widget_type);
+    if (gtk3_version_3_20) {
+        if ((widget_type == TEXT_FIELD || widget_type == PASSWORD_FIELD || widget_type == SPINNER_TEXT_FIELD ||
+            widget_type == FORMATTED_TEXT_FIELD) && state_type == GTK_STATE_SELECTED && color_type == TEXT_BACKGROUND) {
+            widget_type = TEXT_AREA;
+        }
+    }
 
-    GtkStyleContext* context = fp_gtk_widget_get_style_context(gtk3_widget);
-
+    GtkStyleContext* context = NULL;
     if (widget_type == TOOL_TIP) {
-        fp_gtk_style_context_add_class(context, "tooltip");
+        context = get_style(widget_type, "tooltip");
+    } else {
+        gtk3_widget = gtk3_get_widget(widget_type);
+        context = fp_gtk_widget_get_style_context(gtk3_widget);
     }
     if (widget_type == CHECK_BOX_MENU_ITEM
      || widget_type == RADIO_BUTTON_MENU_ITEM) {
@@ -2381,7 +2400,9 @@ static gint gtk3_get_color_for_state(JNIEnv *env, WidgetType widget_type,
 
     result = recode_color(color.alpha) << 24 | recode_color(color.red) << 16 |
              recode_color(color.green) << 8 | recode_color(color.blue);
-
+    if (widget_type == TOOL_TIP) {
+        disposeOrRestoreContext(context);
+    }
     return result;
 }
 

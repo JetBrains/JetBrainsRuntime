@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
 package sun.security.ssl;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.security.AlgorithmConstraints;
 import java.security.CryptoPrimitive;
@@ -365,26 +367,20 @@ abstract class HandshakeContext implements ConnectionContext {
         //     } Handshake;
 
         if (plaintext.contentType != ContentType.HANDSHAKE.id) {
-            conContext.fatal(Alert.INTERNAL_ERROR,
+            throw conContext.fatal(Alert.INTERNAL_ERROR,
                 "Unexpected operation for record: " + plaintext.contentType);
-
-            return 0;
         }
 
         if (plaintext.fragment == null || plaintext.fragment.remaining() < 4) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid handshake message: insufficient data");
-
-            return 0;
         }
 
         byte handshakeType = (byte)Record.getInt8(plaintext.fragment);
         int handshakeLen = Record.getInt24(plaintext.fragment);
         if (handshakeLen != plaintext.fragment.remaining()) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Invalid handshake message: insufficient handshake body");
-
-            return 0;
         }
 
         return handshakeType;
@@ -438,18 +434,21 @@ abstract class HandshakeContext implements ConnectionContext {
         }
 
         if (consumer == null) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected handshake message: " +
                     SSLHandshake.nameOf(handshakeType));
-            return;
         }
 
         try {
             consumer.consume(this, fragment);
         } catch (UnsupportedOperationException unsoe) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unsupported handshake message: " +
                     SSLHandshake.nameOf(handshakeType), unsoe);
+        } catch (BufferUnderflowException | BufferOverflowException be) {
+            throw conContext.fatal(Alert.DECODE_ERROR,
+                    "Illegal handshake message: " +
+                    SSLHandshake.nameOf(handshakeType), be);
         }
 
         // update handshake hash after handshake message consumption.

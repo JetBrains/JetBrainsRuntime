@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@
 #include "jfr/recorder/service/jfrMemorySizer.hpp"
 #include "jfr/recorder/service/jfrOptionSet.hpp"
 #include "jfr/utilities/jfrAllocation.hpp"
+#include "jfr/utilities/jfrTypes.hpp"
 #include "logging/log.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
@@ -105,10 +106,6 @@ void JfrOptionSet::set_old_object_queue_size(jlong value) {
 u4 JfrOptionSet::stackdepth() {
   return _stack_depth;
 }
-
-static const u4 STACK_DEPTH_DEFAULT = 64;
-static const u4 MIN_STACK_DEPTH = 1;
-static const u4 MAX_STACK_DEPTH = 2048;
 
 void JfrOptionSet::set_stackdepth(u4 depth) {
   if (depth < MIN_STACK_DEPTH) {
@@ -352,19 +349,19 @@ bool JfrOptionSet::configure(TRAPS) {
   configure._stack_depth.set_value(_dcmd_stackdepth.value());
 
   configure._thread_buffer_size.set_is_set(_dcmd_threadbuffersize.is_set());
-  configure._thread_buffer_size.set_value(_dcmd_threadbuffersize.value()._size);
+  configure._thread_buffer_size.set_value(_dcmd_threadbuffersize.value());
 
   configure._global_buffer_count.set_is_set(_dcmd_numglobalbuffers.is_set());
   configure._global_buffer_count.set_value(_dcmd_numglobalbuffers.value());
 
   configure._global_buffer_size.set_is_set(_dcmd_globalbuffersize.is_set());
-  configure._global_buffer_size.set_value(_dcmd_globalbuffersize.value()._size);
+  configure._global_buffer_size.set_value(_dcmd_globalbuffersize.value());
 
   configure._max_chunk_size.set_is_set(_dcmd_maxchunksize.is_set());
-  configure._max_chunk_size.set_value(_dcmd_maxchunksize.value()._size);
+  configure._max_chunk_size.set_value(_dcmd_maxchunksize.value());
 
   configure._memory_size.set_is_set(_dcmd_memorysize.is_set());
-  configure._memory_size.set_value(_dcmd_memorysize.value()._size);
+  configure._memory_size.set_value(_dcmd_memorysize.value());
 
   configure._sample_threads.set_is_set(_dcmd_sample_threads.is_set());
   configure._sample_threads.set_value(_dcmd_sample_threads.value());

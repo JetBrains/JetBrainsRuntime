@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -3112,7 +3112,7 @@ public final class Unsafe {
      * @param offset field/element offset
      * @param mask the mask value
      * @return the previous value
-     * @since 1.9
+     * @since 9
      */
     @ForceInline
     public final int getAndBitwiseAndInt(Object o, long offset, int mask) {
@@ -3338,6 +3338,14 @@ public final class Unsafe {
      */
     private static void throwIllegalAccessError() {
         throw new IllegalAccessError();
+    }
+
+    /**
+     * Throws NoSuchMethodError; for use by the VM for redefinition support.
+     * @since 13
+     */
+    private static void throwNoSuchMethodError() {
+        throw new NoSuchMethodError();
     }
 
     /**

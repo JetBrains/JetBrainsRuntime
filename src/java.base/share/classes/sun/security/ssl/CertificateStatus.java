@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -154,7 +154,8 @@ final class CertificateStatus {
                     encodedResponses.add(respDER);
                     encodedResponsesLen = 3 + respDER.length;
                 } else {
-                    handshakeContext.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                    throw handshakeContext.conContext.fatal(
+                            Alert.HANDSHAKE_FAILURE,
                             "Zero-length OCSP Response");
                 }
             } else if (statusType == CertStatusRequestType.OCSP_MULTI) {
@@ -172,11 +173,13 @@ final class CertificateStatus {
                 }
 
                 if (respListLen != 0) {
-                    handshakeContext.conContext.fatal(Alert.INTERNAL_ERROR,
+                    throw handshakeContext.conContext.fatal(
+                            Alert.INTERNAL_ERROR,
                             "Bad OCSP response list length");
                 }
             } else {
-                handshakeContext.conContext.fatal(Alert.HANDSHAKE_FAILURE,
+                throw handshakeContext.conContext.fatal(
+                        Alert.HANDSHAKE_FAILURE,
                         "Unsupported StatusResponseType: " + statusType);
             }
             messageLength = messageLength();
@@ -284,12 +287,16 @@ final class CertificateStatus {
             }
 
             // Pin the received responses to the SSLSessionImpl.  It will
-            // be retrieved by the X509TrustManagerImpl during the certficicate
+            // be retrieved by the X509TrustManagerImpl during the certificate
             // checking phase.
             chc.handshakeSession.setStatusResponses(cst.encodedResponses);
 
             // Now perform the check
             T12CertificateConsumer.checkServerCerts(chc, chc.deferredCerts);
+
+            // Update the handshake consumers to remove this message, indicating
+            // that it has been processed.
+            chc.handshakeConsumers.remove(SSLHandshake.CERTIFICATE_STATUS.id);
         }
     }
 

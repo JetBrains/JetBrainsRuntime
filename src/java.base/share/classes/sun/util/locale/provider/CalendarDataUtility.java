@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -246,14 +246,22 @@ public class CalendarDataUtility {
             switch (requestID) {
             case FIRST_DAY_OF_WEEK:
                 value = calendarDataProvider.getFirstDayOfWeek(locale);
+                if (value == 0) {
+                    value = MONDAY; // default for the world ("001")
+                }
                 break;
             case MINIMAL_DAYS_IN_FIRST_WEEK:
                 value = calendarDataProvider.getMinimalDaysInFirstWeek(locale);
+                if (value == 0) {
+                    value = 1; // default for the world ("001")
+                }
                 break;
             default:
                 throw new InternalError("invalid requestID: " + requestID);
             }
-            return (value != 0) ? value : null;
+
+            assert value != 0;
+            return value;
         }
     }
 }

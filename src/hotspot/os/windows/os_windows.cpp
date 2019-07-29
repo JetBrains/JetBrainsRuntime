@@ -1167,11 +1167,10 @@ DIR * os::opendir(const char *dirname) {
   return dirp;
 }
 
-// parameter dbuf unused on Windows
-struct dirent * os::readdir(DIR *dirp, dirent *dbuf) {
+struct dirent * os::readdir(DIR *dirp) {
   assert(dirp != NULL, "just checking");      // hotspot change
   if (dirp->handle == INVALID_HANDLE_VALUE) {
-    return 0;
+    return NULL;
   }
 
   strcpy(dirp->dirent.d_name, dirp->find_data.cFileName);
@@ -1179,7 +1178,7 @@ struct dirent * os::readdir(DIR *dirp, dirent *dbuf) {
   if (!FindNextFile(dirp->handle, &dirp->find_data)) {
     if (GetLastError() == ERROR_INVALID_HANDLE) {
       errno = EBADF;
-      return 0;
+      return NULL;
     }
     FindClose(dirp->handle);
     dirp->handle = INVALID_HANDLE_VALUE;
@@ -1791,6 +1790,11 @@ void os::print_memory_info(outputStream* st) {
   st->cr();
 }
 
+bool os::signal_sent_by_kill(const void* siginfo) {
+  // TODO: Is this possible?
+  return false;
+}
+
 void os::print_siginfo(outputStream *st, const void* siginfo) {
   const EXCEPTION_RECORD* const er = (EXCEPTION_RECORD*)siginfo;
   st->print("siginfo:");
@@ -1822,6 +1826,11 @@ void os::print_siginfo(outputStream *st, const void* siginfo) {
     }
   }
   st->cr();
+}
+
+bool os::signal_thread(Thread* thread, int sig, const char* reason) {
+  // TODO: Can we kill thread?
+  return false;
 }
 
 void os::print_signal_handlers(outputStream* st, char* buf, size_t buflen) {

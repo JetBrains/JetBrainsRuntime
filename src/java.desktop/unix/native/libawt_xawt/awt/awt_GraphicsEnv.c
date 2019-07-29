@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,9 @@
 #include <X11/XKBlib.h>
 #include <X11/Xlib.h>
 #include <X11/Xresource.h>
-#include "Xrandr.h"
+#ifndef _AIX
+#include <X11/extensions/Xrandr.h>
+#endif
 #include "GLXGraphicsConfig.h"
 #endif /* !HEADLESS */
 
@@ -207,6 +209,8 @@ findWithTemplate(XVisualInfo *vinfo,
     visualList = XGetVisualInfo(awt_display,
                                 mask, vinfo, &visualsMatched);
     if (visualList) {
+        int id = -1;
+        VisualID defaultVisual = XVisualIDFromVisual(DefaultVisual(awt_display, vinfo->screen));
         defaultConfig = ZALLOC(_AwtGraphicsConfigData);
         for (i = 0; i < visualsMatched; i++) {
             memcpy(&defaultConfig->awt_visInfo, &visualList[i], sizeof(XVisualInfo));
@@ -215,19 +219,30 @@ findWithTemplate(XVisualInfo *vinfo,
             /* we can't use awtJNI_CreateColorData here, because it'll pull,
                SystemColor, which in turn will cause toolkit to be reinitialized */
             if (awtCreateX11Colormap(defaultConfig)) {
-                /* Allocate white and black pixels for this visual */
-                color.flags = DoRed | DoGreen | DoBlue;
-                color.red = color.green = color.blue = 0x0000;
-                XAllocColor(awt_display, defaultConfig->awt_cmap, &color);
-                x11Screens[visualList[i].screen].blackpixel = color.pixel;
-                color.flags = DoRed | DoGreen | DoBlue;
-                color.red = color.green = color.blue = 0xffff;
-                XAllocColor(awt_display, defaultConfig->awt_cmap, &color);
-                x11Screens[visualList[i].screen].whitepixel = color.pixel;
-
-                XFree(visualList);
-                return defaultConfig;
+                if (visualList[i].visualid == defaultVisual) {
+                    id = i;
+                    break;
+                } else if (-1 == id) {
+                    // Keep 1st match for fallback
+                    id = i;
+                }
             }
+        }
+        if (-1 != id) {
+            memcpy(&defaultConfig->awt_visInfo, &visualList[id], sizeof(XVisualInfo));
+            defaultConfig->awt_depth = visualList[id].depth;
+            /* Allocate white and black pixels for this visual */
+            color.flags = DoRed | DoGreen | DoBlue;
+            color.red = color.green = color.blue = 0x0000;
+            XAllocColor(awt_display, defaultConfig->awt_cmap, &color);
+            x11Screens[visualList[id].screen].blackpixel = color.pixel;
+            color.flags = DoRed | DoGreen | DoBlue;
+            color.red = color.green = color.blue = 0xffff;
+            XAllocColor(awt_display, defaultConfig->awt_cmap, &color);
+            x11Screens[visualList[id].screen].whitepixel = color.pixel;
+
+            XFree(visualList);
+            return defaultConfig;
         }
         XFree(visualList);
         free((void *)defaultConfig);
@@ -1627,6 +1642,8 @@ Java_sun_awt_X11GraphicsEnvironment_getXineramaCenterPoint(JNIEnv *env,
 
 #ifndef HEADLESS
 
+#ifndef _AIX
+
 #define BIT_DEPTH_MULTI java_awt_DisplayMode_BIT_DEPTH_MULTI
 #define REFRESH_RATE_UNKNOWN java_awt_DisplayMode_REFRESH_RATE_UNKNOWN
 
@@ -1832,6 +1849,8 @@ X11GD_AddDisplayMode(JNIEnv *env, jobject arrayList,
     }
 }
 
+#endif /* !_AIX */
+
 static void
 X11GD_SetFullscreenMode(Window win, jboolean enabled)
 {
@@ -1871,7 +1890,7 @@ JNIEXPORT jboolean JNICALL
 Java_sun_awt_X11GraphicsDevice_initXrandrExtension
     (JNIEnv *env, jclass x11gd)
 {
-#ifdef HEADLESS
+#if defined(HEADLESS) || defined(_AIX)
     return JNI_FALSE;
 #else
     int opcode = 0, firstEvent = 0, firstError = 0;
@@ -1898,7 +1917,7 @@ JNIEXPORT jobject JNICALL
 Java_sun_awt_X11GraphicsDevice_getCurrentDisplayMode
     (JNIEnv* env, jclass x11gd, jint screen)
 {
-#ifdef HEADLESS
+#if defined(HEADLESS) || defined(_AIX)
     return NULL;
 #else
     XRRScreenConfiguration *config;
@@ -1994,7 +2013,7 @@ Java_sun_awt_X11GraphicsDevice_enumDisplayModes
     (JNIEnv* env, jclass x11gd,
      jint screen, jobject arrayList)
 {
-#ifndef HEADLESS
+#if !defined(HEADLESS) && !defined(_AIX)
 
     AWT_LOCK();
 
@@ -2082,7 +2101,7 @@ Java_sun_awt_X11GraphicsDevice_configDisplayMode
     (JNIEnv* env, jclass x11gd,
      jint screen, jint width, jint height, jint refreshRate)
 {
-#ifndef HEADLESS
+#if !defined(HEADLESS) && !defined(_AIX)
     jboolean success = JNI_FALSE;
     XRRScreenConfiguration *config;
     Drawable root;
@@ -2199,6 +2218,9 @@ Java_sun_awt_X11GraphicsDevice_exitFullScreenExclusive
  */
 
 static char *get_output_screen_name(JNIEnv *env, int screen) {
+#ifdef _AIX
+    return NULL;
+#else
     if (!awt_XRRGetScreenResources || !awt_XRRGetOutputInfo) {
         return NULL;
     }
@@ -2228,6 +2250,7 @@ static char *get_output_screen_name(JNIEnv *env, int screen) {
     }
     AWT_UNLOCK();
     return name;
+#endif /* _AIX */
 }
 
 /*

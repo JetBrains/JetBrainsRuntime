@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,6 +130,10 @@ intptr_t* os::Linux::ucontext_get_sp(const ucontext_t * uc) {
 
 intptr_t* os::Linux::ucontext_get_fp(const ucontext_t * uc) {
   return NULL;
+}
+
+static unsigned long ucontext_get_trap(const ucontext_t * uc) {
+  return uc->uc_mcontext.regs->trap;
 }
 
 ExtendedPC os::fetch_frame_from_context(const void* ucVoid,
@@ -298,15 +302,27 @@ JVM_handle_linux_signal(int sig,
   address stub = NULL;
   address pc   = NULL;
 
-  //%note os_trap_1
   if (info != NULL && uc != NULL && thread != NULL) {
     pc = (address) os::Linux::ucontext_get_pc(uc);
 
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV) {
-      // Si_addr may not be valid due to a bug in the linux-ppc64 kernel (see
+      // si_addr may not be valid due to a bug in the linux-ppc64 kernel (see
       // comment below). Use get_stack_bang_address instead of si_addr.
-      address addr = ((NativeInstruction*)pc)->get_stack_bang_address(uc);
+      // If SIGSEGV is caused due to a branch to an invalid address an
+      // "Instruction Storage Interrupt" is generated and 'pc' (NIP) already
+      // contains the invalid address. Otherwise, the SIGSEGV is caused due to
+      // load/store instruction trying to load/store from/to an invalid address
+      // and causing a "Data Storage Interrupt", so we inspect the intruction
+      // in order to extract the faulty data addresss.
+      address addr;
+      if ((ucontext_get_trap(uc) & 0x0F00 /* no IRQ reply bits */) == 0x0400) {
+        // Instruction Storage Interrupt (ISI)
+        addr = pc;
+      } else {
+        // Data Storage Interrupt (DSI), i.e. 0x0300: extract faulty data address
+        addr = ((NativeInstruction*)pc)->get_stack_bang_address(uc);
+      }
 
       // Check if fault address is within thread stack.
       if (thread->on_local_stack(addr)) {
@@ -483,8 +499,10 @@ JVM_handle_linux_signal(int sig,
     // It write enables the page immediately after protecting it
     // so we can just return to retry the write.
     if ((sig == SIGSEGV) &&
-        // Si_addr may not be valid due to a bug in the linux-ppc64 kernel (see comment above).
-        // Use is_memory_serialization instead of si_addr.
+        // si_addr may not be valid due to a bug in the linux-ppc64 kernel (see comments above).
+        // So first check if it's indeed a "Data Storage Interrupt" (DSI), caused by load/store,
+        // and only then use is_memory_serialization instead of si_addr.
+        (ucontext_get_trap(uc) & 0x0F00 == 0x0300) &&
         ((NativeInstruction*)pc)->is_memory_serialization(thread, ucVoid)) {
       // Synchronization problem in the pseudo memory barrier code (bug id 6546278)
       // Block current thread until the memory serialize page permission restored.
@@ -588,8 +606,7 @@ void os::print_context(outputStream *st, const void *context) {
   // point to garbage if entry point in an nmethod is corrupted. Leave
   // this at the end, and hope for the best.
   address pc = os::Linux::ucontext_get_pc(uc);
-  st->print_cr("Instructions: (pc=" PTR_FORMAT ")", p2i(pc));
-  print_hex_dump(st, pc - 64, pc + 64, /*instrsize=*/4);
+  print_instructions(st, pc, /*instrsize=*/4);
   st->cr();
 }
 

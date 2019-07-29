@@ -28,7 +28,7 @@
 #include "jfr/recorder/jfrRecorder.hpp"
 #include "jfr/recorder/checkpoint/jfrCheckpointManager.hpp"
 #include "jfr/recorder/checkpoint/jfrMetadataEvent.hpp"
-#include "jfr/recorder/repository/jfrChunkSizeNotifier.hpp"
+#include "jfr/recorder/repository/jfrChunkRotation.hpp"
 #include "jfr/recorder/repository/jfrChunkWriter.hpp"
 #include "jfr/recorder/repository/jfrRepository.hpp"
 #include "jfr/recorder/service/jfrPostBox.hpp"
@@ -130,18 +130,18 @@ class RotationLock : public StackObj {
   bool not_acquired() const { return !_acquired; }
 };
 
-static intptr_t write_checkpoint_event_prologue(JfrChunkWriter& cw, u8 type_id) {
-  const intptr_t prev_cp_offset = cw.previous_checkpoint_offset();
-  const intptr_t prev_cp_relative_offset = 0 == prev_cp_offset ? 0 : prev_cp_offset - cw.current_offset();
+static int64_t write_checkpoint_event_prologue(JfrChunkWriter& cw, u8 type_id) {
+  const int64_t prev_cp_offset = cw.previous_checkpoint_offset();
+  const int64_t prev_cp_relative_offset = 0 == prev_cp_offset ? 0 : prev_cp_offset - cw.current_offset();
   cw.reserve(sizeof(u4));
   cw.write<u8>(EVENT_CHECKPOINT);
   cw.write(JfrTicks::now());
-  cw.write<jlong>((jlong)0);
+  cw.write((int64_t)0);
   cw.write(prev_cp_relative_offset); // write previous checkpoint offset delta
   cw.write<bool>(false); // flushpoint
-  cw.write<u4>((u4)1); // nof types in this checkpoint
-  cw.write<u8>(type_id);
-  const intptr_t number_of_elements_offset = cw.current_offset();
+  cw.write((u4)1); // nof types in this checkpoint
+  cw.write(type_id);
+  const int64_t number_of_elements_offset = cw.current_offset();
   cw.reserve(sizeof(u4));
   return number_of_elements_offset;
 }
@@ -161,8 +161,8 @@ class WriteCheckpointEvent : public StackObj {
   }
   bool process() {
     // current_cp_offset is also offset for the event size header field
-    const intptr_t current_cp_offset = _cw.current_offset();
-    const intptr_t num_elements_offset = write_checkpoint_event_prologue(_cw, _type_id);
+    const int64_t current_cp_offset = _cw.current_offset();
+    const int64_t num_elements_offset = write_checkpoint_event_prologue(_cw, _type_id);
     // invocation
     _content_functor.process();
     const u4 number_of_elements = (u4)_content_functor.processed();
@@ -340,6 +340,7 @@ void JfrRecorderService::prepare_for_vm_error_rotation() {
 void JfrRecorderService::open_new_chunk(bool vm_error) {
   assert(!_chunkwriter.is_valid(), "invariant");
   assert(!JfrStream_lock->owned_by_self(), "invariant");
+  JfrChunkRotation::on_rotation();
   MutexLockerEx stream_lock(JfrStream_lock, Mutex::_no_safepoint_check_flag);
   if (!_repository.open_chunk(vm_error)) {
     assert(!_chunkwriter.is_valid(), "invariant");
@@ -467,9 +468,9 @@ void JfrRecorderService::safepoint_write() {
   JfrMetadataEvent::lock();
 }
 
-static jlong write_metadata_event(JfrChunkWriter& chunkwriter) {
+static int64_t write_metadata_event(JfrChunkWriter& chunkwriter) {
   assert(chunkwriter.is_valid(), "invariant");
-  const jlong metadata_offset = chunkwriter.current_offset();
+  const int64_t metadata_offset = chunkwriter.current_offset();
   JfrMetadataEvent::write(chunkwriter, metadata_offset);
   return metadata_offset;
 }
@@ -535,8 +536,5 @@ void JfrRecorderService::scavenge() {
 }
 
 void JfrRecorderService::evaluate_chunk_size_for_rotation() {
-  const size_t size_written = _chunkwriter.size_written();
-  if (size_written > JfrChunkSizeNotifier::chunk_size_threshold()) {
-    JfrChunkSizeNotifier::notify();
-  }
+  JfrChunkRotation::evaluate(_chunkwriter);
 }

@@ -102,7 +102,7 @@
 #  1. Make sure test passes on all platforms with samevm, or mark it othervm
 #  2. Make sure test passes on all platforms when run with it's entire group
 #  3. Make sure both VMs are tested, -server and -client, if possible
-#  4. Use a tool like JPRT or something to verify these results
+#  4. Use your favorite build and test system to verify these results
 #  5. Delete lines in this file, include the changes with your test changes
 #
 # You may need to repeat your testing 2 or even 3 times to verify good
@@ -223,6 +223,7 @@ java/awt/font/TextLayout/CombiningPerf.java 8192931 generic-all
 java/awt/font/TextLayout/TextLayoutBounds.java 8169188 generic-all
 java/awt/font/StyledMetrics/BoldSpace.java 8198422 linux-all
 java/awt/FontMetrics/FontCrash.java 8198336 windows-all
+java/awt/FontMetrics/MaxAdvanceIsMax.java 8221305 solaris-all,macosx-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java 8056077 generic-all
 java/awt/image/DrawImage/IncorrectClipXorModeSW2Surface.java 8196025 windows-all
 java/awt/image/DrawImage/IncorrectClipXorModeSurface2Surface.java 8196025 windows-all
@@ -583,7 +584,6 @@ java/nio/file/WatchService/MayFlies.java                        7158947 solaris-
 java/nio/file/WatchService/LotsOfCancels.java                   8188039 solaris-all Solaris 11
 java/nio/file/WatchService/LotsOfEvents.java                    7158947 solaris-all Solaris 11
 
-sun/nio/cs/OLD/TestIBMDB.java                                   8211841 aix-ppc64
 
 ############################################################################
 
@@ -689,6 +689,8 @@ sun/security/pkcs11/tls/TestLeadingZeroesP11.java               8204203 windows-
 sun/security/pkcs11/tls/TestMasterSecret.java                   8204203 windows-all
 sun/security/pkcs11/tls/TestPRF.java                            8204203 windows-all
 sun/security/pkcs11/tls/TestPremaster.java                      8204203 windows-all
+
+security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java  8224768 generic-all
 
 ############################################################################
 
@@ -900,4 +902,3 @@ com/sun/jdi/RedefineCrossEvent.java                             8194308    gener
 
 jdk/jfr/event/io/TestInstrumentation.java                       8202142    generic-all
 jdk/jfr/event/sampling/TestNative.java                          8202142    generic-all
-jdk/jfr/event/os/TestSystemProcess.java                         8202835    linux-all

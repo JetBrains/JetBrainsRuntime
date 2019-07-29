@@ -129,8 +129,11 @@ void VM_Version::get_processor_features() {
 
   int dcache_line = VM_Version::dcache_line_size();
 
+  // Limit AllocatePrefetchDistance so that it does not exceed the
+  // constraint in AllocatePrefetchDistanceConstraintFunc.
   if (FLAG_IS_DEFAULT(AllocatePrefetchDistance))
-    FLAG_SET_DEFAULT(AllocatePrefetchDistance, 3*dcache_line);
+    FLAG_SET_DEFAULT(AllocatePrefetchDistance, MIN2(512, 3*dcache_line));
+
   if (FLAG_IS_DEFAULT(AllocatePrefetchStepSize))
     FLAG_SET_DEFAULT(AllocatePrefetchStepSize, dcache_line);
   if (FLAG_IS_DEFAULT(PrefetchScanIntervalInBytes))
@@ -261,8 +264,10 @@ void VM_Version::get_processor_features() {
   if (FLAG_IS_DEFAULT(UseCRC32)) {
     UseCRC32 = (auxv & HWCAP_CRC32) != 0;
   }
+
   if (UseCRC32 && (auxv & HWCAP_CRC32) == 0) {
     warning("UseCRC32 specified, but not supported on this CPU");
+    FLAG_SET_DEFAULT(UseCRC32, false);
   }
 
   if (FLAG_IS_DEFAULT(UseAdler32Intrinsics)) {
@@ -280,6 +285,7 @@ void VM_Version::get_processor_features() {
   } else {
     if (UseLSE) {
       warning("UseLSE specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseLSE, false);
     }
   }
 
@@ -294,9 +300,11 @@ void VM_Version::get_processor_features() {
   } else {
     if (UseAES) {
       warning("UseAES specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseAES, false);
     }
     if (UseAESIntrinsics) {
       warning("UseAESIntrinsics specified, but not supported on this CPU");
+      FLAG_SET_DEFAULT(UseAESIntrinsics, false);
     }
   }
 

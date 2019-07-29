@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -606,8 +606,7 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusRequestSpec(buffer);
             } catch (IOException ioe) {
-                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
-                return;     // fatal() always throws, make the compiler happy.
+                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
             }
 
             // Update the context.
@@ -711,13 +710,13 @@ final class CertStatusExtension {
             CertStatusRequestSpec requestedCsr = (CertStatusRequestSpec)
                     chc.handshakeExtensions.get(CH_STATUS_REQUEST);
             if (requestedCsr == null) {
-                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected status_request extension in ServerHello");
             }
 
             // Parse the extension.
             if (buffer.hasRemaining()) {
-                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                   "Invalid status_request extension in ServerHello message: " +
                   "the extension data must be empty");
             }
@@ -725,12 +724,14 @@ final class CertStatusExtension {
             // Update the context.
             chc.handshakeExtensions.put(
                     SH_STATUS_REQUEST, CertStatusRequestSpec.DEFAULT);
-            chc.handshakeConsumers.put(SSLHandshake.CERTIFICATE_STATUS.id,
-                    SSLHandshake.CERTIFICATE_STATUS);
 
             // Since we've received a legitimate status_request in the
             // ServerHello, stapling is active if it's been enabled.
             chc.staplingActive = chc.sslContext.isStaplingEnabled(true);
+            if (chc.staplingActive) {
+                chc.handshakeConsumers.put(SSLHandshake.CERTIFICATE_STATUS.id,
+                    SSLHandshake.CERTIFICATE_STATUS);
+            }
 
             // No impact on session resumption.
         }
@@ -964,8 +965,7 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusRequestV2Spec(buffer);
             } catch (IOException ioe) {
-                shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
-                return;     // fatal() always throws, make the compiler happy.
+                throw shc.conContext.fatal(Alert.UNEXPECTED_MESSAGE, ioe);
             }
 
             // Update the context.
@@ -1067,13 +1067,13 @@ final class CertStatusExtension {
             CertStatusRequestV2Spec requestedCsr = (CertStatusRequestV2Spec)
                     chc.handshakeExtensions.get(CH_STATUS_REQUEST_V2);
             if (requestedCsr == null) {
-                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected status_request_v2 extension in ServerHello");
             }
 
             // Parse the extension.
             if (buffer.hasRemaining()) {
-                chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+                throw chc.conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                   "Invalid status_request_v2 extension in ServerHello: " +
                   "the extension data must be empty");
             }
@@ -1081,12 +1081,16 @@ final class CertStatusExtension {
             // Update the context.
             chc.handshakeExtensions.put(
                     SH_STATUS_REQUEST_V2, CertStatusRequestV2Spec.DEFAULT);
-            chc.handshakeConsumers.put(SSLHandshake.CERTIFICATE_STATUS.id,
-                    SSLHandshake.CERTIFICATE_STATUS);
 
             // Since we've received a legitimate status_request in the
-            // ServerHello, stapling is active if it's been enabled.
+            // ServerHello, stapling is active if it's been enabled.  If it
+            // is active, make sure we add the CertificateStatus message
+            // consumer.
             chc.staplingActive = chc.sslContext.isStaplingEnabled(true);
+            if (chc.staplingActive) {
+                chc.handshakeConsumers.put(SSLHandshake.CERTIFICATE_STATUS.id,
+                    SSLHandshake.CERTIFICATE_STATUS);
+            }
 
             // No impact on session resumption.
         }
@@ -1157,10 +1161,10 @@ final class CertStatusExtension {
                                 respBytes);
                 producedData = certResp.toByteArray();
             } catch (CertificateException ce) {
-                shc.conContext.fatal(Alert.BAD_CERTIFICATE,
+                throw shc.conContext.fatal(Alert.BAD_CERTIFICATE,
                         "Failed to parse server certificates", ce);
             } catch (IOException ioe) {
-                shc.conContext.fatal(Alert.BAD_CERT_STATUS_RESPONSE,
+                throw shc.conContext.fatal(Alert.BAD_CERT_STATUS_RESPONSE,
                         "Failed to parse certificate status response", ioe);
             }
 
@@ -1188,8 +1192,7 @@ final class CertStatusExtension {
             try {
                 spec = new CertStatusResponseSpec(buffer);
             } catch (IOException ioe) {
-                chc.conContext.fatal(Alert.DECODE_ERROR, ioe);
-                return;     // fatal() always throws, make the compiler happy.
+                throw chc.conContext.fatal(Alert.DECODE_ERROR, ioe);
             }
 
             if (chc.sslContext.isStaplingEnabled(true)) {

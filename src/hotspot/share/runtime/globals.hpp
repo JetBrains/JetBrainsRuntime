@@ -369,7 +369,7 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
           "Print out every time compilation is longer than "                \
           "a given threshold")                                              \
                                                                             \
-  develop(bool, SafepointALot, false,                                       \
+  diagnostic(bool, SafepointALot, false,                                    \
           "Generate a lot of safepoints. This works with "                  \
           "GuaranteedSafepointInterval")                                    \
                                                                             \
@@ -512,6 +512,13 @@ define_pd_global(uint64_t,MaxRAM,                    1ULL*G);
                                                                             \
   diagnostic(bool, AbortVMOnSafepointTimeout, false,                        \
           "Abort upon failure to reach safepoint (see SafepointTimeout)")   \
+                                                                            \
+  diagnostic(bool, AbortVMOnVMOperationTimeout, false,                      \
+          "Abort upon failure to complete VM operation promptly")           \
+                                                                            \
+  diagnostic(intx, AbortVMOnVMOperationTimeoutDelay, 1000,                  \
+          "Delay in milliseconds for option AbortVMOnVMOperationTimeout")   \
+          range(0, max_intx)                                                \
                                                                             \
   /* 50 retries * (5 * current_retry_count) millis = ~6.375 seconds */      \
   /* typically, at most a few retries are needed                    */      \

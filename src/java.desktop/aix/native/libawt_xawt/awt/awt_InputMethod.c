@@ -88,7 +88,7 @@ static void StatusDrawCallback(XIC, XPointer,
  * values above.
  */
 static XIMProc callback_funcs[NCALLBACKS] = {
-    (XIMProc)PreeditStartCallback,
+    (XIMProc)(void *)&PreeditStartCallback,
     (XIMProc)PreeditDoneCallback,
     (XIMProc)PreeditDrawCallback,
     (XIMProc)PreeditCaretCallback,
@@ -1148,6 +1148,7 @@ PreeditDrawCallback(XIC ic, XPointer client_data,
                         tmpstyle[cnt] = text->feedback[cnt];
                 (*env)->SetIntArrayRegion(env, style, 0,
                                           text->length, (jint *)tmpstyle);
+                free(tmpstyle);
             }
         }
     }

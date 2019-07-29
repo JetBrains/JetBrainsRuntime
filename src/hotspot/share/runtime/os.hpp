@@ -504,6 +504,9 @@ class os: AllStatic {
   static void pd_start_thread(Thread* thread);
   static void start_thread(Thread* thread);
 
+  // Returns true if successful.
+  static bool signal_thread(Thread* thread, int sig, const char* reason);
+
   static void free_thread(OSThread* osthread);
 
   // thread id on Linux/64bit is 64bit, on Windows and Solaris, it's 32bit
@@ -586,8 +589,7 @@ class os: AllStatic {
 
   // Reading directories.
   static DIR*           opendir(const char* dirname);
-  static int            readdir_buf_size(const char *path);
-  static struct dirent* readdir(DIR* dirp, dirent* dbuf);
+  static struct dirent* readdir(DIR* dirp);
   static int            closedir(DIR* dirp);
 
   // Dynamic library extension
@@ -679,9 +681,11 @@ class os: AllStatic {
   static void print_environment_variables(outputStream* st, const char** env_list);
   static void print_context(outputStream* st, const void* context);
   static void print_register_info(outputStream* st, const void* context);
+  static bool signal_sent_by_kill(const void* siginfo);
   static void print_siginfo(outputStream* st, const void* siginfo);
   static void print_signal_handlers(outputStream* st, char* buf, size_t buflen);
   static void print_date_and_time(outputStream* st, char* buf, size_t buflen);
+  static void print_instructions(outputStream* st, address pc, int unitsize);
 
   static void print_location(outputStream* st, intptr_t x, bool verbose = false);
   static size_t lasterror(char *buf, size_t len);

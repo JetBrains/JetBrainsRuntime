@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,8 @@
 package sun.security.ssl;
 
 import java.io.IOException;
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -43,7 +45,7 @@ final class PostHandshakeContext extends HandshakeContext {
         super(context);
 
         if (!negotiatedProtocol.useTLS13PlusSpec()) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                 "Post-handshake not supported in " + negotiatedProtocol.name);
         }
 
@@ -63,18 +65,21 @@ final class PostHandshakeContext extends HandshakeContext {
     void dispatch(byte handshakeType, ByteBuffer fragment) throws IOException {
         SSLConsumer consumer = handshakeConsumers.get(handshakeType);
         if (consumer == null) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unexpected post-handshake message: " +
                             SSLHandshake.nameOf(handshakeType));
-            return;
         }
 
         try {
             consumer.consume(this, fragment);
         } catch (UnsupportedOperationException unsoe) {
-            conContext.fatal(Alert.UNEXPECTED_MESSAGE,
+            throw conContext.fatal(Alert.UNEXPECTED_MESSAGE,
                     "Unsupported post-handshake message: " +
                             SSLHandshake.nameOf(handshakeType), unsoe);
+        } catch (BufferUnderflowException | BufferOverflowException be) {
+            throw conContext.fatal(Alert.DECODE_ERROR,
+                    "Illegal handshake message: " +
+                    SSLHandshake.nameOf(handshakeType), be);
         }
     }
 }

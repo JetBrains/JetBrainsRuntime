@@ -766,8 +766,8 @@ void os::print_context(outputStream *st, const void *context) {
   // point to garbage if entry point in an nmethod is corrupted. Leave
   // this at the end, and hope for the best.
   address pc = os::Linux::ucontext_get_pc(uc);
-  st->print_cr("Instructions: (pc=" PTR_FORMAT ")", p2i(pc));
-  print_hex_dump(st, pc - 32, pc + 32, sizeof(char));
+  print_instructions(st, pc, sizeof(char));
+  st->cr();
 }
 
 void os::print_register_info(outputStream *st, const void *context) {
@@ -838,6 +838,7 @@ void os::verify_stack_alignment() {
  */
 void os::workaround_expand_exec_shield_cs_limit() {
 #if defined(IA32)
+  assert(Linux::initial_thread_stack_bottom() != NULL, "sanity");
   size_t page_size = os::vm_page_size();
 
   /*

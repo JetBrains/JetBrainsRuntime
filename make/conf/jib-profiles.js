@@ -525,8 +525,7 @@ var getJibProfilesProfiles = function (input, common, data) {
             profiles[maketestName].default_make_targets = [ "test-make" ];
         });
 
-    // Profiles for building the zero jvm variant. These are used for verification
-    // in JPRT.
+    // Profiles for building the zero jvm variant. These are used for verification.
     var zeroProfiles = {
         "linux-x64-zero": {
             target_os: "linux",
@@ -725,18 +724,8 @@ var getJibProfilesProfiles = function (input, common, data) {
         });
     });
 
-    // Profiles used to run tests. Used in JPRT and Mach 5.
+    // Profiles used to run tests.
     var testOnlyProfiles = {
-        "run-test-jprt": {
-            target_os: input.build_os,
-            target_cpu: input.build_cpu,
-            dependencies: [ "jtreg", "gnumake", "boot_jdk", "devkit", "jib" ],
-            labels: "test",
-            environment: {
-                "JT_JAVA": common.boot_jdk_home
-            }
-        },
-
         "run-test": {
             target_os: input.build_os,
             target_cpu: input.build_cpu,
@@ -798,7 +787,6 @@ var getJibProfilesProfiles = function (input, common, data) {
                 + "/Xcode.app/Contents/Developer/usr/bin"
         };
         profiles["run-test"] = concatObjects(profiles["run-test"], macosxRunTestExtra);
-        profiles["run-test-jprt"] = concatObjects(profiles["run-test-jprt"], macosxRunTestExtra);
         profiles["run-test-prebuilt"] = concatObjects(profiles["run-test-prebuilt"], macosxRunTestExtra);
     }
     // On windows we want the debug symbols available at test time
@@ -829,7 +817,7 @@ var getJibProfilesProfiles = function (input, common, data) {
 var getJibProfilesDependencies = function (input, common) {
 
     var devkit_platform_revisions = {
-        linux_x64: "gcc7.3.0-OEL6.4+1.0",
+        linux_x64: "gcc7.3.0-OEL6.4+1.1",
         macosx_x64: "Xcode9.4-MacOSX10.13+1.0",
         solaris_x64: "SS12u4-Solaris11u1+1.0",
         solaris_sparcv9: "SS12u4-Solaris11u1+1.1",
@@ -1146,7 +1134,10 @@ var getVersion = function (feature, interim, update, patch) {
     var version = (feature != null ? feature : version_numbers.get("DEFAULT_VERSION_FEATURE"))
         + "." + (interim != null ? interim : version_numbers.get("DEFAULT_VERSION_INTERIM"))
         + "." + (update != null ? update :  version_numbers.get("DEFAULT_VERSION_UPDATE"))
-        + "." + (patch != null ? patch : version_numbers.get("DEFAULT_VERSION_PATCH"));
+        + "." + (patch != null ? patch : version_numbers.get("DEFAULT_VERSION_PATCH"))
+        + "." + version_numbers.get("DEFAULT_VERSION_EXTRA1")
+        + "." + version_numbers.get("DEFAULT_VERSION_EXTRA2")
+        + "." + version_numbers.get("DEFAULT_VERSION_EXTRA3");
     while (version.match(".*\\.0$")) {
         version = version.substring(0, version.length - 2);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -520,6 +520,9 @@ void VMError::report(outputStream* st, bool _verbose) {
        st->print("%s", buf);
        st->print(" (0x%x)", _id);                // signal number
        st->print(" at pc=" PTR_FORMAT, p2i(_pc));
+       if (_siginfo != NULL && os::signal_sent_by_kill(_siginfo)) {
+         st->print(" (sent by kill)");
+       }
      } else {
        if (should_report_bug(_id)) {
          st->print("Internal Error");
@@ -1731,7 +1734,16 @@ void VMError::controlled_crash(int how) {
   const char* const eol = os::line_separator();
   const char* const msg = "this message should be truncated during formatting";
   char * const dataPtr = NULL;  // bad data pointer
-  const void (*funcPtr)(void) = (const void(*)()) 0xF;  // bad function pointer
+  const void (*funcPtr)(void);  // bad function pointer
+
+#if defined(PPC64) && !defined(ABI_ELFv2)
+  struct FunctionDescriptor functionDescriptor;
+
+  functionDescriptor.set_entry((address) 0xF);
+  funcPtr = (const void(*)()) &functionDescriptor;
+#else
+  funcPtr = (const void(*)()) 0xF;
+#endif
 
   // Keep this in sync with test/hotspot/jtreg/runtime/ErrorHandling/ErrorHandler.java
   // which tests cases 1 thru 13.
