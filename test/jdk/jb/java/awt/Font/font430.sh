@@ -40,7 +40,7 @@ cd ${TESTSRC}
 ${TESTJAVA}/bin/javac -d ${TESTCLASSES} Font430.java
 
 ${TESTJAVA}/bin/java -cp ${TESTCLASSES} Font430 t1.bmp true
-${TESTJAVA}/bin/java -cp ${TESTCLASSES} Font430 t2.bmp true
+${TESTJAVA}/bin/java -cp ${TESTCLASSES} Font430 t2.bmp false
 
 cmp t1.bmp t2.bmp
 exit_code=$?
@@ -49,6 +49,7 @@ case $exit_code in
 0) echo "PASSED"
    ;;
 *) echo "FAILED: $exit_code"
+   mv t[1..2].bmp ${TESTCLASSES}
    exit 1
    ;;
 esac
