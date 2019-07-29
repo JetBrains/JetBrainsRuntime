@@ -1474,7 +1474,7 @@ public class GTKLookAndFeel extends SynthLookAndFeel {
             if (dpi < 50) {
                 dpi = 50;
             }
-            X11GraphicsDevice.setGlobalDPI(dpi);
+            X11GraphicsDevice.setXftDpi(dpi);
         }
     }
 
