@@ -27,20 +27,19 @@ package sun.font;
 
 import java.awt.*;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.plaf.FontUIResource;
 
 import sun.awt.FontConfiguration;
 import sun.awt.HeadlessToolkit;
-import sun.awt.util.ThreadGroupUtils;
 import sun.lwawt.macosx.*;
 
 public final class CFontManager extends SunFontManager {
@@ -143,6 +142,18 @@ public final class CFontManager extends SunFontManager {
     }
 
     @Override
+    protected void registerJREFonts() {
+        String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
+                new File(jreFontDirName).list(getTrueTypeFilter()));
+
+        if (files != null) {
+            for (String f : files) {
+                loadNativeDirFonts(jreFontDirName + File.separator + f);
+            }
+        }
+    }
+
+    @Override
     protected void registerFontsInDir(final String dirName, boolean useJavaRasterizer,
                                       int fontRank, boolean defer, boolean resolveSymLinks) {
 
@@ -162,6 +173,11 @@ public final class CFontManager extends SunFontManager {
     private native void loadNativeFonts();
 
     void registerFont(String fontName, String fontFamilyName) {
+        // Use different family for specific font faces
+        String newFontFamily = jreFamilyMap.get(fontName);
+        if (newFontFamily != null) {
+            fontFamilyName = newFontFamily;
+        }
         final CFont font = new CFont(fontName, fontFamilyName);
 
         registerGenericFont(font);
