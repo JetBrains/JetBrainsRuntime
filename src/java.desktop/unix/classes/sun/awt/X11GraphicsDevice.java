@@ -37,6 +37,7 @@ import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import sun.awt.util.ThreadGroupUtils;
 import sun.java2d.SunGraphicsEnvironment;
@@ -68,12 +69,27 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private DisplayMode origDisplayMode;
     private boolean shutdownHookRegistered;
     private int scale;
-    private volatile boolean isNativeScaleDefault;
-    private static int globalScale; // derived from Xft.dpi
+    private final AtomicBoolean isScaleFactorDefault = new AtomicBoolean(false);
+    private static final int XRM_XFT_DPI;
+    private static volatile int XFT_DPI;
+    private static final int GDK_SCALE;
+    private static final double GDK_DPI_SCALE;
+    private static final double GDK_SCALE_MULTIPLIER;
 
     public X11GraphicsDevice(int screennum) {
         this.screen = screennum;
-        this.scale = initScaleFactor();
+        int scaleFactor = initScaleFactor(-1);
+        synchronized (isScaleFactorDefault) {
+            isScaleFactorDefault.set(scaleFactor == -1);
+            this.scale = isScaleFactorDefault.get() ? 1 : scaleFactor;
+        }
+    }
+
+    static {
+        xrmXftDpi = getXrmXftDpi(-1);
+        GDK_SCALE = (int)getGdkScale("GDK_SCALE", -1);
+        GDK_DPI_SCALE = getGdkScale("GDK_DPI_SCALE", -1);
+        GDK_SCALE_MULTIPLIER = GDK_SCALE != -1 ? GDK_SCALE * (GDK_DPI_SCALE != -1 ? GDK_DPI_SCALE : 1) : 1;
     }
 
     /**
@@ -303,7 +319,9 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private static native void configDisplayMode(int screen,
                                                  int width, int height,
                                                  int displayMode);
-    private static native double getNativeScaleFactor(int screen);
+    private static native double getNativeScaleFactor(int screen, double defValue);
+    private static native double getGdkScale(String name, double defValue);
+    private static native int getXrmXftDpi(int defValue);
     private native Rectangle pGetBounds(int screenNum);
 
     /**
@@ -514,7 +532,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
      */
     @Override
     public synchronized void displayChanged() {
-        scale = initScaleFactor();
+        scale = initScaleFactor(1);
         // On X11 the visuals do not change, and therefore we don't need
         // to reset the defaultConfig, config, doubleBufferVisuals,
         // neither do we need to reset the native data.
@@ -544,39 +562,66 @@ public final class X11GraphicsDevice extends GraphicsDevice
         return scale;
     }
 
-    public int getNativeScale() {
-        return (int)Math.round(getNativeScaleFactor(screen));
+    private double getNativeScale() {
+        isXrandrExtensionSupported();
+        return getNativeScaleFactor(screen, -1);
     }
 
-    public static void setGlobalDPI(int dpi) {
+    public static void setXftDpi(int dpi) {
+        XFT_DPI = dpi;
         boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled(dpi);
-        globalScale = uiScaleEnabled ? (int)Math.round(dpi / 96.0) : 1;
+        double xftDpiScale = uiScaleEnabled ? XFT_DPI / 96.0 : 1.0;
         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
             X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
-            if (x11gd.isNativeScaleDefault || !uiScaleEnabled) {
-                x11gd.scale = globalScale;
-                x11gd.isNativeScaleDefault = false;
+            synchronized (x11gd.isScaleFactorDefault) {
+                if (x11gd.isScaleFactorDefault.get() || !uiScaleEnabled) {
+                    x11gd.scale = (int)Math.round(xftDpiScale * (uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1));
+                    x11gd.isScaleFactorDefault.set(false);
+                }
             }
         }
     }
 
-    private int initScaleFactor() {
-
-        if (SunGraphicsEnvironment.isUIScaleEnabled()) {
-
+    private int initScaleFactor(int defValue) {
+        boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled();
+        if (uiScaleEnabled) {
             double debugScale = SunGraphicsEnvironment.getDebugScale();
 
             if (debugScale >= 1) {
                 return (int) debugScale;
             }
-            int nativeScale = getNativeScale();
-            if (nativeScale > 0) return nativeScale;
-            if (globalScale > 0) return globalScale;
-            isNativeScaleDefault = true;
-            return 1;
+            double gdkScaleMult = uiScaleEnabled ? GDK_SCALE_MULTIPLIER : 1;
+            double nativeScale = getNativeScale();
+            if (nativeScale > 0) {
+                return (int)Math.round(nativeScale * gdkScaleMult);
+            }
+            if (XRM_XFT_DPI > 0) {
+                return (int)Math.round((XRM_XFT_DPI / 96.0) * gdkScaleMult);
+            }
+            if (XFT_DPI > 0) {
+                return (int)Math.round((XFT_DPI / 96.0) * gdkScaleMult);
+            }
         }
+        return defValue;
+    }
 
-        return 1;
+    /**
+     * Used externally for diagnostic purpose.
+     */
+    public String[][] getDpiInfo() {
+        int xftDpi = XRM_XFT_DPI != -1 ? XRM_XFT_DPI : XFT_DPI;
+        String xftDpiStr = xftDpi != -1 ? String.valueOf(xftDpi) : "undefined";
+        double gsettingsScale = getNativeScaleFactor(screen, -1);
+        String gsettingsScaleStr = gsettingsScale != -1 ? String.valueOf(gsettingsScale) : "undefined";
+        String gdkScaleStr = GDK_SCALE != -1 ? String.valueOf(GDK_SCALE) : "undefined";
+        String gdkDpiScaleStr = GDK_DPI_SCALE != -1 ? String.valueOf(GDK_DPI_SCALE) : "undefined";
+
+        return new String[][] {
+                {"Xft.DPI", xftDpiStr, "Font DPI (X resources value)"},
+                {"GSettings scale factor", gsettingsScaleStr, "http://wiki.archlinux.org/index.php/HiDPI"},
+                {"GDK_SCALE", gdkScaleStr, "http://developer.gnome.org/gtk3/stable/gtk-x11.html"},
+                {"GDK_DPI_SCALE", gdkDpiScaleStr, "http://developer.gnome.org/gtk3/stable/gtk-x11.html"}
+        };
     }
 
     /**
