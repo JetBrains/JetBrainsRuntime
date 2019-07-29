@@ -2409,40 +2409,64 @@ static char *get_output_screen_name(JNIEnv *env, int screen) {
 /*
  * Class:     sun_awt_X11GraphicsDevice
  * Method:    getNativeScaleFactor
- * Signature: (I)D
+ * Signature: (ID)D
  */
 JNIEXPORT jdouble JNICALL
 Java_sun_awt_X11GraphicsDevice_getNativeScaleFactor
-    (JNIEnv *env, jobject this, jint screen) {
+    (JNIEnv *env, jobject this, jint screen, jdouble defValue) {
     // in case of Xinerama individual screen scales are not supported
     char *name = get_output_screen_name(env, usingXinerama ? 0 : screen);
-    double scale = getNativeScaleFactor(name, -1);
-
-#ifndef HEADLESS
-    // Ubuntu 18.04 introduced a new settings for a scale factor: Settings > Devices > Displays > Scale.
-    // It is propagated to Xresource (and is read fine with 'xrdb' util) but is not propagated to GSettings
-    // (gtk3 doesn't see it in 'gtk-xft-dpi'). So, retrieve "Xft.dpi" from Xresource via X11 API call.
-    if (scale <= 0) {
-        Display *display = XOpenDisplay(NULL); // need to open new display to get up-to-date XResource value
-        if (display) {
-            char *resource_manager = XResourceManagerString(display);
-            if (resource_manager) {
-                XrmDatabase db = XrmGetStringDatabase(resource_manager);
-                if (db) {
-                    XrmValue value;
-                    char *type;
-                    if (XrmGetResource(db, "Xft.dpi", "Xft.dpi", &type, &value)) {
-                        scale = (double)atoi(value.addr) / 96;
-                    }
-                }
-            }
-            XCloseDisplay(display);
-        }
-    }
-#endif
-
+    double scale = getNativeScaleFactor(name, defValue);
     if (name) {
         free(name);
     }
     return scale;
+}
+
+/*
+ * Class:     sun_awt_X11GraphicsDevice
+ * Method:    getGdkScale
+ * Signature: (Ljava/lang/String;D)D
+ */
+JNIEXPORT jdouble JNICALL
+Java_sun_awt_X11GraphicsDevice_getGdkScale
+    (JNIEnv *env, jobject this, jstring envVarName, jdouble defValue)
+{
+    const char* name = (*env)->GetStringUTFChars(env, envVarName, 0);
+    double value = getScaleEnvVar(name, defValue);
+    (*env)->ReleaseStringUTFChars(env, envVarName, name);
+    return value;
+}
+
+/*
+ * Class:     sun_awt_X11GraphicsDevice
+ * Method:    getXrmXftDpi
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11GraphicsDevice_getXrmXftDpi
+    (JNIEnv *env, jobject this, jint defValue)
+{
+    int dpi = defValue;
+#ifndef HEADLESS
+    // Ubuntu 18.04 introduced a new settings for a scale factor: Settings > Devices > Displays > Scale.
+    // It is propagated to Xresource (and is read fine with 'xrdb' util) but is not propagated to GSettings
+    // (gtk3 doesn't see it in 'gtk-xft-dpi'). So, retrieve "Xft.dpi" from Xresource via X11 API call.
+    Display *display = XOpenDisplay(NULL); // need to open new display to get up-to-date XResource value
+    if (display) {
+        char *resource_manager = XResourceManagerString(display);
+        if (resource_manager) {
+            XrmDatabase db = XrmGetStringDatabase(resource_manager);
+            if (db) {
+                XrmValue value;
+                char *type;
+                if (XrmGetResource(db, "Xft.dpi", "Xft.dpi", &type, &value)) {
+                    dpi = atoi(value.addr);
+                }
+            }
+        }
+        XCloseDisplay(display);
+    }
+#endif
+    return dpi;
 }
