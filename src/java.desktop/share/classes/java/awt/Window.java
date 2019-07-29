@@ -1240,6 +1240,7 @@ public class Window extends Container implements Accessible {
         // on the EventQueue anyways.
         if (fireWindowClosedEvent) {
             postWindowEvent(WindowEvent.WINDOW_CLOSED);
+            KeyboardFocusManager.getCurrentKeyboardFocusManager().cleanUpHeavyWeightRequests(this);
         }
     }
 
