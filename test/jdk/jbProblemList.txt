@@ -1037,7 +1037,7 @@ javax/swing/LookAndFeel/8145547/DemandGTK2.sh                                   
 javax/swing/LookAndFeel/8145547/DemandGTK3.sh                                       8215539,8212903 linux-all
 javax/swing/MultiUIDefaults/4300666/bug4300666.java                                 7105119 macosx-all
 javax/swing/MultiUIDefaults/Test6860438.java                                        8198391 generic-all
-javax/swing/Popup/TaskbarPositionTest.java                                          8065097 macosx-all,linux-all
+javax/swing/Popup/TaskbarPositionTest.java                                          8065097 macosx-all,linux-all,windows-all
 javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java                        8065099,8208565 macosx-all,windows-all,linux-all
 javax/swing/PopupFactory/8048506/bug8048506.java                                    8202660 windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8197552 macosx-all,windows-all,linux-all
