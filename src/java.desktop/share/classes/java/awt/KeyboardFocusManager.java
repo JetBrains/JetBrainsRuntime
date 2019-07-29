@@ -2519,6 +2519,12 @@ public abstract class KeyboardFocusManager
         }
     }
 
+    public void cleanUpHeavyWeightRequests(Window window) {
+        synchronized (heavyweightRequests) {
+            heavyweightRequests.removeIf(next -> window.equals(next.heavyweight));
+        }
+    }
+
     /**
      * Returns the Window which will be active after processing this request,
      * or null if this is a duplicate request. The active Window is useful
