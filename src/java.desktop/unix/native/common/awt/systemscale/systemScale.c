@@ -33,6 +33,10 @@
 #include <string.h>
 #include <locale.h>
 
+#ifdef __APPLE__
+# include <xlocale.h>
+#endif
+
 typedef void* g_settings_schema_source_get_default();
 typedef void* g_settings_schema_source_ref(void *);
 typedef void g_settings_schema_source_unref(void *);
