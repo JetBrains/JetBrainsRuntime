@@ -27,6 +27,7 @@ package sun.font;
 
 import java.awt.*;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
@@ -34,13 +35,11 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Locale;
 import java.util.TreeMap;
-import java.util.Vector;
 
 import javax.swing.plaf.FontUIResource;
 
 import sun.awt.FontConfiguration;
 import sun.awt.HeadlessToolkit;
-import sun.awt.util.ThreadGroupUtils;
 import sun.lwawt.macosx.*;
 
 public final class CFontManager extends SunFontManager {
@@ -138,6 +137,37 @@ public final class CFontManager extends SunFontManager {
                 String name = genericfonts[i].getFamilyName(requestedLocale);
                 familyNames.put(name.toLowerCase(requestedLocale), name);
             }
+        }
+    }
+
+    @Override
+    protected void registerJREFonts() {
+        File pathFile = new File(jreFontDirName);
+        addDirFonts(jreFontDirName, pathFile, getTrueTypeFilterIdea(),
+                Font2D.IDEA_RANK
+        );
+        addDirFonts(jreFontDirName, pathFile, getTrueTypeFilterJre(),
+                Font2D.JRE_RANK
+        );
+    }
+
+    private void addDirFonts(String dirName, File dirFile,
+                             FilenameFilter filter,
+                             int fontRank) {
+        String[] ls = dirFile.list(filter);
+        if (ls == null || ls.length == 0) {
+            return;
+        }
+
+        for (String l : ls) {
+            String fullName = new File(dirFile, l).getAbsolutePath();
+
+            // REMIND: case compare depends on platform
+            if (registeredFontFiles.contains(fullName)) {
+                continue;
+            }
+
+            loadNativeDirFonts(fullName);
         }
     }
 
