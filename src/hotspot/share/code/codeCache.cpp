@@ -1391,7 +1391,7 @@ void CodeCache::report_codemem_full(int code_blob_type, bool print) {
     if (heap->full_count() == 0) {
       LogTarget(Debug, codecache) lt;
       if (lt.is_enabled()) {
-        CompileBroker::print_heapinfo(tty, "all", "4096"); // details, may be a lot!
+        CompileBroker::print_heapinfo(tty, "all", 4096); // details, may be a lot!
       }
     }
   }
@@ -1678,7 +1678,7 @@ void CodeCache::log_state(outputStream* st) {
 
 //---<  BEGIN  >--- CodeHeap State Analytics.
 
-void CodeCache::aggregate(outputStream *out, const char* granularity) {
+void CodeCache::aggregate(outputStream *out, size_t granularity) {
   FOR_ALL_ALLOCABLE_HEAPS(heap) {
     CodeHeapState::aggregate(out, (*heap), granularity);
   }

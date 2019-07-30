@@ -319,7 +319,7 @@ void print_statistics() {
   // Does also call NMethodSweeper::print(tty)
   LogTarget(Trace, codecache) lt;
   if (lt.is_enabled()) {
-    CompileBroker::print_heapinfo(NULL, "all", "4096"); // details
+    CompileBroker::print_heapinfo(NULL, "all", 4096); // details
   } else if (PrintMethodFlushingStatistics) {
     NMethodSweeper::print(tty);
   }
@@ -387,7 +387,7 @@ void print_statistics() {
   // Does also call NMethodSweeper::print(tty)
   LogTarget(Trace, codecache) lt;
   if (lt.is_enabled()) {
-    CompileBroker::print_heapinfo(NULL, "all", "4096"); // details
+    CompileBroker::print_heapinfo(NULL, "all", 4096); // details
   } else if (PrintMethodFlushingStatistics) {
     NMethodSweeper::print(tty);
   }
