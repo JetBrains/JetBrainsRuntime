@@ -2,13 +2,79 @@
 #import <Carbon/Carbon.h>
 
 #include <jni.h>
+#include "jni_util.h"
 
+extern JavaVM *jvm;
+
+enum LOG_LEVEL {
+    TRACE,
+    DEBUG,
+    INFO,
+    WARNING,
+    ERROR
+};
+
+void plogImpl(jobject platformLogger, int logLevel, const char * msg) {
+    if (!jvm)
+        return;
+    if (logLevel < TRACE || logLevel > ERROR || msg == NULL)
+        return;
+
+    const char * methodName = "finest";
+    switch (logLevel) {
+        case DEBUG: methodName = "fine"; break;
+        case INFO: methodName = "info"; break;
+        case WARNING: methodName = "warning"; break;
+        case ERROR: methodName = "severe"; break;
+    }
+
+    JNIEnv* env;
+    jstring jstr;
+    (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL);
+    jstr = (*env)->NewStringUTF(env, msg);
+    JNU_CallMethodByName(env, NULL, platformLogger, methodName, "(Ljava/lang/String;)V", jstr);
+    (*env)->DeleteLocalRef(env, jstr);
+}
+
+void plog(int logLevel, const char *formatMsg, ...) {
+    // TODO: check whether current logLevel is enabled in PlatformLogger
+    static jobject loggerObject = NULL;
+
+    if (loggerObject == NULL) {
+        JNIEnv* env;
+        (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL);
+        jclass shkClass = (*env)->FindClass(env, "java/awt/desktop/SystemHotkey");
+        if (shkClass == NULL)
+            return;
+        jfieldID fieldId = (*env)->GetStaticFieldID(env, shkClass, "ourLog", "Lsun/util/logging/PlatformLogger;");
+        if (fieldId == NULL)
+            return;
+        loggerObject = (*env)->GetStaticObjectField(env, shkClass, fieldId);
+    }
+
+    va_list args;
+    va_start(args, formatMsg);
+    const int bufSize = 512;
+    char buf[bufSize];
+    vsnprintf(buf, bufSize, formatMsg, args);
+    va_end(args);
+
+    plogImpl(loggerObject, logLevel, buf);
+}
+
+static const char * toCString(id obj) {
+    return obj == nil ? "nil" : [NSString stringWithFormat:@"%@", obj].UTF8String;
+}
+
+// Copy of java.awt.event.KeyEvent.[MODIFIER]_DOWN_MASK
 static const int AWT_SHIFT_DOWN_MASK = 1 << 6;
 static const int AWT_CTRL_DOWN_MASK = 1 << 7;
 static const int AWT_META_DOWN_MASK = 1 << 8;
 static const int AWT_ALT_DOWN_MASK = 1 << 9;
 
 static int symbolicHotKeysModifiers2java(int mask) {
+    // NOTE: these masks doesn't coincide with macos events masks
+    // and can be used only to parse data from settings domain "com.apple.symbolichotkeys"
     const int MACOS_SHIFT_MASK      = 0x020000;
     const int MACOS_CONTROL_MASK    = 0x040000;
     const int MACOS_OPTION_MASK     = 0x080000;
@@ -39,45 +105,9 @@ static int NSModifiers2java(int mask) {
     return result;
 }
 
-static void addHotkeyToList(JNIEnv* env, jobject list, jmethodID java_util_ArrayList_add, bool enabled, int keyCode, const char * keyChar, int modifiers, const char * source, const char * desc) {
-    jobject shkClass = (*env)->FindClass(env, "java/awt/desktop/SystemHotkey");
-    jmethodID constructor = (*env)->GetMethodID(env, shkClass, "<init>", "()V");
-    jobject hkItem = (*env)->NewObject(env, shkClass, constructor);
-
-    jfieldID fieldEnabled = (*env)->GetFieldID(env, shkClass, "myEnabled", "Z");
-    (*env)->SetBooleanField(env, hkItem, fieldEnabled, enabled);
-
-    jfieldID fieldKeyCode = (*env)->GetFieldID(env, shkClass, "myKeyCode", "I");
-    (*env)->SetIntField(env, hkItem, fieldKeyCode, keyCode);
-
-    jfieldID fieldModifiers = (*env)->GetFieldID(env, shkClass, "myModifiers", "I");
-    (*env)->SetIntField(env, hkItem, fieldModifiers, modifiers);
-
-    jfieldID fieldChar = (*env)->GetFieldID(env, shkClass, "myChar", "Ljava/lang/String;");
-    jstring sChar = (*env)->NewStringUTF(env, keyChar);
-    (*env)->SetObjectField(env, hkItem, fieldChar, sChar);
-    (*env)->DeleteLocalRef(env, sChar);
-
-    jfieldID fieldSource = (*env)->GetFieldID(env, shkClass, "mySource", "Ljava/lang/String;");
-    jstring sSource = (*env)->NewStringUTF(env, source);
-    (*env)->SetObjectField(env, hkItem, fieldSource, sSource);
-    (*env)->DeleteLocalRef(env, sSource);
-
-    jfieldID fieldDesc = (*env)->GetFieldID(env, shkClass, "myDescription", "Ljava/lang/String;");
-    jstring sDesc = (*env)->NewStringUTF(env, desc);
-    (*env)->SetObjectField(env, hkItem, fieldDesc, sDesc);
-    (*env)->DeleteLocalRef(env, sDesc);
-
-    (*env)->CallBooleanMethod(env, list, java_util_ArrayList_add, hkItem);
-    (*env)->DeleteLocalRef(env, hkItem);
-}
-
-jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass clazz) {
-    jclass java_util_ArrayList = (*env)->NewGlobalRef(env, (*env)->FindClass(env, "java/util/ArrayList"));
-    jmethodID java_util_ArrayList_ctor     = (*env)->GetMethodID(env, java_util_ArrayList, "<init>", "(I)V");
-    jmethodID java_util_ArrayList_add  = (*env)->GetMethodID(env, java_util_ArrayList, "add", "(Ljava/lang/Object;)Z");
-
-    jobject result = (*env)->NewObject(env, java_util_ArrayList, java_util_ArrayList_ctor, 10/*replace with real size*/);
+void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
+    jclass clsReader = (*env)->GetObjectClass(env, reader);
+    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ZILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V");
 
     // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
     NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
@@ -99,19 +129,20 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
         //         }
         id hotkeys = [shk valueForKey:@"AppleSymbolicHotKeys"];
         if (hotkeys == nil)
-            NSLog(@"key AppleSymbolicHotKeys doesn't exist in domain com.apple.symbolichotkeys");
+            plog(DEBUG, "key AppleSymbolicHotKeys doesn't exist in domain com.apple.symbolichotkeys");
         else if (![hotkeys isKindOfClass:[NSDictionary class]])
-            NSLog(@"object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%@)", [hotkeys className]);
+            plog(DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)", [hotkeys className].UTF8String);
         else {
+            jstring jsource = (*env)->NewStringUTF(env, "com.apple.symbolichotkeys");
             for (id keyObj in hotkeys) {
                 if (![keyObj isKindOfClass:[NSString class]]) {
-                    NSLog(@"key %@ isn't instance of NSString (class=%@)", keyObj, [keyObj className]);
+                    plog(DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj), [keyObj className].UTF8String);
                     continue;
                 }
                 NSString *hkNumber = keyObj;
                 id hkDesc = hotkeys[hkNumber];
                 if (![hkDesc isKindOfClass:[NSDictionary class]]) {
-                    NSLog(@"hotkey descriptor %@ isn't instance of NSDictionary (class=%@)", hkDesc, [hkDesc className]);
+                    plog(DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc), [hkDesc className].UTF8String);
                     continue;
                 }
                 NSDictionary<id, id> *sdict = hkDesc;
@@ -120,7 +151,7 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
                     continue;
 
                 if (![objValue isKindOfClass:[NSDictionary class]]) {
-                    NSLog(@"property 'value' %@ isn't instance of NSDictionary (class=%@)", objValue, [objValue className]);
+                    plog(DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(objValue), [objValue className].UTF8String);
                     continue;
                 }
 
@@ -130,7 +161,7 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
                 NSDictionary * value = objValue;
                 id objParams = value[@"parameters"];
                 if (![objParams isKindOfClass:[NSArray class]]) {
-                    NSLog(@"property 'parameters' %@ isn't instance of NSArray (class=%@)", objParams, [objParams className]);
+                    plog(DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(objParams), [objParams className].UTF8String);
                     continue;
                 }
 
@@ -140,7 +171,7 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
                 id p2 = parameters[2];
 
                 if (![p0 isKindOfClass:[NSNumber class]] || ![p1 isKindOfClass:[NSNumber class]] || ![p2 isKindOfClass:[NSNumber class]]) {
-                    NSLog(@"some of parameters isn't instance of NSNumber (%@, %@, %@)", [p0 className], [p1 className], [p2 className]);
+                    plog(DEBUG, "some of parameters isn't instance of NSNumber (%s, %s, %s)", [p0 className].UTF8String, [p1 className].UTF8String, [p2 className].UTF8String);
                     continue;
                 }
 
@@ -156,17 +187,22 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
                 int vkeyCode = p1 == nil ? -1 : [p1 intValue];
                 int modifiers = p2 == nil ? 0 : [p2 intValue];
 
-                char keyCharBuf[64];
-                if (asciiCode < 0 || asciiCode > 0xFF)
-                    sprintf(keyCharBuf, "0x%X", asciiCode);
-                else
+                jstring jkeyChar = NULL;
+                if (asciiCode >= 0 && asciiCode <= 0xFF) {
+                    char keyCharBuf[64];
                     sprintf(keyCharBuf, "%c", asciiCode);
+                    jkeyChar = (*env)->NewStringUTF(env, keyCharBuf);
+                }
 
-                addHotkeyToList(env, result, java_util_ArrayList_add, enabled, vkeyCode, keyCharBuf, symbolicHotKeysModifiers2java(modifiers), "com.apple.symbolichotkeys", [hkNumber UTF8String]);
+                (*env)->CallVoidMethod(
+                        env, reader, methodAdd, (jboolean)enabled, (jint)vkeyCode,
+                        jkeyChar, (jint)symbolicHotKeysModifiers2java(modifiers),
+                        jsource, (*env)->NewStringUTF(env, [hkNumber UTF8String])
+                );
             }
         }
     } else {
-        NSLog(@"domain com.apple.symbolichotkeys doesn't exist");
+        plog(DEBUG, "domain com.apple.symbolichotkeys doesn't exist");
     }
 
     // 2. read from Pbs (domain with services shortcuts)
@@ -189,8 +225,13 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
 //    }
         NSDictionary<NSString *, id> *services = [pbs valueForKey:@"NSServicesStatus"];
         if (services) {
+            jstring jsource = (*env)->NewStringUTF(env, "pbs");
             for (NSString *key in services) {
                 id value = services[key];
+                if (![value isKindOfClass:[NSDictionary class]]) {
+                    plog(DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value), [value className].UTF8String);
+                    continue;
+                }
                 NSDictionary<NSString *, id> *sdict = value;
                 NSString *key_equivalent = sdict[@"key_equivalent"];
                 if (!key_equivalent)
@@ -217,7 +258,11 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
                 NSCharacterSet * excludeSet = [NSCharacterSet characterSetWithCharactersInString:@"@$^~"];
                 NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
 
-                addHotkeyToList(env, result, java_util_ArrayList_add, true, -1, keyChar.UTF8String, modifiers, "pbs", key.UTF8String);
+                (*env)->CallVoidMethod(
+                        env, reader, methodAdd, true, -1,
+                        (*env)->NewStringUTF(env, keyChar.UTF8String), modifiers,
+                        jsource, (*env)->NewStringUTF(env, key.UTF8String)
+                );
             }
         }
     }
@@ -225,6 +270,7 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
     // 3. read from core services
     CFArrayRef registeredHotKeys;
     if(CopySymbolicHotKeys(&registeredHotKeys) == noErr) {
+        jstring jsource = (*env)->NewStringUTF(env, "CopySymbolicHotKeys");
         CFIndex count = CFArrayGetCount(registeredHotKeys);
         for(CFIndex i = 0; i < count; i++) {
             CFDictionaryRef hotKeyInfo = CFArrayGetValueAtIndex(registeredHotKeys, i);
@@ -238,13 +284,15 @@ jobject Java_java_awt_desktop_SystemHotkey_readSystemHotkeys(JNIEnv* env, jclass
             CFNumberGetValue(hotKeyModifiers, kCFNumberSInt64Type, &keyModifiers);
             Boolean enabled = CFBooleanGetValue(hotKeyEnabled);
 
-            addHotkeyToList(env, result, java_util_ArrayList_add, enabled, (int)vkeyCode, "", NSModifiers2java(keyModifiers), "CopySymbolicHotKeys", "");
+            (*env)->CallVoidMethod(
+                    env, reader, methodAdd, enabled, (int)vkeyCode,
+                    NULL, NSModifiers2java(keyModifiers),
+                    jsource, NULL
+            );
         }
 
         CFRelease(registeredHotKeys);
     }
-
-    return result;
 }
 
 static const char* _getVirtualCodeDescription(int code) {
