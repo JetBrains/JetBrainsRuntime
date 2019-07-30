@@ -193,6 +193,7 @@ java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThr
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096,8213522 macosx-all,linux-all,windows-all
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
+java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 macosx-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
