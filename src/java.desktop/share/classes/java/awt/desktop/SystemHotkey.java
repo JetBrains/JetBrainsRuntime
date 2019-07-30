@@ -1,8 +1,11 @@
 package java.awt.desktop;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+
+import sun.util.logging.PlatformLogger;
 
 import java.awt.event.InputEvent;
 
@@ -10,14 +13,24 @@ import java.awt.event.InputEvent;
  * Provides info about system hotkeys
  */
 public class SystemHotkey {
+    private static final PlatformLogger ourLog = PlatformLogger.getLogger(SystemHotkey.class.getName());
     private static final Map<Integer, String> ourCache = new HashMap<>();
 
-    private boolean myEnabled;
-    private int myKeyCode;
-    private int myModifiers;
-    private String myChar;
-    private String mySource;
-    private String myDescription;
+    private final boolean myEnabled;
+    private final int myKeyCode;
+    private final int myModifiers;
+    private final String myChar;
+    private final String mySource;
+    private final String myDescription;
+
+    SystemHotkey(boolean enabled, int keyCode, int modifiers, String keyChar, String source, String description) {
+        this.myEnabled = enabled;
+        this.myKeyCode = keyCode;
+        this.myModifiers = modifiers;
+        this.myChar = keyChar;
+        this.mySource = source;
+        this.myDescription = description;
+    }
 
     public String toString() {
         return String.format("enable=%s vkey=0x%X ['%s'] mod='%s' char=%s src=%s desc='%s'",
@@ -78,7 +91,11 @@ public class SystemHotkey {
      * Reads all registered hotkeys
      * @return list of all registered hotkeys
      */
-    public static native List<SystemHotkey> readSystemHotkeys();
+    public static List<SystemHotkey> readSystemHotkeys() {
+        final SystemHotkeyReader reader = new SystemHotkeyReader();
+        reader.readSystemHotkeys();
+        return reader.getResult();
+    }
 
     /**
      * Gets virtual code description
@@ -93,4 +110,16 @@ public class SystemHotkey {
     }
 
     private static native String virtualCodeDescription(int code);
+}
+
+class SystemHotkeyReader {
+    private final List<SystemHotkey> myResult = new ArrayList<>();
+
+    void add(boolean enabled, int keyCode, String keyChar, int modifiers, String source, String desc) {
+        myResult.add(new SystemHotkey(enabled, keyCode, modifiers, keyChar, source, desc));
+    }
+
+    List<SystemHotkey> getResult() { return myResult; }
+
+    native void readSystemHotkeys();
 }
