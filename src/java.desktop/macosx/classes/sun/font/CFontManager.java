@@ -142,13 +142,14 @@ public final class CFontManager extends SunFontManager {
 
     @Override
     protected void registerJREFonts() {
-        File pathFile = new File(jreFontDirName);
-        addDirFonts(jreFontDirName, pathFile, getTrueTypeFilterIdea(),
-                Font2D.IDEA_RANK
-        );
-        addDirFonts(jreFontDirName, pathFile, getTrueTypeFilterJre(),
-                Font2D.JRE_RANK
-        );
+        String[] files = AccessController.doPrivileged((PrivilegedAction<String[]>) () ->
+                new File(jreFontDirName).list(getTrueTypeFilter()));
+
+        if (files != null) {
+            for (String f : files) {
+                loadNativeDirFonts(jreFontDirName + File.separator + f);
+            }
+        }
     }
 
     private void addDirFonts(String dirName, File dirFile,
@@ -192,6 +193,11 @@ public final class CFontManager extends SunFontManager {
     private native void loadNativeFonts();
 
     void registerFont(String fontName, String fontFamilyName) {
+        // Use different family for specific font faces
+        String newFontFamily = jreFamilyMap.get(fontName);
+        if (newFontFamily != null) {
+            fontFamilyName = newFontFamily;
+        }
         final CFont font = new CFont(fontName, fontFamilyName);
 
         registerGenericFont(font);
