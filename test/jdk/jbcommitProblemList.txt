@@ -166,6 +166,7 @@ javax/swing/JInternalFrame/6725409/bug6725409.java                              
 javax/swing/JInternalFrame/8020708/bug8020708.java                                          nobug windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                          nobug macosx-all,linux-all,windows-all
 javax/swing/JInternalFrame/InternalFrameIsNotCollectedTest.java                             nobug macosx-all
+javax/swing/JInternalFrame/NormalBoundsTest.java                                            nobug macosx-all
 javax/swing/JInternalFrame/Test6802868.java                                                 nobug macosx-all,linux-all
 javax/swing/JLabel/7004134/bug7004134.java                                                  nobug macosx-all,linux-all
 javax/swing/JList/6510999/bug6510999.java                                                   nobug linux-all,macosx-all,windows-all
@@ -176,8 +177,9 @@ javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                
 javax/swing/JOptionPane/6428694/bug6428694.java                                             nobug windows-all
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
+javax/swing/JPopupMenu/6691503/bug6691503.java                                              nobug macosx-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
-javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all
+javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all,windows-all
 javax/swing/JRadioButton/8041561/bug8041561.java                                            nobug windows-all
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
