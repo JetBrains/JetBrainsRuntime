@@ -152,26 +152,6 @@ public final class CFontManager extends SunFontManager {
         }
     }
 
-    private void addDirFonts(String dirName, File dirFile,
-                             FilenameFilter filter,
-                             int fontRank) {
-        String[] ls = dirFile.list(filter);
-        if (ls == null || ls.length == 0) {
-            return;
-        }
-
-        for (String l : ls) {
-            String fullName = new File(dirFile, l).getAbsolutePath();
-
-            // REMIND: case compare depends on platform
-            if (registeredFontFiles.contains(fullName)) {
-                continue;
-            }
-
-            loadNativeDirFonts(fullName);
-        }
-    }
-
     protected void registerFontsInDir(final String dirName, boolean useJavaRasterizer,
                                       int fontRank, boolean defer, boolean resolveSymLinks) {
 
