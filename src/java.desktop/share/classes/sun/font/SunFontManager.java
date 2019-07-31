@@ -81,27 +81,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         }
     }
 
-    private static class TTFilterIdea extends TTFilter {
-        final private boolean positive;
-        final private HashSet<String> ideaSet;
-
-        public TTFilterIdea(boolean positive, HashSet<String> ideaSet) {
-            this.positive = positive;
-            this.ideaSet = ideaSet;
-        }
-
-        @Override
-        public boolean accept(File dir, String name) {
-            if (super.accept(dir, name)) {
-                if (ideaSet.contains(name))
-                    return positive;
-                else
-                    return !positive;
-            }
-            return false;
-        }
-    }
-
     private static class T1Filter implements FilenameFilter {
         public boolean accept(File dir,String name) {
             if (noType1Font) {
@@ -209,9 +188,9 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private boolean loaded1dot0Fonts = false;
     boolean loadedAllFonts = false;
     boolean loadedAllFontFiles = false;
-    HashMap<String,String> jreFontMap;
-    HashSet<String> jreBundledFontFiles;
-    HashSet<String> ideaFontSet;
+    private HashMap<String,String> jreFontMap;
+    private HashSet<String> jreBundledFontFiles;
+    HashMap<String,String> jreFamilyMap;
     String[] jreOtherFontFiles;
     boolean noOtherJREFontFiles = false; // initial assumption.
 
@@ -245,8 +224,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     private static final FilenameFilter ttFilter = new TTFilter();
     private static final FilenameFilter t1Filter = new T1Filter();
 
-    private FilenameFilter ttFilterIdea;
-    private FilenameFilter ttFilterJre;
     private Font[] allFonts;
     private String[] allFamilies; // cache for default locale only
     private Locale lastDefaultLocale;
@@ -271,14 +248,6 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
     public FilenameFilter getTrueTypeFilter() {
         return ttFilter;
-    }
-
-    FilenameFilter getTrueTypeFilterIdea() {
-        return ttFilterIdea;
-    }
-
-    FilenameFilter getTrueTypeFilterJre() {
-        return ttFilterJre;
     }
 
     public FilenameFilter getType1Filter() {
@@ -307,6 +276,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
          */
         jreFontMap = new HashMap<String, String>();
         jreBundledFontFiles = new HashSet<String>();
+        jreFamilyMap = new HashMap<>();
 
         /* Droid Sans Mono Family */
         jreFontMap.put("droid sans0", "DroidSans.ttf");
@@ -345,23 +315,10 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFontMap.put("Roboto light", "Roboto-Light.ttf");
         jreFontMap.put("Roboto thin", "Roboto-Thin.ttf");
 
-        ideaFontSet = new HashSet<>();
-        ideaFontSet.add("FiraCode-Bold.ttf");
-        ideaFontSet.add("FiraCode-Light.ttf");
-        ideaFontSet.add("FiraCode-Medium.ttf");
-        ideaFontSet.add("FiraCode-Retina.ttf");
-        ideaFontSet.add("FiraCode-Regular.ttf");
-        ideaFontSet.add("SourceCodePro-BoldIt.ttf");
-        ideaFontSet.add("SourceCodePro-Regular.ttf");
-        ideaFontSet.add("SourceCodePro-Bold.ttf");
-        ideaFontSet.add("SourceCodePro-It.ttf");
-        ideaFontSet.add("Inconsolata.ttf");
-        ideaFontSet.add("Roboto-Light.ttf");
-        ideaFontSet.add("Roboto-Thin.ttf");
+        jreFamilyMap.put("Roboto-Light", "Roboto Light");
+        jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
 
-        ttFilterIdea = new TTFilterIdea(true, ideaFontSet);
-        ttFilterJre = new TTFilterIdea(false, ideaFontSet);
-
+        jreFamilyMap.put("JetBrainsmono-Thin", "JetBrains Mono Thin");
         for (String ffile : jreFontMap.values()) {
             jreBundledFontFiles.add(ffile);
         }
@@ -3133,14 +3090,7 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
     }
 
     protected void registerJREFonts() {
-        File pathFile = new File(jreFontDirName);
-        addDirFonts(jreFontDirName, pathFile, ttFilterIdea,
-                    FONTFORMAT_TRUETYPE, true,
-                    Font2D.IDEA_RANK,
-                    true, false);
-        addDirFonts(jreFontDirName, pathFile, ttFilterJre,
-                FONTFORMAT_TRUETYPE, true,
-                Font2D.JRE_RANK,
+        registerFontsInDir(jreFontDirName, true, Font2D.JRE_RANK,
                 true, false);
     }
 
