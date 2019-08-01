@@ -497,7 +497,7 @@ public class DefaultKeyboardFocusManager extends KeyboardFocusManager {
                                        tempLost, toFocus);
                     }
                     if (tempLost != null) {
-                        tempLost.requestFocus(
+                        tempLost.requestFocusInWindow(
                                     isFocusRestore && tempLost == toFocus ?
                                                 FocusEvent.Cause.ROLLBACK :
                                                 FocusEvent.Cause.ACTIVATION);
