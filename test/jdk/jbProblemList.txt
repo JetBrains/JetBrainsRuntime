@@ -642,6 +642,7 @@ java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.java       
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_3.html           8204200,8060176 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/InfiniteRecursion/InfiniteRecursion_4.java           8204200 windows-all,macosx-all,linux-all
 java/awt/event/MouseWheelEvent/WheelModifier/WheelModifier.java                     8169475 windows-all,linux-all
+java/awt/font/Rotate/RotatedFontMetricsTest.java                                    8219641 linux-all
 java/awt/font/Rotate/RotatedTextTest.java                                           8219641 linux-all
 java/awt/font/StyledMetrics/BoldSpace.java                                          8198422 linux-all
 java/awt/font/TextLayout/CombiningPerf.java                                         8192931 generic-all
