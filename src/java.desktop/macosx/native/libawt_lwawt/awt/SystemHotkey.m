@@ -1,8 +1,12 @@
 #import <Foundation/Foundation.h>
 #import <Carbon/Carbon.h>
 
+#import "CRobotKeyCode.h"
+#import "java_awt_event_KeyEvent.h"
+
 #include <jni.h>
 #include "jni_util.h"
+
 
 extern JavaVM *jvm;
 
@@ -92,6 +96,73 @@ static int symbolicHotKeysModifiers2java(int mask) {
     return result;
 }
 
+static NSString * getAppleSymbolicHotKeysDescription(int hotKeyId) {
+    static NSDictionary * hotkeyId2DescMap = nil;
+    if (hotkeyId2DescMap == nil) {
+        hotkeyId2DescMap = [NSDictionary dictionaryWithObjectsAndKeys:
+                @"Move focus to the menu bar", [NSNumber numberWithInt:7],
+                @"Move focus to the Dock", [NSNumber numberWithInt:8],
+                @"Move focus to active or next window", [NSNumber numberWithInt:9],
+                @"Move focus to window toolbar", [NSNumber numberWithInt:10],
+                @"Move focus to floating window", [NSNumber numberWithInt:11],
+                @"Change the way Tab moves focus", [NSNumber numberWithInt:13],
+                @"Turn zoom on or off", [NSNumber numberWithInt:15],
+                @"Zoom in", [NSNumber numberWithInt:17],
+                @"Zoom out", [NSNumber numberWithInt:19],
+                @"Reverse Black and White", [NSNumber numberWithInt:21],
+                @"Turn image smoothing on or off", [NSNumber numberWithInt:23],
+                @"Increase Contrast", [NSNumber numberWithInt:25],
+                @"Decrease Contrast", [NSNumber numberWithInt:26],
+                @"Move focus to the next window in application", [NSNumber numberWithInt:27],
+                @"Save picture of screen as file", [NSNumber numberWithInt:28],
+                @"Copy picture of screen to clipboard", [NSNumber numberWithInt:29],
+                @"Save picture of selected area as file", [NSNumber numberWithInt:30],
+                @"Copy picture of selected area to clipboard", [NSNumber numberWithInt:31],
+                @"All Windows", [NSNumber numberWithInt:32],
+                @"Application Windows", [NSNumber numberWithInt:33],
+                @"All Windows (Slow)", [NSNumber numberWithInt:34],
+                @"Application Windows (Slow)", [NSNumber numberWithInt:35],
+                @"Desktop", [NSNumber numberWithInt:36],
+                @"Desktop (Slow)", [NSNumber numberWithInt:37],
+                @"Move focus to the window drawer", [NSNumber numberWithInt:51],
+                @"Turn Dock Hiding On/Off", [NSNumber numberWithInt:52],
+                @"Move focus to the status menus", [NSNumber numberWithInt:57],
+                @"Turn VoiceOver on / off", [NSNumber numberWithInt:59],
+                @"Select the previous input source", [NSNumber numberWithInt:60],
+                @"Select the next source in the Input Menu", [NSNumber numberWithInt:61],
+                @"Dashboard", [NSNumber numberWithInt:62],
+                @"Dashboard (Slow)", [NSNumber numberWithInt:63],
+                @"Show Spotlight search field", [NSNumber numberWithInt:64],
+                @"Show Spotlight window", [NSNumber numberWithInt:65],
+                @"Dictionary MouseOver", [NSNumber numberWithInt:70],
+                @"Hide and show Front Row", [NSNumber numberWithInt:73],
+                @"Activate Spaces", [NSNumber numberWithInt:75],
+                @"Activate Spaces (Slow)", [NSNumber numberWithInt:76],
+                @"Spaces Left", [NSNumber numberWithInt:79],
+                @"Spaces Right", [NSNumber numberWithInt:81],
+                @"Spaces Down", [NSNumber numberWithInt:83],
+                @"Spaces Up", [NSNumber numberWithInt:85],
+                @"Show Help Menu", [NSNumber numberWithInt:91],
+                @"Show Help Menu", [NSNumber numberWithInt:92],
+                @"Show Help Menu", [NSNumber numberWithInt:98],
+                @"Switch to Space 1", [NSNumber numberWithInt:118],
+                @"Switch to Space 2", [NSNumber numberWithInt:119],
+                @"Switch to Space 3", [NSNumber numberWithInt:120],
+                @"Switch to Space 4", [NSNumber numberWithInt:121],
+                @"Show Launchpad", [NSNumber numberWithInt:160],
+                @"Show Accessibility Controls", [NSNumber numberWithInt:162],
+                @"Show Notification Center", [NSNumber numberWithInt:163],
+                @"Turn Do-Not-Disturb On/Off", [NSNumber numberWithInt:175],
+                @"Turn focus following On/Off", [NSNumber numberWithInt:179],
+                nil
+        ];
+
+        [hotkeyId2DescMap retain];
+    }
+
+    return [hotkeyId2DescMap objectForKey : [NSNumber numberWithInt : hotKeyId]];
+}
+
 static int NSModifiers2java(int mask) {
     int result = 0;
     if (mask & shiftKey)
@@ -107,7 +178,7 @@ static int NSModifiers2java(int mask) {
 
 void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
     jclass clsReader = (*env)->GetObjectClass(env, reader);
-    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ZILjava/lang/String;ILjava/lang/String;Ljava/lang/String;)V");
+    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
 
     // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
     NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
@@ -133,7 +204,6 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
         else if (![hotkeys isKindOfClass:[NSDictionary class]])
             plog(LL_DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)", [hotkeys className].UTF8String);
         else {
-            jstring jsource = (*env)->NewStringUTF(env, "com.apple.symbolichotkeys");
             for (id keyObj in hotkeys) {
                 if (![keyObj isKindOfClass:[NSString class]]) {
                     plog(LL_DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj), [keyObj className].UTF8String);
@@ -157,6 +227,9 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
 
                 id objEnabled = sdict[@"enabled"];
                 BOOL enabled = objEnabled != nil && [objEnabled boolValue] == YES;
+
+                if (!enabled)
+                    continue;
 
                 NSDictionary * value = objValue;
                 id objParams = value[@"parameters"];
@@ -194,10 +267,12 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                     jkeyChar = (*env)->NewStringUTF(env, keyCharBuf);
                 }
 
+                NSString * description = getAppleSymbolicHotKeysDescription([hkNumber intValue]);
+                jstring jdesc = description == nil ? NULL : (*env)->NewStringUTF(env, description.UTF8String);
                 (*env)->CallVoidMethod(
-                        env, reader, methodAdd, (jboolean)enabled, (jint)vkeyCode,
+                        env, reader, methodAdd, (jint)vkeyCode,
                         jkeyChar, (jint)symbolicHotKeysModifiers2java(modifiers),
-                        jsource, (*env)->NewStringUTF(env, [hkNumber UTF8String])
+                        jdesc
                 );
             }
         }
@@ -225,7 +300,6 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
 //    }
         NSDictionary<NSString *, id> *services = [pbs valueForKey:@"NSServicesStatus"];
         if (services) {
-            jstring jsource = (*env)->NewStringUTF(env, "pbs");
             for (NSString *key in services) {
                 id value = services[key];
                 if (![value isKindOfClass:[NSDictionary class]]) {
@@ -259,18 +333,18 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
 
                 (*env)->CallVoidMethod(
-                        env, reader, methodAdd, true, -1,
+                        env, reader, methodAdd, -1,
                         (*env)->NewStringUTF(env, keyChar.UTF8String), modifiers,
-                        jsource, (*env)->NewStringUTF(env, key.UTF8String)
+                        (*env)->NewStringUTF(env, key.UTF8String)
                 );
             }
         }
     }
 
+#ifdef USE_CARBON_CopySymbolicHotKeys
     // 3. read from core services
     CFArrayRef registeredHotKeys;
     if(CopySymbolicHotKeys(&registeredHotKeys) == noErr) {
-        jstring jsource = (*env)->NewStringUTF(env, "CopySymbolicHotKeys");
         CFIndex count = CFArrayGetCount(registeredHotKeys);
         for(CFIndex i = 0; i < count; i++) {
             CFDictionaryRef hotKeyInfo = CFArrayGetValueAtIndex(registeredHotKeys, i);
@@ -283,143 +357,279 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
             int64_t keyModifiers = 0;
             CFNumberGetValue(hotKeyModifiers, kCFNumberSInt64Type, &keyModifiers);
             Boolean enabled = CFBooleanGetValue(hotKeyEnabled);
+            if (!enabled)
+                continue;
 
             (*env)->CallVoidMethod(
-                    env, reader, methodAdd, enabled, (int)vkeyCode,
+                    env, reader, methodAdd, (int)vkeyCode,
                     NULL, NSModifiers2java(keyModifiers),
-                    jsource, NULL
+                    NULL
             );
         }
 
         CFRelease(registeredHotKeys);
     }
+#endif // USE_CARBON_CopySymbolicHotKeys
 }
 
-static const char* _getVirtualCodeDescription(int code) {
-    switch (code) {
-        case kVK_ANSI_A: return "A";
-        case kVK_ANSI_S: return "S";
-        case kVK_ANSI_D: return "D";
-        case kVK_ANSI_F: return "F";
-        case kVK_ANSI_H: return "H";
-        case kVK_ANSI_G: return "G";
-        case kVK_ANSI_Z: return "Z";
-        case kVK_ANSI_X: return "X";
-        case kVK_ANSI_C: return "C";
-        case kVK_ANSI_V: return "V";
-        case kVK_ANSI_B: return "B";
-        case kVK_ANSI_Q: return "Q";
-        case kVK_ANSI_W: return "W";
-        case kVK_ANSI_E: return "E";
-        case kVK_ANSI_R: return "R";
-        case kVK_ANSI_Y: return "Y";
-        case kVK_ANSI_T: return "T";
-        case kVK_ANSI_1: return "1";
-        case kVK_ANSI_2: return "2";
-        case kVK_ANSI_3: return "3";
-        case kVK_ANSI_4: return "4";
-        case kVK_ANSI_6: return "6";
-        case kVK_ANSI_5: return "5";
-        case kVK_ANSI_Equal: return "Equal";
-        case kVK_ANSI_9: return "9";
-        case kVK_ANSI_7: return "7";
-        case kVK_ANSI_Minus: return "Minus";
-        case kVK_ANSI_8: return "8";
-        case kVK_ANSI_0: return "0";
-        case kVK_ANSI_RightBracket: return "RightBracket";
-        case kVK_ANSI_O: return "O";
-        case kVK_ANSI_U: return "U";
-        case kVK_ANSI_LeftBracket: return "LeftBracket";
-        case kVK_ANSI_I: return "I";
-        case kVK_ANSI_P: return "P";
-        case kVK_ANSI_L: return "L";
-        case kVK_ANSI_J: return "J";
-        case kVK_ANSI_Quote: return "Quote";
-        case kVK_ANSI_K: return "K";
-        case kVK_ANSI_Semicolon: return "Semicolon";
-        case kVK_ANSI_Backslash: return "Backslash";
-        case kVK_ANSI_Comma: return "Comma";
-        case kVK_ANSI_Slash: return "Slash";
-        case kVK_ANSI_N: return "N";
-        case kVK_ANSI_M: return "M";
-        case kVK_ANSI_Period: return "Period";
-        case kVK_ANSI_Grave: return "Grave";
-        case kVK_ANSI_KeypadDecimal: return "KeypadDecimal";
-        case kVK_ANSI_KeypadMultiply: return "KeypadMultiply";
-        case kVK_ANSI_KeypadPlus: return "KeypadPlus";
-        case kVK_ANSI_KeypadClear: return "KeypadClear";
-        case kVK_ANSI_KeypadDivide: return "KeypadDivide";
-        case kVK_ANSI_KeypadEnter: return "KeypadEnter";
-        case kVK_ANSI_KeypadMinus: return "KeypadMinus";
-        case kVK_ANSI_KeypadEquals: return "KeypadEquals";
-        case kVK_ANSI_Keypad0: return "Keypad0";
-        case kVK_ANSI_Keypad1: return "Keypad1";
-        case kVK_ANSI_Keypad2: return "Keypad2";
-        case kVK_ANSI_Keypad3: return "Keypad3";
-        case kVK_ANSI_Keypad4: return "Keypad4";
-        case kVK_ANSI_Keypad5: return "Keypad5";
-        case kVK_ANSI_Keypad6: return "Keypad6";
-        case kVK_ANSI_Keypad7: return "Keypad7";
-        case kVK_ANSI_Keypad8: return "Keypad8";
-        case kVK_ANSI_Keypad9: return "Keypad9";
+jint Java_java_awt_desktop_SystemHotkeyReader_osx2java(JNIEnv* env, jclass clazz, jint osxKeyCode) {
+    static NSDictionary * osx2javaMap = nil;
+    if (osx2javaMap == nil) {
+        osx2javaMap = [NSDictionary dictionaryWithObjectsAndKeys:
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SPACE], [NSNumber numberWithInt:OSX_Delete],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_TAB], [NSNumber numberWithInt:OSX_kVK_Tab],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ENTER], [NSNumber numberWithInt:OSX_kVK_Return],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLEAR], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadClear],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SHIFT], [NSNumber numberWithInt:OSX_Shift],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CONTROL], [NSNumber numberWithInt:OSX_Control],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ALT], [NSNumber numberWithInt:OSX_Option],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ALT_GRAPH], [NSNumber numberWithInt:OSX_RightOption],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CAPS_LOCK], [NSNumber numberWithInt:OSX_CapsLock],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ESCAPE], [NSNumber numberWithInt:OSX_Escape],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SPACE], [NSNumber numberWithInt:OSX_kVK_Space],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PAGE_UP], [NSNumber numberWithInt:OSX_PageUp],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PAGE_DOWN], [NSNumber numberWithInt:OSX_PageDown],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_END], [NSNumber numberWithInt:OSX_End],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_HOME], [NSNumber numberWithInt:OSX_Home],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_LEFT], [NSNumber numberWithInt:OSX_LeftArrow],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_UP], [NSNumber numberWithInt:OSX_UpArrow],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_RIGHT], [NSNumber numberWithInt:OSX_RightArrow],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DOWN], [NSNumber numberWithInt:OSX_DownArrow],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_COMMA], [NSNumber numberWithInt:OSX_kVK_ANSI_Comma],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MINUS], [NSNumber numberWithInt:OSX_kVK_ANSI_Minus],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_PERIOD], [NSNumber numberWithInt:OSX_kVK_ANSI_Period],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SLASH], [NSNumber numberWithInt:OSX_kVK_ANSI_Slash],
 
-            /* keycodes for keys that are independent of keyboard layout*/
-        case kVK_Return: return "Return";
-        case kVK_Tab: return "Tab";
-        case kVK_Space: return "Space";
-        case kVK_Delete: return "Delete";
-        case kVK_Escape: return "Escape";
-        case kVK_Command: return "Command";
-        case kVK_Shift: return "Shift";
-        case kVK_CapsLock: return "CapsLock";
-        case kVK_Option: return "Option";
-        case kVK_Control: return "Control";
-        case kVK_RightCommand: return "RightCommand";
-        case kVK_RightShift: return "RightShift";
-        case kVK_RightOption: return "RightOption";
-        case kVK_RightControl: return "RightControl";
-        case kVK_Function: return "Function";
-        case kVK_F17: return "F17";
-        case kVK_VolumeUp: return "VolumeUp";
-        case kVK_VolumeDown: return "VolumeDown";
-        case kVK_Mute: return "Mute";
-        case kVK_F18: return "F18";
-        case kVK_F19: return "F19";
-        case kVK_F20: return "F20";
-        case kVK_F5: return "F5";
-        case kVK_F6: return "F6";
-        case kVK_F7: return "F7";
-        case kVK_F3: return "F3";
-        case kVK_F8: return "F8";
-        case kVK_F9: return "F9";
-        case kVK_F11: return "F11";
-        case kVK_F13: return "F13";
-        case kVK_F16: return "F16";
-        case kVK_F14: return "F14";
-        case kVK_F10: return "F10";
-        case kVK_F12: return "F12";
-        case kVK_F15: return "F15";
-        case kVK_Help: return "Help";
-        case kVK_Home: return "Home";
-        case kVK_PageUp: return "PageUp";
-        case kVK_ForwardDelete: return "ForwardDelete";
-        case kVK_F4: return "F4";
-        case kVK_End: return "End";
-        case kVK_F2: return "F2";
-        case kVK_PageDown: return "PageDown";
-        case kVK_F1: return "F1";
-        case kVK_LeftArrow: return "LeftArrow";
-        case kVK_RightArrow: return "RightArrow";
-        case kVK_DownArrow: return "DownArrow";
-        case kVK_UpArrow: return "UpArrow";
-    };
-    return NULL;
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_0], [NSNumber numberWithInt:OSX_kVK_ANSI_0],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_1], [NSNumber numberWithInt:OSX_kVK_ANSI_1],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_2], [NSNumber numberWithInt:OSX_kVK_ANSI_2],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_3], [NSNumber numberWithInt:OSX_kVK_ANSI_3],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_4], [NSNumber numberWithInt:OSX_kVK_ANSI_4],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_5], [NSNumber numberWithInt:OSX_kVK_ANSI_5],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_6], [NSNumber numberWithInt:OSX_kVK_ANSI_6],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_7], [NSNumber numberWithInt:OSX_kVK_ANSI_7],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_8], [NSNumber numberWithInt:OSX_kVK_ANSI_8],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_9], [NSNumber numberWithInt:OSX_kVK_ANSI_9],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SEMICOLON], [NSNumber numberWithInt:OSX_kVK_ANSI_Semicolon],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_EQUALS], [NSNumber numberWithInt:OSX_kVK_ANSI_Equal],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_A], [NSNumber numberWithInt:OSX_kVK_ANSI_A],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_B], [NSNumber numberWithInt:OSX_kVK_ANSI_B],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_C], [NSNumber numberWithInt:OSX_kVK_ANSI_C],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_D], [NSNumber numberWithInt:OSX_kVK_ANSI_D],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_E], [NSNumber numberWithInt:OSX_kVK_ANSI_E],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F], [NSNumber numberWithInt:OSX_kVK_ANSI_F],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_G], [NSNumber numberWithInt:OSX_kVK_ANSI_G],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_H], [NSNumber numberWithInt:OSX_kVK_ANSI_H],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_I], [NSNumber numberWithInt:OSX_kVK_ANSI_I],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_J], [NSNumber numberWithInt:OSX_kVK_ANSI_J],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_K], [NSNumber numberWithInt:OSX_kVK_ANSI_K],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_L], [NSNumber numberWithInt:OSX_kVK_ANSI_L],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_M], [NSNumber numberWithInt:OSX_kVK_ANSI_M],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_N], [NSNumber numberWithInt:OSX_kVK_ANSI_N],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_O], [NSNumber numberWithInt:OSX_kVK_ANSI_O],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_P], [NSNumber numberWithInt:OSX_kVK_ANSI_P],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Q], [NSNumber numberWithInt:OSX_kVK_ANSI_Q],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_R], [NSNumber numberWithInt:OSX_kVK_ANSI_R],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_S], [NSNumber numberWithInt:OSX_kVK_ANSI_S],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_T], [NSNumber numberWithInt:OSX_kVK_ANSI_T],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_U], [NSNumber numberWithInt:OSX_kVK_ANSI_U],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_V], [NSNumber numberWithInt:OSX_kVK_ANSI_V],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_W], [NSNumber numberWithInt:OSX_kVK_ANSI_W],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_X], [NSNumber numberWithInt:OSX_kVK_ANSI_X],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Y], [NSNumber numberWithInt:OSX_kVK_ANSI_Y],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_Z], [NSNumber numberWithInt:OSX_kVK_ANSI_Z],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_OPEN_BRACKET], [NSNumber numberWithInt:OSX_kVK_ANSI_LeftBracket],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_SLASH], [NSNumber numberWithInt:OSX_kVK_ANSI_Backslash],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_CLOSE_BRACKET], [NSNumber numberWithInt:OSX_kVK_ANSI_RightBracket],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD0], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad0],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD1], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad1],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD2], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad2],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD3], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad3],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD4], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad4],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD5], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad5],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD6], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad6],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD7], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad7],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD8], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad8],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_NUMPAD9], [NSNumber numberWithInt:OSX_kVK_ANSI_Keypad9],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_MULTIPLY], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadMultiply],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_ADD], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadPlus],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_SUBTRACT], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadMinus],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DECIMAL], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadDecimal],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DIVIDE], [NSNumber numberWithInt:OSX_kVK_ANSI_KeypadDivide],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F1], [NSNumber numberWithInt:OSX_F1],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F2], [NSNumber numberWithInt:OSX_F2],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F3], [NSNumber numberWithInt:OSX_F3],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F4], [NSNumber numberWithInt:OSX_F4],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F5], [NSNumber numberWithInt:OSX_F5],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F6], [NSNumber numberWithInt:OSX_F6],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F7], [NSNumber numberWithInt:OSX_F7],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F8], [NSNumber numberWithInt:OSX_F8],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F9], [NSNumber numberWithInt:OSX_F9],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F10], [NSNumber numberWithInt:OSX_F10],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F11], [NSNumber numberWithInt:OSX_F11],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F12], [NSNumber numberWithInt:OSX_F12],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_DELETE], [NSNumber numberWithInt:OSX_ForwardDelete],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_HELP], [NSNumber numberWithInt:OSX_Help],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_META], [NSNumber numberWithInt:OSX_Command],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_BACK_QUOTE], [NSNumber numberWithInt:OSX_kVK_ANSI_Grave],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_QUOTE], [NSNumber numberWithInt:OSX_kVK_ANSI_Quote],
+
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F13], [NSNumber numberWithInt:OSX_F13],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F14], [NSNumber numberWithInt:OSX_F14],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F15], [NSNumber numberWithInt:OSX_F15],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F16], [NSNumber numberWithInt:OSX_F16],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F17], [NSNumber numberWithInt:OSX_F17],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F18], [NSNumber numberWithInt:OSX_F18],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F19], [NSNumber numberWithInt:OSX_F19],
+                [NSNumber numberWithInt:java_awt_event_KeyEvent_VK_F20], [NSNumber numberWithInt:OSX_F20],
+                nil
+        ];
+
+        [osx2javaMap retain];
+    }
+
+    id val = [osx2javaMap objectForKey : [NSNumber numberWithInt : osxKeyCode]];
+    if (nil != val)
+        return [val intValue];
+
+    return java_awt_event_KeyEvent_VK_UNDEFINED;
 }
 
-jstring Java_java_awt_desktop_SystemHotkey_virtualCodeDescription(JNIEnv* env, jclass clazz, jint code) {
-    const char* desc = _getVirtualCodeDescription(code);
-    if (desc == NULL)
+jstring Java_java_awt_desktop_SystemHotkey_osxKeyCodeDescription(JNIEnv* env, jclass clazz, jint osxKeyCode) {
+    static NSDictionary * osxCode2DescMap = nil;
+    if (osxCode2DescMap == nil) {
+        osxCode2DescMap = [NSDictionary dictionaryWithObjectsAndKeys:
+                @"A", [NSNumber numberWithInt:kVK_ANSI_A],
+                @"S", [NSNumber numberWithInt:kVK_ANSI_S],
+                @"D", [NSNumber numberWithInt:kVK_ANSI_D],
+                @"F", [NSNumber numberWithInt:kVK_ANSI_F],
+                @"H", [NSNumber numberWithInt:kVK_ANSI_H],
+                @"G", [NSNumber numberWithInt:kVK_ANSI_G],
+                @"Z", [NSNumber numberWithInt:kVK_ANSI_Z],
+                @"X", [NSNumber numberWithInt:kVK_ANSI_X],
+                @"C", [NSNumber numberWithInt:kVK_ANSI_C],
+                @"V", [NSNumber numberWithInt:kVK_ANSI_V],
+                @"B", [NSNumber numberWithInt:kVK_ANSI_B],
+                @"Q", [NSNumber numberWithInt:kVK_ANSI_Q],
+                @"W", [NSNumber numberWithInt:kVK_ANSI_W],
+                @"E", [NSNumber numberWithInt:kVK_ANSI_E],
+                @"R", [NSNumber numberWithInt:kVK_ANSI_R],
+                @"Y", [NSNumber numberWithInt:kVK_ANSI_Y],
+                @"T", [NSNumber numberWithInt:kVK_ANSI_T],
+                @"1", [NSNumber numberWithInt:kVK_ANSI_1],
+                @"2", [NSNumber numberWithInt:kVK_ANSI_2],
+                @"3", [NSNumber numberWithInt:kVK_ANSI_3],
+                @"4", [NSNumber numberWithInt:kVK_ANSI_4],
+                @"6", [NSNumber numberWithInt:kVK_ANSI_6],
+                @"5", [NSNumber numberWithInt:kVK_ANSI_5],
+                @"Equal", [NSNumber numberWithInt:kVK_ANSI_Equal],
+                @"9", [NSNumber numberWithInt:kVK_ANSI_9],
+                @"7", [NSNumber numberWithInt:kVK_ANSI_7],
+                @"Minus", [NSNumber numberWithInt:kVK_ANSI_Minus],
+                @"8", [NSNumber numberWithInt:kVK_ANSI_8],
+                @"0", [NSNumber numberWithInt:kVK_ANSI_0],
+                @"RightBracket", [NSNumber numberWithInt:kVK_ANSI_RightBracket],
+                @"O", [NSNumber numberWithInt:kVK_ANSI_O],
+                @"U", [NSNumber numberWithInt:kVK_ANSI_U],
+                @"LeftBracket", [NSNumber numberWithInt:kVK_ANSI_LeftBracket],
+                @"I", [NSNumber numberWithInt:kVK_ANSI_I],
+                @"P", [NSNumber numberWithInt:kVK_ANSI_P],
+                @"L", [NSNumber numberWithInt:kVK_ANSI_L],
+                @"J", [NSNumber numberWithInt:kVK_ANSI_J],
+                @"Quote", [NSNumber numberWithInt:kVK_ANSI_Quote],
+                @"K", [NSNumber numberWithInt:kVK_ANSI_K],
+                @"Semicolon", [NSNumber numberWithInt:kVK_ANSI_Semicolon],
+                @"Backslash", [NSNumber numberWithInt:kVK_ANSI_Backslash],
+                @"Comma", [NSNumber numberWithInt:kVK_ANSI_Comma],
+                @"Slash", [NSNumber numberWithInt:kVK_ANSI_Slash],
+                @"N", [NSNumber numberWithInt:kVK_ANSI_N],
+                @"M", [NSNumber numberWithInt:kVK_ANSI_M],
+                @"Period", [NSNumber numberWithInt:kVK_ANSI_Period],
+                @"Grave", [NSNumber numberWithInt:kVK_ANSI_Grave],
+                @"KeypadDecimal", [NSNumber numberWithInt:kVK_ANSI_KeypadDecimal],
+                @"KeypadMultiply", [NSNumber numberWithInt:kVK_ANSI_KeypadMultiply],
+                @"KeypadPlus", [NSNumber numberWithInt:kVK_ANSI_KeypadPlus],
+                @"KeypadClear", [NSNumber numberWithInt:kVK_ANSI_KeypadClear],
+                @"KeypadDivide", [NSNumber numberWithInt:kVK_ANSI_KeypadDivide],
+                @"KeypadEnter", [NSNumber numberWithInt:kVK_ANSI_KeypadEnter],
+                @"KeypadMinus", [NSNumber numberWithInt:kVK_ANSI_KeypadMinus],
+                @"KeypadEquals", [NSNumber numberWithInt:kVK_ANSI_KeypadEquals],
+                @"Keypad0", [NSNumber numberWithInt:kVK_ANSI_Keypad0],
+                @"Keypad1", [NSNumber numberWithInt:kVK_ANSI_Keypad1],
+                @"Keypad2", [NSNumber numberWithInt:kVK_ANSI_Keypad2],
+                @"Keypad3", [NSNumber numberWithInt:kVK_ANSI_Keypad3],
+                @"Keypad4", [NSNumber numberWithInt:kVK_ANSI_Keypad4],
+                @"Keypad5", [NSNumber numberWithInt:kVK_ANSI_Keypad5],
+                @"Keypad6", [NSNumber numberWithInt:kVK_ANSI_Keypad6],
+                @"Keypad7", [NSNumber numberWithInt:kVK_ANSI_Keypad7],
+                @"Keypad8", [NSNumber numberWithInt:kVK_ANSI_Keypad8],
+                @"Keypad9", [NSNumber numberWithInt:kVK_ANSI_Keypad9],
+
+                    /* keycodes for keys that are independent of keyboard layout*/
+                @"Return", [NSNumber numberWithInt:kVK_Return],
+                @"Tab", [NSNumber numberWithInt:kVK_Tab],
+                @"Space", [NSNumber numberWithInt:kVK_Space],
+                @"Delete", [NSNumber numberWithInt:kVK_Delete],
+                @"Escape", [NSNumber numberWithInt:kVK_Escape],
+                @"Command", [NSNumber numberWithInt:kVK_Command],
+                @"Shift", [NSNumber numberWithInt:kVK_Shift],
+                @"CapsLock", [NSNumber numberWithInt:kVK_CapsLock],
+                @"Option", [NSNumber numberWithInt:kVK_Option],
+                @"Control", [NSNumber numberWithInt:kVK_Control],
+                @"RightCommand", [NSNumber numberWithInt:kVK_RightCommand],
+                @"RightShift", [NSNumber numberWithInt:kVK_RightShift],
+                @"RightOption", [NSNumber numberWithInt:kVK_RightOption],
+                @"RightControl", [NSNumber numberWithInt:kVK_RightControl],
+                @"Function", [NSNumber numberWithInt:kVK_Function],
+                @"F17", [NSNumber numberWithInt:kVK_F17],
+                @"VolumeUp", [NSNumber numberWithInt:kVK_VolumeUp],
+                @"VolumeDown", [NSNumber numberWithInt:kVK_VolumeDown],
+                @"Mute", [NSNumber numberWithInt:kVK_Mute],
+                @"F18", [NSNumber numberWithInt:kVK_F18],
+                @"F19", [NSNumber numberWithInt:kVK_F19],
+                @"F20", [NSNumber numberWithInt:kVK_F20],
+                @"F5", [NSNumber numberWithInt:kVK_F5],
+                @"F6", [NSNumber numberWithInt:kVK_F6],
+                @"F7", [NSNumber numberWithInt:kVK_F7],
+                @"F3", [NSNumber numberWithInt:kVK_F3],
+                @"F8", [NSNumber numberWithInt:kVK_F8],
+                @"F9", [NSNumber numberWithInt:kVK_F9],
+                @"F11", [NSNumber numberWithInt:kVK_F11],
+                @"F13", [NSNumber numberWithInt:kVK_F13],
+                @"F16", [NSNumber numberWithInt:kVK_F16],
+                @"F14", [NSNumber numberWithInt:kVK_F14],
+                @"F10", [NSNumber numberWithInt:kVK_F10],
+                @"F12", [NSNumber numberWithInt:kVK_F12],
+                @"F15", [NSNumber numberWithInt:kVK_F15],
+                @"Help", [NSNumber numberWithInt:kVK_Help],
+                @"Home", [NSNumber numberWithInt:kVK_Home],
+                @"PageUp", [NSNumber numberWithInt:kVK_PageUp],
+                @"ForwardDelete", [NSNumber numberWithInt:kVK_ForwardDelete],
+                @"F4", [NSNumber numberWithInt:kVK_F4],
+                @"End", [NSNumber numberWithInt:kVK_End],
+                @"F2", [NSNumber numberWithInt:kVK_F2],
+                @"PageDown", [NSNumber numberWithInt:kVK_PageDown],
+                @"F1", [NSNumber numberWithInt:kVK_F1],
+                @"LeftArrow", [NSNumber numberWithInt:kVK_LeftArrow],
+                @"RightArrow", [NSNumber numberWithInt:kVK_RightArrow],
+                @"DownArrow", [NSNumber numberWithInt:kVK_DownArrow],
+                @"UpArrow", [NSNumber numberWithInt:kVK_UpArrow],
+                nil
+        ];
+
+        [osxCode2DescMap retain];
+    }
+
+    NSString * val = [osxCode2DescMap objectForKey : [NSNumber numberWithInt : osxKeyCode]];
+    if (val == nil)
         return NULL;
 
-    return (*env)->NewStringUTF(env, desc);
+    return (*env)->NewStringUTF(env, val.UTF8String);
 }
