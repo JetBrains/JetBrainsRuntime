@@ -1279,10 +1279,13 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 #ifdef STATIC_BUILD
   return os::get_default_process_handle();
 #else
+  log_info(os)("attempting shared library load of %s", filename);
+
   void * result= ::dlopen(filename, RTLD_LAZY);
   if (result != NULL) {
     Events::log(NULL, "Loaded shared library %s", filename);
     // Successful loading
+    log_info(os)("shared library load of %s was successful", filename);
     return result;
   }
 
@@ -1296,6 +1299,7 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
     ebuf[ebuflen-1]='\0';
   }
   Events::log(NULL, "Loading shared library %s failed, %s", filename, error_report);
+  log_info(os)("shared library load of %s failed, %s", filename, error_report);
 
   return NULL;
 #endif // STATIC_BUILD
@@ -1305,10 +1309,12 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
 #ifdef STATIC_BUILD
   return os::get_default_process_handle();
 #else
+  log_info(os)("attempting shared library load of %s", filename);
   void * result= ::dlopen(filename, RTLD_LAZY);
   if (result != NULL) {
     Events::log(NULL, "Loaded shared library %s", filename);
     // Successful loading
+    log_info(os)("shared library load of %s was successful", filename);
     return result;
   }
 
@@ -1324,6 +1330,7 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
     ebuf[ebuflen-1]='\0';
   }
   Events::log(NULL, "Loading shared library %s failed, %s", filename, error_report);
+  log_info(os)("shared library load of %s failed, %s", filename, error_report);
 
   int diag_msg_max_length=ebuflen-strlen(ebuf);
   char* diag_msg_buf=ebuf+strlen(ebuf);
