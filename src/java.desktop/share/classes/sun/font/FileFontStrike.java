@@ -421,8 +421,7 @@ public class FileFontStrike extends PhysicalStrike {
 
     long getGlyphImageFromWindows(int glyphCode) {
         String family = fileFont.getFamilyName(null);
-        int style = desc.style & Font.BOLD | desc.style & Font.ITALIC
-            | fileFont.getStyle();
+        int style = fileFont.getStyle();
         int size = intPtSize;
         byte charset = fileFont.getSupportedCharset();
         long ptr = 0;
