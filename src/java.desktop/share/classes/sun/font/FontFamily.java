@@ -28,7 +28,9 @@ package sun.font;
 import java.io.File;
 import java.awt.Font;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
@@ -44,6 +46,8 @@ public class FontFamily {
     protected Font2D bold;
     protected Font2D italic;
     protected Font2D bolditalic;
+    private List<FontAndStyle> fontSequence;
+    private boolean initialized = false;
     protected boolean logicalFont = false;
     protected int familyRank;
 
@@ -66,6 +70,7 @@ public class FontFamily {
         if (family == null) {
             return;
         }
+        family.ensureFontsLoaded();
         if (family.plain == font2D) {
             family.plain = null;
         }
@@ -257,7 +262,36 @@ public class FontFamily {
             }
             return;
         }
+        if (initialized) {
+            doSetFont(font, style);
+            return;
+        }
+        if (fontSequence == null) {
+            fontSequence = new ArrayList<FontAndStyle>();
+        }
+        fontSequence.add(new FontAndStyle(font, style));
+    }
 
+    private void ensureFontsLoaded() {
+        if (fontSequence != null) {
+            for (FontAndStyle fontAndStyle : fontSequence) {
+                doSetFont(fontAndStyle.font, fontAndStyle.style);
+            }
+        }
+        if (italic == null && plain instanceof FontWithDerivedItalic) {
+            italic = ((FontWithDerivedItalic)plain).createItalic();
+        }
+        if (bolditalic == null) {
+            Font2D boldItalicPrototype = bold != null ? bold : plain;
+            if (boldItalicPrototype instanceof FontWithDerivedItalic) {
+                bolditalic = ((FontWithDerivedItalic)boldItalicPrototype).createItalic();
+            }
+        }
+        fontSequence = null;
+        initialized = true;
+    }
+
+    private void doSetFont(Font2D font, int style) {
         switch (style) {
 
         case Font.PLAIN:
@@ -290,7 +324,7 @@ public class FontFamily {
     }
 
     public Font2D getFontWithExactStyleMatch(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
 
         case Font.PLAIN:
@@ -319,7 +353,7 @@ public class FontFamily {
      * same location.
      */
     public Font2D getFont(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
 
         case Font.PLAIN:
@@ -367,7 +401,7 @@ public class FontFamily {
      * it might as well be from the same family.
      */
      Font2D getClosestStyle(int style) {
-
+        ensureFontsLoaded();
         switch (style) {
             /* if you ask for a plain font try to return a non-italic one,
              * then a italic one, finally a bold italic one */
@@ -444,8 +478,19 @@ public class FontFamily {
             " plain="+plain+
             " bold=" + bold +
             " italic=" + italic +
-            " bolditalic=" + bolditalic;
+            " bolditalic=" + bolditalic +
+            " initialized=" + initialized;
 
+    }
+
+    private static class FontAndStyle {
+        private final Font2D font;
+        private final int style;
+
+        private FontAndStyle(Font2D inFont, int inStyle) {
+            font = inFont;
+            style = inStyle;
+        }
     }
 
 }
