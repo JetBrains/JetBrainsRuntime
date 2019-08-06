@@ -28,6 +28,7 @@ import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
 import java.awt.geom.GeneralPath;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.InvocationTargetException;
 import java.util.Hashtable;
 import java.util.Map;
 import javax.swing.*;
@@ -232,16 +233,21 @@ bounds.y + bounds.height, getBezierColor(GRADIENT_B), true);
 g2d.setComposite(blend);
 g2d.fill(gp);
 }
-
-repaint();
-
-Thread.yield();
+            try {
+                SwingUtilities.invokeAndWait(new Runnable() {
+                    @Override
+                    public void run() {
+                        repaint();
+                    }
+                });
+            } catch (InvocationTargetException | InterruptedException e) {
+                e.printStackTrace();
+            }
 }
 if (g2d != null) {
 g2d.dispose();
 }
 }
-
 public void paint(Graphics g) {
 synchronized (lock) {
 Graphics2D g2d = (Graphics2D) g;
