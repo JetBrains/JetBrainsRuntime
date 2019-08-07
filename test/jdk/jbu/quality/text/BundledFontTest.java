@@ -117,6 +117,11 @@ public class BundledFontTest {
     }
 
     @Test
+    public void testJetBrainsMono() throws Exception {
+        doTestFont("JetBrains Mono");
+    }
+
+    @Test
     public void testJetBrainsMonoThin() throws Exception {
         doTestFont("JetBrains Mono Thin");
     }
