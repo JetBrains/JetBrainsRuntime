@@ -1284,34 +1284,28 @@ GetFilteredFonts()
 {
     if (sFilteredFonts == nil) {
         NSFontManager *fontManager = [NSFontManager sharedFontManager];
-        NSUInteger fontCount = [[fontManager availableFonts] count];
-
-        NSMutableArray *allFonts = [[NSMutableArray alloc] initWithCapacity:fontCount];
+        NSArray<NSString *> *availableFonts= [fontManager availableFonts];
+        NSUInteger fontCount = [availableFonts count];
+        NSMutableArray* allFonts = [NSMutableArray arrayWithCapacity:fontCount];
         NSMutableDictionary* fontFamilyTable = [[NSMutableDictionary alloc] initWithCapacity:fontCount];
-        NSArray *allFamilies = [fontManager availableFontFamilies];
-
-        NSUInteger familyCount = [allFamilies count];
-
-        NSUInteger familyIndex;
-        for (familyIndex = 0; familyIndex < familyCount; familyIndex++) {
-            NSString *family = [allFamilies objectAtIndex:familyIndex];
-
-            if ((family == nil) || [family characterAtIndex:0] == '.') {
-                continue;
-            }
-
-            NSArray *fontFaces = [fontManager availableMembersOfFontFamily:family];
-            NSUInteger faceCount = [fontFaces count];
-
-            NSUInteger faceIndex;
-            for (faceIndex = 0; faceIndex < faceCount; faceIndex++) {
-                NSString* face = [[fontFaces objectAtIndex:faceIndex] objectAtIndex:0];
-                if (face != nil) {
-                    [allFonts addObject:face];
-                    [fontFamilyTable setObject:family forKey:face];
+        NSMutableDictionary* fontTable = [[NSMutableDictionary alloc] initWithCapacity:fontCount];
+        NSDictionary* prebuilt = prebuiltFamilyNames();
+        for (NSString *face in availableFonts) {
+            NSString* familyName = [prebuilt objectForKey:face];
+            if (!familyName) {
+                NSFont* font = [NSFont fontWithName:face size:NSFont.systemFontSize];
+                if(font && font.familyName) {
+                    familyName = font.familyName;
+//                    NSLog(@"@\"%@\" : @\"%@\",", face, familyName);
                 }
             }
+            if (!isVisibleFamily(familyName)) {
+                continue;
+            }
+            [allFonts addObject:face];
+            [fontFamilyTable setObject:familyName forKey:face];
         }
+
 
         /*
          * JavaFX registers these fonts and so JDK needs to do so as well.
