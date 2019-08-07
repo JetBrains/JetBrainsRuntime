@@ -188,37 +188,6 @@ public final class CFontManager extends SunFontManager {
         registerGenericFont(font);
     }
 
-    void registerItalicDerived() {
-        FontFamily[] famArr = FontFamily.getAllFontFamilies();
-        for (int i=0; i<famArr.length; i++) {
-            FontFamily family = famArr[i];
-
-            Font2D f2dPlain = family.getFont(Font.PLAIN);
-            if (f2dPlain != null && !(f2dPlain instanceof CFont)) continue;
-            Font2D f2dBold = family.getFont(Font.BOLD);
-            if (f2dBold != null && !(f2dBold instanceof CFont)) continue;
-            Font2D f2dItalic = family.getFont(Font.ITALIC);
-            if (f2dItalic != null && !(f2dItalic instanceof CFont)) continue;
-            Font2D f2dBoldItalic = family.getFont(Font.BOLD|Font.ITALIC);
-            if (f2dBoldItalic != null && !(f2dBoldItalic instanceof CFont)) continue;
-
-            CFont plain = (CFont)f2dPlain;
-            CFont bold = (CFont)f2dBold;
-            CFont italic = (CFont)f2dItalic;
-            CFont boldItalic = (CFont)f2dBoldItalic;
-
-            if (bold == null) bold = plain;
-            if (plain == null && bold == null) continue;
-            if (italic != null && boldItalic != null) continue;
-            if (plain != null && italic == null) {
-               registerGenericFont(plain.createItalicVariant(true), true);
-            }
-            if (bold != null && boldItalic == null) {
-               registerGenericFont(bold.createItalicVariant(true), true);
-            }
-        }
-    }
-
     Object waitForFontsToBeLoaded  = new Object();
     private boolean loadedAllFonts = false;
 
@@ -233,7 +202,6 @@ public final class CFontManager extends SunFontManager {
                     public Object run() {
                         if (!loadedAllFonts) {
                            loadNativeFonts();
-                           registerItalicDerived();
                            loadedAllFonts = true;
                         }
                         return null;
