@@ -36,7 +36,7 @@ import java.awt.geom.Rectangle2D;
 // For some reason the JNI IsInstanceOf was not working correctly
 // so we are checking the class specifically. If we subclass this
 // we need to modify the native code in CFontWrapper.m
-public final class CFont extends PhysicalFont implements FontSubstitution {
+public final class CFont extends PhysicalFont implements FontSubstitution, FontWithDerivedItalic {
 
     /* CFontStrike doesn't call these methods so they are unimplemented.
      * They are here to meet the requirements of PhysicalFont, needed
@@ -265,5 +265,9 @@ public final class CFont extends PhysicalFont implements FontSubstitution {
         return "CFont { fullName: " + fullName +
             ",  familyName: " + familyName + ", style: " + style +
             " } aka: " + super.toString();
+    }
+
+    public Font2D createItalic() {
+      return this.createItalicVariant(true);
     }
 }
