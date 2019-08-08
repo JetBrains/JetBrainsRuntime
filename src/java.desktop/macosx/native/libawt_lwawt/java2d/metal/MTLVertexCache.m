@@ -102,6 +102,8 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
         vertexBuffer = nil;
     }
     vertexCacheIndex = 0;
+    maskCacheIndex = 0;
+    maskCacheTex = nil;
 }
 
 /**
@@ -180,6 +182,9 @@ MTLVertexCache_EnableMaskCache(MTLContext *mtlc, BMTLSDOps *dstOps)
 void
 MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 {
+    // TODO : Once we enable check_previous_op
+    // we will start using DisableMaskCache until then
+    // we are force flusging vertexcache.
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
     MTLVertexCache_RestoreColorState(mtlc);

@@ -339,8 +339,8 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
     if (glyphMode != MODE_NO_CACHE_GRAY) {
-        MTLTR_DisableGlyphModeState();
-        CHECK_PREVIOUS_OP(MTL_STATE_MASK_OP);
+        //MTLTR_DisableGlyphModeState();
+        //CHECK_PREVIOUS_OP(MTL_STATE_MASK_OP);
         glyphMode = MODE_NO_CACHE_GRAY;
     }
 
@@ -411,6 +411,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
+    MTLVertexCache_EnableMaskCache(mtlc, dstOps);
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -504,7 +505,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             break;
         }
     }
-
+    MTLVertexCache_FlushVertexCache(mtlc);
     MTLTR_DisableGlyphModeState();
 }
 
