@@ -147,7 +147,8 @@ public final class LWCToolkit extends LWToolkit {
     private static native void initIDs();
     private static native void initAppkit(ThreadGroup appKitThreadGroup, boolean headless);
     private static native void switchKeyboardLayoutNative(String layoutName);
-    private static native String getKeyboardLayoutNativeId();
+
+    static native String getKeyboardLayoutNativeId();
 
     private static CInputMethodDescriptor sInputMethodDescriptor;
 

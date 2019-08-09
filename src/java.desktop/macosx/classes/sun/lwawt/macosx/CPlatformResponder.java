@@ -35,7 +35,9 @@ import java.awt.event.MouseEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.KeyEvent;
-import java.security.PrivilegedAction;import java.util.Locale;import java.util.MissingResourceException;import java.util.ResourceBundle;
+import java.security.PrivilegedAction;
+import java.util.Arrays;
+import java.util.Locale;import java.util.MissingResourceException;import java.util.ResourceBundle;
 
 /**
  * Translates NSEvents/NPCocoaEvents into AWT events.
@@ -199,13 +201,28 @@ final class CPlatformResponder {
         return ch;
     }
 
+    private static final String [] cyrillicKeyboardLayouts = new String [] {
+            "com.apple.keylayout.Russian",
+            "com.apple.keylayout.RussianWin",
+            "com.apple.keylayout.Russian-Phonetic",
+            "com.apple.keylayout.Byelorussian",
+            "com.apple.keylayout.Ukrainian",
+            "com.apple.keylayout.UkrainianWin",
+            "com.apple.keylayout.Bulgarian",
+            "com.apple.keylayout.Serbian"
+    };
+
+    private static boolean isCyrillicKeyboardLayout() {
+        return Arrays.stream(cyrillicKeyboardLayouts).anyMatch(l -> l.equals(LWCToolkit.getKeyboardLayoutId()));
+    }
+
     /**
      * Handles key events.
      */
     void handleKeyEvent(NSEvent nsEvent)
     {
 
-        if (useOldKeyEventProcessing) {
+        if (useOldKeyEventProcessing || isCyrillicKeyboardLayout()) {
             handleKeyEvent(
                     nsEvent.getType(),
                     nsEvent.getModifierFlags(),
