@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
  * @bug 8175312
  * @summary Test clhsdb 'g1regiondetails' and 'scanoops' commands for G1GC
  * @requires vm.hasSA & (vm.bits == "64" & os.maxMemory > 8g)
- * @library /test/lib
+ * @library /test/lib /test/hotspot/jtreg/serviceability/sa
  * @run main/othervm/timeout=2400 ClhsdbRegionDetailsScanOopsForG1
  */
 
@@ -70,11 +70,6 @@ public class ClhsdbRegionDetailsScanOopsForG1 {
             unExpStrMap.put("g1regiondetails", List.of("Unknown Region Type"));
             String regionDetailsOutput = test.run(theApp.getPid(), cmds,
                                                   expStrMap, unExpStrMap);
-            if (regionDetailsOutput == null) {
-                LingeredApp.stopApp(theApp);
-                throw new SkippedException("attach permission issues");
-            }
-
             // Test the output of 'scanoops' -- get the start and end addresses
             // from the StartsHumongous region. Ensure that it contains an
             // array of Strings.
