@@ -26,8 +26,8 @@
 package javax.swing.plaf.basic;
 
 import sun.swing.DefaultLookup;
-import sun.swing.SwingUtilities2;
 import sun.swing.UIAction;
+import sun.swing.SwingUtilities2;
 import java.awt.*;
 import java.awt.event.*;
 import java.beans.*;
@@ -156,16 +156,7 @@ public class BasicButtonListener implements MouseListener, MouseMotionListener,
             map.clear();
             map.put(KeyStroke.getKeyStroke(m, BasicLookAndFeel.getFocusAcceleratorKeyMask(), false),
                     "pressed");
-            map.put(KeyStroke.getKeyStroke(m, SwingUtilities2.setAltGraphMask
-                            (BasicLookAndFeel.getFocusAcceleratorKeyMask()),
-                    false),
-                    "pressed");
-
             map.put(KeyStroke.getKeyStroke(m, BasicLookAndFeel.getFocusAcceleratorKeyMask(), true),
-                    "released");
-            map.put(KeyStroke.getKeyStroke(m,
-                    SwingUtilities2.setAltGraphMask
-                            (BasicLookAndFeel.getFocusAcceleratorKeyMask()), true),
                     "released");
             map.put(KeyStroke.getKeyStroke(m, 0, true), "released");
         }
