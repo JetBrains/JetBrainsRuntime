@@ -129,8 +129,7 @@ public class BasicMenuUI extends BasicMenuItemUI
         int[] shortcutKeys = (int[])DefaultLookup.get(menuItem, this,
                                                    "Menu.shortcutKeys");
         if (shortcutKeys == null) {
-            shortcutKeys = new int[] {KeyEvent.ALT_MASK,
-                    KeyEvent.ALT_MASK | KeyEvent.ALT_GRAPH_MASK};
+            shortcutKeys = new int[] {KeyEvent.ALT_MASK};
         }
         if (mnemonic == lastMnemonic) {
             return;

@@ -36,7 +36,6 @@ import javax.swing.text.View;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.Component;
 import java.awt.Container;
@@ -403,10 +402,6 @@ public class BasicLabelUI extends LabelUI implements  PropertyChangeListener
             }
             inputMap.clear();
             inputMap.put(KeyStroke.getKeyStroke(dka, BasicLookAndFeel.getFocusAcceleratorKeyMask(), false), "press");
-            inputMap.put(KeyStroke.getKeyStroke(dka,
-                    SwingUtilities2.setAltGraphMask (
-                            BasicLookAndFeel.getFocusAcceleratorKeyMask()),
-                    false), "press");
         }
         else {
             InputMap inputMap = SwingUtilities.getUIInputMap
@@ -525,8 +520,6 @@ public class BasicLabelUI extends LabelUI implements  PropertyChangeListener
                 int dka = label.getDisplayedMnemonic();
                 putOnRelease(inputMap, dka, BasicLookAndFeel
                         .getFocusAcceleratorKeyMask());
-                putOnRelease(inputMap, dka, SwingUtilities2.setAltGraphMask (
-                        BasicLookAndFeel.getFocusAcceleratorKeyMask()));
                 // Need this when the sticky keys are enabled
                 putOnRelease(inputMap, dka, 0);
                 // Need this if ALT is released before the accelerator
@@ -546,9 +539,6 @@ public class BasicLabelUI extends LabelUI implements  PropertyChangeListener
                         int dka = label.getDisplayedMnemonic();
                         removeOnRelease(inputMap, dka, BasicLookAndFeel
                                 .getFocusAcceleratorKeyMask());
-                        removeOnRelease(inputMap, dka,
-                                SwingUtilities2.setAltGraphMask (
-                                BasicLookAndFeel.getFocusAcceleratorKeyMask()));
                         removeOnRelease(inputMap, dka, 0);
                         removeOnRelease(inputMap, KeyEvent.VK_ALT, 0);
                     }
@@ -565,9 +555,6 @@ public class BasicLabelUI extends LabelUI implements  PropertyChangeListener
                     } else {
                         putOnRelease(inputMap, dka, BasicLookAndFeel
                                 .getFocusAcceleratorKeyMask());
-                        putOnRelease(inputMap, dka,
-                                SwingUtilities2.setAltGraphMask (
-                                BasicLookAndFeel.getFocusAcceleratorKeyMask()));
                         // Need this when the sticky keys are enabled
                         putOnRelease(inputMap, dka, 0);
                     }
@@ -585,9 +572,6 @@ public class BasicLabelUI extends LabelUI implements  PropertyChangeListener
                         if (isCommand) {
                             removeOnRelease(inputMap, dka, BasicLookAndFeel
                                     .getFocusAcceleratorKeyMask());
-                            removeOnRelease(inputMap, dka,
-                                    SwingUtilities2.setAltGraphMask (
-                                    BasicLookAndFeel.getFocusAcceleratorKeyMask()));
                             removeOnRelease(inputMap, dka, 0);
                         } else {
                             removeOnRelease(inputMap, KeyEvent.VK_ALT, 0);
