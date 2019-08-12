@@ -38,6 +38,7 @@
 #include "prims/unsafe.hpp"
 #include "runtime/arguments.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/javaCalls.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/signature.hpp"
@@ -256,7 +257,7 @@ address NativeLookup::lookup_entry(const methodHandle& method, bool& in_base_lib
 // Check all the formats of native implementation name to see if there is one
 // for the specified method.
 address NativeLookup::lookup_critical_entry(const methodHandle& method) {
-  if (!CriticalJNINatives) return NULL;
+  assert(CriticalJNINatives, "or should not be here");
 
   if (method->is_synchronized() ||
       !method->is_static()) {
@@ -281,6 +282,9 @@ address NativeLookup::lookup_critical_entry(const methodHandle& method) {
       args_size += T_INT_size; // array length parameter
     }
   }
+
+  // dll handling requires I/O. Don't do that while in _thread_in_vm (safepoint may get requested).
+  ThreadToNativeFromVM thread_in_native(JavaThread::current());
 
   void* dll = dll_load(method);
   address entry = NULL;
