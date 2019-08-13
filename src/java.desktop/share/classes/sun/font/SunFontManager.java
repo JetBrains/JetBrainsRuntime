@@ -327,29 +327,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
         jreFamilyMap.put("Roboto-Light", "Roboto Light");
         jreFamilyMap.put("Roboto-Thin", "Roboto Thin");
 
-        jreFontMap.put("JetBrains Mono 520 Bold", "JetBrainsMono520-Bold.ttf");
-        jreFontMap.put("JetBrains Mono 520 Regular", "JetBrainsMono520-Regular.ttf");
-        jreFontMap.put("JetBrains Mono 520 Thin", "JetBrainsMono520-Thin.ttf");
-
-        jreFamilyMap.put("JetBrainsMono520-Thin", "JetBrains Mono 520 Thin");
-
-        jreFontMap.put("JetBrains Mono Expanded Bold", "JetBrainsMonoExpanded-Bold.ttf");
-        jreFontMap.put("JetBrains Mono Expanded Regular", "JetBrainsMonoExpanded-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Expanded Thin", "JetBrainsMonoExpanded-Thin.ttf");
-
-        jreFamilyMap.put("JetBrainsMonoExpanded-Thin", "JetBrains Mono Expanded Thin");
-
-        jreFontMap.put("JetBrains Mono Expanded 520 Bold", "JetBrainsMonoExpanded520-Bold.ttf");
-        jreFontMap.put("JetBrains Mono Expanded 520 Regular", "JetBrainsMonoExpanded520-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Expanded 520 Thin", "JetBrainsMonoExpanded520-Thin.ttf");
-
-        jreFamilyMap.put("JetBrainsMonoExpanded520-Thin", "JetBrains Mono Expanded 520 Thin");
-
         jreFontMap.put("JetBrains Mono Bold", "JetBrainsMono-Bold.ttf");
         jreFontMap.put("JetBrains Mono Regular", "JetBrainsMono-Regular.ttf");
-        jreFontMap.put("JetBrains Mono Thin", "JetBrainsMono-Thin.ttf");
-
-        jreFamilyMap.put("JetBrainsMono-Thin", "JetBrains Mono Thin");
 
         for (String ffile : jreFontMap.values()) {
             jreBundledFontFiles.add(ffile);
