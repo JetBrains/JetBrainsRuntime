@@ -159,7 +159,7 @@ void ShenandoahRootEvacuator::roots_do(uint worker_id, OopClosure* oops) {
   _thread_roots.oops_do(oops, NULL, worker_id);
 }
 
-ShenandoahRootUpdater::ShenandoahRootUpdater(uint n_workers, ShenandoahPhaseTimings::Phase phase, bool update_code_cache) :
+ShenandoahRootUpdater::ShenandoahRootUpdater(uint n_workers, ShenandoahPhaseTimings::Phase phase) :
   ShenandoahRootProcessor(phase),
   _serial_roots(phase),
   _jni_roots(phase),
@@ -167,8 +167,7 @@ ShenandoahRootUpdater::ShenandoahRootUpdater(uint n_workers, ShenandoahPhaseTimi
   _thread_roots(phase, n_workers > 1),
   _weak_roots(phase, n_workers),
   _dedup_roots(phase),
-  _code_roots(phase),
-  _update_code_cache(update_code_cache) {
+  _code_roots(phase) {
 }
 
 ShenandoahRootAdjuster::ShenandoahRootAdjuster(uint n_workers, ShenandoahPhaseTimings::Phase phase) :
