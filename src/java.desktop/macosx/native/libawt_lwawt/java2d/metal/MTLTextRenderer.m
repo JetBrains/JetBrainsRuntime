@@ -458,7 +458,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             if (ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "Forced Grayscale no cache");
+                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList Grayscale cache -- :TODO");
                 //ok = MTLTR_DrawGrayscaleGlyphViaCache(oglc, ginfo, x, y);
                 // TODO: Replace no cache with cache rendering
                 ok = MTLTR_DrawGrayscaleGlyphNoCache(mtlc, ginfo, x, y, dstOps);
@@ -483,7 +483,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                 ginfo->width <= MTLTR_CACHE_CELL_WIDTH &&
                 ginfo->height <= MTLTR_CACHE_CELL_HEIGHT)
             {
-                J2dTraceLn(J2D_TRACE_INFO, "LCD cache not implemented");
+                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD cache -- :TODO");
                 /*ok = MTLTR_DrawLCDGlyphViaCache(oglc, dstOps,
                                                 ginfo, x, y,
                                                 glyphCounter, totalGlyphs,
@@ -491,7 +491,7 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
                                                 dstTextureID);*/
                 ok = JNI_FALSE;
             } else {
-                J2dTraceLn(J2D_TRACE_INFO, "LCD no cache not implemented");
+                J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGlyphList LCD no cache -- :TODO");
                 /*ok = MTLTR_DrawLCDGlyphNoCache(oglc, dstOps,
                                                ginfo, x, y,
                                                rowBytesOffset,
