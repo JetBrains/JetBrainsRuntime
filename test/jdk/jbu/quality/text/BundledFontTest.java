@@ -23,6 +23,7 @@ public class BundledFontTest {
             "roboto light"
             "roboto thin"
             "source code pro"
+            "jetbrains mono"
     */
 
     @SuppressWarnings("SameParameterValue")
@@ -122,21 +123,7 @@ public class BundledFontTest {
     }
 
     @Test
-    public void testJetBrainsMonoThin() throws Exception {
-        doTestFont("JetBrains Mono Thin");
-    }
-    @Test
-    public void testJetBrainsMono520Thin() throws Exception {
-        doTestFont("JetBrains Mono 520 Thin");
-    }
-
-    @Test
-    public void testJetBrainsMonoExpandedThin() throws Exception {
-        doTestFont("JetBrains Mono Expanded Thin");
-    }
-
-    @Test
-    public void testJetBrainsMonoExpanded520Thin() throws Exception {
-        doTestFont("JetBrains Mono Expanded 520 Thin");
+    public void testJetBrainsMonoBold() throws Exception {
+        doTestFont("JetBrains Mono", Font.BOLD);
     }
 }
