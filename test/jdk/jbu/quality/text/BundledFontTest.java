@@ -23,14 +23,13 @@ public class BundledFontTest {
             "roboto light"
             "roboto thin"
             "source code pro"
+            "jetbrains mono"
     */
 
     @SuppressWarnings("SameParameterValue")
-    private void doTestFont(String aliasName, String name)
-            throws Exception {
+    private void doTestFont(String name, int style) {
 
-
-        Font f = new Font(aliasName, Font.PLAIN, 20);
+        Font f = new Font(name, style, 20);
         String family = f.getFamily(Locale.ENGLISH);
 
         Assert.assertTrue(family.equalsIgnoreCase(name));
@@ -38,7 +37,7 @@ public class BundledFontTest {
 
     private void doTestFont(String name)
             throws Exception {
-        doTestFont(name, name);
+        doTestFont(name, Font.PLAIN);
     }
 
     @Test
@@ -49,7 +48,7 @@ public class BundledFontTest {
     @Test
     public void testDroidSansBold() throws Exception {
         doTestFont("Droid Sans");
-        doTestFont("Droid Sans Bold", "Droid Sans");
+        doTestFont("Droid Sans", Font.BOLD);
     }
 
     @Test
@@ -75,13 +74,13 @@ public class BundledFontTest {
     @Test
     public void testDroidSerifBold() throws Exception {
         doTestFont("Droid Serif");
-        doTestFont("Droid Serif Bold", "Droid Serif");
+        doTestFont("Droid Serif", Font.BOLD);
     }
 
     @Test
     public void testDroidSerifItalic() throws Exception {
         doTestFont("Droid Serif");
-        doTestFont("Droid Serif Italic", "Droid Serif");
+        doTestFont("Droid Serif", Font.ITALIC);
     }
 
     @Test
@@ -116,5 +115,15 @@ public class BundledFontTest {
     @Test
     public void testSourceCodePro() throws Exception {
         doTestFont("Source Code Pro");
+    }
+
+    @Test
+    public void testJetBrainsMono() throws Exception {
+        doTestFont("JetBrains Mono");
+    }
+
+    @Test
+    public void testJetBrainsMonoBold() throws Exception {
+        doTestFont("JetBrains Mono", Font.BOLD);
     }
 }
