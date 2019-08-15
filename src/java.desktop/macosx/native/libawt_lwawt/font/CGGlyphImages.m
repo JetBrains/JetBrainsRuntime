@@ -31,6 +31,7 @@
 #import "fontscalerdefs.h" // contains the definition of GlyphInfo struct
 
 #import "sun_awt_SunHints.h"
+#import "LWCToolkit.h"
 
 //#define USE_IMAGE_ALIGNED_MEMORY 1
 //#define CGGI_DEBUG 1
@@ -611,7 +612,7 @@ CGGI_CreateNewGlyphInfoFrom(CGSize advance, CGRect bbox,
 static inline void
 CGGI_CreateImageForGlyph
     (CGGI_GlyphCanvas *canvas, const CGGlyph glyph,
-     GlyphInfo *info, const CGGI_GlyphInfoDescriptor *glyphDescriptor, const AWTStrike *strike, CTFontRef font)
+     GlyphInfo *info, const CGGI_GlyphInfoDescriptor *glyphDescriptor, const AWTStrike *strike, CTFontRef font, const bool isCatalinaOrAbove)
 {
     if (isnan(info->topLeftX) || isnan(info->topLeftY)) {
         // Explicitly set glyphInfo width/height to be 0 to ensure
@@ -631,7 +632,7 @@ CGGI_CreateImageForGlyph
     CGFloat x = -info->topLeftX;
     CGFloat y = canvas->image->height + info->topLeftY;
 
-    if (glyphDescriptor == &argb) {
+    if (isCatalinaOrAbove || glyphDescriptor == &argb) {
         // Emoji glyphs are not rendered by CGContextShowGlyphsAtPoint.
         // Also, it's not possible to use transformation matrix to get the emoji glyph
         // rendered for the desired font size - actual-size font object is needed.
@@ -670,7 +671,8 @@ CGGI_CreateImageForGlyph
 static inline GlyphInfo *
 CGGI_CreateImageForUnicode
     (CGGI_GlyphCanvas *canvas, const AWTStrike *strike,
-     const CGGI_RenderingMode *mode, const UnicodeScalarValue uniChar)
+     const CGGI_RenderingMode *mode, const UnicodeScalarValue uniChar,
+     const bool isCatalinaOrAbove)
 {
     // save the state of the world
     CGContextSaveGState(canvas->context);
@@ -713,7 +715,7 @@ CGGI_CreateImageForUnicode
     CFRelease(cgFallback);
 
     // clean the canvas - align, strike, and copy the glyph from the canvas into the info
-    CGGI_CreateImageForGlyph(canvas, glyph, info, glyphDescriptor, strike, fallback);
+    CGGI_CreateImageForGlyph(canvas, glyph, info, glyphDescriptor, strike, fallback, isCatalinaOrAbove);
 
     // restore the state of the world
     CGContextRestoreGState(canvas->context);
@@ -759,13 +761,14 @@ CGGI_FillImagesForGlyphsWithSizedCanvas(CGGI_GlyphCanvas *canvas,
     CTFontRef mainFont = (CTFontRef)strike->fAWTFont->fFont;
     CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, mainFont);
 
+    const bool isCatalinaOrAbove = IS_OSX_GT10_14;
     CFIndex i;
     for (i = 0; i < len; i++) {
         GlyphInfo *info = (GlyphInfo *)jlong_to_ptr(glyphInfos[i]);
         if (info != NULL) {
-            CGGI_CreateImageForGlyph(canvas, glyphs[i], info, mainFontDescriptor, strike, mainFont);
+            CGGI_CreateImageForGlyph(canvas, glyphs[i], info, mainFontDescriptor, strike, mainFont, isCatalinaOrAbove);
         } else {
-            info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i]);
+            info = CGGI_CreateImageForUnicode(canvas, strike, mode, uniChars[i], isCatalinaOrAbove);
             glyphInfos[i] = ptr_to_jlong(info);
         }
 #ifdef CGGI_DEBUG
