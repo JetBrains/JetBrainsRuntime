@@ -58,8 +58,17 @@ extern jint* gButtonDownMasks;
 #define kCFCoreFoundationVersionNumber10_13_Max 1499
 #endif
 
+#ifndef kCFCoreFoundationVersionNumber10_14_Max
+#define kCFCoreFoundationVersionNumber10_14_Max 1599
+#endif
+
 #ifndef IS_OSX_GT10_13
 #define IS_OSX_GT10_13 (floor(kCFCoreFoundationVersionNumber) > \
     kCFCoreFoundationVersionNumber10_13_Max)
+#endif
+
+#ifndef IS_OSX_GT10_14
+#define IS_OSX_GT10_14 (floor(kCFCoreFoundationVersionNumber) > \
+kCFCoreFoundationVersionNumber10_14_Max)
 #endif
 
