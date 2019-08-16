@@ -61,7 +61,7 @@ public:
   }
 
   size_t used_in_bytes() {
-    return _space->used();
+    return _space->used_stable();
   }
 };
 
