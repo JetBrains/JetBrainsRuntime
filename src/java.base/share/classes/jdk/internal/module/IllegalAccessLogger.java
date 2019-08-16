@@ -71,6 +71,10 @@ public final class IllegalAccessLogger {
          * Prints warnings and a stack trace when illegal access succeeds
          */
         DEBUG,
+        /**
+         * No warnings when illegal access succeeds
+         */
+        SILENT
     }
 
     /**
@@ -123,7 +127,9 @@ public final class IllegalAccessLogger {
         public void complete() {
             Map<Module, Set<String>> map1 = unmodifiableMap(moduleToConcealedPackages);
             Map<Module, Set<String>> map2 = unmodifiableMap(moduleToExportedPackages);
-            logger = new IllegalAccessLogger(mode, warningStream, map1, map2);
+            if (mode != Mode.SILENT) {
+                logger = new IllegalAccessLogger(mode, warningStream, map1, map2);
+            }
             complete = true;
         }
     }
