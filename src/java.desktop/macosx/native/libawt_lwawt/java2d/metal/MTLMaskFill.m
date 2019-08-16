@@ -90,7 +90,7 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
                      unsigned char *pMask)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLMaskFill_MaskFill -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_MaskFill -- :TODO");
 }
 
 JNIEXPORT void JNICALL

@@ -338,7 +338,7 @@ MTLSD_DestroyMTLSurface(JNIEnv *env, MTLSDOps *mtlsdo)
 jlong
 MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_GetNativeConfigInfo -- :TODO");
+    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_GetNativeConfigInfo -- :TODO");
 
     return 0;
 }
@@ -359,7 +359,7 @@ MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *oglsdo)
 void
 MTLSD_SwapBuffers(JNIEnv *env, jlong pPeerData)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_SwapBuffers -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "OGLSD_SwapBuffers -- :TODO");
 }
 
 #pragma mark -

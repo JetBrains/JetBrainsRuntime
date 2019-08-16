@@ -137,6 +137,272 @@ static jboolean isDrawOpcode(jint opcode) {
     return JNI_FALSE;
 }
 
+// TODO : Debug logic added for opcode verification,
+// should be removed later.
+static char *getOpcodeString(jint opcode) {
+    static char opName[30];
+    switch (opcode) {
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_LINE:
+            {
+                strcpy(opName, "DRAW_LINE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_RECT:
+            {
+                strcpy(opName, "DRAW_RECT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_POLY:
+            {
+                strcpy(opName, "DRAW_POLY");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL:
+            {
+                strcpy(opName, "DRAW_PIXEL");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
+            {
+                strcpy(opName, "DRAW_SCANLINES");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM:
+            {
+                strcpy(opName, "DRAW_PARALLELOGRAM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM:
+            {
+                strcpy(opName, "DRAW_AAPARALLELOGRAM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_FILL_RECT:
+            {
+                strcpy(opName, "FILL_RECT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_FILL_SPANS:
+            {
+                strcpy(opName, "FILL_SPANS");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM:
+            {
+                strcpy(opName, "FILL_PARALLELOGRAM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM:
+            {
+                strcpy(opName, "FILL_AAPARALLELOGRAM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST:
+            {
+                strcpy(opName, "DRAW_GLYPH_LIST");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_COPY_AREA:
+            {
+                strcpy(opName, "COPY_AREA");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_BLIT:
+            {
+                strcpy(opName, "BLIT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
+            {
+                strcpy(opName, "SURFACE_TO_SW_BLIT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_MASK_FILL:
+            {
+                strcpy(opName, "MASK_FILL");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_MASK_BLIT:
+            {
+
+                strcpy(opName, "MASK_BLIT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_RECT_CLIP:
+            {
+                strcpy(opName, "SET_RECT_CLIP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP:
+            {
+                strcpy(opName, "BEGIN_SHAPE_CLIP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
+            {
+                strcpy(opName, "SET_SHAPE_CLIP_SPANS");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP:
+            {
+                strcpy(opName, "END_SHAPE_CLIP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP:
+            {
+                strcpy(opName, "RESET_CLIP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_ALPHA_COMPOSITE:
+            {
+                strcpy(opName, "SET_ALPHA_COMPOSITE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_XOR_COMPOSITE:
+            {
+                strcpy(opName, "SET_XOR_COMPOSITE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_RESET_COMPOSITE:
+            {
+                strcpy(opName, "RESET_COMPOSITE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_TRANSFORM:
+            {
+                strcpy(opName, "SET_TRANSFORM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_RESET_TRANSFORM:
+            {
+                strcpy(opName, "RESET_TRANSFORM");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_SURFACES:
+            {
+
+                strcpy(opName, "SET_SURFACES");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_SCRATCH_SURFACE:
+            {
+                strcpy(opName, "SET_SCRATCH_SURFACE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_FLUSH_SURFACE:
+            {
+                strcpy(opName, "FLUSH_SURFACE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DISPOSE_SURFACE:
+            {
+                strcpy(opName, "DISPOSE_SURFACE");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DISPOSE_CONFIG:
+            {
+                strcpy(opName, "DISPOSE_CONFIG");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT:
+            {
+                strcpy(opName, "INVALIDATE_CONTEXT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
+            {
+                strcpy(opName, "SAVE_STATE");
+
+            }
+            break;
+
+        case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
+            {
+                strcpy(opName, "RESTORE_STATE");
+
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SYNC:
+            {
+                strcpy(opName, "SYNC");
+
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SWAP_BUFFERS:
+            {
+                strcpy(opName, "SWAP_BUFFERS");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_NOOP:
+            strcpy(opName, "NOOP");
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_RESET_PAINT:
+            {
+                strcpy(opName, "RESET_PAINT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
+            {
+                strcpy(opName, "SET_COLOR");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
+            {
+                strcpy(opName, "SET_GRADIENT_PAINT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_LINEAR_GRADIENT_PAINT:
+            {
+                strcpy(opName, "SET_LINEAR_GRADIENT_PAINT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_RADIAL_GRADIENT_PAINT:
+            {
+                strcpy(opName, "SET_RADIAL_GRADIENT_PAINT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_SET_TEXTURE_PAINT:
+            {
+                strcpy(opName, "SET_TEXTURE_PAINT");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_ENABLE_CONVOLVE_OP:
+            {
+                strcpy(opName, "ENABLE_CONVOLVE_OP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DISABLE_CONVOLVE_OP:
+            {
+                strcpy(opName, "DISABLE_CONVOLVE_OP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_ENABLE_RESCALE_OP:
+            {
+                strcpy(opName, "ENABLE_RESCALE_OP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DISABLE_RESCALE_OP:
+            {
+                 strcpy(opName, "DISABLE_RESCALE_OP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_ENABLE_LOOKUP_OP:
+            {
+                strcpy(opName, "ENABLE_LOOKUP_OP");
+            }
+            break;
+        case sun_java2d_pipe_BufferedOpCodes_DISABLE_LOOKUP_OP:
+            {
+                strcpy(opName, "DISABLE_LOOKUP_OP");
+            }
+            break;
+        default:
+            strcpy(opName, "UNKNOWN");
+            break;
+        }
+    return opName;
+}
+
 JNIEXPORT void JNICALL
 Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     (JNIEnv *env, jobject mtlrq,
@@ -158,12 +424,19 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     INIT_PREVIOUS_OP();
     end = b + limit;
 
+    jboolean DEBUG_LOG = JNI_FALSE;
     while (b < end) {
         jint opcode = NEXT_INT(b);
 
-        J2dTraceLn2(J2D_TRACE_VERBOSE,
+        if (DEBUG_LOG) {
+            J2dTraceLn2(J2D_TRACE_ERROR,
+                    "MTLRenderQueue_flushBuffer: opcode_name = %s, rem=%d",
+                    getOpcodeString(opcode), (end-b));
+        } else {
+            J2dTraceLn2(J2D_TRACE_VERBOSE,
                     "MTLRenderQueue_flushBuffer: opcode=%d, rem=%d",
                     opcode, (end-b));
+        }
 
         if (opcode != sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST &&
             opcode != sun_java2d_pipe_BufferedOpCodes_NOOP)
@@ -211,7 +484,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint y = NEXT_INT(b);
                 CONTINUE_IF_NULL(mtlc);
                 //TODO
-                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_DRAW_PIXEL -- :TODO");
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_DRAW_PIXEL -- :TODO");
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES:
@@ -599,7 +872,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
             {
                 //TODO
-                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_SAVE_STATE -- :TODO");
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_SAVE_STATE -- :TODO");
 
             }
             break;
@@ -607,7 +880,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
             {
                 //TODO
-                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_RESTORE_STATE -- :TODO");
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_RESTORE_STATE -- :TODO");
 
             }
             break;
@@ -616,7 +889,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 sync = JNI_TRUE;
 
                 // TODO
-                J2dTraceLn(J2D_TRACE_INFO, "MTLRenderQueue_SYNC -- :TODO");
+                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_SYNC -- :TODO");
 
             }
             break;

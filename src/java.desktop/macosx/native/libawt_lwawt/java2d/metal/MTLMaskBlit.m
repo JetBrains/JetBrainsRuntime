@@ -44,7 +44,7 @@ MTLMaskBlit_MaskBlit(JNIEnv *env, MTLContext *mtlc, BMTLSDOps * dstOps,
                      void *pPixels)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLMaskBlit_MaskBlit -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskBlit_MaskBlit -- :TODO");
 
     if (width <= 0 || height <= 0) {
         J2dTraceLn(J2D_TRACE_WARNING,

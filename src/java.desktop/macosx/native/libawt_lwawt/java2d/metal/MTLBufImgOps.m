@@ -141,7 +141,7 @@ MTLBufImgOps_EnableConvolveOp(MTLContext *mtlc, jlong pSrcOps,
                               unsigned char *kernel)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_EnableConvolveOp -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_EnableConvolveOp -- :TODO");
 
 }
 
@@ -149,7 +149,7 @@ void
 MTLBufImgOps_DisableConvolveOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableConvolveOp -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_DisableConvolveOp -- :TODO");
 }
 
 /**************************** RescaleOp support *****************************/
@@ -234,13 +234,14 @@ MTLBufImgOps_EnableRescaleOp(MTLContext *mtlc, jlong pSrcOps,
                              unsigned char *offsets)
 {
     //TODO
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_EnableRescaleOp -- :TODO");
 }
 
 void
 MTLBufImgOps_DisableRescaleOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableRescaleOp -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_DisableRescaleOp -- :TODO");
     RETURN_IF_NULL(mtlc);
 }
 
@@ -363,14 +364,14 @@ MTLBufImgOps_EnableLookupOp(MTLContext *mtlc, jlong pSrcOps,
                             void *tableValues)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_EnableLookupOp -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_EnableLookupOp -- :TODO");
 }
 
 void
 MTLBufImgOps_DisableLookupOp(MTLContext *mtlc)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBufImgOps_DisableLookupOp -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBufImgOps_DisableLookupOp -- :TODO");
 }
 
 #endif /* !HEADLESS */

@@ -107,7 +107,7 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBlitSurfaceToSurface -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSurfaceToSurface -- :TODO");
 }
 
 static void drawTex2Tex(MTLContext *mtlc,
@@ -235,7 +235,7 @@ MTLBlitToSurfaceViaTexture(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
                            jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBlitToSurfaceViaTexture -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitToSurfaceViaTexture -- :TODO");
 }
 
 /**
@@ -257,7 +257,7 @@ MTLBlitSwToTexture(SurfaceDataRasInfo *srcInfo, MTPixelFormat *pf,
                    jint dx1, jint dy1, jint dx2, jint dy2)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBlitSwToTexture -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToTexture -- :TODO");
 }
 
 /**
@@ -466,7 +466,7 @@ MTLBlitLoops_SurfaceToSwBlit(JNIEnv *env, MTLContext *mtlc,
                              jint width, jint height)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBlitLoops_SurfaceToSwBlit -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_SurfaceToSwBlit -- :TODO");
 }
 
 void
@@ -476,7 +476,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                       jint dx, jint dy)
 {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLBlitLoops_CopyArea -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_CopyArea -- :TODO");
 }
 
 #endif /* !HEADLESS */

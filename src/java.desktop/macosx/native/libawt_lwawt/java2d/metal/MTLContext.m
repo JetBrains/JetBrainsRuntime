@@ -224,17 +224,17 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (void)beginShapeClip {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.beginShapeClip -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext.beginShapeClip -- :TODO");
 }
 
 - (void)endShapeClip {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.endShapeClip  -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext.endShapeClip  -- :TODO");
 }
 
 - (void)resetComposite {
     //TODO
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetComposite  -- :TODO");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext_ResetComposite  -- :TODO");
 }
 
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)_extraAlpha
@@ -248,7 +248,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (void)setXorComposite:(jint)xp {
     //TODO
-    J2dTraceLn1(J2D_TRACE_INFO,
+    J2dTraceLn1(J2D_TRACE_ERROR,
                 "MTLContext.setXorComposite: xorPixel=%08x -- :TODO", xp);
 }
 
