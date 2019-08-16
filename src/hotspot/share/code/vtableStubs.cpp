@@ -208,7 +208,7 @@ void VtableStubs::bookkeeping(MacroAssembler* masm, outputStream* out, VtableStu
 address VtableStubs::find_stub(bool is_vtable_stub, int vtable_index) {
   assert(vtable_index >= 0, "must be positive");
 
-  VtableStub* s = ShareVtableStubs ? lookup(is_vtable_stub, vtable_index) : NULL;
+  VtableStub* s = lookup(is_vtable_stub, vtable_index);
   if (s == NULL) {
     if (is_vtable_stub) {
       s = create_vtable_stub(vtable_index);
