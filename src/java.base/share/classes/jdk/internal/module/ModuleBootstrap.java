@@ -734,6 +734,12 @@ public final class ModuleBootstrap {
                     return;
             }
         }
+
+        // Silence warnings completely if requested explicitly
+        if (System.getProperty("jdk.module.illegalAccess.silent") != null) {
+            mode = IllegalAccessLogger.Mode.SILENT;
+        }
+
         IllegalAccessLogger.Builder builder
             = new IllegalAccessLogger.Builder(mode, System.err);
 
