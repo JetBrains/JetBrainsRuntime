@@ -25,23 +25,7 @@
 
 package sun.awt.X11;
 
-import java.awt.AWTEvent;
-import java.awt.Component;
-import java.awt.Dialog;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.Frame;
-import java.awt.Graphics;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.Image;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Shape;
-import java.awt.SystemColor;
-import java.awt.Window;
+import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.FocusEvent;
 import java.awt.event.InvocationEvent;
@@ -52,6 +36,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -1302,7 +1287,18 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
          */
         if (isSimpleWindow()) {
             if (target == XKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow()) {
-                Window owner = getDecoratedOwner((Window)target);
+                Window owner = null;
+                if (target instanceof Window && ((Window)target).getType() == Window.Type.POPUP) {
+                    // fix for: JBR-1762 Flotating navigation bar closes on navigate
+                    // (disposing latest popup causes to close all hierarchy of popups)
+                    final Container parent = AWTAccessor.getComponentAccessor().getParent(target);
+                    if (parent instanceof Window && ((Window)parent).getType() == Window.Type.POPUP) {
+                        owner = (Window) parent;
+                    }
+                }
+                if (owner == null) {
+                    owner = getDecoratedOwner((Window)target);
+                }
                 ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(owner)).
                         requestWindowFocus(() -> {}, () -> {});
             }
