@@ -1287,20 +1287,20 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
          */
         if (isSimpleWindow()) {
             if (target == XKeyboardFocusManagerPeer.getInstance().getCurrentFocusedWindow()) {
-                Window owner = null;
-                if (target instanceof Window && ((Window)target).getType() == Window.Type.POPUP) {
-                    // fix for: JBR-1762 Flotating navigation bar closes on navigate
-                    // (disposing latest popup causes to close all hierarchy of popups)
-                    final Container parent = AWTAccessor.getComponentAccessor().getParent(target);
-                    if (parent instanceof Window && ((Window)parent).getType() == Window.Type.POPUP) {
-                        owner = (Window) parent;
+                // fix for: JBR-1762 Flotating navigation bar closes on navigate
+                // Use the same logic as in MacOS (see LWWindowPeer, was introduced in:
+                // 54bb2dd097 'JBR-1417 JBR 11 does not support chain of popups)'
+                Window targetOwner = ((Window)target).getOwner();
+                while (targetOwner != null && (targetOwner.getOwner() != null && !targetOwner.isFocusableWindow())) {
+                    targetOwner = targetOwner.getOwner();
+                }
+
+                if (targetOwner != null) {
+                    final XWindowPeer xwndpeer = ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(targetOwner));
+                    if (xwndpeer != null) {
+                        xwndpeer.requestWindowFocus(() -> {}, () -> {});
                     }
                 }
-                if (owner == null) {
-                    owner = getDecoratedOwner((Window)target);
-                }
-                ((XWindowPeer)AWTAccessor.getComponentAccessor().getPeer(owner)).
-                        requestWindowFocus(() -> {}, () -> {});
             }
         }
     }
