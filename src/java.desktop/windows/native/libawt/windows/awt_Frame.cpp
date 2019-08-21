@@ -1428,6 +1428,16 @@ void AwtFrame::_SetState(void *param)
 
             f->setIconic(iconify);
             f->setZoomed(zoom);
+
+            // [tav] With custom decor enabled, MS Win will send WM_SIZE msg w/o SIZE_MAXIMIZED param set
+            // before the frame will be shown. The msg handler will drop the maximized state in response.
+            // In order to prevent that, we set the maximized state on the native frame in advance.
+            if (zoom && f->HasCustomDecoration()) {
+                WINDOWPLACEMENT wp;
+                ::GetWindowPlacement(f->GetHWnd(), &wp);
+                wp.showCmd = SW_SHOWMAXIMIZED;
+                ::SetWindowPlacement(f->GetHWnd(), &wp);
+            }
         }
     }
 
