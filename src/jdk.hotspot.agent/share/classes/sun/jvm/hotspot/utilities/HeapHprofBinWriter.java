@@ -1066,10 +1066,15 @@ public class HeapHprofBinWriter extends AbstractHeapGraphWriter {
     }
 
     private void writeSymbol(Symbol sym) throws IOException {
-        byte[] buf = sym.asString().getBytes("UTF-8");
-        writeHeader(HPROF_UTF8, buf.length + OBJ_ID_SIZE);
-        writeSymbolID(sym);
-        out.write(buf);
+        if(sym != null) {
+            byte[] buf = sym.asString().getBytes("UTF-8");
+            writeHeader(HPROF_UTF8, buf.length + OBJ_ID_SIZE);
+            writeSymbolID(sym);
+            out.write(buf);
+        } else {
+            writeHeader(HPROF_UTF8, 0 + OBJ_ID_SIZE);
+            writeSymbolID(null);
+        }
     }
 
     private void writeClasses() throws IOException {
@@ -1118,7 +1123,8 @@ public class HeapHprofBinWriter extends AbstractHeapGraphWriter {
     }
 
     private void writeSymbolID(Symbol sym) throws IOException {
-        writeObjectID(getAddressValue(sym.getAddress()));
+        long address = (sym != null) ? getAddressValue(sym.getAddress()) : getAddressValue(null);
+        writeObjectID(address);
     }
 
     private void writeObjectID(long address) throws IOException {
