@@ -7,25 +7,25 @@
 extern JavaVM *jvm;
 
 enum LOG_LEVEL {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARNING,
-    ERROR
+    LL_TRACE,
+    LL_DEBUG,
+    LL_INFO,
+    LL_WARNING,
+    LL_ERROR
 };
 
 void plogImpl(jobject platformLogger, int logLevel, const char * msg) {
     if (!jvm)
         return;
-    if (logLevel < TRACE || logLevel > ERROR || msg == NULL)
+    if (logLevel < LL_TRACE || logLevel > LL_ERROR || msg == NULL)
         return;
 
     const char * methodName = "finest";
     switch (logLevel) {
-        case DEBUG: methodName = "fine"; break;
-        case INFO: methodName = "info"; break;
-        case WARNING: methodName = "warning"; break;
-        case ERROR: methodName = "severe"; break;
+        case LL_DEBUG: methodName = "fine"; break;
+        case LL_INFO: methodName = "info"; break;
+        case LL_WARNING: methodName = "warning"; break;
+        case LL_ERROR: methodName = "severe"; break;
     }
 
     JNIEnv* env;
@@ -129,20 +129,20 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
         //         }
         id hotkeys = [shk valueForKey:@"AppleSymbolicHotKeys"];
         if (hotkeys == nil)
-            plog(DEBUG, "key AppleSymbolicHotKeys doesn't exist in domain com.apple.symbolichotkeys");
+            plog(LL_DEBUG, "key AppleSymbolicHotKeys doesn't exist in domain com.apple.symbolichotkeys");
         else if (![hotkeys isKindOfClass:[NSDictionary class]])
-            plog(DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)", [hotkeys className].UTF8String);
+            plog(LL_DEBUG, "object for key 'AppleSymbolicHotKeys' isn't NSDictionary (class=%s)", [hotkeys className].UTF8String);
         else {
             jstring jsource = (*env)->NewStringUTF(env, "com.apple.symbolichotkeys");
             for (id keyObj in hotkeys) {
                 if (![keyObj isKindOfClass:[NSString class]]) {
-                    plog(DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj), [keyObj className].UTF8String);
+                    plog(LL_DEBUG, "key '%s' isn't instance of NSString (class=%s)", toCString(keyObj), [keyObj className].UTF8String);
                     continue;
                 }
                 NSString *hkNumber = keyObj;
                 id hkDesc = hotkeys[hkNumber];
                 if (![hkDesc isKindOfClass:[NSDictionary class]]) {
-                    plog(DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc), [hkDesc className].UTF8String);
+                    plog(LL_DEBUG, "hotkey descriptor '%s' isn't instance of NSDictionary (class=%s)", toCString(hkDesc), [hkDesc className].UTF8String);
                     continue;
                 }
                 NSDictionary<id, id> *sdict = hkDesc;
@@ -151,7 +151,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                     continue;
 
                 if (![objValue isKindOfClass:[NSDictionary class]]) {
-                    plog(DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(objValue), [objValue className].UTF8String);
+                    plog(LL_DEBUG, "property 'value' %s isn't instance of NSDictionary (class=%s)", toCString(objValue), [objValue className].UTF8String);
                     continue;
                 }
 
@@ -161,7 +161,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 NSDictionary * value = objValue;
                 id objParams = value[@"parameters"];
                 if (![objParams isKindOfClass:[NSArray class]]) {
-                    plog(DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(objParams), [objParams className].UTF8String);
+                    plog(LL_DEBUG, "property 'parameters' %s isn't instance of NSArray (class=%s)", toCString(objParams), [objParams className].UTF8String);
                     continue;
                 }
 
@@ -171,7 +171,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 id p2 = parameters[2];
 
                 if (![p0 isKindOfClass:[NSNumber class]] || ![p1 isKindOfClass:[NSNumber class]] || ![p2 isKindOfClass:[NSNumber class]]) {
-                    plog(DEBUG, "some of parameters isn't instance of NSNumber (%s, %s, %s)", [p0 className].UTF8String, [p1 className].UTF8String, [p2 className].UTF8String);
+                    plog(LL_DEBUG, "some of parameters isn't instance of NSNumber (%s, %s, %s)", [p0 className].UTF8String, [p1 className].UTF8String, [p2 className].UTF8String);
                     continue;
                 }
 
@@ -202,7 +202,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
             }
         }
     } else {
-        plog(DEBUG, "domain com.apple.symbolichotkeys doesn't exist");
+        plog(LL_DEBUG, "domain com.apple.symbolichotkeys doesn't exist");
     }
 
     // 2. read from Pbs (domain with services shortcuts)
@@ -229,7 +229,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
             for (NSString *key in services) {
                 id value = services[key];
                 if (![value isKindOfClass:[NSDictionary class]]) {
-                    plog(DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value), [value className].UTF8String);
+                    plog(LL_DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value), [value className].UTF8String);
                     continue;
                 }
                 NSDictionary<NSString *, id> *sdict = value;
