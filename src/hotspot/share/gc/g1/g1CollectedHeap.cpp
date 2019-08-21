@@ -48,6 +48,7 @@
 #include "gc/g1/g1HotCardCache.hpp"
 #include "gc/g1/g1MemoryPool.hpp"
 #include "gc/g1/g1OopClosures.inline.hpp"
+#include "gc/g1/g1ParallelCleaning.hpp"
 #include "gc/g1/g1ParScanThreadState.inline.hpp"
 #include "gc/g1/g1Policy.hpp"
 #include "gc/g1/g1RedirtyCardsQueue.hpp"
@@ -74,7 +75,6 @@
 #include "gc/shared/generationSpec.hpp"
 #include "gc/shared/isGCActiveMark.hpp"
 #include "gc/shared/oopStorageParState.hpp"
-#include "gc/shared/parallelCleaning.hpp"
 #include "gc/shared/preservedMarks.inline.hpp"
 #include "gc/shared/suspendibleThreadSet.hpp"
 #include "gc/shared/referenceProcessor.inline.hpp"
@@ -1080,9 +1080,8 @@ void G1CollectedHeap::abort_refinement() {
 
   // Discard all remembered set updates.
   G1BarrierSet::dirty_card_queue_set().abandon_logs();
-  assert(G1BarrierSet::dirty_card_queue_set().completed_buffers_num() == 0,
+  assert(G1BarrierSet::dirty_card_queue_set().num_completed_buffers() == 0,
          "DCQS should be empty");
-  redirty_cards_queue_set().verify_empty();
 }
 
 void G1CollectedHeap::verify_after_full_collection() {
@@ -1521,7 +1520,6 @@ G1CollectedHeap::G1CollectedHeap() :
   _collection_set(this, _policy),
   _hot_card_cache(NULL),
   _rem_set(NULL),
-  _redirty_cards_queue_set(),
   _cm(NULL),
   _cm_thread(NULL),
   _cr(NULL),
@@ -1690,9 +1688,6 @@ jint G1CollectedHeap::initialize() {
   G1BarrierSet::dirty_card_queue_set().initialize(DirtyCardQ_CBL_mon,
                                                   &bs->dirty_card_queue_buffer_allocator(),
                                                   true); // init_free_ids
-
-  // Use same buffer allocator as dirty card qset, to allow merging.
-  _redirty_cards_queue_set.initialize(&bs->dirty_card_queue_buffer_allocator());
 
   // Create the hot card cache.
   _hot_card_cache = new G1HotCardCache(this);
@@ -1957,7 +1952,7 @@ void G1CollectedHeap::iterate_dirty_card_closure(G1CardTableEntryClosure* cl, ui
   while (dcqs.apply_closure_during_gc(cl, worker_i)) {
     n_completed_buffers++;
   }
-  assert(dcqs.completed_buffers_num() == 0, "Completed buffers exist!");
+  assert(dcqs.num_completed_buffers() == 0, "Completed buffers exist!");
   phase_times()->record_thread_work_item(G1GCPhaseTimes::MergeLB, worker_i, n_completed_buffers, G1GCPhaseTimes::MergeLBProcessedBuffers);
 }
 
@@ -2154,6 +2149,12 @@ bool G1CollectedHeap::try_collect(GCCause::Cause cause, bool retry_on_gc_failure
           GCLocker::stall_until_clear();
         }
       }
+    } else if (GCLocker::should_discard(cause, gc_count_before)) {
+      // Return false to be consistent with VMOp failure due to
+      // another collection slipping in after our gc_count but before
+      // our request is processed.  _gc_locker collections upgraded by
+      // GCLockerInvokesConcurrent are handled above and never discarded.
+      return false;
     } else {
       if (cause == GCCause::_gc_locker || cause == GCCause::_wb_young_gc
           DEBUG_ONLY(|| cause == GCCause::_scavenge_alot)) {
@@ -2613,10 +2614,9 @@ size_t G1CollectedHeap::pending_card_num() {
   Threads::threads_do(&count_from_threads);
 
   G1DirtyCardQueueSet& dcqs = G1BarrierSet::dirty_card_queue_set();
-  size_t buffer_size = dcqs.buffer_size();
-  size_t buffer_num = dcqs.completed_buffers_num();
+  dcqs.verify_num_entries_in_completed_buffers();
 
-  return buffer_size * buffer_num + count_from_threads._cards;
+  return dcqs.num_entries_in_completed_buffers() + count_from_threads._cards;
 }
 
 bool G1CollectedHeap::is_potential_eager_reclaim_candidate(HeapRegion* r) const {
@@ -3023,7 +3023,9 @@ bool G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_
 
         calculate_collection_set(evacuation_info, target_pause_time_ms);
 
+        G1RedirtyCardsQueueSet rdcqs(G1BarrierSet::dirty_card_queue_set().allocator());
         G1ParScanThreadStateSet per_thread_states(this,
+                                                  &rdcqs,
                                                   workers()->active_workers(),
                                                   collection_set()->young_region_length(),
                                                   collection_set()->optional_region_length());
@@ -3035,7 +3037,7 @@ bool G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_
         if (_collection_set.optional_region_length() != 0) {
           evacuate_optional_collection_set(&per_thread_states);
         }
-        post_evacuate_collection_set(evacuation_info, &per_thread_states);
+        post_evacuate_collection_set(evacuation_info, &rdcqs, &per_thread_states);
 
         start_new_collection_set();
 
@@ -3117,22 +3119,22 @@ bool G1CollectedHeap::do_collection_pause_at_safepoint(double target_pause_time_
   return true;
 }
 
-void G1CollectedHeap::remove_self_forwarding_pointers() {
-  G1ParRemoveSelfForwardPtrsTask rsfp_task;
+void G1CollectedHeap::remove_self_forwarding_pointers(G1RedirtyCardsQueueSet* rdcqs) {
+  G1ParRemoveSelfForwardPtrsTask rsfp_task(rdcqs);
   workers()->run_task(&rsfp_task);
 }
 
-void G1CollectedHeap::restore_after_evac_failure() {
+void G1CollectedHeap::restore_after_evac_failure(G1RedirtyCardsQueueSet* rdcqs) {
   double remove_self_forwards_start = os::elapsedTime();
 
-  remove_self_forwarding_pointers();
+  remove_self_forwarding_pointers(rdcqs);
   SharedRestorePreservedMarksTaskExecutor task_executor(workers());
   _preserved_marks_set.restore(&task_executor);
 
   phase_times()->record_evac_fail_remove_self_forwards((os::elapsedTime() - remove_self_forwards_start) * 1000.0);
 }
 
-void G1CollectedHeap::preserve_mark_during_evac_failure(uint worker_id, oop obj, markOop m) {
+void G1CollectedHeap::preserve_mark_during_evac_failure(uint worker_id, oop obj, markWord m) {
   if (!_evacuation_failed) {
     _evacuation_failed = true;
   }
@@ -3166,7 +3168,7 @@ void G1ParEvacuateFollowersClosure::do_void() {
 void G1CollectedHeap::complete_cleaning(BoolObjectClosure* is_alive,
                                         bool class_unloading_occurred) {
   uint num_workers = workers()->active_workers();
-  ParallelCleaningTask unlink_task(is_alive, num_workers, class_unloading_occurred, false);
+  G1ParallelCleaningTask unlink_task(is_alive, num_workers, class_unloading_occurred, false);
   workers()->run_task(&unlink_task);
 }
 
@@ -3259,15 +3261,14 @@ class G1RedirtyLoggedCardsTask : public AbstractGangTask {
   }
 };
 
-void G1CollectedHeap::redirty_logged_cards() {
+void G1CollectedHeap::redirty_logged_cards(G1RedirtyCardsQueueSet* rdcqs) {
   double redirty_logged_cards_start = os::elapsedTime();
 
-  G1RedirtyLoggedCardsTask redirty_task(&redirty_cards_queue_set(), this);
+  G1RedirtyLoggedCardsTask redirty_task(rdcqs, this);
   workers()->run_task(&redirty_task);
 
   G1DirtyCardQueueSet& dcq = G1BarrierSet::dirty_card_queue_set();
-  dcq.merge_bufferlists(&redirty_cards_queue_set());
-  redirty_cards_queue_set().verify_empty();
+  dcq.merge_bufferlists(rdcqs);
 
   phase_times()->record_redirty_logged_cards_time_ms((os::elapsedTime() - redirty_logged_cards_start) * 1000.0);
 }
@@ -3598,8 +3599,6 @@ void G1CollectedHeap::pre_evacuate_collection_set(G1EvacuationInfo& evacuation_i
 
   // Should G1EvacuationFailureALot be in effect for this GC?
   NOT_PRODUCT(set_evacuation_failure_alot_for_current_gc();)
-
-  redirty_cards_queue_set().verify_empty();
 }
 
 class G1EvacuateRegionsBaseTask : public AbstractGangTask {
@@ -3801,7 +3800,9 @@ void G1CollectedHeap::evacuate_optional_collection_set(G1ParScanThreadStateSet* 
   _collection_set.abandon_optional_collection_set(per_thread_states);
 }
 
-void G1CollectedHeap::post_evacuate_collection_set(G1EvacuationInfo& evacuation_info, G1ParScanThreadStateSet* per_thread_states) {
+void G1CollectedHeap::post_evacuate_collection_set(G1EvacuationInfo& evacuation_info,
+                                                   G1RedirtyCardsQueueSet* rdcqs,
+                                                   G1ParScanThreadStateSet* per_thread_states) {
   rem_set()->cleanup_after_scan_heap_roots();
 
   // Process any discovered reference objects - we have
@@ -3829,7 +3830,7 @@ void G1CollectedHeap::post_evacuate_collection_set(G1EvacuationInfo& evacuation_
   _allocator->release_gc_alloc_regions(evacuation_info);
 
   if (evacuation_failed()) {
-    restore_after_evac_failure();
+    restore_after_evac_failure(rdcqs);
 
     // Reset the G1EvacuationFailureALot counters and flags
     NOT_PRODUCT(reset_evacuation_should_fail();)
@@ -3864,7 +3865,7 @@ void G1CollectedHeap::post_evacuate_collection_set(G1EvacuationInfo& evacuation_
 
   purge_code_root_memory();
 
-  redirty_logged_cards();
+  redirty_logged_cards(rdcqs);
 
   free_collection_set(&_collection_set, evacuation_info, per_thread_states->surviving_young_words());
 
@@ -3987,8 +3988,8 @@ private:
       g1h->clear_region_attr(r);
 
       if (r->is_young()) {
-        assert(r->young_index_in_cset() != -1 && (uint)r->young_index_in_cset() < g1h->collection_set()->young_region_length(),
-               "Young index %d is wrong for region %u of type %s with %u young regions",
+        assert(r->young_index_in_cset() != 0 && (uint)r->young_index_in_cset() <= g1h->collection_set()->young_region_length(),
+               "Young index %u is wrong for region %u of type %s with %u young regions",
                r->young_index_in_cset(),
                r->hrm_index(),
                r->get_type_str(),
@@ -4007,7 +4008,7 @@ private:
                          true  /* locked */);
       } else {
         r->uninstall_surv_rate_group();
-        r->set_young_index_in_cset(-1);
+        r->clear_young_index_in_cset();
         r->set_evacuation_failed(false);
         // When moving a young gen region to old gen, we "allocate" that whole region
         // there. This is in addition to any already evacuated objects. Notify the
@@ -4053,7 +4054,7 @@ private:
   G1SerialFreeCollectionSetClosure _cl;
   const size_t* _surviving_young_words;
 
-  size_t _rs_lengths;
+  size_t _rs_length;
 
   volatile jint _serial_work_claim;
 
@@ -4085,7 +4086,7 @@ private:
     HeapRegion* r = g1h->region_at(region_idx);
     assert(!g1h->is_on_master_free_list(r), "sanity");
 
-    Atomic::add(r->rem_set()->occupied_locked(), &_rs_lengths);
+    Atomic::add(r->rem_set()->occupied_locked(), &_rs_length);
 
     if (!is_young) {
       g1h->_hot_card_cache->reset_card_counts(r);
@@ -4118,7 +4119,7 @@ private:
     _cl.complete_work();
 
     G1Policy* policy = G1CollectedHeap::heap()->policy();
-    policy->record_max_rs_lengths(_rs_lengths);
+    policy->record_max_rs_length(_rs_length);
     policy->cset_regions_freed();
   }
 public:
@@ -4127,7 +4128,7 @@ public:
     _collection_set(collection_set),
     _cl(evacuation_info, surviving_young_words),
     _surviving_young_words(surviving_young_words),
-    _rs_lengths(0),
+    _rs_length(0),
     _serial_work_claim(0),
     _parallel_work_claim(0),
     _num_work_items(collection_set->region_length()),
@@ -4380,7 +4381,7 @@ public:
   virtual bool do_heap_region(HeapRegion* r) {
     assert(r->in_collection_set(), "Region %u must have been in collection set", r->hrm_index());
     G1CollectedHeap::heap()->clear_region_attr(r);
-    r->set_young_index_in_cset(-1);
+    r->clear_young_index_in_cset();
     return false;
   }
 };
