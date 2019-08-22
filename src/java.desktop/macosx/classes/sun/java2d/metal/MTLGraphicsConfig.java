@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +23,18 @@
  * questions.
  */
 
-package sun.java2d.opengl;
-
-import java.awt.AWTException;
-import java.awt.BufferCapabilities;
-import java.awt.Component;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.ImageCapabilities;
-import java.awt.Rectangle;
-import java.awt.Transparency;
-import java.awt.color.ColorSpace;
-import java.awt.image.BufferedImage;
-import java.awt.image.ColorModel;
-import java.awt.image.DataBuffer;
-import java.awt.image.DirectColorModel;
-import java.awt.image.VolatileImage;
-import java.awt.image.WritableRaster;
+package sun.java2d.metal;
 
 import sun.awt.CGraphicsConfig;
 import sun.awt.CGraphicsDevice;
 import sun.awt.image.OffScreenImage;
 import sun.awt.image.SunVolatileImage;
+import sun.awt.image.SurfaceManager;
 import sun.java2d.Disposer;
 import sun.java2d.DisposerRecord;
 import sun.java2d.Surface;
 import sun.java2d.SurfaceData;
-import sun.java2d.opengl.OGLContext.OGLContextCaps;
+import sun.java2d.pipe.hw.AccelGraphicsConfig;
 import sun.java2d.pipe.hw.AccelSurface;
 import sun.java2d.pipe.hw.AccelTypedVolatileImage;
 import sun.java2d.pipe.hw.ContextCapabilities;
@@ -58,32 +42,43 @@ import sun.lwawt.LWComponentPeer;
 import sun.lwawt.macosx.CFRetainedResource;
 import sun.lwawt.macosx.CPlatformView;
 
-import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_DOUBLEBUFFERED;
-import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
-import static sun.java2d.opengl.OGLSurfaceData.FBOBJECT;
-import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
+import java.awt.*;
+import java.awt.color.ColorSpace;
+import java.awt.image.*;
+import java.io.File;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.HashMap;
 
-public final class CGLGraphicsConfig extends CGraphicsConfig
-        implements OGLGraphicsConfig
+import static sun.java2d.opengl.OGLSurfaceData.TEXTURE;
+import static sun.java2d.pipe.hw.AccelSurface.RT_TEXTURE;
+import static sun.java2d.pipe.hw.ContextCapabilities.*;
+
+public final class MTLGraphicsConfig extends CGraphicsConfig
+        implements AccelGraphicsConfig, SurfaceManager.ProxiedGraphicsConfig
 {
     //private static final int kOpenGLSwapInterval =
     // RuntimeOptions.getCurrentOptions().OpenGLSwapInterval;
     private static final int kOpenGLSwapInterval = 0; // TODO
-    private static boolean cglAvailable;
-    private static ImageCapabilities imageCaps = new CGLImageCaps();
+    private static boolean mtlAvailable;
+    private static ImageCapabilities imageCaps = new MTLImageCaps();
+
+    private static final String mtlShadersLib = AccessController.doPrivileged(
+            (PrivilegedAction<String>) () ->
+                    System.getProperty("java.home", "") + File.separator +
+                            "lib" + File.separator + "shaders.metallib");
+
 
     private int pixfmt;
     private BufferCapabilities bufferCaps;
     private long pConfigInfo;
-    private ContextCapabilities oglCaps;
-    private OGLContext context;
+    private ContextCapabilities mtlCaps;
+    private MTLContext context;
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
-    private static native boolean initCGL();
-    private static native long getCGLConfigInfo(int displayID, int visualnum,
-                                                int swapInterval);
-    private static native int getOGLCapabilities(long configInfo);
+    private static native boolean initMTL();
+    private static native long getMTLConfigInfo(int displayID, String mtlShadersLib);
 
     /**
      * Returns GL_MAX_TEXTURE_SIZE from the shared opengl context. Must be
@@ -93,25 +88,27 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
      */
     private static native int nativeGetMaxTextureSize();
 
+    private static final HashMap<Long, Integer> pGCRefCounts = new HashMap<>();
+
     static {
-        cglAvailable = initCGL();
+        mtlAvailable = initMTL();
     }
 
-    private CGLGraphicsConfig(CGraphicsDevice device, int pixfmt,
+    private MTLGraphicsConfig(CGraphicsDevice device, int pixfmt,
                               long configInfo, int maxTextureSize,
-                              ContextCapabilities oglCaps) {
+                              ContextCapabilities mtlCaps) {
         super(device);
 
         this.pixfmt = pixfmt;
         this.pConfigInfo = configInfo;
-        this.oglCaps = oglCaps;
+        this.mtlCaps = mtlCaps;
         this.maxTextureSize = maxTextureSize;
-        context = new OGLContext(OGLRenderQueue.getInstance(), this);
-
+        context = new MTLContext(MTLRenderQueue.getInstance(), this);
+        refPConfigInfo(pConfigInfo);
         // add a record to the Disposer so that we destroy the native
-        // CGLGraphicsConfigInfo data when this object goes away
+        // MTLGraphicsConfigInfo data when this object goes away
         Disposer.addRecord(disposerReferent,
-                new CGLGCDisposerRecord(pConfigInfo));
+                new MTLGCDisposerRecord(pConfigInfo));
     }
 
     @Override
@@ -119,41 +116,40 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         return this;
     }
 
-    @Override
     public SurfaceData createManagedSurface(int w, int h, int transparency) {
-        return CGLSurfaceData.createData(this, w, h,
+        return MTLSurfaceData.createData(this, w, h,
                 getColorModel(transparency),
                 null,
-                OGLSurfaceData.TEXTURE);
+                MTLSurfaceData.TEXTURE);
     }
 
-    public static CGLGraphicsConfig getConfig(CGraphicsDevice device,
+    public static MTLGraphicsConfig getConfig(CGraphicsDevice device,
                                               int displayID, int pixfmt)
     {
-        if (!cglAvailable) {
+        if (!mtlAvailable) {
             return null;
         }
 
         long cfginfo = 0;
         int textureSize = 0;
         final String[] ids = new String[1];
-        OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
             // getCGLConfigInfo() creates and destroys temporary
             // surfaces/contexts, so we should first invalidate the current
             // Java-level context and flush the queue...
-            OGLContext.invalidateCurrentContext();
-            cfginfo = getCGLConfigInfo(displayID, pixfmt, kOpenGLSwapInterval);
+            MTLContext.invalidateCurrentContext();
+            cfginfo = getMTLConfigInfo(displayID, mtlShadersLib);
             if (cfginfo != 0L) {
                 textureSize = nativeGetMaxTextureSize();
                 // 7160609: GL still fails to create a square texture of this
                 // size. Half should be safe enough.
                 // Explicitly not support a texture more than 2^14, see 8010999.
                 textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
-                OGLContext.setScratchSurface(cfginfo);
+                MTLContext.setScratchSurface(cfginfo);
                 rq.flushAndInvokeNow(() -> {
-                    ids[0] = OGLContext.getOGLIdString();
+                    ids[0] = MTLContext.getMTLIdString();
                 });
             }
         } finally {
@@ -163,31 +159,60 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             return null;
         }
 
-        int oglCaps = getOGLCapabilities(cfginfo);
-        ContextCapabilities caps = new OGLContextCaps(oglCaps, ids[0]);
-        return new CGLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
+        ContextCapabilities caps = new MTLContext.MTLContextCaps(
+                CAPS_PS30 | CAPS_PS20 | CAPS_RT_PLAIN_ALPHA |
+                        CAPS_RT_TEXTURE_ALPHA | CAPS_RT_TEXTURE_OPAQUE |
+                        CAPS_MULTITEXTURE | CAPS_TEXNONPOW2 | CAPS_TEXNONSQUARE,
+                ids[0]);
+        return new MTLGraphicsConfig(device, pixfmt, cfginfo, textureSize, caps);
     }
 
-    public static boolean isCGLAvailable() {
-        return cglAvailable;
+    static void refPConfigInfo(long pConfigInfo) {
+        synchronized (pGCRefCounts) {
+            Integer count = pGCRefCounts.get(pConfigInfo);
+            if (count == null) {
+                count = 1;
+            }
+            else {
+                count++;
+            }
+            pGCRefCounts.put(pConfigInfo, count);
+        }
+    }
+
+    static void deRefPConfigInfo(long pConfigInfo) {
+        synchronized (pGCRefCounts) {
+            Integer count = pGCRefCounts.get(pConfigInfo);
+            if (count != null) {
+                count--;
+                pGCRefCounts.put(pConfigInfo, count);
+                if (count == 0) {
+                    MTLRenderQueue.disposeGraphicsConfig(pConfigInfo);
+                    pGCRefCounts.remove(pConfigInfo);
+                }
+            }
+        }
     }
 
     /**
      * Returns true if the provided capability bit is present for this config.
-     * See OGLContext.java for a list of supported capabilities.
+     * See MTLContext.java for a list of supported capabilities.
      */
-    @Override
     public boolean isCapPresent(int cap) {
-        return ((oglCaps.getCaps() & cap) != 0);
+        return ((mtlCaps.getCaps() & cap) != 0);
     }
 
-    @Override
     public long getNativeConfigInfo() {
         return pConfigInfo;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @see sun.java2d.pipe.hw.BufferedContextProvider#getContext
+     */
     @Override
-    public OGLContext getContext() {
+    public MTLContext getContext() {
         return context;
     }
 
@@ -220,17 +245,17 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     }
 
     public boolean isDoubleBuffered() {
-        return isCapPresent(CAPS_DOUBLEBUFFERED);
+        return true;
     }
 
-    private static class CGLGCDisposerRecord implements DisposerRecord {
+    private static class MTLGCDisposerRecord implements DisposerRecord {
         private long pCfgInfo;
-        public CGLGCDisposerRecord(long pCfgInfo) {
+        public MTLGCDisposerRecord(long pCfgInfo) {
             this.pCfgInfo = pCfgInfo;
         }
         public void dispose() {
             if (pCfgInfo != 0) {
-                OGLRenderQueue.disposeGraphicsConfig(pCfgInfo);
+                deRefPConfigInfo(pCfgInfo);
                 pCfgInfo = 0;
             }
         }
@@ -241,13 +266,13 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     public synchronized void displayChanged() {
         //super.displayChanged();
 
-        // the context could hold a reference to a CGLSurfaceData, which in
-        // turn has a reference back to this CGLGraphicsConfig, so in order
+        // the context could hold a reference to a MTLSurfaceData, which in
+        // turn has a reference back to this MTLGraphicsConfig, so in order
         // for this instance to be disposed we need to break the connection
-        OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
         rq.lock();
         try {
-            OGLContext.invalidateCurrentContext();
+            MTLContext.invalidateCurrentContext();
         } finally {
             rq.unlock();
         }
@@ -255,18 +280,18 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
 
     @Override
     public String toString() {
-        String display = getDevice().getIDstring();
-        return ("CGLGraphicsConfig[" + display + ", pixfmt=" + pixfmt + "]");
+        return ("MTLGraphicsConfig[" + getDevice().getIDstring() +
+                ",pixfmt="+pixfmt+"]");
     }
 
     @Override
     public SurfaceData createSurfaceData(CPlatformView pView) {
-        return CGLSurfaceData.createData(pView);
+        return MTLSurfaceData.createData(pView);
     }
 
     @Override
     public SurfaceData createSurfaceData(CFRetainedResource layer) {
-        return CGLSurfaceData.createData((CGLLayer) layer);
+        return MTLSurfaceData.createData((MTLLayer) layer);
     }
 
     @Override
@@ -340,8 +365,8 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         }
     }
 
-    private static class CGLBufferCaps extends BufferCapabilities {
-        public CGLBufferCaps(boolean dblBuf) {
+    private static class MTLBufferCaps extends BufferCapabilities {
+        public MTLBufferCaps(boolean dblBuf) {
             super(imageCaps, imageCaps,
                     dblBuf ? FlipContents.UNDEFINED : null);
         }
@@ -350,13 +375,13 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     @Override
     public BufferCapabilities getBufferCapabilities() {
         if (bufferCaps == null) {
-            bufferCaps = new CGLBufferCaps(isDoubleBuffered());
+            bufferCaps = new MTLBufferCaps(isDoubleBuffered());
         }
         return bufferCaps;
     }
 
-    private static class CGLImageCaps extends ImageCapabilities {
-        private CGLImageCaps() {
+    private static class MTLImageCaps extends ImageCapabilities {
+        private MTLImageCaps() {
             super(true);
         }
         public boolean isTrueVolatile() {
@@ -373,11 +398,10 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
     public VolatileImage createCompatibleVolatileImage(int width, int height,
                                                        int transparency,
                                                        int type) {
-        if ((type != FBOBJECT && type != TEXTURE)
-                || transparency == Transparency.BITMASK
-                || type == FBOBJECT && !isCapPresent(CAPS_EXT_FBOBJECT)) {
+        if (type != RT_TEXTURE && type != TEXTURE) {
             return null;
         }
+
         SunVolatileImage vi = new AccelTypedVolatileImage(this, width, height,
                 transparency, type);
         Surface sd = vi.getDestSurface();
@@ -391,9 +415,14 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
         return vi;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @see sun.java2d.pipe.hw.AccelGraphicsConfig#getContextCapabilities
+     */
     @Override
     public ContextCapabilities getContextCapabilities() {
-        return oglCaps;
+        return mtlCaps;
     }
 
     @Override
