@@ -57,15 +57,16 @@ public abstract class Font2D {
     public static final int DEFAULT_RANK = 4;
 
     private static final String[] boldNames = {
-        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", };
+        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", "black", "coder-b"};
 
     private static final String[] italicNames = {
-        "italic", "cursiva", "oblique", "inclined", };
+        "italic", "cursiva", "oblique", "inclined", "-it", "-lightit", "coder-i"};
 
     private static final String[] boldItalicNames = {
           "bolditalic", "bold-italic", "bold italic",
           "boldoblique", "bold-oblique", "bold oblique",
-          "demibold italic", "negreta cursiva","demi oblique", };
+          "demibold italic", "negreta cursiva","demi oblique",
+          "-boldit", "-blackit", "coder-bi"};
 
     private static final FontRenderContext DEFAULT_FRC =
         new FontRenderContext(null, false, false);
