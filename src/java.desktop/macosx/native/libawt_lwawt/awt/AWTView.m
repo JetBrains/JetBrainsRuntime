@@ -37,6 +37,8 @@
 #import <Carbon/Carbon.h>
 #import <JavaNativeFoundation/JavaNativeFoundation.h>
 
+jboolean metalEnabled = JNI_FALSE;
+
 @interface AWTView()
 @property (retain) CDropTarget *_dropTarget;
 @property (retain) CDragSource *_dragSource;
@@ -52,6 +54,8 @@
 //#define IM_DEBUG TRUE
 //#define EXTRA_DEBUG
 
+#define METAL_DEBUG
+
 static BOOL shouldUsePressAndHold() {
     static int shouldUsePressAndHold = -1;
     if (shouldUsePressAndHold != -1) return shouldUsePressAndHold;
@@ -65,6 +69,7 @@ static BOOL shouldUsePressAndHold() {
 @synthesize _dragSource;
 @synthesize cglLayer;
 @synthesize mouseIsOver;
+
 
 // Note: Must be called on main (AppKit) thread only
 - (id) initWithRect: (NSRect) rect
@@ -1476,4 +1481,20 @@ JNIEXPORT jboolean JNICALL Java_sun_lwawt_macosx_CPlatformView_nativeIsViewUnder
     JNF_COCOA_EXIT(env);
 
     return underMouse;
+}
+
+jboolean GetStaticBoolean(JNIEnv *env, jclass fClass, const char *fieldName)
+{
+    jfieldID fieldID = (*env)->GetStaticFieldID(env, fClass, fieldName, "Z");
+    return (*env)->GetStaticBooleanField(env, fClass, fieldID);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_macos_MacOSFlags_initNativeFlags(JNIEnv *env,
+                                                     jclass flagsClass)
+{
+  metalEnabled = GetStaticBoolean(env, flagsClass, "metalEnabled");
+#ifdef METAL_DEBUG
+  fprintf(stderr, "metalEnabled=%d\n", metalEnabled);
+#endif
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@
 
 #include "stdlib.h"
 #include "string.h"
+#include "Trace.h"
 
 /**
  * This include file contains information on how to use a SurfaceData
@@ -79,6 +80,8 @@ JNIEXPORT void JNICALL
 Java_sun_java2d_SurfaceData_initIDs(JNIEnv *env, jclass sd)
 {
     jclass pICMClass;
+
+    J2dTraceLn(J2D_TRACE_INFO, "Java_sun_java2d_SurfaceData_initIDs --- invoked ");
 
     InitGlobalClassRef(pInvalidPipeClass, env,
                        "sun/java2d/InvalidPipeException");
@@ -235,6 +238,9 @@ JNIEXPORT SurfaceDataOps * JNICALL
 SurfaceData_InitOps(JNIEnv *env, jobject sData, int opsSize)
 {
     SurfaceDataOps *ops = malloc(opsSize);
+
+    J2dTraceLn(J2D_TRACE_INFO, "SurfaceData_InitOps --- invoked ");
+
     SurfaceData_SetOps(env, sData, ops);
     if (ops != NULL) {
         memset(ops, 0, opsSize);

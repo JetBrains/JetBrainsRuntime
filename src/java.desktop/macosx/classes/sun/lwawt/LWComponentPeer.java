@@ -77,8 +77,11 @@ import sun.awt.event.IgnorePaintEvent;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.ToolkitImage;
 import sun.java2d.SunGraphics2D;
+import sun.java2d.macos.MacOSFlags;
+import sun.java2d.metal.MTLRenderQueue;
 import sun.java2d.opengl.OGLRenderQueue;
 import sun.java2d.pipe.Region;
+import sun.java2d.pipe.RenderQueue;
 import sun.util.logging.PlatformLogger;
 
 public abstract class LWComponentPeer<T extends Component, D extends JComponent>
@@ -1434,7 +1437,8 @@ public abstract class LWComponentPeer<T extends Component, D extends JComponent>
     }
 
     protected static final void flushOnscreenGraphics(){
-        final OGLRenderQueue rq = OGLRenderQueue.getInstance();
+        RenderQueue rq = MacOSFlags.isMetalEnabled() ?
+                MTLRenderQueue.getInstance() : OGLRenderQueue.getInstance();
         rq.lock();
         try {
             rq.flushNow();
