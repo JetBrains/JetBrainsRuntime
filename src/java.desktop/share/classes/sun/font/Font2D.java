@@ -58,7 +58,7 @@ public abstract class Font2D {
         "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", };
 
     private static final String[] italicNames = {
-        "italic", "cursiva", "oblique", "inclined", };
+        "italic", "cursiva", "oblique", "inclined", "-it"};
 
     private static final String[] boldItalicNames = {
           "bolditalic", "bold-italic", "bold italic",
