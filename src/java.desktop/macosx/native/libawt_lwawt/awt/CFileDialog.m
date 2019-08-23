@@ -165,6 +165,8 @@ canChooseDirectories:(BOOL)inChooseDirectories
                 [CMenuBar activate:menuBar modallyDisabled:isDisabled];
             }
 
+            [thePanel setAppearance:fOwner.appearance];
+
             [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {}];
 
             NSModalResponse modalResponse = [thePanel runModal];
