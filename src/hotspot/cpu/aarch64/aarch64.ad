@@ -3353,26 +3353,12 @@ encode %{
     // Initialize the box. (Must happen before we update the object mark!)
     __ str(disp_hdr, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
-    // Compare object markOop with mark and if equal exchange scratch1
-    // with object markOop.
-    if (UseLSE) {
-      __ mov(tmp, disp_hdr);
-      __ casal(Assembler::xword, tmp, box, oop);
-      __ cmp(tmp, disp_hdr);
-      __ br(Assembler::EQ, cont);
-    } else {
-      Label retry_load;
-      if ((VM_Version::features() & VM_Version::CPU_STXR_PREFETCH))
-        __ prfm(Address(oop), PSTL1STRM);
-      __ bind(retry_load);
-      __ ldaxr(tmp, oop);
-      __ cmp(tmp, disp_hdr);
-      __ br(Assembler::NE, cas_failed);
-      // use stlxr to ensure update is immediately visible
-      __ stlxr(tmp, box, oop);
-      __ cbzw(tmp, cont);
-      __ b(retry_load);
-    }
+    // Compare object markOop with an unlocked value (tmp) and if
+    // equal exchange the stack address of our box with object markOop.
+    // On failure disp_hdr contains the possibly locked markOop.
+    __ cmpxchg(oop, tmp, box, Assembler::xword, /*acquire*/ true,
+               /*release*/ true, /*weak*/ false, disp_hdr);
+    __ br(Assembler::EQ, cont);
 
     assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
@@ -3402,25 +3388,8 @@ encode %{
       //
       // Try to CAS m->owner from NULL to current thread.
       __ add(tmp, disp_hdr, (ObjectMonitor::owner_offset_in_bytes()-markOopDesc::monitor_value));
-      __ mov(disp_hdr, zr);
-
-      if (UseLSE) {
-        __ mov(rscratch1, disp_hdr);
-        __ casal(Assembler::xword, rscratch1, rthread, tmp);
-        __ cmp(rscratch1, disp_hdr);
-      } else {
-        Label retry_load, fail;
-        if ((VM_Version::features() & VM_Version::CPU_STXR_PREFETCH))
-          __ prfm(Address(tmp), PSTL1STRM);
-        __ bind(retry_load);
-        __ ldaxr(rscratch1, tmp);
-        __ cmp(disp_hdr, rscratch1);
-        __ br(Assembler::NE, fail);
-        // use stlxr to ensure update is immediately visible
-        __ stlxr(rscratch1, rthread, tmp);
-        __ cbnzw(rscratch1, retry_load);
-        __ bind(fail);
-      }
+    __ cmpxchg(tmp, zr, rthread, Assembler::xword, /*acquire*/ true,
+               /*release*/ true, /*weak*/ false, noreg); // Sets flags for result
 
       // Store a non-null value into the box to avoid looking like a re-entrant
       // lock. The fast-path monitor unlock code checks for
@@ -3473,24 +3442,9 @@ encode %{
     // see the stack address of the basicLock in the markOop of the
     // object.
 
-    if (UseLSE) {
-      __ mov(tmp, box);
-      __ casl(Assembler::xword, tmp, disp_hdr, oop);
-      __ cmp(tmp, box);
-      __ b(cont);
-    } else {
-      Label retry_load;
-      if ((VM_Version::features() & VM_Version::CPU_STXR_PREFETCH))
-        __ prfm(Address(oop), PSTL1STRM);
-      __ bind(retry_load);
-      __ ldxr(tmp, oop);
-      __ cmp(box, tmp);
-      __ br(Assembler::NE, cont);
-      // use stlxr to ensure update is immediately visible
-      __ stlxr(tmp, disp_hdr, oop);
-      __ cbzw(tmp, cont);
-      __ b(retry_load);
-    }
+    __ cmpxchg(oop, box, disp_hdr, Assembler::xword, /*acquire*/ false,
+               /*release*/ true, /*weak*/ false, tmp);
+    __ b(cont);
 
     assert(oopDesc::mark_offset_in_bytes() == 0, "offset of _mark is not 0");
 
