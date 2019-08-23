@@ -947,9 +947,8 @@ endif
 ifeq ($(call isTargetOs, macosx), true)
   XCODE_PATH := $(shell /usr/bin/xcode-select -p)
   CompileMetalShaders :
-	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metal -O2 -std=osx-metal1.1 -o $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
-	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metal-ar r $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.metal-ar $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air
-	$(XCODE_PATH)/Platforms/MacOSX.platform/usr/bin/metallib -o $(INSTALL_LIBRARIES_HERE)/shaders.metallib $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.metal-ar
+	xcrun -sdk macosx metal -c -o $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
+	xcrun -sdk macosx metallib -o $(INSTALL_LIBRARIES_HERE)/shaders.metallib $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBOSXUI, \
       NAME := osxui, \
