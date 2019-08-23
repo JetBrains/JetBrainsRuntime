@@ -43,6 +43,7 @@ final class GestureHandler {
     @Native static final int ROTATE = 2;
     @Native static final int MAGNIFY = 3;
     @Native static final int SWIPE = 4;
+    @Native static final int PRESSURE = 5;
 
     // installs a private instance of GestureHandler, if necessary
     static void addGestureListenerTo(final JComponent component, final GestureListener listener) {
@@ -97,6 +98,9 @@ final class GestureHandler {
                     case SWIPE:
                         firstNotifier.recursivelyHandleSwipe(a, b, new SwipeEvent());
                         return;
+                    case PRESSURE:
+                        firstNotifier.recursivelyHandlePressure(new PressureEvent(a,b));
+                        return;
                 }
             }
         });
@@ -107,6 +111,7 @@ final class GestureHandler {
     final List<RotationListener> rotaters = new LinkedList<RotationListener>();
     final List<MagnificationListener> magnifiers = new LinkedList<MagnificationListener>();
     final List<SwipeListener> swipers = new LinkedList<SwipeListener>();
+    final List<PressureListener> pressures = new LinkedList<PressureListener>();
 
     GestureHandler() { }
 
@@ -115,6 +120,7 @@ final class GestureHandler {
         if (listener instanceof RotationListener) rotaters.add((RotationListener)listener);
         if (listener instanceof MagnificationListener) magnifiers.add((MagnificationListener)listener);
         if (listener instanceof SwipeListener) swipers.add((SwipeListener)listener);
+        if (listener instanceof PressureListener) pressures.add((PressureListener)listener);
     }
 
     void removeListener(final GestureListener listener) {
@@ -167,6 +173,16 @@ final class GestureHandler {
 
             final PerComponentNotifier next = getNextNotifierForComponent(component.getParent());
             if (next != null) next.recursivelyHandleMagnify(e);
+        }
+
+        void recursivelyHandlePressure(final PressureEvent e) {
+            for (final PressureListener listener : handler.pressures) {
+                listener.pressure(e);
+                if (e.isConsumed()) return;
+            }
+
+            final PerComponentNotifier next = getNextNotifierForComponent(component.getParent());
+            if (next != null) next.recursivelyHandlePressure(e);
         }
 
         void recursivelyHandleSwipe(final double x, final double y, final SwipeEvent e) {
