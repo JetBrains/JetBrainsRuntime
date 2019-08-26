@@ -480,7 +480,9 @@ public final class LWCToolkit extends LWToolkit {
 
     @Override
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
-        return ((CGraphicsConfig) gc).getDevice().getScreenInsets();
+        CGraphicsDevice gd = ((CGraphicsConfig) gc).getDevice();
+        // Avoid deadlock with input methods
+        return LWCToolkit.SelectorPerformer.perform(gd::getScreenInsets);
     }
 
     @Override
