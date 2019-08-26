@@ -21,7 +21,8 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
- */ 
+ */
+
 /**
  * Defines the AWT and Swing user interface toolkits, plus APIs for
  * accessibility, audio, imaging, printing, and JavaBeans.
@@ -103,8 +104,6 @@ module java.desktop {
     exports javax.swing.text.rtf;
     exports javax.swing.tree;
     exports javax.swing.undo;
-    exports com.apple.eawt;
-    exports com.apple.eawt.event;
 
     // qualified exports may be inserted at build time
     // see make/GensrcModuleInfo.gmk
