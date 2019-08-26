@@ -495,9 +495,9 @@ public final class LWCToolkit extends LWToolkit {
     public Insets getScreenInsets(final GraphicsConfiguration gc) {
         GraphicsDevice gd = gc.getDevice();
         if (!(gd instanceof CGraphicsDevice)) {
-            return super.getScreenInsets(gc);
+            return LWCToolkit.SelectorPerformer.perform(() -> super.getScreenInsets(gc));
         }
-        return ((CGraphicsDevice)gd).getScreenInsets();
+        return LWCToolkit.SelectorPerformer.perform(() -> ((CGraphicsDevice)gd).getScreenInsets());
     }
 
     @Override
