@@ -877,46 +877,21 @@ public class CInputMethod extends InputMethodAdapter {
             return false;
         }
 
-        static void await(CountDownLatch latch) {
-            try {
-                latch.await();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-
         // Executed on AppKit
         static void invoke(Runnable runnable, sun.awt.im.InputContext inputContext, Component targetToAppContext) throws InvocationTargetException {
-            CountDownLatch edtLatch = new CountDownLatch(1);
-            CountDownLatch tkLatch = new CountDownLatch(1);
             AtomicBoolean runOnAppKit = new AtomicBoolean(false);
 
-            // Emulate EventQueue.invokeAndWait(runnable) for the runnable that delegates execution
-            // back to AppKit (JavaFX Event thread), without running secondary loop on AppKit.
-
-            InvocationEvent event = new InvocationEvent(targetToAppContext, () -> {
-                try {
-                    runOnAppKit.set(instanceofJFXPanel(getClientComponent(inputContext)));
-                    if (!runOnAppKit.get()) {
-                        runnable.run();
-                    }
-                } finally {
-                    edtLatch.countDown();
-                    await(tkLatch);
-                }
-            });
-            assert targetToAppContext != null;
-            AppContext appContext = SunToolkit.targetToAppContext(targetToAppContext);
-            SunToolkit.postEvent(appContext, event);
-            SunToolkit.flushPendingEvents(appContext);
-
-            await(edtLatch);
-            try {
-                if (runOnAppKit.get()) {
+            // 1) Do not run secondary msg loop in this case.
+            // 2) Delegate runnable back to FX when applicable.
+            LWCToolkit.invokeAndWait(() -> {
+                runOnAppKit.set(instanceofJFXPanel(getClientComponent(inputContext)));
+                if (!runOnAppKit.get()) {
                     runnable.run();
                 }
-            } finally {
-                tkLatch.countDown();
+            }, targetToAppContext);
+
+            if (runOnAppKit.get()) {
+                runnable.run();
             }
         }
     }
