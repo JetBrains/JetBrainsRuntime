@@ -56,10 +56,10 @@ public abstract class Font2D {
     public static final int IDEA_RANK    = 7;
 
     private static final String[] boldNames = {
-        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", "black"};
+        "bold", "demibold", "demi-bold", "demi bold", "negreta", "demi", "black", "-b"};
 
     private static final String[] italicNames = {
-        "italic", "cursiva", "oblique", "inclined", "-it", "-lightit"};
+        "italic", "cursiva", "oblique", "inclined", "-it", "-lightit", "-i"};
 
     private static final String[] boldItalicNames = {
           "bolditalic", "bold-italic", "bold italic",
