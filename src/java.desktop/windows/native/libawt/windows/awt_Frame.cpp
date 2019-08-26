@@ -30,6 +30,7 @@
 #include "awt_IconCursor.h"
 #include "awt_Win32GraphicsDevice.h"
 #include "ComCtl32Util.h"
+#include "shellapi.h"
 
 #include <windowsx.h>
 #include <uxtheme.h>
@@ -1835,7 +1836,15 @@ MsgRouting AwtFrame::WmNcCalcSize(BOOL wParam, LPNCCALCSIZE_PARAMS lpncsp, LRESU
         // [moklev] Workaround for RIDER-27069, IDEA-211327
         if (!this->IsUndecorated()) {
             rect->right += this->ScaleUpX(1);
-            rect->bottom -= 1;
+            // [tav] Decrement NC bottom only when taskbar is bottom/autohide (JBR-1786)
+            APPBARDATA abData;
+            abData.cbSize = sizeof(abData);
+            if (::SHAppBarMessage(ABM_GETTASKBARPOS, &abData) &&
+                abData.uEdge == ABE_BOTTOM &&
+                ::SHAppBarMessage(ABM_GETSTATE, &abData) == ABS_AUTOHIDE)
+            {
+                rect->bottom -= 1;
+            }
         }
     }
     else {
