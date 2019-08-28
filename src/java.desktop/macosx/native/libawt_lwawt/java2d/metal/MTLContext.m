@@ -46,6 +46,8 @@ extern MTLContext *MTLSD_MakeMTLContextCurrent(JNIEnv *env,
                                                MTLSDOps *srcOps,
                                                MTLSDOps *dstOps);
 
+static id<MTLRenderCommandEncoder> commonRenderEncoder = NULL;
+
 #define RGBA_TO_V4(c)              \
 {                                  \
     (((c) >> 16) & (0xFF))/255.0f, \
@@ -343,29 +345,38 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     }
 }
 
-- (id<MTLRenderCommandEncoder>) createRenderEncoderForDest:(id<MTLTexture>) dest {
-    id <MTLRenderCommandEncoder> mtlEncoder = [self createEncoderForDest: dest];
+- (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
     if (useClip)
-        [mtlEncoder setScissorRect:clipRect];
+        [encoder setScissorRect:clipRect];
 
     if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         // set pipeline state
-        [mtlEncoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:NO]];
+        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:NO]];
         struct FrameUniforms uf = {RGBA_TO_V4(color)};
-        [mtlEncoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     } else if (compState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
         // set viewport and pipeline state
         //[mtlEncoder setRenderPipelineState:gradPipelineState];
-        [mtlEncoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:YES]];
+        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:YES]];
 
         struct GradFrameUniforms uf = {
                 {p0, p1, p3},
                 RGBA_TO_V4(pixel1),
                 RGBA_TO_V4(pixel2)};
 
-        [mtlEncoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+        [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
     }
-    [self setEncoderTransform:mtlEncoder dest:dest];
+    [self setEncoderTransform:encoder dest:dest];
+}
+
+- (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
+    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO compositeRule:alphaCompositeRule]];
+    [self setEncoderTransform:encoder dest:dest];
+}
+
+- (id<MTLRenderCommandEncoder>) createRenderEncoderForDest:(id<MTLTexture>) dest {
+    id <MTLRenderCommandEncoder> mtlEncoder = [self createEncoderForDest: dest];
+    [self updateRenderEncoderProperties:mtlEncoder dest:dest];
     return mtlEncoder;
 }
 
@@ -378,6 +389,32 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (id<MTLBlitCommandEncoder>)createBlitEncoder {
     return _commandBuffer == nil ? nil : [_commandBuffer blitCommandEncoder];
+}
+
+- (id<MTLRenderCommandEncoder>) createCommonRenderEncoderForDest:(id<MTLTexture>) dest {
+    if (commonRenderEncoder == nil) {
+        commonRenderEncoder = [self createRenderEncoderForDest: dest];
+    } else {
+        [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
+    }
+    return commonRenderEncoder;
+}
+
+- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest {
+    if (commonRenderEncoder == nil) {
+        commonRenderEncoder = [self createRenderEncoderForDest: dest];
+        [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
+    } else {
+        [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
+        [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
+    }
+    return commonRenderEncoder;
+}
+
+- (void) endCommonRenderEncoder {
+    [commonRenderEncoder endEncoding];
+    [commonRenderEncoder release];
+    commonRenderEncoder = nil;
 }
 
 - (void)dealloc {

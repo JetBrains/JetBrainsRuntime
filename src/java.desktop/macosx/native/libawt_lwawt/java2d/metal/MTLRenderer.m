@@ -72,7 +72,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%1.2f y1=%1.2f x2=%1.2f y2=%1.2f), dst tex=%p", x1, y1, x2, y2, dstOps->pTexture);
 
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dstOps->pTexture];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
     if (mtlEncoder == nil)
         return;
 
@@ -83,7 +83,6 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
-    [mtlEncoder endEncoding];
 }
 
 void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint w, jint h) {
@@ -96,7 +95,7 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawRect (x=%d y=%d w=%d h=%d), dst tex=%p", x, y, w, h, dest);
 
     // TODO: use DrawParallelogram(x, y, w, h, lw=1, lh=1)
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
     if (mtlEncoder == nil)
         return;
 
@@ -110,7 +109,6 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     };
     [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:verticesCount];
-    [mtlEncoder endEncoding];
 }
 
 const int POLYLINE_BUF_SIZE = 64;
@@ -171,7 +169,7 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         }
 
         nPoints -= chunkSize;
-        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dstOps->pTexture];
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
         if (mtlEncoder == nil)
             return;
 
@@ -185,8 +183,6 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
             [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
         }
-
-        [mtlEncoder endEncoding];
     }
 }
 
@@ -232,13 +228,12 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_FillRect (x=%d y=%d w=%d h=%d), dst tex=%p", x, y, w, h, dest);
 
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
     if (mtlEncoder == nil)
         return;
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
-    [mtlEncoder endEncoding];
 }
 
 const int SPAN_BUF_SIZE=64;
@@ -269,7 +264,7 @@ MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint
         spanCount -= sc;
 
         id<MTLTexture> dest = dstOps->pTexture;
-        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dest];
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
         if (mtlEncoder == nil)
             return;
 
@@ -289,9 +284,6 @@ MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint
             [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:QUAD_VERTEX_COUNT];
         }
-
-        [mtlEncoder endEncoding];
-        [mtlEncoder release];
     }
 }
 
@@ -325,13 +317,12 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
         }};
 
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
     if (mtlEncoder == nil)
         return;
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
-    [mtlEncoder endEncoding];
 }
 
 void

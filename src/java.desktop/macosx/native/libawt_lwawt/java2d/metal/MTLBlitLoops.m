@@ -124,7 +124,7 @@ static void drawTex2Tex(MTLContext *mtlc,
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
-    id<MTLRenderCommandEncoder> encoder = [mtlc createSamplingEncoderForDest:dst];
+    id<MTLRenderCommandEncoder> encoder = [mtlc createCommonSamplingEncoderForDest:dst];
 
 
     const jboolean normalize = !mtlc.useTransform;
@@ -134,7 +134,6 @@ static void drawTex2Tex(MTLContext *mtlc,
     [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
     [encoder setFragmentTexture:src atIndex: 0];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-    [encoder endEncoding];
 }
 
 /**
