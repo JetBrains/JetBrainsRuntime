@@ -221,10 +221,15 @@ typedef struct {
 // NOTE: debug parameners will be removed soon
 - (id<MTLRenderCommandEncoder>)createRenderEncoderForDest:(id<MTLTexture>)dest clearRed:(int) clearRed/*debug param*/;
 - (id<MTLRenderCommandEncoder>)createRenderEncoderForDest:(id<MTLTexture>)dest;
+- (id<MTLRenderCommandEncoder>)createCommonRenderEncoderForDest:(id<MTLTexture>)dest;
+- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest;
 - (void)setGradientPaintUseMask:(jboolean)useMask cyclic:(jboolean)cyclic p0:(jdouble) p0 p1:(jdouble) p1 p3:(jdouble)p3
                          pixel1:(jint)pixel1 pixel2:(jint) pixel2;
 - (void) setEncoderTransform:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
+- (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
+- (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
 - (void)dealloc;
+- (void)endCommonRenderEncoder;
 @end
 
 /**

@@ -97,8 +97,6 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
             J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
         }
-        [encoder endEncoding];
-        encoder = nil;
         vertexBuffer = nil;
     }
     vertexCacheIndex = 0;
@@ -190,7 +188,6 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     MTLVertexCache_RestoreColorState(mtlc);
 
     maskCacheTex = nil;
-    encoder = nil;
     maskCacheIndex = 0;
     free(vertexCache);
     vertexCache = NULL;
@@ -199,7 +196,7 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 void
 MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    encoder = [mtlc createSamplingEncoderForDest:dstOps->pTexture];
+    encoder = [mtlc createCommonSamplingEncoderForDest:dstOps->pTexture];
 }
 
 void

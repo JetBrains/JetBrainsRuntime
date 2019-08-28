@@ -87,6 +87,7 @@ static void markLayerModified(MTLLayer * modifiedLayer) {
 }
 
 static void scheduleBlitAllModifiedLayers() {
+    J2dTraceLn(J2D_TRACE_INFO, "scheduleBlitAllModifiedLayers");
     for (int c = 0; c < g_modifiedLayersCount; ++c) {
         MTLLayer * layer = g_modifiedLayers[c];
         MTLContext * ctx = layer.ctx;
@@ -627,7 +628,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BLIT:
             {
-
+                [mtlc endCommonRenderEncoder];
                 jint packedParams = NEXT_INT(b);
                 jint sx1          = NEXT_INT(b);
                 jint sy1          = NEXT_INT(b);
@@ -1076,7 +1077,10 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
     if (mtlc != NULL) {
         RESET_PREVIOUS_OP();
-        scheduleBlitAllModifiedLayers();
+        if (g_modifiedLayersCount != 0) {
+            [mtlc endCommonRenderEncoder];
+            scheduleBlitAllModifiedLayers();
+        }
     }
 }
 
