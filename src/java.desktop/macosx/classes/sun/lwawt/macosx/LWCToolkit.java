@@ -725,19 +725,21 @@ public final class LWCToolkit extends LWToolkit {
             assert EventQueue.isDispatchThread();
             if (executor == null) {
                 // init on EDT
-                executor = new ThreadPoolExecutor(1, Integer.MAX_VALUE,
-                        60L, TimeUnit.SECONDS,
-                        new SynchronousQueue<>(),
-                        new ThreadFactory() {
-                            private ThreadFactory factory = Executors.privilegedThreadFactory();
-                            @Override
-                            public Thread newThread(Runnable r) {
-                                Thread t = factory.newThread(r);
-                                t.setDaemon(true);
-                                t.setName("AWT-SelectorPerformer " + t.getName());
-                                return t;
-                            }
-                        });
+                AccessController.doPrivileged((PrivilegedAction<?>)() ->
+                    executor = new ThreadPoolExecutor(1, Integer.MAX_VALUE,
+                            60L, TimeUnit.SECONDS,
+                            new SynchronousQueue<>(),
+                            new ThreadFactory() {
+                                private ThreadFactory factory = Executors.privilegedThreadFactory();
+                                @Override
+                                public Thread newThread(Runnable r) {
+                                    Thread t = factory.newThread(r);
+                                    t.setDaemon(true);
+                                    t.setName("AWT-SelectorPerformer " + t.getName());
+                                    return t;
+                                }
+                            })
+                );
             }
             LinkedBlockingQueue<InvocationEvent> currentQueue;
             synchronized (invocations) {
