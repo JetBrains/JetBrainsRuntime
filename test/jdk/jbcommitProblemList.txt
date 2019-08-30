@@ -179,12 +179,13 @@ javax/swing/JOptionPane/6428694/bug6428694.java                                 
 javax/swing/JPopupMenu/4634626/bug4634626.java                                              nobug windows-all
 javax/swing/JPopupMenu/6544309/bug6544309.java                                              nobug linux-all,windows-all
 javax/swing/JPopupMenu/6827786/bug6827786.java                                              nobug windows-all
-javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all
+javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all,windows-all
 javax/swing/JRadioButton/8041561/bug8041561.java                                            nobug windows-all
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
 javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all
+javax/swing/JTextArea/7049024/bug7049024.java.bug7049024                                    nobug linux-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java                                      nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java                                                nobug macosx-all,windows-all
 javax/swing/JTree/4633594/JTreeFocusTest.java                                               nobug macosx-all,windows-all
