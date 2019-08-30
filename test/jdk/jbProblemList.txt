@@ -137,6 +137,7 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java             
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             8202667 windows-all,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrame.java                              8214923 windows-all,macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8215105 macosx-all,windows-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         8203047 macosx-all,linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                     8073636 macosx-all
@@ -954,6 +955,7 @@ javax/swing/JFileChooser/DeserializedJFileChooser/DeserializedJFileChooserTest.j
 javax/swing/JFrame/8016356/bug8016356.java                                          8169955 windows-all
 javax/swing/JFrame/8175301/ScaledFrameBackgroundTest.java                           8193942 generic-all
 javax/swing/JInternalFrame/5066752/bug5066752.java                                  8207850 macosx-all,windows-all
+javax/swing/JInternalFrame/8020708/bug8020708.java                                  8226230 linux-all
 javax/swing/JInternalFrame/8069348/bug8069348.java                                  8208570 macosx-all,windows-all,linux-all
 javax/swing/JInternalFrame/8145060/TestJInternalFrameMinimize.java                  8203918 windows-all,linux-all
 javax/swing/JInternalFrame/8145896/TestJInternalFrameMaximize.java                  8194944 macosx-all,windows-all,linux-all
@@ -961,7 +963,7 @@ javax/swing/JInternalFrame/8146321/JInternalFrameIconTest.java                  
 javax/swing/JInternalFrame/8160248/JInternalFrameDraggingTest.java                  8186513 generic-all
 javax/swing/JInternalFrame/DockIconRepaint/DockIconRepaint.java                     8208289 macosx-all
 javax/swing/JInternalFrame/Test6325652.java                                         8160880,8196467 linux-all,macosx-all,windows-all
-javax/swing/JInternalFrame/Test6505027.java                                         8172535 macosx-all,windows-all
+javax/swing/JInternalFrame/Test6505027.java                                         8172535 macosx-all,windows-all,linux-all
 javax/swing/JLabel/6596966/bug6596966.java                                          8197552,8040914 macosx-all,windows-all,linux-all
 javax/swing/JList/6462008/bug6462008.java                                           7156347 generic-all
 javax/swing/JMenu/4213634/bug4213634.java                                           8197552 macosx-all,windows-all,linux-all
