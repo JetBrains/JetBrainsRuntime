@@ -72,6 +72,15 @@ public class FontFamily {
             return;
         }
         family.ensureFontsLoaded();
+        if (FontUtilities.isWindows) {
+            synchronized (family.fontSequence) {
+                if (family.stylesMask != 0x10 && (family.plain == font2D || family.bold == font2D ||
+                                                  family.italic == font2D || family.bolditalic == font2D)) {
+                    byte styleBit = getWinFontStyleBit(font2D);
+                    family.stylesMask = (byte) (family.stylesMask & ~styleBit);
+                }
+            }
+        }
         if (family.plain == font2D) {
             family.plain = null;
         }
@@ -297,9 +306,7 @@ public class FontFamily {
         }
 
         if (FontUtilities.isWindows && stylesMask != 0x10) {
-            // Windows seems to ignore bold attribute from fsSelection field, and consider only font's weight
-            int winFontStyle = (font.getWeight() >= 410 ? 1 : 0) | (style & Font.ITALIC);
-            byte styleBit = (byte) (1 << winFontStyle);
+            byte styleBit = getWinFontStyleBit(font);
             byte newMask = (byte) (stylesMask | styleBit);
             stylesMask = newMask == stylesMask ? 0x10 : newMask;
         }
@@ -333,6 +340,12 @@ public class FontFamily {
         default:
             break;
         }
+    }
+
+    private static byte getWinFontStyleBit(Font2D font) {
+        // Windows seems to ignore bold attribute from fsSelection field, and consider only font's weight
+        int winFontStyle = (font.getWeight() >= 410 ? 1 : 0) | (font.getStyle() & Font.ITALIC);
+        return (byte) (1 << winFontStyle);
     }
 
     public Font2D getFontWithExactStyleMatch(int style) {
