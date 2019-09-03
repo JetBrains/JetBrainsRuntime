@@ -422,10 +422,6 @@ public class FileFontStrike extends PhysicalStrike {
     long getGlyphImageFromWindows(int glyphCode) {
         String family = fileFont.getFamilyName(null);
         FontFamily fontFamily = FontFamily.getFamily(family);
-        if (fontFamily != null && fontFamily.hasMultipleCandidatesForSameStyle()) {
-            // we cannot unambiguously specify font by its family name and style
-            return 0;
-        }
         int style = desc.style & Font.BOLD | desc.style & Font.ITALIC
             | fileFont.getStyle();
         if (fontFamily != null && fontFamily.getFont(style) != fileFont) {
