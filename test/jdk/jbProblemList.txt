@@ -530,7 +530,7 @@ java/awt/Modal/ToFront/FrameToFrontTKModal2Test.java                            
 java/awt/Modal/ToFront/FrameToFrontTKModal3Test.java                                8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/FrameToFrontTKModal4Test.java                                8196441 macosx-all,windows-all,linux-all
 java/awt/Modal/ToFront/FrameToFrontTKModal5Test.java                                8196441 macosx-all,windows-all,linux-all
-java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java                        8177326 macosx-all,windows-all
+java/awt/Mouse/EnterExitEvents/DragWindowOutOfFrameTest.java                        8177326 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/DragWindowTest.java                                  8023562 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ModalDialogEnterExitEventsTest.java                  JRE-898 macosx-all,windows-all,linux-all
 java/awt/Mouse/EnterExitEvents/ResizingFrameTest.java                               8005021 macosx-all,windows-all,linux-all
@@ -978,7 +978,7 @@ javax/swing/JMenuItem/4171437/bug4171437.java                                   
 javax/swing/JMenuItem/4654927/bug4654927.java                                       8172536 macosx-all,windows-all,linux-all
 javax/swing/JMenuItem/6209975/bug6209975.java                                       8204062 macosx-all,windows-all
 javax/swing/JMenuItem/6249972/bug6249972.java                                       8197552 macosx-all,windows-all,linux-all
-javax/swing/JPopupMenu/4458079/bug4458079.java                                      8040917 macosx-all,windows-all
+javax/swing/JPopupMenu/4458079/bug4458079.java                                      8040917 macosx-all,windows-all,linux-all
 javax/swing/JPopupMenu/4769039/bug4769039.java                                      8194045 generic-all
 javax/swing/JPopupMenu/4870644/bug4870644.java                                      8194130 macosx-all,linux-all
 javax/swing/JPopupMenu/4966112/bug4966112.java                                      8064915,7151826 macosx-all,linux-all
