@@ -64,6 +64,7 @@ static BOOL shouldUsePressAndHold() {
     return shouldUsePressAndHold;
 }
 
+extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars);
 
 @implementation AWTView
 
@@ -362,9 +363,7 @@ static BOOL shouldUsePressAndHold() {
     NSUInteger deviceIndependentModifierFlagsMask =
         [event modifierFlags] & NSDeviceIndependentModifierFlagsMask;
 
-    return ((deviceIndependentModifierFlagsMask == NSCommandKeyMask)
-        || (deviceIndependentModifierFlagsMask == (NSCommandKeyMask & NSShiftKeyMask)))
-        && [[event characters] isEqualToString:@"`"];
+    return isSystemShortcut_NextWindowInApplication(deviceIndependentModifierFlagsMask, [event characters]);
 }
 
 /**
