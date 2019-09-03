@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <Carbon/Carbon.h>
+#import <Cocoa/Cocoa.h>
 
 #import "CRobotKeyCode.h"
 #import "java_awt_event_KeyEvent.h"
@@ -171,15 +172,27 @@ static int NSModifiers2java(int mask) {
         result |= AWT_CTRL_DOWN_MASK;
     if (mask & optionKey)
         result |= AWT_ALT_DOWN_MASK;
-    if (mask & shiftKey)
+    if (mask & cmdKey)
         result |= AWT_META_DOWN_MASK;
     return result;
 }
 
-void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
-    jclass clsReader = (*env)->GetObjectClass(env, reader);
-    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
+static int javaModifiers2NS(int jmask) {
+    int result = 0;
+    if (jmask & AWT_SHIFT_DOWN_MASK)
+        result |= NSShiftKeyMask;
+    if (jmask & AWT_CTRL_DOWN_MASK)
+        result |= NSControlKeyMask;
+    if (jmask & AWT_ALT_DOWN_MASK)
+        result |= NSAlternateKeyMask;
+    if (jmask & AWT_META_DOWN_MASK)
+        result |= NSCommandKeyMask;
+    return result;
+}
 
+typedef bool (^ Visitor)(int, const char *, int, const char *, int);
+
+void readSystemHotkeysImpl(Visitor visitorBlock) {
     // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
     NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
     NSDictionary<NSString *,id> * shk = [defaults persistentDomainForName:@"com.apple.symbolichotkeys"];
@@ -260,20 +273,14 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 int vkeyCode = p1 == nil ? -1 : [p1 intValue];
                 int modifiers = p2 == nil ? 0 : [p2 intValue];
 
-                jstring jkeyChar = NULL;
+                char keyCharBuf[64];
+                const char * keyCharStr = keyCharBuf;
                 if (asciiCode >= 0 && asciiCode <= 0xFF) {
-                    char keyCharBuf[64];
                     sprintf(keyCharBuf, "%c", asciiCode);
-                    jkeyChar = (*env)->NewStringUTF(env, keyCharBuf);
-                }
-
+                } else
+                    keyCharStr = NULL;
                 NSString * description = getAppleSymbolicHotKeysDescription([hkNumber intValue]);
-                jstring jdesc = description == nil ? NULL : (*env)->NewStringUTF(env, description.UTF8String);
-                (*env)->CallVoidMethod(
-                        env, reader, methodAdd, (jint)vkeyCode,
-                        jkeyChar, (jint)symbolicHotKeysModifiers2java(modifiers),
-                        jdesc
-                );
+                visitorBlock(vkeyCode, keyCharStr, symbolicHotKeysModifiers2java(modifiers), description == nil ? NULL : description.UTF8String, [hkNumber intValue]);
             }
         }
     } else {
@@ -311,6 +318,11 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 if (!key_equivalent)
                     continue;
 
+                NSString *enabled = sdict[@"enabled_services_menu"];
+                if (enabled != nil && [enabled boolValue] == NO) {
+                    continue;
+                }
+
                 // @ - command
                 // $ - shift
                 // ^ - control
@@ -332,11 +344,7 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
                 NSCharacterSet * excludeSet = [NSCharacterSet characterSetWithCharactersInString:@"@$^~"];
                 NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
 
-                (*env)->CallVoidMethod(
-                        env, reader, methodAdd, -1,
-                        (*env)->NewStringUTF(env, keyChar.UTF8String), modifiers,
-                        (*env)->NewStringUTF(env, key.UTF8String)
-                );
+                visitorBlock(-1, keyChar.UTF8String, modifiers, key.UTF8String, -1);
             }
         }
     }
@@ -360,16 +368,56 @@ void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, job
             if (!enabled)
                 continue;
 
-            (*env)->CallVoidMethod(
-                    env, reader, methodAdd, (int)vkeyCode,
-                    NULL, NSModifiers2java(keyModifiers),
-                    NULL
-            );
+            visitorBlock(vkeyCode, NULL, NSModifiers2java(keyModifiers), NULL, -1);
         }
 
         CFRelease(registeredHotKeys);
     }
 #endif // USE_CARBON_CopySymbolicHotKeys
+}
+
+bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars) {
+    const int shortcutUid_NextWindowInApplication = 27;
+    static NSString * shortcutCharacter = nil;
+    static int shortcutMask = 0;
+    if (shortcutCharacter == nil) {
+        readSystemHotkeysImpl(
+            ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid) {
+                if (hotkeyUid != shortcutUid_NextWindowInApplication)
+                    return true;
+
+                if (keyCharStr != NULL) {
+                    shortcutCharacter = [[NSString stringWithFormat:@"%s", keyCharStr] retain];
+                    shortcutMask = javaModifiers2NS(jmodifiers);
+                }
+                return false;
+            }
+        );
+        if (shortcutCharacter == nil) {
+            shortcutCharacter = @"`";
+            shortcutMask = NSCommandKeyMask;
+        }
+    }
+
+    return ((modifiersMask == shortcutMask)
+        || (modifiersMask == (shortcutMask | NSShiftKeyMask)))
+        && [chars isEqualToString:shortcutCharacter];
+}
+
+void Java_java_awt_desktop_SystemHotkeyReader_readSystemHotkeys(JNIEnv* env, jobject reader) {
+    jclass clsReader = (*env)->GetObjectClass(env, reader);
+    jmethodID methodAdd = (*env)->GetMethodID(env, clsReader, "add", "(ILjava/lang/String;ILjava/lang/String;)V");
+
+    readSystemHotkeysImpl(
+        ^bool(int vkeyCode, const char * keyCharStr, int jmodifiers, const char * descriptionStr, int hotkeyUid){
+            jstring jkeyChar = keyCharStr == NULL ? NULL : (*env)->NewStringUTF(env, keyCharStr);
+            jstring jdesc = descriptionStr == NULL ? NULL : (*env)->NewStringUTF(env, descriptionStr);
+            (*env)->CallVoidMethod(
+                    env, reader, methodAdd, (jint)vkeyCode, jkeyChar, (jint)jmodifiers, jdesc
+            );
+            return true;
+        }
+    );
 }
 
 jint Java_java_awt_desktop_SystemHotkeyReader_osx2java(JNIEnv* env, jclass clazz, jint osxKeyCode) {
