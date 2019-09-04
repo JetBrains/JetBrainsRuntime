@@ -36,6 +36,7 @@ import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 
 public class RenderPerfTest {
     private final static int N = 1000;
+    private final static int K = 5;
     private final static float WIDTH = 800;
     private final static float HEIGHT = 800;
     private final static float R = 25;
@@ -187,6 +189,32 @@ public class RenderPerfTest {
         }
     }
 
+    static class RandomTextParticleRenderer extends TextParticleRenderer {
+        StringBuffer buffer = new StringBuffer();
+        Random rnd = new Random();
+        int sLen;
+
+
+        RandomTextParticleRenderer(int n, int k, float r, Object hint) {
+            super(n, r, hint);
+            sLen = k;
+        }
+
+        @Override
+        public void render(Graphics2D g2d, int id, float[] x, float[] y, float[] vx, float[] vy) {
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, hint);
+
+            setPaint(g2d, id);
+            buffer.setLength(0);
+            for (int i = 0; i < sLen; i++) {
+                buffer.appendCodePoint(0x20 + (Math.abs(rnd.nextInt()) % 0xfd0));
+            }
+
+            g2d.drawString(buffer.toString(),
+                    (int)(x[id] - r), (int)(y[id] - r));
+        }
+
+    }
     static class FlatOvalRotParticleRenderer extends FlatParticleRenderer {
 
 
@@ -516,6 +544,8 @@ public class RenderPerfTest {
     private static final ParticleRenderer whiteTextRendererGray =
             new WhiteTextParticleRenderer(R, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
+    private static final ParticleRenderer randomTextRendererGray =
+            new RandomTextParticleRenderer(N, K, R, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
     @Test
     public void testFlatBubbles() throws Exception {
@@ -750,6 +780,25 @@ public class RenderPerfTest {
         });
 
         report("TextLCD", fps);
+    }
+
+    @Test
+    public void testRandomTextBubblesGray() throws Exception {
+
+        double fps = (new PerfMeter()).exec(new Renderable() {
+            @Override
+            public void render(Graphics2D g2d) {
+                balls.render(g2d, randomTextRendererGray);
+            }
+
+            @Override
+            public void update() {
+                balls.update();
+            }
+        });
+
+        report("RandomTextGray", fps);
+
     }
 
     @Test
