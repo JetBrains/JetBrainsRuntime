@@ -143,6 +143,7 @@ java/awt/hidpi/properties/HiDPIPropertiesUnixTest.java                          
 java/awt/hidpi/properties/HiDPIPropertiesWindowsTest.java                                   nobug windows-all
 java/awt/image/DrawImage/EABlitTest.java                                                    nobug windows-all
 java/awt/image/DrawImage/IncorrectOffset.java                                               nobug windows-all
+java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java                                 JBR-1801 windows-all
 java/awt/image/VolatileImage/DrawBufImgOp.java                                              nobug windows-all
 java/awt/image/VolatileImage/DrawHugeImageTest.java                                         nobug windows-all
 java/awt/image/VolatileImage/TransparentVImage.java                                         nobug windows-all
