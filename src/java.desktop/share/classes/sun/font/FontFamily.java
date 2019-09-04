@@ -36,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Locale;
 
 public class FontFamily {
+    private static final byte CONFLICTING_STYLES = 0x10;
 
     private static ConcurrentHashMap<String, FontFamily>
         familyNameMap = new ConcurrentHashMap<String, FontFamily>();
@@ -74,8 +75,9 @@ public class FontFamily {
         family.ensureFontsLoaded();
         if (FontUtilities.isWindows) {
             synchronized (family.fontSequence) {
-                if (family.stylesMask != 0x10 && (family.plain == font2D || family.bold == font2D ||
-                                                  family.italic == font2D || family.bolditalic == font2D)) {
+                if (family.stylesMask != CONFLICTING_STYLES &&
+                    (family.plain == font2D || family.bold == font2D ||
+                     family.italic == font2D || family.bolditalic == font2D)) {
                     byte styleBit = getWinFontStyleBit(font2D);
                     family.stylesMask = (byte) (family.stylesMask & ~styleBit);
                 }
@@ -305,10 +307,10 @@ public class FontFamily {
             return;
         }
 
-        if (FontUtilities.isWindows && stylesMask != 0x10) {
+        if (FontUtilities.isWindows && stylesMask != CONFLICTING_STYLES) {
             byte styleBit = getWinFontStyleBit(font);
             byte newMask = (byte) (stylesMask | styleBit);
-            stylesMask = newMask == stylesMask ? 0x10 : newMask;
+            stylesMask = newMask == stylesMask ? CONFLICTING_STYLES : newMask;
         }
 
         switch (style) {
@@ -498,7 +500,7 @@ public class FontFamily {
     }
 
     boolean hasMultipleCandidatesForSameStyle() {
-        return stylesMask == 0x10;
+        return stylesMask == CONFLICTING_STYLES;
     }
 
     public String toString() {
