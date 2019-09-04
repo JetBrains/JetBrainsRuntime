@@ -799,8 +799,8 @@ JNIEXPORT jbyteArray JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_sign
         SS_CHECK(::NCryptTranslateHandle(
                 NULL,
                 &hk,
-                hCryptProv,
-                hCryptKey,
+                (HCRYPTPROV)hCryptProv,
+                (HCRYPTKEY)hCryptKey,
                 NULL,
                 0));
 
@@ -996,8 +996,8 @@ JNIEXPORT jboolean JNICALL Java_sun_security_mscapi_RSASignature_00024PSS_verify
         SS_CHECK(::NCryptTranslateHandle(
                 NULL,
                 &hk,
-                hCryptProv,
-                hKey,
+                (HCRYPTPROV)hCryptProv,
+                (HCRYPTKEY)hKey,
                 NULL,
                 0));
 
