@@ -3889,6 +3889,19 @@ public class Window extends Container implements Accessible {
         hasCustomDecoration = true;
     }
 
+    private volatile boolean ignoreMouseEvents;
+
+    boolean isIgnoreMouseEvents() {
+        return ignoreMouseEvents;
+    }
+
+    /**
+     * Set via reflection (JB JdkEx API).
+     */
+    void setIgnoreMouseEvents(boolean ignore) {
+        ignoreMouseEvents = ignore;
+    }
+
     // ************************** MIXING CODE *******************************
 
     // A window has an owner, but it does NOT have a container
