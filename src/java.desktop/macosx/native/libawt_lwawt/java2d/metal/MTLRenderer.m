@@ -236,10 +236,7 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount: QUAD_VERTEX_COUNT];
 }
 
-const int SPAN_BUF_SIZE=64;
-
-void
-MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint *spans)
+void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint *spans)
 {
     J2dTraceLn(J2D_TRACE_INFO, "MTLRenderer_FillSpans");
     if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
@@ -247,43 +244,56 @@ MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount, jint
         return;
     }
 
-    while (spanCount > 0) {
-        __block struct {
-            jfloat spns[SPAN_BUF_SIZE*4];
-        } spanStruct;
+    // MTLRenderCommandEncoder setVertexBytes usage is recommended if the data is of 4KB.
 
-        __block jfloat sc = spanCount > SPAN_BUF_SIZE ? SPAN_BUF_SIZE : spanCount;
+    // We use a buffer that closely matches the 4KB limit size
+    // This buffer is resued multiple times to encode draw calls of a triangle list
+    // NOTE : Due to nature of *spans data - it is not possible to use triangle strip.
+    // We use triangle list to draw spans
+    id<MTLTexture> dest = dstOps->pTexture;
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+    if (mtlEncoder == nil) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillSpans: mtlEncoder is nil");
+        return;
+    }
 
-        for (int i = 0; i < sc; i++) {
-            spanStruct.spns[i * 4] = *(spans++);
-            spanStruct.spns[i * 4 + 1] = *(spans++);
-            spanStruct.spns[i * 4 + 2] = *(spans++);
-            spanStruct.spns[i * 4 + 3] = *(spans++);
+    // This is the max no of vertices (of struct Vertex - 12 bytes) we can accomodate in 4KB
+    const int TOTAL_VERTICES_IN_BLOCK = 336;
+    struct Vertex vertexList[TOTAL_VERTICES_IN_BLOCK]; // a total of 112 triangles ==> 56 spans
+
+    int counter = 0;
+
+    for (int i = 0; i < spanCount; i++) {
+        jfloat x1 = *(spans++);
+        jfloat y1 = *(spans++);
+        jfloat x2 = *(spans++);
+        jfloat y2 = *(spans++);
+
+        struct Vertex verts[6] = {
+            {{x1, y1, 0.0}},
+            {{x1, y2, 0.0}},
+            {{x2, y1, 0.0}},
+
+            {{x1, y2, 0.0}},
+            {{x2, y1, 0.0}},
+            {{x2, y2, 0.0}
+        }};
+
+        memcpy(&vertexList[counter], &verts, sizeof(verts));
+        counter += 6;
+
+        // If vertexList buffer full
+        if (counter % TOTAL_VERTICES_IN_BLOCK == 0) {
+            [mtlEncoder setVertexBytes:vertexList length:sizeof(vertexList) atIndex:MeshVertexBuffer];
+            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:TOTAL_VERTICES_IN_BLOCK];
+            counter = 0;
         }
+    }
 
-        spanCount -= sc;
-
-        id<MTLTexture> dest = dstOps->pTexture;
-        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
-        if (mtlEncoder == nil)
-            return;
-
-        for (int i = 0; i < sc; i++) {
-            jfloat x1 = spanStruct.spns[i * 4];
-            jfloat y1 = spanStruct.spns[i * 4 + 1];
-            jfloat x2 = spanStruct.spns[i * 4 + 2];
-            jfloat y2 = spanStruct.spns[i * 4 + 3];
-
-            struct Vertex verts[QUAD_VERTEX_COUNT] = {
-                {{x1, y1, 0.0}},
-                {{x1, y2, 0.0}},
-                {{x2, y1, 0.0}},
-                {{x2, y2, 0.0}
-            }};
-
-            [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
-            [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:QUAD_VERTEX_COUNT];
-        }
+    // Draw triangles using remaining vertices if any
+    if (counter != 0) {
+        [mtlEncoder setVertexBytes:vertexList length:sizeof(vertexList) atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:counter];
     }
 }
 
