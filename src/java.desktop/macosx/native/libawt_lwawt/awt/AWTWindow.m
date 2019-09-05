@@ -1131,6 +1131,17 @@ JNI_COCOA_ENTER(env);
     NSView *contentView = OBJC(contentViewPtr);
     NSRect frameRect = NSMakeRect(x, y, w, h);
     AWTWindow *owner = [OBJC(ownerPtr) delegate];
+
+    BOOL isIgnoreMouseEvents = NO;
+    GET_CPLATFORM_WINDOW_CLASS_RETURN(nil);
+    DECLARE_FIELD_RETURN(jf_target, jc_CPlatformWindow, "target", "Ljava/awt/Window;", nil);
+    jobject awtWindow = (*env)->GetObjectField(env, obj, jf_target);
+    if (awtWindow != NULL) {
+        DECLARE_CLASS_RETURN(jc_Window, "java/awt/Window", nil);
+        DECLARE_METHOD_RETURN(jm_isIgnoreMouseEvents, jc_Window, "isIgnoreMouseEvents", "()Z", nil);
+        isIgnoreMouseEvents = (*env)->CallBooleanMethod(env, awtWindow, jm_isIgnoreMouseEvents) == JNI_TRUE ? YES : NO;
+        (*env)->DeleteLocalRef(env, awtWindow);
+    }
     [ThreadUtilities performOnMainThreadWaiting:YES block:^(){
 
         window = [[AWTWindow alloc] initWithPlatformWindow:platformWindow
@@ -1140,7 +1151,12 @@ JNI_COCOA_ENTER(env);
                                                contentView:contentView];
         // the window is released is CPlatformWindow.nativeDispose()
 
-        if (window) [window.nsWindow retain];
+        if (window) {
+            [window.nsWindow retain];
+            if (isIgnoreMouseEvents) {
+                [window.nsWindow setIgnoresMouseEvents:YES];
+            }
+        }
     }];
 
 JNI_COCOA_EXIT(env);
