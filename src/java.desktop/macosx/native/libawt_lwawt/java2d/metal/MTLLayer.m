@@ -30,6 +30,7 @@
 #import "MTLSurfaceData.h"
 
 #import "MTLBlitLoops.h"
+#import "MTLLayerDelegate.h"
 
 @implementation MTLLayer
 
@@ -89,8 +90,19 @@
             CGSizeMake(self.buffer.width,
                        self.buffer.height);
 
+        if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
+
+            [commandBuf release];
+            [ctx.texturePool markAllTexturesFree];
+            return;
+        }
+
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
+            J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
+
+            [ctx.texturePool markAllTexturesFree];
             return;
         }
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
@@ -103,11 +115,11 @@
         [commandBuf presentDrawable:mtlDrawable];
 
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
-                [cmdBuff release];
                 [ctx.texturePool markAllTexturesFree];
         }];
 
         [commandBuf commit];
+        [commandBuf waitUntilCompleted];
     }
 }
 
@@ -116,6 +128,22 @@
     [super dealloc];
 }
 
+- (void) blitCallback {
+
+    AWT_ASSERT_APPKIT_THREAD;
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    static JNF_CLASS_CACHE(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
+    static JNF_MEMBER_CACHE(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
+
+    jobject javaLayerLocalRef = [self.javaLayer jObjectWithEnv:env];
+    if ((*env)->IsSameObject(env, javaLayerLocalRef, NULL)) {
+        return;
+    }
+
+    JNFCallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
+    (*env)->DeleteLocalRef(env, javaLayerLocalRef);
+}
 @end
 
 /*
@@ -137,6 +165,7 @@ JNF_COCOA_ENTER(env);
             AWT_ASSERT_APPKIT_THREAD;
 
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer];
+            layer.delegate = [MTLLayerDelegate alloc];
     }];
 
 JNF_COCOA_EXIT(env);
@@ -177,4 +206,25 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
         layer.contentsScale = scale;
     }];
     JNF_COCOA_EXIT(env);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_metal_MTLLayer_blitTexture
+(JNIEnv *env, jclass cls, jlong layerPtr)
+{
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
+    JNF_COCOA_ENTER(env);
+    MTLLayer *layer = jlong_to_ptr(layerPtr);
+    MTLContext * ctx = layer.ctx;
+    if (layer == NULL || ctx == NULL) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blit : Layer or Context is null");
+        return;
+    }
+
+    id<MTLCommandBuffer> bufferToCommit = ctx.commandBuffer;
+    [layer blitTexture:bufferToCommit];
+
+    [ctx releaseCommandBuffer];
+    JNF_COCOA_EXIT(env);
+
 }

@@ -113,6 +113,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
  - (id<MTLCommandBuffer>) commandBuffer {
     if (_commandBuffer == nil) {
+        J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext : commandBuffer is NULL");
         // NOTE: Command queues are thread-safe and allow multiple outstanding command buffers to be encoded simultaneously.
         _commandBuffer = [[self.commandQueue commandBuffer] retain];// released in [layer blitTexture]
     }
@@ -412,9 +413,11 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void) endCommonRenderEncoder {
-    [commonRenderEncoder endEncoding];
-    [commonRenderEncoder release];
-    commonRenderEncoder = nil;
+    if (commonRenderEncoder != nil) {
+        [commonRenderEncoder endEncoding];
+        [commonRenderEncoder release];
+        commonRenderEncoder = nil;
+    }
 }
 
 - (void)dealloc {

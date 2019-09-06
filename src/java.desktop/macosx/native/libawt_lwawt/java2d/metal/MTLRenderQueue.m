@@ -38,6 +38,7 @@
 #include "MTLRenderQueue.h"
 #include "MTLRenderer.h"
 #include "MTLTextRenderer.h"
+#import "ThreadUtilities.h"
 
 /**
  * Used to track whether we are in a series of a simple primitive operations
@@ -1079,7 +1080,17 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         RESET_PREVIOUS_OP();
         if (g_modifiedLayersCount != 0) {
             [mtlc endCommonRenderEncoder];
-            scheduleBlitAllModifiedLayers();
+        }
+        BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
+        if (dstOps != NULL) {
+            MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
+            MTLLayer *layer = (MTLLayer*)dstMTLOps->layer;
+            if (layer != NULL) {
+                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
+                    AWT_ASSERT_APPKIT_THREAD;
+                    [layer setNeedsDisplay];
+                }];
+            }
         }
     }
 }

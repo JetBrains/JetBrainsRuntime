@@ -23,42 +23,19 @@
  * questions.
  */
 
-#ifndef MTLLayer_h_Included
-#define MTLLayer_h_Included
+#ifndef MTLLayerDelegate_h_Included
+#define MTLLayerDelegate_h_Included
+
 #import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
-#import "common.h"
+#import <QuartzCore/CALayer.h>
+//#import <QuartzCore/CALayerDelegate.h>
+#import <Foundation/NSObject.h>
 
-#import <JavaNativeFoundation/JavaNativeFoundation.h>
+@interface MTLLayerDelegate : NSObject<CALayerDelegate>
 
-@interface MTLLayer : CAMetalLayer
-{
-@private
-    JNFWeakJObjectWrapper *javaLayer;
+- (void)drawLayer:(CALayer*)layer inContext:(CGContextRef)ctx;
+- (void)displayLayer:(CALayer *)layer;
 
-    // intermediate buffer, used the RQ lock to synchronize
-    MTLContext* ctx;
-    float bufferWidth;
-    float bufferHeight;
-    id<MTLTexture> buffer;
-}
-
-@property (nonatomic, retain) JNFWeakJObjectWrapper *javaLayer;
-@property (readwrite, assign) MTLContext* ctx;
-@property (readwrite, assign) float bufferWidth;
-@property (readwrite, assign) float bufferHeight;
-@property (readwrite, assign) id<MTLTexture> buffer;
-
-- (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer;
-
-- (void) blitTexture:(id<MTLCommandBuffer>)commandBuf;
-- (void) fillParallelogramCtxX:(jfloat)x
-                             Y:(jfloat)y
-                           DX1:(jfloat)dx1
-                           DY1:(jfloat)dy1
-                           DX2:(jfloat)dx2
-                           DY2:(jfloat)dy2;
-- (void) indirectBlit;
 @end
 
-#endif /* CGLLayer_h_Included */
+#endif
