@@ -23,8 +23,8 @@
  * questions.
  */
 
-import org.junit.Ignore;
-import org.junit.Test;
+package renderperf;
+
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -37,13 +37,27 @@ import java.awt.geom.QuadCurve2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
 public class RenderPerfTest {
+    private static HashSet<String> ignoredTests = new HashSet<>();
+
+    static {
+            ignoredTests.add("testTextBubblesNoAA");
+            ignoredTests.add("testTextBubblesLCD");
+            ignoredTests.add("testTextBubblesGray");
+            ignoredTests.add("testWhiteTextBubblesNoAA");
+            ignoredTests.add("testWhiteTextBubblesLCD");
+            ignoredTests.add("testWhiteTextBubblesGray");
+    }
+
     private final static int N = 1000;
     private final static float WIDTH = 800;
     private final static float HEIGHT = 800;
@@ -259,14 +273,11 @@ public class RenderPerfTest {
         ImgParticleRenderer(int n, float r) {
             super(n, r);
             try {
-                File dukeFile = new File(Objects.requireNonNull(
-                        RenderPerfTest.class.getClassLoader().getResource("images/duke.png")).toURI());
-
-                if (!dukeFile.exists()) throw new RuntimeException(dukeFile.toString() + " not found");
-
-
-                dukeImg = ImageIO.read(dukeFile);
-            } catch (IOException | URISyntaxException e) {
+                dukeImg = ImageIO.read(
+                        Objects.requireNonNull(
+                                RenderPerfTest.class.getClassLoader().getResourceAsStream(
+                                        "renderperf/images/duke.png")));
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -515,7 +526,6 @@ public class RenderPerfTest {
             new WhiteTextParticleRenderer(R, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
 
-    @Test
     public void testFlatBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -533,7 +543,6 @@ public class RenderPerfTest {
         report("FlatOval", fps);
     }
 
-    @Test
     public void testFlatBoxBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -551,7 +560,6 @@ public class RenderPerfTest {
         report("FlatBox", fps);
     }
 
-    @Test
     public void testImgBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -569,7 +577,6 @@ public class RenderPerfTest {
         report("Image", fps);
     }
 
-    @Test
     public void testFlatBoxRotBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -587,7 +594,6 @@ public class RenderPerfTest {
         report("RotatedBox", fps);
     }
 
-    @Test
     public void testFlatOvalRotBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -605,7 +611,6 @@ public class RenderPerfTest {
         report("RotatedOval", fps);
     }
 
-    @Test
     public void testLinGradOvalRotBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -624,7 +629,6 @@ public class RenderPerfTest {
     }
 
 
-    @Test
     public void testWiredBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -642,7 +646,6 @@ public class RenderPerfTest {
         report("WiredOval", fps);
     }
 
-    @Test
     public void testWiredBoxBubbles() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -660,7 +663,6 @@ public class RenderPerfTest {
         report("WiredBox", fps);
     }
 
-    @Test
     public void testLines() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -678,7 +680,6 @@ public class RenderPerfTest {
         report("Lines", fps);
     }
 
-    @Test
     public void testFlatQuad() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -696,7 +697,6 @@ public class RenderPerfTest {
         report("FlatQuad", fps);
     }
 
-    @Test
     public void testWiredQuad() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -714,7 +714,6 @@ public class RenderPerfTest {
         report("WiredQuad", fps);
     }
 
-    @Ignore @Test
     public void testTextBubblesNoAA() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -732,7 +731,6 @@ public class RenderPerfTest {
         report("TextNoAA", fps);
     }
 
-    @Ignore @Test
     public void testTextBubblesLCD() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -750,7 +748,6 @@ public class RenderPerfTest {
         report("TextLCD", fps);
     }
 
-    @Ignore @Test
     public void testTextBubblesGray() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -768,7 +765,6 @@ public class RenderPerfTest {
         report("TextGray", fps);
     }
 
-    @Ignore @Test
     public void testWhiteTextBubblesNoAA() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -786,7 +782,6 @@ public class RenderPerfTest {
         report("WhiteTextNoAA", fps);
     }
 
-    @Ignore @Test
     public void testWhiteTextBubblesLCD() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -804,7 +799,6 @@ public class RenderPerfTest {
         report("WhiteTextLCD", fps);
     }
 
-    @Ignore @Test
     public void testWhiteTextBubblesGray() throws Exception {
 
         double fps = (new PerfMeter()).exec(new Renderable() {
@@ -822,4 +816,23 @@ public class RenderPerfTest {
         report("WhiteTextGray", fps);
     }
 
+    public static void main(String[] args)
+            throws InvocationTargetException, IllegalAccessException, NoSuchMethodException
+    {
+        RenderPerfTest test = new RenderPerfTest();
+
+        if (args.length > 0) {
+            for (String testCase : args) {
+                Method m = RenderPerfTest.class.getDeclaredMethod(testCase);
+                m.invoke(test);
+            }
+        } else {
+            Method[] methods = RenderPerfTest.class.getDeclaredMethods();
+            for (Method m : methods) {
+                if (m.getName().startsWith("test") && !ignoredTests.contains(m.getName())) {
+                    m.invoke(test);
+                }
+            }
+        }
+    }
 }
