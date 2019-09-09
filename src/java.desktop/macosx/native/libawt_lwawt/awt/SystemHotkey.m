@@ -164,6 +164,23 @@ static NSString * getAppleSymbolicHotKeysDescription(int hotKeyId) {
     return [hotkeyId2DescMap objectForKey : [NSNumber numberWithInt : hotKeyId]];
 }
 
+@interface DefaultParams: NSObject
+@property (assign) BOOL enabled;
+@property (strong) NSString *key_equivalent;
++(DefaultParams *) create:(NSString *)key_equivalent enabled:(BOOL)enabled;
+@end
+
+@implementation DefaultParams
++(DefaultParams *) create:(NSString *)key_equivalent enabled:(BOOL)enabled {
+    DefaultParams * result = [[[DefaultParams alloc] init] autorelease];
+    result.enabled = enabled;
+    result.key_equivalent = key_equivalent;
+    return result;
+}
+@end
+
+static NSMutableDictionary * createDefaultParams();
+
 static int NSModifiers2java(int mask) {
     int result = 0;
     if (mask & shiftKey)
@@ -191,6 +208,31 @@ static int javaModifiers2NS(int jmask) {
 }
 
 typedef bool (^ Visitor)(int, const char *, int, const char *, int);
+
+static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalent, NSString * desc) {
+    // @ - command
+    // $ - shift
+    // ^ - control
+    // ~ - alt(option)
+    const bool modIsSHIFT = [key_equivalent containsString:@"$"];
+    const bool modIsCONTROL = [key_equivalent containsString:@"^"];
+    const bool modIsOPTION = [key_equivalent containsString:@"~"];
+    const bool modIsCMD = [key_equivalent containsString:@"@"];
+    int modifiers = 0;
+    if (modIsSHIFT)
+        modifiers |= AWT_SHIFT_DOWN_MASK;
+    if (modIsCONTROL)
+        modifiers |= AWT_CTRL_DOWN_MASK;
+    if (modIsOPTION)
+        modifiers |= AWT_ALT_DOWN_MASK;
+    if (modIsCMD)
+        modifiers |= AWT_META_DOWN_MASK;
+
+    NSCharacterSet * excludeSet = [NSCharacterSet characterSetWithCharactersInString:@"@$^~"];
+    NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
+
+    visitorBlock(-1, keyChar.UTF8String, modifiers, desc.UTF8String, -1);
+}
 
 void readSystemHotkeysImpl(Visitor visitorBlock) {
     // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
@@ -288,6 +330,7 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
     }
 
     // 2. read from Pbs (domain with services shortcuts)
+    NSMutableDictionary * allDefParams = createDefaultParams();
     NSDictionary<NSString *,id> * pbs = [defaults persistentDomainForName:@"pbs"];
     if (pbs) {
 //        NSServicesStatus =     {
@@ -305,6 +348,7 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
 //                };
 //        };
 //    }
+
         NSDictionary<NSString *, id> *services = [pbs valueForKey:@"NSServicesStatus"];
         if (services) {
             for (NSString *key in services) {
@@ -313,8 +357,15 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
                     plog(LL_DEBUG, "'%s' isn't instance of NSDictionary (class=%s)", toCString(value), [value className].UTF8String);
                     continue;
                 }
+                // NOTE: unchanged default params will not appear here, check allDefParams at the end of this loop
+                DefaultParams * defParams = [allDefParams objectForKey:key];
+                [allDefParams removeObjectForKey:key];
+
                 NSDictionary<NSString *, id> *sdict = value;
                 NSString *key_equivalent = sdict[@"key_equivalent"];
+                if (!key_equivalent && defParams != nil) {
+                    key_equivalent = defParams.key_equivalent;
+                }
                 if (!key_equivalent)
                     continue;
 
@@ -322,31 +373,22 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
                 if (enabled != nil && [enabled boolValue] == NO) {
                     continue;
                 }
+                if (enabled == nil && defParams != nil && !defParams.enabled) {
+                    continue;
+                }
 
-                // @ - command
-                // $ - shift
-                // ^ - control
-                // ~ - alt(option)
-                const bool modIsSHIFT = [key_equivalent containsString:@"$"];
-                const bool modIsCONTROL = [key_equivalent containsString:@"^"];
-                const bool modIsOPTION = [key_equivalent containsString:@"~"];
-                const bool modIsCMD = [key_equivalent containsString:@"@"];
-                int modifiers = 0;
-                if (modIsSHIFT)
-                    modifiers |= AWT_SHIFT_DOWN_MASK;
-                if (modIsCONTROL)
-                    modifiers |= AWT_CTRL_DOWN_MASK;
-                if (modIsOPTION)
-                    modifiers |= AWT_ALT_DOWN_MASK;
-                if (modIsCMD)
-                    modifiers |= AWT_META_DOWN_MASK;
-
-                NSCharacterSet * excludeSet = [NSCharacterSet characterSetWithCharactersInString:@"@$^~"];
-                NSString * keyChar = [key_equivalent stringByTrimmingCharactersInSet:excludeSet];
-
-                visitorBlock(-1, keyChar.UTF8String, modifiers, key.UTF8String, -1);
+                visitServicesShortcut(visitorBlock, key_equivalent, key);
             }
         }
+    }
+
+    // Iterate through rest of allDefParams
+    for (NSString* key in allDefParams) {
+        DefaultParams * defParams = allDefParams[key];
+        if (!defParams.enabled) {
+            continue;
+        }
+        visitServicesShortcut(visitorBlock, defParams.key_equivalent, key);
     }
 
 #ifdef USE_CARBON_CopySymbolicHotKeys
@@ -680,4 +722,33 @@ jstring Java_java_awt_desktop_SystemHotkey_osxKeyCodeDescription(JNIEnv* env, jc
         return NULL;
 
     return (*env)->NewStringUTF(env, val.UTF8String);
+}
+
+static NSDictionary * getDefaultParams() {
+    static NSDictionary * sid2defaults = nil;
+    if (sid2defaults == nil) {
+        sid2defaults = [NSDictionary dictionaryWithObjectsAndKeys:
+                [DefaultParams create:@"@$b" enabled:NO], @"com.apple.BluetoothFileExchange - Send File To Bluetooth Device - sendFileUsingBluetoothOBEXService",
+                [DefaultParams create:@"@^$c" enabled:YES], @"com.apple.ChineseTextConverterService - Convert Text from Simplified to Traditional Chinese - convertTextToTraditionalChinese",
+                [DefaultParams create:@"@~^$c" enabled:YES], @"com.apple.ChineseTextConverterService - Convert Text from Traditional to Simplified Chinese - convertTextToSimplifiedChinese",
+                [DefaultParams create:@"@$l" enabled:YES], @"com.apple.Safari - Search With %WebSearchProvider@ - searchWithWebSearchProvider",
+                [DefaultParams create:@"@*" enabled:NO], @"com.apple.ScriptEditor2 - Script Editor/Get Result of AppleScript - runAsAppleScript",
+                [DefaultParams create:@"@$f" enabled:NO], @"com.apple.SpotlightService - SEARCH_WITH_SPOTLIGHT - doSearchWithSpotlight",
+                [DefaultParams create:@"@$y" enabled:YES], @"com.apple.Stickies - Make Sticky - makeStickyFromTextService",
+                [DefaultParams create:@"@$m" enabled:YES], @"com.apple.Terminal - Open man Page in Terminal - openManPage",
+                [DefaultParams create:@"@$a" enabled:YES], @"com.apple.Terminal - Search man Page Index in Terminal - searchManPages",
+                nil
+        ];
+
+        [sid2defaults retain];
+    }
+
+    return sid2defaults;
+}
+
+static NSMutableDictionary * createDefaultParams() {
+    NSDictionary * sid2defaults = getDefaultParams();
+    NSMutableDictionary * result = [NSMutableDictionary dictionaryWithCapacity:[sid2defaults count]];
+    [result setDictionary:sid2defaults];
+    return result;
 }
