@@ -70,8 +70,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
     private boolean shutdownHookRegistered;
     private int scale;
     private final AtomicBoolean isScaleFactorDefault = new AtomicBoolean(false);
-    private static final int XRM_XFT_DPI;
-    private static volatile int XFT_DPI;
+    private static volatile int xrmXftDpi;
+    private static volatile int xftDpi;
     private static final int GDK_SCALE;
     private static final double GDK_DPI_SCALE;
     private static final double GDK_SCALE_MULTIPLIER;
@@ -532,6 +532,7 @@ public final class X11GraphicsDevice extends GraphicsDevice
      */
     @Override
     public synchronized void displayChanged() {
+        xrmXftDpi = getXrmXftDpi(-1);
         scale = initScaleFactor(1);
         // On X11 the visuals do not change, and therefore we don't need
         // to reset the defaultConfig, config, doubleBufferVisuals,
@@ -568,9 +569,9 @@ public final class X11GraphicsDevice extends GraphicsDevice
     }
 
     public static void setXftDpi(int dpi) {
-        XFT_DPI = dpi;
+        xftDpi = dpi;
         boolean uiScaleEnabled = SunGraphicsEnvironment.isUIScaleEnabled(dpi);
-        double xftDpiScale = uiScaleEnabled ? XFT_DPI / 96.0 : 1.0;
+        double xftDpiScale = uiScaleEnabled ? xftDpi / 96.0 : 1.0;
         for (GraphicsDevice gd : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
             X11GraphicsDevice x11gd = (X11GraphicsDevice)gd;
             synchronized (x11gd.isScaleFactorDefault) {
@@ -595,11 +596,11 @@ public final class X11GraphicsDevice extends GraphicsDevice
             if (nativeScale > 0) {
                 return (int)Math.round(nativeScale * gdkScaleMult);
             }
-            if (XRM_XFT_DPI > 0) {
-                return (int)Math.round((XRM_XFT_DPI / 96.0) * gdkScaleMult);
+            if (xrmXftDpi > 0) {
+                return (int)Math.round((xrmXftDpi / 96.0) * gdkScaleMult);
             }
-            if (XFT_DPI > 0) {
-                return (int)Math.round((XFT_DPI / 96.0) * gdkScaleMult);
+            if (xftDpi > 0) {
+                return (int)Math.round((xftDpi / 96.0) * gdkScaleMult);
             }
         }
         return defValue;
@@ -609,8 +610,8 @@ public final class X11GraphicsDevice extends GraphicsDevice
      * Used externally for diagnostic purpose.
      */
     public String[][] getDpiInfo() {
-        int xftDpi = XRM_XFT_DPI != -1 ? XRM_XFT_DPI : XFT_DPI;
-        String xftDpiStr = xftDpi != -1 ? String.valueOf(xftDpi) : "undefined";
+        int dpi = xrmXftDpi != -1 ? xrmXftDpi : xftDpi;
+        String xftDpiStr = dpi != -1 ? String.valueOf(dpi) : "undefined";
         double gsettingsScale = getNativeScaleFactor(screen, -1);
         String gsettingsScaleStr = gsettingsScale != -1 ? String.valueOf(gsettingsScale) : "undefined";
         String gdkScaleStr = GDK_SCALE != -1 ? String.valueOf(GDK_SCALE) : "undefined";
