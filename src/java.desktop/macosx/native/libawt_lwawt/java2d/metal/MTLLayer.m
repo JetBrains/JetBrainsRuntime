@@ -30,7 +30,6 @@
 #import "MTLSurfaceData.h"
 
 #import "MTLBlitLoops.h"
-#import "MTLLayerDelegate.h"
 
 @implementation MTLLayer
 
@@ -144,6 +143,12 @@
     JNFCallVoidMethod(env, javaLayerLocalRef, jm_drawInMTLContext);
     (*env)->DeleteLocalRef(env, javaLayerLocalRef);
 }
+
+- (void) display {
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
+    [self blitCallback];
+    [super display];
+}
 @end
 
 /*
@@ -165,7 +170,6 @@ JNF_COCOA_ENTER(env);
             AWT_ASSERT_APPKIT_THREAD;
 
             layer = [[MTLLayer alloc] initWithJavaLayer: javaLayer];
-            layer.delegate = [MTLLayerDelegate alloc];
     }];
 
 JNF_COCOA_EXIT(env);
