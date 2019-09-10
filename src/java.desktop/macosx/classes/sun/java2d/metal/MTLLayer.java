@@ -36,6 +36,7 @@ public class MTLLayer extends CFRetainedResource {
 
     private native long nativeCreateLayer();
     private static native void nativeSetScale(long layerPtr, double scale);
+    private static native void nativeSetInsets(long layerPtr, int top, int left);
     private static native void validate(long layerPtr, MTLSurfaceData cglsd);
     private static native void blitTexture(long layerPtr);
 
@@ -86,6 +87,8 @@ public class MTLLayer extends CFRetainedResource {
         MTLGraphicsConfig gc = (MTLGraphicsConfig)getGraphicsConfiguration();
         surfaceData = gc.createSurfaceData(this);
         setScale(gc.getDevice().getScaleFactor());
+        Insets insets = peer.getInsets();
+        execute(ptr -> nativeSetInsets(ptr, insets.top, insets.left));
         // the layer holds a reference to the buffer, which in
         // turn has a reference back to this layer
         if (surfaceData instanceof MTLSurfaceData) {
