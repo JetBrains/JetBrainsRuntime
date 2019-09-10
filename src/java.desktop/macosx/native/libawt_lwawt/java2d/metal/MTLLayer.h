@@ -58,7 +58,8 @@
                            DY1:(jfloat)dy1
                            DX2:(jfloat)dx2
                            DY2:(jfloat)dy2;
-- (void) indirectBlit;
+- (void) blitCallback;
+- (void) display;
 @end
 
 #endif /* CGLLayer_h_Included */
