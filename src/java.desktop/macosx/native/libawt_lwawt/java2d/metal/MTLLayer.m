@@ -39,6 +39,8 @@
 @synthesize bufferWidth;
 @synthesize bufferHeight;
 @synthesize buffer;
+@synthesize topInset;
+@synthesize leftInset;
 
 - (id) initWithJavaLayer:(JNFWeakJObjectWrapper *)layer
 {
@@ -64,8 +66,8 @@
                                     nil];
     self.actions = actions;
     [actions release];
-
-
+    self.topInset = 0;
+    self.leftInset = 0;
     return self;
 }
 
@@ -107,7 +109,9 @@
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
         [blitEncoder
-                copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(self.buffer.width, self.buffer.height, 1)
+                copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
+                sourceOrigin:MTLOriginMake((jint)(self.leftInset*self.contentsScale), (jint)(self.topInset*self.contentsScale), 0)
+                sourceSize:MTLSizeMake(self.buffer.width, self.buffer.height, 1)
                 toTexture:mtlDrawable.texture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
         [blitEncoder endEncoding];
 
@@ -210,6 +214,15 @@ Java_sun_java2d_metal_MTLLayer_nativeSetScale
         layer.contentsScale = scale;
     }];
     JNF_COCOA_EXIT(env);
+}
+
+JNIEXPORT void JNICALL
+Java_sun_java2d_metal_MTLLayer_nativeSetInsets
+(JNIEnv *env, jclass cls, jlong layerPtr, jint top, jint left)
+{
+    MTLLayer *layer = jlong_to_ptr(layerPtr);
+    layer.topInset = top;
+    layer.leftInset = left;
 }
 
 JNIEXPORT void JNICALL
