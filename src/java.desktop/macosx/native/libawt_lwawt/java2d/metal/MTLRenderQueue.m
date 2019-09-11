@@ -61,84 +61,6 @@ static BMTLSDOps *dstOps = NULL;
 extern void MTLGC_DestroyMTLGraphicsConfig(jlong pConfigInfo);
 extern void MTLSD_SwapBuffers(JNIEnv *env, jlong window);
 
-/**
- * Helper methods to manage modified layers
- */
-static MTLLayer ** g_modifiedLayers = NULL;
-static int g_modifiedLayersCount = 0;
-static int g_modifiedLayersAllocatedCount = 0;
-
-static void markLayerModified(MTLLayer * modifiedLayer) {
-    if (modifiedLayer == NULL)
-        return;
-    if (g_modifiedLayers == NULL) {
-        g_modifiedLayersAllocatedCount = 3;
-        g_modifiedLayers = malloc(g_modifiedLayersAllocatedCount * sizeof(MTLLayer *));
-    }
-    for (int c = 0; c < g_modifiedLayersCount; ++c) {
-        if (g_modifiedLayers[c] == modifiedLayer)
-            return;
-    }
-    ++g_modifiedLayersCount;
-    if (g_modifiedLayersCount > g_modifiedLayersAllocatedCount) {
-        g_modifiedLayersAllocatedCount = g_modifiedLayersCount;
-        g_modifiedLayers = realloc(g_modifiedLayers, g_modifiedLayersAllocatedCount * sizeof(MTLLayer *));
-    }
-    g_modifiedLayers[g_modifiedLayersCount - 1] = modifiedLayer;
-}
-
-static void scheduleBlitAllModifiedLayers() {
-    J2dTraceLn(J2D_TRACE_INFO, "scheduleBlitAllModifiedLayers");
-    for (int c = 0; c < g_modifiedLayersCount; ++c) {
-        MTLLayer * layer = g_modifiedLayers[c];
-        MTLContext * ctx = layer.ctx;
-        if (layer == NULL || ctx == NULL)
-            continue;
-        id<MTLCommandBuffer> bufferToCommit = ctx.commandBuffer;
-        [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-            [layer blitTexture:bufferToCommit];
-        }];
-
-        [ctx releaseCommandBuffer];
-    }
-    g_modifiedLayersCount = 0;
-}
-
-static void onSurfaceModified(BMTLSDOps *bmtldst) {
-    if (bmtldst != NULL && bmtldst->privOps != NULL && ((MTLSDOps *)bmtldst->privOps)->layer != NULL)
-        markLayerModified(((MTLSDOps *) bmtldst->privOps)->layer);
-}
-
-static const jint g_drawOpcodes[] = {
-        sun_java2d_pipe_BufferedOpCodes_DRAW_LINE,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_RECT,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_POLY,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_PIXEL,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_SCANLINES,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_PARALLELOGRAM,
-        sun_java2d_pipe_BufferedOpCodes_DRAW_AAPARALLELOGRAM,
-
-        sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST,
-
-        sun_java2d_pipe_BufferedOpCodes_FILL_RECT,
-        sun_java2d_pipe_BufferedOpCodes_FILL_SPANS,
-        sun_java2d_pipe_BufferedOpCodes_FILL_PARALLELOGRAM,
-        sun_java2d_pipe_BufferedOpCodes_FILL_AAPARALLELOGRAM,
-
-        sun_java2d_pipe_BufferedOpCodes_COPY_AREA,
-        sun_java2d_pipe_BufferedOpCodes_MASK_FILL,
-        sun_java2d_pipe_BufferedOpCodes_MASK_BLIT,
-        sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS
-};
-
-static jboolean isDrawOpcode(jint opcode) {
-    for (int c = 0; c < sizeof(g_drawOpcodes)/sizeof(g_drawOpcodes[0]); ++c) {
-        if (opcode == g_drawOpcodes[c])
-            return JNI_TRUE;
-    }
-    return JNI_FALSE;
-}
-
 // TODO : Debug logic added for opcode verification,
 // should be removed later.
 static char *getOpcodeString(jint opcode) {
@@ -440,12 +362,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                     opcode, (end-b));
         }
 
-        if (opcode != sun_java2d_pipe_BufferedOpCodes_DRAW_GLYPH_LIST &&
-            opcode != sun_java2d_pipe_BufferedOpCodes_NOOP)
-        {
-            //MTLTR_DisableGlyphModeState();
-        }
-
         switch (opcode) {
 
         // draw ops
@@ -662,7 +578,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                                       sx1, sy1, sx2, sy2,
                                       dx1, dy1, dx2, dy2);
                 }
-                onSurfaceModified(jlong_to_ptr(pDst));
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SURFACE_TO_SW_BLIT:
@@ -845,10 +760,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jlong pConfigInfo = NEXT_LONG(b);
                 CONTINUE_IF_NULL(mtlc);
                 RESET_PREVIOUS_OP();
-                [JNFRunLoop performOnMainThreadWaiting:NO withBlock:^(){
-                    MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
-                }];
-
+                MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
 
                 // the previous method will call glX/wglMakeCurrent(None),
                 // so we should nullify the current mtlc and dstOps to avoid
@@ -1071,16 +983,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             }
             return;
         }
-
-        if (isDrawOpcode(opcode)) // performed rendering operation on dstOps
-            onSurfaceModified(dstOps);
     }
 
     if (mtlc != NULL) {
         RESET_PREVIOUS_OP();
-        if (g_modifiedLayersCount != 0) {
-            [mtlc endCommonRenderEncoder];
-        }
+        [mtlc endCommonRenderEncoder];
         BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
         if (dstOps != NULL) {
             MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
