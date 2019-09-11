@@ -202,8 +202,33 @@ void
 MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
                           jint scanlineCount, jint *scanlines)
 {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawScanlines -- :TODO");
+
+    J2dTraceLn2(J2D_TRACE_INFO, "MTLRenderer_DrawScanlines (scanlineCount=%d), dst tex=%p", scanlineCount, dstOps->pTexture);
+    if (mtlc == NULL || dstOps == NULL || dstOps->pTexture == NULL) {
+            J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderer_DrawScanlines: dest is null");
+            return;
+    }
+
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
+
+    if (mtlEncoder == nil) return;
+
+    struct Vertex verts[2*scanlineCount];
+    
+    for (int j = 0, i = 0; j < scanlineCount; j++) {    
+        // Translate each vertex by a fraction so
+        // that we hit pixel centers.
+        float x1 = ((float)*(scanlines++)) + 0.2f;
+        float x2 = ((float)*(scanlines++)) + 1.2f;
+        float y  = ((float)*(scanlines++)) + 0.5f;
+        struct Vertex v1 = {x1, y, 0.0};
+        struct Vertex v2 = {x2, y, 0.0};
+        verts[i++] = v1;
+        verts[i++] = v2;
+    }
+
+    [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
+    [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2*scanlineCount];
 }
 
 void
