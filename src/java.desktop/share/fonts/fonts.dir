@@ -1,4 +1,4 @@
-405
+449
 DroidSans-Bold.ttf -misc-droid sans-bold-r-normal--0-0-0-0-p-0-adobe-standard
 DroidSans-Bold.ttf -misc-droid sans-bold-r-normal--0-0-0-0-p-0-ascii-0
 DroidSans-Bold.ttf -misc-droid sans-bold-r-normal--0-0-0-0-p-0-iso10646-1
@@ -279,18 +279,62 @@ Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-1
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-15
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-2
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-9
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-ascii-0
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso10646-1
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-1
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-10
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-13
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-15
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-16
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-2
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-3
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-4
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-9
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-koi8-r
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-koi8-u
+JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-microsoft-cp1252
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-ascii-0
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso10646-1
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-1
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-10
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-13
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-15
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-16
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-2
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-3
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-4
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-9
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-r
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-u
+JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-microsoft-cp1252
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-ascii-0
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso10646-1
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-1
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-10
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-13
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-15
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-16
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-2
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-3
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-4
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-9
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-koi8-r
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-koi8-u
+JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-microsoft-cp1252
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-ascii-0
 JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMono-Thin.ttf -misc-jetbrains mono thin-thin-r-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMono520-Bold.ttf -misc-jetbrains mono 520-bold-r-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMono520-Regular.ttf -misc-jetbrains mono 520-medium-r-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMono520-Thin.ttf -misc-jetbrains mono 520 thin-thin-r-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded-Bold.ttf -misc-jetbrains mono expanded exp-bold-r-expanded--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded-Regular.ttf -misc-jetbrains mono expanded exp-medium-r-expanded--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded-Thin.ttf -misc-jetbrains mono expanded th ex-thin-r-expanded--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded520-Bold.ttf -misc-jetbrains mono expanded 520 exp-bold-r-expanded--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded520-Regular.ttf -misc-jetbrains mono expanded 520 exp-medium-r-expanded--0-0-0-0-p-0-iso10646-1
-JetBrainsMonoExpanded520-Thin.ttf -misc-jetbrains mono expanded 520 th e-thin-r-expanded--0-0-0-0-p-0-iso10646-1
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-1
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-10
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-13
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-15
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-16
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-2
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-3
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-4
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-iso8859-9
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-koi8-r
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-koi8-u
+JetBrainsMono-Regular.ttf -misc-jetbrains mono-medium-r-normal--0-0-0-0-p-0-microsoft-cp1252
 Roboto-Light.ttf -misc-roboto light-light-r-normal--0-0-0-0-p-0-adobe-standard
 Roboto-Light.ttf -misc-roboto light-light-r-normal--0-0-0-0-p-0-ascii-0
 Roboto-Light.ttf -misc-roboto light-light-r-normal--0-0-0-0-p-0-iso10646-1
