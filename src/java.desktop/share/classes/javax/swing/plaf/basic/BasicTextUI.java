@@ -692,7 +692,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
      */
     protected void modelChanged() {
         // create a view hierarchy
-        rootViewInitialized = false;
         ViewFactory f = rootView.getViewFactory();
         Document doc = editor.getDocument();
         Element elem = doc.getDefaultRootElement();
@@ -1961,7 +1960,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#insertUpdate
          */
         public final void insertUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Document doc = e.getDocument();
             Object o = doc.getProperty("i18n");
             if (o instanceof Boolean) {
@@ -1990,7 +1988,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#removeUpdate
          */
         public final void removeUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Rectangle alloc = (painted) ? getVisibleEditorRect() : null;
             rootView.removeUpdate(e, alloc, rootView.getViewFactory());
         }
@@ -2006,7 +2003,6 @@ public abstract class BasicTextUI extends TextUI implements ViewFactory {
          * @see DocumentListener#changedUpdate(DocumentEvent)
          */
         public final void changedUpdate(DocumentEvent e) {
-            rootViewInitialized = false;
             Rectangle alloc = (painted) ? getVisibleEditorRect() : null;
             rootView.changedUpdate(e, alloc, rootView.getViewFactory());
         }
