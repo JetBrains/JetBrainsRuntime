@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2003, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2003, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,20 +76,26 @@ import jdk.internal.misc.SharedSecrets;
  * @since 1.5
  * @see EnumMap
  */
-@SuppressWarnings("serial") // No serialVersionUID due to usage of
-                            // serial proxy pattern
+@SuppressWarnings("serial") // No serialVersionUID declared
 public abstract class EnumSet<E extends Enum<E>> extends AbstractSet<E>
     implements Cloneable, java.io.Serializable
 {
+    // The following must be present in order to preserve the same computed
+    // serialVersionUID value as JDK 8, and to prevent the appearance of
+    // the fields in the Serialized Form documentation. See JDK-8227368.
+    static Enum<?>[] access$000() { return null; }
+    private static final java.io.ObjectStreamField[] serialPersistentFields
+        = new java.io.ObjectStreamField[0];
+
     /**
      * The class of all the elements of this set.
      */
-    final transient Class<E> elementType;
+    final Class<E> elementType;
 
     /**
      * All of the values comprising E.  (Cached for performance.)
      */
-    final transient Enum<?>[] universe;
+    final Enum<?>[] universe;
 
     EnumSet(Class<E>elementType, Enum<?>[] universe) {
         this.elementType = elementType;
