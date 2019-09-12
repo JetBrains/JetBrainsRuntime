@@ -2,6 +2,7 @@ java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java                      
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                          nobug macosx-all,windows-all
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
+java/awt/Component/7097771/bug7097771.java                                                  nobug windows-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
 java/awt/Component/PaintAll/PaintAll.java                                                   nobug linux-all
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
