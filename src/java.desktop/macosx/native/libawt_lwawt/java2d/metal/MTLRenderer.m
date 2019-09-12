@@ -113,7 +113,7 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
 
 const int POLYLINE_BUF_SIZE = 64;
 
-static void fillVertex(struct Vertex * vertex, int x, int y) {
+NS_INLINE void fillVertex(struct Vertex * vertex, int x, int y) {
     vertex->position[0] = x;
     vertex->position[1] = y;
     vertex->position[2] = 0;
@@ -221,8 +221,8 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
         float x1 = ((float)*(scanlines++)) + 0.2f;
         float x2 = ((float)*(scanlines++)) + 1.2f;
         float y  = ((float)*(scanlines++)) + 0.5f;
-        struct Vertex v1 = {x1, y, 0.0};
-        struct Vertex v2 = {x2, y, 0.0};
+        struct Vertex v1 = {{x1, y, 0.0}};
+        struct Vertex v2 = {{x2, y, 0.0}};
         verts[i++] = v1;
         verts[i++] = v2;
     }
@@ -415,29 +415,71 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
         //         L         R
         //          L B B B B B
 
+        // Every segment is drawn as a filled Parallelogram quad
+        // Each quad is encoded using two triangles
+        // For 4 segments - there are 8 triangles in total
+        // Each triangle has 3 vertices
+        const int TOTAL_VERTICES = 8 * 3;
+        struct Vertex vertexList[TOTAL_VERTICES];
+        int i = 0;
+
         // TOP segment, to left side of RIGHT edge
         // "width" of original pgram, "height" of hor. line size
         fx11 = ox11;
         fy11 = oy11;
-        MTLRenderer_FillParallelogram(mtlc, dstOps, fx11, fy11, dx21, dy21, ldx12, ldy12);
+
+        fillVertex(vertexList + (i++), fx11, fy11);
+        fillVertex(vertexList + (i++), fx11 + dx21, fy11 + dy21);
+        fillVertex(vertexList + (i++), fx11 + dx21 + ldx12, fy11 + dy21 + ldy12);
+
+        fillVertex(vertexList + (i++), fx11 + dx21 + ldx12, fy11 + dy21 + ldy12);
+        fillVertex(vertexList + (i++), fx11 + ldx12, fy11 + ldy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
 
         // RIGHT segment, to top of BOTTOM edge
         // "width" of vert. line size , "height" of original pgram
         fx11 = ox11 + dx21;
         fy11 = oy11 + dy21;
-        MTLRenderer_FillParallelogram(mtlc, dstOps, fx11, fy11, ldx21, ldy21, dx12, dy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
+        fillVertex(vertexList + (i++), fx11 + ldx21, fy11 + ldy21);
+        fillVertex(vertexList + (i++), fx11 + ldx21 + dx12, fy11 + ldy21 + dy12);
+
+        fillVertex(vertexList + (i++), fx11 + ldx21 + dx12, fy11 + ldy21 + dy12);
+        fillVertex(vertexList + (i++), fx11 + dx12, fy11 + dy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
 
         // BOTTOM segment, from right side of LEFT edge
         // "width" of original pgram, "height" of hor. line size
         fx11 = ox11 + dx12 + ldx21;
         fy11 = oy11 + dy12 + ldy21;
-        MTLRenderer_FillParallelogram(mtlc, dstOps, fx11, fy11, dx21, dy21, ldx12, ldy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
+        fillVertex(vertexList + (i++), fx11 + dx21, fy11 + dy21);
+        fillVertex(vertexList + (i++), fx11 + dx21 + ldx12, fy11 + dy21 + ldy12);
+
+        fillVertex(vertexList + (i++), fx11 + dx21 + ldx12, fy11 + dy21 + ldy12);
+        fillVertex(vertexList + (i++), fx11 + ldx12, fy11 + ldy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
 
         // LEFT segment, from bottom of TOP edge
         // "width" of vert. line size , "height" of inner pgram
         fx11 = ox11 + ldx12;
         fy11 = oy11 + ldy12;
-        MTLRenderer_FillParallelogram(mtlc, dstOps, fx11, fy11, ldx21, ldy21, dx12, dy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
+        fillVertex(vertexList + (i++), fx11 + ldx21, fy11 + ldy21);
+        fillVertex(vertexList + (i++), fx11 + ldx21 + dx12, fy11 + ldy21 + dy12);
+
+        fillVertex(vertexList + (i++), fx11 + ldx21 + dx12, fy11 + ldy21 + dy12);
+        fillVertex(vertexList + (i++), fx11 + dx12, fy11 + dy12);
+        fillVertex(vertexList + (i++), fx11, fy11);
+
+        // Encode render command.
+        id<MTLTexture> dest = dstOps->pTexture;
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+        if (mtlEncoder == nil)
+            return;
+
+        [mtlEncoder setVertexBytes:vertexList length:sizeof(vertexList) atIndex:MeshVertexBuffer];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:TOTAL_VERTICES];
     } else {
         // The line width ratios were large enough to consume
         // the entire hole in the middle of the parallelogram
