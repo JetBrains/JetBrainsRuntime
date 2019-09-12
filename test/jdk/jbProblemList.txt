@@ -226,9 +226,9 @@ java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                        
 java/awt/JAWT/JAWT.sh                                                               8197798 windows-all
 java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.html JRE-898 macosx-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogButtonTest/EnqueueWithDialogButtonTest.java 8198623 macosx-all,windows-all,linux-all
-java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java                  8198623 macosx-all,windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/FreezeTest/FreezeTest.java                  8198623 macosx-all,windows-all,linux-all
 java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.html        8198624 macosx-all,linux-all,windows-all
-java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.html                    8198626 macosx-all,windows-all
+java/awt/KeyboardFocusmanager/TypeAhead/TestDialogTypeAhead.html                    8198626 macosx-all,windows-all,linux-all
 java/awt/LightweightComponent/LightweightEventTest/LightweightEventTest.java        8159252 generic-all
 java/awt/List/FirstItemRemoveTest/FirstItemRemoveTest.html                          8169461 windows-all
 java/awt/List/KeyEventsTest/KeyEventsTest.html                                      8047703 windows-all
