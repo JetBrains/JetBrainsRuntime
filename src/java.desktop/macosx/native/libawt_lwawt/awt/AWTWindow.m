@@ -340,12 +340,6 @@ AWT_ASSERT_APPKIT_THREAD;
         [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
     }
 
-    if (IS(self.styleBits, DARK)) {
-        [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
-    } else {
-        [self.nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
-    }
-
     return self;
 }
 
@@ -1049,6 +1043,12 @@ JNF_COCOA_ENTER(env);
         }
 
         window.styleBits = newBits;
+
+        if (IS(window.styleBits, DARK)) {
+          [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantDark]];
+        } else {
+          [nsWindow setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
+        }
     }];
 
 JNF_COCOA_EXIT(env);
