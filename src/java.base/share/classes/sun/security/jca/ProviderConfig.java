@@ -179,7 +179,11 @@ final class ProviderConfig {
         } else if (provName.equals("SunJCE") || provName.equals("com.sun.crypto.provider.SunJCE")) {
             p = new com.sun.crypto.provider.SunJCE();
         } else if (provName.equals("SunJSSE") || provName.equals("com.sun.net.ssl.internal.ssl.Provider")) {
-            p = new com.sun.net.ssl.internal.ssl.Provider();
+            if (hasArgument()) {
+                p = new com.sun.net.ssl.internal.ssl.Provider(argument);
+            } else {
+                p = new com.sun.net.ssl.internal.ssl.Provider();
+            }
         } else if (provName.equals("Apple") || provName.equals("apple.security.AppleProvider")) {
             // need to use reflection since this class only exists on MacOsx
             p = AccessController.doPrivileged(new PrivilegedAction<Provider>() {
