@@ -89,8 +89,36 @@ MTLMaskFill_MaskFill(MTLContext *mtlc, BMTLSDOps * dstOps,
                      jint maskoff, jint maskscan, jint masklen,
                      unsigned char *pMask)
 {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_MaskFill -- :TODO");
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLMaskFill_MaskFill (x=%d y=%d w=%d h=%d pMask=%p)", x, y, w, h, dstOps->pTexture);
+
+    MTLVertexCache_EnableMaskCache(mtlc, dstOps);
+    jint tw, th, x0;
+    jint sx1, sy1, sx2, sy2;
+    jint sx, sy, sw, sh;
+
+    x0 = x;
+    tw = MTLVC_MASK_CACHE_TILE_WIDTH;
+    th = MTLVC_MASK_CACHE_TILE_HEIGHT;
+    sx1 = maskoff % maskscan;
+    sy1 = maskoff / maskscan;
+    sx2 = sx1 + w;
+    sy2 = sy1 + h;
+
+
+    for (sy = sy1; sy < sy2; sy += th, y += th) {
+        x = x0;
+        sh = ((sy + th) > sy2) ? (sy2 - sy) : th;
+
+        for (sx = sx1; sx < sx2; sx += tw, x += tw) {
+            sw = ((sx + tw) > sx2) ? (sx2 - sx) : tw;
+            MTLVertexCache_AddMaskQuad(mtlc,
+                    sx, sy, x, y, sw, sh,
+                    MTLVC_MASK_CACHE_TILE_WIDTH, pMask, dstOps,
+                    MTLVC_MASK_CACHE_TILE_WIDTH);
+        }
+    }
+
+    MTLVertexCache_FlushVertexCache(mtlc);
 }
 
 JNIEXPORT void JNICALL
@@ -101,9 +129,25 @@ Java_sun_java2d_metal_MTLMaskFill_maskFill
      jbyteArray maskArray)
 {
     MTLContext *mtlc = MTLRenderQueue_GetCurrentContext();
+    BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
     unsigned char *mask;
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_maskFill -- :TODO");
+
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLMaskFill_maskFill");
+
+    if (maskArray != NULL) {
+        mask = (unsigned char *)
+            (*env)->GetPrimitiveArrayCritical(env, maskArray, NULL);
+    } else {
+        mask = NULL;
+    }
+
+    MTLMaskFill_MaskFill(mtlc, dstOps,
+                         x, y, w, h,
+                         maskoff, maskscan, masklen, mask);
+
+    if (mask != NULL) {
+        (*env)->ReleasePrimitiveArrayCritical(env, maskArray, mask, JNI_ABORT);
+    }
 }
 
 #endif /* !HEADLESS */

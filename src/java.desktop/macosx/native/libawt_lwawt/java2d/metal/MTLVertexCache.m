@@ -156,7 +156,33 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc)
                                                            width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
                                                           height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
                                                        mipmapped:NO];
+
     maskCacheTex = [mtlc.device newTextureWithDescriptor:textureDescriptor];
+
+    // init special fully opaque tile in the upper-right corner of
+    // the mask cache texture
+
+    void *tile = malloc(MTLVC_MASK_CACHE_TILE_SIZE);
+    memset(tile, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
+
+    jint texx = MTLVC_MASK_CACHE_TILE_WIDTH * (MTLVC_MASK_CACHE_WIDTH_IN_TILES - 1);
+
+    jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT * (MTLVC_MASK_CACHE_HEIGHT_IN_TILES - 1);
+
+    NSUInteger bytesPerRow = 1 * MTLVC_MASK_CACHE_TILE_WIDTH;
+
+    MTLRegion region = {
+            {texx,  texy,   0},
+            {MTLVC_MASK_CACHE_TILE_WIDTH, MTLVC_MASK_CACHE_TILE_HEIGHT, 1}
+    };
+
+
+    [maskCacheTex replaceRegion:region
+                    mipmapLevel:0
+                      withBytes:tile
+                    bytesPerRow:bytesPerRow];
+
+    free(tile);
     return JNI_TRUE;
 }
 
@@ -228,57 +254,63 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         maskCacheIndex = 0;
     }
 
-    // TODO : Implement mask == null use case also
-    jint texx = MTLVC_MASK_CACHE_TILE_WIDTH *
-        (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
-    jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT *
-        (maskCacheIndex / MTLVC_MASK_CACHE_WIDTH_IN_TILES);
-    J2dTraceLn5(J2D_TRACE_INFO, "texx = %d texy = %d width = %d height = %d fullwidth = %d", texx, texy, width, height, fullwidth);
-    NSUInteger bytesPerRow = 1 * width;
-    NSUInteger slice = bytesPerRow * srcy + srcx;
-    MTLRegion region = {
-        {texx, texy, 0 },
-        {width, height, 1}
-    };
+    if (mask != NULL) {
+        jint texx = MTLVC_MASK_CACHE_TILE_WIDTH *
+                    (maskCacheIndex % MTLVC_MASK_CACHE_WIDTH_IN_TILES);
+        jint texy = MTLVC_MASK_CACHE_TILE_HEIGHT *
+                    (maskCacheIndex / MTLVC_MASK_CACHE_WIDTH_IN_TILES);
+        J2dTraceLn5(J2D_TRACE_INFO, "texx = %d texy = %d width = %d height = %d fullwidth = %d", texx, texy, width,
+                    height, fullwidth);
+        NSUInteger bytesPerRow = 1 * width;
+        NSUInteger slice = bytesPerRow * srcy + srcx;
+        MTLRegion region = {
+                {texx,  texy,   0},
+                {width, height, 1}
+        };
 
-    // Whenever we have source stride bigger that destination stride
-    // we need to pick appropriate source subtexture. In repalceRegion
-    // we can give destination subtexturing properly but we can't
-    // subtexture from system memory glyph we have. So in such
-    // cases we are creating seperate tile and scan the source
-    // stride into destination using memcpy. In case of OpenGL we
-    // can update source pointers, in case of D3D we ar doing memcpy.
-    // We can use MTLBuffer and then copy source subtexture but that
-    // adds extra blitting logic.
-    // TODO : Research more and try removing memcpy logic.
-    if (fullwidth <= width) {
-        int height_offset = bytesPerRow * srcy;
-        [maskCacheTex replaceRegion:region
-                      mipmapLevel:0
-                      withBytes:mask + height_offset
-                      bytesPerRow:bytesPerRow];
-    } else {
-        int dst_offset, src_offset;
-        int size = 1 * width * height;
-        void* tile = malloc(size);
-        dst_offset = 0;
-        for (int i = srcy ; i < srcy + height; i++) {
-            J2dTraceLn2(J2D_TRACE_INFO, "srcx = %d srcy = %d", srcx, srcy);
-            src_offset = fullwidth * i + srcx;
-            J2dTraceLn2(J2D_TRACE_INFO, "src_offset = %d dst_offset = %d", src_offset, dst_offset);
-            memcpy(tile + dst_offset, mask + src_offset, width);
-            dst_offset = dst_offset + width;
+        // Whenever we have source stride bigger that destination stride
+        // we need to pick appropriate source subtexture. In repalceRegion
+        // we can give destination subtexturing properly but we can't
+        // subtexture from system memory glyph we have. So in such
+        // cases we are creating seperate tile and scan the source
+        // stride into destination using memcpy. In case of OpenGL we
+        // can update source pointers, in case of D3D we ar doing memcpy.
+        // We can use MTLBuffer and then copy source subtexture but that
+        // adds extra blitting logic.
+        // TODO : Research more and try removing memcpy logic.
+        if (fullwidth <= width) {
+            int height_offset = bytesPerRow * srcy;
+            [maskCacheTex replaceRegion:region
+                            mipmapLevel:0
+                              withBytes:mask + height_offset
+                            bytesPerRow:bytesPerRow];
+        } else {
+            int dst_offset, src_offset;
+            int size = 1 * width * height;
+            void *tile = malloc(size);
+            dst_offset = 0;
+            for (int i = srcy; i < srcy + height; i++) {
+                J2dTraceLn2(J2D_TRACE_INFO, "srcx = %d srcy = %d", srcx, srcy);
+                src_offset = fullwidth * i + srcx;
+                J2dTraceLn2(J2D_TRACE_INFO, "src_offset = %d dst_offset = %d", src_offset, dst_offset);
+                memcpy(tile + dst_offset, mask + src_offset, width);
+                dst_offset = dst_offset + width;
+            }
+            [maskCacheTex replaceRegion:region
+                            mipmapLevel:0
+                              withBytes:tile
+                            bytesPerRow:bytesPerRow];
+            free(tile);
         }
-        [maskCacheTex replaceRegion:region
-                      mipmapLevel:0
-                      withBytes:tile
-                      bytesPerRow:bytesPerRow];
-        free(tile);
+
+        tx1 = ((jfloat) texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
+        ty1 = ((jfloat) texy) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
+    } else {
+        tx1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_X) /
+              MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
+        ty1 = ((jfloat)MTLVC_MASK_CACHE_SPECIAL_TILE_Y) /
+              MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
     }
-
-    tx1 = ((jfloat)texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
-    ty1 = ((jfloat)texy) / MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS;
-
     maskCacheIndex++;
 
     tx2 = tx1 + (((jfloat)width) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS);
