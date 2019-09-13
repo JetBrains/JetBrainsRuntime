@@ -75,7 +75,7 @@ public class DefaultLdapDnsProvider {
         }
 
         LdapDnsProviderResultInternal res = new LdapDnsProviderResultInternal(domainName, endpoints);
-        if (res.getEndpoints().size() == 0 && res.getDomainName().isEmpty()) {
+        if (res.getEndpoints().isEmpty() && res.getDomainName().isEmpty()) {
             return Optional.empty();
         } else {
             return Optional.of(res);
