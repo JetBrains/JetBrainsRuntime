@@ -83,12 +83,17 @@ fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
 
 fragment half4 frag_txt(
         TxtShaderInOut vert [[stage_in]],
-        texture2d<float, access::sample> renderTexture [[texture(0)]]
+        texture2d<float, access::sample> renderTexture [[texture(0)]],
+        constant TxtFrameUniforms& uniforms [[buffer(1)]]
         )
 {
     constexpr sampler textureSampler (mag_filter::linear,
                                   min_filter::linear);
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    if (uniforms.mode) {
+        float4 c = mix(pixelColor, uniforms.color, pixelColor.a);
+        return half4(c.r, c.g, c.b , c.a);;
+    }
     return half4(pixelColor.r, pixelColor.g, pixelColor.b , pixelColor.a);
 }
 
