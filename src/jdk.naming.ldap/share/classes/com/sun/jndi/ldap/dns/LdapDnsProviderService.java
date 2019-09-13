@@ -41,6 +41,8 @@ import sun.security.util.SecurityConstants;
  * The {@code LdapDnsProviderService} is responsible for creating and providing
  * access to the registered {@code LdapDnsProvider}s. The {@link ServiceLoader}
  * is used to find and register any implementations of {@link LdapDnsProvider}.
+ *
+ * <p> Instances of this class are safe for use by multiple threads.
  */
 final class LdapDnsProviderService implements LdapDnsProviderServiceInternal {
 
@@ -76,11 +78,11 @@ final class LdapDnsProviderService implements LdapDnsProviderServiceInternal {
     }
 
     /**
-     * Retrieve the singleton static instance of LdapDnsProviderService.
+     * Retrieves the singleton instance of LdapDnsProviderService.
      */
     static LdapDnsProviderService getInstance() {
         if (service != null) return service;
-        synchronized(LOCK) {
+        synchronized (LOCK) {
             if (service != null) return service;
             service = new LdapDnsProviderService();
         }
@@ -88,7 +90,7 @@ final class LdapDnsProviderService implements LdapDnsProviderServiceInternal {
     }
 
     /**
-     * Retrieve result from the first provider that successfully resolves
+     * Retrieves result from the first provider that successfully resolves
      * the endpoints. If no results are found when calling installed
      * subclasses of {@code LdapDnsProvider} then this method will fall back
      * to the {@code DefaultLdapDnsProvider}.
@@ -99,14 +101,16 @@ final class LdapDnsProviderService implements LdapDnsProviderServiceInternal {
     LdapDnsProviderResult lookupEndpoints(String url, Hashtable<?,?> env)
         throws NamingException
     {
-        Iterator<LdapDnsProvider> iterator = providers.iterator();
-        Hashtable<?, ?> envCopy = new Hashtable<>(env);
         LdapDnsProviderResult result = null;
+        Hashtable<?, ?> envCopy = new Hashtable<>(env);
 
-        while (result == null && iterator.hasNext()) {
-            result = iterator.next().lookupEndpoints(url, envCopy)
-                    .filter(r -> r.getEndpoints().size() > 0)
-                    .orElse(null);
+        synchronized (LOCK) {
+            Iterator<LdapDnsProvider> iterator = providers.iterator();
+            while (result == null && iterator.hasNext()) {
+                result = iterator.next().lookupEndpoints(url, envCopy)
+                        .filter(r -> !r.getEndpoints().isEmpty())
+                        .orElse(null);
+            }
         }
 
         return result;
