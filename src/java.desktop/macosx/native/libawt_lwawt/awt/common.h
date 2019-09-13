@@ -65,4 +65,8 @@ struct TxtVertex {
     float txtpos[2];
 };
 
+struct TxtFrameUniforms {
+    vector_float4 color;
+    int mode;
+};
 #endif

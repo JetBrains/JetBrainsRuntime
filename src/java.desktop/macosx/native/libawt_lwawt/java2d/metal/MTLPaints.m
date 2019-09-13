@@ -41,6 +41,7 @@ MTLPaints_ResetPaint(MTLContext *mtlc)
 {
     //TODO
     J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_ResetPaint -- :TODO");
+    mtlc.compState = -1;
 }
 
 void

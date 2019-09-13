@@ -371,6 +371,13 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
+    if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+        struct TxtFrameUniforms uf = {RGBA_TO_V4(color), 1};
+        [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+    } else {
+        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0};
+        [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+    }
     [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO compositeRule:alphaCompositeRule]];
     [self setEncoderTransform:encoder dest:dest];
 }
