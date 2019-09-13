@@ -614,6 +614,8 @@ public abstract class Component implements ImageObserver, MenuContainer,
      */
     long eventMask = AWTEvent.INPUT_METHODS_ENABLED_MASK;
 
+    private static boolean INPUT_METHODS_DISABLED;
+
     /**
      * Static properties for incremental drawing.
      * @see #imageUpdate
@@ -10542,5 +10544,11 @@ public abstract class Component implements ImageObserver, MenuContainer,
     void updateZOrder() {
         peer.setZOrder(getHWPeerAboveMe());
     }
-
+    /**
+     * Disable IM-events dispatching (global).
+     * Usage of IM under Linux can cause freezes and crashes, disabling increases stability
+     */
+    public static void disableInputMethodSupport() {
+        INPUT_METHODS_DISABLED = true;
+    }
 }
