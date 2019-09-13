@@ -210,7 +210,7 @@ java/awt/FullScreen/8013581/bug8013581.java                                     
 java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java                            8047218 generic-all
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469 windows-all,linux-all (linux: NPE commit testing)
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 windows-all,linux-all,macosx-all
-java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468 windows-all
+java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468 windows-all,macosx-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                            8153299 windows-all
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
 java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all
@@ -1045,7 +1045,7 @@ javax/swing/Popup/TaskbarPositionTest.java                                      
 javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java                        8065099,8208565 macosx-all,windows-all,linux-all
 javax/swing/PopupFactory/8048506/bug8048506.java                                    8202660 windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8197552 macosx-all,windows-all,linux-all
-javax/swing/RepaintManager/IconifyTest/IconifyTest.java                             8072110 linux-all,windows-all
+javax/swing/RepaintManager/IconifyTest/IconifyTest.java                             8072110,8221903 linux-all,windows-all
 javax/swing/SpringLayout/4726194/bug4726194.java                                    8198399 generic-all
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  8197552,8172064 macosx-all,windows-all,linux-all
 javax/swing/SwingUtilities/6797139/bug6797139.java                                  8198400 generic-all
