@@ -162,7 +162,7 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc)
     // init special fully opaque tile in the upper-right corner of
     // the mask cache texture
 
-    void *tile = malloc(MTLVC_MASK_CACHE_TILE_SIZE);
+    char tile[MTLVC_MASK_CACHE_TILE_SIZE];
     memset(tile, 0xff, MTLVC_MASK_CACHE_TILE_SIZE);
 
     jint texx = MTLVC_MASK_CACHE_TILE_WIDTH * (MTLVC_MASK_CACHE_WIDTH_IN_TILES - 1);
@@ -182,7 +182,6 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc)
                       withBytes:tile
                     bytesPerRow:bytesPerRow];
 
-    free(tile);
     return JNI_TRUE;
 }
 
@@ -287,7 +286,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         } else {
             int dst_offset, src_offset;
             int size = 1 * width * height;
-            void *tile = malloc(size);
+            char tile[size];
             dst_offset = 0;
             for (int i = srcy; i < srcy + height; i++) {
                 J2dTraceLn2(J2D_TRACE_INFO, "srcx = %d srcy = %d", srcx, srcy);
@@ -300,7 +299,6 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                             mipmapLevel:0
                               withBytes:tile
                             bytesPerRow:bytesPerRow];
-            free(tile);
         }
 
         tx1 = ((jfloat) texx) / MTLVC_MASK_CACHE_WIDTH_IN_TEXELS;
