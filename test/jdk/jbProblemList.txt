@@ -211,15 +211,17 @@ java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java                        
 java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469 windows-all,linux-all (linux: NPE commit testing)
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 windows-all,linux-all,macosx-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468 windows-all,macosx-all
+java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711 macosx-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                            8153299 windows-all
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
-java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all
+java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java               8197796 generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java                                    8197797 generic-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java                               8169464 windows-all
 java/awt/Graphics2D/FillTexturePaint/FillTexturePaint.java                          8169463 windows-all
 java/awt/Graphics2D/FlipDrawImage/FlipDrawImage.java                                8169462 windows-all
 java/awt/Graphics2D/ScaledTransform/ScaledTransform.java                            8165951 windows-all,linux-all
+java/awt/GraphicsDevice/CheckDisplayModes.java                                      8213119 macosx-all
 java/awt/GridLayout/ChangeGridSize/ChangeGridSize.java                              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/ComponentPreferredSize/ComponentPreferredSize.java              8197814 macosx-all,linux-all,windows-all
 java/awt/GridLayout/LayoutExtraGaps/LayoutExtraGaps.java                            8000171 windows-all
@@ -918,7 +920,7 @@ javax/swing/JColorChooser/Test6541987.java                                      
 javax/swing/JColorChooser/Test6827032.java                                          8197825 windows-all
 javax/swing/JColorChooser/Test7194184.java                                          8194126,8072110 linux-all,macosx-all,windows-all
 javax/swing/JColorChooser/Test8051548.java                                          8197552 macosx-all,windows-all,linux-all
-javax/swing/JComboBox/4743225/bug4743225.java                                       8171302 windows-all,macosx-all
+javax/swing/JComboBox/4743225/bug4743225.java                                       8171302 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/6236162/bug6236162.java                                       8028707 windows-all,macosx-all
 javax/swing/JComboBox/6559152/bug6559152.java                                       8196090 windows-all,macosx-all,linux-all
 javax/swing/JComboBox/6607130/bug6607130.java                                       8196091 windows-all
