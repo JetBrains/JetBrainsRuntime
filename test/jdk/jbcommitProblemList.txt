@@ -7,7 +7,6 @@ java/awt/Component/PaintAll/PaintAll.java                                       
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
 java/awt/Dialog/MakeWindowAlwaysOnTop/MakeWindowAlwaysOnTop.java                            nobug macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                              nobug macosx-all,windows-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                        nobug macosx-all,windows-all,linux-all
 java/awt/Dialog/NonResizableDialogSysMenuResize/NonResizableDialogSysMenuResize.java        nobug macosx-all,windows-all
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                                nobug macosx-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                             nobug macosx-all,windows-all
@@ -187,7 +186,7 @@ javax/swing/JRadioButton/8041561/bug8041561.java                                
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
 javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
-javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all
+javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all,linux-all
 javax/swing/JTabbedPane/7170310/bug7170310.java                                             nobug macosx-all,linux-all
 javax/swing/JTextArea/8149849/DNDTextToScaledArea.java                                      nobug windows-all
 javax/swing/JToolTip/6219960/bug6219960.java                                                nobug macosx-all,windows-all
@@ -203,7 +202,7 @@ javax/swing/event/RightAltKeyTest.java                                          
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java                        nobug linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java                              nobug windows-all
 javax/swing/plaf/nimbus/8041642/bug8041642.java                                             nobug windows-all
-javax/swing/plaf/nimbus/8057791/bug8057791.java                                             nobug windows-all
+javax/swing/plaf/nimbus/8057791/bug8057791.java                                             nobug windows-all,linux-all
 javax/swing/plaf/nimbus/TestNimbusOverride.java                                             nobug windows-all
 javax/swing/plaf/synth/SynthButtonUI/6276188/bug6276188.java                                nobug windows-all
 javax/swing/plaf/synth/SynthScrollbarThumbPainter/SynthScrollbarThumbPainterTest.java       nobug windows-all

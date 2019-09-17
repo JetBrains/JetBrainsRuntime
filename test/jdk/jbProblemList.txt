@@ -137,7 +137,7 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java             
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             8202667 windows-all,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrame.java                              8214923 windows-all,macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8215105 macosx-all,windows-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all,windows-all,macosx-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         8203047 macosx-all,linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                     8073636 macosx-all
