@@ -19,31 +19,16 @@ enum LOG_LEVEL {
     LL_ERROR
 };
 
-void plogImpl(jobject platformLogger, int logLevel, const char * msg) {
+void plog(int logLevel, const char *formatMsg, ...) {
     if (!jvm)
         return;
-    if (logLevel < LL_TRACE || logLevel > LL_ERROR || msg == NULL)
+    if (logLevel < LL_TRACE || logLevel > LL_ERROR || formatMsg == NULL)
         return;
 
-    const char * methodName = "finest";
-    switch (logLevel) {
-        case LL_DEBUG: methodName = "fine"; break;
-        case LL_INFO: methodName = "info"; break;
-        case LL_WARNING: methodName = "warning"; break;
-        case LL_ERROR: methodName = "severe"; break;
-    }
-
-    JNIEnv* env;
-    jstring jstr;
-    (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL);
-    jstr = (*env)->NewStringUTF(env, msg);
-    JNU_CallMethodByName(env, NULL, platformLogger, methodName, "(Ljava/lang/String;)V", jstr);
-    (*env)->DeleteLocalRef(env, jstr);
-}
-
-void plog(int logLevel, const char *formatMsg, ...) {
     // TODO: check whether current logLevel is enabled in PlatformLogger
     static jobject loggerObject = NULL;
+    static jclass clazz = NULL;
+    static jmethodID midTrace = NULL, midDebug = NULL, midInfo = NULL, midWarn = NULL, midError = NULL;
 
     if (loggerObject == NULL) {
         JNIEnv* env;
@@ -55,6 +40,31 @@ void plog(int logLevel, const char *formatMsg, ...) {
         if (fieldId == NULL)
             return;
         loggerObject = (*env)->GetStaticObjectField(env, shkClass, fieldId);
+        loggerObject = (*env)->NewGlobalRef(env, loggerObject);
+
+        clazz = (*env)->GetObjectClass(env, loggerObject);
+        if (clazz == NULL) {
+            NSLog(@"plogImpl: can't find PlatformLogger class");
+            return;
+        }
+
+        midTrace = (*env)->GetMethodID(env, clazz, "finest", "(Ljava/lang/String;)V");
+        midDebug = (*env)->GetMethodID(env, clazz, "fine", "(Ljava/lang/String;)V");
+        midInfo = (*env)->GetMethodID(env, clazz, "info", "(Ljava/lang/String;)V");
+        midWarn = (*env)->GetMethodID(env, clazz, "warning", "(Ljava/lang/String;)V");
+        midError = (*env)->GetMethodID(env, clazz, "severe", "(Ljava/lang/String;)V");
+    }
+
+    jmethodID mid = midTrace;
+    switch (logLevel) {
+        case LL_DEBUG: mid = midDebug; break;
+        case LL_INFO: mid = midInfo; break;
+        case LL_WARNING: mid = midWarn; break;
+        case LL_ERROR: mid = midError; break;
+    }
+    if (mid == NULL) {
+        NSLog(@"plogImpl: undefined log-method for level %d", logLevel);
+        return;
     }
 
     va_list args;
@@ -64,7 +74,13 @@ void plog(int logLevel, const char *formatMsg, ...) {
     vsnprintf(buf, bufSize, formatMsg, args);
     va_end(args);
 
-    plogImpl(loggerObject, logLevel, buf);
+    JNIEnv* env;
+    jstring jstr;
+    (*jvm)->AttachCurrentThreadAsDaemon(jvm, (void**)&env, NULL);
+    jstr = (*env)->NewStringUTF(env, buf);
+
+    (*env)->CallVoidMethod(env, loggerObject, mid, jstr);
+    (*env)->DeleteLocalRef(env, jstr);
 }
 
 static const char * toCString(id obj) {
@@ -236,6 +252,8 @@ static void visitServicesShortcut(Visitor visitorBlock, NSString * key_equivalen
 
 void readSystemHotkeysImpl(Visitor visitorBlock) {
     // 1. read from com.apple.symbolichotkeys.plist (domain with custom (user defined) shortcuts)
+    @try {
+
     NSUserDefaults * defaults = [NSUserDefaults standardUserDefaults];
     NSDictionary<NSString *,id> * shk = [defaults persistentDomainForName:@"com.apple.symbolichotkeys"];
     if (shk != nil) {
@@ -294,6 +312,11 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
                 }
 
                 NSArray *parameters = objParams;
+                if ([parameters count] < 3) {
+                    plog(LL_DEBUG, "too small lenght of parameters %d", [parameters count]);
+                    continue;
+                }
+
                 id p0 = parameters[0];
                 id p1 = parameters[1];
                 id p2 = parameters[2];
@@ -416,6 +439,10 @@ void readSystemHotkeysImpl(Visitor visitorBlock) {
         CFRelease(registeredHotKeys);
     }
 #endif // USE_CARBON_CopySymbolicHotKeys
+    }
+    @catch (NSException *exception) {
+        NSLog(@"readSystemHotkeys: catched exception, reason '%@'", exception.reason);
+    }
 }
 
 bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, NSString * chars) {
