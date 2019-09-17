@@ -129,11 +129,6 @@ findZoneinfoFile(char *buf, size_t size, const char *dir)
     char *tz = NULL;
     int res;
 
-    dirp = opendir(dir);
-    if (dirp == NULL) {
-        return NULL;
-    }
-
     if (strcmp(dir, ZONEINFO_DIR) == 0) {
         /* fast path for 1st iteration */
         unsigned int i;
@@ -149,6 +144,11 @@ findZoneinfoFile(char *buf, size_t size, const char *dir)
                 return tz;
             }
         }
+    }
+
+    dirp = opendir(dir);
+    if (dirp == NULL) {
+        return NULL;
     }
 
     while ((dp = readdir64(dirp)) != NULL) {
