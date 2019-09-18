@@ -75,6 +75,10 @@ MTLPaints_SetTexturePaint(MTLContext *mtlc,
 {
     //TODO
     J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_SetTexturePaint -- :TODO");
+
+    // TODO : Correct this to implement texture paint
+    mtlc.compState = sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR;
+
 }
 
 /****************** Shared MultipleGradientPaint support ********************/
