@@ -545,7 +545,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BLIT:
             {
-                [mtlc endCommonRenderEncoder];
                 jint packedParams = NEXT_INT(b);
                 jint sx1          = NEXT_INT(b);
                 jint sy1          = NEXT_INT(b);
