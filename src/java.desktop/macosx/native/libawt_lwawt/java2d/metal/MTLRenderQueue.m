@@ -645,7 +645,8 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
             {
                 jint count = NEXT_INT(b);
-                MTLRenderer_FillSpans(mtlc, dstOps, count, (jint *)b);
+                //MTLRenderer_FillSpans(mtlc, dstOps, count, (jint *)b);
+                J2dTraceLn(J2D_TRACE_ERROR, "SET_SHAPE_CLIP_SPANS -- :TODO");
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
             break;

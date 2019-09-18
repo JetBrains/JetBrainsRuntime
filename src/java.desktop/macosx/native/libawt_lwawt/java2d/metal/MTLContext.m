@@ -312,7 +312,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 - (void)setColorInt:(int)_pixel {
     color = _pixel;
-    J2dTraceLn5(J2D_TRACE_INFO, "MTLContext.setColorInt: pixel=%08x [r=%d g=%d b=%d a=%d]", pixel, (pixel >> 16) & (0xFF), (pixel >> 8) & 0xFF, (pixel) & 0xFF, (pixel >> 24) & 0xFF);
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLContext.setColorInt: pixel=%08x [r=%d g=%d b=%d a=%d]", color, (color >> 16) & (0xFF), (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF);
 }
 
 - (id<MTLRenderCommandEncoder>) createEncoderForDest:(id<MTLTexture>) dest {
