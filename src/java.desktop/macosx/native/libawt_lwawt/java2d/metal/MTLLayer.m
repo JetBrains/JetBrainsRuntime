@@ -68,34 +68,29 @@
     [actions release];
     self.topInset = 0;
     self.leftInset = 0;
+    self.framebufferOnly = NO;
     return self;
 }
 
-- (void) blitTexture:(id<MTLCommandBuffer>)commandBuf {
-    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || ctx.device == nil) {
+- (void) blitTexture {
+    if (self.ctx == NULL || self.javaLayer == NULL || self.buffer == nil || self.ctx.device == nil) {
         J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: uninitialized (mtlc=%p, javaLayer=%p, buffer=%p, devide=%p)", self.ctx, self.javaLayer, self.buffer, ctx.device);
         return;
     }
 
+    id<MTLCommandBuffer> commandBuf = self.ctx.commandBuffer;
     if (commandBuf == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nothing to do (commandBuf is null)");
         return;
     }
 
     @autoreleasepool {
-        self.device = ctx.device;
-        self.pixelFormat = MTLPixelFormatBGRA8Unorm;
-        self.framebufferOnly = NO;
-
-        self.drawableSize =
-            CGSizeMake(self.buffer.width,
-                       self.buffer.height);
 
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
 
             [commandBuf release];
-            [ctx.texturePool markAllTexturesFree];
+            [self.ctx.texturePool markAllTexturesFree];
             return;
         }
 
@@ -103,7 +98,7 @@
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
 
-            [ctx.texturePool markAllTexturesFree];
+            [self.ctx.texturePool markAllTexturesFree];
             return;
         }
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
@@ -133,8 +128,6 @@
 
 - (void) blitCallback {
 
-    AWT_ASSERT_APPKIT_THREAD;
-
     JNIEnv *env = [ThreadUtilities getJNIEnv];
     static JNF_CLASS_CACHE(jc_JavaLayer, "sun/java2d/metal/MTLLayer");
     static JNF_MEMBER_CACHE(jm_drawInMTLContext, jc_JavaLayer, "drawInMTLContext", "()V");
@@ -149,6 +142,7 @@
 }
 
 - (void) display {
+    AWT_ASSERT_APPKIT_THREAD;
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_display() called");
     [self blitCallback];
     [super display];
@@ -156,7 +150,7 @@
 @end
 
 /*
- * Class:     sun_java2d_metal_CGLLayer
+ * Class:     sun_java2d_metal_MTLLayer
  * Method:    nativeCreateLayer
  * Signature: ()J
  */
@@ -195,6 +189,10 @@ Java_sun_java2d_metal_MTLLayer_validate
         layer.buffer = bmtlsdo->pTexture;
         layer.ctx = ((MTLSDOps *)bmtlsdo->privOps)->configInfo->context;
         layer.device = layer.ctx.device;
+        layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        layer.drawableSize =
+            CGSizeMake(layer.buffer.width,
+                       layer.buffer.height);
     } else {
         layer.ctx = NULL;
     }
@@ -230,7 +228,6 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
 (JNIEnv *env, jclass cls, jlong layerPtr)
 {
     J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer_blitTexture");
-    JNF_COCOA_ENTER(env);
     MTLLayer *layer = jlong_to_ptr(layerPtr);
     MTLContext * ctx = layer.ctx;
     if (layer == NULL || ctx == NULL) {
@@ -238,10 +235,7 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
         return;
     }
 
-    id<MTLCommandBuffer> bufferToCommit = ctx.commandBuffer;
-    [layer blitTexture:bufferToCommit];
+    [layer blitTexture];
 
     [ctx releaseCommandBuffer];
-    JNF_COCOA_EXIT(env);
-
 }
