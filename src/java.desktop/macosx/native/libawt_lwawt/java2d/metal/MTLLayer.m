@@ -113,7 +113,7 @@
         [commandBuf presentDrawable:mtlDrawable];
 
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
-                [ctx.texturePool markAllTexturesFree];
+                [self.ctx.texturePool markAllTexturesFree];
         }];
 
         [commandBuf commit];
