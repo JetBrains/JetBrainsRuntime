@@ -42,18 +42,19 @@ applications/jcstress/acqrel/Test.java generic-all
 
 # :hotspot_compiler
 
-compiler/ciReplay/TestSAServer.java 8029528 generic-all
-compiler/codecache/stress/OverloadCompileQueueTest.java 8166554 generic-all
-compiler/codegen/Test6896617.java 8193479 generic-all
-compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java 8140405 generic-all
-compiler/jvmci/compilerToVM/GetFlagValueTest.java 8204459 generic-all
-compiler/jvmci/compilerToVM/GetResolvedJavaTypeTest.java 8158860 generic-all
-compiler/jvmci/compilerToVM/InvalidateInstalledCodeTest.java 8163894 generic-all
-compiler/tiered/LevelTransitionTest.java 8067651 generic-all
-compiler/types/correctness/CorrectnessTest.java 8066173 generic-all
-compiler/types/correctness/OffTest.java 8066173 generic-all
+compiler/ciReplay/TestSAServer.java                                                 8029528 generic-all
+compiler/codecache/stress/OverloadCompileQueueTest.java                             8166554 generic-all
+compiler/codegen/Test6896617.java                                                   8193479 generic-all
+compiler/codegen/aes/TestCipherBlockChainingEncrypt.java                            8219513 generic-all
+compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java                     8140405 generic-all
+compiler/jvmci/compilerToVM/GetFlagValueTest.java                                   8204459 generic-all
+compiler/jvmci/compilerToVM/GetResolvedJavaTypeTest.java                            8158860 generic-all
+compiler/jvmci/compilerToVM/InvalidateInstalledCodeTest.java                        8163894 generic-all
+compiler/tiered/LevelTransitionTest.java                                            8067651 generic-all
+compiler/types/correctness/CorrectnessTest.java                                     8066173 generic-all
+compiler/types/correctness/OffTest.java                                             8066173 generic-all
 
-compiler/c2/Test6852078.java 8194310 generic-all
+compiler/c2/Test6852078.java                                                        8194310 generic-all
 
 applications/ctw/modules/java_desktop.java 8189604 windows-all
 applications/ctw/modules/java_desktop_2.java 8189604,8204842 generic-all
@@ -65,14 +66,15 @@ compiler/cpuflags/TestAESIntrinsicsOnSupportedConfig.java 8190680 generic-all
 
 # :hotspot_gc
 
-gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java 8156755 generic-all
-gc/survivorAlignment/TestPromotionToSurvivor.java 8129886 generic-all
-gc/g1/logging/TestG1LoggingFailure.java 8169634 generic-all
-gc/g1/humongousObjects/TestHeapCounters.java 8178918 generic-all
-gc/stress/gclocker/TestGCLockerWithParallel.java 8180622 generic-all
-gc/stress/gclocker/TestGCLockerWithG1.java 8180622 generic-all
-gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java 8177765 generic-all
-gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java 8192647 generic-all
+gc/g1/humongousObjects/objectGraphTest/TestObjectGraphAfterGC.java                  8156755 generic-all
+gc/survivorAlignment/TestPromotionToSurvivor.java                                   8129886 generic-all
+gc/g1/logging/TestG1LoggingFailure.java                                             8169634 generic-all
+gc/g1/humongousObjects/TestHeapCounters.java                                        8178918 generic-all
+gc/stress/gclocker/TestGCLockerWithParallel.java                                    8180622 generic-all
+gc/stress/gclocker/TestGCLockerWithG1.java                                          8180622 generic-all
+gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java            8177765 generic-all
+gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java                                8192647 generic-all
+gc/stress/TestReclaimStringsLeaksMemory.java                                        8224847 generic-all
 
 #############################################################################
 

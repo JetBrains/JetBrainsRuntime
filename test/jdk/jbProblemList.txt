@@ -1025,7 +1025,7 @@ javax/swing/JTextArea/TextViewOOM/TextViewOOM.java                              
 javax/swing/JTextField/4306756/bug4306756.java                                      8194045 generic-all
 javax/swing/JTextField/8036819/bug8036819.java                                      8197552 macosx-all,windows-all,linux-all
 javax/swing/JToolTip/4846413/bug4846413.java                                        8172407 macosx-all,windows-all
-javax/swing/JTree/4330357/bug4330357.java                                           8029682,8003839 macosx-all,windows-all
+javax/swing/JTree/4330357/bug4330357.java                                           8029682,8003839 macosx-all,windows-all,linux-all
 javax/swing/JTree/4633594/JTreeFocusTest.java                                       8173125 macosx-all
 javax/swing/JTree/4908142/bug4908142.java                                           8197552,8172065 macosx-all,windows-all,linux-all
 javax/swing/JTree/4927934/bug4927934.java                                           8197552,8172063 macosx-all,windows-all,linux-all
