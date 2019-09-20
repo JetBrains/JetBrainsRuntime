@@ -180,7 +180,7 @@ java/awt/Focus/NoAutotransferToDisabledCompTest/NoAutotransferToDisabledCompTest
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.html       7124275 macosx-all
 java/awt/Focus/NonFocusableWindowTest/NoEventsTest.java                             8000171 windows-all
 java/awt/Focus/OwnedWindowFocusIMECrashTest/OwnedWindowFocusIMECrashTest.java       8169110 macosx-all,windows-all,linux-all
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                     JRE-898 macosx-all,linux-all
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                     JRE-898 macosx-all,linux-all,windows-all  reproduced with Adopt, OpenJDK
 java/awt/Focus/RequestFocusToDisabledCompTest/RequestFocusToDisabledCompTest.java   JRE-898 macosx-all
 java/awt/Focus/ResetMostRecentFocusOwnerTest/ResetMostRecentFocusOwnerTest.java     8168294 macosx-all,windows-all,linux-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JRE-898 macosx-all,linux-all

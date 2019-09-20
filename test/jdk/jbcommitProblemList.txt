@@ -30,7 +30,6 @@ java/awt/Focus/NonFocusableResizableTooSmall/NonFocusableResizableTooSmall.java 
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java                            nobug macosx-all,windows-all,linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                                   nobug macosx-all
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
 java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
