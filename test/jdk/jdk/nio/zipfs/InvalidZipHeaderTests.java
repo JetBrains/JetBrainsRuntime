@@ -80,7 +80,7 @@ public class InvalidZipHeaderTests {
     public void walkInvalidHeaderTest(String startPath, List<String> expectedPaths)
             throws IOException {
         try (FileSystem zipfs =
-                     FileSystems.newFileSystem(Path.of(INVALID_JAR_FILE))) {
+                     FileSystems.newFileSystem(Path.of(INVALID_JAR_FILE), null)) {
             List<String> result = walk(zipfs.getPath(startPath))
                     .map(f -> f.toString()).collect(Collectors.toList());
             assertTrue(result.equals(expectedPaths),
