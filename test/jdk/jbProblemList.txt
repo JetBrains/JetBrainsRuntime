@@ -119,7 +119,7 @@ java/awt/BasicStroke/DashZeroWidth.java                                         
 java/awt/Choice/ItemStateChangeTest/ItemStateChangeTest.java                        8169108 windows-all
 java/awt/Choice/ChoiceGeneratesItemEvents/ChoiceGeneratesItemEvents.html            8047703 generic-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html                  6849922 macosx-all,windows-all
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all,linux-all
+java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 macosx-all,linux-all,windows-all
 java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all,linux-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.html        8194045 generic-all
@@ -137,7 +137,7 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java             
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             8202667 windows-all,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrame.java                              8214923 windows-all,macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8215105 macosx-all,windows-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all,windows-all,macosx-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         8203047 macosx-all,linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                     8073636 macosx-all
@@ -550,6 +550,7 @@ java/awt/Mouse/TitleBarDoubleClick/TitleBarDoubleClick.html                     
 java/awt/MouseInfo/GetPointerInfoTest.java                                          8158798 windows-all
 java/awt/Multiscreen/LocationRelativeToTest/LocationRelativeToTest.java             7124230 generic-all
 java/awt/Multiscreen/MultiScreenLocationTest/MultiScreenLocationTest.java           8155744 windows-all,linux-all
+java/awt/Multiscreen/WindowGCChangeTest/WindowGCChangeTest.html                     8168132 macosx-all,linux-all
 java/awt/Paint/PaintNativeOnUpdate.java                                             8028000 generic-all
 java/awt/Paint/bug8024864.java                                                      8176512 windows-all,macosx-all,linux-all
 java/awt/PrintJob/PrinterException.java                                             8194045 generic-all
