@@ -36,6 +36,7 @@ import java.security.AlgorithmParameters;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchProviderException;
+import java.security.Policy;
 import java.security.Provider;
 import java.security.ProviderException;
 import java.security.Security;
@@ -862,6 +863,9 @@ public abstract class PKCS11Test {
         case "MacOSX-x86_64-64":
             return fetchNssLib(MACOSX_X64.class);
 
+        case "Linux-amd64-64":
+            return fetchNssLib(LINUX_X64.class);
+
         default:
             return null;
         }
@@ -883,6 +887,7 @@ public abstract class PKCS11Test {
                         + "\nPlease make sure the artifact is available.");
             }
         }
+        Policy.setPolicy(null); // Clear the policy created by JIB if any
         return path;
     }
 
@@ -906,4 +911,11 @@ public abstract class PKCS11Test {
             revision = "3.41",
             extension = "zip")
     private static class MACOSX_X64 { }
+
+    @Artifact(
+            organization = "jpg.tests.jdk.nsslib",
+            name = "nsslib-linux_x64",
+            revision = "3.46",
+            extension = "zip")
+    private static class LINUX_X64 { }
 }
