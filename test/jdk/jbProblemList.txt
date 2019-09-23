@@ -138,6 +138,7 @@ java/awt/Debug/DumpOnKey/DumpOnKey.java                                         
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrame.java                              8214923 windows-all,macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8215105 macosx-all,windows-all
 java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all
+java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                        8215105,8221383 macosx-all,windows-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         8203047 macosx-all,linux-all,windows-all
 java/awt/EventDispatchThread/LoopRobustness/LoopRobustness.html                     8073636 macosx-all
@@ -198,6 +199,7 @@ java/awt/FontMetrics/MaxAdvanceIsMax.java                                       
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
+java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803 macosx-all
 java/awt/Frame/InvisibleOwner/InvisibleOwner.java                                   8169111 macosx-all,windows-all
 java/awt/Frame/LayoutOnMaximizeTest/LayoutOnMaximizeTest.java                       8169472 windows-all
 java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java                       8022302 generic-all
@@ -598,6 +600,7 @@ java/awt/Window/ShapedAndTranslucentWindows/ShapedByAPI.java                    
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucent.java                  8078999,8198690 macosx-all,linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/ShapedTranslucentWindowClick.java       8013450 macosx-all,linux-all,windows-all (windows: commit testing time out)
 java/awt/Window/ShapedAndTranslucentWindows/StaticallyShaped.java                   8198690,8165218 macosx-all,linux-all,windows-all
+java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                        8222328 linux-all,windows-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentChoice.java                  8194129 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/TranslucentWindowClick.java             8194129 macosx-all,windows-all,linux-all
 java/awt/Window/AlwaysOnTop/AutoTestOnTop.java                                      6847593,8194045 macosx-all,windows-all,linux-all
