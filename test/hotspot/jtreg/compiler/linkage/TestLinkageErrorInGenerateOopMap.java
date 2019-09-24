@@ -44,6 +44,8 @@ public class TestLinkageErrorInGenerateOopMap {
             // Spawn new VM instance to execute test
             String[] flags = {"-noverify", "-XX:-TieredCompilation",
                               "-XX:CompileCommand=dontinline,compiler/linkage/OSRWithBadOperandStack.m*",
+                              "-XX:-CreateCoredumpOnCrash",
+                              "-Xmx64m",
                               "compiler.linkage.TestLinkageErrorInGenerateOopMap", "run"};
             ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(flags);
             OutputAnalyzer out = new OutputAnalyzer(pb.start());
