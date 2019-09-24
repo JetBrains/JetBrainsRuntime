@@ -28,12 +28,8 @@ package sun.font;
 import java.io.File;
 import java.awt.Font;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.HashMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Locale;
 
 public class FontFamily {
 
@@ -262,6 +258,9 @@ public class FontFamily {
         synchronized (fontSequence) {
             if (initialized) {
                 return;
+            }
+            if (FontUtilities.isMacOSX) {
+                fontSequence.sort(Comparator.comparing(FontAndStyle::getWeight));
             }
             for (FontAndStyle fontAndStyle : fontSequence) {
                 doSetFont(fontAndStyle.font, fontAndStyle.style);
@@ -492,6 +491,10 @@ public class FontFamily {
         private FontAndStyle(Font2D inFont, int inStyle) {
             font = inFont;
             style = inStyle;
+        }
+
+        int getWeight() {
+            return font.getWeight();
         }
     }
 
