@@ -697,7 +697,7 @@ CGGI_CreateImageForUnicode
 
     CGRect bbox;
     CGSize advance;
-    CGGlyphImages_GetGlyphMetrics(fallback, &tx, style, &glyph, 1, &bbox, &advance);
+    CGGlyphImages_GetGlyphMetrics(fallback, &tx, style, &glyph, 1, &bbox, &advance, isCatalinaOrAbove);
 
     CGGI_GlyphInfoDescriptor *glyphDescriptor = CGGI_GetGlyphInfoDescriptor(mode, fallback);
 
@@ -860,7 +860,7 @@ CGGI_CreateGlyphInfos(jlong *glyphInfos, const AWTStrike *strike,
     JRSFontRenderingStyle bboxCGMode = JRSFontAlignStyleForFractionalMeasurement(strike->fStyle);
 
     CTFontRef fontRef = (CTFontRef)font->fFont;
-    CGGlyphImages_GetGlyphMetrics(fontRef, &tx, bboxCGMode, glyphs, len, bboxes, advances);
+    CGGlyphImages_GetGlyphMetrics(fontRef, &tx, bboxCGMode, glyphs, len, bboxes, advances, IS_OSX_GT10_14);
     CGGI_GlyphInfoDescriptor* mainFontDescriptor = CGGI_GetGlyphInfoDescriptor(mode, fontRef);
 
     size_t maxWidth = 1;
@@ -985,8 +985,9 @@ CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
                               const CGGlyph glyphs[],
                               size_t count,
                               CGRect bboxes[],
-                              CGSize advances[]) {
-    if (IsEmojiFont(font)) {
+                              CGSize advances[],
+                              const bool isCatalinaOrAbove) {
+    if (isCatalinaOrAbove || IsEmojiFont(font)) {
         // Glyph metrics for emoji font are not strictly proportional to font size,
         // so we need to construct real-sized font object to calculate them.
         // The logic here must match the logic in CGGI_CreateImageForGlyph,
