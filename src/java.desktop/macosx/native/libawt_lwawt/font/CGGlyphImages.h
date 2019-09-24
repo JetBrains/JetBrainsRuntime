@@ -40,5 +40,6 @@ CGGlyphImages_GetGlyphMetrics(const CTFontRef font,
                               const CGGlyph glyphs[],
                               size_t count,
                               CGRect bboxes[],
-                              CGSize advances[]);
+                              CGSize advances[],
+                              const bool isCatalinaOrAbove);
 #endif /* __CGGLYPHIMAGES_H */
