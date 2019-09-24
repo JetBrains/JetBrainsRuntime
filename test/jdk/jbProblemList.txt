@@ -1066,7 +1066,7 @@ javax/swing/plaf/basic/BasicComboBoxEditor/Test8015336.java                     
 javax/swing/plaf/basic/BasicComboPopup/JComboBoxPopupLocation/JComboBoxPopupLocation.java 8194945 macosx-all,linux-all,windows-all
 javax/swing/plaf/basic/BasicGraphicsUtils/8132119/bug8132119.java                   8196434 linux-all,solaris-all
 javax/swing/plaf/basic/BasicHTML/4251579/bug4251579.java                            8198905,8137101 macosx-all,windows-all,linux-all
-javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java                          8042383 macosx-all,windows-all
+javax/swing/plaf/basic/BasicMenuUI/4983388/bug4983388.java                          8042383 macosx-all,windows-all,linux-all
 javax/swing/plaf/basic/BasicTextUI/8001470/bug8001470.java                          8196098 windows-all,linux-all
 javax/swing/plaf/basic/BasicTreeUI/8023474/bug8023474.java                          8172887 windows-all
 javax/swing/plaf/basic/Test6984643.java                                             8198340 windows-all
