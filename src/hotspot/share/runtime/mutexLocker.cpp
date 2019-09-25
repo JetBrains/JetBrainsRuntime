@@ -147,6 +147,7 @@ Mutex*   UnsafeJlong_lock             = NULL;
 Monitor* CodeHeapStateAnalytics_lock  = NULL;
 
 Mutex*   MetaspaceExpand_lock         = NULL;
+Mutex*   ThreadIdTableCreate_lock     = NULL;
 
 #define MAX_NUM_MUTEX 128
 static Monitor * _mutex_array[MAX_NUM_MUTEX];
@@ -319,6 +320,7 @@ void mutex_init() {
 #endif
 
   def(CodeHeapStateAnalytics_lock  , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_never);
+  def(ThreadIdTableCreate_lock     , PaddedMutex  , leaf,        false, Monitor::_safepoint_check_always);
 }
 
 GCMutexLocker::GCMutexLocker(Monitor * mutex) {
