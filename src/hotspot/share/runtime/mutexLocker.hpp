@@ -130,6 +130,7 @@ extern Monitor* RootRegionScan_lock;             // used to notify that the CM t
 extern Mutex*   Management_lock;                 // a lock used to serialize JVM management
 extern Monitor* Service_lock;                    // a lock used for service thread operation
 extern Monitor* PeriodicTask_lock;               // protects the periodic task structure
+extern Mutex*   ThreadIdTableCreate_lock;        // Used by ThreadIdTable to lazily create the thread id table
 extern Monitor* RedefineClasses_lock;            // locks classes from parallel redefinition
 extern Mutex*   ThreadHeapSampler_lock;          // protects the static data for initialization.
 
