@@ -2,6 +2,7 @@ java/awt/Choice/ChoiceLocationTest/ChoiceLocationTest.java                      
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                          nobug macosx-all,windows-all
 java/awt/Choice/GetSizeTest/GetSizeTest.java                                                nobug macosx-all,windows-all
 java/awt/Choice/ResizeAutoClosesChoice/ResizeAutoClosesChoice.java                          nobug windows-all,linux-all
+java/awt/Choice/UnfocusableCB_ERR/UnfocusableCB_ERR.java                                    nobug macosx-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.html                                       nobug linux-all
 java/awt/Component/PaintAll/PaintAll.java                                                   nobug linux-all
 java/awt/Container/isRemoveNotifyNeeded/JInternalFrameTest.java                             nobug generic-all
@@ -28,7 +29,7 @@ java/awt/Focus/NonFocusableResizableTooSmall/NonFocusableResizableTooSmall.java 
 java/awt/Focus/NonFocusableWindowTest/NonfocusableOwnerTest.java                            nobug macosx-all,windows-all,linux-all
 java/awt/Focus/RemoveAfterRequest/RemoveAfterRequest.java                                   nobug macosx-all
 java/awt/Focus/RequestFocusAndHideTest/RequestFocusAndHideTest.java                         nobug macosx-all
-java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,windows-all reproduced with Adopt, OpenJDK
+java/awt/Focus/RequestFocusByCause/RequestFocusByCauseTest.java                             nobug linux-all,macosx-all,windows-all reproduced with Adopt, OpenJDK
 java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThreadsTest.java nobug macosx-all,windows-all
 java/awt/Frame/8158918/SetExtendedState.java                                                nobug linux-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                             nobug linux-all
@@ -198,6 +199,7 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradien
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java            nobug windows-all
+javax/swing/RepaintManager/IconifyTest/IconifyTest.java                                     nobug macosx-all reproduced with Adopt
 javax/swing/event/RightAltKeyTest.java                                                      nobug windows-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java                        nobug linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java                              nobug windows-all
