@@ -281,7 +281,6 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     transform4x4.columns[3][0] = m02;
     transform4x4.columns[3][1] = m12;
     transform4x4.columns[3][3] = 1.0;
-    transform4x4.columns[4][4] = 1.0;
     useTransform = JNI_TRUE;
 }
 
@@ -336,7 +335,6 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     normalize.columns[3][0] = -1.f;
     normalize.columns[3][1] = 1.f;
     normalize.columns[3][3] = 1.0;
-    normalize.columns[4][4] = 1.0;
 
     if (useTransform) {
         simd_float4x4 vertexMatrix = simd_mul(normalize, transform4x4);
