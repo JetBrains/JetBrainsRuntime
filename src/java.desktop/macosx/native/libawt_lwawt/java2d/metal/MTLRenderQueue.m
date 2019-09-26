@@ -233,19 +233,6 @@ static char *getOpcodeString(jint opcode) {
                 strcpy(opName, "INVALIDATE_CONTEXT");
             }
             break;
-        case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
-            {
-                strcpy(opName, "SAVE_STATE");
-
-            }
-            break;
-
-        case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
-            {
-                strcpy(opName, "RESTORE_STATE");
-
-            }
-            break;
         case sun_java2d_pipe_BufferedOpCodes_SYNC:
             {
                 strcpy(opName, "SYNC");
@@ -781,21 +768,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 // destination surface that are maintained at the native level
                 mtlc = NULL;
             //    dstOps = NULL;
-            }
-            break;
-        case sun_java2d_pipe_BufferedOpCodes_SAVE_STATE:
-            {
-                //TODO
-                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_SAVE_STATE -- :TODO");
-
-            }
-            break;
-
-        case sun_java2d_pipe_BufferedOpCodes_RESTORE_STATE:
-            {
-                //TODO
-                J2dTraceLn(J2D_TRACE_ERROR, "MTLRenderQueue_RESTORE_STATE -- :TODO");
-
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SYNC:

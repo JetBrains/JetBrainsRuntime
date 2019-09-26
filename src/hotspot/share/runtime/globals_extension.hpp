@@ -25,6 +25,7 @@
 #ifndef SHARE_RUNTIME_GLOBALS_EXTENSION_HPP
 #define SHARE_RUNTIME_GLOBALS_EXTENSION_HPP
 
+#include "runtime/flags/jvmFlag.hpp"
 #include "runtime/globals.hpp"
 #include "utilities/macros.hpp"
 
@@ -64,7 +65,6 @@ typedef enum {
             IGNORE_RANGE,
             IGNORE_CONSTRAINT,
             IGNORE_WRITEABLE)
-  JVMFLAGSENUM_EXT
   NUM_JVMFlagsEnum
 } JVMFlagsEnum;
 
@@ -91,6 +91,8 @@ class JVMFlagEx : JVMFlag {
   static bool is_cmdline(JVMFlagsEnum flag);
 
   static void setOnCmdLine(JVMFlagsEnum flag);
+
+  static JVMFlag* flag_from_enum(JVMFlagsEnum flag);
 };
 
 // Construct set functions for all flags

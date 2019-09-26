@@ -26,6 +26,7 @@
 #include "gc/epsilon/epsilonMemoryPool.hpp"
 #include "gc/epsilon/epsilonThreadLocalData.hpp"
 #include "gc/shared/gcArguments.hpp"
+#include "gc/shared/locationPrinter.inline.hpp"
 #include "memory/allocation.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/resourceArea.hpp"
@@ -38,13 +39,13 @@ jint EpsilonHeap::initialize() {
   size_t max_byte_size  = align_up(MaxHeapSize, align);
 
   // Initialize backing storage
-  ReservedSpace heap_rs = Universe::reserve_heap(max_byte_size, align);
+  ReservedHeapSpace heap_rs = Universe::reserve_heap(max_byte_size, align);
   _virtual_space.initialize(heap_rs, init_byte_size);
 
   MemRegion committed_region((HeapWord*)_virtual_space.low(),          (HeapWord*)_virtual_space.high());
   MemRegion  reserved_region((HeapWord*)_virtual_space.low_boundary(), (HeapWord*)_virtual_space.high_boundary());
 
-  initialize_reserved_region(reserved_region.start(), reserved_region.end());
+  initialize_reserved_region(heap_rs);
 
   _space = new ContiguousSpace();
   _space->initialize(committed_region, /* clear_space = */ true, /* mangle_space = */ true);
@@ -109,8 +110,8 @@ GrowableArray<MemoryPool*> EpsilonHeap::memory_pools() {
 
 size_t EpsilonHeap::unsafe_max_tlab_alloc(Thread* thr) const {
   // Return max allocatable TLAB size, and let allocation path figure out
-  // the actual TLAB allocation size.
-  return _max_tlab_size;
+  // the actual allocation size. Note: result should be in bytes.
+  return _max_tlab_size * HeapWordSize;
 }
 
 EpsilonHeap* EpsilonHeap::heap() {
@@ -303,6 +304,10 @@ void EpsilonHeap::print_on(outputStream *st) const {
   _space->print_on(st);
 
   MetaspaceUtils::print_on(st);
+}
+
+bool EpsilonHeap::print_location(outputStream* st, void* addr) const {
+  return BlockLocationPrinter<EpsilonHeap>::print_location(st, addr);
 }
 
 void EpsilonHeap::print_tracing_info() const {

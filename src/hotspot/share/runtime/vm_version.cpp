@@ -42,6 +42,7 @@ bool Abstract_VM_Version::_supports_atomic_getadd4 = false;
 bool Abstract_VM_Version::_supports_atomic_getadd8 = false;
 unsigned int Abstract_VM_Version::_logical_processors_per_package = 1U;
 unsigned int Abstract_VM_Version::_L1_data_cache_line_size = 0;
+unsigned int Abstract_VM_Version::_data_cache_line_flush_size = 0;
 
 VirtualizationType Abstract_VM_Version::_detected_virtualization = NoDetectedVirtualization;
 
@@ -248,9 +249,6 @@ const char* Abstract_VM_Version::internal_vm_info_string() {
         #define HOTSPOT_BUILD_COMPILER "clang " __VERSION__
     #elif defined(__GNUC__)
         #define HOTSPOT_BUILD_COMPILER "gcc " __VERSION__
-    #elif defined(__IBMCPP__)
-        #define HOTSPOT_BUILD_COMPILER "xlC " XSTR(__IBMCPP__)
-
     #else
       #define HOTSPOT_BUILD_COMPILER "unknown compiler"
     #endif

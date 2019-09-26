@@ -598,6 +598,7 @@ class StubGenerator: public StubCodeGenerator {
     BLOCK_COMMENT("call MacroAssembler::debug");
     __ mov(rscratch1, CAST_FROM_FN_PTR(address, MacroAssembler::debug64));
     __ blr(rscratch1);
+    __ hlt(0);
 
     return start;
   }
@@ -2347,6 +2348,44 @@ class StubGenerator: public StubCodeGenerator {
     __ bind(L_exit2);
     __ leave();
     __ ret(lr);
+    return start;
+  }
+
+  address generate_data_cache_writeback() {
+    const Register line        = c_rarg0;  // address of line to write back
+
+    __ align(CodeEntryAlignment);
+
+    StubCodeMark mark(this, "StubRoutines", "_data_cache_writeback");
+
+    address start = __ pc();
+    __ enter();
+    __ cache_wb(Address(line, 0));
+    __ leave();
+    __ ret(lr);
+
+    return start;
+  }
+
+  address generate_data_cache_writeback_sync() {
+    const Register is_pre     = c_rarg0;  // pre or post sync
+
+    __ align(CodeEntryAlignment);
+
+    StubCodeMark mark(this, "StubRoutines", "_data_cache_writeback_sync");
+
+    // pre wbsync is a no-op
+    // post wbsync translates to an sfence
+
+    Label skip;
+    address start = __ pc();
+    __ enter();
+    __ cbnz(is_pre, skip);
+    __ cache_wbsync(false);
+    __ bind(skip);
+    __ leave();
+    __ ret(lr);
+
     return start;
   }
 
@@ -5738,6 +5777,10 @@ class StubGenerator: public StubCodeGenerator {
     if (UseGHASHIntrinsics) {
       StubRoutines::_ghash_processBlocks = generate_ghash_processBlocks();
     }
+
+    // data cache line writeback
+    StubRoutines::_data_cache_writeback = generate_data_cache_writeback();
+    StubRoutines::_data_cache_writeback_sync = generate_data_cache_writeback_sync();
 
     if (UseAESIntrinsics) {
       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();

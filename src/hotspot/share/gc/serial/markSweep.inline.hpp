@@ -28,10 +28,11 @@
 #include "classfile/classLoaderData.inline.hpp"
 #include "gc/serial/markSweep.hpp"
 #include "memory/universe.hpp"
-#include "oops/markOop.inline.hpp"
+#include "oops/markWord.inline.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/oop.inline.hpp"
+#include "utilities/align.hpp"
 #include "utilities/stack.inline.hpp"
 
 inline void MarkSweep::mark_object(oop obj) {
@@ -40,7 +41,7 @@ inline void MarkSweep::mark_object(oop obj) {
   markWord mark = obj->mark_raw();
   obj->set_mark_raw(markWord::prototype().set_marked());
 
-  if (mark.must_be_preserved(obj)) {
+  if (obj->mark_must_be_preserved(mark)) {
     preserve_mark(obj, mark);
   }
 }
@@ -87,8 +88,7 @@ template <class T> inline void MarkSweep::adjust_pointer(T* p) {
            "should be forwarded");
 
     if (new_obj != NULL) {
-      assert(Universe::heap()->is_in_reserved(new_obj),
-             "should be in object space");
+      assert(is_object_aligned(new_obj), "oop must be aligned");
       RawAccess<IS_NOT_NULL>::oop_store(p, new_obj);
     }
   }

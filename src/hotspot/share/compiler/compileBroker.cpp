@@ -316,7 +316,7 @@ static bool can_remove(CompilerThread *ct, bool do_it) {
   // We only allow the last compiler thread of each type to get removed.
   jobject last_compiler = c1 ? CompileBroker::compiler1_object(compiler_count - 1)
                              : CompileBroker::compiler2_object(compiler_count - 1);
-  if (oopDesc::equals(ct->threadObj(), JNIHandles::resolve_non_null(last_compiler))) {
+  if (ct->threadObj() == JNIHandles::resolve_non_null(last_compiler)) {
     if (do_it) {
       assert_locked_or_safepoint(CompileThread_lock); // Update must be consistent.
       compiler->set_num_compiler_threads(compiler_count - 1);
@@ -557,8 +557,14 @@ void CompileQueue::print(outputStream* st) {
 }
 
 void CompileQueue::print_tty() {
-  ttyLocker ttyl;
-  print(tty);
+  ResourceMark rm;
+  stringStream ss;
+  // Dump the compile queue into a buffer before locking the tty
+  print(&ss);
+  {
+    ttyLocker ttyl;
+    tty->print("%s", ss.as_string());
+  }
 }
 
 CompilerCounters::CompilerCounters() {
@@ -1687,7 +1693,7 @@ CompileLog* CompileBroker::get_log(CompilerThread* ct) {
   int compiler_number = 0;
   bool found = false;
   for (; compiler_number < count; compiler_number++) {
-    if (oopDesc::equals(JNIHandles::resolve_non_null(compiler_objects[compiler_number]), compiler_obj)) {
+    if (JNIHandles::resolve_non_null(compiler_objects[compiler_number]) == compiler_obj) {
       found = true;
       break;
     }
@@ -2674,8 +2680,8 @@ void CompileBroker::print_heapinfo(outputStream* out, const char* function, size
   // for the entire duration of aggregation and printing. That makes sure
   // we see a consistent picture and do not run into issues caused by
   // the CodeHeap being altered concurrently.
-  Monitor* global_lock   = allFun ? CodeCache_lock : NULL;
-  Monitor* function_lock = allFun ? NULL : CodeCache_lock;
+  Mutex* global_lock   = allFun ? CodeCache_lock : NULL;
+  Mutex* function_lock = allFun ? NULL : CodeCache_lock;
   ts_global.update(); // record starting point
   MutexLocker mu2(global_lock, Mutex::_no_safepoint_check_flag);
   if (global_lock != NULL) {

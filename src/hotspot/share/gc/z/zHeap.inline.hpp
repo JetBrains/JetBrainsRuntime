@@ -33,7 +33,6 @@
 #include "gc/z/zOop.inline.hpp"
 #include "gc/z/zPage.inline.hpp"
 #include "gc/z/zPageTable.inline.hpp"
-#include "gc/z/zUtils.inline.hpp"
 #include "utilities/debug.hpp"
 
 inline ZHeap* ZHeap::heap() {
@@ -45,8 +44,8 @@ inline ReferenceDiscoverer* ZHeap::reference_discoverer() {
   return &_reference_processor;
 }
 
-inline uint32_t ZHeap::hash_oop(oop obj) const {
-  const uintptr_t offset = ZAddress::offset(ZOop::to_address(obj));
+inline uint32_t ZHeap::hash_oop(uintptr_t addr) const {
+  const uintptr_t offset = ZAddress::offset(addr);
   return ZHash::address_to_uint32(offset);
 }
 
@@ -60,10 +59,10 @@ inline bool ZHeap::is_object_strongly_live(uintptr_t addr) const {
   return page->is_object_strongly_live(addr);
 }
 
-template <bool finalizable, bool publish>
+template <bool follow, bool finalizable, bool publish>
 inline void ZHeap::mark_object(uintptr_t addr) {
   assert(ZGlobalPhase == ZPhaseMark, "Mark not allowed");
-  _mark.mark_object<finalizable, publish>(addr);
+  _mark.mark_object<follow, finalizable, publish>(addr);
 }
 
 inline uintptr_t ZHeap::alloc_tlab(size_t size) {
@@ -134,12 +133,8 @@ inline void ZHeap::check_out_of_memory() {
   _page_allocator.check_out_of_memory();
 }
 
-inline bool ZHeap::is_oop(oop object) const {
-  // Verify that we have a good address. Note that ZAddress::is_good()
-  // would not be a strong enough verification, since it only verifies
-  // that the metadata bits are good.
-  const uintptr_t addr = ZOop::to_address(object);
-  return ZAddress::good(addr) == addr;
+inline bool ZHeap::is_oop(uintptr_t addr) const {
+  return ZAddress::is_good(addr) && is_object_aligned(addr) && is_in(addr);
 }
 
 #endif // SHARE_GC_Z_ZHEAP_INLINE_HPP

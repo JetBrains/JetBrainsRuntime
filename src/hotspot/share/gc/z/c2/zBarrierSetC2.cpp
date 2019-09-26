@@ -660,7 +660,7 @@ Node* ZBarrierSetC2::step_over_gc_barrier_ctrl(Node* c) const {
 }
 
 bool ZBarrierSetC2::array_copy_requires_gc_barriers(bool tightly_coupled_alloc, BasicType type, bool is_clone, ArrayCopyPhase phase) const {
-  return type == T_OBJECT || type == T_ARRAY;
+  return is_reference_type(type);
 }
 
 bool ZBarrierSetC2::final_graph_reshaping(Compile* compile, Node* n, uint opcode) const {
@@ -881,6 +881,18 @@ void ZBarrierSetC2::verify_gc_barriers(bool post_parse) const {
 
 #endif // end verification code
 
+// If a call is the control, we actually want its control projection
+static Node* normalize_ctrl(Node* node) {
+ if (node->is_Call()) {
+   node = node->as_Call()->proj_out(TypeFunc::Control);
+ }
+ return node;
+}
+
+static Node* get_ctrl_normalized(PhaseIdealLoop *phase, Node* node) {
+  return normalize_ctrl(phase->get_ctrl(node));
+}
+
 static void call_catch_cleanup_one(PhaseIdealLoop* phase, LoadNode* load, Node* ctrl);
 
 // This code is cloning all uses of a load that is between a call and the catch blocks,
@@ -894,7 +906,7 @@ static bool fixup_uses_in_catch(PhaseIdealLoop *phase, Node *start_ctrl, Node *n
     return false;
   }
 
-  Node* ctrl = phase->get_ctrl(node);
+  Node* ctrl = get_ctrl_normalized(phase, node);
   if (ctrl != start_ctrl) {
     // We are in a successor block - the node is ok.
     return false; // Unwind
@@ -911,7 +923,6 @@ static bool fixup_uses_in_catch(PhaseIdealLoop *phase, Node *start_ctrl, Node *n
 
   // Now all successors are outside
   // - Clone this node to both successors
-  int no_succs = node->outcnt();
   assert(!node->is_Store(), "Stores not expected here");
 
   // In some very rare cases a load that doesn't need a barrier will end up here
@@ -935,7 +946,7 @@ static bool fixup_uses_in_catch(PhaseIdealLoop *phase, Node *start_ctrl, Node *n
         new_ctrl = use->in(0);
         assert (new_ctrl != NULL, "");
       } else {
-        new_ctrl = phase->get_ctrl(use);
+        new_ctrl = get_ctrl_normalized(phase, use);
       }
 
       phase->set_ctrl(clone, new_ctrl);
@@ -990,16 +1001,12 @@ static void call_catch_cleanup_one(PhaseIdealLoop* phase, LoadNode* load, Node* 
   // Process the loads successor nodes - if any is between
   // the call and the catch blocks, they need to be cloned to.
   // This is done recursively
-  int outcnt = load->outcnt();
-  uint index = 0;
-  for (int i = 0; i < outcnt; i++) {
-    if (index < load->outcnt()) {
-      Node *n = load->raw_out(index);
-      assert(!n->is_LoadBarrier(), "Sanity");
-      if (!fixup_uses_in_catch(phase, ctrl, n)) {
-        // if no successor was cloned, progress to next out.
-        index++;
-      }
+  for (uint i = 0; i < load->outcnt();) {
+    Node *n = load->raw_out(i);
+    assert(!n->is_LoadBarrier(), "Sanity");
+    if (!fixup_uses_in_catch(phase, ctrl, n)) {
+      // if no successor was cloned, progress to next out.
+      i++;
     }
   }
 
@@ -1028,7 +1035,8 @@ static void call_catch_cleanup_one(PhaseIdealLoop* phase, LoadNode* load, Node* 
     Node* load_use = load->raw_out(i);
 
     if (phase->has_ctrl(load_use)) {
-      load_use_control = phase->get_ctrl(load_use);
+      load_use_control = get_ctrl_normalized(phase, load_use);
+      assert(load_use_control != ctrl, "sanity");
     } else {
       load_use_control = load_use->in(0);
     }
@@ -1209,10 +1217,10 @@ static void call_catch_cleanup_one(PhaseIdealLoop* phase, LoadNode* load, Node* 
 }
 
 // Sort out the loads that are between a call ant its catch blocks
-static void process_catch_cleanup_candidate(PhaseIdealLoop* phase, LoadNode* load) {
+static void process_catch_cleanup_candidate(PhaseIdealLoop* phase, LoadNode* load, bool verify) {
   bool trace = phase->C->directive()->ZTraceLoadBarriersOption;
 
-  Node* ctrl = phase->get_ctrl(load);
+  Node* ctrl = get_ctrl_normalized(phase, load);
   if (!ctrl->is_Proj() || (ctrl->in(0) == NULL) || !ctrl->in(0)->isa_Call()) {
     return;
   }
@@ -1220,6 +1228,7 @@ static void process_catch_cleanup_candidate(PhaseIdealLoop* phase, LoadNode* loa
   Node* catch_node = ctrl->isa_Proj()->raw_out(0);
   if (catch_node->is_Catch()) {
     if (catch_node->outcnt() > 1) {
+      assert(!verify, "All loads should already have been moved");
       call_catch_cleanup_one(phase, load, ctrl);
     } else {
       if (trace) tty->print_cr("Call catch cleanup with only one catch: load %i ", load->_idx);
@@ -1237,6 +1246,7 @@ bool ZBarrierSetC2::optimize_loops(PhaseIdealLoop* phase, LoopOptsMode mode, Vec
   if (mode == LoopOptsZBarrierInsertion) {
     // First make sure all loads between call and catch are moved to the catch block
     clean_catch_blocks(phase);
+    DEBUG_ONLY(clean_catch_blocks(phase, true /* verify */);)
 
     // Then expand barriers on all loads
     insert_load_barriers(phase);
@@ -1357,7 +1367,7 @@ void ZBarrierSetC2::insert_barriers_on_unsafe(PhaseIdealLoop* phase) const {
         LoadStoreNode* lsn = n->as_LoadStore();
         if (lsn->has_barrier()) {
           BasicType bt = lsn->in(MemNode::Address)->bottom_type()->basic_type();
-          assert ((bt == T_OBJECT || bt == T_ARRAY), "Sanity test");
+          assert (is_reference_type(bt), "Sanity test");
           insert_barrier_before_unsafe(phase, lsn);
         }
       }
@@ -1390,7 +1400,7 @@ void ZBarrierSetC2::insert_barriers_on_unsafe(PhaseIdealLoop* phase) const {
 // Sometimes the loads use will be at a place dominated by all catch blocks, then we need
 // a load in each catch block, and a Phi at the dominated use.
 
-void ZBarrierSetC2::clean_catch_blocks(PhaseIdealLoop* phase) const {
+void ZBarrierSetC2::clean_catch_blocks(PhaseIdealLoop* phase, bool verify) const {
 
   Compile *C = phase->C;
   uint new_ids = C->unique();
@@ -1417,7 +1427,7 @@ void ZBarrierSetC2::clean_catch_blocks(PhaseIdealLoop* phase) const {
       LoadNode* load = n->isa_Load();
       // only care about loads that will have a barrier
       if (load_require_barrier(load)) {
-        process_catch_cleanup_candidate(phase, load);
+        process_catch_cleanup_candidate(phase, load, verify);
       }
     }
   }
@@ -1585,6 +1595,7 @@ void ZBarrierSetC2::insert_one_loadbarrier_inner(PhaseIdealLoop* phase, LoadNode
   Node* barrier = new LoadBarrierNode(C, NULL, load->in(LoadNode::Memory), NULL, load->in(LoadNode::Address), load_has_weak_barrier(load));
   Node* barrier_val = new ProjNode(barrier, LoadBarrierNode::Oop);
   Node* barrier_ctrl = new ProjNode(barrier, LoadBarrierNode::Control);
+  ctrl = normalize_ctrl(ctrl);
 
   if (trace) tty->print_cr("Insert load %i with barrier: %i and ctrl : %i", load->_idx, barrier->_idx, ctrl->_idx);
 

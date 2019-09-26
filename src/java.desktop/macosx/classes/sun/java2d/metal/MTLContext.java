@@ -38,13 +38,10 @@ import static sun.java2d.pipe.BufferedOpCodes.*;
  * Note that the RenderQueue lock must be acquired before calling any of
  * the methods in this class.
  */
-public class MTLContext extends BufferedContext {
+final class MTLContext extends BufferedContext {
 
-    private final MTLGraphicsConfig config;
-
-    public MTLContext(RenderQueue rq, MTLGraphicsConfig config) {
+    public MTLContext(RenderQueue rq) {
         super(rq);
-        this.config = config;
     }
 
     /**
@@ -107,10 +104,6 @@ public class MTLContext extends BufferedContext {
         rq.flushNow();
     }
 
-    public RenderQueue getRenderQueue() {
-        return MTLRenderQueue.getInstance();
-    }
-
     /**
      * Returns a string representing adapter id (vendor, renderer, version).
      * Must be called on the rendering thread.
@@ -118,38 +111,6 @@ public class MTLContext extends BufferedContext {
      * @return an id string for the adapter
      */
     public static final native String getMTLIdString();
-
-    @Override
-    public void saveState() {
-        // assert rq.lock.isHeldByCurrentThread();
-
-        // reset all attributes of this and current contexts
-        invalidateContext();
-        invalidateCurrentContext();
-
-        setScratchSurface(config);
-
-        // save the state on the native level
-        rq.ensureCapacity(4);
-        buf.putInt(SAVE_STATE);
-        rq.flushNow();
-    }
-
-    @Override
-    public void restoreState() {
-        // assert rq.lock.isHeldByCurrentThread();
-
-        // reset all attributes of this and current contexts
-        invalidateContext();
-        invalidateCurrentContext();
-
-        setScratchSurface(config);
-
-        // restore the state on the native level
-        rq.ensureCapacity(4);
-        buf.putInt(RESTORE_STATE);
-        rq.flushNow();
-    }
 
     public static class MTLContextCaps extends ContextCapabilities {
         /**

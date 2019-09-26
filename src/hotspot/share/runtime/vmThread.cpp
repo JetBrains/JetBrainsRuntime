@@ -556,6 +556,7 @@ void VMThread::loop() {
           _cur_vm_operation = safepoint_ops;
           if (_cur_vm_operation != NULL) {
             do {
+              EventMark em("Executing coalesced safepoint VM operation: %s", _cur_vm_operation->name());
               log_debug(vmthread)("Evaluating coalesced safepoint VM operation: %s", _cur_vm_operation->name());
               // evaluate_operation deletes the op object so we have
               // to grab the next op now
@@ -668,7 +669,7 @@ void VMThread::execute(VM_Operation* op) {
     bool concurrent = op->evaluate_concurrently();
     // only blocking VM operations need to verify the caller's safepoint state:
     if (!concurrent) {
-      t->check_for_valid_safepoint_state(true);
+      t->check_for_valid_safepoint_state();
     }
 
     // New request from Java thread, evaluate prologue

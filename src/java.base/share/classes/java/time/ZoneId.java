@@ -254,6 +254,7 @@ public abstract class ZoneId implements Serializable {
     /**
      * Serialization version.
      */
+    @java.io.Serial
     private static final long serialVersionUID = 8352817235686L;
 
     //-----------------------------------------------------------------------
@@ -338,7 +339,7 @@ public abstract class ZoneId implements Serializable {
      *  The rules of the returned {@code ZoneId} will be equivalent to the
      *  parsed {@code ZoneOffset}.
      * <li>All other IDs are parsed as region-based zone IDs. Region IDs must
-     *  match the regular expression <code>[A-Za-z][A-Za-z0-9~/._+-]+</code>
+     *  match the regular expression {@code [A-Za-z][A-Za-z0-9~/._+-]+}
      *  otherwise a {@code DateTimeException} is thrown. If the zone ID is not
      *  in the configured set of IDs, {@code ZoneRulesException} is thrown.
      *  The detailed format of the region ID depends on the group supplying the data.
@@ -624,6 +625,7 @@ public abstract class ZoneId implements Serializable {
      * @param s the stream to read
      * @throws InvalidObjectException always
      */
+    @java.io.Serial
     private void readObject(ObjectInputStream s) throws InvalidObjectException {
         throw new InvalidObjectException("Deserialization via serialization delegate");
     }
@@ -655,6 +657,7 @@ public abstract class ZoneId implements Serializable {
      * @return the instance of {@code Ser}, not null
      */
     // this is here for serialization Javadoc
+    @java.io.Serial
     private Object writeReplace() {
         return new Ser(Ser.ZONE_REGION_TYPE, this);
     }

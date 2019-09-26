@@ -2557,13 +2557,8 @@ void MacroAssembler::debug64(char* msg, int64_t pc, int64_t regs[])
       tty->print_cr("r31 = 0x%016lx", regs[31]);
       BREAKPOINT;
     }
-    ThreadStateTransition::transition(thread, _thread_in_vm, saved_state);
-  } else {
-    ttyLocker ttyl;
-    ::tty->print_cr("=============== DEBUG MESSAGE: %s ================\n",
-                    msg);
-    assert(false, "DEBUG MESSAGE: %s", msg);
   }
+  fatal("DEBUG MESSAGE: %s", msg);
 }
 
 void MacroAssembler::push_call_clobbered_registers() {
@@ -3953,7 +3948,7 @@ void  MacroAssembler::set_narrow_oop(Register dst, jobject obj) {
     assert (UseCompressedOops, "should only be used for compressed oops");
     assert (Universe::heap() != NULL, "java heap should be initialized");
     assert (oop_recorder() != NULL, "this assembler needs an OopRecorder");
-    assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(obj)), "should be real oop");
+    assert(Universe::heap()->is_in(JNIHandles::resolve(obj)), "should be real oop");
   }
 #endif
   int oop_index = oop_recorder()->find_index(obj);
@@ -3968,7 +3963,7 @@ void  MacroAssembler::set_narrow_klass(Register dst, Klass* k) {
   assert (UseCompressedClassPointers, "should only be used for compressed headers");
   assert (oop_recorder() != NULL, "this assembler needs an OopRecorder");
   int index = oop_recorder()->find_index(k);
-  assert(! Universe::heap()->is_in_reserved(k), "should not be an oop");
+  assert(! Universe::heap()->is_in(k), "should not be an oop");
 
   InstructionMark im(this);
   RelocationHolder rspec = metadata_Relocation::spec(index);
@@ -4052,7 +4047,7 @@ void MacroAssembler::movoop(Register dst, jobject obj, bool immediate) {
 #ifdef ASSERT
     {
       ThreadInVMfromUnknown tiv;
-      assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(obj)), "should be real oop");
+      assert(Universe::heap()->is_in(JNIHandles::resolve(obj)), "should be real oop");
     }
 #endif
     oop_index = oop_recorder()->find_index(obj);
@@ -4082,7 +4077,7 @@ Address MacroAssembler::constant_oop_address(jobject obj) {
   {
     ThreadInVMfromUnknown tiv;
     assert(oop_recorder() != NULL, "this assembler needs an OopRecorder");
-    assert(Universe::heap()->is_in_reserved(JNIHandles::resolve(obj)), "not an oop");
+    assert(Universe::heap()->is_in(JNIHandles::resolve(obj)), "not an oop");
   }
 #endif
   int oop_index = oop_recorder()->find_index(obj);
@@ -5832,4 +5827,26 @@ void MacroAssembler::get_thread(Register dst) {
   }
 
   pop(saved_regs, sp);
+}
+
+void MacroAssembler::cache_wb(Address line) {
+  assert(line.getMode() == Address::base_plus_offset, "mode should be base_plus_offset");
+  assert(line.index() == noreg, "index should be noreg");
+  assert(line.offset() == 0, "offset should be 0");
+  // would like to assert this
+  // assert(line._ext.shift == 0, "shift should be zero");
+  if (VM_Version::supports_dcpop()) {
+    // writeback using clear virtual address to point of persistence
+    dc(Assembler::CVAP, line.base());
+  } else {
+    // no need to generate anything as Unsafe.writebackMemory should
+    // never invoke this stub
+  }
+}
+
+void MacroAssembler::cache_wbsync(bool is_pre) {
+  // we only need a barrier post sync
+  if (!is_pre) {
+    membar(Assembler::AnyAny);
+  }
 }

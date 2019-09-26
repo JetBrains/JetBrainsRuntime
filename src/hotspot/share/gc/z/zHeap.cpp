@@ -22,35 +22,26 @@
  */
 
 #include "precompiled.hpp"
-#include "gc/shared/gcArguments.hpp"
-#include "gc/shared/oopStorage.hpp"
-#include "gc/z/zAddress.hpp"
+#include "gc/shared/locationPrinter.hpp"
+#include "gc/z/zAddress.inline.hpp"
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zHeap.inline.hpp"
 #include "gc/z/zHeapIterator.hpp"
-#include "gc/z/zList.inline.hpp"
-#include "gc/z/zLock.inline.hpp"
 #include "gc/z/zMark.inline.hpp"
-#include "gc/z/zOopClosures.inline.hpp"
 #include "gc/z/zPage.inline.hpp"
 #include "gc/z/zPageTable.inline.hpp"
 #include "gc/z/zRelocationSet.inline.hpp"
+#include "gc/z/zRelocationSetSelector.hpp"
 #include "gc/z/zResurrection.hpp"
-#include "gc/z/zRootsIterator.hpp"
 #include "gc/z/zStat.hpp"
-#include "gc/z/zTask.hpp"
 #include "gc/z/zThread.hpp"
-#include "gc/z/zTracer.inline.hpp"
 #include "gc/z/zVerify.hpp"
-#include "gc/z/zVirtualMemory.inline.hpp"
 #include "gc/z/zWorkers.inline.hpp"
 #include "logging/log.hpp"
+#include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
-#include "oops/oop.inline.hpp"
-#include "runtime/arguments.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/thread.hpp"
-#include "utilities/align.hpp"
 #include "utilities/debug.hpp"
 
 static const ZStatSampler ZSamplerHeapUsedBeforeMark("Memory", "Heap Used Before Mark", ZStatUnitBytes);
@@ -64,7 +55,7 @@ ZHeap* ZHeap::_heap = NULL;
 
 ZHeap::ZHeap() :
     _workers(),
-    _object_allocator(_workers.nworkers()),
+    _object_allocator(),
     _page_allocator(heap_min_size(), heap_initial_size(), heap_max_size(), heap_max_reserve_size()),
     _page_table(),
     _forwarding_table(),
@@ -179,7 +170,7 @@ size_t ZHeap::unsafe_max_tlab_alloc() const {
 
 bool ZHeap::is_in(uintptr_t addr) const {
   // An address is considered to be "in the heap" if it points into
-  // the allocated part of a pages, regardless of which heap view is
+  // the allocated part of a page, regardless of which heap view is
   // used. Note that an address with the finalizable metadata bit set
   // is not pointing into a heap view, and therefore not considered
   // to be "in the heap".
@@ -192,16 +183,6 @@ bool ZHeap::is_in(uintptr_t addr) const {
   }
 
   return false;
-}
-
-uintptr_t ZHeap::block_start(uintptr_t addr) const {
-  const ZPage* const page = _page_table.get(addr);
-  return page->block_start(addr);
-}
-
-bool ZHeap::block_is_obj(uintptr_t addr) const {
-  const ZPage* const page = _page_table.get(addr);
-  return page->block_is_obj(addr);
 }
 
 uint ZHeap::nconcurrent_worker_threads() const {
@@ -520,6 +501,16 @@ void ZHeap::print_extended_on(outputStream* st) const {
   _page_allocator.enable_deferred_delete();
 
   st->cr();
+}
+
+bool ZHeap::print_location(outputStream* st, uintptr_t addr) const {
+  if (LocationPrinter::is_valid_obj((void*)addr)) {
+    st->print(PTR_FORMAT " is a %s oop: ", addr, ZAddress::is_good(addr) ? "good" : "bad");
+    ZOop::from_address(addr)->print_on(st);
+    return true;
+  }
+
+  return false;
 }
 
 void ZHeap::verify() {

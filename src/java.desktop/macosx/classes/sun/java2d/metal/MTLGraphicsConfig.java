@@ -73,7 +73,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
     private BufferCapabilities bufferCaps;
     private long pConfigInfo;
     private ContextCapabilities mtlCaps;
-    private MTLContext context;
+    private final MTLContext context;
     private final Object disposerReferent = new Object();
     private final int maxTextureSize;
 
@@ -103,7 +103,7 @@ public final class MTLGraphicsConfig extends CGraphicsConfig
         this.pConfigInfo = configInfo;
         this.mtlCaps = mtlCaps;
         this.maxTextureSize = maxTextureSize;
-        context = new MTLContext(MTLRenderQueue.getInstance(), this);
+        context = new MTLContext(MTLRenderQueue.getInstance());
         refPConfigInfo(pConfigInfo);
         // add a record to the Disposer so that we destroy the native
         // MTLGraphicsConfigInfo data when this object goes away

@@ -168,13 +168,12 @@ public:
   enum Condition {
     NOT_BIASED = 1,
     BIAS_REVOKED = 2,
-    BIAS_REVOKED_AND_REBIASED = 3,
-    NOT_REVOKED = 4
+    NOT_REVOKED = 3
   };
 
 private:
-  static Condition single_revoke_at_safepoint(oop obj, bool allow_rebias, bool is_bulk, JavaThread* requester, JavaThread** biaser);
-  static Condition bulk_revoke_or_rebias_at_safepoint(oop o, bool bulk_rebias, bool attempt_rebias, JavaThread* requester);
+  static void single_revoke_at_safepoint(oop obj, bool is_bulk, JavaThread* requester, JavaThread** biaser);
+  static void bulk_revoke_at_safepoint(oop o, bool bulk_rebias, JavaThread* requester);
   static Condition single_revoke_with_handshake(Handle obj, JavaThread *requester, JavaThread *biaser);
   static void walk_stack_and_revoke(oop obj, JavaThread* biased_locker);
 
@@ -189,13 +188,16 @@ public:
   static bool enabled();
 
   // This should be called by JavaThreads to revoke the bias of an object
-  static Condition revoke_and_rebias(Handle obj, bool attempt_rebias, TRAPS);
+  static void revoke(Handle obj, TRAPS);
 
-  // These do not allow rebiasing; they are used by deoptimization to
-  // ensure that monitors on the stack can be migrated
-  static void revoke(GrowableArray<Handle>* objs, JavaThread *biaser);
+  // This must only be called by a JavaThread to revoke the bias of an owned object.
+  static void revoke_own_lock(Handle obj, TRAPS);
+
   static void revoke_at_safepoint(Handle obj);
-  static void revoke_at_safepoint(GrowableArray<Handle>* objs);
+
+  // These are used by deoptimization to ensure that monitors on the stack
+  // can be migrated
+  static void revoke(GrowableArray<Handle>* objs, JavaThread *biaser);
 
   static void print_counters() { _counters.print(); }
   static BiasedLockingCounters* counters() { return &_counters; }

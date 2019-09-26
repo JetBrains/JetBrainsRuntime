@@ -561,7 +561,7 @@ void AdapterGenerator::gen_c2i_adapter(
 
     if (r_1->is_Register()) {
       Register r = r_1->as_Register()->after_restore();
-      if (sig_bt[i] == T_OBJECT || sig_bt[i] == T_ARRAY) {
+      if (is_reference_type(sig_bt[i])) {
         store_c2i_object(r, base, st_off);
       } else if (sig_bt[i] == T_LONG || sig_bt[i] == T_DOUBLE) {
         store_c2i_long(r, base, st_off, r_2->is_stack());
@@ -1637,8 +1637,7 @@ static void verify_oop_args(MacroAssembler* masm,
   Register temp_reg = G5_method;  // not part of any compiled calling seq
   if (VerifyOops) {
     for (int i = 0; i < method->size_of_parameters(); i++) {
-      if (sig_bt[i] == T_OBJECT ||
-          sig_bt[i] == T_ARRAY) {
+      if (is_reference_type(sig_bt[i])) {
         VMReg r = regs[i].first();
         assert(r->is_valid(), "bad oop arg");
         if (r->is_stack()) {
@@ -1833,7 +1832,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
     // Read the header and build a mask to get its hash field.  Give up if the object is not unlocked.
     // We depend on hash_mask being at most 32 bits and avoid the use of
     // hash_mask_in_place because it could be larger than 32 bits in a 64-bit
-    // vm: see markOop.hpp.
+    // vm: see markWord.hpp.
     __ ld_ptr(obj_reg, oopDesc::mark_offset_in_bytes(), header);
     __ sethi(markWord::hash_mask, mask);
     __ btst(markWord::unlocked_value, header);
@@ -2507,7 +2506,7 @@ nmethod* SharedRuntime::generate_native_wrapper(MacroAssembler* masm,
   __ reset_last_Java_frame();
 
   // Unbox oop result, e.g. JNIHandles::resolve value in I0.
-  if (ret_type == T_OBJECT || ret_type == T_ARRAY) {
+  if (is_reference_type(ret_type)) {
     __ resolve_jobject(I0, G3_scratch);
   }
 

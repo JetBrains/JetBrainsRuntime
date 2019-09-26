@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.util.Hashtable;
+import java.util.Objects;
 import sun.net.util.IPAddressUtil;
 import sun.net.www.ParseUtil;
 
@@ -65,7 +66,7 @@ public abstract class URLStreamHandler {
      *
      * @param      u   the URL that this connects to.
      * @return     a {@code URLConnection} object for the {@code URL}.
-     * @exception  IOException  if an I/O error occurs while opening the
+     * @throws     IOException  if an I/O error occurs while opening the
      *               connection.
      */
     protected abstract URLConnection openConnection(URL u) throws IOException;
@@ -90,11 +91,11 @@ public abstract class URLStreamHandler {
      *                 If direct connection is desired, Proxy.NO_PROXY
      *                 should be specified.
      * @return     a {@code URLConnection} object for the {@code URL}.
-     * @exception  IOException  if an I/O error occurs while opening the
+     * @throws     IOException  if an I/O error occurs while opening the
      *               connection.
-     * @exception  IllegalArgumentException if either u or p is null,
+     * @throws     IllegalArgumentException if either u or p is null,
      *               or p has the wrong type.
-     * @exception  UnsupportedOperationException if the subclass that
+     * @throws     UnsupportedOperationException if the subclass that
      *               implements the protocol doesn't support this method.
      * @since      1.5
      */
@@ -343,10 +344,7 @@ public abstract class URLStreamHandler {
      * @since 1.3
      */
     protected boolean equals(URL u1, URL u2) {
-        String ref1 = u1.getRef();
-        String ref2 = u2.getRef();
-        return (ref1 == ref2 || (ref1 != null && ref1.equals(ref2))) &&
-               sameFile(u1, u2);
+        return Objects.equals(u1.getRef(), u2.getRef()) && sameFile(u1, u2);
     }
 
     /**
@@ -512,7 +510,7 @@ public abstract class URLStreamHandler {
      * @param   path      the path component of the URL.
      * @param   query     the query part for the URL.
      * @param   ref       the reference.
-     * @exception       SecurityException       if the protocol handler of the URL is
+     * @throws          SecurityException       if the protocol handler of the URL is
      *                                  different from this one
      * @since 1.3
      */
@@ -541,7 +539,7 @@ public abstract class URLStreamHandler {
      * @param   port      the port on the remote machine.
      * @param   file      the file.
      * @param   ref       the reference.
-     * @exception       SecurityException       if the protocol handler of the URL is
+     * @throws          SecurityException       if the protocol handler of the URL is
      *                                  different from this one
      * @deprecated Use setURL(URL, String, String, int, String, String, String,
      *             String);

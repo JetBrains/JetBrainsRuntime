@@ -991,10 +991,7 @@ public:
   void scrub_rem_set();
 
   // Apply the given closure on all cards in the Hot Card Cache, emptying it.
-  void iterate_hcc_closure(G1CardTableEntryClosure* cl, uint worker_i);
-
-  // Apply the given closure on all cards in the Dirty Card Queue Set, emptying it.
-  void iterate_dirty_card_closure(G1CardTableEntryClosure* cl, uint worker_i);
+  void iterate_hcc_closure(G1CardTableEntryClosure* cl, uint worker_id);
 
   // The shared block offset table array.
   G1BlockOffsetTable* bot() const { return _bot; }
@@ -1129,6 +1126,18 @@ public:
     return _hrm->reserved();
   }
 
+  MemRegion reserved_region() const {
+    return _reserved;
+  }
+
+  HeapWord* base() const {
+    return _reserved.start();
+  }
+
+  bool is_in_reserved(const void* addr) const {
+    return _reserved.contains(addr);
+  }
+
   G1HotCardCache* g1_hot_card_cache() const { return _hot_card_cache; }
 
   G1CardTable* card_table() const {
@@ -1211,11 +1220,11 @@ public:
   // address "addr".  We say "blocks" instead of "object" since some heaps
   // may not pack objects densely; a chunk may either be an object or a
   // non-object.
-  virtual HeapWord* block_start(const void* addr) const;
+  HeapWord* block_start(const void* addr) const;
 
   // Requires "addr" to be the start of a block, and returns "TRUE" iff
   // the block is an object.
-  virtual bool block_is_obj(const HeapWord* addr) const;
+  bool block_is_obj(const HeapWord* addr) const;
 
   // Section on thread-local allocation buffers (TLABs)
   // See CollectedHeap for semantics.
@@ -1427,6 +1436,9 @@ public:
   // The following two methods are helpful for debugging RSet issues.
   void print_cset_rsets() PRODUCT_RETURN;
   void print_all_rsets() PRODUCT_RETURN;
+
+  // Used to print information about locations in the hs_err file.
+  virtual bool print_location(outputStream* st, void* addr) const;
 
   size_t pending_card_num();
 };

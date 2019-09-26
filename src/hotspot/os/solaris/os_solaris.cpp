@@ -454,9 +454,7 @@ static bool assign_distribution(processorid_t* id_array,
       board = 0;
     }
   }
-  if (available_id != NULL) {
-    FREE_C_HEAP_ARRAY(bool, available_id);
-  }
+  FREE_C_HEAP_ARRAY(bool, available_id);
   return true;
 }
 
@@ -493,9 +491,7 @@ bool os::distribute_processes(uint length, uint* distribution) {
       result = false;
     }
   }
-  if (id_array != NULL) {
-    FREE_C_HEAP_ARRAY(processorid_t, id_array);
-  }
+  FREE_C_HEAP_ARRAY(processorid_t, id_array);
   return result;
 }
 
@@ -562,7 +558,7 @@ void os::init_system_properties_values() {
     MAX3((size_t)MAXPATHLEN,  // For dll_dir & friends.
          sizeof(SYS_EXT_DIR) + sizeof("/lib/"), // invariant ld_library_path
          (size_t)MAXPATHLEN + sizeof(EXTENSIONS_DIR) + sizeof(SYS_EXT_DIR) + sizeof(EXTENSIONS_DIR)); // extensions dir
-  char *buf = (char *)NEW_C_HEAP_ARRAY(char, bufsize, mtInternal);
+  char *buf = NEW_C_HEAP_ARRAY(char, bufsize, mtInternal);
 
   // sysclasspath, java_home, dll_dir
   {
@@ -648,7 +644,7 @@ void os::init_system_properties_values() {
     // through the dlinfo() call, so only add additional space for the path
     // components explicitly added here.
     size_t library_path_size = info->dls_size + strlen(common_path);
-    library_path = (char *)NEW_C_HEAP_ARRAY(char, library_path_size, mtInternal);
+    library_path = NEW_C_HEAP_ARRAY(char, library_path_size, mtInternal);
     library_path[0] = '\0';
 
     // Construct the desired Java library path from the linker's library
@@ -1596,6 +1592,10 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen) {
     unsigned char endianess;    // MSB or LSB
     char*         name;         // String representation
   } arch_t;
+
+#ifndef EM_AARCH64
+  #define EM_AARCH64    183               /* ARM AARCH64 */
+#endif
 
   static const arch_t arch_array[]={
     {EM_386,         EM_386,     ELFCLASS32, ELFDATA2LSB, (char*)"IA 32"},
@@ -5063,7 +5063,7 @@ void Parker::park(bool isAbsolute, jlong time) {
   Thread* thread = Thread::current();
   assert(thread->is_Java_thread(), "Must be JavaThread");
   JavaThread *jt = (JavaThread *)thread;
-  if (Thread::is_interrupted(thread, false)) {
+  if (jt->is_interrupted(false)) {
     return;
   }
 
@@ -5088,7 +5088,7 @@ void Parker::park(bool isAbsolute, jlong time) {
 
   // Don't wait if cannot get lock since interference arises from
   // unblocking.  Also. check interrupt before trying wait
-  if (Thread::is_interrupted(thread, false) ||
+  if (jt->is_interrupted(false) ||
       os::Solaris::mutex_trylock(_mutex) != 0) {
     return;
   }
@@ -5378,6 +5378,10 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
                                               p, current_process_id());
 
   return strlen(buffer);
+}
+
+bool os::supports_map_sync() {
+  return false;
 }
 
 #ifndef PRODUCT
