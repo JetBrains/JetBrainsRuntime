@@ -43,8 +43,6 @@ compiler/graalunit/JttThreadsTest.java                          8207757   generi
 
 compiler/unsafe/UnsafeGetConstantField.java                     8181833   generic-all
 compiler/unsafe/UnsafeGetStableArrayElement.java                8181833   generic-all
-compiler/unsafe/UnsafeOffHeapBooleanTest.java                   8181833   generic-all
-compiler/unsafe/UnsafeOnHeapBooleanTest.java                    8181833   generic-all
 
 compiler/whitebox/ClearMethodStateTest.java                     8181831   generic-all
 compiler/whitebox/EnqueueMethodForCompilationTest.java          8181831   generic-all
@@ -88,6 +86,7 @@ serviceability/jvmti/HeapMonitor/MyPackage/HeapMonitorMultiArrayTest.java 819661
 serviceability/tmtools/jstat/GcTest02.java                      8196611 generic-all
 serviceability/tmtools/jstat/GcCapacityTest.java                8196611 generic-all
 
+serviceability/sa/ClhsdbInspect.java                            8230419 generic-all
 
 gc/g1/ihop/TestIHOPErgo.java                                    8191048   generic-all
 gc/g1/plab/TestPLABEvacuationFailure.java                       8191048   generic-all
@@ -241,7 +240,6 @@ org.graalvm.compiler.core.test.CheckGraalInvariants                             
 org.graalvm.compiler.core.test.OptionsVerifierTest                               8205081
 org.graalvm.compiler.hotspot.test.CompilationWrapperTest                         8205081
 org.graalvm.compiler.replacements.test.classfile.ClassfileBytecodeProviderTest   8205081
-org.graalvm.compiler.debug.test.DebugContextTest                                 8205081
 
 org.graalvm.compiler.core.test.deopt.CompiledMethodTest          8202955
 

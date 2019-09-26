@@ -84,7 +84,9 @@ public class ObjectStreamClass implements Serializable {
     public static final ObjectStreamField[] NO_FIELDS =
         new ObjectStreamField[0];
 
+    @java.io.Serial
     private static final long serialVersionUID = -6120832682080437368L;
+    @java.io.Serial
     private static final ObjectStreamField[] serialPersistentFields =
         NO_FIELDS;
 
@@ -274,7 +276,7 @@ public class ObjectStreamClass implements Serializable {
      * Return the class in the local VM that this version is mapped to.  Null
      * is returned if there is no corresponding local class.
      *
-     * @return  the <code>Class</code> instance that this descriptor represents
+     * @return  the {@code Class} instance that this descriptor represents
      */
     @CallerSensitive
     public Class<?> forClass() {

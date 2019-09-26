@@ -546,7 +546,7 @@ void emit_d32_reloc(CodeBuffer& cbuf, int d32, RelocationHolder const& rspec, in
 #ifdef ASSERT
   if (rspec.reloc()->type() == relocInfo::oop_type &&
       d32 != 0 && d32 != (intptr_t) Universe::non_oop_word()) {
-    assert(Universe::heap()->is_in_reserved((address)(intptr_t)d32), "should be real oop");
+    assert(Universe::heap()->is_in((address)(intptr_t)d32), "should be real oop");
     assert(oopDesc::is_oop(cast_to_oop((intptr_t)d32)), "cannot embed broken oops in code");
   }
 #endif
@@ -573,7 +573,7 @@ void emit_d64_reloc(CodeBuffer& cbuf, int64_t d64, RelocationHolder const& rspec
 #ifdef ASSERT
   if (rspec.reloc()->type() == relocInfo::oop_type &&
       d64 != 0 && d64 != (int64_t) Universe::non_oop_word()) {
-    assert(Universe::heap()->is_in_reserved((address)d64), "should be real oop");
+    assert(Universe::heap()->is_in((address)d64), "should be real oop");
     assert(oopDesc::is_oop(cast_to_oop(d64)), "cannot embed broken oops in code");
   }
 #endif
@@ -6565,6 +6565,47 @@ instruct storeSSD(stackSlotD dst, regD src)
   ins_pipe(pipe_slow); // XXX
 %}
 
+instruct cacheWB(indirect addr)
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWB addr);
+
+  ins_cost(100);
+  format %{"cache wb $addr" %}
+  ins_encode %{
+    assert($addr->index_position() < 0, "should be");
+    assert($addr$$disp == 0, "should be");
+    __ cache_wb(Address($addr$$base$$Register, 0));
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
+instruct cacheWBPreSync()
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWBPreSync);
+
+  ins_cost(100);
+  format %{"cache wb presync" %}
+  ins_encode %{
+    __ cache_wbsync(true);
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
+instruct cacheWBPostSync()
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWBPostSync);
+
+  ins_cost(100);
+  format %{"cache wb postsync" %}
+  ins_encode %{
+    __ cache_wbsync(false);
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
 //----------BSWAP Instructions-------------------------------------------------
 instruct bytes_reverse_int(rRegI dst) %{
   match(Set dst (ReverseBytesI dst));
@@ -7717,6 +7758,17 @@ instruct castII(rRegI dst)
 
   size(0);
   format %{ "# castII of $dst" %}
+  ins_encode(/* empty encoding */);
+  ins_cost(0);
+  ins_pipe(empty);
+%}
+
+instruct castLL(rRegL dst)
+%{
+  match(Set dst (CastLL dst));
+
+  size(0);
+  format %{ "# castLL of $dst" %}
   ins_encode(/* empty encoding */);
   ins_cost(0);
   ins_pipe(empty);

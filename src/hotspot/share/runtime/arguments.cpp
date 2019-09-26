@@ -82,7 +82,6 @@ bool   Arguments::_java_compiler                = false;
 bool   Arguments::_xdebug_mode                  = false;
 const char*  Arguments::_java_vendor_url_bug    = DEFAULT_VENDOR_URL_BUG;
 const char*  Arguments::_sun_java_launcher      = DEFAULT_JAVA_LAUNCHER;
-int    Arguments::_sun_java_launcher_pid        = -1;
 bool   Arguments::_sun_java_launcher_is_altjvm  = false;
 
 // These parameters are reset in method parse_vm_init_args()
@@ -361,8 +360,7 @@ bool Arguments::is_internal_module_property(const char* property) {
 
 // Process java launcher properties.
 void Arguments::process_sun_java_launcher_properties(JavaVMInitArgs* args) {
-  // See if sun.java.launcher, sun.java.launcher.is_altjvm or
-  // sun.java.launcher.pid is defined.
+  // See if sun.java.launcher or sun.java.launcher.is_altjvm is defined.
   // Must do this before setting up other system properties,
   // as some of them may depend on launcher type.
   for (int index = 0; index < args->nOptions; index++) {
@@ -377,10 +375,6 @@ void Arguments::process_sun_java_launcher_properties(JavaVMInitArgs* args) {
       if (strcmp(tail, "true") == 0) {
         _sun_java_launcher_is_altjvm = true;
       }
-      continue;
-    }
-    if (match_option(option, "-Dsun.java.launcher.pid=", &tail)) {
-      _sun_java_launcher_pid = atoi(tail);
       continue;
     }
   }
@@ -539,6 +533,7 @@ static SpecialFlag const special_jvm_flags[] = {
   { "FlightRecorder",               JDK_Version::jdk(13), JDK_Version::undefined(), JDK_Version::undefined() },
   { "FieldsAllocationStyle",        JDK_Version::jdk(14), JDK_Version::jdk(15), JDK_Version::jdk(16) },
   { "CompactFields",                JDK_Version::jdk(14), JDK_Version::jdk(15), JDK_Version::jdk(16) },
+  { "MonitorBound",                 JDK_Version::jdk(14), JDK_Version::jdk(15), JDK_Version::jdk(16) },
 
   // --- Deprecated alias flags (see also aliased_jvm_flags) - sorted by obsolete_in then expired_in:
   { "DefaultMaxRAMFraction",        JDK_Version::jdk(8),  JDK_Version::undefined(), JDK_Version::undefined() },
@@ -628,14 +623,7 @@ static bool version_less_than(JDK_Version v, JDK_Version other) {
   }
 }
 
-extern bool lookup_special_flag_ext(const char *flag_name, SpecialFlag& flag);
-
 static bool lookup_special_flag(const char *flag_name, SpecialFlag& flag) {
-  // Allow extensions to have priority
-  if (lookup_special_flag_ext(flag_name, flag)) {
-    return true;
-  }
-
   for (size_t i = 0; special_jvm_flags[i].name != NULL; i++) {
     if ((strcmp(special_jvm_flags[i].name, flag_name) == 0)) {
       flag = special_jvm_flags[i];
@@ -750,7 +738,7 @@ static bool verify_special_jvm_flags() {
 
       // if flag has become obsolete it should not have a "globals" flag defined anymore.
       if (!version_less_than(JDK_Version::current(), flag.obsolete_in)) {
-        if (JVMFlag::find_flag(flag.name) != NULL) {
+        if (JVMFlag::find_declared_flag(flag.name) != NULL) {
           // Temporarily disable the warning: 8196739
           // warning("Global variable for obsolete special flag entry \"%s\" should be removed", flag.name);
         }
@@ -760,7 +748,7 @@ static bool verify_special_jvm_flags() {
     if (!flag.expired_in.is_undefined()) {
       // if flag has become expired it should not have a "globals" flag defined anymore.
       if (!version_less_than(JDK_Version::current(), flag.expired_in)) {
-        if (JVMFlag::find_flag(flag.name) != NULL) {
+        if (JVMFlag::find_declared_flag(flag.name) != NULL) {
           // Temporarily disable the warning: 8196739
           // warning("Global variable for expired flag entry \"%s\" should be removed", flag.name);
         }
@@ -844,15 +832,15 @@ void Arguments::describe_range_error(ArgsRange errcode) {
   }
 }
 
-static bool set_bool_flag(const char* name, bool value, JVMFlag::Flags origin) {
-  if (JVMFlag::boolAtPut(name, &value, origin) == JVMFlag::SUCCESS) {
+static bool set_bool_flag(JVMFlag* flag, bool value, JVMFlag::Flags origin) {
+  if (JVMFlag::boolAtPut(flag, &value, origin) == JVMFlag::SUCCESS) {
     return true;
   } else {
     return false;
   }
 }
 
-static bool set_fp_numeric_flag(const char* name, char* value, JVMFlag::Flags origin) {
+static bool set_fp_numeric_flag(JVMFlag* flag, char* value, JVMFlag::Flags origin) {
   char* end;
   errno = 0;
   double v = strtod(value, &end);
@@ -860,26 +848,25 @@ static bool set_fp_numeric_flag(const char* name, char* value, JVMFlag::Flags or
     return false;
   }
 
-  if (JVMFlag::doubleAtPut(name, &v, origin) == JVMFlag::SUCCESS) {
+  if (JVMFlag::doubleAtPut(flag, &v, origin) == JVMFlag::SUCCESS) {
     return true;
   }
   return false;
 }
 
-static bool set_numeric_flag(const char* name, char* value, JVMFlag::Flags origin) {
+static bool set_numeric_flag(JVMFlag* flag, char* value, JVMFlag::Flags origin) {
   julong v;
   int int_v;
   intx intx_v;
   bool is_neg = false;
-  JVMFlag* result = JVMFlag::find_flag(name, strlen(name));
 
-  if (result == NULL) {
+  if (flag == NULL) {
     return false;
   }
 
   // Check the sign first since atojulong() parses only unsigned values.
   if (*value == '-') {
-    if (!result->is_intx() && !result->is_int()) {
+    if (!flag->is_intx() && !flag->is_int()) {
       return false;
     }
     value++;
@@ -888,48 +875,48 @@ static bool set_numeric_flag(const char* name, char* value, JVMFlag::Flags origi
   if (!Arguments::atojulong(value, &v)) {
     return false;
   }
-  if (result->is_int()) {
+  if (flag->is_int()) {
     int_v = (int) v;
     if (is_neg) {
       int_v = -int_v;
     }
-    return JVMFlag::intAtPut(result, &int_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_uint()) {
+    return JVMFlag::intAtPut(flag, &int_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_uint()) {
     uint uint_v = (uint) v;
-    return JVMFlag::uintAtPut(result, &uint_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_intx()) {
+    return JVMFlag::uintAtPut(flag, &uint_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_intx()) {
     intx_v = (intx) v;
     if (is_neg) {
       intx_v = -intx_v;
     }
-    return JVMFlag::intxAtPut(result, &intx_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_uintx()) {
+    return JVMFlag::intxAtPut(flag, &intx_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_uintx()) {
     uintx uintx_v = (uintx) v;
-    return JVMFlag::uintxAtPut(result, &uintx_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_uint64_t()) {
+    return JVMFlag::uintxAtPut(flag, &uintx_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_uint64_t()) {
     uint64_t uint64_t_v = (uint64_t) v;
-    return JVMFlag::uint64_tAtPut(result, &uint64_t_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_size_t()) {
+    return JVMFlag::uint64_tAtPut(flag, &uint64_t_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_size_t()) {
     size_t size_t_v = (size_t) v;
-    return JVMFlag::size_tAtPut(result, &size_t_v, origin) == JVMFlag::SUCCESS;
-  } else if (result->is_double()) {
+    return JVMFlag::size_tAtPut(flag, &size_t_v, origin) == JVMFlag::SUCCESS;
+  } else if (flag->is_double()) {
     double double_v = (double) v;
-    return JVMFlag::doubleAtPut(result, &double_v, origin) == JVMFlag::SUCCESS;
+    return JVMFlag::doubleAtPut(flag, &double_v, origin) == JVMFlag::SUCCESS;
   } else {
     return false;
   }
 }
 
-static bool set_string_flag(const char* name, const char* value, JVMFlag::Flags origin) {
-  if (JVMFlag::ccstrAtPut(name, &value, origin) != JVMFlag::SUCCESS) return false;
+static bool set_string_flag(JVMFlag* flag, const char* value, JVMFlag::Flags origin) {
+  if (JVMFlag::ccstrAtPut(flag, &value, origin) != JVMFlag::SUCCESS) return false;
   // Contract:  JVMFlag always returns a pointer that needs freeing.
   FREE_C_HEAP_ARRAY(char, value);
   return true;
 }
 
-static bool append_to_string_flag(const char* name, const char* new_value, JVMFlag::Flags origin) {
+static bool append_to_string_flag(JVMFlag* flag, const char* new_value, JVMFlag::Flags origin) {
   const char* old_value = "";
-  if (JVMFlag::ccstrAt(name, &old_value) != JVMFlag::SUCCESS) return false;
+  if (JVMFlag::ccstrAt(flag, &old_value) != JVMFlag::SUCCESS) return false;
   size_t old_len = old_value != NULL ? strlen(old_value) : 0;
   size_t new_len = strlen(new_value);
   const char* value;
@@ -946,13 +933,11 @@ static bool append_to_string_flag(const char* name, const char* new_value, JVMFl
     value = buf;
     free_this_too = buf;
   }
-  (void) JVMFlag::ccstrAtPut(name, &value, origin);
+  (void) JVMFlag::ccstrAtPut(flag, &value, origin);
   // JVMFlag always returns a pointer that needs freeing.
   FREE_C_HEAP_ARRAY(char, value);
-  if (free_this_too != NULL) {
-    // JVMFlag made its own copy, so I must delete my own temp. buffer.
-    FREE_C_HEAP_ARRAY(char, free_this_too);
-  }
+  // JVMFlag made its own copy, so I must delete my own temp. buffer.
+  FREE_C_HEAP_ARRAY(char, free_this_too);
   return true;
 }
 
@@ -1041,7 +1026,8 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
     if (real_name == NULL) {
       return false;
     }
-    return set_bool_flag(real_name, false, origin);
+    JVMFlag* flag = JVMFlag::find_flag(real_name);
+    return set_bool_flag(flag, false, origin);
   }
   if (sscanf(arg, "+%" XSTR(BUFLEN) NAME_RANGE "%c", name, &dummy) == 1) {
     AliasedLoggingFlag alf = catch_logging_aliases(name, true);
@@ -1053,13 +1039,13 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
     if (real_name == NULL) {
       return false;
     }
-    return set_bool_flag(real_name, true, origin);
+    JVMFlag* flag = JVMFlag::find_flag(real_name);
+    return set_bool_flag(flag, true, origin);
   }
 
   char punct;
   if (sscanf(arg, "%" XSTR(BUFLEN) NAME_RANGE "%c", name, &punct) == 2 && punct == '=') {
     const char* value = strchr(arg, '=') + 1;
-    JVMFlag* flag;
 
     // this scanf pattern matches both strings (handled here) and numbers (handled later))
     AliasedLoggingFlag alf = catch_logging_aliases(name, true);
@@ -1071,15 +1057,15 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
     if (real_name == NULL) {
       return false;
     }
-    flag = JVMFlag::find_flag(real_name);
+    JVMFlag* flag = JVMFlag::find_flag(real_name);
     if (flag != NULL && flag->is_ccstr()) {
       if (flag->ccstr_accumulates()) {
-        return append_to_string_flag(real_name, value, origin);
+        return append_to_string_flag(flag, value, origin);
       } else {
         if (value[0] == '\0') {
           value = NULL;
         }
-        return set_string_flag(real_name, value, origin);
+        return set_string_flag(flag, value, origin);
       }
     } else {
       warn_if_deprecated = false; // if arg is deprecated, we've already done warning...
@@ -1096,7 +1082,8 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
     if (real_name == NULL) {
       return false;
     }
-    return set_string_flag(real_name, value, origin);
+    JVMFlag* flag = JVMFlag::find_flag(real_name);
+    return set_string_flag(flag, value, origin);
   }
 
 #define SIGNED_FP_NUMBER_RANGE "[-0123456789.eE+]"
@@ -1111,7 +1098,8 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
       if (real_name == NULL) {
         return false;
       }
-      return set_fp_numeric_flag(real_name, value, origin);
+      JVMFlag* flag = JVMFlag::find_flag(real_name);
+      return set_fp_numeric_flag(flag, value, origin);
     }
   }
 
@@ -1121,7 +1109,8 @@ bool Arguments::parse_argument(const char* arg, JVMFlag::Flags origin) {
     if (real_name == NULL) {
       return false;
     }
-    return set_numeric_flag(real_name, value, origin);
+    JVMFlag* flag = JVMFlag::find_flag(real_name);
+    return set_numeric_flag(flag, value, origin);
   }
 
   return false;
@@ -1277,7 +1266,7 @@ bool Arguments::process_argument(const char* arg,
 
   // For locked flags, report a custom error message if available.
   // Otherwise, report the standard unrecognized VM option.
-  JVMFlag* found_flag = JVMFlag::find_flag((const char*)argname, arg_len, true, true);
+  const JVMFlag* found_flag = JVMFlag::find_declared_flag((const char*)argname, arg_len);
   if (found_flag != NULL) {
     char locked_message_buf[BUFLEN];
     JVMFlag::MsgType msg_type = found_flag->get_locked_message(locked_message_buf, BUFLEN);
@@ -1416,10 +1405,9 @@ bool Arguments::add_property(const char* prop, PropertyWriteable writeable, Prop
   if (strcmp(key, "java.compiler") == 0) {
     process_java_compiler_argument(value);
     // Record value in Arguments, but let it get passed to Java.
-  } else if (strcmp(key, "sun.java.launcher.is_altjvm") == 0 ||
-             strcmp(key, "sun.java.launcher.pid") == 0) {
-    // sun.java.launcher.is_altjvm and sun.java.launcher.pid property are
-    // private and are processed in process_sun_java_launcher_properties();
+  } else if (strcmp(key, "sun.java.launcher.is_altjvm") == 0) {
+    // sun.java.launcher.is_altjvm property is
+    // private and is processed in process_sun_java_launcher_properties();
     // the sun.java.launcher property is passed on to the java application
   } else if (strcmp(key, "sun.boot.library.path") == 0) {
     // append is true, writable is true, internal is false
@@ -3484,10 +3472,8 @@ char* Arguments::get_default_shared_archive_path() {
   size_t file_sep_len = strlen(os::file_separator());
   const size_t len = jvm_path_len + file_sep_len + 20;
   default_archive_path = NEW_C_HEAP_ARRAY(char, len, mtArguments);
-  if (default_archive_path != NULL) {
-    jio_snprintf(default_archive_path, len, "%s%sclasses.jsa",
-      jvm_path, os::file_separator());
-  }
+  jio_snprintf(default_archive_path, len, "%s%sclasses.jsa",
+               jvm_path, os::file_separator());
   return default_archive_path;
 }
 

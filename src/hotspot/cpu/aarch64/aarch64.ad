@@ -2185,17 +2185,21 @@ int HandlerImpl::emit_deopt_handler(CodeBuffer& cbuf)
 //=============================================================================
 
 const bool Matcher::match_rule_supported(int opcode) {
-
-  switch (opcode) {
-  default:
-    break;
-  }
-
-  if (!has_match_rule(opcode)) {
+  if (!has_match_rule(opcode))
     return false;
+
+  bool ret_value = true;
+  switch (opcode) {
+    case Op_CacheWB:
+    case Op_CacheWBPreSync:
+    case Op_CacheWBPostSync:
+      if (!VM_Version::supports_data_cache_line_flush()) {
+        ret_value = false;
+      }
+      break;
   }
 
-  return true;  // Per default match rules are supported.
+  return ret_value; // Per default match rules are supported.
 }
 
 const bool Matcher::match_rule_supported_vector(int opcode, int vlen) {
@@ -3543,7 +3547,7 @@ encode %{
     // markWord of object (disp_hdr) with the stack pointer.
     __ mov(rscratch1, sp);
     __ sub(disp_hdr, disp_hdr, rscratch1);
-    __ mov(tmp, (address) (~(os::vm_page_size()-1) | (uintptr_t)markWord::lock_mask_in_place));
+    __ mov(tmp, (address) (~(os::vm_page_size()-1) | markWord::lock_mask_in_place));
     // If condition is true we are cont and hence we can store 0 as the
     // displaced header in the box, which indicates that it is a recursive lock.
     __ ands(tmp/*==0?*/, disp_hdr, tmp);   // Sets flags for result
@@ -3565,7 +3569,7 @@ encode %{
     // Store a non-null value into the box to avoid looking like a re-entrant
     // lock. The fast-path monitor unlock code checks for
     // markWord::monitor_value so use markWord::unused_mark which has the
-    // relevant bit set, and also matches ObjectSynchronizer::slow_enter.
+    // relevant bit set, and also matches ObjectSynchronizer::enter.
     __ mov(tmp, (address)markWord::unused_mark().value());
     __ str(tmp, Address(box, BasicLock::displaced_header_offset_in_bytes()));
 
@@ -3612,7 +3616,8 @@ encode %{
 
     // Handle existing monitor.
     __ bind(object_has_monitor);
-    __ add(tmp, tmp, -markWord::monitor_value); // monitor
+    STATIC_ASSERT(markWord::monitor_value <= INT_MAX);
+    __ add(tmp, tmp, -(int)markWord::monitor_value); // monitor
     __ ldr(rscratch1, Address(tmp, ObjectMonitor::owner_offset_in_bytes()));
     __ ldr(disp_hdr, Address(tmp, ObjectMonitor::recursions_offset_in_bytes()));
     __ eor(rscratch1, rscratch1, rthread); // Will be 0 if we are the owner.
@@ -7769,6 +7774,47 @@ instruct storeD_volatile(vRegD src, /* sync_memory*/indirect mem)
 
 //  ---------------- end of volatile loads and stores ----------------
 
+instruct cacheWB(indirect addr)
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWB addr);
+
+  ins_cost(100);
+  format %{"cache wb $addr" %}
+  ins_encode %{
+    assert($addr->index_position() < 0, "should be");
+    assert($addr$$disp == 0, "should be");
+    __ cache_wb(Address($addr$$base$$Register, 0));
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
+instruct cacheWBPreSync()
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWBPreSync);
+
+  ins_cost(100);
+  format %{"cache wb presync" %}
+  ins_encode %{
+    __ cache_wbsync(true);
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
+instruct cacheWBPostSync()
+%{
+  predicate(VM_Version::supports_data_cache_line_flush());
+  match(CacheWBPostSync);
+
+  ins_cost(100);
+  format %{"cache wb postsync" %}
+  ins_encode %{
+    __ cache_wbsync(false);
+  %}
+  ins_pipe(pipe_slow); // XXX
+%}
+
 // ============================================================================
 // BSWAP Instructions
 
@@ -8303,6 +8349,17 @@ instruct castII(iRegI dst)
 
   size(0);
   format %{ "# castII of $dst" %}
+  ins_encode(/* empty encoding */);
+  ins_cost(0);
+  ins_pipe(pipe_class_empty);
+%}
+
+instruct castLL(iRegL dst)
+%{
+  match(Set dst (CastLL dst));
+
+  size(0);
+  format %{ "# castLL of $dst" %}
   ins_encode(/* empty encoding */);
   ins_cost(0);
   ins_pipe(pipe_class_empty);

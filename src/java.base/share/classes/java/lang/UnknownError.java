@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2008, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,17 +34,18 @@ package java.lang;
  */
 public
 class UnknownError extends VirtualMachineError {
+    @java.io.Serial
     private static final long serialVersionUID = 2524784860676771849L;
 
     /**
-     * Constructs an <code>UnknownError</code> with no detail message.
+     * Constructs an {@code UnknownError} with no detail message.
      */
     public UnknownError() {
         super();
     }
 
     /**
-     * Constructs an <code>UnknownError</code> with the specified detail
+     * Constructs an {@code UnknownError} with the specified detail
      * message.
      *
      * @param   s   the detail message.

@@ -168,6 +168,9 @@ class ParallelScavengeHeap : public CollectedHeap {
   bool is_in_young(oop p);  // reserved part
   bool is_in_old(oop p);    // reserved part
 
+  MemRegion reserved_region() const { return _reserved; }
+  HeapWord* base() const { return _reserved.start(); }
+
   // Memory allocation.   "gc_time_limit_was_exceeded" will
   // be set to true if the adaptive size policy determine that
   // an excessive amount of time is being spent doing collections
@@ -227,6 +230,9 @@ class ParallelScavengeHeap : public CollectedHeap {
 
   PreGenGCValues get_pre_gc_values() const;
   void print_heap_change(const PreGenGCValues& pre_gc_values) const;
+
+  // Used to print information about locations in the hs_err file.
+  virtual bool print_location(outputStream* st, void* addr) const;
 
   void verify(VerifyOption option /* ignored */);
 

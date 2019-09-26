@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1994, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1994, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,17 +36,18 @@ package java.lang;
  */
 public
 class NumberFormatException extends IllegalArgumentException {
+    @java.io.Serial
     static final long serialVersionUID = -2848938806368998894L;
 
     /**
-     * Constructs a <code>NumberFormatException</code> with no detail message.
+     * Constructs a {@code NumberFormatException} with no detail message.
      */
     public NumberFormatException () {
         super();
     }
 
     /**
-     * Constructs a <code>NumberFormatException</code> with the
+     * Constructs a {@code NumberFormatException} with the
      * specified detail message.
      *
      * @param   s   the detail message.

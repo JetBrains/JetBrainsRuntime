@@ -28,11 +28,14 @@
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zHeap.inline.hpp"
 #include "gc/z/zNMethod.hpp"
+#include "gc/z/zObjArrayAllocator.hpp"
+#include "gc/z/zOop.inline.hpp"
 #include "gc/z/zServiceability.hpp"
 #include "gc/z/zStat.hpp"
 #include "gc/z/zUtils.inline.hpp"
 #include "memory/universe.hpp"
 #include "runtime/mutexLocker.hpp"
+#include "utilities/align.hpp"
 
 ZCollectedHeap* ZCollectedHeap::heap() {
   CollectedHeap* heap = Universe::heap();
@@ -65,8 +68,7 @@ jint ZCollectedHeap::initialize() {
     return JNI_ENOMEM;
   }
 
-  initialize_reserved_region((HeapWord*)ZAddressReservedStart,
-                             (HeapWord*)ZAddressReservedEnd);
+  Universe::calculate_verify_data((HeapWord*)0, (HeapWord*)UINTPTR_MAX);
 
   return JNI_OK;
 }
@@ -113,7 +115,7 @@ bool ZCollectedHeap::is_in(const void* p) const {
 }
 
 uint32_t ZCollectedHeap::hash_oop(oop obj) const {
-  return _heap.hash_oop(obj);
+  return _heap.hash_oop(ZOop::to_address(obj));
 }
 
 HeapWord* ZCollectedHeap::allocate_new_tlab(size_t min_size, size_t requested_size, size_t* actual_size) {
@@ -125,6 +127,15 @@ HeapWord* ZCollectedHeap::allocate_new_tlab(size_t min_size, size_t requested_si
   }
 
   return (HeapWord*)addr;
+}
+
+oop ZCollectedHeap::array_allocate(Klass* klass, int size, int length, bool do_zero, TRAPS) {
+  if (!do_zero) {
+    return CollectedHeap::array_allocate(klass, size, length, false /* do_zero */, THREAD);
+  }
+
+  ZObjArrayAllocator allocator(klass, size, length, THREAD);
+  return allocator.allocate();
 }
 
 HeapWord* ZCollectedHeap::mem_allocate(size_t size, bool* gc_overhead_limit_was_exceeded) {
@@ -239,14 +250,6 @@ void ZCollectedHeap::safe_object_iterate(ObjectClosure* cl) {
   _heap.object_iterate(cl, true /* visit_weaks */);
 }
 
-HeapWord* ZCollectedHeap::block_start(const void* addr) const {
-  return (HeapWord*)_heap.block_start((uintptr_t)addr);
-}
-
-bool ZCollectedHeap::block_is_obj(const HeapWord* addr) const {
-  return _heap.block_is_obj((uintptr_t)addr);
-}
-
 void ZCollectedHeap::register_nmethod(nmethod* nm) {
   ZNMethod::register_nmethod(nm);
 }
@@ -281,11 +284,7 @@ void ZCollectedHeap::gc_threads_do(ThreadClosure* tc) const {
 }
 
 VirtualSpaceSummary ZCollectedHeap::create_heap_space_summary() {
-  const size_t capacity_in_words = capacity() / HeapWordSize;
-  const size_t max_capacity_in_words = max_capacity() / HeapWordSize;
-  return VirtualSpaceSummary(reserved_region().start(),
-                             reserved_region().start() + capacity_in_words,
-                             reserved_region().start() + max_capacity_in_words);
+  return VirtualSpaceSummary((HeapWord*)0, (HeapWord*)capacity(), (HeapWord*)max_capacity());
 }
 
 void ZCollectedHeap::safepoint_synchronize_begin() {
@@ -307,10 +306,6 @@ void ZCollectedHeap::print_on(outputStream* st) const {
 void ZCollectedHeap::print_on_error(outputStream* st) const {
   CollectedHeap::print_on_error(st);
 
-  st->print_cr("Address Space");
-  st->print_cr( "     Start:             " PTR_FORMAT, ZAddressSpaceStart);
-  st->print_cr( "     End:               " PTR_FORMAT, ZAddressSpaceEnd);
-  st->print_cr( "     Size:              " SIZE_FORMAT_W(-15) " (" PTR_FORMAT ")", ZAddressSpaceSize, ZAddressSpaceSize);
   st->print_cr( "Heap");
   st->print_cr( "     GlobalPhase:       %u", ZGlobalPhase);
   st->print_cr( "     GlobalSeqNum:      %u", ZGlobalSeqNum);
@@ -346,10 +341,14 @@ void ZCollectedHeap::print_tracing_info() const {
   // Does nothing
 }
 
+bool ZCollectedHeap::print_location(outputStream* st, void* addr) const {
+  return _heap.print_location(st, (uintptr_t)addr);
+}
+
 void ZCollectedHeap::verify(VerifyOption option /* ignored */) {
   _heap.verify();
 }
 
 bool ZCollectedHeap::is_oop(oop object) const {
-  return CollectedHeap::is_oop(object) && _heap.is_oop(object);
+  return _heap.is_oop(ZOop::to_address(object));
 }

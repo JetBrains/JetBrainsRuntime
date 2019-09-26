@@ -79,6 +79,7 @@ static ArchivableStaticFieldInfo open_archive_subgraph_entry_fields[] = {
   {"java/util/ImmutableCollections$MapN",      "EMPTY_MAP"},
   {"java/util/ImmutableCollections$SetN",      "EMPTY_SET"},
   {"java/lang/module/Configuration",           "EMPTY_CONFIGURATION"},
+  {"jdk/internal/math/FDBigInteger",           "archivedCaches"},
 };
 
 const static int num_closed_archive_subgraph_entry_fields =
@@ -582,7 +583,7 @@ void HeapShared::check_closed_archive_heap_region_object(InstanceKlass* k,
   for (JavaFieldStream fs(k); !fs.done(); fs.next()) {
     if (!fs.access_flags().is_static()) {
       BasicType ft = fs.field_descriptor().field_type();
-      if (!fs.access_flags().is_final() && (ft == T_ARRAY || ft == T_OBJECT)) {
+      if (!fs.access_flags().is_final() && is_reference_type(ft)) {
         ResourceMark rm(THREAD);
         log_warning(cds, heap)(
           "Please check reference field in %s instance in closed archive heap region: %s %s",
@@ -870,7 +871,7 @@ public:
   virtual void do_field(fieldDescriptor* fd) {
     if (fd->name() == _field_name) {
       assert(!_found, "fields cannot be overloaded");
-      assert(fd->field_type() == T_OBJECT || fd->field_type() == T_ARRAY, "can archive only obj or array fields");
+      assert(is_reference_type(fd->field_type()), "can archive only fields that are references");
       _found = true;
       _offset = fd->offset();
     }

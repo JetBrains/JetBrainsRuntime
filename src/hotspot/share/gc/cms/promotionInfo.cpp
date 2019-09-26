@@ -27,8 +27,8 @@
 #include "gc/cms/promotionInfo.hpp"
 #include "gc/shared/genOopClosures.hpp"
 #include "oops/compressedOops.inline.hpp"
-#include "oops/markOop.inline.hpp"
-#include "oops/oop.hpp"
+#include "oops/markWord.inline.hpp"
+#include "oops/oop.inline.hpp"
 
 /////////////////////////////////////////////////////////////////////////
 //// PromotionInfo

@@ -142,7 +142,7 @@ class Thread: public ThreadShadow {
 
 #ifndef USE_LIBRARY_BASED_TLS_ONLY
   // Current thread is maintained as a thread-local variable
-  static THREAD_LOCAL_DECL Thread* _thr_current;
+  static THREAD_LOCAL Thread* _thr_current;
 #endif
 
   // Thread local data area available to the GC. The internal
@@ -408,13 +408,13 @@ class Thread: public ThreadShadow {
   // ObjectMonitor on which this thread called Object.wait()
   ObjectMonitor* _current_waiting_monitor;
 
-  // Private thread-local objectmonitor list - a simple cache organized as a SLL.
+  // Per-thread ObjectMonitor lists:
  public:
-  ObjectMonitor* omFreeList;
-  int omFreeCount;                              // length of omFreeList
-  int omFreeProvision;                          // reload chunk size
-  ObjectMonitor* omInUseList;                   // SLL to track monitors in circulation
-  int omInUseCount;                             // length of omInUseList
+  ObjectMonitor* om_free_list;                  // SLL of free ObjectMonitors
+  int om_free_count;                            // # on om_free_list
+  int om_free_provision;                        // # to try to allocate next
+  ObjectMonitor* om_in_use_list;                // SLL of in-use ObjectMonitors
+  int om_in_use_count;                          // # on om_in_use_list
 
 #ifdef ASSERT
  private:
@@ -514,15 +514,13 @@ class Thread: public ThreadShadow {
   static void set_priority(Thread* thread, ThreadPriority priority);
   static ThreadPriority get_priority(const Thread* const thread);
   static void start(Thread* thread);
-  static void interrupt(Thread* thr);
-  static bool is_interrupted(Thread* thr, bool clear_interrupted);
 
   void set_native_thread_name(const char *name) {
     assert(Thread::current() == this, "set_native_thread_name can only be called on the current thread");
     os::set_native_thread_name(name);
   }
 
-  ObjectMonitor** omInUseList_addr()             { return (ObjectMonitor **)&omInUseList; }
+  ObjectMonitor** om_in_use_list_addr()          { return (ObjectMonitor **)&om_in_use_list; }
   Monitor* SR_lock() const                       { return _SR_lock; }
 
   bool has_async_exception() const { return (_suspend_flags & _has_async_exception) != 0; }
@@ -736,7 +734,7 @@ protected:
 #ifdef ASSERT
  private:
   // Deadlock detection support for Mutex locks. List of locks own by thread.
-  Monitor* _owned_locks;
+  Mutex* _owned_locks;
   // Mutex::set_owner_implementation is the only place where _owned_locks is modified,
   // thus the friendship
   friend class Mutex;
@@ -745,7 +743,7 @@ protected:
  public:
   void print_owned_locks_on(outputStream* st) const;
   void print_owned_locks() const                 { print_owned_locks_on(tty);    }
-  Monitor* owned_locks() const                   { return _owned_locks;          }
+  Mutex* owned_locks() const                     { return _owned_locks;          }
   bool owns_locks() const                        { return owned_locks() != NULL; }
 
   // Deadlock detection
@@ -755,7 +753,7 @@ protected:
 
   // These functions check conditions on a JavaThread before possibly going to a safepoint,
   // including NoSafepointVerifier.
-  void check_for_valid_safepoint_state(bool potential_vm_operation) NOT_DEBUG_RETURN;
+  void check_for_valid_safepoint_state() NOT_DEBUG_RETURN;
   void check_possible_safepoint() NOT_DEBUG_RETURN;
 
  private:
@@ -789,7 +787,6 @@ protected:
   volatile intptr_t _Stalled;
   volatile int _TypeTag;
   ParkEvent * _ParkEvent;                     // for synchronized()
-  ParkEvent * _SleepEvent;                    // for Thread.sleep
   ParkEvent * _MuxEvent;                      // for low-level muxAcquire-muxRelease
   int NativeSyncRecursion;                    // diagnostic
 
@@ -805,7 +802,6 @@ protected:
   static void SpinAcquire(volatile int * Lock, const char * Name);
   static void SpinRelease(volatile int * Lock);
   static void muxAcquire(volatile intptr_t * Lock, const char * Name);
-  static void muxAcquireW(volatile intptr_t * Lock, ParkEvent * ev);
   static void muxRelease(volatile intptr_t * Lock);
 };
 
@@ -1147,10 +1143,8 @@ class JavaThread: public Thread {
  public:
   static jlong* _jvmci_old_thread_counters;
   static void collect_counters(jlong* array, int length);
-
-  bool resize_counters(int current_size, int new_size);
-
-  static bool resize_all_jvmci_counters(int new_size);
+  void resize_counters(int current_size, int new_size);
+  static void resize_all_jvmci_counters(int new_size);
 
  private:
 #endif // INCLUDE_JVMCI
@@ -1889,7 +1883,7 @@ class JavaThread: public Thread {
   void deoptimize();
   void make_zombies();
 
-  void deoptimized_wrt_marked_nmethods();
+  void deoptimize_marked_methods();
 
  public:
   // Returns the running thread as a JavaThread
@@ -2054,6 +2048,15 @@ class JavaThread: public Thread {
 
 private:
   InstanceKlass* _class_to_be_initialized;
+
+  // java.lang.Thread.sleep support
+  ParkEvent * _SleepEvent;
+public:
+  bool sleep(jlong millis);
+
+  // java.lang.Thread interruption support
+  void interrupt();
+  bool is_interrupted(bool clear_interrupted);
 
 };
 

@@ -105,7 +105,6 @@ public class TestGCLogMessages {
         new LogMessageWithLevel("Merged Coarse", Level.DEBUG),
         new LogMessageWithLevel("Hot Card Cache", Level.DEBUG),
         new LogMessageWithLevel("Log Buffers", Level.DEBUG),
-        new LogMessageWithLevel("Processed Buffers", Level.DEBUG),
         new LogMessageWithLevel("Dirty Cards", Level.DEBUG),
         new LogMessageWithLevel("Skipped Cards", Level.DEBUG),
         // Scan Heap Roots
@@ -129,8 +128,7 @@ public class TestGCLogMessages {
         new LogMessageWithLevel("CLDG Roots", Level.TRACE),
         new LogMessageWithLevel("JVMTI Roots", Level.TRACE),
         new LogMessageWithLevel("CM RefProcessor Roots", Level.TRACE),
-        new LogMessageWithLevel("Wait For Strong CLD", Level.TRACE),
-        new LogMessageWithLevel("Weak CLD Roots", Level.TRACE),
+        new LogMessageWithLevel("Wait For Strong Roots", Level.TRACE),
         // Redirty Cards
         new LogMessageWithLevel("Redirty Cards", Level.DEBUG),
         new LogMessageWithLevel("Parallel Redirty", Level.TRACE),
@@ -159,9 +157,10 @@ public class TestGCLogMessages {
         new LogMessageWithLevel("Reference Processing", Level.DEBUG),
         // VM internal reference processing
         new LogMessageWithLevel("Weak Processing", Level.DEBUG),
-        new LogMessageWithLevel("JNI weak processing", Level.DEBUG),
-        new LogMessageWithLevel("StringTable weak processing", Level.DEBUG),
-        new LogMessageWithLevel("VM weak processing", Level.DEBUG),
+        new LogMessageWithLevel("JNI weak", Level.DEBUG),
+        new LogMessageWithLevel("StringTable weak", Level.DEBUG),
+        new LogMessageWithLevel("ResolvedMethodTable weak", Level.DEBUG),
+        new LogMessageWithLevel("VM weak", Level.DEBUG),
 
         new LogMessageWithLevelC2OrJVMCIOnly("DerivedPointerTable Update", Level.DEBUG),
         new LogMessageWithLevel("Start New Collection Set", Level.DEBUG),

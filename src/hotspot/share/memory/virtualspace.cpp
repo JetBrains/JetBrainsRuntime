@@ -27,7 +27,7 @@
 #include "memory/resourceArea.hpp"
 #include "memory/virtualspace.hpp"
 #include "oops/compressedOops.hpp"
-#include "oops/markOop.hpp"
+#include "oops/markWord.hpp"
 #include "oops/oop.inline.hpp"
 #include "runtime/os.inline.hpp"
 #include "services/memTracker.hpp"
@@ -635,6 +635,10 @@ ReservedHeapSpace::ReservedHeapSpace(size_t size, size_t alignment, bool large, 
   if (_fd_for_heap != -1) {
     os::close(_fd_for_heap);
   }
+}
+
+MemRegion ReservedHeapSpace::region() const {
+  return MemRegion((HeapWord*)base(), (HeapWord*)end());
 }
 
 // Reserve space for code segment.  Same as Java heap only we mark this as

@@ -80,8 +80,8 @@ MetaspaceSharedStats MetaspaceShared::_stats;
 bool MetaspaceShared::_has_error_classes;
 bool MetaspaceShared::_archive_loading_failed = false;
 bool MetaspaceShared::_remapped_readwrite = false;
-address MetaspaceShared::_cds_i2i_entry_code_buffers = NULL;
-size_t MetaspaceShared::_cds_i2i_entry_code_buffers_size = 0;
+address MetaspaceShared::_i2i_entry_code_buffers = NULL;
+size_t MetaspaceShared::_i2i_entry_code_buffers_size = 0;
 size_t MetaspaceShared::_core_spaces_size = 0;
 void* MetaspaceShared::_shared_metaspace_static_top = NULL;
 
@@ -356,14 +356,14 @@ void MetaspaceShared::post_initialize(TRAPS) {
     if (size > 0) {
       SystemDictionaryShared::allocate_shared_data_arrays(size, THREAD);
       if (!DynamicDumpSharedSpaces) {
-        FileMapHeader* header;
+        FileMapInfo* info;
         if (FileMapInfo::dynamic_info() == NULL) {
-          header = FileMapInfo::current_info()->header();
+          info = FileMapInfo::current_info();
         } else {
-          header = FileMapInfo::dynamic_info()->header();
+          info = FileMapInfo::dynamic_info();
         }
-        ClassLoaderExt::init_paths_start_index(header->_app_class_paths_start_index);
-        ClassLoaderExt::init_app_module_paths_start_index(header->_app_module_paths_start_index);
+        ClassLoaderExt::init_paths_start_index(info->app_class_paths_start_index());
+        ClassLoaderExt::init_app_module_paths_start_index(info->app_module_paths_start_index());
       }
     }
   }
@@ -492,20 +492,20 @@ void MetaspaceShared::serialize(SerializeClosure* soc) {
   soc->do_tag(666);
 }
 
-address MetaspaceShared::cds_i2i_entry_code_buffers(size_t total_size) {
+address MetaspaceShared::i2i_entry_code_buffers(size_t total_size) {
   if (DumpSharedSpaces) {
-    if (_cds_i2i_entry_code_buffers == NULL) {
-      _cds_i2i_entry_code_buffers = (address)misc_code_space_alloc(total_size);
-      _cds_i2i_entry_code_buffers_size = total_size;
+    if (_i2i_entry_code_buffers == NULL) {
+      _i2i_entry_code_buffers = (address)misc_code_space_alloc(total_size);
+      _i2i_entry_code_buffers_size = total_size;
     }
   } else if (UseSharedSpaces) {
-    assert(_cds_i2i_entry_code_buffers != NULL, "must already been initialized");
+    assert(_i2i_entry_code_buffers != NULL, "must already been initialized");
   } else {
     return NULL;
   }
 
-  assert(_cds_i2i_entry_code_buffers_size == total_size, "must not change");
-  return _cds_i2i_entry_code_buffers;
+  assert(_i2i_entry_code_buffers_size == total_size, "must not change");
+  return _i2i_entry_code_buffers;
 }
 
 uintx MetaspaceShared::object_delta_uintx(void* obj) {
@@ -1137,7 +1137,9 @@ public:
 
   VMOp_Type type() const { return VMOp_PopulateDumpSharedSpace; }
   void doit();   // outline because gdb sucks
-  static void write_region(FileMapInfo* mapinfo, int region, DumpRegion* space, bool read_only,  bool allow_exec);
+  static void write_region(FileMapInfo* mapinfo, int region_idx, DumpRegion* dump_region, bool read_only,  bool allow_exec) {
+    mapinfo->write_region(region_idx, dump_region->base(), dump_region->used(), read_only, allow_exec);
+  }
   bool allow_nested_vm_operations() const { return true; }
 }; // class VM_PopulateDumpSharedSpace
 
@@ -1406,11 +1408,6 @@ DumpAllocStats* ArchiveCompactor::_alloc_stats;
 SortedSymbolClosure* ArchiveCompactor::_ssc;
 ArchiveCompactor::RelocationTable* ArchiveCompactor::_new_loc_table;
 
-void VM_PopulateDumpSharedSpace::write_region(FileMapInfo* mapinfo, int region_idx,
-                                              DumpRegion* dump_region, bool read_only,  bool allow_exec) {
-  mapinfo->write_region(region_idx, dump_region->base(), dump_region->used(), read_only, allow_exec);
-}
-
 void VM_PopulateDumpSharedSpace::dump_symbols() {
   tty->print_cr("Dumping symbol table ...");
 
@@ -1430,12 +1427,11 @@ char* VM_PopulateDumpSharedSpace::dump_read_only_tables() {
 
   SystemDictionaryShared::write_to_archive();
 
-  char* start = _ro_region.top();
-
   size_t vtptrs_bytes = _num_cloned_vtable_kinds * sizeof(intptr_t*);
   _cloned_cpp_vtptrs = (intptr_t**)_ro_region.allocate(vtptrs_bytes, sizeof(intptr_t*));
 
   // Write the other data to the output array.
+  char* start = _ro_region.top();
   WriteClosure wc(&_ro_region);
   MetaspaceShared::serialize(&wc);
 
@@ -1518,7 +1514,7 @@ void VM_PopulateDumpSharedSpace::doit() {
 
   ArchiveCompactor::relocate_well_known_klasses();
 
-  char* read_only_tables_start = dump_read_only_tables();
+  char* serialized_data_start = dump_read_only_tables();
   _ro_region.pack(&_md_region);
 
   char* vtbl_list = _md_region.top();
@@ -1543,47 +1539,33 @@ void VM_PopulateDumpSharedSpace::doit() {
 
   FileMapInfo* mapinfo = new FileMapInfo(true);
   mapinfo->populate_header(os::vm_allocation_granularity());
-  mapinfo->set_read_only_tables_start(read_only_tables_start);
+  mapinfo->set_serialized_data_start(serialized_data_start);
   mapinfo->set_misc_data_patching_start(vtbl_list);
-  mapinfo->set_cds_i2i_entry_code_buffers(MetaspaceShared::cds_i2i_entry_code_buffers());
-  mapinfo->set_cds_i2i_entry_code_buffers_size(MetaspaceShared::cds_i2i_entry_code_buffers_size());
+  mapinfo->set_i2i_entry_code_buffers(MetaspaceShared::i2i_entry_code_buffers(),
+                                      MetaspaceShared::i2i_entry_code_buffers_size());
   mapinfo->set_core_spaces_size(core_spaces_size);
+  mapinfo->open_for_write();
 
-  for (int pass=1; pass<=2; pass++) {
-    bool print_archive_log = (pass==1);
-    if (pass == 1) {
-      // The first pass doesn't actually write the data to disk. All it
-      // does is to update the fields in the mapinfo->_header.
-    } else {
-      // After the first pass, the contents of mapinfo->_header are finalized,
-      // so we can compute the header's CRC, and write the contents of the header
-      // and the regions into disk.
-      mapinfo->open_for_write();
-      mapinfo->set_header_crc(mapinfo->compute_header_crc());
-    }
-    mapinfo->write_header();
+  // NOTE: md contains the trampoline code for method entries, which are patched at run time,
+  // so it needs to be read/write.
+  write_region(mapinfo, MetaspaceShared::mc, &_mc_region, /*read_only=*/false,/*allow_exec=*/true);
+  write_region(mapinfo, MetaspaceShared::rw, &_rw_region, /*read_only=*/false,/*allow_exec=*/false);
+  write_region(mapinfo, MetaspaceShared::ro, &_ro_region, /*read_only=*/true, /*allow_exec=*/false);
+  write_region(mapinfo, MetaspaceShared::md, &_md_region, /*read_only=*/false,/*allow_exec=*/false);
 
-    // NOTE: md contains the trampoline code for method entries, which are patched at run time,
-    // so it needs to be read/write.
-    write_region(mapinfo, MetaspaceShared::mc, &_mc_region, /*read_only=*/false,/*allow_exec=*/true);
-    write_region(mapinfo, MetaspaceShared::rw, &_rw_region, /*read_only=*/false,/*allow_exec=*/false);
-    write_region(mapinfo, MetaspaceShared::ro, &_ro_region, /*read_only=*/true, /*allow_exec=*/false);
-    write_region(mapinfo, MetaspaceShared::md, &_md_region, /*read_only=*/false,/*allow_exec=*/false);
-
-    _total_closed_archive_region_size = mapinfo->write_archive_heap_regions(
+  _total_closed_archive_region_size = mapinfo->write_archive_heap_regions(
                                         _closed_archive_heap_regions,
                                         _closed_archive_heap_oopmaps,
                                         MetaspaceShared::first_closed_archive_heap_region,
-                                        MetaspaceShared::max_closed_archive_heap_region,
-                                        print_archive_log);
-    _total_open_archive_region_size = mapinfo->write_archive_heap_regions(
+                                        MetaspaceShared::max_closed_archive_heap_region);
+  _total_open_archive_region_size = mapinfo->write_archive_heap_regions(
                                         _open_archive_heap_regions,
                                         _open_archive_heap_oopmaps,
                                         MetaspaceShared::first_open_archive_heap_region,
-                                        MetaspaceShared::max_open_archive_heap_region,
-                                        print_archive_log);
-  }
+                                        MetaspaceShared::max_open_archive_heap_region);
 
+  mapinfo->set_header_crc(mapinfo->compute_header_crc());
+  mapinfo->write_header();
   mapinfo->close();
 
   // Restore the vtable in case we invoke any virtual methods.
@@ -1814,7 +1796,7 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
       if (klass == NULL &&
           (PENDING_EXCEPTION->klass()->name() == vmSymbols::java_lang_ClassNotFoundException())) {
         // print a warning only when the pending exception is class not found
-        tty->print_cr("Preload Warning: Cannot find %s", parser.current_class_name());
+        log_warning(cds)("Preload Warning: Cannot find %s", parser.current_class_name());
       }
       CLEAR_PENDING_EXCEPTION;
     }
@@ -1860,7 +1842,7 @@ bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
     ik->link_class(THREAD);
     if (HAS_PENDING_EXCEPTION) {
       ResourceMark rm;
-      tty->print_cr("Preload Warning: Verification failed for %s",
+      log_warning(cds)("Preload Warning: Verification failed for %s",
                     ik->external_name());
       CLEAR_PENDING_EXCEPTION;
       ik->set_in_error_state();
@@ -2043,21 +2025,16 @@ bool MetaspaceShared::map_shared_spaces(FileMapInfo* mapinfo) {
 
 void MetaspaceShared::initialize_shared_spaces() {
   FileMapInfo *mapinfo = FileMapInfo::current_info();
-  _cds_i2i_entry_code_buffers = mapinfo->cds_i2i_entry_code_buffers();
-  _cds_i2i_entry_code_buffers_size = mapinfo->cds_i2i_entry_code_buffers_size();
+  _i2i_entry_code_buffers = mapinfo->i2i_entry_code_buffers();
+  _i2i_entry_code_buffers_size = mapinfo->i2i_entry_code_buffers_size();
   // _core_spaces_size is loaded from the shared archive immediatelly after mapping
   assert(_core_spaces_size == mapinfo->core_spaces_size(), "sanity");
   char* buffer = mapinfo->misc_data_patching_start();
   clone_cpp_vtables((intptr_t*)buffer);
 
-  // The rest of the data is now stored in the RW region
-  buffer = mapinfo->read_only_tables_start();
-
-  // Skip over _cloned_cpp_vtptrs;
-  buffer += _num_cloned_vtable_kinds * sizeof(intptr_t*);
-
   // Verify various attributes of the archive, plus initialize the
   // shared string/symbol tables
+  buffer = mapinfo->serialized_data_start();
   intptr_t* array = (intptr_t*)buffer;
   ReadClosure rc(&array);
   serialize(&rc);

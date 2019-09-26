@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -427,13 +427,8 @@ void MacroAssembler::debug32(int rdi, int rsi, int rbp, int rsp, int rbx, int rd
       print_state32(rdi, rsi, rbp, rsp, rbx, rdx, rcx, rax, eip);
       BREAKPOINT;
     }
-  } else {
-    ttyLocker ttyl;
-    ::tty->print_cr("=============== DEBUG MESSAGE: %s ================\n", msg);
   }
-  // Don't assert holding the ttyLock
-    assert(false, "DEBUG MESSAGE: %s", msg);
-  ThreadStateTransition::transition(thread, _thread_in_vm, saved_state);
+  fatal("DEBUG MESSAGE: %s", msg);
 }
 
 void MacroAssembler::print_state32(int rdi, int rsi, int rbp, int rsp, int rbx, int rdx, int rcx, int rax, int eip) {
@@ -892,15 +887,9 @@ void MacroAssembler::debug64(char* msg, int64_t pc, int64_t regs[]) {
     if (os::message_box(msg, "Execution stopped, print registers?")) {
       print_state64(pc, regs);
       BREAKPOINT;
-      assert(false, "start up GDB");
     }
-    ThreadStateTransition::transition(thread, _thread_in_vm, saved_state);
-  } else {
-    ttyLocker ttyl;
-    ::tty->print_cr("=============== DEBUG MESSAGE: %s ================\n",
-                    msg);
-    assert(false, "DEBUG MESSAGE: %s", msg);
   }
+  fatal("DEBUG MESSAGE: %s", msg);
 }
 
 void MacroAssembler::print_state64(int64_t pc, int64_t regs[]) {
@@ -1620,8 +1609,8 @@ void MacroAssembler::rtm_inflated_locking(Register objReg, Register boxReg, Regi
 // See also: cmpFastLock and cmpFastUnlock.
 //
 // What follows is a specialized inline transliteration of the code
-// in slow_enter() and slow_exit().  If we're concerned about I$ bloat
-// another option would be to emit TrySlowEnter and TrySlowExit methods
+// in enter() and exit(). If we're concerned about I$ bloat another
+// option would be to emit TrySlowEnter and TrySlowExit methods
 // at startup-time.  These methods would accept arguments as
 // (rax,=Obj, rbx=Self, rcx=box, rdx=Scratch) and return success-failure
 // indications in the icc.ZFlag.  Fast_Lock and Fast_Unlock would simply
@@ -9904,6 +9893,47 @@ void MacroAssembler::byte_array_inflate(Register src, Register dst, Register len
 
   bind(done);
 }
+
+#ifdef _LP64
+void MacroAssembler::cache_wb(Address line)
+{
+  // 64 bit cpus always support clflush
+  assert(VM_Version::supports_clflush(), "clflush should be available");
+  bool optimized = VM_Version::supports_clflushopt();
+  bool no_evict = VM_Version::supports_clwb();
+
+  // prefer clwb (writeback without evict) otherwise
+  // prefer clflushopt (potentially parallel writeback with evict)
+  // otherwise fallback on clflush (serial writeback with evict)
+
+  if (optimized) {
+    if (no_evict) {
+      clwb(line);
+    } else {
+      clflushopt(line);
+    }
+  } else {
+    // no need for fence when using CLFLUSH
+    clflush(line);
+  }
+}
+
+void MacroAssembler::cache_wbsync(bool is_pre)
+{
+  assert(VM_Version::supports_clflush(), "clflush should be available");
+  bool optimized = VM_Version::supports_clflushopt();
+  bool no_evict = VM_Version::supports_clwb();
+
+  // pick the correct implementation
+
+  if (!is_pre && (optimized || no_evict)) {
+    // need an sfence for post flush when using clflushopt or clwb
+    // otherwise no no need for any synchroniaztion
+
+    sfence();
+  }
+}
+#endif // _LP64
 
 Assembler::Condition MacroAssembler::negate_condition(Assembler::Condition cond) {
   switch (cond) {

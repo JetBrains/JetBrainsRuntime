@@ -32,7 +32,7 @@
 #include "oops/arrayOop.hpp"
 #include "oops/compressedOops.inline.hpp"
 #include "oops/klass.inline.hpp"
-#include "oops/markOop.inline.hpp"
+#include "oops/markWord.inline.hpp"
 #include "oops/oop.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/orderAccess.hpp"
@@ -82,11 +82,11 @@ markWord oopDesc::cas_set_mark_raw(markWord new_mark, markWord old_mark, atomic_
 }
 
 void oopDesc::init_mark() {
-  set_mark(markWord::prototype_for_object(this));
+  set_mark(markWord::prototype_for_klass(klass()));
 }
 
 void oopDesc::init_mark_raw() {
-  set_mark_raw(markWord::prototype_for_object(this));
+  set_mark_raw(markWord::prototype_for_klass(klass()));
 }
 
 Klass* oopDesc::klass() const {
@@ -350,13 +350,7 @@ bool oopDesc::is_forwarded() const {
 
 // Used by scavengers
 void oopDesc::forward_to(oop p) {
-  assert(check_obj_alignment(p),
-         "forwarding to something not aligned");
-  assert(Universe::heap()->is_in_reserved(p),
-         "forwarding to something not in heap");
-  assert(!is_archived_object(oop(this)) &&
-         !is_archived_object(p),
-         "forwarding archive object");
+  verify_forwardee(p);
   markWord m = markWord::encode_pointer_as_mark(p);
   assert(m.decode_pointer() == p, "encoding must be reversable");
   set_mark_raw(m);
@@ -364,22 +358,14 @@ void oopDesc::forward_to(oop p) {
 
 // Used by parallel scavengers
 bool oopDesc::cas_forward_to(oop p, markWord compare, atomic_memory_order order) {
-  assert(check_obj_alignment(p),
-         "forwarding to something not aligned");
-  assert(Universe::heap()->is_in_reserved(p),
-         "forwarding to something not in heap");
+  verify_forwardee(p);
   markWord m = markWord::encode_pointer_as_mark(p);
   assert(m.decode_pointer() == p, "encoding must be reversable");
   return cas_set_mark_raw(m, compare, order) == compare;
 }
 
 oop oopDesc::forward_to_atomic(oop p, markWord compare, atomic_memory_order order) {
-  // CMS forwards some non-heap value into the mark oop to reserve oops during
-  // promotion, so the next two asserts do not hold.
-  assert(UseConcMarkSweepGC || check_obj_alignment(p),
-         "forwarding to something not aligned");
-  assert(UseConcMarkSweepGC || Universe::heap()->is_in_reserved(p),
-         "forwarding to something not in heap");
+  verify_forwardee(p);
   markWord m = markWord::encode_pointer_as_mark(p);
   assert(m.decode_pointer() == p, "encoding must be reversable");
   markWord old_mark = cas_set_mark_raw(m, compare, order);
@@ -481,6 +467,36 @@ markWord oopDesc::displaced_mark_raw() const {
 
 void oopDesc::set_displaced_mark_raw(markWord m) {
   mark_raw().set_displaced_mark_helper(m);
+}
+
+// Supports deferred calling of obj->klass().
+class DeferredObjectToKlass {
+  const oopDesc* _obj;
+
+public:
+  DeferredObjectToKlass(const oopDesc* obj) : _obj(obj) {}
+
+  // Implicitly convertible to const Klass*.
+  operator const Klass*() const {
+    return _obj->klass();
+  }
+};
+
+bool oopDesc::mark_must_be_preserved() const {
+  return mark_must_be_preserved(mark_raw());
+}
+
+bool oopDesc::mark_must_be_preserved(markWord m) const {
+  // There's a circular dependency between oop.inline.hpp and
+  // markWord.inline.hpp because markWord::must_be_preserved wants to call
+  // oopDesc::klass(). This could be solved by calling klass() here. However,
+  // not all paths inside must_be_preserved calls klass(). Defer the call until
+  // the klass is actually needed.
+  return m.must_be_preserved(DeferredObjectToKlass(this));
+}
+
+bool oopDesc::mark_must_be_preserved_for_promotion_failure(markWord m) const {
+  return m.must_be_preserved_for_promotion_failure(DeferredObjectToKlass(this));
 }
 
 #endif // SHARE_OOPS_OOP_INLINE_HPP

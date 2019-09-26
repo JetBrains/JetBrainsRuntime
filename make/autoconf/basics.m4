@@ -205,6 +205,32 @@ AC_DEFUN([BASIC_PREPEND_TO_PATH],
   fi
 ])
 
+################################################################################
+# This will make a path absolute. Assumes it's already a unix path. Also
+# resolves ~ to homedir.
+AC_DEFUN([BASIC_ABSOLUTE_PATH],
+[
+  if test "x[$]$1" != x; then
+    new_path="[$]$1"
+
+    if [ [[ "$new_path" = ~* ]] ]; then
+      # Use eval to expand a potential ~
+      eval new_path="$new_path"
+      if test ! -f "$new_path" && test ! -d "$new_path"; then
+        AC_MSG_ERROR([The new_path of $1, which resolves as "$new_path", is not found.])
+      fi
+    fi
+
+    if test -d "$new_path"; then
+      $1="`cd "$new_path"; $THEPWDCMD -L`"
+    else
+      dir="`$DIRNAME "$new_path"`"
+      base="`$BASENAME "$new_path"`"
+      $1="`cd "$dir"; $THEPWDCMD -L`/$base"
+    fi
+  fi
+])
+
 ###############################################################################
 # This will make sure the given variable points to a full and proper
 # path. This means:
@@ -217,7 +243,6 @@ AC_DEFUN([BASIC_PREPEND_TO_PATH],
 AC_DEFUN([BASIC_FIXUP_PATH],
 [
   # Only process if variable expands to non-empty
-
   if test "x[$]$1" != x; then
     if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
       BASIC_FIXUP_PATH_CYGWIN($1)
@@ -234,19 +259,8 @@ AC_DEFUN([BASIC_FIXUP_PATH],
         AC_MSG_ERROR([Spaces are not allowed in this path.])
       fi
 
-      # Use eval to expand a potential ~
-      eval path="$path"
-      if test ! -f "$path" && test ! -d "$path"; then
-        AC_MSG_ERROR([The path of $1, which resolves as "$path", is not found.])
-      fi
-
-      if test -d "$path"; then
-        $1="`cd "$path"; $THEPWDCMD -L`"
-      else
-        dir="`$DIRNAME "$path"`"
-        base="`$BASENAME "$path"`"
-        $1="`cd "$dir"; $THEPWDCMD -L`/$base"
-      fi
+      BASIC_ABSOLUTE_PATH(path)
+      $1="$path"
     fi
   fi
 ])
@@ -1134,6 +1148,8 @@ AC_DEFUN([BASIC_CHECK_TAR],
     TAR_TYPE="bsd"
   elif test "x$OPENJDK_BUILD_OS" = "xsolaris"; then
     TAR_TYPE="solaris"
+  elif test "x$OPENJDK_BUILD_OS" = "xaix"; then
+    TAR_TYPE="aix"
   fi
   AC_MSG_CHECKING([what type of tar was found])
   AC_MSG_RESULT([$TAR_TYPE])
@@ -1147,6 +1163,11 @@ AC_DEFUN([BASIC_CHECK_TAR],
       # When using gnu tar for Solaris targets, need to use compatibility mode
       TAR_CREATE_EXTRA_PARAM="--format=ustar"
     fi
+  elif test "x$TAR_TYPE" = "aix"; then
+    # -L InputList of aix tar: name of file listing the files and directories
+    # that need to be   archived or extracted
+    TAR_INCLUDE_PARAM="L"
+    TAR_SUPPORTS_TRANSFORM="false"
   else
     TAR_INCLUDE_PARAM="I"
     TAR_SUPPORTS_TRANSFORM="false"

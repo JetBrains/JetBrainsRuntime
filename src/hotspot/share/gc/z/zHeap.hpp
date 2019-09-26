@@ -24,12 +24,8 @@
 #ifndef SHARE_GC_Z_ZHEAP_HPP
 #define SHARE_GC_Z_ZHEAP_HPP
 
-#include "gc/shared/gcTimer.hpp"
 #include "gc/z/zAllocationFlags.hpp"
-#include "gc/z/zArray.hpp"
 #include "gc/z/zForwardingTable.hpp"
-#include "gc/z/zList.hpp"
-#include "gc/z/zLock.hpp"
 #include "gc/z/zMark.hpp"
 #include "gc/z/zObjectAllocator.hpp"
 #include "gc/z/zPage.hpp"
@@ -38,13 +34,10 @@
 #include "gc/z/zReferenceProcessor.hpp"
 #include "gc/z/zRelocate.hpp"
 #include "gc/z/zRelocationSet.hpp"
-#include "gc/z/zRelocationSetSelector.hpp"
-#include "gc/z/zRootsIterator.hpp"
 #include "gc/z/zWeakRootsProcessor.hpp"
 #include "gc/z/zServiceability.hpp"
 #include "gc/z/zUnload.hpp"
 #include "gc/z/zWorkers.hpp"
-#include "memory/allocation.hpp"
 
 class ZHeap {
   friend class VMStructs;
@@ -105,11 +98,7 @@ public:
   size_t unsafe_max_tlab_alloc() const;
 
   bool is_in(uintptr_t addr) const;
-  uint32_t hash_oop(oop obj) const;
-
-  // Block
-  uintptr_t block_start(uintptr_t addr) const;
-  bool block_is_obj(uintptr_t addr) const;
+  uint32_t hash_oop(uintptr_t addr) const;
 
   // Workers
   uint nconcurrent_worker_threads() const;
@@ -144,7 +133,7 @@ public:
   // Marking
   bool is_object_live(uintptr_t addr) const;
   bool is_object_strongly_live(uintptr_t addr) const;
-  template <bool finalizable, bool publish> void mark_object(uintptr_t addr);
+  template <bool follow, bool finalizable, bool publish> void mark_object(uintptr_t addr);
   void mark_start();
   void mark(bool initial);
   void mark_flush_and_free(Thread* thread);
@@ -172,9 +161,10 @@ public:
   // Printing
   void print_on(outputStream* st) const;
   void print_extended_on(outputStream* st) const;
+  bool print_location(outputStream* st, uintptr_t addr) const;
 
   // Verification
-  bool is_oop(oop object) const;
+  bool is_oop(uintptr_t addr) const;
   void verify();
 };
 

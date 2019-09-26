@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1093,22 +1093,8 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   MergeMemNode* merge_mem = NULL;
 
   if (ac->is_clonebasic()) {
-    assert (src_offset == NULL && dest_offset == NULL, "for clone offsets should be null");
-    Node* mem = ac->in(TypeFunc::Memory);
-    const char* copyfunc_name = "arraycopy";
-    address     copyfunc_addr =
-      basictype2arraycopy(T_LONG, NULL, NULL,
-                          true, copyfunc_name, true);
-
-    const TypePtr* raw_adr_type = TypeRawPtr::BOTTOM;
-    const TypeFunc* call_type = OptoRuntime::fast_arraycopy_Type();
-
-    Node* call = make_leaf_call(ctrl, mem, call_type, copyfunc_addr, copyfunc_name, raw_adr_type, src, dest, length XTOP);
-    transform_later(call);
-
     BarrierSetC2* bs = BarrierSet::barrier_set()->barrier_set_c2();
-    bs->clone_barrier_at_expansion(ac, call, _igvn);
-
+    bs->clone_at_expansion(this, ac);
     return;
   } else if (ac->is_copyof() || ac->is_copyofrange() || ac->is_cloneoop()) {
     Node* mem = ac->in(TypeFunc::Memory);
@@ -1163,8 +1149,8 @@ void PhaseMacroExpand::expand_arraycopy_node(ArrayCopyNode *ac) {
   if (top_src != NULL && top_src->klass() != NULL) {
     src_elem = top_src->klass()->as_array_klass()->element_type()->basic_type();
   }
-  if (src_elem  == T_ARRAY)  src_elem  = T_OBJECT;
-  if (dest_elem == T_ARRAY)  dest_elem = T_OBJECT;
+  if (is_reference_type(src_elem))  src_elem  = T_OBJECT;
+  if (is_reference_type(dest_elem)) dest_elem = T_OBJECT;
 
   if (ac->is_arraycopy_validated() &&
       dest_elem != T_CONFLICT &&

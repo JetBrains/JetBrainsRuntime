@@ -167,9 +167,6 @@ class os: AllStatic {
                                                // before VM ergonomics processing.
   static jint init_2(void);                    // Called after command line parsing
                                                // and VM ergonomics processing
-  static void init_globals(void) {             // Called from init_globals() in init.cpp
-    init_globals_ext();
-  }
 
   // unset environment variable
   static bool unsetenv(const char* name);
@@ -467,19 +464,21 @@ class os: AllStatic {
   // thread id on Linux/64bit is 64bit, on Windows and Solaris, it's 32bit
   static intx current_thread_id();
   static int current_process_id();
-  static int sleep(Thread* thread, jlong ms, bool interruptable);
-  // Short standalone OS sleep suitable for slow path spin loop.
-  // Ignores Thread.interrupt() (so keep it short).
-  // ms = 0, will sleep for the least amount of time allowed by the OS.
+
+  // Short standalone OS sleep routines suitable for slow path spin loop.
+  // Ignores safepoints/suspension/Thread.interrupt() (so keep it short).
+  // ms/ns = 0, will sleep for the least amount of time allowed by the OS.
+  // Maximum sleep time is just under 1 second.
   static void naked_short_sleep(jlong ms);
   static void naked_short_nanosleep(jlong ns);
-  static void infinite_sleep(); // never returns, use with CAUTION
+  // Longer standalone OS sleep routine - a convenience wrapper around
+  // multiple calls to naked_short_sleep. Only for use by non-JavaThreads.
+  static void naked_sleep(jlong millis);
+  // Never returns, use with CAUTION
+  static void infinite_sleep();
   static void naked_yield () ;
   static OSReturn set_priority(Thread* thread, ThreadPriority priority);
   static OSReturn get_priority(const Thread* const thread, ThreadPriority& priority);
-
-  static void interrupt(Thread* thread);
-  static bool is_interrupted(Thread* thread, bool clear_interrupted);
 
   static int pd_self_suspend_thread(Thread* thread);
 
@@ -737,6 +736,7 @@ class os: AllStatic {
   static void* realloc (void *memblock, size_t size, MEMFLAGS flag, const NativeCallStack& stack);
   static void* realloc (void *memblock, size_t size, MEMFLAGS flag);
 
+  // handles NULL pointers
   static void  free    (void *memblock);
   static char* strdup(const char *, MEMFLAGS flags = mtInternal);  // Like strdup
   // Like strdup, but exit VM when strdup() returns NULL
@@ -821,10 +821,10 @@ class os: AllStatic {
   // Amount beyond the callee frame size that we bang the stack.
   static int extra_bang_size_in_bytes();
 
-  static char** split_path(const char* path, int* n);
+  static char** split_path(const char* path, size_t* elements, size_t file_name_length);
 
-  // Extensions
-#include "runtime/os_ext.hpp"
+  // support for mapping non-volatile memory using MAP_SYNC
+  static bool supports_map_sync();
 
  public:
   class CrashProtectionCallback : public StackObj {

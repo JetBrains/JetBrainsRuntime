@@ -2091,12 +2091,7 @@ JRT_BLOCK_ENTRY(void, SharedRuntime::complete_monitor_locking_C(oopDesc* _obj, B
     Atomic::inc(BiasedLocking::slow_path_entry_count_addr());
   }
   Handle h_obj(THREAD, obj);
-  if (UseBiasedLocking) {
-    // Retry fast entry if bias is revoked to avoid unnecessary inflation
-    ObjectSynchronizer::fast_enter(h_obj, lock, true, CHECK);
-  } else {
-    ObjectSynchronizer::slow_enter(h_obj, lock, CHECK);
-  }
+  ObjectSynchronizer::enter(h_obj, lock, CHECK);
   assert(!HAS_PENDING_EXCEPTION, "Should have no exception here");
   JRT_BLOCK_END
 JRT_END
@@ -2127,7 +2122,7 @@ JRT_LEAF(void, SharedRuntime::complete_monitor_unlocking_C(oopDesc* _obj, BasicL
   {
     // Exit must be non-blocking, and therefore no exceptions can be thrown.
     EXCEPTION_MARK;
-    ObjectSynchronizer::slow_exit(obj, lock, THREAD);
+    ObjectSynchronizer::exit(obj, lock, THREAD);
   }
 
 #ifdef MIGHT_HAVE_PENDING
@@ -2814,7 +2809,7 @@ void AdapterHandlerEntry::relocate(address new_base) {
 void AdapterHandlerEntry::deallocate() {
   delete _fingerprint;
 #ifdef ASSERT
-  if (_saved_code) FREE_C_HEAP_ARRAY(unsigned char, _saved_code);
+  FREE_C_HEAP_ARRAY(unsigned char, _saved_code);
 #endif
 }
 
@@ -2907,7 +2902,12 @@ void AdapterHandlerLibrary::create_native_wrapper(const methodHandle& method) {
       nm = SharedRuntime::generate_native_wrapper(&_masm, method, compile_id, sig_bt, regs, ret_type, critical_entry);
 
       if (nm != NULL) {
-        method->set_code(method, nm);
+        {
+          MutexLocker pl(CompiledMethod_lock, Mutex::_no_safepoint_check_flag);
+          if (nm->make_in_use()) {
+            method->set_code(method, nm);
+          }
+        }
 
         DirectiveSet* directive = DirectivesStack::getDefaultDirective(CompileBroker::compiler(CompLevel_simple));
         if (directive->PrintAssemblyOption) {

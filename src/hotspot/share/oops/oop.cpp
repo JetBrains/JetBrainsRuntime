@@ -35,8 +35,7 @@
 #include "runtime/handles.inline.hpp"
 #include "runtime/thread.inline.hpp"
 #include "utilities/copy.hpp"
-
-bool always_do_update_barrier = false;
+#include "utilities/macros.hpp"
 
 void oopDesc::print_on(outputStream* st) const {
   klass()->oop_print_on(oop(this), st);
@@ -123,14 +122,6 @@ bool oopDesc::is_oop_or_null(oop obj, bool ignore_mark_word) {
   return obj == NULL ? true : is_oop(obj, ignore_mark_word);
 }
 
-#ifndef PRODUCT
-#if INCLUDE_CDS_JAVA_HEAP
-bool oopDesc::is_archived_object(oop p) {
-  return HeapShared::is_archived_object(p);
-}
-#endif
-#endif // PRODUCT
-
 VerifyOopClosure VerifyOopClosure::verify_oop;
 
 template <class T> void VerifyOopClosure::do_oop_work(T* p) {
@@ -171,35 +162,6 @@ void* oopDesc::load_oop_raw(oop obj, int offset) {
   } else {
     return *(void**)addr;
   }
-}
-
-bool oopDesc::is_valid(oop obj) {
-  if (!is_object_aligned(obj)) return false;
-  if ((size_t)(oopDesc*)obj < os::min_page_size()) return false;
-
-  // We need at least the mark and the klass word in the committed region.
-  if (!os::is_readable_range(obj, (oopDesc*)obj + 1)) return false;
-  if (!Universe::heap()->is_in(obj)) return false;
-
-  Klass* k = (Klass*)load_klass_raw(obj);
-  return Klass::is_valid(k);
-}
-
-oop oopDesc::oop_or_null(address addr) {
-  if (is_valid(oop(addr))) {
-    // We were just given an oop directly.
-    return oop(addr);
-  }
-
-  // Try to find addr using block_start.
-  HeapWord* p = Universe::heap()->block_start(addr);
-  if (p != NULL && Universe::heap()->block_is_obj(p)) {
-    if (!is_valid(oop(p))) return NULL;
-    return oop(p);
-  }
-
-  // If we can't find it it just may mean that heap wasn't parsable.
-  return NULL;
 }
 
 oop oopDesc::obj_field_acquire(int offset) const                      { return HeapAccess<MO_ACQUIRE>::oop_load_at(as_oop(), offset); }
@@ -244,3 +206,12 @@ void oopDesc::release_float_field_put(int offset, jfloat value)       { HeapAcce
 
 jdouble oopDesc::double_field_acquire(int offset) const               { return HeapAccess<MO_ACQUIRE>::load_at(as_oop(), offset); }
 void oopDesc::release_double_field_put(int offset, jdouble value)     { HeapAccess<MO_RELEASE>::store_at(as_oop(), offset, value); }
+
+#ifdef ASSERT
+void oopDesc::verify_forwardee(oop forwardee) {
+#if INCLUDE_CDS_JAVA_HEAP
+  assert(!HeapShared::is_archived_object(forwardee) && !HeapShared::is_archived_object(this),
+         "forwarding archive object");
+#endif
+}
+#endif
