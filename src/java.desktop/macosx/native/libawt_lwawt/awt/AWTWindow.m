@@ -102,6 +102,10 @@ static NSPoint lastTopLeftPoint;
     return [(AWTWindow*)[self delegate] worksWhenModal];        \
 }                                                               \
                                                                 \
+- (void)cursorUpdate:(NSEvent *)event {                         \
+    /* Prevent cursor updates from OS side */                   \
+}                                                               \
+                                                                \
 - (void)sendEvent:(NSEvent *)event {                            \
     [(AWTWindow*)[self delegate] sendEvent:event];              \
     [super sendEvent:event];                                    \
