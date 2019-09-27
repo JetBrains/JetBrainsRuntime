@@ -585,7 +585,7 @@ java/awt/TrayIcon/TrayIconEvents/TrayIconEventsTest.java                        
 java/awt/TrayIcon/TrayIconMouseTest/TrayIconMouseTest.java                          8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupClickTest.java                         8197575,8150540 macosx-all,windows-all
 java/awt/TrayIcon/TrayIconPopup/TrayIconPopupTest.java                              8197575,8150540 macosx-all,windows-all
-java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java                          8196440 linux-all
+java/awt/TrayIcon/PopupMenuLeakTest/PopupMenuLeakTest.java                          8196440 linux-all,macosx-all (commit: mac OOME)
 java/awt/Window/8159168/SetShapeTest.java                                           8208507 generic-all
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java                  8142536 generic-all
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
@@ -944,6 +944,7 @@ javax/swing/JComponent/4337267/bug4337267.java                                  
 javax/swing/JComponent/6683775/bug6683775.java                                      8172337 generic-all
 javax/swing/JComponent/7154030/bug7154030.java                                      7190978 generic-all
 javax/swing/DataTransfer/8059739/bug8059739.java                                    8199074 generic-all
+javax/swing/GraphicsConfigNotifier/StalePreferredSize.java                          8213121 macosx-all,windows-all
 javax/swing/GroupLayout/6613904/bug6613904.java                                     8199072 generic-all
 javax/swing/JEditorPane/5076514/bug5076514.java                                     8198321 generic-all
 javax/swing/JEditorPane/6917744/bug6917744.java                                     8213124 macosx-all,windows-all
@@ -1051,7 +1052,7 @@ javax/swing/Popup/TaskbarPositionTest.java                                      
 javax/swing/PopupFactory/6276087/NonOpaquePopupMenuTest.java                        8065099,8208565 macosx-all,windows-all,linux-all
 javax/swing/PopupFactory/8048506/bug8048506.java                                    8202660 windows-all
 javax/swing/ProgressMonitor/ProgressMonitorEscapeKeyPress.java                      8197552 macosx-all,windows-all,linux-all
-javax/swing/RepaintManager/IconifyTest/IconifyTest.java                             8072110,8221903 linux-all,windows-all
+javax/swing/RepaintManager/IconifyTest/IconifyTest.java                             8072110,8221903 linux-all,windows-all,macosx-all (commit: macosx)
 javax/swing/SpringLayout/4726194/bug4726194.java                                    8198399 generic-all
 javax/swing/SwingUtilities/4917669/bug4917669.java                                  8197552,8172064 macosx-all,windows-all,linux-all
 javax/swing/SwingUtilities/6797139/bug6797139.java                                  8198400 generic-all

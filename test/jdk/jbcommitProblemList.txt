@@ -199,7 +199,6 @@ javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradien
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java nobug macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentPerPixelTranslucentGradient.java nobug windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentWindowClickSwing.java            nobug windows-all
-javax/swing/RepaintManager/IconifyTest/IconifyTest.java                                     nobug macosx-all reproduced with Adopt
 javax/swing/event/RightAltKeyTest.java                                                      nobug windows-all
 javax/swing/plaf/metal/MetalGradient/8163193/ButtonGradientTest.java                        nobug linux-all,windows-all
 javax/swing/plaf/nimbus/8041642/ScrollBarThumbVisibleTest.java                              nobug windows-all
