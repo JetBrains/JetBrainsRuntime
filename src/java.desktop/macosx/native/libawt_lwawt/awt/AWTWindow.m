@@ -341,7 +341,7 @@ AWT_ASSERT_APPKIT_THREAD;
 
     self.nsWindow.titlebarAppearsTransparent = IS(bits, TRANSPARENT_TITLEBAR);
     if (self.nsWindow.titlebarAppearsTransparent) {
-        [self.nsWindow setTitleVisibility:NSWindowTitleHidden];
+        [self.nsWindow setAppearance:nil];
     }
 
     return self;
