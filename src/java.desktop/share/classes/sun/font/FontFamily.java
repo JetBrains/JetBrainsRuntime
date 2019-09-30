@@ -32,7 +32,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class FontFamily {
-    private static final byte CONFLICTING_STYLES = 0x10;
 
     private static ConcurrentHashMap<String, FontFamily>
         familyNameMap = new ConcurrentHashMap<String, FontFamily>();
@@ -47,7 +46,6 @@ public class FontFamily {
     private boolean initialized = false;
     protected boolean logicalFont = false;
     protected int familyRank;
-    private byte stylesMask;
 
     public static FontFamily getFamily(String name) {
         return familyNameMap.get(name.toLowerCase(Locale.ENGLISH));
@@ -69,16 +67,6 @@ public class FontFamily {
             return;
         }
         family.ensureFontsLoaded();
-        if (FontUtilities.isWindows) {
-            synchronized (family.fontSequence) {
-                if (family.stylesMask != CONFLICTING_STYLES &&
-                    (family.plain == font2D || family.bold == font2D ||
-                     family.italic == font2D || family.bolditalic == font2D)) {
-                    byte styleBit = getWinFontStyleBit(font2D);
-                    family.stylesMask = (byte) (family.stylesMask & ~styleBit);
-                }
-            }
-        }
         if (family.plain == font2D) {
             family.plain = null;
         }
@@ -306,12 +294,6 @@ public class FontFamily {
             return;
         }
 
-        if (FontUtilities.isWindows && stylesMask != CONFLICTING_STYLES) {
-            byte styleBit = getWinFontStyleBit(font);
-            byte newMask = (byte) (stylesMask | styleBit);
-            stylesMask = newMask == stylesMask ? CONFLICTING_STYLES : newMask;
-        }
-
         switch (style) {
 
         case Font.PLAIN:
@@ -341,12 +323,6 @@ public class FontFamily {
         default:
             break;
         }
-    }
-
-    private static byte getWinFontStyleBit(Font2D font) {
-        // Windows seems to ignore bold attribute from fsSelection field, and consider only font's weight
-        int winFontStyle = (font.getWeight() >= 410 ? 1 : 0) | (font.getStyle() & Font.ITALIC);
-        return (byte) (1 << winFontStyle);
     }
 
     public Font2D getFontWithExactStyleMatch(int style) {
@@ -496,10 +472,6 @@ public class FontFamily {
     public static FontFamily[] getAllFontFamilies() {
        Collection<FontFamily> families = familyNameMap.values();
        return families.toArray(new FontFamily[0]);
-    }
-
-    boolean hasMultipleCandidatesForSameStyle() {
-        return stylesMask == CONFLICTING_STYLES;
     }
 
     public String toString() {
