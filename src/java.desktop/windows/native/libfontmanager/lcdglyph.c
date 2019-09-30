@@ -171,8 +171,8 @@ JNIEXPORT jboolean JNICALL
 
 JNIEXPORT jlong JNICALL
 Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
-(JNIEnv *env, jobject unused,
- jstring fontFamily, jint style, jint size, jint glyphCode, jboolean fm, jint rotation, jbyte charset) {
+(JNIEnv *env, jobject unused, jstring fontFamily, jint style, jint size,
+jint glyphCode, jboolean fm, jint rotation, jbyte charset, jint fontDataSize) {
 
     GLYPHMETRICS glyphMetrics;
     LOGFONTW lf;
@@ -188,6 +188,7 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
     LPWSTR name;
     HFONT oldFont, hFont;
     MAT2 mat2;
+    DWORD actualFontDataSize;
 
     unsigned short width;
     unsigned short height;
@@ -254,6 +255,13 @@ Java_sun_font_FileFontStrike__1getGlyphImageFromWindows
         FREE_AND_RETURN;
     }
     oldFont = SelectObject(hMemoryDC, hFont);
+
+    if (fontDataSize > 0) {
+        actualFontDataSize = GetFontData(hMemoryDC, 0, 0, NULL, 0);
+        if (actualFontDataSize != fontDataSize) {
+            FREE_AND_RETURN;
+        }
+    }
 
     tmpBitmap = CreateCompatibleBitmap(hDesktopDC, 1, 1);
     if (tmpBitmap == NULL) {

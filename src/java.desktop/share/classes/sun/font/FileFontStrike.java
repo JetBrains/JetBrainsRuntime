@@ -404,7 +404,8 @@ public class FileFontStrike extends PhysicalStrike {
                                                   int glyphCode,
                                                   boolean fracMetrics,
                                                   int rotation,
-                                                  byte charset);
+                                                  byte charset,
+                                                  int fontDataSize);
 
     private native long _getGlyphImageFromWindowsUsingDirectWrite(String family,
                                                                   int style,
@@ -441,7 +442,12 @@ public class FileFontStrike extends PhysicalStrike {
         }
         if (ptr == 0) {
             boolean fm = desc.fmHint == INTVAL_FRACTIONALMETRICS_ON;
-            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode, fm, rotation, charset);
+            ptr = _getGlyphImageFromWindows(family, style, size, glyphCode, fm, rotation, charset,
+                                            fileFont.getFontDataSize());
+            if (ptr == 0 && FontUtilities.isLogging()) {
+                FontUtilities.getLogger().warning("Failed to render glyph via GDI: code=" + glyphCode
+                        + ", fontFamily=" + family + ", style=" + style + ", size=" + size + ", rotation=" + rotation);
+            }
             if (ptr != 0 && fm) {
                 Point2D.Float metrics = new Point2D.Float();
                 fileFont.getGlyphMetrics(pScalerContext, glyphCode, metrics);
