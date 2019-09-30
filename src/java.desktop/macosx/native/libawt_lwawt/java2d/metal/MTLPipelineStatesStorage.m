@@ -30,7 +30,7 @@
 
     { // init template descriptors
         MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
-        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat3;
+        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
         vertDesc.attributes[VertexAttributePosition].offset = 0;
         vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
         vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
@@ -45,7 +45,7 @@
 
         self.templateTexturePipelineDesc = [[self.templateRenderPipelineDesc copy] autorelease];
         self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
-        self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 3*sizeof(float);
+        self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
         self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
         self.templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
         self.templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
@@ -64,7 +64,11 @@
 }
 
 - (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient {
-    NSString * uid = [NSString stringWithFormat:@"render_grad[%d]", isGradient];
+
+    NSString * uid = @"render_grad[0]";
+    if (isGradient == TRUE) {
+        uid = @"render_grad[1]";
+    }
 
     id<MTLRenderPipelineState> result = [self.states valueForKey:uid];
     if (result == nil) {

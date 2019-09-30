@@ -30,11 +30,11 @@
 using namespace metal;
 
 struct VertexInput {
-    float3 position [[attribute(VertexAttributePosition)]];
+    float2 position [[attribute(VertexAttributePosition)]];
 };
 
 struct TxtVertexInput {
-    float3 position [[attribute(VertexAttributePosition)]];
+    float2 position [[attribute(VertexAttributePosition)]];
     float2 texCoords [[attribute(VertexAttributeTexPos)]];
 };
 
@@ -56,7 +56,7 @@ vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
        constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
        constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
     ColShaderInOut out;
-    float4 pos4 = float4(in.position, 1.0);
+    float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix*pos4;
     out.color = half4(uniforms.color.r, uniforms.color.g, uniforms.color.b, uniforms.color.a);
     return out;
@@ -64,14 +64,14 @@ vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
 
 vertex GradShaderInOut vert_grad(VertexInput in [[stage_in]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
     GradShaderInOut out;
-    float4 pos4 = float4(in.position, 1.0);
+    float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix*pos4;
     return out;
 }
 
 vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
     TxtShaderInOut out;
-    float4 pos4 = float4(in.position, 1.0);
+    float4 pos4 = float4(in.position, 0.0, 1.0);
     out.position = transform.transformMatrix*pos4;
     out.texCoords = in.texCoords;
     return out;
@@ -104,3 +104,4 @@ fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
     float4 c = mix(uniforms.color1, uniforms.color2, a);
     return half4(c);
 }
+

@@ -54,37 +54,31 @@ void fillTxQuad(
 
     txQuadVerts[0].position[0] = dx1;
     txQuadVerts[0].position[1] = dy1;
-    txQuadVerts[0].position[2] = 0;
     txQuadVerts[0].txtpos[0]   = nsx1;
     txQuadVerts[0].txtpos[1]   = nsy1;
 
     txQuadVerts[1].position[0] = dx2;
     txQuadVerts[1].position[1] = dy1;
-    txQuadVerts[1].position[2] = 0;
     txQuadVerts[1].txtpos[0]   = nsx2;
     txQuadVerts[1].txtpos[1]   = nsy1;
 
     txQuadVerts[2].position[0] = dx2;
     txQuadVerts[2].position[1] = dy2;
-    txQuadVerts[2].position[2] = 0;
     txQuadVerts[2].txtpos[0]   = nsx2;
     txQuadVerts[2].txtpos[1]   = nsy2;
 
     txQuadVerts[3].position[0] = dx2;
     txQuadVerts[3].position[1] = dy2;
-    txQuadVerts[3].position[2] = 0;
     txQuadVerts[3].txtpos[0]   = nsx2;
     txQuadVerts[3].txtpos[1]   = nsy2;
 
     txQuadVerts[4].position[0] = dx1;
     txQuadVerts[4].position[1] = dy2;
-    txQuadVerts[4].position[2] = 0;
     txQuadVerts[4].txtpos[0]   = nsx1;
     txQuadVerts[4].txtpos[1]   = nsy2;
 
     txQuadVerts[5].position[0] = dx1;
     txQuadVerts[5].position[1] = dy1;
-    txQuadVerts[5].position[2] = 0;
     txQuadVerts[5].txtpos[0]   = nsx1;
     txQuadVerts[5].txtpos[1]   = nsy1;
 }
