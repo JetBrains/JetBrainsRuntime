@@ -77,8 +77,8 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
         return;
 
     struct Vertex verts[2] = {
-            {{x1, y1, 0.0}},
-            {{x2, y2, 0.0}}
+            {{x1, y1}},
+            {{x2, y2}}
     };
 
     [mtlEncoder setVertexBytes:verts length:sizeof(verts) atIndex:MeshVertexBuffer];
@@ -101,11 +101,11 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
 
     const int verticesCount = 5;
     struct Vertex vertices[5] = {
-            {{x, y, 0.0}},
-            {{x + w, y, 0.0}},
-            {{x + w, y + h, 0.0}},
-            {{x, y + h, 0.0}},
-            {{x, y, 0.0}},
+            {{x, y}},
+            {{x + w, y}},
+            {{x + w, y + h}},
+            {{x, y + h}},
+            {{x, y}},
     };
     [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
     [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:verticesCount];
@@ -116,7 +116,6 @@ const int POLYLINE_BUF_SIZE = 64;
 NS_INLINE void fillVertex(struct Vertex * vertex, int x, int y) {
     vertex->position[0] = x;
     vertex->position[1] = y;
-    vertex->position[2] = 0;
 }
 
 void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
@@ -177,8 +176,8 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize + 1];
         if (drawCloseSegment) {
             struct Vertex vertices[2] = {
-                    {{prevX + transX, prevY + transY, 0.0}},
-                    {{firstX + transX, firstY + transY, 0.0}},
+                    {{prevX + transX, prevY + transY}},
+                    {{firstX + transX, firstY + transY}},
             };
             [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
@@ -221,8 +220,8 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
         float x1 = ((float)*(scanlines++)) + 0.2f;
         float x2 = ((float)*(scanlines++)) + 1.2f;
         float y  = ((float)*(scanlines++)) + 0.5f;
-        struct Vertex v1 = {{x1, y, 0.0}};
-        struct Vertex v2 = {{x2, y, 0.0}};
+        struct Vertex v1 = {{x1, y}};
+        struct Vertex v2 = {{x2, y}};
         verts[i++] = v1;
         verts[i++] = v2;
     }
@@ -242,10 +241,10 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
     }
 
     struct Vertex verts[QUAD_VERTEX_COUNT] = {
-        { {x, y, 0.0}},
-        { {x, y+h, 0.0}},
-        { {x+w, y, 0.0}},
-        { {x+w, y+h, 0.0}
+        { {x, y}},
+        { {x, y+h}},
+        { {x+w, y}},
+        { {x+w, y+h}
     }};
 
 
@@ -282,9 +281,9 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
         return;
     }
 
-    // This is the max no of vertices (of struct Vertex - 12 bytes) we can accomodate in 4KB
-    const int TOTAL_VERTICES_IN_BLOCK = 336;
-    struct Vertex vertexList[TOTAL_VERTICES_IN_BLOCK]; // a total of 112 triangles ==> 56 spans
+    // This is the max no of vertices (of struct Vertex - 8 bytes) we can accomodate in 4KB
+    const int TOTAL_VERTICES_IN_BLOCK = 510;
+    struct Vertex vertexList[TOTAL_VERTICES_IN_BLOCK]; // a total of 170 triangles ==> 85 spans
 
     int counter = 0;
 
@@ -295,13 +294,13 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
         jfloat y2 = *(spans++);
 
         struct Vertex verts[6] = {
-            {{x1, y1, 0.0}},
-            {{x1, y2, 0.0}},
-            {{x2, y1, 0.0}},
+            {{x1, y1}},
+            {{x1, y2}},
+            {{x2, y1}},
 
-            {{x1, y2, 0.0}},
-            {{x2, y1, 0.0}},
-            {{x2, y2, 0.0}
+            {{x1, y2}},
+            {{x2, y1}},
+            {{x2, y2}
         }};
 
         memcpy(&vertexList[counter], &verts, sizeof(verts));
@@ -345,10 +344,10 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
                 dx12, dy12, dest);
 
     struct Vertex verts[QUAD_VERTEX_COUNT] = {
-            { {fx11, fy11, 0.0}},
-            { {fx11+dx21, fy11+dy21, 0.0}},
-            { {fx11+dx12, fy11+dy12, 0.0}},
-            { {fx11 + dx21 + dx12, fy11+ dy21 + dy12, 0.0}
+            { {fx11, fy11}},
+            { {fx11+dx21, fy11+dy21}},
+            { {fx11+dx12, fy11+dy12}},
+            { {fx11 + dx21 + dx12, fy11+ dy21 + dy12}
         }};
 
     // Encode render command.

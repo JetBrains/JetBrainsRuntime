@@ -35,7 +35,7 @@
 #include "common.h"
 
 typedef struct _J2DVertex {
-    float position[3];
+    float position[2];
     float txtpos[2];
 } J2DVertex;
 
@@ -53,7 +53,6 @@ static id<MTLRenderCommandEncoder> encoder = NULL;
         v->txtpos[1] = TY; \
         v->position[0]= DX; \
         v->position[1] = DY; \
-        v->position[2] = DZ; \
     } while (0)
 
 #define MTLVC_ADD_TRIANGLES(TX1, TY1, TX2, TY2, DX1, DY1, DX2, DY2) \

@@ -57,11 +57,11 @@ struct GradFrameUniforms {
 };
 
 struct Vertex {
-    float position[3];
+    float position[2];
 };
 
 struct TxtVertex {
-    float position[3];
+    float position[2];
     float txtpos[2];
 };
 
