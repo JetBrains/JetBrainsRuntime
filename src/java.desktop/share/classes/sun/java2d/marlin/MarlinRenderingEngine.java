@@ -245,8 +245,7 @@ public final class MarlinRenderingEngine extends RenderingEngine
             widthScale = 1.0f;
         } else if ((at.getType() & (AffineTransform.TYPE_GENERAL_TRANSFORM  |
                                     AffineTransform.TYPE_GENERAL_SCALE)) != 0) {
-            // Determinant may be negative (flip), use its absolute value:
-            widthScale = (float)Math.sqrt(Math.abs(at.getDeterminant()));
+            widthScale = (float)Math.sqrt(at.getDeterminant());
         } else {
             // First calculate the "maximum scale" of this transform.
             double A = at.getScaleX();       // m00
