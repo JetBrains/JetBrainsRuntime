@@ -93,51 +93,53 @@
 };
 
 - (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied compositeRule:(int)compositeRule {
-    NSString * uid = [NSString stringWithFormat:@"texture_compositeRule[%d]", compositeRule];
+    @autoreleasepool {
+        NSString *uid = [NSString stringWithFormat:@"texture_compositeRule[%d]", compositeRule];
 
-    id<MTLRenderPipelineState> result = [self.states valueForKey:uid];
-    if (result == nil) {
-        id<MTLFunction> vertexShader   = [self getShader:@"vert_txt"];
-        id<MTLFunction> fragmentShader = [self getShader:@"frag_txt"];
-        MTLRenderPipelineDescriptor *pipelineDesc = [[self.templateTexturePipelineDesc copy] autorelease];
-        pipelineDesc.vertexFunction = vertexShader;
-        pipelineDesc.fragmentFunction = fragmentShader;
-
-        if (compositeRule != RULE_Src) {
-            pipelineDesc.colorAttachments[0].blendingEnabled = YES;
-
-            if (!isSourcePremultiplied)
-                pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
-
-            //RGB = Source.rgb * SBF + Dest.rgb * DBF
-            //A = Source.a * SBF + Dest.a * DBF
-            //
-            //default SRC:
-            //DBF=0
-            //SBF=1
-            if (compositeRule == RULE_SrcOver) {
-                // SRC_OVER (Porter-Duff Source Over Destination rule):
-                // Ar = As + Ad*(1-As)
-                // Cr = Cs + Cd*(1-As)
-                pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-                pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-            } else {
-                J2dTrace1(J2D_TRACE_ERROR, "Unimplemented composite rule %d (will be used Src)", compositeRule);
-                pipelineDesc.colorAttachments[0].blendingEnabled = NO;
-            }
-        }
-
-        NSError *error = nil;
-        result = [self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+        id <MTLRenderPipelineState> result = [self.states valueForKey:uid];
         if (result == nil) {
-            NSLog(@"Failed to create texture pipeline state '%@', error %@", uid, error);
-            exit(0);
+            id <MTLFunction> vertexShader = [self getShader:@"vert_txt"];
+            id <MTLFunction> fragmentShader = [self getShader:@"frag_txt"];
+            MTLRenderPipelineDescriptor *pipelineDesc = [[self.templateTexturePipelineDesc copy] autorelease];
+            pipelineDesc.vertexFunction = vertexShader;
+            pipelineDesc.fragmentFunction = fragmentShader;
+
+            if (compositeRule != RULE_Src) {
+                pipelineDesc.colorAttachments[0].blendingEnabled = YES;
+
+                if (!isSourcePremultiplied)
+                    pipelineDesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
+
+                //RGB = Source.rgb * SBF + Dest.rgb * DBF
+                //A = Source.a * SBF + Dest.a * DBF
+                //
+                //default SRC:
+                //DBF=0
+                //SBF=1
+                if (compositeRule == RULE_SrcOver) {
+                    // SRC_OVER (Porter-Duff Source Over Destination rule):
+                    // Ar = As + Ad*(1-As)
+                    // Cr = Cs + Cd*(1-As)
+                    pipelineDesc.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+                    pipelineDesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+                } else {
+                    J2dTrace1(J2D_TRACE_ERROR, "Unimplemented composite rule %d (will be used Src)", compositeRule);
+                    pipelineDesc.colorAttachments[0].blendingEnabled = NO;
+                }
+            }
+
+            NSError *error = nil;
+            result = [[self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error] autorelease];
+            if (result == nil) {
+                NSLog(@"Failed to create texture pipeline state '%@', error %@", uid, error);
+                exit(0);
+            }
+
+            [self.states setValue:result forKey:uid];
         }
 
-        [self.states setValue:result forKey:uid];
+        return result;
     }
-
-    return result;
 }
 
 - (id<MTLFunction>) getShader:(NSString *)name {

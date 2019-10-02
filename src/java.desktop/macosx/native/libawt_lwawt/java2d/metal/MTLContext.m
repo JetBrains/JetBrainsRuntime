@@ -324,7 +324,9 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
         return nil;
 
     // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on tex=%p", dest);
-    return [cb renderCommandEncoderWithDescriptor:rpd];
+    id <MTLRenderCommandEncoder> encoder = [cb renderCommandEncoderWithDescriptor:rpd];
+    [rpd release];
+    return encoder;
 }
 
 - (void) setEncoderTransform:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
