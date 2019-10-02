@@ -1787,6 +1787,11 @@ bool MetaspaceShared::try_link_class(InstanceKlass* ik, TRAPS) {
       ResourceMark rm;
       tty->print_cr("Preload Warning: Verification failed for %s",
                     ik->external_name());
+
+      oop throwable = PENDING_EXCEPTION;
+      java_lang_Throwable::print(throwable, tty);
+      tty->cr();
+
       CLEAR_PENDING_EXCEPTION;
       ik->set_in_error_state();
       _has_error_classes = true;
