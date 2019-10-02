@@ -1856,10 +1856,16 @@ int MetaspaceShared::preload_classes(const char* class_list_path, TRAPS) {
   while (parser.parse_one_line()) {
     Klass* klass = parser.load_current_class(THREAD);
     if (HAS_PENDING_EXCEPTION) {
-      if (klass == NULL &&
-          (PENDING_EXCEPTION->klass()->name() == vmSymbols::java_lang_ClassNotFoundException())) {
-        // print a warning only when the pending exception is class not found
-        log_warning(cds)("Preload Warning: Cannot find %s", parser.current_class_name());
+      if (klass == NULL) {
+        if (PENDING_EXCEPTION->klass()->name() == vmSymbols::java_lang_ClassNotFoundException()) {
+          // print a warning only when the pending exception is class not found
+          log_warning(cds)("Preload Warning: Cannot find %s", parser.current_class_name());
+        } else {
+          log_warning(cds)("Preload Warning: Exception loading class %s", parser.current_class_name());
+          oop throwable = PENDING_EXCEPTION;
+          java_lang_Throwable::print(throwable, tty);
+          tty->cr();
+        }
       }
       CLEAR_PENDING_EXCEPTION;
     }

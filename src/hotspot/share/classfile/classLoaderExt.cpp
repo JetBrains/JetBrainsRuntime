@@ -265,6 +265,7 @@ InstanceKlass* ClassLoaderExt::load_class(Symbol* name, const char* path, TRAPS)
   ClassFileStream* stream = NULL;
   ClassPathEntry* e = find_classpath_entry_from_cache(path, CHECK_NULL);
   if (e == NULL) {
+    log_warning(cds)("Preload Warning: ClassPathEntry is not found for class %s and path %s", class_name, path);
     return NULL;
   }
   {
@@ -329,12 +330,14 @@ ClassPathEntry* ClassLoaderExt::find_classpath_entry_from_cache(const char* path
   struct stat st;
   if (os::stat(path, &st) != 0) {
     // File or directory not found
+    log_warning(cds)("Preload Warning: Source path %s is not found", path);
     return NULL;
   }
   ClassPathEntry* new_entry = NULL;
 
   new_entry = create_class_path_entry(path, &st, false, false, false, CHECK_NULL);
   if (new_entry == NULL) {
+    log_warning(cds)("Preload Warning: The create_class_path_entry() call for path %s returned NULL", path);
     return NULL;
   }
   ccpe._path = strdup(path);

@@ -371,7 +371,11 @@ Klass* ClassListParser::load_current_class(TRAPS) {
     if (!HAS_PENDING_EXCEPTION && (obj != NULL)) {
       klass = java_lang_Class::as_Klass(obj);
     } else { // load classes in bootclasspath/a
+      tty->print_cr("Class %s was not loaded from the system classloader", this->current_class_name());
       if (HAS_PENDING_EXCEPTION) {
+        oop throwable = PENDING_EXCEPTION;
+        java_lang_Throwable::print(throwable, tty);
+        tty->cr();
         CLEAR_PENDING_EXCEPTION;
       }
 
@@ -380,6 +384,7 @@ Klass* ClassListParser::load_current_class(TRAPS) {
         if (k != NULL) {
           klass = k;
         } else {
+          tty->print_cr("Class %s is not found from SystemDictionary::resolve_or_null(..) == null", this->current_class_name());
           if (!HAS_PENDING_EXCEPTION) {
             THROW_NULL(vmSymbols::java_lang_ClassNotFoundException());
           }
