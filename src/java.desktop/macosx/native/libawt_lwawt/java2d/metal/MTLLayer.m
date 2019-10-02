@@ -89,7 +89,7 @@
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
 
-            [commandBuf release];
+            [self.ctx releaseCommandBuffer];
             [self.ctx.texturePool markAllTexturesFree];
             return;
         }
@@ -98,6 +98,7 @@
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
 
+            [self.ctx releaseCommandBuffer];
             [self.ctx.texturePool markAllTexturesFree];
             return;
         }
@@ -114,10 +115,12 @@
 
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
                 [self.ctx.texturePool markAllTexturesFree];
+                [self.ctx releaseCommandBuffer];
         }];
 
         [commandBuf commit];
         [commandBuf waitUntilCompleted];
+        [self.ctx releaseCommandBuffer];
     }
 }
 
