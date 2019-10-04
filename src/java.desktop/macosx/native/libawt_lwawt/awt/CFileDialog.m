@@ -186,17 +186,11 @@ canChooseDirectories:(BOOL)inChooseDirectories
                 }
             };
 
-            NSInteger osversion = [[NSProcessInfo processInfo] operatingSystemVersion].minorVersion; // NOTE: will be removed soon (when native file-chooser fixed on catalina)
-            if (osversion >= 15) {
-                [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {}];
-                NSModalResponse modalResponse = [thePanel runModal];
-                onComplete(modalResponse == NSModalResponseOK, NO);
-            } else {
-                [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
-                    onComplete(result == NSFileHandlingPanelOKButton, YES);
-                }];
-                [NSApp runModalForWindow:thePanel];
-            }
+            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+                onComplete(result == NSFileHandlingPanelOKButton, YES);
+            }];
+
+            [NSApp runModalForWindow:thePanel];
         }
         else
         {
