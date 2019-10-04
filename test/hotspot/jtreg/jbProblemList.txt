@@ -83,6 +83,9 @@ gc/stress/TestReclaimStringsLeaksMemory.java                                    
 
 runtime/CompressedOops/UseCompressedOops.java                                       8079353 generic-all
 runtime/NMT/MallocStressTest.java                                                   8079353 generic-all
+runtime/SelectionResolution/InvokeInterfaceICCE.java                                8224795 generic-all
+runtime/SelectionResolution/InvokeVirtualICCE.java                                  8224795 generic-all
+runtime/SelectionResolution/InvokeVirtualSuccessTest.java                           8224795 generic-all
 runtime/SharedArchiveFile/SASymbolTableTest.java                                    8193639 solaris-all
 vmTestbase/nsk/jdi/BScenarios/hotswap/tc10x001/TestDescription.java                 8013728 generic-all
 runtime/memory/ReadFromNoaccessArea.java                                            nobug   generic-all crash is the expected behaviour
