@@ -257,6 +257,10 @@ jint glyphCode, jboolean fm, jint rotation, jbyte charset, jint fontDataSize) {
     oldFont = SelectObject(hMemoryDC, hFont);
 
     if (fontDataSize > 0) {
+        // We cannot specify via GDI which font file to use,
+        // so we check that it picks the exact font we need by validating font size.
+        // If it doesn't match, we cannot proceed, as same glyph code can correspond
+        // to a completely different glyph in the selected font.
         actualFontDataSize = GetFontData(hMemoryDC, 0, 0, NULL, 0);
         if (actualFontDataSize != fontDataSize) {
             FREE_AND_RETURN;
