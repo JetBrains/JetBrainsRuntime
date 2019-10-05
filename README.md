@@ -54,15 +54,7 @@ $ make images
 #### TBD
 
 ## OSX
-
-install Xcode console tools, autoconf (via homebrew)
-
-run
-
-```
-sh ./configure --prefix=$(pwd)/build  --disable-warnings-as-errors
-make images
-```
+#### TBD
 
 ## Contribution
 We will be happy to receive your pull requests. Before you submit one, please sign our Contributor License Agreement (CLA)  https://www.jetbrains.com/agreements/cla/ 
