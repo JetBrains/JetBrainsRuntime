@@ -167,23 +167,29 @@ canChooseDirectories:(BOOL)inChooseDirectories
 
             [thePanel setAppearance:fOwner.appearance];
 
-            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {}];
+            void (^onComplete)(BOOL, BOOL) = ^(BOOL responseOK, BOOL doStopModal) {
+                if (responseOK) {
+                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                    fURLs = (fMode == java_awt_FileDialog_LOAD)
+                         ? [openPanel URLs]
+                         : [NSArray arrayWithObject:[openPanel URL]];
 
-            NSModalResponse modalResponse = [thePanel runModal];
-            if (modalResponse == NSModalResponseOK) {
-                NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                fURLs = (fMode == java_awt_FileDialog_LOAD)
-                     ? [openPanel URLs]
-                     : [NSArray arrayWithObject:[openPanel URL]];
+                    fPanelResult = NSFileHandlingPanelOKButton;
+                } else {
+                    fURLs = [NSArray array];
+                }
+                [fURLs retain];
+                if (doStopModal)
+                    [NSApp stopModal];
+                if (menuBar != nil) {
+                    [CMenuBar activate:menuBar modallyDisabled:NO];
+                }
+            };
 
-                fPanelResult = NSFileHandlingPanelOKButton;
-            } else {
-                fURLs = [NSArray array];
-            }
-            [fURLs retain];
-            if (menuBar != nil) {
-                [CMenuBar activate:menuBar modallyDisabled:NO];
-            }
+            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+                    onComplete(result == NSFileHandlingPanelOKButton, YES);
+            }];
+            [NSApp runModalForWindow:thePanel];
         }
         else
         {
