@@ -210,7 +210,7 @@ java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameRes
 java/awt/Frame/WindowDragTest/WindowDragTest.java                                   8169470 generic-all
 java/awt/FullScreen/8013581/bug8013581.java                                         8169471 macosx-all,windows-all,linux-all
 java/awt/FullScreen/AltTabCrashTest/AltTabCrashTest.java                            8047218 generic-all
-java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469 windows-all,linux-all (linux: NPE commit testing)
+java/awt/FullScreen/DisplayChangeVITest/DisplayChangeVITest.java                    8169469,JBR-1897 windows-all,macosx-all,linux-all (linux: NPE commit testing)
 java/awt/FullScreen/FullScreenInsets/FullScreenInsets.java                          7019055 windows-all,linux-all,macosx-all
 java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java    8169468 windows-all,macosx-all
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711 macosx-all
@@ -616,7 +616,7 @@ java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java                        
 java/awt/dnd/BadSerializaionTest/BadSerializationTest.java                          8039082 generic-all
 java/awt/dnd/Button2DragTest/Button2DragTest.java                                   8157172 macosx-all,linux-all,windows-all
 java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java                    8202790 macosx-all,linux-all
-java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html               8215538 windows-all
+java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html               8215538 windows-all,macosx-all,linux-all (macosx-all,linux-all: commit)
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java                        8029680 macosx-all,linux-all,windows-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java                        8028998,8159694 macosx-all,windows-all,linux-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java                               8176556 generic-all
