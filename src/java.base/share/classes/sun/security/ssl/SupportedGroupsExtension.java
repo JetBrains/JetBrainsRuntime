@@ -521,12 +521,6 @@ final class SupportedGroupsExtension {
                         NamedGroup.SECP256_R1,
                         NamedGroup.SECP384_R1,
                         NamedGroup.SECP521_R1,
-                        NamedGroup.SECT283_K1,
-                        NamedGroup.SECT283_R1,
-                        NamedGroup.SECT409_K1,
-                        NamedGroup.SECT409_R1,
-                        NamedGroup.SECT571_K1,
-                        NamedGroup.SECT571_R1,
 
                         // FFDHE 2048
                         NamedGroup.FFDHE_2048,
@@ -541,15 +535,6 @@ final class SupportedGroupsExtension {
                         NamedGroup.SECP256_R1,
                         NamedGroup.SECP384_R1,
                         NamedGroup.SECP521_R1,
-                        NamedGroup.SECT283_K1,
-                        NamedGroup.SECT283_R1,
-                        NamedGroup.SECT409_K1,
-                        NamedGroup.SECT409_R1,
-                        NamedGroup.SECT571_K1,
-                        NamedGroup.SECT571_R1,
-
-                        // non-NIST curves
-                        NamedGroup.SECP256_K1,
 
                         // FFDHE 2048
                         NamedGroup.FFDHE_2048,
