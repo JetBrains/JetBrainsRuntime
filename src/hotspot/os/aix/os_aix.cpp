@@ -2811,7 +2811,7 @@ static void SR_handler(int sig, siginfo_t* siginfo, ucontext_t* context) {
     os::SuspendResume::State state = osthread->sr.suspended();
     if (state == os::SuspendResume::SR_SUSPENDED) {
       sigset_t suspend_set;  // signals for sigsuspend()
-
+      sigemptyset(&suspend_set);
       // get current set of blocked signals and unblock resume signal
       pthread_sigmask(SIG_BLOCK, NULL, &suspend_set);
       sigdelset(&suspend_set, SR_signum);
@@ -3097,6 +3097,7 @@ static bool call_chained_handler(struct sigaction *actp, int sig,
 
     // try to honor the signal mask
     sigset_t oset;
+    sigemptyset(&oset);
     pthread_sigmask(SIG_SETMASK, &(actp->sa_mask), &oset);
 
     // call into the chained handler
@@ -3107,7 +3108,7 @@ static bool call_chained_handler(struct sigaction *actp, int sig,
     }
 
     // restore the signal mask
-    pthread_sigmask(SIG_SETMASK, &oset, 0);
+    pthread_sigmask(SIG_SETMASK, &oset, NULL);
   }
   // Tell jvm's signal handler the signal is taken care of.
   return true;
