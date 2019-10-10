@@ -111,7 +111,6 @@ java/awt/datatransfer/Independence/IndependenceAWTTest.java                     
 java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.html                          nobug macosx-all,windows-all
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java                         nobug linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java                           nobug macosx-all,windows-all,linux-all
-java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html                       nobug macosx-all,linux-all,windows-all
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java                                        nobug macosx-all,windows-all,linux-all
 java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                           nobug macosx-all,linux-all,windows-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.html                     nobug macosx-all,windows-all,linux-all

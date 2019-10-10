@@ -214,7 +214,7 @@ java/awt/FullScreen/NoResizeEventOnDMChangeTest/NoResizeEventOnDMChangeTest.java
 java/awt/FullScreen/UninitializedDisplayModeChangeTest/UninitializedDisplayModeChangeTest.java 7188711 macosx-all
 java/awt/Graphics/CopyScaledArea/CopyScaledAreaTest.java                            8153299 windows-all
 java/awt/Graphics/LineClipTest.java                                                 JRE-898 macosx-all
-java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all
+java/awt/Graphics2D/CopyAreaOOB.java                                                7001973 windows-all,macosx-all,linux-all
 java/awt/Graphics2D/DrawString/DrawRotatedStringUsingRotatedFont.java               8197796 generic-all
 java/awt/Graphics2D/DrawString/RotTransText.java                                    8197797 generic-all
 java/awt/Graphics2D/DrawString/TextRenderingTest.java                               8169464 windows-all
@@ -611,7 +611,7 @@ java/awt/datatransfer/SystemFlavorMap/AddFlavorTest.java                        
 java/awt/dnd/BadSerializaionTest/BadSerializationTest.java                          8039082 generic-all
 java/awt/dnd/Button2DragTest/Button2DragTest.java                                   8157172 macosx-all,linux-all,windows-all
 java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java                    8202790 macosx-all,linux-all
-java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html               8215538 windows-all
+java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html               8215538 windows-all,macosx-all,linux-all (macosx-all,linux-all: commit)
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java                        8029680 macosx-all,linux-all,windows-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java                        8028998,8159694 macosx-all,windows-all,linux-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java                               8176556 generic-all
