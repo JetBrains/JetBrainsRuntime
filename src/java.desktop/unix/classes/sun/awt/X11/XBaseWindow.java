@@ -1121,6 +1121,9 @@ public class XBaseWindow {
         if (target != null && target.checkInitialised()) {
             target.dispatchEvent(ev);
         }
+
+        // finally
+        XlibWrapper.XFreeEventData(ev.get_xgeneric().get_display(), ev.pData);
     }
 
     public void dispatchEvent(XEvent xev) {
