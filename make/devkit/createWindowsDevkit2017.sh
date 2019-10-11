@@ -32,7 +32,6 @@ VS_VERSION="2017"
 VS_VERSION_NUM_NODOT="150"
 VS_DLL_VERSION="140"
 SDK_VERSION="10"
-SDK_FULL_VERSION="10.0.16299.0"
 MSVC_DIR="Microsoft.VC141.CRT"
 
 SCRIPT_DIR="$(cd "$(dirname $0)" > /dev/null && pwd)"
@@ -119,6 +118,9 @@ fi
 
 SDK_INSTALL_DIR="$(cygpath "$PROGRAMFILES_X86/Windows Kits/$SDK_VERSION")"
 echo "SDK_INSTALL_DIR: $SDK_INSTALL_DIR"
+
+SDK_FULL_VERSION="$(ls "$SDK_INSTALL_DIR/bin" | sort -r -n | head -n1)"
+echo "Found SDK version: $SDK_FULL_VERSION"
 
 if [ ! -d $DEVKIT_ROOT/$SDK_VERSION ]; then
     echo "Copying SDK..."
