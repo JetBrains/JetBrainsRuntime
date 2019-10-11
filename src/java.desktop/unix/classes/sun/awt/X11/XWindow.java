@@ -787,6 +787,64 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
     }
 
+    public void handleTouchEvent(XEvent xev) {
+        XIDeviceEvent dev = XlibWrapper.GetXIDeviceEvent(xev.get_xcookie());
+
+        int x = scaleDown((int) dev.get_event_x());
+        int y = scaleDown((int) dev.get_event_y());
+
+        // TODO do we need this like in in mouse event handler
+        if (dev.get_event() != window) {
+            Point localXY = toLocal(x, y);
+            x = localXY.x;
+            y = localXY.y;
+        }
+
+        long when = dev.get_time();
+        long jWhen = XToolkit.nowMillisUTC_offset(when);
+
+        switch (dev.get_evtype()) {
+            case XConstants.XI_TouchUpdate:
+                int direction = y >= lastY ? -1 : 1;
+                int modifiers = 0;
+                int scrollAmount = Math.abs(lastY - y);
+
+                if (scrollAmount < Math.abs(lastX - x)) {
+                    scrollAmount = Math.abs(lastX - x);
+                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
+                    direction = x >= lastX ? -1 : 1;
+                }
+
+                if (scrollAmount < 1) {
+                    break;
+                }
+
+                MouseWheelEvent mwe = new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
+                        modifiers,
+                        x, y,
+                        scaleDown((int) dev.get_root_x()),
+                        scaleDown((int) dev.get_root_y()),
+                        1, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        scrollAmount, direction);
+                postEventToEventQueue(mwe);
+
+                lastX = x;
+                lastY = y;
+                break;
+            case XConstants.XI_TouchBegin:
+            case XConstants.XI_TouchEnd:
+                // TODO add click events
+
+                lastX = x;
+                lastY = y;
+                break;
+            default:
+                // TODO remove this
+                System.out.println("Unknown");
+                break;
+        }
+    }
+
     @Override
     public void handleMotionNotify(XEvent xev) {
         super.handleMotionNotify(xev);
