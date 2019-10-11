@@ -2339,7 +2339,8 @@ Java_sun_awt_X11_XlibWrapper_SetupXI2
     XISetMask(mask, XI_TouchEnd);
 
     XIEventMask evmask;
-    evmask.deviceid = XIAllDevices;
+    // TODO make deviceid filtering
+    evmask.deviceid = XIAllMasterDevices;
     evmask.mask_len = sizeof(mask);
     evmask.mask = mask;
     XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
