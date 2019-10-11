@@ -127,6 +127,22 @@ XKeymapEvent
     display     long
     window	long
     key_vector	array byte 32
+XGenericEvent
+    type	int
+    serial	long
+    send_event  Bool
+    display     long
+    extension int
+    evtype int
+XGenericEventCookie
+    type	int
+    serial	long
+    send_event  Bool
+    display     long
+    extension int
+    evtype int
+    cookie int
+    data pointer
 XDestroyWindowEvent
     type	int
     serial	long
@@ -814,6 +830,8 @@ XEvent
    xmapping struct XMappingEvent
    xerror struct XErrorEvent
    xkeymap struct XKeymapEvent
+   xgeneric struct XGenericEvent
+   xcookie struct XGenericEventCookie
    pad array long 24
 
 XkbAnyEvent
@@ -1039,3 +1057,42 @@ XkbEvent
     accessx  struct XkbAccessXNotifyEvent
     device  struct XkbExtensionDeviceNotifyEvent
     core  struct XEvent
+
+XIButtonState
+    mask_len int
+    mask pointer byte
+
+XIValuatorState
+    mask_len int
+    mask pointer byte
+    values pointer double
+
+XIModifierState
+    base int
+    latched int
+    locked int
+    effective int
+
+XIDeviceEvent
+    type int   
+    serial long
+    send_event Bool
+    display long
+    extension int
+    evtype int
+    time ulong
+    deviceid int
+    sourceid int
+    detail int
+    root long
+    event long
+    child long
+    root_x double
+    root_y double
+    event_x double
+    event_y double
+    flags int
+    buttons struct XIButtonState
+    valuators struct XIValuatorState
+    mods struct XIModifierState
+    group struct XIModifierState
