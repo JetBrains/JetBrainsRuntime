@@ -293,7 +293,7 @@ issues.
  Linux              gcc 7.3.0
  macOS              Apple Xcode 9.4 (using clang 9.1.0)
  Solaris            Oracle Solaris Studio 12.4 (with compiler version 5.13)
- Windows            Microsoft Visual Studio 2017 update 15.5.5
+ Windows            Microsoft Visual Studio 2017 update 15.9.16
 
 ### gcc
 
