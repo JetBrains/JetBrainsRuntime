@@ -257,6 +257,9 @@ public class XBaseWindow {
 
     public XBaseWindow (XCreateWindowParams params) {
         init(params);
+
+        // TODO find propper place for setup
+        XlibWrapper.SetupXI2(XToolkit.getDisplay(), window);
     }
 
     /* This create is used by the XEmbeddedFramePeer since it has to create the window
@@ -1073,6 +1076,10 @@ public class XBaseWindow {
         width = scaleDown(xe.get_width());
         height = scaleDown(xe.get_height());
     }
+
+    public void handleTouchEvent(XEvent xev) {
+    }
+
     /**
      * Checks ButtonRelease released all Mouse buttons
      */
@@ -1112,9 +1119,19 @@ public class XBaseWindow {
         if (target == null || !isGrabbedEvent(ev, target)) {
             target = XToolkit.windowToXWindow(ev.get_xany().get_window());
         }
+
+        if (target == null && ev.get_type() == XConstants.GenericEvent) {
+            if (XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+                target = XToolkit.windowToXWindow(XlibWrapper.GetXIDeviceEvent(ev.get_xcookie()).get_event());
+            }
+        }
+
         if (target != null && target.checkInitialised()) {
             target.dispatchEvent(ev);
         }
+
+        // finally
+        XlibWrapper.XFreeEventData(ev.get_xgeneric().get_display(), ev.pData);
     }
 
     public void dispatchEvent(XEvent xev) {
@@ -1177,6 +1194,10 @@ public class XBaseWindow {
               break;
           case XConstants.CreateNotify:
               handleCreateNotify(xev);
+              break;
+          case XConstants.GenericEvent:
+              // TODO add XI switch
+              handleTouchEvent(xev);
               break;
         }
     }
