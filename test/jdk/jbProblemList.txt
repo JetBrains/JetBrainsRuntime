@@ -119,7 +119,7 @@ java/awt/BasicStroke/DashZeroWidth.java                                         
 java/awt/Choice/ItemStateChangeTest/ItemStateChangeTest.java                        8169108 windows-all
 java/awt/Choice/ChoiceGeneratesItemEvents/ChoiceGeneratesItemEvents.html            8047703 generic-all
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.html                  6849922 macosx-all,windows-all
-java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all
+java/awt/Choice/ChoiceMouseWheelTest/ChoiceMouseWheelTest.java                      7100044 macosx-all,windows-all,linux-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java                        8202931 macosx-all,linux-all,windows-all
 java/awt/Choice/GrabLockTest/GrabLockTest.java                                      JRE-839 windows-all,macosx-all,linux-all
 java/awt/Choice/PopdownGeneratesMouseEvents/PopdownGeneratesMouseEvents.html        8194045 generic-all
@@ -1191,6 +1191,7 @@ com/sun/jdi/RedefineCrossEvent.java                                             
 ############################################################################
 
 jdk/internal/platform/cgroup/TestCgroupMetrics.java                                 8222533 linux-all
+jdk/internal/platform/docker/TestSystemMetrics.java                                 8224502 linux-all
 
 # jdk_jfr
 
