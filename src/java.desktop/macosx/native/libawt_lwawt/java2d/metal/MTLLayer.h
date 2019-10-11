@@ -41,6 +41,7 @@
     float bufferWidth;
     float bufferHeight;
     id<MTLTexture> buffer;
+    int nextDrawableCount;
     int topInset;
     int leftInset;
 }
@@ -50,6 +51,7 @@
 @property (readwrite, assign) float bufferWidth;
 @property (readwrite, assign) float bufferHeight;
 @property (readwrite, assign) id<MTLTexture> buffer;
+@property (readwrite, assign) int nextDrawableCount;
 @property (readwrite, assign) int topInset;
 @property (readwrite, assign) int leftInset;
 
