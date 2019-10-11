@@ -65,6 +65,10 @@ public final class CGraphicsDevice extends GraphicsDevice
         config = MacOSFlags.isMetalEnabled() ?
                 MTLGraphicsConfig.getConfig(this, displayID, 0) :
                 CGLGraphicsConfig.getConfig(this, displayID, 0);
+        // initializes default device state, might be redundant step since we
+        // call "displayChanged()" later anyway, but we do not want to leave the
+        // device in an inconsistent state after construction
+        displayChanged();
     }
 
     /**

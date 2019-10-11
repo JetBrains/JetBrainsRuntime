@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -19,13 +19,17 @@
  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
  * or visit www.oracle.com if you need additional information or have any
  * questions.
+ *
  */
 
-/**
- * JDK 11 and later versioned overlay for the {@code jdk.internal.vm.compiler.management} module.
- * This cannot be used in JDK 10 where {@code jdk.internal.vm.compiler.management} is a
- * non-upgradeable module.
- */
+#ifndef _PS_CORE_COMMON_H_
+#define _PS_CORE_COMMON_H_
 
+map_info* core_lookup(struct ps_prochandle *ph, uintptr_t addr);
+map_info* add_map_info(struct ps_prochandle* ph, int fd, off_t offset,
+                       uintptr_t vaddr, size_t memsz);
+void core_release(struct ps_prochandle* ph);
+bool read_string(struct ps_prochandle* ph, uintptr_t addr, char* buf, size_t size);
+bool init_classsharing_workaround(struct ps_prochandle* ph);
 
-package org.graalvm.compiler.hotspot.management;
+#endif // _PS_CORE_COMMON_H_
