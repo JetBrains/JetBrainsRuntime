@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2004, 2005, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Red Hat, Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -23,14 +21,28 @@
  * questions.
  */
 
-#include <dlfcn.h>
-#include "jdk_util.h"
+/*
+ * @test
+ * @bug 8227384
+ * @summary C2 compilation fails with "graph should be schedulable" when running with -XX:-EliminateLocks
+ *
+ * @run main/othervm -XX:-EliminateLocks TestEliminateLocksOffCrash
+ */
 
-int JDK_InitJvmHandle() {
-    /* nop */
-    return 1;
-}
+public class TestEliminateLocksOffCrash {
+    public static void main(String[] args) {
+        for (int i = 0; i < 20_000; i++) {
+            try {
+                test();
+            } catch (Exception e) {
+            }
+        }
+    }
 
-void* JDK_FindJvmEntry(const char* name) {
-    return dlsym(RTLD_DEFAULT, name);
+    private static void test() throws Exception {
+        Object obj = new Object();
+        synchronized (obj) {
+            throw new Exception();
+        }
+    }
 }
