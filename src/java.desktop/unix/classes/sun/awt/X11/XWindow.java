@@ -787,14 +787,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchUpdate:
-                int direction = y >= lastY ? 1 : -1;
+                int direction = y >= lastY ? -1 : 1;
                 int modifiers = 0;
                 int scrollAmount = Math.abs(lastY - y);
 
                 if (scrollAmount < Math.abs(lastX - x)) {
                     scrollAmount = Math.abs(lastX - x);
                     modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    direction = x >= lastX ? 1 : -1;
+                    direction = x >= lastX ? -1 : 1;
                 }
 
                 if (scrollAmount < 1) {
