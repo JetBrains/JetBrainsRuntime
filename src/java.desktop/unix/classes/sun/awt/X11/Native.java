@@ -374,6 +374,20 @@ class Native {
         return res;
     }
 
+    /**
+     * Access to C double data(eight bytes)
+     */
+    static int getDoubleSize() { return 8; }
+    static double getDouble(long ptr) { return unsafe.getDouble(ptr); }
+    static double getDouble(long ptr, int index) { return getDouble(ptr + getDoubleSize() * index); }
+    /**
+     * Stores to C double data(eight bytes)
+     */
+    static void putDouble(long ptr, double data) { unsafe.putDouble(ptr, data); }
+    static void putDouble(long ptr, int index, double data) {
+        putDouble(ptr + index * getDoubleSize(), data);
+    }
+
 
     /**
      * Access to C "unsigned long" date type, which is XID in X
