@@ -564,6 +564,17 @@ static native String XSetLocaleModifiers(String modifier_list);
 
     static native void SetZOrder(long display, long window, long above);
 
+//    static native void XISetMask(long );
+//    static native void XISelectEvents(long display, long window);
+    //TODO replace it with more general func
+    static native void SetupXI2(long display, long window);
+
+    static native boolean XGetEventData(long display, long ptr);
+    static native void XFreeEventData(long display, long ptr);
+    static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {
+        return new XIDeviceEvent(cookie.get_data());
+    }
+
 /* Global memory area used for X lib parameter passing */
 
     static final long lbuffer = unsafe.allocateMemory(64);  // array to hold 8 longs
