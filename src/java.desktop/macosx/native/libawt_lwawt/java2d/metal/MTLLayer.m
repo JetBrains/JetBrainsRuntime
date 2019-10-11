@@ -39,6 +39,7 @@
 @synthesize bufferWidth;
 @synthesize bufferHeight;
 @synthesize buffer;
+@synthesize nextDrawableCount;
 @synthesize topInset;
 @synthesize leftInset;
 
@@ -69,6 +70,7 @@
     self.topInset = 0;
     self.leftInset = 0;
     self.framebufferOnly = NO;
+    self.nextDrawableCount = 0;
     return self;
 }
 
@@ -84,6 +86,7 @@
         return;
     }
 
+    if (self.nextDrawableCount == 0) {
     @autoreleasepool {
 
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
@@ -94,6 +97,7 @@
             return;
         }
 
+        self.displaySyncEnabled = NO;
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
@@ -102,6 +106,7 @@
             [self.ctx.texturePool markAllTexturesFree];
             return;
         }
+        self.nextDrawableCount++;
         J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
         [blitEncoder
@@ -116,11 +121,14 @@
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
                 [self.ctx.texturePool markAllTexturesFree];
                 [self.ctx releaseCommandBuffer];
+                self.nextDrawableCount--;
+                self.displaySyncEnabled = YES;
         }];
 
         [commandBuf commit];
         [commandBuf waitUntilCompleted];
         [self.ctx releaseCommandBuffer];
+    }
     }
 }
 
