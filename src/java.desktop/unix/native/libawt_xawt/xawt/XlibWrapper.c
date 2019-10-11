@@ -41,6 +41,8 @@
 #include <string.h>
 #include <X11/extensions/Xdbe.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XI2.h>
+#include <X11/extensions/XInput2.h>
 #include <X11/keysym.h>
 #include <X11/Sunkeysym.h>
 #include <X11/Xlib.h>
@@ -2319,6 +2321,52 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
     XConfigureWindow((Display *)jlong_to_ptr(display),
                      (Window)jlong_to_ptr(window),
                      value_mask, &wc );
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    SetupXI2
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XlibWrapper_SetupXI2
+(JNIEnv *env, jclass clazz, jlong display, jlong window)
+{
+    unsigned char mask[XIMaskLen(XI_LASTEVENT)];
+    memset(mask, 0, sizeof(mask));
+
+    XISetMask(mask, XI_TouchBegin);
+    XISetMask(mask, XI_TouchUpdate);
+    XISetMask(mask, XI_TouchEnd);
+
+    XIEventMask evmask;
+    evmask.deviceid = XIAllDevices;
+    evmask.mask_len = sizeof(mask);
+    evmask.mask = mask;
+    XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
+    XFlush((Display *)jlong_to_ptr(display));
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XGetEventData
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11_XlibWrapper_XGetEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XGetEventData((Display *)jlong_to_ptr(display),
+                         (XGenericEventCookie *)ptr_to_jlong(ptr)) ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XFreeEventData
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XlibWrapper_XFreeEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XFreeEventData((Display *)jlong_to_ptr(display), (XGenericEventCookie *)ptr_to_jlong(ptr));
 }
 
 /*
