@@ -127,8 +127,8 @@ public class BundledFontTest {
         doTestFont("JetBrains Mono", Font.BOLD);
     }
 
-    @Test
-    public void testJetBrainsMonoItalic() throws Exception {
-        doTestFont("JetBrains Mono", Font.ITALIC);
-    }
+//    @Test
+//    public void testJetBrainsMonoItalic() throws Exception {
+//        doTestFont("JetBrains Mono", Font.ITALIC);
+//    }
 }
