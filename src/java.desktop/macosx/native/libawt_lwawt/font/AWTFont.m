@@ -1224,7 +1224,7 @@ static NSDictionary* prebuiltFamilyNames() {
              @"Inconsolata" : @"Inconsolata",
              @"JetBrainsMono-Bold" : @"JetBrains Mono",
              @"JetBrainsMono-Regular" : @"JetBrains Mono",
-             @"JetBrainsMono-Italic" : @"JetBrains Mono",
+//              @"JetBrainsMono-Italic" : @"JetBrains Mono",
              @"JetBrainsMono-BoldItalic" : @"JetBrains Mono",
              @"Roboto-Light" : @"Roboto",
              @"Roboto-Thin" : @"Roboto",
