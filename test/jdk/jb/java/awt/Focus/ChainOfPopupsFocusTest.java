@@ -45,43 +45,50 @@ import java.awt.event.KeyEvent;
 /*
  * Description: Test checks that focus goes to the parent popup when child popup is closed.
  * Test opens several popups one by one, setting current popup as a parent for the next one.
- * Then the popups are closed one by one. Test fails if the main frame gets closed or
- * if the number of closed popups is not equal to the number of open popups.
- * It means that focus went somewhere else than the parent popup.
+ * Then the popups are closed one by one. Test fails if focus went somewhere else than the parent popup.
  */
 
 public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
 
     private static final int DEPTH = 5;
+    private static final String FRAMENAME = "MainFrame";
+    private static final String POPUPNAME = "Popup";
 
-    private static volatile boolean frameHidden = false;
-    private static volatile int popupsHidden = 0;
     private static volatile Component focusOwner;
+    private static volatile int popupsCount;
     private static Robot robot;
     private JFrame frame;
 
     public static void main(String[] args) throws Exception {
 
-        ChainOfPopupsFocusTest test = new ChainOfPopupsFocusTest();
-        SwingUtilities.invokeAndWait(test);
-
         robot = new Robot();
         robot.setAutoDelay(50);
 
-        for (int i = 0; i < DEPTH; i++) pressCtrlKey(KeyEvent.VK_N);
-        robot.delay(2000);
-        for (int i = 0; i < DEPTH; i++) pressCtrlKey(KeyEvent.VK_X);
-        robot.delay(2000);
+        ChainOfPopupsFocusTest test = new ChainOfPopupsFocusTest();
+        SwingUtilities.invokeAndWait(test);
+        robot.delay(1000);
+
+        for (int count = 1; count <= DEPTH; count++) {
+            pressCtrlKey(KeyEvent.VK_N);
+            robot.delay(1000);
+        }
 
         try {
-            if(frameHidden) {
-                System.err.println("Error: frameHidden=" + frameHidden);
-                throw new RuntimeException("Test FAILED: Focus went to the main frame instead of the parent popup");
+            if(popupsCount != DEPTH) {
+                throw new RuntimeException("Test ERROR: Number of open popups is "
+                        + popupsCount + ", but " + DEPTH + " is expected");
             }
-            if(popupsHidden != DEPTH) {
-                System.err.println("Error: frameHidden=" + frameHidden + " popupsHidden=" + popupsHidden);
-                SwingUtilities.invokeAndWait(() -> focusOwner = test.frame.getFocusOwner());
-                throw new RuntimeException("Test FAILED: Focus went to " + focusOwner + " instead of the parent popup");
+            for (int count = DEPTH-1; count >= 0; count--) {
+                pressCtrlKey(KeyEvent.VK_X);
+                robot.delay(1000);
+                SwingUtilities.invokeAndWait(() ->
+                        focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner());
+                String focusedComponent = (focusOwner != null ? focusOwner.getName() : "Nothing");
+                String expectedComponent = (count == 0 ? FRAMENAME : POPUPNAME + count);
+                if(!focusedComponent.equals(expectedComponent)) {
+                    throw new RuntimeException("Test FAILED: "
+                            + focusedComponent + " is focused instead of " + expectedComponent);
+                }
             }
         } finally {
             SwingUtilities.invokeAndWait(() -> test.frame.dispose());
@@ -100,21 +107,16 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
     @Override
     public void run() {
         frame = new JFrame(getClass().getSimpleName());
-        frame.add(new JScrollPane(createTextArea()));
+        frame.add(new JScrollPane(createTextArea(FRAMENAME)));
         frame.pack();
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
-        frame.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentHidden(ComponentEvent event) {
-                frameHidden = true;
-            }
-        });
         frame.setVisible(true);
     }
 
-    private JTextArea createTextArea() {
+    private JTextArea createTextArea(String locatedOn) {
         JTextArea area = new JTextArea(20, 40);
+        area.setName(locatedOn);
         area.registerKeyboardAction(this, "show", KeyStroke.getKeyStroke("control N"), JComponent.WHEN_FOCUSED);
         area.registerKeyboardAction(event -> SwingUtilities.getWindowAncestor((Component) event.getSource()).setVisible(false), KeyStroke.getKeyStroke("control X"), JComponent.WHEN_FOCUSED);
         area.addComponentListener(new ComponentAdapter() {
@@ -132,7 +134,7 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
         switch (event.getActionCommand()) {
             case "show":
                 Point point = source.getLocationOnScreen();
-                Component area = createTextArea();
+                Component area = createTextArea(POPUPNAME + ++popupsCount);
                 Popup popup = PopupFactory.getSharedInstance().getPopup(source, new JScrollPane(area), point.x + 10, point.y + 10);
                 Window window = SwingUtilities.getWindowAncestor(area);
                 window.setAutoRequestFocus(true);
@@ -162,12 +164,6 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
                     @Override
                     public Component getDefaultComponent(Container container) {
                         return area;
-                    }
-                });
-                window.addComponentListener(new ComponentAdapter() {
-                    @Override
-                    public void componentHidden(ComponentEvent event) {
-                        popupsHidden++;
                     }
                 });
                 popup.show();
