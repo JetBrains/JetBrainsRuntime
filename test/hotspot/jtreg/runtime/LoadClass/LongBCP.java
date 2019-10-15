@@ -100,8 +100,6 @@ public class LongBCP {
               .shouldHaveExitValue(0);
 
         // relative path tests
-        // We currently cannot handle relative path specified in the
-        // -Xbootclasspath/a on windows.
         //
         // relative path length within the 256 limit
         char[] chars = new char[255];
@@ -114,6 +112,22 @@ public class LongBCP {
         bootCP = "-Xbootclasspath/a:" + destDir.toString();
         pb = ProcessTools.createJavaProcessBuilder(
             bootCP, "Hello");
+
+        output = new OutputAnalyzer(pb.start());
+        output.shouldContain("Hello World")
+              .shouldHaveExitValue(0);
+
+        // Test a relative path for a jar file < MAX_PATH, but where the
+        // absolute path is > MAX_PATH.
+        Path jarDir = Paths.get(".");
+        for (int i = 0; i < 21; ++i) {
+            jarDir = jarDir.resolve("0123456789");
+        }
+        Files.createDirectories(jarDir);
+        Path jarPath = jarDir.resolve("hello.jar");
+        Files.copy(Paths.get(helloJar), jarPath);
+        bootCP = "-Xbootclasspath/a:" + jarPath.toString();
+        pb = ProcessTools.createJavaProcessBuilder(bootCP, "Hello");
 
         output = new OutputAnalyzer(pb.start());
         output.shouldContain("Hello World")
