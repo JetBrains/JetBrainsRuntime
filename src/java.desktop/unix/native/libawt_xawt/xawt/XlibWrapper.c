@@ -2325,26 +2325,30 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
 
 /*
  * Class:     XlibWrapper
- * Method:    SetupXI2
+ * Method:    XIQueryVersion
  */
-JNIEXPORT void JNICALL
-Java_sun_awt_X11_XlibWrapper_SetupXI2
-(JNIEnv *env, jclass clazz, jlong display, jlong window)
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XIQueryVersion
+(JNIEnv *env, jclass clazz, jlong display, jlong major_version_iptr, jlong minor_version_iptr)
 {
-    unsigned char mask[XIMaskLen(XI_LASTEVENT)];
-    memset(mask, 0, sizeof(mask));
+    return XIQueryVersion((Display *)jlong_to_ptr(display),
+        jlong_to_ptr(major_version_iptr), jlong_to_ptr(minor_version_iptr));
+}
 
-    XISetMask(mask, XI_TouchBegin);
-    XISetMask(mask, XI_TouchUpdate);
-    XISetMask(mask, XI_TouchEnd);
-
+/*
+ * Class:     XlibWrapper
+ * Method:    XISelectEvents
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XISelectEvents
+(JNIEnv *env, jclass clazz, jlong display, jlong window, jlong mask, jint deviceid)
+{
     XIEventMask evmask;
-    // TODO make deviceid filtering
-    evmask.deviceid = XIAllMasterDevices;
-    evmask.mask_len = sizeof(mask);
-    evmask.mask = mask;
-    XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
-    XFlush((Display *)jlong_to_ptr(display));
+    evmask.deviceid = (int)deviceid;
+    evmask.mask_len = XIMaskLen(XI_LASTEVENT);
+    // FIXME potential byte order problem
+    evmask.mask = &mask;
+    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
 }
 
 /*
