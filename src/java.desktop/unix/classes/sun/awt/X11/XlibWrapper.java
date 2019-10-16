@@ -564,11 +564,7 @@ static native String XSetLocaleModifiers(String modifier_list);
 
     static native void SetZOrder(long display, long window, long above);
 
-//    static native void XISetMask(long );
-//    static native void XISelectEvents(long display, long window);
-    //TODO replace it with more general func
-    static native void SetupXI2(long display, long window);
-
+    static native int XISelectEvents(long display, long window, long mask, int deviceid);
     static native boolean XGetEventData(long display, long ptr);
     static native void XFreeEventData(long display, long ptr);
     static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {

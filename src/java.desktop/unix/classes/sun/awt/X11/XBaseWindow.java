@@ -257,9 +257,6 @@ public class XBaseWindow {
 
     public XBaseWindow (XCreateWindowParams params) {
         init(params);
-
-        // TODO find propper place for setup
-        XlibWrapper.SetupXI2(XToolkit.getDisplay(), window);
     }
 
     /* This create is used by the XEmbeddedFramePeer since it has to create the window
@@ -406,6 +403,13 @@ public class XBaseWindow {
                     throw new IllegalStateException("Couldn't create window because of wrong parameters. Run with NOISY_AWT to see details");
                 }
                 XToolkit.addToWinMap(window, this);
+
+                long touchEventsMask = XConstants.XI_TouchBeginMask | XConstants.XI_TouchUpdateMask | XConstants.XI_TouchEndMask;
+                int deviceId = XConstants.XIAllMasterDevices;
+                int status = XlibWrapper.XISelectEvents(XToolkit.getDisplay(), window, touchEventsMask, deviceId);
+                if (status != XConstants.Success) {
+                    throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                }
             } finally {
                 xattr.dispose();
             }

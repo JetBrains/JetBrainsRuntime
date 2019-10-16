@@ -2321,26 +2321,18 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
 
 /*
  * Class:     XlibWrapper
- * Method:    SetupXI2
+ * Method:    XISelectEvents
  */
-JNIEXPORT void JNICALL
-Java_sun_awt_X11_XlibWrapper_SetupXI2
-(JNIEnv *env, jclass clazz, jlong display, jlong window)
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XISelectEvents
+(JNIEnv *env, jclass clazz, jlong display, jlong window, jlong mask, jint deviceid)
 {
-    unsigned char mask[XIMaskLen(XI_LASTEVENT)];
-    memset(mask, 0, sizeof(mask));
-
-    XISetMask(mask, XI_TouchBegin);
-    XISetMask(mask, XI_TouchUpdate);
-    XISetMask(mask, XI_TouchEnd);
-
     XIEventMask evmask;
-    // TODO make deviceid filtering
-    evmask.deviceid = XIAllMasterDevices;
-    evmask.mask_len = sizeof(mask);
-    evmask.mask = mask;
-    XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
-    XFlush((Display *)jlong_to_ptr(display));
+    evmask.deviceid = (int)deviceid;
+    evmask.mask_len = XIMaskLen(XI_LASTEVENT);
+    // FIXME potential byte order problem
+    evmask.mask = &mask;
+    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
 }
 
 /*
