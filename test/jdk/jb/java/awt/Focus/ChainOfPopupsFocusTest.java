@@ -113,12 +113,15 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
 
     @Override
     public void run() {
+        JTextArea area = createTextArea(FRAMENAME);
         frame = new JFrame(getClass().getSimpleName());
-        frame.add(new JScrollPane(createTextArea(FRAMENAME)));
+        frame.add(new JScrollPane(area));
         frame.pack();
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+        frame.toFront();
+        area.requestFocusInWindow();
     }
 
     private JTextArea createTextArea(String locatedOn) {
