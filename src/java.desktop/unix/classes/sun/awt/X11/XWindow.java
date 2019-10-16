@@ -79,6 +79,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
+    static int touchUpdates = 0;
+    private static int touchBeginX = 0, touchBeginY = 0;
+    private static final int TOUCH_CLICK_RADIUS = 2;
+    private static final int TOUCH_UPDATES_THRESHOLD = 2;
+    // all touch scrolls are measured in pixels
+    private static final int TOUCH_BEGIN = 2;
+    private static final int TOUCH_UPDATE = 3;
+    private static final int TOUCH_END = 4;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -238,6 +246,11 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         }
 
         params.putIfNull(BACKING_STORE, XToolkit.getBackingStoreType());
+
+        params.putIfNull(XI_EVENT_MASK, XConstants.XI_TouchBeginMask |
+                        XConstants.XI_TouchUpdateMask |
+                        XConstants.XI_TouchEndMask);
+        params.putIfNull(XI_DEVICE_ID, XConstants.XIAllMasterDevices);
 
         XToolkit.awtLock();
         try {
@@ -780,61 +793,92 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     public void handleTouchEvent(XEvent xev) {
-        XIDeviceEvent dev = XlibWrapper.GetXIDeviceEvent(xev.get_xcookie());
+        super.handleTouchEvent(xev);
 
+        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
         int x = scaleDown((int) dev.get_event_x());
         int y = scaleDown((int) dev.get_event_y());
 
-        // TODO do we need this like in in mouse event handler
         if (dev.get_event() != window) {
             Point localXY = toLocal(x, y);
             x = localXY.x;
             y = localXY.y;
         }
 
-        long when = dev.get_time();
-        long jWhen = XToolkit.nowMillisUTC_offset(when);
+        // TODO do we need any other button?
+        int button = XConstants.buttons[0];
+        int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
+        // turning off shift modifier
+        modifiers &= ~InputEvent.SHIFT_DOWN_MASK;
+
+        long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
         switch (dev.get_evtype()) {
+            case XConstants.XI_TouchBegin:
+                touchUpdates = 0;
+                touchBeginX = x;
+                touchBeginY = y;
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
+                break;
             case XConstants.XI_TouchUpdate:
-                int direction = y >= lastY ? -1 : 1;
-                int modifiers = 0;
-                int scrollAmount = Math.abs(lastY - y);
-
-                if (scrollAmount < Math.abs(lastX - x)) {
-                    scrollAmount = Math.abs(lastX - x);
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    direction = x >= lastX ? -1 : 1;
+                if (isInsideTouchClickBoundaries(x, y)) {
+                    break;
                 }
+                ++touchUpdates;
 
-                if (scrollAmount < 1) {
+                // workaround to distinguish touch move and touch click
+                if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
                     break;
                 }
 
-                MouseWheelEvent mwe = new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
+                if (lastY - y != 0) {
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
+                }
+                if (lastX - x != 0) {
+                    // horizontal scroll
+                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
+                }
+                break;
+            case XConstants.XI_TouchEnd:
+                if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button);
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button);
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
+                }
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
+                break;
+        }
+
+        lastX = x;
+        lastY = y;
+    }
+
+    private boolean isInsideTouchClickBoundaries(int x, int y) {
+        return Math.abs(touchBeginX - x) <= TOUCH_CLICK_RADIUS &&
+                Math.abs(touchBeginY - y) <= TOUCH_CLICK_RADIUS;
+    }
+
+    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
+        postEventToEventQueue(
+                new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
                         modifiers,
                         x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        1, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                        scrollAmount, direction);
-                postEventToEventQueue(mwe);
+                        0, false, type,
+                        1, delta));
+    }
 
-                lastX = x;
-                lastY = y;
-                break;
-            case XConstants.XI_TouchBegin:
-            case XConstants.XI_TouchEnd:
-                // TODO add click events
-
-                lastX = x;
-                lastY = y;
-                break;
-            default:
-                // TODO remove this
-                System.out.println("Unknown");
-                break;
-        }
+    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
+        postEventToEventQueue(
+                new MouseEvent(getEventSource(), type, jWhen,
+                        modifiers,
+                        x, y,
+                        scaleDown((int) dev.get_root_x()),
+                        scaleDown((int) dev.get_root_y()),
+                        1,
+                        false, button));
     }
 
     public void handleMotionNotify(XEvent xev) {
