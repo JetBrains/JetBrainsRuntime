@@ -55,7 +55,9 @@ public class XBaseWindow {
         VISIBLE = "visible", // whether it is visible by default
         SAVE_UNDER = "save under", // save content under this window
         BACKING_STORE = "backing store", // enables double buffering
-        BIT_GRAVITY = "bit gravity"; // copy old content on geometry change
+        BIT_GRAVITY = "bit gravity", // copy old content on geometry change
+        XI_EVENT_MASK = "xi event mask", // xi event mask, Long
+        XI_DEVICE_ID = "xi device id"; // xi device id, Integer
     private XCreateWindowParams delayedParams;
 
     Set<Long> children = new HashSet<Long>();
@@ -404,11 +406,17 @@ public class XBaseWindow {
                 }
                 XToolkit.addToWinMap(window, this);
 
-                long touchEventsMask = XConstants.XI_TouchBeginMask | XConstants.XI_TouchUpdateMask | XConstants.XI_TouchEndMask;
-                int deviceId = XConstants.XIAllMasterDevices;
-                int status = XlibWrapper.XISelectEvents(XToolkit.getDisplay(), window, touchEventsMask, deviceId);
-                if (status != XConstants.Success) {
-                    throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
+                if (xiDeviceId == null) {
+                    xiDeviceId = XConstants.XIAllDevices;
+                }
+
+                Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
+                if (xiEventMask != null) {
+                    int status = XlibWrapper.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
+                    if (status != XConstants.Success) {
+                        throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                    }
                 }
             } finally {
                 xattr.dispose();

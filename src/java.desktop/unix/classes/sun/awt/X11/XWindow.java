@@ -225,6 +225,11 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
         params.putIfNull(BACKING_STORE, XToolkit.getBackingStoreType());
 
+        params.putIfNull(XI_EVENT_MASK, XConstants.XI_TouchBeginMask |
+                        XConstants.XI_TouchUpdateMask |
+                        XConstants.XI_TouchEndMask);
+        params.putIfNull(XI_DEVICE_ID, XConstants.XIAllMasterDevices);
+
         XToolkit.awtLock();
         try {
             if (wm_protocols == null) {
