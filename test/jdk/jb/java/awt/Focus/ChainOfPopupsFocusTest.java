@@ -67,14 +67,20 @@ public class ChainOfPopupsFocusTest implements Runnable, ActionListener {
 
         ChainOfPopupsFocusTest test = new ChainOfPopupsFocusTest();
         SwingUtilities.invokeAndWait(test);
-        robot.delay(1000);
-
-        for (int count = 1; count <= DEPTH; count++) {
-            pressCtrlKey(KeyEvent.VK_N);
-            robot.delay(1000);
-        }
+        robot.delay(3000);
 
         try {
+            SwingUtilities.invokeAndWait(() ->
+                    focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner());
+            if(focusOwner == null || !focusOwner.getName().equals(FRAMENAME)) {
+                throw new RuntimeException("Test ERROR: " + FRAMENAME + " is not focused");
+            }
+
+            for (int count = 1; count <= DEPTH; count++) {
+                pressCtrlKey(KeyEvent.VK_N);
+                robot.delay(1000);
+            }
+
             if(popupsCount != DEPTH) {
                 throw new RuntimeException("Test ERROR: Number of open popups is "
                         + popupsCount + ", but " + DEPTH + " is expected");
