@@ -26,6 +26,7 @@ import javax.swing.WindowConstants;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.FocusTraversalPolicy;
+import java.awt.KeyboardFocusManager;
 import java.awt.Point;
 import java.awt.Robot;
 import java.awt.Window;
