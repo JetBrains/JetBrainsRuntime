@@ -314,6 +314,15 @@ public class XBaseWindow {
         return x;
     }
 
+    // TODO consider generic or removing
+    protected double scaleUp(double x) {
+        return x;
+    }
+
+    protected double scaleDown(double x) {
+        return x;
+    }
+
     /**
      * Creates window with parameters specified by {@code params}
      * @see #init

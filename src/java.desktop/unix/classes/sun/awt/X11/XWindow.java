@@ -37,8 +37,6 @@ import sun.util.logging.PlatformLogger;
 
 import sun.awt.*;
 
-import sun.awt.image.PixelConverter;
-
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 
@@ -55,6 +53,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static final int AWT_MULTICLICK_SMUDGE = 4;
     // ButtonXXX events stuff
     static int lastX = 0, lastY = 0;
+    static double preciseLastX = 0.0;
+    static double preciseLastY = 0.0;
     static long lastTime = 0;
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
@@ -63,6 +63,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
     int oldHeight = -1;
+
+    int touchUpdates = 0;
 
     protected PropMwmHints mwm_hints;
     protected static XAtom wm_protocols;
@@ -782,43 +784,88 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             y = localXY.y;
         }
 
-        long when = dev.get_time();
-        long jWhen = XToolkit.nowMillisUTC_offset(when);
+        long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchUpdate:
-                int direction = y >= lastY ? -1 : 1;
-                int modifiers = 0;
-                int scrollAmount = Math.abs(lastY - y);
+                ++touchUpdates;
 
-                if (scrollAmount < Math.abs(lastX - x)) {
-                    scrollAmount = Math.abs(lastX - x);
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    direction = x >= lastX ? -1 : 1;
-                }
-
-                if (scrollAmount < 1) {
+                if (touchUpdates < 2) {
                     break;
                 }
+
+                int delta = lastY - y;
+                double preciseDelta = scaleDown(preciseLastY - dev.get_event_y());
+                int modifiers = 0;
+
+                // horizontal scroll
+                // TODO consider sending both events
+                if (Math.abs(delta) < Math.abs(lastX - x)) {
+                    delta = lastX - x;
+                    preciseDelta = scaleDown(preciseLastX - dev.get_event_x());
+                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
+                }
+
+                // TODO add real pixel scrolling
+                delta /= 10;
+                preciseDelta /= 10.0;
 
                 MouseWheelEvent mwe = new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
                         modifiers,
                         x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        1, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                        scrollAmount, direction);
+                        0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
+                        1, delta, preciseDelta);
                 postEventToEventQueue(mwe);
 
                 lastX = x;
                 lastY = y;
+                preciseLastX = dev.get_event_x();
+                preciseLastY = dev.get_event_y();
                 break;
             case XConstants.XI_TouchBegin:
+                touchUpdates = 0;
+                lastX = x;
+                lastY = y;
+                preciseLastX = dev.get_event_x();
+                preciseLastY = dev.get_event_y();
+                break;
             case XConstants.XI_TouchEnd:
-                // TODO add click events
+                if (touchUpdates < 2) {
+                    postEventToEventQueue(new MouseEvent(getEventSource(),
+                            MouseEvent.MOUSE_PRESSED,
+                            jWhen,
+                            0, //modifiers,
+                            x, y,
+                            scaleDown((int) dev.get_root_x()),
+                            scaleDown((int) dev.get_root_y()),
+                            1, //clickCount,
+                            false, 1)); //button)
+                    postEventToEventQueue(new MouseEvent(getEventSource(),
+                            MouseEvent.MOUSE_RELEASED,
+                            jWhen,
+                            0, //modifiers,
+                            x, y,
+                            scaleDown((int) dev.get_root_x()),
+                            scaleDown((int) dev.get_root_y()),
+                            1, //clickCount,
+                            false, 1)); //button)
+                    postEventToEventQueue(new MouseEvent(getEventSource(),
+                            MouseEvent.MOUSE_CLICKED,
+                            jWhen,
+                            0, //modifiers,
+                            x, y,
+                            scaleDown((int) dev.get_root_x()),
+                            scaleDown((int) dev.get_root_y()),
+                            1, //clickCount,
+                            false, 1));
+                }
 
                 lastX = x;
                 lastY = y;
+                preciseLastX = dev.get_event_x();
+                preciseLastY = dev.get_event_y();
                 break;
             default:
                 // TODO remove this
@@ -1608,6 +1655,16 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
     @Override
     protected int scaleDown(int x) {
+        return graphicsConfig.scaleDown(x);
+    }
+
+    @Override
+    protected double scaleUp(double x) {
+        return graphicsConfig.scaleUp(x);
+    }
+
+    @Override
+    protected double scaleDown(double x) {
         return graphicsConfig.scaleDown(x);
     }
 }

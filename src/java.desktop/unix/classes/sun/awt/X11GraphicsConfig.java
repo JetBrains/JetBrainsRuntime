@@ -273,6 +273,14 @@ public class X11GraphicsConfig extends GraphicsConfiguration
         return Region.clipRound(x / (double)getScale());
     }
 
+    public double scaleUp(double x) {
+        return x * getScale();
+    }
+
+    public double scaleDown(double x) {
+        return x / getScale();
+    }
+
     /**
      *
      * Returns a Transform that can be composed with the default Transform
