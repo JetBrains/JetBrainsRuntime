@@ -741,6 +741,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 XBaseWindow.ungrabInput();
                 processException(thr);
             } finally {
+                // free event data if XGetEventData was called
+                XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
                 awtUnlock();
             }
         }
