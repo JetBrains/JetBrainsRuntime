@@ -682,6 +682,10 @@ public final class XConstants {
     public static final long XkbModifierMapMask = (1L<<2);
     public static final long XkbVirtualModsMask = (1L<<6); //server map
 
+    /* Fake device ID's for event selection */
+    public static final int XIAllDevices = 0;
+    public static final int XIAllMasterDevices = 1;
+
     /* XI Event types */
     public static final int XI_DeviceChanged = 1;
     public static final int XI_KeyPress = 2;
@@ -718,30 +722,30 @@ public final class XConstants {
      * Note: the protocol spec defines a mask to be of (1 << type). Clients are
      * free to create masks by bitshifting instead of using these defines.
      */
-    public static final int XI_DeviceChangedMask = 1 << XI_DeviceChanged;
-    public static final int XI_KeyPressMask = 1 << XI_KeyPress;
-    public static final int XI_KeyReleaseMask = 1 << XI_KeyRelease;
-    public static final int XI_ButtonPressMask = 1 << XI_ButtonPress;
-    public static final int XI_ButtonReleaseMask = 1 << XI_ButtonRelease;
-    public static final int XI_MotionMask = 1 << XI_Motion;
-    public static final int XI_EnterMask = 1 << XI_Enter;
-    public static final int XI_LeaveMask = 1 << XI_Leave;
-    public static final int XI_FocusInMask = 1 << XI_FocusIn;
-    public static final int XI_FocusOutMask = 1 << XI_FocusOut;
-    public static final int XI_HierarchyChangedMask = 1 << XI_HierarchyChanged;
-    public static final int XI_PropertyEventMask = 1 << XI_PropertyEvent;
-    public static final int XI_RawKeyPressMask = 1 << XI_RawKeyPress;
-    public static final int XI_RawKeyReleaseMask = 1 << XI_RawKeyRelease;
-    public static final int XI_RawButtonPressMask = 1 << XI_RawButtonPress;
-    public static final int XI_RawButtonReleaseMask = 1 << XI_RawButtonRelease;
-    public static final int XI_RawMotionMask = 1 << XI_RawMotion;
-    public static final int XI_TouchBeginMask = 1 << XI_TouchBegin;
-    public static final int XI_TouchEndMask = 1 << XI_TouchEnd;
-    public static final int XI_TouchOwnershipChangedMask = 1 << XI_TouchOwnership;
-    public static final int XI_TouchUpdateMask = 1 << XI_TouchUpdate;
-    public static final int XI_RawTouchBeginMask = 1 << XI_RawTouchBegin;
-    public static final int XI_RawTouchEndMask = 1 << XI_RawTouchEnd;
-    public static final int XI_RawTouchUpdateMask = 1 << XI_RawTouchUpdate;
-    public static final int XI_BarrierHitMask = 1 << XI_BarrierHit;
-    public static final int XI_BarrierLeaveMask = 1 << XI_BarrierLeave;
+    public static final long XI_DeviceChangedMask = 1L << XI_DeviceChanged;
+    public static final long XI_KeyPressMask = 1L << XI_KeyPress;
+    public static final long XI_KeyReleaseMask = 1L << XI_KeyRelease;
+    public static final long XI_ButtonPressMask = 1L << XI_ButtonPress;
+    public static final long XI_ButtonReleaseMask = 1L << XI_ButtonRelease;
+    public static final long XI_MotionMask = 1L << XI_Motion;
+    public static final long XI_EnterMask = 1L << XI_Enter;
+    public static final long XI_LeaveMask = 1L << XI_Leave;
+    public static final long XI_FocusInMask = 1L << XI_FocusIn;
+    public static final long XI_FocusOutMask = 1L << XI_FocusOut;
+    public static final long XI_HierarchyChangedMask = 1L << XI_HierarchyChanged;
+    public static final long XI_PropertyEventMask = 1L << XI_PropertyEvent;
+    public static final long XI_RawKeyPressMask = 1L << XI_RawKeyPress;
+    public static final long XI_RawKeyReleaseMask = 1L << XI_RawKeyRelease;
+    public static final long XI_RawButtonPressMask = 1L << XI_RawButtonPress;
+    public static final long XI_RawButtonReleaseMask = 1L << XI_RawButtonRelease;
+    public static final long XI_RawMotionMask = 1L << XI_RawMotion;
+    public static final long XI_TouchBeginMask = 1L << XI_TouchBegin;
+    public static final long XI_TouchEndMask = 1L << XI_TouchEnd;
+    public static final long XI_TouchOwnershipChangedMask = 1L << XI_TouchOwnership;
+    public static final long XI_TouchUpdateMask = 1L << XI_TouchUpdate;
+    public static final long XI_RawTouchBeginMask = 1L << XI_RawTouchBegin;
+    public static final long XI_RawTouchEndMask = 1L << XI_RawTouchEnd;
+    public static final long XI_RawTouchUpdateMask = 1L << XI_RawTouchUpdate;
+    public static final long XI_BarrierHitMask = 1L << XI_BarrierHit;
+    public static final long XI_BarrierLeaveMask = 1L << XI_BarrierLeave;
 }
