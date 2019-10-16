@@ -1403,7 +1403,7 @@ const bool Matcher::match_rule_supported(int opcode) {
         ret_value = false;
       break;
     case Op_AddReductionVI:
-      if (UseSSE < 3) // requires at least SSE3
+      if (UseSSE < 3 || !VM_Version::supports_ssse3()) // requires at least SSSE3
         ret_value = false;
       break;
     case Op_MulReductionVI:
