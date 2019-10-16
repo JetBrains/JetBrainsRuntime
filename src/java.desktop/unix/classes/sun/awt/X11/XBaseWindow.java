@@ -59,7 +59,9 @@ public class XBaseWindow {
         VISIBLE = "visible", // whether it is visible by default
         SAVE_UNDER = "save under", // save content under this window
         BACKING_STORE = "backing store", // enables double buffering
-        BIT_GRAVITY = "bit gravity"; // copy old content on geometry change
+        BIT_GRAVITY = "bit gravity", // copy old content on geometry change
+        XI_EVENT_MASK = "xi event mask", // xi event mask, Long
+        XI_DEVICE_ID = "xi device id"; // xi device id, Integer
     private XCreateWindowParams delayedParams;
 
     Set<Long> children = new HashSet<Long>();
@@ -265,9 +267,6 @@ public class XBaseWindow {
 
     public XBaseWindow (XCreateWindowParams params) {
         init(params);
-
-        // TODO find propper place for setup
-        XlibWrapper.SetupXI2(XToolkit.getDisplay(), window);
     }
 
     /* This create is used by the XEmbeddedFramePeer since it has to create the window
@@ -405,6 +404,19 @@ public class XBaseWindow {
                     throw new IllegalStateException("Couldn't create window because of wrong parameters. Run with NOISY_AWT to see details");
                 }
                 XToolkit.addToWinMap(window, this);
+
+                Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
+                if (xiEventMask != null && XToolkit.isXInputEnabled()) {
+                    Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
+                    if (xiDeviceId == null) {
+                        xiDeviceId = XConstants.XIAllDevices;
+                    }
+
+                    int status = XToolkit.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
+                    if (status != XConstants.Success) {
+                        throw new IllegalStateException("Couldn't select XI events. Status: " + status);
+                    }
+                }
             } finally {
                 xattr.dispose();
             }
@@ -1141,18 +1153,14 @@ public class XBaseWindow {
             target = XToolkit.windowToXWindow(ev.get_xany().get_window());
         }
 
-        if (target == null && ev.get_type() == XConstants.GenericEvent) {
-            if (XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
-                target = XToolkit.windowToXWindow(XlibWrapper.GetXIDeviceEvent(ev.get_xcookie()).get_event());
-            }
+        if (target == null && ev.get_type() == XConstants.GenericEvent &&
+            XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+            target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
         }
 
         if (target != null && target.checkInitialised()) {
             target.dispatchEvent(ev);
         }
-
-        // finally
-        XlibWrapper.XFreeEventData(ev.get_xgeneric().get_display(), ev.pData);
     }
 
     public void dispatchEvent(XEvent xev) {
@@ -1217,8 +1225,15 @@ public class XBaseWindow {
               handleCreateNotify(xev);
               break;
           case XConstants.GenericEvent:
-              // TODO add XI switch
-              handleTouchEvent(xev);
+              switch (xev.get_xgeneric().get_evtype()) {
+                  case XConstants.XI_TouchBegin:
+                  case XConstants.XI_TouchUpdate:
+                  case XConstants.XI_TouchEnd:
+                      handleTouchEvent(xev);
+                      break;
+                  default:
+                      break;
+              }
               break;
         }
     }
