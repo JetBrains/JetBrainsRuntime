@@ -833,6 +833,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 break;
             case XConstants.XI_TouchEnd:
                 if (touchUpdates < 2) {
+                    // TODO get modifiers
                     postEventToEventQueue(new MouseEvent(getEventSource(),
                             MouseEvent.MOUSE_PRESSED,
                             jWhen,
