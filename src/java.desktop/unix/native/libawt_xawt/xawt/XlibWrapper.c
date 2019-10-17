@@ -2321,6 +2321,18 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
 
 /*
  * Class:     XlibWrapper
+ * Method:    XIQueryVersion
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XIQueryVersion
+(JNIEnv *env, jclass clazz, jlong display, jlong major_version_iptr, jlong minor_version_iptr)
+{
+    return XIQueryVersion((Display *)jlong_to_ptr(display),
+        jlong_to_ptr(major_version_iptr), jlong_to_ptr(minor_version_iptr));
+}
+
+/*
+ * Class:     XlibWrapper
  * Method:    XISelectEvents
  */
 JNIEXPORT jint JNICALL

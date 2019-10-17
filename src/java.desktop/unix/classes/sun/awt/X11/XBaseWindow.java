@@ -413,7 +413,7 @@ public class XBaseWindow {
 
                 Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
                 if (xiEventMask != null) {
-                    int status = XlibWrapper.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
+                    int status = XToolkit.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
                     if (status != XConstants.Success) {
                         throw new IllegalStateException("Couldn't select XI events. Status: " + status);
                     }
@@ -1135,7 +1135,8 @@ public class XBaseWindow {
 
         if (target == null && ev.get_type() == XConstants.GenericEvent) {
             if (XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
-                target = XToolkit.windowToXWindow(XlibWrapper.GetXIDeviceEvent(ev.get_xcookie()).get_event());
+                // TODO is it always XIDeviceEvent?
+                target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
             }
         }
 

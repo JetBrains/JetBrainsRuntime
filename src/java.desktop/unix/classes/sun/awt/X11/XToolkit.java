@@ -340,6 +340,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 log.finer("X locale modifiers are not supported, using default");
             }
             tryXKB();
+            checkXInput();
 
             AwtScreenData defaultScreen = new AwtScreenData(XToolkit.getDefaultScreenData());
             awt_defaultFg = defaultScreen.get_blackpixel();
@@ -2572,6 +2573,62 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             default:
                  //System.out.println("XkbEvent of xkb_type "+xkb_type);
                  break;
+        }
+    }
+
+    private static boolean hasXInputExtension = false;
+
+    public static boolean isXInputEnabled() {
+        awtLock();
+        try {
+            return hasXInputExtension;
+        } finally {
+            awtUnlock();
+        }
+    }
+
+    public static void checkXInput() {
+        awtLock();
+        try {
+            String extensionName = "XInputExtension";
+            boolean hasExtension = XlibWrapper.XQueryExtension(XToolkit.getDisplay(), extensionName,
+                    XlibWrapper.larg1, XlibWrapper.larg2, XlibWrapper.larg3);
+            if (!hasExtension) {
+                // log no extension
+                return;
+            }
+
+            int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
+            if (status == XConstants.BadRequest) {
+                // log "XI2 not available. Server supports %d.%d\n", major, minor
+                return;
+            }
+
+            int major = Native.getInt(XlibWrapper.iarg1);
+            int minor = Native.getInt(XlibWrapper.iarg2);
+
+            if (major < 2 || minor < 2) {
+                // log 2.2
+                return;
+            }
+
+            hasXInputExtension = true;
+        } finally {
+            awtUnlock();
+        }
+    }
+
+    public static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {
+        return new XIDeviceEvent(cookie.get_data());
+    }
+
+    // Use this one instead of native version
+    public static int XISelectEvents(long display, long window, long mask, int deviceid) {
+        if (isXInputEnabled()) {
+            return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
+        } else {
+            // log trying to select xi events while xinput isn't available
+            return XConstants.Success;
         }
     }
 

@@ -564,12 +564,14 @@ static native String XSetLocaleModifiers(String modifier_list);
 
     static native void SetZOrder(long display, long window, long above);
 
+    // TODO Add comments
+    // don't use native funcs from here, use wrapped functions from XToolkit
+    // cause this one don't check if extension is available
+    static native int XIQueryVersion(long display, long major_version_iptr, long minor_version_iptr);
     static native int XISelectEvents(long display, long window, long mask, int deviceid);
+
     static native boolean XGetEventData(long display, long ptr);
     static native void XFreeEventData(long display, long ptr);
-    static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {
-        return new XIDeviceEvent(cookie.get_data());
-    }
 
 /* Global memory area used for X lib parameter passing */
 

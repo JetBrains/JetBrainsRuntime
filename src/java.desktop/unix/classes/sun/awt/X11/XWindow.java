@@ -777,7 +777,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     public void handleTouchEvent(XEvent xev) {
-        XIDeviceEvent dev = XlibWrapper.GetXIDeviceEvent(xev.get_xcookie());
+        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
 
         int x = scaleDown((int) dev.get_event_x());
         int y = scaleDown((int) dev.get_event_y());
