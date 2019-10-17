@@ -2598,6 +2598,9 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 return;
             }
 
+            // TODO is it concurrent safe
+            Native.putInt(XlibWrapper.iarg1, 2); // major
+            Native.putInt(XlibWrapper.iarg2, 2); // minor
             int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
             if (status == XConstants.BadRequest) {
                 // log "XI2 not available. Server supports %d.%d\n", major, minor
@@ -2606,13 +2609,13 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
             int major = Native.getInt(XlibWrapper.iarg1);
             int minor = Native.getInt(XlibWrapper.iarg2);
+            System.out.println(major + " " + minor);
 
-            if (major < 2 || minor < 2) {
+            if (major >= 2 && minor >= 2) {
+                hasXInputExtension = true;
+            } else {
                 // log 2.2
-                return;
             }
-
-            hasXInputExtension = true;
         } finally {
             awtUnlock();
         }
