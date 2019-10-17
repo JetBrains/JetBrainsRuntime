@@ -2592,29 +2592,28 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         try {
             String extensionName = "XInputExtension";
             boolean hasExtension = XlibWrapper.XQueryExtension(XToolkit.getDisplay(), extensionName,
-                    XlibWrapper.larg1, XlibWrapper.larg2, XlibWrapper.larg3);
+                    XlibWrapper.iarg1, XlibWrapper.iarg2, XlibWrapper.iarg3);
             if (!hasExtension) {
-                // log no extension
+                log.warning("X Input extension isn't available, error: {0}", Native.getInt(XlibWrapper.iarg1));
                 return;
             }
 
             // TODO is it concurrent safe
+            // checking for 2.2 version
             Native.putInt(XlibWrapper.iarg1, 2); // major
             Native.putInt(XlibWrapper.iarg2, 2); // minor
             int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
             if (status == XConstants.BadRequest) {
-                // log "XI2 not available. Server supports %d.%d\n", major, minor
+                log.warning("X Input2 not supported in the server");
                 return;
             }
 
             int major = Native.getInt(XlibWrapper.iarg1);
             int minor = Native.getInt(XlibWrapper.iarg2);
-            System.out.println(major + " " + minor);
-
             if (major >= 2 && minor >= 2) {
                 hasXInputExtension = true;
             } else {
-                // log 2.2
+                log.warning("Desired version is 2.2, server version is {0}.{1}", major, minor);
             }
         } finally {
             awtUnlock();
