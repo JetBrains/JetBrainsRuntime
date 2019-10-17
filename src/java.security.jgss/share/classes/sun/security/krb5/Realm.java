@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -187,7 +187,6 @@ public class Realm implements Cloneable {
             return false;
         for (int i = 0; i < name.length(); i++) {
             if (name.charAt(i) == '/' ||
-                name.charAt(i) == ':' ||
                 name.charAt(i) == '\0') {
                 return false;
             }

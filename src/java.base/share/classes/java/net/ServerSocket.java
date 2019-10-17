@@ -27,6 +27,7 @@ package java.net;
 
 import jdk.internal.misc.JavaNetSocketAccess;
 import jdk.internal.misc.SharedSecrets;
+import sun.security.util.SecurityConstants;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
@@ -78,10 +79,23 @@ class ServerSocket implements java.io.Closeable {
     /**
      * Package-private constructor to create a ServerSocket associated with
      * the given SocketImpl.
+     *
+     * @throws     SecurityException if a security manager is set and
+     *             its {@code checkPermission} method doesn't allow
+     *             {@code NetPermission("setSocketImpl")}.
      */
     ServerSocket(SocketImpl impl) {
+        checkPermission();
         this.impl = impl;
         impl.setServerSocket(this);
+    }
+
+    private static Void checkPermission() {
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkPermission(SecurityConstants.SET_SOCKETIMPL_PERMISSION);
+        }
+        return null;
     }
 
     /**

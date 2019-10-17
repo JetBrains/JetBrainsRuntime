@@ -339,6 +339,9 @@ reference_table(hb_face_t *face HB_UNUSED, hb_tag_t tag, void *user_data) {
       }
       length = env->GetArrayLength(tableBytes);
       buffer = calloc(length, sizeof(jbyte));
+      if (buffer == NULL) {
+          return NULL;
+      }
       env->GetByteArrayRegion(tableBytes, 0, length, (jbyte*)buffer);
 
      if (cacheIdx >= LAYOUTCACHE_ENTRIES) { // not a cacheable table
