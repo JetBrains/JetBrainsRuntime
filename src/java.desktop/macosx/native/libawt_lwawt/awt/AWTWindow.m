@@ -104,7 +104,12 @@ static NSPoint lastTopLeftPoint;
 - (void)sendEvent:(NSEvent *)event {                            \
     [(AWTWindow*)[self delegate] sendEvent:event];              \
     [super sendEvent:event];                                    \
-}
+}                                                               \
+                                                                \
+- (void)becomeKeyWindow {                                       \
+    [super becomeKeyWindow];                                    \
+    [(AWTWindow*)[self delegate] becomeKeyWindow];              \
+}                                                               \
 
 @implementation AWTWindow_Normal
 AWT_NS_WINDOW_IMPLEMENTATION
@@ -531,6 +536,17 @@ AWT_ASSERT_APPKIT_THREAD;
 - (BOOL) canBecomeKeyWindow {
 AWT_ASSERT_APPKIT_THREAD;
     return self.isEnabled && (IS(self.styleBits, SHOULD_BECOME_KEY) || [self isSimpleWindowOwnedByEmbeddedFrame]);
+}
+
+- (void) becomeKeyWindow {
+    AWT_ASSERT_APPKIT_THREAD;
+
+    // Reset current cursor in CCursorManager such that any following mouse update event
+    // restores the correct cursor to the frame context specific one.
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    static JNF_CLASS_CACHE(jc_CCursorManager, "sun/lwawt/macosx/CCursorManager");
+    static JNF_STATIC_MEMBER_CACHE(sjm_resetCurrentCursor, jc_CCursorManager, "resetCurrentCursor", "()V");
+    JNFCallStaticVoidMethod(env, sjm_resetCurrentCursor);
 }
 
 - (BOOL) canBecomeMainWindow {
