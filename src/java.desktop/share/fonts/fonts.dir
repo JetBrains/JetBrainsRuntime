@@ -279,6 +279,20 @@ Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-1
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-15
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-2
 Inconsolata.ttf -misc-inconsolata-medium-r-normal--0-0-0-0-c-0-iso8859-9
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-ascii-0
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso10646-1
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-1
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-10
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-13
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-15
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-16
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-2
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-3
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-4
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-9
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-r
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-u
+JetBrainsMono-Bold-Italic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-microsoft-cp1252
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-ascii-0
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso10646-1
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-1
@@ -293,20 +307,6 @@ JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-iso8859-9
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-koi8-r
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-koi8-u
 JetBrainsMono-Bold.ttf -misc-jetbrains mono-bold-r-normal--0-0-0-0-p-0-microsoft-cp1252
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-ascii-0
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso10646-1
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-1
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-10
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-13
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-15
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-16
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-2
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-3
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-4
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-iso8859-9
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-r
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-koi8-u
-JetBrainsMono-BoldItalic.ttf -misc-jetbrains mono-bold-i-normal--0-0-0-0-p-0-microsoft-cp1252
 JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-ascii-0
 JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso10646-1
 JetBrainsMono-Italic.ttf -misc-jetbrains mono-medium-i-normal--0-0-0-0-p-0-iso8859-1
