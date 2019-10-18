@@ -313,15 +313,6 @@ public class XBaseWindow {
         return x;
     }
 
-    // TODO consider generic or removing
-    protected double scaleUp(double x) {
-        return x;
-    }
-
-    protected double scaleDown(double x) {
-        return x;
-    }
-
     /**
      * Creates window with parameters specified by {@code params}
      * @see #init
@@ -1135,7 +1126,6 @@ public class XBaseWindow {
 
         if (target == null && ev.get_type() == XConstants.GenericEvent) {
             if (XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
-                // TODO is it always XIDeviceEvent?
                 target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
             }
         }
@@ -1207,8 +1197,15 @@ public class XBaseWindow {
               handleCreateNotify(xev);
               break;
           case XConstants.GenericEvent:
-              // TODO add XI switch
-              handleTouchEvent(xev);
+              switch (xev.get_xgeneric().get_evtype()) {
+                  case XConstants.XI_TouchBegin:
+                  case XConstants.XI_TouchUpdate:
+                  case XConstants.XI_TouchEnd:
+                      handleTouchEvent(xev);
+                      break;
+                  default:
+                      break;
+              }
               break;
         }
     }

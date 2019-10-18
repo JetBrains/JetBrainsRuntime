@@ -2598,7 +2598,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 return;
             }
 
-            // TODO is it concurrent safe
             // checking for 2.2 version
             Native.putInt(XlibWrapper.iarg1, 2); // major
             Native.putInt(XlibWrapper.iarg2, 2); // minor
@@ -2629,7 +2628,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         if (isXInputEnabled()) {
             return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
         } else {
-            // log trying to select xi events while xinput isn't available
+            log.warning("Attempting to select xi events while xinput isn't available");
             return XConstants.Success;
         }
     }

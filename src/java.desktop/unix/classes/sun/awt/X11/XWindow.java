@@ -1637,14 +1637,4 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     protected int scaleDown(int x) {
         return graphicsConfig.scaleDown(x);
     }
-
-    @Override
-    protected double scaleUp(double x) {
-        return graphicsConfig.scaleUp(x);
-    }
-
-    @Override
-    protected double scaleDown(double x) {
-        return graphicsConfig.scaleDown(x);
-    }
 }
