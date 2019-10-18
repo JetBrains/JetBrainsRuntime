@@ -32,6 +32,10 @@
 // all the non-gcc files being empty.
 #ifdef TARGET_COMPILER_gcc
 
+#define PRAGMA_DISABLE_GCC_WARNING_AUX(x) _Pragma(#x)
+#define PRAGMA_DISABLE_GCC_WARNING(option_string) \
+  PRAGMA_DISABLE_GCC_WARNING_AUX(GCC diagnostic ignored option_string)
+
 // Diagnostic pragmas like the ones defined below in PRAGMA_FORMAT_NONLITERAL_IGNORED
 // were only introduced in GCC 4.2. Because we have no other possibility to ignore
 // these warnings for older versions of GCC, we simply don't decorate our printf-style
@@ -48,6 +52,12 @@
 #define PRAGMA_FORMAT_NONLITERAL_IGNORED _Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"") \
                                          _Pragma("GCC diagnostic ignored \"-Wformat-security\"")
 #define PRAGMA_FORMAT_IGNORED _Pragma("GCC diagnostic ignored \"-Wformat\"")
+
+// Disable -Wstringop-truncation which is introduced in GCC 8.
+// https://gcc.gnu.org/gcc-8/changes.html
+#if !defined(__clang_major__) && (__GNUC__ >= 8)
+#define PRAGMA_STRINGOP_TRUNCATION_IGNORED PRAGMA_DISABLE_GCC_WARNING("-Wstringop-truncation")
+#endif
 
 #if defined(__clang_major__) && \
       (__clang_major__ >= 4 || \
@@ -68,6 +78,10 @@
 #endif
 #ifndef ATTRIBUTE_SCANF
 #define ATTRIBUTE_SCANF(fmt, vargs)
+#endif
+
+#ifndef PRAGMA_STRINGOP_TRUNCATION_IGNORED
+#define PRAGMA_STRINGOP_TRUNCATION_IGNORED
 #endif
 
 #ifndef PRAGMA_FORMAT_NONLITERAL_IGNORED
