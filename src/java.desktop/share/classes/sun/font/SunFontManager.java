@@ -329,8 +329,8 @@ public abstract class SunFontManager implements FontSupport, FontManagerForSGE {
 
         jreFontMap.put("JetBrains Mono Bold", "JetBrainsMono-Bold.ttf");
         jreFontMap.put("JetBrains Mono Regular", "JetBrainsMono-Regular.ttf");
-//        jreFontMap.put("JetBrains Mono Italic", "JetBrainsMono-Italic.ttf");
-//        jreFontMap.put("JetBrains Mono Bold Italic", "JetBrainsMono-BoldItalic.ttf");
+        jreFontMap.put("JetBrains Mono Italic", "JetBrainsMono-Italic.ttf");
+        jreFontMap.put("JetBrains Mono Bold Italic", "JetBrainsMono-Bold-Italic.ttf");
 
         jreBundledFontFiles.addAll(jreFontMap.values());
     }
