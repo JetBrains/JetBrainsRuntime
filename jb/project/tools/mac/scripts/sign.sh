@@ -25,7 +25,8 @@ find "$APP_DIRECTORY" -name '*.cstemp' -exec rm '{}' \;
 log "Signing libraries and executables..."
 # -perm +111 searches for executables
 for f in \
-  "Contents/Home/lib" "Contents/MacOS"; do
+   "Contents/Home/bin" \
+   "Contents/Home/lib"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \
@@ -65,7 +66,7 @@ rm -rf jarfolder jar.jar
 
 log "Signing other files..."
 for f in \
-  "Contents/MacOS" "Contents/Home/bin"; do
+  "Contents/MacOS"; do
   if [ -d "$APP_DIRECTORY/$f" ]; then
     find "$APP_DIRECTORY/$f" \
       -type f \( -name "*.jnilib" -o -name "*.dylib" -o -name "*.so" -o -perm +111 \) \

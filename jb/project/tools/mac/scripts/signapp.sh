@@ -28,9 +28,8 @@ rm -rf "$EXPLODED"
 mkdir "$EXPLODED"
 
 log "Unzipping $INPUT_FILE to $EXPLODED ..."
-tar -xzvf "$INPUT_FILE" --directory $EXPLODED
-#unzip -q "$INPUT_FILE" -d "$EXPLODED"
-#rm "$INPUT_FILE"
+tar -xzvf "$INPUT_FILE" --directory $EXPLODED --exclude "jmods"
+rm "$INPUT_FILE"
 BUILD_NAME="$(ls "$EXPLODED")"
 #log "$INPUT_FILE unzipped and removed"
 log "$INPUT_FILE extracted and removed"
@@ -95,7 +94,7 @@ if [ "$NOTARIZE" = "yes" ]; then
   log "Notarizing..."
   # shellcheck disable=SC1090
   source "$HOME/.notarize_token"
-  APP_NAME="${INPUT_FILE%.*}"
+  APP_NAME=$(echo ${INPUT_FILE} | awk -F"." '{ print $1 }')
   # Since notarization tool uses same file for upload token we have to trick it into using different folders, hence fake root
   # Also it leaves copy of zip file in TMPDIR, so notarize.sh overrides it and uses FAKE_ROOT as location for temp TMPDIR
   FAKE_ROOT="$(pwd)/fake-root"
@@ -104,6 +103,7 @@ if [ "$NOTARIZE" = "yes" ]; then
   ./notarize.sh "$APPLICATION_PATH" "$APPLE_USERNAME" "$APPLE_PASSWORD" "$APP_NAME" "$BUNDLE_ID" "$FAKE_ROOT"
   rm -rf "$FAKE_ROOT"
 
+  set +e
   log "Stapling..."
   xcrun stapler staple "$APPLICATION_PATH"
 else
