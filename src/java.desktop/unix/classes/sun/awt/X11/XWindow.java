@@ -53,18 +53,15 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static final int AWT_MULTICLICK_SMUDGE = 4;
     // ButtonXXX events stuff
     static int lastX = 0, lastY = 0;
-    static double preciseLastX = 0.0;
-    static double preciseLastY = 0.0;
     static long lastTime = 0;
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
+    static int touchUpdates = 0;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
     int oldHeight = -1;
-
-    int touchUpdates = 0;
 
     protected PropMwmHints mwm_hints;
     protected static XAtom wm_protocols;
@@ -777,107 +774,84 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     public void handleTouchEvent(XEvent xev) {
-        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
+        super.handleTouchEvent(xev);
 
+        XIDeviceEvent dev = XToolkit.GetXIDeviceEvent(xev.get_xcookie());
         int x = scaleDown((int) dev.get_event_x());
         int y = scaleDown((int) dev.get_event_y());
 
-        // TODO do we need this like in in mouse event handler
         if (dev.get_event() != window) {
             Point localXY = toLocal(x, y);
             x = localXY.x;
             y = localXY.y;
         }
 
+        // TODO do we need any other button?
+        int button = XConstants.buttons[0];
+        int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
+
         long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
         switch (dev.get_evtype()) {
+            case XConstants.XI_TouchBegin:
+                touchUpdates = 0;
+                sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button);
+                break;
             case XConstants.XI_TouchUpdate:
                 ++touchUpdates;
 
+                // workaround to distinguish touch move and touch click
                 if (touchUpdates < 2) {
                     break;
                 }
 
-                int delta = lastY - y;
-                double preciseDelta = scaleDown(preciseLastY - dev.get_event_y());
-                int modifiers = 0;
-
-                // horizontal scroll
-                // TODO consider sending both events
-                if (Math.abs(delta) < Math.abs(lastX - x)) {
-                    delta = lastX - x;
-                    preciseDelta = scaleDown(preciseLastX - dev.get_event_x());
-                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                }
-
                 // TODO add real pixel scrolling
-                delta /= 10;
-                preciseDelta /= 10.0;
+                if (lastY - y != 0) {
+                    int delta = lastY - y;
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, delta);
+                }
+                if (lastX - x != 0) {
+                    int delta = lastX - x;
+                    // horizontal scroll
+                    modifiers |= InputEvent.SHIFT_DOWN_MASK;
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, delta);
+                }
+                break;
+            case XConstants.XI_TouchEnd:
+                sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button);
+                if (touchUpdates < 2) {
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
+                }
+                break;
+        }
 
-                MouseWheelEvent mwe = new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
+        lastX = x;
+        lastY = y;
+    }
+
+    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int delta) {
+        // TODO remove '/ 10' after adding pixel scrolling
+        double preciseDelta = (double) delta / 10.0;
+        delta /= 10;
+        postEventToEventQueue(
+                new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
                         modifiers,
                         x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
                         0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                        1, delta, preciseDelta);
-                postEventToEventQueue(mwe);
+                        1, delta, preciseDelta));
+    }
 
-                lastX = x;
-                lastY = y;
-                preciseLastX = dev.get_event_x();
-                preciseLastY = dev.get_event_y();
-                break;
-            case XConstants.XI_TouchBegin:
-                touchUpdates = 0;
-                lastX = x;
-                lastY = y;
-                preciseLastX = dev.get_event_x();
-                preciseLastY = dev.get_event_y();
-                break;
-            case XConstants.XI_TouchEnd:
-                if (touchUpdates < 2) {
-                    // TODO get modifiers
-                    postEventToEventQueue(new MouseEvent(getEventSource(),
-                            MouseEvent.MOUSE_PRESSED,
-                            jWhen,
-                            0, //modifiers,
-                            x, y,
-                            scaleDown((int) dev.get_root_x()),
-                            scaleDown((int) dev.get_root_y()),
-                            1, //clickCount,
-                            false, 1)); //button)
-                    postEventToEventQueue(new MouseEvent(getEventSource(),
-                            MouseEvent.MOUSE_RELEASED,
-                            jWhen,
-                            0, //modifiers,
-                            x, y,
-                            scaleDown((int) dev.get_root_x()),
-                            scaleDown((int) dev.get_root_y()),
-                            1, //clickCount,
-                            false, 1)); //button)
-                    postEventToEventQueue(new MouseEvent(getEventSource(),
-                            MouseEvent.MOUSE_CLICKED,
-                            jWhen,
-                            0, //modifiers,
-                            x, y,
-                            scaleDown((int) dev.get_root_x()),
-                            scaleDown((int) dev.get_root_y()),
-                            1, //clickCount,
-                            false, 1));
-                }
-
-                lastX = x;
-                lastY = y;
-                preciseLastX = dev.get_event_x();
-                preciseLastY = dev.get_event_y();
-                break;
-            default:
-                // TODO remove this
-                System.out.println("Unknown");
-                break;
-        }
+    private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
+        postEventToEventQueue(
+                new MouseEvent(getEventSource(), type, jWhen,
+                        modifiers,
+                        x, y,
+                        scaleDown((int) dev.get_root_x()),
+                        scaleDown((int) dev.get_root_y()),
+                        1,
+                        false, button));
     }
 
     public void handleMotionNotify(XEvent xev) {
