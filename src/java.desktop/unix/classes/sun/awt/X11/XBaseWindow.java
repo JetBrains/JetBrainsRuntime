@@ -397,13 +397,13 @@ public class XBaseWindow {
                 }
                 XToolkit.addToWinMap(window, this);
 
-                Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
-                if (xiDeviceId == null) {
-                    xiDeviceId = XConstants.XIAllDevices;
-                }
-
                 Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
                 if (xiEventMask != null) {
+                    Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
+                    if (xiDeviceId == null) {
+                        xiDeviceId = XConstants.XIAllDevices;
+                    }
+
                     int status = XToolkit.XISelectEvents(XToolkit.getDisplay(), window, xiEventMask, xiDeviceId);
                     if (status != XConstants.Success) {
                         throw new IllegalStateException("Couldn't select XI events. Status: " + status);
