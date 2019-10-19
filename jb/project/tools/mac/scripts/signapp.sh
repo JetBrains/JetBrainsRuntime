@@ -113,8 +113,9 @@ fi
 
 log "Zipping $BUILD_NAME to $INPUT_FILE ..."
 (
-  cd "$EXPLODED"
-  ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
+  #cd "$EXPLODED"
+  #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
+  COPYFILE_DISABLE=1 tar -pczf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
   log "Finished zipping"
 )
 rm -rf "$EXPLODED"
