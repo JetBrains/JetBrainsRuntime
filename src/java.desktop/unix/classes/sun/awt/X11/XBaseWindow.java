@@ -398,7 +398,7 @@ public class XBaseWindow {
                 XToolkit.addToWinMap(window, this);
 
                 Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
-                if (xiEventMask != null) {
+                if (xiEventMask != null && XToolkit.isXInputEnabled()) {
                     Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
                     if (xiDeviceId == null) {
                         xiDeviceId = XConstants.XIAllDevices;

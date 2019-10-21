@@ -2629,7 +2629,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
         } else {
             log.warning("Attempting to select xi events while xinput isn't available");
-            return XConstants.Success;
+            return XConstants.BadRequest;
         }
     }
 
