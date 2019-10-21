@@ -564,9 +564,9 @@ static native String XSetLocaleModifiers(String modifier_list);
 
     static native void SetZOrder(long display, long window, long above);
 
-    // TODO Add comments
-    // don't use native funcs from here, use wrapped functions from XToolkit
-    // cause this one don't check if extension is available
+    // use wrapped functions from XToolkit
+    // instead these native functions
+    // these functions don't check if XInput extension is available
     static native int XIQueryVersion(long display, long major_version_iptr, long minor_version_iptr);
     static native int XISelectEvents(long display, long window, long mask, int deviceid);
 

@@ -37,6 +37,8 @@ import sun.util.logging.PlatformLogger;
 
 import sun.awt.*;
 
+import sun.awt.image.PixelConverter;
+
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 
@@ -58,6 +60,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
     static int touchUpdates = 0;
+    private static final int TOUCH_UPDATES_THRESHOLD = 2;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -801,11 +804,10 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 ++touchUpdates;
 
                 // workaround to distinguish touch move and touch click
-                if (touchUpdates < 2) {
+                if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
                     break;
                 }
 
-                // TODO add real pixel scrolling
                 if (lastY - y != 0) {
                     int delta = lastY - y;
                     sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, delta);
@@ -819,7 +821,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 break;
             case XConstants.XI_TouchEnd:
                 sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button);
-                if (touchUpdates < 2) {
+                if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
                 }
                 break;
