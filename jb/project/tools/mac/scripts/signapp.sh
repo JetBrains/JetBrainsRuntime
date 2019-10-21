@@ -8,6 +8,7 @@ export COPYFILE_DISABLE=true
 
 INPUT_FILE=$1
 EXPLODED=$2.exploded
+BACKUP_JMODS=$2.backup
 USERNAME=$3
 PASSWORD=$4
 CODESIGN_STRING=$5
@@ -26,11 +27,20 @@ if test -d "$EXPLODED"; then
 fi
 rm -rf "$EXPLODED"
 mkdir "$EXPLODED"
+rm -rf "$BACKUP_JMODS"
+mkdir "$BACKUP_JMODS"
 
 log "Unzipping $INPUT_FILE to $EXPLODED ..."
-tar -xzvf "$INPUT_FILE" --directory $EXPLODED --exclude "jmods"
+tar -xzvf "$INPUT_FILE" --directory $EXPLODED
 rm "$INPUT_FILE"
 BUILD_NAME="$(ls "$EXPLODED")"
+if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
+  mv $EXPLODED/$BUILD_NAME/Contents/Home/jmods $BACKUP_JMODS
+fi
+if test -f $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib; then
+  mv $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib $BACKUP_JMODS
+fi
+
 #log "$INPUT_FILE unzipped and removed"
 log "$INPUT_FILE extracted and removed"
 
@@ -115,6 +125,13 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
 (
   #cd "$EXPLODED"
   #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
+  if test -f $BACKUP_JMODS/libjli.dylib; then
+    mv $BACKUP_JMODS/libjli.dylib $EXPLODED/$BUILD_NAME/Contents/MacOS
+  fi
+  if test -d $BACKUP_JMODS/jmods; then
+    mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
+  fi
+
   COPYFILE_DISABLE=1 tar -pczf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
   log "Finished zipping"
 )
