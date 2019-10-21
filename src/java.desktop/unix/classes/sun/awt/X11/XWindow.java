@@ -830,17 +830,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     }
 
     private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int delta) {
-        // TODO remove '/ 10' after adding pixel scrolling
-        double preciseDelta = (double) delta / 10.0;
-        delta /= 10;
         postEventToEventQueue(
                 new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
                         modifiers,
                         x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        0, false, MouseWheelEvent.WHEEL_UNIT_SCROLL,
-                        1, delta, preciseDelta));
+                        0, false, MouseWheelEvent.WHEEL_PIXEL_SCROLL,
+                        1, delta));
     }
 
     private void sendMouseEventFromTouch(XIDeviceEvent dev, int type, long jWhen, int modifiers, int x, int y, int button) {
