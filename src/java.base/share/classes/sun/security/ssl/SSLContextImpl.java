@@ -1539,16 +1539,9 @@ final class AbstractTrustManagerWrapper extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = sslSocket.getSSLParameters().
                                         getEndpointIdentificationAlgorithm();
-<<<<<<< HEAD
-            if (identityAlg != null && identityAlg.length() != 0) {
+            if (identityAlg != null && !identityAlg.isEmpty()) {
                 X509TrustManagerImpl.checkIdentity(session, chain,
                                     identityAlg, checkClientTrusted);
-=======
-            if (identityAlg != null && !identityAlg.isEmpty()) {
-                String hostname = session.getPeerHost();
-                X509TrustManagerImpl.checkIdentity(
-                                    hostname, chain[0], identityAlg);
->>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
 
             // try the best to check the algorithm constraints
@@ -1586,16 +1579,9 @@ final class AbstractTrustManagerWrapper extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = engine.getSSLParameters().
                                         getEndpointIdentificationAlgorithm();
-<<<<<<< HEAD
-            if (identityAlg != null && identityAlg.length() != 0) {
+            if (identityAlg != null && !identityAlg.isEmpty()) {
                 X509TrustManagerImpl.checkIdentity(session, chain,
                                     identityAlg, checkClientTrusted);
-=======
-            if (identityAlg != null && !identityAlg.isEmpty()) {
-                String hostname = session.getPeerHost();
-                X509TrustManagerImpl.checkIdentity(
-                                    hostname, chain[0], identityAlg);
->>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
 
             // try the best to check the algorithm constraints
