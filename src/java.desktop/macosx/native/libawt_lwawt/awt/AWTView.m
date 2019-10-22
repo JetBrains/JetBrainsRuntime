@@ -298,11 +298,7 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     [self interpretKeyEvents:[NSArray arrayWithObject:event]];
 
     if (fEnablePressAndHold && [event willBeHandledByComplexInputMethod] &&
-<<<<<<< HEAD
-         fInputMethodLOCKABLE)
-=======
         fInputMethodLOCKABLE)
->>>>>>> 0efb086... 8215756: Memory leaks in the AWT on macOS
     {
         BOOL skipProcessingCancelKeys = YES;
         fProcessingKeystroke = NO;
@@ -310,12 +306,9 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
             fInPressAndHold = YES;
             fPAHNeedsToSelect = YES;
         } else {
-<<<<<<< HEAD
-=======
             // Abandon input to reset IM and unblock input after canceling
             // input accented symbols
 
->>>>>>> 0efb086... 8215756: Memory leaks in the AWT on macOS
             switch([event keyCode]) {
                 case kVK_ForwardDelete:
                 case kVK_Delete:
