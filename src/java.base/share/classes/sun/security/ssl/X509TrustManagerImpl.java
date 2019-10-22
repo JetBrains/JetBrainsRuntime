@@ -225,15 +225,9 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = sslSocket.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
-<<<<<<< HEAD
-            if (identityAlg != null && identityAlg.length() != 0) {
+            if (identityAlg != null && !identityAlg.isEmpty()) {
                 checkIdentity(session,
                         trustedChain, identityAlg, checkClientTrusted);
-=======
-            if (identityAlg != null && !identityAlg.isEmpty()) {
-                checkIdentity(session, trustedChain[0], identityAlg, isClient,
-                        getRequestedServerNames(socket), chainsToPublicCA);
->>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
         } else {
             trustedChain = validate(v, chain, Collections.emptyList(),
@@ -285,15 +279,9 @@ final class X509TrustManagerImpl extends X509ExtendedTrustManager
             // check endpoint identity
             String identityAlg = engine.getSSLParameters().
                     getEndpointIdentificationAlgorithm();
-<<<<<<< HEAD
-            if (identityAlg != null && identityAlg.length() != 0) {
+            if (identityAlg != null && !identityAlg.isEmpty()) {
                 checkIdentity(session, trustedChain,
                         identityAlg, checkClientTrusted);
-=======
-            if (identityAlg != null && !identityAlg.isEmpty()) {
-                checkIdentity(session, trustedChain[0], identityAlg, isClient,
-                        getRequestedServerNames(engine), chainsToPublicCA);
->>>>>>> 494ef6f... 8215281: Use String.isEmpty() when applicable in java.base
             }
         } else {
             trustedChain = validate(v, chain, Collections.emptyList(),
