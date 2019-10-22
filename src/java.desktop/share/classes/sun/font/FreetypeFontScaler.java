@@ -178,16 +178,9 @@ class FreetypeFontScaler extends FontScaler {
             .getNullScaler().getGlyphVectorOutline(0L, glyphs, numGlyphs, x, y);
     }
 
-<<<<<<< HEAD
-=======
-    synchronized long getLayoutTableCache() throws FontScalerException {
-        return getLayoutTableCacheNative(nativeScaler);
-    }
-
     /* This method should not be called directly, in case
      * it is being invoked from a thread with a native context.
      */
->>>>>>> 80b3c42... 8220186: Improve use of font temporary files
     public synchronized void dispose() {
         if (nativeScaler != 0L) {
             disposeNativeScaler(font.get(), nativeScaler);
