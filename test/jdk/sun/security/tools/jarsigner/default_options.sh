@@ -44,7 +44,7 @@ JARSIGNER="$TESTJAVA/bin/jarsigner ${TESTTOOLVMOPTS}"
 rm $KS 2> /dev/null
 
 $KEYTOOL -genkeypair -dname CN=A -alias a -keyalg rsa || exit 1
-$KEYTOOL -genkeypair -dname CN=CA -alias ca -keyalg rsa || exit 2
+$KEYTOOL -genkeypair -dname CN=CA -alias ca -keyalg rsa -ext bc:c || exit 2
 $KEYTOOL -alias a -certreq |
     $KEYTOOL -alias ca -gencert |
     $KEYTOOL -alias a -import || exit 3
