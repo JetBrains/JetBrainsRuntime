@@ -97,7 +97,9 @@
             return;
         }
 
-        self.displaySyncEnabled = NO;
+        if (@available(macOS 10.13, *)) {
+            self.displaySyncEnabled = NO;
+        }
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
@@ -122,7 +124,9 @@
                 [self.ctx.texturePool markAllTexturesFree];
                 [self.ctx releaseCommandBuffer];
                 self.nextDrawableCount--;
-                self.displaySyncEnabled = YES;
+                if (@available(macOS 10.13, *)) {
+                    self.displaySyncEnabled = YES;
+                }
         }];
 
         [commandBuf commit];
