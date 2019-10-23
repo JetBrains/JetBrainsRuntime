@@ -1124,8 +1124,8 @@ public class XBaseWindow {
             target = XToolkit.windowToXWindow(ev.get_xany().get_window());
         }
 
-        if (target == null && ev.get_type() == XConstants.GenericEvent) {
-            if (XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+        if (target == null && ev.get_type() == XConstants.GenericEvent &&
+            XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
                 target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
             }
         }

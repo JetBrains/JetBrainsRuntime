@@ -2599,8 +2599,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             }
 
             // checking for 2.2 version
-            Native.putInt(XlibWrapper.iarg1, 2); // major
-            Native.putInt(XlibWrapper.iarg2, 2); // minor
+            final int requiredMajor = 2;
+            final int requiredMinor = 2;
+            Native.putInt(XlibWrapper.iarg1, requiredMajor);
+            Native.putInt(XlibWrapper.iarg2, requiredMinor);
             int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
             if (status == XConstants.BadRequest) {
                 log.warning("X Input2 not supported in the server");
@@ -2609,7 +2611,7 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
 
             int major = Native.getInt(XlibWrapper.iarg1);
             int minor = Native.getInt(XlibWrapper.iarg2);
-            if (major >= 2 && minor >= 2) {
+            if (major >= requiredMajor && minor >= requiredMinor) {
                 hasXInputExtension = true;
             } else {
                 log.warning("Desired version is 2.2, server version is {0}.{1}", major, minor);

@@ -117,15 +117,6 @@ public class MouseWheelEvent extends MouseEvent {
      */
     @Native public static final int WHEEL_BLOCK_SCROLL = 1;
 
-    // TODO find a proper place for this constant
-    /**
-     * Constant representing scrolling by a pixels (like scrolling
-     * on touch devices)
-     *
-     * @see #getScrollType
-     */
-    @Native public static final int WHEEL_PIXEL_SCROLL = 2;
-
     /**
      * Indicates what sort of scrolling should take place in response to this
      * event, based on platform settings.  Legal values are:
