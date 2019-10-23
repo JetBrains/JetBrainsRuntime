@@ -125,7 +125,7 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
 (
   #cd "$EXPLODED"
   #ditto -c -k --sequesterRsrc --keepParent "$BUILD_NAME" "../$INPUT_FILE"
-  if test -f $(ls $BACKUP_JMODS/libjli.dylib); then
+  if test ! -z $(ls $BACKUP_JMODS/libjli.dylib); then
     mv $BACKUP_JMODS/libjli.dylib $EXPLODED/$BUILD_NAME/Contents/MacOS
   fi
   if test -d $BACKUP_JMODS/jmods; then
