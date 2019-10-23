@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2015, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,19 +31,62 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <windows.h>
+#include <cstdlib>
+#include <chrono>
+#include <cstring>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+static FILE* logFP = nullptr;
+
+void initializeFileLogger(char * fileName) {
+    auto var = "JAVA_ACCESSBRIDGE_LOGDIR";
+    const auto envfilePath = getenv(var);
+    if (envfilePath != nullptr && fileName != nullptr) {
+        auto envFilePathLength = strlen(envfilePath);
+        auto fileNameLength = strlen(fileName);
+        auto filePathSize = envFilePathLength + 1 + fileNameLength + 5; //1 for "/", 5 for ".log" and 0;
+        auto filePath = new char[filePathSize];
+        memset(filePath, 0, filePathSize*sizeof(char));
+        memcpy(filePath, envfilePath, envFilePathLength*sizeof(char));
+        filePath[envFilePathLength] = '/';
+        memcpy(filePath + envFilePathLength + 1, fileName, fileNameLength*sizeof(char));
+        memcpy(filePath + envFilePathLength + 1 + fileNameLength, ".log", 4*sizeof(char));
+
+        logFP = fopen(filePath, "w");
+        if (logFP == nullptr) {
+            printf("\n%s\n", filePath);
+            PrintDebugString("Could not open file %s", filePath);
+        }
+
+        delete [] filePath;
+    }
+}
+
+void finalizeFileLogger() {
+    if (logFP) {
+        fclose(logFP);
+        logFP = nullptr;
+    }
+}
+
+auto getTimeStamp() -> long long {
+    using namespace std::chrono;
+    auto timeNow = duration_cast<milliseconds>(steady_clock::now().time_since_epoch());
+
+    return timeNow.count();
+}
+
 /**
  * print a GetLastError message
  */
 char *printError(char *msg) {
-    LPVOID lpMsgBuf = NULL;
-    static char retbuf[256];
+    LPVOID lpMsgBuf = nullptr;
+    static char retbuf[256] = {0};
 
-    if (msg != NULL) {
+    if (msg != nullptr) {
         strncpy((char *)retbuf, msg, sizeof(retbuf));
         // if msg text is >= 256 ensure buffer is null terminated
         retbuf[255] = '\0';
@@ -52,18 +95,18 @@ char *printError(char *msg) {
                        FORMAT_MESSAGE_ALLOCATE_BUFFER |
                        FORMAT_MESSAGE_FROM_SYSTEM |
                        FORMAT_MESSAGE_IGNORE_INSERTS,
-                       NULL,
+                       nullptr,
                        GetLastError(),
                        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
                        (LPTSTR) &lpMsgBuf,
                        0,
-                       NULL ))
+                       nullptr))
         {
             PrintDebugString("  %s: FormatMessage failed", msg);
         } else {
             PrintDebugString("  %s: %s", msg, (char *)lpMsgBuf);
         }
-    if (lpMsgBuf != NULL) {
+    if (lpMsgBuf != nullptr) {
         strncat((char *)retbuf, ": ", sizeof(retbuf) - strlen(retbuf) - 1);
         strncat((char *)retbuf, (char *)lpMsgBuf, sizeof(retbuf) - strlen(retbuf) - 1);
     }
@@ -76,7 +119,7 @@ char *printError(char *msg) {
      */
     void PrintDebugString(char *msg, ...) {
 #ifdef DEBUGGING_ON
-        char buf[1024];
+        char buf[1024] = {0};
         va_list argprt;
 
         va_start(argprt, msg);     // set up argptr
@@ -89,6 +132,14 @@ char *printError(char *msg) {
         printf("\r\n");
 #endif
 #endif
+        if (logFP) {
+            fprintf(logFP, "[%llu] ", getTimeStamp());
+            va_list args;
+            va_start(args, msg);
+            vfprintf(logFP, msg, args);
+            va_end(args);
+            fprintf(logFP, "\r\n");
+        }
     }
 
     /**
@@ -96,7 +147,7 @@ char *printError(char *msg) {
      */
     void PrintJavaDebugString2(char *msg, ...) {
 #ifdef JAVA_DEBUGGING_ON
-        char buf[1024];
+        char buf[1024] = {0};
         va_list argprt;
 
         va_start(argprt, msg);     // set up argptr
@@ -109,13 +160,21 @@ char *printError(char *msg) {
         printf("\r\n");
 #endif
 #endif
+        if (logFP) {
+            fprintf(logFP, "[%llu] ", getTimeStamp());
+            va_list args;
+            va_start(args, msg);
+            vfprintf(logFP, msg, args);
+            va_end(args);
+            fprintf(logFP, "\r\n");
+        }
     }
     /**
      * Wide version of the method to send debugging info to the appropriate place
      */
     void wPrintDebugString(wchar_t *msg, ...) {
 #ifdef DEBUGGING_ON
-        char buf[1024];
+        char buf[1024] = {0};
         char charmsg[256];
         va_list argprt;
 
@@ -130,6 +189,14 @@ char *printError(char *msg) {
         printf("\r\n");
 #endif
 #endif
+        if (logFP) {
+            fprintf(logFP, "[%llu] ", getTimeStamp());
+            va_list args;
+            va_start(args, msg);
+            vfwprintf(logFP, msg, args);
+            va_end(args);
+            fprintf(logFP, "\r\n");
+        }
     }
 
     /**
@@ -137,8 +204,8 @@ char *printError(char *msg) {
      */
     void wPrintJavaDebugString(wchar_t *msg, ...) {
 #ifdef JAVA_DEBUGGING_ON
-        char buf[1024];
-        char charmsg[256];
+        char buf[1024] = {0};
+        char charmsg[256] = {0};
         va_list argprt;
 
         va_start(argprt, msg);          // set up argptr
@@ -152,6 +219,14 @@ char *printError(char *msg) {
         printf("\r\n");
 #endif
 #endif
+        if (logFP) {
+            fprintf(logFP, "[%llu] ", getTimeStamp());
+            va_list args;
+            va_start(args, msg);
+            vfwprintf(logFP, msg, args);
+            va_end(args);
+            fprintf(logFP, "\r\n");
+        }
     }
 #ifdef __cplusplus
 }

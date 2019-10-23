@@ -518,27 +518,27 @@ class GraphKit : public Phase {
   Node* make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
                   MemNode::MemOrd mo, LoadNode::ControlDependency control_dependency = LoadNode::DependsOnlyOnTest,
                   bool require_atomic_access = false, bool unaligned = false,
-                  bool mismatched = false) {
+                  bool mismatched = false, bool unsafe = false) {
     // This version computes alias_index from bottom_type
     return make_load(ctl, adr, t, bt, adr->bottom_type()->is_ptr(),
                      mo, control_dependency, require_atomic_access,
-                     unaligned, mismatched);
+                     unaligned, mismatched, unsafe);
   }
   Node* make_load(Node* ctl, Node* adr, const Type* t, BasicType bt, const TypePtr* adr_type,
                   MemNode::MemOrd mo, LoadNode::ControlDependency control_dependency = LoadNode::DependsOnlyOnTest,
                   bool require_atomic_access = false, bool unaligned = false,
-                  bool mismatched = false) {
+                  bool mismatched = false, bool unsafe = false) {
     // This version computes alias_index from an address type
     assert(adr_type != NULL, "use other make_load factory");
     return make_load(ctl, adr, t, bt, C->get_alias_index(adr_type),
                      mo, control_dependency, require_atomic_access,
-                     unaligned, mismatched);
+                     unaligned, mismatched, unsafe);
   }
   // This is the base version which is given an alias index.
   Node* make_load(Node* ctl, Node* adr, const Type* t, BasicType bt, int adr_idx,
                   MemNode::MemOrd mo, LoadNode::ControlDependency control_dependency = LoadNode::DependsOnlyOnTest,
                   bool require_atomic_access = false, bool unaligned = false,
-                  bool mismatched = false);
+                  bool mismatched = false, bool unsafe = false);
 
   // Create & transform a StoreNode and store the effect into the
   // parser's memory state.
@@ -553,13 +553,14 @@ class GraphKit : public Phase {
                         MemNode::MemOrd mo,
                         bool require_atomic_access = false,
                         bool unaligned = false,
-                        bool mismatched = false) {
+                        bool mismatched = false,
+                        bool unsafe = false) {
     // This version computes alias_index from an address type
     assert(adr_type != NULL, "use other store_to_memory factory");
     return store_to_memory(ctl, adr, val, bt,
                            C->get_alias_index(adr_type),
                            mo, require_atomic_access,
-                           unaligned, mismatched);
+                           unaligned, mismatched, unsafe);
   }
   // This is the base version which is given alias index
   // Return the new StoreXNode
@@ -568,7 +569,8 @@ class GraphKit : public Phase {
                         MemNode::MemOrd,
                         bool require_atomic_access = false,
                         bool unaligned = false,
-                        bool mismatched = false);
+                        bool mismatched = false,
+                        bool unsafe = false);
 
   // Perform decorated accesses
 
@@ -697,7 +699,7 @@ class GraphKit : public Phase {
   void  set_predefined_output_for_runtime_call(Node* call,
                                                Node* keep_mem,
                                                const TypePtr* hook_mem);
-  Node* set_predefined_input_for_runtime_call(SafePointNode* call);
+  Node* set_predefined_input_for_runtime_call(SafePointNode* call, Node* narrow_mem = NULL);
 
   // Replace the call with the current state of the kit.  Requires
   // that the call was generated with separate io_projs so that
@@ -747,6 +749,10 @@ class GraphKit : public Phase {
   // Report if there were too many recompiles at the current method and bci.
   bool too_many_recompiles(Deoptimization::DeoptReason reason) {
     return C->too_many_recompiles(method(), bci(), reason);
+  }
+
+  bool too_many_traps_or_recompiles(Deoptimization::DeoptReason reason) {
+      return C->too_many_traps_or_recompiles(method(), bci(), reason);
   }
 
   // Returns the object (if any) which was created the moment before.

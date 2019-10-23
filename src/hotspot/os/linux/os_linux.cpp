@@ -33,6 +33,7 @@
 #include "compiler/disassembler.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
+#include "logging/logStream.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/filemap.hpp"
 #include "oops/oop.inline.hpp"
@@ -61,6 +62,7 @@
 #include "runtime/threadCritical.hpp"
 #include "runtime/threadSMR.hpp"
 #include "runtime/timer.hpp"
+#include "runtime/vm_version.hpp"
 #include "semaphore_posix.hpp"
 #include "services/attachListener.hpp"
 #include "services/memTracker.hpp"
@@ -848,6 +850,13 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
     } else {
       log_warning(os, thread)("Failed to start thread - pthread_create failed (%s) for attributes: %s.",
         os::errno_name(ret), os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
+      // Log some OS information which might explain why creating the thread failed.
+      log_info(os, thread)("Number of threads approx. running in the VM: %d", Threads::number_of_threads());
+      LogStream st(Log(os, thread)::info());
+      os::Posix::print_rlimit_info(&st);
+      os::print_memory_info(&st);
+      os::Linux::print_proc_sys_info(&st);
+      os::Linux::print_container_info(&st);
     }
 
     pthread_attr_destroy(&attr);
@@ -1993,35 +2002,6 @@ static bool _print_ascii_file(const char* filename, outputStream* st, const char
   return true;
 }
 
-#if defined(S390) || defined(PPC64)
-// keywords_to_match - NULL terminated array of keywords
-static bool print_matching_lines_from_file(const char* filename, outputStream* st, const char* keywords_to_match[]) {
-  char* line = NULL;
-  size_t length = 0;
-  FILE* fp = fopen(filename, "r");
-  if (fp == NULL) {
-    return false;
-  }
-
-  st->print_cr("Virtualization information:");
-  while (getline(&line, &length, fp) != -1) {
-    int i = 0;
-    while (keywords_to_match[i] != NULL) {
-      if (strncmp(line, keywords_to_match[i], strlen(keywords_to_match[i])) == 0) {
-        st->print("%s", line);
-        break;
-      }
-      i++;
-    }
-  }
-
-  free(line);
-  fclose(fp);
-
-  return true;
-}
-#endif
-
 void os::print_dll_info(outputStream *st) {
   st->print_cr("Dynamic libraries:");
 
@@ -2106,7 +2086,7 @@ void os::print_os_info(outputStream* st) {
 
   os::Linux::print_container_info(st);
 
-  os::Linux::print_virtualization_info(st);
+  VM_Version::print_platform_virtualization_info(st);
 
   os::Linux::print_steal_info(st);
 }
@@ -2320,40 +2300,6 @@ void os::Linux::print_container_info(outputStream* st) {
   j = OSContainer::OSContainer::memory_max_usage_in_bytes();
   st->print("memory_max_usage_in_bytes: " JLONG_FORMAT "\n", j);
   st->cr();
-}
-
-void os::Linux::print_virtualization_info(outputStream* st) {
-#if defined(S390)
-  // /proc/sysinfo contains interesting information about
-  // - LPAR
-  // - whole "Box" (CPUs )
-  // - z/VM / KVM (VM<nn>); this is not available in an LPAR-only setup
-  const char* kw[] = { "LPAR", "CPUs", "VM", NULL };
-  const char* info_file = "/proc/sysinfo";
-
-  if (!print_matching_lines_from_file(info_file, st, kw)) {
-    st->print_cr("  <%s Not Available>", info_file);
-  }
-#elif defined(PPC64)
-  const char* info_file = "/proc/ppc64/lparcfg";
-  const char* kw[] = { "system_type=", // qemu indicates PowerKVM
-                       "partition_entitled_capacity=", // entitled processor capacity percentage
-                       "partition_max_entitled_capacity=",
-                       "capacity_weight=", // partition CPU weight
-                       "partition_active_processors=",
-                       "partition_potential_processors=",
-                       "entitled_proc_capacity_available=",
-                       "capped=", // 0 - uncapped, 1 - vcpus capped at entitled processor capacity percentage
-                       "shared_processor_mode=", // (non)dedicated partition
-                       "system_potential_processors=",
-                       "pool=", // CPU-pool number
-                       "pool_capacity=",
-                       "NumLpars=", // on non-KVM machines, NumLpars is not found for full partition mode machines
-                       NULL };
-  if (!print_matching_lines_from_file(info_file, st, kw)) {
-    st->print_cr("  <%s Not Available>", info_file);
-  }
-#endif
 }
 
 void os::Linux::print_steal_info(outputStream* st) {
@@ -3537,6 +3483,7 @@ static bool linux_mprotect(char* addr, size_t size, int prot) {
   assert(addr == bottom, "sanity check");
 
   size = align_up(pointer_delta(addr, bottom, 1) + size, os::Linux::page_size());
+  Events::log(NULL, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with protection modes %x", p2i(bottom), p2i(bottom+size), prot);
   return ::mprotect(bottom, size, prot) == 0;
 }
 
@@ -4661,11 +4608,6 @@ static void signalHandler(int sig, siginfo_t* info, void* uc) {
 bool os::Linux::signal_handlers_are_installed = false;
 
 // For signal-chaining
-struct sigaction sigact[NSIG];
-uint64_t sigs = 0;
-#if (64 < NSIG-1)
-#error "Not all signals can be encoded in sigs. Adapt its type!"
-#endif
 bool os::Linux::libjsig_is_loaded = false;
 typedef struct sigaction *(*get_signal_t)(int);
 get_signal_t os::Linux::get_signal_action = NULL;
@@ -4679,7 +4621,7 @@ struct sigaction* os::Linux::get_chained_signal_action(int sig) {
   }
   if (actp == NULL) {
     // Retrieve the preinstalled signal handler from jvm
-    actp = get_preinstalled_handler(sig);
+    actp = os::Posix::get_preinstalled_handler(sig);
   }
 
   return actp;
@@ -4743,19 +4685,6 @@ bool os::Linux::chained_handler(int sig, siginfo_t* siginfo, void* context) {
   return chained;
 }
 
-struct sigaction* os::Linux::get_preinstalled_handler(int sig) {
-  if ((((uint64_t)1 << (sig-1)) & sigs) != 0) {
-    return &sigact[sig];
-  }
-  return NULL;
-}
-
-void os::Linux::save_preinstalled_handler(int sig, struct sigaction& oldAct) {
-  assert(sig > 0 && sig < NSIG, "vm signal out of expected range");
-  sigact[sig] = oldAct;
-  sigs |= (uint64_t)1 << (sig-1);
-}
-
 // for diagnostic
 int sigflags[NSIG];
 
@@ -4787,7 +4716,7 @@ void os::Linux::set_signal_handler(int sig, bool set_installed) {
       return;
     } else if (UseSignalChaining) {
       // save the old handler in jvm
-      save_preinstalled_handler(sig, oldAct);
+      os::Posix::save_preinstalled_handler(sig, oldAct);
       // libjsig also interposes the sigaction() call below and saves the
       // old sigaction on it own.
     } else {

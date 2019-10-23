@@ -240,7 +240,7 @@ public class DefaultProxySelector extends ProxySelector {
                                 if (phost != null && phost.length() != 0)
                                     break;
                             }
-                            if (phost == null || phost.length() == 0) {
+                            if (phost == null || phost.isEmpty()) {
                                 /**
                                  * No system property defined for that
                                  * protocol. Let's check System Proxy
@@ -269,7 +269,7 @@ public class DefaultProxySelector extends ProxySelector {
                                             nprop.hostsSource = null;
                                             nprop.pattern = null;
                                         }
-                                    } else if (nphosts.length() != 0) {
+                                    } else if (!nphosts.isEmpty()) {
                                         // add the required default patterns
                                         // but only if property no set. If it
                                         // is empty, leave empty.

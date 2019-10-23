@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2012, 2018 SAP SE. All rights reserved.
+ * Copyright (c) 2012, 2019 SAP SE. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@
 #include "compiler/compileBroker.hpp"
 #include "interpreter/interpreter.hpp"
 #include "logging/log.hpp"
+#include "logging/logStream.hpp"
 #include "libo4.hpp"
 #include "libperfstat_aix.hpp"
 #include "libodm_aix.hpp"
@@ -486,8 +487,7 @@ static void query_multipage_support() {
       if (::shmctl(shmid, SHM_PAGESIZE, &shm_buf) != 0) {
         const int en = errno;
         ::shmctl(shmid, IPC_RMID, NULL); // As early as possible!
-        trcVerbose("shmctl(SHM_PAGESIZE) failed with errno=%n",
-          errno);
+        trcVerbose("shmctl(SHM_PAGESIZE) failed with errno=%d", errno);
       } else {
         // Attach and double check pageisze.
         void* p = ::shmat(shmid, NULL, 0);
@@ -495,7 +495,7 @@ static void query_multipage_support() {
         guarantee0(p != (void*) -1); // Should always work.
         const size_t real_pagesize = os::Aix::query_pagesize(p);
         if (real_pagesize != pagesize) {
-          trcVerbose("real page size (0x%llX) differs.", real_pagesize);
+          trcVerbose("real page size (" SIZE_FORMAT_HEX ") differs.", real_pagesize);
         } else {
           can_use = true;
         }
@@ -917,6 +917,11 @@ bool os::create_thread(Thread* thread, ThreadType thr_type,
     char buf[64];
     log_warning(os, thread)("Failed to start thread - pthread_create failed (%d=%s) for attributes: %s.",
       ret, os::errno_name(ret), os::Posix::describe_pthread_attr(buf, sizeof(buf), &attr));
+    // Log some OS information which might explain why creating the thread failed.
+    log_info(os, thread)("Number of threads approx. running in the VM: %d", Threads::number_of_threads());
+    LogStream st(Log(os, thread)::info());
+    os::Posix::print_rlimit_info(&st);
+    os::print_memory_info(&st);
   }
 
   pthread_attr_destroy(&attr);
@@ -1393,12 +1398,15 @@ void os::print_os_info(outputStream* st) {
 
   os::Posix::print_rlimit_info(st);
 
+  // _SC_THREAD_THREADS_MAX is the maximum number of threads within a process.
+  long tmax = sysconf(_SC_THREAD_THREADS_MAX);
+  st->print_cr("maximum #threads within a process:%ld", tmax);
+
   // load average
   st->print("load average:");
   double loadavg[3] = {-1.L, -1.L, -1.L};
   os::loadavg(loadavg, 3);
-  st->print("%0.02f %0.02f %0.02f", loadavg[0], loadavg[1], loadavg[2]);
-  st->cr();
+  st->print_cr("%0.02f %0.02f %0.02f", loadavg[0], loadavg[1], loadavg[2]);
 
   // print wpar info
   libperfstat::wparinfo_t wi;
@@ -1409,13 +1417,7 @@ void os::print_os_info(outputStream* st) {
     st->print_cr("type: %s", (wi.app_wpar ? "application" : "system"));
   }
 
-  // print partition info
-  libperfstat::partitioninfo_t pi;
-  if (libperfstat::get_partitioninfo(&pi)) {
-    st->print_cr("partition info");
-    st->print_cr(" name: %s", pi.name);
-  }
-
+  VM_Version::print_platform_virtualization_info(st);
 }
 
 void os::print_memory_info(outputStream* st) {
@@ -1883,12 +1885,12 @@ struct vmembk_t {
     if (!contains_range(p, s)) {
       trcVerbose("[" PTR_FORMAT " - " PTR_FORMAT "] is not a sub "
               "range of [" PTR_FORMAT " - " PTR_FORMAT "].",
-              p, p + s, addr, addr + size);
+              p2i(p), p2i(p + s), p2i(addr), p2i(addr + size));
       guarantee0(false);
     }
     if (!is_aligned_to(p, pagesize) || !is_aligned_to(p + s, pagesize)) {
       trcVerbose("range [" PTR_FORMAT " - " PTR_FORMAT "] is not"
-              " aligned to pagesize (%lu)", p, p + s, (unsigned long) pagesize);
+              " aligned to pagesize (%lu)", p2i(p), p2i(p + s), (unsigned long) pagesize);
       guarantee0(false);
     }
   }
@@ -1959,7 +1961,7 @@ static char* reserve_shmated_memory (
 
   trcVerbose("reserve_shmated_memory " UINTX_FORMAT " bytes, wishaddress "
     PTR_FORMAT ", alignment_hint " UINTX_FORMAT "...",
-    bytes, requested_addr, alignment_hint);
+    bytes, p2i(requested_addr), alignment_hint);
 
   // Either give me wish address or wish alignment but not both.
   assert0(!(requested_addr != NULL && alignment_hint != 0));
@@ -1968,7 +1970,7 @@ static char* reserve_shmated_memory (
   // BRK because that may cause malloc OOM.
   if (requested_addr != NULL && is_close_to_brk((address)requested_addr)) {
     trcVerbose("Wish address " PTR_FORMAT " is too close to the BRK segment. "
-      "Will attach anywhere.", requested_addr);
+      "Will attach anywhere.", p2i(requested_addr));
     // Act like the OS refused to attach there.
     requested_addr = NULL;
   }
@@ -2020,7 +2022,7 @@ static char* reserve_shmated_memory (
 
   // Handle shmat error. If we failed to attach, just return.
   if (addr == (char*)-1) {
-    trcVerbose("Failed to attach segment at " PTR_FORMAT " (%d).", requested_addr, errno_shmat);
+    trcVerbose("Failed to attach segment at " PTR_FORMAT " (%d).", p2i(requested_addr), errno_shmat);
     return NULL;
   }
 
@@ -2028,15 +2030,15 @@ static char* reserve_shmated_memory (
   // work (see above), the system may have given us something other then 4K (LDR_CNTRL).
   const size_t real_pagesize = os::Aix::query_pagesize(addr);
   if (real_pagesize != shmbuf.shm_pagesize) {
-    trcVerbose("pagesize is, surprisingly, %h.", real_pagesize);
+    trcVerbose("pagesize is, surprisingly, " SIZE_FORMAT, real_pagesize);
   }
 
   if (addr) {
     trcVerbose("shm-allocated " PTR_FORMAT " .. " PTR_FORMAT " (" UINTX_FORMAT " bytes, " UINTX_FORMAT " %s pages)",
-      addr, addr + size - 1, size, size/real_pagesize, describe_pagesize(real_pagesize));
+      p2i(addr), p2i(addr + size - 1), size, size/real_pagesize, describe_pagesize(real_pagesize));
   } else {
     if (requested_addr != NULL) {
-      trcVerbose("failed to shm-allocate " UINTX_FORMAT " bytes at with address " PTR_FORMAT ".", size, requested_addr);
+      trcVerbose("failed to shm-allocate " UINTX_FORMAT " bytes at with address " PTR_FORMAT ".", size, p2i(requested_addr));
     } else {
       trcVerbose("failed to shm-allocate " UINTX_FORMAT " bytes at any address.", size);
     }
@@ -2052,7 +2054,7 @@ static char* reserve_shmated_memory (
 static bool release_shmated_memory(char* addr, size_t size) {
 
   trcVerbose("release_shmated_memory [" PTR_FORMAT " - " PTR_FORMAT "].",
-    addr, addr + size - 1);
+    p2i(addr), p2i(addr + size - 1));
 
   bool rc = false;
 
@@ -2068,12 +2070,12 @@ static bool release_shmated_memory(char* addr, size_t size) {
 
 static bool uncommit_shmated_memory(char* addr, size_t size) {
   trcVerbose("uncommit_shmated_memory [" PTR_FORMAT " - " PTR_FORMAT "].",
-    addr, addr + size - 1);
+    p2i(addr), p2i(addr + size - 1));
 
   const bool rc = my_disclaim64(addr, size);
 
   if (!rc) {
-    trcVerbose("my_disclaim64(" PTR_FORMAT ", " UINTX_FORMAT ") failed.\n", addr, size);
+    trcVerbose("my_disclaim64(" PTR_FORMAT ", " UINTX_FORMAT ") failed.\n", p2i(addr), size);
     return false;
   }
   return true;
@@ -2090,11 +2092,11 @@ static bool uncommit_shmated_memory(char* addr, size_t size) {
 static char* reserve_mmaped_memory(size_t bytes, char* requested_addr, size_t alignment_hint) {
   trcVerbose("reserve_mmaped_memory " UINTX_FORMAT " bytes, wishaddress " PTR_FORMAT ", "
     "alignment_hint " UINTX_FORMAT "...",
-    bytes, requested_addr, alignment_hint);
+    bytes, p2i(requested_addr), alignment_hint);
 
   // If a wish address is given, but not aligned to 4K page boundary, mmap will fail.
   if (requested_addr && !is_aligned_to(requested_addr, os::vm_page_size()) != 0) {
-    trcVerbose("Wish address " PTR_FORMAT " not aligned to page boundary.", requested_addr);
+    trcVerbose("Wish address " PTR_FORMAT " not aligned to page boundary.", p2i(requested_addr));
     return NULL;
   }
 
@@ -2102,7 +2104,7 @@ static char* reserve_mmaped_memory(size_t bytes, char* requested_addr, size_t al
   // BRK because that may cause malloc OOM.
   if (requested_addr != NULL && is_close_to_brk((address)requested_addr)) {
     trcVerbose("Wish address " PTR_FORMAT " is too close to the BRK segment. "
-      "Will attach anywhere.", requested_addr);
+      "Will attach anywhere.", p2i(requested_addr));
     // Act like the OS refused to attach there.
     requested_addr = NULL;
   }
@@ -2149,7 +2151,7 @@ static char* reserve_mmaped_memory(size_t bytes, char* requested_addr, size_t al
       PROT_READ|PROT_WRITE|PROT_EXEC, flags, -1, 0);
 
   if (addr == MAP_FAILED) {
-    trcVerbose("mmap(" PTR_FORMAT ", " UINTX_FORMAT ", ..) failed (%d)", requested_addr, size, errno);
+    trcVerbose("mmap(" PTR_FORMAT ", " UINTX_FORMAT ", ..) failed (%d)", p2i(requested_addr), size, errno);
     return NULL;
   }
 
@@ -2168,10 +2170,10 @@ static char* reserve_mmaped_memory(size_t bytes, char* requested_addr, size_t al
 
   if (addr) {
     trcVerbose("mmap-allocated " PTR_FORMAT " .. " PTR_FORMAT " (" UINTX_FORMAT " bytes)",
-      addr, addr + bytes, bytes);
+      p2i(addr), p2i(addr + bytes), bytes);
   } else {
     if (requested_addr != NULL) {
-      trcVerbose("failed to mmap-allocate " UINTX_FORMAT " bytes at wish address " PTR_FORMAT ".", bytes, requested_addr);
+      trcVerbose("failed to mmap-allocate " UINTX_FORMAT " bytes at wish address " PTR_FORMAT ".", bytes, p2i(requested_addr));
     } else {
       trcVerbose("failed to mmap-allocate " UINTX_FORMAT " bytes at any address.", bytes);
     }
@@ -2191,7 +2193,7 @@ static bool release_mmaped_memory(char* addr, size_t size) {
   assert0(is_aligned_to(size, os::vm_page_size()));
 
   trcVerbose("release_mmaped_memory [" PTR_FORMAT " - " PTR_FORMAT "].",
-    addr, addr + size - 1);
+    p2i(addr), p2i(addr + size - 1));
   bool rc = false;
 
   if (::munmap(addr, size) != 0) {
@@ -2211,7 +2213,7 @@ static bool uncommit_mmaped_memory(char* addr, size_t size) {
   assert0(is_aligned_to(size, os::vm_page_size()));
 
   trcVerbose("uncommit_mmaped_memory [" PTR_FORMAT " - " PTR_FORMAT "].",
-    addr, addr + size - 1);
+    p2i(addr), p2i(addr + size - 1));
   bool rc = false;
 
   // Uncommit mmap memory with msync MS_INVALIDATE.
@@ -2242,7 +2244,7 @@ int os::vm_allocation_granularity() {
 static void warn_fail_commit_memory(char* addr, size_t size, bool exec,
                                     int err) {
   warning("INFO: os::commit_memory(" PTR_FORMAT ", " SIZE_FORMAT
-          ", %d) failed; error='%s' (errno=%d)", addr, size, exec,
+          ", %d) failed; error='%s' (errno=%d)", p2i(addr), size, exec,
           os::errno_name(err), err);
 }
 #endif
@@ -2270,7 +2272,7 @@ bool os::pd_commit_memory(char* addr, size_t size, bool exec) {
   guarantee0(vmi);
   vmi->assert_is_valid_subrange(addr, size);
 
-  trcVerbose("commit_memory [" PTR_FORMAT " - " PTR_FORMAT "].", addr, addr + size - 1);
+  trcVerbose("commit_memory [" PTR_FORMAT " - " PTR_FORMAT "].", p2i(addr), p2i(addr + size - 1));
 
   if (UseExplicitCommit) {
     // AIX commits memory on touch. So, touch all pages to be committed.
@@ -2449,6 +2451,7 @@ static bool checked_mprotect(char* addr, size_t size, int prot) {
   //
   // See http://publib.boulder.ibm.com/infocenter/pseries/v5r3/index.jsp?topic=/com.ibm.aix.basetechref/doc/basetrf1/mprotect.htm
 
+  Events::log(NULL, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with protection modes %x", p2i(addr), p2i(addr+size), prot);
   bool rc = ::mprotect(addr, size, prot) == 0 ? true : false;
 
   if (!rc) {
@@ -2489,6 +2492,7 @@ static bool checked_mprotect(char* addr, size_t size, int prot) {
           // A valid strategy is just to try again. This usually works. :-/
 
           ::usleep(1000);
+          Events::log(NULL, "Protecting memory [" INTPTR_FORMAT "," INTPTR_FORMAT "] with protection modes %x", p2i(addr), p2i(addr+size), prot);
           if (::mprotect(addr, size, prot) == 0) {
             const bool read_protected_2 =
               (SafeFetch32((int*)addr, 0x12345678) == 0x12345678 &&
@@ -3035,8 +3039,6 @@ static void javaSignalHandler(int sig, siginfo_t* info, void* uc) {
 bool os::Aix::signal_handlers_are_installed = false;
 
 // For signal-chaining
-struct sigaction sigact[NSIG];
-sigset_t sigs;
 bool os::Aix::libjsig_is_loaded = false;
 typedef struct sigaction *(*get_signal_t)(int);
 get_signal_t os::Aix::get_signal_action = NULL;
@@ -3050,7 +3052,7 @@ struct sigaction* os::Aix::get_chained_signal_action(int sig) {
   }
   if (actp == NULL) {
     // Retrieve the preinstalled signal handler from jvm
-    actp = get_preinstalled_handler(sig);
+    actp = os::Posix::get_preinstalled_handler(sig);
   }
 
   return actp;
@@ -3113,19 +3115,6 @@ bool os::Aix::chained_handler(int sig, siginfo_t* siginfo, void* context) {
   return chained;
 }
 
-struct sigaction* os::Aix::get_preinstalled_handler(int sig) {
-  if (sigismember(&sigs, sig)) {
-    return &sigact[sig];
-  }
-  return NULL;
-}
-
-void os::Aix::save_preinstalled_handler(int sig, struct sigaction& oldAct) {
-  assert(sig > 0 && sig < NSIG, "vm signal out of expected range");
-  sigact[sig] = oldAct;
-  sigaddset(&sigs, sig);
-}
-
 // for diagnostic
 int sigflags[NSIG];
 
@@ -3157,7 +3146,7 @@ void os::Aix::set_signal_handler(int sig, bool set_installed) {
       return;
     } else if (UseSignalChaining) {
       // save the old handler in jvm
-      save_preinstalled_handler(sig, oldAct);
+      os::Posix::save_preinstalled_handler(sig, oldAct);
       // libjsig also interposes the sigaction() call below and saves the
       // old sigaction on it own.
     } else {
@@ -3213,7 +3202,6 @@ void os::Aix::install_signal_handlers() {
       (*begin_signal_setting)();
     }
 
-    ::sigemptyset(&sigs);
     set_signal_handler(SIGSEGV, true);
     set_signal_handler(SIGPIPE, true);
     set_signal_handler(SIGBUS, true);

@@ -1072,11 +1072,9 @@ public class DecimalFormat extends NumberFormat {
 
             // Records the need for adding prefix or suffix
             fastPathData.positiveAffixesRequired
-                    = (positivePrefix.length() != 0)
-                        || (positiveSuffix.length() != 0);
+                    = !positivePrefix.isEmpty() || !positiveSuffix.isEmpty();
             fastPathData.negativeAffixesRequired
-                    = (negativePrefix.length() != 0)
-                        || (negativeSuffix.length() != 0);
+                    = !negativePrefix.isEmpty() || !negativeSuffix.isEmpty();
 
             // Creates a cached char container for result, with max possible size.
             int maxNbIntegralDigits = 10;
@@ -1990,7 +1988,7 @@ public class DecimalFormat extends NumberFormat {
                         Format.Field signAttribute) {
         int start = result.length();
 
-        if (string.length() > 0) {
+        if (!string.isEmpty()) {
             result.append(string);
             for (int counter = 0, max = positions.length; counter < max;
                  counter++) {
@@ -2945,7 +2943,7 @@ public class DecimalFormat extends NumberFormat {
                     } else {
                         string = symbols.getCurrencySymbol();
                     }
-                    if (string.length() > 0) {
+                    if (!string.isEmpty()) {
                         if (positions == null) {
                             positions = new ArrayList<>(2);
                         }
@@ -3516,7 +3514,7 @@ public class DecimalFormat extends NumberFormat {
             }
         }
 
-        if (pattern.length() == 0) {
+        if (pattern.isEmpty()) {
             posPrefixPattern = posSuffixPattern = "";
             setMinimumIntegerDigits(0);
             setMaximumIntegerDigits(MAXIMUM_INTEGER_DIGITS);

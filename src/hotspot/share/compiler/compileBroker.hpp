@@ -234,7 +234,6 @@ class CompileBroker: AllStatic {
                                  AbstractCompiler* comp, bool compiler_thread, TRAPS);
   static void init_compiler_sweeper_threads();
   static void possibly_add_compiler_threads();
-  static bool compilation_is_complete  (const methodHandle& method, int osr_bci, int comp_level);
   static bool compilation_is_prohibited(const methodHandle& method, int osr_bci, int comp_level, bool excluded);
   static void preload_classes          (const methodHandle& method, TRAPS);
 
@@ -289,6 +288,7 @@ public:
     return NULL;
   }
 
+  static bool compilation_is_complete(const methodHandle& method, int osr_bci, int comp_level);
   static bool compilation_is_in_queue(const methodHandle& method);
   static void print_compile_queues(outputStream* st);
   static void print_directives(outputStream* st);
@@ -424,7 +424,7 @@ public:
 
   // CodeHeap State Analytics.
   static void print_info(outputStream *out);
-  static void print_heapinfo(outputStream *out, const char* function, const char* granularity );
+  static void print_heapinfo(outputStream *out, const char* function, size_t granularity);
 };
 
 #endif // SHARE_VM_COMPILER_COMPILEBROKER_HPP

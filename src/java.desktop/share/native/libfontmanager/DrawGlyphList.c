@@ -533,6 +533,12 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
      */
     if (subPixPos && len > 0) {
         ginfo = (GlyphInfo*)imagePtrs[fromGlyph];
+        if (ginfo == NULL) {
+            (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+            free(gbv);
+            return (GlyphBlitVector*)NULL;
+        }
         /* rowBytes==width tests if its a B&W or LCD glyph */
         if (ginfo->width == ginfo->rowBytes) {
             subPixPos = JNI_FALSE;
@@ -555,6 +561,12 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
             jfloat px, py;
 
             ginfo = (GlyphInfo*)imagePtrs[g + fromGlyph];
+            if (ginfo == NULL) {
+                (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+                free(gbv);
+                return (GlyphBlitVector*)NULL;
+            }
             gbv->glyphs[g].glyphInfo = ginfo;
             gbv->glyphs[g].pixels = ginfo->image;
             gbv->glyphs[g].width = ginfo->width;
@@ -637,6 +649,12 @@ GlyphBlitVector* setupLCDBlitVector(JNIEnv *env, jobject glyphlist, jint fromGly
             jfloat px = x;
             jfloat py = y;
             ginfo = (GlyphInfo*)imagePtrs[g + fromGlyph];
+            if (ginfo == NULL) {
+                (*env)->ReleasePrimitiveArrayCritical(env, glyphImages,
+                                                  imagePtrs, JNI_ABORT);
+                free(gbv);
+                return (GlyphBlitVector*)NULL;
+            }
             gbv->glyphs[g].glyphInfo = ginfo;
             gbv->glyphs[g].pixels = ginfo->image;
             gbv->glyphs[g].width = ginfo->width;

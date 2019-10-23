@@ -127,24 +127,22 @@ package compiler.codegen.aes;
 
 import compiler.whitebox.CompilerWhiteBoxTest;
 import sun.hotspot.code.Compiler;
+import jtreg.SkippedException;
 
 public class TestAESMain {
     public static void main(String[] args) {
         String mode = System.getProperty("mode", "CBC");
         if ((mode.equals("CBC") || mode.equals("ECB")) &&
             !Compiler.isIntrinsicAvailable(CompilerWhiteBoxTest.COMP_LEVEL_FULL_OPTIMIZATION, "com.sun.crypto.provider.AESCrypt", "implEncryptBlock", byte[].class, int.class, byte[].class, int.class)) {
-            System.out.println("AES intrinsic is not available");
-            return;
+            throw new SkippedException("AES intrinsic is not available");
         }
         if (mode.equals("GCM") &&
             !Compiler.isIntrinsicAvailable(CompilerWhiteBoxTest.COMP_LEVEL_FULL_OPTIMIZATION, "com.sun.crypto.provider.GHASH", "processBlocks", byte[].class, int.class, int.class, long[].class, long[].class)) {
-            System.out.println("GHASH intrinsic is not available");
-            return;
+            throw new SkippedException("GHASH intrinsic is not available");
         }
         if (mode.equals("CTR") &&
             !Compiler.isIntrinsicAvailable(CompilerWhiteBoxTest.COMP_LEVEL_FULL_OPTIMIZATION, "com.sun.crypto.provider.CounterMode", "implCrypt", byte[].class, int.class, int.class, byte[].class, int.class)) {
-            System.out.println("AES-CTR intrinsic is not available");
-            return;
+            throw new SkippedException("AES-CTR intrinsic is not available");
         }
         int iters = (args.length > 0 ? Integer.valueOf(args[0]) : 100000);
         int warmupIters = (args.length > 1 ? Integer.valueOf(args[1]) : 20000);

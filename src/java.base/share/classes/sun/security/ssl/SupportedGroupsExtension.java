@@ -483,7 +483,7 @@ final class SupportedGroupsExtension {
             // default groups and preferences will be used.
             String property = GetPropertyAction
                     .privilegedGetProperty("jdk.tls.namedGroups");
-            if (property != null && property.length() != 0) {
+            if (property != null && !property.isEmpty()) {
                 // remove double quote marks from beginning/end of the property
                 if (property.length() > 1 && property.charAt(0) == '"' &&
                         property.charAt(property.length() - 1) == '"') {
@@ -492,7 +492,7 @@ final class SupportedGroupsExtension {
             }
 
             ArrayList<NamedGroup> groupList;
-            if (property != null && property.length() != 0) {
+            if (property != null && !property.isEmpty()) {
                 String[] groups = property.split(",");
                 groupList = new ArrayList<>(groups.length);
                 for (String group : groups) {
@@ -521,12 +521,6 @@ final class SupportedGroupsExtension {
                         NamedGroup.SECP256_R1,
                         NamedGroup.SECP384_R1,
                         NamedGroup.SECP521_R1,
-                        NamedGroup.SECT283_K1,
-                        NamedGroup.SECT283_R1,
-                        NamedGroup.SECT409_K1,
-                        NamedGroup.SECT409_R1,
-                        NamedGroup.SECT571_K1,
-                        NamedGroup.SECT571_R1,
 
                         // FFDHE 2048
                         NamedGroup.FFDHE_2048,
@@ -541,15 +535,6 @@ final class SupportedGroupsExtension {
                         NamedGroup.SECP256_R1,
                         NamedGroup.SECP384_R1,
                         NamedGroup.SECP521_R1,
-                        NamedGroup.SECT283_K1,
-                        NamedGroup.SECT283_R1,
-                        NamedGroup.SECT409_K1,
-                        NamedGroup.SECT409_R1,
-                        NamedGroup.SECT571_K1,
-                        NamedGroup.SECT571_R1,
-
-                        // non-NIST curves
-                        NamedGroup.SECP256_K1,
 
                         // FFDHE 2048
                         NamedGroup.FFDHE_2048,

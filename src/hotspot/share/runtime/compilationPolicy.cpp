@@ -37,14 +37,21 @@
 #include "runtime/frame.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/rframe.hpp"
-#include "runtime/simpleThresholdPolicy.hpp"
 #include "runtime/stubRoutines.hpp"
 #include "runtime/thread.hpp"
+#include "runtime/tieredThresholdPolicy.hpp"
 #include "runtime/timer.hpp"
 #include "runtime/vframe.hpp"
 #include "runtime/vm_operations.hpp"
 #include "utilities/events.hpp"
 #include "utilities/globalDefinitions.hpp"
+
+#ifdef COMPILER1
+#include "c1/c1_Compiler.hpp"
+#endif
+#ifdef COMPILER2
+#include "opto/c2compiler.hpp"
+#endif
 
 CompilationPolicy* CompilationPolicy::_policy;
 elapsedTimer       CompilationPolicy::_accumulated_time;
@@ -68,7 +75,7 @@ void compilationPolicy_init() {
     break;
   case 2:
 #ifdef TIERED
-    CompilationPolicy::set_policy(new SimpleThresholdPolicy());
+    CompilationPolicy::set_policy(new TieredThresholdPolicy());
 #else
     Unimplemented();
 #endif
@@ -181,6 +188,14 @@ bool CompilationPolicy::is_compilation_enabled() {
 }
 
 CompileTask* CompilationPolicy::select_task_helper(CompileQueue* compile_queue) {
+  // Remove unloaded methods from the queue
+  for (CompileTask* task = compile_queue->first(); task != NULL; ) {
+    CompileTask* next = task->next();
+    if (task->is_unloaded()) {
+      compile_queue->remove_and_mark_stale(task);
+    }
+    task = next;
+  }
 #if INCLUDE_JVMCI
   if (UseJVMCICompiler && !BackgroundCompilation) {
     /*
@@ -222,6 +237,19 @@ void NonTieredCompPolicy::initialize() {
     // max(log2(8)-1,1) = 2 compiler threads on an 8-way machine.
     // May help big-app startup time.
     _compiler_count = MAX2(log2_int(os::active_processor_count())-1,1);
+    // Make sure there is enough space in the code cache to hold all the compiler buffers
+    size_t buffer_size = 1;
+#ifdef COMPILER1
+    buffer_size = is_client_compilation_mode_vm() ? Compiler::code_buffer_size() : buffer_size;
+#endif
+#ifdef COMPILER2
+    buffer_size = is_server_compilation_mode_vm() ? C2Compiler::initial_code_buffer_size() : buffer_size;
+#endif
+    int max_count = (ReservedCodeCacheSize - (CodeCacheMinimumUseSpace DEBUG_ONLY(* 3))) / (int)buffer_size;
+    if (_compiler_count > max_count) {
+      // Lower the compiler count such that all buffers fit into the code cache
+      _compiler_count = MAX2(max_count, 1);
+    }
     FLAG_SET_ERGO(intx, CICompilerCount, _compiler_count);
   } else {
     _compiler_count = CICompilerCount;

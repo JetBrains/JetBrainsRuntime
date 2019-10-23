@@ -42,6 +42,7 @@
 #include "opto/narrowptrnode.hpp"
 #include "opto/phaseX.hpp"
 #include "opto/regmask.hpp"
+#include "opto/rootnode.hpp"
 #include "utilities/align.hpp"
 #include "utilities/copy.hpp"
 #include "utilities/macros.hpp"
@@ -96,6 +97,9 @@ void MemNode::dump_spec(outputStream *st) const {
   }
   if (_mismatched_access) {
     st->print(" mismatched");
+  }
+  if (_unsafe_access) {
+    st->print(" unsafe");
   }
 }
 
@@ -322,6 +326,24 @@ Node *MemNode::Ideal_common(PhaseGVN *phase, bool can_reshape) {
   Node *address = in(MemNode::Address);
   const Type *t_adr = phase->type(address);
   if (t_adr == Type::TOP)              return NodeSentinel; // caller will return NULL
+
+  if (can_reshape && is_unsafe_access() && (t_adr == TypePtr::NULL_PTR)) {
+    // Unsafe off-heap access with zero address. Remove access and other control users
+    // to not confuse optimizations and add a HaltNode to fail if this is ever executed.
+    assert(ctl != NULL, "unsafe accesses should be control dependent");
+    for (DUIterator_Fast imax, i = ctl->fast_outs(imax); i < imax; i++) {
+      Node* u = ctl->fast_out(i);
+      if (u != ctl) {
+        igvn->rehash_node_delayed(u);
+        int nb = u->replace_edge(ctl, phase->C->top());
+        --i, imax -= nb;
+      }
+    }
+    Node* frame = igvn->transform(new ParmNode(phase->C->start(), TypeFunc::FramePtr));
+    Node* halt = igvn->transform(new HaltNode(ctl, frame));
+    phase->C->root()->add_req(halt);
+    return this;
+  }
 
   if (can_reshape && igvn != NULL &&
       (igvn->_worklist.member(address) ||
@@ -787,7 +809,7 @@ bool LoadNode::is_immutable_value(Node* adr) {
 //----------------------------LoadNode::make-----------------------------------
 // Polymorphic factory method:
 Node *LoadNode::make(PhaseGVN& gvn, Node *ctl, Node *mem, Node *adr, const TypePtr* adr_type, const Type *rt, BasicType bt, MemOrd mo,
-                     ControlDependency control_dependency, bool unaligned, bool mismatched) {
+                     ControlDependency control_dependency, bool unaligned, bool mismatched, bool unsafe) {
   Compile* C = gvn.C;
 
   // sanity check the alias category against the created node type
@@ -835,6 +857,9 @@ Node *LoadNode::make(PhaseGVN& gvn, Node *ctl, Node *mem, Node *adr, const TypeP
   if (mismatched) {
     load->set_mismatched_access();
   }
+  if (unsafe) {
+    load->set_unsafe_access();
+  }
   if (load->Opcode() == Op_LoadN) {
     Node* ld = gvn.transform(load);
     return new DecodeNNode(ld, ld->bottom_type()->make_ptr());
@@ -844,7 +869,7 @@ Node *LoadNode::make(PhaseGVN& gvn, Node *ctl, Node *mem, Node *adr, const TypeP
 }
 
 LoadLNode* LoadLNode::make_atomic(Node* ctl, Node* mem, Node* adr, const TypePtr* adr_type, const Type* rt, MemOrd mo,
-                                  ControlDependency control_dependency, bool unaligned, bool mismatched) {
+                                  ControlDependency control_dependency, bool unaligned, bool mismatched, bool unsafe) {
   bool require_atomic = true;
   LoadLNode* load = new LoadLNode(ctl, mem, adr, adr_type, rt->is_long(), mo, control_dependency, require_atomic);
   if (unaligned) {
@@ -853,11 +878,14 @@ LoadLNode* LoadLNode::make_atomic(Node* ctl, Node* mem, Node* adr, const TypePtr
   if (mismatched) {
     load->set_mismatched_access();
   }
+  if (unsafe) {
+    load->set_unsafe_access();
+  }
   return load;
 }
 
 LoadDNode* LoadDNode::make_atomic(Node* ctl, Node* mem, Node* adr, const TypePtr* adr_type, const Type* rt, MemOrd mo,
-                                  ControlDependency control_dependency, bool unaligned, bool mismatched) {
+                                  ControlDependency control_dependency, bool unaligned, bool mismatched, bool unsafe) {
   bool require_atomic = true;
   LoadDNode* load = new LoadDNode(ctl, mem, adr, adr_type, rt, mo, control_dependency, require_atomic);
   if (unaligned) {
@@ -865,6 +893,9 @@ LoadDNode* LoadDNode::make_atomic(Node* ctl, Node* mem, Node* adr, const TypePtr
   }
   if (mismatched) {
     load->set_mismatched_access();
+  }
+  if (unsafe) {
+    load->set_unsafe_access();
   }
   return load;
 }
@@ -1370,6 +1401,14 @@ Node *LoadNode::split_through_phi(PhaseGVN *phase) {
         Node* in = mem->in(i);
         Node*  m = optimize_memory_chain(in, t_oop, this, phase);
         if (m == mem) {
+          if (i == 1) {
+            // if the first edge was a loop, check second edge too.
+            // If both are replaceable - we are in an infinite loop
+            Node *n = optimize_memory_chain(mem->in(2), t_oop, this, phase);
+            if (n == mem) {
+              break;
+            }
+          }
           set_req(Memory, mem->in(cnt - i));
           return this; // made change
         }
@@ -2525,45 +2564,63 @@ Node* StoreNode::Identity(PhaseGVN* phase) {
   Node* adr = in(MemNode::Address);
   Node* val = in(MemNode::ValueIn);
 
+  Node* result = this;
+
   // Load then Store?  Then the Store is useless
   if (val->is_Load() &&
       val->in(MemNode::Address)->eqv_uncast(adr) &&
       val->in(MemNode::Memory )->eqv_uncast(mem) &&
       val->as_Load()->store_Opcode() == Opcode()) {
-    return mem;
+    result = mem;
   }
 
   // Two stores in a row of the same value?
-  if (mem->is_Store() &&
+  if (result == this &&
+      mem->is_Store() &&
       mem->in(MemNode::Address)->eqv_uncast(adr) &&
       mem->in(MemNode::ValueIn)->eqv_uncast(val) &&
       mem->Opcode() == Opcode()) {
-    return mem;
+    result = mem;
   }
 
   // Store of zero anywhere into a freshly-allocated object?
   // Then the store is useless.
   // (It must already have been captured by the InitializeNode.)
-  if (ReduceFieldZeroing && phase->type(val)->is_zero_type()) {
+  if (result == this &&
+      ReduceFieldZeroing && phase->type(val)->is_zero_type()) {
     // a newly allocated object is already all-zeroes everywhere
     if (mem->is_Proj() && mem->in(0)->is_Allocate()) {
-      return mem;
+      result = mem;
     }
 
-    // the store may also apply to zero-bits in an earlier object
-    Node* prev_mem = find_previous_store(phase);
-    // Steps (a), (b):  Walk past independent stores to find an exact match.
-    if (prev_mem != NULL) {
-      Node* prev_val = can_see_stored_value(prev_mem, phase);
-      if (prev_val != NULL && phase->eqv(prev_val, val)) {
-        // prev_val and val might differ by a cast; it would be good
-        // to keep the more informative of the two.
-        return mem;
+    if (result == this) {
+      // the store may also apply to zero-bits in an earlier object
+      Node* prev_mem = find_previous_store(phase);
+      // Steps (a), (b):  Walk past independent stores to find an exact match.
+      if (prev_mem != NULL) {
+        Node* prev_val = can_see_stored_value(prev_mem, phase);
+        if (prev_val != NULL && phase->eqv(prev_val, val)) {
+          // prev_val and val might differ by a cast; it would be good
+          // to keep the more informative of the two.
+          result = mem;
+        }
       }
     }
   }
 
-  return this;
+  if (result != this && phase->is_IterGVN() != NULL) {
+    MemBarNode* trailing = trailing_membar();
+    if (trailing != NULL) {
+#ifdef ASSERT
+      const TypeOopPtr* t_oop = phase->type(in(Address))->isa_oopptr();
+      assert(t_oop == NULL || t_oop->is_known_instance_field(), "only for non escaping objects");
+#endif
+      PhaseIterGVN* igvn = phase->is_IterGVN();
+      trailing->remove(igvn);
+    }
+  }
+
+  return result;
 }
 
 //------------------------------match_edge-------------------------------------
@@ -2640,6 +2697,33 @@ bool StoreNode::value_never_loaded( PhaseTransform *phase) const {
   }
   return true;
 }
+
+MemBarNode* StoreNode::trailing_membar() const {
+  if (is_release()) {
+    MemBarNode* trailing_mb = NULL;
+    for (DUIterator_Fast imax, i = fast_outs(imax); i < imax; i++) {
+      Node* u = fast_out(i);
+      if (u->is_MemBar()) {
+        if (u->as_MemBar()->trailing_store()) {
+          assert(u->Opcode() == Op_MemBarVolatile, "");
+          assert(trailing_mb == NULL, "only one");
+          trailing_mb = u->as_MemBar();
+#ifdef ASSERT
+          Node* leading = u->as_MemBar()->leading_membar();
+          assert(leading->Opcode() == Op_MemBarRelease, "incorrect membar");
+          assert(leading->as_MemBar()->leading_store(), "incorrect membar pair");
+          assert(leading->as_MemBar()->trailing_membar() == u, "incorrect membar pair");
+#endif
+        } else {
+          assert(u->as_MemBar()->standalone(), "");
+        }
+      }
+    }
+    return trailing_mb;
+  }
+  return NULL;
+}
+
 
 //=============================================================================
 //------------------------------Ideal------------------------------------------
@@ -2751,6 +2835,30 @@ bool LoadStoreNode::result_not_used() const {
     return false;
   }
   return true;
+}
+
+MemBarNode* LoadStoreNode::trailing_membar() const {
+  MemBarNode* trailing = NULL;
+  for (DUIterator_Fast imax, i = fast_outs(imax); i < imax; i++) {
+    Node* u = fast_out(i);
+    if (u->is_MemBar()) {
+      if (u->as_MemBar()->trailing_load_store()) {
+        assert(u->Opcode() == Op_MemBarAcquire, "");
+        assert(trailing == NULL, "only one");
+        trailing = u->as_MemBar();
+#ifdef ASSERT
+        Node* leading = trailing->leading_membar();
+        assert(support_IRIW_for_not_multiple_copy_atomic_cpu || leading->Opcode() == Op_MemBarRelease, "incorrect membar");
+        assert(leading->as_MemBar()->leading_load_store(), "incorrect membar pair");
+        assert(leading->as_MemBar()->trailing_membar() == trailing, "incorrect membar pair");
+#endif
+      } else {
+        assert(u->as_MemBar()->standalone(), "wrong barrier kind");
+      }
+    }
+  }
+
+  return trailing;
 }
 
 uint LoadStoreNode::size_of() const { return sizeof(*this); }
@@ -2938,7 +3046,10 @@ Node* ClearArrayNode::clear_memory(Node* ctl, Node* mem, Node* dest,
 //=============================================================================
 MemBarNode::MemBarNode(Compile* C, int alias_idx, Node* precedent)
   : MultiNode(TypeFunc::Parms + (precedent == NULL? 0: 1)),
-    _adr_type(C->get_adr_type(alias_idx))
+    _adr_type(C->get_adr_type(alias_idx)), _kind(Standalone)
+#ifdef ASSERT
+  , _pair_idx(0)
+#endif
 {
   init_class_id(Class_MemBar);
   Node* top = C->top();
@@ -2971,6 +3082,21 @@ MemBarNode* MemBarNode::make(Compile* C, int opcode, int atp, Node* pn) {
   case Op_MemBarStoreStore:  return new MemBarStoreStoreNode(C, atp, pn);
   default: ShouldNotReachHere(); return NULL;
   }
+}
+
+void MemBarNode::remove(PhaseIterGVN *igvn) {
+  if (outcnt() != 2) {
+    return;
+  }
+  if (trailing_store() || trailing_load_store()) {
+    MemBarNode* leading = leading_membar();
+    if (leading != NULL) {
+      assert(leading->trailing_membar() == this, "inconsistent leading/trailing membars");
+      leading->remove(igvn);
+    }
+  }
+  igvn->replace_node(proj_out(TypeFunc::Memory), in(TypeFunc::Memory));
+  igvn->replace_node(proj_out(TypeFunc::Control), in(TypeFunc::Control));
 }
 
 //------------------------------Ideal------------------------------------------
@@ -3039,8 +3165,7 @@ Node *MemBarNode::Ideal(PhaseGVN *phase, bool can_reshape) {
     if (eliminate) {
       // Replace MemBar projections by its inputs.
       PhaseIterGVN* igvn = phase->is_IterGVN();
-      igvn->replace_node(proj_out(TypeFunc::Memory), in(TypeFunc::Memory));
-      igvn->replace_node(proj_out(TypeFunc::Control), in(TypeFunc::Control));
+      remove(igvn);
       // Must return either the original node (now dead) or a new node
       // (Do not return a top here, since that would break the uniqueness of top.)
       return new ConINode(TypeInt::ZERO);
@@ -3067,6 +3192,136 @@ Node *MemBarNode::match( const ProjNode *proj, const Matcher *m ) {
   }
   ShouldNotReachHere();
   return NULL;
+}
+
+void MemBarNode::set_store_pair(MemBarNode* leading, MemBarNode* trailing) {
+  trailing->_kind = TrailingStore;
+  leading->_kind = LeadingStore;
+#ifdef ASSERT
+  trailing->_pair_idx = leading->_idx;
+  leading->_pair_idx = leading->_idx;
+#endif
+}
+
+void MemBarNode::set_load_store_pair(MemBarNode* leading, MemBarNode* trailing) {
+  trailing->_kind = TrailingLoadStore;
+  leading->_kind = LeadingLoadStore;
+#ifdef ASSERT
+  trailing->_pair_idx = leading->_idx;
+  leading->_pair_idx = leading->_idx;
+#endif
+}
+
+MemBarNode* MemBarNode::trailing_membar() const {
+  ResourceMark rm;
+  Node* trailing = (Node*)this;
+  VectorSet seen(Thread::current()->resource_area());
+  Node_Stack multis(0);
+  do {
+    Node* c = trailing;
+    uint i = 0;
+    do {
+      trailing = NULL;
+      for (; i < c->outcnt(); i++) {
+        Node* next = c->raw_out(i);
+        if (next != c && next->is_CFG()) {
+          if (c->is_MultiBranch()) {
+            if (multis.node() == c) {
+              multis.set_index(i+1);
+            } else {
+              multis.push(c, i+1);
+            }
+          }
+          trailing = next;
+          break;
+        }
+      }
+      if (trailing != NULL && !seen.test_set(trailing->_idx)) {
+        break;
+      }
+      while (multis.size() > 0) {
+        c = multis.node();
+        i = multis.index();
+        if (i < c->req()) {
+          break;
+        }
+        multis.pop();
+      }
+    } while (multis.size() > 0);
+  } while (!trailing->is_MemBar() || !trailing->as_MemBar()->trailing());
+
+  MemBarNode* mb = trailing->as_MemBar();
+  assert((mb->_kind == TrailingStore && _kind == LeadingStore) ||
+         (mb->_kind == TrailingLoadStore && _kind == LeadingLoadStore), "bad trailing membar");
+  assert(mb->_pair_idx == _pair_idx, "bad trailing membar");
+  return mb;
+}
+
+MemBarNode* MemBarNode::leading_membar() const {
+  ResourceMark rm;
+  VectorSet seen(Thread::current()->resource_area());
+  Node_Stack regions(0);
+  Node* leading = in(0);
+  while (leading != NULL && (!leading->is_MemBar() || !leading->as_MemBar()->leading())) {
+    while (leading == NULL || leading->is_top() || seen.test_set(leading->_idx)) {
+      leading = NULL;
+      while (regions.size() > 0 && leading == NULL) {
+        Node* r = regions.node();
+        uint i = regions.index();
+        if (i < r->req()) {
+          leading = r->in(i);
+          regions.set_index(i+1);
+        } else {
+          regions.pop();
+        }
+      }
+      if (leading == NULL) {
+        assert(regions.size() == 0, "all paths should have been tried");
+        return NULL;
+      }
+    }
+    if (leading->is_Region()) {
+      regions.push(leading, 2);
+      leading = leading->in(1);
+    } else {
+      leading = leading->in(0);
+    }
+  }
+#ifdef ASSERT
+  Unique_Node_List wq;
+  wq.push((Node*)this);
+  uint found = 0;
+  for (uint i = 0; i < wq.size(); i++) {
+    Node* n = wq.at(i);
+    if (n->is_Region()) {
+      for (uint j = 1; j < n->req(); j++) {
+        Node* in = n->in(j);
+        if (in != NULL && !in->is_top()) {
+          wq.push(in);
+        }
+      }
+    } else {
+      if (n->is_MemBar() && n->as_MemBar()->leading()) {
+        assert(n == leading, "consistency check failed");
+        found++;
+      } else {
+        Node* in = n->in(0);
+        if (in != NULL && !in->is_top()) {
+          wq.push(in);
+        }
+      }
+    }
+  }
+  assert(found == 1 || (found == 0 && leading == NULL), "consistency check failed");
+#endif
+  if (leading == NULL) {
+    return NULL;
+  }
+  MemBarNode* mb = leading->as_MemBar();
+  assert((mb->_kind == LeadingStore && _kind == TrailingStore) ||
+         (mb->_kind == LeadingLoadStore && _kind == TrailingLoadStore), "bad leading membar");
+  assert(mb->_pair_idx == _pair_idx, "bad leading membar");
+  return mb;
 }
 
 //===========================InitializeNode====================================

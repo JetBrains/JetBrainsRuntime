@@ -1556,6 +1556,8 @@ void Compile::fill_buffer(CodeBuffer* cb, uint* blk_starts) {
       }
       if (method() != NULL) {
         method()->print_metadata();
+      } else if (stub_name() != NULL) {
+        tty->print_cr("Generating RuntimeStub - %s", stub_name());
       }
       dump_asm(node_offsets, node_offset_limit);
       if (xtty != NULL) {
@@ -2391,12 +2393,9 @@ void Scheduling::DoScheduling() {
     }
     assert(!last->is_Mach() || last->as_Mach()->ideal_Opcode() != Op_Con, "");
     if( last->is_Catch() ||
-       // Exclude unreachable path case when Halt node is in a separate block.
-       (_bb_end > 1 && last->is_Mach() && last->as_Mach()->ideal_Opcode() == Op_Halt) ) {
-      // There must be a prior call.  Skip it.
-      while( !bb->get_node(--_bb_end)->is_MachCall() ) {
-        assert( bb->get_node(_bb_end)->is_MachProj(), "skipping projections after expected call" );
-      }
+       (last->is_Mach() && last->as_Mach()->ideal_Opcode() == Op_Halt) ) {
+      // There might be a prior call.  Skip it.
+      while (_bb_start < _bb_end && bb->get_node(--_bb_end)->is_MachProj());
     } else if( last->is_MachNullCheck() ) {
       // Backup so the last null-checked memory instruction is
       // outside the schedulable range. Skip over the nullcheck,

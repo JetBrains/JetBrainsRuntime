@@ -160,7 +160,7 @@ private:
   static volatile intptr_t _crash_mux;
 };
 
-class PlatformEvent : public CHeapObj<mtInternal> {
+class PlatformEvent : public CHeapObj<mtSynchronizer> {
   private:
     double CachePad [4] ;   // increase odds that _Event is sole occupant of cache line
     volatile int _Event ;
@@ -186,7 +186,7 @@ class PlatformEvent : public CHeapObj<mtInternal> {
 
 
 
-class PlatformParker : public CHeapObj<mtInternal> {
+class PlatformParker : public CHeapObj<mtSynchronizer> {
   protected:
     HANDLE _ParkEvent ;
 

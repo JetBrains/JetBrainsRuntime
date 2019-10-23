@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import java.math.BigInteger;
 
 import java.security.cert.CertificateException;
 import java.security.*;
-import java.security.spec.AlgorithmParameterSpec;
 
 import java.util.Base64;
 
@@ -168,12 +167,8 @@ public class PKCS10 {
         try {
             sigAlg = id.getName();
             sig = Signature.getInstance(sigAlg);
-
-            sig.initVerify(subjectPublicKeyInfo);
-
-            // set parameters after Signature.initSign/initVerify call,
-            // so the deferred provider selections occur when key is set
-            SignatureUtil.specialSetParameter(sig, id.getParameters());
+            SignatureUtil.initVerifyWithParam(sig, subjectPublicKeyInfo,
+                SignatureUtil.getParamSpec(sigAlg, id.getParameters()));
 
             sig.update(data);
             if (!sig.verify(sigData)) {
@@ -237,10 +232,14 @@ public class PKCS10 {
          */
         AlgorithmId algId = null;
         try {
-            algId = AlgorithmId.get(signature.getAlgorithm());
+            AlgorithmParameters params = signature.getParameters();
+            algId = params == null
+                    ? AlgorithmId.get(signature.getAlgorithm())
+                    : AlgorithmId.get(params);
         } catch (NoSuchAlgorithmException nsae) {
             throw new SignatureException(nsae);
         }
+
         algId.encode(scratch);     // sig algorithm
         scratch.putBitString(sig);                      // sig
 

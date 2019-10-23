@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1995, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1995, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -455,6 +455,16 @@ public final class URL implements java.io.Serializable {
             String s = IPAddressUtil.checkExternalForm(this);
             if (s != null) {
                 throw new MalformedURLException(s);
+            }
+        }
+        if ("jar".equalsIgnoreCase(protocol)) {
+            if (handler instanceof sun.net.www.protocol.jar.Handler) {
+                // URL.openConnection() would throw a confusing exception
+                // so generate a better exception here instead.
+                String s = ((sun.net.www.protocol.jar.Handler) handler).checkNestedProtocol(file);
+                if (s != null) {
+                    throw new MalformedURLException(s);
+                }
             }
         }
     }
@@ -1386,8 +1396,9 @@ public final class URL implements java.io.Serializable {
 
         URLStreamHandlerFactory fac;
         boolean checkedWithFactory = false;
+        boolean overrideableProtocol = isOverrideable(protocol);
 
-        if (isOverrideable(protocol) && jdk.internal.misc.VM.isBooted()) {
+        if (overrideableProtocol && jdk.internal.misc.VM.isBooted()) {
             // Use the factory (if any). Volatile read makes
             // URLStreamHandlerFactory appear fully initialized to current thread.
             fac = factory;
@@ -1423,7 +1434,8 @@ public final class URL implements java.io.Serializable {
 
             // Check with factory if another thread set a
             // factory since our last check
-            if (!checkedWithFactory && (fac = factory) != null) {
+            if (overrideableProtocol && !checkedWithFactory &&
+                (fac = factory) != null) {
                 handler2 = fac.createURLStreamHandler(protocol);
             }
 
@@ -1502,7 +1514,7 @@ public final class URL implements java.io.Serializable {
         String ref = (String)gf.get("ref", null);
         int hashCode = gf.get("hashCode", -1);
         if (authority == null
-                && ((host != null && host.length() > 0) || port != -1)) {
+                && ((host != null && !host.isEmpty()) || port != -1)) {
             if (host == null)
                 host = "";
             authority = (port == -1) ? host : host + ":" + port;
@@ -1549,7 +1561,7 @@ public final class URL implements java.io.Serializable {
 
         // Construct authority part
         if (authority == null
-            && ((host != null && host.length() > 0) || port != -1)) {
+            && ((host != null && !host.isEmpty()) || port != -1)) {
             if (host == null)
                 host = "";
             authority = (port == -1) ? host : host + ":" + port;
@@ -1709,7 +1721,7 @@ final class UrlDeserializedState {
 
         // pre-compute length of StringBuffer
         int len = protocol.length() + 1;
-        if (authority != null && authority.length() > 0)
+        if (authority != null && !authority.isEmpty())
             len += 2 + authority.length();
         if (file != null) {
             len += file.length();
@@ -1719,7 +1731,7 @@ final class UrlDeserializedState {
         StringBuilder result = new StringBuilder(len);
         result.append(protocol);
         result.append(":");
-        if (authority != null && authority.length() > 0) {
+        if (authority != null && !authority.isEmpty()) {
             result.append("//");
             result.append(authority);
         }

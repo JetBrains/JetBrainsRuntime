@@ -25,7 +25,6 @@
 
 package java.io;
 
-import java.net.URI;
 import java.nio.file.*;
 import java.security.*;
 import java.util.Enumeration;
@@ -199,12 +198,11 @@ public final class FilePermission extends Permission implements Serializable {
     private static final long serialVersionUID = 7930732926638008763L;
 
     /**
-     * Always use the internal default file system, in case it was modified
-     * with java.nio.file.spi.DefaultFileSystemProvider.
+     * Use the platform's default file system to avoid recursive initialization
+     * issues when the VM is configured to use a custom file system provider.
      */
     private static final java.nio.file.FileSystem builtInFS =
-            DefaultFileSystemProvider.create()
-                    .getFileSystem(URI.create("file:///"));
+        DefaultFileSystemProvider.theFileSystem();
 
     private static final Path here = builtInFS.getPath(
             GetPropertyAction.privilegedGetProperty("user.dir"));
@@ -326,7 +324,7 @@ public final class FilePermission extends Permission implements Serializable {
 
             if (name.equals("<<ALL FILES>>")) {
                 allFiles = true;
-                npath = builtInFS.getPath("");
+                npath = EMPTY_PATH;
                 // other fields remain default
                 return;
             }
@@ -351,7 +349,7 @@ public final class FilePermission extends Permission implements Serializable {
                     npath = npath.getParent();
                 }
                 if (npath == null) {
-                    npath = builtInFS.getPath("");
+                    npath = EMPTY_PATH;
                 }
                 invalid = false;
             } catch (InvalidPathException ipe) {
@@ -368,9 +366,19 @@ public final class FilePermission extends Permission implements Serializable {
             this.mask = mask;
 
             if (cpath.equals("<<ALL FILES>>")) {
+                allFiles = true;
                 directory = true;
                 recursive = true;
                 cpath = "";
+                return;
+            }
+
+            // Validate path by platform's default file system
+            try {
+                String name = cpath.endsWith("*") ? cpath.substring(0, cpath.length() - 1) + "-" : cpath;
+                builtInFS.getPath(new File(name).getPath());
+            } catch (InvalidPathException ipe) {
+                invalid = true;
                 return;
             }
 
@@ -464,6 +472,9 @@ public final class FilePermission extends Permission implements Serializable {
      * <P>
      * The default value of the {@code jdk.io.permissionsUseCanonicalPath}
      * system property is {@code false} in this implementation.
+     * <p>
+     * The value can also be set with a security property using the same name,
+     * but setting a system property will override the security property value.
      *
      * @param path the pathname of the file/directory.
      * @param actions the action string.
@@ -574,19 +585,19 @@ public final class FilePermission extends Permission implements Serializable {
      * @return the effective mask
      */
     boolean impliesIgnoreMask(FilePermission that) {
+        if (this == that) {
+            return true;
+        }
+        if (allFiles) {
+            return true;
+        }
+        if (this.invalid || that.invalid) {
+            return false;
+        }
+        if (that.allFiles) {
+            return false;
+        }
         if (FilePermCompat.nb) {
-            if (this == that) {
-                return true;
-            }
-            if (allFiles) {
-                return true;
-            }
-            if (this.invalid || that.invalid) {
-                return false;
-            }
-            if (that.allFiles) {
-                return false;
-            }
             // Left at least same level of wildness as right
             if ((this.recursive && that.recursive) != that.recursive
                     || (this.directory && that.directory) != that.directory) {
@@ -784,10 +795,10 @@ public final class FilePermission extends Permission implements Serializable {
 
         FilePermission that = (FilePermission) obj;
 
+        if (this.invalid || that.invalid) {
+            return false;
+        }
         if (FilePermCompat.nb) {
-            if (this.invalid || that.invalid) {
-                return false;
-            }
             return (this.mask == that.mask) &&
                     (this.allFiles == that.allFiles) &&
                     this.npath.equals(that.npath) &&
@@ -796,6 +807,7 @@ public final class FilePermission extends Permission implements Serializable {
                     (this.recursive == that.recursive);
         } else {
             return (this.mask == that.mask) &&
+                    (this.allFiles == that.allFiles) &&
                     this.cpath.equals(that.cpath) &&
                     (this.directory == that.directory) &&
                     (this.recursive == that.recursive);

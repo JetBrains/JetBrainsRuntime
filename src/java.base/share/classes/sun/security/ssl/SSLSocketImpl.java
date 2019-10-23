@@ -878,7 +878,7 @@ public final class SSLSocketImpl
             }
 
             try {
-                shutdownInput(false);
+                SSLSocketImpl.this.close();
             } catch (IOException ioe) {
                 // ignore the exception
                 if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
@@ -1003,7 +1003,7 @@ public final class SSLSocketImpl
             }
 
             try {
-                shutdownOutput();
+                SSLSocketImpl.this.close();
             } catch (IOException ioe) {
                 // ignore the exception
                 if (SSLLogger.isOn && SSLLogger.isOn("ssl")) {
@@ -1204,7 +1204,7 @@ public final class SSLSocketImpl
     synchronized void doneConnect() throws IOException {
         // In server mode, it is not necessary to set host and serverNames.
         // Otherwise, would require a reverse DNS lookup to get the hostname.
-        if ((peerHost == null) || (peerHost.length() == 0)) {
+        if (peerHost == null || peerHost.isEmpty()) {
             boolean useNameService =
                     trustNameService && conContext.sslConfig.isClientMode;
             useImplicitHost(useNameService);
@@ -1239,8 +1239,7 @@ public final class SSLSocketImpl
         JavaNetInetAddressAccess jna =
                 SharedSecrets.getJavaNetInetAddressAccess();
         String originalHostname = jna.getOriginalHostName(inetAddress);
-        if ((originalHostname != null) &&
-                (originalHostname.length() != 0)) {
+        if (originalHostname != null && !originalHostname.isEmpty()) {
 
             this.peerHost = originalHostname;
             if (conContext.sslConfig.serverNames.isEmpty() &&

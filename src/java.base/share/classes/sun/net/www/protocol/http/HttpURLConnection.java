@@ -2165,6 +2165,10 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
             } while (retryTunnel < maxRedirects);
 
             if (retryTunnel >= maxRedirects || (respCode != HTTP_OK)) {
+                if (respCode != HTTP_PROXY_AUTH) {
+                    // remove all but authenticate responses
+                    responses.reset();
+                }
                 throw new IOException("Unable to tunnel through proxy."+
                                       " Proxy returns \"" +
                                       statusLine + "\"");
@@ -3032,7 +3036,7 @@ public class HttpURLConnection extends java.net.HttpURLConnection {
 
             // Filtering only if there is a cookie handler. [Assumption: the
             // cookie handler will store/retrieve the HttpOnly cookies]
-            if (cookieHandler == null || value.length() == 0)
+            if (cookieHandler == null || value.isEmpty())
                 return value;
 
             JavaNetHttpCookieAccess access =

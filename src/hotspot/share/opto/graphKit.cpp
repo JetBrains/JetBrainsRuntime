@@ -1489,18 +1489,19 @@ Node* GraphKit::make_load(Node* ctl, Node* adr, const Type* t, BasicType bt,
                           LoadNode::ControlDependency control_dependency,
                           bool require_atomic_access,
                           bool unaligned,
-                          bool mismatched) {
+                          bool mismatched,
+                          bool unsafe) {
   assert(adr_idx != Compile::AliasIdxTop, "use other make_load factory" );
   const TypePtr* adr_type = NULL; // debug-mode-only argument
   debug_only(adr_type = C->get_adr_type(adr_idx));
   Node* mem = memory(adr_idx);
   Node* ld;
   if (require_atomic_access && bt == T_LONG) {
-    ld = LoadLNode::make_atomic(ctl, mem, adr, adr_type, t, mo, control_dependency, unaligned, mismatched);
+    ld = LoadLNode::make_atomic(ctl, mem, adr, adr_type, t, mo, control_dependency, unaligned, mismatched, unsafe);
   } else if (require_atomic_access && bt == T_DOUBLE) {
-    ld = LoadDNode::make_atomic(ctl, mem, adr, adr_type, t, mo, control_dependency, unaligned, mismatched);
+    ld = LoadDNode::make_atomic(ctl, mem, adr, adr_type, t, mo, control_dependency, unaligned, mismatched, unsafe);
   } else {
-    ld = LoadNode::make(_gvn, ctl, mem, adr, adr_type, t, bt, mo, control_dependency, unaligned, mismatched);
+    ld = LoadNode::make(_gvn, ctl, mem, adr, adr_type, t, bt, mo, control_dependency, unaligned, mismatched, unsafe);
   }
   ld = _gvn.transform(ld);
   if (((bt == T_OBJECT) && C->do_escape_analysis()) || C->eliminate_boxing()) {
@@ -1515,7 +1516,8 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
                                 MemNode::MemOrd mo,
                                 bool require_atomic_access,
                                 bool unaligned,
-                                bool mismatched) {
+                                bool mismatched,
+                                bool unsafe) {
   assert(adr_idx != Compile::AliasIdxTop, "use other store_to_memory factory" );
   const TypePtr* adr_type = NULL;
   debug_only(adr_type = C->get_adr_type(adr_idx));
@@ -1533,6 +1535,9 @@ Node* GraphKit::store_to_memory(Node* ctl, Node* adr, Node *val, BasicType bt,
   }
   if (mismatched) {
     st->as_Store()->set_mismatched_access();
+  }
+  if (unsafe) {
+    st->as_Store()->set_unsafe_access();
   }
   st = _gvn.transform(st);
   set_memory(st, adr_idx);
@@ -1790,12 +1795,13 @@ Node* GraphKit::set_results_for_java_call(CallJavaNode* call, bool separate_io_p
 // A better answer would be to separate out card marks from other memory.
 // For now, return the input memory state, so that it can be reused
 // after the call, if this call has restricted memory effects.
-Node* GraphKit::set_predefined_input_for_runtime_call(SafePointNode* call) {
+Node* GraphKit::set_predefined_input_for_runtime_call(SafePointNode* call, Node* narrow_mem) {
   // Set fixed predefined input arguments
   Node* memory = reset_memory();
+  Node* m = narrow_mem == NULL ? memory : narrow_mem;
   call->init_req( TypeFunc::Control,   control()  );
   call->init_req( TypeFunc::I_O,       top()      ); // does no i/o
-  call->init_req( TypeFunc::Memory,    memory     ); // may gc ptrs
+  call->init_req( TypeFunc::Memory,    m          ); // may gc ptrs
   call->init_req( TypeFunc::FramePtr,  frameptr() );
   call->init_req( TypeFunc::ReturnAdr, top()      );
   return memory;
@@ -2453,9 +2459,7 @@ Node* GraphKit::make_runtime_call(int flags,
   } else {
     assert(!wide_out, "narrow in => narrow out");
     Node* narrow_mem = memory(adr_type);
-    prev_mem = reset_memory();
-    map()->set_memory(narrow_mem);
-    set_predefined_input_for_runtime_call(call);
+    prev_mem = set_predefined_input_for_runtime_call(call, narrow_mem);
   }
 
   // Hook each parm in order.  Stop looking at the first NULL.
@@ -2816,7 +2820,7 @@ Node* GraphKit::maybe_cast_profiled_receiver(Node* not_null_obj,
   Deoptimization::DeoptReason reason = Deoptimization::reason_class_check(spec_klass != NULL);
 
   // Make sure we haven't already deoptimized from this tactic.
-  if (too_many_traps(reason) || too_many_recompiles(reason))
+  if (too_many_traps_or_recompiles(reason))
     return NULL;
 
   // (No, this isn't a call, but it's enough like a virtual call
@@ -2871,9 +2875,8 @@ Node* GraphKit::maybe_cast_profiled_obj(Node* obj,
     Deoptimization::DeoptReason class_reason = Deoptimization::Reason_speculate_class_check;
     Deoptimization::DeoptReason null_reason = Deoptimization::Reason_speculate_null_check;
 
-    if (!too_many_traps(null_reason) && !too_many_recompiles(null_reason) &&
-        !too_many_traps(class_reason) &&
-        !too_many_recompiles(class_reason)) {
+    if (!too_many_traps_or_recompiles(null_reason) &&
+        !too_many_traps_or_recompiles(class_reason)) {
       Node* not_null_obj = NULL;
       // not_null is true if we know the object is not null and
       // there's no need for a null check
@@ -2898,8 +2901,7 @@ Node* GraphKit::maybe_cast_profiled_obj(Node* obj,
       obj = exact_obj;
     }
   } else {
-    if (!too_many_traps(Deoptimization::Reason_null_assert) &&
-        !too_many_recompiles(Deoptimization::Reason_null_assert)) {
+    if (!too_many_traps_or_recompiles(Deoptimization::Reason_null_assert)) {
       Node* exact_obj = null_assert(obj);
       replace_in_map(obj, exact_obj);
       obj = exact_obj;
@@ -3390,6 +3392,10 @@ Node* GraphKit::set_output_for_allocation(AllocateNode* alloc,
     record_for_igvn(minit_in); // fold it up later, if possible
     Node* minit_out = memory(rawidx);
     assert(minit_out->is_Proj() && minit_out->in(0) == init, "");
+    // Add an edge in the MergeMem for the header fields so an access
+    // to one of those has correct memory state
+    set_memory(minit_out, C->get_alias_index(oop_type->add_offset(oopDesc::mark_offset_in_bytes())));
+    set_memory(minit_out, C->get_alias_index(oop_type->add_offset(oopDesc::klass_offset_in_bytes())));
     if (oop_type->isa_aryptr()) {
       const TypePtr* telemref = oop_type->add_offset(Type::OffsetBot);
       int            elemidx  = C->get_alias_index(telemref);

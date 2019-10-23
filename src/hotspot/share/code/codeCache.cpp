@@ -274,10 +274,10 @@ void CodeCache::initialize_heaps() {
   }
   // Make sure we have enough space for VM internal code
   uint min_code_cache_size = CodeCacheMinimumUseSpace DEBUG_ONLY(* 3);
-  if (non_nmethod_size < (min_code_cache_size + code_buffers_size)) {
+  if (non_nmethod_size < min_code_cache_size) {
     vm_exit_during_initialization(err_msg(
         "Not enough space in non-nmethod code heap to run VM: " SIZE_FORMAT "K < " SIZE_FORMAT "K",
-        non_nmethod_size/K, (min_code_cache_size + code_buffers_size)/K));
+        non_nmethod_size/K, min_code_cache_size/K));
   }
 
   // Verify sizes and update flag values
@@ -1391,7 +1391,7 @@ void CodeCache::report_codemem_full(int code_blob_type, bool print) {
     if (heap->full_count() == 0) {
       LogTarget(Debug, codecache) lt;
       if (lt.is_enabled()) {
-        CompileBroker::print_heapinfo(tty, "all", "4096"); // details, may be a lot!
+        CompileBroker::print_heapinfo(tty, "all", 4096); // details, may be a lot!
       }
     }
   }
@@ -1678,7 +1678,7 @@ void CodeCache::log_state(outputStream* st) {
 
 //---<  BEGIN  >--- CodeHeap State Analytics.
 
-void CodeCache::aggregate(outputStream *out, const char* granularity) {
+void CodeCache::aggregate(outputStream *out, size_t granularity) {
   FOR_ALL_ALLOCABLE_HEAPS(heap) {
     CodeHeapState::aggregate(out, (*heap), granularity);
   }

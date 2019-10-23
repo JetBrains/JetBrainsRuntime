@@ -535,6 +535,23 @@ void MetaspaceUtils::print_vs(outputStream* out, size_t scale) {
   }
 }
 
+static void print_basic_switches(outputStream* out, size_t scale) {
+  out->print("MaxMetaspaceSize: ");
+  if (MaxMetaspaceSize >= (max_uintx) - (2 * os::vm_page_size())) {
+    // aka "very big". Default is max_uintx, but due to rounding in arg parsing the real
+    // value is smaller.
+    out->print("unlimited");
+  } else {
+    print_human_readable_size(out, MaxMetaspaceSize, scale);
+  }
+  out->cr();
+  if (Metaspace::using_class_space()) {
+    out->print("CompressedClassSpaceSize: ");
+    print_human_readable_size(out, CompressedClassSpaceSize, scale);
+  }
+  out->cr();
+}
+
 // This will print out a basic metaspace usage report but
 // unlike print_report() is guaranteed not to lock or to walk the CLDG.
 void MetaspaceUtils::print_basic_report(outputStream* out, size_t scale) {
@@ -615,6 +632,12 @@ void MetaspaceUtils::print_basic_report(outputStream* out, size_t scale) {
                               Metaspace::chunk_manager_metadata()->free_chunks_total_bytes(), scale);
     out->cr();
   }
+
+  out->cr();
+
+  // Print basic settings
+  print_basic_switches(out, scale);
+
   out->cr();
 
 }
@@ -799,19 +822,11 @@ void MetaspaceUtils::print_report(outputStream* out, size_t scale, int flags) {
   // Print some interesting settings
   out->cr();
   out->cr();
-  out->print("MaxMetaspaceSize: ");
-  print_human_readable_size(out, MaxMetaspaceSize, scale);
+  print_basic_switches(out, scale);
+
   out->cr();
   out->print("InitialBootClassLoaderMetaspaceSize: ");
   print_human_readable_size(out, InitialBootClassLoaderMetaspaceSize, scale);
-  out->cr();
-
-  out->print("UseCompressedClassPointers: %s", UseCompressedClassPointers ? "true" : "false");
-  out->cr();
-  if (Metaspace::using_class_space()) {
-    out->print("CompressedClassSpaceSize: ");
-    print_human_readable_size(out, CompressedClassSpaceSize, scale);
-  }
 
   out->cr();
   out->cr();
@@ -1585,67 +1600,6 @@ void ClassLoaderMetaspace::add_to_statistics(ClassLoaderMetaspaceStatistics* out
 /////////////// Unit tests ///////////////
 
 #ifndef PRODUCT
-
-class TestMetaspaceUtilsTest : AllStatic {
- public:
-  static void test_reserved() {
-    size_t reserved = MetaspaceUtils::reserved_bytes();
-
-    assert(reserved > 0, "assert");
-
-    size_t committed  = MetaspaceUtils::committed_bytes();
-    assert(committed <= reserved, "assert");
-
-    size_t reserved_metadata = MetaspaceUtils::reserved_bytes(Metaspace::NonClassType);
-    assert(reserved_metadata > 0, "assert");
-    assert(reserved_metadata <= reserved, "assert");
-
-    if (UseCompressedClassPointers) {
-      size_t reserved_class    = MetaspaceUtils::reserved_bytes(Metaspace::ClassType);
-      assert(reserved_class > 0, "assert");
-      assert(reserved_class < reserved, "assert");
-    }
-  }
-
-  static void test_committed() {
-    size_t committed = MetaspaceUtils::committed_bytes();
-
-    assert(committed > 0, "assert");
-
-    size_t reserved  = MetaspaceUtils::reserved_bytes();
-    assert(committed <= reserved, "assert");
-
-    size_t committed_metadata = MetaspaceUtils::committed_bytes(Metaspace::NonClassType);
-    assert(committed_metadata > 0, "assert");
-    assert(committed_metadata <= committed, "assert");
-
-    if (UseCompressedClassPointers) {
-      size_t committed_class    = MetaspaceUtils::committed_bytes(Metaspace::ClassType);
-      assert(committed_class > 0, "assert");
-      assert(committed_class < committed, "assert");
-    }
-  }
-
-  static void test_virtual_space_list_large_chunk() {
-    VirtualSpaceList* vs_list = new VirtualSpaceList(os::vm_allocation_granularity());
-    MutexLockerEx cl(MetaspaceExpand_lock, Mutex::_no_safepoint_check_flag);
-    // A size larger than VirtualSpaceSize (256k) and add one page to make it _not_ be
-    // vm_allocation_granularity aligned on Windows.
-    size_t large_size = (size_t)(2*256*K + (os::vm_page_size()/BytesPerWord));
-    large_size += (os::vm_page_size()/BytesPerWord);
-    vs_list->get_new_chunk(large_size, 0);
-  }
-
-  static void test() {
-    test_reserved();
-    test_committed();
-    test_virtual_space_list_large_chunk();
-  }
-};
-
-void TestMetaspaceUtils_test() {
-  TestMetaspaceUtilsTest::test();
-}
 
 class TestVirtualSpaceNodeTest {
   static void chunk_up(size_t words_left, size_t& num_medium_chunks,

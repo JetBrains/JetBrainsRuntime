@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ public class SubSystem {
     public void setPath(String cgroupPath) {
         if (root != null && cgroupPath != null) {
             if (root.equals("/")) {
-                if (cgroupPath.equals("/")) {
+                if (!cgroupPath.equals("/")) {
                     path = mountPoint + cgroupPath;
                 }
                 else {
@@ -60,7 +60,7 @@ public class SubSystem {
                     path = mountPoint;
                 }
                 else {
-                    if (root.indexOf(cgroupPath) == 0) {
+                    if (cgroupPath.startsWith(root)) {
                         if (cgroupPath.length() > root.length()) {
                             String cgroupSubstr = cgroupPath.substring(root.length());
                             path = mountPoint + cgroupSubstr;
@@ -109,7 +109,7 @@ public class SubSystem {
             retval = Long.parseLong(strval);
         } catch (NumberFormatException e) {
             // For some properties (e.g. memory.limit_in_bytes) we may overflow the range of signed long.
-            // In this case, return Long.max
+            // In this case, return Long.MAX_VALUE
             BigInteger b = new BigInteger(strval);
             if (b.compareTo(BigInteger.valueOf(Long.MAX_VALUE)) > 0) {
                 return Long.MAX_VALUE;

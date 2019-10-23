@@ -547,7 +547,7 @@ public class ModulePath implements ModuleFinder {
                     = new BufferedReader(new InputStreamReader(in, "UTF-8"));
                 String cn;
                 while ((cn = nextLine(reader)) != null) {
-                    if (cn.length() > 0) {
+                    if (!cn.isEmpty()) {
                         String pn = packageName(cn);
                         if (!packages.contains(pn)) {
                             String msg = "Provider class " + cn + " not in module";
@@ -600,7 +600,7 @@ public class ModulePath implements ModuleFinder {
         mn = Patterns.REPEATING_DOTS.matcher(mn).replaceAll(".");
 
         // drop leading dots
-        if (mn.length() > 0 && mn.charAt(0) == '.')
+        if (!mn.isEmpty() && mn.charAt(0) == '.')
             mn = Patterns.LEADING_DOTS.matcher(mn).replaceAll("");
 
         // drop trailing dots

@@ -39,6 +39,7 @@
 #include "interpreter/bytecode.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "logging/log.hpp"
+#include "memory/heapShared.hpp"
 #include "memory/oopFactory.hpp"
 #include "memory/referenceType.hpp"
 #include "memory/resourceArea.hpp"
@@ -844,10 +845,6 @@ JVM_ENTRY(jclass, JVM_FindClassFromClass(JNIEnv *env, const char *name,
   Handle h_prot  (THREAD, protection_domain);
   jclass result = find_class_from_class_loader(env, h_name, init, h_loader,
                                                h_prot, true, thread);
-  if (result != NULL) {
-    oop mirror = JNIHandles::resolve_non_null(result);
-    Klass* to_class = java_lang_Class::as_Klass(mirror);
-  }
 
   if (log_is_enabled(Debug, class, resolve) && result != NULL) {
     // this function is generally only used for class loading during verification.
@@ -3588,6 +3585,13 @@ JVM_END
 JVM_LEAF(jboolean, JVM_SupportsCX8())
   JVMWrapper("JVM_SupportsCX8");
   return VM_Version::supports_cx8();
+JVM_END
+
+JVM_ENTRY(void, JVM_InitializeFromArchive(JNIEnv* env, jclass cls))
+  JVMWrapper("JVM_InitializeFromArchive");
+  Klass* k = java_lang_Class::as_Klass(JNIHandles::resolve(cls));
+  assert(k->is_klass(), "just checking");
+  HeapShared::initialize_from_archived_subgraph(k);
 JVM_END
 
 // Returns an array of all live Thread objects (VM internal JavaThreads,

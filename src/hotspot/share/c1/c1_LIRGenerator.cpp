@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1640,7 +1640,7 @@ LIR_Opr LIRGenerator::access_atomic_cmpxchg_at(DecoratorSet decorators, BasicTyp
   // Atomic operations are SEQ_CST by default
   decorators |= C1_READ_ACCESS;
   decorators |= C1_WRITE_ACCESS;
-  decorators |= ((decorators & MO_DECORATOR_MASK) != 0) ? MO_SEQ_CST : 0;
+  decorators |= ((decorators & MO_DECORATOR_MASK) == 0) ? MO_SEQ_CST : 0;
   LIRAccess access(this, decorators, base, offset, type);
   if (access.is_raw()) {
     return _barrier_set->BarrierSetC1::atomic_cmpxchg_at(access, cmp_value, new_value);
@@ -1654,7 +1654,7 @@ LIR_Opr LIRGenerator::access_atomic_xchg_at(DecoratorSet decorators, BasicType t
   // Atomic operations are SEQ_CST by default
   decorators |= C1_READ_ACCESS;
   decorators |= C1_WRITE_ACCESS;
-  decorators |= ((decorators & MO_DECORATOR_MASK) != 0) ? MO_SEQ_CST : 0;
+  decorators |= ((decorators & MO_DECORATOR_MASK) == 0) ? MO_SEQ_CST : 0;
   LIRAccess access(this, decorators, base, offset, type);
   if (access.is_raw()) {
     return _barrier_set->BarrierSetC1::atomic_xchg_at(access, value);
@@ -1668,7 +1668,7 @@ LIR_Opr LIRGenerator::access_atomic_add_at(DecoratorSet decorators, BasicType ty
   // Atomic operations are SEQ_CST by default
   decorators |= C1_READ_ACCESS;
   decorators |= C1_WRITE_ACCESS;
-  decorators |= ((decorators & MO_DECORATOR_MASK) != 0) ? MO_SEQ_CST : 0;
+  decorators |= ((decorators & MO_DECORATOR_MASK) == 0) ? MO_SEQ_CST : 0;
   LIRAccess access(this, decorators, base, offset, type);
   if (access.is_raw()) {
     return _barrier_set->BarrierSetC1::atomic_add_at(access, value);
@@ -2138,7 +2138,7 @@ void LIRGenerator::do_UnsafeGetObject(UnsafeGetObject* x) {
   off.load_item();
   src.load_item();
 
-  DecoratorSet decorators = IN_HEAP;
+  DecoratorSet decorators = IN_HEAP | C1_UNSAFE_ACCESS;
 
   if (x->is_volatile()) {
     decorators |= MO_SEQ_CST;
@@ -2172,7 +2172,7 @@ void LIRGenerator::do_UnsafePutObject(UnsafePutObject* x) {
 
   set_no_result(x);
 
-  DecoratorSet decorators = IN_HEAP;
+  DecoratorSet decorators = IN_HEAP | C1_UNSAFE_ACCESS;
   if (type == T_ARRAY || type == T_OBJECT) {
     decorators |= ON_UNKNOWN_OOP_REF;
   }
@@ -2188,7 +2188,7 @@ void LIRGenerator::do_UnsafeGetAndSetObject(UnsafeGetAndSetObject* x) {
   LIRItem off(x->offset(), this);
   LIRItem value(x->value(), this);
 
-  DecoratorSet decorators = IN_HEAP | MO_SEQ_CST;
+  DecoratorSet decorators = IN_HEAP | C1_UNSAFE_ACCESS | MO_SEQ_CST;
 
   if (type == T_ARRAY || type == T_OBJECT) {
     decorators |= ON_UNKNOWN_OOP_REF;

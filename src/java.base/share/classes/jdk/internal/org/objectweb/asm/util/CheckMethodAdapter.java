@@ -1307,7 +1307,7 @@ public class CheckMethodAdapter extends MethodVisitor {
      */
     static void checkMethodIdentifier(int version, final String name,
             final String msg) {
-        if (name == null || name.length() == 0) {
+        if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("Invalid " + msg
                     + " (must not be null or empty)");
         }
@@ -1347,7 +1347,7 @@ public class CheckMethodAdapter extends MethodVisitor {
      *            a message to be used in case of error.
      */
     static void checkInternalName(final String name, final String msg) {
-        if (name == null || name.length() == 0) {
+        if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("Invalid " + msg
                     + " (must not be null or empty)");
         }

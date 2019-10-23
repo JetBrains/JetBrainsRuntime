@@ -197,7 +197,7 @@ public class MethodHandles {
             throw new IllegalAccessException(callerModule + " does not read " + targetModule);
         if (targetModule.isNamed()) {
             String pn = targetClass.getPackageName();
-            assert pn.length() > 0 : "unnamed package cannot be in named module";
+            assert !pn.isEmpty() : "unnamed package cannot be in named module";
             if (!targetModule.isOpen(pn, callerModule))
                 throw new IllegalAccessException(targetModule + " does not open " + pn + " to " + callerModule);
         }
@@ -4871,8 +4871,10 @@ assertEquals("boojum", (String) catTrace.invokeExact("boo", "jum"));
 
         // Step 1C: determine loop return type.
         // Step 1D: check other types.
-        final Class<?> loopReturnType = fini.stream().filter(Objects::nonNull).map(MethodHandle::type).
-                map(MethodType::returnType).findFirst().orElse(void.class);
+        // local variable required here; see JDK-8223553
+        Stream<Class<?>> cstream = fini.stream().filter(Objects::nonNull).map(MethodHandle::type)
+                .map(MethodType::returnType);
+        final Class<?> loopReturnType = cstream.findFirst().orElse(void.class);
         loopChecks1cd(pred, fini, loopReturnType);
 
         // Step 2: determine parameter lists.

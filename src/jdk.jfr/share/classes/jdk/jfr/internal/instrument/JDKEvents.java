@@ -28,7 +28,6 @@ package jdk.jfr.internal.instrument;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.internal.module.Modules;
 import jdk.jfr.Event;
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
@@ -38,8 +37,12 @@ import jdk.jfr.events.ExceptionThrownEvent;
 import jdk.jfr.events.FileForceEvent;
 import jdk.jfr.events.FileReadEvent;
 import jdk.jfr.events.FileWriteEvent;
+import jdk.jfr.events.SecurityPropertyModificationEvent;
 import jdk.jfr.events.SocketReadEvent;
 import jdk.jfr.events.SocketWriteEvent;
+import jdk.jfr.events.TLSHandshakeEvent;
+import jdk.jfr.events.X509CertificateEvent;
+import jdk.jfr.events.X509ValidationEvent;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
@@ -49,6 +52,13 @@ import jdk.jfr.internal.SecuritySupport;
 import jdk.jfr.internal.Utils;
 
 public final class JDKEvents {
+
+    private static final Class<?>[] mirrorEventClasses = {
+        SecurityPropertyModificationEvent.class,
+        TLSHandshakeEvent.class,
+        X509CertificateEvent.class,
+        X509ValidationEvent.class
+    };
 
     private static final Class<?>[] eventClasses = {
         FileForceEvent.class,
@@ -60,7 +70,11 @@ public final class JDKEvents {
         ExceptionStatisticsEvent.class,
         ErrorThrownEvent.class,
         ActiveSettingEvent.class,
-        ActiveRecordingEvent.class
+        ActiveRecordingEvent.class,
+        jdk.internal.event.SecurityPropertyModificationEvent.class,
+        jdk.internal.event.TLSHandshakeEvent.class,
+        jdk.internal.event.X509CertificateEvent.class,
+        jdk.internal.event.X509ValidationEvent.class
     };
 
     // This is a list of the classes with instrumentation code that should be applied.
@@ -83,12 +97,9 @@ public final class JDKEvents {
     public synchronized static void initialize() {
         try {
             if (initializationTriggered == false) {
-                Module jdkJfrModule = Event.class.getModule();
-                Module javaBaseModule = Object.class.getModule();
-                Modules.addReads(javaBaseModule, jdkJfrModule);
-                Modules.addExports(jdkJfrModule, Utils.EVENTS_PACKAGE_NAME, javaBaseModule);
-                Modules.addExports(jdkJfrModule, Utils.INSTRUMENT_PACKAGE_NAME, javaBaseModule);
-                Modules.addExports(jdkJfrModule, Utils.HANDLERS_PACKAGE_NAME, javaBaseModule);
+                for (Class<?> mirrorEventClass : mirrorEventClasses) {
+                    SecuritySupport.registerMirror(((Class<? extends Event>)mirrorEventClass));
+                }
                 for (Class<?> eventClass : eventClasses) {
                     SecuritySupport.registerEvent((Class<? extends Event>) eventClass);
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -106,7 +106,7 @@ public class CLDRConverter {
     private static final ResourceBundle.Control defCon =
         ResourceBundle.Control.getControl(ResourceBundle.Control.FORMAT_DEFAULT);
 
-    private static final String[] AVAILABLE_TZIDS = TimeZone.getAvailableIDs();
+    private static Set<String> AVAILABLE_TZIDS;
     private static String zoneNameTempFile;
     private static String tzDataDir;
     private static final Map<String, String> canonicalTZMap = new HashMap<>();
@@ -340,17 +340,26 @@ public class CLDRConverter {
                     if (sb.indexOf("root") == -1) {
                         sb.append("root");
                     }
-                    Bundle b = new Bundle(id, sb.toString(), null, null);
-                    // Insert the bundle for root at the top so that it will get
-                    // processed first.
-                    if ("root".equals(id)) {
-                        retList.add(0, b);
-                    } else {
-                        retList.add(b);
-                    }
+                    retList.add(new Bundle(id, sb.toString(), null, null));
                 }
             }
         }
+
+        // Sort the bundles based on id. This will make sure all the parent bundles are
+        // processed first, e.g., for en_GB bundle, en_001, and "root" comes before
+        // en_GB. In order for "root" to come at the beginning, "root" is replaced with
+        // empty string on comparison.
+        retList.sort((o1, o2) -> {
+            String id1 = o1.getID();
+            String id2 = o2.getID();
+            if(id1.equals("root")) {
+                id1 = "";
+            }
+            if(id2.equals("root")) {
+                id2 = "";
+            }
+            return id1.compareTo(id2);
+        });
         return retList;
     }
 
@@ -711,7 +720,7 @@ public class CLDRConverter {
             });
         }
 
-        Arrays.stream(AVAILABLE_TZIDS).forEach(tzid -> {
+        getAvailableZoneIds().stream().forEach(tzid -> {
             // If the tzid is deprecated, get the data for the replacement id
             String tzKey = Optional.ofNullable((String)handlerSupplMeta.get(tzid))
                                    .orElse(tzid);
@@ -1053,8 +1062,20 @@ public class CLDRConverter {
             StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
     }
 
+    // This method assumes handlerMetaZones is already initialized
+    private static Set<String> getAvailableZoneIds() {
+        assert handlerMetaZones != null;
+        if (AVAILABLE_TZIDS == null) {
+            AVAILABLE_TZIDS = new HashSet<>(ZoneId.getAvailableZoneIds());
+            AVAILABLE_TZIDS.addAll(handlerMetaZones.keySet());
+            AVAILABLE_TZIDS.remove(MetaZonesParseHandler.NO_METAZONE_KEY);
+        }
+
+        return AVAILABLE_TZIDS;
+    }
+
     private static Stream<String> zidMapEntry() {
-        return ZoneId.getAvailableZoneIds().stream()
+        return getAvailableZoneIds().stream()
                 .map(id -> {
                     String canonId = canonicalTZMap.getOrDefault(id, id);
                     String meta = handlerMetaZones.get(canonId);

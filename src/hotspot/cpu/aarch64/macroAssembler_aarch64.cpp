@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2014, 2015, Red Hat Inc. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -372,15 +372,9 @@ void MacroAssembler::set_last_Java_frame(Register last_java_sp,
                                          Register last_java_fp,
                                          address  last_java_pc,
                                          Register scratch) {
-  if (last_java_pc != NULL) {
-    adr(scratch, last_java_pc);
-  } else {
-    // FIXME: This is almost never correct.  We should delete all
-    // cases of set_last_Java_frame with last_java_pc=NULL and use the
-    // correct return address instead.
-    adr(scratch, pc());
-  }
+  assert(last_java_pc != NULL, "must provide a valid PC");
 
+  adr(scratch, last_java_pc);
   str(scratch, Address(rthread,
                        JavaThread::frame_anchor_offset()
                        + JavaFrameAnchor::last_Java_pc_offset()));
@@ -397,7 +391,7 @@ void MacroAssembler::set_last_Java_frame(Register last_java_sp,
   } else {
     InstructionMark im(this);
     L.add_patch_at(code(), locator());
-    set_last_Java_frame(last_java_sp, last_java_fp, (address)NULL, scratch);
+    set_last_Java_frame(last_java_sp, last_java_fp, pc() /* Patched later */, scratch);
   }
 }
 
@@ -812,6 +806,18 @@ address MacroAssembler::emit_trampoline_stub(int insts_call_instruction_offset,
   return stub_start_addr;
 }
 
+void MacroAssembler::emit_static_call_stub() {
+  // CompiledDirectStaticCall::set_to_interpreted knows the
+  // exact layout of this stub.
+
+  isb();
+  mov_metadata(rmethod, (Metadata*)NULL);
+
+  // Jump to the entry point of the i2c stub.
+  movptr(rscratch1, 0);
+  br(rscratch1);
+}
+
 void MacroAssembler::c2bool(Register x) {
   // implements x == 0 ? 0 : 1
   // note: must only look at least-significant byte of x
@@ -957,17 +963,6 @@ RegisterOrConstant MacroAssembler::delayed_value_impl(intptr_t* delayed_value_ad
     add(tmp, tmp, offset);
 
   return RegisterOrConstant(tmp);
-}
-
-
-void MacroAssembler:: notify(int type) {
-  if (type == bytecode_start) {
-    // set_last_Java_frame(esp, rfp, (address)NULL);
-    Assembler:: notify(type);
-    // reset_last_Java_frame(true);
-  }
-  else
-    Assembler:: notify(type);
 }
 
 // Look up the method for a megamorphic invokeinterface call.
@@ -1383,22 +1378,12 @@ Address MacroAssembler::argument_address(RegisterOrConstant arg_slot,
 void MacroAssembler::call_VM_leaf_base(address entry_point,
                                        int number_of_arguments,
                                        Label *retaddr) {
-  call_VM_leaf_base1(entry_point, number_of_arguments, 0, ret_type_integral, retaddr);
-}
-
-void MacroAssembler::call_VM_leaf_base1(address entry_point,
-                                        int number_of_gp_arguments,
-                                        int number_of_fp_arguments,
-                                        ret_type type,
-                                        Label *retaddr) {
   Label E, L;
 
   stp(rscratch1, rmethod, Address(pre(sp, -2 * wordSize)));
 
-  // We add 1 to number_of_arguments because the thread in arg0 is
-  // not counted
   mov(rscratch1, entry_point);
-  blrt(rscratch1, number_of_gp_arguments + 1, number_of_fp_arguments, type);
+  blr(rscratch1);
   if (retaddr)
     bind(*retaddr);
 
@@ -2156,8 +2141,7 @@ void MacroAssembler::stop(const char* msg) {
   mov(c_rarg1, (address)ip);
   mov(c_rarg2, sp);
   mov(c_rarg3, CAST_FROM_FN_PTR(address, MacroAssembler::debug64));
-  // call(c_rarg3);
-  blrt(c_rarg3, 3, 0, 1);
+  blr(c_rarg3);
   hlt(0);
 }
 
@@ -2165,7 +2149,7 @@ void MacroAssembler::warn(const char* msg) {
   pusha();
   mov(c_rarg0, (address)msg);
   mov(lr, CAST_FROM_FN_PTR(address, warning));
-  blrt(lr, 1, 0, MacroAssembler::ret_type_void);
+  blr(lr);
   popa();
 }
 
@@ -2545,50 +2529,6 @@ void MacroAssembler::debug64(char* msg, int64_t pc, int64_t regs[])
     assert(false, "DEBUG MESSAGE: %s", msg);
   }
 }
-
-#ifdef BUILTIN_SIM
-// routine to generate an x86 prolog for a stub function which
-// bootstraps into the generated ARM code which directly follows the
-// stub
-//
-// the argument encodes the number of general and fp registers
-// passed by the caller and the callng convention (currently just
-// the number of general registers and assumes C argument passing)
-
-extern "C" {
-int aarch64_stub_prolog_size();
-void aarch64_stub_prolog();
-void aarch64_prolog();
-}
-
-void MacroAssembler::c_stub_prolog(int gp_arg_count, int fp_arg_count, int ret_type,
-                                   address *prolog_ptr)
-{
-  int calltype = (((ret_type & 0x3) << 8) |
-                  ((fp_arg_count & 0xf) << 4) |
-                  (gp_arg_count & 0xf));
-
-  // the addresses for the x86 to ARM entry code we need to use
-  address start = pc();
-  // printf("start = %lx\n", start);
-  int byteCount =  aarch64_stub_prolog_size();
-  // printf("byteCount = %x\n", byteCount);
-  int instructionCount = (byteCount + 3)/ 4;
-  // printf("instructionCount = %x\n", instructionCount);
-  for (int i = 0; i < instructionCount; i++) {
-    nop();
-  }
-
-  memcpy(start, (void*)aarch64_stub_prolog, byteCount);
-
-  // write the address of the setup routine and the call format at the
-  // end of into the copied code
-  u_int64_t *patch_end = (u_int64_t *)(start + byteCount);
-  if (prolog_ptr)
-    patch_end[-2] = (u_int64_t)prolog_ptr;
-  patch_end[-1] = calltype;
-}
-#endif
 
 void MacroAssembler::push_call_clobbered_registers() {
   int step = 4 * wordSize;
@@ -5619,7 +5559,6 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
 
       mov(result, len); // Save initial len
 
-#ifndef BUILTIN_SIM
       cmp(len, 8); // handle shortest strings first
       br(LT, LOOP_1);
       cmp(len, 32);
@@ -5695,7 +5634,7 @@ void MacroAssembler::encode_iso_array(Register src, Register dst,
       br(GE, NEXT_8);
 
     BIND(LOOP_1);
-#endif
+
     cbz(len, DONE);
     BIND(NEXT_1);
       ldrh(tmp1, Address(post(src, 2)));
@@ -5834,7 +5773,7 @@ void MacroAssembler::get_thread(Register dst) {
   push(saved_regs, sp);
 
   mov(lr, CAST_FROM_FN_PTR(address, JavaThread::aarch64_get_thread_helper));
-  blrt(lr, 1, 0, 1);
+  blr(lr);
   if (dst != c_rarg0) {
     mov(dst, c_rarg0);
   }

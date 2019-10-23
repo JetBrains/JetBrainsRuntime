@@ -314,13 +314,14 @@ void HandshakeState::process_self_inner(JavaThread* thread) {
     return;
   }
 
-  CautiouslyPreserveExceptionMark pem(thread);
   ThreadInVMForHandshake tivm(thread);
   if (!_semaphore.trywait()) {
     _semaphore.wait_with_safepoint_check(thread);
   }
   HandshakeOperation* op = OrderAccess::load_acquire(&_operation);
   if (op != NULL) {
+    HandleMark hm(thread);
+    CautiouslyPreserveExceptionMark pem(thread);
     // Disarm before execute the operation
     clear_handshake(thread);
     op->do_handshake(thread);

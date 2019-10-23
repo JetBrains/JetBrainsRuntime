@@ -52,8 +52,6 @@ class Dictionary : public Hashtable<InstanceKlass*, mtClass> {
 
   DictionaryEntry* get_entry(int index, unsigned int hash, Symbol* name);
 
-  void clean_cached_protection_domains(DictionaryEntry* probe);
-
 protected:
   static size_t entry_size();
 public:
@@ -79,6 +77,8 @@ public:
 
   void unlink();
   void remove_classes_in_error_state();
+
+  void clean_cached_protection_domains();
 
   // Protection domains
   InstanceKlass* find(unsigned int hash, Symbol* name, Handle protection_domain);

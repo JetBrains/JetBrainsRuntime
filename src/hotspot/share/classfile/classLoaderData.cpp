@@ -346,6 +346,11 @@ void ClassLoaderData::loaded_classes_do(KlassClosure* klass_closure) {
   for (Klass* k = OrderAccess::load_acquire(&_klasses); k != NULL; k = k->next_link()) {
     // Do not filter ArrayKlass oops here...
     if (k->is_array_klass() || (k->is_instance_klass() && InstanceKlass::cast(k)->is_loaded())) {
+#ifdef ASSERT
+      oop m = k->java_mirror();
+      assert(m != NULL, "NULL mirror");
+      assert(m->is_a(SystemDictionary::Class_klass()), "invalid mirror");
+#endif
       klass_closure->do_klass(k);
     }
   }
@@ -1414,6 +1419,13 @@ bool ClassLoaderDataGraph::do_unloading(bool clean_previous_versions) {
       }
       if (data->modules_defined()) {
         data->modules()->purge_all_module_reads();
+      }
+      // Clean cached pd lists
+      // It's unlikely, but some loaded classes in a dictionary might
+      // point to a protection_domain that has been unloaded.
+      // The dictionary pd_set points at entries in the ProtectionDomainCacheTable.
+      if (data->dictionary() != NULL) {
+        data->dictionary()->clean_cached_protection_domains();
       }
       data = data->next();
     }

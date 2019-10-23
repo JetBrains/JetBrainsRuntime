@@ -97,9 +97,12 @@ void ciMethodData::load_extra_data() {
     // in the translate_from call below) as we translate the copy:
     // update the copy as we go.
     int tag = dp_src->tag();
-    if (tag != DataLayout::arg_info_data_tag) {
-      memcpy(dp_dst, dp_src, ((intptr_t)MethodData::next_extra(dp_src)) - ((intptr_t)dp_src));
+    size_t entry_size = DataLayout::header_size_in_bytes();
+    if (tag != DataLayout::no_tag) {
+      ProfileData* src_data = dp_src->data_in();
+      entry_size = src_data->size_in_bytes();
     }
+    memcpy(dp_dst, dp_src, entry_size);
 
     switch(tag) {
     case DataLayout::speculative_trap_data_tag: {
@@ -138,15 +141,17 @@ void ciMethodData::load_data() {
   // Snapshot the data -- actually, take an approximate snapshot of
   // the data.  Any concurrently executing threads may be changing the
   // data as we copy it.
-  Copy::disjoint_words((HeapWord*) mdo,
-                       (HeapWord*) &_orig,
-                       sizeof(_orig) / HeapWordSize);
+  Copy::disjoint_words_atomic((HeapWord*) mdo,
+                              (HeapWord*) &_orig,
+                              sizeof(_orig) / HeapWordSize);
   Arena* arena = CURRENT_ENV->arena();
   _data_size = mdo->data_size();
   _extra_data_size = mdo->extra_data_size();
   int total_size = _data_size + _extra_data_size;
   _data = (intptr_t *) arena->Amalloc(total_size);
-  Copy::disjoint_words((HeapWord*) mdo->data_base(), (HeapWord*) _data, total_size / HeapWordSize);
+  Copy::disjoint_words_atomic((HeapWord*) mdo->data_base(),
+                              (HeapWord*) _data,
+                              total_size / HeapWordSize);
 
   // Traverse the profile data, translating any oops into their
   // ci equivalents.
