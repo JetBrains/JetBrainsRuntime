@@ -61,6 +61,10 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static int clickCount = 0;
     static int touchUpdates = 0;
     private static final int TOUCH_UPDATES_THRESHOLD = 2;
+    // all touch scrolls are measured in pixels
+    private static final int TOUCH_SCROLL_BEGIN = 2;
+    private static final int TOUCH_SCROLL_UPDATE = 3;
+    private static final int TOUCH_SCROLL_END = 4;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -792,6 +796,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         // TODO do we need any other button?
         int button = XConstants.buttons[0];
         int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
+        // turning off shift modifier
+        modifiers &= ~InputEvent.SHIFT_DOWN_MASK;
 
         long jWhen = XToolkit.nowMillisUTC_offset(dev.get_time());
 
@@ -799,6 +805,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             case XConstants.XI_TouchBegin:
                 touchUpdates = 0;
                 sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button);
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
                 ++touchUpdates;
@@ -810,13 +817,13 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
                 if (lastY - y != 0) {
                     int delta = lastY - y;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, delta);
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_UPDATE, delta);
                 }
                 if (lastX - x != 0) {
                     int delta = lastX - x;
                     // horizontal scroll
                     modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, delta);
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_UPDATE, delta);
                 }
                 break;
             case XConstants.XI_TouchEnd:
@@ -824,6 +831,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
                 }
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_END, 1);
                 break;
         }
 
@@ -831,14 +839,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         lastY = y;
     }
 
-    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int delta) {
+    private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
         postEventToEventQueue(
                 new MouseWheelEvent(getEventSource(), MouseEvent.MOUSE_WHEEL, jWhen,
                         modifiers,
                         x, y,
                         scaleDown((int) dev.get_root_x()),
                         scaleDown((int) dev.get_root_y()),
-                        0, false, MouseWheelEvent.WHEEL_PIXEL_SCROLL,
+                        0, false, type,
                         1, delta));
     }
 
