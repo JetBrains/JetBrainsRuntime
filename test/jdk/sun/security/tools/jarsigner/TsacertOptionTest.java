@@ -74,6 +74,7 @@ public class TsacertOptionTest extends Test {
                 "-storepass", PASSWORD,
                 "-keypass", PASSWORD,
                 "-dname", "CN=CA",
+                "-ext", "bc:c",
                 "-validity", Integer.toString(VALIDITY)).shouldHaveExitValue(0);
         keytool(
                 "-genkey",
