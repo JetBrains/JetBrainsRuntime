@@ -28,6 +28,7 @@ package com.apple.eawt;
 import java.awt.*;
 import java.awt.peer.*;
 import java.beans.Beans;
+import java.util.function.Consumer;
 
 import javax.swing.JMenuBar;
 
@@ -395,27 +396,23 @@ public class Application {
      */
     @SuppressWarnings("deprecation")
     public void requestToggleFullScreen(final Window window) {
-        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
-        if (!(peer instanceof LWWindowPeer)) return;
-        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
-        if (!(platformWindow instanceof CPlatformWindow)) return;
-        ((CPlatformWindow)platformWindow).toggleFullScreen();
+        invokeOnPlatformWindow(window, pw -> pw.toggleFullScreen());
     }
 
     public void requestEnterFullScreen(final Window window) {
-        final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
-        if (!(peer instanceof LWWindowPeer)) return;
-        Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
-        if (!(platformWindow instanceof CPlatformWindow)) return;
-        ((CPlatformWindow)platformWindow).enterFullScreen();
+        invokeOnPlatformWindow(window, pw -> pw.enterFullScreen());
     }
 
     public void requestLeaveFullScreen(final Window window) {
+        invokeOnPlatformWindow(window, pw -> pw.leaveFullScreen());
+    }
+
+    private void invokeOnPlatformWindow (final Window window, Consumer<CPlatformWindow> consumer) {
         final Object peer = AWTAccessor.getComponentAccessor().getPeer(window);
         if (!(peer instanceof LWWindowPeer)) return;
         Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
         if (!(platformWindow instanceof CPlatformWindow)) return;
-        ((CPlatformWindow)platformWindow).leaveFullScreen();
+        consumer.accept((CPlatformWindow)platformWindow);
     }
 
 
