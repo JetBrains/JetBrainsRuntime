@@ -337,7 +337,6 @@ void OopMapSet::all_do(const frame *fr, const RegisterMap *reg_map,
       if (base_loc != NULL && *base_loc != (oop)NULL && !Universe::is_narrow_oop_base(*base_loc)) {
         derived_oop_fn(base_loc, derived_loc);
       }
-      oms.next();
     }
   }
 
