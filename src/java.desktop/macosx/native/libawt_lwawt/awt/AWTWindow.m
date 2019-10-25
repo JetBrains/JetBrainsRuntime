@@ -1490,7 +1490,55 @@ JNF_COCOA_ENTER(env);
     if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
+        if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
+            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
+        }
+    }];
+
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    _toggleFullScreenMode
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow__1enterFullScreen
+(JNIEnv *env, jobject peer, jlong windowPtr)
+{
+JNF_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    SEL toggleFullScreenSelector = @selector(toggleFullScreen:);
+    if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
+
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
+            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
+        }
+    }];
+
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    _toggleFullScreenMode
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow__1leaveFullScreen
+(JNIEnv *env, jobject peer, jlong windowPtr)
+{
+JNF_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    SEL toggleFullScreenSelector = @selector(toggleFullScreen:);
+    if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
+
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+        if ((([nsWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask)) {
+            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
+        }
     }];
 
 JNF_COCOA_EXIT(env);
