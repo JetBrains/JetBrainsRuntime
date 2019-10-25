@@ -534,9 +534,19 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     }
 
     private native void _toggleFullScreenMode(final long model);
+    private native void _enterFullScreen(final long model);
+    private native void _leaveFullScreen(final long model);
 
     public void toggleFullScreen() {
         execute(this::_toggleFullScreenMode);
+    }
+
+    public void enterFullScreen() {
+        execute(this::_enterFullScreen);
+    }
+
+    public void leaveFullScreen() {
+        execute(this::_leaveFullScreen);
     }
 
     @Override // PlatformWindow
