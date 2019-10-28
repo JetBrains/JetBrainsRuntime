@@ -31,6 +31,7 @@
 #import "CGGlyphOutlines.h"
 #import "CoreTextSupport.h"
 #include "fontscalerdefs.h"
+#import "LWCToolkit.h"
 
 /* Use THIS_FILE when it is available. */
 #ifndef THIS_FILE
@@ -161,8 +162,8 @@ JNF_COCOA_ENTER(env);
     CGGlyph glyph;
     const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
     const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
-    if (CGGI_IsColorFont(cgFallback)) {
-        CGAffineTransform matrix = awtStrike->fAltTx;
+    if (IS_OSX_GT10_14 || CGGI_IsColorFont(cgFallback)) {
+        CGAffineTransform matrix = CGAffineTransformConcat(awtStrike->fAltTx, awtStrike->fFontTx);
         CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
         CTFontRef font = CTFontCreateWithGraphicsFont(cgFallback, fontSize, NULL, NULL);
         CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
