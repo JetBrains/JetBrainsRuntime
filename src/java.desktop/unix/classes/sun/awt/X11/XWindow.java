@@ -37,8 +37,6 @@ import sun.util.logging.PlatformLogger;
 
 import sun.awt.*;
 
-import sun.awt.image.PixelConverter;
-
 import sun.java2d.SunGraphics2D;
 import sun.java2d.SurfaceData;
 
@@ -62,9 +60,9 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static int touchUpdates = 0;
     private static final int TOUCH_UPDATES_THRESHOLD = 2;
     // all touch scrolls are measured in pixels
-    private static final int TOUCH_SCROLL_BEGIN = 2;
-    private static final int TOUCH_SCROLL_UPDATE = 3;
-    private static final int TOUCH_SCROLL_END = 4;
+    private static final int TOUCH_BEGIN = 2;
+    private static final int TOUCH_UPDATE = 3;
+    private static final int TOUCH_END = 4;
 
     // used to check if we need to re-create surfaceData.
     int oldWidth = -1;
@@ -804,8 +802,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
                 touchUpdates = 0;
-                sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button);
-                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_BEGIN, 1);
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
                 ++touchUpdates;
@@ -816,22 +813,21 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 }
 
                 if (lastY - y != 0) {
-                    int delta = lastY - y;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_UPDATE, delta);
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
                 }
                 if (lastX - x != 0) {
-                    int delta = lastX - x;
                     // horizontal scroll
                     modifiers |= InputEvent.SHIFT_DOWN_MASK;
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_UPDATE, delta);
+                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
                 }
                 break;
             case XConstants.XI_TouchEnd:
-                sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button);
                 if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, x, y, button);
+                    sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, x, y, button);
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
                 }
-                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_SCROLL_END, 1);
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
                 break;
         }
 
