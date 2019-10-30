@@ -2346,9 +2346,15 @@ Java_sun_awt_X11_XlibWrapper_XISelectEvents
     XIEventMask evmask;
     evmask.deviceid = (int)deviceid;
     evmask.mask_len = XIMaskLen(XI_LASTEVENT);
-    // FIXME potential byte order problem
-    evmask.mask = &mask;
-    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window), &evmask, 1);
+    union jlong_to_char_ptr
+    {
+        jlong value;
+        unsigned char mask[8];
+    } converter;
+    converter.value = mask;
+    evmask.mask = &converter.mask;
+    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window),
+                          &evmask, /*num masks*/ 1);
 }
 
 /*
