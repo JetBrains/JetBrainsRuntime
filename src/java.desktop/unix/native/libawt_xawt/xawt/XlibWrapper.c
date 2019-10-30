@@ -41,6 +41,8 @@
 #include <string.h>
 #include <X11/extensions/Xdbe.h>
 #include <X11/extensions/shape.h>
+#include <X11/extensions/XI2.h>
+#include <X11/extensions/XInput2.h>
 #include <X11/keysym.h>
 #include <X11/Sunkeysym.h>
 #include <X11/Xlib.h>
@@ -2314,6 +2316,63 @@ Java_sun_awt_X11_XlibWrapper_SetZOrder
     XConfigureWindow((Display *)jlong_to_ptr(display),
                      (Window)jlong_to_ptr(window),
                      value_mask, &wc );
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XIQueryVersion
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XIQueryVersion
+(JNIEnv *env, jclass clazz, jlong display, jlong major_version_iptr, jlong minor_version_iptr)
+{
+    return XIQueryVersion((Display *)jlong_to_ptr(display),
+        jlong_to_ptr(major_version_iptr), jlong_to_ptr(minor_version_iptr));
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XISelectEvents
+ */
+JNIEXPORT jint JNICALL
+Java_sun_awt_X11_XlibWrapper_XISelectEvents
+(JNIEnv *env, jclass clazz, jlong display, jlong window, jlong mask, jint deviceid)
+{
+    XIEventMask evmask;
+    evmask.deviceid = (int)deviceid;
+    evmask.mask_len = XIMaskLen(XI_LASTEVENT);
+    union jlong_to_char_ptr
+    {
+        jlong value;
+        unsigned char mask[8];
+    } converter;
+    converter.value = mask;
+    evmask.mask = &converter.mask;
+    return XISelectEvents((Display *)jlong_to_ptr(display), (Window)jlong_to_ptr(window),
+                          &evmask, /*num masks*/ 1);
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XGetEventData
+ */
+JNIEXPORT jboolean JNICALL
+Java_sun_awt_X11_XlibWrapper_XGetEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XGetEventData((Display *)jlong_to_ptr(display),
+                         (XGenericEventCookie *)ptr_to_jlong(ptr)) ? JNI_TRUE : JNI_FALSE;
+}
+
+/*
+ * Class:     XlibWrapper
+ * Method:    XFreeEventData
+ */
+JNIEXPORT void JNICALL
+Java_sun_awt_X11_XlibWrapper_XFreeEventData
+(JNIEnv *env, jclass clazz, jlong display, jlong ptr)
+{
+    return XFreeEventData((Display *)jlong_to_ptr(display), (XGenericEventCookie *)ptr_to_jlong(ptr));
 }
 
 /*
