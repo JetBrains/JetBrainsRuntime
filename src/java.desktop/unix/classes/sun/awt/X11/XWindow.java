@@ -58,6 +58,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
     static int touchUpdates = 0;
+    private static int touchBeginX = 0, touchBeginY = 0;
+    private static final int TOUCH_CLICK_RADIUS = 2;
     private static final int TOUCH_UPDATES_THRESHOLD = 2;
     // all touch scrolls are measured in pixels
     private static final int TOUCH_BEGIN = 2;
@@ -802,9 +804,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
         switch (dev.get_evtype()) {
             case XConstants.XI_TouchBegin:
                 touchUpdates = 0;
+                touchBeginX = x;
+                touchBeginY = y;
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
+                if (isInsideTouchClickBoundaries(x, y)) {
+                    break;
+                }
                 ++touchUpdates;
 
                 // workaround to distinguish touch move and touch click
@@ -833,6 +840,11 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
 
         lastX = x;
         lastY = y;
+    }
+
+    private boolean isInsideTouchClickBoundaries(int x, int y) {
+        return Math.abs(touchBeginX - x) <= TOUCH_CLICK_RADIUS &&
+                Math.abs(touchBeginY - y) <= TOUCH_CLICK_RADIUS;
     }
 
     private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
