@@ -405,9 +405,9 @@ public class XBaseWindow {
                 }
                 XToolkit.addToWinMap(window, this);
 
-                Long xiEventMask = (Long)params.get(XI_EVENT_MASK);
+                Long xiEventMask = (Long) params.get(XI_EVENT_MASK);
                 if (xiEventMask != null && XToolkit.isXInputEnabled()) {
-                    Integer xiDeviceId = (Integer)params.get(XI_DEVICE_ID);
+                    Integer xiDeviceId = (Integer) params.get(XI_DEVICE_ID);
                     if (xiDeviceId == null) {
                         xiDeviceId = XConstants.XIAllDevices;
                     }
@@ -1154,7 +1154,7 @@ public class XBaseWindow {
         }
 
         if (target == null && ev.get_type() == XConstants.GenericEvent &&
-            XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
+                XlibWrapper.XGetEventData(ev.get_xgeneric().get_display(), ev.pData)) {
             target = XToolkit.windowToXWindow(XToolkit.GetXIDeviceEvent(ev.get_xcookie()).get_event());
         }
 
