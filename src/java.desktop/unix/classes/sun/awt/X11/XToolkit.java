@@ -336,6 +336,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 log.finer("X locale modifiers are not supported, using default");
             }
             tryXKB();
+            checkXInput();
+
+            AwtScreenData defaultScreen = new AwtScreenData(XToolkit.getDefaultScreenData());
+            awt_defaultFg = defaultScreen.get_blackpixel();
 
             arrowCursor = XlibWrapper.XCreateFontCursor(XToolkit.getDisplay(),
                 XCursorFontConstants.XC_arrow);
@@ -743,6 +747,8 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 XBaseWindow.ungrabInput();
                 processException(thr);
             } finally {
+                // free event data if XGetEventData was called
+                XlibWrapper.XFreeEventData(getDisplay(), ev.pData);
                 awtUnlock();
             }
         }
@@ -2379,6 +2385,58 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
             default:
                  //System.out.println("XkbEvent of xkb_type "+xkb_type);
                  break;
+        }
+    }
+
+    private static volatile boolean hasXInputExtension = false;
+
+    public static boolean isXInputEnabled() {
+        return hasXInputExtension;
+    }
+
+    public static void checkXInput() {
+        awtLock();
+        try {
+            String extensionName = "XInputExtension";
+            boolean hasExtension = XlibWrapper.XQueryExtension(XToolkit.getDisplay(), extensionName,
+                    XlibWrapper.iarg1, XlibWrapper.iarg2, XlibWrapper.iarg3);
+            if (!hasExtension) {
+                log.warning("X Input extension isn't available, error: {0}", Native.getInt(XlibWrapper.iarg1));
+                return;
+            }
+
+            final int requiredMajor = 2;
+            final int requiredMinor = 2;
+            Native.putInt(XlibWrapper.iarg1, requiredMajor);
+            Native.putInt(XlibWrapper.iarg2, requiredMinor);
+            int status = XlibWrapper.XIQueryVersion(XToolkit.getDisplay(), XlibWrapper.iarg1, XlibWrapper.iarg2);
+            if (status == XConstants.BadRequest) {
+                log.warning("X Input2 not supported in the server");
+                return;
+            }
+
+            int major = Native.getInt(XlibWrapper.iarg1);
+            int minor = Native.getInt(XlibWrapper.iarg2);
+            if (major >= requiredMajor && minor >= requiredMinor) {
+                hasXInputExtension = true;
+            } else {
+                log.warning("Desired version is 2.2, server version is {0}.{1}", major, minor);
+            }
+        } finally {
+            awtUnlock();
+        }
+    }
+
+    public static XIDeviceEvent GetXIDeviceEvent(XGenericEventCookie cookie) {
+        return new XIDeviceEvent(cookie.get_data());
+    }
+
+    public static int XISelectEvents(long display, long window, long mask, int deviceid) {
+        if (isXInputEnabled()) {
+            return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
+        } else {
+            log.warning("Attempting to select xi events while xinput isn't available");
+            return XConstants.BadRequest;
         }
     }
 
