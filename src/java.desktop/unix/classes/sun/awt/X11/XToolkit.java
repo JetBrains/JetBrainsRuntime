@@ -2371,15 +2371,10 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         }
     }
 
-    private static boolean hasXInputExtension = false;
+    private static volatile boolean hasXInputExtension = false;
 
     public static boolean isXInputEnabled() {
-        awtLock();
-        try {
-            return hasXInputExtension;
-        } finally {
-            awtUnlock();
-        }
+        return hasXInputExtension;
     }
 
     public static void checkXInput() {
@@ -2393,7 +2388,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
                 return;
             }
 
-            // checking for 2.2 version
             final int requiredMajor = 2;
             final int requiredMinor = 2;
             Native.putInt(XlibWrapper.iarg1, requiredMajor);
@@ -2420,7 +2414,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return new XIDeviceEvent(cookie.get_data());
     }
 
-    // Use this one instead of native version
     public static int XISelectEvents(long display, long window, long mask, int deviceid) {
         if (isXInputEnabled()) {
             return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
