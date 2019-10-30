@@ -809,6 +809,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
+                // TODO remember skipped deltas and send them after
                 if (isInsideTouchClickBoundaries(x, y)) {
                     break;
                 }
