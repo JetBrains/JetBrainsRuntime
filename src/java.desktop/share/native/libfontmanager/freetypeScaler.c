@@ -46,6 +46,7 @@
 #include FT_SIZES_H
 #include FT_OUTLINE_H
 #include FT_SYNTHESIS_H
+#include FT_LCD_FILTER_H
 #include FT_MODULE_H
 #include FT_LCD_FILTER_H
 
@@ -976,6 +977,8 @@ static int setupFTContext(JNIEnv *env, jobject font2D, FTScalerInfo *scalerInfo,
             if (logFC) fprintf(stderr, "\n");
 #endif
         }
+
+        FT_Library_SetLcdFilter(scalerInfo->library, FT_LCD_FILTER_DEFAULT);
     }
 
     return 0;
