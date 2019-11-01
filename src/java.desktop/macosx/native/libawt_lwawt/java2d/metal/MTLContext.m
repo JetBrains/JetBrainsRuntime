@@ -382,40 +382,25 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     [self setEncoderTransform:encoder dest:dest];
 }
 
-- (id<MTLRenderCommandEncoder>) createRenderEncoderForDest:(id<MTLTexture>) dest {
-    id <MTLRenderCommandEncoder> mtlEncoder = [self createEncoderForDest: dest];
-    [self updateRenderEncoderProperties:mtlEncoder dest:dest];
-    return mtlEncoder;
-}
-
-- (id<MTLRenderCommandEncoder>)createSamplingEncoderForDest:(id<MTLTexture>)dest {
-    id <MTLRenderCommandEncoder> mtlEncoder = [self createRenderEncoderForDest:dest];
-    [mtlEncoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO compositeRule:alphaCompositeRule]];
-    [self setEncoderTransform:mtlEncoder dest:dest];
-    return mtlEncoder;
-}
-
 - (id<MTLBlitCommandEncoder>)createBlitEncoder {
     return _commandBuffer == nil ? nil : [_commandBuffer blitCommandEncoder];
 }
 
 - (id<MTLRenderCommandEncoder>) createCommonRenderEncoderForDest:(id<MTLTexture>) dest {
     if (commonRenderEncoder == nil) {
-        commonRenderEncoder = [self createRenderEncoderForDest: dest];
-    } else {
-        [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
+        commonRenderEncoder = [self createEncoderForDest: dest];
     }
+    [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
     return commonRenderEncoder;
 }
 
 - (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest {
     if (commonRenderEncoder == nil) {
-        commonRenderEncoder = [self createRenderEncoderForDest: dest];
-        [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
-    } else {
-        [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
-        [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
+        commonRenderEncoder = [self createEncoderForDest: dest];
     }
+    [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
+    [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
+
     return commonRenderEncoder;
 }
 
