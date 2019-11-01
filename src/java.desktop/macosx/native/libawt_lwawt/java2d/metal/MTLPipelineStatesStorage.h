@@ -23,7 +23,11 @@ MTLRenderPipelineDescriptor * templateTexturePipelineDesc;
 
 - (id) initWithDevice:(id<MTLDevice>)device shaderLibPath:(NSString *)shadersLib;
 - (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient;
-- (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied compositeRule:(int)compositeRule;
+- (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied
+    isDestPremultiplied:(bool)isDestPremultiplied
+    isSrcOpaque:(bool)isSrcOpaque
+    isDstOpaque:(bool)isDstOpaque
+    compositeRule:(int)compositeRule;
 - (id<MTLFunction>) getShader:(NSString *)name;
 @end
 

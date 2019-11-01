@@ -223,7 +223,7 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 void
 MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    encoder = [mtlc createCommonSamplingEncoderForDest:dstOps->pTexture];
+    encoder = [mtlc createCommonSamplingEncoderForDest:dstOps->pTexture isSrcOpaque:NO isDstOpaque:NO];
 }
 
 void
