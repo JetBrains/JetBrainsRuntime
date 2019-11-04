@@ -370,12 +370,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     [self setEncoderTransform:encoder dest:dest];
 }
 
-- (void) updateSamplingEncoderProperties:
-     (id<MTLRenderCommandEncoder>) encoder
-     dest:(id<MTLTexture>) dest
-     isSrcOpaque:(bool)isSrcOpaque
-     isDstOpaque:(bool)isDstOpaque
-{
+- (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
     if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         struct TxtFrameUniforms uf = {RGBA_TO_V4(color), 1};
         [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
@@ -383,11 +378,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
         struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0};
         [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     }
-    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO
-          isDestPremultiplied:NO
-          isSrcOpaque:isSrcOpaque
-          isDstOpaque:isDstOpaque
-          compositeRule:alphaCompositeRule]];
+    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO compositeRule:alphaCompositeRule]];
     [self setEncoderTransform:encoder dest:dest];
 }
 
@@ -403,15 +394,12 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return commonRenderEncoder;
 }
 
-- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest isSrcOpaque:(bool)isSrcOpaque isDstOpaque:(bool)isDstOpaque {
+- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest {
     if (commonRenderEncoder == nil) {
         commonRenderEncoder = [self createEncoderForDest: dest];
     }
     [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
-    [self updateSamplingEncoderProperties:commonRenderEncoder
-            dest:dest
-            isSrcOpaque:isSrcOpaque
-            isDstOpaque:isDstOpaque];
+    [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
 
     return commonRenderEncoder;
 }
