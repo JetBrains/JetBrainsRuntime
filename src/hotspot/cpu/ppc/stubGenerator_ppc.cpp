@@ -3060,6 +3060,7 @@ class StubGenerator: public StubCodeGenerator {
                                                              STUB_ENTRY(checkcast_arraycopy));
 
     // fill routines
+#ifdef COMPILER2
     if (OptimizeFill) {
       StubRoutines::_jbyte_fill          = generate_fill(T_BYTE,  false, "jbyte_fill");
       StubRoutines::_jshort_fill         = generate_fill(T_SHORT, false, "jshort_fill");
@@ -3068,6 +3069,7 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_arrayof_jshort_fill = generate_fill(T_SHORT, true, "arrayof_jshort_fill");
       StubRoutines::_arrayof_jint_fill   = generate_fill(T_INT,   true, "arrayof_jint_fill");
     }
+#endif
   }
 
   // Safefetch stubs.
@@ -3536,8 +3538,6 @@ class StubGenerator: public StubCodeGenerator {
     if (UseMultiplyToLenIntrinsic) {
       StubRoutines::_multiplyToLen = generate_multiplyToLen();
     }
-#endif
-
     if (UseSquareToLenIntrinsic) {
       StubRoutines::_squareToLen = generate_squareToLen();
     }
@@ -3552,6 +3552,7 @@ class StubGenerator: public StubCodeGenerator {
       StubRoutines::_montgomerySquare
         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_square);
     }
+#endif
 
     if (UseAESIntrinsics) {
       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
