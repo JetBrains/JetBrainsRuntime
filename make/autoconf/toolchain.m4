@@ -804,6 +804,32 @@ AC_DEFUN_ONCE([TOOLCHAIN_DETECT_TOOLCHAIN_EXTRA],
     BASIC_FIXUP_EXECUTABLE(OTOOL)
     BASIC_REQUIRE_PROGS(INSTALL_NAME_TOOL, install_name_tool)
     BASIC_FIXUP_EXECUTABLE(INSTALL_NAME_TOOL)
+
+    BASIC_PATH_PROGS(METAL, metal)
+    if test "x$METAL" = x; then
+      AC_MSG_CHECKING([if metal can be run using xcrun])
+      METAL="xcrun -sdk macosx metal"
+      test_metal=`$METAL --version 2>&1`
+      if test $? -ne 0; then
+        AC_MSG_RESULT([no])
+        AC_MSG_ERROR([XCode tool 'metal' neither found in path nor with xcrun])
+      else
+        AC_MSG_RESULT([yes, will be using '$METAL'])
+      fi
+    fi
+
+    BASIC_PATH_PROGS(METALLIB, metallib)
+    if test "x$METALLIB" = x; then
+      AC_MSG_CHECKING([if metallib can be run using xcrun])
+      METALLIB="xcrun -sdk macosx metallib"
+      test_metallib=`$METALLIB --version 2>&1`
+      if test $? -ne 0; then
+        AC_MSG_RESULT([no])
+        AC_MSG_ERROR([XCode tool 'metallib' neither found in path nor with xcrun])
+      else
+        AC_MSG_RESULT([yes, will be using '$METALLIB'])
+      fi
+    fi
   fi
 
   if test "x$TOOLCHAIN_TYPE" = xmicrosoft; then

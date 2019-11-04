@@ -945,9 +945,28 @@ endif
 ################################################################################
 
 ifeq ($(call isTargetOs, macosx), true)
-  $(INSTALL_LIBRARIES_HERE)/shaders.metallib : $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
-	xcrun -sdk macosx metal -c -o $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
-	xcrun -sdk macosx metallib -o $(INSTALL_LIBRARIES_HERE)/shaders.metallib $(SUPPORT_OUTPUTDIR)/native/$(MODULE)/libosxui/shaders.air
+  SHADERS_SRC := $(TOPDIR)/src/java.desktop/macosx/native/libawt_lwawt/awt/shaders.metal
+  SHADERS_SUPPORT_DIR := $(SUPPORT_OUTPUTDIR)/native/java.desktop/libosxui
+  SHADERS_AIR := $(SHADERS_SUPPORT_DIR)/shaders.air
+  SHADERS_LIB := $(INSTALL_LIBRARIES_HERE)/shaders.metallib
+
+  $(eval $(call SetupExecute, metal_shaders, \
+      INFO := Running metal on $(notdir $(SHADERS_SRC)) (for libosxui.dylib), \
+      DEPS := $(SHADERS_SRC), \
+      OUTPUT_FILE := $(SHADERS_AIR), \
+      SUPPORT_DIR := $(SHADERS_SUPPORT_DIR), \
+      COMMAND := $(METAL) -c -o $(SHADERS_AIR) $(SHADERS_SRC), \
+  ))
+
+  $(eval $(call SetupExecute, metallib_shaders, \
+      INFO := Running metallib on $(notdir $(SHADERS_AIR)) (for libosxui.dylib), \
+      DEPS := $(SHADERS_AIR), \
+      OUTPUT_FILE := $(SHADERS_LIB), \
+      SUPPORT_DIR := $(SHADERS_SUPPORT_DIR), \
+      COMMAND := $(METALLIB) -o $(SHADERS_LIB) $(SHADERS_AIR), \
+  ))
+
+  TARGETS += $(SHADERS_LIB)
 
   $(eval $(call SetupJdkLibrary, BUILD_LIBOSXUI, \
       NAME := osxui, \
@@ -971,8 +990,8 @@ ifeq ($(call isTargetOs, macosx), true)
           -ljava -ljvm, \
   ))
 
-  TARGETS += $(BUILD_LIBOSXUI) $(INSTALL_LIBRARIES_HERE)/shaders.metallib
-  $(BUILD_LIBOSXUI): $(INSTALL_LIBRARIES_HERE)/shaders.metallib
+  TARGETS += $(BUILD_LIBOSXUI)
+  $(BUILD_LIBOSXUI): $(SHADERS_LIB)
 
   $(BUILD_LIBOSXUI): $(BUILD_LIBAWT)
 
