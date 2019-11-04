@@ -39,58 +39,7 @@
 #include <string.h> // memcpy
 #include "IntArgbPre.h"
 
-#import <Accelerate/Accelerate.h>
-
-typedef struct {
-    MTLPixelFormat   format;
-    jboolean hasAlpha;
-    jboolean isPremult;
-    const uint8_t * permuteMap;
-
-} MTLRasterFormatInfo;
-
-// 0 denotes the alpha channel, 1 the red channel, 2 the green channel, and 3 the blue channel.
-const uint8_t permuteMap_rgbx[4] = { 1, 2, 3, 0 };
-const uint8_t permuteMap_bgrx[4] = { 3, 2, 1, 0 };
-
-static uint8_t revertPerm(const uint8_t * perm, uint8_t pos) {
-    for (int c = 0; c < 4; ++c) {
-        if (perm[c] == pos)
-            return c;
-    }
-    return -1;
-}
-
-#define uint2swizzle(channel) (channel == 0 ? MTLTextureSwizzleAlpha : (channel == 1 ? MTLTextureSwizzleRed : (channel == 2 ? MTLTextureSwizzleGreen : (channel == 3 ? MTLTextureSwizzleBlue : MTLTextureSwizzleZero))))
-
-/**
- * This table contains the "pixel formats" for all system memory surfaces
- * that Metal is capable of handling, indexed by the "PF_" constants defined
- * in MTLLSurfaceData.java.  These pixel formats contain information that is
- * passed to Metal when copying from a system memory ("Sw") surface to
- * an Metal surface
- */
-MTLRasterFormatInfo RasterFormatInfos[] = {
-        { MTLPixelFormatBGRA8Unorm, 1, 0, NULL }, /* 0 - IntArgb      */ // Argb (in java notation)
-        { MTLPixelFormatBGRA8Unorm, 1, 1, NULL }, /* 1 - IntArgbPre   */
-        { MTLPixelFormatBGRA8Unorm, 0, 1, NULL }, /* 2 - IntRgb       */ // xrgb
-        { MTLPixelFormatBGRA8Unorm, 0, 1, permuteMap_rgbx }, /* 3 - IntRgbx      */
-        { MTLPixelFormatRGBA8Unorm, 0, 1, NULL }, /* 4 - IntBgr       */ // xbgr
-        { MTLPixelFormatBGRA8Unorm, 0, 1, permuteMap_bgrx }, /* 5 - IntBgrx      */
-
-//        TODO: support 2-byte formats
-//        { GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV,
-//                2, 0, 1,                                     }, /* 7 - Ushort555Rgb */
-//        { GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1,
-//                2, 0, 1,                                     }, /* 8 - Ushort555Rgbx*/
-//        { GL_LUMINANCE, GL_UNSIGNED_BYTE,
-//                1, 0, 1,                                     }, /* 9 - ByteGray     */
-//        { GL_LUMINANCE, GL_UNSIGNED_SHORT,
-//                2, 0, 1,                                     }, /*10 - UshortGray   */
-//        { GL_BGR,  GL_UNSIGNED_BYTE,
-//                1, 0, 1,                                     }, /*11 - ThreeByteBgr */
-};
-
+extern MTLPixelFormat PixelFormats[];
 extern void J2dTraceImpl(int level, jboolean cr, const char *string, ...);
 
 void fillTxQuad(
@@ -157,23 +106,22 @@ MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
 
 static void drawTex2Tex(MTLContext *mtlc,
                         id<MTLTexture> src, id<MTLTexture> dst,
-                        jboolean isSrcOpaque, jboolean isDstOpaque,
+                        jboolean rtt, jint hint,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     if (mtlc == NULL || src == nil || dst == nil)
         return;
 
-//    J2dTraceLn2(J2D_TRACE_VERBOSE, "drawTex2Tex: src tex=%p, dst tex=%p", src, dst);
+//    J2dTraceLn2(J2D_TRACE_VERBOSE, "_drawTex2Tex: src tex=%p, dst tex=%p", src, dst);
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dst.width, dst.height);
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
 //    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 
-    id<MTLRenderCommandEncoder> encoder = [mtlc createCommonSamplingEncoderForDest:
-                                               dst
-                                               isSrcOpaque:isSrcOpaque
-                                               isDstOpaque:isDstOpaque];
+    id<MTLRenderCommandEncoder> encoder = [mtlc createCommonSamplingEncoderForDest:dst];
 
+
+    const jboolean normalize = !mtlc.useTransform;
     struct TxtVertex quadTxVerticesBuffer[6];
     fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2, dst.width, dst.height);
 
@@ -206,85 +154,24 @@ MTLBlitTextureToSurface(MTLContext *mtlc,
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via sampling]: bsrc=%p [tex=%p], bdst=%p [tex=%p] | s (%dx%d) -> d (%dx%d) | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", srcOps, srcOps->pTexture, dstOps, dstOps->pTexture, srcTex.width, srcTex.height, dstOps->width, dstOps->height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
-    drawTex2Tex(mtlc, srcOps->pTexture, dstOps->pTexture, srcOps->isOpaque, dstOps->isOpaque, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-}
-
-static
-id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInfo * srcInfo, const MTLRasterFormatInfo * rfi, int sx1, int sy1, int sx2, int sy2) {
-    const int sw = sx2 - sx1;
-    const int sh = sy2 - sy1;
-
-    const void * raster = srcInfo->rasBase;
-    if (rfi->permuteMap != NULL) {
-        if (@available(macOS 10.15, *)) {
-            const uint8_t swzRed = revertPerm(rfi->permuteMap, 1);
-            const uint8_t swzGreen = revertPerm(rfi->permuteMap, 2);
-            const uint8_t swzBlue = revertPerm(rfi->permuteMap, 3);
-            const uint8_t swzAlpha = revertPerm(rfi->permuteMap, 0);
-            MTLTextureSwizzleChannels swizzle = MTLTextureSwizzleChannelsMake(
-                    uint2swizzle(swzRed),
-                    uint2swizzle(swzGreen),
-                    uint2swizzle(swzBlue),
-                    rfi->hasAlpha ? uint2swizzle(swzAlpha) : MTLTextureSwizzleOne
-            );
-            dest = [dest
-                    newTextureViewWithPixelFormat:MTLPixelFormatBGRA8Unorm
-                    textureType:MTLTextureType2D
-                    levels:NSMakeRange(0, 1) slices:NSMakeRange(0, 1)
-                    swizzle:swizzle];
-            J2dTraceLn5(J2D_TRACE_VERBOSE, "replaceTextureRegion [use swizzle for pooled]: %d, %d, %d, %d, hasA=%d",
-                        swizzle.red, swizzle.green, swizzle.blue, swizzle.alpha, rfi->hasAlpha);
-        } else {
-            // perform raster conversion
-            // invoked only from rq-thread, so use static buffers
-            // but it's better to use thread-local buffers (or special buffer manager)
-            const int destRasterSize = sw*sh*4;
-
-            static int bufferSize = 0;
-            static void * buffer = NULL;
-            if (buffer == NULL || bufferSize < destRasterSize) {
-                bufferSize = destRasterSize;
-                buffer = realloc(buffer, bufferSize);
-            }
-            if (buffer == NULL) {
-                J2dTraceLn1(J2D_TRACE_ERROR, "replaceTextureRegion: can't alloc buffer for raster conversion, size=%d", bufferSize);
-                bufferSize = 0;
-                return nil;
-            }
-            vImage_Buffer src;
-            src.height = sw;
-            src.width = sh;
-            src.rowBytes = srcInfo->scanStride;
-            src.data = srcInfo->rasBase;
-
-            vImage_Buffer dest;
-            dest.height = sw;
-            dest.width = sh;
-            dest.rowBytes = sw*4;
-            dest.data = buffer;
-
-            vImagePermuteChannels_ARGB8888(&src, &dest, rfi->permuteMap, kvImageNoFlags);
-            raster = buffer;
-
-            J2dTraceLn5(J2D_TRACE_VERBOSE, "replaceTextureRegion [use conversion]: %d, %d, %d, %d, hasA=%d",
-                        rfi->permuteMap[0], rfi->permuteMap[1], rfi->permuteMap[2], rfi->permuteMap[3], rfi->hasAlpha);
-        }
-    }
-
-    MTLRegion region = MTLRegionMake2D(sx1, sy1, sw, sh);
-    [dest replaceRegion:region mipmapLevel:0 withBytes:raster bytesPerRow:srcInfo->scanStride];
-    return dest;
+    drawTex2Tex(mtlc, srcOps->pTexture, dstOps->pTexture, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**
  * Inner loop used for copying a source system memory ("Sw") surface to a
  * destination MTL "Surface".  This method is invoked from
  * MTLBlitLoops_Blit().
+ *
+ * The standard glDrawPixels() mechanism is used to copy the source region
+ * into the destination region.  If the regions have different
+ * dimensions, the source will be scaled into the destination
+ * as appropriate (only nearest neighbor filtering will be applied for simple
+ * scale operations).
  */
 
 static void
 MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
-                   MTLRasterFormatInfo * rfi,
+                   MTPixelFormat *pf,
                    jint sx1, jint sy1, jint sx2, jint sy2,
                    jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
@@ -301,14 +188,15 @@ MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLS
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [via pooled texture]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
-    id<MTLTexture> texBuff = [ctx.texturePool getTexture:sw height:sh format:rfi->format];
+    id<MTLTexture> texBuff = [ctx.texturePool getTexture:sw height:sh format:MTLPixelFormatBGRA8Unorm];
     if (texBuff == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: can't obtain temporary texture object from pool");
         return;
     }
+    MTLRegion region = MTLRegionMake2D(0, 0, sw, sh);
+    [texBuff replaceRegion:region mipmapLevel:0 withBytes:srcInfo->rasBase bytesPerRow:srcInfo->scanStride]; // texBuff is locked for current frame
 
-    texBuff = replaceTextureRegion(texBuff, srcInfo, rfi, sx1, sy1, sx2, sy2); // texBuff is locked for current frame
-    drawTex2Tex(ctx, texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, 0, 0, sw, sh, dx1, dy1, dx2, dy2);
+    drawTex2Tex(ctx, texBuff, dest, 0, 0, 0, 0, sw, sh, dx1, dy1, dx2, dy2);
 }
 
 /**
@@ -477,17 +365,12 @@ MTLBlitLoops_Blit(JNIEnv *env,
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
     SurfaceDataRasInfo srcInfo;
+    MTLPixelFormat pf = MTLPixelFormatBGRA8Unorm;//PixelFormats[srctype];
 
     if (dstOps == NULL || dstOps->pTexture == NULL) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
         return;
     }
-    if (srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
-        J2dTraceLn1(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: source pixel format %d isn't supported", srctype);
-        return;
-    }
-
-    MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
     id<MTLTexture> dest = dstOps->pTexture;
     if (dx1 < 0) {
         sx1 += dx1;
@@ -525,7 +408,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
         return;
     }
 
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit: texture=%d srctype=%d xform=%d hint=%d", texture, srctype, xform, hint);
+    J2dTraceLn5(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit:  pf=%d texture=%d srctype=%d xform=%d hint=%d", pf, texture, srctype, xform, hint);
 
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
@@ -553,13 +436,13 @@ MTLBlitLoops_Blit(JNIEnv *env,
                     && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f // dimensions are equal (TODO: check that dx1,dy1 is integer)
                     && !mtlc.useTransform); // TODO: check whether transform is simple translate (and use replaceRegion in this case)
             if (useReplaceRegion) {
+                MTLRegion region = MTLRegionMake2D(dx1, dy1, dx2 - dx1, dy2 - dy1);
 #ifdef DEBUG
                 J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [replaceRegion]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dest, dest.width, dest.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
-                replaceTextureRegion(dest, &srcInfo, &rfi, (int)dx1, (int)dy1, (int)dx2, (int)dy2);
-                dstOps->isOpaque = !rfi.hasAlpha;
+                [dest replaceRegion:region mipmapLevel:0 withBytes:srcInfo.rasBase bytesPerRow:srcInfo.scanStride]; // executed at CPU (sync), TODO: lock dest for current frame
             } else {
-                MTLBlitSwToSurfaceViaTexture(mtlc, &srcInfo, dstOps, &rfi, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+                MTLBlitSwToSurfaceViaTexture(mtlc, &srcInfo, dstOps, &pf, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
             }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);
