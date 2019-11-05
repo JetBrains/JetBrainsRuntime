@@ -11,14 +11,14 @@
       span.underline{text-decoration: underline;}
       div.column{display: inline-block; vertical-align: top; width: 50%;}
   </style>
-  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css">
+  <link rel="stylesheet" href="../make/data/docs-resources/resources/jdk-default.css" />
   <!--[if lt IE 9]>
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
   <![endif]-->
   <style type="text/css">pre, code, tt { color: #1d6ae5; }</style>
 </head>
 <body>
-<header>
+<header id="title-block-header">
 <h1 class="title">Testing the JDK</h1>
 </header>
 <nav id="TOC">
@@ -38,6 +38,7 @@
 </ul></li>
 <li><a href="#notes-for-specific-tests">Notes for Specific Tests</a><ul>
 <li><a href="#docker-tests">Docker Tests</a></li>
+<li><a href="#client-ui-tests">Client UI Tests</a></li>
 </ul></li>
 </ul>
 </nav>
@@ -91,7 +92,7 @@ TEST FAILURE</code></pre>
 <p>(Other ways are possible, e.g. using backslash: <code>JTREG=JOBS=1\;TIMEOUT=8</code>. Also, as a special technique, the string <code>%20</code> will be replaced with space for certain options, e.g. <code>JTREG=VM_OPTIONS=-XshowSettings%20-Xlog:gc+ref=debug</code>. This can be useful if you have layers of scripts and have trouble getting proper quoting of command line arguments through.)</p>
 <p>As far as possible, the names of the keywords have been standardized between test suites.</p>
 <h3 id="general-keywords-test_opts">General keywords (TEST_OPTS)</h3>
-<p>Some keywords are valid across different test suites. If you want to run tests from multiple test suites, or just don't want to care which test suite specific control variable to use, then you can use the general TEST_OPTS control variable.</p>
+<p>Some keywords are valid across different test suites. If you want to run tests from multiple test suites, or just don’t want to care which test suite specific control variable to use, then you can use the general TEST_OPTS control variable.</p>
 <p>There are also some keywords that applies globally to the test runner system, not to any specific test suites. These are also available as TEST_OPTS keywords.</p>
 <h4 id="jobs">JOBS</h4>
 <p>Currently only applies to JTReg.</p>
@@ -156,5 +157,15 @@ TEST FAILURE</code></pre>
 <pre><code>$ make run-test TEST=&quot;jtreg:test/hotspot/jtreg/containers/docker&quot;</code></pre>
 <p>To run these tests correctly, additional parameters for the correct docker image are required on Ubuntu 18.04 by using <code>JAVA_OPTIONS</code>.</p>
 <pre><code>$ make run-test TEST=&quot;jtreg:test/hotspot/jtreg/containers/docker&quot; JTREG=&quot;JAVA_OPTIONS=-Djdk.test.docker.image.name=ubuntu -Djdk.test.docker.image.version=latest&quot;</code></pre>
+<h3 id="client-ui-tests">Client UI Tests</h3>
+<p>Some Client UI tests use key sequences which may be reserved by the operating system. Usually that causes the test failure. So it is highly recommended to disable system key shortcuts prior testing. The steps to access and disable system key shortcuts for various platforms are provided below.</p>
+<h4 id="macos">MacOS</h4>
+<p>Choose Apple menu; System Preferences, click Keyboard, then click Shortcuts; select or deselect desired shortcut.</p>
+<p>For example, test/jdk/javax/swing/TooltipManager/JMenuItemToolTipKeyBindingsTest/JMenuItemToolTipKeyBindingsTest.java fails on MacOS because it uses <code>CTRL + F1</code> key sequence to show or hide tooltip message but the key combination is reserved by the operating system. To run the test correctly the default global key shortcut should be disabled using the steps described above, and then deselect “Turn keyboard access on or off” option which is responsible for <code>CTRL + F1</code> combination.</p>
+<h4 id="linux">Linux</h4>
+<p>Open the Activities overview and start typing Settings; Choose Settings, click Devices, then click Keyboard; set or override desired shortcut.</p>
+<h4 id="windows">Windows</h4>
+<p>Type <code>gpedit</code> in the Search and then click Edit group policy; navigate to User Configuration -&gt; Administrative Templates -&gt; Windows Components -&gt; File Explorer; in the right-side pane look for “Turn off Windows key hotkeys” and double click on it; enable or disable hotkeys.</p>
+<p>Note: restart is required to make the settings take effect.</p>
 </body>
 </html>
