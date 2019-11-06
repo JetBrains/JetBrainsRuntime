@@ -49,10 +49,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.security.PrivilegedAction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
@@ -82,6 +86,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
     private static native void nativeSetNSWindowStandardFrame(long nsWindowPtr,
                                                               double x, double y, double w, double h);
     private static native void nativeSetNSWindowMinMax(long nsWindowPtr, double minW, double minH, double maxW, double maxH);
+    private static native void nativePushNSWindowToFrontAndMakeKey(long nsWindowPtr);
     private static native void nativePushNSWindowToBack(long nsWindowPtr);
     private static native void nativePushNSWindowToFront(long nsWindowPtr);
     private static native void nativeSetNSWindowTitle(long nsWindowPtr, String title);
@@ -775,38 +780,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
 
         if (visible) {
-            // Order myself above my parent
-            if (owner != null && owner.isVisible()) {
-                owner.execute(ownerPtr -> {
-                    execute(ptr -> {
-                        CWrapper.NSWindow.orderWindow(ptr, CWrapper.NSWindow.NSWindowAbove, ownerPtr);
-                    });
-                });
-                execute(CWrapper.NSWindow::orderFront);
-                applyWindowLevel(target);
-            }
-
-            // Order my own children above myself
-            for (Window w : target.getOwnedWindows()) {
-                final Object p = acc.getPeer(w);
-                if (p instanceof LWWindowPeer) {
-                    CPlatformWindow pw = (CPlatformWindow)((LWWindowPeer)p).getPlatformWindow();
-                    if (pw != null && pw.isVisible()) {
-                        pw.execute(childPtr -> {
-                            execute(ptr -> {
-                                CWrapper.NSWindow.orderWindow(childPtr, CWrapper.NSWindow.NSWindowAbove, ptr);
-                            });
-                        });
-                        pw.applyWindowLevel(w);
-                    }
-                }
-            }
-        }
-
-        // Deal with the blocker of the window being shown
-        if (blocker != null && visible) {
-            // Make sure the blocker is above its siblings
-            ((CPlatformWindow)blocker.getPlatformWindow()).orderAboveSiblings();
+            updateZOrder();
         }
     }
 
@@ -850,7 +824,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             lwcToolkit.activateApplicationIgnoringOtherApps();
         }
         updateFocusabilityForAutoRequestFocus(false);
-        execute(CPlatformWindow::nativePushNSWindowToFront);
+        execute(CPlatformWindow::nativePushNSWindowToFrontAndMakeKey);
         updateFocusabilityForAutoRequestFocus(true);
     }
 
@@ -900,6 +874,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             }
             CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
         });
+        updateZOrder();
         return true;
     }
 
@@ -1026,7 +1001,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         }
 
         execute(ptr -> nativeSetEnabled(ptr, !blocked));
-        checkBlockingAndOrder();
     }
 
     public final void invalidateShadow() {
@@ -1214,28 +1188,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         setStyleBits(SHOULD_BECOME_KEY | SHOULD_BECOME_MAIN, isFocusable); // set both bits at once
     }
 
-    private boolean checkBlockingAndOrder() {
-        LWWindowPeer blocker = (peer == null)? null : peer.getBlocker();
-        if (blocker == null) {
-            return false;
-        }
-
-        if (blocker instanceof CPrinterDialogPeer) {
-            return true;
-        }
-
-        CPlatformWindow pWindow = (CPlatformWindow)blocker.getPlatformWindow();
-
-        pWindow.orderAboveSiblings();
-
-        pWindow.execute(ptr -> {
-            CWrapper.NSWindow.orderFrontRegardless(ptr);
-            CWrapper.NSWindow.makeKeyAndOrderFront(ptr);
-            CWrapper.NSWindow.makeMainWindow(ptr);
-        });
-        return true;
-    }
-
     private boolean isIconified() {
         boolean isIconified = false;
         if (target instanceof Frame) {
@@ -1263,71 +1215,6 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             rootOwner = rootOwner.owner;
         }
         return rootOwner;
-    }
-
-    private void orderAboveSiblings() {
-        // Recursively pop up the windows from the very bottom, (i.e. root owner) so that
-        // the windows are ordered above their nearest owner; ancestors of the window,
-        // which is going to become 'main window', are placed above their siblings.
-        CPlatformWindow rootOwner = getRootOwner();
-        if (rootOwner.isVisible() && !rootOwner.isIconified() && !rootOwner.isActive()) {
-            rootOwner.execute(CWrapper.NSWindow::orderFront);
-        }
-
-        // Do not order child windows of iconified owner.
-        if (!rootOwner.isIconified()) {
-            final WindowAccessor windowAccessor = AWTAccessor.getWindowAccessor();
-            orderAboveSiblingsImpl(windowAccessor.getOwnedWindows(rootOwner.target));
-        }
-    }
-
-    private void orderAboveSiblingsImpl(Window[] windows) {
-        ArrayList<Window> childWindows = new ArrayList<Window>();
-
-        final ComponentAccessor componentAccessor = AWTAccessor.getComponentAccessor();
-        final WindowAccessor windowAccessor = AWTAccessor.getWindowAccessor();
-        Arrays.sort(windows, siblingsComparator);
-        // Go through the list of windows and perform ordering.
-        CPlatformWindow pwUnder = null;
-        for (Window w : windows) {
-            boolean iconified = false;
-            final Object p = componentAccessor.getPeer(w);
-            if (p instanceof LWWindowPeer) {
-                CPlatformWindow pw = (CPlatformWindow)((LWWindowPeer)p).getPlatformWindow();
-                iconified = isIconified();
-                if (pw != null && pw.isVisible() && !iconified) {
-                    // If the window is one of ancestors of 'main window' or is going to become main by itself,
-                    // the window should be ordered above its siblings; otherwise the window is just ordered
-                    // above its nearest parent.
-                    if (pw.isOneOfOwnersOrSelf(this)) {
-                        pw.execute(CWrapper.NSWindow::orderFront);
-                    } else {
-                        if (pwUnder == null) {
-                            pwUnder = pw.owner;
-                        }
-                        pwUnder.execute(underPtr -> {
-                            pw.execute(ptr -> {
-                                CWrapper.NSWindow.orderWindow(ptr, CWrapper.NSWindow.NSWindowAbove, underPtr);
-                            });
-                        });
-                        pwUnder = pw;
-                    }
-                    pw.applyWindowLevel(w);
-                }
-            }
-            // Retrieve the child windows for each window from the list except iconified ones
-            // and store them for future use.
-            // Note: we collect data about child windows even for invisible owners, since they may have
-            // visible children.
-            if (!iconified) {
-                childWindows.addAll(Arrays.asList(windowAccessor.getOwnedWindows(w)));
-            }
-        }
-        // If some windows, which have just been ordered, have any child windows, let's start new iteration
-        // and order these child windows.
-        if (!childWindows.isEmpty()) {
-            orderAboveSiblingsImpl(childWindows.toArray(new Window[0]));
-        }
     }
 
     protected void applyWindowLevel(Window target) {
@@ -1361,11 +1248,80 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         isIconifyAnimationActive = true;
     }
 
+    public static ArrayList<Window> windowsSubtreeOrdered (Window owner, Function<Window, Boolean> filter) {
+
+        ArrayList<Window> flattenSubtree = new ArrayList<>();
+        int pivot = 0;
+
+        // 1. Add the root
+        flattenSubtree.add(owner);
+
+        while (pivot < flattenSubtree.size()) {
+            //take another bunch of children and protect the owner by pivot
+            Window[] ownedWindows = flattenSubtree.get(pivot++).getOwnedWindows();
+
+            for  (int n = 0; n < ownedWindows.length; n ++) {
+                if (filter.apply(ownedWindows[n])) {
+                    flattenSubtree.add(pivot + n, ownedWindows[n]);
+                }
+            }
+        }
+
+        return flattenSubtree;
+    }
+
+    private static void layoutWindowSubtreeNatively(Window window, ComponentAccessor acc) {
+        ArrayList<Window> windows = windowsSubtreeOrdered(window, w -> {
+            boolean isIconifiedFrame = w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED;
+            return !isIconifiedFrame;
+        });
+        invokeOnPlatformWindow(windows, acc, CPlatformWindow::nativePushNSWindowToFront);
+    }
+
+    private static void invokeOnPlatformWindow(ArrayList<Window> windows, ComponentAccessor acc, Consumer<Long> pwConsumer) {
+        windows.stream().map(acc::getPeer).
+                filter(Objects::nonNull).
+                map(p -> ((CPlatformWindow)((LWWindowPeer)p).getPlatformWindow()).ptr).
+                forEach(pwConsumer);
+    }
+
+    /**
+     * @param w an ownerless window
+     * @return true if the window or one of its owned windows are active
+     */
+    private static boolean isActiveOrHasActiveChild(Window w) {
+        if (w == null) return false;
+        if (w.isActive()) return true;
+        Window ultimateOwner = DefaultKeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+        if (ultimateOwner == null) return false;
+        while (ultimateOwner.getOwner() != null) {
+            ultimateOwner = ultimateOwner.getOwner();
+        }
+        return (w.equals(ultimateOwner));
+    }
+
+    private void updateZOrder() {
+
+        // 1. Find all ultimate owners
+        Window[] ownerlessWindows = Window.getOwnerlessWindows();
+        final ComponentAccessor accessor = AWTAccessor.getComponentAccessor();
+
+        // 2. Order all windows
+        for (Window ownerlessWindow : ownerlessWindows) {
+            if (ownerlessWindow.isActive()) {
+                continue;
+            }
+            layoutWindowSubtreeNatively(ownerlessWindow, accessor);
+        }
+
+        // 3. Find current active window and skip it in order to put on top of the stack
+        Arrays.stream(ownerlessWindows).filter(CPlatformWindow::isActiveOrHasActiveChild).findAny().ifPresent(activeWindow -> {
+            layoutWindowSubtreeNatively(activeWindow, accessor);
+        });
+    }
+
     private void windowDidBecomeMain() {
         lastBecomeMainTime = System.currentTimeMillis();
-        if (checkBlockingAndOrder()) return;
-        // If it's not blocked, make sure it's above its siblings
-        orderAboveSiblings();
     }
 
     private void windowWillEnterFullScreen() {

@@ -29,6 +29,7 @@ import java.awt.event.*;
 import java.io.ObjectInputStream;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -1613,6 +1614,58 @@ public class Dialog extends Window {
         SunToolkit.checkAndSetPolicy(this);
 
         initialized = true;
+
+    }
+
+    public static Window findUltimateParent (Window window) {
+        assert window != null;
+        while (window.getOwner() != null) {
+            window = window.getOwner();
+        }
+        return window;
+    }
+
+    public static ArrayList<Window> windowsSubtreeOrdered (Window owner) {
+
+        ArrayList<Window> flattenSubtree = new ArrayList<>();
+        int pivot = 0;
+
+        // 1. Add the root
+        flattenSubtree.add(owner);
+
+
+        while (pivot < flattenSubtree.size()) {
+            //take another bunch of children and protect the owner by pivot
+            Window[] ownedWindows = flattenSubtree.get(pivot++).getOwnedWindows();
+
+            for  (int n = 0; n < ownedWindows.length; n ++) {
+                flattenSubtree.add(pivot + n, ownedWindows[n]);
+            }
+        }
+
+        return flattenSubtree;
+    }
+
+    Window [] getWindowsOrdered (Window signalRecipient) {
+
+        // If the recipient is blocked we need to popup it's hierarchy
+        boolean signalRecipientModalIsBlocked = signalRecipient.isModalBlocked();
+
+        // If the recipient is ownerless we need to pop up only the window
+        boolean signalRecipientIsOwnerless = signalRecipient.getOwner() == null;
+
+        Window ultimateOwnerForTheSignalRecipient = findUltimateParent(signalRecipient);
+
+        // Find the owner subtree
+        Window [] ownedWindows = signalRecipientIsOwnerless ?
+                signalRecipient.getOwnedWindows() :
+                getOwner().getOwnedWindows();
+
+        //1. get all ownerless windows
+        Window[] ownerlessWindows = Window.getOwnerlessWindows();
+        //2. we need to find windows
+
+        throw new  RuntimeException("Has not been implemented yet");
 
     }
 

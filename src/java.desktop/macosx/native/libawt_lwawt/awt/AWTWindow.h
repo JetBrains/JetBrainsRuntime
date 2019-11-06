@@ -65,7 +65,8 @@
 
 - (id) initWithPlatformWindow:(JNFWeakJObjectWrapper *)javaPlatformWindow
                   ownerWindow:owner
-                    styleBits:(jint)styleBits
+                    styleBits
+                    :(jint)styleBits
                     frameRect:(NSRect)frameRect
                   contentView:(NSView *)contentView;
 

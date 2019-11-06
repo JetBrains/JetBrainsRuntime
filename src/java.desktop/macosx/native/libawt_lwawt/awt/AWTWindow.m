@@ -97,10 +97,6 @@ static NSPoint lastTopLeftPoint;
     return [(AWTWindow*)[self delegate] worksWhenModal];        \
 }                                                               \
                                                                 \
-- (void)cursorUpdate:(NSEvent *)event {                         \
-    /* Prevent cursor updates from OS side */                   \
-}                                                               \
-                                                                \
 - (void)sendEvent:(NSEvent *)event {                            \
     [(AWTWindow*)[self delegate] sendEvent:event];              \
     [super sendEvent:event];                                    \
@@ -433,10 +429,21 @@ AWT_ASSERT_APPKIT_THREAD;
 
     JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
     [self.javaPlatformWindow setJObject:nil withEnv:env];
-    self.javaPlatformWindow = nil;
+
     self.nsWindow = nil;
     self.ownerWindow = nil;
     [super dealloc];
+}
+
+// Tests whether window is blocked by modal dialog/window
+- (void) updateZOrder {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    if (platformWindow != NULL) {
+        static JNF_MEMBER_CACHE(jm_updateZOrder, jc_CPlatformWindow, "updateZOrder", "()V");
+        JNFCallBooleanMethod(env, platformWindow, jm_updateZOrder);
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
 }
 
 // Tests whether window is blocked by modal dialog/window
@@ -487,49 +494,6 @@ AWT_ASSERT_APPKIT_THREAD;
         }
     }
     return isVisible;
-}
-
-// Orders window's childs based on the current focus state
-- (void) orderChildWindows:(BOOL)focus {
-AWT_ASSERT_APPKIT_THREAD;
-
-    if (self.isMinimizing || [self isBlocked]) {
-        // Do not perform any ordering, if iconify is in progress
-        // or the window is blocked by a modal window
-        return;
-    }
-
-    NSEnumerator *windowEnumerator = [[NSApp windows]objectEnumerator];
-    NSWindow *window;
-    while ((window = [windowEnumerator nextObject]) != nil) {
-        if ([AWTWindow isJavaPlatformWindowVisible:window]) {
-            AWTWindow *awtWindow = (AWTWindow *)[window delegate];
-            AWTWindow *owner = awtWindow.ownerWindow;
-            if (IS(awtWindow.styleBits, ALWAYS_ON_TOP)) {
-                // Do not order 'always on top' windows
-                continue;
-            }
-            while (awtWindow.ownerWindow != nil) {
-                if (awtWindow.ownerWindow == self) {
-                    if (focus) {
-                        // Move the childWindow to floating level
-                        // so it will appear in front of its
-                        // parent which owns the focus
-                        [window setLevel:NSFloatingWindowLevel];
-                    } else {
-                        // Focus owner has changed, move the childWindow
-                        // back to normal window level
-                        [window setLevel:NSNormalWindowLevel];
-                    }
-                    // The childWindow should be displayed in front of
-                    // its nearest parentWindow
-                    [window orderWindow:NSWindowAbove relativeTo:[owner.nsWindow windowNumber]];
-                    break;
-                }
-                awtWindow = awtWindow.ownerWindow;
-            }
-        }
-    }
 }
 
 // NSWindow overrides
@@ -751,7 +715,8 @@ AWT_ASSERT_APPKIT_THREAD;
     [AWTWindow setLastKeyWindow:nil];
 
     [self _deliverWindowFocusEvent:YES oppositeWindow: opposite];
-    [self orderChildWindows:YES];
+
+   // [self updateZOrder];
 }
 
 - (void) activateWindowMenuBar {
@@ -812,7 +777,6 @@ AWT_ASSERT_APPKIT_THREAD;
     [AWTWindow setLastKeyWindow: self];
 
     [self _deliverWindowFocusEvent:NO oppositeWindow: opposite];
-    [self orderChildWindows:NO];
 }
 
 - (BOOL)windowShouldClose:(id)sender {
@@ -894,20 +858,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
 - (void)sendEvent:(NSEvent *)event {
         if ([event type] == NSLeftMouseDown || [event type] == NSRightMouseDown || [event type] == NSOtherMouseDown) {
-            if ([self isBlocked]) {
-                // Move parent windows to front and make sure that a child window is displayed
-                // in front of its nearest parent.
-                if (self.ownerWindow != nil) {
-                    JNIEnv *env = [ThreadUtilities getJNIEnvUncached];
-                    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
-                    if (platformWindow != NULL) {
-                        static JNF_MEMBER_CACHE(jm_orderAboveSiblings, jc_CPlatformWindow, "orderAboveSiblings", "()V");
-                        JNFCallVoidMethod(env,platformWindow, jm_orderAboveSiblings);
-                        (*env)->DeleteLocalRef(env, platformWindow);
-                    }
-                }
-                [self orderChildWindows:YES];
-            }
+
+         [self updateZOrder];
+
 
             NSPoint p = [NSEvent mouseLocation];
             NSRect frame = [self.nsWindow frame];
@@ -1284,8 +1237,30 @@ JNF_COCOA_ENTER(env);
                 [awtWindow.nsWindow orderBack:nil];
             }
         }
-        // Order child windows
-        [(AWTWindow*)[nsWindow delegate] orderChildWindows:NO];
+    }];
+
+JNF_COCOA_EXIT(env);
+}
+
+/*
+ * Class:     sun_lwawt_macosx_CPlatformWindow
+ * Method:    nativePushNSWindowToFrontAndMakeKey
+ * Signature: (J)V
+ */
+JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow_nativePushNSWindowToFrontAndMakeKey
+(JNIEnv *env, jclass clazz, jlong windowPtr)
+{
+JNF_COCOA_ENTER(env);
+
+    NSWindow *nsWindow = OBJC(windowPtr);
+    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
+
+        if (![nsWindow isKeyWindow]) {
+                    [nsWindow orderFrontRegardless];
+                    [nsWindow makeKeyAndOrderFront:nsWindow];
+        } else {
+            [nsWindow orderFrontRegardless];
+        }
     }];
 
 JNF_COCOA_EXIT(env);
@@ -1303,12 +1278,7 @@ JNF_COCOA_ENTER(env);
 
     NSWindow *nsWindow = OBJC(windowPtr);
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-
-        if (![nsWindow isKeyWindow]) {
-            [nsWindow makeKeyAndOrderFront:nsWindow];
-        } else {
-            [nsWindow orderFront:nsWindow];
-        }
+            [nsWindow orderFrontRegardless];
     }];
 
 JNF_COCOA_EXIT(env);
@@ -1490,55 +1460,7 @@ JNF_COCOA_ENTER(env);
     if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
 
     [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
-            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
-        }
-    }];
-
-JNF_COCOA_EXIT(env);
-}
-
-/*
- * Class:     sun_lwawt_macosx_CPlatformWindow
- * Method:    _toggleFullScreenMode
- * Signature: (J)V
- */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow__1enterFullScreen
-(JNIEnv *env, jobject peer, jlong windowPtr)
-{
-JNF_COCOA_ENTER(env);
-
-    NSWindow *nsWindow = OBJC(windowPtr);
-    SEL toggleFullScreenSelector = @selector(toggleFullScreen:);
-    if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
-
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        if ((([nsWindow styleMask] & NSFullScreenWindowMask) != NSFullScreenWindowMask)) {
-            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
-        }
-    }];
-
-JNF_COCOA_EXIT(env);
-}
-
-/*
- * Class:     sun_lwawt_macosx_CPlatformWindow
- * Method:    _toggleFullScreenMode
- * Signature: (J)V
- */
-JNIEXPORT void JNICALL Java_sun_lwawt_macosx_CPlatformWindow__1leaveFullScreen
-(JNIEnv *env, jobject peer, jlong windowPtr)
-{
-JNF_COCOA_ENTER(env);
-
-    NSWindow *nsWindow = OBJC(windowPtr);
-    SEL toggleFullScreenSelector = @selector(toggleFullScreen:);
-    if (![nsWindow respondsToSelector:toggleFullScreenSelector]) return;
-
-    [ThreadUtilities performOnMainThreadWaiting:NO block:^(){
-        if ((([nsWindow styleMask] & NSFullScreenWindowMask) == NSFullScreenWindowMask)) {
-            [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
-        }
+        [nsWindow performSelector:toggleFullScreenSelector withObject:nil];
     }];
 
 JNF_COCOA_EXIT(env);
