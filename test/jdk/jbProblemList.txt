@@ -195,7 +195,7 @@ java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThr
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096,8213522 macosx-all,linux-all,windows-all
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
-java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 macosx-all
+java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 solaris-all,macosx-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
@@ -814,85 +814,13 @@ com/sun/nio/sctp/SctpChannel/SocketOptionTests.java                             
 
 # jdk_security
 
-security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8194170 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/BuypassCA.java    8194170 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/ComodoCA.java     8194170 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/DTrustCA.java     8194170 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/LetsEncryptCA.java 8194170 generic-all
-security/infra/java/security/cert/CertPathValidator/certification/QuoVadisCA.java   8194170 generic-all
-
 sun/security/pkcs11/ec/TestKeyFactory.java                                          8026976 generic-all
 sun/security/pkcs11/Secmod/AddTrustedCert.java                                      8180837 generic-all
 sun/security/pkcs11/tls/TestKeyMaterial.java                                        8180837 generic-all
 
-sun/security/tools/keytool/ListKeychainStore.sh                                     8156889 macosx-all
-sun/security/tools/jarsigner/warnings/BadKeyUsageTest.java                          8026393 generic-all
+sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                     8209398 generic-all
 
-javax/net/ssl/SSLSocket/Tls13PacketSize.java                                        8224718 windows-all
-javax/net/ssl/DTLS/PacketLossRetransmission.java                                    8169086 macosx-x64
-javax/net/ssl/DTLS/RespondToRetransmit.java                                         8169086 macosx-x64
-javax/net/ssl/DTLS/CipherSuite.java                                                 8202059 macosx-x64
-
-sun/security/provider/KeyStore/DKSTest.sh                                           8180266 windows-all
-
-sun/security/pkcs11/Cipher/ReinitCipher.java                                        8204203 windows-all
-sun/security/pkcs11/Cipher/TestPKCS5PaddingError.java                               8204203 windows-all
-sun/security/pkcs11/Cipher/TestRSACipher.java                                       8204203 windows-all
-sun/security/pkcs11/Cipher/TestRSACipherWrap.java                                   8204203 windows-all
-sun/security/pkcs11/Cipher/TestRawRSACipher.java                                    8204203 windows-all
-sun/security/pkcs11/Cipher/TestSymmCiphers.java                                     8204203 windows-all
-sun/security/pkcs11/Cipher/TestSymmCiphersNoPad.java                                8204203 windows-all
-sun/security/pkcs11/KeyAgreement/SupportedDHKeys.java                               8204203 windows-all
-sun/security/pkcs11/KeyAgreement/TestDH.java                                        8204203 windows-all
-sun/security/pkcs11/KeyAgreement/TestInterop.java                                   8204203 windows-all
-sun/security/pkcs11/KeyAgreement/TestShort.java                                     8204203 windows-all
-sun/security/pkcs11/KeyAgreement/UnsupportedDHKeys.java                             8204203 windows-all
-sun/security/pkcs11/KeyGenerator/DESParity.java                                     8204203 windows-all
-sun/security/pkcs11/KeyGenerator/TestKeyGenerator.java                              8204203 windows-all
-sun/security/pkcs11/KeyPairGenerator/TestDH2048.java                                8204203 windows-all
-sun/security/pkcs11/KeyStore/SecretKeysBasic.sh                                     8204203,8209398 generic-all
-sun/security/pkcs11/Mac/MacKAT.java                                                 8204203 windows-all
-sun/security/pkcs11/Mac/MacSameTest.java                                            8204203 windows-all
-sun/security/pkcs11/Mac/ReinitMac.java                                              8204203 windows-all
-sun/security/pkcs11/MessageDigest/ByteBuffers.java                                  8204203 windows-all
-sun/security/pkcs11/MessageDigest/DigestKAT.java                                    8204203 windows-all
-sun/security/pkcs11/MessageDigest/ReinitDigest.java                                 8204203 windows-all
-sun/security/pkcs11/MessageDigest/TestCloning.java                                  8204203 windows-all
-sun/security/pkcs11/Provider/ConfigQuotedString.sh                                  8204203 windows-all
-sun/security/pkcs11/Provider/Login.sh                                               8204203 windows-all
-sun/security/pkcs11/SampleTest.java                                                 8204203 windows-all
-sun/security/pkcs11/Secmod/AddPrivateKey.java                                       8204203 windows-all
-sun/security/pkcs11/Secmod/Crypto.java                                              8204203 windows-all
-sun/security/pkcs11/Secmod/GetPrivateKey.java                                       8204203 windows-all
-sun/security/pkcs11/Secmod/JksSetPrivateKey.java                                    8204203 windows-all
-sun/security/pkcs11/Secmod/LoadKeystore.java                                        8204203 windows-all
-sun/security/pkcs11/Secmod/TestNssDbSqlite.java                                     8204203 windows-all
-sun/security/pkcs11/SecureRandom/Basic.java                                         8204203 windows-all
-sun/security/pkcs11/SecureRandom/TestDeserialization.java                           8204203 windows-all
-sun/security/pkcs11/Serialize/SerializeProvider.java                                8204203 windows-all
-sun/security/pkcs11/Signature/ByteBuffers.java                                      8204203 windows-all
-sun/security/pkcs11/Signature/ReinitSignature.java                                  8204203 windows-all
-sun/security/pkcs11/Signature/TestDSA.java                                          8204203 windows-all
-sun/security/pkcs11/Signature/TestDSAKeyLength.java                                 8204203 windows-all
-sun/security/pkcs11/Signature/TestRSAKeyLength.java                                 8204203 windows-all
-sun/security/pkcs11/ec/ReadCertificates.java                                        8204203 windows-all
-sun/security/pkcs11/ec/ReadPKCS12.java                                              8204203 windows-all
-sun/security/pkcs11/ec/TestCurves.java                                              8204203 windows-all
-sun/security/pkcs11/ec/TestECDH.java                                                8204203 windows-all
-sun/security/pkcs11/ec/TestECDH2.java                                               8204203 windows-all
-sun/security/pkcs11/ec/TestECDSA.java                                               8204203 windows-all
-sun/security/pkcs11/ec/TestECDSA2.java                                              8204203 windows-all
-sun/security/pkcs11/ec/TestECGenSpec.java                                           8204203 windows-all
-sun/security/pkcs11/rsa/KeyWrap.java                                                8204203 windows-all
-sun/security/pkcs11/rsa/TestCACerts.java                                            8204203 windows-all
-sun/security/pkcs11/rsa/TestKeyFactory.java                                         8204203 windows-all
-sun/security/pkcs11/rsa/TestKeyPairGenerator.java                                   8204203 windows-all
-sun/security/pkcs11/rsa/TestSignatures.java                                         8204203 windows-all
-sun/security/pkcs11/sslecc/ClientJSSEServerJSSE.java                                8204203 windows-all
-sun/security/pkcs11/tls/TestLeadingZeroesP11.java                                   8204203 windows-all
-sun/security/pkcs11/tls/TestMasterSecret.java                                       8204203 windows-all
-sun/security/pkcs11/tls/TestPRF.java                                                8204203 windows-all
-sun/security/pkcs11/tls/TestPremaster.java                                          8204203 windows-all
+security/infra/java/security/cert/CertPathValidator/certification/ActalisCA.java    8224768 generic-all
 
 ############################################################################
 
