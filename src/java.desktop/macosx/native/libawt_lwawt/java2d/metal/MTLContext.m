@@ -370,15 +370,24 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     [self setEncoderTransform:encoder dest:dest];
 }
 
-- (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
+- (void) updateSamplingEncoderProperties:
+     (id<MTLRenderCommandEncoder>) encoder
+     dest:(id<MTLTexture>) dest
+     isSrcOpaque:(bool)isSrcOpaque
+     isDstOpaque:(bool)isDstOpaque
+{
     if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        struct TxtFrameUniforms uf = {RGBA_TO_V4(color), 1};
+        struct TxtFrameUniforms uf = {RGBA_TO_V4(color), 1, isSrcOpaque, isDstOpaque };
         [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     } else {
-        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0};
+        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, isSrcOpaque, isDstOpaque };
         [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     }
-    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO compositeRule:alphaCompositeRule]];
+    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO
+          isDestPremultiplied:NO
+          isSrcOpaque:isSrcOpaque
+          isDstOpaque:isDstOpaque
+          compositeRule:alphaCompositeRule]];
     [self setEncoderTransform:encoder dest:dest];
 }
 
@@ -394,12 +403,15 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return commonRenderEncoder;
 }
 
-- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest {
+- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest isSrcOpaque:(bool)isSrcOpaque isDstOpaque:(bool)isDstOpaque {
     if (commonRenderEncoder == nil) {
         commonRenderEncoder = [self createEncoderForDest: dest];
     }
     [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
-    [self updateSamplingEncoderProperties:commonRenderEncoder dest:dest];
+    [self updateSamplingEncoderProperties:commonRenderEncoder
+            dest:dest
+            isSrcOpaque:isSrcOpaque
+            isDstOpaque:isDstOpaque];
 
     return commonRenderEncoder;
 }

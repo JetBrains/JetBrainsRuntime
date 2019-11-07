@@ -56,8 +56,6 @@
     { // pre-create main states
         [self getRenderPipelineState:YES];
         [self getRenderPipelineState:NO];
-        [self getTexturePipelineState:NO compositeRule:RULE_Src];
-        [self getTexturePipelineState:NO compositeRule:RULE_SrcOver];
     }
 
     return self;
@@ -92,7 +90,12 @@
     return result;
 };
 
-- (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied compositeRule:(int)compositeRule {
+- (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied
+    isDestPremultiplied:(bool)isDestPremultiplied
+    isSrcOpaque:(bool)isSrcOpaque
+    isDstOpaque:(bool)isDstOpaque
+    compositeRule:(int)compositeRule
+{
     @autoreleasepool {
         NSString *uid = [NSString stringWithFormat:@"texture_compositeRule[%d]", compositeRule];
 

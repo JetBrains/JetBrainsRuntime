@@ -32,28 +32,30 @@
 // NOTE: called from RQ-thread (on blit operations)
 - (id<MTLTexture>) getTexture:(int)width height:(int)height format:(MTLPixelFormat)format {
     @synchronized (self) {
-        // 1. find free item
-        // TODO: optimize search, use Map<(w,h,pf), TexPoolItem>
-        const int count = [self.pool count];
-        for (int c = 0; c < count; ++c) {
-            MTLTexturePoolItem *tpi = [self.pool objectAtIndex:c];
-            if (tpi == nil)
-                continue;
-            // TODO: use checks tpi.texture.width <= width && tpi.texture.height <= height
-            if (tpi.texture.width == width && tpi.texture.height == height && tpi.texture.pixelFormat == format &&
-                !tpi.isBusy) {
-                tpi.isBusy = YES;
-                return tpi.texture;
+        @autoreleasepool {
+            // 1. find free item
+            // TODO: optimize search, use Map<(w,h,pf), TexPoolItem>
+            const int count = [self.pool count];
+            for (int c = 0; c < count; ++c) {
+                MTLTexturePoolItem *tpi = [self.pool objectAtIndex:c];
+                if (tpi == nil)
+                    continue;
+                // TODO: use checks tpi.texture.width <= width && tpi.texture.height <= height
+                if (tpi.texture.width == width && tpi.texture.height == height && tpi.texture.pixelFormat == format &&
+                    !tpi.isBusy) {
+                    tpi.isBusy = YES;
+                    return tpi.texture;
+                }
             }
-        }
 
-        // 2. create
-        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:width height:height mipmapped:NO];
-        id <MTLTexture> tex = [self.device newTextureWithDescriptor:textureDescriptor];
-        MTLTexturePoolItem *tpi = [[MTLTexturePoolItem alloc] initWithTexture:tex];
-        [self.pool addObject:tpi];
-        J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d", tex, width, height, format);
-        return tpi.texture;
+            // 2. create
+            MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:format width:width height:height mipmapped:NO];
+            id <MTLTexture> tex = [[self.device newTextureWithDescriptor:textureDescriptor] autorelease];
+            MTLTexturePoolItem *tpi = [[[MTLTexturePoolItem alloc] initWithTexture:tex] autorelease];
+            [self.pool addObject:tpi];
+            J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLTexturePool: created pool item: tex=%p, w=%d h=%d, pf=%d", tex, width, height, format);
+            return tpi.texture;
+        }
     }
 };
 

@@ -90,11 +90,13 @@ fragment half4 frag_txt(
     constexpr sampler textureSampler (mag_filter::linear,
                                   min_filter::linear);
     float4 pixelColor = renderTexture.sample(textureSampler, vert.texCoords);
+    float srcA = uniforms.isSrcOpaque ? 1 : pixelColor.a;
+    // TODO: consider to make shaders without IF-conditions
     if (uniforms.mode) {
-        float4 c = mix(pixelColor, uniforms.color, pixelColor.a);
-        return half4(c.r, c.g, c.b , c.a);;
+        float4 c = mix(pixelColor, uniforms.color, srcA);
+        return half4(c.r, c.g, c.b , uniforms.isDstOpaque ? 1 : c.a);
     }
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b , pixelColor.a);
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b , uniforms.isDstOpaque ? 1 : srcA);
 }
 
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],
