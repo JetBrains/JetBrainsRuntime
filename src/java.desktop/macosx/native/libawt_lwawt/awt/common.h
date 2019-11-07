@@ -68,5 +68,7 @@ struct TxtVertex {
 struct TxtFrameUniforms {
     vector_float4 color;
     int mode;
+    int isSrcOpaque;
+    int isDstOpaque;
 };
 #endif
