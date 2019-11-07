@@ -57,10 +57,10 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static long lastButton = 0;
     static WeakReference<XWindow> lastWindowRef = null;
     static int clickCount = 0;
-    static int touchUpdates = 0;
+    private static int touchUpdates = 0;
     private static int touchBeginX = 0, touchBeginY = 0;
     private static int touchId = 0;
-    private static final int TOUCH_CLICK_RADIUS = 2;
+    private static final int TOUCH_CLICK_RADIUS = 3;
     private static final int TOUCH_UPDATES_THRESHOLD = 2;
     // all touch scrolls are measured in pixels
     private static final int TOUCH_BEGIN = 2;
@@ -794,7 +794,6 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
             y = localXY.y;
         }
 
-        // TODO do we need any other button?
         int button = XConstants.buttons[0];
         int modifiers = getModifiers(dev.get_mods().get_effective(), button, 0);
         // turning off shift modifier
@@ -807,19 +806,16 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 touchUpdates = 0;
                 touchBeginX = x;
                 touchBeginY = y;
+
                 // TODO remove this after TouchEvents support
                 // own touch processing
-                if (touchId == 0) {
+                if (isTouchReleased()) {
                     touchId = dev.get_detail();
                 }
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
-                // TODO remember skipped deltas and send them after
-                if (isInsideTouchClickBoundaries(x, y)) {
-                    return;
-                }
-                if (touchId != dev.get_detail()) {
+                if (isInsideTouchClickBoundaries(x, y) || !isOwningTouch(dev.get_detail())) {
                     return;
                 }
                 ++touchUpdates;
@@ -832,8 +828,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 if (lastY - y != 0) {
                     sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
                 }
+                // horizontal scroll
                 if (lastX - x != 0) {
-                    // horizontal scroll
                     modifiers |= InputEvent.SHIFT_DOWN_MASK;
                     sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastX - x);
                 }
@@ -846,14 +842,13 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 }
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
 
-                // cleanup for owner touch
-                if (touchId == dev.get_detail()) {
+                // cleanup is finger owning touch
+                if (isOwningTouch(dev.get_detail())) {
                     touchId = 0;
                 }
                 break;
         }
 
-        // TODO consider more consistent way to update last coords
         lastX = x;
         lastY = y;
     }
@@ -861,6 +856,14 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private boolean isInsideTouchClickBoundaries(int x, int y) {
         return Math.abs(touchBeginX - x) <= TOUCH_CLICK_RADIUS &&
                 Math.abs(touchBeginY - y) <= TOUCH_CLICK_RADIUS;
+    }
+
+    private static boolean isOwningTouch(int fingerId) {
+        return touchId == fingerId;
+    }
+
+    private static boolean isTouchReleased() {
+        return touchId == 0;
     }
 
     private void sendWheelEventFromTouch(XIDeviceEvent dev, long jWhen, int modifiers, int x, int y, int type, int delta) {
