@@ -46,10 +46,7 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1270,11 +1267,7 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return flattenSubtree;
     }
 
-    private static void layoutWindowSubtreeNatively(Window window, ComponentAccessor acc) {
-        ArrayList<Window> windows = windowsSubtreeOrdered(window, w -> {
-            boolean isIconifiedFrame = w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED;
-            return !isIconifiedFrame;
-        });
+    private static void layoutWindowSubtreeNatively(ArrayList<Window> windows, ComponentAccessor acc) {
         invokeOnPlatformWindow(windows, acc, CPlatformWindow::nativePushNSWindowToFront);
     }
 
@@ -1300,6 +1293,8 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return (w.equals(ultimateOwner));
     }
 
+    private HashMap<Window, ArrayList<Window>> windowsSubtrees = new HashMap<>();
+
     private void updateZOrder() {
 
         // 1. Find all ultimate owners
@@ -1311,13 +1306,38 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
             if (ownerlessWindow.isActive()) {
                 continue;
             }
-            layoutWindowSubtreeNatively(ownerlessWindow, accessor);
+            ArrayList<Window> ownerlessWindowsHierarchy = windowsSubtreeOrdered(ownerlessWindow, w ->  !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED));
+            // Check that the previous list of windows for the window is the same
+            ArrayList<Window> windows = windowsSubtrees.get(ownerlessWindow);
+            if (windows != null) {
+                if (areEqual(ownerlessWindowsHierarchy, windows)) {
+                    continue;
+                }
+            }
+            layoutWindowSubtreeNatively(ownerlessWindowsHierarchy, accessor);
+            windowsSubtrees.put(ownerlessWindow, ownerlessWindowsHierarchy);
         }
 
         // 3. Find current active window and skip it in order to put on top of the stack
         Arrays.stream(ownerlessWindows).filter(CPlatformWindow::isActiveOrHasActiveChild).findAny().ifPresent(activeWindow -> {
-            layoutWindowSubtreeNatively(activeWindow, accessor);
+            ArrayList<Window> activeWindowsHierarchy = windowsSubtreeOrdered(activeWindow, w ->  !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED));
+            ArrayList<Window> windows = windowsSubtrees.get(activeWindow);
+            if (!areEqual(activeWindowsHierarchy, windows)) {
+                layoutWindowSubtreeNatively(activeWindowsHierarchy, accessor);
+                windowsSubtrees.put(activeWindow, activeWindowsHierarchy);
+            }
         });
+    }
+
+    private static boolean areEqual(ArrayList<Window> l1, ArrayList<Window> l2) {
+        if (l1 == null) return false;
+        if (l2 == null) return false;
+        int size = l1.size();
+        if (size != l2.size()) return false;
+        for (int i = 0; i < size; i++) {
+            if (l1.get(i) != l2.get(i)) return false;
+        }
+        return true;
     }
 
     private void windowDidBecomeMain() {
