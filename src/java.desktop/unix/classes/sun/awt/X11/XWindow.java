@@ -59,6 +59,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     static int clickCount = 0;
     static int touchUpdates = 0;
     private static int touchBeginX = 0, touchBeginY = 0;
+    private static int touchId = 0;
     private static final int TOUCH_CLICK_RADIUS = 2;
     private static final int TOUCH_UPDATES_THRESHOLD = 2;
     // all touch scrolls are measured in pixels
@@ -806,18 +807,26 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 touchUpdates = 0;
                 touchBeginX = x;
                 touchBeginY = y;
+                // TODO remove this after TouchEvents support
+                // own touch processing
+                if (touchId == 0) {
+                    touchId = dev.get_detail();
+                }
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
                 // TODO remember skipped deltas and send them after
                 if (isInsideTouchClickBoundaries(x, y)) {
-                    break;
+                    return;
+                }
+                if (touchId != dev.get_detail()) {
+                    return;
                 }
                 ++touchUpdates;
 
                 // workaround to distinguish touch move and touch click
                 if (touchUpdates < TOUCH_UPDATES_THRESHOLD) {
-                    break;
+                    return;
                 }
 
                 if (lastY - y != 0) {
@@ -836,9 +845,15 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, x, y, button);
                 }
                 sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
+
+                // cleanup for owner touch
+                if (touchId == dev.get_detail()) {
+                    touchId = 0;
+                }
                 break;
         }
 
+        // TODO consider more consistent way to update last coords
         lastX = x;
         lastY = y;
     }
