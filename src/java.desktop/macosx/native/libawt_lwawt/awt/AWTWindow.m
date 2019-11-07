@@ -524,10 +524,7 @@ AWT_ASSERT_APPKIT_THREAD;
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
         if (platformWindow != NULL) {
-            static JNF_MEMBER_CACHE(jm_checkBlockingAndOrder, jc_CPlatformWindow,
-                                    "checkBlockingAndOrder", "()Z");
-            JNFCallBooleanMethod(env, platformWindow, jm_checkBlockingAndOrder);
-            (*env)->DeleteLocalRef(env, platformWindow);
+            [self updateZOrder];
         }
     }
 
