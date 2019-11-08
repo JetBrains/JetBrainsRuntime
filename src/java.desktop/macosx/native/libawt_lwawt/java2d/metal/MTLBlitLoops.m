@@ -605,8 +605,16 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
                       jint x, jint y, jint width, jint height,
                       jint dx, jint dy)
 {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_CopyArea -- :TODO");
+#ifdef DEBUG
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_CopyArea: bdst=%p [tex=%p] %dx%d | src (%d, %d), %dx%d -> dst (%d, %d)",
+            dstOps, dstOps->pTexture, ((id<MTLTexture>)dstOps->pTexture).width, ((id<MTLTexture>)dstOps->pTexture).height, x, y, width, height, dx, dy);
+#endif //DEBUG
+    id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
+    [blitEncoder
+            copyFromTexture:dstOps->pTexture
+            sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)
+            toTexture:dstOps->pTexture destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(x + dx, y + dy, 0)];
+    [blitEncoder endEncoding];
 }
 
 #endif /* !HEADLESS */
