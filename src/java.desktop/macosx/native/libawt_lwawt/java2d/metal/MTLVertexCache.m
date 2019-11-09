@@ -87,17 +87,14 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache");
 
     if (vertexCacheIndex > 0) {
-        id<MTLBuffer>vertexBuffer = [mtlc.device newBufferWithBytes:vertexCache
-                                                 length:vertexCacheIndex * sizeof(J2DVertex)
-                                                 options:MTLResourceOptionCPUCacheModeDefault];
-        [encoder setVertexBuffer:vertexBuffer offset:0 atIndex:MeshVertexBuffer];
+        [encoder setVertexBytes: vertexCache length:vertexCacheIndex * sizeof(J2DVertex)
+                                                atIndex:MeshVertexBuffer];
+
         [encoder setFragmentTexture:maskCacheTex atIndex: 0];
         for (int i = 0; i < maskCacheIndex; i++) {
             J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
         }
-        [vertexBuffer release];
-        vertexBuffer = nil;
     }
     vertexCacheIndex = 0;
     maskCacheIndex = 0;
