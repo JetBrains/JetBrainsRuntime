@@ -163,7 +163,7 @@ JNF_COCOA_ENTER(env);
     const CTFontRef fallback = CTS_CopyCTFallbackFontAndGlyphForJavaGlyphCode(awtFont, glyphCode, &glyph);
     const CGFontRef cgFallback = CTFontCopyGraphicsFont(fallback, NULL);
     if (IS_OSX_GT10_14 || CGGI_IsColorFont(cgFallback)) {
-        CGAffineTransform matrix = CGAffineTransformConcat(awtStrike->fAltTx, awtStrike->fFontTx);
+        CGAffineTransform matrix = awtStrike->fAltTx;
         CGFloat fontSize = sqrt(fabs(matrix.a * matrix.d - matrix.b * matrix.c));
         CTFontRef font = CTFontCreateWithGraphicsFont(cgFallback, fontSize, NULL, NULL);
         CTFontGetAdvancesForGlyphs(font, kCTFontDefaultOrientation, &glyph, &advance, 1);
