@@ -54,6 +54,7 @@ import java.security.PrivilegedAction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.swing.JRootPane;
 import javax.swing.RootPaneContainer;
@@ -1267,11 +1268,16 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return flattenSubtree;
     }
 
-    private static void layoutWindowSubtreeNatively(ArrayList<Window> windows, ComponentAccessor acc) {
-        invokeOnPlatformWindow(windows, acc, CPlatformWindow::nativePushNSWindowToFront);
+    private static void layoutWindowSubtreeNatively(List<Window> windows, ComponentAccessor acc) {
+        //invokeOnPlatformWindow(windows, acc, CPlatformWindow::nativePushNSWindowToFront);
+        invokeOnPlatformWindow(windows, acc, w -> {
+            System.err.println("PUSH FORWARD " + w);
+            nativePushNSWindowToFront(w);
+        });
     }
 
-    private static void invokeOnPlatformWindow(ArrayList<Window> windows, ComponentAccessor acc, Consumer<Long> pwConsumer) {
+    private static void invokeOnPlatformWindow(List<Window> windows, ComponentAccessor acc, Consumer<Long> pwConsumer) {
+        windows.forEach(w -> System.err.println(w.getName()));
         windows.stream().map(acc::getPeer).
                 filter(Objects::nonNull).
                 filter(LWWindowPeer.class::isInstance).
@@ -1298,46 +1304,84 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
         return (w.equals(ultimateOwner));
     }
 
-    private HashMap<Window, ArrayList<Window>> windowsSubtrees = new HashMap<>();
+    private HashMap<Window, List<Window>> windowsSubtrees = new HashMap<>();
+
+    private void invalidateWindowsSubtreeCaches () {
+        windowsSubtrees.clear();
+        System.err.println("INVALIDATE CACHES !!!");
+    }
 
     private void updateZOrder() {
+
+        System.err.println("Update z order request from: ");
+        Thread.dumpStack();
 
         // 1. Find all ultimate owners
         Window[] ownerlessWindows = Window.getOwnerlessWindows();
         final ComponentAccessor accessor = AWTAccessor.getComponentAccessor();
 
+        // 2. Order all windows
+        Arrays.stream(ownerlessWindows).
+          // for all visible windows
+          filter(Window::isVisible).
+          // that are not active
+          filter(w -> !w.isActive()).
+          forEach(ownerlessWindow -> {
+              System.err.println("    an ownerless window : " + ownerlessWindow.getName());
+              List<Window> ownerlessWindowsHierarchy = windowsSubtreeOrdered(ownerlessWindow, w ->
+                      !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED)).stream().
+                filter(Window::isVisible).collect(Collectors.toList());
 
+              System.err.print("        tree : ");
+              ownerlessWindowsHierarchy.forEach(w -> System.err.print(" " + w.getName() + " "));
+              System.err.println();
+
+              // Check that the previous list of windows for the window is the same
+              List<Window> windows = windowsSubtrees.get(ownerlessWindow);
+
+              if (windows != null) {
+                  System.err.print("            Cached values: ");
+                  windows.forEach(w -> System.err.print(" " + w.getName() + " "));
+                  System.err.println();
+                  if (areEqual(ownerlessWindowsHierarchy, windows)) {
+                      System.err.println("-> Cached values are equal : do not update the z order");
+                      return;
+                  } else {
+                      System.err.println("-> Cached values differ");
+                  }
+              }
+              layoutWindowSubtreeNatively(ownerlessWindowsHierarchy, accessor);
+              windowsSubtrees.put(ownerlessWindow, ownerlessWindowsHierarchy);
+          });
 
         // 3. Find current active window and skip it in order to put on top of the stack
         Arrays.stream(ownerlessWindows).filter(CPlatformWindow::isActiveOrHasActiveChild).findAny().ifPresent(activeWindow -> {
+            System.err.println("               Active window : " + activeWindow.getName());
+            List<Window> activeWindowsHierarchy = windowsSubtreeOrdered(activeWindow,
+                    w -> !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED)).stream().
+              filter(Window::isVisible).collect(Collectors.toList());
 
-            // 2. Order all windows
-            for (Window ownerlessWindow : ownerlessWindows) {
-                if (ownerlessWindow.isActive()) {
-                    continue;
-                }
-                ArrayList<Window> ownerlessWindowsHierarchy = windowsSubtreeOrdered(ownerlessWindow, w ->  !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED));
-                // Check that the previous list of windows for the window is the same
-                ArrayList<Window> windows = windowsSubtrees.get(ownerlessWindow);
-                if (windows != null) {
-                    if (areEqual(ownerlessWindowsHierarchy, windows)) {
-                        continue;
-                    }
-                }
-                layoutWindowSubtreeNatively(ownerlessWindowsHierarchy, accessor);
-                windowsSubtrees.put(ownerlessWindow, ownerlessWindowsHierarchy);
-            }
+            System.err.print("                 Active window hierarchy: ");
+            activeWindowsHierarchy.forEach(w -> System.err.print(" " + w.getName() + " "));
+            System.err.println();
 
-            ArrayList<Window> activeWindowsHierarchy = windowsSubtreeOrdered(activeWindow, w ->  !(w instanceof Frame && ((Frame)w).getExtendedState() == Frame.ICONIFIED));
-            ArrayList<Window> windows = windowsSubtrees.get(activeWindow);
+            List<Window> windows = windowsSubtrees.get(activeWindow);
+
+            System.err.print("                 Active window cache : ");
+            activeWindowsHierarchy.forEach(w -> System.err.print(" " + w.getName() + " "));
+            System.err.println();
+
             if (!areEqual(activeWindowsHierarchy, windows)) {
+                System.err.println("-> Cached values for the active window  are not equal");
                 layoutWindowSubtreeNatively(activeWindowsHierarchy, accessor);
                 windowsSubtrees.put(activeWindow, activeWindowsHierarchy);
+            } else {
+                System.err.println("-> Cached values for the active window are equal : do not update the z order");
             }
         });
     }
 
-    private static boolean areEqual(ArrayList<Window> l1, ArrayList<Window> l2) {
+    private static boolean areEqual(List<Window> l1, List<Window> l2) {
         if (l1 == null) return false;
         if (l2 == null) return false;
         int size = l1.size();

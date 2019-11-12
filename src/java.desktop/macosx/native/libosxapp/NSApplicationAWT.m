@@ -364,6 +364,13 @@ untilDate:(NSDate *)expiration inMode:(NSString *)mode dequeue:(BOOL)deqFlag {
 
 - (void)sendEvent:(NSEvent *)event
 {
+
+        if ([event type] == NSMouseExited) {
+           //NSLog(@"Tracking Area: [%@] %@", rolloverTrackingArea.owner, rolloverTrackingArea);
+
+           NSLog(@"%@",[NSThread callStackSymbols]);
+        }
+
     if ([event type] == NSApplicationDefined
             && TS_EQUAL([event timestamp], dummyEventTimestamp)
             && [event subtype] == NativeSyncQueueEvent) {

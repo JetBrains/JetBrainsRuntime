@@ -378,6 +378,8 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
  */
 
 -(void) deliverJavaMouseEvent: (NSEvent *) event {
+
+
     BOOL isEnabled = YES;
     NSWindow* window = [self window];
     if ([window isKindOfClass: [AWTWindow_Panel class]] || [window isKindOfClass: [AWTWindow_Normal class]]) {
@@ -389,6 +391,13 @@ extern bool isSystemShortcut_NextWindowInApplication(NSUInteger modifiersMask, N
     }
 
     NSEventType type = [event type];
+
+    if (type == NSMouseExited) {
+       //NSLog(@"Tracking Area: [%@] %@", rolloverTrackingArea.owner, rolloverTrackingArea);
+
+       NSLog(@"%@",[NSThread callStackSymbols]);
+    }
+
 
     // check synthesized mouse entered/exited events
     if ((type == NSMouseEntered && mouseIsOver) || (type == NSMouseExited && !mouseIsOver)) {

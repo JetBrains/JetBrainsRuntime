@@ -446,6 +446,16 @@ AWT_ASSERT_APPKIT_THREAD;
     }
 }
 
+- (void) invalidateWindowsSubtreeCaches {
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
+    if (platformWindow != NULL) {
+        static JNF_MEMBER_CACHE(jm_invalidateWindowsSubtreeCaches, jc_CPlatformWindow, "invalidateWindowsSubtreeCaches", "()V");
+        JNFCallBooleanMethod(env, platformWindow, jm_invalidateWindowsSubtreeCaches);
+        (*env)->DeleteLocalRef(env, platformWindow);
+    }
+}
+
 // Tests whether window is blocked by modal dialog/window
 - (BOOL) isBlocked {
     BOOL isBlocked = NO;
@@ -523,9 +533,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
         JNIEnv *env = [ThreadUtilities getJNIEnv];
         jobject platformWindow = [self.javaPlatformWindow jObjectWithEnv:env];
-        if (platformWindow != NULL) {
-            [self updateZOrder];
-        }
+       // if (platformWindow != NULL) {
+           // [self updateZOrder];
+       // }
     }
 
     return self.isEnabled && IS(self.styleBits, SHOULD_BECOME_MAIN);
@@ -713,7 +723,9 @@ AWT_ASSERT_APPKIT_THREAD;
 
     [self _deliverWindowFocusEvent:YES oppositeWindow: opposite];
 
-   // [self updateZOrder];
+    //if (platformWindow != null) {
+        [self updateZOrder];
+    //}
 }
 
 - (void) activateWindowMenuBar {
@@ -760,11 +772,16 @@ AWT_ASSERT_APPKIT_THREAD;
         [self deactivateWindow];
 }
 
+/* - (void) windowDidResignMain: (NSNotification *) notification {
+    NSLog(@"Resign %@", self.nsWindow);
+
+} */
+
 - (void) deactivateWindow {
 AWT_ASSERT_APPKIT_THREAD;
-#ifdef DEBUG
+//#ifdef DEBUG
     NSLog(@"deactivating window: %@", [self.nsWindow title]);
-#endif
+//#endif
     [self.javaMenuBar deactivate];
 
     // the new key window
@@ -856,7 +873,8 @@ AWT_ASSERT_APPKIT_THREAD;
 - (void)sendEvent:(NSEvent *)event {
         if ([event type] == NSLeftMouseDown || [event type] == NSRightMouseDown || [event type] == NSOtherMouseDown) {
 
-         [self updateZOrder];
+         //[self invalidateWindowsSubtreeCaches];
+        // [self updateZOrder];
 
 
             NSPoint p = [NSEvent mouseLocation];
@@ -874,6 +892,10 @@ AWT_ASSERT_APPKIT_THREAD;
                     (*env)->DeleteLocalRef(env, platformWindow);
                 }
             }
+        }
+
+        if ([event type] == NSLeftMouseUp || [event type] == NSRightMouseUp || [event type] == NSOtherMouseUp) {
+                    [self invalidateWindowsSubtreeCaches];
         }
 }
 
