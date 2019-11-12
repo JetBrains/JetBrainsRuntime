@@ -233,7 +233,6 @@ public class LWWindowPeer
 
         setOpaque(getTarget().isOpaque());
 
-        updateInsets(platformWindow.getInsets());
         if (getSurfaceData() == null) {
             replaceSurfaceData(false);
         }
@@ -310,6 +309,7 @@ public class LWWindowPeer
                 }
             }
         }
+        updateInsets(platformWindow.getInsets());
     }
 
     @Override
