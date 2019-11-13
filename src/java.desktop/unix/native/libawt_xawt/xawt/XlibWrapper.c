@@ -2342,7 +2342,6 @@ Java_sun_awt_X11_XlibWrapper_XISelectEvents
     XIEventMask evmask;
     evmask.deviceid = (int)deviceid;
     evmask.mask_len = XIMaskLen(XI_LASTEVENT);
-    // endianess workaround
     union jlong_to_char_ptr
     {
         jlong value;
