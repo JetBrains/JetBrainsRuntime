@@ -2625,7 +2625,6 @@ public final class XToolkit extends UNIXToolkit implements Runnable {
         return new XIDeviceEvent(cookie.get_data());
     }
 
-    // Use this one instead of native version
     public static int XISelectEvents(long display, long window, long mask, int deviceid) {
         if (isXInputEnabled()) {
             return XlibWrapper.XISelectEvents(display, window, mask, deviceid);
