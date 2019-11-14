@@ -377,15 +377,15 @@ class Native {
     /**
      * Access to C double data(eight bytes)
      */
-    static int getDoubleSize() { return 8; }
+    static final int DOUBLE_SIZE = 8;
     static double getDouble(long ptr) { return unsafe.getDouble(ptr); }
-    static double getDouble(long ptr, int index) { return getDouble(ptr + getDoubleSize() * index); }
+    static double getDouble(long ptr, int index) { return getDouble(ptr + DOUBLE_SIZE * index); }
     /**
      * Stores to C double data(eight bytes)
      */
     static void putDouble(long ptr, double data) { unsafe.putDouble(ptr, data); }
     static void putDouble(long ptr, int index, double data) {
-        putDouble(ptr + index * getDoubleSize(), data);
+        putDouble(ptr + index * DOUBLE_SIZE, data);
     }
 
 
