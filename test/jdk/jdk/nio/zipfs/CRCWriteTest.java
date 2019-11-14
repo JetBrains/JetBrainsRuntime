@@ -27,13 +27,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -58,12 +58,13 @@ public class CRCWriteTest {
      * can be used successfully with the OutputStream write methods
      */
     @Test
-    private void zipFsOsDeflatedWriteTest() throws Exception {
+    public void zipFsOsDeflatedWriteTest() throws Exception {
         Files.deleteIfExists(JAR_FILE);
         String[] msg = {"Hello ", "Tennis Anyone", "!!!!"};
-        Entry e0 = Entry.of("Entry-0", ZipEntry.DEFLATED, Arrays.toString(msg));
+        Entry e0 = Entry.of("Entry-0", ZipEntry.DEFLATED, String.join("",msg));
 
-        try (FileSystem zipfs = FileSystems.newFileSystem(JAR_FILE.toUri(),
+        try (FileSystem zipfs = FileSystems.newFileSystem(
+                new URI("jar", JAR_FILE.toUri().toString(), null),
                 Map.of("create", "true"))) {
 
             // Write to the Jar file using the various OutputStream write methods
@@ -143,7 +144,7 @@ public class CRCWriteTest {
         }
 
         // Check entries with FileSystem API
-        try (FileSystem fs = FileSystems.newFileSystem(zipfile.toUri(), Collections.emptyMap())) {
+        try (FileSystem fs = FileSystems.newFileSystem(zipfile, null)) {
             // check entry count
             Path top = fs.getPath("/");
             long count = Files.find(top, Integer.MAX_VALUE,
