@@ -19,13 +19,7 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 
 public class KeyboardLayoutSwitchTest implements Runnable {
-    private static final String FRAMENAME = "MainFrame";
 
-    private static final int DEPTH = 5;
-    private static final String POPUPNAME = "Popup";
-
-    private static volatile Component focusOwner;
-    private static volatile int popupsCount;
     private static Robot robot;
     private JFrame frame;
 
