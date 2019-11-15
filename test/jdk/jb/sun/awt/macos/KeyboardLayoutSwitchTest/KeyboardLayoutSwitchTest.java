@@ -58,76 +58,11 @@ public class KeyboardLayoutSwitchTest implements Runnable {
 
     @Override
     public void run() {
-//        JTextArea area = createTextArea(FRAMENAME);
         frame = new JFrame(getClass().getSimpleName());
-//        frame.add(new JScrollPane(area));
         frame.pack();
         frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         frame.toFront();
     }
-/*
-    private JTextArea createTextArea(String locatedOn) {
-        JTextArea area = new JTextArea(20, 40);
-        area.setName(locatedOn);
-        area.registerKeyboardAction(this, "show", KeyStroke.getKeyStroke("control N"), JComponent.WHEN_FOCUSED);
-        area.registerKeyboardAction(event -> SwingUtilities.getWindowAncestor((Component) event.getSource()).setVisible(false), KeyStroke.getKeyStroke("control X"), JComponent.WHEN_FOCUSED);
-        area.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentShown(ComponentEvent event) {
-                area.requestFocus();
-            }
-        });
-
-        return area;
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent event) {
-        Component source = (Component) event.getSource();
-        switch (event.getActionCommand()) {
-            case "show":
-                Point point = source.getLocationOnScreen();
-                Component area = createTextArea(POPUPNAME + ++popupsCount);
-                Popup popup = PopupFactory.getSharedInstance().getPopup(source, new JScrollPane(area), point.x + 10, point.y + 10);
-                Window window = SwingUtilities.getWindowAncestor(area);
-                window.setAutoRequestFocus(true);
-                window.setFocusable(true);
-                window.setFocusableWindowState(true);
-                window.setFocusTraversalPolicy(new FocusTraversalPolicy() {
-                    @Override
-                    public Component getComponentAfter(Container container, Component component) {
-                        return area;
-                    }
-
-                    @Override
-                    public Component getComponentBefore(Container container, Component component) {
-                        return area;
-                    }
-
-                    @Override
-                    public Component getFirstComponent(Container container) {
-                        return area;
-                    }
-
-                    @Override
-                    public Component getLastComponent(Container container) {
-                        return area;
-                    }
-
-                    @Override
-                    public Component getDefaultComponent(Container container) {
-                        return area;
-                    }
-                });
-                popup.show();
-                break;
-            case "hide":
-                SwingUtilities.getWindowAncestor(source).setVisible(false);
-                break;
-        }
-    }
-
- */
 }
