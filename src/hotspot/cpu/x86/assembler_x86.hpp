@@ -26,7 +26,7 @@
 #define CPU_X86_VM_ASSEMBLER_X86_HPP
 
 #include "asm/register.hpp"
-#include "vm_version_x86.hpp"
+#include "runtime/vm_version.hpp"
 
 class BiasedLockingCounters;
 

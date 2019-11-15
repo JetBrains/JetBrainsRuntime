@@ -25,8 +25,8 @@
 #ifndef CPU_X86_VM_VM_VERSION_X86_HPP
 #define CPU_X86_VM_VM_VERSION_X86_HPP
 
+#include "runtime/abstract_vm_version.hpp"
 #include "runtime/globals_extension.hpp"
-#include "runtime/vm_version.hpp"
 
 class VM_Version : public Abstract_VM_Version {
   friend class VMStructs;

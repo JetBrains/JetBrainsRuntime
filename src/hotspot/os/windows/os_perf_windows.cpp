@@ -32,7 +32,7 @@
 #include "runtime/os.hpp"
 #include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
-#include "vm_version_ext_x86.hpp"
+#include CPU_HEADER(vm_version_ext)
 #include <math.h>
 #include <psapi.h>
 #include <TlHelp32.h>
