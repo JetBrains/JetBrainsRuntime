@@ -104,6 +104,7 @@ java/awt/Window/SetWindowLocationByPlatformTest/SetWindowLocationByPlatformTest.
 java/awt/Window/ShapedAndTranslucentWindows/Translucent.java                                nobug windows-all,macosx-all
 java/awt/Window/ShapedAndTranslucentWindows/WindowOpacity.java                              nobug windows-all
 java/awt/Window/TopLevelLocation/TopLevelLocation.java                                      nobug linux-all,macosx-all
+java/awt/Window/WindowDeadlockTest/WindowDeadlockTest.java                                  nobug macosx-all timeout
 java/awt/Window/WindowOwnedByEmbeddedFrameTest/WindowOwnedByEmbeddedFrameTest.java          nobug macosx-all
 java/awt/Window/WindowResizing/DoubleClickTitleBarTest.java                                 nobug macosx-all
 java/awt/datatransfer/Independence/IndependenceAWTTest.java                                 nobug linux-all
