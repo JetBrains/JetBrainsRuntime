@@ -47,8 +47,7 @@ import java.awt.image.Raster;
 
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_LCD_SHADER;
 import static sun.java2d.metal.MTLContext.MTLContextCaps.CAPS_EXT_TEXRECT;
-import static sun.java2d.pipe.BufferedOpCodes.FLUSH_SURFACE;
-import static sun.java2d.pipe.BufferedOpCodes.SWAP_BUFFERS;
+import static sun.java2d.pipe.BufferedOpCodes.*;
 import static sun.java2d.pipe.hw.ContextCapabilities.*;
 
 public abstract class MTLSurfaceData extends SurfaceData
@@ -325,15 +324,9 @@ public abstract class MTLSurfaceData extends SurfaceData
 
     protected native void clearWindow();
 
-    protected native boolean initTexture(long pData,
-                                         boolean isOpaque, boolean texNonPow2,
-                                         boolean texRect,
-                                         int width, int height);
+    protected native boolean initTexture(long pData, boolean isOpaque, int width, int height);
 
-    protected native boolean initRTexture(long pData,
-                                          boolean isOpaque, boolean texNonPow2,
-                                          boolean texRect,
-                                          int width, int height);
+    protected native boolean initRTexture(long pData, boolean isOpaque, int width, int height);
 
     protected native boolean initFlipBackbuffer(long pData);
 
@@ -353,17 +346,11 @@ public abstract class MTLSurfaceData extends SurfaceData
 
         switch (type) {
             case TEXTURE:
-                success = initTexture(getNativeOps(),
-                        isOpaque, isTexNonPow2Available(),
-                        isTexRectAvailable(),
-                        width, height);
+                success = initTexture(getNativeOps(), isOpaque, width, height);
                 break;
 
             case RT_TEXTURE:
-                success = initRTexture(getNativeOps(),
-                        isOpaque, isTexNonPow2Available(),
-                        isTexRectAvailable(),
-                        width, height);
+                success = initRTexture(getNativeOps(), isOpaque, width, height);
                 break;
 
             case FLIP_BACKBUFFER:
@@ -610,23 +597,6 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * Returns true if OpenGL textures can have non-power-of-two dimensions
-     * when using the basic GL_TEXTURE_2D target.
-     */
-    boolean isTexNonPow2Available() {
-        return graphicsConfig.isCapPresent(CAPS_TEXNONPOW2);
-    }
-
-    /**
-     * Returns true if OpenGL textures can have non-power-of-two dimensions
-     * when using the GL_TEXTURE_RECTANGLE_ARB target (only available when the
-     * GL_ARB_texture_rectangle extension is present).
-     */
-    boolean isTexRectAvailable() {
-        return graphicsConfig.isCapPresent(CAPS_EXT_TEXRECT);
-    }
-
-    /**
      * Returns true if the surface is an on-screen window surface or
      * a FBO texture attached to an on-screen CALayer.
      *
@@ -636,27 +606,7 @@ public abstract class MTLSurfaceData extends SurfaceData
         return getType() == WINDOW;
     }
 
-    private native int getTextureTarget(long pData);
-
-    private native int getTextureID(long pData);
-
-    /**
-     * If this surface is backed by a texture object, returns the target
-     * for that texture (either GL_TEXTURE_2D or GL_TEXTURE_RECTANGLE_ARB).
-     * Otherwise, this method will return zero.
-     */
-    public final int getTextureTarget() {
-        return getTextureTarget(getNativeOps());
-    }
-
-    /**
-     * If this surface is backed by a texture object, returns the texture ID
-     * for that texture.
-     * Otherwise, this method will return zero.
-     */
-    public final int getTextureID() {
-        return getTextureID(getNativeOps());
-    }
+    private native long getMTLTexturePointer(long pData);
 
     /**
      * Returns native resource of specified {@code resType} associated with
@@ -677,7 +627,7 @@ public abstract class MTLSurfaceData extends SurfaceData
      */
     public long getNativeResource(int resType) {
         if (resType == TEXTURE) {
-            return getTextureID();
+            return getMTLTexturePointer(getNativeOps());
         }
         return 0L;
     }
@@ -879,7 +829,27 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    public static void dispose(long pData, long pConfigInfo) {
+    /**
+     * Disposes the native resources associated with the given MTLSurfaceData
+     * (referenced by the pData parameter).  This method is invoked from
+     * the native Dispose() method from the Disposer thread when the
+     * Java-level MTLSurfaceData object is about to go away.
+     */
+     public static void dispose(long pData, long pConfigInfo) {
+        MTLRenderQueue rq = MTLRenderQueue.getInstance();
+        rq.lock();
+        try {
+            RenderBuffer buf = rq.getBuffer();
+            rq.ensureCapacityAndAlignment(12, 4);
+            buf.putInt(DISPOSE_SURFACE);
+            buf.putLong(pData);
+
+            // this call is expected to complete synchronously, so flush now
+            rq.flushNow();
+        } finally {
+            rq.unlock();
+        }
+
         MTLGraphicsConfig.deRefPConfigInfo(pConfigInfo);
     }
 }
