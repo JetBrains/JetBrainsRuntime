@@ -108,17 +108,6 @@ abstract class MTLPaints {
             MTLSurfaceData dstData = (MTLSurfaceData)sg2d.surfaceData;
             BufferedImage bi = paint.getImage();
 
-            // see if texture-non-pow2 extension is available
-            if (!dstData.isTexNonPow2Available()) {
-                int imgw = bi.getWidth();
-                int imgh = bi.getHeight();
-
-                // verify that the texture image dimensions are pow2
-                if ((imgw & (imgw - 1)) != 0 || (imgh & (imgh - 1)) != 0) {
-                    return false;
-                }
-            }
-
             SurfaceData srcData =
                     dstData.getSourceSurfaceData(bi,
                             SunGraphics2D.TRANSFORM_ISIDENT,

@@ -38,47 +38,51 @@
  * The following methods are implemented in the windowing system (i.e. GLX
  * and WGL) source files.
  */
-extern jlong MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo);
-extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
-extern void MTLSD_DestroyMTLSurface(JNIEnv *env, MTLSDOps *mtlsdo);
+extern jlong MTLSD_GetNativeConfigInfo(BMTLSDOps *bmtlsdo);
+extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo);
+extern void MTLSD_DestroyMTLSurface(JNIEnv *env, BMTLSDOps *bmtlsdo);
 
-void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo, jint w, jint h);
+void MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *bmtlsdo, jint w, jint h);
 
-/**
- * This table contains the "pixel formats" for all system memory surfaces
- * that OpenGL is capable of handling, indexed by the "PF_" constants defined
- * in MTLSurfaceData.java.  These pixel formats contain information that is
- * passed to OpenGL when copying from a system memory ("Sw") surface to
- * an OpenGL "Surface" (via glDrawPixels()) or "Texture" (via glTexImage2D()).
- */
-MTLPixelFormat MTPixelFormats[] = {};
+static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque, jboolean rtt, jint width, jint height) {
+    @autoreleasepool {
+        if (bmtlsdo == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
+            return JNI_FALSE;
+        }
+        if (width <= 0 || height <= 0) {
+            J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: texture dimensions is incorrect, w=%d, h=%d", width, height);
+            return JNI_FALSE;
+        }
 
-/**
- * Given a starting value and a maximum limit, returns the first power-of-two
- * greater than the starting value.  If the resulting value is greater than
- * the maximum limit, zero is returned.
- */
-jint
-MTLSD_NextPowerOfTwo(jint val, jint max)
-{
-    jint i;
+        MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
 
-    if (val > max) {
-        return 0;
+        if (mtlsdo == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: MTLSDOps are null");
+            return JNI_FALSE;
+        }
+        if (mtlsdo->configInfo == NULL || mtlsdo->configInfo->context == NULL) {
+            J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: MTLSDOps wasn't initialized (context is null)");
+            return JNI_FALSE;
+        }
+
+        MTLContext* ctx = mtlsdo->configInfo->context;
+
+        MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
+        bmtlsdo->pTexture = [ctx.device newTextureWithDescriptor: textureDescriptor];
+        bmtlsdo->isOpaque = isOpaque;
+        bmtlsdo->xOffset = 0;
+        bmtlsdo->yOffset = 0;
+        bmtlsdo->width = width;
+        bmtlsdo->height = height;
+        bmtlsdo->textureWidth = width;
+        bmtlsdo->textureHeight = height;
+        bmtlsdo->textureTarget = -1;
+        bmtlsdo->drawableType = rtt ? MTLSD_RT_TEXTURE : MTLSD_TEXTURE;
+
+        J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLSurfaceData_initTexture: w=%d h=%d bp=%p [tex=%p] opaque=%d rtt=%d", width, height, bmtlsdo, bmtlsdo->pTexture, isOpaque, rtt);
+        return JNI_TRUE;
     }
-
-    for (i = 1; i < val; i *= 2);
-
-    return i;
-}
-
-/**
- * Returns true if both given dimensions are a power of two.
- */
-static jboolean
-MTLSD_IsPowerOfTwo(jint width, jint height)
-{
-    return (((width & (width-1)) | (height & (height-1))) == 0);
 }
 
 /**
@@ -86,53 +90,14 @@ MTLSD_IsPowerOfTwo(jint width, jint height)
  * a guide.
  */
 JNIEXPORT jboolean JNICALL
-Java_sun_java2d_metal_MTLSurfaceData_initTexture
-    (JNIEnv *env, jobject mtlsd,
-     jlong pData, jboolean isOpaque,
-     jboolean texNonPow2, jboolean texRect,
-     jint width, jint height)
-{
-    BMTLSDOps *bmtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
-    J2dTraceLn3(J2D_TRACE_INFO, "MTLSurfaceData_initTexture: w=%d h=%d p=%p", width, height, bmtlsdo);
-
-    if (bmtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: ops are null");
+Java_sun_java2d_metal_MTLSurfaceData_initTexture(
+    JNIEnv *env, jobject mtlsd,
+    jlong pData, jboolean isOpaque,
+    jint width, jint height
+) {
+    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, JNI_FALSE, width, height))
         return JNI_FALSE;
-    }
-
-    if (width <= 0 || height <= 0) {
-        J2dRlsTraceLn2(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: texture dimensions is incorrect, w=%d, h=%d", width, height);
-        return JNI_FALSE;
-    }
-
-    MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: MTLSDOps are null");
-        return JNI_FALSE;
-    }
-
-    if (mtlsdo->configInfo == NULL || mtlsdo->configInfo->context == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initTexture: MTLSDOps wasn't initialized (context is null)");
-        return JNI_FALSE;
-    }
-
-    MTLContext* ctx = mtlsdo->configInfo->context;
-
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
-    bmtlsdo->pTexture = [[ctx.device newTextureWithDescriptor: textureDescriptor] retain];
-    bmtlsdo->isOpaque = isOpaque;
-    bmtlsdo->xOffset = 0;
-    bmtlsdo->yOffset = 0;
-    bmtlsdo->width = width;
-    bmtlsdo->height = height;
-    bmtlsdo->textureWidth = width;
-    bmtlsdo->textureHeight = height;
-    bmtlsdo->textureTarget = -1;
-    bmtlsdo->drawableType = MTLSD_TEXTURE;
-
-    MTLSD_SetNativeDimensions(env, bmtlsdo, width, width);
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "\tcreated MTLTexture [texture]: w=%d h=%d bp=%p [tex=%p]", width, height, bmtlsdo, bmtlsdo->pTexture);
-
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
 }
 
@@ -145,48 +110,11 @@ JNIEXPORT jboolean JNICALL
 Java_sun_java2d_metal_MTLSurfaceData_initRTexture
     (JNIEnv *env, jobject mtlsd,
      jlong pData, jboolean isOpaque,
-     jboolean texNonPow2, jboolean texRect,
      jint width, jint height)
 {
-
-    BMTLSDOps *bmtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
-
-    if (bmtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initRTexture: BMTLSDOps are null");
+    if (!MTLSurfaceData_initTexture((BMTLSDOps *)pData, isOpaque, JNI_TRUE, width, height))
         return JNI_FALSE;
-    }
-
-    MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
-
-    if (mtlsdo == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR,
-            "MTLSurfaceData_initRTexture: MTLSDOps are null");
-        return JNI_FALSE;
-    }
-
-    if (mtlsdo->configInfo == NULL || mtlsdo->configInfo->context == NULL) {
-        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSurfaceData_initRTexture: MTLSDOps wasn't initialized (context is null)");
-        return JNI_FALSE;
-    }
-
-    const MTLContext* ctx = mtlsdo->configInfo->context;
-    MTLTextureDescriptor *textureDescriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatBGRA8Unorm width: width height: height mipmapped: NO];
-    bmtlsdo->pTexture = [[ctx.device newTextureWithDescriptor: textureDescriptor] retain];;
-
-    bmtlsdo->isOpaque = isOpaque;
-    bmtlsdo->xOffset = 0;
-    bmtlsdo->yOffset = 0;
-    bmtlsdo->width = width;
-    bmtlsdo->height = height;
-    bmtlsdo->textureWidth = width;
-    bmtlsdo->textureHeight = height;
-    bmtlsdo->textureTarget = -1;
-    bmtlsdo->drawableType = MTLSD_RT_TEXTURE;
-
-    MTLSD_SetNativeDimensions(env, bmtlsdo, width, width);
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "\tcreated MTLTexture [FBObject]: w=%d h=%d bp=%p [tex=%p]", width, height, bmtlsdo, bmtlsdo->pTexture);
-
+    MTLSD_SetNativeDimensions(env, (BMTLSDOps *)pData, width, height);
     return JNI_TRUE;
 }
 
@@ -208,26 +136,11 @@ Java_sun_java2d_metal_MTLSurfaceData_initFlipBackbuffer
     return JNI_TRUE;
 }
 
-JNIEXPORT jint JNICALL
-Java_sun_java2d_metal_MTLSurfaceData_getTextureTarget
-    (JNIEnv *env, jobject mtlsd,
-     jlong pData)
-{
-    //TODO
-    MTLSDOps *mtlsdo = (MTLSDOps *)jlong_to_ptr(pData);
-
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSurfaceData_getTextureTarget -- :TODO");
-
-    return 0;
-}
-
-JNIEXPORT jint JNICALL
-Java_sun_java2d_metal_MTLSurfaceData_getTextureID
-    (JNIEnv *env, jobject mtlsd,
-     jlong pData)
-{
-    //TODO
-    return 0;
+JNIEXPORT jlong JNICALL
+Java_sun_java2d_metal_MTLSurfaceData_getMTLTexturePointer(JNIEnv *env, jobject mtlsd, jlong pData) {
+    if (pData == 0)
+        return 0;
+    return ptr_to_jlong(((BMTLSDOps *)pData)->pTexture);
 }
 
 /**
@@ -257,11 +170,20 @@ MTLSD_SetNativeDimensions(JNIEnv *env, BMTLSDOps *mtlsdo,
  * Deletes native OpenGL resources associated with this surface.
  */
 void
-MTLSD_Delete(JNIEnv *env, BMTLSDOps *mtlsdo)
+MTLSD_Delete(JNIEnv *env, BMTLSDOps *bmtlsdo)
 {
-    //TODO
-    J2dTraceLn1(J2D_TRACE_INFO, "MTLSD_Delete: type=%d",
-                mtlsdo->drawableType);
+    J2dTraceLn3(J2D_TRACE_VERBOSE, "MTLSD_Delete: type=%d %p [tex=%p]", bmtlsdo->drawableType, bmtlsdo, bmtlsdo->pTexture);
+    if (bmtlsdo->drawableType == MTLSD_WINDOW) {
+        MTLSD_DestroyMTLSurface(env, bmtlsdo);
+    } else if (
+            bmtlsdo->drawableType == MTLSD_RT_TEXTURE
+            || bmtlsdo->drawableType == MTLSD_TEXTURE
+            || bmtlsdo->drawableType == MTLSD_FLIP_BACKBUFFER
+    ) {
+        [(NSObject *)bmtlsdo->pTexture release];
+        bmtlsdo->pTexture = NULL;
+        bmtlsdo->drawableType = MTLSD_UNDEFINED;
+    }
 }
 
 /**
@@ -324,9 +246,16 @@ MTLSD_Unlock(JNIEnv *env,
  * with this surface.
  */
 void
-MTLSD_DestroyMTLSurface(JNIEnv *env, MTLSDOps *mtlsdo)
+MTLSD_DestroyMTLSurface(JNIEnv *env, BMTLSDOps * bmtlsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "OGLSD_DestroyOGLSurface");
+    J2dTraceLn(J2D_TRACE_ERROR, "MTLSD_DestroyMTLSurface not implemented!");
+    JNF_COCOA_ENTER(env);
+    if (bmtlsdo->drawableType == MTLSD_WINDOW) {
+        // TODO: detach the NSView from the metal context
+    }
+
+    bmtlsdo->drawableType = MTLSD_UNDEFINED;
+    JNF_COCOA_EXIT(env);
 }
 
 /**
@@ -345,14 +274,38 @@ MTLSD_GetNativeConfigInfo(BMTLSDOps *mtlsdo)
 
 /**
  * This function initializes a native window surface and caches the window
- * bounds in the given OGLSDOps.  Returns JNI_TRUE if the operation was
+ * bounds in the given BMTLSDOps.  Returns JNI_TRUE if the operation was
  * successful; JNI_FALSE otherwise.
  */
 jboolean
-MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *oglsdo)
+MTLSD_InitMTLWindow(JNIEnv *env, BMTLSDOps *bmtlsdo)
 {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLSD_InitMTLWindow -- :TODO");
+    if (bmtlsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_InitMTLWindow: ops are null");
+        return JNI_FALSE;
+    }
 
+    MTLSDOps *mtlsdo = (MTLSDOps *)bmtlsdo->privOps;
+    if (mtlsdo == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_InitMTLWindow: priv ops are null");
+        return JNI_FALSE;
+    }
+
+    AWTView *v = mtlsdo->peerData;
+    if (v == NULL) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLSD_InitMTLWindow: view is invalid");
+        return JNI_FALSE;
+    }
+
+    JNF_COCOA_ENTER(env);
+            NSRect surfaceBounds = [v bounds];
+            bmtlsdo->drawableType = MTLSD_WINDOW;
+            bmtlsdo->isOpaque = JNI_TRUE;
+            bmtlsdo->width = surfaceBounds.size.width;
+            bmtlsdo->height = surfaceBounds.size.height;
+    JNF_COCOA_EXIT(env);
+
+    J2dTraceLn2(J2D_TRACE_VERBOSE, "  created window: w=%d h=%d", bmtlsdo->width, bmtlsdo->height);
     return JNI_TRUE;
 }
 
