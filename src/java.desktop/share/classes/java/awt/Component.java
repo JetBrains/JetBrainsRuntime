@@ -7214,6 +7214,13 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                         : 0));
                 dispatchEvent(e);
             }
+
+            Window window = getContainingWindow();
+            // window is supposed to be not a null value (addNotify)
+            Component mostRecentFocusOwner = KeyboardFocusManager.getMostRecentFocusOwner(window);
+            if (mostRecentFocusOwner != this) {
+                requestFocusInWindow();
+            }
         }
     }
 
