@@ -38,7 +38,7 @@
 #
 #############################################################################
 
-applications/jcstress/acqrel/Test.java generic-all
+applications/jcstress/acqrel/Test.java - generic-all
 
 # :hotspot_compiler
 
@@ -57,6 +57,7 @@ compiler/types/correctness/CorrectnessTest.java                                 
 compiler/types/correctness/OffTest.java                                             8066173 generic-all
 
 compiler/c2/Test6852078.java                                                        8194310 generic-all
+compiler/c2/Test6857159.java                                                        8234290 generic-all
 
 applications/ctw/modules/java_desktop.java 8189604 windows-all
 applications/ctw/modules/java_desktop_2.java 8189604,8204842 generic-all
@@ -90,6 +91,8 @@ runtime/SelectionResolution/InvokeVirtualSuccessTest.java                       
 runtime/SharedArchiveFile/SASymbolTableTest.java                                    8193639 solaris-all
 vmTestbase/nsk/jdi/BScenarios/hotswap/tc10x001/TestDescription.java                 8013728 generic-all
 runtime/memory/ReadFromNoaccessArea.java                                            nobug   generic-all crash is the expected behaviour
+runtime/modules/ModuleStress/ExportModuleStressTest.java                            8230055 windows-all
+runtime/modules/ModuleStress/ModuleStressGC.java                                    8230055 windows-all
 
 #############################################################################
 
@@ -232,6 +235,7 @@ vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manyDiff_b/TestDescription.java 
 vmTestbase/vm/mlvm/indy/func/jvmti/mergeCP_indy2manySame_b/TestDescription.java     8013267 generic-all
 
 vmTestbase/nsk/jdb/exclude/exclude001/exclude001.java                               8197938 windows-all
+vmTestbase/nsk/jdb/unwatch/unwatch002/unwatch002.java.unwatch002                    8208471 windows-all
 
 vmTestbase/nsk/jdwp/ThreadReference/ForceEarlyReturn/forceEarlyReturn001/forceEarlyReturn001.java 7199837 generic-all
 
