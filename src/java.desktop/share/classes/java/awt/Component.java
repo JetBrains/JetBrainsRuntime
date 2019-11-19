@@ -7121,6 +7121,10 @@ public abstract class Component implements ImageObserver, MenuContainer,
                                         : 0));
                 dispatchEvent(e);
             }
+
+            if (requestFocusOnAddNotify) {
+                requestFocusInWindow();
+            }
         }
     }
 
@@ -7944,6 +7948,14 @@ public abstract class Component implements ImageObserver, MenuContainer,
         return requestFocusHelper(temporary, focusedWindowChangeAllowed, FocusEvent.Cause.UNKNOWN);
     }
 
+    /**
+     * In case of a focus request we set the flag in true in order to
+     * request the focus in addNotify method. The flag is supposed
+     * to be set only if the window is already visible but still
+     * does not have a peer.
+     */
+    private volatile boolean requestFocusOnAddNotify;
+
     final boolean requestFocusHelper(boolean temporary,
                                      boolean focusedWindowChangeAllowed,
                                      FocusEvent.Cause cause)
@@ -7973,6 +7985,7 @@ public abstract class Component implements ImageObserver, MenuContainer,
             if (focusLog.isLoggable(PlatformLogger.Level.FINEST)) {
                 focusLog.finest("requestFocus is not accepted");
             }
+            requestFocusOnAddNotify = visible && !isShowing();
             return false;
         }
         // Update most-recent map
