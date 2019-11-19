@@ -260,7 +260,7 @@ Java_sun_font_FreetypeFontScaler_initIDs(
         fcConfig = (*FcInitLoadConfigAndFontsPtr)();
         if (fcConfig != NULL && fontConf != NULL) {
             result = (*FcConfigParseAndLoadPtr)(fcConfig, (const FcChar8 *) fontConf, FcFalse);
-            if (logFC) fprintf(stderr, "FC_LOG: FcConfigParseAndLoad %d \n", result);
+            if (logFC) fprintf(stderr, "FC_LOG: FcConfigParseAndLoad(\"%s\") %d \n", fontConf,  result);
             result = (*FcConfigSetCurrentPtr)(fcConfig);
             if (logFC) fprintf(stderr, "FC_LOG: FcConfigSetCurrent %d \n", result);
         }
