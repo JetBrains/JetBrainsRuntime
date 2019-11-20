@@ -52,7 +52,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogT
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html    nobug windows-all reproduced with Adopt
 java/awt/LightweightDispatcher/LWDispatcherMemoryLeakTest.java                              nobug windows-all
 java/awt/List/ActionAfterRemove/ActionAfterRemove.java                                      nobug windows-all
-java/awt/List/ActionEventTest/ActionEventTest.java                                          nobug linux-all
+java/awt/List/ActionEventTest/ActionEventTest.java                                          nobug generic-all timeout
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java                                    nobug windows-all
 java/awt/List/ItemEventTest/ItemEventTest.java                                              nobug macosx-all,windows-all
 java/awt/List/NofocusListDblClickTest/NofocusListDblClickTest.java                          nobug macosx-all,windows-all
