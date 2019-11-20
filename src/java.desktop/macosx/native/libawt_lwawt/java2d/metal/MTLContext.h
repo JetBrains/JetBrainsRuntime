@@ -57,6 +57,16 @@ typedef struct {
 } MTLBlendRule;
 
 /**
+ * The MTLCommandBufferWrapper class contains command buffer and
+ * associated resources that will be released in completion handler
+ * */
+@interface MTLCommandBufferWrapper : NSObject
+- (id<MTLCommandBuffer>) getCommandBuffer;
+- (void) onComplete; // invoked from completion handler in some pooled thread
+- (void) registerPooledTexture:(MTLPooledTextureHandle *)handle;
+@end
+
+/**
  * The MTLContext class contains cached state relevant to the native
  * MTL context stored within the native ctxInfo field.  Each Java-level
  * MTLContext object is associated with a native-level MTLContext class.
@@ -92,7 +102,6 @@ typedef struct {
 @property (strong) id<MTLLibrary>              library;
 @property (strong) id<MTLRenderPipelineState>  pipelineState;
 @property (strong) id<MTLCommandQueue>         commandQueue;
-@property (readonly,strong) id<MTLCommandBuffer>        commandBuffer;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 @property jint                        color;
 @property MTLScissorRect              clipRect;
@@ -100,7 +109,9 @@ typedef struct {
 @property (strong)MTLPipelineStatesStorage*   pipelineStateStorage;
 @property (strong)MTLTexturePool*             texturePool;
 
-- (void)releaseCommandBuffer;
+- (MTLCommandBufferWrapper *) getCommandBufferWrapper; // creates command buffer wrapper (when doesn't exist)
+- (MTLCommandBufferWrapper *) pullCommandBufferWrapper; // returns current buffer wrapper with loosing object ownership
+
 /**
  * Fetches the MTLContext associated with the given destination surface,
  * makes the context current for those surfaces, updates the destination

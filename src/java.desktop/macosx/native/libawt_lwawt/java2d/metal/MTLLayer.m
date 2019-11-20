@@ -80,20 +80,19 @@
         return;
     }
 
-    id<MTLCommandBuffer> commandBuf = self.ctx.commandBuffer;
-    if (commandBuf == nil) {
+    MTLCommandBufferWrapper * commandBufWrapper = [self.ctx pullCommandBufferWrapper];
+    if (commandBufWrapper == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nothing to do (commandBuf is null)");
         return;
     }
 
-    if (self.nextDrawableCount == 0) {
-    @autoreleasepool {
+    if (self.nextDrawableCount != 0)
+        return;
 
+    @try {
+    @autoreleasepool {
         if ((self.buffer.width == 0) || (self.buffer.height == 0)) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: cannot create drawable of size 0");
-
-            [self.ctx releaseCommandBuffer];
-            [self.ctx.texturePool markAllTexturesFree];
             return;
         }
 
@@ -103,13 +102,11 @@
         id<CAMetalDrawable> mtlDrawable = [self nextDrawable];
         if (mtlDrawable == nil) {
             J2dTraceLn(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: nextDrawable is null)");
-
-            [self.ctx releaseCommandBuffer];
-            [self.ctx.texturePool markAllTexturesFree];
             return;
         }
         self.nextDrawableCount++;
-        J2dTraceLn6(J2D_TRACE_INFO, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
+        J2dTraceLn6(J2D_TRACE_VERBOSE, "MTLLayer.blitTexture: src tex=%p (w=%d, h=%d), dst tex=%p (w=%d, h=%d)", self.buffer, self.buffer.width, self.buffer.height, mtlDrawable.texture, mtlDrawable.texture.width, mtlDrawable.texture.height);
+        id<MTLCommandBuffer> commandBuf = [commandBufWrapper getCommandBuffer];
         id <MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
         [blitEncoder
                 copyFromTexture:self.buffer sourceSlice:0 sourceLevel:0
@@ -121,8 +118,7 @@
         [commandBuf presentDrawable:mtlDrawable];
 
         [commandBuf addCompletedHandler:^(id <MTLCommandBuffer> cmdBuff) {
-                [self.ctx.texturePool markAllTexturesFree];
-                [self.ctx releaseCommandBuffer];
+                [commandBufWrapper onComplete];
                 self.nextDrawableCount--;
                 if (@available(macOS 10.13, *)) {
                     self.displaySyncEnabled = YES;
@@ -131,8 +127,9 @@
 
         [commandBuf commit];
         [commandBuf waitUntilCompleted];
-        [self.ctx releaseCommandBuffer];
     }
+    } @finally {
+        [commandBufWrapper release];
     }
 }
 
@@ -251,6 +248,4 @@ Java_sun_java2d_metal_MTLLayer_blitTexture
     }
 
     [layer blitTexture];
-
-    [ctx releaseCommandBuffer];
 }

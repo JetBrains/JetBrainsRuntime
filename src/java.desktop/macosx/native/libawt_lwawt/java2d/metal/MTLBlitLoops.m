@@ -310,13 +310,15 @@ MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLS
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [via pooled texture]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //DEBUG
 
-    id<MTLTexture> texBuff = [ctx.texturePool getTexture:sw height:sh format:rfi->format];
-    if (texBuff == nil) {
+    MTLPooledTextureHandle * texHandle = [ctx.texturePool getTexture:sw height:sh format:rfi->format];
+    if (texHandle == nil) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: can't obtain temporary texture object from pool");
         return;
     }
+    [[ctx getCommandBufferWrapper] registerPooledTexture:texHandle];
 
-    id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh); // texBuff is locked for current frame
+    id<MTLTexture> texBuff = texHandle.texture;
+    id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh);
     drawTex2Tex(ctx, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, 0, 0, sw, sh, dx1, dy1, dx2, dy2);
     if (swizzledTexture != nil) {
         [swizzledTexture release];
