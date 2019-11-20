@@ -99,8 +99,47 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return result;
 }
 
-@implementation MTLContext {
+@implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
+    NSMutableArray * _pooledTextures;
+}
+
+- (id) initWithCommandBuffer:(id<MTLCommandBuffer>)cmdBuf {
+    self = [super init];
+    if (self) {
+        _commandBuffer = [cmdBuf retain];
+        _pooledTextures = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (id<MTLCommandBuffer>) getCommandBuffer {
+    return _commandBuffer;
+}
+
+- (void) onComplete { // invoked from completion handler in some pooled thread
+    for (int c = 0; c < [_pooledTextures count]; ++c)
+        [[_pooledTextures objectAtIndex:c] releaseTexture];
+    [_pooledTextures removeAllObjects];
+}
+
+- (void) registerPooledTexture:(MTLPooledTextureHandle *)handle {
+    [_pooledTextures addObject:handle];
+}
+
+- (void) dealloc {
+    [self onComplete];
+
+    [self->_pooledTextures release];
+    [self->_commandBuffer release];
+    [super dealloc];
+}
+
+@end
+
+
+@implementation MTLContext {
+    MTLCommandBufferWrapper * _commandBufferWrapper;
 }
 
 @synthesize compState, extraAlpha, alphaCompositeRule, xorPixel, pixel, p0,
@@ -111,18 +150,19 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
             color, clipRect, useClip, texturePool;
 
 
- - (id<MTLCommandBuffer>) commandBuffer {
-    if (_commandBuffer == nil) {
+ - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
+    if (_commandBufferWrapper == nil) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext : commandBuffer is NULL");
         // NOTE: Command queues are thread-safe and allow multiple outstanding command buffers to be encoded simultaneously.
-        _commandBuffer = [[self.commandQueue commandBuffer] retain];// released in [layer blitTexture]
+        _commandBufferWrapper = [[MTLCommandBufferWrapper alloc] initWithCommandBuffer:[self.commandQueue commandBuffer]];// released in [layer blitTexture]
     }
-    return _commandBuffer;
+    return _commandBufferWrapper;
 }
 
-- (void)releaseCommandBuffer {
-    [_commandBuffer release];
-    _commandBuffer = nil;
+- (MTLCommandBufferWrapper *) pullCommandBufferWrapper {
+    MTLCommandBufferWrapper * result = _commandBufferWrapper;
+    _commandBufferWrapper = nil;
+    return result;
 }
 
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst {
@@ -197,7 +237,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
             exit(0);
         }
 
-        _commandBuffer = nil;
+        _commandBufferWrapper = nil;
 
         // Create command queue
         commandQueue = [device newCommandQueue];
@@ -315,8 +355,8 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (id<MTLRenderCommandEncoder>) createEncoderForDest:(id<MTLTexture>) dest {
-    id<MTLCommandBuffer> cb = self.commandBuffer;
-    if (cb == nil)
+    MTLCommandBufferWrapper * cbw = [self getCommandBufferWrapper];
+    if (cbw == nil)
         return nil;
 
     MTLRenderPassDescriptor * rpd = createRenderPassDesc(dest);
@@ -324,7 +364,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
         return nil;
 
     // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on tex=%p", dest);
-    id <MTLRenderCommandEncoder> encoder = [cb renderCommandEncoderWithDescriptor:rpd];
+    id <MTLRenderCommandEncoder> encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
     [rpd release];
     return encoder;
 }
@@ -392,7 +432,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (id<MTLBlitCommandEncoder>)createBlitEncoder {
-    return [[self commandBuffer] blitCommandEncoder];
+    return [[[self getCommandBufferWrapper] getCommandBuffer] blitCommandEncoder];
 }
 
 - (id<MTLRenderCommandEncoder>) createCommonRenderEncoderForDest:(id<MTLTexture>) dest {
