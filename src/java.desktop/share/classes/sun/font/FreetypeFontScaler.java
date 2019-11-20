@@ -51,27 +51,25 @@ class FreetypeFontScaler extends FontScaler {
            and therefore no need to load it explicitly here */
         FontManagerNativeLibrary.load();
 
-        Boolean loadFontConf = java.security.AccessController.doPrivileged(
-                (PrivilegedAction<Boolean>) () ->
-                        "true".equals(System.getProperty(
-                                "java2d.font.loadFontConf", "")));
-        File fontConf = null;
-        if (loadFontConf) {
-            fontConf = new File(java.security.AccessController.doPrivileged(
-                    (PrivilegedAction<String>) () ->
-                            System.getProperty("user.home", "") +
-                                    File.separator + ".fonts.conf"));
-            if (!fontConf.exists()) {
-                fontConf = new File(java.security.AccessController.doPrivileged(
-                        (PrivilegedAction<String>) () ->
-                                System.getProperty("java.home", "") +
-                                        File.separator + "lib" + File.separator +
-                                        "fonts" + File.separator + "font.conf"));
-            }
-        }
+        String fontConfName = java.security.AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> {
+                    if ("true".equals(System.getProperty(
+                            "java2d.font.loadFontConf", ""))) {
+                        File f = new File(System.getProperty("user.home", "") +
+                                          File.separator + ".fonts.conf");
+
+                        if (!f.exists()) {
+                            f = new File(System.getProperty("java.home", "") +
+                                         File.separator + "lib" + File.separator +
+                                         "fonts" + File.separator + "font.conf");
+                        }
+                        return f.getAbsolutePath();
+                    }
+                    return null;
+                });
 
         initIDs(FreetypeFontScaler.class, Toolkit.class, PhysicalFont.class,
-                (fontConf != null)?fontConf.getAbsolutePath() : null);
+                fontConfName);
     }
 
     private static native void initIDs(Class<?> FFS, Class<?> toolkitClass, Class<?> pfClass,
