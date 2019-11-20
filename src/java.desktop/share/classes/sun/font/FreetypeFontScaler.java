@@ -51,17 +51,25 @@ class FreetypeFontScaler extends FontScaler {
            and therefore no need to load it explicitly here */
         FontManagerNativeLibrary.load();
         @SuppressWarnings("removal")
-        String jreFontConfName = java.security.AccessController.doPrivileged(
-                (PrivilegedAction<String>) () ->
-                        "true".equals(System.getProperty(
-                                "java2d.font.loadFontConf", "")) ?
-                                System.getProperty("java.home", "") +
-                                File.separator + "lib" + File.separator +
-                                "fonts" + File.separator + "font.conf" :
-                                null);
+        String fontConfName = java.security.AccessController.doPrivileged(
+                (PrivilegedAction<String>) () -> {
+                    if ("true".equals(System.getProperty(
+                            "java2d.font.loadFontConf", ""))) {
+                        File f = new File(System.getProperty("user.home", "") +
+                                          File.separator + ".fonts.conf");
+
+                        if (!f.exists()) {
+                            f = new File(System.getProperty("java.home", "") +
+                                         File.separator + "lib" + File.separator +
+                                         "fonts" + File.separator + "font.conf");
+                        }
+                        return f.getAbsolutePath();
+                    }
+                    return null;
+                });
 
         initIDs(FreetypeFontScaler.class, Toolkit.class, PhysicalFont.class,
-                jreFontConfName);
+                fontConfName);
     }
 
     private static native void initIDs(Class<?> FFS, Class<?> toolkitClass, Class<?> pfClass,
