@@ -185,7 +185,7 @@ javax/swing/JPopupMenu/6827786/bug6827786.java                                  
 javax/swing/JProgressBar/8015748/JProgressBarOrientationRobotTest.java                      nobug macosx-all,windows-all
 javax/swing/JRadioButton/8041561/bug8041561.java                                            nobug windows-all
 javax/swing/JScrollBar/7163696/Test7163696.java                                             nobug windows-all
-javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug windows-all
+javax/swing/JScrollBar/bug4202954/bug4202954.java                                           nobug generic-all timeout
 javax/swing/JSlider/6401380/bug6401380.java                                                 nobug windows-all
 javax/swing/JTabbedPane/7161568/bug7161568.java                                             nobug windows-all,linux-all
 javax/swing/JTabbedPane/7170310/bug7170310.java                                             nobug macosx-all,linux-all
