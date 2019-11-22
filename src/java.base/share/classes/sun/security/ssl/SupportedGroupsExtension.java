@@ -291,6 +291,7 @@ final class SupportedGroupsExtension {
         final String algorithm;     // signature algorithm
         final boolean isFips;       // can be used in FIPS mode?
         final ProtocolVersion[] supportedProtocols;
+        final boolean isEcAvailable;
 
         // Constructor used for Elliptic Curve Groups (ECDHE)
         private NamedGroup(int id, String name, String oid, boolean isFips,
@@ -302,6 +303,7 @@ final class SupportedGroupsExtension {
             this.algorithm = "EC";
             this.isFips = isFips;
             this.supportedProtocols = supportedProtocols;
+            this.isEcAvailable = JsseJce.isEcAvailable();
         }
 
         // Constructor used for Elliptic Curve Groups (XDH)
@@ -315,6 +317,7 @@ final class SupportedGroupsExtension {
             this.algorithm = algorithm;
             this.isFips = isFips;
             this.supportedProtocols = supportedProtocols;
+            this.isEcAvailable = true; // Don't care.
         }
 
         // Constructor used for Finite Field Diffie-Hellman Groups (FFDHE)
@@ -327,6 +330,7 @@ final class SupportedGroupsExtension {
             this.algorithm = "DiffieHellman";
             this.isFips = isFips;
             this.supportedProtocols = supportedProtocols;
+            this.isEcAvailable = true; // Don't care.
         }
 
         // Constructor used for arbitrary prime and curves (ECDHE)
@@ -339,6 +343,7 @@ final class SupportedGroupsExtension {
             this.algorithm = "EC";
             this.isFips = false;
             this.supportedProtocols = supportedProtocols;
+            this.isEcAvailable = true; // JsseJce.isEcAvailable();
         }
 
         static NamedGroup valueOf(int id) {
@@ -415,18 +420,22 @@ final class SupportedGroupsExtension {
         }
 
         boolean isAvailable(List<ProtocolVersion> protocolVersions) {
-            for (ProtocolVersion pv : supportedProtocols) {
-                if (protocolVersions.contains(pv)) {
-                    return true;
+            if (this.isEcAvailable) {
+                for (ProtocolVersion pv : supportedProtocols) {
+                    if (protocolVersions.contains(pv)) {
+                        return true;
+                    }
                 }
             }
             return false;
         }
 
         boolean isAvailable(ProtocolVersion protocolVersion) {
-            for (ProtocolVersion pv : supportedProtocols) {
-                if (protocolVersion == pv) {
-                    return true;
+            if (this.isEcAvailable) {
+                for (ProtocolVersion pv : supportedProtocols) {
+                    if (protocolVersion == pv) {
+                        return true;
+                    }
                 }
             }
             return false;
