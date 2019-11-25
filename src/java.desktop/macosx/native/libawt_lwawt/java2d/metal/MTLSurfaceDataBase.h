@@ -195,6 +195,11 @@ typedef struct {
 #define MTLSD_XFORM_BILINEAR \
     java_awt_image_AffineTransformOp_TYPE_BILINEAR
 
+typedef struct {
+    jboolean isOpaque;
+    jboolean isPremultiplied;
+} SurfaceRasterFlags;
+
 /**
  * Exported methods.
  */

@@ -153,10 +153,9 @@ static void drawTex2Tex(MTLContext *mtlc,
     J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
 #endif //TRACE_drawTex2Tex
 
-    id<MTLRenderCommandEncoder> encoder = [mtlc createCommonSamplingEncoderForDest:
-                                               dst
-                                               isSrcOpaque:isSrcOpaque
-                                               isDstOpaque:isDstOpaque];
+    id<MTLRenderCommandEncoder> encoder = [mtlc.encoderManager getTextureEncoder:dst
+                                                                     isSrcOpaque:isSrcOpaque
+                                                                     isDstOpaque:isDstOpaque];
 
     struct TxtVertex quadTxVerticesBuffer[6];
     fillTxQuad(quadTxVerticesBuffer, sx1, sy1, sx2, sy2, src.width, src.height, dx1, dy1, dx2, dy2, dst.width, dst.height);
@@ -267,7 +266,7 @@ MTLBlitSwToTextureViaPooledTexture(
     id<MTLTexture> texBuff = texHandle.texture;
     id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh);
     if (useBlitEncoder) {
-        id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
+        id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
         [blitEncoder copyFromTexture:swizzledTexture != nil ? swizzledTexture : texBuff
                          sourceSlice:0
                          sourceLevel:0
@@ -286,19 +285,6 @@ MTLBlitSwToTextureViaPooledTexture(
     if (swizzledTexture != nil) {
         [swizzledTexture release];
     }
-}
-
-static
-jboolean isBlendingDisabled(MTLContext * mtlc, jboolean isSrcOpaque) {
-    if (mtlc.isBlendingDisabled)
-        return JNI_TRUE;
-    if (mtlc.alphaCompositeRule == RULE_Src)
-        return JNI_TRUE;
-    if (mtlc.alphaCompositeRule != RULE_SrcOver) {
-        // J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "\tuse blending for rule %d", mtlc.alphaCompositeRule);
-        return JNI_FALSE;
-    }
-    return isSrcOpaque;
 }
 
 static
@@ -467,13 +453,13 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
 #ifdef TRACE_ISOBLIT
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_FALSE,
          "MTLBlitLoops_IsoBlit [tx=%d, xf=%d, AC=%s]: src=%s, dst=%s | (%d, %d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)",
-         texture, xform, [mtlc getAlphaCompositeRuleString].cString,
+         texture, xform, [mtlc getCompositeDescription].cString,
          getSurfaceDescription(srcOps).cString, getSurfaceDescription(dstOps).cString,
          sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 #endif //TRACE_ISOBLIT
 
     if (!texture && !xform
-        && isBlendingDisabled(mtlc, srcOps->isOpaque)
+        && [mtlc isBlendingDisabled:srcOps->isOpaque]
         && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
         && (dstOps->isOpaque || !srcOps->isOpaque)
     ) {
@@ -481,7 +467,7 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
         J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via blitEncoder]");
 #endif //TRACE_ISOBLIT
 
-        id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
+        id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
         [blitEncoder copyFromTexture:srcTex
                          sourceSlice:0
                          sourceLevel:0
@@ -602,7 +588,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
 #ifdef TRACE_BLIT
             J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_FALSE,
                     "MTLBlitLoops_Blit [tx=%d, xf=%d, AC=%s]: bdst=%s, src=%p (%dx%d) O=%d premul=%d | (%d, %d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)",
-                    texture, xform, [mtlc getAlphaCompositeRuleString].cString,
+                    texture, xform, [mtlc getCompositeDescription].cString,
                     getSurfaceDescription(dstOps).cString, srcOps,
                     sx2 - sx1, sy2 - sy1,
                     RasterFormatInfos[srctype].hasAlpha ? 0 : 1, RasterFormatInfos[srctype].isPremult ? 1 : 0,
@@ -612,7 +598,7 @@ MTLBlitLoops_Blit(JNIEnv *env,
 
             MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
             const jboolean useReplaceRegion = texture ||
-                    (isBlendingDisabled(mtlc, !rfi.hasAlpha)
+                    ([mtlc isBlendingDisabled:!rfi.hasAlpha]
                     && !xform
                     && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2));
 
@@ -664,7 +650,7 @@ MTLBlitLoops_CopyArea(JNIEnv *env,
     J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_CopyArea: bdst=%p [tex=%p] %dx%d | src (%d, %d), %dx%d -> dst (%d, %d)",
             dstOps, dstOps->pTexture, ((id<MTLTexture>)dstOps->pTexture).width, ((id<MTLTexture>)dstOps->pTexture).height, x, y, width, height, dx, dy);
 #endif //DEBUG
-    id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
+    id <MTLBlitCommandEncoder> blitEncoder = [mtlc.encoderManager createBlitEncoder];
     [blitEncoder
             copyFromTexture:dstOps->pTexture
             sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(x, y, 0) sourceSize:MTLSizeMake(width, height, 1)

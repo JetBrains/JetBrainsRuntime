@@ -26,44 +26,15 @@
 #ifndef HEADLESS
 
 #include <stdlib.h>
-#include <string.h>
 
 #include "sun_java2d_SunGraphics2D.h"
 
 #include "jlong.h"
-#include "jni_util.h"
 #import "MTLContext.h"
 #include "MTLRenderQueue.h"
-#include "MTLSurfaceDataBase.h"
-#include "GraphicsPrimitiveMgr.h"
-#include "Region.h"
-#include "common.h"
 
-#include "jvm.h"
 
 extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
-extern MTLContext *MTLSD_MakeMTLContextCurrent(JNIEnv *env,
-                                               MTLSDOps *srcOps,
-                                               MTLSDOps *dstOps);
-NSString *getAlphaCompositeString(jint rule, jfloat extraAlpha);
-
-static id<MTLRenderCommandEncoder> commonRenderEncoder = NULL;
-
-#define RGBA_TO_V4(c)              \
-{                                  \
-    (((c) >> 16) & (0xFF))/255.0f, \
-    (((c) >> 8) & 0xFF)/255.0f,    \
-    ((c) & 0xFF)/255.0f,           \
-    (((c) >> 24) & 0xFF)/255.0f    \
-}
-
-/**
- * This table contains the standard blending rules (or Porter-Duff compositing
- * factors) used in glBlendFunc(), indexed by the rule constants from the
- * AlphaComposite class.
- */
-MTLBlendRule MTStdBlendRules[] = {
-};
 
 static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, 1.0}, {0.0, 0.0}},
@@ -73,32 +44,6 @@ static struct TxtVertex verts[PGRAM_VERTEX_COUNT] = {
         {{-1.0, -1.0}, {0.0, 1.0}},
         {{-1.0, 1.0}, {0.0, 0.0}}
 };
-
-
-static void _traceMatrix(simd_float4x4 * mtx) {
-    for (int row = 0; row < 4; ++row) {
-        J2dTraceLn4(J2D_TRACE_VERBOSE, "  [%lf %lf %lf %lf]",
-                    mtx->columns[0][row], mtx->columns[1][row], mtx->columns[2][row], mtx->columns[3][row]);
-    }
-}
-
-MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
-    MTLRenderPassDescriptor * result = [MTLRenderPassDescriptor renderPassDescriptor];
-    if (result == nil)
-        return nil;
-
-    if (dest == nil) {
-        J2dTraceLn(J2D_TRACE_ERROR, "_createRenderPassDesc: destination texture is null");
-        return nil;
-    }
-
-    MTLRenderPassColorAttachmentDescriptor * ca = result.colorAttachments[0];
-    ca.texture = dest;
-    ca.loadAction = MTLLoadActionLoad;
-    ca.clearColor = MTLClearColorMake(0.0f, 0.9f, 0.0f, 1.0f);
-    ca.storeAction = MTLStoreActionStore;
-    return result;
-}
 
 @implementation MTLCommandBufferWrapper {
     id<MTLCommandBuffer> _commandBuffer;
@@ -138,21 +83,72 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 @end
 
-
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
 
-    jboolean _useClip;
-    MTLScissorRect _clipRect;
+    MTLComposite *     _composite;
+    MTLPaint *         _paint;
+    MTLTransform *     _transform;
+    jboolean        _useClip;
+    MTLScissorRect  _clipRect;
+
+    EncoderManager * _encoderManager;
 }
 
-@synthesize compState, extraAlpha, alphaCompositeRule, xorPixel, pixel, p0,
-            p1, p3, cyclic, pixel1, pixel2, r, g, b, a, paintState, useMask,
-            useTransform, transform4x4, blitTextureID, textureFunction,
-            vertexCacheEnabled, device, library, pipelineState, pipelineStateStorage,
+@synthesize textureFunction,
+            vertexCacheEnabled, device, library, pipelineStateStorage,
             commandQueue, vertexBuffer,
-            color, texturePool;
+            texturePool;
 
+- (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib {
+    self = [super init];
+    if (self) {
+        // Initialization code here.
+        device = d;
+
+        texturePool = [[MTLTexturePool alloc] initWithDevice:device];
+        pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
+
+        vertexBuffer = [device newBufferWithBytes:verts
+                                           length:sizeof(verts)
+                                          options:MTLResourceCPUCacheModeDefaultCache];
+
+        NSError *error = nil;
+
+        library = [device newLibraryWithFile:shadersLib error:&error];
+        if (!library) {
+            NSLog(@"Failed to load library. error %@", error);
+            exit(0);
+        }
+
+        _encoderManager = [[EncoderManager alloc] init];
+        [_encoderManager setContext:self];
+        _composite = [[MTLComposite alloc] init];
+        _paint = [[MTLPaint alloc] init];
+        _transform = [[MTLTransform alloc] init];
+
+        _commandBufferWrapper = nil;
+
+        // Create command queue
+        commandQueue = [device newCommandQueue];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
+
+    self.texturePool = nil;
+    self.library = nil;
+    self.vertexBuffer = nil;
+    self.commandQueue = nil;
+    self.pipelineStateStorage = nil;
+    [_encoderManager release];
+    [_composite release];
+    [_paint release];
+    [_transform release];
+    [super dealloc];
+}
 
  - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
     if (_commandBufferWrapper == nil) {
@@ -220,35 +216,6 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return mtlc;
 }
 
-- (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib {
-    self = [super init];
-    if (self) {
-        // Initialization code here.
-        device = d;
-
-        texturePool = [[MTLTexturePool alloc] initWithDevice:device];
-        pipelineStateStorage = [[MTLPipelineStatesStorage alloc] initWithDevice:device shaderLibPath:shadersLib];
-
-        vertexBuffer = [device newBufferWithBytes:verts
-                                           length:sizeof(verts)
-                                          options:MTLResourceCPUCacheModeDefaultCache];
-
-        NSError *error = nil;
-
-        library = [device newLibraryWithFile:shadersLib error:&error];
-        if (!library) {
-            NSLog(@"Failed to load library. error %@", error);
-            exit(0);
-        }
-
-        _commandBufferWrapper = nil;
-
-        // Create command queue
-        commandQueue = [device newCommandQueue];
-    }
-    return self;
-}
-
 - (void)resetClip {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetClip");
     _useClip = JNI_FALSE;
@@ -287,20 +254,23 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void)resetComposite {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext_ResetComposite  -- :TODO");
+    J2dTraceLn(J2D_TRACE_VERBOSE, "MTLContext_ResetComposite");
+    [_composite reset];
 }
 
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)_extraAlpha
                         flags:(jint)flags {
     J2dTraceLn3(J2D_TRACE_INFO, "MTLContext_SetAlphaComposite: rule=%d, extraAlpha=%1.2f, flags=%d", rule, extraAlpha, flags);
 
-    extraAlpha = _extraAlpha;
-    alphaCompositeRule = rule;
+    [_composite setRule:rule extraAlpha:_extraAlpha];
 }
 
-- (NSString*)getAlphaCompositeRuleString {
-    return getAlphaCompositeString(alphaCompositeRule, extraAlpha);
+- (NSString*)getCompositeDescription {
+    return [_composite getDescription];
+}
+
+- (NSString*)getPaintDescription {
+    return [_paint getDescription];
 }
 
 - (void)setXorComposite:(jint)xp {
@@ -309,33 +279,21 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
                 "MTLContext.setXorComposite: xorPixel=%08x -- :TODO", xp);
 }
 
-- (jboolean)isBlendingDisabled {
-    // TODO: hold case mtlc->alphaCompositeRule == RULE_SrcOver && sun_java2d_pipe_BufferedContext_SRC_IS_OPAQUE
-    return alphaCompositeRule == RULE_Src && (extraAlpha - 1.0f < 0.001f);
+- (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque {
+    return [_composite isBlendingDisabled:isSrcOpaque];
 }
 
 
 - (void)resetTransform {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_ResetTransform");
-    useTransform = JNI_FALSE;
+    [_transform resetTransform];
 }
 
 - (void)setTransformM00:(jdouble) m00 M10:(jdouble) m10
                     M01:(jdouble) m01 M11:(jdouble) m11
                     M02:(jdouble) m02 M12:(jdouble) m12 {
-
-
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext_SetTransform");
-
-    memset(&(transform4x4), 0, sizeof(transform4x4));
-    transform4x4.columns[0][0] = m00;
-    transform4x4.columns[0][1] = m10;
-    transform4x4.columns[1][0] = m01;
-    transform4x4.columns[1][1] = m11;
-    transform4x4.columns[3][0] = m02;
-    transform4x4.columns[3][1] = m12;
-    transform4x4.columns[3][3] = 1.0;
-    useTransform = JNI_TRUE;
+    [_transform setTransformM00:m00 M10:m10 M01:m01 M11:m11 M02:m02 M12:m12];
 }
 
 - (jboolean)initBlitTileTexture {
@@ -353,166 +311,111 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return 0;
 }
 
-
-- (void)setColorR:(int)_r G:(int)_g B:(int)_b A:(int)_a {
-    color = 0;
-    color |= (_r & (0xFF)) << 16;
-    color |= (_g & (0xFF)) << 8;
-    color |= _b & (0xFF);
-    color |= (_a & (0xFF)) << 24;
-    J2dTraceLn4(J2D_TRACE_INFO, "MTLContext.setColor (%d, %d, %d) %d", r,g,b,a);
+- (void)resetPaint {
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetPaint");
+    [_paint reset];
 }
 
-- (void)setColorInt:(int)_pixel {
-    color = _pixel;
-    J2dTraceLn5(J2D_TRACE_INFO, "MTLContext.setColorInt: pixel=%08x [r=%d g=%d b=%d a=%d]", color, (color >> 16) & (0xFF), (color >> 8) & 0xFF, (color) & 0xFF, (color >> 24) & 0xFF);
+- (void)setColorPaint:(int)pixel {
+    J2dTraceLn5(J2D_TRACE_INFO, "MTLContext.setColorPaint: pixel=%08x [r=%d g=%d b=%d a=%d]", pixel, (pixel >> 16) & (0xFF), (pixel >> 8) & 0xFF, (pixel) & 0xFF, (pixel >> 24) & 0xFF);
+    [_paint setColor:pixel];
 }
 
-- (id<MTLRenderCommandEncoder>) createEncoderForDest:(id<MTLTexture>) dest {
-    MTLCommandBufferWrapper * cbw = [self getCommandBufferWrapper];
-    if (cbw == nil)
-        return nil;
-
-    MTLRenderPassDescriptor * rpd = createRenderPassDesc(dest);
-    if (rpd == nil)
-        return nil;
-
-    // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on tex=%p", dest);
-    id <MTLRenderCommandEncoder> encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
-    [rpd release];
-    return encoder;
-}
-
-- (void) setEncoderTransform:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
-    simd_float4x4 normalize;
-    memset(&normalize, 0, sizeof(normalize));
-    normalize.columns[0][0] = 2/(double)dest.width;
-    normalize.columns[1][1] = -2/(double)dest.height;
-    normalize.columns[3][0] = -1.f;
-    normalize.columns[3][1] = 1.f;
-    normalize.columns[3][3] = 1.0;
-
-    if (useTransform) {
-        simd_float4x4 vertexMatrix = simd_mul(normalize, transform4x4);
-        [encoder setVertexBytes:&(vertexMatrix) length:sizeof(vertexMatrix) atIndex:MatrixBuffer];
-    } else {
-        [encoder setVertexBytes:&(normalize) length:sizeof(normalize) atIndex:MatrixBuffer];
-    }
-}
-
-- (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
-    if (_useClip)
-        [encoder setScissorRect:_clipRect];
-
-    if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        // set pipeline state
-        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:NO]];
-        struct FrameUniforms uf = {RGBA_TO_V4(color)};
-        [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-    } else if (compState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        // set viewport and pipeline state
-        //[mtlEncoder setRenderPipelineState:gradPipelineState];
-        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:YES]];
-
-        struct GradFrameUniforms uf = {
-                {p0, p1, p3},
-                RGBA_TO_V4(pixel1),
-                RGBA_TO_V4(pixel2)};
-
-        [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
-    }
-    [self setEncoderTransform:encoder dest:dest];
-}
-
-- (void) updateSamplingEncoderProperties:
-     (id<MTLRenderCommandEncoder>) encoder
-     dest:(id<MTLTexture>) dest
-     isSrcOpaque:(bool)isSrcOpaque
-     isDstOpaque:(bool)isDstOpaque
+- (void)setGradientPaintUseMask:(jboolean)useMask
+                         cyclic:(jboolean)cyclic
+                             p0:(jdouble)p0
+                             p1:(jdouble)p1
+                             p3:(jdouble)p3
+                         pixel1:(jint)pixel1
+                         pixel2:(jint) pixel2
 {
-    if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        struct TxtFrameUniforms uf = {RGBA_TO_V4(color), 1, isSrcOpaque, isDstOpaque };
-        [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-    } else {
-        struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, isSrcOpaque, isDstOpaque };
-        [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
-    }
-    [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO
-          isDestPremultiplied:NO
-          isSrcOpaque:isSrcOpaque
-          isDstOpaque:isDstOpaque
-          compositeRule:alphaCompositeRule]];
-    [self setEncoderTransform:encoder dest:dest];
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setGradientPaintUseMask");
+    [_paint setGradientUseMask:useMask
+                            cyclic:cyclic
+                                p0:p0
+                                p1:p1
+                                p3:p3
+                            pixel1:pixel1
+                            pixel2:pixel2];
 }
 
-- (id<MTLBlitCommandEncoder>)createBlitEncoder {
-    return [[[self getCommandBufferWrapper] getCommandBuffer] blitCommandEncoder];
+- (void)setLinearGradientPaint:(jboolean)useMask
+                        linear:(jboolean)linear
+                   cycleMethod:(jboolean)cycleMethod
+                      numStops:(jint)numStops
+                            p0:(jfloat)p0
+                            p1:(jfloat)p1
+                            p3:(jfloat)p3
+                     fractions:(void *)fractions
+                        pixels:(void *)pixels
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setLinearGradientPaint");
+    [_paint setLinearGradient:useMask
+                       linear:linear
+                  cycleMethod:cycleMethod
+                     numStops:numStops
+                           p0:p0
+                           p1:p1
+                           p3:p3
+                    fractions:fractions
+                       pixels:pixels];
 }
 
-- (id<MTLRenderCommandEncoder>) createCommonRenderEncoderForDest:(id<MTLTexture>) dest {
-    if (commonRenderEncoder == nil) {
-        commonRenderEncoder = [self createEncoderForDest: dest];
-    }
-    [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
-    return commonRenderEncoder;
+- (void)setRadialGradientPaint:(jboolean)useMask
+                        linear:(jboolean)linear
+                   cycleMethod:(jboolean)cycleMethod
+                      numStops:(jint)numStops
+                           m00:(jfloat)m00
+                           m01:(jfloat)m01
+                           m02:(jfloat)m02
+                           m10:(jfloat)m10
+                           m11:(jfloat)m11
+                           m12:(jfloat)m12
+                        focusX:(jfloat)focusX
+                     fractions:(void *)fractions
+                        pixels:(void *)pixels
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setRadialGradientPaint");
+    [_paint setRadialGradient:useMask
+                       linear:linear
+                  cycleMethod:cycleMethod
+                     numStops:numStops
+                          m00:m00
+                          m01:m01
+                          m02:m02
+                          m10:m10
+                          m11:m11
+                          m12:m12
+                       focusX:focusX
+                    fractions:fractions
+                       pixels:pixels];
 }
 
-- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest isSrcOpaque:(bool)isSrcOpaque isDstOpaque:(bool)isDstOpaque {
-    if (commonRenderEncoder == nil) {
-        commonRenderEncoder = [self createEncoderForDest: dest];
-    }
-    [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
-    [self updateSamplingEncoderProperties:commonRenderEncoder
-            dest:dest
-            isSrcOpaque:isSrcOpaque
-            isDstOpaque:isDstOpaque];
-
-    return commonRenderEncoder;
-}
-
-- (void) endCommonRenderEncoder {
-    if (commonRenderEncoder != nil) {
-        [commonRenderEncoder endEncoding];
-        [commonRenderEncoder release];
-        commonRenderEncoder = nil;
-    }
+- (void)setTexturePaint:(jboolean)useMask
+                pSrcOps:(jlong)pSrcOps
+                 filter:(jboolean)filter
+                    xp0:(jdouble)xp0
+                    xp1:(jdouble)xp1
+                    xp3:(jdouble)xp3
+                    yp0:(jdouble)yp0
+                    yp1:(jdouble)yp1
+                    yp3:(jdouble)yp3
+{
+    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.setTexturePaint");
+    [_paint setTexture:useMask
+               pSrcOps:pSrcOps
+                filter:filter
+                   xp0:xp0
+                   xp1:xp1
+                   xp3:xp3
+                   yp0:yp0
+                   yp1:yp1
+                   yp3:yp3];
 }
 
 - (id<MTLCommandBuffer>)createBlitCommandBuffer {
     return [self.commandQueue commandBuffer];
 }
-- (void)dealloc {
-    J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
-
-    self.texturePool = nil;
-    self.library = nil;
-    self.vertexBuffer = nil;
-    self.commandQueue = nil;
-    self.pipelineState = nil;
-    self.pipelineStateStorage = nil;
-    [super dealloc];
-}
-
-- (void)setGradientPaintUseMask:(jboolean)_useMask cyclic:(jboolean)_cyclic p0:(jdouble) _p0 p1:(jdouble)_p1
-                             p3:(jdouble)_p3 pixel1:(jint)_pixel1 pixel2:(jint)_pixel2 {
-
-    //TODO Resolve gradient distribution problem
-    //TODO Implement useMask
-    //TODO Implement cyclic
-    //fprintf(stderr,
-    //        "MTLPaints_SetGradientPaint useMask=%d cyclic=%d "
-    //        "p0=%f p1=%f p3=%f pix1=%d pix2=%d\n", useMask, cyclic,
-    //        p0, p1, p3, pixel1, pixel2);
-
-    compState = sun_java2d_SunGraphics2D_PAINT_GRADIENT;
-    useMask = _useMask;
-    pixel1 = _pixel1;
-    pixel2 = _pixel2;
-    p0 = _p0;
-    p1 = _p1;
-    p3 = _p3;
-    cyclic = _cyclic;
- }
 
 @end
 
@@ -530,80 +433,6 @@ JNIEXPORT jstring JNICALL Java_sun_java2d_metal_MTLContext_getMTLIdString
     int len;
 
     return NULL;
-}
-
-NSString * getAlphaCompositeString(jint rule, jfloat extraAlpha) {
-    const char * result = "";
-    switch (rule) {
-        case java_awt_AlphaComposite_CLEAR:
-        {
-            result = "CLEAR";
-        }
-            break;
-        case java_awt_AlphaComposite_SRC:
-        {
-            result = "SRC";
-        }
-            break;
-        case java_awt_AlphaComposite_DST:
-        {
-            result = "DST";
-        }
-            break;
-        case java_awt_AlphaComposite_SRC_OVER:
-        {
-            result = "SRC_OVER";
-        }
-            break;
-        case java_awt_AlphaComposite_DST_OVER:
-        {
-            result = "DST_OVER";
-        }
-            break;
-        case java_awt_AlphaComposite_SRC_IN:
-        {
-            result = "SRC_IN";
-        }
-            break;
-        case java_awt_AlphaComposite_DST_IN:
-        {
-            result = "DST_IN";
-        }
-            break;
-        case java_awt_AlphaComposite_SRC_OUT:
-        {
-            result = "SRC_OUT";
-        }
-            break;
-        case java_awt_AlphaComposite_DST_OUT:
-        {
-            result = "DST_OUT";
-        }
-            break;
-        case java_awt_AlphaComposite_SRC_ATOP:
-        {
-            result = "SRC_ATOP";
-        }
-            break;
-        case java_awt_AlphaComposite_DST_ATOP:
-        {
-            result = "DST_ATOP";
-        }
-            break;
-        case java_awt_AlphaComposite_XOR:
-        {
-            result = "XOR";
-        }
-            break;
-        default:
-            result = "UNKNOWN";
-            break;
-    }
-    const double epsilon = 0.001f;
-    if (fabs(extraAlpha - 1.f) > epsilon) {
-        return [NSString stringWithFormat:@"%s [%1.2f]", result, extraAlpha];
-    }
-    return [NSString stringWithFormat:@"%s", result];
 }
 
 #endif /* !HEADLESS */

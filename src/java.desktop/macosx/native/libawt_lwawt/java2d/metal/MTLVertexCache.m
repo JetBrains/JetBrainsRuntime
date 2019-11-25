@@ -136,10 +136,10 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
 void
 MTLVertexCache_RestoreColorState(MTLContext *mtlc)
 {
-    // TODO
-    if (mtlc.paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
-        [mtlc setColor:mtlc.pixel];
-    }
+//    TODO
+//    if (mtlc.paint.paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+//        //mtlc.paint.color = mtlc.paint.pixel;
+//    }
 }
 
 static jboolean
@@ -220,7 +220,7 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
 void
 MTLVertexCache_CreateSamplingEncoder(MTLContext *mtlc, BMTLSDOps *dstOps) {
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_CreateSamplingEncoder");
-    encoder = [mtlc createCommonSamplingEncoderForDest:dstOps->pTexture isSrcOpaque:NO isDstOpaque:NO];
+    encoder = [mtlc.encoderManager getTextureEncoder:dstOps isSrcOpaque:NO];
 }
 
 void

@@ -3,13 +3,13 @@
 
 #include "GraphicsPrimitiveMgr.h"
 #import "common.h"
+#import "MTLSurfaceDataBase.h"
+#import "MTLContext.h"
 
-static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
-    int compositeRule,
-    bool isSourcePremultiplied,
-    bool isDestPremultiplied,
-    bool isSrcOpaque,
-    bool isDstOpaque);
+static void setBlendingFactors(
+        MTLRenderPipelineColorAttachmentDescriptor * cad,
+        int compositeRule,
+        const SurfaceRasterFlags * srcFlags, const SurfaceRasterFlags * dstFlags);
 
 @implementation MTLPipelineStatesStorage
 
@@ -17,8 +17,6 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
 @synthesize library;
 @synthesize shaders;
 @synthesize states;
-@synthesize templateRenderPipelineDesc;
-@synthesize templateTexturePipelineDesc;
 
 - (id) initWithDevice:(id<MTLDevice>)dev shaderLibPath:(NSString *)shadersLib {
     self = [super init];
@@ -34,105 +32,82 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
     }
     self.shaders = [NSMutableDictionary dictionaryWithCapacity:10];
     self.states = [NSMutableDictionary dictionaryWithCapacity:10];
-
-    { // init template descriptors
-        MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
-        vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
-        vertDesc.attributes[VertexAttributePosition].offset = 0;
-        vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
-        vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
-        vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
-        vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
-
-        self.templateRenderPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
-        self.templateRenderPipelineDesc.sampleCount = 1;
-        self.templateRenderPipelineDesc.vertexDescriptor = vertDesc;
-        self.templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
-        self.templateRenderPipelineDesc.label = @"template_render";
-
-        self.templateTexturePipelineDesc = [[self.templateRenderPipelineDesc copy] autorelease];
-        self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
-        self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
-        self.templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
-        self.templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
-        self.templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
-        self.templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
-        self.templateTexturePipelineDesc.label = @"template_texture";
-    }
-
-    { // pre-create main states
-        [self getRenderPipelineState:YES];
-        [self getRenderPipelineState:NO];
-    }
-
     return self;
 }
 
-- (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient {
-
-    NSString * uid = @"render_grad[0]";
-    if (isGradient == TRUE) {
-        uid = @"render_grad[1]";
-    }
-
-    id<MTLRenderPipelineState> result = [self.states valueForKey:uid];
-    if (result == nil) {
-        id<MTLFunction> vertexShader   = isGradient ? [self getShader:@"vert_grad"] : [self getShader:@"vert_col"];
-        id<MTLFunction> fragmentShader = isGradient ? [self getShader:@"frag_grad"] : [self getShader:@"frag_col"];
-        MTLRenderPipelineDescriptor *pipelineDesc = [[self.templateRenderPipelineDesc copy] autorelease];
-        pipelineDesc.vertexFunction = vertexShader;
-        pipelineDesc.fragmentFunction = fragmentShader;
-        pipelineDesc.label = uid;
-
-        NSError *error = nil;
-        result = [self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
-        if (result == nil) {
-            NSLog(@"Failed to create render pipeline state '%@', error %@", uid, error);
-            exit(0);
+- (NSPointerArray * ) getSubStates:(NSString *)vertexShaderId fragmentShader:(NSString *)fragmentShaderId {
+    NSMutableDictionary * vSubStates = states[vertexShaderId];
+    if (vSubStates == nil) {
+        @autoreleasepool {
+            vSubStates = [NSMutableDictionary dictionary];
+            [states setObject:vSubStates forKey:vertexShaderId];
         }
+    }
+    NSPointerArray * sSubStates = vSubStates[fragmentShaderId];
+    if (sSubStates == nil) {
+        @autoreleasepool {
+            sSubStates = [NSPointerArray strongObjectsPointerArray];
+            [vSubStates setObject:sSubStates forKey:fragmentShaderId];
+        }
+    }
+    return sSubStates;
+}
 
-        [self.states setValue:result forKey:uid];
+- (id<MTLRenderPipelineState>) getPipelineState:(MTLRenderPipelineDescriptor *) pipelineDescriptor
+                                 vertexShaderId:(NSString *)vertexShaderId
+                               fragmentShaderId:(NSString *)fragmentShaderId
+                                  compositeRule:(jint)compositeRule
+                                       srcFlags:(const SurfaceRasterFlags * )srcFlags
+                                       dstFlags:(const SurfaceRasterFlags * )dstFlags
+{
+    if (compositeRule < 0 || compositeRule >= java_awt_AlphaComposite_MAX_RULE) {
+        J2dRlsTraceLn1(J2D_TRACE_ERROR, "invalid index of composite rule: %d", compositeRule);
+        return nil;
     }
 
-    return result;
-};
+    int subIndex = 0;
+    if (srcFlags->isPremultiplied)
+        subIndex |= 1;
+    if (dstFlags->isPremultiplied)
+        subIndex |= 1 << 1;
+    if (srcFlags->isOpaque)
+        subIndex |= 1 << 2;
+    if (dstFlags->isOpaque)
+        subIndex |= 1 << 3;
+    int index = compositeRule*16 + subIndex;
 
-- (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied
-    isDestPremultiplied:(bool)isDestPremultiplied
-    isSrcOpaque:(bool)isSrcOpaque
-    isDstOpaque:(bool)isDstOpaque
-    compositeRule:(int)compositeRule
-{
-    @autoreleasepool {
-        NSString *uid = [NSString stringWithFormat:@"texture_compositeRule[%d]", compositeRule];
+    NSPointerArray * subStates = [self getSubStates:vertexShaderId fragmentShader:fragmentShaderId];
+    while (index >= [subStates count]) {
+        [subStates addPointer:NULL]; // obj-c collections haven't resize methods, so do that
+    }
 
-        id <MTLRenderPipelineState> result = [self.states valueForKey:uid];
-        if (result == nil) {
-            id <MTLFunction> vertexShader = [self getShader:@"vert_txt"];
-            id <MTLFunction> fragmentShader = [self getShader:@"frag_txt"];
-            MTLRenderPipelineDescriptor *pipelineDesc = [[self.templateTexturePipelineDesc copy] autorelease];
+    id<MTLRenderPipelineState> result = [subStates pointerAtIndex:index];
+    if (result == nil) {
+        @autoreleasepool {
+            id <MTLFunction> vertexShader = [self getShader:vertexShaderId];
+            id <MTLFunction> fragmentShader = [self getShader:fragmentShaderId];
+            MTLRenderPipelineDescriptor *pipelineDesc = [[pipelineDescriptor copy] autorelease];
             pipelineDesc.vertexFunction = vertexShader;
             pipelineDesc.fragmentFunction = fragmentShader;
 
             setBlendingFactors(
-                pipelineDesc.colorAttachments[0],
-                compositeRule,
-                isSourcePremultiplied, isDestPremultiplied,
-                isSrcOpaque, isDstOpaque
+                    pipelineDesc.colorAttachments[0],
+                    compositeRule,
+                    srcFlags, dstFlags
             );
 
             NSError *error = nil;
             result = [[self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error] autorelease];
             if (result == nil) {
-                NSLog(@"Failed to create texture pipeline state '%@', error %@", uid, error);
+                NSLog(@"Failed to create pipeline state, error %@", error);
                 exit(0);
             }
 
-            [self.states setValue:result forKey:uid];
+            [subStates insertPointer:result atIndex:index];
         }
-
-        return result;
     }
+
+    return result;
 }
 
 - (id<MTLFunction>) getShader:(NSString *)name {
@@ -148,10 +123,8 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
 static void setBlendingFactors(
         MTLRenderPipelineColorAttachmentDescriptor * cad,
         int compositeRule,
-        bool isSourcePremultiplied,
-        bool isDestPremultiplied,
-        bool isSrcOpaque,
-        bool isDstOpaque
+        const SurfaceRasterFlags * srcFlags,
+        const SurfaceRasterFlags * dstFlags
 ) {
     if (compositeRule == RULE_Src) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_Src");
@@ -177,18 +150,22 @@ static void setBlendingFactors(
         case RULE_SrcOver: {
             // Ar = As + Ad*(1-As)
             // Cr = Cs + Cd*(1-As)
-            if (isSrcOpaque) {
+            if (srcFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_Src, but blending is disabled because src is opaque");
                 cad.blendingEnabled = NO;
                 return;
             }
-            if (isDstOpaque) {
-                J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_SrcOver with opaque dest isn't implemented (dst alpha won't be ignored)");
+            if (dstFlags->isOpaque) {
+                // Ar = 1, can be ignored, so
+                // Cr = Cs + Cd*(1-As)
+                // TODO: select any multiplier with best performance
+                // for example: cad.destinationAlphaBlendFactor = MTLBlendFactorZero;
+            } else {
+                cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
             }
-            if (!isSourcePremultiplied) {
+            if (!srcFlags->isPremultiplied) {
                 cad.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
             }
-            cad.destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
             cad.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
             J2dTraceLn(J2D_TRACE_VERBOSE, "set RULE_SrcOver");
             break;
@@ -196,13 +173,13 @@ static void setBlendingFactors(
         case RULE_DstOver: {
             // Ar = As*(1-Ad) + Ad
             // Cr = Cs*(1-Ad) + Cd
-            if (isSrcOpaque) {
+            if (srcFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (isDstOpaque) {
+            if (dstFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with opaque dest hasn't any sense");
             }
-            if (!isSourcePremultiplied) {
+            if (!srcFlags->isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_DstOver with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
@@ -215,15 +192,15 @@ static void setBlendingFactors(
         case RULE_SrcIn: {
             // Ar = As*Ad
             // Cr = Cs*Ad
-            if (isSrcOpaque) {
+            if (srcFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (isDstOpaque) {
+            if (dstFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_VERBOSE, "rule=RULE_SrcIn, but blending is disabled because dest is opaque");
                 cad.blendingEnabled = NO;
                 return;
             }
-            if (!isSourcePremultiplied) {
+            if (!srcFlags->isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule RULE_SrcIn with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorDestinationAlpha;
@@ -236,10 +213,10 @@ static void setBlendingFactors(
         case RULE_DstIn: {
             // Ar = Ad*As
             // Cr = Cd*As
-            if (isSrcOpaque) {
+            if (srcFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque src isn't implemented (src alpha won't be ignored)");
             }
-            if (isDstOpaque) {
+            if (dstFlags->isOpaque) {
                 J2dTraceLn(J2D_TRACE_ERROR, "Composite rule RULE_DstIn with opaque dest isn't implemented (dest alpha won't be ignored)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorZero;
@@ -252,7 +229,7 @@ static void setBlendingFactors(
         case RULE_SrcOut: {
             // Ar = As*(1-Ad)
             // Cr = Cs*(1-Ad)
-            if (!isSourcePremultiplied) {
+            if (!srcFlags->isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule SrcOut with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;
@@ -275,7 +252,7 @@ static void setBlendingFactors(
         case RULE_Xor: {
             // Ar = As*(1-Ad) + Ad*(1-As)
             // Cr = Cs*(1-Ad) + Cd*(1-As)
-            if (!isSourcePremultiplied) {
+            if (!srcFlags->isPremultiplied) {
                 J2dTrace(J2D_TRACE_ERROR, "Composite rule Xor with non-premultiplied source isn't implemented (scr alpha will be ignored for rgb-component)");
             }
             cad.sourceAlphaBlendFactor = MTLBlendFactorOneMinusDestinationAlpha;

@@ -26,35 +26,18 @@
 #ifndef MTLContext_h_Included
 #define MTLContext_h_Included
 
-#include <simd/simd.h>
-
 #include "sun_java2d_pipe_BufferedContext.h"
 #include "sun_java2d_metal_MTLContext.h"
 #include "sun_java2d_metal_MTLContext_MTLContextCaps.h"
 
 #import <Metal/Metal.h>
-#include "j2d_md.h"
-#include "MTLSurfaceDataBase.h"
+
 #include "MTLTexturePool.h"
 #include "MTLPipelineStatesStorage.h"
-
-/**
- * The MTLBlendRule structure encapsulates the two enumerated values that
- * comprise a given Porter-Duff blending (compositing) rule.  For example,
- * the "SrcOver" rule can be represented by:
- *     rule.src = GL_ONE;
- *     rule.dst = GL_ONE_MINUS_SRC_ALPHA;
- *
- *     GLenum src;
- * The constant representing the source factor in this Porter-Duff rule.
- *
- *     GLenum dst;
- * The constant representing the destination factor in this Porter-Duff rule.
- */
-typedef struct {
-    jint src;
-    jint dst;
-} MTLBlendRule;
+#include "MTLTransform.h"
+#include "MTLComposite.h"
+#include "MTLPaints.h"
+#include "EncoderManager.h"
 
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
@@ -72,37 +55,20 @@ typedef struct {
  * MTLContext object is associated with a native-level MTLContext class.
  * */
 @interface MTLContext : NSObject
-@property jint          compState;
-@property jfloat        extraAlpha;
-@property jint          alphaCompositeRule;
-@property jint          xorPixel;
-@property jint          pixel;
+@property (readonly) MTLComposite * composite;
+@property (readonly) MTLPaint * paint;
+@property (readonly) MTLTransform * transform;
 
-@property jdouble       p0;
-@property jdouble       p1;
-@property jdouble       p3;
-@property jboolean      cyclic;
-@property jint          pixel1;
-@property jint          pixel2;
-
-@property jubyte        r;
-@property jubyte        g;
-@property jubyte        b;
-@property jubyte        a;
-@property jint          paintState;
-@property jboolean      useMask;
-@property jboolean      useTransform;
-@property simd_float4x4 transform4x4;
-@property jint          blitTextureID;
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLLibrary>              library;
-@property (strong) id<MTLRenderPipelineState>  pipelineState;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
-@property jint                        color;
+
+@property (readonly) EncoderManager * encoderManager;
+
 @property (readonly) const MTLScissorRect * clipRect;
 @property (strong)MTLPipelineStatesStorage*   pipelineStateStorage;
 @property (strong)MTLTexturePool*             texturePool;
@@ -118,6 +84,7 @@ typedef struct {
 + (MTLContext*) setSurfacesEnv:(JNIEnv*)env src:(jlong)pSrc dst:(jlong)pDst;
 
 - (id)initWithDevice:(id<MTLDevice>)d shadersLib:(NSString*)shadersLib;
+- (void)dealloc;
 
 /**
  * Resets the current clip state (disables both scissor and depth tests).
@@ -174,8 +141,15 @@ typedef struct {
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)extraAlpha
                         flags:(jint)flags;
 
-// debug-method
-- (NSString*)getAlphaCompositeRuleString;
+/**
+ * Returns autorelease string with composite description (for debugging only)
+ */
+- (NSString*)getCompositeDescription;
+
+/**
+ * Returns autorelease string with paint description (for debugging only)
+ */
+- (NSString*)getPaintDescription;
 
 /**
  * Initializes the OpenGL logic op state to XOR mode.  Blending is disabled
@@ -183,7 +157,7 @@ typedef struct {
  * later in the MTLContext_SetColor() method.
  */
 - (void)setXorComposite:(jint)xorPixel;
-- (jboolean)isBlendingDisabled;
+- (jboolean)isBlendingDisabled:(jboolean) isSrcOpaque;
 
 /**
  * Resets the OpenGL transform state back to the identity matrix.
@@ -226,24 +200,47 @@ typedef struct {
 
 - (void)destroyContextResources;
 
-- (void)setColorR:(int)r G:(int)g B:(int)b A:(int)a;
-- (void)setColorInt:(int)pixel;
+- (void)resetPaint;
+- (void)setColorPaint:(int)pixel;
+- (void)setGradientPaintUseMask:(jboolean)useMask
+                         cyclic:(jboolean)cyclic
+                             p0:(jdouble)p0
+                             p1:(jdouble)p1
+                             p3:(jdouble)p3
+                         pixel1:(jint)pixel1
+                         pixel2:(jint) pixel2;
+- (void)setLinearGradientPaint:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                       p0:(jfloat)p0
+                       p1:(jfloat)p1
+                       p3:(jfloat)p3
+                fractions:(void *)fractions
+                   pixels:(void *)pixels;
+- (void)setRadialGradientPaint:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                      m00:(jfloat)m00
+                      m01:(jfloat)m01
+                      m02:(jfloat)m02
+                      m10:(jfloat)m10
+                      m11:(jfloat)m11
+                      m12:(jfloat)m12
+                   focusX:(jfloat)focusX
+                fractions:(void *)fractions
+                   pixels:(void *)pixels;
+- (void)setTexturePaint:(jboolean)useMask
+           pSrcOps:(jlong)pSrcOps
+            filter:(jboolean)filter
+               xp0:(jdouble)xp0
+               xp1:(jdouble)xp1
+               xp3:(jdouble)xp3
+               yp0:(jdouble)yp0
+               yp1:(jdouble)yp1
+               yp3:(jdouble)yp3;
 
-- (id<MTLRenderCommandEncoder>)createSamplingEncoderForDest:(id<MTLTexture>)dest clearRed:(int)clearRed;
-- (id<MTLRenderCommandEncoder>)createSamplingEncoderForDest:(id<MTLTexture>)dest;
-- (id<MTLBlitCommandEncoder>)createBlitEncoder;
-// NOTE: debug parameners will be removed soon
-- (id<MTLRenderCommandEncoder>)createRenderEncoderForDest:(id<MTLTexture>)dest clearRed:(int) clearRed/*debug param*/;
-- (id<MTLRenderCommandEncoder>)createRenderEncoderForDest:(id<MTLTexture>)dest;
-- (id<MTLRenderCommandEncoder>)createCommonRenderEncoderForDest:(id<MTLTexture>)dest;
-- (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest;
-- (void)setGradientPaintUseMask:(jboolean)useMask cyclic:(jboolean)cyclic p0:(jdouble) p0 p1:(jdouble) p1 p3:(jdouble)p3
-                         pixel1:(jint)pixel1 pixel2:(jint) pixel2;
-- (void) setEncoderTransform:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
-- (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
-- (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
-- (void)dealloc;
-- (void)endCommonRenderEncoder;
 - (id<MTLCommandBuffer>)createBlitCommandBuffer;
 @end
 
