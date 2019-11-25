@@ -3742,7 +3742,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
     return status;
   }
 
-  JFR_ONLY(Jfr::on_vm_init();)
+  JFR_ONLY(Jfr::on_create_vm_1();)
 
   // Should be done after the heap is fully created
   main_thread->cache_global_variables();
@@ -3882,6 +3882,8 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // loaded until phase 2 completes
   call_initPhase2(CHECK_JNI_ERR);
 
+  JFR_ONLY(Jfr::on_create_vm_2();)
+
   // Always call even when there are not JVMTI environments yet, since environments
   // may be attached late and JVMTI must track phases of VM execution
   JvmtiExport::enter_start_phase();
@@ -3916,7 +3918,7 @@ jint Threads::create_vm(JavaVMInitArgs* args, bool* canTryAgain) {
   // Notify JVMTI agents that VM initialization is complete - nop if no agents.
   JvmtiExport::post_vm_initialized();
 
-  JFR_ONLY(Jfr::on_vm_start();)
+  JFR_ONLY(Jfr::on_create_vm_3();)
 
 #if INCLUDE_MANAGEMENT
   Management::initialize(THREAD);
