@@ -1111,6 +1111,9 @@ AwtWindow* AwtWindow::Create(jobject self, jobject parent)
             if (env->ExceptionCheck()) goto done;
             DWORD style = WS_CLIPCHILDREN | WS_POPUP;
             DWORD exStyle = WS_EX_NOACTIVATE;
+            if (JNU_CallMethodByName(env, NULL, target, "isIgnoreMouseEvents", "()Z").z) {
+                exStyle |= WS_EX_LAYERED | WS_EX_TRANSPARENT;
+            }
             if (GetRTL()) {
                 exStyle |= WS_EX_RIGHT | WS_EX_LEFTSCROLLBAR;
                 if (GetRTLReadingOrder())
