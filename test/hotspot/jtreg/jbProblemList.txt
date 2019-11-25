@@ -47,7 +47,7 @@ compiler/codecache/stress/OverloadCompileQueueTest.java                         
 compiler/codegen/Test6896617.java                                                   8193479 generic-all
 compiler/codegen/aes/TestCipherBlockChainingEncrypt.java                            8219513 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java                     8140405 generic-all
-compiler/intrinsics/sha/sanity/TestSHA512MultiBlockIntrinsics.java.TestSHA512MultiBlockIntrinsics 8209459 linux-aarch64
+compiler/intrinsics/sha/sanity/TestSHA512MultiBlockIntrinsics.java                  8209459 linux-aarch64
 compiler/jsr292/ContinuousCallSiteTargetChange.java                                 8222030 generic-all
 compiler/jvmci/compilerToVM/GetFlagValueTest.java                                   8204459 generic-all
 compiler/jvmci/compilerToVM/GetResolvedJavaTypeTest.java                            8158860 generic-all
