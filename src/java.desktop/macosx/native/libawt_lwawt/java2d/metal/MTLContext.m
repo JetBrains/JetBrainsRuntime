@@ -464,6 +464,9 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     }
 }
 
+- (id<MTLCommandBuffer>)createBlitCommandBuffer {
+    return [self.commandQueue commandBuffer];
+}
 - (void)dealloc {
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.dealloc");
 

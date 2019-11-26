@@ -960,6 +960,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     if (mtlc != NULL) {
         RESET_PREVIOUS_OP();
         [mtlc endCommonRenderEncoder];
+        MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
+        id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+        [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+            [cbwrapper release];
+        }];
+        [commandbuf commit];
+        if (sync) {
+            [commandbuf waitUntilCompleted];
+        }
         BMTLSDOps *dstOps = MTLRenderQueue_GetCurrentDestination();
         if (dstOps != NULL) {
             MTLSDOps *dstMTLOps = (MTLSDOps *)dstOps->privOps;
