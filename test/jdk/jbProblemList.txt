@@ -1169,3 +1169,27 @@ tools/jlink/plugins/IncludeLocalesPluginTest.java                               
 tools/jlink/plugins/SystemModuleDescriptors/CompiledVersionTest.java                nobug windows-6.1 fails on Windows 7 only
 tools/jlink/plugins/SystemModuleDescriptors/UserModuleTest.java                     nobug windows-6.1 fails on Windows 7 only
 tools/launcher/modules/patch/systemmodules/PatchSystemModules.java                  nobug windows-6.1 fails on Windows 7 only
+
+# aarch64: GTK look and feel - not supported
+java/awt/Component/DimensionEncapsulation/DimensionEncapsulation.java               JBR-1977 linux-aarch64
+java/awt/Component/InsetsEncapsulation/InsetsEncapsulation.java                     JBR-1977 linux-aarch64
+javax/swing/JColorChooser/Test6707406.java                                          JBR-1977 linux-aarch64
+javax/swing/JFileChooser/8013442/Test8013442.java                                   JBR-1977 linux-aarch64
+javax/swing/JInternalFrame/4769772/TestJInternalFrameIconify.java                   JBR-1977 linux-aarch64
+javax/swing/JInternalFrame/8075314/bug8075314.java                                  JBR-1977 linux-aarch64
+javax/swing/JInternalFrame/NormalBoundsTest.java                                    JBR-1977 linux-aarch64
+javax/swing/JList/BasicListTest.java                                                JBR-1977 linux-aarch64
+javax/swing/JList/ListSelectionModelTest.java                                       JBR-1977 linux-aarch64
+javax/swing/JMenuBar/MisplacedBorder/MisplacedBorder.java                           JBR-1977 linux-aarch64
+javax/swing/JMenuItem/8158566/CloseOnMouseClickPropertyTest.java                    JBR-1977 linux-aarch64
+javax/swing/JRootPane/SilenceOfDeprecatedMenuBar/SilenceOfDeprecatedMenuBar.java    JBR-1977 linux-aarch64
+javax/swing/JScrollBar/7163696/Test7163696.java                                     JBR-1977 linux-aarch64
+javax/swing/JSlider/6794831/bug6794831.java                                         JBR-1977 linux-aarch64
+javax/swing/JSpinner/WrongEditorTextFieldFont/FontByDefault.java                    JBR-1977 linux-aarch64
+javax/swing/JSpinner/WrongEditorTextFieldFont/FontSetByUser.java                    JBR-1977 linux-aarch64
+javax/swing/JSpinner/WrongEditorTextFieldFont/FontSetToNull.java                    JBR-1977 linux-aarch64
+javax/swing/JTabbedPane/7024235/Test7024235.java                                    JBR-1977 linux-aarch64
+javax/swing/JTextArea/4697612/bug4697612.java                                       JBR-1977 linux-aarch64
+javax/swing/LookAndFeel/8145547/DemandGTK.java                                      JBR-1977 linux-aarch64
+javax/swing/LookAndFeel/8146276/NimbusGlueTest.java                                 JBR-1977 linux-aarch64
+sanity/client/SwingSet/src/GridBagLayoutDemoTest.java                               JBR-1977 linux-aarch64
