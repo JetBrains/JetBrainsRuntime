@@ -241,6 +241,7 @@ typedef struct {
 - (void) updateSamplingEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest;
 - (void)dealloc;
 - (void)endCommonRenderEncoder;
+- (id<MTLCommandBuffer>)createBlitCommandBuffer;
 @end
 
 /**
