@@ -52,6 +52,7 @@ endif
 
 $(eval $(call SetupBuildLauncher, keytool, \
     MAIN_CLASS := sun.security.tools.keytool.Main, \
+    JAVA_ARGS := -XX:+DisableHotswapAgent, \
 ))
 
 ################################################################################
