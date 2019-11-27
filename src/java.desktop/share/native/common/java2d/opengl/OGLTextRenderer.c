@@ -1171,6 +1171,7 @@ OGLTR_DrawColorGlyphNoCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jint y)
 
 // Control subpixel positioning for macOS 13+ grayscale glyphs
 #ifdef MACOSX
+extern int lcdSubPixelPosSupported;
 extern int useFontSmoothing;
 #endif
 
