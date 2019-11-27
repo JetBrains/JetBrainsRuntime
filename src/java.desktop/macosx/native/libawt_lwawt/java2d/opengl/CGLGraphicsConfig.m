@@ -230,6 +230,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
             CFPreferencesGetAppBooleanValue(
             CFSTR("CGFontRenderingFontSmoothingDisabled"),
             kCFPreferencesCurrentApplication, &status);
+        lcdSubPixelPosSupported = YES;
         useFontSmoothing = NO;
         if (status) {
             if (fontSmoothingDisabled) {
@@ -248,6 +249,7 @@ Java_sun_java2d_opengl_CGLGraphicsConfig_getCGLConfigInfo
             if (!status) {
                 smoothFonts = YES;
             }
+            lcdSubPixelPosSupported = !smoothFonts;
             useFontSmoothing = smoothFonts;
             if (!smoothFonts) {
                 J2dRlsTraceLn(J2D_TRACE_INFO,
