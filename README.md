@@ -26,6 +26,10 @@ git clone git@github.com:JetBrains/JetBrainsRuntime.git
 ```
 
 # Configure Local Build Environment
+[OpenJDK build docs](http://hg.openjdk.java.net/jdk/jdk11/raw-file/tip/doc/building.html)  
+Tip for all platforms: run ./configure and check output.  
+Usually, it has meaningful advice how to solve your problem.
+
 ## Linux (docker)
 ```
 $ cd jb/project/docker
@@ -51,7 +55,29 @@ $ make images
 ```
 
 ## Windows
-#### TBD
+Install:
+
+* [Cygwin x64](http://www.cygwin.com/)  
+  Required packages: autoconf, binutils, cpio, diffutils, file, gawk, gcc-core, make, m4, unzip, zip.  
+  **Install them while installing cygwin**.
+* Visual Studio compiler toolset [Download](https://visualstudio.microsoft.com/downloads/)  
+  Visual Studio 2015 has support by default.  
+  **Install with desktop development kit, it includes Windows SDK and compilers**.
+* [Java 11](http://www.oracle.com/technetwork/java/javase/downloads/index.html)  
+  If you have problems while configuring [read java tips on cygwin](http://horstmann.com/articles/cygwin-tips.html)
+
+From command line 
+```
+"c:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" amd64
+"c:\Program_Files\cygwin64\bin\mintty.exe" /bin/bash -l
+```
+First command will set env vars, the second will run cygwin shell with proper environment.  
+In cygwin shell 
+```    
+cd JetBrainsRuntime
+./configure --disable-warnings-as-errors
+make images
+```
 
 ## OSX
 
