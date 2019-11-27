@@ -1027,6 +1027,10 @@ OGLTR_DrawColorGlyphNoCache(OGLContext *oglc, GlyphInfo *ginfo, jint x, jint y)
     return JNI_TRUE;
 }
 
+// Control subpixel positioning for macOS 13+ grayscale glyphs
+#ifdef MACOSX
+extern int lcdSubPixelPosSupported;
+#endif
 
 // see DrawGlyphList.c for more on this macro...
 #define FLOOR_ASSIGN(l, r) \
@@ -1079,6 +1083,8 @@ OGLTR_DrawGlyphList(JNIEnv *env, OGLContext *oglc, OGLSDOps *dstOps,
     {
         dstTextureID = dstOps->textureID;
     }
+
+    subPixPos = lcdSubPixelPosSupported ? subPixPos : 0;
 #endif
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {

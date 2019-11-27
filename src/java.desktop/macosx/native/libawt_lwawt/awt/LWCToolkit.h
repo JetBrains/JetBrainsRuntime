@@ -40,6 +40,8 @@ extern int gNumberOfButtons;
 // InputEvent mask array
 extern jint* gButtonDownMasks;
 
+extern int lcdSubPixelPosSupported;
+
 @interface AWTToolkit : NSObject { }
 + (long) getEventCount;
 + (void) eventCountPlusPlus;
