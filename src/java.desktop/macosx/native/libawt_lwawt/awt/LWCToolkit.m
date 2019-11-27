@@ -52,6 +52,7 @@
 
 int gNumberOfButtons;
 jint* gButtonDownMasks;
+int lcdSubPixelPosSupported;
 int useFontSmoothing;
 
 // Indicates that the app has been started with -XstartOnFirstThread
