@@ -39,6 +39,8 @@ extern int gNumberOfButtons;
 // InputEvent mask array
 extern jint* gButtonDownMasks;
 
+extern int lcdSubPixelPosSupported;
+
 extern int useFontSmoothing;
 
 @interface AWTToolkit : NSObject { }
