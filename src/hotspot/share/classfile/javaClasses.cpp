@@ -42,7 +42,7 @@
 #include "memory/oopFactory.hpp"
 #include "memory/resourceArea.hpp"
 #include "memory/universe.hpp"
-#include "oops/fieldStreams.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/instanceMirrorKlass.hpp"
 #include "oops/klass.hpp"
@@ -56,6 +56,7 @@
 #include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/frame.inline.hpp"
 #include "runtime/handles.inline.hpp"
+#include "runtime/init.hpp"
 #include "runtime/interfaceSupport.inline.hpp"
 #include "runtime/java.hpp"
 #include "runtime/javaCalls.hpp"
@@ -86,6 +87,21 @@
 InjectedField JavaClasses::_injected_fields[] = {
   ALL_INJECTED_FIELDS(DECLARE_INJECTED_FIELD)
 };
+
+// Register native methods of Object
+void java_lang_Object::register_natives(TRAPS) {
+  InstanceKlass* obj = SystemDictionary::Object_klass();
+  Method::register_native(obj, vmSymbols::hashCode_name(),
+                          vmSymbols::void_int_signature(), (address) &JVM_IHashCode, CHECK);
+  Method::register_native(obj, vmSymbols::wait_name(),
+                          vmSymbols::long_void_signature(), (address) &JVM_MonitorWait, CHECK);
+  Method::register_native(obj, vmSymbols::notify_name(),
+                          vmSymbols::void_method_signature(), (address) &JVM_MonitorNotify, CHECK);
+  Method::register_native(obj, vmSymbols::notifyAll_name(),
+                          vmSymbols::void_method_signature(), (address) &JVM_MonitorNotifyAll, CHECK);
+  Method::register_native(obj, vmSymbols::clone_name(),
+                          vmSymbols::void_object_signature(), (address) &JVM_Clone, THREAD);
+}
 
 int JavaClasses::compute_injected_offset(InjectedFieldID id) {
   return _injected_fields[id].compute_offset();
@@ -372,25 +388,35 @@ Handle java_lang_String::create_from_symbol(Symbol* symbol, TRAPS) {
 Handle java_lang_String::create_from_platform_dependent_str(const char* str, TRAPS) {
   assert(str != NULL, "bad arguments");
 
-  typedef jstring (*to_java_string_fn_t)(JNIEnv*, const char *);
+  typedef jstring (JNICALL *to_java_string_fn_t)(JNIEnv*, const char *);
   static to_java_string_fn_t _to_java_string_fn = NULL;
 
   if (_to_java_string_fn == NULL) {
     void *lib_handle = os::native_java_library();
     _to_java_string_fn = CAST_TO_FN_PTR(to_java_string_fn_t, os::dll_lookup(lib_handle, "JNU_NewStringPlatform"));
+#if defined(_WIN32) && !defined(_WIN64)
     if (_to_java_string_fn == NULL) {
-      fatal("NewStringPlatform missing");
+      // On 32 bit Windows, also try __stdcall decorated name
+      _to_java_string_fn = CAST_TO_FN_PTR(to_java_string_fn_t, os::dll_lookup(lib_handle, "_JNU_NewStringPlatform@8"));
+    }
+#endif
+    if (_to_java_string_fn == NULL) {
+      fatal("JNU_NewStringPlatform missing");
     }
   }
 
   jstring js = NULL;
-  { JavaThread* thread = (JavaThread*)THREAD;
-    assert(thread->is_Java_thread(), "must be java thread");
+  {
+    assert(THREAD->is_Java_thread(), "must be java thread");
+    JavaThread* thread = (JavaThread*)THREAD;
     HandleMark hm(thread);
     ThreadToNativeFromVM ttn(thread);
     js = (_to_java_string_fn)(thread->jni_environment(), str);
   }
-  return Handle(THREAD, JNIHandles::resolve(js));
+
+  Handle native_platform_string(THREAD, JNIHandles::resolve(js));
+  JNIHandles::destroy_local(js);  // destroy local JNIHandle.
+  return native_platform_string;
 }
 
 // Converts a Java String to a native C string that can be used for
@@ -1051,7 +1077,7 @@ void java_lang_Class::archive_basic_type_mirrors(TRAPS) {
       Klass *ak = (Klass*)(archived_m->metadata_field(_array_klass_offset));
       assert(ak != NULL || t == T_VOID, "should not be NULL");
       if (ak != NULL) {
-        Klass *reloc_ak = MetaspaceShared::get_relocated_klass(ak);
+        Klass *reloc_ak = MetaspaceShared::get_relocated_klass(ak, true);
         archived_m->metadata_field_put(_array_klass_offset, reloc_ak);
       }
 
@@ -1196,7 +1222,7 @@ oop java_lang_Class::process_archived_mirror(Klass* k, oop mirror,
   // The archived mirror's field at _klass_offset is still pointing to the original
   // klass. Updated the field in the archived mirror to point to the relocated
   // klass in the archive.
-  Klass *reloc_k = MetaspaceShared::get_relocated_klass(as_Klass(mirror));
+  Klass *reloc_k = MetaspaceShared::get_relocated_klass(as_Klass(mirror), true);
   log_debug(cds, heap, mirror)(
     "Relocate mirror metadata field at _klass_offset from " PTR_FORMAT " ==> " PTR_FORMAT,
     p2i(as_Klass(mirror)), p2i(reloc_k));
@@ -1206,7 +1232,7 @@ oop java_lang_Class::process_archived_mirror(Klass* k, oop mirror,
   // higher array klass if exists. Relocate the pointer.
   Klass *arr = array_klass_acquire(mirror);
   if (arr != NULL) {
-    Klass *reloc_arr = MetaspaceShared::get_relocated_klass(arr);
+    Klass *reloc_arr = MetaspaceShared::get_relocated_klass(arr, true);
     log_debug(cds, heap, mirror)(
       "Relocate mirror metadata field at _array_klass_offset from " PTR_FORMAT " ==> " PTR_FORMAT,
       p2i(arr), p2i(reloc_arr));
@@ -1214,6 +1240,33 @@ oop java_lang_Class::process_archived_mirror(Klass* k, oop mirror,
   }
   return archived_mirror;
 }
+
+void java_lang_Class::update_archived_primitive_mirror_native_pointers(oop archived_mirror) {
+  if (MetaspaceShared::relocation_delta() != 0) {
+    assert(archived_mirror->metadata_field(_klass_offset) == NULL, "must be for primitive class");
+
+    Klass* ak = ((Klass*)archived_mirror->metadata_field(_array_klass_offset));
+    if (ak != NULL) {
+      archived_mirror->metadata_field_put(_array_klass_offset,
+          (Klass*)(address(ak) + MetaspaceShared::relocation_delta()));
+    }
+  }
+}
+
+void java_lang_Class::update_archived_mirror_native_pointers(oop archived_mirror) {
+  if (MetaspaceShared::relocation_delta() != 0) {
+    Klass* k = ((Klass*)archived_mirror->metadata_field(_klass_offset));
+    archived_mirror->metadata_field_put(_klass_offset,
+        (Klass*)(address(k) + MetaspaceShared::relocation_delta()));
+
+    Klass* ak = ((Klass*)archived_mirror->metadata_field(_array_klass_offset));
+    if (ak != NULL) {
+      archived_mirror->metadata_field_put(_array_klass_offset,
+          (Klass*)(address(ak) + MetaspaceShared::relocation_delta()));
+    }
+  }
+}
+
 
 // Returns true if the mirror is updated, false if no archived mirror
 // data is present. After the archived mirror object is restored, the
@@ -1230,15 +1283,15 @@ bool java_lang_Class::restore_archived_mirror(Klass *k,
   }
 
   oop m = HeapShared::materialize_archived_object(k->archived_java_mirror_raw_narrow());
-
   if (m == NULL) {
     return false;
   }
 
-  log_debug(cds, mirror)("Archived mirror is: " PTR_FORMAT, p2i(m));
-
   // mirror is archived, restore
+  log_debug(cds, mirror)("Archived mirror is: " PTR_FORMAT, p2i(m));
   assert(HeapShared::is_archived_object(m), "must be archived mirror object");
+  update_archived_mirror_native_pointers(m);
+  assert(as_Klass(m) == k, "must be");
   Handle mirror(THREAD, m);
 
   if (!k->is_array_klass()) {
@@ -1541,7 +1594,7 @@ bool java_lang_Class::offsets_computed = false;
 int  java_lang_Class::classRedefinedCount_offset = -1;
 
 #define CLASS_FIELDS_DO(macro) \
-  macro(classRedefinedCount_offset, k, "classRedefinedCount", int_signature,         false) ; \
+  macro(classRedefinedCount_offset, k, "classRedefinedCount", int_signature,         false); \
   macro(_class_loader_offset,       k, "classLoader",         classloader_signature, false); \
   macro(_component_mirror_offset,   k, "componentType",       class_signature,       false); \
   macro(_module_offset,             k, "module",              module_signature,      false); \
@@ -1609,6 +1662,7 @@ int java_lang_Thread::_contextClassLoader_offset = 0;
 int java_lang_Thread::_inheritedAccessControlContext_offset = 0;
 int java_lang_Thread::_priority_offset = 0;
 int java_lang_Thread::_eetop_offset = 0;
+int java_lang_Thread::_interrupted_offset = 0;
 int java_lang_Thread::_daemon_offset = 0;
 int java_lang_Thread::_stillborn_offset = 0;
 int java_lang_Thread::_stackSize_offset = 0;
@@ -1624,6 +1678,7 @@ int java_lang_Thread::_park_blocker_offset = 0;
   macro(_priority_offset,      k, vmSymbols::priority_name(), int_signature, false); \
   macro(_daemon_offset,        k, vmSymbols::daemon_name(), bool_signature, false); \
   macro(_eetop_offset,         k, "eetop", long_signature, false); \
+  macro(_interrupted_offset,   k, "interrupted", bool_signature, false); \
   macro(_stillborn_offset,     k, "stillborn", bool_signature, false); \
   macro(_stackSize_offset,     k, "stackSize", long_signature, false); \
   macro(_tid_offset,           k, "tid", long_signature, false); \
@@ -1650,6 +1705,24 @@ JavaThread* java_lang_Thread::thread(oop java_thread) {
 
 void java_lang_Thread::set_thread(oop java_thread, JavaThread* thread) {
   java_thread->address_field_put(_eetop_offset, (address)thread);
+}
+
+bool java_lang_Thread::interrupted(oop java_thread) {
+  // Make sure the caller can safely access oops.
+  assert(Thread::current()->is_VM_thread() ||
+         (JavaThread::current()->thread_state() != _thread_blocked &&
+          JavaThread::current()->thread_state() != _thread_in_native),
+         "Unsafe access to oop");
+  return java_thread->bool_field_volatile(_interrupted_offset);
+}
+
+void java_lang_Thread::set_interrupted(oop java_thread, bool val) {
+  // Make sure the caller can safely access oops.
+  assert(Thread::current()->is_VM_thread() ||
+         (JavaThread::current()->thread_state() != _thread_blocked &&
+          JavaThread::current()->thread_state() != _thread_in_native),
+         "Unsafe access to oop");
+  java_thread->bool_field_put_volatile(_interrupted_offset, val);
 }
 
 
@@ -1934,10 +2007,11 @@ static inline bool version_matches(Method* method, int version) {
   return method != NULL && (method->constants()->version() == version);
 }
 
-
 // This class provides a simple wrapper over the internal structure of
 // exception backtrace to insulate users of the backtrace from needing
 // to know what it looks like.
+// The code of this class is not GC safe. Allocations can only happen
+// in expand().
 class BacktraceBuilder: public StackObj {
  friend class BacktraceIterator;
  private:
@@ -1946,7 +2020,11 @@ class BacktraceBuilder: public StackObj {
   typeArrayOop    _methods;
   typeArrayOop    _bcis;
   objArrayOop     _mirrors;
-  typeArrayOop    _names; // needed to insulate method name against redefinition
+  typeArrayOop    _names; // Needed to insulate method name against redefinition.
+  // This is set to a java.lang.Boolean(true) if the top frame
+  // of the backtrace is omitted because it shall be hidden.
+  // Else it is null.
+  oop             _has_hidden_top_frame;
   int             _index;
   NoSafepointVerifier _nsv;
 
@@ -1956,6 +2034,7 @@ class BacktraceBuilder: public StackObj {
     trace_mirrors_offset = java_lang_Throwable::trace_mirrors_offset,
     trace_names_offset   = java_lang_Throwable::trace_names_offset,
     trace_next_offset    = java_lang_Throwable::trace_next_offset,
+    trace_hidden_offset  = java_lang_Throwable::trace_hidden_offset,
     trace_size           = java_lang_Throwable::trace_size,
     trace_chunk_size     = java_lang_Throwable::trace_chunk_size
   };
@@ -1981,11 +2060,15 @@ class BacktraceBuilder: public StackObj {
     assert(names != NULL, "names array should be initialized in backtrace");
     return names;
   }
+  static oop get_has_hidden_top_frame(objArrayHandle chunk) {
+    oop hidden = chunk->obj_at(trace_hidden_offset);
+    return hidden;
+  }
 
  public:
 
   // constructor for new backtrace
-  BacktraceBuilder(TRAPS): _head(NULL), _methods(NULL), _bcis(NULL), _mirrors(NULL), _names(NULL) {
+  BacktraceBuilder(TRAPS): _head(NULL), _methods(NULL), _bcis(NULL), _mirrors(NULL), _names(NULL), _has_hidden_top_frame(NULL) {
     expand(CHECK);
     _backtrace = Handle(THREAD, _head);
     _index = 0;
@@ -1996,6 +2079,7 @@ class BacktraceBuilder: public StackObj {
     _bcis = get_bcis(backtrace);
     _mirrors = get_mirrors(backtrace);
     _names = get_names(backtrace);
+    _has_hidden_top_frame = get_has_hidden_top_frame(backtrace);
     assert(_methods->length() == _bcis->length() &&
            _methods->length() == _mirrors->length() &&
            _mirrors->length() == _names->length(),
@@ -2033,6 +2117,7 @@ class BacktraceBuilder: public StackObj {
     new_head->obj_at_put(trace_bcis_offset, new_bcis());
     new_head->obj_at_put(trace_mirrors_offset, new_mirrors());
     new_head->obj_at_put(trace_names_offset, new_names());
+    new_head->obj_at_put(trace_hidden_offset, NULL);
 
     _head    = new_head();
     _methods = new_methods();
@@ -2071,6 +2156,20 @@ class BacktraceBuilder: public StackObj {
     assert(method->method_holder()->java_mirror() != NULL, "never push null for mirror");
     _mirrors->obj_at_put(_index, method->method_holder()->java_mirror());
     _index++;
+  }
+
+  void set_has_hidden_top_frame(TRAPS) {
+    if (_has_hidden_top_frame == NULL) {
+      // It would be nice to add java/lang/Boolean::TRUE here
+      // to indicate that this backtrace has a hidden top frame.
+      // But this code is used before TRUE is allocated.
+      // Therefor let's just use an arbitrary legal oop
+      // available right here. We only test for != null
+      // anyways. _methods is a short[].
+      assert(_methods != NULL, "we need a legal oop");
+      _has_hidden_top_frame = _methods;
+      _head->obj_at_put(trace_hidden_offset, _has_hidden_top_frame);
+    }
   }
 
 };
@@ -2208,7 +2307,7 @@ static void print_stack_element_to_stream(outputStream* st, Handle mirror, int m
   st->print_cr("%s", buf);
 }
 
-void java_lang_Throwable::print_stack_element(outputStream *st, const methodHandle& method, int bci) {
+void java_lang_Throwable::print_stack_element(outputStream *st, Method* method, int bci) {
   Handle mirror (Thread::current(),  method->method_holder()->java_mirror());
   int method_id = method->orig_method_idnum();
   int version = method->constants()->version();
@@ -2314,7 +2413,6 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
   // trace as utilizing vframe.
 #ifdef ASSERT
   vframeStream st(thread);
-  methodHandle st_method(THREAD, st.method());
 #endif
   int total_count = 0;
   RegisterMap map(thread, false);
@@ -2364,14 +2462,9 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
       }
     }
 #ifdef ASSERT
-    assert(st_method() == method && st.bci() == bci,
+    assert(st.method() == method && st.bci() == bci,
            "Wrong stack trace");
     st.next();
-    // vframeStream::method isn't GC-safe so store off a copy
-    // of the Method* in case we GC.
-    if (!st.at_end()) {
-      st_method = st.method();
-    }
 #endif
 
     // the format of the stacktrace will be:
@@ -2402,7 +2495,13 @@ void java_lang_Throwable::fill_in_stack_trace(Handle throwable, const methodHand
       }
     }
     if (method->is_hidden()) {
-      if (skip_hidden)  continue;
+      if (skip_hidden) {
+        if (total_count == 0) {
+          // The top frame will be hidden from the stack trace.
+          bt.set_has_hidden_top_frame(CHECK);
+        }
+        continue;
+      }
     }
     bt.push(method, bci, CHECK);
     total_count++;
@@ -2519,6 +2618,37 @@ void java_lang_Throwable::get_stack_trace_elements(Handle throwable,
   }
 }
 
+bool java_lang_Throwable::get_top_method_and_bci(oop throwable, Method** method, int* bci) {
+  Thread* THREAD = Thread::current();
+  objArrayHandle result(THREAD, objArrayOop(backtrace(throwable)));
+  BacktraceIterator iter(result, THREAD);
+  // No backtrace available.
+  if (!iter.repeat()) return false;
+
+  // If the exception happened in a frame that has been hidden, i.e.,
+  // omitted from the back trace, we can not compute the message.
+  oop hidden = ((objArrayOop)backtrace(throwable))->obj_at(trace_hidden_offset);
+  if (hidden != NULL) {
+    return false;
+  }
+
+  // Get first backtrace element.
+  BacktraceElement bte = iter.next(THREAD);
+
+  InstanceKlass* holder = InstanceKlass::cast(java_lang_Class::as_Klass(bte._mirror()));
+  assert(holder != NULL, "first element should be non-null");
+  Method* m = holder->method_with_orig_idnum(bte._method_id, bte._version);
+
+  // Original version is no longer available.
+  if (m == NULL || !version_matches(m, bte._version)) {
+    return false;
+  }
+
+  *method = m;
+  *bci = bte._bci;
+  return true;
+}
+
 oop java_lang_StackTraceElement::create(const methodHandle& method, int bci, TRAPS) {
   // Allocate java.lang.StackTraceElement instance
   InstanceKlass* k = SystemDictionary::StackTraceElement_klass();
@@ -2597,7 +2727,7 @@ void java_lang_StackTraceElement::fill_in(Handle element,
     }
     java_lang_StackTraceElement::set_fileName(element(), source_file);
 
-    int line_number = Backtrace::get_line_number(method, bci);
+    int line_number = Backtrace::get_line_number(method(), bci);
     java_lang_StackTraceElement::set_lineNumber(element(), line_number);
   }
 }
@@ -2672,7 +2802,8 @@ void java_lang_StackFrameInfo::to_stack_trace_element(Handle stackFrame, Handle 
   short version = stackFrame->short_field(_version_offset);
   int bci = stackFrame->int_field(_bci_offset);
   Symbol* name = method->name();
-  java_lang_StackTraceElement::fill_in(stack_trace_element, holder, method, version, bci, name, CHECK);
+  java_lang_StackTraceElement::fill_in(stack_trace_element, holder, methodHandle(THREAD, method),
+                                       version, bci, name, CHECK);
 }
 
 #define STACKFRAMEINFO_FIELDS_DO(macro) \
@@ -4555,6 +4686,28 @@ void JavaClasses::serialize_offsets(SerializeClosure* soc) {
 }
 #endif
 
+#if INCLUDE_CDS_JAVA_HEAP
+bool JavaClasses::is_supported_for_archiving(oop obj) {
+  Klass* klass = obj->klass();
+
+  if (klass == SystemDictionary::ClassLoader_klass() ||  // ClassLoader::loader_data is malloc'ed.
+      klass == SystemDictionary::Module_klass() ||       // Module::module_entry is malloc'ed
+      // The next 3 classes are used to implement java.lang.invoke, and are not used directly in
+      // regular Java code. The implementation of java.lang.invoke uses generated anonymoys classes
+      // (e.g., as referenced by ResolvedMethodName::vmholder) that are not yet supported by CDS.
+      // So for now we cannot not support these classes for archiving.
+      //
+      // These objects typically are not referenced by static fields, but rather by resolved
+      // constant pool entries, so excluding them shouldn't affect the archiving of static fields.
+      klass == SystemDictionary::ResolvedMethodName_klass() ||
+      klass == SystemDictionary::MemberName_klass() ||
+      klass == SystemDictionary::Context_klass()) {
+    return false;
+  }
+
+  return true;
+}
+#endif
 
 #ifndef PRODUCT
 

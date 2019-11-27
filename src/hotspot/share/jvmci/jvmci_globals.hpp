@@ -25,6 +25,8 @@
 #ifndef SHARE_JVMCI_JVMCI_GLOBALS_HPP
 #define SHARE_JVMCI_JVMCI_GLOBALS_HPP
 
+#include "runtime/flags/jvmFlag.hpp"
+
 class fileStream;
 
 //
@@ -46,8 +48,15 @@ class fileStream;
   experimental(bool, EnableJVMCI, false,                                    \
           "Enable JVMCI")                                                   \
                                                                             \
+  experimental(bool, EnableJVMCIProduct, false,                             \
+          "Allow JVMCI to be used in product mode. This alters a subset of "\
+          "JVMCI flags to be non-experimental, defaults UseJVMCICompiler "  \
+          "to true and defaults UseJVMCINativeLibrary to true if a JVMCI "  \
+          "native library is available.")                                   \
+                                                                            \
   experimental(bool, UseJVMCICompiler, false,                               \
-          "Use JVMCI as the default compiler")                              \
+          "Use JVMCI as the default compiler. Defaults to true if "         \
+          "EnableJVMCIProduct is true.")                                    \
                                                                             \
   experimental(bool, JVMCIPrintProperties, false,                           \
           "Prints properties used by the JVMCI compiler and exits")         \
@@ -112,7 +121,8 @@ class fileStream;
   experimental(bool, UseJVMCINativeLibrary, false,                          \
           "Execute JVMCI Java code from a shared library "                  \
           "instead of loading it from class files and executing it "        \
-          "on the HotSpot heap")                                            \
+          "on the HotSpot heap. Defaults to true if EnableJVMCIProduct is " \
+          "true and a JVMCI native library is available.")\
                                                                             \
   NOT_COMPILER2(diagnostic(bool, UseMultiplyToLenIntrinsic, false,          \
           "Enables intrinsification of BigInteger.multiplyToLen()"))        \
@@ -141,6 +151,9 @@ class JVMCIGlobals {
   // an error message describing the inconsistency is printed before
   // returning false.
   static bool check_jvmci_flags_are_consistent();
+
+  // Convert JVMCI experimental flags to product
+  static bool enable_jvmci_product_mode(JVMFlag::Flags);
 
   // Check and exit VM with error if selected GC is not supported by JVMCI.
   static void check_jvmci_supported_gc();

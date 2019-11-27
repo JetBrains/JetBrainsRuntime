@@ -620,21 +620,6 @@ JRT_ENTRY(jint, JVMCIRuntime::identity_hash_code(JavaThread* thread, oopDesc* ob
   return (jint) obj->identity_hash();
 JRT_END
 
-JRT_ENTRY(jboolean, JVMCIRuntime::thread_is_interrupted(JavaThread* thread, oopDesc* receiver, jboolean clear_interrupted))
-  Handle receiverHandle(thread, receiver);
-  // A nested ThreadsListHandle may require the Threads_lock which
-  // requires thread_in_vm which is why this method cannot be JRT_LEAF.
-  ThreadsListHandle tlh;
-
-  JavaThread* receiverThread = java_lang_Thread::thread(receiverHandle());
-  if (receiverThread == NULL || (EnableThreadSMRExtraValidityChecks && !tlh.includes(receiverThread))) {
-    // The other thread may exit during this process, which is ok so return false.
-    return JNI_FALSE;
-  } else {
-    return (jint) receiverThread->is_interrupted(clear_interrupted != 0);
-  }
-JRT_END
-
 JRT_ENTRY(jint, JVMCIRuntime::test_deoptimize_call_int(JavaThread* thread, int value))
   deopt_caller();
   return (jint) value;
@@ -980,8 +965,8 @@ Klass* JVMCIRuntime::get_klass_by_name_impl(Klass*& accessing_klass,
   JVMCI_EXCEPTION_CONTEXT;
 
   // Now we need to check the SystemDictionary
-  if (sym->char_at(0) == 'L' &&
-    sym->char_at(sym->utf8_length()-1) == ';') {
+  if (sym->char_at(0) == JVM_SIGNATURE_CLASS &&
+      sym->char_at(sym->utf8_length()-1) == JVM_SIGNATURE_ENDCLASS) {
     // This is a name from a signature.  Strip off the trimmings.
     // Call recursive to keep scope of strippedsym.
     TempNewSymbol strippedsym = SymbolTable::new_symbol(sym->as_utf8()+1,
@@ -1013,8 +998,8 @@ Klass* JVMCIRuntime::get_klass_by_name_impl(Klass*& accessing_klass,
   // we must build an array type around it.  The CI requires array klasses
   // to be loaded if their element klasses are loaded, except when memory
   // is exhausted.
-  if (sym->char_at(0) == '[' &&
-      (sym->char_at(1) == '[' || sym->char_at(1) == 'L')) {
+  if (sym->char_at(0) == JVM_SIGNATURE_ARRAY &&
+      (sym->char_at(1) == JVM_SIGNATURE_ARRAY || sym->char_at(1) == JVM_SIGNATURE_CLASS)) {
     // We have an unloaded array.
     // Build it on the fly if the element class exists.
     TempNewSymbol elem_sym = SymbolTable::new_symbol(sym->as_utf8()+1,
@@ -1165,16 +1150,16 @@ void JVMCIRuntime::get_field_by_index(InstanceKlass* accessor, fieldDescriptor& 
 // ------------------------------------------------------------------
 // Perform an appropriate method lookup based on accessor, holder,
 // name, signature, and bytecode.
-methodHandle JVMCIRuntime::lookup_method(InstanceKlass* accessor,
-                               Klass*        holder,
-                               Symbol*       name,
-                               Symbol*       sig,
-                               Bytecodes::Code bc,
-                               constantTag   tag) {
+Method* JVMCIRuntime::lookup_method(InstanceKlass* accessor,
+                                    Klass*        holder,
+                                    Symbol*       name,
+                                    Symbol*       sig,
+                                    Bytecodes::Code bc,
+                                    constantTag   tag) {
   // Accessibility checks are performed in JVMCIEnv::get_method_by_index_impl().
   assert(check_klass_accessibility(accessor, holder), "holder not accessible");
 
-  methodHandle dest_method;
+  Method* dest_method;
   LinkInfo link_info(holder, name, sig, accessor, LinkInfo::needs_access_check, tag);
   switch (bc) {
   case Bytecodes::_invokestatic:
@@ -1201,9 +1186,9 @@ methodHandle JVMCIRuntime::lookup_method(InstanceKlass* accessor,
 
 
 // ------------------------------------------------------------------
-methodHandle JVMCIRuntime::get_method_by_index_impl(const constantPoolHandle& cpool,
-                                          int index, Bytecodes::Code bc,
-                                          InstanceKlass* accessor) {
+Method* JVMCIRuntime::get_method_by_index_impl(const constantPoolHandle& cpool,
+                                               int index, Bytecodes::Code bc,
+                                               InstanceKlass* accessor) {
   if (bc == Bytecodes::_invokedynamic) {
     ConstantPoolCacheEntry* cpce = cpool->invokedynamic_cp_cache_entry_at(index);
     bool is_resolved = !cpce->is_f1_null();
@@ -1211,7 +1196,7 @@ methodHandle JVMCIRuntime::get_method_by_index_impl(const constantPoolHandle& cp
       // Get the invoker Method* from the constant pool.
       // (The appendix argument, if any, will be noted in the method's signature.)
       Method* adapter = cpce->f1_as_method();
-      return methodHandle(adapter);
+      return adapter;
     }
 
     return NULL;
@@ -1250,8 +1235,8 @@ methodHandle JVMCIRuntime::get_method_by_index_impl(const constantPoolHandle& cp
 
   if (holder_is_accessible) { // Our declared holder is loaded.
     constantTag tag = cpool->tag_ref_at(index);
-    methodHandle m = lookup_method(accessor, holder, name_sym, sig_sym, bc, tag);
-    if (!m.is_null()) {
+    Method* m = lookup_method(accessor, holder, name_sym, sig_sym, bc, tag);
+    if (m != NULL) {
       // We found the method.
       return m;
     }
@@ -1271,7 +1256,7 @@ InstanceKlass* JVMCIRuntime::get_instance_klass_for_declared_method_holder(Klass
   if (method_holder->is_instance_klass()) {
     return InstanceKlass::cast(method_holder);
   } else if (method_holder->is_array_klass()) {
-    return InstanceKlass::cast(SystemDictionary::Object_klass());
+    return SystemDictionary::Object_klass();
   } else {
     ShouldNotReachHere();
   }
@@ -1280,7 +1265,7 @@ InstanceKlass* JVMCIRuntime::get_instance_klass_for_declared_method_holder(Klass
 
 
 // ------------------------------------------------------------------
-methodHandle JVMCIRuntime::get_method_by_index(const constantPoolHandle& cpool,
+Method* JVMCIRuntime::get_method_by_index(const constantPoolHandle& cpool,
                                      int index, Bytecodes::Code bc,
                                      InstanceKlass* accessor) {
   ResourceMark rm;

@@ -108,6 +108,7 @@
   LOG_TAG(nestmates) \
   LOG_TAG(nmethod) \
   LOG_TAG(normalize) \
+  LOG_TAG(numa) \
   LOG_TAG(objecttagging) \
   LOG_TAG(obsolete) \
   LOG_TAG(oldobject) \
@@ -148,6 +149,7 @@
   LOG_TAG(startuptime) \
   LOG_TAG(state) \
   LOG_TAG(stats) \
+  LOG_TAG(streaming) \
   LOG_TAG(stringdedup) \
   LOG_TAG(stringtable) \
   LOG_TAG(symboltable) \

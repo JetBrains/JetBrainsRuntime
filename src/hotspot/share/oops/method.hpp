@@ -346,6 +346,12 @@ class Method : public Metadata {
   // InterpreterRuntime::exception_handler_for_exception.
   static int fast_exception_handler_bci_for(const methodHandle& mh, Klass* ex_klass, int throw_bci, TRAPS);
 
+  static bool register_native(Klass* k,
+                              Symbol* name,
+                              Symbol* signature,
+                              address entry,
+                              TRAPS);
+
   // method data access
   MethodData* method_data() const              {
     return _method_data;
@@ -602,7 +608,7 @@ public:
 
   void compute_size_of_parameters(Thread *thread); // word size of parameters (receiver if any + arguments)
   Symbol* klass_name() const;                    // returns the name of the method holder
-  BasicType result_type() const;                 // type of the method result
+  BasicType result_type() const                  { return constMethod()->result_type(); }
   bool is_returning_oop() const                  { BasicType r = result_type(); return is_reference_type(r); }
   bool is_returning_fp() const                   { BasicType r = result_type(); return (r == T_FLOAT || r == T_DOUBLE); }
 
@@ -850,7 +856,7 @@ public:
   static void print_jmethod_ids(const ClassLoaderData* loader_data, outputStream* out) PRODUCT_RETURN;
 
   // Get this method's jmethodID -- allocate if it doesn't exist
-  jmethodID jmethod_id()                            { return method_holder()->get_jmethod_id(this); }
+  jmethodID jmethod_id();
 
   // Lookup the jmethodID for this method.  Return NULL if not found.
   // NOTE that this function can be called from a signal handler
@@ -1000,11 +1006,15 @@ public:
   void print_name(outputStream* st = tty)        PRODUCT_RETURN; // prints as "virtual void foo(int)"
 #endif
 
+  typedef int (*method_comparator_func)(Method* a, Method* b);
+
   // Helper routine used for method sorting
-  static void sort_methods(Array<Method*>* methods, bool set_idnums = true);
+  static void sort_methods(Array<Method*>* methods, bool set_idnums = true, method_comparator_func func = NULL);
 
   // Deallocation function for redefine classes or if an error occurs
   void deallocate_contents(ClassLoaderData* loader_data);
+
+  void release_C_heap_structures();
 
   Method* get_new_method() const {
     InstanceKlass* holder = method_holder();

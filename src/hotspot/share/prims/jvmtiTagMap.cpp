@@ -1032,7 +1032,7 @@ static inline bool is_filtered_by_klass_filter(oop obj, Klass* klass_filter) {
 
 // helper function to tell if a field is a primitive field or not
 static inline bool is_primitive_field_type(char type) {
-  return (type != 'L' && type != '[');
+  return (type != JVM_SIGNATURE_CLASS && type != JVM_SIGNATURE_ARRAY);
 }
 
 // helper function to copy the value from location addr to jvalue.
@@ -1271,9 +1271,6 @@ class VM_HeapIterateOperation: public VM_Operation {
     }
 
     // do the iteration
-    // If this operation encounters a bad object when using CMS,
-    // consider using safe_object_iterate() which avoids perm gen
-    // objects that may contain bad references.
     Universe::heap()->object_iterate(_blk);
   }
 

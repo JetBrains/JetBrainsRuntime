@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -87,6 +86,46 @@ public class EATestBase extends GraalCompilerTest {
         @Override
         public int hashCode() {
             return x + 13 * y;
+        }
+
+        public static final long fieldOffset1;
+        public static final long fieldOffset2;
+        public static final boolean firstFieldIsX;
+
+        static {
+            try {
+                long localFieldOffset1 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("x"));
+                // Make the fields 8 byte aligned (Required for testing setLong on Architectures
+                // which does not support unaligned memory access
+                if (localFieldOffset1 % 8 == 0) {
+                    fieldOffset1 = localFieldOffset1;
+                    fieldOffset2 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
+                    firstFieldIsX = true;
+                } else {
+                    fieldOffset1 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("y"));
+                    fieldOffset2 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("z"));
+                    firstFieldIsX = false;
+                }
+                assert fieldOffset2 == fieldOffset1 + 4;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        public void setFirstField(int v) {
+            if (firstFieldIsX) {
+                x = v;
+            } else {
+                y = v;
+            }
+        }
+
+        public void setSecondField(int v) {
+            if (firstFieldIsX) {
+                y = v;
+            } else {
+                z = v;
+            }
         }
     }
 
@@ -173,7 +212,7 @@ public class EATestBase extends GraalCompilerTest {
             createInliningPhase().apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             canonicalizeGraph();
-            new PartialEscapePhase(iterativeEscapeAnalysis, false, new CanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
+            new PartialEscapePhase(iterativeEscapeAnalysis, false, createCanonicalizerPhase(), null, graph.getOptions()).apply(graph, context);
             postEACanonicalizeGraph();
             returnNodes = graph.getNodes(ReturnNode.TYPE).snapshot();
         } catch (Throwable e) {
@@ -185,6 +224,6 @@ public class EATestBase extends GraalCompilerTest {
     }
 
     protected void canonicalizeGraph() {
-        new CanonicalizerPhase().apply(graph, context);
+        this.createCanonicalizerPhase().apply(graph, context);
     }
 }

@@ -72,6 +72,7 @@ Mutex*   NonJavaThreadsListSync_lock  = NULL;
 Monitor* CGC_lock                     = NULL;
 Monitor* STS_lock                     = NULL;
 Monitor* FullGCCount_lock             = NULL;
+Monitor* G1OldGCCount_lock            = NULL;
 Monitor* DirtyCardQ_CBL_mon           = NULL;
 Mutex*   Shared_DirtyCardQ_lock       = NULL;
 Mutex*   MarkStackFreeList_lock       = NULL;
@@ -161,7 +162,6 @@ static int _num_mutex;
 #ifdef ASSERT
 void assert_locked_or_safepoint(const Mutex* lock) {
   // check if this thread owns the lock (common case)
-  if (IgnoreLockingAssertions) return;
   assert(lock != NULL, "Need non-NULL lock");
   if (lock->owned_by_self()) return;
   if (SafepointSynchronize::is_at_safepoint()) return;
@@ -174,7 +174,6 @@ void assert_locked_or_safepoint(const Mutex* lock) {
 
 // a weaker assertion than the above
 void assert_locked_or_safepoint_weak(const Mutex* lock) {
-  if (IgnoreLockingAssertions) return;
   assert(lock != NULL, "Need non-NULL lock");
   if (lock->is_locked()) return;
   if (SafepointSynchronize::is_at_safepoint()) return;
@@ -184,7 +183,6 @@ void assert_locked_or_safepoint_weak(const Mutex* lock) {
 
 // a stronger assertion than the above
 void assert_lock_strong(const Mutex* lock) {
-  if (IgnoreLockingAssertions) return;
   assert(lock != NULL, "Need non-NULL lock");
   if (lock->owned_by_self()) return;
   fatal("must own lock %s", lock->name());
@@ -206,6 +204,8 @@ void mutex_init() {
 
   def(FullGCCount_lock             , PaddedMonitor, leaf,        true,  _safepoint_check_never);      // in support of ExplicitGCInvokesConcurrent
   if (UseG1GC) {
+    def(G1OldGCCount_lock          , PaddedMonitor, leaf,        true,  _safepoint_check_always);
+
     def(DirtyCardQ_CBL_mon         , PaddedMonitor, access,      true,  _safepoint_check_never);
     def(Shared_DirtyCardQ_lock     , PaddedMutex  , access + 1,  true,  _safepoint_check_never);
 
@@ -266,10 +266,6 @@ void mutex_init() {
   def(PerfDataMemAlloc_lock        , PaddedMutex  , leaf,        true,  _safepoint_check_always); // used for allocating PerfData memory for performance data
   def(PerfDataManager_lock         , PaddedMutex  , leaf,        true,  _safepoint_check_always); // used for synchronized access to PerfDataManager resources
 
-  // CMS_modUnionTable_lock                   leaf
-  // CMS_bitMap_lock                          leaf 1
-  // CMS_freeList_lock                        leaf 2
-
   def(Threads_lock                 , PaddedMonitor, barrier,     true,  _safepoint_check_always);  // Used for safepoint protocol.
   def(NonJavaThreadsList_lock      , PaddedMutex,   leaf,        true,  _safepoint_check_never);
   def(NonJavaThreadsListSync_lock  , PaddedMutex,   leaf,        true,  _safepoint_check_never);
@@ -315,7 +311,7 @@ void mutex_init() {
 #if INCLUDE_JFR
   def(JfrMsg_lock                  , PaddedMonitor, leaf,        true,  _safepoint_check_always);
   def(JfrBuffer_lock               , PaddedMutex  , leaf,        true,  _safepoint_check_never);
-  def(JfrStream_lock               , PaddedMutex  , leaf+1,      true,  _safepoint_check_never);      // ensure to rank lower than 'safepoint'
+  def(JfrStream_lock               , PaddedMutex  , nonleaf + 1, false, _safepoint_check_always);
   def(JfrStacktrace_lock           , PaddedMutex  , special,     true,  _safepoint_check_never);
   def(JfrThreadSampler_lock        , PaddedMonitor, leaf,        true,  _safepoint_check_never);
 #endif
@@ -337,12 +333,12 @@ void mutex_init() {
 #if INCLUDE_JVMTI
   def(CDSClassFileStream_lock      , PaddedMutex  , max_nonleaf, false, _safepoint_check_always);
 #endif
+  def(DumpTimeTable_lock           , PaddedMutex  , leaf,        true,  _safepoint_check_never);
+#endif // INCLUDE_CDS
 
 #if INCLUDE_JVMCI
   def(JVMCI_lock                   , PaddedMonitor, nonleaf+2,   true,  _safepoint_check_always);
 #endif
-  def(DumpTimeTable_lock           , PaddedMutex  , leaf,        true,  _safepoint_check_never);
-#endif // INCLUDE_CDS
 }
 
 GCMutexLocker::GCMutexLocker(Mutex* mutex) {

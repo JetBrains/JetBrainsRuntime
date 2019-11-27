@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -78,12 +78,6 @@ ifeq ($(call check-jvm-feature, dtrace), true)
         unsafe.o \
         vmThread.o \
     )
-
-    ifeq ($(call check-jvm-feature, cmsgc), true)
-      DTRACE_INSTRUMENTED_OBJS += $(addprefix $(JVM_OUTPUTDIR)/objs/, \
-          cmsVMOperations.o \
-      )
-    endif
 
     ifeq ($(call check-jvm-feature, parallelgc), true)
       DTRACE_INSTRUMENTED_OBJS += $(addprefix $(JVM_OUTPUTDIR)/objs/, \

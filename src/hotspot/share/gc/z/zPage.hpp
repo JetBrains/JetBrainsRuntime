@@ -56,6 +56,7 @@ private:
 public:
   ZPage(const ZVirtualMemory& vmem, const ZPhysicalMemory& pmem);
   ZPage(uint8_t type, const ZVirtualMemory& vmem, const ZPhysicalMemory& pmem);
+  ~ZPage();
 
   uint32_t object_max_count() const;
   size_t object_alignment_shift() const;
@@ -95,7 +96,7 @@ public:
   bool is_object_strongly_live(uintptr_t addr) const;
   bool mark_object(uintptr_t addr, bool finalizable, bool& inc_live);
 
-  void inc_live_atomic(uint32_t objects, size_t bytes);
+  void inc_live(uint32_t objects, size_t bytes);
   uint32_t live_objects() const;
   size_t live_bytes() const;
 
@@ -109,6 +110,11 @@ public:
 
   void print_on(outputStream* out) const;
   void print() const;
+};
+
+class ZPageClosure {
+public:
+  virtual void do_page(const ZPage* page) = 0;
 };
 
 #endif // SHARE_GC_Z_ZPAGE_HPP

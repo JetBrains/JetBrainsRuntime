@@ -795,6 +795,10 @@ int os::active_processor_count() {
   }
 }
 
+uint os::processor_id() {
+  return (uint)GetCurrentProcessorNumber();
+}
+
 void os::set_native_thread_name(const char *name) {
 
   // See: http://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
@@ -824,11 +828,6 @@ void os::set_native_thread_name(const char *name) {
   __try {
     RaiseException (MS_VC_EXCEPTION, 0, sizeof(info)/sizeof(DWORD), (const ULONG_PTR*)&info );
   } __except(EXCEPTION_EXECUTE_HANDLER) {}
-}
-
-bool os::distribute_processes(uint length, uint* distribution) {
-  // Not yet implemented.
-  return false;
 }
 
 bool os::bind_to_processor(uint processor_id) {
@@ -911,8 +910,6 @@ FILETIME java_to_windows_time(jlong l) {
 }
 
 bool os::supports_vtime() { return true; }
-bool os::enable_vtime() { return false; }
-bool os::vtime_enabled() { return false; }
 
 double os::elapsedVTime() {
   FILETIME created;
@@ -3450,6 +3447,10 @@ size_t os::numa_get_leaf_groups(int *ids, size_t size) {
   }
 }
 
+int os::numa_get_group_id_for_address(const void* address) {
+  return 0;
+}
+
 bool os::get_page_info(char *start, page_info* info) {
   return false;
 }
@@ -3903,12 +3904,6 @@ void os::win32::setmode_streams() {
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stderr), _O_BINARY);
 }
-
-
-bool os::is_debugger_attached() {
-  return IsDebuggerPresent() ? true : false;
-}
-
 
 void os::wait_for_keypress_at_exit(void) {
   if (PauseAtExit) {
@@ -4975,7 +4970,7 @@ bool os::pd_unmap_memory(char* addr, size_t bytes) {
 void os::pause() {
   char filename[MAX_PATH];
   if (PauseAtStartupFile && PauseAtStartupFile[0]) {
-    jio_snprintf(filename, MAX_PATH, PauseAtStartupFile);
+    jio_snprintf(filename, MAX_PATH, "%s", PauseAtStartupFile);
   } else {
     jio_snprintf(filename, MAX_PATH, "./vm.paused.%d", current_process_id());
   }
@@ -5697,7 +5692,7 @@ static void call_wrapper_dummy() {}
 // up the offset from FS of the thread pointer.
 void os::win32::initialize_thread_ptr_offset() {
   os::os_exception_wrapper((java_call_t)call_wrapper_dummy,
-                           NULL, NULL, NULL, NULL);
+                           NULL, methodHandle(), NULL, NULL);
 }
 
 bool os::supports_map_sync() {

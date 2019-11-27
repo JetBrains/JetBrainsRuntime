@@ -28,6 +28,8 @@
 #include "classfile/javaClasses.inline.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "classfile/vmSymbols.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/guardedMemory.hpp"
 #include "oops/instanceKlass.hpp"
@@ -266,7 +268,7 @@ checkStaticFieldID(JavaThread* thr, jfieldID fid, jclass cls, int ftype)
   /* check for proper subclass hierarchy */
   JNIid* id = jfieldIDWorkaround::from_static_jfieldID(fid);
   Klass* f_oop = id->holder();
-  if (!InstanceKlass::cast(k_oop)->is_subtype_of(f_oop))
+  if (!k_oop->is_subtype_of(f_oop))
     ReportJNIFatalError(thr, fatal_wrong_static_field);
 
   /* check for proper field type */
@@ -513,7 +515,7 @@ void jniCheck::validate_throwable_klass(JavaThread* thr, Klass* klass) {
   assert(klass != NULL, "klass argument must have a value");
 
   if (!klass->is_instance_klass() ||
-      !InstanceKlass::cast(klass)->is_subclass_of(SystemDictionary::Throwable_klass())) {
+      !klass->is_subclass_of(SystemDictionary::Throwable_klass())) {
     ReportJNIFatalError(thr, fatal_class_not_a_throwable_class);
   }
 }
@@ -534,10 +536,10 @@ void jniCheck::validate_call(JavaThread* thr, jclass clazz, jmethodID method_id,
   if (obj != NULL) {
     oop recv = jniCheck::validate_object(thr, obj);
     assert(recv != NULL, "validate_object checks that");
-    Klass* ik = recv->klass();
+    Klass* rk = recv->klass();
 
     // Check that the object is a subtype of method holder too.
-    if (!InstanceKlass::cast(ik)->is_subtype_of(holder)) {
+    if (!rk->is_subtype_of(holder)) {
       ReportJNIFatalError(thr, fatal_wrong_class_or_method);
     }
   }
@@ -2303,10 +2305,7 @@ struct JNINativeInterface_* jni_functions_check() {
          "Mismatched JNINativeInterface tables, check for new entries");
 
   // with -verbose:jni this message will print
-  if (PrintJNIResolving) {
-    tty->print_cr("Checked JNI functions are being used to " \
-                  "validate JNI usage");
-  }
+  log_debug(jni, resolve)("Checked JNI functions are being used to validate JNI usage");
 
   return &checked_jni_NativeInterface;
 }

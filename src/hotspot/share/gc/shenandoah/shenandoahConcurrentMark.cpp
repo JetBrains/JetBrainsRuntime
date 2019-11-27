@@ -319,13 +319,20 @@ public:
 };
 
 void ShenandoahConcurrentMark::update_thread_roots(ShenandoahPhaseTimings::Phase root_phase) {
-  WorkGang* workers = _heap->workers();
-  bool is_par = workers->active_workers() > 1;
+  assert(ShenandoahSafepoint::is_at_shenandoah_safepoint(), "Must be at a safepoint");
+
+  ShenandoahGCPhase phase(root_phase);
+
 #if COMPILER2_OR_JVMCI
   DerivedPointerTable::clear();
 #endif
+
+  WorkGang* workers = _heap->workers();
+  bool is_par = workers->active_workers() > 1;
+
   ShenandoahUpdateThreadRootsTask task(is_par, root_phase);
   workers->run_task(&task);
+
 #if COMPILER2_OR_JVMCI
   DerivedPointerTable::update_pointers();
 #endif
@@ -434,8 +441,6 @@ void ShenandoahConcurrentMark::finish_mark_from_roots(bool full_gc) {
   if (_heap->process_references()) {
     weak_refs_work(full_gc);
   }
-
-  _heap->parallel_cleaning(full_gc);
 
   assert(task_queues()->is_empty(), "Should be empty");
   TASKQUEUE_STATS_ONLY(task_queues()->print_taskqueue_stats());

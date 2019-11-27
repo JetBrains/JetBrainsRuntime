@@ -36,12 +36,7 @@ package com.sun.source.tree;
  * @jls section TODO
  *
  * @since 13
- *
- * @deprecated This class is modeling yield from switch expressions,
- * which are part of a preview feature and may be removed if
- * the preview feature is removed.
  */
-@Deprecated(forRemoval=true, since="13")
 public interface YieldTree extends StatementTree {
 
     /**

@@ -269,15 +269,8 @@ public class SimpleTreeVisitor <R,P> implements TreeVisitor<R,P> {
      * @param node {@inheritDoc}
      * @param p {@inheritDoc}
      * @return  the result of {@code defaultAction}
-     *
-     * @deprecated
-     * This method is modeling switch expressions,
-     * which are part of a preview feature and may be removed
-     * if the preview feature is removed.
      */
     @Override
-    @Deprecated(forRemoval=true, since="12")
-    @SuppressWarnings("removal")
     public R visitSwitchExpression(SwitchExpressionTree node, P p) {
         return defaultAction(node, p);
     }
@@ -791,8 +784,6 @@ public class SimpleTreeVisitor <R,P> implements TreeVisitor<R,P> {
      * @return  the result of {@code defaultAction}
      */
     @Override
-    @Deprecated(forRemoval=true, since="13")
-    @SuppressWarnings("removal")
     public R visitYield(YieldTree node, P p) {
         return defaultAction(node, p);
     }

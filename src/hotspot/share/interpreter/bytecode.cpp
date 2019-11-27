@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -147,12 +147,11 @@ Symbol* Bytecode_member_ref::signature() const {
 
 BasicType Bytecode_member_ref::result_type() const {
   ResultTypeFinder rts(signature());
-  rts.iterate();
   return rts.type();
 }
 
 
-methodHandle Bytecode_invoke::static_target(TRAPS) {
+Method* Bytecode_invoke::static_target(TRAPS) {
   constantPoolHandle constants(THREAD, this->constants());
 
   Bytecodes::Code bc = invoke_code();
@@ -161,8 +160,10 @@ methodHandle Bytecode_invoke::static_target(TRAPS) {
 
 Handle Bytecode_invoke::appendix(TRAPS) {
   ConstantPoolCacheEntry* cpce = cpcache_entry();
-  if (cpce->has_appendix())
-    return Handle(THREAD, cpce->appendix_if_resolved(constants()));
+  if (cpce->has_appendix()) {
+    constantPoolHandle cp(THREAD, constants());
+    return Handle(THREAD, cpce->appendix_if_resolved(cp));
+  }
   return Handle();  // usual case
 }
 

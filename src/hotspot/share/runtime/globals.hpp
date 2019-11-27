@@ -305,9 +305,6 @@ const size_t minimumSymbolTableSize = 1024;
   notproduct(bool, TraceCodeBlobStacks, false,                              \
           "Trace stack-walk of codeblobs")                                  \
                                                                             \
-  product(bool, PrintJNIResolving, false,                                   \
-          "Used to implement -v:jni")                                       \
-                                                                            \
   notproduct(bool, PrintRewrites, false,                                    \
           "Print methods that are being rewritten")                         \
                                                                             \
@@ -563,9 +560,6 @@ const size_t minimumSymbolTableSize = 1024;
   product(bool, PrintExtendedThreadInfo, false,                             \
           "Print more information in thread dump")                          \
                                                                             \
-  diagnostic(bool, TraceNMethodInstalls, false,                             \
-          "Trace nmethod installation")                                     \
-                                                                            \
   diagnostic(intx, ScavengeRootsInCode, 2,                                  \
           "0: do not allow scavengable oops in the code cache; "            \
           "1: allow scavenging from the code cache; "                       \
@@ -642,6 +636,10 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(bool, OmitStackTraceInFastThrow, true,                            \
           "Omit backtraces for some 'hot' exceptions in optimized code")    \
+                                                                            \
+  manageable(bool, ShowCodeDetailsInExceptionMessages, false,               \
+          "Show exception messages from RuntimeExceptions that contain "    \
+          "snippets of the failing code. Disable this to improve privacy.") \
                                                                             \
   product(bool, PrintWarnings, true,                                        \
           "Print JVM warnings to output stream")                            \
@@ -1196,9 +1194,6 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   develop(bool, TraceCreateZombies, false,                                  \
           "trace creation of zombie nmethods")                              \
-                                                                            \
-  notproduct(bool, IgnoreLockingAssertions, false,                          \
-          "disable locking assertions (for speed)")                         \
                                                                             \
   product(bool, RangeCheckElimination, true,                                \
           "Eliminate range checks")                                         \
@@ -1952,9 +1947,6 @@ const size_t minimumSymbolTableSize = 1024;
   experimental(bool, UseCriticalCompilerThreadPriority, false,              \
           "Compiler thread(s) run at critical scheduling priority")         \
                                                                             \
-  experimental(bool, UseCriticalCMSThreadPriority, false,                   \
-          "ConcurrentMarkSweep thread runs at critical scheduling priority")\
-                                                                            \
   develop(intx, NewCodeParameter,      0,                                   \
           "Testing Only: Create a dedicated integer parameter before "      \
           "putback")                                                        \
@@ -2061,6 +2053,35 @@ const size_t minimumSymbolTableSize = 1024;
           "if coming from AOT")                                             \
           range(0, max_jint)                                                \
                                                                             \
+  diagnostic(intx, Tier0AOTInvocationThreshold, 200,                        \
+          "Switch to interpreter to profile if the number of method "       \
+          "invocations crosses this threshold if coming from AOT "          \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier0AOTMinInvocationThreshold, 100,                     \
+          "Minimum number of invocations to switch to interpreter "         \
+          "to profile if coming from AOT "                                  \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier0AOTCompileThreshold, 2000,                          \
+          "Threshold at which to switch to interpreter to profile "         \
+          "if coming from AOT "                                             \
+          "(invocation minimum must be satisfied, "                         \
+          "applicable only with "                                           \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier0AOTBackEdgeThreshold,  60000,                       \
+          "Back edge threshold at which to switch to interpreter "          \
+          "to profile if coming from AOT "                                  \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
   product(intx, Tier4InvocationThreshold, 5000,                             \
           "Compile if number of method invocations crosses this "           \
           "threshold")                                                      \
@@ -2072,11 +2093,42 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(intx, Tier4CompileThreshold, 15000,                               \
           "Threshold at which tier 4 compilation is invoked (invocation "   \
-          "minimum must be satisfied")                                      \
+          "minimum must be satisfied)")                                     \
           range(0, max_jint)                                                \
                                                                             \
   product(intx, Tier4BackEdgeThreshold, 40000,                              \
           "Back edge threshold at which tier 4 OSR compilation is invoked") \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier40InvocationThreshold, 5000,                         \
+          "Compile if number of method invocations crosses this "           \
+          "threshold (applicable only with "                                \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier40MinInvocationThreshold, 600,                       \
+          "Minimum number of invocations to compile at tier 4 "             \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier40CompileThreshold, 10000,                           \
+          "Threshold at which tier 4 compilation is invoked (invocation "   \
+          "minimum must be satisfied, applicable only with "                \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier40BackEdgeThreshold, 15000,                          \
+          "Back edge threshold at which tier 4 OSR compilation is invoked " \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
+          range(0, max_jint)                                                \
+                                                                            \
+  diagnostic(intx, Tier0Delay, 5,                                           \
+          "If C2 queue size grows over this amount per compiler thread "    \
+          "do not start profiling in the interpreter "                      \
+          "(applicable only with "                                          \
+          "CompilationMode=high-only|high-only-quick-internal)")            \
           range(0, max_jint)                                                \
                                                                             \
   product(intx, Tier3DelayOn, 5,                                            \
@@ -2110,7 +2162,9 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(intx, Tier0ProfilingStartPercentage, 200,                         \
           "Start profiling in interpreter if the counters exceed tier 3 "   \
-          "thresholds by the specified percentage")                         \
+          "thresholds (tier 4 thresholds with "                             \
+          "CompilationMode=high-only|high-only-quick-internal)"             \
+          "by the specified percentage")                                    \
           range(0, max_jint)                                                \
                                                                             \
   product(uintx, IncreaseFirstTierCompileThresholdAt, 50,                   \
@@ -2125,6 +2179,14 @@ const size_t minimumSymbolTableSize = 1024;
   product(intx, TieredRateUpdateMaxTime, 25,                                \
           "Maximum rate sampling interval (in milliseconds)")               \
           range(0, max_intx)                                                \
+                                                                            \
+  product(ccstr, CompilationMode, "default",                                \
+          "Compilation modes: "                                             \
+          "default: normal tiered compilation; "                            \
+          "quick-only: C1-only mode; "                                      \
+          "high-only: C2/JVMCI-only mode; "                                 \
+          "high-only-quick-internal: C2/JVMCI-only mode, "                  \
+          "with JVMCI compiler compiled with C1.")                          \
                                                                             \
   product_pd(bool, TieredCompilation,                                       \
           "Enable tiered compilation")                                      \
@@ -2154,9 +2216,6 @@ const size_t minimumSymbolTableSize = 1024;
   product(uint64_t, MaxDirectMemorySize, 0,                                 \
           "Maximum total size of NIO direct-buffer allocations")            \
           range(0, max_jlong)                                               \
-                                                                            \
-  product(bool, ClassForNameDeferLinking, false,                            \
-          "Revert to not linking in Class.forName()")                       \
                                                                             \
   /* Flags used for temporary code during development  */                   \
                                                                             \
@@ -2370,6 +2429,14 @@ const size_t minimumSymbolTableSize = 1024;
                                                                             \
   product(ccstr, ExtraSharedClassListFile, NULL,                            \
           "Extra classlist for building the CDS archive file")              \
+                                                                            \
+  diagnostic(intx, ArchiveRelocationMode, 0,                                \
+           "(0) first map at preferred address, and if "                    \
+           "unsuccessful, map at alternative address (default); "           \
+           "(1) always map at alternative address; "                        \
+           "(2) always map at preferred address, and if unsuccessful, "     \
+           "do not map the archive")                                        \
+           range(0, 2)                                                      \
                                                                             \
   experimental(size_t, ArrayAllocatorMallocLimit,                           \
           SOLARIS_ONLY(64*K) NOT_SOLARIS((size_t)-1),                       \

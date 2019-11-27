@@ -117,18 +117,18 @@ class JVMCIRuntime: public CHeapObj<mtJVMCI> {
                                           Klass* loading_klass);
   static void   get_field_by_index_impl(InstanceKlass* loading_klass, fieldDescriptor& fd,
                                         int field_index);
-  static methodHandle  get_method_by_index_impl(const constantPoolHandle& cpool,
-                                                int method_index, Bytecodes::Code bc,
-                                                InstanceKlass* loading_klass);
+  static Method*  get_method_by_index_impl(const constantPoolHandle& cpool,
+                                           int method_index, Bytecodes::Code bc,
+                                           InstanceKlass* loading_klass);
 
   // Helper methods
   static bool       check_klass_accessibility(Klass* accessing_klass, Klass* resolved_klass);
-  static methodHandle  lookup_method(InstanceKlass*  accessor,
-                                     Klass*  holder,
-                                     Symbol*         name,
-                                     Symbol*         sig,
-                                     Bytecodes::Code bc,
-                                     constantTag     tag);
+  static Method*    lookup_method(InstanceKlass*  accessor,
+                                  Klass*  holder,
+                                  Symbol*         name,
+                                  Symbol*         sig,
+                                  Bytecodes::Code bc,
+                                  constantTag     tag);
 
  public:
   JVMCIRuntime() {
@@ -194,9 +194,9 @@ class JVMCIRuntime: public CHeapObj<mtJVMCI> {
                                      Klass* loading_klass);
   static void   get_field_by_index(InstanceKlass* loading_klass, fieldDescriptor& fd,
                                    int field_index);
-  static methodHandle  get_method_by_index(const constantPoolHandle& cpool,
-                                           int method_index, Bytecodes::Code bc,
-                                           InstanceKlass* loading_klass);
+  static Method*  get_method_by_index(const constantPoolHandle& cpool,
+                                      int method_index, Bytecodes::Code bc,
+                                      InstanceKlass* loading_klass);
 
   // converts the Klass* representing the holder of a method into a
   // InstanceKlass*.  This is needed since the holder of a method in
@@ -309,7 +309,6 @@ class JVMCIRuntime: public CHeapObj<mtJVMCI> {
   static void dynamic_new_array_or_null(JavaThread* thread, oopDesc* element_mirror, jint length) { dynamic_new_array_common(thread, element_mirror, length, true); }
   static void dynamic_new_instance_or_null(JavaThread* thread, oopDesc* type_mirror) { dynamic_new_instance_common(thread, type_mirror, true); }
 
-  static jboolean thread_is_interrupted(JavaThread* thread, oopDesc* obj, jboolean clear_interrupted);
   static void vm_message(jboolean vmError, jlong format, jlong v1, jlong v2, jlong v3);
   static jint identity_hash_code(JavaThread* thread, oopDesc* obj);
   static address exception_handler_for_pc(JavaThread* thread);

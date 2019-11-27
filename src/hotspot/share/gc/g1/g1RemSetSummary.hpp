@@ -34,10 +34,6 @@ class G1RemSet;
 
 class G1RemSetSummary {
 private:
-  friend class GetRSThreadVTimeClosure;
-
-  G1RemSet* _rem_set;
-
   size_t _total_mutator_refined_cards;
   size_t _total_concurrent_refined_cards;
 
@@ -57,8 +53,7 @@ private:
   void update();
 
 public:
-  G1RemSetSummary();
-  G1RemSetSummary(G1RemSet* remset);
+  G1RemSetSummary(bool should_update = true);
 
   ~G1RemSetSummary();
 
