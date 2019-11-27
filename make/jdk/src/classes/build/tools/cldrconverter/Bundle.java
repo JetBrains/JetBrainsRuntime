@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.IntStream;
 
 class Bundle {
     static enum Type {
@@ -57,7 +58,8 @@ class Bundle {
 
     private final static String[] COMPACT_NUMBER_PATTERN_KEYS = {
             "short.CompactNumberPatterns",
-            "long.CompactNumberPatterns"};
+            "long.CompactNumberPatterns"
+    };
 
     private final static String[] NUMBER_ELEMENT_KEYS = {
         "NumberElements/decimal",
@@ -192,7 +194,6 @@ class Bundle {
         for (index = 0; index < cldrBundles.length; index++) {
             if (cldrBundles[index].equals(id)) {
                 myMap.putAll(CLDRConverter.getCLDRBundle(cldrBundles[index]));
-                CLDRConverter.handleAliases(myMap);
                 break;
             }
         }
@@ -202,7 +203,6 @@ class Bundle {
         for (int i = cldrBundles.length - 1; i > index; i--) {
             if (!("no".equals(cldrBundles[i]) || cldrBundles[i].startsWith("no_"))) {
                 parentsMap.putAll(CLDRConverter.getCLDRBundle(cldrBundles[i]));
-                CLDRConverter.handleAliases(parentsMap);
             }
         }
         // Duplicate myMap as parentsMap for "root" so that the
@@ -230,12 +230,38 @@ class Bundle {
         for (String k : COMPACT_NUMBER_PATTERN_KEYS) {
             List<String> patterns = (List<String>) myMap.remove(k);
             if (patterns != null) {
-                // Replace any null entry with empty strings.
-                String[] arrPatterns = patterns.stream()
-                        .map(s -> s == null ? "" : s).toArray(String[]::new);
+                // Convert the map value from List<String> to String[], replacing any missing
+                // entry from the parents map, if any.
+                final List<String> pList = (List<String>)parentsMap.get(k);
+                int size = patterns.size();
+                int psize = pList != null ? pList.size() : 0;
+                String[] arrPatterns = IntStream.range(0, Math.max(size, psize))
+                    .mapToObj(i -> {
+                        String pattern;
+                        // first try itself.
+                        if (i < size) {
+                            pattern = patterns.get(i);
+                            if (!pattern.isEmpty()) {
+                                return pattern;
+                            }
+                        }
+                        // if not found, try parent
+                        if (i < psize) {
+                            pattern = pList.get(i);
+                            if (!pattern.isEmpty()) {
+                                return pattern;
+                            }
+                        }
+                        // bail out with empty string
+                        return "";
+                    })
+                    .toArray(String[]::new);
                 myMap.put(k, arrPatterns);
             }
         }
+
+        // Processes aliases here
+        CLDRConverter.handleAliases(myMap);
 
         // another hack: parentsMap is not used for date-time resources.
         if ("root".equals(id)) {
@@ -365,26 +391,23 @@ class Bundle {
     }
 
     private void handleMultipleInheritance(Map<String, Object> map, Map<String, Object> parents, String key) {
-        String formatKey = key + "/format";
-        Object format = map.get(formatKey);
+        String formatMapKey = key + "/format";
+        Object format = map.get(formatMapKey);
         if (format != null) {
-            map.remove(formatKey);
+            map.remove(formatMapKey);
             map.put(key, format);
-            if (fillInElements(parents, formatKey, format)) {
+            if (fillInElements(parents, formatMapKey, format)) {
                 map.remove(key);
             }
         }
-        String standaloneKey = key + "/stand-alone";
-        Object standalone = map.get(standaloneKey);
+        String standaloneMapKey = key + "/stand-alone";
+        Object standalone = map.get(standaloneMapKey);
         if (standalone != null) {
-            map.remove(standaloneKey);
-            String realKey = key;
-            if (format != null) {
-                realKey = "standalone." + key;
-            }
-            map.put(realKey, standalone);
-            if (fillInElements(parents, standaloneKey, standalone)) {
-                map.remove(realKey);
+            map.remove(standaloneMapKey);
+            String standaloneResourceKey = "standalone." + key;
+            map.put(standaloneResourceKey, standalone);
+            if (fillInElements(parents, standaloneMapKey, standalone)) {
+                map.remove(standaloneResourceKey);
             }
         }
     }

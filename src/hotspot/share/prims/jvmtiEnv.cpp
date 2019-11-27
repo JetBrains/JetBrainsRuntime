@@ -809,14 +809,11 @@ JvmtiEnv::SetVerboseFlag(jvmtiVerboseFlag flag, jboolean value) {
     LogConfiguration::configure_stdout(level, false, LOG_TAGS(class, load));
     break;
   case JVMTI_VERBOSE_GC:
-    if (value == 0) {
-      LogConfiguration::configure_stdout(LogLevel::Off, true, LOG_TAGS(gc));
-    } else {
-      LogConfiguration::configure_stdout(LogLevel::Info, true, LOG_TAGS(gc));
-    }
+    LogConfiguration::configure_stdout(level, true, LOG_TAGS(gc));
     break;
   case JVMTI_VERBOSE_JNI:
-    PrintJNIResolving = value != 0;
+    level = value == 0 ? LogLevel::Off : LogLevel::Debug;
+    LogConfiguration::configure_stdout(level, true, LOG_TAGS(jni, resolve));
     break;
   default:
     return JVMTI_ERROR_ILLEGAL_ARGUMENT;
@@ -879,8 +876,7 @@ JvmtiEnv::GetThreadState(jthread thread, jint* thread_state_ptr) {
     if (jts == _thread_in_native) {
       state |= JVMTI_THREAD_STATE_IN_NATIVE;
     }
-    OSThread* osThread = java_thread->osthread();
-    if (osThread != NULL && osThread->interrupted()) {
+    if (java_thread->is_interrupted(false)) {
       state |= JVMTI_THREAD_STATE_INTERRUPTED;
     }
   }
@@ -1092,7 +1088,6 @@ JvmtiEnv::StopThread(JavaThread* java_thread, jobject exception) {
 // thread - NOT pre-checked
 jvmtiError
 JvmtiEnv::InterruptThread(jthread thread) {
-  // TODO: this is very similar to JVM_Interrupt(); share code in future
   JavaThread* current_thread  = JavaThread::current();
   JavaThread* java_thread = NULL;
   ThreadsListHandle tlh(current_thread);
@@ -1100,7 +1095,11 @@ JvmtiEnv::InterruptThread(jthread thread) {
   if (err != JVMTI_ERROR_NONE) {
     return err;
   }
-
+  // Really this should be a Java call to Thread.interrupt to ensure the same
+  // semantics, however historically this has not been done for some reason.
+  // So we continue with that (which means we don't interact with any Java-level
+  // Interruptible object) but we must set the Java-level interrupted state.
+  java_lang_Thread::set_interrupted(JNIHandles::resolve(thread), true);
   java_thread->interrupt();
 
   return JVMTI_ERROR_NONE;
@@ -3153,7 +3152,7 @@ JvmtiEnv::GetBytecodes(Method* method_oop, jint* bytecode_count_ptr, unsigned ch
   NULL_CHECK(method_oop, JVMTI_ERROR_INVALID_METHODID);
 
   HandleMark hm;
-  methodHandle method(method_oop);
+  methodHandle method(Thread::current(), method_oop);
   jint size = (jint)method->code_size();
   jvmtiError err = allocate(size, bytecodes_ptr);
   if (err != JVMTI_ERROR_NONE) {
@@ -3334,35 +3333,8 @@ JvmtiEnv::RawMonitorExit(JvmtiRawMonitor * rmonitor) {
 // rmonitor - pre-checked for validity
 jvmtiError
 JvmtiEnv::RawMonitorWait(JvmtiRawMonitor * rmonitor, jlong millis) {
-  int r = 0;
   Thread* thread = Thread::current();
-
-  if (thread->is_Java_thread()) {
-    JavaThread* current_thread = (JavaThread*)thread;
-
-    /* Transition to thread_blocked without entering vm state          */
-    /* This is really evil. Normally you can't undo _thread_blocked    */
-    /* transitions like this because it would cause us to miss a       */
-    /* safepoint but since the thread was already in _thread_in_native */
-    /* the thread is not leaving a safepoint safe state and it will    */
-    /* block when it tries to return from native. We can't safepoint   */
-    /* block in here because we could deadlock the vmthread. Blech.    */
-
-    JavaThreadState state = current_thread->thread_state();
-    assert(state == _thread_in_native, "Must be _thread_in_native");
-    // frame should already be walkable since we are in native
-    assert(!current_thread->has_last_Java_frame() ||
-           current_thread->frame_anchor()->walkable(), "Must be walkable");
-    current_thread->set_thread_state(_thread_blocked);
-
-    r = rmonitor->raw_wait(millis, true, current_thread);
-    // restore state, still at a safepoint safe state
-    current_thread->set_thread_state(state);
-
-  } else {
-      r = rmonitor->raw_wait(millis, false, thread);
-      assert(r != JvmtiRawMonitor::M_INTERRUPTED, "non-JavaThread can't be interrupted");
-  }
+  int r = rmonitor->raw_wait(millis, thread);
 
   switch (r) {
   case JvmtiRawMonitor::M_INTERRUPTED:

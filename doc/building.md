@@ -323,10 +323,10 @@ issues.
 
  Operating system   Toolchain version
  ------------------ -------------------------------------------------------
- Linux              gcc 8.2.0
+ Linux              gcc 8.3.0
  macOS              Apple Xcode 10.1 (using clang 10.0.0)
  Solaris            Oracle Solaris Studio 12.6 (with compiler version 5.15)
- Windows            Microsoft Visual Studio 2017 update 15.9.6
+ Windows            Microsoft Visual Studio 2017 update 15.9.16
 
 All compilers are expected to be able to compile to the C99 language standard,
 as some C99 features are used in the source code. Microsoft Visual Studio
@@ -338,7 +338,7 @@ features that it does support.
 The minimum accepted version of gcc is 4.8. Older versions will generate a warning
 by `configure` and are unlikely to work.
 
-The JDK is currently known to be able to compile with at least version 7.4 of
+The JDK is currently known to be able to compile with at least version 8.3 of
 gcc.
 
 In general, any version between these two should be usable.
@@ -473,8 +473,8 @@ If a required library is not detected by `configure`, you need to provide the
 path to it. There are two forms of the `configure` arguments to point to an
 external library: `--with-<LIB>=<path>` or `--with-<LIB>-include=<path to
 include> --with-<LIB>-lib=<path to lib>`. The first variant is more concise,
-but require the include files an library files to reside in a default hierarchy
-under this directory. In most cases, it works fine.
+but require the include files and library files to reside in a default
+hierarchy under this directory. In most cases, it works fine.
 
 As a fallback, the second version allows you to point to the include directory
 and the lib directory separately.
@@ -484,7 +484,7 @@ and the lib directory separately.
 FreeType2 from [The FreeType Project](http://www.freetype.org/) is not required
 on any platform. The exception is on Unix-based platforms when configuring such
 that the build artifacts will reference a system installed library,
-rather than bundling the JDK’s own copy.
+rather than bundling the JDK's own copy.
 
   * To install on an apt-based Linux, try running `sudo apt-get install
     libfreetype6-dev`.
@@ -623,8 +623,8 @@ bash configure [options]
 
 This will create an output directory containing the configuration and setup an
 area for the build result. This directory typically looks like
-`build/linux-x64-normal-server-release`, but the actual name depends on your
-specific configuration. (It can also be set directly, see [Using Multiple
+`build/linux-x64-server-release`, but the actual name depends on your specific
+configuration. (It can also be set directly, see [Using Multiple
 Configurations](#using-multiple-configurations)). This directory is referred to
 as `$BUILD` in this documentation.
 

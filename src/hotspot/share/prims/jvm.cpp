@@ -38,6 +38,7 @@
 #include "classfile/vmSymbols.hpp"
 #include "gc/shared/collectedHeap.inline.hpp"
 #include "interpreter/bytecode.hpp"
+#include "interpreter/bytecodeUtils.hpp"
 #include "jfr/jfrEvents.hpp"
 #include "logging/log.hpp"
 #include "memory/heapShared.hpp"
@@ -47,7 +48,7 @@
 #include "memory/universe.hpp"
 #include "oops/access.inline.hpp"
 #include "oops/constantPool.hpp"
-#include "oops/fieldStreams.hpp"
+#include "oops/fieldStreams.inline.hpp"
 #include "oops/instanceKlass.hpp"
 #include "oops/method.hpp"
 #include "oops/objArrayKlass.hpp"
@@ -531,13 +532,37 @@ JVM_END
 
 // java.lang.Throwable //////////////////////////////////////////////////////
 
-
 JVM_ENTRY(void, JVM_FillInStackTrace(JNIEnv *env, jobject receiver))
   JVMWrapper("JVM_FillInStackTrace");
   Handle exception(thread, JNIHandles::resolve_non_null(receiver));
   java_lang_Throwable::fill_in_stack_trace(exception);
 JVM_END
 
+// java.lang.NullPointerException ///////////////////////////////////////////
+
+JVM_ENTRY(jstring, JVM_GetExtendedNPEMessage(JNIEnv *env, jthrowable throwable))
+  if (!ShowCodeDetailsInExceptionMessages) return NULL;
+
+  oop exc = JNIHandles::resolve_non_null(throwable);
+
+  Method* method;
+  int bci;
+  if (!java_lang_Throwable::get_top_method_and_bci(exc, &method, &bci)) {
+    return NULL;
+  }
+  if (method->is_native()) {
+    return NULL;
+  }
+
+  stringStream ss;
+  bool ok = BytecodeUtils::get_NPE_message_at(&ss, method, bci);
+  if (ok) {
+    oop result = java_lang_String::create_oop_from_str(ss.base(), CHECK_0);
+    return (jstring) JNIHandles::make_local(env, result);
+  } else {
+    return NULL;
+  }
+JVM_END
 
 // java.lang.StackTraceElement //////////////////////////////////////////////
 
@@ -717,17 +742,6 @@ JVM_END
 // Misc. class handling ///////////////////////////////////////////////////////////
 
 
-JVM_ENTRY(void, JVM_LinkClass(JNIEnv* env, jclass classClass, jclass arg))
-  JVMWrapper("JVM_LinkClass");
-
-  oop r = JNIHandles::resolve(arg);
-  Klass* klass = java_lang_Class::as_Klass(r);
-
-  if (!ClassForNameDeferLinking && klass->is_instance_klass()) {
-    InstanceKlass::cast(klass)->link_class(CHECK);
-  }
-JVM_END
-
 JVM_ENTRY(jclass, JVM_GetCallerClass(JNIEnv* env))
   JVMWrapper("JVM_GetCallerClass");
 
@@ -838,10 +852,9 @@ JVM_ENTRY(jclass, JVM_FindClassFromCaller(JNIEnv* env, const char* name,
 
   Handle h_loader(THREAD, loader_oop);
   Handle h_prot(THREAD, protection_domain);
-
-  jboolean link = !ClassForNameDeferLinking;
-  jclass result = find_class_from_class_loader(env, h_name, init, link, h_loader,
+  jclass result = find_class_from_class_loader(env, h_name, init, h_loader,
                                                h_prot, false, THREAD);
+
   if (log_is_enabled(Debug, class, resolve) && result != NULL) {
     trace_class_resolution(java_lang_Class::as_Klass(JNIHandles::resolve_non_null(result)));
   }
@@ -878,7 +891,7 @@ JVM_ENTRY(jclass, JVM_FindClassFromClass(JNIEnv *env, const char *name,
   }
   Handle h_loader(THREAD, class_loader);
   Handle h_prot  (THREAD, protection_domain);
-  jclass result = find_class_from_class_loader(env, h_name, init, false, h_loader,
+  jclass result = find_class_from_class_loader(env, h_name, init, h_loader,
                                                h_prot, true, thread);
 
   if (log_is_enabled(Debug, class, resolve) && result != NULL) {
@@ -1602,7 +1615,8 @@ JVM_ENTRY(jobjectArray, JVM_GetMethodParameters(JNIEnv *env, jobject method))
     for (int i = 0; i < num_params; i++) {
       MethodParametersElement* params = mh->method_parameters_start();
       int index = params[i].name_cp_index;
-      bounds_check(mh->constants(), index, CHECK_NULL);
+      constantPoolHandle cp(THREAD, mh->constants());
+      bounds_check(cp, index, CHECK_NULL);
 
       if (0 != index && !mh->constants()->tag_at(index).is_utf8()) {
         THROW_MSG_0(vmSymbols::java_lang_IllegalArgumentException(),
@@ -2283,7 +2297,7 @@ JVM_ENTRY(void, JVM_GetClassCPTypes(JNIEnv *env, jclass cls, unsigned char *type
     ConstantPool* cp = InstanceKlass::cast(k)->constants();
     for (int index = cp->length() - 1; index >= 0; index--) {
       constantTag tag = cp->tag_at(index);
-      types[index] = (tag.is_unresolved_klass()) ? JVM_CONSTANT_Class : tag.value();
+      types[index] = (tag.is_unresolved_klass()) ? (unsigned char) JVM_CONSTANT_Class : tag.value();
     }
   }
 JVM_END
@@ -3027,50 +3041,6 @@ JVM_ENTRY(jobject, JVM_CurrentThread(JNIEnv* env, jclass threadClass))
   return JNIHandles::make_local(env, jthread);
 JVM_END
 
-class CountStackFramesTC : public ThreadClosure {
-  int _count;
-  bool _suspended;
- public:
-  CountStackFramesTC() : _count(0), _suspended(false) {}
-  virtual void do_thread(Thread* thread) {
-    JavaThread* jt = (JavaThread*)thread;
-    if (!jt->is_external_suspend()) {
-      // To keep same behavior we fail this operation,
-      // even if it would work perfectly.
-      return;
-    }
-    _suspended = true;
-     // Count all java activation, i.e., number of vframes.
-    for (vframeStream vfst(jt); !vfst.at_end(); vfst.next()) {
-      // Native frames are not counted.
-      if (!vfst.method()->is_native()) _count++;
-    }
-  }
-  int count() { return _count; }
-  int suspended() { return _suspended; }
-};
-
-JVM_ENTRY(jint, JVM_CountStackFrames(JNIEnv* env, jobject jthread))
-  JVMWrapper("JVM_CountStackFrames");
-
-  ThreadsListHandle tlh(thread);
-  JavaThread* receiver = NULL;
-  bool is_alive = tlh.cv_internal_thread_to_JavaThread(jthread, &receiver, NULL);
-  if (is_alive) {
-    // jthread refers to a live JavaThread.
-    CountStackFramesTC csf;
-    Handshake::execute(&csf, receiver);
-    if (!csf.suspended()) {
-      THROW_MSG_0(vmSymbols::java_lang_IllegalThreadStateException(),
-                  "this thread is not suspended");
-    }
-    return csf.count();
-  }
-  // Implied else: if JavaThread is not alive simply return a count of 0.
-  return 0;
-JVM_END
-
-
 JVM_ENTRY(void, JVM_Interrupt(JNIEnv* env, jobject jthread))
   JVMWrapper("JVM_Interrupt");
 
@@ -3080,21 +3050,6 @@ JVM_ENTRY(void, JVM_Interrupt(JNIEnv* env, jobject jthread))
   if (is_alive) {
     // jthread refers to a live JavaThread.
     receiver->interrupt();
-  }
-JVM_END
-
-
-JVM_ENTRY(jboolean, JVM_IsInterrupted(JNIEnv* env, jobject jthread, jboolean clear_interrupted))
-  JVMWrapper("JVM_IsInterrupted");
-
-  ThreadsListHandle tlh(thread);
-  JavaThread* receiver = NULL;
-  bool is_alive = tlh.cv_internal_thread_to_JavaThread(jthread, &receiver, NULL);
-  if (is_alive) {
-    // jthread refers to a live JavaThread.
-    return (jboolean) receiver->is_interrupted(clear_interrupted != 0);
-  } else {
-    return JNI_FALSE;
   }
 JVM_END
 
@@ -3444,12 +3399,9 @@ JNIEXPORT void JNICALL JVM_RawMonitorExit(void *mon) {
 
 // Shared JNI/JVM entry points //////////////////////////////////////////////////////////////
 
-jclass find_class_from_class_loader(JNIEnv* env, Symbol* name, jboolean init, jboolean link,
+jclass find_class_from_class_loader(JNIEnv* env, Symbol* name, jboolean init,
                                     Handle loader, Handle protection_domain,
                                     jboolean throwError, TRAPS) {
-  // Initialization also implies linking - check for coherent args
-  assert((init && link) || !init, "incorrect use of init/link arguments");
-
   // Security Note:
   //   The Java level wrapper will perform the necessary security check allowing
   //   us to pass the NULL as the initiating class loader.  The VM is responsible for
@@ -3458,11 +3410,9 @@ jclass find_class_from_class_loader(JNIEnv* env, Symbol* name, jboolean init, jb
   //   if there is no security manager in 3-arg Class.forName().
   Klass* klass = SystemDictionary::resolve_or_fail(name, loader, protection_domain, throwError != 0, CHECK_NULL);
 
-  // Check if we should initialize the class (which implies linking), or just link it
+  // Check if we should initialize the class
   if (init && klass->is_instance_klass()) {
     klass->initialize(CHECK_NULL);
-  } else if (link && klass->is_instance_klass()) {
-    InstanceKlass::cast(klass)->link_class(CHECK_NULL);
   }
   return (jclass) JNIHandles::make_local(env, klass->java_mirror());
 }

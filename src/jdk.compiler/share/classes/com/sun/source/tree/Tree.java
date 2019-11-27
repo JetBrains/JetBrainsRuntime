@@ -243,14 +243,7 @@ public interface Tree {
          * Used for instances of {@link SwitchExpressionTree}.
          *
          * @since 12
-         *
-         * @deprecated
-         * This enum constant is modeling switch expressions,
-         * which are part of a preview feature and may be removed
-         * if the preview feature is removed.
          */
-        @Deprecated(forRemoval=true, since="12")
-        @SuppressWarnings("removal")
         SWITCH_EXPRESSION(SwitchExpressionTree.class),
 
         /**
@@ -662,14 +655,7 @@ public interface Tree {
          * Used for instances of {@link YieldTree}.
          *
          * @since 13
-         *
-         * @deprecated
-         * This enum constant is modeling yield statement,
-         * which are part of a preview feature and may be removed
-         * if the preview feature is removed.
          */
-        @Deprecated(forRemoval=true, since="13")
-        @SuppressWarnings("removal")
         YIELD(YieldTree.class);
 
 

@@ -186,7 +186,7 @@ public:
 
     // Step 1: Process ordinary GC roots.
     {
-      ShenandoahTraversalClosure roots_cl(q, rp);
+      ShenandoahTraversalRootsClosure roots_cl(q, rp);
       ShenandoahMarkCLDClosure cld_cl(&roots_cl);
       MarkingCodeBlobClosure code_cl(&roots_cl, CodeBlobToOopClosure::FixRelocations);
       if (unload_classes) {
@@ -266,7 +266,7 @@ public:
     // in similar way during nmethod-register process. Therefore, we don't need to rescan code
     // roots here.
     if (!_heap->is_degenerated_gc_in_progress()) {
-      ShenandoahTraversalClosure roots_cl(q, rp);
+      ShenandoahTraversalRootsClosure roots_cl(q, rp);
       ShenandoahTraversalSATBThreadsClosure tc(&satb_cl);
       if (unload_classes) {
         ShenandoahRemarkCLDClosure remark_cld_cl(&roots_cl);
@@ -340,9 +340,6 @@ void ShenandoahTraversalGC::prepare_regions() {
 }
 
 void ShenandoahTraversalGC::prepare() {
-  _heap->collection_set()->clear();
-  assert(_heap->collection_set()->count() == 0, "collection set not clear");
-
   {
     ShenandoahGCPhase phase(ShenandoahPhaseTimings::traversal_gc_make_parsable);
     _heap->make_parsable(true);
@@ -356,15 +353,26 @@ void ShenandoahTraversalGC::prepare() {
   assert(_heap->marking_context()->is_bitmap_clear(), "need clean mark bitmap");
   assert(!_heap->marking_context()->is_complete(), "should not be complete");
 
-  ShenandoahFreeSet* free_set = _heap->free_set();
+  // About to choose the collection set, make sure we know which regions are pinned.
+  {
+    ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_prepare_sync_pinned);
+    _heap->sync_pinned_region_status();
+  }
+
   ShenandoahCollectionSet* collection_set = _heap->collection_set();
+  {
+    ShenandoahHeapLocker lock(_heap->lock());
 
-  // Find collection set
-  _heap->heuristics()->choose_collection_set(collection_set);
-  prepare_regions();
+    collection_set->clear();
+    assert(collection_set->count() == 0, "collection set not clear");
 
-  // Rebuild free set
-  free_set->rebuild();
+    // Find collection set
+    _heap->heuristics()->choose_collection_set(collection_set);
+    prepare_regions();
+
+    // Rebuild free set
+    _heap->free_set()->rebuild();
+  }
 
   log_info(gc, ergo)("Collectable Garbage: " SIZE_FORMAT "%s, " SIZE_FORMAT "%s CSet, " SIZE_FORMAT " CSet regions",
                      byte_size_in_proper_unit(collection_set->garbage()),   proper_unit_for_byte_size(collection_set->garbage()),
@@ -385,11 +393,11 @@ void ShenandoahTraversalGC::init_traversal_collection() {
 
   {
     ShenandoahGCPhase phase_prepare(ShenandoahPhaseTimings::traversal_gc_prepare);
-    ShenandoahHeapLocker lock(_heap->lock());
     prepare();
   }
 
   _heap->set_concurrent_traversal_in_progress(true);
+  _heap->set_has_forwarded_objects(true);
 
   bool process_refs = _heap->process_references();
   if (process_refs) {
@@ -601,13 +609,23 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     TASKQUEUE_STATS_ONLY(_task_queues->reset_taskqueue_stats());
 
     // No more marking expected
+    _heap->set_concurrent_traversal_in_progress(false);
     _heap->mark_complete_marking_context();
 
     fixup_roots();
     _heap->parallel_cleaning(false);
 
+    _heap->set_has_forwarded_objects(false);
+
     // Resize metaspace
     MetaspaceGC::compute_new_size();
+
+    // Need to see that pinned region status is updated: newly pinned regions must not
+    // be trashed. New unpinned regions should be trashed.
+    {
+      ShenandoahGCPhase phase_cleanup(ShenandoahPhaseTimings::traversal_gc_sync_pinned);
+      _heap->sync_pinned_region_status();
+    }
 
     // Still good? We can now trash the cset, and make final verification
     {
@@ -651,7 +669,6 @@ void ShenandoahTraversalGC::final_traversal_collection() {
     }
 
     assert(_task_queues->is_empty(), "queues must be empty after traversal GC");
-    _heap->set_concurrent_traversal_in_progress(false);
     assert(!_heap->cancelled_gc(), "must not be cancelled when getting out here");
 
     if (ShenandoahVerify) {
@@ -697,8 +714,7 @@ public:
   void work(uint worker_id) {
     ShenandoahParallelWorkerSession worker_session(worker_id);
     ShenandoahTraversalFixRootsClosure cl;
-    ShenandoahForwardedIsAliveClosure is_alive;
-    _rp->roots_do<ShenandoahForwardedIsAliveClosure, ShenandoahTraversalFixRootsClosure>(worker_id, &is_alive, &cl);
+    _rp->strong_roots_do(worker_id, &cl);
   }
 };
 
@@ -751,7 +767,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */>(p, _thread, _queue, _mark_context);
+    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, true /* atomic update */>(p, _thread, _queue, _mark_context);
   }
 
 public:
@@ -773,7 +789,7 @@ private:
 
   template <class T>
   inline void do_oop_work(T* p) {
-    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */>(p, _thread, _queue, _mark_context);
+    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, false /* atomic update */>(p, _thread, _queue, _mark_context);
   }
 
 public:
@@ -796,7 +812,7 @@ private:
   template <class T>
   inline void do_oop_work(T* p) {
     ShenandoahEvacOOMScope evac_scope;
-    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */>(p, _thread, _queue, _mark_context);
+    _traversal_gc->process_oop<T, false /* string dedup */, false /* degen */, true /* atomic update */>(p, _thread, _queue, _mark_context);
   }
 
 public:
@@ -819,7 +835,7 @@ private:
   template <class T>
   inline void do_oop_work(T* p) {
     ShenandoahEvacOOMScope evac_scope;
-    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */>(p, _thread, _queue, _mark_context);
+    _traversal_gc->process_oop<T, false /* string dedup */, true /* degen */, false /* atomic update */>(p, _thread, _queue, _mark_context);
   }
 
 public:

@@ -1192,9 +1192,6 @@ class HandlerImpl {
   // predicate controlling translation of CompareAndSwapX
   bool needs_acquiring_load_exclusive(const Node *load);
 
-  // predicate controlling translation of StoreCM
-  bool unnecessary_storestore(const Node *storecm);
-
   // predicate controlling addressing modes
   bool size_fits_all_mem_uses(AddPNode* addp, int shift);
 %}
@@ -1582,29 +1579,6 @@ bool needs_acquiring_load_exclusive(const Node *n)
   // so we can just return true here
   return true;
 }
-
-// predicate controlling translation of StoreCM
-//
-// returns true if a StoreStore must precede the card write otherwise
-// false
-
-bool unnecessary_storestore(const Node *storecm)
-{
-  assert(storecm->Opcode()  == Op_StoreCM, "expecting a StoreCM");
-
-  // we need to generate a dmb ishst between an object put and the
-  // associated card mark when we are using CMS without conditional
-  // card marking
-
-  if (UseConcMarkSweepGC && !UseCondCardMark) {
-    return false;
-  }
-
-  // a storestore is unnecesary in all other cases
-
-  return true;
-}
-
 
 #define __ _masm.
 
@@ -7220,7 +7194,6 @@ instruct loadConD(vRegD dst, immD con) %{
 instruct storeimmCM0(immI0 zero, memory mem)
 %{
   match(Set mem (StoreCM mem zero));
-  predicate(unnecessary_storestore(n));
 
   ins_cost(INSN_COST);
   format %{ "storestore (elided)\n\t"
@@ -10411,6 +10384,56 @@ instruct mnegL(iRegLNoSp dst, iRegL src1, iRegL src2, immL0 zero) %{
   %}
 
   ins_pipe(lmac_reg_reg);
+%}
+
+// Combine Integer Signed Multiply & Add/Sub/Neg Long
+
+instruct smaddL(iRegLNoSp dst, iRegIorL2I src1, iRegIorL2I src2, iRegLNoSp src3) %{
+  match(Set dst (AddL src3 (MulL (ConvI2L src1) (ConvI2L src2))));
+
+  ins_cost(INSN_COST * 3);
+  format %{ "smaddl  $dst, $src1, $src2, $src3" %}
+
+  ins_encode %{
+    __ smaddl(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              as_Register($src3$$reg));
+  %}
+
+  ins_pipe(imac_reg_reg);
+%}
+
+instruct smsubL(iRegLNoSp dst, iRegIorL2I src1, iRegIorL2I src2, iRegLNoSp src3) %{
+  match(Set dst (SubL src3 (MulL (ConvI2L src1) (ConvI2L src2))));
+
+  ins_cost(INSN_COST * 3);
+  format %{ "smsubl  $dst, $src1, $src2, $src3" %}
+
+  ins_encode %{
+    __ smsubl(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg),
+              as_Register($src3$$reg));
+  %}
+
+  ins_pipe(imac_reg_reg);
+%}
+
+instruct smnegL(iRegLNoSp dst, iRegIorL2I src1, iRegIorL2I src2, immL0 zero) %{
+  match(Set dst (MulL (SubL zero (ConvI2L src1)) (ConvI2L src2)));
+  match(Set dst (MulL (ConvI2L src1) (SubL zero (ConvI2L src2))));
+
+  ins_cost(INSN_COST * 3);
+  format %{ "smnegl  $dst, $src1, $src2" %}
+
+  ins_encode %{
+    __ smnegl(as_Register($dst$$reg),
+              as_Register($src1$$reg),
+              as_Register($src2$$reg));
+  %}
+
+  ins_pipe(imac_reg_reg);
 %}
 
 // Integer Divide

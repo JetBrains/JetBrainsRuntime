@@ -356,7 +356,7 @@ void InterpreterRuntime::note_trap(JavaThread* thread, int reason, TRAPS) {
 #ifdef CC_INTERP
 // As legacy note_trap, but we have more arguments.
 JRT_ENTRY(void, InterpreterRuntime::note_trap(JavaThread* thread, int reason, Method *method, int trap_bci))
-  methodHandle trap_method(method);
+  methodHandle trap_method(thread, method);
   note_trap_inner(thread, reason, trap_method, trap_bci, THREAD);
 JRT_END
 
@@ -897,7 +897,7 @@ void InterpreterRuntime::resolve_invoke(JavaThread* thread, Bytecodes::Code byte
       // (see also CallInfo::set_interface for details)
       assert(info.call_kind() == CallInfo::vtable_call ||
              info.call_kind() == CallInfo::direct_call, "");
-      methodHandle rm = info.resolved_method();
+      Method* rm = info.resolved_method();
       assert(rm->is_final() || info.has_vtable_index(),
              "should have been set already");
     } else if (!info.resolved_method()->has_itable_index()) {
@@ -921,25 +921,26 @@ void InterpreterRuntime::resolve_invoke(JavaThread* thread, Bytecodes::Code byte
   // methods must be checked for every call.
   InstanceKlass* sender = pool->pool_holder();
   sender = sender->is_unsafe_anonymous() ? sender->unsafe_anonymous_host() : sender;
+  methodHandle resolved_method(THREAD, info.resolved_method());
 
   switch (info.call_kind()) {
   case CallInfo::direct_call:
     cp_cache_entry->set_direct_call(
       bytecode,
-      info.resolved_method(),
+      resolved_method,
       sender->is_interface());
     break;
   case CallInfo::vtable_call:
     cp_cache_entry->set_vtable_call(
       bytecode,
-      info.resolved_method(),
+      resolved_method,
       info.vtable_index());
     break;
   case CallInfo::itable_call:
     cp_cache_entry->set_itable_call(
       bytecode,
       info.resolved_klass(),
-      info.resolved_method(),
+      resolved_method,
       info.itable_index());
     break;
   default:  ShouldNotReachHere();
@@ -1249,15 +1250,15 @@ JRT_ENTRY(void, InterpreterRuntime::post_field_modification(JavaThread *thread,
   char sig_type = '\0';
 
   switch(cp_entry->flag_state()) {
-    case btos: sig_type = 'B'; break;
-    case ztos: sig_type = 'Z'; break;
-    case ctos: sig_type = 'C'; break;
-    case stos: sig_type = 'S'; break;
-    case itos: sig_type = 'I'; break;
-    case ftos: sig_type = 'F'; break;
-    case atos: sig_type = 'L'; break;
-    case ltos: sig_type = 'J'; break;
-    case dtos: sig_type = 'D'; break;
+    case btos: sig_type = JVM_SIGNATURE_BYTE;    break;
+    case ztos: sig_type = JVM_SIGNATURE_BOOLEAN; break;
+    case ctos: sig_type = JVM_SIGNATURE_CHAR;    break;
+    case stos: sig_type = JVM_SIGNATURE_SHORT;   break;
+    case itos: sig_type = JVM_SIGNATURE_INT;     break;
+    case ftos: sig_type = JVM_SIGNATURE_FLOAT;   break;
+    case atos: sig_type = JVM_SIGNATURE_CLASS;   break;
+    case ltos: sig_type = JVM_SIGNATURE_LONG;    break;
+    case dtos: sig_type = JVM_SIGNATURE_DOUBLE;  break;
     default:  ShouldNotReachHere(); return;
   }
   bool is_static = (obj == NULL);

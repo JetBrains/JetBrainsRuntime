@@ -25,6 +25,7 @@
 #include "precompiled.hpp"
 #include "classfile/classLoaderDataGraph.hpp"
 #include "classfile/metadataOnStackMark.hpp"
+#include "classfile/symbolTable.hpp"
 #include "classfile/systemDictionary.hpp"
 #include "code/codeCache.hpp"
 #include "code/debugInfoRec.hpp"
@@ -35,6 +36,8 @@
 #include "interpreter/bytecodes.hpp"
 #include "interpreter/interpreter.hpp"
 #include "interpreter/oopMapCache.hpp"
+#include "logging/log.hpp"
+#include "logging/logTag.hpp"
 #include "memory/allocation.inline.hpp"
 #include "memory/heapInspection.hpp"
 #include "memory/metadataFactory.hpp"
@@ -118,17 +121,22 @@ Method::Method(ConstMethod* xconst, AccessFlags access_flags) {
 void Method::deallocate_contents(ClassLoaderData* loader_data) {
   MetadataFactory::free_metadata(loader_data, constMethod());
   set_constMethod(NULL);
-#if INCLUDE_JVMCI
-  if (method_data()) {
-    FailedSpeculation::free_failed_speculations(method_data()->get_failed_speculations_address());
-  }
-#endif
   MetadataFactory::free_metadata(loader_data, method_data());
   set_method_data(NULL);
   MetadataFactory::free_metadata(loader_data, method_counters());
   clear_method_counters();
   // The nmethod will be gone when we get here.
   if (code() != NULL) _code = NULL;
+}
+
+void Method::release_C_heap_structures() {
+  if (method_data()) {
+#if INCLUDE_JVMCI
+    FailedSpeculation::free_failed_speculations(method_data()->get_failed_speculations_address());
+#endif
+    // Destroy MethodData
+    method_data()->~MethodData();
+  }
 }
 
 address Method::get_i2c_entry() {
@@ -324,11 +332,9 @@ int Method::size(bool is_native) {
   return align_metadata_size(header_size() + extra_words);
 }
 
-
 Symbol* Method::klass_name() const {
   return method_holder()->name();
 }
-
 
 void Method::metaspace_pointers_do(MetaspaceClosure* it) {
   log_trace(cds)("Iter(Method): %p", this);
@@ -336,6 +342,11 @@ void Method::metaspace_pointers_do(MetaspaceClosure* it) {
   it->push(&_constMethod);
   it->push(&_method_data);
   it->push(&_method_counters);
+
+  Method* this_ptr = this;
+  it->push_method_entry(&this_ptr, (intptr_t*)&_i2i_entry);
+  it->push_method_entry(&this_ptr, (intptr_t*)&_from_compiled_entry);
+  it->push_method_entry(&this_ptr, (intptr_t*)&_from_interpreted_entry);
 }
 
 // Attempt to return method oop to original state.  Clear any pointers
@@ -373,7 +384,83 @@ void Method::set_itable_index(int index) {
   assert(valid_itable_index(), "");
 }
 
+// The RegisterNatives call being attempted tried to register with a method that
+// is not native.  Ask JVM TI what prefixes have been specified.  Then check
+// to see if the native method is now wrapped with the prefixes.  See the
+// SetNativeMethodPrefix(es) functions in the JVM TI Spec for details.
+static Method* find_prefixed_native(Klass* k, Symbol* name, Symbol* signature, TRAPS) {
+#if INCLUDE_JVMTI
+  ResourceMark rm(THREAD);
+  Method* method;
+  int name_len = name->utf8_length();
+  char* name_str = name->as_utf8();
+  int prefix_count;
+  char** prefixes = JvmtiExport::get_all_native_method_prefixes(&prefix_count);
+  for (int i = 0; i < prefix_count; i++) {
+    char* prefix = prefixes[i];
+    int prefix_len = (int)strlen(prefix);
 
+    // try adding this prefix to the method name and see if it matches another method name
+    int trial_len = name_len + prefix_len;
+    char* trial_name_str = NEW_RESOURCE_ARRAY(char, trial_len + 1);
+    strcpy(trial_name_str, prefix);
+    strcat(trial_name_str, name_str);
+    TempNewSymbol trial_name = SymbolTable::probe(trial_name_str, trial_len);
+    if (trial_name == NULL) {
+      continue; // no such symbol, so this prefix wasn't used, try the next prefix
+    }
+    method = k->lookup_method(trial_name, signature);
+    if (method == NULL) {
+      continue; // signature doesn't match, try the next prefix
+    }
+    if (method->is_native()) {
+      method->set_is_prefixed_native();
+      return method; // wahoo, we found a prefixed version of the method, return it
+    }
+    // found as non-native, so prefix is good, add it, probably just need more prefixes
+    name_len = trial_len;
+    name_str = trial_name_str;
+  }
+#endif // INCLUDE_JVMTI
+  return NULL; // not found
+}
+
+bool Method::register_native(Klass* k, Symbol* name, Symbol* signature, address entry, TRAPS) {
+  Method* method = k->lookup_method(name, signature);
+  if (method == NULL) {
+    ResourceMark rm(THREAD);
+    stringStream st;
+    st.print("Method '");
+    print_external_name(&st, k, name, signature);
+    st.print("' name or signature does not match");
+    THROW_MSG_(vmSymbols::java_lang_NoSuchMethodError(), st.as_string(), false);
+  }
+  if (!method->is_native()) {
+    // trying to register to a non-native method, see if a JVM TI agent has added prefix(es)
+    method = find_prefixed_native(k, name, signature, THREAD);
+    if (method == NULL) {
+      ResourceMark rm(THREAD);
+      stringStream st;
+      st.print("Method '");
+      print_external_name(&st, k, name, signature);
+      st.print("' is not declared as native");
+      THROW_MSG_(vmSymbols::java_lang_NoSuchMethodError(), st.as_string(), false);
+    }
+  }
+
+  if (entry != NULL) {
+    method->set_native_function(entry, native_bind_event_is_interesting);
+  } else {
+    method->clear_native_function();
+  }
+  if (log_is_enabled(Debug, jni, resolve)) {
+    ResourceMark rm(THREAD);
+    log_debug(jni, resolve)("[Registering JNI native method %s.%s]",
+                            method->method_holder()->external_name(),
+                            method->name()->as_C_string());
+  }
+  return true;
+}
 
 bool Method::was_executed_more_than(int n) {
   // Invocation counter is reset when the Method* is compiled.
@@ -462,7 +549,7 @@ MethodCounters* Method::build_method_counters(Method* m, TRAPS) {
     return NULL;
   }
 
-  methodHandle mh(m);
+  methodHandle mh(THREAD, m);
   MethodCounters* counters = MethodCounters::allocate(mh, THREAD);
   if (HAS_PENDING_EXCEPTION) {
     CompileBroker::log_metaspace_failure();
@@ -490,23 +577,15 @@ int Method::extra_stack_words() {
   return extra_stack_entries() * Interpreter::stackElementSize;
 }
 
-
 void Method::compute_size_of_parameters(Thread *thread) {
   ArgumentSizeComputer asc(signature());
   set_size_of_parameters(asc.size() + (is_static() ? 0 : 1));
 }
 
-BasicType Method::result_type() const {
-  ResultTypeFinder rtf(signature());
-  return rtf.type();
-}
-
-
 bool Method::is_empty_method() const {
   return  code_size() == 1
       && *code_base() == Bytecodes::_return;
 }
-
 
 bool Method::is_vanilla_constructor() const {
   // Returns true if this method is a vanilla constructor, i.e. an "<init>" "()V" method
@@ -552,7 +631,7 @@ bool Method::is_vanilla_constructor() const {
 
 
 bool Method::compute_has_loops_flag() {
-  BytecodeStream bcs(this);
+  BytecodeStream bcs(methodHandle(Thread::current(), this));
   Bytecodes::Code bc;
 
   while ((bc = bcs.next()) >= 0) {
@@ -910,7 +989,7 @@ void Method::set_not_compilable(const char* reason, int comp_level, bool report)
       set_not_c2_compilable();
   }
   CompilationPolicy::policy()->disable_compilation(this);
-  assert(!CompilationPolicy::can_be_compiled(this, comp_level), "sanity check");
+  assert(!CompilationPolicy::can_be_compiled(methodHandle(Thread::current(), this), comp_level), "sanity check");
 }
 
 bool Method::is_not_osr_compilable(int comp_level) const {
@@ -937,7 +1016,7 @@ void Method::set_not_osr_compilable(const char* reason, int comp_level, bool rep
       set_not_c2_osr_compilable();
   }
   CompilationPolicy::policy()->disable_compilation(this);
-  assert(!CompilationPolicy::can_be_osr_compiled(this, comp_level), "sanity check");
+  assert(!CompilationPolicy::can_be_osr_compiled(methodHandle(Thread::current(), this), comp_level), "sanity check");
 }
 
 // Revert to using the interpreter and clear out the nmethod
@@ -982,7 +1061,7 @@ void Method::unlink_method() {
   Arguments::assert_is_dumping_archive();
   // Set the values to what they should be at run time. Note that
   // this Method can no longer be executed during dump time.
-  _i2i_entry = Interpreter::entry_for_cds_method(this);
+  _i2i_entry = Interpreter::entry_for_cds_method(methodHandle(Thread::current(), this));
   _from_interpreted_entry = _i2i_entry;
 
   if (DynamicDumpSharedSpaces) {
@@ -1494,14 +1573,14 @@ methodHandle Method::clone_with_new_data(const methodHandle& m, u_char* new_code
   if (m->has_stackmap_table()) {
     int code_attribute_length = m->stackmap_data()->length();
     Array<u1>* stackmap_data =
-      MetadataFactory::new_array<u1>(loader_data, code_attribute_length, 0, CHECK_NULL);
+      MetadataFactory::new_array<u1>(loader_data, code_attribute_length, 0, CHECK_(methodHandle()));
     memcpy((void*)stackmap_data->adr_at(0),
            (void*)m->stackmap_data()->adr_at(0), code_attribute_length);
     newm->set_stackmap_data(stackmap_data);
   }
 
   // copy annotations over to new method
-  newcm->copy_annotations_from(loader_data, cm, CHECK_NULL);
+  newcm->copy_annotations_from(loader_data, cm, CHECK_(methodHandle()));
   return newm;
 }
 
@@ -1665,12 +1744,15 @@ static int method_comparator(Method* a, Method* b) {
 
 // This is only done during class loading, so it is OK to assume method_idnum matches the methods() array
 // default_methods also uses this without the ordering for fast find_method
-void Method::sort_methods(Array<Method*>* methods, bool set_idnums) {
+void Method::sort_methods(Array<Method*>* methods, bool set_idnums, method_comparator_func func) {
   int length = methods->length();
   if (length > 1) {
+    if (func == NULL) {
+      func = method_comparator;
+    }
     {
       NoSafepointVerifier nsv;
-      QuickSort::sort(methods->data(), length, method_comparator, /*idempotent=*/false);
+      QuickSort::sort(methods->data(), length, func, /*idempotent=*/false);
     }
     // Reset method ordering
     if (set_idnums) {
@@ -2140,6 +2222,11 @@ jmethodID Method::make_jmethod_id(ClassLoaderData* loader_data, Method* m) {
     // jmethodID is a pointer to Method*
     return (jmethodID)cld->jmethod_ids()->add_method(m);
   }
+}
+
+jmethodID Method::jmethod_id() {
+  methodHandle mh(Thread::current(), this);
+  return method_holder()->get_jmethod_id(mh);
 }
 
 // Mark a jmethodID as free.  This is called when there is a data race in

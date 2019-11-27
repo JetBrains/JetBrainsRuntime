@@ -179,26 +179,6 @@ void oopDesc::set_klass_gap(int v) {
   set_klass_gap((HeapWord*)this, v);
 }
 
-void oopDesc::set_klass_to_list_ptr(oop k) {
-  // This is only to be used during GC, for from-space objects, so no
-  // barrier is needed.
-  if (UseCompressedClassPointers) {
-    _metadata._compressed_klass = (narrowKlass)CompressedOops::encode(k);  // may be null (parnew overflow handling)
-  } else {
-    _metadata._klass = (Klass*)(address)k;
-  }
-}
-
-oop oopDesc::list_ptr_from_klass() {
-  // This is only to be used during GC, for from-space objects.
-  if (UseCompressedClassPointers) {
-    return CompressedOops::decode((narrowOop)_metadata._compressed_klass);
-  } else {
-    // Special case for GC
-    return (oop)(address)_metadata._klass;
-  }
-}
-
 bool oopDesc::is_a(Klass* k) const {
   return klass()->is_subtype_of(k);
 }
@@ -244,25 +224,13 @@ int oopDesc::size_given_klass(Klass* klass)  {
       // skipping the intermediate round to HeapWordSize.
       s = (int)(align_up(size_in_bytes, MinObjAlignmentInBytes) / HeapWordSize);
 
-      // ParNew (used by CMS), UseParallelGC and UseG1GC can change the length field
+      // UseParallelGC and UseG1GC can change the length field
       // of an "old copy" of an object array in the young gen so it indicates
       // the grey portion of an already copied array. This will cause the first
       // disjunct below to fail if the two comparands are computed across such
       // a concurrent change.
-      // ParNew also runs with promotion labs (which look like int
-      // filler arrays) which are subject to changing their declared size
-      // when finally retiring a PLAB; this also can cause the first disjunct
-      // to fail for another worker thread that is concurrently walking the block
-      // offset table. Both these invariant failures are benign for their
-      // current uses; we relax the assertion checking to cover these two cases below:
-      //     is_objArray() && is_forwarded()   // covers first scenario above
-      //  || is_typeArray()                    // covers second scenario above
-      // If and when UseParallelGC uses the same obj array oop stealing/chunking
-      // technique, we will need to suitably modify the assertion.
       assert((s == klass->oop_size(this)) ||
-             (Universe::heap()->is_gc_active() &&
-              ((is_typeArray() && UseConcMarkSweepGC) ||
-               (is_objArray()  && is_forwarded() && (UseConcMarkSweepGC || UseParallelGC || UseG1GC)))),
+             (Universe::heap()->is_gc_active() && is_objArray() && is_forwarded() && (UseParallelGC || UseG1GC)),
              "wrong array object size");
     } else {
       // Must be zero, so bite the bullet and take the virtual call.
@@ -301,9 +269,10 @@ inline void  oopDesc::byte_field_put(int offset, jbyte value)       { HeapAccess
 inline jchar oopDesc::char_field(int offset) const                  { return HeapAccess<>::load_at(as_oop(), offset);  }
 inline void  oopDesc::char_field_put(int offset, jchar value)       { HeapAccess<>::store_at(as_oop(), offset, value); }
 
-inline jboolean oopDesc::bool_field(int offset) const               { return HeapAccess<>::load_at(as_oop(), offset);                }
+inline jboolean oopDesc::bool_field(int offset) const               { return HeapAccess<>::load_at(as_oop(), offset); }
 inline void     oopDesc::bool_field_put(int offset, jboolean value) { HeapAccess<>::store_at(as_oop(), offset, jboolean(value & 1)); }
-
+inline jboolean oopDesc::bool_field_volatile(int offset) const      { return HeapAccess<MO_SEQ_CST>::load_at(as_oop(), offset); }
+inline void     oopDesc::bool_field_put_volatile(int offset, jboolean value) { HeapAccess<MO_SEQ_CST>::store_at(as_oop(), offset, jboolean(value & 1)); }
 inline jshort oopDesc::short_field(int offset) const                { return HeapAccess<>::load_at(as_oop(), offset);  }
 inline void   oopDesc::short_field_put(int offset, jshort value)    { HeapAccess<>::store_at(as_oop(), offset, value); }
 

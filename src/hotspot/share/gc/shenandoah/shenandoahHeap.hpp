@@ -43,6 +43,7 @@ class ShenandoahGCSession;
 class ShenandoahGCStateResetter;
 class ShenandoahHeuristics;
 class ShenandoahMarkingContext;
+class ShenandoahMarkCompact;
 class ShenandoahMode;
 class ShenandoahPhaseTimings;
 class ShenandoahHeap;
@@ -546,7 +547,6 @@ public:
 
   // Used for native heap walkers: heap dumpers, mostly
   void object_iterate(ObjectClosure* cl);
-  void safe_object_iterate(ObjectClosure* cl);
 
   // Used by RMI
   jlong millis_since_last_gc();
@@ -573,6 +573,9 @@ public:
 
   oop pin_object(JavaThread* thread, oop obj);
   void unpin_object(JavaThread* thread, oop obj);
+
+  void sync_pinned_region_status();
+  void assert_pinned_region_status() NOT_DEBUG_RETURN;
 
 // ---------- Allocation support
 //
@@ -712,8 +715,6 @@ public:
   void trash_humongous_region_at(ShenandoahHeapRegion *r);
 
   void deduplicate_string(oop str);
-
-  void stop_concurrent_marking();
 
 private:
   void trash_cset_regions();

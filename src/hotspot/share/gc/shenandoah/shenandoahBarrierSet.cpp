@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahBarrierSetClone.inline.hpp"
 #include "gc/shenandoah/shenandoahBarrierSetAssembler.hpp"
 #include "gc/shenandoah/shenandoahCollectorPolicy.hpp"
+#include "gc/shenandoah/shenandoahConcurrentRoots.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
 #include "gc/shenandoah/shenandoahHeuristics.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
@@ -69,6 +70,35 @@ bool ShenandoahBarrierSet::is_a(BarrierSet::Name bsn) {
 
 bool ShenandoahBarrierSet::is_aligned(HeapWord* hw) {
   return true;
+}
+
+bool ShenandoahBarrierSet::need_load_reference_barrier(DecoratorSet decorators, BasicType type) {
+  if (!ShenandoahLoadRefBarrier) return false;
+  // Only needed for references
+  return is_reference_type(type);
+}
+
+bool ShenandoahBarrierSet::use_load_reference_barrier_native(DecoratorSet decorators, BasicType type) {
+  assert(need_load_reference_barrier(decorators, type), "Should be subset of LRB");
+  assert(is_reference_type(type), "Why we here?");
+  // Native load reference barrier is only needed for concurrent root processing
+  if (!ShenandoahConcurrentRoots::can_do_concurrent_roots()) {
+    return false;
+  }
+
+  return (decorators & IN_NATIVE) != 0;
+}
+
+bool ShenandoahBarrierSet::need_keep_alive_barrier(DecoratorSet decorators,BasicType type) {
+  if (!ShenandoahKeepAliveBarrier) return false;
+  // Only needed for references
+  if (!is_reference_type(type)) return false;
+
+  bool keep_alive = (decorators & AS_NO_KEEPALIVE) == 0;
+  bool unknown = (decorators & ON_UNKNOWN_OOP_REF) != 0;
+  bool is_traversal_mode = ShenandoahHeap::heap()->is_traversal_mode();
+  bool on_weak_ref = (decorators & (ON_WEAK_OOP_REF | ON_PHANTOM_OOP_REF)) != 0;
+  return (on_weak_ref || unknown) && (keep_alive || is_traversal_mode);
 }
 
 template <class T>
@@ -262,27 +292,39 @@ void ShenandoahBarrierSet::on_thread_detach(Thread *thread) {
   }
 }
 
-oop ShenandoahBarrierSet::oop_load_from_native_barrier(oop obj) {
+oop ShenandoahBarrierSet::load_reference_barrier_native(oop obj, oop* load_addr) {
+  return load_reference_barrier_native_impl(obj, load_addr);
+}
+
+oop ShenandoahBarrierSet::load_reference_barrier_native(oop obj, narrowOop* load_addr) {
+  // Assumption: narrow oop version should not be used anywhere.
+  ShouldNotReachHere();
+  return NULL;
+}
+
+template <class T>
+oop ShenandoahBarrierSet::load_reference_barrier_native_impl(oop obj, T* load_addr) {
   if (CompressedOops::is_null(obj)) {
     return NULL;
   }
 
   ShenandoahMarkingContext* const marking_context = _heap->marking_context();
-
-  if (_heap->is_evacuation_in_progress()) {
-    // Normal GC
-    if (!marking_context->is_marked(obj)) {
+  if (_heap->is_evacuation_in_progress() && !marking_context->is_marked(obj)) {
+    Thread* thr = Thread::current();
+    if (thr->is_Java_thread()) {
       return NULL;
-    }
-  } else if (_heap->is_concurrent_traversal_in_progress()) {
-    // Traversal GC
-    if (marking_context->is_complete() &&
-        !marking_context->is_marked(resolve_forwarded_not_null(obj))) {
-      return NULL;
+    } else {
+      return obj;
     }
   }
 
-  return load_reference_barrier_not_null(obj);
+  oop fwd = load_reference_barrier_not_null(obj);
+  if (load_addr != NULL && fwd != obj) {
+    // Since we are here and we know the load address, update the reference.
+    ShenandoahHeap::cas_oop(fwd, load_addr, obj);
+  }
+
+  return fwd;
 }
 
 void ShenandoahBarrierSet::clone_barrier_runtime(oop src) {

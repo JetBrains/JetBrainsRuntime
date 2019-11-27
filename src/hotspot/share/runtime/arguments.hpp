@@ -425,9 +425,8 @@ class Arguments : AllStatic {
 
   static bool handle_deprecated_print_gc_flags();
 
-  static void handle_extra_cms_flags(const char* msg);
-
-  static jint parse_vm_init_args(const JavaVMInitArgs *java_tool_options_args,
+  static jint parse_vm_init_args(const JavaVMInitArgs *vm_options_args,
+                                 const JavaVMInitArgs *java_tool_options_args,
                                  const JavaVMInitArgs *java_options_args,
                                  const JavaVMInitArgs *cmd_line_args);
   static jint parse_each_vm_init_arg(const JavaVMInitArgs* args, bool* patch_mod_javabase, JVMFlag::Flags origin);
@@ -482,6 +481,7 @@ class Arguments : AllStatic {
 
   static char*  SharedArchivePath;
   static char*  SharedDynamicArchivePath;
+  static size_t _SharedBaseAddress; // The default value specified in globals.hpp
   static int num_archives(const char* archive_path) NOT_CDS_RETURN_(0);
   static void extract_shared_archive_paths(const char* archive_path,
                                          char** base_archive_path,
@@ -564,7 +564,7 @@ class Arguments : AllStatic {
 
   static const char* GetSharedArchivePath() { return SharedArchivePath; }
   static const char* GetSharedDynamicArchivePath() { return SharedDynamicArchivePath; }
-
+  static size_t default_SharedBaseAddress() { return _SharedBaseAddress; }
   // Java launcher properties
   static void process_sun_java_launcher_properties(JavaVMInitArgs* args);
 

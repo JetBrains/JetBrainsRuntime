@@ -34,12 +34,13 @@
 #include "gc/z/zRelocationSetSelector.hpp"
 #include "gc/z/zResurrection.hpp"
 #include "gc/z/zStat.hpp"
-#include "gc/z/zThread.hpp"
+#include "gc/z/zThread.inline.hpp"
 #include "gc/z/zVerify.hpp"
 #include "gc/z/zWorkers.inline.hpp"
 #include "logging/log.hpp"
 #include "memory/iterator.hpp"
 #include "memory/resourceArea.hpp"
+#include "runtime/handshake.hpp"
 #include "runtime/safepoint.hpp"
 #include "runtime/thread.hpp"
 #include "utilities/debug.hpp"
@@ -244,34 +245,14 @@ uint64_t ZHeap::uncommit(uint64_t delay) {
   return _page_allocator.uncommit(delay);
 }
 
-void ZHeap::before_flip() {
-  if (ZVerifyViews) {
-    // Unmap all pages
-    _page_allocator.debug_unmap_all_pages();
-  }
-}
-
-void ZHeap::after_flip() {
-  if (ZVerifyViews) {
-    // Map all pages
-    ZPageTableIterator iter(&_page_table);
-    for (ZPage* page; iter.next(&page);) {
-      _page_allocator.debug_map_page(page);
-    }
-    _page_allocator.debug_map_cached_pages();
-  }
-}
-
 void ZHeap::flip_to_marked() {
-  before_flip();
+  ZVerifyViewsFlip flip(&_page_allocator);
   ZAddress::flip_to_marked();
-  after_flip();
 }
 
 void ZHeap::flip_to_remapped() {
-  before_flip();
+  ZVerifyViewsFlip flip(&_page_allocator);
   ZAddress::flip_to_remapped();
-  after_flip();
 }
 
 void ZHeap::mark_start() {
@@ -335,7 +316,7 @@ bool ZHeap::mark_end() {
   // Process weak roots
   _weak_roots_processor.process_weak_roots();
 
-  // Prepare to unload unused classes and code
+  // Prepare to unload stale metadata and nmethods
   _unload.prepare();
 
   return true;
@@ -345,6 +326,11 @@ void ZHeap::set_soft_reference_policy(bool clear) {
   _reference_processor.set_soft_reference_policy(clear);
 }
 
+class ZRendezvousClosure : public ThreadClosure {
+public:
+  virtual void do_thread(Thread* thread) {}
+};
+
 void ZHeap::process_non_strong_references() {
   // Process Soft/Weak/Final/PhantomReferences
   _reference_processor.process_references();
@@ -352,8 +338,22 @@ void ZHeap::process_non_strong_references() {
   // Process concurrent weak roots
   _weak_roots_processor.process_concurrent_weak_roots();
 
-  // Unload unused classes and code
-  _unload.unload();
+  // Unlink stale metadata and nmethods
+  _unload.unlink();
+
+  // Perform a handshake. This is needed 1) to make sure that stale
+  // metadata and nmethods are no longer observable. And 2), to
+  // prevent the race where a mutator first loads an oop, which is
+  // logically null but not yet cleared. Then this oop gets cleared
+  // by the reference processor and resurrection is unblocked. At
+  // this point the mutator could see the unblocked state and pass
+  // this invalid oop through the normal barrier path, which would
+  // incorrectly try to mark the oop.
+  ZRendezvousClosure cl;
+  Handshake::execute(&cl);
+
+  // Purge stale metadata and nmethods that were unlinked
+  _unload.purge();
 
   // Unblock resurrection of weak/phantom references
   ZResurrection::unblock();
@@ -425,7 +425,7 @@ void ZHeap::reset_relocation_set() {
 void ZHeap::relocate_start() {
   assert(SafepointSynchronize::is_at_safepoint(), "Should be at safepoint");
 
-  // Finish unloading of classes and code
+  // Finish unloading stale metadata and nmethods
   _unload.finish();
 
   // Flip address view
@@ -458,6 +458,14 @@ void ZHeap::object_iterate(ObjectClosure* cl, bool visit_weaks) {
 
   ZHeapIterator iter;
   iter.objects_do(cl, visit_weaks);
+}
+
+void ZHeap::pages_do(ZPageClosure* cl) {
+  ZPageTableIterator iter(&_page_table);
+  for (ZPage* page; iter.next(&page);) {
+    cl->do_page(page);
+  }
+  _page_allocator.pages_do(cl);
 }
 
 void ZHeap::serviceability_initialize() {

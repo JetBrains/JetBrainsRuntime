@@ -96,7 +96,7 @@ class G1Policy: public CHeapObj<mtGC> {
 
   uint _free_regions_at_end_of_collection;
 
-  size_t _max_rs_length;
+  size_t _rs_length;
 
   size_t _rs_length_prediction;
 
@@ -136,8 +136,8 @@ public:
     hr->install_surv_rate_group(_survivor_surv_rate_group);
   }
 
-  void record_max_rs_length(size_t rs_length) {
-    _max_rs_length = rs_length;
+  void record_rs_length(size_t rs_length) {
+    _rs_length = rs_length;
   }
 
   double predict_base_elapsed_time_ms(size_t pending_cards) const;
@@ -249,14 +249,6 @@ private:
 
 public:
   size_t pending_cards_at_gc_start() const { return _pending_cards_at_gc_start; }
-
-  size_t total_concurrent_refined_cards() const {
-    return _total_concurrent_refined_cards;
-  }
-
-  size_t total_mutator_refined_cards() const {
-    return _total_mutator_refined_cards;
-  }
 
   // Calculate the minimum number of old regions we'll add to the CSet
   // during a mixed GC.

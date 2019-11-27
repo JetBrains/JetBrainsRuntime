@@ -32,10 +32,10 @@
 #include "runtime/java.hpp"
 #include "runtime/os.hpp"
 #include "runtime/stubCodeGenerator.hpp"
+#include "runtime/vm_version.hpp"
 #include "utilities/align.hpp"
 #include "utilities/defaultStream.hpp"
 #include "utilities/globalDefinitions.hpp"
-#include "vm_version_ppc.hpp"
 
 #include <sys/sysinfo.h>
 #if defined(_AIX)
@@ -312,6 +312,7 @@ void VM_Version::initialize() {
     FLAG_SET_DEFAULT(UseSHA, false);
   }
 
+#ifdef COMPILER2
   if (FLAG_IS_DEFAULT(UseSquareToLenIntrinsic)) {
     UseSquareToLenIntrinsic = true;
   }
@@ -327,6 +328,7 @@ void VM_Version::initialize() {
   if (FLAG_IS_DEFAULT(UseMontgomerySquareIntrinsic)) {
     UseMontgomerySquareIntrinsic = true;
   }
+#endif
 
   if (UseVectorizedMismatchIntrinsic) {
     warning("UseVectorizedMismatchIntrinsic specified, but not available on this CPU.");
@@ -373,9 +375,11 @@ void VM_Version::initialize() {
     if (UseRTMDeopt) {
       FLAG_SET_DEFAULT(UseRTMDeopt, false);
     }
+#ifdef COMPILER2
     if (PrintPreciseRTMLockingStatistics) {
       FLAG_SET_DEFAULT(PrintPreciseRTMLockingStatistics, false);
     }
+#endif
   }
 
   // This machine allows unaligned memory accesses

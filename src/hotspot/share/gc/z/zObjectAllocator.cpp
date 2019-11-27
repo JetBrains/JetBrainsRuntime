@@ -25,11 +25,13 @@
 #include "gc/z/zCollectedHeap.hpp"
 #include "gc/z/zGlobals.hpp"
 #include "gc/z/zHeap.inline.hpp"
+#include "gc/z/zHeuristics.hpp"
 #include "gc/z/zObjectAllocator.hpp"
 #include "gc/z/zPage.inline.hpp"
 #include "gc/z/zStat.hpp"
-#include "gc/z/zThread.hpp"
+#include "gc/z/zThread.inline.hpp"
 #include "gc/z/zUtils.inline.hpp"
+#include "gc/z/zValue.inline.hpp"
 #include "logging/log.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/safepoint.hpp"
@@ -42,11 +44,20 @@ static const ZStatCounter ZCounterUndoObjectAllocationSucceeded("Memory", "Undo 
 static const ZStatCounter ZCounterUndoObjectAllocationFailed("Memory", "Undo Object Allocation Failed", ZStatUnitOpsPerSecond);
 
 ZObjectAllocator::ZObjectAllocator() :
+    _use_per_cpu_shared_small_pages(ZHeuristics::use_per_cpu_shared_small_pages()),
     _used(0),
     _undone(0),
     _shared_medium_page(NULL),
     _shared_small_page(NULL),
     _worker_small_page(NULL) {}
+
+ZPage** ZObjectAllocator::shared_small_page_addr() {
+  return _use_per_cpu_shared_small_pages ? _shared_small_page.addr() : _shared_small_page.addr(0);
+}
+
+ZPage* const* ZObjectAllocator::shared_small_page_addr() const {
+  return _use_per_cpu_shared_small_pages ? _shared_small_page.addr() : _shared_small_page.addr(0);
+}
 
 ZPage* ZObjectAllocator::alloc_page(uint8_t type, size_t size, ZAllocationFlags flags) {
   ZPage* const page = ZHeap::heap()->alloc_page(type, size, flags);
@@ -71,7 +82,7 @@ uintptr_t ZObjectAllocator::alloc_object_in_shared_page(ZPage** shared_page,
                                                         size_t size,
                                                         ZAllocationFlags flags) {
   uintptr_t addr = 0;
-  ZPage* page = *shared_page;
+  ZPage* page = OrderAccess::load_acquire(shared_page);
 
   if (page != NULL) {
     addr = page->alloc_object_atomic(size);
@@ -141,7 +152,7 @@ uintptr_t ZObjectAllocator::alloc_small_object_from_nonworker(size_t size, ZAllo
   // Non-worker small page allocation can never use the reserve
   flags.set_no_reserve();
 
-  return alloc_object_in_shared_page(_shared_small_page.addr(), ZPageTypeSmall, ZPageSizeSmall, size, flags);
+  return alloc_object_in_shared_page(shared_small_page_addr(), ZPageTypeSmall, ZPageSizeSmall, size, flags);
 }
 
 uintptr_t ZObjectAllocator::alloc_small_object_from_worker(size_t size, ZAllocationFlags flags) {
@@ -293,7 +304,7 @@ size_t ZObjectAllocator::used() const {
 size_t ZObjectAllocator::remaining() const {
   assert(ZThread::is_java(), "Should be a Java thread");
 
-  ZPage* page = _shared_small_page.get();
+  const ZPage* const page = OrderAccess::load_acquire(shared_small_page_addr());
   if (page != NULL) {
     return page->remaining();
   }

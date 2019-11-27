@@ -2975,16 +2975,17 @@ void IdealLoopTree::adjust_loop_exit_prob(PhaseIdealLoop *phase) {
 }
 
 #ifdef ASSERT
-static CountedLoopNode* locate_pre_from_main(CountedLoopNode *cl) {
-  Node *ctrl  = cl->skip_predicates();
+static CountedLoopNode* locate_pre_from_main(CountedLoopNode* main_loop) {
+  assert(!main_loop->is_main_no_pre_loop(), "Does not have a pre loop");
+  Node* ctrl = main_loop->skip_predicates();
   assert(ctrl->Opcode() == Op_IfTrue || ctrl->Opcode() == Op_IfFalse, "");
-  Node *iffm = ctrl->in(0);
+  Node* iffm = ctrl->in(0);
   assert(iffm->Opcode() == Op_If, "");
-  Node *p_f = iffm->in(0);
+  Node* p_f = iffm->in(0);
   assert(p_f->Opcode() == Op_IfFalse, "");
-  CountedLoopEndNode *pre_end = p_f->in(0)->as_CountedLoopEnd();
-  assert(pre_end->loopnode()->is_pre_loop(), "");
-  return pre_end->loopnode();
+  CountedLoopNode* pre_loop = p_f->in(0)->as_CountedLoopEnd()->loopnode();
+  assert(pre_loop->is_pre_loop(), "No pre loop found");
+  return pre_loop;
 }
 #endif
 
@@ -3010,7 +3011,7 @@ void IdealLoopTree::remove_main_post_loops(CountedLoopNode *cl, PhaseIdealLoop *
   }
 
   CountedLoopNode* main_head = next_head->as_CountedLoop();
-  if (!main_head->is_main_loop()) {
+  if (!main_head->is_main_loop() || main_head->is_main_no_pre_loop()) {
     return;
   }
 
@@ -3129,6 +3130,13 @@ bool IdealLoopTree::do_remove_empty_loop(PhaseIdealLoop *phase) {
     // We also need to replace the original limit to collapse loop exit.
     Node* cmp = cl->loopexit()->cmp_node();
     assert(cl->limit() == cmp->in(2), "sanity");
+    // Duplicate cmp node if it has other users
+    if (cmp->outcnt() > 1) {
+      cmp = cmp->clone();
+      cmp = phase->_igvn.register_new_node_with_optimizer(cmp);
+      BoolNode *bol = cl->loopexit()->in(CountedLoopEndNode::TestValue)->as_Bool();
+      phase->_igvn.replace_input_of(bol, 1, cmp); // put bol on worklist
+    }
     phase->_igvn._worklist.push(cmp->in(2)); // put limit on worklist
     phase->_igvn.replace_input_of(cmp, 2, exact_limit); // put cmp on worklist
   }

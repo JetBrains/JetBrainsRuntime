@@ -35,12 +35,14 @@ package gc.g1;
  *          java.management
  * @build sun.hotspot.WhiteBox
  * @run driver ClassFileInstaller sun.hotspot.WhiteBox
- * @run main gc.g1.TestGCLogMessages
+ *                                sun.hotspot.WhiteBox$WhiteBoxPermission
+ * @run main/othervm -Xbootclasspath/a:. -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
+ *                   gc.g1.TestGCLogMessages
  */
 
 import jdk.test.lib.process.OutputAnalyzer;
 import jdk.test.lib.process.ProcessTools;
-import jdk.test.lib.Platform;
+import sun.hotspot.code.Compiler;
 
 public class TestGCLogMessages {
 
@@ -85,7 +87,7 @@ public class TestGCLogMessages {
         }
 
         public boolean isAvailable() {
-            return Platform.isGraal() || Platform.isServer();
+            return Compiler.isC2Enabled() || Compiler.isGraalEnabled();
         }
     }
 
@@ -128,7 +130,6 @@ public class TestGCLogMessages {
         new LogMessageWithLevel("CLDG Roots", Level.TRACE),
         new LogMessageWithLevel("JVMTI Roots", Level.TRACE),
         new LogMessageWithLevel("CM RefProcessor Roots", Level.TRACE),
-        new LogMessageWithLevel("Wait For Strong Roots", Level.TRACE),
         // Redirty Cards
         new LogMessageWithLevel("Redirty Cards", Level.DEBUG),
         new LogMessageWithLevel("Parallel Redirty", Level.TRACE),

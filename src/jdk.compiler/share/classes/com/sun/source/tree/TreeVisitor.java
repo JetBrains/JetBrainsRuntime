@@ -360,14 +360,7 @@ public interface TreeVisitor<R,P> {
      * @param p a parameter value
      * @return a result value
      * @since 12
-     *
-     * @deprecated
-     * This method is modeling switch expressions,
-     * which are part of a preview feature and may be removed
-     * if the preview feature is removed.
      */
-    @Deprecated(forRemoval=true, since="12")
-    @SuppressWarnings("removal")
     R visitSwitchExpression(SwitchExpressionTree node, P p);
 
     /**
@@ -562,13 +555,6 @@ public interface TreeVisitor<R,P> {
      * @param p a parameter value
      * @return a result value
      * @since 13
-     *
-     * @deprecated
-     * This method is modeling yield statement,
-     * which are part of a preview feature and may be removed
-     * if the preview feature is removed.
      */
-    @Deprecated(forRemoval=true, since="13")
-    @SuppressWarnings("removal")
     R visitYield(YieldTree node, P p);
 }

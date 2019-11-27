@@ -427,7 +427,7 @@ AC_DEFUN_ONCE([BASIC_INIT],
   # Save the path variable before it gets changed
   ORIGINAL_PATH="$PATH"
   AC_SUBST(ORIGINAL_PATH)
-  DATE_WHEN_CONFIGURED=`LANG=C date`
+  DATE_WHEN_CONFIGURED=`date`
   AC_SUBST(DATE_WHEN_CONFIGURED)
   AC_MSG_NOTICE([Configuration created at $DATE_WHEN_CONFIGURED.])
 ])
@@ -489,31 +489,43 @@ AC_DEFUN([BASIC_SETUP_TOOL],
       # for unknown variables in the end.
       CONFIGURE_OVERRIDDEN_VARIABLES="$try_remove_var"
 
+      tool_override=[$]$1
+      AC_MSG_NOTICE([User supplied override $1="$tool_override"])
+
       # Check if we try to supply an empty value
-      if test "x[$]$1" = x; then
-        AC_MSG_NOTICE([Setting user supplied tool $1= (no value)])
+      if test "x$tool_override" = x; then
         AC_MSG_CHECKING([for $1])
         AC_MSG_RESULT([disabled])
       else
+        # Split up override in command part and argument part
+        tool_and_args=($tool_override)
+        [ tool_command=${tool_and_args[0]} ]
+        [ unset 'tool_and_args[0]' ]
+        [ tool_args=${tool_and_args[@]} ]
+
         # Check if the provided tool contains a complete path.
-        tool_specified="[$]$1"
-        tool_basename="${tool_specified##*/}"
-        if test "x$tool_basename" = "x$tool_specified"; then
+        tool_basename="${tool_command##*/}"
+        if test "x$tool_basename" = "x$tool_command"; then
           # A command without a complete path is provided, search $PATH.
-          AC_MSG_NOTICE([Will search for user supplied tool $1=$tool_basename])
+          AC_MSG_NOTICE([Will search for user supplied tool "$tool_basename"])
           AC_PATH_PROG($1, $tool_basename)
           if test "x[$]$1" = x; then
-            AC_MSG_ERROR([User supplied tool $tool_basename could not be found])
+            AC_MSG_ERROR([User supplied tool $1="$tool_basename" could not be found])
           fi
         else
           # Otherwise we believe it is a complete path. Use it as it is.
-          AC_MSG_NOTICE([Will use user supplied tool $1=$tool_specified])
-          AC_MSG_CHECKING([for $1])
-          if test ! -x "$tool_specified"; then
+          AC_MSG_NOTICE([Will use user supplied tool "$tool_command"])
+          AC_MSG_CHECKING([for $tool_command])
+          if test ! -x "$tool_command"; then
             AC_MSG_RESULT([not found])
-            AC_MSG_ERROR([User supplied tool $1=$tool_specified does not exist or is not executable])
+            AC_MSG_ERROR([User supplied tool $1="$tool_command" does not exist or is not executable])
           fi
-          AC_MSG_RESULT([$tool_specified])
+           $1="$tool_command"
+          AC_MSG_RESULT([found])
+        fi
+        if test "x$tool_args" != x; then
+          # If we got arguments, re-append them to the command after the fixup.
+          $1="[$]$1 $tool_args"
         fi
       fi
     fi
@@ -558,6 +570,26 @@ AC_DEFUN([BASIC_REQUIRE_PROGS],
 AC_DEFUN([BASIC_REQUIRE_SPECIAL],
 [
   BASIC_SETUP_TOOL($1, [$2])
+  BASIC_CHECK_NONEMPTY($1)
+])
+
+###############################################################################
+# Like BASIC_REQUIRE_PROGS but also allows for bash built-ins
+# $1: variable to set
+# $2: executable name (or list of names) to look for
+# $3: [path]
+AC_DEFUN([BASIC_REQUIRE_BUILTIN_PROGS],
+[
+  BASIC_SETUP_TOOL($1, [AC_PATH_PROGS($1, $2, , $3)])
+  if test "x[$]$1" = x; then
+    AC_MSG_NOTICE([Required tool $2 not found in PATH, checking built-in])
+    if help $2 > /dev/null 2>&1; then
+      AC_MSG_NOTICE([Found $2 as shell built-in. Using it])
+      $1="$2"
+    else
+      AC_MSG_ERROR([Required tool $2 also not found as built-in.])
+    fi
+  fi
   BASIC_CHECK_NONEMPTY($1)
 ])
 
@@ -1271,6 +1303,9 @@ AC_DEFUN_ONCE([BASIC_SETUP_COMPLEX_TOOLS],
     BASIC_REQUIRE_PROGS(SETFILE, SetFile)
   elif test "x$OPENJDK_TARGET_OS" = "xsolaris"; then
     BASIC_REQUIRE_PROGS(ELFEDIT, elfedit)
+  fi
+  if ! test "x$OPENJDK_TARGET_OS" = "xwindows"; then
+    BASIC_REQUIRE_BUILTIN_PROGS(ULIMIT, ulimit)
   fi
 ])
 

@@ -877,8 +877,6 @@ jlong os::elapsed_frequency() {
 }
 
 bool os::supports_vtime() { return true; }
-bool os::enable_vtime()   { return false; }
-bool os::vtime_enabled()  { return false; }
 
 double os::elapsedVTime() {
   // better than nothing, but not much
@@ -2007,6 +2005,10 @@ size_t os::numa_get_leaf_groups(int *ids, size_t size) {
   return 0;
 }
 
+int os::numa_get_group_id_for_address(const void* address) {
+  return 0;
+}
+
 bool os::get_page_info(char *start, page_info* info) {
   return false;
 }
@@ -2847,15 +2849,11 @@ void os::Bsd::install_signal_handlers() {
     // and if UserSignalHandler is installed all bets are off
     if (CheckJNICalls) {
       if (libjsig_is_loaded) {
-        if (PrintJNIResolving) {
-          tty->print_cr("Info: libjsig is activated, all active signal checking is disabled");
-        }
+        log_debug(jni, resolve)("Info: libjsig is activated, all active signal checking is disabled");
         check_signals = false;
       }
       if (AllowUserSignalHandlers) {
-        if (PrintJNIResolving) {
-          tty->print_cr("Info: AllowUserSignalHandlers is activated, all active signal checking is disabled");
-        }
+        log_debug(jni, resolve)("Info: AllowUserSignalHandlers is activated, all active signal checking is disabled");
         check_signals = false;
       }
     }
@@ -3207,14 +3205,14 @@ int os::active_processor_count() {
 }
 
 #ifdef __APPLE__
-uint os::processor_id() {
-  static volatile int* volatile apic_to_cpu_mapping = NULL;
-  static volatile int next_cpu_id = 0;
+static volatile int* volatile apic_to_processor_mapping = NULL;
+static volatile int next_processor_id = 0;
 
-  volatile int* mapping = OrderAccess::load_acquire(&apic_to_cpu_mapping);
+static inline volatile int* get_apic_to_processor_mapping() {
+  volatile int* mapping = OrderAccess::load_acquire(&apic_to_processor_mapping);
   if (mapping == NULL) {
     // Calculate possible number space for APIC ids. This space is not necessarily
-    // in the range [0, number_of_cpus).
+    // in the range [0, number_of_processors).
     uint total_bits = 0;
     for (uint i = 0;; ++i) {
       uint eax = 0xb; // Query topology leaf
@@ -3240,33 +3238,39 @@ uint os::processor_id() {
       mapping[i] = -1;
     }
 
-    if (!Atomic::replace_if_null(mapping, &apic_to_cpu_mapping)) {
+    if (!Atomic::replace_if_null(mapping, &apic_to_processor_mapping)) {
       FREE_C_HEAP_ARRAY(int, mapping);
-      mapping = OrderAccess::load_acquire(&apic_to_cpu_mapping);
+      mapping = OrderAccess::load_acquire(&apic_to_processor_mapping);
     }
   }
+
+  return mapping;
+}
+
+uint os::processor_id() {
+  volatile int* mapping = get_apic_to_processor_mapping();
 
   uint eax = 0xb;
   uint ebx;
   uint ecx = 0;
   uint edx;
 
-  asm ("cpuid\n\t" : "+a" (eax), "+b" (ebx), "+c" (ecx), "+d" (edx) : );
+  __asm__ ("cpuid\n\t" : "+a" (eax), "+b" (ebx), "+c" (ecx), "+d" (edx) : );
 
   // Map from APIC id to a unique logical processor ID in the expected
   // [0, num_processors) range.
 
   uint apic_id = edx;
-  int cpu_id = Atomic::load(&mapping[apic_id]);
+  int processor_id = Atomic::load(&mapping[apic_id]);
 
-  while (cpu_id < 0) {
+  while (processor_id < 0) {
     if (Atomic::cmpxchg(-2, &mapping[apic_id], -1)) {
-      Atomic::store(Atomic::add(1, &next_cpu_id) - 1, &mapping[apic_id]);
+      Atomic::store(Atomic::add(1, &next_processor_id) - 1, &mapping[apic_id]);
     }
-    cpu_id = Atomic::load(&mapping[apic_id]);
+    processor_id = Atomic::load(&mapping[apic_id]);
   }
 
-  return (uint)cpu_id;
+  return (uint)processor_id;
 }
 #endif
 
@@ -3280,11 +3284,6 @@ void os::set_native_thread_name(const char *name) {
     pthread_setname_np(buf);
   }
 #endif
-}
-
-bool os::distribute_processes(uint length, uint* distribution) {
-  // Not yet implemented.
-  return false;
 }
 
 bool os::bind_to_processor(uint processor_id) {
@@ -3671,7 +3670,7 @@ int os::loadavg(double loadavg[], int nelem) {
 void os::pause() {
   char filename[MAX_PATH];
   if (PauseAtStartupFile && PauseAtStartupFile[0]) {
-    jio_snprintf(filename, MAX_PATH, PauseAtStartupFile);
+    jio_snprintf(filename, MAX_PATH, "%s", PauseAtStartupFile);
   } else {
     jio_snprintf(filename, MAX_PATH, "./vm.paused.%d", current_process_id());
   }
