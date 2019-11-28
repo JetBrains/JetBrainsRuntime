@@ -4329,5 +4329,7 @@ void Arguments::setup_hotswap_agent() {
   create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
   // java.beans.Introspector access
   create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans=ALL-UNNAMED", addopens_count++);
+  // com.sun.beans.introspect.ClassInfo access
+  create_numbered_property("jdk.module.addopens", "java.desktop/com.sun.beans.introspect=ALL-UNNAMED", addopens_count++);
 
 }
