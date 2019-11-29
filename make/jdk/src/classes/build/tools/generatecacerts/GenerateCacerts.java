@@ -32,7 +32,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -81,7 +81,7 @@ public class GenerateCacerts {
 
         // All file names in dir sorted.
         // README is excluded. Name starting with "." excluded.
-        List<String> entries = Files.list(Path.of(dir))
+        List<String> entries = Files.list(Paths.get(dir))
                 .map(p -> p.getFileName().toString())
                 .filter(s -> !s.equals("README") && !s.startsWith("."))
                 .collect(Collectors.toList());
@@ -94,7 +94,7 @@ public class GenerateCacerts {
 
             String alias = entry + " [jdk]";
             X509Certificate cert;
-            try (InputStream fis = Files.newInputStream(Path.of(dir, entry))) {
+            try (InputStream fis = Files.newInputStream(Paths.get(dir, entry))) {
                 cert = (X509Certificate) cf.generateCertificate(fis);
             }
 
