@@ -33,6 +33,8 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.HashMap;
 
+import sun.nio.cs.UTF_8;
+
 /**
  * The Manifest class is used to maintain Manifest entry names and their
  * associated Attributes. There are main Manifest Attributes as well as
@@ -187,7 +189,7 @@ public class Manifest implements Cloneable {
             StringBuffer buffer = new StringBuffer("Name: ");
             String value = e.getKey();
             if (value != null) {
-                byte[] vb = value.getBytes("UTF8");
+                byte[] vb = value.getBytes(UTF_8.INSTANCE);
                 value = new String(vb, 0, 0, vb.length);
             }
             buffer.append(value);
@@ -272,7 +274,7 @@ public class Manifest implements Cloneable {
                     lastline = buf;
                     continue;
                 }
-                name = new String(buf, 0, buf.length, "UTF8");
+                name = new String(buf, 0, buf.length, UTF_8.INSTANCE);
                 lastline = null;
             }
             Attributes attr = getAttributes(name);
@@ -297,11 +299,7 @@ public class Manifest implements Cloneable {
         if (toLower(lbuf[0]) == 'n' && toLower(lbuf[1]) == 'a' &&
             toLower(lbuf[2]) == 'm' && toLower(lbuf[3]) == 'e' &&
             lbuf[4] == ':' && lbuf[5] == ' ') {
-            try {
-                return new String(lbuf, 6, len - 6, "UTF8");
-            }
-            catch (Exception e) {
-            }
+            return new String(lbuf, 6, len - 6, UTF_8.INSTANCE);
         }
         return null;
     }

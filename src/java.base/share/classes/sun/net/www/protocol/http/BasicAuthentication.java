@@ -34,6 +34,8 @@ import java.io.OutputStream;
 import java.util.Base64;
 import java.util.Objects;
 import sun.net.www.HeaderParser;
+import sun.nio.cs.ISO_8859_1;
+import sun.nio.cs.UTF_8;
 
 /**
  * BasicAuthentication: Encapsulate an http server authentication using
@@ -62,11 +64,7 @@ class BasicAuthentication extends AuthenticationInfo {
               Objects.requireNonNull(authenticatorKey));
         String plain = pw.getUserName() + ":";
         byte[] nameBytes = null;
-        try {
-            nameBytes = plain.getBytes("ISO-8859-1");
-        } catch (java.io.UnsupportedEncodingException uee) {
-            assert false;
-        }
+        nameBytes = plain.getBytes(ISO_8859_1.INSTANCE);
 
         // get password bytes
         char[] passwd = pw.getPassword();
@@ -106,11 +104,7 @@ class BasicAuthentication extends AuthenticationInfo {
               Objects.requireNonNull(authenticatorKey));
         String plain = pw.getUserName() + ":";
         byte[] nameBytes = null;
-        try {
-            nameBytes = plain.getBytes("ISO-8859-1");
-        } catch (java.io.UnsupportedEncodingException uee) {
-            assert false;
-        }
+        nameBytes = plain.getBytes(ISO_8859_1.INSTANCE);
 
         // get password bytes
         char[] passwd = pw.getPassword();

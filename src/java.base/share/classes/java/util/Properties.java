@@ -50,6 +50,9 @@ import jdk.internal.misc.SharedSecrets;
 import jdk.internal.misc.Unsafe;
 import jdk.internal.util.xml.PropertiesDefaultHandler;
 
+import sun.nio.cs.UTF_8;
+import sun.nio.cs.ISO_8859_1;
+
 /**
  * The {@code Properties} class represents a persistent set of
  * properties. The {@code Properties} can be saved to a stream
@@ -915,7 +918,7 @@ class Properties extends Hashtable<Object,Object> {
     public void store(OutputStream out, String comments)
         throws IOException
     {
-        store0(new BufferedWriter(new OutputStreamWriter(out, "8859_1")),
+        store0(new BufferedWriter(new OutputStreamWriter(out, ISO_8859_1.INSTANCE)),
                comments,
                true);
     }
@@ -1007,7 +1010,7 @@ class Properties extends Hashtable<Object,Object> {
     public void storeToXML(OutputStream os, String comment)
         throws IOException
     {
-        storeToXML(os, comment, "UTF-8");
+        storeToXML(os, comment, UTF_8.INSTANCE);
     }
 
     /**

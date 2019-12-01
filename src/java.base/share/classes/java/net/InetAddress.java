@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.security.AccessController;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.ObjectStreamException;
 import java.io.ObjectStreamField;
 import java.io.IOException;
@@ -51,6 +50,7 @@ import jdk.internal.misc.SharedSecrets;
 import sun.security.action.*;
 import sun.net.InetAddressCachePolicy;
 import sun.net.util.IPAddressUtil;
+import sun.nio.cs.UTF_8;
 
 /**
  * This class represents an Internet Protocol (IP) address.
@@ -990,7 +990,9 @@ class InetAddress implements java.io.Serializable {
             String host = null;
 
             String addrString = addrToString(addr);
-            try (Scanner hostsFileScanner = new Scanner(new File(hostsFile), "UTF-8")) {
+            try (Scanner hostsFileScanner = new Scanner(new File(hostsFile),
+                                                        UTF_8.INSTANCE))
+            {
                 while (hostsFileScanner.hasNextLine()) {
                     hostEntry = hostsFileScanner.nextLine();
                     if (!hostEntry.startsWith("#")) {
@@ -1003,7 +1005,7 @@ class InetAddress implements java.io.Serializable {
                         }
                     }
                 }
-            } catch (FileNotFoundException e) {
+            } catch (IOException e) {
                 throw new UnknownHostException("Unable to resolve address "
                         + addrString + " as hosts file " + hostsFile
                         + " not found ");
@@ -1039,7 +1041,9 @@ class InetAddress implements java.io.Serializable {
             ArrayList<InetAddress> inetAddresses = null;
 
             // lookup the file and create a list InetAddress for the specfied host
-            try (Scanner hostsFileScanner = new Scanner(new File(hostsFile), "UTF-8")) {
+            try (Scanner hostsFileScanner = new Scanner(new File(hostsFile),
+                                                        UTF_8.INSTANCE))
+            {
                 while (hostsFileScanner.hasNextLine()) {
                     hostEntry = hostsFileScanner.nextLine();
                     if (!hostEntry.startsWith("#")) {
@@ -1058,7 +1062,7 @@ class InetAddress implements java.io.Serializable {
                         }
                     }
                 }
-            } catch (FileNotFoundException e) {
+            } catch (IOException e) {
                 throw new UnknownHostException("Unable to resolve host " + host
                         + " as hosts file " + hostsFile + " not found ");
             }
