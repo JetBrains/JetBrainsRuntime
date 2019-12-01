@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import sun.nio.cs.UTF_8;
+import sun.nio.cs.ISO_8859_1;
 import sun.util.logging.PlatformLogger;
 
 /**
@@ -307,7 +309,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
 
              String value = (String) e.getValue();
              if (value != null) {
-                 byte[] vb = value.getBytes("UTF8");
+                 byte[] vb = value.getBytes(UTF_8.INSTANCE);
                  value = new String(vb, 0, 0, vb.length);
              }
              buffer.append(value);
@@ -352,7 +354,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
 
                 String value = (String) e.getValue();
                 if (value != null) {
-                    byte[] vb = value.getBytes("UTF8");
+                    byte[] vb = value.getBytes(UTF_8.INSTANCE);
                     value = new String(vb, 0, 0, vb.length);
                 }
                 buffer.append(value);
@@ -401,7 +403,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
                     lastline = buf;
                     continue;
                 }
-                value = new String(buf, 0, buf.length, "UTF8");
+                value = new String(buf, 0, buf.length, UTF_8.INSTANCE);
                 lastline = null;
             } else {
                 while (lbuf[i++] != ':') {
@@ -418,7 +420,7 @@ public class Attributes implements Map<Object,Object>, Cloneable {
                     System.arraycopy(lbuf, i, lastline, 0, len - i);
                     continue;
                 }
-                value = new String(lbuf, i, len - i, "UTF8");
+                value = new String(lbuf, i, len - i, UTF_8.INSTANCE);
             }
             try {
                 if ((putValue(name, value) != null) && (!lineContinued)) {
