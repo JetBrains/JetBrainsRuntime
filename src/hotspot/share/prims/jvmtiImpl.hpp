@@ -458,7 +458,8 @@ class JvmtiDeferredEvent {
     TYPE_NONE,
     TYPE_COMPILED_METHOD_LOAD,
     TYPE_COMPILED_METHOD_UNLOAD,
-    TYPE_DYNAMIC_CODE_GENERATED
+    TYPE_DYNAMIC_CODE_GENERATED,
+    TYPE_CLASS_UNLOAD
   } Type;
 
   Type _type;
@@ -474,6 +475,9 @@ class JvmtiDeferredEvent {
       const void* code_begin;
       const void* code_end;
     } dynamic_code_generated;
+    struct {
+      const char* name;
+    } class_unload;
   } _event_data;
 
   JvmtiDeferredEvent(Type t) : _type(t) {}
@@ -490,6 +494,8 @@ class JvmtiDeferredEvent {
   static JvmtiDeferredEvent dynamic_code_generated_event(
       const char* name, const void* begin, const void* end)
           NOT_JVMTI_RETURN_(JvmtiDeferredEvent());
+  static JvmtiDeferredEvent class_unload_event(
+      const char* name) NOT_JVMTI_RETURN_(JvmtiDeferredEvent());
 
   // Actually posts the event.
   void post() NOT_JVMTI_RETURN;

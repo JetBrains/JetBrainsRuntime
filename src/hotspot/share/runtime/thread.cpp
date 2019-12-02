@@ -1604,7 +1604,7 @@ void JavaThread::initialize() {
   set_monitor_chunks(NULL);
   set_next(NULL);
   _on_thread_list = false;
-  set_thread_state(_thread_new);
+  _thread_state = _thread_new;
   _terminated = _not_terminated;
   _privileged_stack_top = NULL;
   _array_for_gc = NULL;

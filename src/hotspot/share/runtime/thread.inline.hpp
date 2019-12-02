@@ -126,6 +126,8 @@ inline JavaThreadState JavaThread::thread_state() const    {
 }
 
 inline void JavaThread::set_thread_state(JavaThreadState s) {
+  assert(current_or_null() == NULL || current_or_null() == this,
+         "state change should only be called by the current thread");
   OrderAccess::release_store((volatile jint*)&_thread_state, (jint)s);
 }
 #endif
