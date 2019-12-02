@@ -193,6 +193,13 @@ class CriticalSection {
     #define TOUCHEVENTF_NOCOALESCE      0x0020
     #define TOUCHEVENTF_PEN             0x0040
     #define TOUCHEVENTF_PALM            0x0080
+
+    #define MOUSEEVENTF_FROMTOUCH       0xFF515700
+    
+    /*
+    * Conversion of touch input coordinates to pixels
+    */
+    #define TOUCH_COORD_TO_PIXEL(l)         ((l) / 100)
 #endif
 
 /************************************************************************
