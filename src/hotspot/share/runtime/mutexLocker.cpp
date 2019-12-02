@@ -238,7 +238,7 @@ void mutex_init() {
 
   def(Patching_lock                , PaddedMutex  , special,     true,  Monitor::_safepoint_check_never);      // used for safepointing and code patching.
   def(Service_lock                 , PaddedMonitor, special,     true,  Monitor::_safepoint_check_never);      // used for service thread operations
-  def(JmethodIdCreation_lock       , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_always);     // used for creating jmethodIDs.
+  def(JmethodIdCreation_lock       , PaddedMutex  , leaf,        true,  Monitor::_safepoint_check_never);      // used for creating jmethodIDs.
 
   def(SystemDictionary_lock        , PaddedMonitor, leaf,        true,  Monitor::_safepoint_check_always);     // lookups done by VM thread
   def(SharedDictionary_lock        , PaddedMutex,   leaf,        true,  Monitor::_safepoint_check_always);     // lookups done by VM thread

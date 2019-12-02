@@ -36,6 +36,7 @@
 #include "services/lowMemoryDetector.hpp"
 
 ServiceThread* ServiceThread::_instance = NULL;
+JvmtiDeferredEvent* ServiceThread::_jvmti_event = NULL;
 
 void ServiceThread::initialize() {
   EXCEPTION_MARK;
@@ -108,7 +109,9 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
       }
 
       if (has_jvmti_events) {
+        // Get the event under the Service_lock
         jvmti_event = JvmtiDeferredEventQueue::dequeue();
+        _jvmti_event = &jvmti_event;
       }
     }
 
@@ -117,7 +120,8 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
     }
 
     if (has_jvmti_events) {
-      jvmti_event.post();
+      _jvmti_event->post();
+      _jvmti_event = NULL;  // reset
     }
 
     if (sensors_changed) {
@@ -134,6 +138,26 @@ void ServiceThread::service_thread_entry(JavaThread* jt, TRAPS) {
   }
 }
 
-bool ServiceThread::is_service_thread(Thread* thread) {
-  return thread == _instance;
+void ServiceThread::oops_do(OopClosure* f, CodeBlobClosure* cf) {
+  JavaThread::oops_do(f, cf);
+  // The ServiceThread "owns" the JVMTI Deferred events, scan them here
+  // to keep them alive until they are processed.
+  if (cf != NULL) {
+    if (_jvmti_event != NULL) {
+      _jvmti_event->oops_do(f, cf);
+    }
+    MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+    JvmtiDeferredEventQueue::oops_do(f, cf);
+  }
+}
+
+void ServiceThread::nmethods_do(CodeBlobClosure* cf) {
+  JavaThread::nmethods_do(cf);
+  if (cf != NULL) {
+    if (_jvmti_event != NULL) {
+      _jvmti_event->nmethods_do(cf);
+    }
+    MutexLockerEx ml(Service_lock, Mutex::_no_safepoint_check_flag);
+    JvmtiDeferredEventQueue::nmethods_do(cf);
+  }
 }
