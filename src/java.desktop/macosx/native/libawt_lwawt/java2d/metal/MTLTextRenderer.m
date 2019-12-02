@@ -339,8 +339,7 @@ MTLTR_DrawGrayscaleGlyphNoCache(MTLContext *mtlc,
 
     J2dTraceLn(J2D_TRACE_INFO, "MTLTR_DrawGrayscaleGlyphNoCache");
     if (glyphMode != MODE_NO_CACHE_GRAY) {
-        //MTLTR_DisableGlyphModeState();
-        //CHECK_PREVIOUS_OP(MTL_STATE_MASK_OP);
+        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
         glyphMode = MODE_NO_CACHE_GRAY;
     }
 
@@ -411,7 +410,6 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
     glyphMode = MODE_NOT_INITED;
     isCachedDestValid = JNI_FALSE;
     J2dTraceLn1(J2D_TRACE_INFO, "totalGlyphs = %d", totalGlyphs);
-    MTLVertexCache_EnableMaskCache(mtlc, dstOps);
 
     for (glyphCounter = 0; glyphCounter < totalGlyphs; glyphCounter++) {
         J2dTraceLn(J2D_TRACE_INFO, "Entered for loop for glyph list");
@@ -505,8 +503,13 @@ MTLTR_DrawGlyphList(JNIEnv *env, MTLContext *mtlc, BMTLSDOps *dstOps,
             break;
         }
     }
-    MTLVertexCache_FlushVertexCache(mtlc);
-    MTLTR_DisableGlyphModeState();
+    /*
+     * This state management needs to be extended for other glyphmodes
+     * when they are implemented.
+     */
+    if (glyphMode == MODE_NO_CACHE_GRAY) {
+        MTLVertexCache_DisableMaskCache(mtlc);
+    }
 }
 
 JNIEXPORT void JNICALL
@@ -545,14 +548,6 @@ Java_sun_java2d_metal_MTLTextRenderer_drawGlyphList
                                 subPixPos, rgbOrder, lcdContrast,
                                 glyphListOrigX, glyphListOrigY,
                                 images, NULL);
-        }
-
-        // TODO : We can't flush draw calls here
-        // as it is done while blitting. It needs to
-        // be updated if start flushing right after
-        // rendering
-        if (mtlc != NULL) {
-            RESET_PREVIOUS_OP();
         }
 
         (*env)->ReleasePrimitiveArrayCritical(env, imgArray,
