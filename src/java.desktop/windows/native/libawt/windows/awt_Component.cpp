@@ -223,10 +223,11 @@ BOOL windowMoveLockHeld = FALSE;
 AwtComponent::AwtComponent()
 {
     m_mouseButtonClickAllowed = 0;
-    m_touchDownOccurred = FALSE;
-    m_touchUpOccurred = FALSE;
-    m_touchDownPoint.x = m_touchDownPoint.y = 0;
-    m_touchUpPoint.x = m_touchUpPoint.y = 0;
+
+    m_isTouchScroll = FALSE;
+    m_touchDownPoint = {0, 0};
+    m_lastTouchPoint = {0, 0};
+
     m_callbacksEnabled = FALSE;
     m_hwnd = NULL;
 
@@ -1344,6 +1345,10 @@ void SpyWinMessage(HWND hwnd, UINT message, LPCTSTR szComment) {
 
 #endif /* SPY_MESSAGES */
 
+static BOOL IsMouseEventFromTouch()
+{
+    return (::GetMessageExtraInfo() & MOUSEEVENTF_FROMTOUCH) == MOUSEEVENTF_FROMTOUCH;
+}
 /*
  * Dispatch messages for this window class--general component
  */
@@ -1658,6 +1663,9 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
       case WM_MOUSEHWHEEL:
       case WM_AWT_MOUSEENTER:
       case WM_AWT_MOUSEEXIT:
+          if (IsMouseEventFromTouch()) {
+              break;
+          }
           curPos = ::GetMessagePos();
           POINT myPos;
           myPos.x = GET_X_LPARAM(curPos);
@@ -2341,27 +2349,90 @@ void AwtComponent::WmTouch(WPARAM wParam, LPARAM lParam) {
 
     UINT inputsCount = LOWORD(wParam);
     TOUCHINPUT* pInputs = new TOUCHINPUT[inputsCount];
-    if (pInputs != NULL) {
-        if (tk.TIGetTouchInputInfo((HTOUCHINPUT)lParam, inputsCount, pInputs,
-                sizeof(TOUCHINPUT)) != 0) {
-            for (UINT i = 0; i < inputsCount; i++) {
-                TOUCHINPUT ti = pInputs[i];
-                if (ti.dwFlags & TOUCHEVENTF_PRIMARY) {
-                    if (ti.dwFlags & TOUCHEVENTF_DOWN) {
-                        m_touchDownPoint.x = ti.x / 100;
-                        m_touchDownPoint.y = ti.y / 100;
-                        ::ScreenToClient(GetHWnd(), &m_touchDownPoint);
-                        m_touchDownOccurred = TRUE;
-                    } else if (ti.dwFlags & TOUCHEVENTF_UP) {
-                        m_touchUpPoint.x = ti.x / 100;
-                        m_touchUpPoint.y = ti.y / 100;
-                        ::ScreenToClient(GetHWnd(), &m_touchUpPoint);
-                        m_touchUpOccurred = TRUE;
-                    }
-                }
-            }
+    if (tk.TIGetTouchInputInfo((HTOUCHINPUT)lParam, inputsCount, pInputs,
+                               sizeof(TOUCHINPUT)) != 0) {
+        for (UINT i = 0; i < inputsCount; i++) {
+            WmTouchHandler(pInputs[i]);
         }
-        delete[] pInputs;
+    }
+    delete[] pInputs;
+}
+
+BOOL AwtComponent::IsInsideTouchClickBoundaries(POINT p)
+{
+    return abs(p.x - m_touchDownPoint.x) <= TOUCH_MOUSE_COORDS_DELTA &&
+           abs(p.y - m_touchDownPoint.y) <= TOUCH_MOUSE_COORDS_DELTA;
+}
+
+POINT AwtComponent::TouchCoordsToLocal(LONG x, LONG y)
+{
+    POINT p{TOUCH_COORD_TO_PIXEL(x), TOUCH_COORD_TO_PIXEL(y)};
+    ::ScreenToClient(GetHWnd(), &p);
+    return p;
+}
+
+void AwtComponent::SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels)
+{
+    SendMouseWheelEvent(java_awt_event_MouseEvent_MOUSE_WHEEL, ::JVM_CurrentTimeMillis(NULL, 0),
+                        p.x, p.y, modifiers, 0, 0, scrollType,
+                        /*scrollAmount*/ 1, pixels,
+                        static_cast<double>(pixels), /*msg*/ nullptr);
+}
+
+void AwtComponent::SendMouseEventFromTouch(jint id, POINT p, jint modifiers)
+{
+    SendMouseEvent(id, ::JVM_CurrentTimeMillis(NULL, 0), p.x, p.y,
+                   modifiers, /*clickCount*/ 1, JNI_FALSE,
+                   java_awt_event_MouseEvent_BUTTON1,
+                   /*msg*/ nullptr, /*causedByTouchEvent*/ TRUE);
+}
+
+void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
+{
+    // skip multitouch, remove after gesture support
+    if (!(touchInput.dwFlags & TOUCHEVENTF_PRIMARY)) {
+        return;
+    }
+
+    jint modifiers = GetJavaModifiers();
+    // turn off horizontal
+    modifiers &= ~java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+    const POINT p = TouchCoordsToLocal(touchInput.x, touchInput.y);
+
+    if (touchInput.dwFlags & TOUCHEVENTF_DOWN) {
+        m_touchDownPoint = p;
+        m_lastTouchPoint = p;
+        m_isTouchScroll = FALSE;
+    } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
+        if (IsInsideTouchClickBoundaries(p)) {
+            return;
+        }
+
+        if (!m_isTouchScroll) {
+            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_BEGIN, 1);
+            m_isTouchScroll = TRUE;
+        }
+
+        const int deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
+        if (abs(deltaY) != 0) {
+            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaY);
+        }
+        
+        const int deltaX = ScaleDownX(static_cast<int>(m_lastTouchPoint.x - p.x));
+        if (abs(deltaX) != 0) {
+            modifiers |= java_awt_event_InputEvent_SHIFT_DOWN_MASK;
+            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_UPDATE, deltaX);
+        }
+
+        m_lastTouchPoint = p;
+    } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
+        if (m_isTouchScroll) {
+            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_END, 1);
+        } else {
+            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers);
+            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers);
+            SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers);
+        }
     }
 }
 
@@ -2407,14 +2478,6 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
     m_mouseButtonClickAllowed |= GetButtonMK(button);
     lastTime = now;
 
-    BOOL causedByTouchEvent = FALSE;
-    if (m_touchDownOccurred &&
-        (abs(m_touchDownPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
-        (abs(m_touchDownPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
-        causedByTouchEvent = TRUE;
-        m_touchDownOccurred = FALSE;
-    }
-
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
@@ -2433,7 +2496,7 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_PRESSED, now, x, y,
                    GetJavaModifiers(), clickCount, JNI_FALSE,
-                   GetButton(button), &msg, causedByTouchEvent);
+                   GetButton(button), &msg, /*causedByTouchEvent*/ FALSE);
     /*
      * NOTE: this call is intentionally placed after all other code,
      * since AwtComponent::WmMouseDown() assumes that the cached id of the
@@ -2455,21 +2518,13 @@ MsgRouting AwtComponent::WmMouseDown(UINT flags, int x, int y, int button)
 
 MsgRouting AwtComponent::WmMouseUp(UINT flags, int x, int y, int button)
 {
-    BOOL causedByTouchEvent = FALSE;
-    if (m_touchUpOccurred &&
-        (abs(m_touchUpPoint.x - x) <= TOUCH_MOUSE_COORDS_DELTA) &&
-        (abs(m_touchUpPoint.y - y) <= TOUCH_MOUSE_COORDS_DELTA)) {
-        causedByTouchEvent = TRUE;
-        m_touchUpOccurred = FALSE;
-    }
-
     MSG msg;
     InitMessage(&msg, lastMessage, flags, MAKELPARAM(x, y), x, y);
 
     SendMouseEvent(java_awt_event_MouseEvent_MOUSE_RELEASED, ::JVM_CurrentTimeMillis(NULL, 0),
                    x, y, GetJavaModifiers(), clickCount,
                    (GetButton(button) == java_awt_event_MouseEvent_BUTTON3 ?
-                    TRUE : FALSE), GetButton(button), &msg, causedByTouchEvent);
+                    TRUE : FALSE), GetButton(button), &msg, /*causedByTouchEvent*/ FALSE);
     /*
      * If no movement, then report a click following the button release.
      * When WM_MOUSEUP comes to a window without previous WM_MOUSEDOWN,
