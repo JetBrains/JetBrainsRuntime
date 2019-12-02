@@ -24,6 +24,7 @@
 /*
  * @test
  * @bug 4796987
+ * @key headful
  * @requires (os.family == "windows")
  * @summary XP Only: JButton.setBorderPainted() does not work with XP L&F
  * @author Alexander Scherbatiy
@@ -45,12 +46,17 @@ public class bug4796987 {
 
     private static JButton button1;
     private static JButton button2;
+    private static JFrame frame;
 
     public static void main(String[] args) throws Exception {
-        if (OSInfo.getOSType() == OSInfo.OSType.WINDOWS
+        try {
+            if (OSInfo.getOSType() == OSInfo.OSType.WINDOWS
                 && OSInfo.getWindowsVersion() == OSInfo.WINDOWS_XP) {
-            UIManager.setLookAndFeel(new WindowsLookAndFeel());
-            testButtonBorder();
+                UIManager.setLookAndFeel(new WindowsLookAndFeel());
+                testButtonBorder();
+            }
+        } finally {
+            if (frame != null) SwingUtilities.invokeAndWait(() -> frame.dispose());
         }
     }
 
@@ -88,7 +94,7 @@ public class bug4796987 {
     }
 
     private static void createAndShowGUI() {
-        JFrame frame = new JFrame("Test");
+        frame = new JFrame("Test");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(200, 200);
 
