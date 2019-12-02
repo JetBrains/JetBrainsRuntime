@@ -58,57 +58,6 @@
     (jboolean)EXTRACT_VAL(packedval, offset, 0x1)
 
 /*
- * Parameter used by the RESET_PREVIOUS_OP() convenience macro, which
- * indicates that any "open" state (such as an unmatched glBegin() or
- * glEnable(GL_TEXTURE_2D)) should be completed before the following operation
- * is performed.  SET_SURFACES is an example of an operation that needs to
- * call RESET_PREVIOUS_OP() before completing the surface change operation.
- */
-#define MTL_STATE_RESET  -1
-
-/*
- * Parameter passed to the CHECK_PREVIOUS_OP() macro to indicate that the
- * following operation represents a "simple" state change.  A simple state
- * change is one that is allowed to occur within a series of texturing
- * operations; in other words, this type of state change can occur without
- * first calling glDisable(GL_TEXTURE_2D).  An example of such an operation
- * is SET_RECT_CLIP.
- */
-#define MTL_STATE_CHANGE -2
-
-/*
- * Parameter passed to the CHECK_PREVIOUS_OP() macro to indicate that the
- * following operation represents an operation that uses an alpha mask,
- * such as MTLMaskFill and MTLTR_DrawGrayscaleGlyphNoCache().
- */
-#define MTL_STATE_MASK_OP -3
-
-/*
- * Parameter passed to the CHECK_PREVIOUS_OP() macro to indicate that the
- * following operation represents an operation that uses the glyph cache,
- * such as MTLTR_DrawGrayscaleGlyphViaCache().
- */
-#define MTL_STATE_GLYPH_OP -4
-
-/*
- * Parameter passed to the CHECK_PREVIOUS_OP() macro to indicate that the
- * following operation represents an operation that renders a
- * parallelogram via a fragment program (see MTLRenderer).
- */
-#define MTL_STATE_PGRAM_OP -5
-
-/*
- * Initializes the "previous operation" state to its default value.
- */
-#define INIT_PREVIOUS_OP() previousOp = MTL_STATE_RESET
-
-/*
- * These macros now simply delegate to the CheckPreviousOp() method.
- */
-#define CHECK_PREVIOUS_OP(op) MTLRenderQueue_CheckPreviousOp(op)
-#define RESET_PREVIOUS_OP() CHECK_PREVIOUS_OP(MTL_STATE_RESET)
-
-/*
  * The following macros allow the caller to return (or continue) if the
  * provided value is NULL.  (The strange else clause is included below to
  * allow for a trailing ';' after RETURN/CONTINUE_IF_NULL() invocations.)
@@ -122,13 +71,7 @@
 #define RETURN_IF_NULL(value)   ACT_IF_NULL(return, value)
 #define CONTINUE_IF_NULL(value) ACT_IF_NULL(continue, value)
 
-/*
- * Exports.
- */
-extern jint previousOp;
-
 MTLContext *MTLRenderQueue_GetCurrentContext();
 BMTLSDOps *MTLRenderQueue_GetCurrentDestination();
-void MTLRenderQueue_CheckPreviousOp(jint op);
 
 #endif /* MTLRenderQueue_h_Included */

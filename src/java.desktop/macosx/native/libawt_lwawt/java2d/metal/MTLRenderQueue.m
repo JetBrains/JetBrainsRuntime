@@ -41,14 +41,6 @@
 #import "ThreadUtilities.h"
 
 /**
- * Used to track whether we are in a series of a simple primitive operations
- * or texturing operations.  This variable should be controlled only via
- * the INIT/CHECK/RESET_PREVIOUS_OP() macros.  See the
- * MTLRenderQueue_CheckPreviousOp() method below for more information.
- */
-jint previousOp;
-
-/**
  * References to the "current" context and destination surface.
  */
 static MTLContext *mtlc = NULL;
@@ -332,7 +324,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         return;
     }
 
-    INIT_PREVIOUS_OP();
     end = b + limit;
 
     jboolean DEBUG_LOG = JNI_FALSE;
@@ -690,9 +681,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
 
                 jlong pSrc = NEXT_LONG(b);
                 jlong pDst = NEXT_LONG(b);
-                if (mtlc != NULL) {
-                    RESET_PREVIOUS_OP();
-                }
 
                 dstOps = (BMTLSDOps *)jlong_to_ptr(pDst);
                 mtlc = [MTLContext setSurfacesEnv:env src:pSrc dst:pDst];
@@ -723,7 +711,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                 if (mtlsdo != NULL) {
                     CONTINUE_IF_NULL(mtlc);
-                    RESET_PREVIOUS_OP();
                     MTLSD_Delete(env, mtlsdo);
                 }
             }
@@ -734,7 +721,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 BMTLSDOps *mtlsdo = (BMTLSDOps *)jlong_to_ptr(pData);
                 if (mtlsdo != NULL) {
                     CONTINUE_IF_NULL(mtlc);
-                    RESET_PREVIOUS_OP();
                     MTLSD_Delete(env, mtlsdo);
                     if (mtlsdo->privOps != NULL) {
                         free(mtlsdo->privOps);
@@ -746,7 +732,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             {
                 jlong pConfigInfo = NEXT_LONG(b);
                 CONTINUE_IF_NULL(mtlc);
-                RESET_PREVIOUS_OP();
                 MTLGC_DestroyMTLGraphicsConfig(pConfigInfo);
 
                 // the previous method will call glX/wglMakeCurrent(None),
@@ -758,12 +743,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_INVALIDATE_CONTEXT:
             {
-                //TODO
-                // flush just in case there are any pending operations in
-                // the hardware pipe
-                if (mtlc != NULL) {
-                    RESET_PREVIOUS_OP();
-                }
                 // invalidate the references to the current context and
                 // destination surface that are maintained at the native level
                 mtlc = NULL;
@@ -784,9 +763,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         case sun_java2d_pipe_BufferedOpCodes_SWAP_BUFFERS:
             {
                 jlong window = NEXT_LONG(b);
-                if (mtlc != NULL) {
-                    RESET_PREVIOUS_OP();
-                }
                 MTLSD_SwapBuffers(env, window);
             }
             break;
@@ -950,15 +926,11 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         default:
             J2dRlsTraceLn1(J2D_TRACE_ERROR,
                 "MTLRenderQueue_flushBuffer: invalid opcode=%d", opcode);
-            if (mtlc != NULL) {
-                RESET_PREVIOUS_OP();
-            }
             return;
         }
     }
 
     if (mtlc != NULL) {
-        RESET_PREVIOUS_OP();
         [mtlc endCommonRenderEncoder];
         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
         id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
@@ -1001,46 +973,6 @@ BMTLSDOps *
 MTLRenderQueue_GetCurrentDestination()
 {
     return dstOps;
-}
-
-/**
- * Used to track whether we are within a series of simple primitive operations
- * or texturing operations.  The op parameter determines the nature of the
- * operation that is to follow.  Valid values for this op parameter are:
- */
-void
-MTLRenderQueue_CheckPreviousOp(jint op)
-{
-    // TODO : This state management technique is same as OpenGL
-    // and this is used only for Text Rendering. If needed we can extend
-    // to all types.
-    if (previousOp == op) {
-        // The op is the same as last time, so we can return immediately.
-        return;
-    }
-
-    J2dTraceLn1(J2D_TRACE_VERBOSE,
-                "MTLRenderQueue_CheckPreviousOp: new op=%d", op);
-
-    switch (previousOp) {
-    case MTL_STATE_MASK_OP:
-        MTLVertexCache_DisableMaskCache(mtlc);
-        break;
-    case MTL_STATE_GLYPH_OP:
-        MTLTR_DisableGlyphVertexCache(mtlc);
-        break;
-    }
-
-    switch (op) {
-    case MTL_STATE_MASK_OP:
-        MTLVertexCache_EnableMaskCache(mtlc, dstOps);
-        break;
-    case MTL_STATE_GLYPH_OP:
-        MTLTR_EnableGlyphVertexCache(mtlc);
-        break;
-    }
-
-    previousOp = op;
 }
 
 #endif /* !HEADLESS */
