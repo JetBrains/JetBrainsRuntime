@@ -71,6 +71,9 @@ const int X_BUTTONS = MK_XBUTTON1|MK_XBUTTON2;
 // corresponding WM_LBUTTONDOWN/WM_LBUTTONUP event letting to associate these
 // events, when their coordinates are slightly different.
 const int TOUCH_MOUSE_COORDS_DELTA = 10;
+const int TOUCH_BEGIN = 2;
+const int TOUCH_UPDATE = 3;
+const int TOUCH_END = 4;
 
 // Whether to check for embedded frame and adjust location
 #define CHECK_EMBEDDED 0
@@ -526,6 +529,11 @@ public:
     virtual MsgRouting WmWindowPosChanging(LPARAM windowPos);
     virtual MsgRouting WmWindowPosChanged(LPARAM windowPos);
     virtual void WmTouch(WPARAM wParam, LPARAM lParam);
+    void WmTouchHandler(const TOUCHINPUT& touchInput);
+    BOOL IsInsideTouchClickBoundaries(POINT p);
+    POINT TouchCoordsToLocal(LONG x, LONG y);
+    void SendMouseWheelEventFromTouch(POINT p, jint modifiers, jint scrollType, jint pixels);
+    void SendMouseEventFromTouch(jint id, POINT p, jint modifiers);
 
     // NB: 64-bit: vkey is wParam of the message, but other API's take
     // vkey parameters of type UINT, so we do the cast before dispatching.
@@ -768,10 +776,9 @@ private:
     */
     UINT m_mouseButtonClickAllowed;
 
-    BOOL m_touchDownOccurred;
-    BOOL m_touchUpOccurred;
+    BOOL m_isTouchScroll;
     POINT m_touchDownPoint;
-    POINT m_touchUpPoint;
+    POINT m_lastTouchPoint;
 
     BOOL m_bSubclassed;
     BOOL m_bPauseDestroy;
