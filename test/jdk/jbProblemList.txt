@@ -203,7 +203,7 @@ java/awt/Focus/6981400/Test1.java 8029675 windows-all,macosx-all
 java/awt/Focus/8073453/AWTFocusTransitionTest.java 8136517 macosx-all
 java/awt/Focus/8073453/SwingFocusTransitionTest.java 8136517 macosx-all
 java/awt/Focus/6981400/Test3.java 8173264 generic-all
-java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476 windows-all
+java/awt/event/KeyEvent/ExtendedKeyCode/ExtendedKeyCodeTest.java 8169476,JBR-1988 windows-all,macosx-all
 java/awt/event/KeyEvent/KeyChar/KeyCharTest.java 8169474,8224055 macosx-all,windows-all
 java/awt/event/MouseEvent/SpuriousExitEnter/SpuriousExitEnter_3.java 6854300 generic-all
 java/awt/event/KeyEvent/ExtendedModifiersTest/ExtendedModifiersTest.java 8129778 generic-all
@@ -894,17 +894,29 @@ jdk/internal/platform/docker/TestDockerMemoryMetrics.java       8227317    linux
 ############################################################################
 
 
+java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java                  JBR-1988 macosx-all
+java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                  JBR-1988 macosx-all
+java/awt/Choice/UnfocusableCB_ERR/UnfocusableCB_ERR.java                            JBR-1988 macosx-all
 java/awt/Choice/UnfocusableToplevel/UnfocusableToplevel.java                        JBR-1988 macosx-all
 java/awt/Component/F10TopToplevel/F10TopToplevel.html                               JBR-1988 macosx-all
+java/awt/Component/F10TopToplevel/F10TopToplevel.java                               JBR-1988 macosx-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             JBR-1988 macosx-all
+java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                      JBR-1988 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JBR-1988 macosx-all
+java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
+java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JBR-1988 macosx-all
+java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java                         JBR-1988 macosx-all
+java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   JBR-1988 macosx-all
+java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JBR-1988 macosx-all
+java/awt/event/KeyEvent/KeyTyped/CtrlASCII.java                                     JBR-1988 macosx-all
+java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                  JBR-1988 macosx-all
+java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java                      JBR-1988 macosx-all
+java/awt/event/MouseEvent/ClickDuringKeypress/ClickDuringKeypress.java              JBR-1988 macosx-all
+java/awt/event/MouseEvent/MouseButtonsTest/MouseButtonsTest.java                    JBR-1988 macosx-all
+java/awt/event/MouseEvent/MultipleMouseButtonsTest/MultipleMouseButtonsTest.java    JBR-1988 macosx-all
 java/awt/List/EmptyListEventTest/EmptyListEventTest.java                            JBR-1988 macosx-all
 java/awt/TextArea/TextAreaEditing/TextAreaEditing.java                              JBR-1988 macosx-all
 java/awt/TextField/TextFieldEditing/TextFieldEditing.java                           JBR-1988 macosx-all
-java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
-java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JBR-1988 macosx-all
-java/awt/event/KeyEvent/RobotCrash/RobotCrash.java                                  JBR-1988 macosx-all
-java/awt/event/KeyEvent/SwallowKeyEvents/SwallowKeyEvents.java                      JBR-1988 macosx-all
 java/awt/keyboard/AllKeyCode/AllKeyCode.java                                        JBR-1988 macosx-all
 javax/swing/DefaultButtonModel/DefaultButtonModelCrashTest.java                     JBR-1988 macosx-all
 javax/swing/JComboBox/4515752/DefaultButtonTest.java                                JBR-1988 macosx-all
