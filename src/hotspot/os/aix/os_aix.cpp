@@ -1398,6 +1398,8 @@ void os::print_os_info(outputStream* st) {
   st->print_cr("AIX kernel version %u.%u.%u.%u",
                (ver >> 24) & 0xFF, (ver >> 16) & 0xFF, (ver >> 8) & 0xFF, ver & 0xFF);
 
+  os::Posix::print_uptime_info(st);
+
   os::Posix::print_rlimit_info(st);
 
   // _SC_THREAD_THREADS_MAX is the maximum number of threads within a process.

@@ -1587,6 +1587,11 @@ void os::print_os_info_brief(outputStream* st) {
   os::print_os_info(st);
 }
 
+void os::win32::print_uptime_info(outputStream* st) {
+  unsigned long long ticks = GetTickCount64();
+  os::print_dhm(st, "OS uptime:", ticks/1000);
+}
+
 void os::print_os_info(outputStream* st) {
 #ifdef ASSERT
   char buffer[1024];
@@ -1599,6 +1604,8 @@ void os::print_os_info(outputStream* st) {
 #endif
   st->print("OS:");
   os::win32::print_windows_version(st);
+
+  os::win32::print_uptime_info(st);
 
 #ifdef _LP64
   VM_Version::print_platform_virtualization_info(st);
