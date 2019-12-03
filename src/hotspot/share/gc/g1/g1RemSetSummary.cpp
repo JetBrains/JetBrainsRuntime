@@ -32,6 +32,7 @@
 #include "gc/g1/heapRegion.hpp"
 #include "gc/g1/heapRegionRemSet.hpp"
 #include "memory/allocation.inline.hpp"
+#include "memory/iterator.hpp"
 #include "runtime/thread.inline.hpp"
 
 class GetRSThreadVTimeClosure : public ThreadClosure {

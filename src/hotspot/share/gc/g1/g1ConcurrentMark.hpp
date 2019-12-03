@@ -42,6 +42,7 @@ class G1ConcurrentMark;
 class G1OldTracer;
 class G1RegionToSpaceMapper;
 class G1SurvivorRegions;
+class ThreadClosure;
 
 #ifdef _MSC_VER
 #pragma warning(push)
