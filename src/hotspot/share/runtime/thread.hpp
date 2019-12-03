@@ -2257,13 +2257,6 @@ class Threads: AllStatic {
   static void deoptimized_wrt_marked_nmethods();
 };
 
-
-// Thread iterator
-class ThreadClosure: public StackObj {
- public:
-  virtual void do_thread(Thread* thread) = 0;
-};
-
 class SignalHandlerMark: public StackObj {
  private:
   Thread* _thread;
