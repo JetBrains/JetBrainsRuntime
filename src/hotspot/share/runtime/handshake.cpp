@@ -32,7 +32,6 @@
 #include "runtime/osThread.hpp"
 #include "runtime/semaphore.inline.hpp"
 #include "runtime/task.hpp"
-#include "runtime/timerTrace.hpp"
 #include "runtime/thread.hpp"
 #include "runtime/vmThread.hpp"
 #include "utilities/formatBuffer.hpp"
@@ -51,6 +50,7 @@ public:
   HandshakeThreadsOperation(HandshakeClosure* cl) : _handshake_cl(cl) {}
   void do_handshake(JavaThread* thread);
   bool thread_has_completed() { return _done.trywait(); }
+  const char* name() { return _handshake_cl->name(); }
 
 #ifdef ASSERT
   void check_state() {
@@ -196,6 +196,18 @@ void VM_Handshake::handle_timeout() {
   fatal("Handshake operation timed out");
 }
 
+static void log_handshake_info(jlong start_time_ns, const char* name, int targets, int vmt_executed, const char* extra = NULL) {
+  if (start_time_ns != 0) {
+    jlong completion_time = os::javaTimeNanos() - start_time_ns;
+    log_info(handshake)("Handshake \"%s\", Targeted threads: %d, Executed by targeted threads: %d, Total completion time: " JLONG_FORMAT " ns%s%s",
+                        name, targets,
+                        targets - vmt_executed,
+                        completion_time,
+                        extra != NULL ? ", " : "",
+                        extra != NULL ? extra : "");
+  }
+}
+
 class VM_HandshakeOneThread: public VM_Handshake {
   JavaThread* _target;
   bool _thread_alive;
@@ -204,15 +216,15 @@ class VM_HandshakeOneThread: public VM_Handshake {
     VM_Handshake(op), _target(target), _thread_alive(false) {}
 
   void doit() {
-    jlong start_time_ns = os::javaTimeNanos();
     DEBUG_ONLY(_op->check_state();)
-    TraceTime timer("Performing single-target operation (vmoperation doit)", TRACETIME_LOG(Info, handshake));
+    jlong start_time_ns = os::javaTimeNanos();
 
     ThreadsListHandle tlh;
     if (tlh.includes(_target)) {
       set_handshake(_target);
       _thread_alive = true;
     } else {
+      log_handshake_info(start_time_ns, _op->name(), 0, 0, "(thread dead)");
       return;
     }
 
@@ -233,12 +245,13 @@ class VM_HandshakeOneThread: public VM_Handshake {
       // locked during certain phases.
       {
         MutexLockerEx ml(Threads_lock, Mutex::_no_safepoint_check_flag);
-        pr = _target->handshake_process_by_vmthread();
+        pr = _target->handshake_try_process_by_vmThread(_op);
       }
       hsy.add_result(pr);
       hsy.process();
     } while (!poll_for_completed_thread());
     DEBUG_ONLY(_op->check_state();)
+    log_handshake_info(start_time_ns, _op->name(), 1, (pr == HandshakeState::_success) ? 1 : 0);
   }
 
   VMOp_Type type() const { return VMOp_HandshakeOneThread; }
@@ -251,9 +264,10 @@ class VM_HandshakeAllThreads: public VM_Handshake {
   VM_HandshakeAllThreads(HandshakeThreadsOperation* op) : VM_Handshake(op) {}
 
   void doit() {
-    jlong start_time_ns = os::javaTimeNanos();
     DEBUG_ONLY(_op->check_state();)
-    TraceTime timer("Performing operation (vmoperation doit)", TRACETIME_LOG(Info, handshake));
+
+    jlong start_time_ns = os::javaTimeNanos();
+    int handshake_executed_by_vm_thread = 0;
 
     JavaThreadIteratorWithHandle jtiwh;
     int number_of_threads_issued = 0;
@@ -263,7 +277,7 @@ class VM_HandshakeAllThreads: public VM_Handshake {
     }
 
     if (number_of_threads_issued < 1) {
-      log_debug(handshake)("No threads to handshake.");
+      log_handshake_info(start_time_ns, _op->name(), 0, 0);
       return;
     }
 
@@ -271,7 +285,7 @@ class VM_HandshakeAllThreads: public VM_Handshake {
       os::serialize_thread_states();
     }
 
-    log_debug(handshake)("Threads signaled, begin processing blocked threads by VMThtread");
+    log_trace(handshake)("Threads signaled, begin processing blocked threads by VMThread");
     HandshakeSpinYield hsy(start_time_ns);
     int number_of_threads_completed = 0;
     do {
@@ -291,8 +305,11 @@ class VM_HandshakeAllThreads: public VM_Handshake {
           MutexLockerEx ml(Threads_lock, Mutex::_no_safepoint_check_flag);
           for (JavaThread *thr = jtiwh.next(); thr != NULL; thr = jtiwh.next()) {
             // A new thread on the ThreadsList will not have an operation,
-            // hence it is skipped in handshake_process_by_vmthread.
-            HandshakeState::ProcessResult pr = thr->handshake_process_by_vmthread();
+            // hence it is skipped in handshake_try_process_by_vmthread.
+            HandshakeState::ProcessResult pr = thr->handshake_try_process_by_vmThread(_op);
+            if (pr == HandshakeState::_success) {
+              handshake_executed_by_vm_thread++;
+            }
             hsy.add_result(pr);
           }
           hsy.process();
@@ -306,6 +323,8 @@ class VM_HandshakeAllThreads: public VM_Handshake {
     } while (number_of_threads_issued > number_of_threads_completed);
     assert(number_of_threads_issued == number_of_threads_completed, "Must be the same");
     DEBUG_ONLY(_op->check_state();)
+
+    log_handshake_info(start_time_ns, _op->name(), number_of_threads_issued, handshake_executed_by_vm_thread);
   }
 
   VMOp_Type type() const { return VMOp_HandshakeAllThreads; }
@@ -323,6 +342,7 @@ public:
       _handshake_cl(cl), _target_thread(target), _all_threads(false) {}
 
   void doit() {
+    log_trace(handshake)("VMThread executing VM_HandshakeFallbackOperation, operation: %s", name());
     for (JavaThreadIteratorWithHandle jtiwh; JavaThread *t = jtiwh.next(); ) {
       if (_all_threads || t == _target_thread) {
         if (t == _target_thread) {
@@ -338,10 +358,10 @@ public:
 };
 
 void HandshakeThreadsOperation::do_handshake(JavaThread* thread) {
-  ResourceMark rm;
-  FormatBufferResource message("Operation for thread " PTR_FORMAT ", is_vm_thread: %s",
-                               p2i(thread), BOOL_TO_STR(Thread::current()->is_VM_thread()));
-  TraceTime timer(message, TRACETIME_LOG(Debug, handshake, task));
+  jlong start_time_ns = 0;
+  if (log_is_enabled(Debug, handshake, task)) {
+    start_time_ns = os::javaTimeNanos();
+  }
 
   // Only actually execute the operation for non terminated threads.
   if (!thread->is_terminated()) {
@@ -350,6 +370,12 @@ void HandshakeThreadsOperation::do_handshake(JavaThread* thread) {
 
   // Use the semaphore to inform the VM thread that we have completed the operation
   _done.signal();
+
+  if (start_time_ns != 0) {
+    jlong completion_time = os::javaTimeNanos() - start_time_ns;
+    log_debug(handshake, task)("Operation: %s for thread " PTR_FORMAT ", is_vm_thread: %s, completed in " JLONG_FORMAT " ns",
+                               name(), p2i(thread), BOOL_TO_STR(Thread::current()->is_VM_thread()), completion_time);
+  }
 }
 
 void Handshake::execute(HandshakeClosure* thread_cl) {
@@ -452,7 +478,7 @@ bool HandshakeState::claim_handshake_for_vmthread() {
   return false;
 }
 
-HandshakeState::ProcessResult HandshakeState::process_by_vmthread(JavaThread* target) {
+HandshakeState::ProcessResult HandshakeState::try_process_by_vmThread(JavaThread* target) {
   assert(Thread::current()->is_VM_thread(), "should call from vm thread");
   // Threads_lock must be held here, but that is assert()ed in
   // possibly_vmthread_can_process_handshake().
