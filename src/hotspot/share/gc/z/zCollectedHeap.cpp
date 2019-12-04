@@ -254,6 +254,10 @@ bool ZCollectedHeap::block_is_obj(const HeapWord* addr) const {
   return _heap.block_is_obj((uintptr_t)addr);
 }
 
+void ZCollectedHeap::keep_alive(oop obj) {
+  _heap.keep_alive(obj);
+}
+
 void ZCollectedHeap::register_nmethod(nmethod* nm) {
   assert_locked_or_safepoint(CodeCache_lock);
   ZNMethodTable::register_nmethod(nm);

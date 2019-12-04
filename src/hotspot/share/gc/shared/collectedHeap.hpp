@@ -465,6 +465,9 @@ class CollectedHeap : public CHeapObj<mtInternal> {
   // the block is an object.
   virtual bool block_is_obj(const HeapWord* addr) const = 0;
 
+  // Keep alive an object that was loaded with AS_NO_KEEPALIVE.
+  virtual void keep_alive(oop obj) {}
+
   // Returns the longest time (in ms) that has elapsed since the last
   // time that any part of the heap was examined by a garbage collection.
   virtual jlong millis_since_last_gc() = 0;
