@@ -107,6 +107,8 @@ public:
   virtual size_t block_size(const HeapWord* addr) const;
   virtual bool block_is_obj(const HeapWord* addr) const;
 
+  virtual void keep_alive(oop obj);
+
   virtual void register_nmethod(nmethod* nm);
   virtual void unregister_nmethod(nmethod* nm);
   virtual void verify_nmethod(nmethod* nmethod);

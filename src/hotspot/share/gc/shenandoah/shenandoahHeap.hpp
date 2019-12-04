@@ -521,6 +521,9 @@ public:
   void object_iterate(ObjectClosure* cl);
   void safe_object_iterate(ObjectClosure* cl);
 
+  // Keep alive an object that was loaded with AS_NO_KEEPALIVE.
+  void keep_alive(oop obj);
+
   // Used by RMI
   jlong millis_since_last_gc();
 

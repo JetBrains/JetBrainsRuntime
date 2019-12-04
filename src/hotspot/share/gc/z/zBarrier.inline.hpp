@@ -150,6 +150,14 @@ inline bool ZBarrier::is_resurrection_blocked(volatile oop* p, oop* o) {
   return is_blocked;
 }
 
+inline bool ZBarrier::during_mark() {
+  return ZGlobalPhase == ZPhaseMark;
+}
+
+inline bool ZBarrier::during_relocate() {
+  return ZGlobalPhase == ZPhaseRelocate;
+}
+
 //
 // Load barrier
 //
@@ -267,6 +275,12 @@ inline void ZBarrier::keep_alive_barrier_on_phantom_oop_field(volatile oop* p) {
   assert(ZResurrection::is_blocked(), "Invalid phase");
   const oop o = *p;
   barrier<is_good_or_null_fast_path, keep_alive_barrier_on_phantom_oop_slow_path>(p, o);
+}
+
+inline void ZBarrier::keep_alive_barrier_on_oop(oop o) {
+  if (during_mark()) {
+    barrier<is_null_fast_path, mark_barrier_on_oop_slow_path>(NULL, o);
+  }
 }
 
 //
