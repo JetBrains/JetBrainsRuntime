@@ -30,6 +30,7 @@
 #include "pdh_interface.hpp"
 #include "runtime/os_perf.hpp"
 #include "runtime/os.hpp"
+#include "utilities/globalDefinitions.hpp"
 #include "utilities/macros.hpp"
 #include "vm_version_ext_x86.hpp"
 #include <math.h>
@@ -1381,8 +1382,7 @@ class NetworkPerformanceInterface::NetworkPerformance : public CHeapObj<mtIntern
   bool _iphlp_attached;
 
   NetworkPerformance();
-  NetworkPerformance(const NetworkPerformance& rhs); // no impl
-  NetworkPerformance& operator=(const NetworkPerformance& rhs); // no impl
+  NONCOPYABLE(NetworkPerformance);
   bool initialize();
   ~NetworkPerformance();
   int network_utilization(NetworkInterface** network_interfaces) const;

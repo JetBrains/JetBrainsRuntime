@@ -48,9 +48,7 @@ class OopStorage::ActiveArray {
   ActiveArray(size_t size);
   ~ActiveArray();
 
-  // Noncopyable
-  ActiveArray(const ActiveArray&);
-  ActiveArray& operator=(const ActiveArray&);
+  NONCOPYABLE(ActiveArray);
 
   static size_t blocks_offset();
   Block* const* base_ptr() const;
@@ -153,9 +151,7 @@ class OopStorage::Block /* No base class, to avoid messing up alignment. */ {
   template<typename F, typename BlockPtr>
   static bool iterate_impl(F f, BlockPtr b);
 
-  // Noncopyable.
-  Block(const Block&);
-  Block& operator=(const Block&);
+  NONCOPYABLE(Block);
 
 public:
   const AllocationListEntry& allocation_list_entry() const;

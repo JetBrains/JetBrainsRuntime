@@ -26,6 +26,7 @@
 #include "memory/resourceArea.hpp"
 #include "runtime/os.hpp"
 #include "runtime/os_perf.hpp"
+#include "utilities/globalDefinitions.hpp"
 #include "vm_version_ext_x86.hpp"
 
 #ifdef __APPLE__
@@ -72,8 +73,8 @@ class CPUPerformanceInterface::CPUPerformance : public CHeapObj<mtInternal> {
   int cpu_load_total_process(double* cpu_load);
   int cpu_loads_process(double* pjvmUserLoad, double* pjvmKernelLoad, double* psystemTotalLoad);
 
-  CPUPerformance(const CPUPerformance& rhs); // no impl
-  CPUPerformance& operator=(const CPUPerformance& rhs); // no impl
+  NONCOPYABLE(CPUPerformance);
+
  public:
   CPUPerformance();
   bool initialize();
@@ -264,8 +265,7 @@ class SystemProcessInterface::SystemProcesses : public CHeapObj<mtInternal> {
  private:
   SystemProcesses();
   bool initialize();
-  SystemProcesses(const SystemProcesses& rhs); // no impl
-  SystemProcesses& operator=(const SystemProcesses& rhs); // no impl
+  NONCOPYABLE(SystemProcesses);
   ~SystemProcesses();
 
   //information about system processes
@@ -412,8 +412,7 @@ class NetworkPerformanceInterface::NetworkPerformance : public CHeapObj<mtIntern
   friend class NetworkPerformanceInterface;
  private:
   NetworkPerformance();
-  NetworkPerformance(const NetworkPerformance& rhs); // no impl
-  NetworkPerformance& operator=(const NetworkPerformance& rhs); // no impl
+  NONCOPYABLE(NetworkPerformance);
   bool initialize();
   ~NetworkPerformance();
   int network_utilization(NetworkInterface** network_interfaces) const;
