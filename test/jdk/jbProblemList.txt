@@ -591,7 +591,7 @@ java/awt/Window/8159168/SetShapeTest.java                                       
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java                  8142536 generic-all
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132,8194941 macosx-all,windows-all,linux-all
-java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
+java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64,linux-all (linux-all timeout reproduced with Adopt)
@@ -770,6 +770,8 @@ java/net/DatagramSocket/ReuseAddressTest.java                                   
 java/net/DatagramSocket/SendDatagramToBadAddress.java                               7143960 macosx-all
 java/net/httpclient/ProxyAuthDisabledSchemesSSL.java                                8212695 macosx-all
 java/net/httpclient/UnknownBodyLengthTest.java                                      8210130 macosx-all,windows-all
+
+javax/net/ssl/SSLSocket/Tls13PacketSize.java                                        8224829 windows-all
 
 com/sun/net/httpserver/bugs/B6361557.java                                           8196070 windows-all
 sun/net/www/protocol/jar/jarbug/TestDriver.java                                     nobug windows-6.1 fails on Windows 7 only
