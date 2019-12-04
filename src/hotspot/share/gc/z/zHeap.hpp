@@ -138,6 +138,7 @@ public:
   void mark();
   void mark_flush_and_free(Thread* thread);
   bool mark_end();
+  void keep_alive(oop obj);
 
   // Post-marking & Pre-relocation
   void destroy_detached_pages();
