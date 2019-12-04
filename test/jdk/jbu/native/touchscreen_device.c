@@ -22,17 +22,15 @@ typedef struct {
   __s32 value;
 } TEventData;
 
-
-
 static int set_bit(int fd, unsigned long int request, unsigned long int bit) {
   return ioctl(fd, request, bit);
 }
 
-static int touch_begin(int fd, int trackin_id, int x, int y) {
+static int touch_begin(int fd, int tracking_id, int x, int y) {
   struct input_event ev;
 
   const int cnt = 7;
-  TEventData eventData[7] = {{EV_ABS, ABS_MT_TRACKING_ID, trackin_id},
+  TEventData eventData[7] = {{EV_ABS, ABS_MT_TRACKING_ID, tracking_id},
                              {EV_ABS, ABS_MT_POSITION_X, x},
                              {EV_ABS, ABS_MT_POSITION_Y, y},
                              {EV_KEY, BTN_TOUCH, 1},
@@ -102,7 +100,7 @@ static int touch_end(int fd) {
  * Method:    create
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_create(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_quality_util_UnixTouchScreenDevice_create(JNIEnv *env,
                                                                   jobject o,
                                                                   jint width,
                                                                   jint height) {
@@ -169,7 +167,7 @@ JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_create(JNIEnv *env,
  * Method:    destroy
  * Signature: (I)V
  */
-JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_destroy(JNIEnv *env,
+JNIEXPORT jint JNICALL Java_quality_util_UnixTouchScreenDevice_destroy(JNIEnv *env,
                                                                    jobject o,
                                                                    jint fd) {
   if (ioctl(fd, UI_DEV_DESTROY) < 0) {
@@ -185,7 +183,7 @@ JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_destroy(JNIEnv *env,
  * Signature: (IIII)V
  */
 // todo return code with checked exception
-JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_clickImpl(
+JNIEXPORT jint JNICALL Java_quality_util_UnixTouchScreenDevice_clickImpl(
     JNIEnv *env, jobject o, jint fd, jint trackingId, jint x, jint y) {
   touch_begin(fd, trackingId, x, y);
   touch_end(fd);
@@ -197,7 +195,7 @@ JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_clickImpl(
  * Method:    moveImpl
  * Signature: (IIIIII)V
  */
-JNIEXPORT jint JNICALL Java_quality_util_TouchScreenDevice_moveImpl(
+JNIEXPORT jint JNICALL Java_quality_util_UnixTouchScreenDevice_moveImpl(
     JNIEnv *env, jobject o, jint fd, jint trackingId, jint fromX, jint fromY,
     jint toX, jint toY) {
   touch_begin(fd, trackingId, fromX, fromY);

@@ -1,7 +1,9 @@
 package quality.event;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.junit.Test;
-import quality.util.TouchScreenDevice;
+import quality.util.UnixTouchRobot;
+import quality.util.TouchRobot;
 
 import javax.swing.*;
 import java.awt.*;
@@ -41,14 +43,12 @@ public class TouchScreenEventsTest {
     private static void runTest(TouchTestSuite suite) throws Exception {
         GUI gui = new GUI();
         try {
-            TouchScreenDevice device = createDevice();
-            Robot robot = new Robot();
-
+            TouchRobot robot = getTouchRobot();
             SwingUtilities.invokeAndWait(gui::createAndShow);
             suite.addListener(gui.frame);
             robot.waitForIdle();
 
-            suite.perform(gui, device);
+            suite.perform(gui, robot);
             robot.waitForIdle();
             suite.passed();
         } finally {
@@ -60,9 +60,11 @@ public class TouchScreenEventsTest {
         }
     }
 
-    private static TouchScreenDevice createDevice() throws IOException {
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        return new TouchScreenDevice(screenSize.width, screenSize.height);
+    private static TouchRobot getTouchRobot() throws IOException, AWTException {
+        if (SystemUtils.IS_OS_UNIX) {
+            return new UnixTouchRobot();
+        }
+        throw new RuntimeException("Touch robot for this platform isn't implemented");
     }
 }
 
@@ -80,7 +82,7 @@ class GUI {
 }
 
 interface TouchTestSuite {
-    void perform(GUI gui, TouchScreenDevice device) throws IOException;
+    void perform(GUI gui, TouchRobot robot) throws IOException;
 
     void passed() throws InterruptedException;
 
@@ -134,10 +136,10 @@ class TouchClickSuite implements MouseListener, TouchTestSuite {
     }
 
     @Override
-    public void perform(GUI gui, TouchScreenDevice device) throws IOException {
+    public void perform(GUI gui, TouchRobot robot) throws IOException {
         int x = gui.frameBounds.x + gui.frameBounds.width / 2;
         int y = gui.frameBounds.y + gui.frameBounds.height / 2;
-        device.click(42, x, y);
+        robot.touchClick(42, x, y);
     }
 
     @Override
@@ -190,12 +192,12 @@ class TouchMoveSuite implements MouseWheelListener, TouchTestSuite {
     }
 
     @Override
-    public void perform(GUI gui, TouchScreenDevice device) throws IOException {
+    public void perform(GUI gui, TouchRobot robot) throws IOException {
         int x1 = gui.frameBounds.x + gui.frameBounds.width / 4;
         int y1 = gui.frameBounds.y + gui.frameBounds.height / 4;
         int x2 = gui.frameBounds.x + gui.frameBounds.width / 2;
         int y2 = gui.frameBounds.y + gui.frameBounds.height / 2;
-        device.move(42, x1, y1, x2, y2);
+        robot.touchMove(42, x1, y1, x2, y2);
     }
 
     @Override
@@ -233,13 +235,13 @@ class TouchTinyMoveSuite implements MouseWheelListener, MouseListener, TouchTest
     }
 
     @Override
-    public void perform(GUI gui, TouchScreenDevice device) throws IOException {
+    public void perform(GUI gui, TouchRobot robot) throws IOException {
         int x1 = gui.frameBounds.x + gui.frameBounds.width / 4;
         int y1 = gui.frameBounds.y + gui.frameBounds.height / 4;
         // move inside tiny area
         int x2 = x1 + 1;
         int y2 = y1 + 1;
-        device.move(42, x1, y1, x2, y2);
+        robot.touchMove(42, x1, y1, x2, y2);
     }
 
     @Override
@@ -307,7 +309,7 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
     }
 
     @Override
-    public void perform(GUI gui, TouchScreenDevice device) throws IOException {
+    public void perform(GUI gui, TouchRobot robot) throws IOException {
         int x1 = gui.frameBounds.x + gui.frameBounds.width / 4;
         int y1 = gui.frameBounds.y + gui.frameBounds.height / 4;
         switch (axis) {
