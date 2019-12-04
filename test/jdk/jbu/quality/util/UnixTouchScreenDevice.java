@@ -1,15 +1,10 @@
 package quality.util;
 
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
-public class TouchScreenDevice implements AutoCloseable {
-    // todo add product id
+public class UnixTouchScreenDevice implements AutoCloseable {
+    // TODO add product id
     private int width;
     private int height;
     private int fileDescriptor;
@@ -18,7 +13,11 @@ public class TouchScreenDevice implements AutoCloseable {
         System.loadLibrary("touchscreen_device");
     }
 
-    public TouchScreenDevice(int width, int height) throws IOException {
+    public UnixTouchScreenDevice() throws IOException {
+        this(Toolkit.getDefaultToolkit().getScreenSize().width, Toolkit.getDefaultToolkit().getScreenSize().height);
+    }
+
+    public UnixTouchScreenDevice(int width, int height) throws IOException {
         this.width = width;
         this.height = height;
         fileDescriptor = create(getWidth(), getHeight());
@@ -29,7 +28,7 @@ public class TouchScreenDevice implements AutoCloseable {
     @Override
     public void close() throws Exception {
         checkCompletion(destroy(fileDescriptor),
-                "");
+                "Failed to close touchscreen device");
     }
 
     public int getWidth() {
@@ -49,7 +48,6 @@ public class TouchScreenDevice implements AutoCloseable {
     public void move(int trackingId, int fromX, int fromY, int toX, int toY) throws IOException {
         checkCompletion(moveImpl(fileDescriptor, trackingId, fromX, fromY, toX, toY),
                 "Failed to move on virtual touchscreen device");
-
     }
 
     private void checkCompletion(int code, String errorMessage) throws IOException {
