@@ -195,7 +195,7 @@ java/awt/Focus/WindowIsFocusableAccessByThreadsTest/WindowIsFocusableAccessByThr
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.html       8202926 generic-all
 java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java             8169096,8213522 macosx-all,linux-all,windows-all
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
-java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 macosx-all
+java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 solaris-all,macosx-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
@@ -591,7 +591,7 @@ java/awt/Window/8159168/SetShapeTest.java                                       
 java/awt/Window/BackgroundIsNotUpdated/BackgroundIsNotUpdated.java                  8142536 generic-all
 java/awt/Window/Grab/GrabTest.java                                                  8196019 macosx-all,windows-all,linux-all
 java/awt/Window/MultiWindowApp/ChildAlwaysOnTopTest.java                            8215132,8194941 macosx-all,windows-all,linux-all
-java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all
+java/awt/Window/MultiWindowApp/MultiWindowAppTest.java                              8159904 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/FocusAWTTest.java                       8061236 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShape.java                           8208509 macosx-all,windows-all,linux-all
 java/awt/Window/ShapedAndTranslucentWindows/SetShapeAndClick.java                   8197936 macosx-all,windows-all,linux-4.18.16-200.fc28.x86_64,linux-all (linux-all timeout reproduced with Adopt)
@@ -770,6 +770,8 @@ java/net/DatagramSocket/ReuseAddressTest.java                                   
 java/net/DatagramSocket/SendDatagramToBadAddress.java                               7143960 macosx-all
 java/net/httpclient/ProxyAuthDisabledSchemesSSL.java                                8212695 macosx-all
 java/net/httpclient/UnknownBodyLengthTest.java                                      8210130 macosx-all,windows-all
+
+javax/net/ssl/SSLSocket/Tls13PacketSize.java                                        8224829 windows-all
 
 com/sun/net/httpserver/bugs/B6361557.java                                           8196070 windows-all
 sun/net/www/protocol/jar/jarbug/TestDriver.java                                     nobug windows-6.1 fails on Windows 7 only
@@ -1018,7 +1020,7 @@ javax/swing/JSplitPane/4201995/bug4201995.java                                  
 javax/swing/JSplitPane/4885629/bug4885629.java                                      8019935,8194941 macosx-all,linux-all,windows-all (windows: commit testing)
 javax/swing/JTabbedPane/4361477/bug4361477.java                                     8170260 macosx-all,windows-all
 javax/swing/JTabbedPane/4624207/bug4624207.java                                     8197552,8064922 macosx-all,windows-all,linux-all
-javax/swing/JTabbedPane/7024235/Test7024235.java                                    8028281 macosx-all
+javax/swing/JTabbedPane/7024235/Test7024235.java                                    8028281,JBR-1977 macosx-all,linux-aarch64
 javax/swing/JTabbedPane/8007563/Test8007563.java                                    8051591 generic-all
 javax/swing/JTable/4235420/bug4235420.java                                          8079127 generic-all
 javax/swing/JTable/6263446/bug6263446.java                                          8169959 macosx-all,windows-all
