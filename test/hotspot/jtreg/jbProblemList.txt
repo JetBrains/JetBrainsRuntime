@@ -98,6 +98,8 @@ runtime/modules/ModuleStress/ModuleStressGC.java                                
 
 # :hotspot_serviceability
 
+serviceability/logging/TestQuotedLogOutputs.java                                    8224505 windows-all
+
 serviceability/sa/ClhsdbAttach.java                                                 8193639 solaris-all
 serviceability/sa/ClhsdbCDSCore.java                                                8207832 linux-all,generic-all crash is the expected behaviour
 serviceability/sa/ClhsdbCDSJstackPrintAll.java                                      8193639 solaris-all
