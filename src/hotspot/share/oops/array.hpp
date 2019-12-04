@@ -28,6 +28,7 @@
 #include "memory/allocation.hpp"
 #include "memory/metaspace.hpp"
 #include "utilities/align.hpp"
+#include "utilities/globalDefinitions.hpp"
 
 // Array for metadata allocation
 
@@ -48,9 +49,7 @@ protected:
   }
 
  private:
-  // Turn off copy constructor and assignment operator.
-  Array(const Array<T>&);
-  void operator=(const Array<T>&);
+  NONCOPYABLE(Array);
 
   void* operator new(size_t size, ClassLoaderData* loader_data, int length, TRAPS) throw() {
     size_t word_size = Array::size(length);
