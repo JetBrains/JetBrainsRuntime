@@ -95,8 +95,7 @@ public:
     _success,
     _number_states
   };
-
-  HandshakeState::ProcessResult process_by_vmthread(JavaThread* target);
+  HandshakeState::ProcessResult try_process_by_vmThread(JavaThread* target);
 };
 
 #endif // SHARE_VM_RUNTIME_HANDSHAKE_HPP

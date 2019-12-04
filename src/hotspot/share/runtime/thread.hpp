@@ -1280,8 +1280,8 @@ class JavaThread: public Thread {
     _handshake.process_by_self(this);
   }
 
-  HandshakeState::ProcessResult handshake_process_by_vmthread() {
-    return _handshake.process_by_vmthread(this);
+  HandshakeState::ProcessResult handshake_try_process_by_vmThread(HandshakeOperation* op) {
+    return _handshake.try_process_by_vmThread(this);
   }
 
   // Suspend/resume support for JavaThread
