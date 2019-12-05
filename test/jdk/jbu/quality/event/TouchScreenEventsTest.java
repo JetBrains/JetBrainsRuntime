@@ -4,6 +4,7 @@ import org.apache.commons.lang3.SystemUtils;
 import org.junit.Test;
 import quality.util.UnixTouchRobot;
 import quality.util.TouchRobot;
+import quality.util.WindowsTouchRobot;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,6 +15,10 @@ import java.util.concurrent.TimeUnit;
 
 public class TouchScreenEventsTest {
     static final int TIMEOUT = 2;
+    // TODO make this constants accessible within jdk
+    static final int TOUCH_BEGIN = 2;
+    static final int TOUCH_UPDATE = 3;
+    static final int TOUCH_END = 4;
 
     @Test
     public void testTouchClick() throws Exception {
@@ -63,6 +68,8 @@ public class TouchScreenEventsTest {
     private static TouchRobot getTouchRobot() throws IOException, AWTException {
         if (SystemUtils.IS_OS_UNIX) {
             return new UnixTouchRobot();
+        } else if (SystemUtils.IS_OS_WINDOWS) {
+            return new WindowsTouchRobot();
         }
         throw new RuntimeException("Touch robot for this platform isn't implemented");
     }
@@ -74,7 +81,7 @@ class GUI {
 
     void createAndShow() {
         frame = new JFrame();
-        frame.setSize(400, 400);
+        frame.setSize(640, 480);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setVisible(true);
         frameBounds = frame.getBounds();
@@ -93,16 +100,11 @@ class TouchClickSuite implements MouseListener, TouchTestSuite {
     private volatile boolean pressed;
     private volatile boolean released;
     private volatile boolean clicked;
-    private CountDownLatch latch;
-
-    TouchClickSuite() {
-        latch = new CountDownLatch(3);
-    }
+    private final CountDownLatch latch = new CountDownLatch(3);
 
     @Override
     public void mouseClicked(MouseEvent e) {
         if (!clicked) {
-            // TODO race
             clicked = true;
             latch.countDown();
         }
@@ -112,7 +114,6 @@ class TouchClickSuite implements MouseListener, TouchTestSuite {
     public void mousePressed(MouseEvent e) {
         pressed = true;
         if (!pressed) {
-            // TODO race
             pressed = true;
             latch.countDown();
         }
@@ -121,7 +122,6 @@ class TouchClickSuite implements MouseListener, TouchTestSuite {
     @Override
     public void mouseReleased(MouseEvent e) {
         if (!released) {
-            // TODO race
             released = true;
             latch.countDown();
         }
@@ -163,27 +163,21 @@ class TouchMoveSuite implements MouseWheelListener, TouchTestSuite {
     private volatile boolean begin;
     private volatile boolean update;
     private volatile boolean end;
-    private CountDownLatch latch;
-
-    TouchMoveSuite() {
-        latch = new CountDownLatch(3);
-    }
+    private final CountDownLatch latch = new CountDownLatch(3);
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        // TODO 3 race
-
-        if (e.getScrollType() == 2) {
+        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_BEGIN) {
             if (!begin) {
                 begin = true;
                 latch.countDown();
             }
-        } else if (e.getScrollType() == 3) {
+        } else if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
             if (!update) {
                 update = true;
                 latch.countDown();
             }
-        } else if (e.getScrollType() == 4) {
+        } else if (e.getScrollType() == TouchScreenEventsTest.TOUCH_END) {
             if (!end) {
                 end = true;
                 latch.countDown();
@@ -220,15 +214,11 @@ class TouchMoveSuite implements MouseWheelListener, TouchTestSuite {
 class TouchTinyMoveSuite implements MouseWheelListener, MouseListener, TouchTestSuite {
     private volatile boolean scroll;
     private volatile boolean click;
-    private CountDownLatch latch;
-
-    TouchTinyMoveSuite() {
-        latch = new CountDownLatch(1);
-    }
+    private final CountDownLatch latch = new CountDownLatch(1);
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        if (e.getScrollType() == 3) {
+        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
             scroll = true;
             latch.countDown();
         }
@@ -289,16 +279,15 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
     private final AXIS axis;
     private volatile boolean vertical;
     private volatile boolean horizontal;
-    private CountDownLatch latch;
+    private final CountDownLatch latch = new CountDownLatch(1);
 
     TouchAxesScrollSuite(AXIS axis) {
         this.axis = axis;
-        latch = new CountDownLatch(1);
     }
 
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
-        if (e.getScrollType() == 3) {
+        if (e.getScrollType() == TouchScreenEventsTest.TOUCH_UPDATE) {
             if (e.isShiftDown()) {
                 horizontal = true;
             } else {
@@ -316,9 +305,11 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
             case X:
                 int x2 = gui.frameBounds.x + gui.frameBounds.width / 2;
                 robot.touchMove(42, x1, y1, x2, y1);
+                break;
             case Y:
-                int y2 = gui.frameBounds.y + gui.frameBounds.height / 4;
+                int y2 = gui.frameBounds.y + gui.frameBounds.height / 2;
                 robot.touchMove(42, x1, y1, x1, y2);
+                break;
         }
     }
 
@@ -331,10 +322,12 @@ class TouchAxesScrollSuite implements MouseWheelListener, TouchTestSuite {
                 if (!horizontal || vertical) {
                     throw new RuntimeException("Touch axes failed: " + error);
                 }
+                break;
             case Y:
                 if (horizontal || !vertical) {
                     throw new RuntimeException("Touch axes failed: " + error);
                 }
+                break;
         }
     }
 
