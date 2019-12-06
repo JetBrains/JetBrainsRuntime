@@ -37,6 +37,9 @@ BUILD_NAME="$(ls "$EXPLODED")"
 if test -d $EXPLODED/$BUILD_NAME/Contents/Home/jmods; then
   mv $EXPLODED/$BUILD_NAME/Contents/Home/jmods $BACKUP_JMODS
 fi
+if test -d $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks; then
+  mv $EXPLODED/$BUILD_NAME/Contents/Home/Frameworks $BACKUP_JMODS
+fi
 if test -f $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib; then
   mv $EXPLODED/$BUILD_NAME/Contents/MacOS/libjli.dylib $BACKUP_JMODS
 fi
@@ -130,6 +133,9 @@ log "Zipping $BUILD_NAME to $INPUT_FILE ..."
   fi
   if test -d $BACKUP_JMODS/jmods; then
     mv $BACKUP_JMODS/jmods $EXPLODED/$BUILD_NAME/Contents/Home
+  fi
+  if test -d $BACKUP_JMODS/Frameworks; then
+    mv $BACKUP_JMODS/Frameworks $EXPLODED/$BUILD_NAME/Contents/Home
   fi
 
   COPYFILE_DISABLE=1 tar -pczf $INPUT_FILE --exclude='*.dSYM' --exclude='man' -C $EXPLODED $BUILD_NAME
