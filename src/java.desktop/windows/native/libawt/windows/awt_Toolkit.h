@@ -228,6 +228,7 @@ public:
     void SetDynamicLayout(BOOL dynamic);
     BOOL IsDynamicLayoutSet();
     BOOL IsDynamicLayoutSupported();
+    BOOL IsActiveWindowTrackingEnabled();
     BOOL IsDynamicLayoutActive();
     BOOL areExtraMouseButtonsEnabled();
     void setExtraMouseButtonsEnabled(BOOL enable);
@@ -458,6 +459,7 @@ private:
     BOOL m_isActive; // set to FALSE at beginning of Dispose
     BOOL m_isDisposed; // set to TRUE at end of Dispose
     BOOL m_areExtraMouseButtonsEnabled;
+    BOOL m_active_window_tracking_mode_enabled;
 
     typedef BOOL (WINAPI *RegisterTouchWindowFunc)(HWND hWnd, ULONG ulFlags);
     typedef BOOL (WINAPI *GetTouchInputInfoFunc)(HTOUCHINPUT hTouchInput,
