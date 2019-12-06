@@ -112,11 +112,9 @@ java/awt/datatransfer/MissedHtmlAndRtfBug/MissedHtmlAndRtfBug.html              
 java/awt/datatransfer/SystemSelection/SystemSelectionSwingTest.java                         nobug linux-all
 java/awt/dnd/AcceptDropMultipleTimes/AcceptDropMultipleTimes.java                           nobug macosx-all,windows-all,linux-all
 java/awt/dnd/DnDTestWithHIDPI/DragTestWithHIDPI.java                                        nobug macosx-all,windows-all,linux-all
-java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                           nobug macosx-all,linux-all,windows-all
 java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.html                     nobug macosx-all,windows-all,linux-all
 java/awt/dnd/RecognizedActionTest/RecognizedActionTest.java                                 nobug macosx-all,windows-all,linux-all
 java/awt/dnd/RemoveDropTargetCrashTest/RemoveDropTargetCrashTest.java                       nobug macosx-all,windows-all
-java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.html                             nobug macosx-all,linux-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java                  nobug macosx-all,windows-all,linux-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java                                 nobug macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java                                          nobug macosx-all

@@ -620,12 +620,13 @@ java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java                
 java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.html               8215538 windows-all,macosx-all,linux-all (macosx-all,linux-all: commit)
 java/awt/dnd/DropTargetEnterExitTest/ExtraDragEnterTest.java                        8029680 macosx-all,linux-all,windows-all
 java/awt/dnd/DropTargetEnterExitTest/MissedDragExitTest.java                        8028998,8159694 macosx-all,windows-all,linux-all
+java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                   7124379,7188825 macosx-all,linux-all,windows-all
 java/awt/dnd/ImageTransferTest/ImageTransferTest.java                               8176556 generic-all
-java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.html
+java/awt/dnd/InterJVMGetDropSuccessTest/InterJVMGetDropSuccessTest.html             8208555 windows-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java                 8030121 macosx-all,windows-all,linux-all
 java/awt/dnd/MissingEventsOnModalDialog/MissingEventsOnModalDialogTest.java         8164464 linux-all,macosx-all,windows-all
 java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.html                             8214221 windows-all,linux-all,macosx-all
-java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.html                     8171510 macosx-all
+java/awt/dnd/URIListBetweenJVMsTest/URIListBetweenJVMsTest.html                     8171510,7124379 macosx-all,linux-all
 java/awt/dnd/URIListToFileListBetweenJVMsTest/URIListToFileListBetweenJVMsTest.html 8194947 generic-all
 java/awt/event/ComponentEvent/MovedResizedTardyEventTest/MovedResizedTardyEventTest.html 6511207 generic-all
 java/awt/event/HierarchyEvent/AncestorResized/AncestorResized.java                  6618538 generic-all
