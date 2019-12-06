@@ -1583,7 +1583,7 @@ LRESULT AwtComponent::WindowProc(UINT message, WPARAM wParam, LPARAM lParam)
               window->AwtSetActiveWindow(TRUE, LOWORD(lParam)/*hittest*/);
           }
           mr = mrConsume;
-          retValue = MA_NOACTIVATE;
+          retValue = AwtToolkit::GetInstance().IsActiveWindowTrackingEnabled() ? MA_ACTIVATE : MA_NOACTIVATE;
           break;
       }
       case WM_CTLCOLORMSGBOX:
