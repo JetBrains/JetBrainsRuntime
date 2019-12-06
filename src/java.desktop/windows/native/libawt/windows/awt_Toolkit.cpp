@@ -699,6 +699,13 @@ BOOL AwtToolkit::Initialize(BOOL localPump) {
     tk.m_touchKbrdAutoShowIsEnabled = env->CallStaticBooleanMethod(
         sunToolkitCls, isTouchKeyboardAutoShowEnabledMID);
 
+    BOOL tracking = FALSE;
+    int result = 0;
+    result = ::SystemParametersInfo(SPI_GETACTIVEWINDOWTRACKING, 0,
+                                  &tracking, 0);
+
+    tk.m_active_window_tracking_mode_enabled = (tracking && (result != 0));
+
     CATCH_BAD_ALLOC_RET(FALSE);
 
     if (tk.m_isWin8OrLater && tk.m_touchKbrdAutoShowIsEnabled) {
@@ -801,6 +808,10 @@ void AwtToolkit::SetDynamicLayout(BOOL dynamic) {
 
 BOOL AwtToolkit::IsDynamicLayoutSet() {
     return m_isDynamicLayoutSet;
+}
+
+BOOL AwtToolkit::IsActiveWindowTrackingEnabled() {
+    return m_active_window_tracking_mode_enabled;
 }
 
 BOOL AwtToolkit::IsDynamicLayoutSupported() {
