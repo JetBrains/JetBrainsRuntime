@@ -4350,6 +4350,8 @@ void Arguments::setup_hotswap_agent() {
   create_numbered_property("jdk.module.addopens", "java.base/java.lang=ALL-UNNAMED", addopens_count++);
   // Class of  field java.lang.reflect.Proxy/proxyCache
   create_numbered_property("jdk.module.addopens", "java.base/jdk.internal.loader=ALL-UNNAMED", addopens_count++);
+  // Use to access java.io.Reader, java.io.InputStream, java.io.FileInputStream
+  create_numbered_property("jdk.module.addopens", "java.base/java.io=ALL-UNNAMED", addopens_count++);
   // java.beans.Introspector access
   create_numbered_property("jdk.module.addopens", "java.desktop/java.beans=ALL-UNNAMED", addopens_count++);
   // java.beans.Introspector access
