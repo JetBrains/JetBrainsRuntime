@@ -86,7 +86,7 @@ JAVA_MANIFEST := $(TOPDIR)/src/java.base/windows/native/launcher/java.manifest
 # LIBS_windows   Additional LIBS_windows
 # LDFLAGS_solaris Additional LDFLAGS_solaris
 # RC_FLAGS   Additional RC_FLAGS
-# MACOSX_SIGNED   On macosx, sign this binary
+# MACOSX_PRIVILEGED   On macosx, allow to access other processes
 # OPTIMIZATION   Override default optimization level (LOW)
 # OUTPUT_DIR   Override default output directory
 # VERSION_INFO_RESOURCE   Override default Windows resource file
@@ -117,9 +117,8 @@ define SetupBuildLauncherBody
 
   $1_LIBS :=
   ifeq ($(OPENJDK_TARGET_OS), macosx)
-    ifeq ($$($1_MACOSX_SIGNED), true)
+    ifeq ($$($1_MACOSX_PRIVILEGED), true)
       $1_PLIST_FILE := Info-privileged.plist
-        $1_CODESIGN := true
     else
       $1_PLIST_FILE := Info-cmdline.plist
     endif
@@ -190,7 +189,6 @@ define SetupBuildLauncherBody
       EXTRA_RC_FLAGS := $$($1_EXTRA_RC_FLAGS), \
       MANIFEST := $(JAVA_MANIFEST), \
       MANIFEST_VERSION := $(VERSION_NUMBER_FOUR_POSITIONS), \
-      CODESIGN := $$($1_CODESIGN), \
   ))
 
   $1 += $$(BUILD_LAUNCHER_$1)
