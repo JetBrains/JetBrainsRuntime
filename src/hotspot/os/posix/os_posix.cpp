@@ -412,6 +412,10 @@ void os::Posix::print_rlimit_info(outputStream* st) {
 #if defined(AIX)
   st->print(", NPROC ");
   st->print("%d", sysconf(_SC_CHILD_MAX));
+  st->print(", THREADS ");
+  getrlimit(RLIMIT_THREADS, &rlim);
+  if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
+  else st->print(UINT64_FORMAT, uint64_t(rlim.rlim_cur));
 #elif !defined(SOLARIS)
   st->print(", NPROC ");
   getrlimit(RLIMIT_NPROC, &rlim);
@@ -428,6 +432,11 @@ void os::Posix::print_rlimit_info(outputStream* st) {
   getrlimit(RLIMIT_AS, &rlim);
   if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
   else st->print(UINT64_FORMAT "k", uint64_t(rlim.rlim_cur) / 1024);
+
+  st->print(", CPU ");
+  getrlimit(RLIMIT_CPU, &rlim);
+  if (rlim.rlim_cur == RLIM_INFINITY) st->print("infinity");
+  else st->print(UINT64_FORMAT, uint64_t(rlim.rlim_cur));
 
   st->print(", DATA ");
   getrlimit(RLIMIT_DATA, &rlim);
