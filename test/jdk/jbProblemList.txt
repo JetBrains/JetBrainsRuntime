@@ -137,7 +137,7 @@ java/awt/Component/SetEnabledPerformance/SetEnabledPerformance.java             
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             8202667 windows-all,linux-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrame.java                              8214923 windows-all,macosx-all
 java/awt/Dialog/DialogAboveFrame/DialogAboveFrameTest.java                          8215105 macosx-all,windows-all
-java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                8225790 linux-all,windows-x86
 java/awt/Dialog/SiblingChildOrder/SiblingChildOrderTest.java                        8215105,8221383 macosx-all,windows-all
 java/awt/EmbeddedFrame/EmbeddedFrameGrabTest/EmbeddedFrameGrabTest.java             8159069 windows-all
 java/awt/EventDispatchThread/HandleExceptionOnEDT/HandleExceptionOnEDT.java         8203047 macosx-all,linux-all,windows-all
@@ -716,6 +716,7 @@ java/beans/XMLEncoder/Test6570354.java                                          
 
 # jdk_lang
 
+java/lang/String/StringRepeat.java                                                  8221400 generic-x86
 java/lang/StringCoding/CheckEncodings.sh                                            7008363 generic-all
 java/lang/System/LoggerFinder/modules/JDKLoggerForImageTest.java                    nobug windows-6.1 fails on Windows 7 only
 java/lang/System/LoggerFinder/modules/UnnamedLoggerForImageTest.java                nobug windows-6.1 fails on Windows 7 only
@@ -1078,6 +1079,52 @@ com/sun/jdi/RepStep.java                                                        
 com/sun/jdi/GetLocalVariables4Test.sh                                               8067354 windows-all
 com/sun/jdi/sde/SourceDebugExtensionTest.java                                       8158066 windows-all
 com/sun/jdi/NashornPopFrameTest.java                                                8187143 generic-all
+com/sun/jdi/ArrayLengthDumpTest.sh                                                  8201652 windows-all
+com/sun/jdi/BreakpointWithFullGC.sh                                                 8201652 windows-all
+com/sun/jdi/CatchAllTest.sh                                                         8201652 windows-all
+com/sun/jdi/CatchCaughtTest.sh                                                      8201652 windows-all
+com/sun/jdi/CatchPatternTest.sh                                                     8201652 windows-all
+com/sun/jdi/CommandCommentDelimiter.sh                                              8201652 windows-all
+com/sun/jdi/DeferredStepTest.sh                                                     8201652 windows-all
+com/sun/jdi/DeoptimizeWalk.sh                                                       8201652 windows-all
+com/sun/jdi/EvalArgs.sh                                                             8201652 windows-all
+com/sun/jdi/EvalArraysAsList.sh                                                     8201652 windows-all
+com/sun/jdi/EvalInterfaceStatic.sh                                                  8201652 windows-all
+com/sun/jdi/GetLocalVariables3Test.sh                                               8201652 windows-all
+com/sun/jdi/GetLocalVariables4Test.sh                                               8201652 windows-all
+com/sun/jdi/ImmutableResourceTest.sh                                                8201652 windows-all
+com/sun/jdi/JdbArgTest.sh                                                           8201652 windows-all
+com/sun/jdi/JdbExprTest.sh                                                          8201652 windows-all
+com/sun/jdi/JdbLockTest.sh                                                          8201652 windows-all
+com/sun/jdi/JdbMethodExitTest.sh                                                    8201652 windows-all
+com/sun/jdi/JdbMissStep.sh                                                          8201652 windows-all
+com/sun/jdi/JdbReadTwiceTest.sh                                                     8201652 windows-all
+com/sun/jdi/JdbVarargsTest.sh                                                       8201652 windows-all
+com/sun/jdi/JITDebug.sh                                                             8201652 windows-all
+com/sun/jdi/MixedSuspendTest.sh                                                     8201652 windows-all
+com/sun/jdi/NotAField.sh                                                            8201652 windows-all
+com/sun/jdi/NullLocalVariable.sh                                                    8201652 windows-all
+com/sun/jdi/PrivateTransportTest.sh                                                 8201652 windows-all
+com/sun/jdi/redefine/RedefineTest.java                                              8201652 windows-all
+com/sun/jdi/Redefine-g.sh                                                           8201652 windows-all
+com/sun/jdi/RedefineAbstractClass.sh                                                8201652 windows-all
+com/sun/jdi/RedefineAddPrivateMethod.sh                                             8201652 windows-all
+com/sun/jdi/RedefineAnnotation.sh                                                   8201652 windows-all
+com/sun/jdi/RedefineChangeClassOrder.sh                                             8201652 windows-all
+com/sun/jdi/RedefineClasses.sh                                                      8201652 windows-all
+com/sun/jdi/RedefineClearBreakpoint.sh                                              8201652 windows-all
+com/sun/jdi/RedefineException.sh                                                    8201652 windows-all
+com/sun/jdi/RedefineFinal.sh                                                        8201652 windows-all
+com/sun/jdi/RedefineImplementor.sh                                                  8201652 windows-all
+com/sun/jdi/RedefineIntConstantToLong.sh                                            8201652 windows-all
+com/sun/jdi/redefineMethod/RedefineTest.java                                        8201652 windows-all
+com/sun/jdi/RedefineMulti.sh                                                        8201652 windows-all
+com/sun/jdi/RedefinePop.sh                                                          8201652 windows-all
+com/sun/jdi/RedefineStep.sh                                                         8201652 windows-all
+com/sun/jdi/RedefineTTYLineNumber.sh                                                8201652 windows-all
+com/sun/jdi/StringConvertTest.sh                                                    8201652 windows-all
+com/sun/jdi/WatchFramePop.sh                                                        8201652 windows-all
+com/sun/jdi/ZZZcleanup.sh                                                           8201652 windows-all
 
 ############################################################################
 
