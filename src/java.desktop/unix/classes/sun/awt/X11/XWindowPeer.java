@@ -54,6 +54,8 @@ import sun.awt.X11GraphicsEnvironment;
 import sun.java2d.pipe.Region;
 import sun.util.logging.PlatformLogger;
 
+import sun.security.action.GetBooleanAction;
+
 class XWindowPeer extends XPanelPeer implements WindowPeer,
                                                 DisplayChangedListener {
 
@@ -62,6 +64,13 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     private static final PlatformLogger insLog = PlatformLogger.getLogger("sun.awt.X11.insets.XWindowPeer");
     private static final PlatformLogger grabLog = PlatformLogger.getLogger("sun.awt.X11.grab.XWindowPeer");
     private static final PlatformLogger iconLog = PlatformLogger.getLogger("sun.awt.X11.icon.XWindowPeer");
+
+    // workaround for JBR-1680 (see https://youtrack.jetbrains.com/issue/JBR-1680#focus=streamItem-27-3821223.0-0)
+    private static final boolean X11_DISABLE_OVERRIDE_FLAG = AccessController.doPrivileged(
+            new GetBooleanAction("x11.disable.override.flag"));
+    private static final boolean X11_DISABLE_OVERRIDE_XWINDOWPEER = AccessController.doPrivileged(
+            new GetBooleanAction("x11.disable.override.xwindowpeer"));
+
 
     // should be synchronized on awtLock
     private static Set<XWindowPeer> windows = new HashSet<XWindowPeer>();
@@ -158,7 +167,7 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
         XA_NET_WM_STATE = XAtom.get("_NET_WM_STATE");
 
 
-        params.put(OVERRIDE_REDIRECT, Boolean.valueOf(isOverrideRedirect()));
+        params.put(OVERRIDE_REDIRECT, X11_DISABLE_OVERRIDE_FLAG ? Boolean.FALSE : Boolean.valueOf(isOverrideRedirect()));
 
         SunToolkit.awtLock();
         try {
@@ -1246,6 +1255,8 @@ class XWindowPeer extends XPanelPeer implements WindowPeer,
     }
 
     boolean isOverrideRedirect() {
+        if (X11_DISABLE_OVERRIDE_XWINDOWPEER)
+            return false;
         return XWM.getWMID() == XWM.OPENLOOK_WM ||
             Window.Type.POPUP.equals(getWindowType());
     }
