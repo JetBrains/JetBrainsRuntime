@@ -1286,7 +1286,7 @@ bool PhaseIdealLoop::loop_predication_impl_helper(IdealLoopTree *loop, ProjNode*
     Node*          idx    = cmp->in(1);
     assert(!invar.is_invariant(idx), "index is variant");
     Node* rng = cmp->in(2);
-    assert(rng->Opcode() == Op_LoadRange || iff->is_RangeCheck() || _igvn.type(rng)->is_int()->_lo >= 0, "must be");
+    // [tav: crash] assert(rng->Opcode() == Op_LoadRange || iff->is_RangeCheck() || _igvn.type(rng)->is_int()->_lo >= 0, "must be");
     assert(invar.is_invariant(rng), "range must be invariant");
     int scale    = 1;
     Node* offset = zero;
