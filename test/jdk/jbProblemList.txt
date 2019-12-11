@@ -568,6 +568,7 @@ java/awt/TextArea/AutoScrollOnSelectAndAppend/AutoScrollOnSelectAndAppend.java  
 java/awt/TextArea/DisposeTest/TestDispose.java                                      JBR-1905 generic-all
 java/awt/TextArea/TextAreaScrolling/TextAreaScrolling.java                          8196300 windows-all
 java/awt/TextField/SelectionInvisibleTest/SelectionInvisibleTest.java               8169533 macosx-all,windows-all
+java/awt/TextField/DisposeTest/TestDispose.java                                     JBR-1905 macosx-all
 java/awt/Toolkit/DesktopProperties/rfe4758438.java                                  8193547 linux-all
 java/awt/Toolkit/LockingKeyStateTest/LockingKeyStateTest.java                       8208514 windows-all
 java/awt/Toolkit/RealSync/Test.java                                                 6849383 generic-all
@@ -660,7 +661,7 @@ java/awt/font/TextLayout/OSXLigatureTest.java                                   
 java/awt/font/TextLayout/TextLayoutBounds.java                                      8169188 generic-all
 java/awt/grab/EmbeddedFrameTest1/EmbeddedFrameTest1.java                            7080150 macosx-all
 java/awt/grab/GrabOnUnfocusableToplevel/GrabOnUnfocusableToplevel.java              8169109 windows-all,linux-all,macosx-all
-java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 linux-all,solaris-all
+java/awt/im/memoryleak/InputContextMemoryLeakTest.java                              8023814 linux-all,macosx-all,solaris-all
 java/awt/image/DrawImage/IncorrectAlphaSurface2SW.java                              8056077 generic-all
 java/awt/image/DrawImage/IncorrectBounds.java                                       8169473 windows-all
 java/awt/image/DrawImage/IncorrectClipXorModeSW2Surface.java                        8196025 windows-all
