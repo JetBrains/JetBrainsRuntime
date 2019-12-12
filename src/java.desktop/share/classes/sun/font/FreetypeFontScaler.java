@@ -53,16 +53,21 @@ class FreetypeFontScaler extends FontScaler {
         @SuppressWarnings("removal")
         String fontConfName = java.security.AccessController.doPrivileged(
                 (PrivilegedAction<String>) () -> {
-                    if ("true".equals(System.getProperty(
-                            "java2d.font.loadFontConf", ""))) {
+                    String loadFontConfig = System.getProperty(
+                            "java2d.font.loadFontConf", "");
+                    if ("true".equals(loadFontConfig)) {
                         File f = new File(System.getProperty("user.home", "") +
-                                          File.separator + ".fonts.conf");
+                                File.separator + ".fonts.conf");
 
-                        if (!f.exists()) {
-                            f = new File(System.getProperty("java.home", "") +
-                                         File.separator + "lib" + File.separator +
-                                         "fonts" + File.separator + "font.conf");
+                        if (f.exists()) {
+                            return f.getAbsolutePath();
                         }
+                    }
+
+                    if ("true".equals(loadFontConfig) || "bundled".equals(loadFontConfig)) {
+                        File f = new File(System.getProperty("java.home", "") +
+                                File.separator + "lib" + File.separator + "fonts" + File.separator + "font.conf");
+
                         return f.getAbsolutePath();
                     }
                     return null;
