@@ -82,7 +82,7 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
     private static int touchBeginX = 0, touchBeginY = 0;
     private static int trackingId = 0;
     private static boolean isTouchScroll = false;
-    private static final int TOUCH_CLICK_RADIUS = 3;
+    private static final int TOUCH_CLICK_RADIUS = 10;
     // all touch scrolls are measured in pixels
     private static final int TOUCH_BEGIN = 2;
     private static final int TOUCH_UPDATE = 3;
@@ -825,16 +825,13 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 isTouchScroll = false;
                 touchBeginX = x;
                 touchBeginY = y;
+                sendWheelEventFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
                 break;
             case XConstants.XI_TouchUpdate:
-                if (isInsideTouchClickBoundaries(x, y)) {
+                if (!isTouchScroll && isInsideTouchClickBoundaries(x, y)) {
                     return;
                 }
-
-                if (!isTouchScroll) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, touchBeginX, touchBeginY, TOUCH_BEGIN, 1);
-                    isTouchScroll = true;
-                }
+                isTouchScroll = true;
 
                 if (lastY - y != 0) {
                     sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_UPDATE, lastY - y);
@@ -846,9 +843,8 @@ class XWindow extends XBaseWindow implements X11ComponentPeer {
                 }
                 break;
             case XConstants.XI_TouchEnd:
-                if (isTouchScroll) {
-                    sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
-                } else {
+                sendWheelEventFromTouch(dev, jWhen, modifiers, x, y, TOUCH_END, 1);
+                if (!isTouchScroll) {
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_PRESSED, jWhen, modifiers, touchBeginX, touchBeginY, button);
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_RELEASED, jWhen, modifiers, touchBeginX, touchBeginY, button);
                     sendMouseEventFromTouch(dev, MouseEvent.MOUSE_CLICKED, jWhen, modifiers, touchBeginX, touchBeginY, button);
