@@ -2369,15 +2369,12 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
         m_touchDownPoint = p;
         m_lastTouchPoint = p;
         m_isTouchScroll = FALSE;
+        SendMouseWheelEventFromTouch(p, modifiers, TOUCH_BEGIN, 1);
     } else if (touchInput.dwFlags & TOUCHEVENTF_MOVE) {
-        if (IsInsideTouchClickBoundaries(p)) {
+        if (!m_isTouchScroll && IsInsideTouchClickBoundaries(p)) {
             return;
         }
-
-        if (!m_isTouchScroll) {
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_BEGIN, 1);
-            m_isTouchScroll = TRUE;
-        }
+        m_isTouchScroll = TRUE;
 
         const int deltaY = ScaleDownY(static_cast<int>(m_lastTouchPoint.y - p.y));
         if (abs(deltaY) != 0) {
@@ -2392,9 +2389,9 @@ void AwtComponent::WmTouchHandler(const TOUCHINPUT& touchInput)
 
         m_lastTouchPoint = p;
     } else if (touchInput.dwFlags & TOUCHEVENTF_UP) {
-        if (m_isTouchScroll) {
-            SendMouseWheelEventFromTouch(p, modifiers, TOUCH_END, 1);
-        } else {
+        SendMouseWheelEventFromTouch(p, modifiers, TOUCH_END, 1);
+
+        if (!m_isTouchScroll) {
             SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_PRESSED, p, modifiers);
             SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_RELEASED, p, modifiers);
             SendMouseEventFromTouch(java_awt_event_MouseEvent_MOUSE_CLICKED, p, modifiers);
