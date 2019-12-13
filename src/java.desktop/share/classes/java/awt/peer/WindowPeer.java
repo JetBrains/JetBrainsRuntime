@@ -118,4 +118,13 @@ public interface WindowPeer extends ContainerPeer {
      * Instructs the peer to update the position of the security warning.
      */
     void repositionSecurityWarning();
+
+    /**
+     * Returns platform window handle.
+     *
+     * @return platform window handle
+     */
+    default long getWindowHandle() {
+        throw new UnsupportedOperationException();
+    }
 }
