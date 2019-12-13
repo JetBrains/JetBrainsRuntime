@@ -45,6 +45,7 @@ extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern MTLContext *MTLSD_MakeMTLContextCurrent(JNIEnv *env,
                                                MTLSDOps *srcOps,
                                                MTLSDOps *dstOps);
+NSString *getAlphaCompositeString(jint rule, jfloat extraAlpha);
 
 static id<MTLRenderCommandEncoder> commonRenderEncoder = NULL;
 
@@ -140,6 +141,9 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
+
+    jboolean _useClip;
+    MTLScissorRect _clipRect;
 }
 
 @synthesize compState, extraAlpha, alphaCompositeRule, xorPixel, pixel, p0,
@@ -147,7 +151,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
             useTransform, transform4x4, blitTextureID, textureFunction,
             vertexCacheEnabled, device, library, pipelineState, pipelineStateStorage,
             commandQueue, vertexBuffer,
-            color, clipRect, useClip, texturePool;
+            color, texturePool;
 
 
  - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
@@ -246,24 +250,31 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void)resetClip {
-    //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetClip");
-    useClip = JNI_FALSE;
+    _useClip = JNI_FALSE;
 }
 
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2 {
-    //TODO
+    if (x1 >= x2 || y1 >= y2) {
+        J2dTraceLn4(J2D_TRACE_ERROR, "MTLContext.setClipRect: invalid rect: x1=%d y1=%d x2=%d y2=%d", x1, y1, x2, y2);
+        _useClip = JNI_FALSE;
+    }
+
     jint width = x2 - x1;
     jint height = y2 - y1;
 
     J2dTraceLn4(J2D_TRACE_INFO, "MTLContext.setClipRect: x=%d y=%d w=%d h=%d", x1, y1, width, height);
 
-    clipRect.x = x1;
-    clipRect.y = y1;
-    clipRect.width = width;
-    clipRect.height = height;
-    useClip = JNI_TRUE;
+    _clipRect.x = x1;
+    _clipRect.y = y1;
+    _clipRect.width = width;
+    _clipRect.height = height;
+    _useClip = JNI_TRUE;
 }
+
+- (const MTLScissorRect *)clipRect {
+     return _useClip ? &(_clipRect) : NULL;
+ }
 
 - (void)beginShapeClip {
     //TODO
@@ -288,6 +299,9 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     alphaCompositeRule = rule;
 }
 
+- (NSString*)getAlphaCompositeRuleString {
+    return getAlphaCompositeString(alphaCompositeRule, extraAlpha);
+}
 
 - (void)setXorComposite:(jint)xp {
     //TODO
@@ -387,8 +401,8 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
-    if (useClip)
-        [encoder setScissorRect:clipRect];
+    if (_useClip)
+        [encoder setScissorRect:_clipRect];
 
     if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         // set pipeline state
@@ -518,6 +532,78 @@ JNIEXPORT jstring JNICALL Java_sun_java2d_metal_MTLContext_getMTLIdString
     return NULL;
 }
 
-
+NSString * getAlphaCompositeString(jint rule, jfloat extraAlpha) {
+    const char * result = "";
+    switch (rule) {
+        case java_awt_AlphaComposite_CLEAR:
+        {
+            result = "CLEAR";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC:
+        {
+            result = "SRC";
+        }
+            break;
+        case java_awt_AlphaComposite_DST:
+        {
+            result = "DST";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_OVER:
+        {
+            result = "SRC_OVER";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_OVER:
+        {
+            result = "DST_OVER";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_IN:
+        {
+            result = "SRC_IN";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_IN:
+        {
+            result = "DST_IN";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_OUT:
+        {
+            result = "SRC_OUT";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_OUT:
+        {
+            result = "DST_OUT";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_ATOP:
+        {
+            result = "SRC_ATOP";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_ATOP:
+        {
+            result = "DST_ATOP";
+        }
+            break;
+        case java_awt_AlphaComposite_XOR:
+        {
+            result = "XOR";
+        }
+            break;
+        default:
+            result = "UNKNOWN";
+            break;
+    }
+    const double epsilon = 0.001f;
+    if (fabs(extraAlpha - 1.f) > epsilon) {
+        return [NSString stringWithFormat:@"%s [%1.2f]", result, extraAlpha];
+    }
+    return [NSString stringWithFormat:@"%s", result];
+}
 
 #endif /* !HEADLESS */

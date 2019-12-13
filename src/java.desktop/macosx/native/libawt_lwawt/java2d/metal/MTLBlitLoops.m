@@ -41,12 +41,16 @@
 
 #import <Accelerate/Accelerate.h>
 
+//#define TRACE_ISOBLIT
+//#define TRACE_BLIT
+//#define DEBUG_ISOBLIT
+//#define DEBUG_BLIT
+
 typedef struct {
     MTLPixelFormat   format;
     jboolean hasAlpha;
     jboolean isPremult;
     const uint8_t * permuteMap;
-
 } MTLRasterFormatInfo;
 
 // 0 denotes the alpha channel, 1 the red channel, 2 the green channel, and 3 the blue channel.
@@ -134,26 +138,7 @@ void fillTxQuad(
     txQuadVerts[5].txtpos[1]   = nsy1;
 }
 
-/**
- * Inner loop used for copying a source MTL "Surface" (window, pbuffer,
- * etc.) to a destination OpenGL "Surface".  Note that the same surface can
- * be used as both the source and destination, as is the case in a copyArea()
- * operation.  This method is invoked from MTLBlitLoops_IsoBlit() as well as
- * MTLBlitLoops_CopyArea().
- *
- * The standard glCopyPixels() mechanism is used to copy the source region
- * into the destination region.  If the regions have different dimensions,
- * the source will be scaled into the destination as appropriate (only
- * nearest neighbor filtering will be applied for simple scale operations).
- */
-static void
-MTLBlitSurfaceToSurface(MTLContext *mtlc, BMTLSDOps *srcOps, BMTLSDOps *dstOps,
-                        jint sx1, jint sy1, jint sx2, jint sy2,
-                        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSurfaceToSurface -- :TODO");
-}
+//#define TRACE_drawTex2Tex
 
 static void drawTex2Tex(MTLContext *mtlc,
                         id<MTLTexture> src, id<MTLTexture> dst,
@@ -161,13 +146,12 @@ static void drawTex2Tex(MTLContext *mtlc,
                         jint sx1, jint sy1, jint sx2, jint sy2,
                         jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
-    if (mtlc == NULL || src == nil || dst == nil)
-        return;
-
-//    J2dTraceLn2(J2D_TRACE_VERBOSE, "drawTex2Tex: src tex=%p, dst tex=%p", src, dst);
-//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dst.width, dst.height);
-//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
-//    J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+#ifdef TRACE_drawTex2Tex
+    J2dRlsTraceLn2(J2D_TRACE_VERBOSE, "drawTex2Tex: src tex=%p, dst tex=%p", src, dst);
+    J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "  sw=%d sh=%d dw=%d dh=%d", src.width, src.height, dst.width, dst.height);
+    J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d", sx1, sy1, sx2, sy2);
+    J2dRlsTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
+#endif //TRACE_drawTex2Tex
 
     id<MTLRenderCommandEncoder> encoder = [mtlc createCommonSamplingEncoderForDest:
                                                dst
@@ -180,34 +164,6 @@ static void drawTex2Tex(MTLContext *mtlc,
     [encoder setVertexBytes:quadTxVerticesBuffer length:sizeof(quadTxVerticesBuffer) atIndex:MeshVertexBuffer];
     [encoder setFragmentTexture:src atIndex: 0];
     [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:6];
-}
-
-/**
- * Inner loop used for copying a source MTL "Texture" to a destination
- * MTL "Surface".  This method is invoked from MTLBlitLoops_IsoBlit().
- *
- * This method will copy, scale, or transform the source texture into the
- * destination depending on the transform state, as established in
- * and MTLContext_SetTransform().  If the source texture is
- * transformed in any way when rendered into the destination, the filtering
- * method applied is determined by the hint parameter (can be GL_NEAREST or
- * GL_LINEAR).
- */
-static void
-MTLBlitTextureToSurface(MTLContext *mtlc,
-                        BMTLSDOps *srcOps, BMTLSDOps *dstOps,
-                        jboolean rtt, jint hint,
-                        jint sx1, jint sy1, jint sx2, jint sy2,
-                        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
-{
-    id<MTLTexture> srcTex = srcOps->pTexture;
-
-#ifdef DEBUG
-    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via sampling]: bsrc=%p [tex=%p] opaque=%d, bdst=%p [tex=%p] opaque=%d | s (%dx%d) -> d (%dx%d) | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)",
-            srcOps, srcOps->pTexture, srcOps->isOpaque, dstOps, dstOps->pTexture, dstOps->isOpaque, srcTex.width, srcTex.height, dstOps->width, dstOps->height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-#endif //DEBUG
-
-    drawTex2Tex(mtlc, srcTex, dstOps->pTexture, srcOps->isOpaque, dstOps->isOpaque, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 static
@@ -292,121 +248,163 @@ id<MTLTexture> replaceTextureRegion(id<MTLTexture> dest, const SurfaceDataRasInf
  */
 
 static void
-MTLBlitSwToSurfaceViaTexture(MTLContext *ctx, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
-                   MTLRasterFormatInfo * rfi,
-                   jint sx1, jint sy1, jint sx2, jint sy2,
-                   jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
+MTLBlitSwToTextureViaPooledTexture(
+        MTLContext *mtlc, SurfaceDataRasInfo *srcInfo, BMTLSDOps * bmtlsdOps,
+        MTLRasterFormatInfo * rfi, jboolean useBlitEncoder,
+        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
-    if (bmtlsdOps == NULL || bmtlsdOps->pTexture == NULL) {
-        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: dest is null");
-        return;
-    }
-
-    const int sw = sx2 - sx1;
-    const int sh = sy2 - sy1;
+    const int sw = srcInfo->bounds.x2 - srcInfo->bounds.x1;
+    const int sh = srcInfo->bounds.y2 - srcInfo->bounds.y1;
     id<MTLTexture> dest = bmtlsdOps->pTexture;
 
-#ifdef DEBUG
-    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [via pooled texture]: bdst=%p [tex=%p], sw=%d, sh=%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", bmtlsdOps, dest, sw, sh, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-#endif //DEBUG
-
-    MTLPooledTextureHandle * texHandle = [ctx.texturePool getTexture:sw height:sh format:rfi->format];
+    MTLPooledTextureHandle * texHandle = [mtlc.texturePool getTexture:sw height:sh format:rfi->format];
     if (texHandle == nil) {
-        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToSurfaceViaTexture: can't obtain temporary texture object from pool");
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToTextureViaPooledTexture: can't obtain temporary texture object from pool");
         return;
     }
-    [[ctx getCommandBufferWrapper] registerPooledTexture:texHandle];
+    [[mtlc getCommandBufferWrapper] registerPooledTexture:texHandle];
 
     id<MTLTexture> texBuff = texHandle.texture;
     id<MTLTexture> swizzledTexture = replaceTextureRegion(texBuff, srcInfo, rfi, 0, 0, sw, sh);
-    drawTex2Tex(ctx, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque, 0, 0, sw, sh, dx1, dy1, dx2, dy2);
+    if (useBlitEncoder) {
+        id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
+        [blitEncoder copyFromTexture:swizzledTexture != nil ? swizzledTexture : texBuff
+                         sourceSlice:0
+                         sourceLevel:0
+                        sourceOrigin:MTLOriginMake(0, 0, 0)
+                          sourceSize:MTLSizeMake(sw, sh, 1)
+                           toTexture:dest
+                    destinationSlice:0
+                    destinationLevel:0
+                   destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+        [blitEncoder endEncoding];
+    } else {
+        drawTex2Tex(mtlc, swizzledTexture != nil ? swizzledTexture : texBuff, dest, !rfi->hasAlpha, bmtlsdOps->isOpaque,
+                    0, 0, sw, sh, dx1, dy1, dx2, dy2);
+    }
+
     if (swizzledTexture != nil) {
         [swizzledTexture release];
     }
 }
 
-/**
- * Inner loop used for copying a source system memory ("Sw") surface or
- * MTL "Surface" to a destination OpenGL "Surface", using an MTL texture
- * tile as an intermediate surface.  This method is invoked from
- * MTLBlitLoops_Blit() for "Sw" surfaces and MTLBlitLoops_IsoBlit() for
- * "Surface" surfaces.
- *
- * This method is used to transform the source surface into the destination.
- * Pixel rectangles cannot be arbitrarily transformed (without the
- * GL_EXT_pixel_transform extension, which is not supported on most modern
- * hardware).  However, texture mapped quads do respect the GL_MODELVIEW
- * transform matrix, so we use textures here to perform the transform
- * operation.  This method uses a tile-based approach in which a small
- * subregion of the source surface is copied into a cached texture tile.  The
- * texture tile is then mapped into the appropriate location in the
- * destination surface.
- *
- * REMIND: this only works well using GL_NEAREST for the filtering mode
- *         (GL_LINEAR causes visible stitching problems between tiles,
- *         but this can be fixed by making use of texture borders)
- */
-static void
-MTLBlitToSurfaceViaTexture(MTLContext *mtlc, SurfaceDataRasInfo *srcInfo,
-                           MTPixelFormat *pf, MTLSDOps *srcOps,
-                           jboolean swsurface, jint hint,
-                           jint sx1, jint sy1, jint sx2, jint sy2,
-                           jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitToSurfaceViaTexture -- :TODO");
+static
+jboolean isBlendingDisabled(MTLContext * mtlc, jboolean isSrcOpaque) {
+    if (mtlc.isBlendingDisabled)
+        return JNI_TRUE;
+    if (mtlc.alphaCompositeRule == RULE_Src)
+        return JNI_TRUE;
+    if (mtlc.alphaCompositeRule != RULE_SrcOver) {
+        // J2dRlsTraceLn1(J2D_TRACE_VERBOSE, "\tuse blending for rule %d", mtlc.alphaCompositeRule);
+        return JNI_FALSE;
+    }
+    return isSrcOpaque;
+}
+
+static
+jboolean isIntegerAndUnscaled(
+        jint sx1, jint sy1, jint sx2, jint sy2,
+        jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2
+) {
+    const jdouble epsilon = 0.0001f;
+
+    // check that dx1,dy1 is integer
+    if (fabs(dx1 - (int)dx1) > epsilon || fabs(dy1 - (int)dy1) > epsilon) {
+        return JNI_FALSE;
+    }
+    // check that destSize equals srcSize
+    if (fabs(dx2 - dx1 - sx2 + sx1) > epsilon || fabs(dy2 - dy1 - sy2 + sy1) > epsilon) {
+        return JNI_FALSE;
+    }
+    return JNI_TRUE;
+}
+
+static
+jboolean clipDestCoords(
+        jdouble *dx1, jdouble *dy1, jdouble *dx2, jdouble *dy2,
+        jint *sx1, jint *sy1, jint *sx2, jint *sy2,
+        jint destW, jint destH, const MTLScissorRect * clipRect
+) {
+    // Trim destination rect by clip-rect (or dest.bounds)
+    const jint sw    = *sx2 - *sx1;
+    const jint sh    = *sy2 - *sy1;
+    const jdouble dw = *dx2 - *dx1;
+    const jdouble dh = *dy2 - *dy1;
+
+    jdouble dcx1 = 0;
+    jdouble dcx2 = destW;
+    jdouble dcy1 = 0;
+    jdouble dcy2 = destH;
+    if (clipRect != NULL) {
+        if (clipRect->x > dcx1)
+            dcx1 = clipRect->x;
+        const int maxX = clipRect->x + clipRect->width;
+        if (dcx2 > maxX)
+            dcx2 = maxX;
+        if (clipRect->y > dcy1)
+            dcy1 = clipRect->y;
+        const int maxY = clipRect->y + clipRect->height;
+        if (dcy2 > maxY)
+            dcy2 = maxY;
+
+        if (dcx1 >= dcx2) {
+            J2dTraceLn2(J2D_TRACE_ERROR, "\tclipDestCoords: dcx1=%1.2f, dcx2=%1.2f", dcx1, dcx2);
+            dcx1 = dcx2;
+        }
+        if (dcy1 >= dcy2) {
+            J2dTraceLn2(J2D_TRACE_ERROR, "\tclipDestCoords: dcy1=%1.2f, dcy2=%1.2f", dcy1, dcy2);
+            dcy1 = dcy2;
+        }
+    }
+    if (*dx2 <= dcx1 || *dx1 >= dcx2 || *dy2 <= dcy1 || *dy1 >= dcy2) {
+        J2dTraceLn(J2D_TRACE_INFO, "\tclipDestCoords: dest rect doesn't intersect clip area");
+        return JNI_FALSE;
+    }
+    if (*dx1 < dcx1) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdx1=%1.2f, will be clipped to %1.2f", *dx1, dcx1);
+        *sx1 += (jint)((dcx1 - *dx1) * (sw/dw));
+        *dx1 = dcx1;
+    }
+    if (*dx2 > dcx2) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdx2=%1.2f, will be clipped to %1.2f", *dx2, dcx2);
+        *sx2 -= (jint)((*dx2 - dcx2) * (sw/dw));
+        *dx2 = dcx2;
+    }
+    if (*dy1 < dcy1) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdy1=%1.2f, will be clipped to %1.2f", *dy1, dcy1);
+        *sy1 += (jint)((dcy1 - *dy1) * (sh/dh));
+        *dy1 = dcy1;
+    }
+    if (*dy2 > dcy2) {
+        J2dTraceLn2(J2D_TRACE_VERBOSE, "\t\tdy2=%1.2f, will be clipped to %1.2f", *dy2, dcy2);
+        *sy2 -= (jint)((*dy2 - dcy2) * (sh/dh));
+        *dy2 = dcy2;
+    }
+    return JNI_TRUE;
 }
 
 /**
- * Inner loop used for copying a source system memory ("Sw") surface to a
- * destination OpenGL "Texture".  This method is invoked from
- * MTLBlitLoops_Blit().
- *
- * The source surface is effectively loaded into the MTL texture object,
- * which must have already been initialized by MTLSD_initTexture().  Note
- * that this method is only capable of copying the source surface into the
- * destination surface (i.e. no scaling or general transform is allowed).
- * This restriction should not be an issue as this method is only used
- * currently to cache a static system memory image into an MTL texture in
- * a hidden-acceleration situation.
- */
-static void
-MTLBlitSwToTexture(SurfaceDataRasInfo *srcInfo, MTPixelFormat *pf,
-                   MTLSDOps *dstOps,
-                   jint dx1, jint dy1, jint dx2, jint dy2)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitSwToTexture -- :TODO");
-}
-
-/**
- * General blit method for copying a native MTL surface (of type "Surface"
- * or "Texture") to another MTL "Surface".  If texture is JNI_TRUE, this
- * method will invoke the Texture->Surface inner loop; otherwise, one of the
- * Surface->Surface inner loops will be invoked, depending on the transform
- * state.
- *
- * REMIND: we can trick these blit methods into doing XOR simply by passing
- *         in the (pixel ^ xorpixel) as the pixel value and preceding the
- *         blit with a fillrect...
+ * General blit method for copying a native MTL surface to another MTL "Surface".
+ * Parameter texture == true forces to use 'texture' codepath (dest coordinates will always be integers).
+ * Parameter xform == true only when AffineTransform is used (invoked only from TransformBlit, dest coordinates will always be integers).
  */
 void
 MTLBlitLoops_IsoBlit(JNIEnv *env,
                      MTLContext *mtlc, jlong pSrcOps, jlong pDstOps,
-                     jboolean xform, jint hint,
-                     jboolean texture, jboolean rtt,
+                     jboolean xform, jint hint, jboolean texture,
                      jint sx1, jint sy1, jint sx2, jint sy2,
                      jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
     BMTLSDOps *srcOps = (BMTLSDOps *)jlong_to_ptr(pSrcOps);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
 
+    RETURN_IF_NULL(mtlc);
     RETURN_IF_NULL(srcOps);
     RETURN_IF_NULL(dstOps);
 
     id<MTLTexture> srcTex = srcOps->pTexture;
     id<MTLTexture> dstTex = dstOps->pTexture;
-    if (mtlc == NULL || srcTex == nil || srcTex == nil) {
+    if (srcTex == nil || srcTex == nil) {
         J2dTraceLn2(J2D_TRACE_ERROR, "MTLBlitLoops_IsoBlit: surface is null (stex=%p, dtex=%p)", srcTex, dstTex);
         return;
     }
@@ -421,61 +419,92 @@ MTLBlitLoops_IsoBlit(JNIEnv *env,
         return;
     }
 
-    SurfaceDataRasInfo srcInfo;
-    srcInfo.bounds.x1 = sx1;
-    srcInfo.bounds.y1 = sy1;
-    srcInfo.bounds.x2 = sx2;
-    srcInfo.bounds.y2 = sy2;
-    SurfaceData_IntersectBoundsXYXY(&srcInfo.bounds, 0, 0, srcOps->width, srcOps->height);
+#ifdef DEBUG_ISOBLIT
+    if ((xform == JNI_TRUE) != (mtlc.useTransform == JNI_TRUE)) {
+        J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE,
+                "MTLBlitLoops_IsoBlit state error: xform=%d, mtlc.useTransform=%d, texture=%d",
+                xform, mtlc.useTransform, texture);
+    }
+#endif // DEBUG_ISOBLIT
 
-    if (srcInfo.bounds.x2 <= srcInfo.bounds.x1 || srcInfo.bounds.y2 <= srcInfo.bounds.y1) {
+    clipDestCoords(
+            &dx1, &dy1, &dx2, &dy2,
+            &sx1, &sy1, &sx2, &sy2,
+            dstTex.width, dstTex.height, mtlc.clipRect
+    );
+
+    SurfaceDataBounds bounds;
+    bounds.x1 = sx1;
+    bounds.y1 = sy1;
+    bounds.x2 = sx2;
+    bounds.y2 = sy2;
+    SurfaceData_IntersectBoundsXYXY(&bounds, 0, 0, srcOps->width, srcOps->height);
+
+    if (bounds.x2 <= bounds.x1 || bounds.y2 <= bounds.y1) {
         J2dTraceLn(J2D_TRACE_VERBOSE, "MTLBlitLoops_IsoBlit: source rectangle doesn't intersect with source surface bounds");
         J2dTraceLn6(J2D_TRACE_VERBOSE, "  sx1=%d sy1=%d sx2=%d sy2=%d sw=%d sh=%d", sx1, sy1, sx2, sy2, srcOps->width, srcOps->height);
         J2dTraceLn4(J2D_TRACE_VERBOSE, "  dx1=%f dy1=%f dx2=%f dy2=%f", dx1, dy1, dx2, dy2);
         return;
     }
 
-    if (srcInfo.bounds.x1 != sx1) {
-        dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
-        sx1 = srcInfo.bounds.x1;
+    if (bounds.x1 != sx1) {
+        dx1 += (bounds.x1 - sx1) * (dw / sw);
+        sx1 = bounds.x1;
     }
-    if (srcInfo.bounds.y1 != sy1) {
-        dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
-        sy1 = srcInfo.bounds.y1;
+    if (bounds.y1 != sy1) {
+        dy1 += (bounds.y1 - sy1) * (dh / sh);
+        sy1 = bounds.y1;
     }
-    if (srcInfo.bounds.x2 != sx2) {
-        dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
-        sx2 = srcInfo.bounds.x2;
+    if (bounds.x2 != sx2) {
+        dx2 += (bounds.x2 - sx2) * (dw / sw);
+        sx2 = bounds.x2;
     }
-    if (srcInfo.bounds.y2 != sy2) {
-        dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
-        sy2 = srcInfo.bounds.y2;
+    if (bounds.y2 != sy2) {
+        dy2 += (bounds.y2 - sy2) * (dh / sh);
+        sy2 = bounds.y2;
     }
 
-    const jboolean useBlitEncoder =
-            mtlc.isBlendingDisabled
-            && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f // dimensions are equal (TODO: check that dx1,dy1 is integer)
-            && !mtlc.useTransform; // TODO: check whether transform is simple translate (and use blitEncoder in this case)
-    if (useBlitEncoder) {
-#ifdef DEBUG
-        J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_IsoBlit [via blitEncoder]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dstTex, dstTex.width, dstTex.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-#endif //DEBUG
-        [mtlc endCommonRenderEncoder];
+#ifdef TRACE_ISOBLIT
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_FALSE,
+         "MTLBlitLoops_IsoBlit [tx=%d, xf=%d, AC=%s]: src=%s, dst=%s | (%d, %d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)",
+         texture, xform, [mtlc getAlphaCompositeRuleString].cString,
+         getSurfaceDescription(srcOps).cString, getSurfaceDescription(dstOps).cString,
+         sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+#endif //TRACE_ISOBLIT
+
+    if (!texture && !xform
+        && isBlendingDisabled(mtlc, srcOps->isOpaque)
+        && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)
+        && (dstOps->isOpaque || !srcOps->isOpaque)
+    ) {
+#ifdef TRACE_ISOBLIT
+        J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via blitEncoder]");
+#endif //TRACE_ISOBLIT
 
         id <MTLBlitCommandEncoder> blitEncoder = [mtlc createBlitEncoder];
-        [blitEncoder copyFromTexture:srcTex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(sx1, sy1, 0) sourceSize:MTLSizeMake(mtlc.clipRect.width, mtlc.clipRect.height, 1) toTexture:dstTex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
+        [blitEncoder copyFromTexture:srcTex
+                         sourceSlice:0
+                         sourceLevel:0
+                        sourceOrigin:MTLOriginMake(sx1, sy1, 0)
+                          sourceSize:MTLSizeMake(sx2 - sx1, sy2 - sy1, 1)
+                           toTexture:dstTex
+                    destinationSlice:0
+                    destinationLevel:0
+                   destinationOrigin:MTLOriginMake(dx1, dy1, 0)];
         [blitEncoder endEncoding];
-    } else {
-        // TODO: support other flags
-        MTLBlitTextureToSurface(mtlc, srcOps, dstOps, rtt, hint, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+        return;
     }
+
+#ifdef TRACE_ISOBLIT
+    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via sampling]");
+#endif //TRACE_ISOBLIT
+    drawTex2Tex(mtlc, srcTex, dstTex, srcOps->isOpaque, dstOps->isOpaque, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
 }
 
 /**
- * General blit method for copying a system memory ("Sw") surface to a native
- * MTL surface (of type "Surface" or "Texture").  If texture is JNI_TRUE,
- * this method will invoke the Sw->Texture inner loop; otherwise, one of the
- * Sw->Surface inner loops will be invoked, depending on the transform state.
+ * General blit method for copying a system memory ("Sw") surface to a native MTL surface.
+ * Parameter texture == true only in SwToTextureBlit (straight copy from sw to texture), dest coordinates will always be integers.
+ * Parameter xform == true only when AffineTransform is used (invoked only from TransformBlit, dest coordinates will always be integers).
  */
 void
 MTLBlitLoops_Blit(JNIEnv *env,
@@ -485,101 +514,125 @@ MTLBlitLoops_Blit(JNIEnv *env,
                   jint sx1, jint sy1, jint sx2, jint sy2,
                   jdouble dx1, jdouble dy1, jdouble dx2, jdouble dy2)
 {
-    RETURN_IF_NULL(jlong_to_ptr(pSrcOps));
-    RETURN_IF_NULL(jlong_to_ptr(pDstOps));
-
     SurfaceDataOps *srcOps = (SurfaceDataOps *)jlong_to_ptr(pSrcOps);
     BMTLSDOps *dstOps = (BMTLSDOps *)jlong_to_ptr(pDstOps);
-    SurfaceDataRasInfo srcInfo;
 
-    if (dstOps == NULL || dstOps->pTexture == NULL) {
+    RETURN_IF_NULL(mtlc);
+    RETURN_IF_NULL(srcOps);
+    RETURN_IF_NULL(dstOps);
+
+    id<MTLTexture> dest = dstOps->pTexture;
+    if (dest == NULL) {
         J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: dest is null");
         return;
     }
-    if (srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
+    if (srctype < 0 || srctype >= sizeof(RasterFormatInfos)/ sizeof(MTLRasterFormatInfo)) {
         J2dTraceLn1(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: source pixel format %d isn't supported", srctype);
         return;
     }
+    const jint sw    = sx2 - sx1;
+    const jint sh    = sy2 - sy1;
+    const jdouble dw = dx2 - dx1;
+    const jdouble dh = dy2 - dy1;
 
-    MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
-    id<MTLTexture> dest = dstOps->pTexture;
-    if (dx1 < 0) {
-        sx1 += dx1;
-        dx1 = 0;
-    }
-    if (dx2 > dest.width) {
-        sx2 -= dx2 - dest.width;
-        dx2 = dest.width;
-    }
-    if (dy1 < 0) {
-        sy1 += dy1;
-        dy1 = 0;
-    }
-    if (dy2 > dest.height) {
-        sy2 -= dy2 - dest.height;
-        dy2 = dest.height;
-    }
-    jint sw    = sx2 - sx1;
-    jint sh    = sy2 - sy1;
-    jdouble dw = dx2 - dx1;
-    jdouble dh = dy2 - dy1;
-
-    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0 || srctype < 0) {
-        J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: invalid dimensions or srctype");
+    if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
+        J2dTraceLn(J2D_TRACE_ERROR, "MTLBlitLoops_Blit: invalid dimensions");
         return;
     }
 
+#ifdef DEBUG_BLIT
+    if (
+        (xform == JNI_TRUE) != (mtlc.useTransform == JNI_TRUE)
+        || (xform && texture)
+    ) {
+        J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE,
+                "MTLBlitLoops_Blit state error: xform=%d, mtlc.useTransform=%d, texture=%d",
+                xform, mtlc.useTransform, texture);
+    }
+    if (texture) {
+        if (!isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2)) {
+            J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE,
+                    "MTLBlitLoops_Blit state error: texture=true, but src and dst dimensions aren't equal or dest coords aren't integers");
+        }
+        if (!dstOps->isOpaque && !RasterFormatInfos[srctype].hasAlpha) {
+            J2dTraceImpl(J2D_TRACE_ERROR, JNI_TRUE,
+                    "MTLBlitLoops_Blit state error: texture=true, but dest has alpha and source hasn't alpha, can't use texture-codepath");
+        }
+    }
+#endif // DEBUG_BLIT
+
+    clipDestCoords(
+            &dx1, &dy1, &dx2, &dy2,
+            &sx1, &sy1, &sx2, &sy2,
+            dest.width, dest.height, texture ? NULL : mtlc.clipRect
+    );
+
+    SurfaceDataRasInfo srcInfo;
     srcInfo.bounds.x1 = sx1;
     srcInfo.bounds.y1 = sy1;
     srcInfo.bounds.x2 = sx2;
     srcInfo.bounds.y2 = sy2;
 
+    // NOTE: This function will modify the contents of the bounds field to represent the maximum available raster data.
     if (srcOps->Lock(env, srcOps, &srcInfo, SD_LOCK_READ) != SD_SUCCESS) {
         J2dTraceLn(J2D_TRACE_WARNING, "MTLBlitLoops_Blit: could not acquire lock");
         return;
     }
 
-    J2dTraceLn4(J2D_TRACE_VERBOSE, "MTLBlitLoops_Blit: texture=%d srctype=%d xform=%d hint=%d", texture, srctype, xform, hint);
-
     if (srcInfo.bounds.x2 > srcInfo.bounds.x1 && srcInfo.bounds.y2 > srcInfo.bounds.y1) {
         srcOps->GetRasInfo(env, srcOps, &srcInfo);
         if (srcInfo.rasBase) {
             if (srcInfo.bounds.x1 != sx1) {
-                dx1 += (srcInfo.bounds.x1 - sx1) * (dw / sw);
-                sx1 = srcInfo.bounds.x1;
+                const int dx = srcInfo.bounds.x1 - sx1;
+                dx1 += dx * (dw / sw);
             }
             if (srcInfo.bounds.y1 != sy1) {
-                dy1 += (srcInfo.bounds.y1 - sy1) * (dh / sh);
-                sy1 = srcInfo.bounds.y1;
+                const int dy = srcInfo.bounds.y1 - sy1;
+                dy1 += dy * (dh / sh);
             }
             if (srcInfo.bounds.x2 != sx2) {
-                dx2 += (srcInfo.bounds.x2 - sx2) * (dw / sw);
-                sx2 = srcInfo.bounds.x2;
+                const int dx = srcInfo.bounds.x2 - sx2;
+                dx2 += dx * (dw / sw);
             }
             if (srcInfo.bounds.y2 != sy2) {
-                dy2 += (srcInfo.bounds.y2 - sy2) * (dh / sh);
-                sy2 = srcInfo.bounds.y2;
+                const int dy = srcInfo.bounds.y2 - sy2;
+                dy2 += dy * (dh / sh);
             }
 
-            // NOTE: if (texture) => dest coordinates will always be integers since we only ever do a straight copy from sw to texture.
-            const int ndx1 = (int)dx1, ndy1 = (int)dy1, ndx2 = (int)dx2, ndy2 = (int)dy2;
-            const bool wholeDest = ndx1 == 0 && ndy1 == 0 && ndx2 == dest.width && ndy2 == dest.height;
+#ifdef TRACE_BLIT
+            J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_FALSE,
+                    "MTLBlitLoops_Blit [tx=%d, xf=%d, AC=%s]: bdst=%s, src=%p (%dx%d) O=%d premul=%d | (%d, %d, %d, %d)->(%1.2f, %1.2f, %1.2f, %1.2f)",
+                    texture, xform, [mtlc getAlphaCompositeRuleString].cString,
+                    getSurfaceDescription(dstOps).cString, srcOps,
+                    sx2 - sx1, sy2 - sy1,
+                    RasterFormatInfos[srctype].hasAlpha ? 0 : 1, RasterFormatInfos[srctype].isPremult ? 1 : 0,
+                    sx1, sy1, sx2, sy2,
+                    dx1, dy1, dx2, dy2);
+#endif //TRACE_BLIT
+
+            MTLRasterFormatInfo rfi = RasterFormatInfos[srctype];
             const jboolean useReplaceRegion = texture ||
-                    (mtlc.isBlendingDisabled
-                    && fabs(dx2 - dx1 - sx2 + sx1) < 0.001f && fabs(dy2 - dy1 - sy2 + sy1) < 0.001f // dimensions are equal (TODO: check that dx1,dy1 is integer)
-                    && !mtlc.useTransform // TODO: check whether transform is simple translate (and use replaceRegion in this case)
-                    && (dstOps->isOpaque || rfi.hasAlpha || wholeDest)); // can't use replaceRegion when dest has alpha and source hasn't alpha (and blit is partial)
+                    (isBlendingDisabled(mtlc, !rfi.hasAlpha)
+                    && !xform
+                    && isIntegerAndUnscaled(sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2));
+
             if (useReplaceRegion) {
-#ifdef DEBUG
-                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE, "MTLBlitLoops_Blit [replaceTextureRegion]: bdst=%p [tex=%p] %dx%d | src (%d, %d, %d, %d) -> dst (%1.2f, %1.2f, %1.2f, %1.2f)", dstOps, dest, dest.width, dest.height, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
-#endif //DEBUG
-                replaceTextureRegion(dest, &srcInfo, &rfi, ndx1, ndy1, ndx2, ndy2);
-                if (wholeDest) {
-                    // J2dTraceLn2(J2D_TRACE_VERBOSE, "\t change opaque-flag: %d -> %d", dstOps->isOpaque, !rfi.hasAlpha);
-                    dstOps->isOpaque = !rfi.hasAlpha;
+                if (dstOps->isOpaque || rfi.hasAlpha) {
+#ifdef TRACE_BLIT
+                    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [replaceTextureRegion]");
+#endif //TRACE_BLIT
+                    replaceTextureRegion(dest, &srcInfo, &rfi, (int) dx1, (int) dy1, (int) dx2, (int) dy2);
+                } else {
+#ifdef TRACE_BLIT
+                    J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled + blit]");
+#endif //TRACE_BLIT
+                    MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, true, dx1, dy1, dx2, dy2);
                 }
-            } else {
-                MTLBlitSwToSurfaceViaTexture(mtlc, &srcInfo, dstOps, &rfi, sx1, sy1, sx2, sy2, dx1, dy1, dx2, dy2);
+            } else { // !useReplaceRegion
+#ifdef TRACE_BLIT
+                J2dTraceImpl(J2D_TRACE_VERBOSE, JNI_TRUE," [via pooled texture]");
+#endif //TRACE_BLIT
+                MTLBlitSwToTextureViaPooledTexture(mtlc, &srcInfo, dstOps, &rfi, false, dx1, dy1, dx2, dy2);
             }
         }
         SurfaceData_InvokeRelease(env, srcOps, &srcInfo);

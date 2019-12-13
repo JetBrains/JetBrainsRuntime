@@ -72,7 +72,6 @@ typedef struct {
  * MTLContext object is associated with a native-level MTLContext class.
  * */
 @interface MTLContext : NSObject
-
 @property jint          compState;
 @property jfloat        extraAlpha;
 @property jint          alphaCompositeRule;
@@ -104,8 +103,7 @@ typedef struct {
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
 @property jint                        color;
-@property MTLScissorRect              clipRect;
-@property jboolean                    useClip;
+@property (readonly) const MTLScissorRect * clipRect;
 @property (strong)MTLPipelineStatesStorage*   pipelineStateStorage;
 @property (strong)MTLTexturePool*             texturePool;
 
@@ -130,6 +128,8 @@ typedef struct {
  * Sets the Metal scissor bounds to the provided rectangular clip bounds.
  */
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2;
+
+- (const MTLScissorRect *)clipRect;
 
 /**
  * Sets up a complex (shape) clip using the OpenGL depth buffer.  This
@@ -173,6 +173,9 @@ typedef struct {
  */
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)extraAlpha
                         flags:(jint)flags;
+
+// debug-method
+- (NSString*)getAlphaCompositeRuleString;
 
 /**
  * Initializes the OpenGL logic op state to XOR mode.  Blending is disabled

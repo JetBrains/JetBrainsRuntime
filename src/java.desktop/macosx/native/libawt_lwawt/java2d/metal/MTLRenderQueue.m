@@ -537,15 +537,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jint hint         = EXTRACT_BYTE(packedParams, OFFSET_HINT);
                 jboolean texture  = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_TEXTURE);
-                jboolean rtt      = EXTRACT_BOOLEAN(packedParams,
-                                                    OFFSET_RTT);
                 jboolean xform    = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_XFORM);
                 jboolean isoblit  = EXTRACT_BOOLEAN(packedParams,
                                                     OFFSET_ISOBLIT);
                 if (isoblit) {
                     MTLBlitLoops_IsoBlit(env, mtlc, pSrc, pDst,
-                                         xform, hint, texture, rtt,
+                                         xform, hint, texture,
                                          sx1, sy1, sx2, sy2,
                                          dx1, dy1, dx2, dy2);
                 } else {

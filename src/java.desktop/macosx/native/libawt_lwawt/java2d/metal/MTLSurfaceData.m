@@ -405,3 +405,9 @@ Java_sun_java2d_metal_MTLSurfaceData_validate
 
     }
 }
+
+NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps) {
+    if (bmtlsdOps == NULL)
+        return @"NULL";
+    return [NSString stringWithFormat:@"%p [tex=%p, %dx%d, O=%d]", bmtlsdOps, bmtlsdOps->pTexture, bmtlsdOps->width, bmtlsdOps->height, bmtlsdOps->isOpaque];
+}
