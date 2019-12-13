@@ -79,6 +79,7 @@ import sun.java2d.SurfaceData;
 import sun.java2d.loops.Blit;
 import sun.java2d.loops.CompositeType;
 import sun.java2d.pipe.Region;
+import sun.lwawt.macosx.CPlatformWindow;
 import sun.util.logging.PlatformLogger;
 
 public class LWWindowPeer
@@ -1457,5 +1458,18 @@ public class LWWindowPeer
     @Override
     public String toString() {
         return super.toString() + " [target is " + getTarget() + "]";
+    }
+
+    /**
+     * [tav] Used externally.
+     */
+    @Override
+    public long getWindowHandle() {
+        final long[] handle = new long[1];
+        PlatformWindow window = getPlatformWindow();
+        if (window instanceof CPlatformWindow) {
+            ((CPlatformWindow)window).execute(ptr -> handle[0] = ptr);
+        }
+        return handle[0];
     }
 }
