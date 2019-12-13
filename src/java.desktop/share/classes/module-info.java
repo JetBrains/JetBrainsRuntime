@@ -119,8 +119,7 @@ module java.desktop {
         jdk.unsupported.desktop,
         jcef;
 
-    exports sun.lwawt.macosx to jcef;
-    exports sun.lwawt to jcef;
+    exports java.awt.peer to jcef;
 
     exports java.awt.dnd.peer to jdk.unsupported.desktop;
     exports sun.awt.dnd to jdk.unsupported.desktop;
