@@ -125,4 +125,13 @@ public interface WindowPeer extends ContainerPeer {
      * @return the system insets or null
      */
     default Insets getSysInsets() { return null; }
+
+    /**
+     * Returns platform window handle.
+     *
+     * @return the window handle
+     */
+    default long getWindowHandle() {
+        throw new UnsupportedOperationException("unimplemented");
+    }
 }
