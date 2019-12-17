@@ -192,16 +192,19 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/fttypes.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftparams.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftmm.h
+        ../../../src/java.desktop/share/native/libfreetype/include/freetype/config
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/config/ftstdlib.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/config/ftheader.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/config/ftconfig.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/config/ftoption.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/config/ftmodule.h
+        ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftcolor.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftmodapi.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/fttrigon.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftbbox.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftgzip.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftdriver.h
+        ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/sfnt.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/internal.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftdrv.h
@@ -216,13 +219,13 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/tttypes.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftvalid.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftobjs.h
-        ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftpic.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/fttrace.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftmemory.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/fthash.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftgloadr.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftpsprop.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/ftserv.h
+        ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/services
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/services/svprop.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/services/svmm.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/internal/services/svcfftl.h
@@ -272,6 +275,8 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftbdf.h
         ../../../src/java.desktop/share/native/libfreetype/include/freetype/ftrender.h
         ../../../src/java.desktop/share/native/libfreetype/include/ft2build.h
+        ../../../src/java.desktop/share/native/libfreetype/src
+        ../../../src/java.desktop/share/native/libfreetype/src/type1
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1objs.c
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1load.h
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1afm.h
@@ -286,40 +291,42 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1driver.c
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1parse.c
         ../../../src/java.desktop/share/native/libfreetype/src/type1/t1gload.h
+        ../../../src/java.desktop/share/native/libfreetype/src/sfnt
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfobjs.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcmap.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttpost.h
-        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfntpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttkern.c
+        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcolr.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/pngshim.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttmtx.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttload.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfdriver.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttsbit.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcmapc.h
+        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcpal.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttkern.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttpost.c
-        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfntpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfobjs.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcmap.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttmtx.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/pngshim.c
+        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcolr.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttsbit.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sfdriver.h
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttload.c
         ../../../src/java.desktop/share/native/libfreetype/src/sfnt/sferrors.h
+        ../../../src/java.desktop/share/native/libfreetype/src/sfnt/ttcpal.h
+        ../../../src/java.desktop/share/native/libfreetype/src/smooth
         ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftgrays.c
         ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftsmooth.h
-        ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftspic.h
         ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftsmerrs.h
         ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftgrays.h
-        ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftspic.c
         ../../../src/java.desktop/share/native/libfreetype/src/smooth/ftsmooth.c
+        ../../../src/java.desktop/share/native/libfreetype/src/cff
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffload.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffgload.c
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffobjs.c
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffparse.h
-        ../../../src/java.desktop/share/native/libfreetype/src/cff/cffpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffcmap.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffdrivr.c
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffparse.c
@@ -327,10 +334,10 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffobjs.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffgload.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffload.c
-        ../../../src/java.desktop/share/native/libfreetype/src/cff/cffpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffdrivr.h
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cffcmap.c
         ../../../src/java.desktop/share/native/libfreetype/src/cff/cfferrs.h
+        ../../../src/java.desktop/share/native/libfreetype/src/psaux
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/psarrst.h
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/psstack.h
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/cffdecode.h
@@ -367,6 +374,7 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/afmparse.c
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/psauxmod.h
         ../../../src/java.desktop/share/native/libfreetype/src/psaux/psread.h
+        ../../../src/java.desktop/share/native/libfreetype/src/cid
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidtoken.h
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidriver.c
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidparse.c
@@ -379,11 +387,12 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidparse.h
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidobjs.c
         ../../../src/java.desktop/share/native/libfreetype/src/cid/cidload.h
+        ../../../src/java.desktop/share/native/libfreetype/src/autofit
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afindic.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afdummy.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afmodule.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afwarp.c
-        ../../../src/java.desktop/share/native/libfreetype/src/autofit/afpic.c
+        ../../../src/java.desktop/share/native/libfreetype/src/autofit/afblue.cin
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afglobal.c
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afcover.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afwrtsys.h
@@ -396,10 +405,10 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afranges.c
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afcjk.c
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afstyles.h
+        ../../../src/java.desktop/share/native/libfreetype/src/autofit/afblue.dat
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/aferrors.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afdummy.c
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afindic.c
-        ../../../src/java.desktop/share/native/libfreetype/src/autofit/afpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afglobal.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afwarp.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afmodule.c
@@ -409,64 +418,58 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/aftypes.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afcjk.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afranges.h
+        ../../../src/java.desktop/share/native/libfreetype/src/autofit/afblue.hin
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afloader.c
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/aflatin.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afangles.h
         ../../../src/java.desktop/share/native/libfreetype/src/autofit/afhints.c
+        ../../../src/java.desktop/share/native/libfreetype/src/pshinter
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshmod.c
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshrec.h
-        ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshglob.h
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshalgo.c
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshmod.h
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshnterr.h
-        ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshrec.c
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshalgo.h
         ../../../src/java.desktop/share/native/libfreetype/src/pshinter/pshglob.c
+        ../../../src/java.desktop/share/native/libfreetype/src/truetype
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttinterp.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttpload.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttgxvar.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttsubpix.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/tterrors.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttdriver.h
-        ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttobjs.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttgload.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttgxvar.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttpload.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttinterp.h
-        ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttdriver.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttsubpix.c
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttobjs.h
         ../../../src/java.desktop/share/native/libfreetype/src/truetype/ttgload.c
+        ../../../src/java.desktop/share/native/libfreetype/src/raster
         ../../../src/java.desktop/share/native/libfreetype/src/raster/ftmisc.h
         ../../../src/java.desktop/share/native/libfreetype/src/raster/rasterrs.h
-        ../../../src/java.desktop/share/native/libfreetype/src/raster/rastpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/raster/ftrend1.h
         ../../../src/java.desktop/share/native/libfreetype/src/raster/ftraster.h
-        ../../../src/java.desktop/share/native/libfreetype/src/raster/rastpic.h
         ../../../src/java.desktop/share/native/libfreetype/src/raster/ftraster.c
         ../../../src/java.desktop/share/native/libfreetype/src/raster/ftrend1.c
+        ../../../src/java.desktop/share/native/libfreetype/src/psnames
         ../../../src/java.desktop/share/native/libfreetype/src/psnames/psnamerr.h
         ../../../src/java.desktop/share/native/libfreetype/src/psnames/psmodule.c
-        ../../../src/java.desktop/share/native/libfreetype/src/psnames/pspic.h
         ../../../src/java.desktop/share/native/libfreetype/src/psnames/pstables.h
         ../../../src/java.desktop/share/native/libfreetype/src/psnames/psmodule.h
-        ../../../src/java.desktop/share/native/libfreetype/src/psnames/pspic.c
+        ../../../src/java.desktop/share/native/libfreetype/src/base
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftobjs.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftfntfmt.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftinit.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/ftapi.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftdbgmem.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/fthash.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/basepic.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/ftpic.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftbitmap.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftpsprop.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftcid.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/md5.h
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftglyph.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftgloadr.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftsystem.c
@@ -480,11 +483,9 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftsnames.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftdebug.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftmm.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/basepic.h
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftbase.h
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftfstype.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/fttrigon.c
-        ../../../src/java.desktop/share/native/libfreetype/src/base/md5.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftbbox.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftstroke.c
         ../../../src/java.desktop/share/native/libfreetype/src/base/ftgasp.c
@@ -742,38 +743,214 @@ set(SOURCE_FILES
         ../../../src/java.desktop/share/native/libjavajpeg/jidctred.c
         ../../../src/java.desktop/share/native/libjavajpeg/jpegint.h
         ../../../src/java.desktop/share/native/libjavajpeg/jdpostct.c
+        ../../../src/java.desktop/share/native/libfontmanager
         ../../../src/java.desktop/share/native/libfontmanager/DrawGlyphList.c
         ../../../src/java.desktop/share/native/libfontmanager/HBShaper.c
         ../../../src/java.desktop/share/native/libfontmanager/scriptMapping.c
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-fdsc-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-post-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-indic-machine.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-open-type.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-plan.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-use-machine.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-base-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-head-table.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-set.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-coretext.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-arabic-win1256.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-khmer.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shaper-list.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-face.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-cff-interp-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-map.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-post-macroman.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-fallback.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-common.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-deprecated.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-blob.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-normalize.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-unicode.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-version.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-stat-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-name-language.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-ltag-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat.h
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-font.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-cff-interp-cs-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-kern.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-default.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-face.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-coretext.h
-        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-tag.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cff1-table.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-just-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color-colr-table.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-deprecated.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff1.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-arabic-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-kerx-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-vorg-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-blob.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-font.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-unicode.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-indic-table.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-kern-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-normalize.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-common.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer-serialize.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-name-language.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-gpos-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var-avar-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff-common.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-fallback-shape.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cff1-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-face.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-string-array.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff1.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-lcar-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var-hvar-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-gsubgpos.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-atomic.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-static.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ucdn
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ucdn/ucdn.c
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ucdn/ucdn.h
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ucdn/ucdn_db.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-morx-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-cff2-interp-cs.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ucdn.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-khmer-machine.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-name.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-thai.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-hhea-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var-mvar-table.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shape.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-tag.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-plan.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-os2-unicode-ranges.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-warning.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-hdmx-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-khmer.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ft.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cff-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-gdef-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-glyf-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-fallback.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-map.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-glyf.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-name-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-set.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cff2-table.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shape-plan.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shape-plan.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-font.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-use.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color-sbix-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-indic.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-unicode.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-unicode-emoji-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-feat-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-object.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-myanmar.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-gasp-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-arabic.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer-deserialize-json.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-vector.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-myanmar-machine.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-arabic-fallback.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-debug.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-tag-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-vowel-constraints.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shaper.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-iter.hh
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-blob.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-face.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-trak-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-cff1-interp-cs.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-hmtx-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-ankr-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-cff-interp-dict-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-map.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-common.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-input.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color-cbdt-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color-cpal-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff2.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-utf.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-hebrew.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-map.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-var-fvar-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-font.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-map.h
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shaper.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-jstf-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-mutex.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-os2-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-face.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-layout-gsub-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-input.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-math-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cmap-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-layout-bsln-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-aat-map.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-font.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-maxp-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-buffer-deserialize-text.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-map.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-cff2.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-array.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-set.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shape-plan.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shape.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-hangul.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-null.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-cff2-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-name.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset-glyf.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-set-digest.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-indic.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-open-file.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-machinery.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-myanmar.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-subset.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-color-svg-table.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-use.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-dsalgs.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-use-table.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-math.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-math.cc
         ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ft.h
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-arabic.hh
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-ot-shape-complex-vowel-constraints.cc
+        ../../../src/java.desktop/share/native/libfontmanager/harfbuzz/hb-shaper-impl.hh
         ../../../src/java.desktop/share/native/libfontmanager/glyphblitting.h
         ../../../src/java.desktop/share/native/libfontmanager/hb-jdk.h
         ../../../src/java.desktop/share/native/libfontmanager/fontconfig.h
+        ../../../src/java.desktop/share/native/libfontmanager/hb-jdk-font.cc
         ../../../src/java.desktop/share/native/libfontmanager/freetypeScaler.c
         ../../../src/java.desktop/share/native/libfontmanager/scriptMapping.h
         ../../../src/java.desktop/share/native/libfontmanager/ColorGlyphSurfaceData.c
@@ -1149,10 +1326,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt/awt/awt_Mlib.c
             ../../../src/java.desktop/unix/native/libawt/awt/awt_LoadLibrary.c
             ../../../src/java.desktop/unix/native/libawt/awt/initIDs.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/java2d/x11/XRBackendNative.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/java2d/x11/XRSurfaceData.c
+            ../../../src/java.desktop/unix/native/libawt_xawt/awt
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/gtk2_interface.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/awt/randr.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/list.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_DrawingSurface.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/swing_GTKStyle.c
@@ -1167,7 +1342,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multi_font.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multiVis.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_Event.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/awt/Xrandr.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/robot_common.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_util.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/list.h
@@ -1176,7 +1350,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/gtk3_interface.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/gtk_interface.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_Robot.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/awt/HPkeysym.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_Event.h
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/multiVis.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/canvas.h
@@ -1186,14 +1359,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR ${CMAKE_SYSTEM_NAME} MATCHES "Linux"
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/sun_awt_X11_GtkFileDialogPeer.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_GraphicsEnv.c
             ../../../src/java.desktop/unix/native/libawt_xawt/awt/awt_InputMethod.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/awt_Desktop.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/XToolkit.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/awt_Taskbar.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/gnome_interface.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/XlibWrapper.c
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/gnome_interface.h
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/awt_Taskbar.h
-            ../../../src/java.desktop/unix/native/libawt_xawt/xawt/XWindow.c
             ../../../src/java.desktop/unix/native/libfontmanager/X11FontScaler.c
             ../../../src/java.desktop/unix/native/libfontmanager/X11TextRenderer.c
             ../../../src/java.desktop/unix/native/libsplashscreen/splashscreen_config.h
