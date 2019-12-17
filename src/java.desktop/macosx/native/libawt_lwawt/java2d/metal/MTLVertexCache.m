@@ -32,6 +32,7 @@
 
 #include "MTLPaints.h"
 #include "MTLVertexCache.h"
+#include "MTLTexturePool.h"
 #include "common.h"
 
 typedef struct _J2DVertex {
@@ -42,7 +43,7 @@ typedef struct _J2DVertex {
 static J2DVertex *vertexCache = NULL;
 static jint vertexCacheIndex = 0;
 
-static id<MTLTexture> maskCacheTex = NULL;
+static MTLPooledTextureHandle * maskCacheTex = NULL;
 static jint maskCacheIndex = 0;
 static id<MTLRenderCommandEncoder> encoder = NULL;
 
@@ -90,7 +91,7 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
         [encoder setVertexBytes: vertexCache length:vertexCacheIndex * sizeof(J2DVertex)
                                                 atIndex:MeshVertexBuffer];
 
-        [encoder setFragmentTexture:maskCacheTex atIndex: 0];
+        [encoder setFragmentTexture:maskCacheTex.texture atIndex: 0];
         for (int i = 0; i < maskCacheIndex; i++) {
             J2dTraceLn1(J2D_TRACE_INFO, "MTLVertexCache_FlushVertexCache : draw texture at index %d", i);
             [encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:i*6 vertexCount:6];
@@ -98,8 +99,12 @@ MTLVertexCache_FlushVertexCache(MTLContext *mtlc)
     }
     vertexCacheIndex = 0;
     maskCacheIndex = 0;
-    [maskCacheTex release];
-    maskCacheTex = nil;
+
+    if (maskCacheTex != nil) {
+        [[mtlc getCommandBufferWrapper] registerPooledTexture:maskCacheTex];
+        [maskCacheTex release];
+        maskCacheTex = nil;
+    }
 }
 
 /**
@@ -149,14 +154,13 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc) {
     // when we need more than 1 byte to store a pixel(LCD) we need to update
     // below code.
     if (maskCacheTex == NULL) {
-        MTLTextureDescriptor *textureDescriptor =
-            [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatA8Unorm
-                                                               width:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
-                                                              height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
-                                                           mipmapped:NO];
-
-        maskCacheTex = [mtlc.device newTextureWithDescriptor:textureDescriptor];
-        [textureDescriptor release];
+        maskCacheTex = [mtlc.texturePool getTexture:MTLVC_MASK_CACHE_WIDTH_IN_TEXELS
+                                             height:MTLVC_MASK_CACHE_HEIGHT_IN_TEXELS
+                                             format:MTLPixelFormatA8Unorm];
+        if (maskCacheTex == nil) {
+            J2dTraceLn(J2D_TRACE_ERROR, "MTLVertexCache_InitMaskCache: can't obtain temporary texture object from pool");
+            return JNI_FALSE;
+        }
     }
     // init special fully opaque tile in the upper-right corner of
     // the mask cache texture
@@ -176,7 +180,8 @@ MTLVertexCache_InitMaskCache(MTLContext *mtlc) {
     };
 
 
-    [maskCacheTex replaceRegion:region
+    // do we really need this??
+    [maskCacheTex.texture replaceRegion:region
                     mipmapLevel:0
                       withBytes:tile
                     bytesPerRow:bytesPerRow];
@@ -210,8 +215,11 @@ MTLVertexCache_DisableMaskCache(MTLContext *mtlc)
     J2dTraceLn(J2D_TRACE_INFO, "MTLVertexCache_DisableMaskCache");
     MTLVertexCache_FlushVertexCache(mtlc);
     MTLVertexCache_RestoreColorState(mtlc);
-    [maskCacheTex release];
-    maskCacheTex = nil;
+    if (maskCacheTex != nil) {
+        [[mtlc getCommandBufferWrapper] registerPooledTexture:maskCacheTex];
+        [maskCacheTex release];
+        maskCacheTex = nil;
+    }
     maskCacheIndex = 0;
     free(vertexCache);
     vertexCache = NULL;
@@ -243,8 +251,6 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
     {
         J2dTraceLn2(J2D_TRACE_INFO, "maskCacheIndex = %d, vertexCacheIndex = %d", maskCacheIndex, vertexCacheIndex);
         MTLVertexCache_FlushVertexCache(mtlc);
-        [maskCacheTex release];
-        maskCacheTex = nil;
         // TODO : Since we are not committing command buffer
         // in FlushVertexCache we need to create new maskcache
         // after present cache is full. Check whether we can
@@ -279,7 +285,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
         // TODO : Research more and try removing memcpy logic.
         if (fullwidth <= width) {
             int height_offset = bytesPerRow * srcy;
-            [maskCacheTex replaceRegion:region
+            [maskCacheTex.texture replaceRegion:region
                             mipmapLevel:0
                               withBytes:mask + height_offset
                             bytesPerRow:bytesPerRow];
@@ -295,7 +301,7 @@ MTLVertexCache_AddMaskQuad(MTLContext *mtlc,
                 memcpy(tile + dst_offset, mask + src_offset, width);
                 dst_offset = dst_offset + width;
             }
-            [maskCacheTex replaceRegion:region
+            [maskCacheTex.texture replaceRegion:region
                             mipmapLevel:0
                               withBytes:tile
                             bytesPerRow:bytesPerRow];
