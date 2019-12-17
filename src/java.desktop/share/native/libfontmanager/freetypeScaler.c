@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#if !defined(_WIN32) && !defined(__APPLE_)
+#if !defined(_WIN32) && !defined(__APPLE__)
 #include <dlfcn.h>
 #else
 #define DISABLE_FONTCONFIG
