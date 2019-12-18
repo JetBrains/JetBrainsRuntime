@@ -166,6 +166,7 @@ canCreateDirectories:(BOOL)inCreateDirectories
                  [thePanel setNameFieldStringValue:fFile];
             }
 
+            CMenuBar *menuBar = nil;
             if (fOwner != nil) {
 
                 // Finds appropriate menubar in our hierarchy,
@@ -174,7 +175,6 @@ canCreateDirectories:(BOOL)inCreateDirectories
                     awtWindow = awtWindow.ownerWindow;
                 }
 
-                CMenuBar *menuBar = nil;
                 BOOL isDisabled = NO;
                 if ([awtWindow.nsWindow isVisible]){
                     menuBar = awtWindow.javaMenuBar;
@@ -189,47 +189,35 @@ canCreateDirectories:(BOOL)inCreateDirectories
                 [CMenuBar activate:menuBar modallyDisabled:isDisabled];
             }
 
-            [thePanel setAppearance:fOwner.appearance];
+            if (@available(macOS 10.14, *)) {
+                [thePanel setAppearance:fOwner.appearance];
+            }
 
-            [thePanel beginSheetModalForWindow:fOwner completionHandler:^(NSInteger result) {
+            fPanelResult = [thePanel runModal];
 
-                if (result == NSFileHandlingPanelOKButton) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = (fMode == java_awt_FileDialog_LOAD)
-                         ? [openPanel URLs]
-                         : [NSArray arrayWithObject:[openPanel URL]];
-
-                    fPanelResult = NSFileHandlingPanelOKButton;
-
-                    } else {
-                        fURLs = [NSArray array];
-                    }
-                    [fURLs retain];
-                    [NSApp stopModal];
-                }
-            ];
-
-            [NSApp runModalForWindow:thePanel];
+            if (menuBar != nil) {
+                [CMenuBar activate:menuBar modallyDisabled:NO];
+            }
         }
         else
         {
             fPanelResult = [thePanel runModalForDirectory:fDirectory file:fFile];
-        CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
-        [CMenuBar activate:menuBar modallyDisabled:NO];
+            CMenuBar *menuBar = [[ApplicationDelegate sharedDelegate] defaultMenuBar];
+            [CMenuBar activate:menuBar modallyDisabled:NO];
 
-        if (editMenuItem != nil) {
-            [menu removeItem:editMenuItem];
+            if (editMenuItem != nil) {
+                [menu removeItem:editMenuItem];
+            }
         }
 
-            if ([self userClickedOK]) {
-                if (fMode == java_awt_FileDialog_LOAD) {
-                    NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
-                    fURLs = [openPanel URLs];
-                } else {
-                    fURLs = [NSArray arrayWithObject:[thePanel URL]];
-                }
-                [fURLs retain];
+        if ([self userClickedOK]) {
+            if (fMode == java_awt_FileDialog_LOAD) {
+                NSOpenPanel *openPanel = (NSOpenPanel *)thePanel;
+                fURLs = [openPanel URLs];
+            } else {
+                fURLs = [NSArray arrayWithObject:[thePanel URL]];
             }
+            [fURLs retain];
         }
 
         [thePanel setDelegate:nil];
