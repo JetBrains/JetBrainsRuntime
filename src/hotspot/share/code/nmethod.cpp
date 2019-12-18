@@ -1396,6 +1396,12 @@ bool nmethod::can_unload(BoolObjectClosure* is_alive, oop* root) {
 // Transfer information from compilation to jvmti
 void nmethod::post_compiled_method_load_event(JvmtiThreadState* state) {
 
+  // Don't post this nmethod load event if it is already dying
+  // because the sweeper might already be deleting this nmethod.
+  if (is_not_entrant() && can_convert_to_zombie()) {
+    return;
+  }
+
   // This is a bad time for a safepoint.  We don't want
   // this nmethod to get unloaded while we're queueing the event.
   NoSafepointVerifier nsv;
@@ -1413,9 +1419,6 @@ void nmethod::post_compiled_method_load_event(JvmtiThreadState* state) {
   if (JvmtiExport::should_post_compiled_method_load()) {
     // Only post unload events if load events are found.
     set_load_reported();
-    // Keep sweeper from turning this into zombie until it is posted.
-    mark_as_seen_on_stack();
-
     // If a JavaThread hasn't been passed in, let the Service thread
     // (which is a real Java thread) post the event
     JvmtiDeferredEvent event = JvmtiDeferredEvent::compiled_method_load_event(this);
