@@ -197,6 +197,7 @@ java/awt/Focus/WrongKeyTypedConsumedTest/WrongKeyTypedConsumedTest.java         
 java/awt/FontMetrics/FontCrash.java                                                 8198336 windows-all
 java/awt/FontMetrics/MaxAdvanceIsMax.java                                           8221304 solaris-all,macosx-all
 java/awt/Frame/DisposeParentGC/DisposeParentGC.java                                 8079786,8055833 macosx-all,linux-all
+java/awt/Frame/DisposeStressTest/DisposeStressTest.html                             JBR-1905 macosx-all
 java/awt/Frame/ExceptionOnSetExtendedStateTest/ExceptionOnSetExtendedStateTest.java 8198237 macosx-all
 java/awt/Frame/FramesGC/FramesGC.java                                               8079069 macosx-all
 java/awt/Frame/FrameLocation/FrameLocation.java                                     8019803 macosx-all

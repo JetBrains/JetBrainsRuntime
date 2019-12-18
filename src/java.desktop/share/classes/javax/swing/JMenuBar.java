@@ -200,6 +200,7 @@ public class JMenuBar extends JComponent implements Accessible,MenuElement
      */
     public JMenu add(JMenu c) {
         super.add(c);
+        c.setFocusable(false);
         return c;
     }
 
