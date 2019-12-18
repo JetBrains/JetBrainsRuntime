@@ -165,7 +165,9 @@ canChooseDirectories:(BOOL)inChooseDirectories
                 [CMenuBar activate:menuBar modallyDisabled:isDisabled];
             }
 
-            [thePanel setAppearance:fOwner.appearance];
+            if (@available(macOS 10.14, *)) {
+                [thePanel setAppearance:fOwner.appearance];
+            }
 
             void (^onComplete)(BOOL, BOOL) = ^(BOOL responseOK, BOOL doStopModal) {
                 if (responseOK) {
