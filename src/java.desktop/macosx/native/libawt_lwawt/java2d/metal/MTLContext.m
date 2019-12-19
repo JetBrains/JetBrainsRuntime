@@ -94,8 +94,9 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     MTLRenderPassColorAttachmentDescriptor * ca = result.colorAttachments[0];
     ca.texture = dest;
     ca.loadAction = MTLLoadActionLoad;
-    ca.clearColor = MTLClearColorMake(0.0f, 0.9f, 0.0f, 1.0f);
+    //ca.clearColor = MTLClearColorMake(0.0f, 0.9f, 0.0f, 1.0f);  -- affects only if loadAction is MTLLoadActionClear
     ca.storeAction = MTLStoreActionStore;
+
     return result;
 }
 
@@ -145,9 +146,10 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 @synthesize compState, extraAlpha, alphaCompositeRule, xorPixel, pixel, p0,
             p1, p3, cyclic, pixel1, pixel2, r, g, b, a, paintState, useMask,
             useTransform, transform4x4, blitTextureID, textureFunction,
-            vertexCacheEnabled, device, library, pipelineState, pipelineStateStorage,
-            commandQueue, vertexBuffer,
-            color, clipRect, useClip, texturePool;
+            vertexCacheEnabled, stencilMaskGenerationInProgress,
+            device, library, pipelineState, pipelineStateStorage,
+            commandQueue, vertexBuffer, stencilTextureRef,
+            color, clipRect, clipType, texturePool;
 
 
  - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
@@ -248,10 +250,19 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 - (void)resetClip {
     //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetClip");
-    useClip = JNI_FALSE;
+    clipType = NO_CLIP;
+
+    stencilTextureRef = nil;
 }
 
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2 {
+    
+    // Detect if we are moving out from SHAPE_CLIP to RECT_CLIP
+    if (clipType == SHAPE_CLIP) {
+        [self endCommonRenderEncoder];
+        stencilTextureRef = nil;
+    }
+
     //TODO
     jint width = x2 - x1;
     jint height = y2 - y1;
@@ -262,17 +273,118 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     clipRect.y = y1;
     clipRect.width = width;
     clipRect.height = height;
-    useClip = JNI_TRUE;
+    clipType = RECT_CLIP;
 }
 
-- (void)beginShapeClip {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext.beginShapeClip -- :TODO");
+- (void)beginShapeClip:(BMTLSDOps *) dstOps {
+    
+    stencilMaskGenerationInProgress = JNI_TRUE;
+
+    if ((dstOps == NULL) || (dstOps->pStencilData == NULL) || (dstOps->pStencilTexture == NULL)) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_beginShapeClip: stencil render target or stencil texture is NULL");
+        return;
+    }
+
+    // Clear the stencil render buffer & stencil texture
+    @autoreleasepool {
+        int width = dstOps->width;
+        int height = dstOps->height;
+        id <MTLBuffer> buff = [self.device newBufferWithLength:width * height options:MTLResourceStorageModeShared];
+        memset(buff.contents, 0, width * height);
+
+        id<MTLCommandBuffer> commandBuf = [self createBlitCommandBuffer];
+        id<MTLBlitCommandEncoder> blitEncoder = [commandBuf blitCommandEncoder];
+
+        [blitEncoder copyFromBuffer:buff
+                       sourceOffset:0
+                  sourceBytesPerRow:width
+                sourceBytesPerImage:width * height
+                         sourceSize:MTLSizeMake(width, height, 1)
+                          toTexture:dstOps->pStencilData
+                   destinationSlice:0
+                   destinationLevel:0
+                  destinationOrigin:MTLOriginMake(0, 0, 0)];
+
+        [blitEncoder copyFromBuffer:buff
+                       sourceOffset:0
+                  sourceBytesPerRow:width
+                sourceBytesPerImage:width * height
+                         sourceSize:MTLSizeMake(width, height, 1)
+                          toTexture:dstOps->pStencilTexture
+                   destinationSlice:0
+                   destinationLevel:0
+                  destinationOrigin:MTLOriginMake(0, 0, 0)];
+        [blitEncoder endEncoding];
+
+        [commandBuf commit];
+        [commandBuf waitUntilCompleted];
+
+        [buff release];
+        buff = nil;
+    }
 }
 
-- (void)endShapeClip {
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLContext.endShapeClip  -- :TODO");
+- (void)endShapeClip:(BMTLSDOps *) dstOps {
+
+    if ((dstOps == NULL) || (dstOps->pStencilData == NULL) || (dstOps->pStencilTexture == NULL)) {
+        J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLContext_endShapeClip: stencil render target or stencil texture is NULL");
+        return;
+    }
+
+    // Complete the rendering to the stencil buffer ------------
+    [self endCommonRenderEncoder];
+
+    MTLCommandBufferWrapper* cbwrapper = [self pullCommandBufferWrapper];
+
+    id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
+    [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {
+        [cbwrapper release];
+    }];
+
+    [commandbuf commit];
+    [commandbuf waitUntilCompleted];
+
+    // Now the stencil data is ready, this needs to be used while rendering further
+    @autoreleasepool {
+        int width = dstOps->width;
+        int height = dstOps->height;
+        id <MTLBuffer> buff = [self.device newBufferWithLength:width * height options:MTLResourceStorageModeShared];
+
+        id<MTLCommandBuffer> cb = [self createBlitCommandBuffer];   
+        id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
+        [blitEncoder copyFromTexture:dstOps->pStencilData
+                         sourceSlice:0
+                         sourceLevel:0
+                        sourceOrigin:MTLOriginMake(0, 0, 0)
+                          sourceSize:MTLSizeMake(width, height, 1)
+                            toBuffer:buff
+                   destinationOffset:0
+              destinationBytesPerRow:width
+            destinationBytesPerImage:width * height];
+
+        [blitEncoder copyFromBuffer:buff
+                       sourceOffset:0
+                  sourceBytesPerRow:width
+                sourceBytesPerImage:width * height
+                         sourceSize:MTLSizeMake(width, height, 1)
+                          toTexture:dstOps->pStencilTexture
+                   destinationSlice:0
+                   destinationLevel:0
+                  destinationOrigin:MTLOriginMake(0, 0, 0)];
+        
+        [blitEncoder endEncoding];
+        
+        [cb commit];
+        [cb waitUntilCompleted];
+
+        [buff release];
+        buff = nil;
+    }
+   
+    stencilMaskGenerationInProgress = JNI_FALSE;
+
+    stencilTextureRef = dstOps->pStencilTexture;
+    clipType = SHAPE_CLIP;
 }
 
 - (void)resetComposite {
@@ -287,7 +399,6 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     extraAlpha = _extraAlpha;
     alphaCompositeRule = rule;
 }
-
 
 - (void)setXorComposite:(jint)xp {
     //TODO
@@ -339,7 +450,6 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return 0;
 }
 
-
 - (void)setColorR:(int)_r G:(int)_g B:(int)_b A:(int)_a {
     color = 0;
     color |= (_r & (0xFF)) << 16;
@@ -363,9 +473,16 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     if (rpd == nil)
         return nil;
 
+    if (clipType == SHAPE_CLIP) {
+        rpd.stencilAttachment.texture = stencilTextureRef;
+        rpd.stencilAttachment.loadAction = MTLLoadActionLoad;
+        rpd.stencilAttachment.storeAction = MTLStoreActionDontCare;
+    }
+
     // J2dTraceLn1(J2D_TRACE_VERBOSE, "MTLContext: created render encoder to draw on tex=%p", dest);
     id <MTLRenderCommandEncoder> encoder = [[cbw getCommandBuffer] renderCommandEncoderWithDescriptor:rpd];
     [rpd release];
+
     return encoder;
 }
 
@@ -387,19 +504,31 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void) updateRenderEncoderProperties:(id<MTLRenderCommandEncoder>) encoder dest:(id<MTLTexture>) dest {
-    if (useClip)
+    if (stencilMaskGenerationInProgress == JNI_TRUE) {
+        [encoder setRenderPipelineState:[self.pipelineStateStorage getStencilPipelineState]];
+
+        struct FrameUniforms uf = {RGBA_TO_V4(color)}; // color is ignored while writing to stencil buffer
+        [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+
+        [self setEncoderTransform:encoder dest:dest];
+
+        return;
+    }
+
+    if (clipType == RECT_CLIP) {
         [encoder setScissorRect:clipRect];
+    }
+
+    bool stencil = (clipType == SHAPE_CLIP);
 
     if (compState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
         // set pipeline state
-        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:NO]];
+        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:NO stencilNeeded:stencil]];
         struct FrameUniforms uf = {RGBA_TO_V4(color)};
         [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     } else if (compState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
-        // set viewport and pipeline state
-        //[mtlEncoder setRenderPipelineState:gradPipelineState];
-        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:YES]];
-
+        // set pipeline state
+        [encoder setRenderPipelineState:[self.pipelineStateStorage getRenderPipelineState:YES stencilNeeded:stencil]];
         struct GradFrameUniforms uf = {
                 {p0, p1, p3},
                 RGBA_TO_V4(pixel1),
@@ -407,6 +536,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
         [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
     }
+    
     [self setEncoderTransform:encoder dest:dest];
 }
 
@@ -423,11 +553,15 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
         struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, isSrcOpaque, isDstOpaque };
         [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
     }
+
+    bool stencil = (clipType == SHAPE_CLIP);
+
     [encoder setRenderPipelineState:[pipelineStateStorage getTexturePipelineState:NO
           isDestPremultiplied:NO
           isSrcOpaque:isSrcOpaque
           isDstOpaque:isDstOpaque
-          compositeRule:alphaCompositeRule]];
+          compositeRule:alphaCompositeRule
+          stencilNeeded:stencil]];
     [self setEncoderTransform:encoder dest:dest];
 }
 
@@ -438,6 +572,13 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 - (id<MTLRenderCommandEncoder>) createCommonRenderEncoderForDest:(id<MTLTexture>) dest {
     if (commonRenderEncoder == nil) {
         commonRenderEncoder = [self createEncoderForDest: dest];
+
+        if (clipType == SHAPE_CLIP) {
+            // Enable stencil test
+            id <MTLDepthStencilState> stencilState = [self.pipelineStateStorage getStencilState];
+            [commonRenderEncoder setDepthStencilState:stencilState];
+            [commonRenderEncoder setStencilReferenceValue:0xFF];
+        }
     }
     [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
     return commonRenderEncoder;
@@ -446,7 +587,15 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 - (id<MTLRenderCommandEncoder>)createCommonSamplingEncoderForDest:(id<MTLTexture>)dest isSrcOpaque:(bool)isSrcOpaque isDstOpaque:(bool)isDstOpaque {
     if (commonRenderEncoder == nil) {
         commonRenderEncoder = [self createEncoderForDest: dest];
+
+        if (clipType == SHAPE_CLIP) {
+            // Enable stencil test
+            id <MTLDepthStencilState> stencilState = [self.pipelineStateStorage getStencilState];
+            [commonRenderEncoder setDepthStencilState:stencilState];
+            [commonRenderEncoder setStencilReferenceValue:0xFF];
+        }
     }
+
     [self updateRenderEncoderProperties:commonRenderEncoder dest:dest];
     [self updateSamplingEncoderProperties:commonRenderEncoder
             dest:dest

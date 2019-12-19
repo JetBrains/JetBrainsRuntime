@@ -61,18 +61,33 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
     }
 
     { // pre-create main states
-        [self getRenderPipelineState:YES];
-        [self getRenderPipelineState:NO];
+        [self getRenderPipelineState:YES stencilNeeded:YES];
+        [self getRenderPipelineState:YES stencilNeeded:NO];
+        [self getRenderPipelineState:NO stencilNeeded:YES];
+        [self getRenderPipelineState:NO stencilNeeded:NO];
     }
 
     return self;
 }
 
-- (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient {
+- (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient
+    stencilNeeded:(bool) stencilNeeded
+{
+    // Do not use stringWithFormat -- it is slow performant
+    // NSString *uid = [NSString stringWithFormat:@"grad[%d]_stencil[%d]_PS", isGradient, stencilNeeded];
 
-    NSString * uid = @"render_grad[0]";
-    if (isGradient == TRUE) {
-        uid = @"render_grad[1]";
+    // G - gradient, S - stencil PS - Presentation state
+    /*char buffer[20];
+    sprintf(buffer, "G[%d]_S[%d]_PS",isGradient, stencilNeeded);
+    NSString *uid = [NSString stringWithCString:buffer encoding:NSUTF8StringEncoding];*/
+
+    NSString *uid = @"G[0]_S[0]";
+    if (isGradient && stencilNeeded) {
+        uid = @"G[1]_S[1]";
+    } else if ((!isGradient) && stencilNeeded) {
+        uid = @"G[0]_S[1]";
+    } else if (isGradient && (!stencilNeeded)) {
+        uid = @"G[1]_S[0]";
     }
 
     id<MTLRenderPipelineState> result = [self.states valueForKey:uid];
@@ -83,6 +98,10 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
         pipelineDesc.vertexFunction = vertexShader;
         pipelineDesc.fragmentFunction = fragmentShader;
         pipelineDesc.label = uid;
+
+        if (stencilNeeded) {
+            pipelineDesc.stencilAttachmentPixelFormat = MTLPixelFormatStencil8;
+        }
 
         NSError *error = nil;
         result = [self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
@@ -97,14 +116,68 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
     return result;
 };
 
+// A  PipelineState for rendering to a byte-buffered texture that will be used as a stencil
+- (id<MTLRenderPipelineState>) getStencilPipelineState
+{
+    NSString *uid = @"S_PS";
+
+    id<MTLRenderPipelineState> result = [self.states valueForKey:uid];
+    if (result == nil) {
+        id<MTLFunction> vertexShader   = [self getShader:@"vert_stencil"];
+        id<MTLFunction> fragmentShader = [self getShader:@"frag_stencil"];
+        MTLRenderPipelineDescriptor *pipelineDesc = [[self.templateRenderPipelineDesc copy] autorelease];
+        pipelineDesc.vertexFunction = vertexShader;
+        pipelineDesc.fragmentFunction = fragmentShader;
+        pipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatR8Uint; // A byte buffer format
+        pipelineDesc.label = uid;
+
+        NSError *error = nil;
+        result = [self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error];
+        if (result == nil) {
+            NSLog(@"Failed to create stencil render pipeline state '%@', error %@", uid, error);
+            exit(0);
+        }
+        [self.states setValue:result forKey:uid];
+    }
+
+   return result;
+}
+
+- (id<MTLDepthStencilState>) getStencilState
+{
+    if (stencilState == nil) {
+        MTLDepthStencilDescriptor* stencilDescriptor;
+        stencilDescriptor = [[MTLDepthStencilDescriptor alloc] init];
+        stencilDescriptor.frontFaceStencil.stencilCompareFunction = MTLCompareFunctionEqual;
+        stencilDescriptor.frontFaceStencil.stencilFailureOperation = MTLStencilOperationKeep;
+        
+        // TODO : backFaceStencil can be set to nil if all primitives are drawn as front-facing primitives
+        // currently, fill paralleogram uses back-facing primitive drawing - that needs to be changed.
+        // Once that part is changed, set backFaceStencil to nil
+        //stencilDescriptor.backFaceStencil = nil;
+
+        stencilDescriptor.backFaceStencil.stencilCompareFunction = MTLCompareFunctionEqual;
+        stencilDescriptor.backFaceStencil.stencilFailureOperation = MTLStencilOperationKeep;
+
+        stencilState = [self.device newDepthStencilStateWithDescriptor:stencilDescriptor];
+    }
+
+    return stencilState;
+}
+
 - (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied
     isDestPremultiplied:(bool)isDestPremultiplied
     isSrcOpaque:(bool)isSrcOpaque
     isDstOpaque:(bool)isDstOpaque
     compositeRule:(int)compositeRule
+    stencilNeeded:(bool)stencilNeeded;
 {
     @autoreleasepool {
-        NSString *uid = [NSString stringWithFormat:@"texture_compositeRule[%d]", compositeRule];
+        // Do not use stringWithFormat -- it is slow performant
+        // NSString *uid = [NSString stringWithFormat:@"CR[%d]_stencil[%d]_PS", compositeRule, stencilNeeded];
+        char buffer[20];
+        sprintf(buffer, "CR[%d]_S[%d]_PS", compositeRule, stencilNeeded);
+        NSString *uid = [NSString stringWithCString:buffer encoding:NSUTF8StringEncoding];
 
         id <MTLRenderPipelineState> result = [self.states valueForKey:uid];
         if (result == nil) {
@@ -120,6 +193,10 @@ static void setBlendingFactors(MTLRenderPipelineColorAttachmentDescriptor * cad,
                 isSourcePremultiplied, isDestPremultiplied,
                 isSrcOpaque, isDstOpaque
             );
+
+            if (stencilNeeded == TRUE) {
+                pipelineDesc.stencilAttachmentPixelFormat = MTLPixelFormatStencil8;
+            }
 
             NSError *error = nil;
             result = [[self.device newRenderPipelineStateWithDescriptor:pipelineDesc error:&error] autorelease];

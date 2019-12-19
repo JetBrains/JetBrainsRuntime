@@ -12,6 +12,7 @@ NSMutableDictionary<NSString*, id<MTLFunction>> * shaders;
 NSMutableDictionary<NSString*, id<MTLRenderPipelineState>> * states;
 MTLRenderPipelineDescriptor * templateRenderPipelineDesc;
 MTLRenderPipelineDescriptor * templateTexturePipelineDesc;
+id<MTLDepthStencilState> stencilState;
 }
 
 @property (readwrite, assign) id<MTLDevice> device;
@@ -22,13 +23,18 @@ MTLRenderPipelineDescriptor * templateTexturePipelineDesc;
 @property (readwrite, retain) MTLRenderPipelineDescriptor * templateTexturePipelineDesc;
 
 - (id) initWithDevice:(id<MTLDevice>)device shaderLibPath:(NSString *)shadersLib;
-- (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient;
+- (id<MTLRenderPipelineState>) getRenderPipelineState:(bool)isGradient
+    stencilNeeded:(bool)stencilNeeded;
+- (id<MTLRenderPipelineState>) getStencilPipelineState;
 - (id<MTLRenderPipelineState>) getTexturePipelineState:(bool)isSourcePremultiplied
     isDestPremultiplied:(bool)isDestPremultiplied
     isSrcOpaque:(bool)isSrcOpaque
     isDstOpaque:(bool)isDstOpaque
-    compositeRule:(int)compositeRule;
+    compositeRule:(int)compositeRule
+    stencilNeeded:(bool)stencilNeeded;
+
 - (id<MTLFunction>) getShader:(NSString *)name;
+- (id<MTLDepthStencilState>) getStencilState;
 @end
 
 

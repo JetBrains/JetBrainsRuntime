@@ -274,7 +274,13 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
     // This buffer is resued multiple times to encode draw calls of a triangle list
     // NOTE : Due to nature of *spans data - it is not possible to use triangle strip.
     // We use triangle list to draw spans
+
+    // Destination texture to which render commands are encoded
     id<MTLTexture> dest = dstOps->pTexture;
+    if (mtlc.stencilMaskGenerationInProgress == JNI_TRUE) {
+        dest = dstOps->pStencilData;
+    }
+    
     id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
     if (mtlEncoder == nil) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillSpans: mtlEncoder is nil");
