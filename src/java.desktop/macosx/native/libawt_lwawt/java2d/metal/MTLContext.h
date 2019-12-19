@@ -56,6 +56,12 @@ typedef struct {
     jint dst;
 } MTLBlendRule;
 
+enum Clip {
+    NO_CLIP,
+    RECT_CLIP,
+    SHAPE_CLIP
+};
+
 /**
  * The MTLCommandBufferWrapper class contains command buffer and
  * associated resources that will be released in completion handler
@@ -97,15 +103,17 @@ typedef struct {
 @property jint          blitTextureID;
 @property jint          textureFunction;
 @property jboolean      vertexCacheEnabled;
+@property jboolean      stencilMaskGenerationInProgress;
 
 @property (readonly, strong)   id<MTLDevice>   device;
 @property (strong) id<MTLLibrary>              library;
 @property (strong) id<MTLRenderPipelineState>  pipelineState;
 @property (strong) id<MTLCommandQueue>         commandQueue;
 @property (strong) id<MTLBuffer>               vertexBuffer;
+@property (strong) id<MTLTexture>              stencilTextureRef;
 @property jint                        color;
 @property MTLScissorRect              clipRect;
-@property jboolean                    useClip;
+@property enum Clip                   clipType;
 @property (strong)MTLPipelineStatesStorage*   pipelineStateStorage;
 @property (strong)MTLTexturePool*             texturePool;
 
@@ -132,24 +140,24 @@ typedef struct {
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2;
 
 /**
- * Sets up a complex (shape) clip using the OpenGL depth buffer.  This
- * method prepares the depth buffer so that the clip Region spans can
- * be "rendered" into it.  The depth buffer is first cleared, then the
- * depth func is setup so that when we render the clip spans,
+ * Sets up a complex (shape) clip using the Metal stencil buffer.  This
+ * method prepares the stencil buffer so that the clip Region spans can
+ * be "rendered" into it.  The stencil buffer is first cleared, then the
+ * stencil func is setup so that when we render the clip spans,
  * nothing is rendered into the color buffer, but for each pixel that would
- * be rendered, a non-zero value is placed into that location in the depth
- * buffer.  With depth test enabled, pixels will only be rendered into the
+ * be rendered, a 0xFF value is placed into that location in the stencil
+ * buffer.  With stencil test enabled, pixels will only be rendered into the
  * color buffer if the corresponding value at that (x,y) location in the
- * depth buffer differs from the incoming depth value.
+ * stencil buffer is equal to 0xFF.
  */
-- (void)beginShapeClip;
+- (void)beginShapeClip:(BMTLSDOps *) dstOps;
 
 /**
- * Finishes setting up the shape clip by resetting the depth func
- * so that future rendering operations will once again be written into the
- * color buffer (while respecting the clip set up in the depth buffer).
+ * Finishes setting up the shape clip by resetting the stencil func
+ * so that future rendering operations will once again be encoded for the
+ * color buffer (while respecting the clip set up in the stencil buffer).
  */
-- (void)endShapeClip;
+- (void)endShapeClip:(BMTLSDOps *) dstOps;
 
 /**
  * Initializes the OpenGL state responsible for applying extra alpha.  This

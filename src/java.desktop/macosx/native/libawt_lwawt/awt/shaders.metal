@@ -43,6 +43,11 @@ struct ColShaderInOut {
     half4  color;
 };
 
+struct StencilShaderInOut {
+    float4 position [[position]];
+    char color;
+};
+
 struct TxtShaderInOut {
     float4 position [[position]];
     float2 texCoords;
@@ -62,6 +67,16 @@ vertex ColShaderInOut vert_col(VertexInput in [[stage_in]],
     return out;
 }
 
+vertex StencilShaderInOut vert_stencil(VertexInput in [[stage_in]],
+       constant FrameUniforms& uniforms [[buffer(FrameUniformBuffer)]],
+       constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
+    StencilShaderInOut out;
+    float4 pos4 = float4(in.position, 0.0, 1.0);
+    out.position = transform.transformMatrix * pos4;
+    out.color = 0xFF;
+    return out;
+}
+
 vertex GradShaderInOut vert_grad(VertexInput in [[stage_in]], constant TransformMatrix& transform [[buffer(MatrixBuffer)]]) {
     GradShaderInOut out;
     float4 pos4 = float4(in.position, 0.0, 1.0);
@@ -78,6 +93,10 @@ vertex TxtShaderInOut vert_txt(TxtVertexInput in [[stage_in]], constant Transfor
 }
 
 fragment half4 frag_col(ColShaderInOut in [[stage_in]]) {
+    return in.color;
+}
+
+fragment unsigned int frag_stencil(StencilShaderInOut in [[stage_in]]) {
     return in.color;
 }
 

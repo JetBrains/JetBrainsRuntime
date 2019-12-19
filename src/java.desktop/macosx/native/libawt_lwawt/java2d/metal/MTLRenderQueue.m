@@ -616,22 +616,25 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP:
             {
-                [mtlc beginShapeClip];
+                // End common render encoder as we would be
+                // creating a new encoder for rendering stencil
+                [mtlc endCommonRenderEncoder];
+
+                [mtlc beginShapeClip:dstOps];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_SHAPE_CLIP_SPANS:
             {
+                // This results in creation of new render encoder with
+                // stencil buffer set as render target
                 jint count = NEXT_INT(b);
-                //MTLRenderer_FillSpans(mtlc, dstOps, count, (jint *)b);
-                J2dTraceLn(J2D_TRACE_ERROR, "SET_SHAPE_CLIP_SPANS -- :TODO");
+                MTLRenderer_FillSpans(mtlc, dstOps, count, (jint *)b);
                 SKIP_BYTES(b, count * BYTES_PER_SPAN);
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_END_SHAPE_CLIP:
             {
-                //TODO
-                //[mtlc endShapeClipDstOps:dstOps];
-                [mtlc endShapeClip];
+                [mtlc endShapeClip:dstOps];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_RESET_CLIP:
