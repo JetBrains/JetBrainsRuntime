@@ -1,0 +1,7 @@
+FROM i386/ubuntu:xenial
+
+RUN linux32 apt-get update && apt-get install -y --no-install-recommends apt-utils
+COPY jbrsdk-11.0.5-b1 /jbrsdk-11.0.5-b1
+RUN linux32 apt-get -y install file build-essential zip unzip curl libx11-dev libxext-dev \
+  libxrender-dev libxrandr-dev libxtst-dev libxt-dev libcups2-dev libasound2-data \
+  libpng12-0 libasound2 libfreetype6 libfontconfig1-dev libasound2-dev autoconf
