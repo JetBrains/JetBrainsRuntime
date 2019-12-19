@@ -892,7 +892,7 @@ jdk/jfr/event/compiler/TestCodeSweeper.java                     8225209    gener
 jdk/internal/platform/docker/TestDockerMemoryMetrics.java       8227317    linux-x64
 
 ############################################################################
-
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java
 
 java/awt/Choice/ChoiceKeyEventReaction/ChoiceKeyEventReaction.java                  JBR-1988 macosx-all
 java/awt/Choice/DragMouseOutAndRelease/DragMouseOutAndRelease.java                  JBR-1988 macosx-all
@@ -902,6 +902,7 @@ java/awt/Component/F10TopToplevel/F10TopToplevel.html                           
 java/awt/Component/F10TopToplevel/F10TopToplevel.java                               JBR-1988 macosx-all
 java/awt/Debug/DumpOnKey/DumpOnKey.java                                             JBR-1988 macosx-all
 java/awt/Dialog/NestedDialogs/Modal/NestedModalDialogTest.java                      JBR-1988 macosx-all
+java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java                JBR-1988 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JBR-1988 macosx-all
 java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JBR-1988 macosx-all
