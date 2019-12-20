@@ -88,10 +88,12 @@ LIR_Opr FrameMap::map_to_opr(BasicType type, VMRegPair* reg, bool) {
 #else
       opr = as_long_opr(reg, r_2->as_Register());
 #endif
-    } else if (type == T_OBJECT || type == T_ARRAY) {
+    } else if (is_reference_type(type)) {
       opr = as_oop_opr(reg);
     } else if (type == T_METADATA) {
       opr = as_metadata_opr(reg);
+    } else if (type == T_ADDRESS) {
+      opr = as_address_opr(reg);
     } else {
       // PreferInterpreterNativeStubs should ensure we never need to
       // handle a long opr passed as R3+stack_slot
