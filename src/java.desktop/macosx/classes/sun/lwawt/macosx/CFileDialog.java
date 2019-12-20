@@ -64,11 +64,7 @@ class CFileDialog implements FileDialogPeer {
                 int dialogMode = target.getMode();
                 String title = (target.getTitle() == null) ? "" : target.getTitle();
 
-                Window owner = target.getOwner();
-
-                final Object peer = AWTAccessor.getComponentAccessor().getPeer(owner);
-                Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
-                ((CPlatformWindow)platformWindow).execute(ownerPtr -> {
+                final CFRetainedResource.CFNativeAction nativeAction = ownerPtr -> {
                     String[] userFileNames = nativeRunFileDialog(
                             ownerPtr,
                             title,
@@ -106,9 +102,16 @@ class CFileDialog implements FileDialogPeer {
                     accessor.setDirectory(target, directory);
                     accessor.setFile(target, file);
                     accessor.setFiles(target, files);
-                });
+                };
 
-
+                final Window owner = target.getOwner();
+                if (owner == null) {
+                    nativeAction.run(0);
+                } else {
+                    final Object peer = AWTAccessor.getComponentAccessor().getPeer(owner);
+                    Object platformWindow = ((LWWindowPeer) peer).getPlatformWindow();
+                    ((CPlatformWindow)platformWindow).execute(nativeAction);
+                }
             } finally {
                 // Java2 Dialog waits for hide to let show() return
                 target.dispose();
