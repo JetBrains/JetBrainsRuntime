@@ -439,81 +439,84 @@ public class CPlatformWindow extends CFRetainedResource implements PlatformWindo
 
         if (target instanceof javax.swing.RootPaneContainer) {
             javax.swing.JRootPane rootpane = ((javax.swing.RootPaneContainer)target).getRootPane();
-            Object prop = null;
 
-            prop = rootpane.getClientProperty(WINDOW_BRUSH_METAL_LOOK);
-            if (prop != null) {
-                styleBits = SET(styleBits, TEXTURED, Boolean.parseBoolean(prop.toString()));
-            }
+            if (rootpane != null) {
+                Object prop;
 
-            if (isDialog && ((Dialog)target).getModalityType() == ModalityType.DOCUMENT_MODAL) {
-                prop = rootpane.getClientProperty(WINDOW_DOC_MODAL_SHEET);
+                prop = rootpane.getClientProperty(WINDOW_BRUSH_METAL_LOOK);
                 if (prop != null) {
-                    styleBits = SET(styleBits, SHEET, Boolean.parseBoolean(prop.toString()));
+                    styleBits = SET(styleBits, TEXTURED, Boolean.parseBoolean(prop.toString()));
                 }
-            }
 
-            prop = rootpane.getClientProperty(WINDOW_STYLE);
-            if (prop != null) {
-                if ("small".equals(prop))  {
-                    styleBits = SET(styleBits, UTILITY, true);
-                    if (target.isAlwaysOnTop() && rootpane.getClientProperty(WINDOW_HIDES_ON_DEACTIVATE) == null) {
-                        styleBits = SET(styleBits, HIDES_ON_DEACTIVATE, true);
+                if (isDialog && ((Dialog) target).getModalityType() == ModalityType.DOCUMENT_MODAL) {
+                    prop = rootpane.getClientProperty(WINDOW_DOC_MODAL_SHEET);
+                    if (prop != null) {
+                        styleBits = SET(styleBits, SHEET, Boolean.parseBoolean(prop.toString()));
                     }
                 }
-                if ("textured".equals(prop)) styleBits = SET(styleBits, TEXTURED, true);
-                if ("unified".equals(prop)) styleBits = SET(styleBits, UNIFIED, true);
-                if ("hud".equals(prop)) styleBits = SET(styleBits, HUD, true);
-            }
 
-            prop = rootpane.getClientProperty(WINDOW_HIDES_ON_DEACTIVATE);
-            if (prop != null) {
-                styleBits = SET(styleBits, HIDES_ON_DEACTIVATE, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_STYLE);
+                if (prop != null) {
+                    if ("small".equals(prop)) {
+                        styleBits = SET(styleBits, UTILITY, true);
+                        if (target.isAlwaysOnTop() && rootpane.getClientProperty(WINDOW_HIDES_ON_DEACTIVATE) == null) {
+                            styleBits = SET(styleBits, HIDES_ON_DEACTIVATE, true);
+                        }
+                    }
+                    if ("textured".equals(prop)) styleBits = SET(styleBits, TEXTURED, true);
+                    if ("unified".equals(prop)) styleBits = SET(styleBits, UNIFIED, true);
+                    if ("hud".equals(prop)) styleBits = SET(styleBits, HUD, true);
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_CLOSEABLE);
-            if (prop != null) {
-                styleBits = SET(styleBits, CLOSEABLE, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_HIDES_ON_DEACTIVATE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, HIDES_ON_DEACTIVATE, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_MINIMIZABLE);
-            if (prop != null) {
-                styleBits = SET(styleBits, MINIMIZABLE, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_CLOSEABLE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, CLOSEABLE, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_DARK_APPEARANCE);
-            if (prop != null) {
-                styleBits = SET(styleBits, DARK, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_MINIMIZABLE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, MINIMIZABLE, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE);
-            if (prop != null) {
-                styleBits = SET(styleBits, TRANSPARENT_TITLEBAR, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_DARK_APPEARANCE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, DARK, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_LIGHT_APPEARANCE);
-            if (prop != null) {
-                styleBits = SET(styleBits, LIGHT, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_TRANSPARENT_TITLEBAR_APPEARANCE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, TRANSPARENT_TITLEBAR, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_ZOOMABLE);
-            if (prop != null) {
-                styleBits = SET(styleBits, ZOOMABLE, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_LIGHT_APPEARANCE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, LIGHT, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_FULLSCREENABLE);
-            if (prop != null) {
-                styleBits = SET(styleBits, FULLSCREENABLE, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_ZOOMABLE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, ZOOMABLE, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_SHADOW);
-            if (prop != null) {
-                styleBits = SET(styleBits, HAS_SHADOW, Boolean.parseBoolean(prop.toString()));
-            }
+                prop = rootpane.getClientProperty(WINDOW_FULLSCREENABLE);
+                if (prop != null) {
+                    styleBits = SET(styleBits, FULLSCREENABLE, Boolean.parseBoolean(prop.toString()));
+                }
 
-            prop = rootpane.getClientProperty(WINDOW_DRAGGABLE_BACKGROUND);
-            if (prop != null) {
-                styleBits = SET(styleBits, DRAGGABLE_BACKGROUND, Boolean.parseBoolean(prop.toString()));
+                prop = rootpane.getClientProperty(WINDOW_SHADOW);
+                if (prop != null) {
+                    styleBits = SET(styleBits, HAS_SHADOW, Boolean.parseBoolean(prop.toString()));
+                }
+
+                prop = rootpane.getClientProperty(WINDOW_DRAGGABLE_BACKGROUND);
+                if (prop != null) {
+                    styleBits = SET(styleBits, DRAGGABLE_BACKGROUND, Boolean.parseBoolean(prop.toString()));
+                }
             }
         }
 
