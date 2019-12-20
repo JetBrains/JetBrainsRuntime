@@ -1480,13 +1480,9 @@ public class StyleSheet extends StyleContext {
             }
             // Get the AttributeSet from linked style sheets.
             for (int counter = 0; counter < numLinkedSS; counter++) {
-                AttributeSet attr = linkedStyleSheets.elementAt(counter).getRule(selector);
-                if (attr == null) {
-                    attrs[counter + numStyles] = SimpleAttributeSet.EMPTY;
-                }
-                else {
-                    attrs[counter + numStyles] = attr;
-                }
+                StyleSheet styleSheet = linkedStyleSheets.elementAt(counter);
+                attrs[counter + numStyles] =
+                        (styleSheet == null) ? SimpleAttributeSet.EMPTY : styleSheet.getRule(selector);
             }
             ResolvedStyle retStyle = new ResolvedStyle(selector, attrs,
                                                        numStyles);
