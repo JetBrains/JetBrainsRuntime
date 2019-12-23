@@ -191,6 +191,7 @@ public class BasicSplitPaneDivider extends Container
                 if (mouseHandler == null) mouseHandler = new MouseHandler();
                 splitPane.addMouseListener(mouseHandler);
                 splitPane.addMouseMotionListener(mouseHandler);
+                splitPane.addMouseWheelListener(mouseHandler);
                 addMouseListener(mouseHandler);
                 addMouseMotionListener(mouseHandler);
                 splitPane.addPropertyChangeListener(this);
@@ -680,6 +681,22 @@ public class BasicSplitPaneDivider extends Container
             if (e.getSource() == BasicSplitPaneDivider.this) {
                 setMouseOver(false);
             }
+        }
+
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            // TODO this is draft to resume work in January 2020
+            if (e.getScrollType() < 2) {
+                getParent().dispatchEvent(e);
+            }
+
+            if (e.getScrollType() != 3) {
+                return;
+            }
+
+            int loc = getLocation().x - e.getWheelRotation();
+            dragDividerTo(loc);
+            finishDraggingTo(loc);
+
         }
     }
 

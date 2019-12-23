@@ -1111,6 +1111,8 @@ public class BasicScrollPaneUI
                 else if (e.getScrollType() ==
                          MouseWheelEvent.WHEEL_BLOCK_SCROLL) {
                     BasicScrollBarUI.scrollByBlock(toScroll, direction);
+                } else if (e.getScrollType() == 3) {
+                    toScroll.setValue(toScroll.getValue() + e.getWheelRotation());
                 }
             }
         }

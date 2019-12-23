@@ -324,6 +324,7 @@ public class BasicScrollBarUI
 
         scrollbar.addMouseListener(trackListener);
         scrollbar.addMouseMotionListener(trackListener);
+        scrollbar.addMouseWheelListener(trackListener);
         scrollbar.getModel().addChangeListener(modelListener);
         scrollbar.addPropertyChangeListener(propertyChangeListener);
         scrollbar.addFocusListener(getHandler());
@@ -1480,6 +1481,32 @@ public class BasicScrollBarUI
                 setThumbRollover(false);
             }
         }
+
+        public void mouseWheelMoved(MouseWheelEvent e) {
+            // TODO this is draft to resume work in January 2020
+            if (e.getScrollType() < 2) {
+                scrollbar.getParent().dispatchEvent(e);
+            }
+
+            if (getTrackBounds().contains(e.getX(), e.getY())) {
+                if (scrollbar.getOrientation() == JScrollBar.VERTICAL &&
+                        !e.isShiftDown() &&
+                        e.getScrollType() == 3) {
+                    setValueFrom(e);
+                }
+
+                if (scrollbar.getOrientation() == JScrollBar.HORIZONTAL &&
+                        e.isShiftDown() &&
+                        e.getScrollType() == 3) {
+                    setValueFrom(e);
+                }
+
+                e.consume();
+            } else {
+                scrollbar.getParent().dispatchEvent(e);
+            }
+        }
+
     }
 
 
