@@ -42,4 +42,7 @@ typedef struct _MTLSDOps {
     MTLGraphicsConfigInfo *configInfo;
 } MTLSDOps;
 
+// debug-method
+NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps);
+
 #endif /* MTLSurfaceData_h_Included */
