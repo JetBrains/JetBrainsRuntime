@@ -45,6 +45,7 @@ extern jboolean MTLSD_InitMTLWindow(JNIEnv *env, MTLSDOps *mtlsdo);
 extern MTLContext *MTLSD_MakeMTLContextCurrent(JNIEnv *env,
                                                MTLSDOps *srcOps,
                                                MTLSDOps *dstOps);
+NSString *getAlphaCompositeString(jint rule, jfloat extraAlpha);
 
 static id<MTLRenderCommandEncoder> commonRenderEncoder = NULL;
 
@@ -141,6 +142,8 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
 @implementation MTLContext {
     MTLCommandBufferWrapper * _commandBufferWrapper;
+
+    MTLScissorRect _clipRect;
 }
 
 @synthesize compState, extraAlpha, alphaCompositeRule, xorPixel, pixel, p0,
@@ -149,7 +152,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
             vertexCacheEnabled, stencilMaskGenerationInProgress,
             device, library, pipelineState, pipelineStateStorage,
             commandQueue, vertexBuffer, stencilTextureRef,
-            color, clipRect, clipType, texturePool;
+            color, clipType, texturePool;
 
 
  - (MTLCommandBufferWrapper *) getCommandBufferWrapper {
@@ -247,6 +250,10 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     return self;
 }
 
+- (const MTLScissorRect *)clipRect {
+    return clipType == RECT_CLIP ? &(_clipRect) : NULL;
+}
+
 - (void)resetClip {
     //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLContext.resetClip");
@@ -256,7 +263,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 }
 
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2 {
-    
+
     // Detect if we are moving out from SHAPE_CLIP to RECT_CLIP
     if (clipType == SHAPE_CLIP) {
         [self endCommonRenderEncoder];
@@ -269,15 +276,15 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
     J2dTraceLn4(J2D_TRACE_INFO, "MTLContext.setClipRect: x=%d y=%d w=%d h=%d", x1, y1, width, height);
 
-    clipRect.x = x1;
-    clipRect.y = y1;
-    clipRect.width = width;
-    clipRect.height = height;
+    _clipRect.x = x1;
+    _clipRect.y = y1;
+    _clipRect.width = width;
+    _clipRect.height = height;
     clipType = RECT_CLIP;
 }
 
 - (void)beginShapeClip:(BMTLSDOps *) dstOps {
-    
+
     stencilMaskGenerationInProgress = JNI_TRUE;
 
     if ((dstOps == NULL) || (dstOps->pStencilData == NULL) || (dstOps->pStencilTexture == NULL)) {
@@ -350,7 +357,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
         int height = dstOps->height;
         id <MTLBuffer> buff = [self.device newBufferWithLength:width * height options:MTLResourceStorageModeShared];
 
-        id<MTLCommandBuffer> cb = [self createBlitCommandBuffer];   
+        id<MTLCommandBuffer> cb = [self createBlitCommandBuffer];
         id<MTLBlitCommandEncoder> blitEncoder = [cb blitCommandEncoder];
         [blitEncoder copyFromTexture:dstOps->pStencilData
                          sourceSlice:0
@@ -371,16 +378,16 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
                    destinationSlice:0
                    destinationLevel:0
                   destinationOrigin:MTLOriginMake(0, 0, 0)];
-        
+
         [blitEncoder endEncoding];
-        
+
         [cb commit];
         [cb waitUntilCompleted];
 
         [buff release];
         buff = nil;
     }
-   
+
     stencilMaskGenerationInProgress = JNI_FALSE;
 
     stencilTextureRef = dstOps->pStencilTexture;
@@ -398,6 +405,10 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
     extraAlpha = _extraAlpha;
     alphaCompositeRule = rule;
+}
+
+- (NSString*)getAlphaCompositeRuleString {
+    return getAlphaCompositeString(alphaCompositeRule, extraAlpha);
 }
 
 - (void)setXorComposite:(jint)xp {
@@ -516,7 +527,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
     }
 
     if (clipType == RECT_CLIP) {
-        [encoder setScissorRect:clipRect];
+        [encoder setScissorRect:_clipRect];
     }
 
     bool stencil = (clipType == SHAPE_CLIP);
@@ -536,7 +547,7 @@ MTLRenderPassDescriptor* createRenderPassDesc(id<MTLTexture> dest) {
 
         [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
     }
-    
+
     [self setEncoderTransform:encoder dest:dest];
 }
 
@@ -667,6 +678,78 @@ JNIEXPORT jstring JNICALL Java_sun_java2d_metal_MTLContext_getMTLIdString
     return NULL;
 }
 
-
+NSString * getAlphaCompositeString(jint rule, jfloat extraAlpha) {
+    const char * result = "";
+    switch (rule) {
+        case java_awt_AlphaComposite_CLEAR:
+        {
+            result = "CLEAR";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC:
+        {
+            result = "SRC";
+        }
+            break;
+        case java_awt_AlphaComposite_DST:
+        {
+            result = "DST";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_OVER:
+        {
+            result = "SRC_OVER";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_OVER:
+        {
+            result = "DST_OVER";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_IN:
+        {
+            result = "SRC_IN";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_IN:
+        {
+            result = "DST_IN";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_OUT:
+        {
+            result = "SRC_OUT";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_OUT:
+        {
+            result = "DST_OUT";
+        }
+            break;
+        case java_awt_AlphaComposite_SRC_ATOP:
+        {
+            result = "SRC_ATOP";
+        }
+            break;
+        case java_awt_AlphaComposite_DST_ATOP:
+        {
+            result = "DST_ATOP";
+        }
+            break;
+        case java_awt_AlphaComposite_XOR:
+        {
+            result = "XOR";
+        }
+            break;
+        default:
+            result = "UNKNOWN";
+            break;
+    }
+    const double epsilon = 0.001f;
+    if (fabs(extraAlpha - 1.f) > epsilon) {
+        return [NSString stringWithFormat:@"%s [%1.2f]", result, extraAlpha];
+    }
+    return [NSString stringWithFormat:@"%s", result];
+}
 
 #endif /* !HEADLESS */

@@ -78,7 +78,6 @@ enum Clip {
  * MTLContext object is associated with a native-level MTLContext class.
  * */
 @interface MTLContext : NSObject
-
 @property jint          compState;
 @property jfloat        extraAlpha;
 @property jint          alphaCompositeRule;
@@ -112,7 +111,6 @@ enum Clip {
 @property (strong) id<MTLBuffer>               vertexBuffer;
 @property (strong) id<MTLTexture>              stencilTextureRef;
 @property jint                        color;
-@property MTLScissorRect              clipRect;
 @property enum Clip                   clipType;
 @property (strong)MTLPipelineStatesStorage*   pipelineStateStorage;
 @property (strong)MTLTexturePool*             texturePool;
@@ -138,6 +136,8 @@ enum Clip {
  * Sets the Metal scissor bounds to the provided rectangular clip bounds.
  */
 - (void)setClipRectX1:(jint)x1 Y1:(jint)y1 X2:(jint)x2 Y2:(jint)y2;
+
+- (const MTLScissorRect *)clipRect;
 
 /**
  * Sets up a complex (shape) clip using the Metal stencil buffer.  This
@@ -181,6 +181,9 @@ enum Clip {
  */
 - (void)setAlphaCompositeRule:(jint)rule extraAlpha:(jfloat)extraAlpha
                         flags:(jint)flags;
+
+// debug-method
+- (NSString*)getAlphaCompositeRuleString;
 
 /**
  * Initializes the OpenGL logic op state to XOR mode.  Blending is disabled

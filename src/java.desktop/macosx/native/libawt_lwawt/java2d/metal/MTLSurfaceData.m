@@ -80,7 +80,7 @@ static jboolean MTLSurfaceData_initTexture(BMTLSDOps *bmtlsdo, jboolean isOpaque
         MTLTextureDescriptor *stencilTextureDescriptor =
             [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatStencil8 width:width height:height mipmapped:NO];
         stencilTextureDescriptor.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead | MTLTextureUsageShaderWrite;
-        stencilTextureDescriptor.storageMode = MTLStorageModePrivate;    
+        stencilTextureDescriptor.storageMode = MTLStorageModePrivate;
         bmtlsdo->pStencilTexture = [ctx.device newTextureWithDescriptor:stencilTextureDescriptor];
 
         bmtlsdo->isOpaque = isOpaque;
@@ -417,4 +417,10 @@ Java_sun_java2d_metal_MTLSurfaceData_validate
         MTLContext *mtlc = cglsdo->configInfo->context;
 
     }
+}
+
+NSString * getSurfaceDescription(const BMTLSDOps * bmtlsdOps) {
+    if (bmtlsdOps == NULL)
+        return @"NULL";
+    return [NSString stringWithFormat:@"%p [tex=%p, %dx%d, O=%d]", bmtlsdOps, bmtlsdOps->pTexture, bmtlsdOps->width, bmtlsdOps->height, bmtlsdOps->isOpaque];
 }

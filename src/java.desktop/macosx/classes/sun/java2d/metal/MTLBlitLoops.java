@@ -280,7 +280,7 @@ final class MTLBlitLoops {
             }
 
             int packedParams = createPackedParams(false, texture,
-                    false, xform != null,
+                    false /*unused*/, xform != null,
                     hint, srctype);
             enqueueBlit(rq, srcData, dstData,
                     packedParams,
@@ -351,7 +351,7 @@ final class MTLBlitLoops {
             }
 
             int packedParams = createPackedParams(true, texture,
-                    rtt, xform != null,
+                    false /*unused*/, xform != null,
                     hint, 0 /*unused*/);
             enqueueBlit(rq, srcData, dstData,
                     packedParams,
