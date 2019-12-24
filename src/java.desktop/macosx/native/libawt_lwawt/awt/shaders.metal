@@ -113,9 +113,9 @@ fragment half4 frag_txt(
     // TODO: consider to make shaders without IF-conditions
     if (uniforms.mode) {
         float4 c = mix(pixelColor, uniforms.color, srcA);
-        return half4(c.r, c.g, c.b , uniforms.isDstOpaque ? 1 : c.a);
+        return half4(c.r, c.g, c.b , c.a);
     }
-    return half4(pixelColor.r, pixelColor.g, pixelColor.b , uniforms.isDstOpaque ? 1 : srcA);
+    return half4(pixelColor.r, pixelColor.g, pixelColor.b, srcA);
 }
 
 fragment half4 frag_grad(GradShaderInOut in [[stage_in]],

@@ -614,10 +614,6 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
             break;
         case sun_java2d_pipe_BufferedOpCodes_BEGIN_SHAPE_CLIP:
             {
-                // End common render encoder as we would be
-                // creating a new encoder for rendering stencil
-                [mtlc endCommonRenderEncoder];
-
                 [mtlc beginShapeClip:dstOps];
             }
             break;
@@ -775,18 +771,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
         // paint-related ops
         case sun_java2d_pipe_BufferedOpCodes_RESET_PAINT:
             {
-                MTLPaints_ResetPaint(mtlc);
+                [mtlc resetPaint];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_COLOR:
             {
                 jint pixel = NEXT_INT(b);
-
-                if (dstOps != NULL) {
-                    MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-                    dstCGLOps->configInfo->context.color = pixel;
-                }
-                MTLPaints_SetColor(mtlc, pixel);
+                [mtlc setColorPaint:pixel];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_GRADIENT_PAINT:
@@ -798,13 +789,13 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jdouble p3      = NEXT_DOUBLE(b);
                 jint pixel1     = NEXT_INT(b);
                 jint pixel2     = NEXT_INT(b);
-                if (dstOps != NULL) {
-                    MTLSDOps *dstCGLOps = (MTLSDOps *)dstOps->privOps;
-                    [dstCGLOps->configInfo->context setGradientPaintUseMask:useMask cyclic:cyclic
-                                                                         p0:p0 p1:p1 p3:p3
-                                                                     pixel1:pixel1 pixel2:pixel2];
-
-                }
+                [mtlc setGradientPaintUseMask:useMask
+                                    cyclic:cyclic
+                                        p0:p0
+                                        p1:p1
+                                        p3:p3
+                                    pixel1:pixel1
+                                    pixel2:pixel2];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_LINEAR_GRADIENT_PAINT:
@@ -819,11 +810,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 void *fractions, *pixels;
                 fractions = b; SKIP_BYTES(b, numStops * sizeof(jfloat));
                 pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
-                MTLPaints_SetLinearGradientPaint(mtlc, dstOps,
-                                                 useMask, linear,
-                                                 cycleMethod, numStops,
-                                                 p0, p1, p3,
-                                                 fractions, pixels);
+                [mtlc setLinearGradientPaint:useMask
+                                      linear:linear
+                                 cycleMethod:cycleMethod
+                                    numStops:numStops
+                                          p0:p0
+                                          p1:p1
+                                          p3:p3
+                                   fractions:fractions
+                                      pixels:pixels];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_RADIAL_GRADIENT_PAINT:
@@ -842,13 +837,19 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 void *fractions, *pixels;
                 fractions = b; SKIP_BYTES(b, numStops * sizeof(jfloat));
                 pixels    = b; SKIP_BYTES(b, numStops * sizeof(jint));
-                MTLPaints_SetRadialGradientPaint(mtlc, dstOps,
-                                                 useMask, linear,
-                                                 cycleMethod, numStops,
-                                                 m00, m01, m02,
-                                                 m10, m11, m12,
-                                                 focusX,
-                                                 fractions, pixels);
+                [mtlc setRadialGradientPaint:useMask
+                                      linear:linear
+                                 cycleMethod:cycleMethod
+                                    numStops:numStops
+                                         m00:m00
+                                         m01:m01
+                                         m02:m02
+                                         m10:m10
+                                         m11:m11
+                                         m12:m12
+                                      focusX:focusX
+                                   fractions:fractions
+                                      pixels:pixels];
             }
             break;
         case sun_java2d_pipe_BufferedOpCodes_SET_TEXTURE_PAINT:
@@ -862,9 +863,15 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
                 jdouble yp0     = NEXT_DOUBLE(b);
                 jdouble yp1     = NEXT_DOUBLE(b);
                 jdouble yp3     = NEXT_DOUBLE(b);
-                MTLPaints_SetTexturePaint(mtlc, useMask, pSrc, filter,
-                                          xp0, xp1, xp3,
-                                          yp0, yp1, yp3);
+                [mtlc setTexturePaint:useMask
+                              pSrcOps:pSrc
+                               filter:filter
+                                  xp0:xp0
+                                  xp1:xp1
+                                  xp3:xp3
+                                  yp0:yp0
+                                  yp1:yp1
+                                  yp3:yp3];
             }
             break;
 
@@ -932,7 +939,7 @@ Java_sun_java2d_metal_MTLRenderQueue_flushBuffer
     }
 
     if (mtlc != NULL) {
-        [mtlc endCommonRenderEncoder];
+        [mtlc.encoderManager endEncoder];
         MTLCommandBufferWrapper * cbwrapper = [mtlc pullCommandBufferWrapper];
         id<MTLCommandBuffer> commandbuf = [cbwrapper getCommandBuffer];
         [commandbuf addCompletedHandler:^(id <MTLCommandBuffer> commandbuf) {

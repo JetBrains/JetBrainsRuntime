@@ -198,6 +198,21 @@ typedef struct {
     java_awt_image_AffineTransformOp_TYPE_BILINEAR
 
 /**
+ * The SurfaceRasterFlags structure contains information about raster (of some MTLTexture):
+ *
+ *     jboolean isOpaque;
+ * If true, indicates that this pixel format hasn't alpha component (and values of this component can contain garbage).
+ *
+ *     jboolean isPremultiplied;
+ * If true, indicates that this pixel format contains color components that have been pre-multiplied by their
+ * corresponding alpha component.
+*/
+typedef struct {
+    jboolean isOpaque;
+    jboolean isPremultiplied;
+} SurfaceRasterFlags;
+
+/**
  * Exported methods.
  */
 jint MTLSD_Lock(JNIEnv *env,
