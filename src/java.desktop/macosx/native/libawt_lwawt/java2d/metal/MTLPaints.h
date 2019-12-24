@@ -23,37 +23,85 @@
  * questions.
  */
 
-/*
- */
-
 #ifndef MTLPaints_h_Included
 #define MTLPaints_h_Included
 
-#include "MTLContext.h"
+#import <Metal/Metal.h>
 
-void MTLPaints_ResetPaint(MTLContext *mtlc);
+#include "MTLSurfaceDataBase.h"
 
-void MTLPaints_SetColor(MTLContext *mtlc, jint pixel);
+#define sun_java2d_SunGraphics2D_PAINT_UNDEFINED -1
 
+@class MTLComposite;
+@class MTLClip;
+@class MTLPipelineStatesStorage;
 
-void MTLPaints_SetLinearGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                      jboolean useMask, jboolean linear,
-                                      jint cycleMethod, jint numStops,
-                                      jfloat p0, jfloat p1, jfloat p3,
-                                      void *fractions, void *pixels);
+/**
+ * The MTLPaint class represents paint mode (color, gradient, e.t.c.)
+ * */
 
-void MTLPaints_SetRadialGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                      jboolean useMask, jboolean linear,
-                                      jint cycleMethod, jint numStops,
-                                      jfloat m00, jfloat m01, jfloat m02,
-                                      jfloat m10, jfloat m11, jfloat m12,
-                                      jfloat focusX,
-                                      void *fractions, void *pixels);
+@interface MTLPaint : NSObject
+- (id)init;
+- (BOOL)isEqual:(MTLPaint *)other; // used to compare requested with cached
+- (void)copyFrom:(MTLPaint *)other; // used to save cached
+- (NSString *)getDescription;
 
-void MTLPaints_SetTexturePaint(MTLContext *mtlc,
-                               jboolean useMask,
-                               jlong pSrcOps, jboolean filter,
-                               jdouble xp0, jdouble xp1, jdouble xp3,
-                               jdouble yp0, jdouble yp1, jdouble yp3);
+- (void)reset;
+
+- (void)setColor:(jint)pixelColor;
+- (void)setGradientUseMask:(jboolean)useMask
+                    cyclic:(jboolean)cyclic
+                        p0:(jdouble)p0
+                        p1:(jdouble)p1
+                        p3:(jdouble)p3
+                    pixel1:(jint)pixel1
+                    pixel2:(jint)pixel2;
+
+- (void)setLinearGradient:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                       p0:(jfloat)p0
+                       p1:(jfloat)p1
+                       p3:(jfloat)p3
+                fractions:(void *)fractions
+                   pixels:(void *)pixels;
+
+- (void)setRadialGradient:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                      m00:(jfloat)m00
+                      m01:(jfloat)m01
+                      m02:(jfloat)m02
+                      m10:(jfloat)m10
+                      m11:(jfloat)m11
+                      m12:(jfloat)m12
+                   focusX:(jfloat)focusX
+                fractions:(void *)fractions
+                   pixels:(void *)pixels;
+
+- (void)setTexture:(jboolean)useMask
+           pSrcOps:(jlong)pSrcOps
+            filter:(jboolean)filter
+               xp0:(jdouble)xp0
+               xp1:(jdouble)xp1
+               xp3:(jdouble)xp3
+               yp0:(jdouble)yp0
+               yp1:(jdouble)yp1
+               yp3:(jdouble)yp3;
+
+// For the current paint mode and passed composite (and flags):
+// 1. Selects vertex+fragment shader (and corresponding pipelineDesc) and set pipelineState
+// 2. Prepares corresponding buffers of vertex and fragment shaders
+- (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
+               composite:(MTLComposite *)composite
+           isStencilUsed:(jboolean)isStencilUsed
+               isTexture:(jboolean)isTexture
+                srcFlags:(const SurfaceRasterFlags *)srcFlags
+                dstFlags:(const SurfaceRasterFlags *)dstFlags
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage;
+
+@end
 
 #endif /* MTLPaints_h_Included */

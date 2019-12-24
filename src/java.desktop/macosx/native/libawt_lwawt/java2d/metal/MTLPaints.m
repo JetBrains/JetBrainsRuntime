@@ -25,60 +25,281 @@
 
 #ifndef HEADLESS
 
-#include <jlong.h>
-#include <string.h>
+#include "MTLPaints.h"
+
+#include "MTLClip.h"
+
+#include "common.h"
 
 #include "sun_java2d_SunGraphics2D.h"
 #include "sun_java2d_pipe_BufferedPaints.h"
 
-#include "MTLPaints.h"
-#include "MTLContext.h"
-#include "MTLRenderQueue.h"
-#include "MTLSurfaceData.h"
-
-void
-MTLPaints_ResetPaint(MTLContext *mtlc)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_ResetPaint -- :TODO");
-    mtlc.compState = -1;
+#define RGBA_TO_V4(c)              \
+{                                  \
+    (((c) >> 16) & (0xFF))/255.0f, \
+    (((c) >> 8) & 0xFF)/255.0f,    \
+    ((c) & 0xFF)/255.0f,           \
+    (((c) >> 24) & 0xFF)/255.0f    \
 }
 
-void
-MTLPaints_SetColor(MTLContext *mtlc, jint pixel)
-{
-    mtlc.compState = sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR;
-    //TODO
-    [mtlc setColorInt:pixel];
+static MTLRenderPipelineDescriptor * templateRenderPipelineDesc = nil;
+static MTLRenderPipelineDescriptor * templateTexturePipelineDesc = nil;
+
+static void initTemplatePipelineDescriptors() {
+    if (templateRenderPipelineDesc != nil && templateTexturePipelineDesc != nil)
+        return;
+
+    MTLVertexDescriptor *vertDesc = [[MTLVertexDescriptor new] autorelease];
+    vertDesc.attributes[VertexAttributePosition].format = MTLVertexFormatFloat2;
+    vertDesc.attributes[VertexAttributePosition].offset = 0;
+    vertDesc.attributes[VertexAttributePosition].bufferIndex = MeshVertexBuffer;
+    vertDesc.layouts[MeshVertexBuffer].stride = sizeof(struct Vertex);
+    vertDesc.layouts[MeshVertexBuffer].stepRate = 1;
+    vertDesc.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+
+    templateRenderPipelineDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+    templateRenderPipelineDesc.sampleCount = 1;
+    templateRenderPipelineDesc.vertexDescriptor = vertDesc;
+    templateRenderPipelineDesc.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm;
+    templateRenderPipelineDesc.label = @"template_render";
+
+    templateTexturePipelineDesc = [[templateRenderPipelineDesc copy] autorelease];
+    templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].format = MTLVertexFormatFloat2;
+    templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].offset = 2*sizeof(float);
+    templateTexturePipelineDesc.vertexDescriptor.attributes[VertexAttributeTexPos].bufferIndex = MeshVertexBuffer;
+    templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stride = sizeof(struct TxtVertex);
+    templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepRate = 1;
+    templateTexturePipelineDesc.vertexDescriptor.layouts[MeshVertexBuffer].stepFunction = MTLVertexStepFunctionPerVertex;
+    templateTexturePipelineDesc.label = @"template_texture";
 }
+
+@implementation MTLPaint {
+    // TODO: remove paintState, split into heirarchy of Paint-objects (i.e. PaintColor, PaintGrad, e.t.c)
+    jint          _paintState;
+
+    // color-mode
+    jint          _color;
+
+    // lin-grad-mode
+    jdouble       _p0;
+    jdouble       _p1;
+    jdouble       _p3;
+    jboolean      _cyclic;
+    jint          _pixel1;
+    jint          _pixel2;
+    jboolean      _useMask;
+}
+
+- (id)init {
+    self = [super init];
+    if (self) {
+        _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
+    }
+    return self;
+}
+
+- (BOOL)isEqual:(MTLPaint *)other {
+    if (self == other)
+        return YES;
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_UNDEFINED)
+        return _paintState == other->_paintState;
+    if (_paintState != other->_paintState)
+        return NO;
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+        return _p0 == other->_p0
+               && _p1 == other->_p1
+               && _p3 == other->_p3
+               && _pixel1 == other->_pixel1
+               && _pixel2 == other->_pixel2;
+    }
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+        return _color == other->_color;
+    }
+    J2dTraceLn1(J2D_TRACE_ERROR, "Unimplemented paint mode %d", _paintState);
+    return NO;
+}
+
+- (void)copyFrom:(MTLPaint *)other {
+    _paintState = other->_paintState;
+    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_UNDEFINED)
+        return;
+
+    if (other->_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+        _p0 = other->_p0;
+        _p1 = other->_p1;
+        _p3 = other->_p3;
+        _pixel1 = other->_pixel1;
+        _pixel2 = other->_pixel2;
+        return;
+    }
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+        _color == other->_color;
+        return;
+    }
+    J2dTraceLn1(J2D_TRACE_ERROR, "Unsupported paint mode %d", _paintState);
+}
+
+- (NSString *)getDescription {
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR)
+        return [NSString stringWithFormat:@"[r=%d g=%d b=%d a=%d]", (_color >> 16) & (0xFF), (_color >> 8) & 0xFF, (_color) & 0xFF, (_color >> 24) & 0xFF];
+    if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT)
+        return [NSString stringWithFormat:@"gradient"];
+    return @"unknown-paint";
+}
+
+- (void)reset {
+    _paintState = sun_java2d_SunGraphics2D_PAINT_UNDEFINED;
+}
+
+- (void)setColor:(jint)pixelColor {
+    _paintState = sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR;
+    _color = pixelColor;
+}
+
+- (void)setGradientUseMask:(jboolean)useMask
+                    cyclic:(jboolean)cyclic
+                        p0:(jdouble)p0
+                        p1:(jdouble)p1
+                        p3:(jdouble)p3
+                    pixel1:(jint)pixel1
+                    pixel2:(jint)pixel2
+{
+    //TODO Resolve gradient distribution problem
+    //TODO Implement useMask
+    //TODO Implement cyclic
+    //fprintf(stderr,
+    //        "MTLPaints_SetGradientPaint useMask=%d cyclic=%d "
+    //        "p0=%f p1=%f p3=%f pix1=%d pix2=%d\n", useMask, cyclic,
+    //        p0, p1, p3, pixel1, pixel2);
+
+    _paintState = sun_java2d_SunGraphics2D_PAINT_GRADIENT;
+    _useMask = useMask;
+    _pixel1 = pixel1;
+    _pixel2 = pixel2;
+    _p0 = p0;
+    _p1 = p1;
+    _p3 = p3;
+    _cyclic = cyclic;
+}
+
+- (void)setLinearGradient:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                       p0:(jfloat)p0
+                       p1:(jfloat)p1
+                       p3:(jfloat)p3
+                fractions:(void *)fractions
+                   pixels:(void *)pixels
+{
+    J2dTraceLn(J2D_TRACE_ERROR, "setLinearGradient: UNIMPLEMENTED");
+    [self setColor:0];
+}
+
+- (void)setRadialGradient:(jboolean)useMask
+                   linear:(jboolean)linear
+              cycleMethod:(jboolean)cycleMethod
+                 numStops:(jint)numStops
+                      m00:(jfloat)m00
+                      m01:(jfloat)m01
+                      m02:(jfloat)m02
+                      m10:(jfloat)m10
+                      m11:(jfloat)m11
+                      m12:(jfloat)m12
+                   focusX:(jfloat)focusX
+                fractions:(void *)fractions
+                   pixels:(void *)pixels
+{
+    J2dTraceLn(J2D_TRACE_ERROR, "setRadialGradient: UNIMPLEMENTED");
+    [self setColor:0];
+}
+
+- (void)setTexture:(jboolean)useMask
+           pSrcOps:(jlong)pSrcOps
+            filter:(jboolean)filter
+               xp0:(jdouble)xp0
+               xp1:(jdouble)xp1
+               xp3:(jdouble)xp3
+               yp0:(jdouble)yp0
+               yp1:(jdouble)yp1
+               yp3:(jdouble)yp3
+{
+    J2dTraceLn(J2D_TRACE_ERROR, "setTexture: UNIMPLEMENTED");
+    [self setColor:0];
+}
+
+// For the current paint mode:
+// 1. Selects vertex+fragment shaders (and corresponding pipelineDesc) and set pipelineState
+// 2. Set vertex and fragment buffers
+- (void)setPipelineState:(id<MTLRenderCommandEncoder>)encoder
+               composite:(MTLComposite *)composite
+           isStencilUsed:(jboolean)isStencilUsed
+               isTexture:(jboolean)isTexture
+                srcFlags:(const SurfaceRasterFlags *)srcFlags
+                dstFlags:(const SurfaceRasterFlags *)dstFlags
+    pipelineStateStorage:(MTLPipelineStatesStorage *)pipelineStateStorage
+{
+    initTemplatePipelineDescriptors();
+
+    const bool stencil = isStencilUsed == JNI_TRUE;
+
+    id<MTLRenderPipelineState> pipelineState = nil;
+    if (isTexture) {
+        pipelineState = [pipelineStateStorage getPipelineState:templateTexturePipelineDesc
+                                                vertexShaderId:@"vert_txt"
+                                              fragmentShaderId:@"frag_txt"
+                                                 compositeRule:[composite getRule]
+                                                      srcFlags:srcFlags
+                                                      dstFlags:dstFlags
+                                                 stencilNeeded:stencil];
+
+        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(_color), 1, srcFlags->isOpaque, dstFlags->isOpaque };
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        } else {
+            struct TxtFrameUniforms uf = {RGBA_TO_V4(0), 0, srcFlags->isOpaque, dstFlags->isOpaque };
+            [encoder setFragmentBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        }
+    } else {
+        if (_paintState == sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR) {
+            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
+                                                    vertexShaderId:@"vert_col"
+                                                  fragmentShaderId:@"frag_col"
+                                                     compositeRule:[composite getRule]
+                                                          srcFlags:srcFlags
+                                                          dstFlags:dstFlags
+                                                     stencilNeeded:stencil];
+
+            struct FrameUniforms uf = {RGBA_TO_V4(_color)};
+            [encoder setVertexBytes:&uf length:sizeof(uf) atIndex:FrameUniformBuffer];
+        } else if (_paintState == sun_java2d_SunGraphics2D_PAINT_GRADIENT) {
+            pipelineState = [pipelineStateStorage getPipelineState:templateRenderPipelineDesc
+                                                    vertexShaderId:@"vert_grad"
+                                                  fragmentShaderId:@"frag_grad"
+                                                     compositeRule:[composite getRule]
+                                                          srcFlags:srcFlags
+                                                          dstFlags:dstFlags
+                                                     stencilNeeded:stencil];
+
+            struct GradFrameUniforms uf = {
+                    {_p0, _p1, _p3},
+                    RGBA_TO_V4(_pixel1),
+                    RGBA_TO_V4(_pixel2)};
+            [encoder setFragmentBytes: &uf length:sizeof(uf) atIndex:0];
+        }
+    }
+
+    [encoder setRenderPipelineState:pipelineState];
+}
+@end
 
 /************************* GradientPaint support ****************************/
-
-static GLuint gradientTexID = 0;
 
 static void
 MTLPaints_InitGradientTexture()
 {
     //TODO
     J2dTraceLn(J2D_TRACE_INFO, "MTLPaints_InitGradientTexture -- :TODO");
-}
-
-
-/************************** TexturePaint support ****************************/
-
-void
-MTLPaints_SetTexturePaint(MTLContext *mtlc,
-                          jboolean useMask,
-                          jlong pSrcOps, jboolean filter,
-                          jdouble xp0, jdouble xp1, jdouble xp3,
-                          jdouble yp0, jdouble yp1, jdouble yp3)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_SetTexturePaint -- :TODO");
-
-    // TODO : Correct this to implement texture paint
-    mtlc.compState = sun_java2d_SunGraphics2D_PAINT_ALPHACOLOR;
-
 }
 
 /****************** Shared MultipleGradientPaint support ********************/
@@ -297,7 +518,7 @@ MTLPaints_InitMultiGradientTexture()
  * successful, this function returns a handle to the newly created
  * shader program; otherwise returns 0.
  */
-static GLhandleARB
+static void*
 MTLPaints_CreateMultiGradProgram(jint flags,
                                  char *paintVars, char *distCode)
 {
@@ -313,7 +534,7 @@ MTLPaints_CreateMultiGradProgram(jint flags,
  * in order to setup the fraction/color values that are common to both.
  */
 static void
-MTLPaints_SetMultiGradientPaint(GLhandleARB multiGradProgram,
+MTLPaints_SetMultiGradientPaint(void* multiGradProgram,
                                 jint numStops,
                                 void *pFractions, void *pPixels)
 {
@@ -330,14 +551,14 @@ MTLPaints_SetMultiGradientPaint(GLhandleARB multiGradProgram,
  * above.  Note that most applications will likely need to initialize one
  * or two of these elements, so the array is usually sparsely populated.
  */
-static GLhandleARB linearGradPrograms[MAX_PROGRAMS];
+static void* linearGradPrograms[MAX_PROGRAMS];
 
 /**
  * Compiles and links the LinearGradientPaint shader program.  If successful,
  * this function returns a handle to the newly created shader program;
  * otherwise returns 0.
  */
-static GLhandleARB
+static void*
 MTLPaints_CreateLinearGradProgram(jint flags)
 {
     char *paintVars;
@@ -370,18 +591,6 @@ MTLPaints_CreateLinearGradProgram(jint flags)
     return MTLPaints_CreateMultiGradProgram(flags, paintVars, distCode);
 }
 
-void
-MTLPaints_SetLinearGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                 jboolean useMask, jboolean linear,
-                                 jint cycleMethod, jint numStops,
-                                 jfloat p0, jfloat p1, jfloat p3,
-                                 void *fractions, void *pixels)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_SetLinearGradientPaint -- :TODO");
-
-}
-
 /********************** RadialGradientPaint support *************************/
 
 /**
@@ -390,14 +599,14 @@ MTLPaints_SetLinearGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
  * above.  Note that most applications will likely need to initialize one
  * or two of these elements, so the array is usually sparsely populated.
  */
-static GLhandleARB radialGradPrograms[MAX_PROGRAMS];
+static void* radialGradPrograms[MAX_PROGRAMS];
 
 /**
  * Compiles and links the RadialGradientPaint shader program.  If successful,
  * this function returns a handle to the newly created shader program;
  * otherwise returns 0.
  */
-static GLhandleARB
+static void*
 MTLPaints_CreateRadialGradProgram(jint flags)
 {
     char *paintVars;
@@ -447,20 +656,6 @@ MTLPaints_CreateRadialGradProgram(jint flags)
         "dist = (precalc.x*xfx + sqrt(xfx*xfx + y*y*precalc.z))*precalc.w;";
 
     return MTLPaints_CreateMultiGradProgram(flags, paintVars, distCode);
-}
-
-void
-MTLPaints_SetRadialGradientPaint(MTLContext *mtlc, BMTLSDOps *dstOps,
-                                 jboolean useMask, jboolean linear,
-                                 jint cycleMethod, jint numStops,
-                                 jfloat m00, jfloat m01, jfloat m02,
-                                 jfloat m10, jfloat m11, jfloat m12,
-                                 jfloat focusX,
-                                 void *fractions, void *pixels)
-{
-    //TODO
-    J2dTraceLn(J2D_TRACE_ERROR, "MTLPaints_SetRadialGradientPaint -- :TODO");
-
 }
 
 #endif /* !HEADLESS */

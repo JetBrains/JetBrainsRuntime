@@ -72,7 +72,7 @@ void MTLRenderer_DrawLine(MTLContext *mtlc, BMTLSDOps * dstOps, jint x1, jint y1
 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawLine (x1=%1.2f y1=%1.2f x2=%1.2f y2=%1.2f), dst tex=%p", x1, y1, x2, y2, dstOps->pTexture);
 
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
         return;
 
@@ -95,7 +95,7 @@ void MTLRenderer_DrawRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_DrawRect (x=%d y=%d w=%d h=%d), dst tex=%p", x, y, w, h, dest);
 
     // TODO: use DrawParallelogram(x, y, w, h, lw=1, lh=1)
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
         return;
 
@@ -168,7 +168,7 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         }
 
         nPoints -= chunkSize;
-        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
         if (mtlEncoder == nil)
             return;
 
@@ -208,7 +208,7 @@ MTLRenderer_DrawScanlines(MTLContext *mtlc, BMTLSDOps * dstOps,
             return;
     }
 
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dstOps->pTexture];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
 
     if (mtlEncoder == nil) return;
 
@@ -252,7 +252,7 @@ MTLRenderer_FillRect(MTLContext *mtlc, BMTLSDOps * dstOps, jint x, jint y, jint 
     J2dTraceLn5(J2D_TRACE_INFO, "MTLRenderer_FillRect (x=%d y=%d w=%d h=%d), dst tex=%p", x, y, w, h, dest);
 
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
         return;
 
@@ -277,11 +277,12 @@ void MTLRenderer_FillSpans(MTLContext *mtlc, BMTLSDOps * dstOps, jint spanCount,
 
     // Destination texture to which render commands are encoded
     id<MTLTexture> dest = dstOps->pTexture;
-    if (mtlc.stencilMaskGenerationInProgress == JNI_TRUE) {
+    bool isDestOpaque = dstOps->isOpaque;
+    if (mtlc.clip.stencilMaskGenerationInProgress == JNI_TRUE) {
         dest = dstOps->pStencilData;
+        isDestOpaque = NO;
     }
-    
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dest isDstOpaque:isDestOpaque];
     if (mtlEncoder == nil) {
         J2dRlsTraceLn(J2D_TRACE_ERROR, "MTLRenderer_FillSpans: mtlEncoder is nil");
         return;
@@ -357,7 +358,7 @@ MTLRenderer_FillParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
         }};
 
     // Encode render command.
-    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+    id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
     if (mtlEncoder == nil)
         return;
 
@@ -478,8 +479,7 @@ MTLRenderer_DrawParallelogram(MTLContext *mtlc, BMTLSDOps * dstOps,
         fillVertex(vertexList + (i++), fx11, fy11);
 
         // Encode render command.
-        id<MTLTexture> dest = dstOps->pTexture;
-        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc createCommonRenderEncoderForDest:dest];
+        id<MTLRenderCommandEncoder> mtlEncoder = [mtlc.encoderManager getRenderEncoder:dstOps];
         if (mtlEncoder == nil)
             return;
 
