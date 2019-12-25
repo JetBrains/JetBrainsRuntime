@@ -206,6 +206,7 @@ java/awt/Frame/MaximizedUndecorated/MaximizedUndecorated.java                   
 java/awt/Frame/MiscUndecorated/RepaintTest.java                                     8079267 windows-all,linux-all
 java/awt/Frame/SetMaximizedBounds/SetMaximizedBounds.java                           8196006 macosx-all,windows-all
 java/awt/Frame/ShapeNotSetSometimes/ShapeNotSetSometimes.java                       8144030 macosx-all,linux-all,windows-all
+java/awt/Frame/ShownOffScreenOnWin98/ShownOffScreenOnWin98Test.java                 8214505 linux-all
 java/awt/Frame/UnfocusableMaximizedFrameResizablity/UnfocusableMaximizedFrameResizablity.java 8208290 macosx-all
 java/awt/Frame/WindowDragTest/WindowDragTest.java                                   8169470 generic-all
 java/awt/FullScreen/8013581/bug8013581.java                                         8169471 macosx-all,windows-all,linux-all
@@ -282,7 +283,7 @@ java/awt/Mixing/AWT_Mixing/MixingPanelsResizing.java                            
 java/awt/Mixing/AWT_Mixing/OpaqueOverlapping.java                                   8194045 generic-all
 java/awt/Mixing/AWT_Mixing/OpaqueOverlappingChoice.java                             8048171 generic-all
 java/awt/Mixing/AWT_Mixing/ViewportOverlapping.java                                 8194045 generic-all
-java/awt/Mixing/MixingOnDialog.java                                                 7124549 macosx-all,windows-all
+java/awt/Mixing/MixingOnDialog.java                                                 7124549,8225777 macosx-all,windows-all,linux-all
 java/awt/Mixing/MixingOnShrinkingHWButton.java                                      7124549 macosx-all,windows-all
 java/awt/Mixing/NonOpaqueInternalFrame.java                                         7124549 macosx-all,windows-all
 java/awt/Mixing/OpaqueTest.java                                                     7124549,8169457 macosx-all,windows-all,linux-all
@@ -1044,7 +1045,7 @@ javax/swing/JTree/8003830/bug8003830.java                                       
 javax/swing/JTree/DnD/LastNodeLowerHalfDrop.java                                    8159131 macosx-all,windows-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentCanvas.java      8081476 windows-all,macosx-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/PerPixelTranslucentSwing.java       8194128 macosx-all,linux-all,windows-all
-javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8198667 macosx-all
+javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedPerPixelTranslucentGradient.java 8198667,8224876 macosx-all,linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/ShapedTranslucentPerPixelTranslucentGradient.java 8079254 linux-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/SetShapeAndClickSwing.java          8013450 macosx-all,windows-all
 javax/swing/JWindow/ShapedAndTranslucentWindows/TranslucentJComboBox.java           8024627 macosx-all,windows-all
@@ -1116,6 +1117,7 @@ javax/swing/tree/DefaultTreeCellRenderer/6225504/bug6225504.java                
 javax/swing/tree/DefaultTreeCellRenderer/7142955/bug7142955.java                    8199076 generic-all
 
 sanity/client/SwingSet/src/ButtonDemoScreenshotTest.java                            8198920 macosx-all,linux-all,windows-all
+sanity/client/SwingSet/src/GridBagLayoutDemoTest.java.GridBagLayoutDemoTest         8210302 linux-all
 
 ############################################################################
 
