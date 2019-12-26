@@ -906,6 +906,7 @@ java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java            
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JBR-1988 macosx-all
 java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JBR-1988 macosx-all
+java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java                                  JBR-1988 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeyMacOSXInputText.java                         JBR-1988 macosx-all
 java/awt/event/KeyEvent/DeadKey/DeadKeySystemAssertionDialog.java                   JBR-1988 macosx-all
 java/awt/event/KeyEvent/KeyTyped/CtrlASCII.html                                     JBR-1988 macosx-all
