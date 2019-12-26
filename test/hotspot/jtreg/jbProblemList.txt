@@ -47,11 +47,14 @@ compiler/codecache/stress/OverloadCompileQueueTest.java                         
 compiler/codegen/Test6896617.java                                                   8193479 generic-all
 compiler/codegen/aes/TestCipherBlockChainingEncrypt.java                            8219513 generic-all
 compiler/compilercontrol/jcmd/ClearDirectivesFileStackTest.java                     8140405 generic-all
+compiler/escapeAnalysis/TestSelfArrayCopy.java                                      8229016 macosx-all,linux-all
 compiler/intrinsics/sha/sanity/TestSHA512MultiBlockIntrinsics.java                  8209459 linux-aarch64
 compiler/jsr292/ContinuousCallSiteTargetChange.java                                 8222030 generic-all
 compiler/jvmci/compilerToVM/GetFlagValueTest.java                                   8204459 generic-all
 compiler/jvmci/compilerToVM/GetResolvedJavaTypeTest.java                            8158860 generic-all
 compiler/jvmci/compilerToVM/InvalidateInstalledCodeTest.java                        8163894 generic-all
+compiler/loopopts/SplitIfSharedFastLockBehindCastPP.java                            8235762 linux-all,macosx-all
+compiler/loopopts/TestDivZeroCheckControl.java                                      8229496 macosx-all
 compiler/tiered/LevelTransitionTest.java                                            8067651 generic-all
 compiler/types/correctness/CorrectnessTest.java                                     8066173 generic-all
 compiler/types/correctness/OffTest.java                                             8066173 generic-all
@@ -83,6 +86,7 @@ gc/stress/TestReclaimStringsLeaksMemory.java                                    
 
 # :hotspot_runtime
 
+runtime/BootstrapMethod/TestLambdaExceptionInInitializer.java                       8208172 macosx-all
 runtime/CompressedOops/UseCompressedOops.java                                       8079353 generic-all
 runtime/NMT/MallocStressTest.java                                                   8079353 generic-all
 runtime/SelectionResolution/InvokeInterfaceICCE.java                                8224795 generic-all
