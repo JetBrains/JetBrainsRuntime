@@ -906,7 +906,16 @@ java/awt/Dialog/NestedDialogs/Modeless/NestedModelessDialogTest.java            
 java/awt/Focus/6981400/Test2.java                                                   JBR-1988 macosx-all
 java/awt/Focus/FocusSubRequestTest/FocusSubRequestTest.java                         JBR-1988 macosx-all
 java/awt/Focus/RollbackFocusFromAnotherWindowTest/RollbackFocusFromAnotherWindowTest.java JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeForModalDialogTest/ConsumeForModalDialogTest.java JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/ConsumeNextMnemonicKeyTypedTest/ConsumeNextMnemonicKeyTypedTest.java JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/ButtonActionKeyTest/ButtonActionKeyTest.java JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/EnqueueWithDialogTest/EnqueueWithDialogTest.java  JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.java JBR-1988 macosx-all
 java/awt/KeyboardFocusmanager/TypeAhead/MenuItemActivatedTest/MenuItemActivatedTest.html JBR-1988 macosx-all
+java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java        JBR-1988 macosx-all
+java/awt/List/ActionEventTest/ActionEventTest.java                                  JBR-1988 macosx-all
+java/awt/Modal/NullModalityDialogTest/NullModalityDialogTest.java                   JBR-1988 macosx-all
+java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             JBR-1988 macosx-all
 java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JBR-1988 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java                                  JBR-1988 macosx-all
