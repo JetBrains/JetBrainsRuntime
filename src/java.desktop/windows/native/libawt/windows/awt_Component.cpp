@@ -987,9 +987,9 @@ void AwtComponent::ReshapeNoScale(int x, int y, int w, int h)
     int usrX = x;
     int usrY = y;
 
-    AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(RECT_BOUNDS(x, y, w, h), GetHWnd());
-    x = device->ScaleUpDX(x);
-    y = device->ScaleUpDY(y);
+    AwtWin32GraphicsDevice* device = UGetDeviceByBounds(URectBounds(x, y, w, h, USER_SPACE), this);
+    x = device->ScaleUpX(x, RELATIVITY_FOR_COMP_XY(this));
+    y = device->ScaleUpY(y, RELATIVITY_FOR_COMP_XY(this));
     w = device->ScaleUpX(w);
     h = device->ScaleUpY(h);
 
@@ -4007,8 +4007,8 @@ void AwtComponent::OpenCandidateWindow(int x, int y)
     }
     HWND hTop = GetTopLevelParentForWindow(hWnd);
     ::ClientToScreen(hTop, &p);
-    int sx = ScaleUpDX(x) - p.x;
-    int sy = ScaleUpDY(y) - p.y;
+    int sx = ScaleUpX(x, ABSOLUTE_COORD) - p.x;
+    int sy = ScaleUpY(y, ABSOLUTE_COORD) - p.y;
     if (!m_bitsCandType) {
         SetCandidateWindow(m_bitsCandType, sx, sy);
         return;
@@ -4886,7 +4886,8 @@ void AwtComponent::FillAlpha(void *bitmapBits, SIZE &size, BYTE alpha)
     }
 }
 
-int AwtComponent::ScaleUpX(int x) {
+int AwtComponent::ScaleUpX(int x, const UCoordRelativity& relativity) {
+    if (relativity == ABSOLUTE_COORD) return ScaleUpDX(x);
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
@@ -4900,7 +4901,8 @@ int AwtComponent::ScaleUpDX(int x) {
     return device == NULL ? x : device->ScaleUpDX(x);
 }
 
-int AwtComponent::ScaleUpY(int y) {
+int AwtComponent::ScaleUpY(int y, const UCoordRelativity& relativity) {
+    if (relativity == ABSOLUTE_COORD) return ScaleUpDY(y);
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
@@ -4914,7 +4916,8 @@ int AwtComponent::ScaleUpDY(int y) {
     return device == NULL ? y : device->ScaleUpDY(y);
 }
 
-int AwtComponent::ScaleDownX(int x) {
+int AwtComponent::ScaleDownX(int x, const UCoordRelativity& relativity) {
+    if (relativity == ABSOLUTE_COORD) return ScaleDownDX(x);
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
@@ -4928,7 +4931,8 @@ int AwtComponent::ScaleDownDX(int x) {
     return device == NULL ? x : device->ScaleDownDX(x);
 }
 
-int AwtComponent::ScaleDownY(int y) {
+int AwtComponent::ScaleDownY(int y, const UCoordRelativity& relativity) {
+    if (relativity == ABSOLUTE_COORD) return ScaleUpDY(y);
     int screen = AwtWin32GraphicsDevice::DeviceIndexForWindow(GetHWnd());
     Devices::InstanceAccess devices;
     AwtWin32GraphicsDevice* device = devices->GetDevice(screen);
@@ -7432,8 +7436,8 @@ void AwtComponent::VerifyState()
         target = parent;
     }
 
-    x = ScaleUpDX(x);
-    y = ScaleUpDY(y);
+    x = ScaleUpX(x, RELATIVITY_FOR_COMP_XY(this));
+    y = ScaleUpY(y, RELATIVITY_FOR_COMP_XY(this));
     width = ScaleUpX(width);
     height = ScaleUpY(height);
 

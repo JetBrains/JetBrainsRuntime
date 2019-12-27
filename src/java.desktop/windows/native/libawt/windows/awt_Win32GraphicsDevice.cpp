@@ -631,45 +631,45 @@ void AwtWin32GraphicsDevice::SetScale(float sx, float sy)
     scaleY = sy;
 }
 
-int AwtWin32GraphicsDevice::ScaleUpX(int x)
+int AwtWin32GraphicsDevice::ScaleUpX(int x, const UCoordRelativity& relativity)
 {
-    return ClipRound(x * scaleX);
+    return relativity == RELATIVE_COORD ? ClipRound(x * scaleX) : ScaleUpDX(x);
 }
 
 // scale up the delta [x - device.x]
 int AwtWin32GraphicsDevice::ScaleUpDX(int x)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, DEVICE_SPACE);
     return devBounds.left + ClipRound((x - devBounds.left) * scaleX);
 }
 
-int AwtWin32GraphicsDevice::ScaleUpY(int y)
+int AwtWin32GraphicsDevice::ScaleUpY(int y, const UCoordRelativity& relativity)
 {
-    return ClipRound(y * scaleY);
+    return relativity == RELATIVE_COORD ? ClipRound(y * scaleY) : ScaleUpDY(y);
 }
 
 // scale up the delta [y - device.y]
 int AwtWin32GraphicsDevice::ScaleUpDY(int y)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, DEVICE_SPACE);
     return devBounds.top + ClipRound((y - devBounds.top) * scaleY);
 }
 
-int AwtWin32GraphicsDevice::ScaleDownX(int x)
+int AwtWin32GraphicsDevice::ScaleDownX(int x, const UCoordRelativity& relativity)
 {
-    return ClipRound(x / scaleX);
+    return relativity == RELATIVE_COORD ? ClipRound(x / scaleX) : ScaleDownDX(x);
 }
 
 // scale down the delta [x - device.x]
 int AwtWin32GraphicsDevice::ScaleDownDX(int x)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, USER_SPACE);
     return devBounds.left + ClipRound((x - devBounds.left) / scaleX);
 }
 
-int AwtWin32GraphicsDevice::ScaleDownY(int y)
+int AwtWin32GraphicsDevice::ScaleDownY(int y, const UCoordRelativity& relativity)
 {
-    return ClipRound(y / scaleY);
+    return relativity == RELATIVE_COORD ? ClipRound(y / scaleY) : ScaleDownDY(y);
 }
 
 int AwtWin32GraphicsDevice::ClipRound(double value)
@@ -691,7 +691,7 @@ int AwtWin32GraphicsDevice::ClipRound(double value)
 // scale down the delta [y - device.y]
 int AwtWin32GraphicsDevice::ScaleDownDY(int y)
 {
-    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen);
+    RECT devBounds = AwtWin32GraphicsConfig::getMonitorBounds(screen, USER_SPACE);
     return devBounds.top + ClipRound((y - devBounds.top) / scaleY);
 }
 
@@ -945,20 +945,6 @@ BOOL AwtWin32GraphicsDevice::IsUiScaleEnabled()
                                       "sun/java2d/SunGraphicsEnvironment",
                                       "isUIScaleEnabled",
                                       "()Z").z;
-}
-
-AwtWin32GraphicsDevice* AwtWin32GraphicsDevice::GetDeviceByBounds(RECT_BOUNDS bounds, HWND hwnd) // bounds in user space
-{
-    Devices::InstanceAccess devices;
-    POINT center = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2};
-    for (int i = 0; i < devices->GetNumDevices(); i++) {
-        RECT rect = AwtWin32GraphicsConfig::getMonitorBounds(i); // rect in user space
-        if (::PtInRect(&rect, center)) {
-            return devices->GetDevice(i);
-        }
-    }
-    // default to the hwnd's device
-    return hwnd != NULL ? devices->GetDevice(AwtWin32GraphicsDevice::DeviceIndexForWindow(hwnd)) : NULL;
 }
 
     const DWORD REQUIRED_FLAGS = (   //Flags which must be set in

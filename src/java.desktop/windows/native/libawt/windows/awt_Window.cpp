@@ -40,6 +40,7 @@
 #include "awt_IconCursor.h"
 #include "ComCtl32Util.h"
 #include "math.h"
+#include "awt_Util.h"
 
 #include "java_awt_Insets.h"
 #include <java_awt_Container.h>
@@ -1870,8 +1871,8 @@ MsgRouting AwtWindow::WmMove(int x, int y)
     jobject peer = GetPeer(env);
     jobject target = env->GetObjectField(peer, AwtObject::targetID);
 
-    RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
-    AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
+    URectBounds rect = UGetWindowRectBounds(GetHWnd());
+    AwtWin32GraphicsDevice* device = UGetDeviceByBounds(rect, this);
 
     int usrX = device->ScaleDownDX(rect.x);
     int usrY = device->ScaleDownDY(rect.y);
@@ -1985,8 +1986,8 @@ MsgRouting AwtWindow::WmSize(UINT type, int w, int h)
     BOOL insetsChanged = UpdateInsets(NULL);
     int newWidth = w + m_insets.left + m_insets.right;
     int newHeight = h + m_insets.top + m_insets.bottom;
-    RECT_BOUNDS rect = AwtWin32GraphicsDevice::GetWindowRect(GetHWnd());
-    AwtWin32GraphicsDevice* device = AwtWin32GraphicsDevice::GetDeviceByBounds(rect, GetHWnd());
+    URectBounds rect = UGetWindowRectBounds(GetHWnd());
+    AwtWin32GraphicsDevice* device = UGetDeviceByBounds(rect, this);
     (env)->SetIntField(target, AwtComponent::widthID, device->ScaleDownX(newWidth));
     (env)->SetIntField(target, AwtComponent::heightID, device->ScaleDownY(newHeight));
 

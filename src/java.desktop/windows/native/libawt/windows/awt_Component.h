@@ -32,6 +32,8 @@
 #include "awt_Brush.h"
 #include "awt_Pen.h"
 #include "awt_Win32GraphicsDevice.h"
+#include "awt_Util.h"
+
 #include "GDIWindowSurfaceData.h"
 
 #include "java_awt_Component.h"
@@ -736,10 +738,10 @@ public:
         return m_bPauseDestroy;
     }
 
-    int ScaleUpX(int x);
-    int ScaleUpY(int y);
-    int ScaleDownX(int x);
-    int ScaleDownY(int y);
+    int ScaleUpX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int ScaleUpY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int ScaleDownX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int ScaleDownY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
     int ScaleUpDX(int x);
     int ScaleUpDY(int y);
     int ScaleDownDX(int x);

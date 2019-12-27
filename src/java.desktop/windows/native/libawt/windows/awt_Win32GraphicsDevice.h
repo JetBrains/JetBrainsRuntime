@@ -33,14 +33,7 @@ extern "C" {
 #include "colordata.h"
 #include "awt_Palette.h"
 #include "Devices.h"
-
-struct RECT_BOUNDS {
-    int x;
-    int y;
-    int width;
-    int height;
-    RECT_BOUNDS(int _x, int _y, int _w, int _h) : x(_x), y(_y), width(_w), height(_h) {}
-};
+#include "awt_Util.h"
 
 class AwtPalette;
 class Devices;
@@ -78,10 +71,10 @@ public:
     void                    SetScale(float scaleX, float scaleY);
     float                   GetScaleX();
     float                   GetScaleY();
-    int                     ScaleUpX(int x);
-    int                     ScaleUpY(int y);
-    int                     ScaleDownX(int x);
-    int                     ScaleDownY(int y);
+    int                     ScaleUpX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int                     ScaleUpY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int                     ScaleDownX(int x, const UCoordRelativity& relativity = RELATIVE_COORD);
+    int                     ScaleDownY(int y, const UCoordRelativity& relativity = RELATIVE_COORD);
     int                     ScaleUpDX(int x);
     int                     ScaleUpDY(int y);
     int                     ScaleDownDX(int x);
@@ -107,14 +100,6 @@ public:
     static HDC              GetDCFromScreen(int screen);
     static int              GetScreenFromHMONITOR(HMONITOR mon);
     static BOOL             IsUiScaleEnabled(); // if not, be dpi-unaware (backward compatible behaviour)
-    static AwtWin32GraphicsDevice* GetDeviceByBounds(RECT_BOUNDS bounds , HWND hwnd = NULL); // bounds in user space
-
-    inline static RECT_BOUNDS GetWindowRect(HWND hwnd)
-    {
-        RECT r;
-        ::GetWindowRect(hwnd, &r);
-        return RECT_BOUNDS(r.left, r.top, r.right - r.left, r.bottom - r.top);
-    }
 
     static int              primaryIndex;
     static BOOL             primaryPalettized;

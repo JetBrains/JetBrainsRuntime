@@ -27,12 +27,13 @@
 #define AWT_WIN32GRAPHICSCONFIG_H
 
 #include "awt.h"
+#include "awt_Win32GraphicsDevice.h"
 
 class AwtWin32GraphicsConfig {
 public:
         /* sun.awt.Win32GraphicsConfig fields and method IDs */
         static jfieldID win32GCVisualID;
-        static RECT getMonitorBounds(int screen);
+        static RECT getMonitorBounds(int screen, const UCoordSpace& space);
 };
 
 #endif /* AWT_WIN32GRAPHICSCONFIG_H */
