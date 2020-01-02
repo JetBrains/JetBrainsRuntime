@@ -25,14 +25,6 @@
 
 package sun.awt;
 
-<<<<<<< HEAD
-import java.awt.*;
-import java.util.*;
-import java.util.concurrent.Callable;
-
-import sun.java2d.*;
-import sun.lwawt.macosx.CThreading;
-=======
 import java.awt.AWTError;
 import java.awt.Font;
 import java.awt.GraphicsConfiguration;
@@ -40,6 +32,7 @@ import java.awt.GraphicsDevice;
 import java.awt.HeadlessException;
 import java.awt.Toolkit;
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Callable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -49,7 +42,7 @@ import java.util.Map;
 import sun.java2d.MacosxSurfaceManagerFactory;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.java2d.SurfaceManagerFactory;
->>>>>>> e410e72... 8211992: GraphicsConfiguration.getDevice().getDisplayMode() causes JVM crash on Mac
+import sun.lwawt.macosx.CThreading;
 
 /**
  * This is an implementation of a GraphicsEnvironment object for the default
@@ -143,17 +136,10 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
             mainDisplayID = getMainDisplayID();
             if (removed && devices.containsKey(displayId)) {
                 final CGraphicsDevice gd = devices.remove(displayId);
-<<<<<<< HEAD
-                gd.invalidate(mainDisplayID);
-                gd.displayChanged();
-            }
-        }
-        initDevices(mainDisplayID);
-=======
                 oldDevices.add(new WeakReference<>(gd));
             }
         }
-        initDevices();
+        initDevices(mainDisplayID);
 
         // Need to notify old devices, in case the user hold the reference to it
         for (ListIterator<WeakReference<CGraphicsDevice>> it =
@@ -167,7 +153,6 @@ public final class CGraphicsEnvironment extends SunGraphicsEnvironment {
                 it.remove();
             }
         }
->>>>>>> e410e72... 8211992: GraphicsConfiguration.getDevice().getDisplayMode() causes JVM crash on Mac
     }
 
     @Override
