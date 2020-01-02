@@ -37,10 +37,7 @@ import sun.java2d.DisposerRecord;
 import java.awt.geom.Point2D;
 import java.lang.ref.SoftReference;
 import java.util.concurrent.ConcurrentHashMap;
-<<<<<<< HEAD
-=======
 import java.util.Locale;
->>>>>>> 2752218... 8210384: SunLayoutEngine.isAAT() font is expensive on MacOS
 import java.util.WeakHashMap;
 
 /*
@@ -150,30 +147,16 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
     }
     private SoftReference<ConcurrentHashMap<LayoutEngineKey, LayoutEngine>> cacheref =
         new SoftReference<>(null);
-    private static final WeakHashMap<Font2D, FaceRef> facePtr =
-            new WeakHashMap<>();
-
-    private static boolean isAAT(Font2D font) {
-       // CoreText layout code ignores fractional metrics font attribute
-       // also, using CoreText layout in Harfbuzz code leads to wrong advances for emoji glyphs
-       return false;
-    }
 
     private SunLayoutEngine(LayoutEngineKey key) {
         this.key = key;
     }
 
-<<<<<<< HEAD
-    private long getFacePtr(Font2D font2D) {
-        FaceRef ref;
-        synchronized (facePtr) {
-            ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
-        }
-        return ref.getNativePtr();
-=======
     static WeakHashMap<Font2D, Boolean> aatInfo = new WeakHashMap<>();
+    private static final WeakHashMap<Font2D, FaceRef> facePtr =
+            new WeakHashMap<>();
 
-    private boolean isAAT(Font2D font) {
+    private static boolean isAAT(Font2D font) {
        Boolean aatObj;
        synchronized (aatInfo) {
            aatObj = aatInfo.get(font);
@@ -195,7 +178,14 @@ public final class SunLayoutEngine implements LayoutEngine, LayoutEngineFactory 
            aatInfo.put(font, Boolean.valueOf(aat));
        }
        return aat;
->>>>>>> 2752218... 8210384: SunLayoutEngine.isAAT() font is expensive on MacOS
+    }
+
+    private long getFacePtr(Font2D font2D) {
+        FaceRef ref;
+        synchronized (facePtr) {
+            ref = facePtr.computeIfAbsent(font2D, FaceRef::new);
+        }
+        return ref.getNativePtr();
     }
 
     public void layout(FontStrikeDesc desc, float[] mat, float ptSize, int gmask,
