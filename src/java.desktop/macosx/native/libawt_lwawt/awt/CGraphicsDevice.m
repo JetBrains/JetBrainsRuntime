@@ -148,16 +148,6 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
     jobject ret = NULL;
     jint h = DEFAULT_DEVICE_HEIGHT, w = DEFAULT_DEVICE_WIDTH, bpp = 0, refrate = 0;
     JNF_COCOA_ENTER(env);
-<<<<<<< HEAD
-    CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
-    bpp = getBPPFromModeString(currentBPP);
-    refrate = CGDisplayModeGetRefreshRate(mode);
-    h = CGDisplayModeGetHeight(mode);
-    w = CGDisplayModeGetWidth(mode);
-    CFRelease(currentBPP);
-    uint32_t flags = CGDisplayModeGetIOFlags(mode);
-    BOOL isDisplayModeDefault = (flags & kDisplayModeDefaultFlag) ? YES : NO;
-=======
     if (mode) {
         CFStringRef currentBPP = CGDisplayModeCopyPixelEncoding(mode);
         bpp = getBPPFromModeString(currentBPP);
@@ -166,7 +156,8 @@ static jobject createJavaDisplayMode(CGDisplayModeRef mode, JNIEnv *env) {
         w = CGDisplayModeGetWidth(mode);
         CFRelease(currentBPP);
     }
->>>>>>> e410e72... 8211992: GraphicsConfiguration.getDevice().getDisplayMode() causes JVM crash on Mac
+    uint32_t flags = CGDisplayModeGetIOFlags(mode);
+    BOOL isDisplayModeDefault = (flags & kDisplayModeDefaultFlag) ? YES : NO;
     static JNF_CLASS_CACHE(jc_DisplayMode, "java/awt/DisplayMode");
     static JNF_CTOR_CACHE(jc_DisplayMode_ctor, jc_DisplayMode, "(IIIIZ)V");
     ret = JNFNewObject(env, jc_DisplayMode_ctor, w, h, bpp, refrate, (jboolean)isDisplayModeDefault);

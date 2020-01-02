@@ -137,7 +137,6 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             return null;
         }
 
-<<<<<<< HEAD
         // Move CGLGraphicsConfig creation code to AppKit thread in order to avoid the
         // following deadlock:
         // 1) CGLGraphicsConfig.getCGLConfigInfo (called from EDT) takes RenderQueue.lock
@@ -157,8 +156,7 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
                 // Java-level context and flush the queue...
                 OGLContext.invalidateCurrentContext();
 
-                cfginfo = getCGLConfigInfo(device.getCGDisplayID(), pixfmt,
-                        kOpenGLSwapInterval);
+                cfginfo = getCGLConfigInfo(displayID, pixfmt, kOpenGLSwapInterval);
                 if (cfginfo != 0L) {
                     textureSize = nativeGetMaxTextureSize();
                     // 7160609: GL still fails to create a square texture of this
@@ -173,29 +171,6 @@ public final class CGLGraphicsConfig extends CGraphicsConfig
             }
             if (cfginfo == 0) {
                 return null;
-=======
-        long cfginfo = 0;
-        int textureSize = 0;
-        final String ids[] = new String[1];
-        OGLRenderQueue rq = OGLRenderQueue.getInstance();
-        rq.lock();
-        try {
-            // getCGLConfigInfo() creates and destroys temporary
-            // surfaces/contexts, so we should first invalidate the current
-            // Java-level context and flush the queue...
-            OGLContext.invalidateCurrentContext();
-            cfginfo = getCGLConfigInfo(displayID, pixfmt, kOpenGLSwapInterval);
-            if (cfginfo != 0L) {
-                textureSize = nativeGetMaxTextureSize();
-                // 7160609: GL still fails to create a square texture of this
-                // size. Half should be safe enough.
-                // Explicitly not support a texture more than 2^14, see 8010999.
-                textureSize = textureSize <= 16384 ? textureSize / 2 : 8192;
-                OGLContext.setScratchSurface(cfginfo);
-                rq.flushAndInvokeNow(() -> {
-                    ids[0] = OGLContext.getOGLIdString();
-                });
->>>>>>> e410e72... 8211992: GraphicsConfiguration.getDevice().getDisplayMode() causes JVM crash on Mac
             }
 
             int oglCaps = getOGLCapabilities(cfginfo);
