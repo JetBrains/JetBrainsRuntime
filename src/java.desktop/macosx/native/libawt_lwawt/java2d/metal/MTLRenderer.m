@@ -141,16 +141,20 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
         struct Vertex verts[POLYLINE_BUF_SIZE];
     } pointsChunk;
 
+    // We intend to submit draw commands in batches of POLYLINE_BUF_SIZE vertices at a time
+    // Subsequent batches need to be connected - so end point in one batch is repeated as first point in subsequent batch
+    // This inflates the total number of points by a factor of number of batches of size POLYLINE_BUF_SIZE
+    nPoints += (nPoints/POLYLINE_BUF_SIZE);
+
     jint prevX = *(xPoints++);
     jint prevY = *(yPoints++);
-    --nPoints;
     const jint firstX = prevX;
     const jint firstY = prevY;
     while (nPoints > 0) {
-        fillVertex(pointsChunk.verts, prevX + transX, prevY + transY);
+        const bool isLastChunk = nPoints <= POLYLINE_BUF_SIZE;
+        __block int chunkSize = isLastChunk ? nPoints : POLYLINE_BUF_SIZE;
 
-        const bool isLastChunk = nPoints + 1 <= POLYLINE_BUF_SIZE;
-        __block int chunkSize = isLastChunk ? nPoints : POLYLINE_BUF_SIZE - 1;
+        fillVertex(pointsChunk.verts, prevX + transX, prevY + transY);
 
         for (int i = 1; i < chunkSize; i++) {
             prevX = *(xPoints++);
@@ -173,12 +177,14 @@ void MTLRenderer_DrawPoly(MTLContext *mtlc, BMTLSDOps * dstOps,
             return;
 
         [mtlEncoder setVertexBytes:pointsChunk.verts length:sizeof(pointsChunk.verts) atIndex:MeshVertexBuffer];
-        [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize + 1];
+        [mtlEncoder drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:chunkSize];
+
         if (drawCloseSegment) {
             struct Vertex vertices[2] = {
                     {{prevX + transX, prevY + transY}},
                     {{firstX + transX, firstY + transY}},
             };
+
             [mtlEncoder setVertexBytes:vertices length:sizeof(vertices) atIndex:MeshVertexBuffer];
             [mtlEncoder drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:2];
         }
