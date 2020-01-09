@@ -1374,7 +1374,7 @@ public:
   // Called when the associated AllocateNode is expanded into CFG.
   Node* complete_stores(Node* rawctl, Node* rawmem, Node* rawptr,
                         intptr_t header_size, Node* size_in_bytes,
-                        PhaseGVN* phase);
+                        PhaseIterGVN* phase);
 
  private:
   void remove_extra_zeroes();
