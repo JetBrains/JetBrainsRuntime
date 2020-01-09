@@ -754,7 +754,7 @@ define SetupRunJtregTestBody
 	        $$($1_TEST_NAME) \
 	    && $$(ECHO) $$$$? > $$($1_EXITCODE) \
 	    || $$(ECHO) $$$$? > $$($1_EXITCODE) \
-	)))
+	))
 
   $1_RESULT_FILE := $$($1_TEST_RESULTS_DIR)/text/stats.txt
 
@@ -833,7 +833,7 @@ define SetupRunSpecialTestBody
 	        > >($(TEE) $$($1_TEST_RESULTS_DIR)/test-output.txt) \
 	    && $$(ECHO) $$$$? > $$($1_EXITCODE) \
 	    || $$(ECHO) $$$$? > $$($1_EXITCODE) \
-	)))
+	))
 
   $1_RESULT_FILE := $$($1_TEST_RESULTS_DIR)/gtest.txt
 
