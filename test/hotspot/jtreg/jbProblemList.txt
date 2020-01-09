@@ -83,6 +83,7 @@ gc/stress/gclocker/TestGCLockerWithG1.java                                      
 gc/survivorAlignment/TestPromotionFromSurvivorToTenuredAfterMinorGC.java            8177765 generic-all
 gc/stress/TestJNIBlockFullGC/TestJNIBlockFullGC.java                                8192647 generic-all
 gc/stress/TestReclaimStringsLeaksMemory.java                                        8224847 generic-all
+gc/stress/TestStressG1Humongous.java                                                JBR-2062 generic-x86
 
 #############################################################################
 
@@ -158,6 +159,9 @@ serviceability/sa/TestUniverse.java#id0                                         
 
 #############################################################################
 
+vmTestbase/nsk/monitoring/GarbageCollectorMXBean/CollectionCounters/CollectionCounters001/CollectionCounters001.java JBR-2062 generic-x86
+vmTestbase/nsk/monitoring/GarbageCollectorMXBean/CollectionCounters/CollectionCounters002/TestDescription.java JBR-2062 generic-x86
+vmTestbase/nsk/monitoring/GarbageCollectorMXBean/CollectionCounters/CollectionCounters003/TestDescription.java JBR-2062 generic-x86
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isCollectionUsageThresholdExceeded/isexceeded003/TestDescription.java 8153598 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded001/TestDescription.java 8198668 generic-all
 vmTestbase/nsk/monitoring/MemoryPoolMBean/isUsageThresholdExceeded/isexceeded002/TestDescription.java 8153598 generic-all
