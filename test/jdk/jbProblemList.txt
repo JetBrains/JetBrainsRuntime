@@ -504,8 +504,11 @@ java/awt/Robot/RobotWheelTest/RobotWheelTest.java 8129827 generic-all
 java/awt/Focus/WindowUpdateFocusabilityTest/WindowUpdateFocusabilityTest.java 8202926 linux-all
 java/awt/datatransfer/ConstructFlavoredObjectTest/ConstructFlavoredObjectTest.java 8202860 linux-all
 java/awt/dnd/DisposeFrameOnDragCrash/DisposeFrameOnDragTest.java 8202790 macosx-all,linux-all
+java/awt/dnd/DragInterceptorAppletTest/DragInterceptorAppletTest.java               8215538 windows-all,macosx-all,linux-all (macosx-all,linux-all: commit)
+java/awt/dnd/FileListBetweenJVMsTest/FileListBetweenJVMsTest.html                   7124379,7188825 macosx-all,linux-all,windows-all
 java/awt/FileDialog/FilenameFilterTest/FilenameFilterTest.java 8202882 linux-all
 java/awt/dnd/MissingDragExitEventTest/MissingDragExitEventTest.java 8030121 macosx-all,linux-all
+java/awt/dnd/NoFormatsCrashTest/NoFormatsCrashTest.html                             8214221 windows-all,linux-all,macosx-all
 java/awt/Choice/ChoicePopupLocation/ChoicePopupLocation.java 8202931 macosx-all,linux-all
 java/awt/Focus/NonFocusableBlockedOwnerTest/NonFocusableBlockedOwnerTest.java 7124275 macosx-all
 java/awt/Focus/TranserFocusToWindow/TranserFocusToWindow.java 6848810 macosx-all,linux-all
@@ -916,6 +919,7 @@ java/awt/KeyboardFocusmanager/TypeAhead/SubMenuShowTest/SubMenuShowTest.java    
 java/awt/List/ActionEventTest/ActionEventTest.java                                  JBR-1988 macosx-all
 java/awt/Modal/NullModalityDialogTest/NullModalityDialogTest.java                   JBR-1988 macosx-all
 java/awt/Mouse/MouseComboBoxTest/MouseComboBoxTest.java                             JBR-1988 macosx-all
+java/awt/FullScreen/8013581/bug8013581.java                                         JBR-1988 macosx-all
 java/awt/event/KeyEvent/8020209/bug8020209.java                                     JBR-1988 macosx-all
 java/awt/event/KeyEvent/AltCharAcceleratorTest/AltCharAcceleratorTest.java          JBR-1988 macosx-all
 java/awt/event/KeyEvent/DeadKey/deadKeyMacOSX.java                                  JBR-1988 macosx-all
@@ -991,3 +995,6 @@ javax/swing/text/View/8014863/bug8014863.java                                   
 javax/swing/text/TableView/TableViewLayoutTest.java                                 JBR-1988 macosx-all
 javax/swing/text/html/HTMLEditorKit/5043626/bug5043626.java                         JBR-1988 macosx-all
 javax/swing/ToolTipManager/Test6256140.java                                         JBR-1988 macosx-all
+
+java/awt/image/DrawImage/UnmanagedDrawImagePerformance.java                         JBR-2064 macosx-all
+java/awt/Window/WindowsLeak/WindowsLeak.java                                        JBR-2064 macosx-all
