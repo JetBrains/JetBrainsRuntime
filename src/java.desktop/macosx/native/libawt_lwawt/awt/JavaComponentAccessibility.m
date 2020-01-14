@@ -210,7 +210,7 @@ static NSObject *sAttributeNamesLOCK = nil;
 {
     AWT_ASSERT_APPKIT_THREAD;
     NSAccessibilityPostNotification(self, NSAccessibilitySelectedChildrenChangedNotification);
-    NSAccessibilityPostNotification(self, NSAccessibilityFocusedUIElementChangedNotification);
+//    NSAccessibilityPostNotification(self, NSAccessibilityFocusedUIElementChangedNotification);
 }
 
 - (void)postMenuOpened
@@ -1354,20 +1354,6 @@ static NSObject *sAttributeNamesLOCK = nil;
     jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
     [hostWindow release];
 
-    jobject jCAX = [JavaComponentAccessibility getCAccessible:focused withEnv:env];
-    if (jCAX != NULL) {
-        JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
-        if (value != nil) {
-            (*env)->DeleteLocalRef(env, jCAX);
-
-            NSArray *selectedChildren = [JavaComponentAccessibility childrenOfParent:value withEnv:env withChildrenCode:/*JAVA_AX_ALL_CHILDREN*/JAVA_AX_SELECTED_CHILDREN allowIgnored:NO];
-            if ([selectedChildren count] > 0) {
-                NSLog(@"accessibilityFocusedUIElement: selectedChildren %d", [selectedChildren count]);
-                return selectedChildren[0];
-            }
-        }
-    }
-
 //    if (focused != NULL) {
 //        if (JNFIsInstanceOf(env, focused, &sjc_Accessible)) {
 //            value = [JavaComponentAccessibility createWithAccessible:focused withEnv:env withView:fView];
@@ -1382,6 +1368,31 @@ static NSObject *sAttributeNamesLOCK = nil;
     NSLog(@"%s: %@", __FUNCTION__, value);
 #endif
     return value;
+}
+
+- (NSArray *)accessibilitySelectedChildren {
+    static JNF_STATIC_MEMBER_CACHE(jm_getFocusOwner, sjc_CAccessibility, "getFocusOwner", "(Ljava/awt/Component;)Ljavax/accessibility/Accessible;");
+
+    JNIEnv *env = [ThreadUtilities getJNIEnv];
+    id value = nil;
+
+    NSWindow* hostWindow = [[self->fView window] retain];
+    jobject focused = JNFCallStaticObjectMethod(env, jm_getFocusOwner, fComponent); // AWT_THREADING Safe (AWTRunLoop)
+    [hostWindow release];
+
+    jobject jCAX = [JavaComponentAccessibility getCAccessible:focused withEnv:env];
+    if (jCAX != NULL) {
+        JavaComponentAccessibility *value = (JavaComponentAccessibility *) jlong_to_ptr(JNFGetLongField(env, jCAX, jf_ptr));
+        if (value != nil) {
+            (*env)->DeleteLocalRef(env, jCAX);
+
+            NSArray *selectedChildren = [JavaComponentAccessibility childrenOfParent:value withEnv:env withChildrenCode:/*JAVA_AX_ALL_CHILDREN*/JAVA_AX_SELECTED_CHILDREN allowIgnored:NO];
+            if ([selectedChildren count] > 0) {
+                NSLog(@"accessibilityFocusedUIElement: selectedChildren %d", [selectedChildren count]);
+                return selectedChildren;
+            }
+        }
+    }
 }
 
 @end
