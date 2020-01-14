@@ -118,9 +118,20 @@ IfNode* PhaseIdealLoop::find_unswitching_candidate(const IdealLoopTree *loop) co
 // execute.
 void PhaseIdealLoop::do_unswitching(IdealLoopTree *loop, Node_List &old_new) {
 
-  // Find first invariant test that doesn't exit the loop
   LoopNode *head = loop->_head->as_Loop();
-
+  Node* entry = head->skip_strip_mined()->in(LoopNode::EntryControl);
+  if (find_predicate_insertion_point(entry, Deoptimization::Reason_loop_limit_check) != NULL
+      || (UseProfiledLoopPredicate && find_predicate_insertion_point(entry, Deoptimization::Reason_profile_predicate) != NULL)
+      || (UseLoopPredicate && find_predicate_insertion_point(entry, Deoptimization::Reason_predicate) != NULL)) {
+    assert(entry->is_IfProj(), "sanity - must be ifProj since there is at least one predicate");
+    if (entry->outcnt() > 1) {
+      // Bailout if there are loop predicates from which there are additional control dependencies (i.e. from
+      // loop entry 'entry') to previously partially peeled statements since this case is not handled and can lead
+      // to wrong execution. Remove this bailout, once this is fixed.
+      return;
+    }
+  }
+  // Find first invariant test that doesn't exit the loop
   IfNode* unswitch_iff = find_unswitching_candidate((const IdealLoopTree *)loop);
   assert(unswitch_iff != NULL, "should be at least one");
 
@@ -140,7 +151,7 @@ void PhaseIdealLoop::do_unswitching(IdealLoopTree *loop, Node_List &old_new) {
 
 #ifdef ASSERT
   Node* uniqc = proj_true->unique_ctrl_out();
-  Node* entry = head->skip_strip_mined()->in(LoopNode::EntryControl);
+  entry = head->skip_strip_mined()->in(LoopNode::EntryControl);
   Node* predicate = find_predicate(entry);
   if (predicate != NULL) {
     entry = skip_loop_predicates(entry);
@@ -262,7 +273,7 @@ ProjNode* PhaseIdealLoop::create_slow_version_of_loop(IdealLoopTree *loop,
   ProjNode* ifslow = new IfFalseNode(iff);
   register_node(ifslow, outer_loop, iff, dom_depth(iff));
 
-  // Clone the loop body.  The clone becomes the fast loop.  The
+  // Clone the loop body.  The clone becomes the slow loop.  The
   // original pre-header will (illegally) have 3 control users
   // (old & new loops & new if).
   clone_loop(loop, old_new, dom_depth(head->skip_strip_mined()), mode, iff);
@@ -303,7 +314,7 @@ LoopNode* PhaseIdealLoop::create_reserve_version_of_loop(IdealLoopTree *loop, Co
   ProjNode* ifslow = new IfFalseNode(iff);
   register_node(ifslow, outer_loop, iff, dom_depth(iff));
 
-  // Clone the loop body.  The clone becomes the fast loop.  The
+  // Clone the loop body.  The clone becomes the slow loop.  The
   // original pre-header will (illegally) have 3 control users
   // (old & new loops & new if).
   clone_loop(loop, old_new, dom_depth(head), CloneIncludesStripMined, iff);

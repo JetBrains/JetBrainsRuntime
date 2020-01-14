@@ -214,11 +214,11 @@ void StringTable::create_table() {
 }
 
 size_t StringTable::item_added() {
-  return Atomic::add((size_t)1, &_items_count);
+  return Atomic::add(&_items_count, (size_t)1);
 }
 
 size_t StringTable::add_items_to_clean(size_t ndead) {
-  size_t total = Atomic::add((size_t)ndead, &_uncleaned_items_count);
+  size_t total = Atomic::add(&_uncleaned_items_count, (size_t)ndead);
   log_trace(stringtable)(
      "Uncleaned items:" SIZE_FORMAT " added: " SIZE_FORMAT " total:" SIZE_FORMAT,
      _uncleaned_items_count, ndead, total);
@@ -226,7 +226,7 @@ size_t StringTable::add_items_to_clean(size_t ndead) {
 }
 
 void StringTable::item_removed() {
-  Atomic::add((size_t)-1, &_items_count);
+  Atomic::add(&_items_count, (size_t)-1);
 }
 
 double StringTable::get_load_factor() {
@@ -381,11 +381,6 @@ oop StringTable::do_intern(Handle string_or_null_h, const jchar* name,
       return stg.get_res_oop();
     }
   } while(true);
-}
-
-void StringTable::oops_do(OopClosure* f) {
-  assert(f != NULL, "No closure");
-  OopStorageSet::string_table_weak()->oops_do(f);
 }
 
 // Concurrent work

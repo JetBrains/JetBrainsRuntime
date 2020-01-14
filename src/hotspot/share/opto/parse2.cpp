@@ -605,7 +605,7 @@ static float if_prob(float taken_cnt, float total_cnt) {
     return PROB_FAIR;
   }
   float p = taken_cnt / total_cnt;
-  return MIN2(MAX2(p, PROB_MIN), PROB_MAX);
+  return clamp(p, PROB_MIN, PROB_MAX);
 }
 
 static float if_cnt(float cnt) {
@@ -2747,8 +2747,8 @@ void Parse::do_one_bytecode() {
   handle_if_acmp:
     // If this is a backwards branch in the bytecodes, add Safepoint
     maybe_add_safepoint(iter().get_dest());
-    a = access_resolve(pop(), 0);
-    b = access_resolve(pop(), 0);
+    a = pop();
+    b = pop();
     c = _gvn.transform( new CmpPNode(b, a) );
     c = optimize_cmp_with_klass(c);
     do_if(btest, c);

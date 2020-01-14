@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2019, 2020, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -21,6 +21,7 @@
  */
 
 #include "precompiled.hpp"
+#include "gc/shenandoah/shenandoahConcurrentRoots.hpp"
 #include "gc/shenandoah/shenandoahNormalMode.hpp"
 #include "gc/shenandoah/heuristics/shenandoahAdaptiveHeuristics.hpp"
 #include "gc/shenandoah/heuristics/shenandoahAggressiveHeuristics.hpp"
@@ -32,6 +33,10 @@
 void ShenandoahNormalMode::initialize_flags() const {
   SHENANDOAH_ERGO_ENABLE_FLAG(ExplicitGCInvokesConcurrent);
   SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahImplicitGCInvokesConcurrent);
+  if (ShenandoahConcurrentRoots::can_do_concurrent_class_unloading()) {
+    SHENANDOAH_ERGO_ENABLE_FLAG(ShenandoahSuspendibleWorkers);
+    SHENANDOAH_ERGO_DISABLE_FLAG(VerifyBeforeExit);
+  }
 
   // Final configuration checks
   SHENANDOAH_CHECK_FLAG_SET(ShenandoahLoadRefBarrier);

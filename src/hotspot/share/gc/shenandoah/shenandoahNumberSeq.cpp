@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -132,7 +132,7 @@ BinaryMagnitudeSeq::~BinaryMagnitudeSeq() {
 }
 
 void BinaryMagnitudeSeq::add(size_t val) {
-  Atomic::add(val, &_sum);
+  Atomic::add(&_sum, val);
 
   int mag = log2_intptr(val) + 1;
 
@@ -147,7 +147,7 @@ void BinaryMagnitudeSeq::add(size_t val) {
     mag = BitsPerSize_t - 1;
   }
 
-  Atomic::add((size_t)1, &_mags[mag]);
+  Atomic::add(&_mags[mag], (size_t)1);
 }
 
 size_t BinaryMagnitudeSeq::level(int level) const {

@@ -42,6 +42,7 @@
 #include "oops/method.inline.hpp"
 #include "oops/typeArrayOop.inline.hpp"
 #include "prims/nativeLookup.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/fieldDescriptor.inline.hpp"
 #include "runtime/frame.inline.hpp"
@@ -979,7 +980,8 @@ C2V_VMENTRY_NULL(jobject, disassembleCodeBlob, (JNIEnv* env, jobject, jobject in
   }
 
   JVMCIObject installedCodeObject = JVMCIENV->wrap(installedCode);
-  CodeBlob* cb = JVMCIENV->asCodeBlob(installedCodeObject);
+  nmethodLocker locker;
+  CodeBlob* cb = JVMCIENV->get_code_blob(installedCodeObject, locker);
   if (cb == NULL) {
     return NULL;
   }
@@ -1024,7 +1026,8 @@ C2V_VMENTRY_NULL(jobject, executeHotSpotNmethod, (JNIEnv* env, jobject, jobject 
   HandleMark hm;
 
   JVMCIObject nmethod_mirror = JVMCIENV->wrap(hs_nmethod);
-  nmethod* nm = JVMCIENV->asNmethod(nmethod_mirror);
+  nmethodLocker locker;
+  nmethod* nm = JVMCIENV->get_nmethod(nmethod_mirror, locker);
   if (nm == NULL) {
     JVMCI_THROW_NULL(InvalidInstalledCodeException);
   }
@@ -1586,7 +1589,7 @@ class AttachDetach : public StackObj {
       jint res = main_vm.AttachCurrentThread((void**)&hotspotEnv, NULL);
       _attached = res == JNI_OK;
       static volatile int report_attach_error = 0;
-      if (res != JNI_OK && report_attach_error == 0 && Atomic::cmpxchg(1, &report_attach_error, 0) == 0) {
+      if (res != JNI_OK && report_attach_error == 0 && Atomic::cmpxchg(&report_attach_error, 0, 1) == 0) {
         // Only report an attach error once
         jio_printf("Warning: attaching current thread to VM failed with %d (future attach errors are suppressed)\n", res);
       }
@@ -1599,7 +1602,7 @@ class AttachDetach : public StackObj {
       extern struct JavaVM_ main_vm;
       jint res = main_vm.DetachCurrentThread();
       static volatile int report_detach_error = 0;
-      if (res != JNI_OK && report_detach_error == 0 && Atomic::cmpxchg(1, &report_detach_error, 0) == 0) {
+      if (res != JNI_OK && report_detach_error == 0 && Atomic::cmpxchg(&report_detach_error, 0, 1) == 0) {
         // Only report an attach error once
         jio_printf("Warning: detaching current thread from VM failed with %d (future attach errors are suppressed)\n", res);
       }
@@ -2446,7 +2449,8 @@ C2V_VMENTRY_0(jlong, translate, (JNIEnv* env, jobject, jobject obj_handle))
     Handle constant = thisEnv->asConstant(obj, JVMCI_CHECK_0);
     result = peerEnv->get_object_constant(constant());
   } else if (thisEnv->isa_HotSpotNmethod(obj)) {
-    nmethod* nm = thisEnv->asNmethod(obj);
+    nmethodLocker locker;
+    nmethod* nm = JVMCIENV->get_nmethod(obj, locker);
     if (nm != NULL) {
       JVMCINMethodData* data = nm->jvmci_nmethod_data();
       if (data != NULL) {
@@ -2511,12 +2515,14 @@ C2V_VMENTRY_NULL(jobject, unhand, (JNIEnv* env, jobject, jlong obj_handle))
 C2V_VMENTRY(void, updateHotSpotNmethod, (JNIEnv* env, jobject, jobject code_handle))
   JVMCIObject code = JVMCIENV->wrap(code_handle);
   // Execute this operation for the side effect of updating the InstalledCode state
-  JVMCIENV->asNmethod(code);
+  nmethodLocker locker;
+  JVMCIENV->get_nmethod(code, locker);
 }
 
 C2V_VMENTRY_NULL(jbyteArray, getCode, (JNIEnv* env, jobject, jobject code_handle))
   JVMCIObject code = JVMCIENV->wrap(code_handle);
-  CodeBlob* cb = JVMCIENV->asCodeBlob(code);
+  nmethodLocker locker;
+  CodeBlob* cb = JVMCIENV->get_code_blob(code, locker);
   if (cb == NULL) {
     return NULL;
   }

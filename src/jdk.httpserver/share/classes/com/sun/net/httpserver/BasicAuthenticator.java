@@ -40,7 +40,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public abstract class BasicAuthenticator extends Authenticator {
 
     protected final String realm;
-    protected final Charset charset;
+    private final Charset charset;
     private final boolean isUTF8;
 
     /**
@@ -95,10 +95,7 @@ public abstract class BasicAuthenticator extends Authenticator {
          */
         String auth = rmap.getFirst ("Authorization");
         if (auth == null) {
-            Headers map = t.getResponseHeaders();
-            var authString = "Basic realm=" + "\"" + realm + "\"" +
-                (isUTF8 ? " charset=\"UTF-8\"" : "");
-            map.set ("WWW-Authenticate", authString);
+            setAuthHeader(t);
             return new Authenticator.Retry (401);
         }
         int sp = auth.indexOf (' ');
@@ -119,11 +116,16 @@ public abstract class BasicAuthenticator extends Authenticator {
             );
         } else {
             /* reject the request again with 401 */
-
-            Headers map = t.getResponseHeaders();
-            map.set ("WWW-Authenticate", "Basic realm=" + "\""+realm+"\"");
+            setAuthHeader(t);
             return new Authenticator.Failure(401);
         }
+    }
+
+    private void setAuthHeader(HttpExchange t) {
+        Headers map = t.getResponseHeaders();
+        var authString = "Basic realm=" + "\"" + realm + "\"" +
+            (isUTF8 ? ", charset=\"UTF-8\"" : "");
+        map.set ("WWW-Authenticate", authString);
     }
 
     /**

@@ -1479,14 +1479,14 @@ int CompileBroker::assign_compile_id(const methodHandle& method, int osr_bci) {
     assert(!is_osr, "can't be osr");
     // Adapters, native wrappers and method handle intrinsics
     // should be generated always.
-    return Atomic::add(1, &_compilation_id);
+    return Atomic::add(&_compilation_id, 1);
   } else if (CICountOSR && is_osr) {
-    id = Atomic::add(1, &_osr_compilation_id);
+    id = Atomic::add(&_osr_compilation_id, 1);
     if (CIStartOSR <= id && id < CIStopOSR) {
       return id;
     }
   } else {
-    id = Atomic::add(1, &_compilation_id);
+    id = Atomic::add(&_compilation_id, 1);
     if (CIStart <= id && id < CIStop) {
       return id;
     }
@@ -1498,7 +1498,7 @@ int CompileBroker::assign_compile_id(const methodHandle& method, int osr_bci) {
 #else
   // CICountOSR is a develop flag and set to 'false' by default. In a product built,
   // only _compilation_id is incremented.
-  return Atomic::add(1, &_compilation_id);
+  return Atomic::add(&_compilation_id, 1);
 #endif
 }
 
@@ -2019,8 +2019,10 @@ void CompileBroker::post_compile(CompilerThread* thread, CompileTask* task, bool
 static void post_compilation_event(EventCompilation* event, CompileTask* task) {
   assert(event != NULL, "invariant");
   assert(event->should_commit(), "invariant");
-  event->set_method(task->method());
+  assert(task != NULL, "invariant");
   event->set_compileId(task->compile_id());
+  event->set_compiler(task->compiler()->type());
+  event->set_method(task->method());
   event->set_compileLevel(task->comp_level());
   event->set_succeded(task->is_success());
   event->set_isOsr(task->osr_bci() != CompileBroker::standard_entry_bci);

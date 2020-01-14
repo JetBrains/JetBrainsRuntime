@@ -25,22 +25,15 @@
 
 package sun.java2d.metal;
 
-import sun.awt.AWTAccessor;
-import sun.awt.AWTAccessor.ComponentAccessor;
 import sun.awt.image.SunVolatileImage;
 import sun.awt.image.VolatileSurfaceManager;
-import sun.java2d.BackBufferCapsProvider;
 import sun.java2d.SurfaceData;
 import sun.java2d.opengl.OGLSurfaceData;
-import sun.java2d.pipe.hw.ExtendedBufferCapabilities;
 
 import java.awt.*;
 import java.awt.image.ColorModel;
-import java.awt.peer.ComponentPeer;
 
 import static java.awt.BufferCapabilities.FlipContents.COPIED;
-//import static sun.java2d.opengl.OGLContext.OGLContextCaps.CAPS_EXT_FBOBJECT;
-import static sun.java2d.pipe.hw.ExtendedBufferCapabilities.VSyncType.VSYNC_ON;
 
 public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
 
@@ -71,64 +64,23 @@ public class MTLVolatileSurfaceManager extends VolatileSurfaceManager {
      * of an existing window if this is a double buffered GraphicsConfig)
      */
     protected SurfaceData initAcceleratedSurface() {
-        SurfaceData sData = null;
-        Component comp = vImg.getComponent();
-        final ComponentAccessor acc = AWTAccessor.getComponentAccessor();
-        final ComponentPeer peer = (comp != null) ? acc.getPeer(comp) : null;
-
         try {
-            boolean createVSynced = false;
-            boolean forceback = false;
-            if (context instanceof Boolean) {
-                forceback = ((Boolean)context).booleanValue();
-                if (forceback && peer instanceof BackBufferCapsProvider) {
-                    BackBufferCapsProvider provider =
-                        (BackBufferCapsProvider)peer;
-                    BufferCapabilities caps = provider.getBackBufferCaps();
-                    if (caps instanceof ExtendedBufferCapabilities) {
-                        ExtendedBufferCapabilities ebc =
-                            (ExtendedBufferCapabilities)caps;
-                        if (ebc.getVSync() == VSYNC_ON &&
-                            ebc.getFlipContents() == COPIED)
-                        {
-                            createVSynced = true;
-                            forceback = false;
-                        }
-                    }
-                }
+            MTLGraphicsConfig gc =
+                (MTLGraphicsConfig)vImg.getGraphicsConfig();
+            ColorModel cm = gc.getColorModel(vImg.getTransparency());
+            int type = vImg.getForcedAccelSurfaceType();
+            // if acceleration type is forced (type != UNDEFINED) then
+            // use the forced type, otherwise choose RT_TEXTURE
+            if (type == OGLSurfaceData.UNDEFINED) {
+                type = OGLSurfaceData.FBOBJECT;
             }
-
-            if (forceback) {
-                // peer must be non-null in this case
-                // TODO: modify parameter to delegate
-                //                sData = MTLSurfaceData.createData(peer, vImg, FLIP_BACKBUFFER);
-            } else {
-                MTLGraphicsConfig gc =
-                    (MTLGraphicsConfig)vImg.getGraphicsConfig();
-                ColorModel cm = gc.getColorModel(vImg.getTransparency());
-                int type = vImg.getForcedAccelSurfaceType();
-                // if acceleration type is forced (type != UNDEFINED) then
-                // use the forced type, otherwise choose RT_TEXTURE
-                if (type == OGLSurfaceData.UNDEFINED) {
-                    type = OGLSurfaceData.FBOBJECT;
-                }
-                if (createVSynced) {
-                    // TODO: modify parameter to delegate
-//                  sData = MTLSurfaceData.createData(peer, vImg, type);
-                } else {
-                    sData = MTLSurfaceData.createData(gc,
-                                                      vImg.getWidth(),
-                                                      vImg.getHeight(),
-                                                      cm, vImg, type);
-                }
-            }
-        } catch (NullPointerException ex) {
-            sData = null;
-        } catch (OutOfMemoryError er) {
-            sData = null;
+            return MTLSurfaceData.createData(gc,
+                                             vImg.getWidth(),
+                                             vImg.getHeight(),
+                                             cm, vImg, type);
+        } catch (NullPointerException | OutOfMemoryError ignored) {
+            return null;
         }
-
-        return sData;
     }
 
     @Override

@@ -282,7 +282,7 @@ public class Gen extends JCTree.Visitor {
         }
     }
 
-    /** Create a tempory variable.
+    /** Create a temporary variable.
      *  @param type   The variable's type.
      */
     LocalItem makeTemp(Type type) {
@@ -727,6 +727,8 @@ public class Gen extends JCTree.Visitor {
             if (markBranches) result.tree = tree.falsepart;
             return result;
         } else if (inner_tree.hasTag(SWITCH_EXPRESSION)) {
+            code.resolvePending();
+
             boolean prevInCondSwitchExpression = inCondSwitchExpression;
             Chain prevSwitchExpressionTrueChain = switchExpressionTrueChain;
             Chain prevSwitchExpressionFalseChain = switchExpressionFalseChain;
@@ -751,6 +753,8 @@ public class Gen extends JCTree.Visitor {
                 switchExpressionFalseChain = prevSwitchExpressionFalseChain;
             }
         } else if (inner_tree.hasTag(LETEXPR) && ((LetExpr) inner_tree).needsCond) {
+            code.resolvePending();
+
             LetExpr tree = (LetExpr) inner_tree;
             int limit = code.nextreg;
             int prevLetExprStart = code.setLetExprStackPos(code.state.stacksize);
@@ -1104,7 +1108,7 @@ public class Gen extends JCTree.Visitor {
         /** Generate code for a loop.
          *  @param loop       The tree representing the loop.
          *  @param body       The loop's body.
-         *  @param cond       The loop's controling condition.
+         *  @param cond       The loop's controlling condition.
          *  @param step       "Step" statements to be inserted at end of
          *                    each iteration.
          *  @param testFirst  True if the loop test belongs before the body.
@@ -1518,7 +1522,7 @@ public class Gen extends JCTree.Visitor {
                 endFinalizerGap(env);
             }
             if (hasFinalizer) {
-                // Create a new register segement to avoid allocating
+                // Create a new register segment to avoid allocating
                 // the same variables in finalizers and other statements.
                 code.newRegSegment();
 
@@ -2216,7 +2220,7 @@ public class Gen extends JCTree.Visitor {
     public void visitTypeTest(JCInstanceOf tree) {
         genExpr(tree.expr, tree.expr.type).load();
         setTypeAnnotationPositions(tree.pos);
-        code.emitop2(instanceof_, makeRef(tree.pos(), tree.clazz.type));
+        code.emitop2(instanceof_, makeRef(tree.pos(), tree.pattern.type));
         result = items.makeStackItem(syms.booleanType);
     }
 

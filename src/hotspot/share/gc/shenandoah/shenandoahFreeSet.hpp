@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -67,7 +67,7 @@ private:
 
   void try_recycle_trashed(ShenandoahHeapRegion *r);
 
-  bool is_empty_or_trash(ShenandoahHeapRegion *r);
+  bool can_allocate_from(ShenandoahHeapRegion *r);
   size_t alloc_capacity(ShenandoahHeapRegion *r);
   bool has_no_alloc_capacity(ShenandoahHeapRegion *r);
 

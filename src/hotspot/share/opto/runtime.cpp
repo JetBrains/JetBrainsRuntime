@@ -1111,6 +1111,25 @@ const TypeFunc* OptoRuntime::montgomerySquare_Type() {
   return TypeFunc::make(domain, range);
 }
 
+const TypeFunc * OptoRuntime::bigIntegerShift_Type() {
+  int argcnt = 5;
+  const Type** fields = TypeTuple::fields(argcnt);
+  int argp = TypeFunc::Parms;
+  fields[argp++] = TypePtr::NOTNULL;    // newArr
+  fields[argp++] = TypePtr::NOTNULL;    // oldArr
+  fields[argp++] = TypeInt::INT;        // newIdx
+  fields[argp++] = TypeInt::INT;        // shiftCount
+  fields[argp++] = TypeInt::INT;        // numIter
+  assert(argp == TypeFunc::Parms + argcnt, "correct decoding");
+  const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms + argcnt, fields);
+
+  // no result type needed
+  fields = TypeTuple::fields(1);
+  fields[TypeFunc::Parms + 0] = NULL;
+  const TypeTuple* range = TypeTuple::make(TypeFunc::Parms, fields);
+  return TypeFunc::make(domain, range);
+}
+
 const TypeFunc* OptoRuntime::vectorizedMismatch_Type() {
   // create input type (domain)
   int num_args = 4;
@@ -1659,7 +1678,7 @@ NamedCounter* OptoRuntime::new_named_counter(JVMState* youngest_jvms, NamedCount
     c->set_next(NULL);
     head = _named_counters;
     c->set_next(head);
-  } while (Atomic::cmpxchg(c, &_named_counters, head) != head);
+  } while (Atomic::cmpxchg(&_named_counters, head, c) != head);
   return c;
 }
 

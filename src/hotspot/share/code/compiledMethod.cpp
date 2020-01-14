@@ -30,6 +30,7 @@
 #include "code/codeCache.hpp"
 #include "code/icBuffer.hpp"
 #include "gc/shared/barrierSet.hpp"
+#include "gc/shared/barrierSetNMethod.hpp"
 #include "gc/shared/gcBehaviours.hpp"
 #include "interpreter/bytecode.inline.hpp"
 #include "logging/log.hpp"
@@ -38,6 +39,7 @@
 #include "oops/methodData.hpp"
 #include "oops/method.inline.hpp"
 #include "prims/methodHandles.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/mutexLocker.hpp"
@@ -113,7 +115,7 @@ void CompiledMethod::mark_for_deoptimization(bool inc_recompile_counts) {
 //-----------------------------------------------------------------------------
 
 ExceptionCache* CompiledMethod::exception_cache_acquire() const {
-  return OrderAccess::load_acquire(&_exception_cache);
+  return Atomic::load_acquire(&_exception_cache);
 }
 
 void CompiledMethod::add_exception_cache_entry(ExceptionCache* new_entry) {
@@ -133,7 +135,7 @@ void CompiledMethod::add_exception_cache_entry(ExceptionCache* new_entry) {
         // next pointers always point at live ExceptionCaches, that are not removed due
         // to concurrent ExceptionCache cleanup.
         ExceptionCache* next = ec->next();
-        if (Atomic::cmpxchg(next, &_exception_cache, ec) == ec) {
+        if (Atomic::cmpxchg(&_exception_cache, ec, next) == ec) {
           CodeCache::release_exception_cache(ec);
         }
         continue;
@@ -143,7 +145,7 @@ void CompiledMethod::add_exception_cache_entry(ExceptionCache* new_entry) {
         new_entry->set_next(ec);
       }
     }
-    if (Atomic::cmpxchg(new_entry, &_exception_cache, ec) == ec) {
+    if (Atomic::cmpxchg(&_exception_cache, ec, new_entry) == ec) {
       return;
     }
   }
@@ -176,7 +178,7 @@ void CompiledMethod::clean_exception_cache() {
         // Try to clean head; this is contended by concurrent inserts, that
         // both lazily clean the head, and insert entries at the head. If
         // the CAS fails, the operation is restarted.
-        if (Atomic::cmpxchg(next, &_exception_cache, curr) != curr) {
+        if (Atomic::cmpxchg(&_exception_cache, curr, next) != curr) {
           prev = NULL;
           curr = exception_cache_acquire();
           continue;
@@ -488,7 +490,20 @@ static bool clean_if_nmethod_is_unloaded(CompiledICorStaticCall *ic, address add
   if (nm != NULL) {
     // Clean inline caches pointing to both zombie and not_entrant methods
     if (clean_all || !nm->is_in_use() || nm->is_unloading() || (nm->method()->code() != nm)) {
-      if (!ic->set_to_clean(from->is_alive())) {
+      // Inline cache cleaning should only be initiated on CompiledMethods that have been
+      // observed to be is_alive(). However, with concurrent code cache unloading, it is
+      // possible that by now, the state has been racingly flipped to unloaded if the nmethod
+      // being cleaned is_unloading(). This is fine, because if that happens, then the inline
+      // caches have already been cleaned under the same CompiledICLocker that we now hold during
+      // inline cache cleaning, and we will simply walk the inline caches again, and likely not
+      // find much of interest to clean. However, this race prevents us from asserting that the
+      // nmethod is_alive(). The is_unloading() function is completely monotonic; once set due
+      // to an oop dying, it remains set forever until freed. Because of that, all unloaded
+      // nmethods are is_unloading(), but notably, an unloaded nmethod may also subsequently
+      // become zombie (when the sweeper converts it to zombie). Therefore, the most precise
+      // sanity check we can check for in this context is to not allow zombies.
+      assert(!from->is_zombie(), "should not clean inline caches on zombies");
+      if (!ic->set_to_clean(!from->is_unloading())) {
         return false;
       }
       assert(ic->is_clean(), "nmethod " PTR_FORMAT "not clean %s", p2i(from), from->method()->name_and_sig_as_C_string());
@@ -534,6 +549,21 @@ bool CompiledMethod::unload_nmethod_caches(bool unloading_occurred) {
   return true;
 }
 
+void CompiledMethod::run_nmethod_entry_barrier() {
+  BarrierSetNMethod* bs_nm = BarrierSet::barrier_set()->barrier_set_nmethod();
+  if (bs_nm != NULL) {
+    // We want to keep an invariant that nmethods found through iterations of a Thread's
+    // nmethods found in safepoints have gone through an entry barrier and are not armed.
+    // By calling this nmethod entry barrier, it plays along and acts
+    // like any other nmethod found on the stack of a thread (fewer surprises).
+    nmethod* nm = as_nmethod_or_null();
+    if (nm != NULL) {
+      bool alive = bs_nm->nmethod_entry_barrier(nm);
+      assert(alive, "should be alive");
+    }
+  }
+}
+
 void CompiledMethod::cleanup_inline_caches(bool clean_all) {
   for (;;) {
     ICRefillVerifier ic_refill_verifier;
@@ -542,6 +572,8 @@ void CompiledMethod::cleanup_inline_caches(bool clean_all) {
         return;
       }
     }
+    // Call this nmethod entry barrier from the sweeper.
+    run_nmethod_entry_barrier();
     InlineCacheBuffer::refill_ic_stubs();
   }
 }
@@ -615,7 +647,7 @@ bool CompiledMethod::cleanup_inline_caches_impl(bool unloading_occurred, bool cl
       if (md != NULL && md->is_method()) {
         Method* method = static_cast<Method*>(md);
         if (!method->method_holder()->is_loader_alive()) {
-          Atomic::store((Method*)NULL, r->metadata_addr());
+          Atomic::store(r->metadata_addr(), (Method*)NULL);
 
           if (!r->metadata_is_immediate()) {
             r->fix_metadata_relocation();

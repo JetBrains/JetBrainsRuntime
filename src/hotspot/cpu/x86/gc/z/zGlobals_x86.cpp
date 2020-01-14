@@ -23,9 +23,9 @@
 
 #include "precompiled.hpp"
 #include "gc/z/zGlobals.hpp"
-#include "gc/z/zUtils.inline.hpp"
 #include "runtime/globals.hpp"
 #include "utilities/globalDefinitions.hpp"
+#include "utilities/powerOfTwo.hpp"
 
 //
 // The heap can have three different layouts, depending on the max heap size.
@@ -135,16 +135,12 @@
 //  * 63-48 Fixed (16-bits, always zero)
 //
 
-uintptr_t ZPlatformAddressBase() {
-  return 0;
-}
-
 size_t ZPlatformAddressOffsetBits() {
   const size_t min_address_offset_bits = 42; // 4TB
   const size_t max_address_offset_bits = 44; // 16TB
-  const size_t address_offset = ZUtils::round_up_power_of_2(MaxHeapSize * ZVirtualToPhysicalRatio);
+  const size_t address_offset = round_up_power_of_2(MaxHeapSize * ZVirtualToPhysicalRatio);
   const size_t address_offset_bits = log2_intptr(address_offset);
-  return MIN2(MAX2(address_offset_bits, min_address_offset_bits), max_address_offset_bits);
+  return clamp(address_offset_bits, min_address_offset_bits, max_address_offset_bits);
 }
 
 size_t ZPlatformAddressMetadataShift() {

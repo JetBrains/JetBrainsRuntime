@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2017, 2020, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -90,6 +90,8 @@ void ShenandoahPhaseTimings::record_workers_end(Phase phase) {
             phase == final_update_refs_roots ||
             phase == full_gc_roots ||
             phase == degen_gc_update_roots ||
+            phase == full_gc_purge_par ||
+            phase == purge_par ||
             phase == _num_phases,
             "only in these phases we can add per-thread phase times");
   if (phase != _num_phases) {
@@ -138,7 +140,7 @@ ShenandoahWorkerTimings::ShenandoahWorkerTimings(uint max_gc_threads) :
   assert(max_gc_threads > 0, "Must have some GC threads");
 
 #define GC_PAR_PHASE_DECLARE_WORKER_DATA(type, title) \
-  _gc_par_phases[ShenandoahPhaseTimings::type] = new WorkerDataArray<double>(max_gc_threads, title);
+  _gc_par_phases[ShenandoahPhaseTimings::type] = new WorkerDataArray<double>(title, max_gc_threads);
   // Root scanning phases
   SHENANDOAH_GC_PAR_PHASE_DO(GC_PAR_PHASE_DECLARE_WORKER_DATA)
 #undef GC_PAR_PHASE_DECLARE_WORKER_DATA
@@ -165,7 +167,7 @@ void ShenandoahWorkerTimings::print() const {
 
 
 ShenandoahTerminationTimings::ShenandoahTerminationTimings(uint max_gc_threads) {
-  _gc_termination_phase = new WorkerDataArray<double>(max_gc_threads, "Task Termination (ms):");
+  _gc_termination_phase = new WorkerDataArray<double>("Task Termination (ms):", max_gc_threads);
 }
 
 void ShenandoahTerminationTimings::record_time_secs(uint worker_id, double secs) {

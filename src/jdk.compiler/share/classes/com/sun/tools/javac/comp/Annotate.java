@@ -276,7 +276,7 @@ public class Annotate {
         validate(() -> { //validate annotations
             JavaFileObject prev = log.useSource(localEnv.toplevel.sourcefile);
             try {
-                chk.validateAnnotations(annotations, s);
+                chk.validateAnnotations(annotations, TreeInfo.declarationFor(s, localEnv.tree), s);
             } finally {
                 log.useSource(prev);
             }
@@ -424,7 +424,7 @@ public class Annotate {
     public Attribute.Compound attributeAnnotation(JCAnnotation tree, Type expectedAnnotationType,
                                                   Env<AttrContext> env)
     {
-        // The attribute might have been entered if it is Target or Repetable
+        // The attribute might have been entered if it is Target or Repeatable
         // Because TreeCopier does not copy type, redo this if type is null
         if (tree.attribute != null && tree.type != null)
             return tree.attribute;
@@ -445,7 +445,7 @@ public class Annotate {
     public Attribute.TypeCompound attributeTypeAnnotation(JCAnnotation a, Type expectedAnnotationType,
                                                           Env<AttrContext> env)
     {
-        // The attribute might have been entered if it is Target or Repetable
+        // The attribute might have been entered if it is Target or Repeatable
         // Because TreeCopier does not copy type, redo this if type is null
         if (a.attribute == null || a.type == null || !(a.attribute instanceof Attribute.TypeCompound)) {
             // Create a new TypeCompound
@@ -540,7 +540,7 @@ public class Annotate {
     private Attribute attributeAnnotationValue(Type expectedElementType, JCExpression tree,
             Env<AttrContext> env)
     {
-        //first, try completing the symbol for the annotation value - if acompletion
+        //first, try completing the symbol for the annotation value - if a completion
         //error is thrown, we should recover gracefully, and display an
         //ordinary resolution diagnostic.
         try {
@@ -835,7 +835,11 @@ public class Annotate {
                 Attribute.Compound c = new Attribute.Compound(targetContainerType, List.of(p));
                 JCAnnotation annoTree = m.Annotation(c);
 
-                if (!chk.annotationApplicable(annoTree, on)) {
+                boolean isRecordMember = (on.flags_field & Flags.RECORD) != 0 || on.enclClass() != null && on.enclClass().isRecord();
+                /* if it is a record member we will not issue the error now and wait until annotations on records are
+                 * checked at Check::validateAnnotation, which will issue it
+                 */
+                if (!chk.annotationApplicable(annoTree, on) && (!isRecordMember || isRecordMember && (on.flags_field & Flags.GENERATED_MEMBER) == 0)) {
                     log.error(annoTree.pos(),
                               Errors.InvalidRepeatableAnnotationNotApplicable(targetContainerType, on));
                 }
@@ -1122,6 +1126,13 @@ public class Annotate {
         }
 
         @Override
+        public void visitBindingPattern(JCTree.JCBindingPattern tree) {
+            //type binding pattern's type will be annotated separately, avoid
+            //adding its annotations into the owning method here (would clash
+            //with repeatable annotations).
+        }
+
+        @Override
         public void visitClassDef(JCClassDecl tree) {
             // We can only hit a classdef if it is declared within
             // a method. Ignore it - the class will be visited
@@ -1153,7 +1164,7 @@ public class Annotate {
     };
 
     /* Last stage completer to enter just enough annotations to have a prototype annotation type.
-     * This currently means entering @Target and @Repetable.
+     * This currently means entering @Target and @Repeatable.
      */
     public AnnotationTypeCompleter annotationTypeSourceCompleter() {
         return theSourceCompleter;

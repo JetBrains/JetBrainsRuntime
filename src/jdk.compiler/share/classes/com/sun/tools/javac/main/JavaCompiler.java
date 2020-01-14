@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1490,7 +1490,7 @@ public class JavaCompiler {
                             } finally {
                                 /*
                                  * ignore any updates to hasLambdas made during
-                                 * the nested scan, this ensures an initalized
+                                 * the nested scan, this ensures an initialized
                                  * LambdaToMethod is available only to those
                                  * classes that contain lambdas
                                  */
@@ -1557,6 +1557,12 @@ public class JavaCompiler {
 
             env.tree = transTypes.translateTopLevelClass(env.tree, localMake);
             compileStates.put(env, CompileState.TRANSTYPES);
+
+            if (shouldStop(CompileState.TRANSPATTERNS))
+                return;
+
+            env.tree = TransPatterns.instance(context).translateTopLevelClass(env, env.tree, localMake);
+            compileStates.put(env, CompileState.TRANSPATTERNS);
 
             if (Feature.LAMBDA.allowedInSource(source) && scanner.hasLambdas) {
                 if (shouldStop(CompileState.UNLAMBDA))

@@ -49,6 +49,7 @@
 #include "oops/methodData.hpp"
 #include "oops/oop.inline.hpp"
 #include "prims/jvmtiImpl.hpp"
+#include "prims/jvmtiThreadState.hpp"
 #include "runtime/atomic.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/flags/flagSetting.hpp"
@@ -58,6 +59,7 @@
 #include "runtime/orderAccess.hpp"
 #include "runtime/os.hpp"
 #include "runtime/safepointVerifiers.hpp"
+#include "runtime/serviceThread.hpp"
 #include "runtime/sharedRuntime.hpp"
 #include "runtime/sweeper.hpp"
 #include "runtime/vmThread.hpp"
@@ -315,7 +317,7 @@ ExceptionCache* ExceptionCache::next() {
 }
 
 void ExceptionCache::set_next(ExceptionCache *ec) {
-  Atomic::store(ec, &_next);
+  Atomic::store(&_next, ec);
 }
 
 //-----------------------------------------------------------------------------
@@ -428,7 +430,8 @@ void nmethod::init_defaults() {
   _has_flushed_dependencies   = 0;
   _lock_count                 = 0;
   _stack_traversal_mark       = 0;
-  _unload_reported            = false; // jvmti state
+  _load_reported              = false; // jvmti state
+  _unload_reported            = false;
   _is_far_code                = false; // nmethods are located in CodeCache
 
 #ifdef ASSERT
@@ -436,7 +439,6 @@ void nmethod::init_defaults() {
 #endif
 
   _oops_do_mark_link       = NULL;
-  _jmethod_id              = NULL;
   _osr_link                = NULL;
 #if INCLUDE_RTM_OPT
   _rtm_state               = NoRTM;
@@ -1150,7 +1152,7 @@ bool nmethod::try_transition(int new_state_int) {
       // Ensure monotonicity of transitions.
       return false;
     }
-    if (Atomic::cmpxchg(new_state, &_state, old_state) == old_state) {
+    if (Atomic::cmpxchg(&_state, old_state, new_state) == old_state) {
       return true;
     }
   }
@@ -1354,7 +1356,7 @@ bool nmethod::make_not_entrant_or_zombie(int state) {
     }
 
     // Must happen before state change. Otherwise we have a race condition in
-    // nmethod::can_not_entrant_be_converted(). I.e., a method can immediately
+    // nmethod::can_convert_to_zombie(). I.e., a method can immediately
     // transition its state from 'not_entrant' to 'zombie' without having to wait
     // for stack scanning.
     if (state == not_entrant) {
@@ -1563,38 +1565,45 @@ void nmethod::flush_dependencies(bool delete_immediately) {
 // post_compiled_method_load_event
 // new method for install_code() path
 // Transfer information from compilation to jvmti
-void nmethod::post_compiled_method_load_event() {
+void nmethod::post_compiled_method_load_event(JvmtiThreadState* state) {
 
-  Method* moop = method();
+  // Don't post this nmethod load event if it is already dying
+  // because the sweeper might already be deleting this nmethod.
+  if (is_not_entrant() && can_convert_to_zombie()) {
+    return;
+  }
+
+  // This is a bad time for a safepoint.  We don't want
+  // this nmethod to get unloaded while we're queueing the event.
+  NoSafepointVerifier nsv;
+
+  Method* m = method();
   HOTSPOT_COMPILED_METHOD_LOAD(
-      (char *) moop->klass_name()->bytes(),
-      moop->klass_name()->utf8_length(),
-      (char *) moop->name()->bytes(),
-      moop->name()->utf8_length(),
-      (char *) moop->signature()->bytes(),
-      moop->signature()->utf8_length(),
+      (char *) m->klass_name()->bytes(),
+      m->klass_name()->utf8_length(),
+      (char *) m->name()->bytes(),
+      m->name()->utf8_length(),
+      (char *) m->signature()->bytes(),
+      m->signature()->utf8_length(),
       insts_begin(), insts_size());
 
-  if (JvmtiExport::should_post_compiled_method_load() ||
-      JvmtiExport::should_post_compiled_method_unload()) {
-    get_and_cache_jmethod_id();
-  }
 
   if (JvmtiExport::should_post_compiled_method_load()) {
-    // Let the Service thread (which is a real Java thread) post the event
-    MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
-    JvmtiDeferredEventQueue::enqueue(
-      JvmtiDeferredEvent::compiled_method_load_event(this));
+    // Only post unload events if load events are found.
+    set_load_reported();
+    // If a JavaThread hasn't been passed in, let the Service thread
+    // (which is a real Java thread) post the event
+    JvmtiDeferredEvent event = JvmtiDeferredEvent::compiled_method_load_event(this);
+    if (state == NULL) {
+      // Execute any barrier code for this nmethod as if it's called, since
+      // keeping it alive looks like stack walking.
+      run_nmethod_entry_barrier();
+      ServiceThread::enqueue_deferred_event(&event);
+    } else {
+      // This enters the nmethod barrier outside in the caller.
+      state->enqueue_event(&event);
+    }
   }
-}
-
-jmethodID nmethod::get_and_cache_jmethod_id() {
-  if (_jmethod_id == NULL) {
-    // Cache the jmethod_id since it can no longer be looked up once the
-    // method itself has been marked for unloading.
-    _jmethod_id = method()->jmethod_id();
-  }
-  return _jmethod_id;
 }
 
 void nmethod::post_compiled_method_unload() {
@@ -1610,18 +1619,17 @@ void nmethod::post_compiled_method_unload() {
   // If a JVMTI agent has enabled the CompiledMethodUnload event then
   // post the event. Sometime later this nmethod will be made a zombie
   // by the sweeper but the Method* will not be valid at that point.
-  // If the _jmethod_id is null then no load event was ever requested
-  // so don't bother posting the unload.  The main reason for this is
-  // that the jmethodID is a weak reference to the Method* so if
+  // The jmethodID is a weak reference to the Method* so if
   // it's being unloaded there's no way to look it up since the weak
   // ref will have been cleared.
-  if (_jmethod_id != NULL && JvmtiExport::should_post_compiled_method_unload()) {
+
+  // Don't bother posting the unload if the load event wasn't posted.
+  if (load_reported() && JvmtiExport::should_post_compiled_method_unload()) {
     assert(!unload_reported(), "already unloaded");
     JvmtiDeferredEvent event =
-      JvmtiDeferredEvent::compiled_method_unload_event(this,
-          _jmethod_id, insts_begin());
-    MutexLocker ml(Service_lock, Mutex::_no_safepoint_check_flag);
-    JvmtiDeferredEventQueue::enqueue(event);
+      JvmtiDeferredEvent::compiled_method_unload_event(
+          method()->jmethod_id(), insts_begin());
+    ServiceThread::enqueue_deferred_event(&event);
   }
 
   // The JVMTI CompiledMethodUnload event can be enabled or disabled at
@@ -1849,7 +1857,7 @@ bool nmethod::oops_do_try_claim_weak_request() {
   assert(SafepointSynchronize::is_at_safepoint(), "only at safepoint");
 
   if ((_oops_do_mark_link == NULL) &&
-      (Atomic::replace_if_null(mark_link(this, claim_weak_request_tag), &_oops_do_mark_link))) {
+      (Atomic::replace_if_null(&_oops_do_mark_link, mark_link(this, claim_weak_request_tag)))) {
     oops_do_log_change("oops_do, mark weak request");
     return true;
   }
@@ -1863,7 +1871,7 @@ void nmethod::oops_do_set_strong_done(nmethod* old_head) {
 nmethod::oops_do_mark_link* nmethod::oops_do_try_claim_strong_done() {
   assert(SafepointSynchronize::is_at_safepoint(), "only at safepoint");
 
-  oops_do_mark_link* old_next = Atomic::cmpxchg(mark_link(this, claim_strong_done_tag), &_oops_do_mark_link, mark_link(NULL, claim_weak_request_tag));
+  oops_do_mark_link* old_next = Atomic::cmpxchg(&_oops_do_mark_link, mark_link(NULL, claim_weak_request_tag), mark_link(this, claim_strong_done_tag));
   if (old_next == NULL) {
     oops_do_log_change("oops_do, mark strong done");
   }
@@ -1874,7 +1882,7 @@ nmethod::oops_do_mark_link* nmethod::oops_do_try_add_strong_request(nmethod::oop
   assert(SafepointSynchronize::is_at_safepoint(), "only at safepoint");
   assert(next == mark_link(this, claim_weak_request_tag), "Should be claimed as weak");
 
-  oops_do_mark_link* old_next = Atomic::cmpxchg(mark_link(this, claim_strong_request_tag), &_oops_do_mark_link, next);
+  oops_do_mark_link* old_next = Atomic::cmpxchg(&_oops_do_mark_link, next, mark_link(this, claim_strong_request_tag));
   if (old_next == next) {
     oops_do_log_change("oops_do, mark strong request");
   }
@@ -1885,7 +1893,7 @@ bool nmethod::oops_do_try_claim_weak_done_as_strong_done(nmethod::oops_do_mark_l
   assert(SafepointSynchronize::is_at_safepoint(), "only at safepoint");
   assert(extract_state(next) == claim_weak_done_tag, "Should be claimed as weak done");
 
-  oops_do_mark_link* old_next = Atomic::cmpxchg(mark_link(extract_nmethod(next), claim_strong_done_tag), &_oops_do_mark_link, next);
+  oops_do_mark_link* old_next = Atomic::cmpxchg(&_oops_do_mark_link, next, mark_link(extract_nmethod(next), claim_strong_done_tag));
   if (old_next == next) {
     oops_do_log_change("oops_do, mark weak done -> mark strong done");
     return true;
@@ -1900,13 +1908,13 @@ nmethod* nmethod::oops_do_try_add_to_list_as_weak_done() {
          extract_state(_oops_do_mark_link) == claim_strong_request_tag,
          "must be but is nmethod " PTR_FORMAT " %u", p2i(extract_nmethod(_oops_do_mark_link)), extract_state(_oops_do_mark_link));
 
-  nmethod* old_head = Atomic::xchg(this, &_oops_do_mark_nmethods);
+  nmethod* old_head = Atomic::xchg(&_oops_do_mark_nmethods, this);
   // Self-loop if needed.
   if (old_head == NULL) {
     old_head = this;
   }
   // Try to install end of list and weak done tag.
-  if (Atomic::cmpxchg(mark_link(old_head, claim_weak_done_tag), &_oops_do_mark_link, mark_link(this, claim_weak_request_tag)) == mark_link(this, claim_weak_request_tag)) {
+  if (Atomic::cmpxchg(&_oops_do_mark_link, mark_link(this, claim_weak_request_tag), mark_link(old_head, claim_weak_done_tag)) == mark_link(this, claim_weak_request_tag)) {
     oops_do_log_change("oops_do, mark weak done");
     return NULL;
   } else {
@@ -1917,7 +1925,7 @@ nmethod* nmethod::oops_do_try_add_to_list_as_weak_done() {
 void nmethod::oops_do_add_to_list_as_strong_done() {
   assert(SafepointSynchronize::is_at_safepoint(), "only at safepoint");
 
-  nmethod* old_head = Atomic::xchg(this, &_oops_do_mark_nmethods);
+  nmethod* old_head = Atomic::xchg(&_oops_do_mark_nmethods, this);
   // Self-loop if needed.
   if (old_head == NULL) {
     old_head = this;

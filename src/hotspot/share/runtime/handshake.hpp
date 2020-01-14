@@ -26,22 +26,32 @@
 #define SHARE_RUNTIME_HANDSHAKE_HPP
 
 #include "memory/allocation.hpp"
+#include "memory/iterator.hpp"
 #include "runtime/flags/flagSetting.hpp"
 #include "runtime/semaphore.hpp"
 
-class ThreadClosure;
 class JavaThread;
 
-// A handshake operation is a callback that is executed for each JavaThread
+// A handshake closure is a callback that is executed for each JavaThread
 // while that thread is in a safepoint safe state. The callback is executed
 // either by the thread itself or by the VM thread while keeping the thread
 // in a blocked state. A handshake can be performed with a single
 // JavaThread as well.
+class HandshakeClosure : public ThreadClosure {
+  const char* const _name;
+ public:
+  HandshakeClosure(const char* name) : _name(name) {}
+  const char* name() const {
+    return _name;
+  }
+  virtual void do_thread(Thread* thread) = 0;
+};
+
 class Handshake : public AllStatic {
  public:
   // Execution of handshake operation
-  static void execute(ThreadClosure* thread_cl);
-  static bool execute(ThreadClosure* thread_cl, JavaThread* target);
+  static void execute(HandshakeClosure* hs_cl);
+  static bool execute(HandshakeClosure* hs_cl, JavaThread* target);
 };
 
 class HandshakeOperation;
@@ -78,7 +88,13 @@ public:
     }
   }
 
-  void process_by_vmthread(JavaThread* target);
+  bool try_process_by_vmThread(JavaThread* target);
+
+#ifdef ASSERT
+  bool _vmthread_processing_handshake;
+  bool is_vmthread_processing_handshake() const { return _vmthread_processing_handshake; }
+#endif
+
 };
 
 #endif // SHARE_RUNTIME_HANDSHAKE_HPP

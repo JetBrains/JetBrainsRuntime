@@ -45,9 +45,6 @@ import static jdk.javadoc.internal.doclets.toolkit.util.VisibleMemberTable.Kind.
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
- * @author Bhavesh Patel (Modified)
  */
 public class EnumConstantBuilder extends AbstractMemberBuilder {
 
@@ -85,7 +82,7 @@ public class EnumConstantBuilder extends AbstractMemberBuilder {
      * Construct a new EnumConstantsBuilder.
      *
      * @param context  the build context.
-     * @param typeElement the class whoses members are being documented.
+     * @param typeElement the class whose members are being documented.
      * @param writer the doclet specific writer.
      * @return the new EnumConstantsBuilder
      */

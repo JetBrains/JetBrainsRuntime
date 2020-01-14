@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2019, 2020, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -30,13 +30,16 @@
 class ShenandoahRootVerifier : public StackObj {
 public:
   enum RootTypes {
+    None                = 0,
     SerialRoots         = 1 << 0,
     ThreadRoots         = 1 << 1,
     CodeRoots           = 1 << 2,
     CLDGRoots           = 1 << 3,
-    WeakRoots           = 1 << 4,
-    StringDedupRoots    = 1 << 5,
-    JNIHandleRoots      = 1 << 6,
+    SerialWeakRoots     = 1 << 4,
+    ConcurrentWeakRoots = 1 << 5,
+    WeakRoots           = (SerialWeakRoots | ConcurrentWeakRoots),
+    StringDedupRoots    = 1 << 6,
+    JNIHandleRoots      = 1 << 7,
     AllRoots            = (SerialRoots | ThreadRoots | CodeRoots | CLDGRoots | WeakRoots | StringDedupRoots | JNIHandleRoots)
   };
 
@@ -44,7 +47,7 @@ private:
   RootTypes _types;
 
 public:
-  ShenandoahRootVerifier();
+  ShenandoahRootVerifier(RootTypes types = AllRoots);
 
   void excludes(RootTypes types);
   void oops_do(OopClosure* cl);
@@ -56,6 +59,9 @@ public:
   static RootTypes combine(RootTypes t1, RootTypes t2);
 private:
   bool verify(RootTypes type) const;
+
+  void serial_weak_roots_do(OopClosure* cl);
+  void concurrent_weak_roots_do(OopClosure* cl);
 };
 
 #endif // SHARE_GC_SHENANDOAH_SHENANDOAHROOTVERIFIER_HPP

@@ -762,7 +762,6 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
          */
         private void checkSourceVersionCompatibility(Source source, Log log) {
             SourceVersion procSourceVersion = processor.getSupportedSourceVersion();
-
             if (procSourceVersion.compareTo(Source.toSourceVersion(source)) < 0 )  {
                 log.warning(Warnings.ProcProcessorIncompatibleSourceVersion(procSourceVersion,
                                                                             processor.getClass().getName(),
@@ -808,20 +807,20 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
         class ProcessorStateIterator implements Iterator<ProcessorState> {
             DiscoveredProcessors psi;
             Iterator<ProcessorState> innerIter;
-            boolean onProcInterator;
+            boolean onProcIterator;
 
             ProcessorStateIterator(DiscoveredProcessors psi) {
                 this.psi = psi;
                 this.innerIter = psi.procStateList.iterator();
-                this.onProcInterator = false;
+                this.onProcIterator = false;
             }
 
             public ProcessorState next() {
-                if (!onProcInterator) {
+                if (!onProcIterator) {
                     if (innerIter.hasNext())
                         return innerIter.next();
                     else
-                        onProcInterator = true;
+                        onProcIterator = true;
                 }
 
                 if (psi.processorIterator.hasNext()) {
@@ -837,7 +836,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
             }
 
             public boolean hasNext() {
-                if (onProcInterator)
+                if (onProcIterator)
                     return  psi.processorIterator.hasNext();
                 else
                     return innerIter.hasNext() || psi.processorIterator.hasNext();
@@ -853,7 +852,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
              * annotations.
              */
             public void runContributingProcs(RoundEnvironment re) {
-                if (!onProcInterator) {
+                if (!onProcIterator) {
                     Set<TypeElement> emptyTypeElements = Collections.emptySet();
                     while(innerIter.hasNext()) {
                         ProcessorState ps = innerIter.next();
@@ -973,8 +972,9 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
      * Computes the set of annotations on the symbol in question.
      * Leave class public for external testing purposes.
      */
+    @SuppressWarnings("preview")
     public static class ComputeAnnotationSet extends
-        ElementScanner9<Set<TypeElement>, Set<TypeElement>> {
+        ElementScanner14<Set<TypeElement>, Set<TypeElement>> {
         final Elements elements;
 
         public ComputeAnnotationSet(Elements elements) {
@@ -1161,7 +1161,7 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
         }
 
         /** Return the number of errors found so far in this round.
-         * This may include uncoverable errors, such as parse errors,
+         * This may include unrecoverable errors, such as parse errors,
          * and transient errors, such as missing symbols. */
         int errorCount() {
             return compiler.errorCount();
@@ -1514,10 +1514,19 @@ public class JavacProcessingEnvironment implements ProcessingEnvironment, Closea
     private List<ModuleSymbol> getModuleInfoFiles(List<? extends JCCompilationUnit> units) {
         List<ModuleSymbol> modules = List.nil();
         for (JCCompilationUnit unit : units) {
-            if (isModuleInfo(unit.sourcefile, JavaFileObject.Kind.SOURCE) &&
-                unit.defs.nonEmpty() &&
-                unit.defs.head.hasTag(Tag.MODULEDEF)) {
-                modules = modules.prepend(unit.modle);
+            if (isModuleInfo(unit.sourcefile, JavaFileObject.Kind.SOURCE) && unit.defs.nonEmpty()) {
+                for (JCTree tree : unit.defs) {
+                    if (tree.hasTag(Tag.IMPORT)) {
+                        continue;
+                    }
+                    else if (tree.hasTag(Tag.MODULEDEF)) {
+                        modules = modules.prepend(unit.modle);
+                        break;
+                    }
+                    else {
+                        break;
+                    }
+                }
             }
         }
         return modules.reverse();

@@ -28,6 +28,8 @@ package jdk.javadoc.internal.doclets.formats.html;
 import java.util.Set;
 import java.util.TreeSet;
 
+import jdk.javadoc.internal.doclets.formats.html.markup.BodyContents;
+import jdk.javadoc.internal.doclets.formats.html.markup.ContentBuilder;
 import jdk.javadoc.internal.doclets.formats.html.markup.Entity;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlStyle;
 import jdk.javadoc.internal.doclets.formats.html.markup.HtmlTag;
@@ -51,8 +53,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.IndexBuilder;
  *  deletion without notice.</b>
  *
  * @see java.lang.Character
- * @author Atul M Dambalkar
- * @author Bhavesh Patel (Modified)
  */
 public class SingleIndexWriter extends AbstractIndexWriter {
 
@@ -95,15 +95,10 @@ public class SingleIndexWriter extends AbstractIndexWriter {
     protected void generateIndexFile() throws DocFileIOException {
         String title = resources.getText("doclet.Window_Single_Index");
         HtmlTree body = getBody(getWindowTitle(title));
-        HtmlTree header = HtmlTree.HEADER();
-        addTop(header);
+        Content headerContent = new ContentBuilder();
+        addTop(headerContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        header.add(navBar.getContent(true));
-        body.add(header);
-        HtmlTree main = HtmlTree.MAIN();
-        main.add(HtmlTree.DIV(HtmlStyle.header,
-                HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING,
-                        contents.getContent("doclet.Index"))));
+        headerContent.add(navBar.getContent(true));
         HtmlTree divTree = new HtmlTree(HtmlTag.DIV);
         divTree.setStyle(HtmlStyle.contentContainer);
         elements = new TreeSet<>(indexbuilder.getIndexMap().keySet());
@@ -120,13 +115,18 @@ public class SingleIndexWriter extends AbstractIndexWriter {
             }
         }
         addLinksForIndexes(divTree);
-        main.add(divTree);
-        body.add(main);
         HtmlTree footer = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
         footer.add(navBar.getContent(false));
         addBottom(footer);
-        body.add(footer);
+        body.add(new BodyContents()
+                .setHeader(headerContent)
+                .addMainContent(HtmlTree.DIV(HtmlStyle.header,
+                        HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING,
+                                contents.getContent("doclet.Index"))))
+                .addMainContent(divTree)
+                .setFooter(footer)
+                .toContent());
         createSearchIndexFiles();
         printHtmlDocument(null, "index", body);
     }
@@ -148,9 +148,13 @@ public class SingleIndexWriter extends AbstractIndexWriter {
         contentTree.add(links.createLink(DocPaths.ALLCLASSES_INDEX,
                 contents.allClassesLabel));
         if (!configuration.packages.isEmpty()) {
-            contentTree.add(Entity.NO_BREAK_SPACE);
+            contentTree.add(getVerticalSeparator());
             contentTree.add(links.createLink(DocPaths.ALLPACKAGES_INDEX,
                     contents.allPackagesLabel));
+        }
+        if (!configuration.tagSearchIndex.isEmpty()) {
+            contentTree.add(getVerticalSeparator());
+            contentTree.add(links.createLink(DocPaths.SYSTEM_PROPERTIES, contents.systemPropertiesLabel));
+        }
     }
-}
 }

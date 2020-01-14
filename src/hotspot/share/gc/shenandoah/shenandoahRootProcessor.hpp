@@ -277,11 +277,12 @@ private:
   ShenandoahSerialWeakRoots                                 _serial_weak_roots;
   ShenandoahWeakRoots<false /*concurrent*/>                 _weak_roots;
   ShenandoahStringDedupRoots                                _dedup_roots;
-  ShenandoahCodeCacheRoots<ShenandoahCsetCodeRootsIterator> _code_roots;
+  ShenandoahCodeCacheRoots<ShenandoahAllCodeRootsIterator>  _code_roots;
   bool                                                      _include_concurrent_roots;
-
+  bool                                                      _include_concurrent_code_roots;
 public:
-  ShenandoahRootEvacuator(uint n_workers, ShenandoahPhaseTimings::Phase phase, bool include_concurrent_roots);
+  ShenandoahRootEvacuator(uint n_workers, ShenandoahPhaseTimings::Phase phase,
+                          bool include_concurrent_roots, bool _include_concurrent_code_roots);
 
   void roots_do(uint worker_id, OopClosure* oops);
 };
@@ -297,15 +298,13 @@ private:
   ShenandoahSerialWeakRoots                                 _serial_weak_roots;
   ShenandoahWeakRoots<false /*concurrent*/>                 _weak_roots;
   ShenandoahStringDedupRoots                                _dedup_roots;
-  ShenandoahCodeCacheRoots<ShenandoahCsetCodeRootsIterator> _code_roots;
+  ShenandoahCodeCacheRoots<ShenandoahAllCodeRootsIterator>  _code_roots;
 
 public:
   ShenandoahRootUpdater(uint n_workers, ShenandoahPhaseTimings::Phase phase);
 
   template<typename IsAlive, typename KeepAlive>
   void roots_do(uint worker_id, IsAlive* is_alive, KeepAlive* keep_alive);
-
-  void strong_roots_do(uint worker_id, OopClosure* oops_cl);
 };
 
 // Adjuster all roots at a safepoint during full gc

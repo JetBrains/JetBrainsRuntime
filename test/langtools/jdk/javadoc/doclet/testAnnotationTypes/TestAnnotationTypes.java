@@ -26,7 +26,6 @@
  * @bug      4973609 8015249 8025633 8026567 6469561 8071982 8162363 8182765 8223364
  * @summary  Make sure that annotation types with 0 members does not have
  *           extra HR tags.
- * @author   jamieh
  * @library  ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
  * @build    javadoc.tester.*
@@ -112,7 +111,7 @@ public class TestAnnotationTypes extends JavadocTester {
                 "@Documented public @interface AnnotationTypeField {");
 
         checkOutput("pkg/AnnotationType.html", true,
-                "public @interface <a href=\"../src-html/pkg/AnnotationType.html#line.34"
+                "public @interface <a href=\"../src-html/pkg/AnnotationType.html#line.31"
                 + "\">AnnotationType</a></pre>");
 
         checkOutput("pkg/AnnotationTypeField.html", true,

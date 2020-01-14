@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2016, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -27,6 +27,7 @@
 #include "gc/shenandoah/shenandoahHeapRegionSet.hpp"
 #include "gc/shenandoah/shenandoahHeapRegionCounters.hpp"
 #include "memory/resourceArea.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/perfData.inline.hpp"
 
 ShenandoahHeapRegionCounters::ShenandoahHeapRegionCounters() :
@@ -76,7 +77,7 @@ void ShenandoahHeapRegionCounters::update() {
     jlong current = os::javaTimeMillis();
     jlong last = _last_sample_millis;
     if (current - last > ShenandoahRegionSamplingRate &&
-            Atomic::cmpxchg(current, &_last_sample_millis, last) == last) {
+            Atomic::cmpxchg(&_last_sample_millis, last, current) == last) {
 
       ShenandoahHeap* heap = ShenandoahHeap::heap();
       jlong status = 0;

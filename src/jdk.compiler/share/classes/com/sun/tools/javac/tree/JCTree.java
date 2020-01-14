@@ -38,6 +38,7 @@ import com.sun.tools.javac.code.*;
 import com.sun.tools.javac.code.Directive.RequiresDirective;
 import com.sun.tools.javac.code.Scope.*;
 import com.sun.tools.javac.code.Symbol.*;
+import com.sun.tools.javac.comp.MatchBindingsComputer.BindingSymbol;
 import com.sun.tools.javac.util.*;
 import com.sun.tools.javac.util.DefinedBy.Api;
 import com.sun.tools.javac.util.JCDiagnostic.DiagnosticPosition;
@@ -51,7 +52,6 @@ import com.sun.source.tree.ModuleTree.ModuleKind;
 import com.sun.tools.javac.code.Directive.ExportsDirective;
 import com.sun.tools.javac.code.Directive.OpensDirective;
 import com.sun.tools.javac.code.Type.ModuleType;
-import com.sun.tools.javac.tree.JCTree.JCPolyExpression.PolyKind;
 
 /**
  * Root class for abstract syntax tree nodes. It provides definitions
@@ -158,7 +158,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
          */
         SWITCH_EXPRESSION,
 
-        /** Synchronized statements, of type Synchonized.
+        /** Synchronized statements, of type Synchronized.
          */
         SYNCHRONIZED,
 
@@ -237,6 +237,10 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         /** Type test expressions, of type TypeTest.
          */
         TYPETEST,
+
+        /** Patterns.
+         */
+        BINDINGPATTERN,
 
         /** Indexed array expressions, of type Indexed.
          */
@@ -782,6 +786,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         @Override
         public void accept(Visitor v) { v.visitClassDef(this); }
 
+        @SuppressWarnings("preview")
         @DefinedBy(Api.COMPILER_TREE)
         public Kind getKind() {
             if ((mods.flags & Flags.ANNOTATION) != 0)
@@ -790,6 +795,8 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
                 return Kind.INTERFACE;
             else if ((mods.flags & Flags.ENUM) != 0)
                 return Kind.ENUM;
+            else if ((mods.flags & Flags.RECORD) != 0)
+                return Kind.RECORD;
             else
                 return Kind.CLASS;
         }
@@ -847,6 +854,9 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCExpression defaultValue;
         /** method symbol */
         public MethodSymbol sym;
+        /** does this method completes normally */
+        public boolean completesNormally;
+
         protected JCMethodDecl(JCModifiers mods,
                             Name name,
                             JCExpression restype,
@@ -2135,10 +2145,10 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
      */
     public static class JCInstanceOf extends JCExpression implements InstanceOfTree {
         public JCExpression expr;
-        public JCTree clazz;
-        protected JCInstanceOf(JCExpression expr, JCTree clazz) {
+        public JCTree pattern;
+        protected JCInstanceOf(JCExpression expr, JCTree pattern) {
             this.expr = expr;
-            this.clazz = clazz;
+            this.pattern = pattern;
         }
         @Override
         public void accept(Visitor v) { v.visitTypeTest(this); }
@@ -2146,7 +2156,13 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         @DefinedBy(Api.COMPILER_TREE)
         public Kind getKind() { return Kind.INSTANCE_OF; }
         @DefinedBy(Api.COMPILER_TREE)
-        public JCTree getType() { return clazz; }
+        public JCTree getType() { return pattern instanceof JCPattern ? pattern.hasTag(BINDINGPATTERN) ? ((JCBindingPattern) pattern).vartype : null : pattern; }
+
+        @Override @DefinedBy(Api.COMPILER_TREE)
+        public JCPattern getPattern() {
+            return pattern instanceof JCPattern ? (JCPattern) pattern : null;
+        }
+
         @DefinedBy(Api.COMPILER_TREE)
         public JCExpression getExpression() { return expr; }
         @Override @DefinedBy(Api.COMPILER_TREE)
@@ -2156,6 +2172,60 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         @Override
         public Tag getTag() {
             return TYPETEST;
+        }
+    }
+
+    /**
+     * Pattern matching forms.
+     */
+    public static abstract class JCPattern extends JCTree
+            implements PatternTree {
+        public JCExpression constExpression() {
+            return null;
+        }
+    }
+
+    public static class JCBindingPattern extends JCPattern
+            implements BindingPatternTree {
+        public Name name;
+        public BindingSymbol symbol;
+        public JCTree vartype;
+
+        protected JCBindingPattern(Name name, BindingSymbol symbol, JCTree vartype) {
+            this.name = name;
+            this.symbol = symbol;
+            this.vartype = vartype;
+        }
+
+        @DefinedBy(Api.COMPILER_TREE)
+        public Name getBinding() {
+            return name;
+        }
+
+        @Override @DefinedBy(Api.COMPILER_TREE)
+        public Tree getType() {
+            return vartype;
+        }
+
+        @Override
+        public void accept(Visitor v) {
+            v.visitBindingPattern(this);
+        }
+
+        @DefinedBy(Api.COMPILER_TREE)
+        public Kind getKind() {
+            return Kind.BINDING_PATTERN;
+        }
+
+        @Override
+        @DefinedBy(Api.COMPILER_TREE)
+        public <R, D> R accept(TreeVisitor<R, D> v, D d) {
+            return v.visitBindingPattern(this, d);
+        }
+
+        @Override
+        public Tag getTag() {
+            return BINDINGPATTERN;
         }
     }
 
@@ -3133,6 +3203,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         JCBinary Binary(Tag opcode, JCExpression lhs, JCExpression rhs);
         JCTypeCast TypeCast(JCTree expr, JCExpression type);
         JCInstanceOf TypeTest(JCExpression expr, JCTree clazz);
+        JCBindingPattern BindingPattern(Name name, JCTree vartype);
         JCArrayAccess Indexed(JCExpression indexed, JCExpression index);
         JCFieldAccess Select(JCExpression selected, Name selector);
         JCIdent Ident(Name idname);
@@ -3197,6 +3268,7 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public void visitBinary(JCBinary that)               { visitTree(that); }
         public void visitTypeCast(JCTypeCast that)           { visitTree(that); }
         public void visitTypeTest(JCInstanceOf that)         { visitTree(that); }
+        public void visitBindingPattern(JCBindingPattern that) { visitTree(that); }
         public void visitIndexed(JCArrayAccess that)         { visitTree(that); }
         public void visitSelect(JCFieldAccess that)          { visitTree(that); }
         public void visitReference(JCMemberReference that)   { visitTree(that); }

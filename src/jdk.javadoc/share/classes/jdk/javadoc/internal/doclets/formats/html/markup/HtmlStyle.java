@@ -32,8 +32,6 @@ package jdk.javadoc.internal.doclets.formats.html.markup;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Bhavesh Patel
  */
 public enum HtmlStyle {
     aboutLanguage,
@@ -73,7 +71,9 @@ public enum HtmlStyle {
     externalLink,
     fieldDetails,
     fieldSummary,
-    fixedNav,
+    flexBox,
+    flexHeader,
+    flexContent,
     header,
     helpSection,
     hierarchy,
@@ -134,6 +134,8 @@ public enum HtmlStyle {
     subNavList,
     subTitle,
     summary,
+    systemPropertiesContainer,
+    systemPropertiesSummary,
     tabEnd,
     tableTab,
     throwsLabel,
@@ -145,5 +147,6 @@ public enum HtmlStyle {
     typeParametersLong,
     typeSummary,
     useSummary,
-    usesSummary
+    usesSummary,
+    verticalSeparator
 }

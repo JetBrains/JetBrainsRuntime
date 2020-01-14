@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2000, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2000, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ bool JVMCIGlobals::check_jvmci_flags_are_consistent() {
 
 #ifndef PRODUCT
 #define APPLY_JVMCI_FLAGS(params3, params4) \
-  JVMCI_FLAGS(params4, params3, params4, params3, params4, params3, params4, params4, IGNORE_RANGE, IGNORE_CONSTRAINT, IGNORE_WRITEABLE)
+  JVMCI_FLAGS(params4, params3, params4, params3, params4, params3, params4, params4, IGNORE_RANGE, IGNORE_CONSTRAINT)
 #define JVMCI_DECLARE_CHECK4(type, name, value, doc) bool name##checked = false;
 #define JVMCI_DECLARE_CHECK3(type, name, doc)        bool name##checked = false;
 #define JVMCI_FLAG_CHECKED(name)                          name##checked = true;
@@ -53,6 +53,15 @@ bool JVMCIGlobals::check_jvmci_flags_are_consistent() {
     jio_fprintf(defaultStream::error_stream(),         \
         "Improperly specified VM option '%s': '%s' must be enabled\n", #FLAG, #GUARD); \
     return false;                                      \
+  }
+
+  if (EnableJVMCIProduct) {
+    if (FLAG_IS_DEFAULT(EnableJVMCI)) {
+      FLAG_SET_DEFAULT(EnableJVMCI, true);
+    }
+    if (EnableJVMCI && FLAG_IS_DEFAULT(UseJVMCICompiler)) {
+      FLAG_SET_DEFAULT(UseJVMCICompiler, true);
+    }
   }
 
   JVMCI_FLAG_CHECKED(UseJVMCICompiler)
@@ -104,6 +113,16 @@ bool JVMCIGlobals::check_jvmci_flags_are_consistent() {
   CHECK_NOT_SET(UseJVMCINativeLibrary,        EnableJVMCI)
   CHECK_NOT_SET(JVMCILibPath,                 EnableJVMCI)
   CHECK_NOT_SET(JVMCILibDumpJNIConfig,        EnableJVMCI)
+
+#ifndef COMPILER2
+  JVMCI_FLAG_CHECKED(MaxVectorSize)
+  JVMCI_FLAG_CHECKED(ReduceInitialCardMarks)
+  JVMCI_FLAG_CHECKED(UseMultiplyToLenIntrinsic)
+  JVMCI_FLAG_CHECKED(UseSquareToLenIntrinsic)
+  JVMCI_FLAG_CHECKED(UseMulAddIntrinsic)
+  JVMCI_FLAG_CHECKED(UseMontgomeryMultiplyIntrinsic)
+  JVMCI_FLAG_CHECKED(UseMontgomerySquareIntrinsic)
+#endif // !COMPILER2
 
 #ifndef PRODUCT
 #define JVMCI_CHECK4(type, name, value, doc) assert(name##checked, #name " flag not checked");
@@ -163,11 +182,11 @@ bool JVMCIGlobals::enable_jvmci_product_mode(JVMFlag::Flags origin) {
   if (JVMFlag::boolAtPut(jvmciEnableFlag, &value, origin) != JVMFlag::SUCCESS) {
     return false;
   }
-  value = true;
-  JVMFlag *jvmciCompilerFlag = JVMFlag::find_flag("UseJVMCICompiler");
-  if (JVMFlag::boolAtPut(jvmciCompilerFlag, &value, origin) != JVMFlag::SUCCESS) {
-    return false;
-  }
+
+  // Effect of EnableJVMCIProduct on changing defaults of EnableJVMCI
+  // and UseJVMCICompiler is deferred to check_jvmci_flags_are_consistent
+  // so that setting these flags explicitly (e.g. on the command line)
+  // takes precedence.
 
   return true;
 }

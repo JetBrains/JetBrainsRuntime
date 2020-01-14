@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.LinkedHashSet;
+import java.util.function.ToIntFunction;
 
 import javax.tools.JavaFileManager;
 import javax.tools.FileObject;
@@ -49,6 +50,7 @@ import com.sun.tools.javac.jvm.PoolConstant.Dynamic.BsmKey;
 import com.sun.tools.javac.resources.CompilerProperties.Errors;
 import com.sun.tools.javac.resources.CompilerProperties.Fragments;
 import com.sun.tools.javac.util.*;
+import com.sun.tools.javac.util.List;
 
 import static com.sun.tools.javac.code.Flags.*;
 import static com.sun.tools.javac.code.Kinds.Kind.*;
@@ -112,6 +114,8 @@ public class ClassWriter extends ClassFile {
      */
     public boolean multiModuleMode;
 
+    private List<ToIntFunction<Symbol>> extraAttributeHooks = List.nil();
+
     /** The initial sizes of the data and constant pool buffers.
      *  Sizes are increased when buffers get full.
      */
@@ -120,7 +124,7 @@ public class ClassWriter extends ClassFile {
 
     /** An output buffer for member info.
      */
-    ByteBuffer databuf = new ByteBuffer(DATA_BUF_SIZE);
+    public ByteBuffer databuf = new ByteBuffer(DATA_BUF_SIZE);
 
     /** An output buffer for the constant pool.
      */
@@ -185,6 +189,10 @@ public class ClassWriter extends ClassFile {
             dumpInnerClassModifiers = modifierFlags.indexOf('i') != -1;
             dumpMethodModifiers = modifierFlags.indexOf('m') != -1;
         }
+    }
+
+    public void addExtraAttributes(ToIntFunction<Symbol> addExtraAttributes) {
+        extraAttributeHooks = extraAttributeHooks.prepend(addExtraAttributes);
     }
 
 /******************************************************************
@@ -275,7 +283,7 @@ public class ClassWriter extends ClassFile {
     /** Write header for an attribute to data buffer and return
      *  position past attribute length index.
      */
-    int writeAttr(Name attrName) {
+    public int writeAttr(Name attrName) {
         int index = poolWriter.putName(attrName);
         databuf.appendChar(index);
         databuf.appendInt(0);
@@ -284,7 +292,7 @@ public class ClassWriter extends ClassFile {
 
     /** Fill in attribute length.
      */
-    void endAttr(int index) {
+    public void endAttr(int index) {
         putInt(databuf, index - 4, databuf.length - index);
     }
 
@@ -345,8 +353,11 @@ public class ClassWriter extends ClassFile {
     /** Write member (field or method) attributes;
      *  return number of attributes written.
      */
-    int writeMemberAttrs(Symbol sym) {
-        int acount = writeFlagAttrs(sym.flags());
+    int writeMemberAttrs(Symbol sym, boolean isRecordComponent) {
+        int acount = 0;
+        if (!isRecordComponent) {
+            acount = writeFlagAttrs(sym.flags());
+        }
         long flags = sym.flags();
         if ((flags & (SYNTHETIC | BRIDGE)) != SYNTHETIC &&
             (flags & ANONCONSTR) == 0 &&
@@ -403,9 +414,9 @@ public class ClassWriter extends ClassFile {
             return 0;
     }
 
-
     private void writeParamAnnotations(List<VarSymbol> params,
                                        RetentionPolicy retention) {
+        databuf.appendByte(params.length());
         for (VarSymbol s : params) {
             ListBuffer<Attribute.Compound> buf = new ListBuffer<>();
             for (Attribute.Compound a : s.getRawAttributes())
@@ -427,11 +438,11 @@ public class ClassWriter extends ClassFile {
     /** Write method parameter annotations;
      *  return number of attributes written.
      */
-    int writeParameterAttrs(MethodSymbol m) {
+    int writeParameterAttrs(List<VarSymbol> vars) {
         boolean hasVisible = false;
         boolean hasInvisible = false;
-        if (m.params != null) {
-            for (VarSymbol s : m.params) {
+        if (vars != null) {
+            for (VarSymbol s : vars) {
                 for (Attribute.Compound a : s.getRawAttributes()) {
                     switch (types.getRetention(a)) {
                     case SOURCE: break;
@@ -446,13 +457,13 @@ public class ClassWriter extends ClassFile {
         int attrCount = 0;
         if (hasVisible) {
             int attrIndex = writeAttr(names.RuntimeVisibleParameterAnnotations);
-            writeParamAnnotations(m, RetentionPolicy.RUNTIME);
+            writeParamAnnotations(vars, RetentionPolicy.RUNTIME);
             endAttr(attrIndex);
             attrCount++;
         }
         if (hasInvisible) {
             int attrIndex = writeAttr(names.RuntimeInvisibleParameterAnnotations);
-            writeParamAnnotations(m, RetentionPolicy.CLASS);
+            writeParamAnnotations(vars, RetentionPolicy.CLASS);
             endAttr(attrIndex);
             attrCount++;
         }
@@ -831,6 +842,23 @@ public class ClassWriter extends ClassFile {
         endAttr(alenIdx);
     }
 
+    int writeRecordAttribute(ClassSymbol csym) {
+        int alenIdx = writeAttr(names.Record);
+        Scope s = csym.members();
+        databuf.appendChar(csym.getRecordComponents().size());
+        for (VarSymbol v: csym.getRecordComponents()) {
+            //databuf.appendChar(poolWriter.putMember(v.accessor.head.snd));
+            databuf.appendChar(poolWriter.putName(v.name));
+            databuf.appendChar(poolWriter.putDescriptor(v));
+            int acountIdx = beginAttrs();
+            int acount = 0;
+            acount += writeMemberAttrs(v, true);
+            endAttrs(acountIdx, acount);
+        }
+        endAttr(alenIdx);
+        return 1;
+    }
+
     /**
      * Write NestMembers attribute (if needed)
      */
@@ -920,7 +948,8 @@ public class ClassWriter extends ClassFile {
             endAttr(alenIdx);
             acount++;
         }
-        acount += writeMemberAttrs(v);
+        acount += writeMemberAttrs(v, false);
+        acount += writeExtraAttributes(v);
         endAttrs(acountIdx, acount);
     }
 
@@ -960,13 +989,14 @@ public class ClassWriter extends ClassFile {
             endAttr(alenIdx);
             acount++;
         }
-        if (options.isSet(PARAMETERS) && target.hasMethodParameters()) {
+        if (target.hasMethodParameters() && (options.isSet(PARAMETERS) || m.isConstructor() && (m.flags_field & RECORD) != 0)) {
             if (!m.isLambdaMethod()) // Per JDK-8138729, do not emit parameters table for lambda bodies.
                 acount += writeMethodParametersAttr(m);
         }
-        acount += writeMemberAttrs(m);
+        acount += writeMemberAttrs(m, false);
         if (!m.isLambdaMethod())
-            acount += writeParameterAttrs(m);
+            acount += writeParameterAttrs(m.params);
+        acount += writeExtraAttributes(m);
         endAttrs(acountIdx, acount);
     }
 
@@ -1584,6 +1614,7 @@ public class ClassWriter extends ClassFile {
             acount += writeFlagAttrs(c.owner.flags() & ~DEPRECATED);
         }
         acount += writeExtraClassAttributes(c);
+        acount += writeExtraAttributes(c);
 
         poolbuf.appendInt(JAVA_MAGIC);
         if (preview.isEnabled()) {
@@ -1598,6 +1629,10 @@ public class ClassWriter extends ClassFile {
                 acount += writeNestMembersIfNeeded(c);
                 acount += writeNestHostIfNeeded(c);
             }
+        }
+
+        if (c.isRecord()) {
+            acount += writeRecordAttribute(c);
         }
 
         if (!poolWriter.bootstrapMethods.isEmpty()) {
@@ -1618,14 +1653,26 @@ public class ClassWriter extends ClassFile {
         poolWriter.reset(); // to save space
 
         out.write(databuf.elems, 0, databuf.length);
-     }
+    }
 
-    /**Allows subclasses to write additional class attributes
+     /**Allows subclasses to write additional class attributes
+      *
+      * @return the number of attributes written
+      */
+    protected int writeExtraClassAttributes(ClassSymbol c) {
+        return 0;
+    }
+
+    /**Allows friends to write additional attributes
      *
      * @return the number of attributes written
      */
-    protected int writeExtraClassAttributes(ClassSymbol c) {
-        return 0;
+    protected int writeExtraAttributes(Symbol sym) {
+        int i = 0;
+        for (ToIntFunction<Symbol> hook : extraAttributeHooks) {
+            i += hook.applyAsInt(sym);
+        }
+        return i;
     }
 
     int adjustFlags(final long flags) {

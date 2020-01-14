@@ -47,8 +47,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocletConstants;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Bhavesh Patel
  */
 public class HtmlTree extends Content {
 
@@ -580,21 +578,6 @@ public class HtmlTree extends Content {
     public static HtmlTree MAIN(Content body) {
         HtmlTree htmltree = new HtmlTree(HtmlTag.MAIN, nullCheck(body));
         htmltree.setRole(Role.MAIN);
-        return htmltree;
-    }
-
-    /**
-     * Generates a MAIN tag with role attribute, style attribute and some content.
-     *
-     * @param styleClass style of the MAIN tag
-     * @param body content of the MAIN tag
-     * @return an HtmlTree object for the MAIN tag
-     */
-    public static HtmlTree MAIN(HtmlStyle styleClass, Content body) {
-        HtmlTree htmltree = HtmlTree.MAIN(body);
-        if (styleClass != null) {
-            htmltree.setStyle(styleClass);
-        }
         return htmltree;
     }
 

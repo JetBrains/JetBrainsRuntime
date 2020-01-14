@@ -1551,7 +1551,7 @@ const bool Matcher::match_rule_supported(int opcode) {
                 // BUT: make sure match rule is not disabled by a false predicate!
 }
 
-const bool Matcher::match_rule_supported_vector(int opcode, int vlen) {
+const bool Matcher::match_rule_supported_vector(int opcode, int vlen, BasicType bt) {
   // TODO
   // Identify extra cases that we might want to provide match rules for
   // e.g. Op_ vector nodes and other intrinsics while guarding with vlen.
@@ -1657,6 +1657,24 @@ const bool Matcher::require_postalloc_expand = false;
 // 32bit shifts mask in emitter, 64bit shifts need no mask.
 // Constant shift counts are handled in Ideal phase.
 const bool Matcher::need_masked_shift_count = false;
+
+// No support for generic vector operands.
+const bool Matcher::supports_generic_vector_operands  = false;
+
+MachOper* Matcher::specialize_generic_vector_operand(MachOper* original_opnd, uint ideal_reg, bool is_temp) {
+  ShouldNotReachHere(); // generic vector operands not supported
+  return NULL;
+}
+
+bool Matcher::is_generic_reg2reg_move(MachNode* m) {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
+
+bool Matcher::is_generic_vector(MachOper* opnd)  {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
 
 // Set this as clone_shift_expressions.
 bool Matcher::narrow_oop_use_complex_address() {

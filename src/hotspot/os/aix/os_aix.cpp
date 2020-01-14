@@ -60,7 +60,6 @@
 #include "runtime/javaCalls.hpp"
 #include "runtime/mutexLocker.hpp"
 #include "runtime/objectMonitor.hpp"
-#include "runtime/orderAccess.hpp"
 #include "runtime/os.hpp"
 #include "runtime/osThread.hpp"
 #include "runtime/perfMemory.hpp"
@@ -1084,7 +1083,7 @@ jlong os::javaTimeNanos() {
     if (now <= prev) {
       return prev;   // same or retrograde time;
     }
-    jlong obsv = Atomic::cmpxchg(now, &max_real_time, prev);
+    jlong obsv = Atomic::cmpxchg(&max_real_time, prev, now);
     assert(obsv >= prev, "invariant");   // Monotonicity
     // If the CAS succeeded then we're done and return "now".
     // If the CAS failed and the observed value "obsv" is >= now then
@@ -1384,6 +1383,8 @@ void os::print_os_info(outputStream* st) {
   uint32_t ver = os::Aix::os_version();
   st->print_cr("AIX kernel version %u.%u.%u.%u",
                (ver >> 24) & 0xFF, (ver >> 16) & 0xFF, (ver >> 8) & 0xFF, ver & 0xFF);
+
+  os::Posix::print_uptime_info(st);
 
   os::Posix::print_rlimit_info(st);
 
@@ -1794,7 +1795,7 @@ static int check_pending_signals() {
   for (;;) {
     for (int i = 0; i < NSIG + 1; i++) {
       jint n = pending_signals[i];
-      if (n > 0 && n == Atomic::cmpxchg(n - 1, &pending_signals[i], n)) {
+      if (n > 0 && n == Atomic::cmpxchg(&pending_signals[i], n, n - 1)) {
         return i;
       }
     }

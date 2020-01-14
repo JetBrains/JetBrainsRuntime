@@ -27,7 +27,6 @@
  * @summary Test that a package page is properly generated when a .java file
  * passed to Javadoc.  Also test that the proper package links are generated
  * when single or multiple packages are documented.
- * @author jamieh
  * @library ../../lib
  * @modules jdk.javadoc/jdk.javadoc.internal.tool
  * @build javadoc.tester.*
@@ -107,7 +106,8 @@ public class TestPackagePage extends JavadocTester {
         checkOutput("package-search-index.js", true,
                 "{\"l\":\"All Packages\",\"url\":\"allpackages-index.html\"}");
         checkOutput("index-all.html", true,
-                "<br><a href=\"allclasses-index.html\">All&nbsp;Classes</a>&nbsp;"
+                "<br><a href=\"allclasses-index.html\">All&nbsp;Classes</a>"
+                + "<span class=\"verticalSeparator\">|</span>"
                 + "<a href=\"allpackages-index.html\">All&nbsp;Packages</a>");
     }
 }

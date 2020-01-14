@@ -220,6 +220,21 @@ public interface Tree {
         PARENTHESIZED(ParenthesizedTree.class),
 
         /**
+         * {@preview Associated with pattern matching for instanceof, a preview feature of
+         *           the Java language.
+         *
+         *           This enum constant is associated with <i>pattern matching for instanceof</i>, a preview
+         *           feature of the Java language. Preview features
+         *           may be removed in a future release, or upgraded to permanent
+         *           features of the Java language.}
+         *
+         * Used for instances of {@link BindingPatternTree}.
+         *
+         * @since 14
+         */
+        BINDING_PATTERN(BindingPatternTree.class),
+
+        /**
          * Used for instances of {@link PrimitiveTypeTree}.
          */
         PRIMITIVE_TYPE(PrimitiveTypeTree.class),
@@ -632,6 +647,22 @@ public interface Tree {
          * provides directives in a module declaration.
          */
         PROVIDES(ProvidesTree.class),
+
+        /**
+         * {@preview Associated with records, a preview feature of the Java language.
+         *
+         *           This enum constant is associated with <i>records</i>, a preview
+         *           feature of the Java language. Preview features
+         *           may be removed in a future release, or upgraded to permanent
+         *           features of the Java language.}
+         *
+         * Used for instances of {@link ClassTree} representing records.
+         *
+         * @since 14
+         */
+        @jdk.internal.PreviewFeature(feature=jdk.internal.PreviewFeature.Feature.RECORDS,
+                                     essentialAPI=false)
+        RECORD(ClassTree.class),
 
         /**
          * Used for instances of {@link RequiresTree} representing

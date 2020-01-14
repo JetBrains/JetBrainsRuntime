@@ -63,9 +63,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.DocPaths;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Robert G. Field
- * @author Bhavesh Patel (Modified)
  */
 public class ClassUseWriter extends SubWriterHolderWriter {
 
@@ -98,11 +95,6 @@ public class ClassUseWriter extends SubWriterHolderWriter {
     final FieldWriterImpl fieldSubWriter;
     final NestedClassWriterImpl classSubWriter;
     private final Navigation navBar;
-
-    /**
-     * The HTML tree for main tag.
-     */
-    protected HtmlTree mainTree = HtmlTree.MAIN();
 
     /**
      * Constructor.
@@ -154,7 +146,7 @@ public class ClassUseWriter extends SubWriterHolderWriter {
         constrSubWriter = new ConstructorWriterImpl(this);
         fieldSubWriter = new FieldWriterImpl(this);
         classSubWriter = new NestedClassWriterImpl(this);
-        this.navBar = new Navigation(typeElement, configuration, fixedNavDiv, PageMode.USE, path);
+        this.navBar = new Navigation(typeElement, configuration, PageMode.USE, path);
     }
 
     /**
@@ -232,13 +224,13 @@ public class ClassUseWriter extends SubWriterHolderWriter {
             div.add(contents.getContent("doclet.ClassUse_No.usage.of.0",
                     utils.getFullyQualifiedName(typeElement)));
         }
-        mainTree.add(div);
-        body.add(mainTree);
+        bodyContents.addMainContent(div);
         HtmlTree footer = HtmlTree.FOOTER();
         navBar.setUserFooter(getUserHeaderFooter(false));
         footer.add(navBar.getContent(false));
         addBottom(footer);
-        body.add(footer);
+        bodyContents.setFooter(footer);
+        body.add(bodyContents.toContent());
         String description = getDescription("use", typeElement);
         printHtmlDocument(null, description, body);
     }
@@ -432,8 +424,8 @@ public class ClassUseWriter extends SubWriterHolderWriter {
         String title = resources.getText("doclet.Window_ClassUse_Header",
                 cltype, clname);
         HtmlTree bodyTree = getBody(getWindowTitle(title));
-        HtmlTree htmlTree = HtmlTree.HEADER();
-        addTop(htmlTree);
+        Content headerContent = new ContentBuilder();
+        addTop(headerContent);
         Content mdleLinkContent = getModuleLink(utils.elementUtils.getModuleOf(typeElement),
                 contents.moduleLabel);
         navBar.setNavLinkModule(mdleLinkContent);
@@ -442,16 +434,15 @@ public class ClassUseWriter extends SubWriterHolderWriter {
                 .label(resources.getText("doclet.Class")));
         navBar.setNavLinkClass(classLinkContent);
         navBar.setUserHeader(getUserHeaderFooter(true));
-        htmlTree.add(navBar.getContent(true));
-        bodyTree.add(htmlTree);
-        ContentBuilder headContent = new ContentBuilder();
-        headContent.add(contents.getContent("doclet.ClassUse_Title", cltype));
-        headContent.add(new HtmlTree(HtmlTag.BR));
-        headContent.add(clname);
+        headerContent.add(navBar.getContent(true));
+        ContentBuilder headingContent = new ContentBuilder();
+        headingContent.add(contents.getContent("doclet.ClassUse_Title", cltype));
+        headingContent.add(new HtmlTree(HtmlTag.BR));
+        headingContent.add(clname);
         Content heading = HtmlTree.HEADING(Headings.PAGE_TITLE_HEADING,
-                true, HtmlStyle.title, headContent);
+                true, HtmlStyle.title, headingContent);
         Content div = HtmlTree.DIV(HtmlStyle.header, heading);
-        mainTree.add(div);
+        bodyContents.setHeader(headerContent).addMainContent(div);
         return bodyTree;
     }
 }

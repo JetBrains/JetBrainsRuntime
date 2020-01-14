@@ -51,9 +51,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.Utils;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
- * @author Bhavesh Patel (Modified)
  */
 public class SerializedFormBuilder extends AbstractBuilder {
 
@@ -96,12 +93,6 @@ public class SerializedFormBuilder extends AbstractBuilder {
     protected Element currentMember;
 
     /**
-     * The content that will be added to the serialized form documentation tree.
-     */
-    private Content contentTree;
-
-
-    /**
      * Construct a new SerializedFormBuilder.
      * @param context  the build context.
      */
@@ -137,32 +128,30 @@ public class SerializedFormBuilder extends AbstractBuilder {
             //Doclet does not support this output.
             return;
         }
-        buildSerializedForm(contentTree);
+        buildSerializedForm();
     }
 
     /**
      * Build the serialized form.
      *
-     * @param serializedTree content tree to which the documentation will be added
      * @throws DocletException if there is a problem while building the documentation
      */
-    protected void buildSerializedForm(Content serializedTree) throws DocletException {
-        serializedTree = writer.getHeader(resources.getText(
+    protected void buildSerializedForm() throws DocletException {
+        Content contentTree = writer.getHeader(resources.getText(
                 "doclet.Serialized_Form"));
 
-        buildSerializedFormSummaries(serializedTree);
+        buildSerializedFormSummaries();
 
-        writer.addFooter(serializedTree);
-        writer.printDocument(serializedTree);
+        writer.addFooter();
+        writer.printDocument(contentTree);
     }
 
     /**
      * Build the serialized form summaries.
      *
-     * @param serializedTree content tree to which the documentation will be added
      * @throws DocletException if there is a problem while building the documentation
      */
-    protected void buildSerializedFormSummaries(Content serializedTree)
+    protected void buildSerializedFormSummaries()
             throws DocletException {
         Content serializedSummariesTree = writer.getSerializedSummariesHeader();
         for (PackageElement pkg : configuration.packages) {
@@ -170,8 +159,7 @@ public class SerializedFormBuilder extends AbstractBuilder {
 
             buildPackageSerializedForm(serializedSummariesTree);
         }
-        serializedTree.add(writer.getSerializedContent(
-                serializedSummariesTree));
+        writer.addSerializedContent(serializedSummariesTree);
     }
 
     /**
@@ -600,10 +588,10 @@ public class SerializedFormBuilder extends AbstractBuilder {
     }
 
     /**
-     * Return true if any of the given typeElements have a @serialinclude tag.
+     * Return true if any of the given typeElements have a {@code @serial include} tag.
      *
      * @param classes the typeElements to check.
-     * @return true if any of the given typeElements have a @serialinclude tag.
+     * @return true if any of the given typeElements have a {@code @serial include} tag.
      */
     private boolean serialClassFoundToDocument(SortedSet<TypeElement> classes) {
         for (TypeElement aClass : classes) {

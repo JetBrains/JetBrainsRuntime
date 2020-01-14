@@ -28,6 +28,7 @@ package com.sun.tools.javac.comp;
 import java.util.*;
 import java.util.function.Supplier;
 
+import javax.lang.model.element.ElementKind;
 import javax.tools.JavaFileManager;
 
 import com.sun.tools.javac.code.*;
@@ -55,7 +56,6 @@ import com.sun.tools.javac.code.Scope.WriteableScope;
 import com.sun.tools.javac.code.Type.*;
 import com.sun.tools.javac.code.Symbol.*;
 import com.sun.tools.javac.comp.DeferredAttr.DeferredAttrContext;
-import com.sun.tools.javac.comp.Infer.FreeTypeListener;
 import com.sun.tools.javac.tree.JCTree.*;
 
 import static com.sun.tools.javac.code.Flags.*;
@@ -117,7 +117,7 @@ public class Check {
 
         names = Names.instance(context);
         dfltTargetMeta = new Name[] { names.PACKAGE, names.TYPE,
-            names.FIELD, names.METHOD, names.CONSTRUCTOR,
+            names.FIELD, names.RECORD_COMPONENT, names.METHOD, names.CONSTRUCTOR,
             names.ANNOTATION_TYPE, names.LOCAL_VARIABLE, names.PARAMETER};
         log = Log.instance(context);
         rs = Resolve.instance(context);
@@ -333,11 +333,18 @@ public class Check {
                                                         kindName(sym.location().enclClass()),
                                                         sym.location().enclClass()));
             } else {
-                log.error(pos,
-                          Errors.AlreadyDefined(kindName(sym),
-                                                sym,
-                                                kindName(sym.location()),
-                                                sym.location()));
+                /* dont error if this is a duplicated parameter of a generated canonical constructor
+                 * as we should have issued an error for the duplicated fields
+                 */
+                if (location.kind != MTH ||
+                        ((sym.owner.flags_field & GENERATEDCONSTR) == 0) ||
+                        ((sym.owner.flags_field & RECORD) == 0)) {
+                    log.error(pos,
+                            Errors.AlreadyDefined(kindName(sym),
+                                    sym,
+                                    kindName(sym.location()),
+                                    sym.location()));
+                }
             }
         }
     }
@@ -1185,6 +1192,8 @@ public class Check {
                 } else {
                     mask = implicit = InterfaceMethodFlags;
                 }
+            } else if ((sym.owner.flags_field & RECORD) != 0) {
+                mask = RecordMethodFlags;
             } else {
                 mask = MethodFlags;
             }
@@ -1195,19 +1204,29 @@ public class Check {
             break;
         case TYP:
             if (sym.isLocal()) {
-                mask = LocalClassFlags;
+                mask = (flags & RECORD) != 0 ? LocalRecordFlags : LocalClassFlags;
+                if ((flags & RECORD) != 0) {
+                    implicit = STATIC;
+                    if (sym.owner.kind == TYP) {
+                        log.error(pos, Errors.RecordDeclarationNotAllowedInInnerClasses);
+                    }
+                }
                 if ((sym.owner.flags_field & STATIC) == 0 &&
-                    (flags & ENUM) != 0)
+                    (flags & ENUM) != 0) {
                     log.error(pos, Errors.EnumsMustBeStatic);
+                }
             } else if (sym.owner.kind == TYP) {
-                mask = MemberClassFlags;
+                mask = (flags & RECORD) != 0 ? MemberRecordFlags : MemberClassFlags;
                 if (sym.owner.owner.kind == PCK ||
                     (sym.owner.flags_field & STATIC) != 0)
                     mask |= STATIC;
-                else if ((flags & ENUM) != 0)
+                else if ((flags & ENUM) != 0) {
                     log.error(pos, Errors.EnumsMustBeStatic);
+                } else if ((flags & RECORD) != 0) {
+                    log.error(pos, Errors.RecordDeclarationNotAllowedInInnerClasses);
+                }
                 // Nested interfaces and enums are always STATIC (Spec ???)
-                if ((flags & (INTERFACE | ENUM)) != 0 ) implicit = STATIC;
+                if ((flags & (INTERFACE | ENUM | RECORD)) != 0 ) implicit = STATIC;
             } else {
                 mask = ClassFlags;
             }
@@ -1218,6 +1237,11 @@ public class Check {
                 // enums can't be declared abstract or final
                 mask &= ~(ABSTRACT | FINAL);
                 implicit |= implicitEnumFinalFlag(tree);
+            }
+            if ((flags & RECORD) != 0) {
+                // records can't be declared abstract
+                mask &= ~ABSTRACT;
+                implicit |= FINAL;
             }
             // Imply STRICTFP if owner has STRICTFP set.
             implicit |= sym.owner.flags_field & STRICTFP;
@@ -1275,9 +1299,9 @@ public class Check {
 
     /** Determine if this enum should be implicitly final.
      *
-     *  If the enum has no specialized enum contants, it is final.
+     *  If the enum has no specialized enum constants, it is final.
      *
-     *  If the enum does have specialized enum contants, it is
+     *  If the enum does have specialized enum constants, it is
      *  <i>not</i> final.
      */
     private long implicitEnumFinalFlag(JCTree tree) {
@@ -1837,7 +1861,7 @@ public class Check {
             // because in that case, we will rediscover the issue when examining the method
             // in the supertype.
             // If the method, m, is not defined in an interface, then the only time we need to
-            // address the issue is when the method is the supertype implemementation: any other
+            // address the issue is when the method is the supertype implementation: any other
             // case, we will have dealt with when examining the supertype classes
             ClassSymbol mc = m.enclClass();
             Type st = types.supertype(origin.type);
@@ -1928,7 +1952,7 @@ public class Check {
      *  @param t1     The first type.
      *  @param t2     The second type.
      *  @param site   The most derived type.
-     *  @returns symbol from t2 that conflicts with one in t1.
+     *  @return symbol from t2 that conflicts with one in t1.
      */
     private Symbol firstIncompatibility(DiagnosticPosition pos, Type t1, Type t2, Type site) {
         Map<TypeSymbol,Type> interfaces1 = new HashMap<>();
@@ -1958,7 +1982,7 @@ public class Check {
         }
     }
 
-    /** Compute all the supertypes of t, indexed by type symbol (except thise in typesSkip). */
+    /** Compute all the supertypes of t, indexed by type symbol (except those in typesSkip). */
     private void closure(Type t, Map<TypeSymbol,Type> typesSkip, Map<TypeSymbol,Type> typeMap) {
         if (!t.hasTag(CLASS)) return;
         if (typesSkip.get(t.tsym) != null) return;
@@ -2654,7 +2678,7 @@ public class Check {
             }
             if (potentiallyAmbiguous) {
                 //we found two incompatible functional interfaces with same arity
-                //this means a call site passing an implicit lambda would be ambigiuous
+                //this means a call site passing an implicit lambda would be ambiguous
                 msym1.flags_field |= POTENTIALLY_AMBIGUOUS;
                 msym2.flags_field |= POTENTIALLY_AMBIGUOUS;
                 log.warning(LintCategory.OVERLOADS, pos,
@@ -2839,9 +2863,9 @@ public class Check {
 
     /** Check the annotations of a symbol.
      */
-    public void validateAnnotations(List<JCAnnotation> annotations, Symbol s) {
+    public void validateAnnotations(List<JCAnnotation> annotations, JCTree declarationTree, Symbol s) {
         for (JCAnnotation a : annotations)
-            validateAnnotation(a, s);
+            validateAnnotation(a, declarationTree, s);
     }
 
     /** Check the type annotations.
@@ -2853,11 +2877,76 @@ public class Check {
 
     /** Check an annotation of a symbol.
      */
-    private void validateAnnotation(JCAnnotation a, Symbol s) {
+    private void validateAnnotation(JCAnnotation a, JCTree declarationTree, Symbol s) {
         validateAnnotationTree(a);
+        boolean isRecordMember = (s.flags_field & RECORD) != 0 || s.enclClass() != null && s.enclClass().isRecord();
 
-        if (a.type.tsym.isAnnotationType() && !annotationApplicable(a, s))
-            log.error(a.pos(), Errors.AnnotationTypeNotApplicable);
+        boolean isRecordField = isRecordMember &&
+                (s.flags_field & (Flags.PRIVATE | Flags.FINAL | Flags.GENERATED_MEMBER | Flags.RECORD)) != 0 &&
+                declarationTree.hasTag(VARDEF) &&
+                s.owner.kind == TYP;
+
+        if (isRecordField) {
+            // first we need to check if the annotation is applicable to records
+            Name[] targets = getTargetNames(a);
+            boolean appliesToRecords = false;
+            for (Name target : targets) {
+                appliesToRecords =
+                                target == names.FIELD ||
+                                target == names.PARAMETER ||
+                                target == names.METHOD ||
+                                target == names.TYPE_USE ||
+                                target == names.RECORD_COMPONENT;
+                if (appliesToRecords) {
+                    break;
+                }
+            }
+            if (!appliesToRecords) {
+                log.error(a.pos(), Errors.AnnotationTypeNotApplicable);
+            } else {
+                /* lets now find the annotations in the field that are targeted to record components and append them to
+                 * the corresponding record component
+                 */
+                ClassSymbol recordClass = (ClassSymbol) s.owner;
+                RecordComponent rc = recordClass.getRecordComponent((VarSymbol)s, false);
+                SymbolMetadata metadata = rc.getMetadata();
+                if (metadata == null || metadata.isEmpty()) {
+                    /* if not is empty then we have already been here, which is the case if multiple annotations are applied
+                     * to the record component declaration
+                     */
+                    rc.appendAttributes(s.getRawAttributes().stream().filter(anno ->
+                            Arrays.stream(getTargetNames(anno.type.tsym)).anyMatch(name -> name == names.RECORD_COMPONENT)
+                    ).collect(List.collector()));
+                    rc.appendUniqueTypeAttributes(s.getRawTypeAttributes());
+                    // to get all the type annotations applied to the type
+                    rc.type = s.type;
+                }
+            }
+        }
+
+        if (a.type.tsym.isAnnotationType() && !annotationApplicable(a, s)) {
+            if (isRecordMember && (s.flags_field & Flags.GENERATED_MEMBER) != 0) {
+                /* so we have found an annotation that is not applicable to a record member that was generated by the
+                 * compiler. This was intentionally done at TypeEnter, now is the moment strip away the annotations
+                 * that are not applicable to the given record member
+                 */
+                JCModifiers modifiers = TreeInfo.getModifiers(declarationTree);
+                // lets first remove the annotation from the modifier
+                if (modifiers != null) {
+                    ListBuffer<JCAnnotation> newAnnotations = new ListBuffer<>();
+                    for (JCAnnotation anno : modifiers.annotations) {
+                        if (anno != a) {
+                            newAnnotations.add(anno);
+                        }
+                    }
+                    modifiers.annotations = newAnnotations.toList();
+                }
+                // now lets remove it from the symbol
+                s.getMetadata().remove(a.attribute);
+            } else {
+                log.error(a.pos(), Errors.AnnotationTypeNotApplicable);
+            }
+        }
 
         if (a.annotationType.type.tsym == syms.functionalInterfaceType.tsym) {
             if (s.kind != TYP) {
@@ -3016,6 +3105,7 @@ public class Check {
             targets.add(names.ANNOTATION_TYPE);
             targets.add(names.CONSTRUCTOR);
             targets.add(names.FIELD);
+            targets.add(names.RECORD_COMPONENT);
             targets.add(names.LOCAL_VARIABLE);
             targets.add(names.METHOD);
             targets.add(names.PACKAGE);
@@ -3107,12 +3197,37 @@ public class Check {
         }
 
     /** Is the annotation applicable to the symbol? */
+    Name[] getTargetNames(JCAnnotation a) {
+        return getTargetNames(a.annotationType.type.tsym);
+    }
+
+    public Name[] getTargetNames(TypeSymbol annoSym) {
+        Attribute.Array arr = getAttributeTargetAttribute(annoSym);
+        Name[] targets;
+        if (arr == null) {
+            targets = defaultTargetMetaInfo();
+        } else {
+            // TODO: can we optimize this?
+            targets = new Name[arr.values.length];
+            for (int i=0; i<arr.values.length; ++i) {
+                Attribute app = arr.values[i];
+                if (!(app instanceof Attribute.Enum)) {
+                    return new Name[0];
+                }
+                Attribute.Enum e = (Attribute.Enum) app;
+                targets[i] = e.value.name;
+            }
+        }
+        return targets;
+    }
+
+    @SuppressWarnings("preview")
     boolean annotationApplicable(JCAnnotation a, Symbol s) {
         Attribute.Array arr = getAttributeTargetAttribute(a.annotationType.type.tsym);
         Name[] targets;
 
         if (arr == null) {
-            targets = defaultTargetMetaInfo(a, s);
+            targets = defaultTargetMetaInfo();
         } else {
             // TODO: can we optimize this?
             targets = new Name[arr.values.length];
@@ -3132,12 +3247,16 @@ public class Check {
             } else if (target == names.FIELD) {
                 if (s.kind == VAR && s.owner.kind != MTH)
                     return true;
+            } else if (target == names.RECORD_COMPONENT) {
+                if (s.getKind() == ElementKind.RECORD_COMPONENT) {
+                    return true;
+                }
             } else if (target == names.METHOD) {
                 if (s.kind == MTH && !s.isConstructor())
                     return true;
             } else if (target == names.PARAMETER) {
-                if (s.kind == VAR && s.owner.kind == MTH &&
-                      (s.flags() & PARAMETER) != 0) {
+                if (s.kind == VAR &&
+                    (s.owner.kind == MTH && (s.flags() & PARAMETER) != 0)) {
                     return true;
                 }
             } else if (target == names.CONSTRUCTOR) {
@@ -3157,7 +3276,7 @@ public class Check {
                     return true;
             } else if (target == names.TYPE_USE) {
                 if (s.kind == VAR && s.owner.kind == MTH && s.type.hasTag(NONE)) {
-                    //cannot type annotate implictly typed locals
+                    //cannot type annotate implicitly typed locals
                     return false;
                 } else if (s.kind == TYP || s.kind == VAR ||
                         (s.kind == MTH && !s.isConstructor() &&
@@ -3175,7 +3294,6 @@ public class Check {
         return false;
     }
 
-
     Attribute.Array getAttributeTargetAttribute(TypeSymbol s) {
         Attribute.Compound atTarget = s.getAnnotationTypeMetadata().getTarget();
         if (atTarget == null) return null; // ok, is applicable
@@ -3184,8 +3302,8 @@ public class Check {
         return (Attribute.Array) atValue;
     }
 
-    private final Name[] dfltTargetMeta;
-    private Name[] defaultTargetMetaInfo(JCAnnotation a, Symbol s) {
+    public final Name[] dfltTargetMeta;
+    private Name[] defaultTargetMetaInfo() {
         return dfltTargetMeta;
     }
 
@@ -3486,6 +3604,11 @@ public class Check {
                     duplicateErasureError(pos, sym, byName);
                     sym.flags_field |= CLASH;
                     return true;
+                } else if ((sym.flags() & MATCH_BINDING) != 0 &&
+                           (byName.flags() & MATCH_BINDING) != 0 &&
+                           (byName.flags() & MATCH_BINDING_TO_OUTER) == 0) {
+                    //this error will be reported separately in MatchBindingsComputer
+                    return false;
                 } else {
                     duplicateError(pos, byName);
                     return false;

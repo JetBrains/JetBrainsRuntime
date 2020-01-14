@@ -170,7 +170,7 @@ public class Pretty extends JCTree.Visitor {
      * Traversal methods
      *************************************************************************/
 
-    /** Exception to propogate IOException through visitXXX methods */
+    /** Exception to propagate IOException through visitXXX methods */
     private static class UncheckedIOException extends Error {
         static final long serialVersionUID = -4032692679158424751L;
         UncheckedIOException(IOException e) {
@@ -232,6 +232,14 @@ public class Pretty extends JCTree.Visitor {
      */
     public <T extends JCTree> void printExprs(List<T> trees) throws IOException {
         printExprs(trees, ", ");
+    }
+
+
+    /** Derived visitor method: print pattern.
+     */
+
+    public void printPattern(JCTree tree) throws IOException {
+        printExpr(tree);
     }
 
     /** Derived visitor method: print list of statements, each on a separate line.
@@ -877,6 +885,16 @@ public class Pretty extends JCTree.Visitor {
         }
     }
 
+    public void visitBindingPattern(JCBindingPattern patt) {
+        try {
+            printExpr(patt.vartype);
+            print(" ");
+            print(patt.name);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     public void visitSynchronized(JCSynchronized tree) {
         try {
             print("synchronized ");
@@ -1283,7 +1301,11 @@ public class Pretty extends JCTree.Visitor {
             open(prec, TreeInfo.ordPrec);
             printExpr(tree.expr, TreeInfo.ordPrec);
             print(" instanceof ");
-            printExpr(tree.clazz, TreeInfo.ordPrec + 1);
+            if (tree.pattern instanceof JCPattern) {
+                printPattern(tree.pattern);
+            } else {
+                printExpr(tree.getType(), TreeInfo.ordPrec + 1);
+            }
             close(prec, TreeInfo.ordPrec);
         } catch (IOException e) {
             throw new UncheckedIOException(e);

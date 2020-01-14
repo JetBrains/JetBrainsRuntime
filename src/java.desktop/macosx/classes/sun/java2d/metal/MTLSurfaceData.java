@@ -39,7 +39,6 @@ import sun.java2d.pipe.PixelToParallelogramConverter;
 import sun.java2d.pipe.RenderBuffer;
 import sun.java2d.pipe.TextPipe;
 import sun.java2d.pipe.hw.AccelSurface;
-import sun.lwawt.macosx.CPlatformView;
 
 import java.awt.*;
 import java.awt.image.ColorModel;
@@ -150,7 +149,6 @@ public abstract class MTLSurfaceData extends SurfaceData
     protected final int scale;
     protected final int width;
     protected final int height;
-    protected CPlatformView pView;
     protected int type;
     private MTLGraphicsConfig graphicsConfig;
     // these fields are set from the native code when the surface is
@@ -187,13 +185,12 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    native void validate(int xoff, int yoff, int width, int height, boolean isOpaque);
-
     private native void initOps(long pConfigInfo, long pPeerData, long layerPtr,
                                 int xoff, int yoff, boolean isOpaque);
 
-    protected MTLSurfaceData(MTLGraphicsConfig gc, ColorModel cm, int type,
-                             int width, int height) {
+    private MTLSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
+                           ColorModel cm, int type, int width, int height)
+    {
         super(getCustomSurfaceType(type), cm);
         this.graphicsConfig = gc;
         this.type = type;
@@ -203,31 +200,6 @@ public abstract class MTLSurfaceData extends SurfaceData
         scale = type == TEXTURE ? 1 : gc.getDevice().getScaleFactor();
         this.width = width * scale;
         this.height = height * scale;
-    }
-
-    protected MTLSurfaceData(CPlatformView pView, MTLGraphicsConfig gc,
-                             ColorModel cm, int type, int width, int height)
-    {
-        this(gc, cm, type, width, height);
-        this.pView = pView;
-        this.graphicsConfig = gc;
-
-        long pConfigInfo = gc.getNativeConfigInfo();
-        long pPeerData = 0L;
-        boolean isOpaque = true;
-        if (pView != null) {
-            pPeerData = pView.getAWTView();
-            isOpaque = pView.isOpaque();
-        }
-        MTLGraphicsConfig.refPConfigInfo(pConfigInfo);
-        initOps(pConfigInfo, pPeerData, 0, 0, 0, isOpaque);
-    }
-
-    protected MTLSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
-                             ColorModel cm, int type, int width, int height)
-    {
-        this(gc, cm, type, width, height);
-        this.graphicsConfig = gc;
 
         long pConfigInfo = gc.getNativeConfigInfo();
         long layerPtr = 0L;
@@ -246,39 +218,13 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * Creates a SurfaceData object representing the primary (front) buffer of
-     * an on-screen Window.
-     */
-    public static MTLWindowSurfaceData createData(CPlatformView pView) {
-        MTLGraphicsConfig gc = getGC(pView);
-        return new MTLWindowSurfaceData(pView, gc);
-    }
-
-    /**
      * Creates a SurfaceData object representing the intermediate buffer
      * between the Java2D flusher thread and the AppKit thread.
      */
     public static MTLLayerSurfaceData createData(MTLLayer layer) {
-        MTLGraphicsConfig gc = getGC(layer);
+        MTLGraphicsConfig gc = (MTLGraphicsConfig)layer.getGraphicsConfiguration();
         Rectangle r = layer.getBounds();
         return new MTLLayerSurfaceData(layer, gc, r.width, r.height);
-    }
-
-    /**
-     * Creates a SurfaceData object representing the back buffer of a
-     * double-buffered on-screen Window.
-     */
-    public static MTLOffScreenSurfaceData createData(CPlatformView pView,
-                                                     Image image, int type) {
-        MTLGraphicsConfig gc = getGC(pView);
-        Rectangle r = pView.getBounds();
-        if (type == FLIP_BACKBUFFER) {
-            return new MTLOffScreenSurfaceData(pView, gc, r.width, r.height,
-                    image, gc.getColorModel(), FLIP_BACKBUFFER);
-        } else {
-            return new MTLVSyncOffScreenSurfaceData(pView, gc, r.width,
-                    r.height, image, gc.getColorModel(), type);
-        }
     }
 
     /**
@@ -287,29 +233,8 @@ public abstract class MTLSurfaceData extends SurfaceData
      */
     public static MTLOffScreenSurfaceData createData(MTLGraphicsConfig gc,
                                                      int width, int height, ColorModel cm, Image image, int type) {
-        return new MTLOffScreenSurfaceData(null, gc, width, height, image, cm,
+        return new MTLOffScreenSurfaceData(gc, width, height, image, cm,
                 type);
-    }
-
-    public static MTLGraphicsConfig getGC(CPlatformView pView) {
-        if (pView != null) {
-            return (MTLGraphicsConfig)pView.getGraphicsConfiguration();
-        } else {
-            // REMIND: this should rarely (never?) happen, but what if
-            // default config is not CGL?
-            GraphicsEnvironment env = GraphicsEnvironment
-                    .getLocalGraphicsEnvironment();
-            GraphicsDevice gd = env.getDefaultScreenDevice();
-            return (MTLGraphicsConfig) gd.getDefaultConfiguration();
-        }
-    }
-
-    public static MTLGraphicsConfig getGC(MTLLayer layer) {
-        return (MTLGraphicsConfig)layer.getGraphicsConfiguration();
-    }
-
-    public void validate() {
-        // Overridden in MTLWindowSurfaceData below
     }
 
     @Override
@@ -320,6 +245,11 @@ public abstract class MTLSurfaceData extends SurfaceData
     @Override
     public double getDefaultScaleY() {
         return scale;
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        return new Rectangle(width, height);
     }
 
     protected native void clearWindow();
@@ -656,52 +586,6 @@ public abstract class MTLSurfaceData extends SurfaceData
         }
     }
 
-    public static class MTLWindowSurfaceData extends MTLSurfaceData {
-
-        public MTLWindowSurfaceData(CPlatformView pView,
-                                    MTLGraphicsConfig gc) {
-            super(pView, gc, gc.getColorModel(), WINDOW, 0, 0);
-        }
-
-        @Override
-        public SurfaceData getReplacement() {
-            return pView.getSurfaceData();
-        }
-
-        @Override
-        public Rectangle getBounds() {
-            Rectangle r = pView.getBounds();
-            return new Rectangle(0, 0, r.width, r.height);
-        }
-
-        /**
-         * Returns destination Component associated with this SurfaceData.
-         */
-        @Override
-        public Object getDestination() {
-            return pView.getDestination();
-        }
-
-        public void validate() {
-            MTLRenderQueue rq = MTLRenderQueue.getInstance();
-            rq.lock();
-            try {
-                rq.flushAndInvokeNow(() -> {
-                    Rectangle peerBounds = pView.getBounds();
-                    validate(0, 0, peerBounds.width, peerBounds.height, pView.isOpaque());
-                });
-            } finally {
-                rq.unlock();
-            }
-        }
-
-        @Override
-        public void invalidate() {
-            super.invalidate();
-            clearWindow();
-        }
-    }
-
     /**
      * A surface which implements an intermediate buffer between
      * the Java2D flusher thread and the AppKit thread.
@@ -711,9 +595,9 @@ public abstract class MTLSurfaceData extends SurfaceData
      */
     public static class MTLLayerSurfaceData extends MTLSurfaceData {
 
-        private MTLLayer layer;
+        private final MTLLayer layer;
 
-        public MTLLayerSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
+        private MTLLayerSurfaceData(MTLLayer layer, MTLGraphicsConfig gc,
                                    int width, int height) {
             super(layer, gc, gc.getColorModel(), RT_TEXTURE, width, height);
             this.layer = layer;
@@ -728,11 +612,6 @@ public abstract class MTLSurfaceData extends SurfaceData
         @Override
         public boolean isOnScreen() {
             return true;
-        }
-
-        @Override
-        public Rectangle getBounds() {
-            return new Rectangle(width, height);
         }
 
         @Override
@@ -753,44 +632,16 @@ public abstract class MTLSurfaceData extends SurfaceData
     }
 
     /**
-     * A surface which implements a v-synced flip back-buffer with COPIED
-     * FlipContents.
-     *
-     * This surface serves as a back-buffer to the outside world, while it is
-     * actually an offscreen surface. When the BufferStrategy this surface
-     * belongs to is showed, it is first copied to the real private
-     * FLIP_BACKBUFFER, which is then flipped.
-     */
-    public static class MTLVSyncOffScreenSurfaceData extends
-            MTLOffScreenSurfaceData {
-        private MTLOffScreenSurfaceData flipSurface;
-
-        public MTLVSyncOffScreenSurfaceData(CPlatformView pView,
-                                            MTLGraphicsConfig gc, int width, int height, Image image,
-                                            ColorModel cm, int type) {
-            super(pView, gc, width, height, image, cm, type);
-            flipSurface = MTLSurfaceData.createData(pView, image,
-                    FLIP_BACKBUFFER);
-        }
-
-        public SurfaceData getFlipSurface() {
-            return flipSurface;
-        }
-
-        @Override
-        public void flush() {
-            flipSurface.flush();
-            super.flush();
-        }
-    }
-
+     * SurfaceData object representing an off-screen buffer (either a FBO or
+     * Texture).
++     */
     public static class MTLOffScreenSurfaceData extends MTLSurfaceData {
-        private Image offscreenImage;
+        private final Image offscreenImage;
 
-        public MTLOffScreenSurfaceData(CPlatformView pView,
-                                       MTLGraphicsConfig gc, int width, int height, Image image,
+        public MTLOffScreenSurfaceData(MTLGraphicsConfig gc, int width,
+                                       int height, Image image,
                                        ColorModel cm, int type) {
-            super(pView, gc, cm, type, width, height);
+            super(null, gc, cm, type, width, height);
             offscreenImage = image;
             initSurface(this.width, this.height);
         }
@@ -798,16 +649,6 @@ public abstract class MTLSurfaceData extends SurfaceData
         @Override
         public SurfaceData getReplacement() {
             return restoreContents(offscreenImage);
-        }
-
-        @Override
-        public Rectangle getBounds() {
-            if (type == FLIP_BACKBUFFER) {
-                Rectangle r = pView.getBounds();
-                return new Rectangle(0, 0, r.width, r.height);
-            } else {
-                return new Rectangle(width, height);
-            }
         }
 
         /**

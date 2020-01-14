@@ -47,8 +47,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.Utils;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Jamie Ho
  */
 public abstract class LinkFactory {
     protected final Utils utils;
@@ -89,7 +87,7 @@ public abstract class LinkFactory {
                 @Override
                 public Content visitArray(ArrayType type, LinkInfo linkInfo) {
                     // keep track of the dimension depth and replace the last dimension
-                    // specifier with vararags, when the stack is fully unwound.
+                    // specifier with varargs, when the stack is fully unwound.
                     currentDepth++;
                     linkInfo.type = type.getComponentType();
                     visit(linkInfo.type, linkInfo);

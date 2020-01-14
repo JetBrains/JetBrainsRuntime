@@ -31,14 +31,6 @@
 #include "runtime/safepoint.hpp"
 #include "utilities/debug.hpp"
 
-bool ZBarrier::during_mark() {
-  return ZGlobalPhase == ZPhaseMark;
-}
-
-bool ZBarrier::during_relocate() {
-  return ZGlobalPhase == ZPhaseRelocate;
-}
-
 template <bool finalizable>
 bool ZBarrier::should_mark_through(uintptr_t addr) {
   // Finalizable marked oops can still exists on the heap after marking
@@ -90,6 +82,17 @@ uintptr_t ZBarrier::mark(uintptr_t addr) {
   // Mark
   if (should_mark_through<finalizable>(addr)) {
     ZHeap::heap()->mark_object<follow, finalizable, publish>(good_addr);
+  }
+
+  if (finalizable) {
+    // Make the oop finalizable marked/good, instead of normal marked/good.
+    // This is needed because an object might first becomes finalizable
+    // marked by the GC, and then loaded by a mutator thread. In this case,
+    // the mutator thread must be able to tell that the object needs to be
+    // strongly marked. The finalizable bit in the oop exists to make sure
+    // that a load of a finalizable marked oop will fall into the barrier
+    // slow path so that we can mark the object as strongly reachable.
+    return ZAddress::finalizable_good(good_addr);
   }
 
   return good_addr;
@@ -174,25 +177,17 @@ uintptr_t ZBarrier::keep_alive_barrier_on_phantom_oop_slow_path(uintptr_t addr) 
 // Mark barrier
 //
 uintptr_t ZBarrier::mark_barrier_on_oop_slow_path(uintptr_t addr) {
+  assert(during_mark(), "Invalid phase");
+
+  // Mark
   return mark<Follow, Strong, Overflow>(addr);
 }
 
 uintptr_t ZBarrier::mark_barrier_on_finalizable_oop_slow_path(uintptr_t addr) {
-  const uintptr_t good_addr = mark<Follow, Finalizable, Overflow>(addr);
-  if (ZAddress::is_good(addr)) {
-    // If the oop was already strongly marked/good, then we do
-    // not want to downgrade it to finalizable marked/good.
-    return good_addr;
-  }
+  assert(during_mark(), "Invalid phase");
 
-  // Make the oop finalizable marked/good, instead of normal marked/good.
-  // This is needed because an object might first becomes finalizable
-  // marked by the GC, and then loaded by a mutator thread. In this case,
-  // the mutator thread must be able to tell that the object needs to be
-  // strongly marked. The finalizable bit in the oop exists to make sure
-  // that a load of a finalizable marked oop will fall into the barrier
-  // slow path so that we can mark the object as strongly reachable.
-  return ZAddress::finalizable_good(good_addr);
+  // Mark
+  return mark<Follow, Finalizable, Overflow>(addr);
 }
 
 uintptr_t ZBarrier::mark_barrier_on_root_oop_slow_path(uintptr_t addr) {

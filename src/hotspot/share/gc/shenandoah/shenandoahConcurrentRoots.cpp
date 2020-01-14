@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2019, 2020, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -32,9 +32,23 @@ bool ShenandoahConcurrentRoots::can_do_concurrent_roots() {
 }
 
 bool ShenandoahConcurrentRoots::should_do_concurrent_roots() {
-  ShenandoahHeap* const heap = ShenandoahHeap::heap();
-  bool stw_gc_in_progress = heap->is_full_gc_in_progress() ||
-                            heap->is_degenerated_gc_in_progress();
   return can_do_concurrent_roots() &&
-         !stw_gc_in_progress;
+         !ShenandoahHeap::heap()->is_stw_gc_in_progress();
+}
+
+bool ShenandoahConcurrentRoots::can_do_concurrent_class_unloading() {
+#if defined(X86) && !defined(SOLARIS)
+  return ShenandoahCodeRootsStyle == 2 &&
+         ClassUnloading &&
+         strcmp(ShenandoahGCMode, "traversal") != 0;
+#else
+  return false;
+#endif
+}
+
+bool ShenandoahConcurrentRoots::should_do_concurrent_class_unloading() {
+  ShenandoahHeap* const heap = ShenandoahHeap::heap();
+  return can_do_concurrent_class_unloading() &&
+         heap->unload_classes() &&
+         !heap->is_stw_gc_in_progress();
 }

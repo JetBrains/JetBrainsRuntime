@@ -67,8 +67,6 @@ import static jdk.javadoc.internal.tool.Main.Result.*;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- *  @author Neal Gafter
  */
 public class JavadocTool extends com.sun.tools.javac.main.JavaCompiler {
     ToolEnvironment toolEnv;
@@ -223,9 +221,9 @@ public class JavadocTool extends com.sun.tools.javac.main.JavaCompiler {
             // Ensure that package-info is read for all included packages
             for (Element e : etable.getIncludedElements()) {
                 if (e.getKind() == ElementKind.PACKAGE) {
-                    PackageSymbol packge = (PackageSymbol) e;
-                    if (packge.package_info != null) {
-                        packge.package_info.complete();
+                    PackageSymbol p = (PackageSymbol) e;
+                    if (p.package_info != null) {
+                        p.package_info.complete();
                     }
                 }
             }
@@ -292,7 +290,7 @@ public class JavadocTool extends com.sun.tools.javac.main.JavaCompiler {
     }
 
     /** Are surrogates supported? */
-    final static boolean surrogatesSupported = surrogatesSupported();
+    static final boolean surrogatesSupported = surrogatesSupported();
     private static boolean surrogatesSupported() {
         try {
             boolean b = Character.isHighSurrogate('a');

@@ -57,7 +57,7 @@ ZHeap* ZHeap::_heap = NULL;
 ZHeap::ZHeap() :
     _workers(),
     _object_allocator(),
-    _page_allocator(heap_min_size(), heap_initial_size(), heap_max_size(), heap_max_reserve_size()),
+    _page_allocator(&_workers, heap_min_size(), heap_initial_size(), heap_max_size(), heap_max_reserve_size()),
     _page_table(),
     _forwarding_table(),
     _mark(&_workers, &_page_table),
@@ -322,13 +322,20 @@ bool ZHeap::mark_end() {
   return true;
 }
 
+void ZHeap::keep_alive(oop obj) {
+  ZBarrier::keep_alive_barrier_on_oop(obj);
+}
+
 void ZHeap::set_soft_reference_policy(bool clear) {
   _reference_processor.set_soft_reference_policy(clear);
 }
 
-class ZRendezvousClosure : public ThreadClosure {
+class ZRendezvousClosure : public HandshakeClosure {
 public:
-  virtual void do_thread(Thread* thread) {}
+  ZRendezvousClosure() :
+      HandshakeClosure("ZRendezvous") {}
+
+  void do_thread(Thread* thread) {}
 };
 
 void ZHeap::process_non_strong_references() {
@@ -352,11 +359,11 @@ void ZHeap::process_non_strong_references() {
   ZRendezvousClosure cl;
   Handshake::execute(&cl);
 
-  // Purge stale metadata and nmethods that were unlinked
-  _unload.purge();
-
   // Unblock resurrection of weak/phantom references
   ZResurrection::unblock();
+
+  // Purge stale metadata and nmethods that were unlinked
+  _unload.purge();
 
   // Enqueue Soft/Weak/Final/PhantomReferences. Note that this
   // must be done after unblocking resurrection. Otherwise the

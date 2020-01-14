@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,9 +62,8 @@ public class VersionCheck extends TestHelper {
         "jmc",
         "jmc.ini",
         "jweblauncher",
-        "packager",
-        "ssvagent",
-        "unpack200",
+        "jpackage",
+        "ssvagent"
     };
 
     // tools that do not accept -version
@@ -107,15 +106,13 @@ public class VersionCheck extends TestHelper {
         "kinit",
         "klist",
         "ktab",
-        "pack200",
-        "packager",
+        "jpackage",
         "rmic",
         "rmid",
         "rmiregistry",
         "serialver",
         "servertool",
-        "ssvagent",
-        "unpack200"
+        "ssvagent"
     };
 
     // expected reference strings

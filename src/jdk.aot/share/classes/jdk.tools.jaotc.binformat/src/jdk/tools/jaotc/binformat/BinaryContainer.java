@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import jdk.tools.jaotc.binformat.pecoff.JPECoffRelocObject;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * A format-agnostic container class that holds various components of a binary.
@@ -227,6 +229,8 @@ public final class BinaryContainer implements SymbolTable {
         {"StubRoutines::_montgomeryMultiply", "_aot_stub_routines_montgomeryMultiply" },
         {"StubRoutines::_montgomerySquare", "_aot_stub_routines_montgomerySquare" },
         {"StubRoutines::_vectorizedMismatch", "_aot_stub_routines_vectorizedMismatch" },
+        {"StubRoutines::_bigIntegerRightShiftWorker", "_aot_stub_routines_bigIntegerRightShiftWorker" },
+        {"StubRoutines::_bigIntegerLeftShiftWorker", "_aot_stub_routines_bigIntegerLeftShiftWorker" },
 
         {"StubRoutines::_throw_delayed_StackOverflowError_entry", "_aot_stub_routines_throw_delayed_StackOverflowError_entry" },
 
@@ -334,26 +338,29 @@ public final class BinaryContainer implements SymbolTable {
         boolean[] booleanFlags = { graalHotSpotVMConfig.cAssertions, // Debug VM
                                    graalHotSpotVMConfig.useCompressedOops,
                                    graalHotSpotVMConfig.useCompressedClassPointers,
-                                   graalHotSpotVMConfig.compactFields,
                                    graalHotSpotVMConfig.useTLAB,
                                    graalHotSpotVMConfig.useBiasedLocking,
                                    TieredAOT.getValue(graalOptions),
                                    graalHotSpotVMConfig.enableContended,
                                    graalHotSpotVMConfig.restrictContended,
                                    graphBuilderConfig.omitAssertions(),
-                                   graalHotSpotVMConfig.threadLocalHandshakes
         };
 
         int[] intFlags         = { graalHotSpotVMConfig.getOopEncoding().getShift(),
                                    graalHotSpotVMConfig.getKlassEncoding().getShift(),
                                    graalHotSpotVMConfig.contendedPaddingWidth,
-                                   graalHotSpotVMConfig.fieldsAllocationStyle,
                                    1 << graalHotSpotVMConfig.logMinObjAlignment(),
                                    graalHotSpotVMConfig.codeSegmentSize,
                                    gc
         };
         // @formatter:on
         // @Checkstyle: resume
+
+        if (JavaVersionUtil.JAVA_SPEC < 14) {
+            // See JDK-8220049. Thread local handshakes are on by default since JDK14, the command line option has been removed.
+            booleanFlags = Arrays.copyOf(booleanFlags, booleanFlags.length + 1);
+            booleanFlags[booleanFlags.length - 1] = graalHotSpotVMConfig.threadLocalHandshakes;
+        }
 
         byte[] booleanFlagsAsBytes = flagsToByteArray(booleanFlags);
         int size0 = configContainer.getByteStreamSize();

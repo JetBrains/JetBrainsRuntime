@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@
 #include "oops/compressedOops.hpp"
 #include "oops/klass.inline.hpp"
 #include "oops/method.inline.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/deoptimization.hpp"
 #include "runtime/handles.inline.hpp"
 #include "runtime/os.hpp"
@@ -180,11 +181,8 @@ void AOTLib::verify_config() {
   verify_flag(_config->_useBiasedLocking, UseBiasedLocking, "UseBiasedLocking");
   verify_flag(_config->_objectAlignment, ObjectAlignmentInBytes, "ObjectAlignmentInBytes");
   verify_flag(_config->_contendedPaddingWidth, ContendedPaddingWidth, "ContendedPaddingWidth");
-  verify_flag(_config->_fieldsAllocationStyle, FieldsAllocationStyle, "FieldsAllocationStyle");
-  verify_flag(_config->_compactFields, CompactFields, "CompactFields");
   verify_flag(_config->_enableContended, EnableContended, "EnableContended");
   verify_flag(_config->_restrictContended, RestrictContended, "RestrictContended");
-  verify_flag(_config->_threadLocalHandshakes, ThreadLocalHandshakes, "ThreadLocalHandshakes");
 
   if (!TieredCompilation && _config->_tieredAOT) {
     handle_config_error("Shared file %s error: Expected to run with tiered compilation on", _name);
@@ -347,7 +345,7 @@ void AOTCodeHeap::publish_aot(const methodHandle& mh, AOTMethodData* method_data
   AOTCompiledMethod *aot = new AOTCompiledMethod(code, mh(), meta, metadata_table, metadata_size, state_adr, this, name, code_id, _aot_id);
   assert(_code_to_aot[code_id]._aot == NULL, "should be not initialized");
   _code_to_aot[code_id]._aot = aot; // Should set this first
-  if (Atomic::cmpxchg(in_use, &_code_to_aot[code_id]._state, not_set) != not_set) {
+  if (Atomic::cmpxchg(&_code_to_aot[code_id]._state, not_set, in_use) != not_set) {
     _code_to_aot[code_id]._aot = NULL; // Clean
   } else { // success
     // Publish method
@@ -410,7 +408,7 @@ void AOTCodeHeap::register_stubs() {
     AOTCompiledMethod* aot = new AOTCompiledMethod(entry, NULL, meta, metadata_table, metadata_size, state_adr, this, full_name, code_id, i);
     assert(_code_to_aot[code_id]._aot  == NULL, "should be not initialized");
     _code_to_aot[code_id]._aot  = aot;
-    if (Atomic::cmpxchg(in_use, &_code_to_aot[code_id]._state, not_set) != not_set) {
+    if (Atomic::cmpxchg(&_code_to_aot[code_id]._state, not_set, in_use) != not_set) {
       fatal("stab '%s' code state is %d", full_name, _code_to_aot[code_id]._state);
     }
     // Adjust code buffer boundaries only for stubs because they are last in the buffer.
@@ -555,6 +553,8 @@ void AOTCodeHeap::link_stub_routines_symbols() {
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_montgomeryMultiply",  address, StubRoutines::_montgomeryMultiply);
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_montgomerySquare", address, StubRoutines::_montgomerySquare);
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_vectorizedMismatch", address, StubRoutines::_vectorizedMismatch);
+    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_bigIntegerRightShiftWorker", address, StubRoutines::_bigIntegerRightShiftWorker);
+    SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_bigIntegerLeftShiftWorker", address, StubRoutines::_bigIntegerLeftShiftWorker);
 
     SET_AOT_GLOBAL_SYMBOL_VALUE("_aot_stub_routines_throw_delayed_StackOverflowError_entry", address, StubRoutines::_throw_delayed_StackOverflowError_entry);
 
@@ -721,7 +721,7 @@ void AOTCodeHeap::sweep_dependent_methods(int* indexes, int methods_cnt) {
   for (int i = 0; i < methods_cnt; ++i) {
     int code_id = indexes[i];
     // Invalidate aot code.
-    if (Atomic::cmpxchg(invalid, &_code_to_aot[code_id]._state, not_set) != not_set) {
+    if (Atomic::cmpxchg(&_code_to_aot[code_id]._state, not_set, invalid) != not_set) {
       if (_code_to_aot[code_id]._state == in_use) {
         AOTCompiledMethod* aot = _code_to_aot[code_id]._aot;
         assert(aot != NULL, "aot should be set");

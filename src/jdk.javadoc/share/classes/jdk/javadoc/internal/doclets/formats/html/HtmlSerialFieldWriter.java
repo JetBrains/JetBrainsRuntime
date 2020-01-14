@@ -53,9 +53,6 @@ import jdk.javadoc.internal.doclets.toolkit.util.CommentHelper;
  *  If you write code that depends on this, you do so at your own risk.
  *  This code and its internal interfaces are subject to change or
  *  deletion without notice.</b>
- *
- * @author Joe Fialli
- * @author Bhavesh Patel (Modified)
  */
 public class HtmlSerialFieldWriter extends FieldWriterImpl
         implements SerializedFormWriter.SerialFieldWriter {
@@ -82,7 +79,7 @@ public class HtmlSerialFieldWriter extends FieldWriterImpl
     /**
      * Return the header for serializable fields content section.
      *
-     * @param isLastContent true if the cotent being documented is the last content.
+     * @param isLastContent true if the content being documented is the last content.
      * @return a content tree for the header
      */
     public Content getFieldsContentHeader(boolean isLastContent) {
@@ -95,7 +92,7 @@ public class HtmlSerialFieldWriter extends FieldWriterImpl
      * Add serializable fields.
      *
      * @param heading the heading for the section
-     * @param serializableFieldsTree the tree to be added to the serializable fileds
+     * @param serializableFieldsTree the tree to be added to the serializable fields
      *        content tree
      * @return a content tree for the serializable fields content
      */

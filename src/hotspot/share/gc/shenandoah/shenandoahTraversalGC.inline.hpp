@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Red Hat, Inc. All rights reserved.
+ * Copyright (c) 2018, 2019, Red Hat, Inc. All rights reserved.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
@@ -51,6 +51,7 @@ void ShenandoahTraversalGC::process_oop(T* p, Thread* thread, ShenandoahObjToSca
     } else if (_heap->in_collection_set(obj)) {
       oop forw = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (obj == forw) {
+        ShenandoahEvacOOMScope evac_scope;
         forw = _heap->evacuate_object(obj, thread);
       }
       shenandoah_assert_forwarded_except(p, obj, _heap->cancelled_gc());

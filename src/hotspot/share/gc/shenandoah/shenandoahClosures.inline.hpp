@@ -23,11 +23,14 @@
 #ifndef SHARE_GC_SHENANDOAH_SHENANDOAHCLOSURES_INLINE_HPP
 #define SHARE_GC_SHENANDOAH_SHENANDOAHCLOSURES_INLINE_HPP
 
+#include "gc/shared/barrierSetNMethod.hpp"
 #include "gc/shenandoah/shenandoahAsserts.hpp"
 #include "gc/shenandoah/shenandoahClosures.hpp"
 #include "gc/shenandoah/shenandoahHeap.inline.hpp"
+#include "gc/shenandoah/shenandoahNMethod.inline.hpp"
 #include "gc/shenandoah/shenandoahTraversalGC.hpp"
 #include "oops/compressedOops.inline.hpp"
+#include "runtime/atomic.hpp"
 #include "runtime/thread.hpp"
 
 ShenandoahForwardedIsAliveClosure::ShenandoahForwardedIsAliveClosure() :
@@ -108,12 +111,13 @@ ShenandoahEvacuateUpdateRootsClosure::ShenandoahEvacuateUpdateRootsClosure() :
 
 template <class T>
 void ShenandoahEvacuateUpdateRootsClosure::do_oop_work(T* p) {
-  assert(_heap->is_evacuation_in_progress(), "Only do this when evacuation is in progress");
+  assert(_heap->is_concurrent_root_in_progress(), "Only do this when evacuation is in progress");
 
   T o = RawAccess<>::oop_load(p);
   if (! CompressedOops::is_null(o)) {
     oop obj = CompressedOops::decode_not_null(o);
     if (_heap->in_collection_set(obj)) {
+      assert(_heap->is_evacuation_in_progress(), "Only do this when evacuation is in progress");
       shenandoah_assert_marked(p, obj);
       oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (resolved == obj) {
@@ -136,24 +140,39 @@ ShenandoahEvacUpdateOopStorageRootsClosure::ShenandoahEvacUpdateOopStorageRootsC
 }
 
 void ShenandoahEvacUpdateOopStorageRootsClosure::do_oop(oop* p) {
-  assert(_heap->is_evacuation_in_progress(), "Only do this when evacuation is in progress");
+  assert(_heap->is_concurrent_root_in_progress(), "Only do this when evacuation is in progress");
 
   oop obj = RawAccess<>::oop_load(p);
   if (! CompressedOops::is_null(obj)) {
     if (_heap->in_collection_set(obj)) {
+      assert(_heap->is_evacuation_in_progress(), "Only do this when evacuation is in progress");
       shenandoah_assert_marked(p, obj);
       oop resolved = ShenandoahBarrierSet::resolve_forwarded_not_null(obj);
       if (resolved == obj) {
         resolved = _heap->evacuate_object(obj, _thread);
       }
 
-      Atomic::cmpxchg(resolved, p, obj);
+      Atomic::cmpxchg(p, obj, resolved);
     }
   }
 }
 
 void ShenandoahEvacUpdateOopStorageRootsClosure::do_oop(narrowOop* p) {
   ShouldNotReachHere();
+}
+
+ShenandoahCodeBlobAndDisarmClosure::ShenandoahCodeBlobAndDisarmClosure(OopClosure* cl) :
+  CodeBlobToOopClosure(cl, true /* fix_relocations */),
+   _bs(BarrierSet::barrier_set()->barrier_set_nmethod()) {
+}
+
+void ShenandoahCodeBlobAndDisarmClosure::do_code_blob(CodeBlob* cb) {
+  nmethod* const nm = cb->as_nmethod_or_null();
+  if (nm != NULL && nm->oops_do_try_claim()) {
+    assert(!ShenandoahNMethod::gc_data(nm)->is_unregistered(), "Should not be here");
+    CodeBlobToOopClosure::do_code_blob(cb);
+    _bs->disarm(nm);
+  }
 }
 
 #ifdef ASSERT

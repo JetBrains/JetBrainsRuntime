@@ -63,6 +63,7 @@
 #include "oops/klass.inline.hpp"
 #include "oops/method.hpp"
 #include "oops/oop.inline.hpp"
+#include "oops/recordComponent.hpp"
 #include "oops/symbol.hpp"
 #include "prims/jvmtiExport.hpp"
 #include "prims/jvmtiRedefineClasses.hpp"
@@ -436,6 +437,7 @@ InstanceKlass::InstanceKlass(const ClassFileParser& parser, unsigned kind, Klass
   _nest_members(NULL),
   _nest_host_index(0),
   _nest_host(NULL),
+  _record_components(NULL),
   _static_field_size(parser.static_field_size()),
   _nonstatic_oop_map_size(nonstatic_oop_map_size(parser.total_oop_map_count())),
   _itable_len(parser.itable_size()),
@@ -504,6 +506,17 @@ void InstanceKlass::deallocate_interfaces(ClassLoaderData* loader_data,
   }
 }
 
+void InstanceKlass::deallocate_record_components(ClassLoaderData* loader_data,
+                                                 Array<RecordComponent*>* record_components) {
+  if (record_components != NULL && !record_components->is_shared()) {
+    for (int i = 0; i < record_components->length(); i++) {
+      RecordComponent* record_component = record_components->at(i);
+      MetadataFactory::free_metadata(loader_data, record_component);
+    }
+    MetadataFactory::free_array<RecordComponent*>(loader_data, record_components);
+  }
+}
+
 // This function deallocates the metadata and C heap pointers that the
 // InstanceKlass points to.
 void InstanceKlass::deallocate_contents(ClassLoaderData* loader_data) {
@@ -531,6 +544,9 @@ void InstanceKlass::deallocate_contents(ClassLoaderData* loader_data) {
 
   deallocate_methods(loader_data, methods());
   set_methods(NULL);
+
+  deallocate_record_components(loader_data, record_components());
+  set_record_components(NULL);
 
   if (method_ordering() != NULL &&
       method_ordering() != Universe::the_empty_int_array() &&
@@ -1097,7 +1113,7 @@ Klass* InstanceKlass::implementor() const {
     return NULL;
   } else {
     // This load races with inserts, and therefore needs acquire.
-    Klass* kls = OrderAccess::load_acquire(k);
+    Klass* kls = Atomic::load_acquire(k);
     if (kls != NULL && !kls->is_loader_alive()) {
       return NULL;  // don't return unloaded class
     } else {
@@ -1113,7 +1129,7 @@ void InstanceKlass::set_implementor(Klass* k) {
   Klass* volatile* addr = adr_implementor();
   assert(addr != NULL, "null addr");
   if (addr != NULL) {
-    OrderAccess::release_store(addr, k);
+    Atomic::release_store(addr, k);
   }
 }
 
@@ -1303,7 +1319,7 @@ Klass* InstanceKlass::array_klass_impl(bool or_null, int n, TRAPS) {
   if (array_klasses_acquire() == NULL) {
     if (or_null) return NULL;
 
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     JavaThread *jt = (JavaThread *)THREAD;
     {
       // Atomic creation of array_klasses
@@ -1352,7 +1368,7 @@ void InstanceKlass::call_class_initializer(TRAPS) {
   assert(!is_initialized(), "we cannot initialize twice");
   LogTarget(Info, class, init) lt;
   if (lt.is_enabled()) {
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     LogStream ls(lt);
     ls.print("%d Initializing ", call_class_initializer_counter++);
     name()->print_value_on(&ls);
@@ -1370,14 +1386,14 @@ void InstanceKlass::mask_for(const methodHandle& method, int bci,
   InterpreterOopMap* entry_for) {
   // Lazily create the _oop_map_cache at first request
   // Lock-free access requires load_acquire.
-  OopMapCache* oop_map_cache = OrderAccess::load_acquire(&_oop_map_cache);
+  OopMapCache* oop_map_cache = Atomic::load_acquire(&_oop_map_cache);
   if (oop_map_cache == NULL) {
     MutexLocker x(OopMapCacheAlloc_lock);
     // Check if _oop_map_cache was allocated while we were waiting for this lock
     if ((oop_map_cache = _oop_map_cache) == NULL) {
       oop_map_cache = new OopMapCache();
       // Ensure _oop_map_cache is stable, since it is examined without a lock
-      OrderAccess::release_store(&_oop_map_cache, oop_map_cache);
+      Atomic::release_store(&_oop_map_cache, oop_map_cache);
     }
   }
   // _oop_map_cache is constant after init; lookup below does its own locking.
@@ -1579,26 +1595,33 @@ static int linear_search(const Array<Method*>* methods,
 
 bool InstanceKlass::_disable_method_binary_search = false;
 
-int InstanceKlass::quick_search(const Array<Method*>* methods, const Symbol* name) {
+NOINLINE int linear_search(const Array<Method*>* methods, const Symbol* name) {
   int len = methods->length();
   int l = 0;
   int h = len - 1;
+  while (l <= h) {
+    Method* m = methods->at(l);
+    if (m->name() == name) {
+      return l;
+    }
+    l++;
+  }
+  return -1;
+}
 
+inline int InstanceKlass::quick_search(const Array<Method*>* methods, const Symbol* name) {
   if (_disable_method_binary_search) {
+    assert(DynamicDumpSharedSpaces, "must be");
     // At the final stage of dynamic dumping, the methods array may not be sorted
     // by ascending addresses of their names, so we can't use binary search anymore.
     // However, methods with the same name are still laid out consecutively inside the
     // methods array, so let's look for the first one that matches.
-    assert(DynamicDumpSharedSpaces, "must be");
-    while (l <= h) {
-      Method* m = methods->at(l);
-      if (m->name() == name) {
-        return l;
-      }
-      l ++;
-    }
-    return -1;
+    return linear_search(methods, name);
   }
+
+  int len = methods->length();
+  int l = 0;
+  int h = len - 1;
 
   // methods are sorted by ascending addresses of their names, so do binary search
   while (l <= h) {
@@ -1980,7 +2003,7 @@ jmethodID InstanceKlass::get_jmethod_id(const methodHandle& method_h) {
         // we're single threaded or at a safepoint - no locking needed
         get_jmethod_id_length_value(jmeths, idnum, &length, &id);
       } else {
-        MutexLocker ml(JmethodIdCreation_lock);
+        MutexLocker ml(JmethodIdCreation_lock, Mutex::_no_safepoint_check_flag);
         get_jmethod_id_length_value(jmeths, idnum, &length, &id);
       }
     }
@@ -2030,7 +2053,7 @@ jmethodID InstanceKlass::get_jmethod_id(const methodHandle& method_h) {
       id = get_jmethod_id_fetch_or_update(idnum, new_id, new_jmeths,
                                           &to_dealloc_id, &to_dealloc_jmeths);
     } else {
-      MutexLocker ml(JmethodIdCreation_lock);
+      MutexLocker ml(JmethodIdCreation_lock, Mutex::_no_safepoint_check_flag);
       id = get_jmethod_id_fetch_or_update(idnum, new_id, new_jmeths,
                                           &to_dealloc_id, &to_dealloc_jmeths);
     }
@@ -2114,7 +2137,7 @@ jmethodID InstanceKlass::get_jmethod_id_fetch_or_update(
     // The jmethodID cache can be read while unlocked so we have to
     // make sure the new jmethodID is complete before installing it
     // in the cache.
-    OrderAccess::release_store(&jmeths[idnum+1], id);
+    Atomic::release_store(&jmeths[idnum+1], id);
   } else {
     *to_dealloc_id_p = new_id; // save new id for later delete
   }
@@ -2196,11 +2219,11 @@ void InstanceKlass::clean_implementors_list() {
     assert (ClassUnloading, "only called for ClassUnloading");
     for (;;) {
       // Use load_acquire due to competing with inserts
-      Klass* impl = OrderAccess::load_acquire(adr_implementor());
+      Klass* impl = Atomic::load_acquire(adr_implementor());
       if (impl != NULL && !impl->is_loader_alive()) {
         // NULL this field, might be an unloaded klass or NULL
         Klass* volatile* klass = adr_implementor();
-        if (Atomic::cmpxchg((Klass*)NULL, klass, impl) == impl) {
+        if (Atomic::cmpxchg(klass, impl, (Klass*)NULL) == impl) {
           // Successfully unlinking implementor.
           if (log_is_enabled(Trace, class, unload)) {
             ResourceMark rm;
@@ -2339,6 +2362,7 @@ void InstanceKlass::metaspace_pointers_do(MetaspaceClosure* it) {
   }
 
   it->push(&_nest_members);
+  it->push(&_record_components);
 }
 
 void InstanceKlass::remove_unshareable_info() {
@@ -2654,7 +2678,7 @@ Symbol* InstanceKlass::package_from_name(const Symbol* name, TRAPS) {
     if (name->utf8_length() <= 0) {
       return NULL;
     }
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     const char* package_name = ClassLoader::package_from_name((const char*) name->as_C_string());
     if (package_name == NULL) {
       return NULL;
@@ -2696,7 +2720,7 @@ void InstanceKlass::set_package(ClassLoaderData* loader_data, TRAPS) {
     // entry table, it is an indication that the package has not
     // been defined. Consider it defined within the unnamed module.
     if (_package_entry == NULL) {
-      ResourceMark rm;
+      ResourceMark rm(THREAD);
 
       if (!ModuleEntryTable::javabase_defined()) {
         // Before java.base is defined during bootstrapping, define all packages in
@@ -2717,7 +2741,7 @@ void InstanceKlass::set_package(ClassLoaderData* loader_data, TRAPS) {
     }
 
     if (log_is_enabled(Debug, module)) {
-      ResourceMark rm;
+      ResourceMark rm(THREAD);
       ModuleEntry* m = _package_entry->module();
       log_trace(module)("Setting package: class: %s, package: %s, loader: %s, module: %s",
                         external_name(),
@@ -2726,7 +2750,7 @@ void InstanceKlass::set_package(ClassLoaderData* loader_data, TRAPS) {
                         (m->is_named() ? m->name()->as_C_string() : UNNAMED_MODULE));
     }
   } else {
-    ResourceMark rm;
+    ResourceMark rm(THREAD);
     log_trace(module)("Setting package: class: %s, package: unnamed, loader: %s, module: %s",
                       external_name(),
                       (loader_data != NULL) ? loader_data->loader_name_and_id() : "NULL",
@@ -3270,6 +3294,9 @@ void InstanceKlass::print_on(outputStream* st) const {
   }
   st->print(BULLET"inner classes:     "); inner_classes()->print_value_on(st);     st->cr();
   st->print(BULLET"nest members:     "); nest_members()->print_value_on(st);     st->cr();
+  if (record_components() != NULL) {
+    st->print(BULLET"record components:     "); record_components()->print_value_on(st);     st->cr();
+  }
   if (java_mirror() != NULL) {
     st->print(BULLET"java mirror:       ");
     java_mirror()->print_value_on(st);
@@ -3532,6 +3559,7 @@ void InstanceKlass::collect_statistics(KlassSizeStats *sz) const {
   n += (sz->_fields_bytes                = sz->count_array(fields()));
   n += (sz->_inner_classes_bytes         = sz->count_array(inner_classes()));
   n += (sz->_nest_members_bytes          = sz->count_array(nest_members()));
+  n += (sz->_record_components_bytes     = sz->count_array(record_components()));
   sz->_ro_bytes += n;
 
   const ConstantPool* cp = constants();
@@ -3554,6 +3582,17 @@ void InstanceKlass::collect_statistics(KlassSizeStats *sz) const {
       }
     }
   }
+
+  const Array<RecordComponent*>* components = record_components();
+  if (components != NULL) {
+    for (int i = 0; i < components->length(); i++) {
+      RecordComponent* component = components->at(i);
+      if (component != NULL) {
+        component->collect_statistics(sz);
+      }
+    }
+  }
+
 }
 #endif // INCLUDE_SERVICES
 

@@ -971,7 +971,7 @@ const bool Matcher::match_rule_supported(int opcode) {
   return true;  // Per default match rules are supported.
 }
 
-const bool Matcher::match_rule_supported_vector(int opcode, int vlen) {
+const bool Matcher::match_rule_supported_vector(int opcode, int vlen, BasicType bt) {
 
   // TODO
   // identify extra cases that we might want to provide match rules for
@@ -1076,6 +1076,24 @@ const bool Matcher::require_postalloc_expand = false;
 const bool Matcher::need_masked_shift_count = true;
 
 const bool Matcher::convi2l_type_required = true;
+
+// No support for generic vector operands.
+const bool Matcher::supports_generic_vector_operands  = false;
+
+MachOper* Matcher::specialize_generic_vector_operand(MachOper* original_opnd, uint ideal_reg, bool is_temp) {
+  ShouldNotReachHere(); // generic vector operands not supported
+  return NULL;
+}
+
+bool Matcher::is_generic_reg2reg_move(MachNode* m) {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
+
+bool Matcher::is_generic_vector(MachOper* opnd)  {
+  ShouldNotReachHere();  // generic vector operands not supported
+  return false;
+}
 
 // Should the Matcher clone shifts on addressing modes, expecting them
 // to be subsumed into complex addressing expressions or compute them
@@ -2204,6 +2222,30 @@ operand R1RegP() %{
   interface(REG_INTER);
 %}
 
+operand R8RegP() %{
+  constraint(ALLOC_IN_RC(R8_regP));
+  match(iRegP);
+
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand R9RegP() %{
+  constraint(ALLOC_IN_RC(R9_regP));
+  match(iRegP);
+
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand R12RegP() %{
+  constraint(ALLOC_IN_RC(R12_regP));
+  match(iRegP);
+
+  format %{ %}
+  interface(REG_INTER);
+%}
+
 operand R2RegP() %{
   constraint(ALLOC_IN_RC(R2_regP));
   match(iRegP);
@@ -2230,6 +2272,14 @@ operand RthreadRegP() %{
 
 operand IPRegP() %{
   constraint(ALLOC_IN_RC(IP_regP));
+  match(iRegP);
+
+  format %{ %}
+  interface(REG_INTER);
+%}
+
+operand SPRegP() %{
+  constraint(ALLOC_IN_RC(SP_regP));
   match(iRegP);
 
   format %{ %}
